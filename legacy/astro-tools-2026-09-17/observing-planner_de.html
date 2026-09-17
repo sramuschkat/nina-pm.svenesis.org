@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a2a3a">
+  <meta name="description" content="Beobachtungsplaner für Starfront (Texas), Hannover, Sankt Andreasberg und die Finca Olivar: eine Sternkarte mit Sternbildern, Mond und Planeten und die besten Galaxien, Nebel und Sternhaufen jeder Nacht – im Browser berechnet.">
+  <title>Beobachtungsplaner &ndash; Svenesis.org</title>
+  <link rel="icon" type="image/svg+xml" href="../img/logo.svg">
+  <link rel="stylesheet" href="../css/style.css?v=024bd3ad">
+  <!-- SEO -->
+  <link rel="canonical" href="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <link rel="alternate" hreflang="de" href="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <link rel="alternate" hreflang="en" href="https://www.svenesis.org/astro-tools/observing-planner_en.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <meta property="og:title" content="Beobachtungsplaner – Svenesis.org">
+  <meta property="og:description" content="Beobachtungsplaner für Starfront (Texas), Hannover, Sankt Andreasberg und die Finca Olivar: eine Sternkarte mit Sternbildern, Mond und Planeten und die besten Galaxien, Nebel und Sternhaufen jeder Nacht – im Browser berechnet.">
+  <meta property="og:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:site_name" content="Svenesis.org">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Beobachtungsplaner – Svenesis.org">
+  <meta name="twitter:description" content="Beobachtungsplaner für Starfront (Texas), Hannover, Sankt Andreasberg und die Finca Olivar: eine Sternkarte mit Sternbildern, Mond und Planeten und die besten Galaxien, Nebel und Sternhaufen jeder Nacht – im Browser berechnet.">
+  <meta name="twitter:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Startseite","item":"https://www.svenesis.org/index_de.html"},{"@type":"ListItem","position":2,"name":"Astronomie","item":"https://www.svenesis.org/index_de.html"},{"@type":"ListItem","position":3,"name":"Beobachtungsplaner","item":"https://www.svenesis.org/astro-tools/observing-planner_de.html"}]}
+</script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="../index_de.html" class="logo"><img src="../img/logo.svg" alt="Svenesis.org Logo" class="logo-img" width="28" height="28"> Svenesis.org</a>
+      <button class="hamburger" onclick="toggleNav()" aria-label="Menu">&#9776;</button>
+      <nav>
+        <a href="../index_de.html">Startseite</a>
+        <a href="../about/about_de.html">&Uuml;ber mich</a>
+<div class="dropdown">
+<a class="dropdown-toggle" href="#" onclick="toggleDropdown(this, event)">Technologien</a>
+<div class="dropdown-menu">
+<a href="../technologien/unicode-security-analyzer_de.html">Unicode Security Analyzer</a>
+<a href="../technologien/software-archiv_de.html">Software-Archiv</a>
+</div>
+</div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Finanzen</a>
+          <div class="dropdown-menu">
+            <a href="../finance/portfolio-wizard_de.html">Portfolio Wizard</a>
+            <a href="../finance/monte-carlo_de.html">Monte-Carlo-Simulation</a>
+          </div>
+        </div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Astronomie</a>
+          <div class="dropdown-menu">
+            <a href="../astronomy/equipment_de.html">Meine Ausr&uuml;stung @ Home</a>
+            <a href="../astronomy/starfront_de.html">Mein Rig @ Starfront in Texas</a>
+            <a href="astro-weather_de.html">Astro-Wetter</a>
+            <a href="observing-planner_de.html" class="active">Beobachtungsplaner</a>
+            <a href="../astronomy/siril-scripts_de.html">Siril Scripts</a>
+            <a href="../astronomy/volkssternwarte_de.html">Volkssternwarte Hannover</a>
+            <a href="../astronomy/astro-image-showcase_de.html">Astro Image Showcase</a>
+            <a href="../astronomy/presentations_de.html">Pr&auml;sentationen</a>
+          </div>
+        </div>        <a href="../blog/blog_de.html">Blog</a><div class="lang-switch"><a class="lang-btn active" href="observing-planner_de.html">DE</a><a class="lang-btn" href="observing-planner_en.html">EN</a></div>
+      </nav>
+    </div>
+  </header>
+
+    <div class="breadcrumb">
+    <a href="../index_de.html">Startseite</a>
+    <span>&rsaquo;</span> Astronomie
+    <span>&rsaquo;</span> Beobachtungsplaner
+  </div>
+
+  <main>
+    <h1 style="color:var(--primary); margin-bottom:.75rem;">Beobachtungsplaner</h1>
+    <p id="op-context" class="op-context" hidden></p>
+
+    <div class="content-box">
+      <p style="margin:0 0 .8rem; font-size:.92rem; color:var(--text-light);">Sternkarte, Mond und Planeten, lohnende Objekte und Ereignisse f&uuml;r eine Nacht an deinem Standort &ndash; alles in deinem Browser berechnet. Ob die Nacht klar wird, zeigt das <a href="astro-weather_de.html">Astro-Wetter</a>.</p>
+
+      <div id="op-root">
+        <div id="op-night" class="op-night">
+        <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-end; margin:0 0 .4rem;">
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Standort
+            <select id="op-location" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white);">
+              <option value="31.5471,-99.3823" data-tz="America/Chicago" data-sky="dark">Starfront, Rockwood (Texas)</option>
+              <option value="52.36245,9.70556" data-tz="Europe/Berlin" data-sky="urban">Volkssternwarte Hannover</option>
+              <option value="51.731854,10.525897" data-tz="Europe/Berlin">Sternwarte Sankt Andreasberg</option>
+              <option value="36.51010,-5.32962" data-tz="Europe/Madrid" data-sky="dark">Finca Olivar, Gauc&iacute;n (Spanien)</option>
+              <option value="custom">Eigene Koordinaten</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Breite
+            <input id="op-lat" type="number" step="0.0001" min="-90" max="90" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">L&auml;nge
+            <input id="op-lon" type="number" step="0.0001" min="-180" max="180" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <label id="op-tz-wrap" style="display:none; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Zeitzone
+            <select id="op-tz" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); max-width:16rem;"></select>
+          </label>
+          <div id="op-date-wrap" style="position:relative; display:flex; align-items:flex-end; gap:.3rem;">
+            <button type="button" id="op-prev" class="op-step" aria-label="Vorherige Nacht">&larr;</button>
+            <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Nacht ab dem Abend des
+              <span style="display:flex; align-items:stretch;">
+                <input id="op-date" type="date" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius) 0 0 var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:9.4rem;">
+                <button type="button" id="op-moon-cal-toggle" aria-expanded="false" aria-controls="op-moon-cal" aria-haspopup="dialog" aria-label="Kalender mit Mondphasen &ouml;ffnen" style="display:flex; align-items:center; gap:.35rem; margin-left:-1px; padding:0 .6rem; border:1px solid var(--border); border-radius:0 var(--radius) var(--radius) 0; background:var(--white); color:var(--accent); font:inherit; font-size:.8rem; cursor:pointer; white-space:nowrap;"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false" style="display:block; flex:none;"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1.5 6.5h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M10.6 8.6a2.6 2.6 0 1 0 0 4.2 2.1 2.1 0 1 1 0-4.2z" fill="currentColor"/></svg><span>mit Mondphasen</span></button>
+              </span>
+            </label>
+            <button type="button" id="op-next" class="op-step" aria-label="N&auml;chste Nacht">&rarr;</button>
+            <div id="op-moon-cal" hidden role="dialog" aria-label="Kalender mit Mondphasen" style="position:absolute; left:0; top:calc(100% + .35rem); z-index:95; width:min(34rem, calc(100vw - 2rem)); box-sizing:border-box; padding:.7rem .85rem; border:1px solid rgba(26,42,58,.18); border-radius:var(--radius); background:var(--white); box-shadow:0 8px 24px rgba(0,0,0,.18);">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin:0 0 .5rem;">
+                <button type="button" id="op-cal-prev" class="op-step op-step-sm" aria-label="Vorheriger Monat">&larr;</button>
+                <div style="display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.4rem .6rem;"><div id="op-cal-title" aria-live="polite" style="font-weight:600; color:var(--primary);"></div><button type="button" id="op-cal-today" aria-label="Heutigen Tag w&auml;hlen" style="border:1px solid rgba(52,152,219,.55); background:var(--white); color:var(--accent); border-radius:4px; padding:.1rem .55rem; font:inherit; font-size:.8rem; cursor:pointer;">Heute</button></div>
+                <button type="button" id="op-cal-next" class="op-step op-step-sm" aria-label="N&auml;chster Monat">&rarr;</button>
+              </div>
+              <div id="op-cal-grid"></div>
+              <p id="op-cal-note" style="margin:.5rem 0 0; font-size:.78rem; line-height:1.55; color:var(--text-light);"></p>
+            </div>
+          </div>
+        </div>
+        <p id="op-status" role="status" style="margin:0 0 .4rem; font-size:.9rem; color:var(--text-light);"></p>
+        <div id="op-moon" class="op-moon" style="display:none;">
+          <canvas id="op-moon-icon" width="30" height="30" role="img" aria-label="Mondphase" style="display:block; flex:none; width:30px; height:30px;"></canvas>
+          <div style="min-width:0; flex:1;">
+            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.3rem .8rem;">
+              <button type="button" id="op-moon-toggle" class="op-moon-toggle" aria-expanded="true" aria-controls="op-night-strip-wrap" title="Mond und Dunkelheit ein- oder ausklappen">Mond und Dunkelheit</button>
+            </div>
+            <div id="op-moon-title" style="font-weight:600; color:var(--primary); line-height:1.35;"></div>
+          </div>
+        </div>
+        <div id="op-night-strip-wrap" class="op-strip" hidden><canvas id="op-night-strip" width="0" height="0" role="img" aria-label="Verlauf der Nacht: D&auml;mmerungsphasen, H&ouml;he des Mondes, Auf- und Untergang von Sonne und Mond"></canvas><p id="op-night-strip-key" class="op-key"></p></div>
+        </div>
+        <div id="op-nav" class="op-nav" role="navigation" aria-label="Abschnitte des Planers"><a href="#op-sec-map" aria-label="Sternkarte"><span class="op-nav-ico" aria-hidden="true">✦</span><span class="op-nav-txt">Sternkarte</span></a><a href="#op-sec-planets" aria-label="Mond &amp; Planeten"><span class="op-nav-ico" aria-hidden="true">☾</span><span class="op-nav-txt">Mond &amp; Planeten</span></a><a href="#op-sec-list" aria-label="Beste Objekte"><span class="op-nav-ico" aria-hidden="true">◎</span><span class="op-nav-txt">Beste Objekte</span></a><a href="#op-sec-events" aria-label="Ereignisse"><span class="op-nav-ico" aria-hidden="true">✧</span><span class="op-nav-txt">Ereignisse</span></a><a href="#op-night" id="op-nav-context" class="op-nav-context" title="Ort und Datum w&auml;hlen"></a></div>
+
+        <h2 id="op-sec-map" class="op-h2" style="margin:1.2rem 0 .35rem; font-size:1.25rem;">Sternkarte <button type="button" id="op-sm-help-btn" class="op-help" aria-expanded="false" aria-controls="op-sm-help" aria-label="Bedienung der Sternkarte">?</button></h2>
+        <p id="op-sm-sub" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);"></p>
+        <p id="op-sm-help" class="op-help-text" hidden></p>
+        <div id="op-sm-wrap">
+        <div class="op-search">
+          <input type="search" id="op-sm-search" class="op-search-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="op-sm-search-list" aria-autocomplete="list" placeholder="Suchen: M 51, NGC 891, Wega, Jupiter, Orion …" aria-label="Objekt auf der Sternkarte suchen">
+          <ul id="op-sm-search-list" class="op-search-list" role="listbox" hidden></ul>
+          <p id="op-sm-search-note" aria-live="polite" hidden style="margin:.3rem 0 0; font-size:.8rem; line-height:1.45; color:var(--text-light);"></p>
+          <button type="button" id="op-sm-cat-btn" class="op-cat-btn" aria-expanded="false" aria-controls="op-sm-cat">Welche Kataloge die Suche kennt</button>
+          <div id="op-sm-cat" class="op-help-text op-cat" hidden></div>
+        </div>
+        <div id="op-sm-stage" style="position:relative;">
+        <div class="op-map-box"><canvas id="op-sm-map" width="0" height="0" tabindex="0" role="img" aria-label="Sternkarte mit den Sternbildern vom Horizont bis zum Zenit" style="display:block; width:100%; border-radius:var(--radius); cursor:grab; touch-action:pan-y;"></canvas><div class="op-map-ctrl"><button type="button" id="op-sm-zoom-in" aria-label="Hineinzoomen" title="Hineinzoomen">+</button><button type="button" id="op-sm-zoom-out" aria-label="Herauszoomen" title="Herauszoomen" disabled>&minus;</button><button type="button" id="op-sm-left" class="op-map-sep" aria-label="Blick nach links drehen" title="Blick nach links drehen">&larr;</button><button type="button" id="op-sm-right" aria-label="Blick nach rechts drehen" title="Blick nach rechts drehen">&rarr;</button><button type="button" id="op-sm-red" class="op-map-sep op-map-red" aria-pressed="false" aria-label="Rotlicht" title="Rotlicht"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="3.2" fill="#e5484d"/></svg></button><button type="button" id="op-sm-full" class="op-map-fs" aria-pressed="false" aria-label="Vollbild" title="Vollbild"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>
+        <div id="op-sm-info" class="op-info" hidden style="margin:.5rem 0 0;">
+          <div id="op-sm-info-body"></div>
+          <div class="op-seg op-seg-text op-info-tabs" role="tablist" aria-label="Ansicht der Detailkarte"><button type="button" role="tab" id="op-info-tab-night" aria-selected="true" aria-controls="op-info-night">Diese Nacht</button><button type="button" role="tab" id="op-info-tab-season" aria-selected="false" aria-controls="op-info-season">&Uuml;ber Wochen und Monate</button></div>
+          <div id="op-info-night" role="tabpanel" aria-labelledby="op-info-tab-night">
+          <canvas id="op-sm-info-chart" width="0" height="0" role="img" aria-label="H&ouml;he des gew&auml;hlten Objekts in dieser Nacht" style="display:block; width:100%; height:190px; margin:.5rem 0 0; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+          <p id="op-sm-info-key" class="op-key" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light);"></p>
+          </div>
+          <div id="op-info-season" role="tabpanel" aria-labelledby="op-info-tab-season" hidden style="margin:.5rem 0 0;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:.3rem .8rem; margin:0 0 .3rem;"><div role="radiogroup" aria-label="Zeitraum" style="display:flex; flex-wrap:wrap; gap:.2rem .7rem; font-size:.8rem; color:var(--text-light);"><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="30"> 1 Monat</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="91" checked> 3 Monate</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="182"> 6 Monate</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="365"> 1 Jahr</label></div></div>
+            <div style="position:relative;">
+              <canvas id="op-sm-season-chart" width="0" height="0" role="img" aria-label="N&auml;chte des gew&auml;hlten Objekts &uuml;ber Wochen und Monate" style="display:block; width:100%; height:170px; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+              <div id="op-sm-season-tip" hidden style="position:absolute; top:6px; left:0; z-index:3; pointer-events:none; padding:.35rem .5rem; border-radius:6px; background:rgba(16,21,28,.94); color:#e4e9ef; font-size:.74rem; line-height:1.45; white-space:nowrap;"></div>
+            </div>
+            <p id="op-sm-season-key" class="op-key" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light);"></p>
+          </div>
+        </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:.75rem; margin:.55rem 0 0;">
+          <label for="op-sm-time" style="font-size:.85rem; color:var(--text-light);">Uhrzeit</label>
+          <input id="op-sm-time" type="range" min="0" max="1" step="60" value="0" style="flex:1;">
+          <span id="op-sm-clock" style="min-width:3.5rem; margin-left:auto; text-align:right; font-weight:600; color:var(--primary);"></span>
+        </div>
+        <div class="op-tb">
+          <div class="op-tb-row">
+            <span class="op-tb-group" role="group" aria-label="Einblenden"><label class="op-chip"><input type="checkbox" id="op-sm-names" checked> Namen</label><label class="op-chip"><input type="checkbox" id="op-sm-grid"> Gitter</label><label class="op-chip"><input type="checkbox" id="op-sm-bounds"> Grenzen</label><label class="op-chip"><input type="checkbox" id="op-sm-photos" checked> Himmelsfotos</label></span>
+            <label class="op-tb-select">Fotos <select id="op-sm-survey"><option value="dss">DSS2 Farbe</option><option value="ps1">Pan-STARRS (scharf, ab &minus;30&deg;)</option><option value="2mass">2MASS (Infrarot)</option></select></label>
+            <label class="op-tb-select">Sprache <select id="op-sm-lang"><option value="local">deutsch (Gro&szlig;er B&auml;r)</option><option value="latin">lateinisch (Ursa Major)</option></select></label>
+          </div>
+        </div>
+        <p id="op-sm-photo-note" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light); text-align:center;"></p>
+        </div>
+        <h2 id="op-sec-planets" class="op-h2" style="margin:1.6rem 0 .1rem; font-size:1.25rem;"><button type="button" id="op-pl-toggle" class="op-sec-toggle" aria-expanded="false" aria-controls="op-pl-body" title="Mond &amp; Planeten ein- oder ausklappen">Mond &amp; Planeten</button></h2>
+        <div id="op-pl-body" class="op-pl-body op-collapsed">
+        <div id="op-pl-cards" class="op-pl-cards"></div>
+        <canvas id="op-pl-bars" width="0" height="0" role="img" aria-label="Sichtbarkeit von Mond und Planeten in dieser Nacht" style="display:block; width:100%; margin:.5rem 0 0; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+        </div>
+
+        <h2 id="op-sec-list" class="op-h2" style="margin:1.9rem 0 .5rem; font-size:1.25rem;"><button type="button" id="op-list-toggle" class="op-sec-toggle" aria-expanded="true" aria-controls="op-list-body" title="Beste Objekte ein- oder ausklappen">Die besten Objekte der Nacht</button></h2>
+        <div id="op-list-body" class="op-list-body">
+        <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:0 0 .5rem;">
+          <div role="group" aria-label="Bewertung f&uuml;r" class="op-seg op-seg-text"><button type="button" id="op-mode-photo">F&uuml;r Fotos</button><button type="button" id="op-mode-visual">F&uuml;r das Auge</button></div>
+          <div role="group" aria-label="Darstellung" class="op-seg op-seg-text"><button type="button" id="op-view-list" aria-pressed="true">Liste</button><button type="button" id="op-view-gallery" aria-pressed="false">Galerie</button></div>
+          <div id="op-filter" class="op-filter" role="group" aria-label="Zeige"><button type="button" class="op-fchip" data-filter="all" aria-pressed="true">Alle Objekte <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="galaxies" aria-pressed="false">Galaxien <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="nebulae" aria-pressed="false">Nebel <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="clusters" aria-pressed="false">Sternhaufen <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="doubles" aria-pressed="false">Doppelsterne <span class="op-count"></span></button></div>
+          <button type="button" id="op-list-extra" class="op-fchip" aria-pressed="true" title="Auch Objekte aus NGC, IC, Sharpless und weiteren Katalogen, die zum Bildfeld passen (3′ bis 3°, Galaxien bis 12 mag)">+ NGC · IC · Sharpless <span class="op-count"></span></button>
+        </div>
+        <p id="op-list-sub" style="margin:0 0 .4rem; font-size:.88rem; color:var(--text-light);"></p>
+        <div id="op-list"></div>
+        </div>
+
+        <h2 id="op-sec-events" class="op-h2" style="margin:1.9rem 0 .35rem; font-size:1.25rem;">Ereignisse der Nacht</h2>
+        <p id="op-ev-sub" style="margin:0 0 .3rem; font-size:.88rem; color:var(--text-light);"></p>
+        <div id="op-events"></div>
+      </div>
+    </div>
+
+    <div class="content-box">
+      <details class="op-sources">
+      <summary>Woher die Werte kommen</summary>
+      <p style="margin:0 0 .5rem; font-size:.8rem; color:var(--text-light);">Sonne, Mond, Planeten, Satellitenbahnen und alle Ereignisse berechnet dein Browser selbst (Meeus, JPL-Bahnelemente, SGP4), abgeglichen mit JPL Horizons, dem U.S. Naval Observatory, den Finsternisdaten der NASA und dem RASC Observer&rsquo;s Handbook. Sterne, Katalog, Bahndaten und Vorschaubilder liegen auf diesem Server; nur die Himmelsfotos der gezoomten Karte kommen vom CDS Stra&szlig;burg. Die Bewertungen sind eigene Sch&auml;tzungen, das Wetter flie&szlig;t nicht ein &ndash; dazu das <a href="astro-weather_de.html">Astro-Wetter</a>.</p>
+      <p style="margin:0; font-size:.72rem; line-height:1.45; color:var(--text-light);">Koordinaten, Gr&ouml;&szlig;en und Lagewinkel: SIMBAD-Datenbank, betrieben vom CDS, Stra&szlig;burg &middot; Planetenbahnen: JPL (NASA) &middot; Helligkeit der Planeten: Mallama &amp; Hilton (2018) &middot; Sterne und Sternbilder: d3-celestial von Olaf Frohn (BSD-Lizenz) mit Sterndaten aus XHIP/Hipparcos (ESA) und den Sternbildgrenzen der IAU &middot; Eigenbewegungen und Parallaxen: Hipparcos-Neureduktion (van Leeuwen 2007) &uuml;ber VizieR (CDS) und den Milchstra&szlig;en-Umrissen von Jose R. Vieira &middot; Vorschaubilder: Digitized Sky Survey, produziert am Space Telescope Science Institute (Grant NAG W-2166) aus Aufnahmen des Oschin-Schmidt-Teleskops (Palomar) und des UK-Schmidt-Teleskops, &copy; Caltech, AAO, PPARC und AURA; Ausschnitte mit hips2fits (CDS) &middot; Himmelsfotos in der Sternkarte: DSS colored als HiPS vom CDS (CNRS/Universit&eacute; de Strasbourg), live von alasky.cds.unistra.fr, wahlweise Pan-STARRS DR1 (PS1 Science Consortium, Daten aus dem MAST am STScI) und 2MASS (University of Massachusetts &amp; IPAC/Caltech, NASA/NSF), ebenfalls als HiPS vom CDS &middot; Doppelsterne: Washington Double Star Catalog (Mason u. a., U.S. Naval Observatory) &uuml;ber VizieR, Positionen aus SIMBAD (CDS, Stra&szlig;burg) &middot; Weitere Galaxien, Nebel und Sternhaufen beim Zoomen: OpenNGC von Mattia Verga, CC BY-SA 4.0 &ndash; der Auszug <a href="data/ngc.json">data/ngc.json</a> steht unter derselben Lizenz &middot; HII-Regionen: Sharpless-Katalog (Sharpless 1959) &uuml;ber VizieR, Positionen und Querverweise aus SIMBAD (CDS, Stra&szlig;burg) &middot; Caldwell-Nummern: nach der Liste der englischsprachigen Wikipedia, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> &middot; Mond beim Zoomen: Farbkarte des CGI Moon Kit, NASA&rsquo;s Scientific Visualization Studio (LRO/LROC) &middot; Satellitenbahnen: CelesTrak (NORAD), Helligkeiten: Heavens-Above &middot; Kometenbahnen: JPL Small-Body Database &middot; Meteorstr&ouml;me: International Meteor Organization. Bewertungen und Standort-Einordnung sind daraus abgeleitet. Diese Seite nutzt den Katalogzugang VizieR des CDS, Stra&szlig;burg (DOI 10.26093/cds/vizier; beschrieben in A&amp;AS 143, 23, 2000) und die SIMBAD-Datenbank, betrieben vom CDS, Stra&szlig;burg (Wenger u.&nbsp;a. 2000, A&amp;AS 143, 9).</p>
+      </details>
+      <p class="op-credits-short">Quellen: SIMBAD und HiPS-Himmelsfotos (CDS, Stra&szlig;burg) &middot; JPL (NASA) &middot; Hipparcos (ESA) &middot; d3-celestial (Olaf Frohn) &middot; Digitized Sky Survey (STScI; &copy; Caltech, AAO, PPARC, AURA) &middot; Pan-STARRS &middot; 2MASS &middot; OpenNGC (Mattia Verga, CC BY-SA 4.0) &middot; Sharpless (1959) &middot; Washington Double Star Catalog (USNO) &middot; NASA SVS &middot; CelesTrak &middot; Heavens-Above &middot; IMO</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Sven Ramuschkat &ndash; Svenesis.org</p>
+    <div class="footer-links">
+      <a href="../contact/contact_de.html">Kontakt &amp; Impressum</a>
+      <a href="../privacy/privacy_de.html">Datenschutz</a>
+      <a href="../cookies/cookies_de.html">Cookie-Einstellungen</a>    </div>
+  </footer>
+
+  <script src="../js/main.js?v=8d37bf18"></script>
+<script src="../js/cookie-consent.js?v=8c351784"></script>
+<script src="js/astro-core.js?v=5ea36c54"></script>
+<script src="js/dso-catalog.js?v=2863577e"></script>
+<script src="js/star-catalog.js?v=2585c567"></script>
+<script src="js/sky-events.js?v=afcf3d56"></script>
+<script src="js/sky-map.js?v=e4269f91"></script>
+<script src="js/observing-planner.js?v=0c6f65aa"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a2a3a">
+  <meta name="description" content="Observing planner for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar: a star map with constellations, moon and planets and the best galaxies, nebulae and star clusters of every night – computed in the browser.">
+  <title>Observing Planner &ndash; Svenesis.org</title>
+  <link rel="icon" type="image/svg+xml" href="../img/logo.svg">
+  <link rel="stylesheet" href="../css/style.css?v=024bd3ad">
+  <!-- SEO -->
+  <link rel="canonical" href="https://www.svenesis.org/astro-tools/observing-planner_en.html">
+  <link rel="alternate" hreflang="de" href="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <link rel="alternate" hreflang="en" href="https://www.svenesis.org/astro-tools/observing-planner_en.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.svenesis.org/astro-tools/observing-planner_de.html">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.svenesis.org/astro-tools/observing-planner_en.html">
+  <meta property="og:title" content="Observing Planner – Svenesis.org">
+  <meta property="og:description" content="Observing planner for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar: a star map with constellations, moon and planets and the best galaxies, nebulae and star clusters of every night – computed in the browser.">
+  <meta property="og:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:site_name" content="Svenesis.org">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Observing Planner – Svenesis.org">
+  <meta name="twitter:description" content="Observing planner for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar: a star map with constellations, moon and planets and the best galaxies, nebulae and star clusters of every night – computed in the browser.">
+  <meta name="twitter:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.svenesis.org/index_en.html"},{"@type":"ListItem","position":2,"name":"Astronomy","item":"https://www.svenesis.org/index_en.html"},{"@type":"ListItem","position":3,"name":"Observing Planner","item":"https://www.svenesis.org/astro-tools/observing-planner_en.html"}]}
+</script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="../index_en.html" class="logo"><img src="../img/logo.svg" alt="Svenesis.org Logo" class="logo-img" width="28" height="28"> Svenesis.org</a>
+      <button class="hamburger" onclick="toggleNav()" aria-label="Menu">&#9776;</button>
+      <nav>
+        <a href="../index_en.html">Home</a>
+        <a href="../about/about_en.html">About Me</a>
+<div class="dropdown">
+<a class="dropdown-toggle" href="#" onclick="toggleDropdown(this, event)">Technologies</a>
+<div class="dropdown-menu">
+<a href="../technologien/unicode-security-analyzer_en.html">Unicode Security Analyzer</a>
+<a href="../technologien/software-archiv_en.html">Software Archive</a>
+</div>
+</div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Finance</a>
+          <div class="dropdown-menu">
+            <a href="../finance/portfolio-wizard_en.html">Portfolio Wizard</a>
+            <a href="../finance/monte-carlo_en.html">Monte Carlo Simulation</a>
+          </div>
+        </div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Astronomy</a>
+          <div class="dropdown-menu">
+            <a href="../astronomy/equipment_en.html">My Equipment @ Home</a>
+            <a href="../astronomy/starfront_en.html">My Rig @ Starfront in Texas</a>
+            <a href="astro-weather_en.html">Astro Weather</a>
+            <a href="observing-planner_en.html" class="active">Observing Planner</a>
+            <a href="../astronomy/siril-scripts_en.html">Siril Scripts</a>
+            <a href="../astronomy/volkssternwarte_en.html">Public Observatory Hannover</a>
+            <a href="../astronomy/astro-image-showcase_en.html">Astro Image Showcase</a>
+            <a href="../astronomy/presentations_en.html">Presentations</a>
+          </div>
+        </div>        <a href="../blog/blog_en.html">Blog</a><div class="lang-switch"><a class="lang-btn" href="observing-planner_de.html">DE</a><a class="lang-btn active" href="observing-planner_en.html">EN</a></div>
+      </nav>
+    </div>
+  </header>
+
+    <div class="breadcrumb">
+    <a href="../index_en.html">Home</a>
+    <span>&rsaquo;</span> Astronomy
+    <span>&rsaquo;</span> Observing Planner
+  </div>
+
+  <main>
+    <h1 style="color:var(--primary); margin-bottom:.75rem;">Observing Planner</h1>
+    <p id="op-context" class="op-context" hidden></p>
+
+    <div class="content-box">
+      <p style="margin:0 0 .8rem; font-size:.92rem; color:var(--text-light);">Star map, moon and planets, worthwhile objects and events for one night at your location &ndash; all computed in your browser. Whether the night will be clear is shown by <a href="astro-weather_en.html">Astro Weather</a>.</p>
+
+      <div id="op-root">
+        <div id="op-night" class="op-night">
+        <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-end; margin:0 0 .4rem;">
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Location
+            <select id="op-location" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white);">
+              <option value="31.5471,-99.3823" data-tz="America/Chicago" data-sky="dark">Starfront, Rockwood (Texas)</option>
+              <option value="52.36245,9.70556" data-tz="Europe/Berlin" data-sky="urban">Public Observatory Hannover</option>
+              <option value="51.731854,10.525897" data-tz="Europe/Berlin">Sankt Andreasberg Observatory</option>
+              <option value="36.51010,-5.32962" data-tz="Europe/Madrid" data-sky="dark">Finca Olivar, Gauc&iacute;n (Spain)</option>
+              <option value="custom">Custom coordinates</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Latitude
+            <input id="op-lat" type="number" step="0.0001" min="-90" max="90" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Longitude
+            <input id="op-lon" type="number" step="0.0001" min="-180" max="180" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <label id="op-tz-wrap" style="display:none; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Time zone
+            <select id="op-tz" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); max-width:16rem;"></select>
+          </label>
+          <div id="op-date-wrap" style="position:relative; display:flex; align-items:flex-end; gap:.3rem;">
+            <button type="button" id="op-prev" class="op-step" aria-label="Previous night">&larr;</button>
+            <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Night starting on the evening of
+              <span style="display:flex; align-items:stretch;">
+                <input id="op-date" type="date" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius) 0 0 var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:9.4rem;">
+                <button type="button" id="op-moon-cal-toggle" aria-expanded="false" aria-controls="op-moon-cal" aria-haspopup="dialog" aria-label="Open the calendar with moon phases" style="display:flex; align-items:center; gap:.35rem; margin-left:-1px; padding:0 .6rem; border:1px solid var(--border); border-radius:0 var(--radius) var(--radius) 0; background:var(--white); color:var(--accent); font:inherit; font-size:.8rem; cursor:pointer; white-space:nowrap;"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" focusable="false" style="display:block; flex:none;"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M1.5 6.5h13M5 1v3M11 1v3" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M10.6 8.6a2.6 2.6 0 1 0 0 4.2 2.1 2.1 0 1 1 0-4.2z" fill="currentColor"/></svg><span>with moon phases</span></button>
+              </span>
+            </label>
+            <button type="button" id="op-next" class="op-step" aria-label="Next night">&rarr;</button>
+            <div id="op-moon-cal" hidden role="dialog" aria-label="Calendar with moon phases" style="position:absolute; left:0; top:calc(100% + .35rem); z-index:95; width:min(34rem, calc(100vw - 2rem)); box-sizing:border-box; padding:.7rem .85rem; border:1px solid rgba(26,42,58,.18); border-radius:var(--radius); background:var(--white); box-shadow:0 8px 24px rgba(0,0,0,.18);">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin:0 0 .5rem;">
+                <button type="button" id="op-cal-prev" class="op-step op-step-sm" aria-label="Previous month">&larr;</button>
+                <div style="display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.4rem .6rem;"><div id="op-cal-title" aria-live="polite" style="font-weight:600; color:var(--primary);"></div><button type="button" id="op-cal-today" aria-label="Choose today" style="border:1px solid rgba(52,152,219,.55); background:var(--white); color:var(--accent); border-radius:4px; padding:.1rem .55rem; font:inherit; font-size:.8rem; cursor:pointer;">Today</button></div>
+                <button type="button" id="op-cal-next" class="op-step op-step-sm" aria-label="Next month">&rarr;</button>
+              </div>
+              <div id="op-cal-grid"></div>
+              <p id="op-cal-note" style="margin:.5rem 0 0; font-size:.78rem; line-height:1.55; color:var(--text-light);"></p>
+            </div>
+          </div>
+        </div>
+        <p id="op-status" role="status" style="margin:0 0 .4rem; font-size:.9rem; color:var(--text-light);"></p>
+        <div id="op-moon" class="op-moon" style="display:none;">
+          <canvas id="op-moon-icon" width="30" height="30" role="img" aria-label="Moon phase" style="display:block; flex:none; width:30px; height:30px;"></canvas>
+          <div style="min-width:0; flex:1;">
+            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.3rem .8rem;">
+              <button type="button" id="op-moon-toggle" class="op-moon-toggle" aria-expanded="true" aria-controls="op-night-strip-wrap" title="Show or hide moon and darkness">Moon and darkness</button>
+            </div>
+            <div id="op-moon-title" style="font-weight:600; color:var(--primary); line-height:1.35;"></div>
+          </div>
+        </div>
+        <div id="op-night-strip-wrap" class="op-strip" hidden><canvas id="op-night-strip" width="0" height="0" role="img" aria-label="The night: twilight phases, the moon&rsquo;s altitude, rise and set of sun and moon"></canvas><p id="op-night-strip-key" class="op-key"></p></div>
+        </div>
+        <div id="op-nav" class="op-nav" role="navigation" aria-label="Sections of the planner"><a href="#op-sec-map" aria-label="Star map"><span class="op-nav-ico" aria-hidden="true">✦</span><span class="op-nav-txt">Star map</span></a><a href="#op-sec-planets" aria-label="Moon &amp; planets"><span class="op-nav-ico" aria-hidden="true">☾</span><span class="op-nav-txt">Moon &amp; planets</span></a><a href="#op-sec-list" aria-label="Best objects"><span class="op-nav-ico" aria-hidden="true">◎</span><span class="op-nav-txt">Best objects</span></a><a href="#op-sec-events" aria-label="Events"><span class="op-nav-ico" aria-hidden="true">✧</span><span class="op-nav-txt">Events</span></a><a href="#op-night" id="op-nav-context" class="op-nav-context" title="Choose place and date"></a></div>
+
+        <h2 id="op-sec-map" class="op-h2" style="margin:1.2rem 0 .35rem; font-size:1.25rem;">Star map <button type="button" id="op-sm-help-btn" class="op-help" aria-expanded="false" aria-controls="op-sm-help" aria-label="How to use the star map">?</button></h2>
+        <p id="op-sm-sub" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);"></p>
+        <p id="op-sm-help" class="op-help-text" hidden></p>
+        <div id="op-sm-wrap">
+        <div class="op-search">
+          <input type="search" id="op-sm-search" class="op-search-input" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="op-sm-search-list" aria-autocomplete="list" placeholder="Search: M 51, NGC 891, Vega, Jupiter, Orion …" aria-label="Find an object on the star map">
+          <ul id="op-sm-search-list" class="op-search-list" role="listbox" hidden></ul>
+          <p id="op-sm-search-note" aria-live="polite" hidden style="margin:.3rem 0 0; font-size:.8rem; line-height:1.45; color:var(--text-light);"></p>
+          <button type="button" id="op-sm-cat-btn" class="op-cat-btn" aria-expanded="false" aria-controls="op-sm-cat">Which catalogues the search knows</button>
+          <div id="op-sm-cat" class="op-help-text op-cat" hidden></div>
+        </div>
+        <div id="op-sm-stage" style="position:relative;">
+        <div class="op-map-box"><canvas id="op-sm-map" width="0" height="0" tabindex="0" role="img" aria-label="Star map with the constellations from the horizon to the zenith" style="display:block; width:100%; border-radius:var(--radius); cursor:grab; touch-action:pan-y;"></canvas><div class="op-map-ctrl"><button type="button" id="op-sm-zoom-in" aria-label="Zoom in" title="Zoom in">+</button><button type="button" id="op-sm-zoom-out" aria-label="Zoom out" title="Zoom out" disabled>&minus;</button><button type="button" id="op-sm-left" class="op-map-sep" aria-label="Turn the view left" title="Turn the view left">&larr;</button><button type="button" id="op-sm-right" aria-label="Turn the view right" title="Turn the view right">&rarr;</button><button type="button" id="op-sm-red" class="op-map-sep op-map-red" aria-pressed="false" aria-label="Red light" title="Red light"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="3.2" fill="#e5484d"/></svg></button><button type="button" id="op-sm-full" class="op-map-fs" aria-pressed="false" aria-label="Full screen" title="Full screen"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div>
+        <div id="op-sm-info" class="op-info" hidden style="margin:.5rem 0 0;">
+          <div id="op-sm-info-body"></div>
+          <div class="op-seg op-seg-text op-info-tabs" role="tablist" aria-label="Card view"><button type="button" role="tab" id="op-info-tab-night" aria-selected="true" aria-controls="op-info-night">This night</button><button type="button" role="tab" id="op-info-tab-season" aria-selected="false" aria-controls="op-info-season">Over weeks and months</button></div>
+          <div id="op-info-night" role="tabpanel" aria-labelledby="op-info-tab-night">
+          <canvas id="op-sm-info-chart" width="0" height="0" role="img" aria-label="Altitude of the selected object this night" style="display:block; width:100%; height:190px; margin:.5rem 0 0; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+          <p id="op-sm-info-key" class="op-key" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light);"></p>
+          </div>
+          <div id="op-info-season" role="tabpanel" aria-labelledby="op-info-tab-season" hidden style="margin:.5rem 0 0;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:.3rem .8rem; margin:0 0 .3rem;"><div role="radiogroup" aria-label="Range" style="display:flex; flex-wrap:wrap; gap:.2rem .7rem; font-size:.8rem; color:var(--text-light);"><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="30"> 1 month</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="91" checked> 3 months</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="182"> 6 months</label><label style="display:flex; align-items:center; gap:.25rem; cursor:pointer;"><input type="radio" name="op-season-span" value="365"> 1 year</label></div></div>
+            <div style="position:relative;">
+              <canvas id="op-sm-season-chart" width="0" height="0" role="img" aria-label="Nights of the selected object over weeks and months" style="display:block; width:100%; height:170px; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+              <div id="op-sm-season-tip" hidden style="position:absolute; top:6px; left:0; z-index:3; pointer-events:none; padding:.35rem .5rem; border-radius:6px; background:rgba(16,21,28,.94); color:#e4e9ef; font-size:.74rem; line-height:1.45; white-space:nowrap;"></div>
+            </div>
+            <p id="op-sm-season-key" class="op-key" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light);"></p>
+          </div>
+        </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:.75rem; margin:.55rem 0 0;">
+          <label for="op-sm-time" style="font-size:.85rem; color:var(--text-light);">Time</label>
+          <input id="op-sm-time" type="range" min="0" max="1" step="60" value="0" style="flex:1;">
+          <span id="op-sm-clock" style="min-width:3.5rem; margin-left:auto; text-align:right; font-weight:600; color:var(--primary);"></span>
+        </div>
+        <div class="op-tb">
+          <div class="op-tb-row">
+            <span class="op-tb-group" role="group" aria-label="Show"><label class="op-chip"><input type="checkbox" id="op-sm-names" checked> Names</label><label class="op-chip"><input type="checkbox" id="op-sm-grid"> Grid</label><label class="op-chip"><input type="checkbox" id="op-sm-bounds"> Boundaries</label><label class="op-chip"><input type="checkbox" id="op-sm-photos" checked> Sky photos</label></span>
+            <label class="op-tb-select">Photos <select id="op-sm-survey"><option value="dss">DSS2 colour</option><option value="ps1">Pan-STARRS (sharp, north of &minus;30&deg;)</option><option value="2mass">2MASS (infrared)</option></select></label>
+            <label class="op-tb-select">Language <select id="op-sm-lang"><option value="latin">Latin (Ursa Major)</option><option value="local">English (Great Bear)</option></select></label>
+          </div>
+        </div>
+        <p id="op-sm-photo-note" style="margin:.35rem 0 0; font-size:.78rem; line-height:1.5; color:var(--text-light); text-align:center;"></p>
+        </div>
+        <h2 id="op-sec-planets" class="op-h2" style="margin:1.6rem 0 .1rem; font-size:1.25rem;"><button type="button" id="op-pl-toggle" class="op-sec-toggle" aria-expanded="false" aria-controls="op-pl-body" title="Show or hide moon &amp; planets">Moon &amp; planets</button></h2>
+        <div id="op-pl-body" class="op-pl-body op-collapsed">
+        <div id="op-pl-cards" class="op-pl-cards"></div>
+        <canvas id="op-pl-bars" width="0" height="0" role="img" aria-label="Visibility of the moon and planets this night" style="display:block; width:100%; margin:.5rem 0 0; border-radius:var(--radius); cursor:pointer; touch-action:pan-y;"></canvas>
+        </div>
+
+        <h2 id="op-sec-list" class="op-h2" style="margin:1.9rem 0 .5rem; font-size:1.25rem;"><button type="button" id="op-list-toggle" class="op-sec-toggle" aria-expanded="true" aria-controls="op-list-body" title="Show or hide the best objects">The best objects of the night</button></h2>
+        <div id="op-list-body" class="op-list-body">
+        <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:0 0 .5rem;">
+          <div role="group" aria-label="Rated for" class="op-seg op-seg-text"><button type="button" id="op-mode-photo">For imaging</button><button type="button" id="op-mode-visual">For the eye</button></div>
+          <div role="group" aria-label="View" class="op-seg op-seg-text"><button type="button" id="op-view-list" aria-pressed="true">List</button><button type="button" id="op-view-gallery" aria-pressed="false">Gallery</button></div>
+          <div id="op-filter" class="op-filter" role="group" aria-label="Show"><button type="button" class="op-fchip" data-filter="all" aria-pressed="true">All objects <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="galaxies" aria-pressed="false">Galaxies <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="nebulae" aria-pressed="false">Nebulae <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="clusters" aria-pressed="false">Star clusters <span class="op-count"></span></button><button type="button" class="op-fchip" data-filter="doubles" aria-pressed="false">Double stars <span class="op-count"></span></button></div>
+          <button type="button" id="op-list-extra" class="op-fchip" aria-pressed="true" title="Also objects from NGC, IC, Sharpless and further catalogues that suit the field (3′ to 3°, galaxies to 12 mag)">+ NGC · IC · Sharpless <span class="op-count"></span></button>
+        </div>
+        <p id="op-list-sub" style="margin:0 0 .4rem; font-size:.88rem; color:var(--text-light);"></p>
+        <div id="op-list"></div>
+        </div>
+
+        <h2 id="op-sec-events" class="op-h2" style="margin:1.9rem 0 .35rem; font-size:1.25rem;">Events of the night</h2>
+        <p id="op-ev-sub" style="margin:0 0 .3rem; font-size:.88rem; color:var(--text-light);"></p>
+        <div id="op-events"></div>
+      </div>
+    </div>
+
+    <div class="content-box">
+      <details class="op-sources">
+      <summary>Where the values come from</summary>
+      <p style="margin:0 0 .5rem; font-size:.8rem; color:var(--text-light);">Sun, moon, planets, satellite orbits and all events are calculated by your browser (Meeus, JPL orbital elements, SGP4) and checked against JPL Horizons, the U.S. Naval Observatory, NASA&rsquo;s eclipse data and the RASC Observer&rsquo;s Handbook. Stars, catalogue, orbital data and thumbnails are stored on this server; only the sky photographs of the zoomed-in map come from CDS, Strasbourg. The scores are my own estimates and the weather does not feed in &ndash; for that, see <a href="astro-weather_en.html">Astro Weather</a>.</p>
+      <p style="margin:0; font-size:.72rem; line-height:1.45; color:var(--text-light);">Coordinates, sizes and position angles: SIMBAD database, operated at CDS, Strasbourg, France &middot; Planetary orbits: JPL (NASA) &middot; Planetary magnitudes: Mallama &amp; Hilton (2018) &middot; Stars and constellations: d3-celestial by Olaf Frohn (BSD licence) with star data from XHIP/Hipparcos (ESA) and the IAU constellation boundaries &middot; Proper motions and parallaxes: Hipparcos new reduction (van Leeuwen 2007) via VizieR (CDS) and Milky Way outlines by Jose R. Vieira &middot; Thumbnails: Digitized Sky Survey, produced at the Space Telescope Science Institute under U.S. Government grant NAG W-2166 from plates of the Oschin Schmidt Telescope (Palomar) and the UK Schmidt Telescope, &copy; Caltech, AAO, PPARC and AURA; cut-outs with hips2fits (CDS) &middot; Sky photographs in the star map: DSS colored as HiPS from CDS (CNRS/Universit&eacute; de Strasbourg), fetched live from alasky.cds.unistra.fr, or Pan-STARRS DR1 (PS1 Science Consortium, data from MAST at STScI) and 2MASS (University of Massachusetts &amp; IPAC/Caltech, NASA/NSF), also as HiPS from CDS &middot; Double stars: Washington Double Star Catalog (Mason et al., U.S. Naval Observatory) via VizieR, positions from SIMBAD (CDS, Strasbourg) &middot; Further galaxies, nebulae and clusters when zoomed in: OpenNGC by Mattia Verga, CC BY-SA 4.0 &ndash; the extract <a href="data/ngc.json">data/ngc.json</a> is shared under the same licence &middot; HII regions: Sharpless catalogue (Sharpless 1959) via VizieR, positions and cross-identifications from SIMBAD (CDS, Strasbourg) &middot; Caldwell numbers: after the list in the English Wikipedia, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> &middot; The Moon when zoomed in: colour map of the CGI Moon Kit, NASA&rsquo;s Scientific Visualization Studio (LRO/LROC) &middot; Satellite orbits: CelesTrak (NORAD), magnitudes: Heavens-Above &middot; Comet orbits: JPL Small-Body Database &middot; Meteor showers: International Meteor Organization. Scores and location classes are derived from these. This research has made use of the VizieR catalogue access tool, CDS, Strasbourg, France (DOI 10.26093/cds/vizier; the service was described in A&amp;AS 143, 23, 2000), and of the SIMBAD database, operated at CDS, Strasbourg, France (Wenger et al. 2000, A&amp;AS 143, 9).</p>
+      </details>
+      <p class="op-credits-short">Sources: SIMBAD and HiPS sky photographs (CDS, Strasbourg) &middot; JPL (NASA) &middot; Hipparcos (ESA) &middot; d3-celestial (Olaf Frohn) &middot; Digitized Sky Survey (STScI; &copy; Caltech, AAO, PPARC, AURA) &middot; Pan-STARRS &middot; 2MASS &middot; OpenNGC (Mattia Verga, CC BY-SA 4.0) &middot; Sharpless (1959) &middot; Washington Double Star Catalog (USNO) &middot; NASA SVS &middot; CelesTrak &middot; Heavens-Above &middot; IMO</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Sven Ramuschkat &ndash; Svenesis.org</p>
+    <div class="footer-links">
+      <a href="../contact/contact_en.html">Contact &amp; Legal Notice</a>
+      <a href="../privacy/privacy_en.html">Privacy</a>
+      <a href="../cookies/cookies_en.html">Cookie Settings</a>    </div>
+  </footer>
+
+  <script src="../js/main.js?v=8d37bf18"></script>
+<script src="../js/cookie-consent.js?v=8c351784"></script>
+<script src="js/astro-core.js?v=5ea36c54"></script>
+<script src="js/dso-catalog.js?v=2863577e"></script>
+<script src="js/star-catalog.js?v=2585c567"></script>
+<script src="js/sky-events.js?v=afcf3d56"></script>
+<script src="js/sky-map.js?v=e4269f91"></script>
+<script src="js/observing-planner.js?v=0c6f65aa"></script>
+</body>
+</html>

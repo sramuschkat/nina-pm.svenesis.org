@@ -1,0 +1,873 @@
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #1a2a3a;
+  --primary-light: #2c3e50;
+  --accent: #3498db;
+  --accent-hover: #2980b9;
+  --text: #333;
+  --text-light: #666;
+  --bg: #f8f9fa;
+  --white: #fff;
+  --border: #e0e0e0;
+  --radius: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,.08);
+  --max-width: 1100px;
+  --transition: .25s ease;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; transition: color var(--transition); }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+img { max-width: 100%; height: auto; display: block; }
+
+/* ===== Lists — restore indentation lost by CSS reset ===== */
+main ul, main ol,
+.content-box ul, .content-box ol,
+.legal ul, .legal ol {
+  padding-left: 1.6rem;
+  margin: .5rem 0 1rem;
+}
+main ul li, main ol li,
+.content-box ul li, .content-box ol li {
+  margin-bottom: .35rem;
+  line-height: 1.7;
+}
+
+/* ===== Header ===== */
+header {
+  background: var(--primary);
+  color: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+.header-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: .8rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: .5px;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.logo:hover { color: var(--accent); text-decoration: none; }
+.logo-img { width: 28px; height: 28px; display: inline-block; }
+
+/* Desktop nav */
+nav { display: flex; align-items: center; gap: .25rem; }
+
+nav a {
+  color: rgba(255,255,255,.85);
+  padding: .45rem .85rem;
+  border-radius: var(--radius);
+  font-size: .9rem;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+nav a:hover, nav a.active {
+  background: rgba(255,255,255,.12);
+  color: var(--white);
+  text-decoration: none;
+}
+
+/* Dropdown */
+.dropdown { position: relative; }
+.dropdown-toggle { cursor: pointer; user-select: none; }
+.dropdown-toggle::after { content: " \25BE"; font-size: .7em; }
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--primary-light);
+  border-radius: var(--radius);
+  min-width: 220px;
+  box-shadow: var(--shadow);
+  padding: .35rem 0;
+  z-index: 200;
+}
+.dropdown:hover .dropdown-menu { display: block; }
+.dropdown-menu a {
+  display: block;
+  padding: .5rem 1rem;
+  border-radius: 0;
+}
+
+/* Language switcher */
+.lang-switch {
+  display: flex;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-left: .5rem;
+}
+.lang-switch .lang-btn {
+  background: transparent;
+  color: rgba(255,255,255,.7);
+  border: none;
+  padding: .35rem .65rem;
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+.lang-switch .lang-btn:hover { background: rgba(255,255,255,.1); color: var(--white); text-decoration: none; }
+.lang-switch .lang-btn.active { background: var(--accent); color: var(--white); }
+
+/* Hamburger */
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 1.6rem;
+  cursor: pointer;
+  padding: .25rem;
+  line-height: 1;
+}
+
+/* ===== Mobile Nav ===== */
+@media (max-width: 768px) {
+  .hamburger { display: block; }
+  nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--primary);
+    flex-direction: column;
+    padding: .5rem 1rem 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  nav.open { display: flex; }
+  nav { align-items: stretch; }
+  nav a { width: 100%; padding: .6rem .85rem; }
+  .dropdown { width: 100%; }
+  .dropdown-toggle { width: 100%; display: block; padding: .6rem .85rem; }
+  .lang-switch { width: 100%; padding: .4rem .85rem; }
+  .dropdown-menu {
+    position: static;
+    box-shadow: none;
+    background: rgba(0,0,0,.15);
+    border-radius: 0;
+    margin: 0 0 0 1rem;
+  }
+  .dropdown:hover .dropdown-menu { display: none; }
+  .dropdown.open .dropdown-menu { display: block; }
+}
+
+/* ===== Breadcrumb ===== */
+.breadcrumb {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: .75rem 1.5rem;
+  font-size: .85rem;
+  color: var(--text-light);
+}
+.breadcrumb a { color: var(--accent); }
+.breadcrumb span { margin: 0 .4rem; }
+
+/* ===== Main Content ===== */
+main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  width: 100%;
+  flex: 1;
+}
+
+/* ===== Hero ===== */
+.hero {
+  background: linear-gradient(rgba(26,42,58,.55), rgba(26,42,58,.65)), url('../img/WebsiteStartImage.jpg') center/cover no-repeat;
+  color: var(--white);
+  padding: 5rem 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.hero h1 { font-size: 2.4rem; margin-bottom: .75rem; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.hero p { font-size: 1.15rem; opacity: .95; max-width: 700px; margin: 0 auto; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+
+/* ===== Section ===== */
+section { margin-bottom: 2.5rem; }
+section h2 {
+  font-size: 1.5rem;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  padding-bottom: .5rem;
+  border-bottom: 2px solid var(--accent);
+}
+section h3 {
+  font-size: 1.2rem;
+  color: var(--primary-light);
+  margin: 1.5rem 0 .5rem;
+}
+section p { margin-bottom: 1rem; }
+
+/* ===== Cards Grid ===== */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.8rem;
+  box-shadow: var(--shadow);
+  border-top: 4px solid var(--accent);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
+.card h3 { margin-top: 0; color: var(--accent); font-size: 1.25rem; }
+.card p { color: var(--text-light); margin-bottom: .5rem; font-size: .95rem; }
+.card ul { padding-left: 1.2rem; color: var(--text-light); font-size: .95rem; }
+.card ul li { margin-bottom: .25rem; }
+
+/* ===== Content Box ===== */
+.content-box {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+}
+.content-box h3 { margin-top: 1.8rem; margin-bottom: .5rem; }
+
+/* ===== Blog articles — paragraph & heading rhythm ===== */
+article.content-box p { margin-bottom: 1.15rem; }
+article.content-box p:last-child { margin-bottom: 0; }
+article.content-box h2 { margin-top: 2.5rem; margin-bottom: .75rem; }
+article.content-box h3 { margin-top: 2rem; margin-bottom: .6rem; }
+article.content-box ul, article.content-box ol { margin: .5rem 0 1.15rem; }
+article.content-box pre {
+  margin: 1.15rem 0;
+  padding: .8rem 1rem;
+  background: rgba(26, 42, 58, .05);
+  border-left: 3px solid rgba(26, 42, 58, .25);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-size: .88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+/* longer listings: keep the indentation, scroll instead of wrapping */
+article.content-box pre.code {
+  white-space: pre;
+  max-height: 34rem;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+article.content-box figcaption {
+  margin-top: .65rem;
+  font-size: .95rem;
+  line-height: 1.55;
+  color: var(--text-light);
+}
+
+/* ===== Equipment ===== */
+.equipment-item {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+.equipment-item h2 {
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: .6rem;
+  margin-bottom: 1.2rem;
+}
+.equipment-item img {
+  float: right;
+  width: 340px;
+  max-width: 45%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 0 0 1.5rem 2rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+  display: block;
+}
+.equipment-item::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+.equipment-item h3 {
+  margin-top: 1.2rem;
+  margin-bottom: .4rem;
+  color: var(--primary);
+  font-size: 1rem;
+}
+.equipment-item ul { padding-left: 1.5rem; margin: .5rem 0 .8rem; }
+.equipment-item ul li { margin-bottom: .3rem; }
+.equipment-item p { margin-bottom: .8rem; line-height: 1.7; }
+.equip-badge {
+  font-size: .65em;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  vertical-align: middle;
+  margin-left: .4rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+/* ===== Button ===== */
+.btn {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--white);
+  padding: .7rem 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  transition: background var(--transition), transform var(--transition);
+  border: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--accent-hover); transform: translateY(-1px); text-decoration: none; color: var(--white); }
+
+/* ===== Legal / Privacy text ===== */
+.legal h2 { font-size: 1.3rem; }
+.legal h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+.legal h4 { font-size: 1rem; margin-top: 1rem; color: var(--text); }
+.legal ul { padding-left: 1.5rem; margin: .5rem 0 1rem; }
+.legal ul li { margin-bottom: .3rem; font-size: .95rem; }
+.legal p { font-size: .95rem; }
+
+/* ===== Contact ===== */
+.contact-info {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+.contact-info dt { font-weight: 600; margin-top: 1rem; }
+.contact-info dt:first-child { margin-top: 0; }
+.contact-info dd { margin-left: 0; color: var(--text-light); }
+
+/* ===== Video ===== */
+.video-container {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  margin: 1.5rem 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background: #000;
+}
+.video-container video {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
+/* ===== Note/Alert ===== */
+.note {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 1rem 1.25rem;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin: 1rem 0;
+  font-size: .95rem;
+}
+
+/* ===== Cookie Settings ===== */
+.cookie-category {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+}
+.cookie-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.cookie-toggle h3 { margin: 0; }
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  width: 50px; height: 26px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.slider::before {
+  content: "";
+  position: absolute;
+  width: 20px; height: 20px;
+  left: 3px; bottom: 3px;
+  background: var(--white);
+  border-radius: 50%;
+  transition: transform var(--transition);
+}
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(24px); }
+.switch input:disabled + .slider { opacity: .6; cursor: not-allowed; }
+
+/* ===== Cookie Consent Banner ===== */
+#cookie-banner {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--white);
+  border-top: 3px solid var(--primary);
+  box-shadow: 0 -4px 24px rgba(0,0,0,.15);
+  z-index: 9999;
+  padding: 1rem 2rem;
+}
+.cb-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.cb-text {
+  flex: 1;
+  min-width: 220px;
+  font-size: .9rem;
+}
+.cb-text strong { display: block; margin-bottom: .25rem; font-size: 1rem; }
+.cb-text p { color: var(--text-light); margin: 0; }
+.cb-text a { color: var(--primary); text-decoration: underline; }
+.cb-actions { display: flex; gap: .75rem; flex-shrink: 0; }
+.cb-btn {
+  padding: .5rem 1.25rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: .875rem;
+  font-weight: 600;
+  transition: opacity var(--transition);
+}
+.cb-btn:hover { opacity: .85; }
+/* Both buttons identical visual weight – required for DSGVO/TTDSG compliance */
+.cb-accept, .cb-decline {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+@media (max-width: 600px) {
+  #cookie-banner { padding: 1rem; }
+  .cb-inner { flex-direction: column; align-items: flex-start; gap: .75rem; }
+  .cb-actions { width: 100%; }
+  .cb-btn { flex: 1; text-align: center; }
+}
+
+/* ===== Modal (iframe overlay) ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+.modal-overlay.open { display: flex; }
+.modal-frame {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 48px rgba(0,0,0,.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .6rem 1rem;
+  background: var(--primary);
+  color: var(--white);
+  font-size: .9rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--white);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 .25rem;
+  transition: opacity var(--transition);
+}
+.modal-close:hover { opacity: .7; }
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.modal-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+@media (max-width: 600px) {
+  .modal-overlay { padding: 0; }
+  .modal-frame { height: 100vh; border-radius: 0; }
+}
+
+/* ===== Footer ===== */
+footer {
+  background: var(--primary);
+  color: rgba(255,255,255,.7);
+  text-align: center;
+  padding: 1.5rem;
+  font-size: .85rem;
+  margin-top: auto;
+}
+footer a { color: rgba(255,255,255,.85); }
+footer a:hover { color: var(--white); }
+.footer-links { margin-top: .5rem; }
+.footer-links a { margin: 0 .75rem; }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .equipment-item img {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 0 1.2rem 0;
+  }
+}
+@media (max-width: 600px) {
+  .hero { padding: 2.5rem 1rem; }
+  .hero h1 { font-size: 1.6rem; }
+  .hero p { font-size: 1rem; }
+  .cards { grid-template-columns: 1fr; }
+  main { padding: 0 1rem 2rem; }
+  .content-box, .equipment-item, .contact-info { padding: 1.25rem; }
+}
+
+/* ===== Observing planner: time slider =====
+   A thumb of fixed width on every engine, so that js/observing-planner.js (alignSlider) can put its centre exactly on
+   the red time lines of the charts; --fill is set there as well */
+#op-sm-time { -webkit-appearance: none; appearance: none; height: 20px; margin: 0; padding: 0; background: transparent; cursor: pointer; }
+#op-sm-time::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, #3498db var(--fill, 0%), #cfd8e2 var(--fill, 0%)); }
+#op-sm-time::-webkit-slider-thumb { -webkit-appearance: none; box-sizing: border-box; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%; background: #3498db; border: 2px solid #fff; box-shadow: 0 0 0 1px #2c80b9; }
+#op-sm-time::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(to right, #3498db var(--fill, 0%), #cfd8e2 var(--fill, 0%)); }
+#op-sm-time::-moz-range-thumb { box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%; background: #3498db; border: 2px solid #fff; box-shadow: 0 0 0 1px #2c80b9; }
+#op-sm-time:focus-visible { outline: 2px solid #3498db; outline-offset: 3px; }
+/* the slider's clock: the location's time, the visitor's device time small below it where it differs */
+#op-sm-clock { line-height: 1.15; white-space: nowrap; }
+.op-clock-pc { display: block; font-size: .72rem; font-weight: 400; color: var(--text-light); }
+
+/* ===== Observing planner: page layout =====
+   The night block (location, date, status, moon and darkness as key figures), the section navigation that sticks under
+   the site header (--op-head is its height, set by observing-planner.js), the events as one <details> per kind, and the one "Show on star map" button with a target icon (mask, so it takes the text colour) */
+.op-night { padding: .75rem .85rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.op-moon { gap: .6rem; align-items: center; margin: .6rem 0 0; padding: .7rem 0 0; border-top: 1px solid var(--border); }
+.op-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .45rem; margin: .5rem 0 0; }
+.op-stat { min-width: 0; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--white); line-height: 1.35; }
+.op-stat dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--text-light); }
+.op-stat dd { margin: .1rem 0 0; font-size: .92rem; font-weight: 600; color: var(--primary); }
+.op-stat dd small { display: block; font-size: .76rem; font-weight: 400; color: var(--text-light); }
+.op-stat-key { border-color: rgba(52,152,219,.45); background: rgba(52,152,219,.06); }
+/* the section navigation sticks under the site header, so it needs a colour of its own: white on white it disappeared */
+.op-nav { position: sticky; top: var(--op-head, 64px); z-index: 90; display: flex; align-items: center; gap: .35rem; overflow-x: auto; margin: 1rem 0 0; padding: .4rem .5rem; background: linear-gradient(#eef4fa, #e6eef7); border: 1px solid #cfdcea; border-radius: 10px; box-shadow: 0 6px 14px -10px rgba(26,42,58,.55); scrollbar-width: none; }
+.op-nav::-webkit-scrollbar { display: none; }
+.op-nav a { flex: none; padding: .32rem .85rem; border-radius: 999px; font-size: .86rem; font-weight: 500; color: var(--primary); white-space: nowrap; text-decoration: none; transition: background var(--transition), color var(--transition); }
+.op-nav a:hover { background: rgba(52,152,219,.16); color: var(--accent-hover); text-decoration: none; }
+/* the section in view: the header's dark blue, which carries white text at full contrast (the accent blue does not) */
+.op-nav a[aria-current="true"] { background: var(--primary); color: var(--white); box-shadow: 0 1px 3px rgba(26,42,58,.35); }
+.op-nav a[aria-current="true"]:hover { background: var(--primary-light); color: var(--white); }
+.op-h2, .op-ev-group { scroll-margin-top: calc(var(--op-head, 64px) + 3.4rem); }
+.op-seg-text button { min-width: 0; height: 2.3rem; padding: 0 .95rem; font-size: .92rem; }
+.op-seg button[aria-pressed="true"], .op-seg button[aria-pressed="true"]:hover { background: var(--accent); color: var(--white); }
+.op-show { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .55rem .12rem .42rem; border: 1px solid rgba(52,152,219,.55); border-radius: 999px; background: var(--white); font: inherit; font-size: .76rem; line-height: 1.3; color: var(--accent); cursor: pointer; white-space: nowrap; }
+.op-show::before { content: ""; flex: none; width: .82rem; height: .82rem; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v3M8 12v3M1 8h3M12 8h3' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='8' r='4.3' fill='none' stroke='black' stroke-width='1.6'/%3E%3Ccircle cx='8' cy='8' r='1.4'/%3E%3C/svg%3E") no-repeat center / contain; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1v3M8 12v3M1 8h3M12 8h3' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='8' r='4.3' fill='none' stroke='black' stroke-width='1.6'/%3E%3Ccircle cx='8' cy='8' r='1.4'/%3E%3C/svg%3E") no-repeat center / contain; }
+.op-show:hover { background: rgba(52,152,219,.1); }
+.op-show[aria-pressed="true"], .op-show[aria-pressed="true"]:hover { background: var(--accent); border-color: var(--accent); color: var(--white); font-weight: 600; }
+.op-show:focus-visible, .op-ev-group > summary:focus-visible, .op-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 999px; background: rgba(52,152,219,.14); font-size: .74rem; font-weight: 600; color: var(--primary); }
+.op-count-warn { background: rgba(231,76,60,.14); color: #b03a2e; }
+.op-ev-group { margin: .5rem 0 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--white); }
+.op-ev-group > summary { display: flex; align-items: center; gap: .55rem; padding: .6rem .8rem; list-style: none; font-size: .96rem; font-weight: 600; color: var(--primary); cursor: pointer; border-radius: var(--radius); }
+.op-ev-group > summary::-webkit-details-marker { display: none; }
+.op-ev-group > summary::before { content: ""; flex: none; width: .42rem; height: .42rem; margin: 0 .15rem 0 .05rem; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg); transition: transform var(--transition); }
+.op-ev-group[open] > summary::before { transform: rotate(45deg); }
+.op-ev-group > summary:hover { background: rgba(52,152,219,.05); }
+.op-ev-body { padding: 0 .8rem .75rem; }
+/* a double star in the best-objects list: two stars on a dark ground in place of the survey thumbnail */
+.op-dbl-thumb { position: relative; display: block; flex: none; border-radius: 6px; background: radial-gradient(circle at 50% 50%, #1b2533, #0b1017); }
+.op-gal-img .op-dbl-thumb { position: absolute; inset: 0; border-radius: 0; }
+.op-dbl-thumb i { position: absolute; border-radius: 50%; }
+.op-dbl-thumb i:first-child { left: 32%; top: 34%; width: 24%; height: 24%; background: radial-gradient(circle, #fff3d0 0 32%, rgba(255,205,120,.5) 55%, transparent 72%); }
+.op-dbl-thumb i:last-child { left: 55%; top: 52%; width: 16%; height: 16%; background: radial-gradient(circle, #e6f0ff 0 32%, rgba(140,180,255,.5) 55%, transparent 72%); }
+.op-ev-title { flex: 0 1 auto; min-width: 0; }
+.op-ev-peek { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .82rem; font-weight: 400; color: var(--text-light); }
+.op-ev-group[open] .op-ev-peek { display: none; }
+.op-seg button[aria-selected="true"], .op-seg button[aria-selected="true"]:hover { background: var(--accent); color: var(--white); }
+.op-info-tabs { margin: .55rem 0 0; }
+.op-help { display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; margin-left: .35rem; padding: 0; vertical-align: .15em; border: 1px solid rgba(52,152,219,.55); border-radius: 50%; background: var(--white); font-family: inherit; font-size: .8rem; font-weight: 600; line-height: 1; color: var(--accent); cursor: pointer; }
+.op-help:hover { background: rgba(52,152,219,.1); }
+.op-help[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.op-help-text { margin: -.3rem 0 .6rem; padding: .45rem .7rem; border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; background: rgba(52,152,219,.06); font-size: .85rem; line-height: 1.5; color: var(--text); }
+.op-step { display: inline-flex; align-items: center; justify-content: center; min-width: 2.5rem; height: 2.3rem; padding: 0 .7rem; border: 1px solid rgba(52,152,219,.55); border-radius: var(--radius); background: var(--white); font-family: inherit; font-size: 1rem; line-height: 1; color: var(--accent); cursor: pointer; }
+.op-step:hover { background: rgba(52,152,219,.1); }
+.op-step-sm { min-width: 2.2rem; height: 2rem; font-size: .9rem; }
+.op-help:focus-visible, .op-step:focus-visible, .op-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 600px) { .op-ev-group > summary { flex-wrap: wrap; } .op-ev-peek { flex-basis: 100%; padding-left: 1.15rem; } .op-night { padding: .6rem .65rem; } .op-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Observing planner: moon and planets as cards above the bars, the moon calendar's best nights, the fold of "moon and
+   darkness", and place and night in the section navigation as a link to the location and date fields */
+.op-pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .45rem; margin: .45rem 0 .2rem; }
+.op-pl-card { display: grid; grid-template-columns: auto 1fr; column-gap: .5rem; align-items: center; padding: .45rem .6rem; border: 1px solid var(--border); border-left: 4px solid var(--op-kind, #9fb3c4); border-left-color: color-mix(in srgb, var(--op-kind, #9fb3c4) 72%, #1a2a3a); border-radius: 6px; background: var(--white); font-family: inherit; line-height: 1.35; text-align: left; cursor: pointer; }
+.op-pl-card:hover { border-color: rgba(52,152,219,.55); background: rgba(52,152,219,.05); }
+.op-pl-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-pl-card > span:not(.op-pl-dot) { grid-column: 2; }
+.op-pl-dot { grid-row: 1 / span 3; width: .8rem; height: .8rem; border-radius: 50%; background: var(--op-kind, #9fb3c4); box-shadow: inset 0 0 0 1px rgba(26,42,58,.3); }
+.op-pl-name { font-size: .92rem; font-weight: 600; color: var(--primary); }
+.op-pl-best { font-size: .8rem; font-variant-numeric: tabular-nums; color: var(--text); }
+.op-pl-sub { font-size: .76rem; color: var(--text-light); }
+.op-pl-hidden { margin: .25rem 0 0; font-size: .78rem; color: var(--text-light); }
+.op-cal-best { margin-left: .15rem; font-size: .7rem; color: #d68910; }
+.op-moon-toggle { display: inline-flex; align-items: center; gap: .4rem; padding: 0; border: none; background: none; font-family: inherit; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #3498db; cursor: pointer; }
+.op-moon-toggle::after { content: ""; width: .38rem; height: .38rem; margin-top: -.2rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform var(--transition); }
+.op-moon-toggle[aria-expanded="false"]::after { margin-top: .1rem; transform: rotate(-135deg); }
+.op-moon-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-sec-toggle { display: inline-flex; align-items: center; gap: .55rem; padding: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; }
+.op-sec-toggle::after { content: ""; width: .5rem; height: .5rem; border-right: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); transform: rotate(45deg); margin-top: -.3rem; transition: transform var(--transition); }
+.op-sec-toggle[aria-expanded="false"]::after { margin-top: 0; transform: rotate(-45deg); }
+.op-sec-toggle:hover { color: var(--accent); }
+.op-sec-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.op-pl-body.op-collapsed { height: 0; overflow: hidden; visibility: hidden; }
+.op-list-body.op-collapsed { display: none; }
+#op-night.op-night-collapsed #op-night-strip-wrap { display: none !important; }
+a.op-nav-context { text-decoration: none; }
+a.op-nav-context:hover { color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; }
+a.op-nav-context::before { content: "✎ "; color: var(--accent-hover); }
+
+/* Observing planner: symbols and time chips in the event entries, and the moon calendar's bar of moon-free darkness */
+.op-ev-ico { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 1.35rem; font-size: 1rem; line-height: 1; color: var(--accent); font-variant-emoji: text; }
+.op-ev-time { display: inline-block; margin-right: .4rem; padding: .05rem .4rem; border-radius: 4px; background: rgba(26,42,58,.07); font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--primary); white-space: nowrap; }
+.op-cal-dark { display: block; width: 80%; height: 3px; overflow: hidden; border-radius: 2px; background: rgba(26,42,58,.1); }
+.op-cal-dark i { display: block; height: 100%; background: #2e9e6a; }
+
+/* Observing planner: place and night under the title (#op-context, and small at the right of the section navigation), the
+   navigation's symbols (only the symbols on narrow screens), and legends as colour swatches (.op-key, from keyHtml()) */
+.op-context { margin: -.45rem 0 .9rem; font-size: .95rem; color: var(--text-light); }
+.op-nav-ico { margin-right: .3rem; font-size: .92rem; line-height: 1; }
+.op-nav-context { flex: 0 1 auto; min-width: 0; margin-left: auto; padding: .3rem .2rem .3rem .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; color: var(--text-light); }
+@media (max-width: 900px) { .op-nav-context { display: none; } }
+@media (max-width: 480px) { .op-nav { justify-content: space-around; } .op-nav-txt { display: none; } .op-nav-ico { margin-right: 0; font-size: 1.1rem; } .op-nav a { padding: .35rem 1rem; } }
+.op-key { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .85rem; }
+.op-key-item { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+.op-key-sw { position: relative; display: inline-block; flex: none; width: 1.2rem; height: .75rem; border-radius: 3px; background: #10151c; }
+.op-key-sw::after { content: ""; position: absolute; }
+.op-key-box::after { inset: 2px; border-radius: 1px; background: currentColor; }
+.op-key-line::after, .op-key-dash::after { left: 2px; right: 2px; top: calc(50% - 1px); border-top: 2px solid currentColor; }
+.op-key-dash::after { border-top-style: dashed; }
+.op-key-dot::after { left: calc(50% - 3px); top: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.op-key-note { color: var(--text-light); }
+
+/* Observing planner: the night strip in the night block, the list's filter chips, and the info card in the look of the
+   key-figure tiles (--op-kind is the subject's colour by kind, set by sky-map.js renderInfo()) */
+.op-strip { margin: .65rem 0 0; }
+.op-strip canvas { display: block; width: 100%; cursor: pointer; }
+.op-strip p { margin: .2rem 0 0; font-size: .72rem; line-height: 1.4; color: var(--text-light); }
+.op-filter { display: flex; flex-wrap: wrap; gap: .35rem; }
+.op-fchip { display: inline-flex; align-items: center; gap: .35rem; height: 2.1rem; padding: 0 .35rem 0 .8rem; border: 1px solid var(--border); border-radius: 999px; background: var(--white); font-family: inherit; font-size: .85rem; color: var(--text); cursor: pointer; }
+.op-fchip:hover { border-color: rgba(52,152,219,.55); color: var(--accent); }
+.op-fchip[aria-pressed="true"], .op-fchip[aria-pressed="true"]:hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.op-fchip[aria-pressed="true"] .op-count { background: rgba(255,255,255,.25); color: var(--white); }
+.op-fchip:focus-visible, .op-info-close:focus-visible, .op-strip canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-info { padding: .65rem .8rem; border: 1px solid var(--border); border-left: 4px solid var(--op-kind, #5ce1e6); border-left-color: color-mix(in srgb, var(--op-kind, #5ce1e6) 72%, #1a2a3a); border-radius: var(--radius); background: var(--white); font-size: .86rem; line-height: 1.5; }
+.op-info-head { display: flex; align-items: center; gap: .7rem; }
+.op-info-thumb { display: block; flex: none; width: 64px; height: 64px; border-radius: 8px; background: #10151c; }
+.op-info-badge { display: flex; flex: none; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--op-kind, #5ce1e6); box-shadow: inset 0 0 0 1px rgba(26,42,58,.22); font-size: 1.25rem; line-height: 1; color: #1a2a3a; }
+.op-info-kind { display: flex; align-items: center; gap: .35rem; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-light); }
+.op-info-kind::before { content: ""; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--op-kind, #5ce1e6); box-shadow: inset 0 0 0 1px rgba(26,42,58,.3); }
+.op-info-title { font-size: 1.05rem; font-weight: 600; line-height: 1.3; color: var(--primary); }
+.op-info-close { flex: none; align-self: flex-start; width: 1.9rem; height: 1.9rem; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--white); font-family: inherit; font-size: 1.1rem; line-height: 1; color: var(--text-light); cursor: pointer; }
+.op-info-close:hover { border-color: rgba(52,152,219,.55); color: var(--accent); }
+.op-info-stats { grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr)); }
+.op-info .op-stat { background: var(--bg); }
+.op-info-stats dd { font-size: .86rem; }
+.op-info-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; margin: .55rem 0 0; }
+
+/* Observing planner: zoom and full screen as round buttons on the star map, top right below the map's own corner texts
+   (in full screen the info card lies bottom right); the list's gallery view; the sources box at the end as <details> */
+.op-map-box { position: relative; }
+.op-map-ctrl { position: absolute; top: 3.1rem; right: .6rem; z-index: 3; display: flex; flex-direction: column; gap: .15rem; padding: .3rem; border-radius: 999px; background: rgba(255,255,255,.88); box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+.op-map-ctrl button { display: flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; padding: 0; border: none; border-radius: 50%; background: transparent; font-family: inherit; font-size: 1.3rem; line-height: 1; color: var(--primary); cursor: pointer; }
+.op-map-ctrl button:hover:not(:disabled) { background: rgba(52,152,219,.18); color: var(--accent); }
+.op-map-ctrl button:disabled { cursor: default; }
+.op-map-ctrl button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.op-map-ctrl .op-map-sep { margin-top: .2rem; position: relative; }
+.op-map-ctrl .op-map-sep::before { content: ""; position: absolute; top: -.2rem; left: 25%; right: 25%; border-top: 1px solid rgba(26,42,58,.2); }
+.op-map-ctrl .op-map-red[aria-pressed="true"] { background: rgba(229,72,77,.2); color: #b3261e; }
+.op-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem; }
+.op-gal-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(26,42,58,.12); border-radius: var(--radius); background: var(--white); }
+.op-gal-picked { border-color: rgba(52,152,219,.7); box-shadow: 0 0 0 2px rgba(52,152,219,.25); }
+.op-gal-img { position: relative; aspect-ratio: 4 / 3; background: #10151c; }
+.op-gal-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.op-gal-rank { position: absolute; top: .45rem; left: .45rem; display: flex; align-items: center; justify-content: center; min-width: 1.6rem; height: 1.6rem; padding: 0 .4rem; border-radius: 999px; background: rgba(11,17,25,.72); font-size: .78rem; font-weight: 600; color: #fff; }
+.op-gal-body { display: flex; flex-direction: column; gap: .15rem; padding: .55rem .7rem .7rem; font-size: .84rem; line-height: 1.45; }
+.op-gal-name { font-weight: 600; color: var(--primary); }
+.op-gal-meta { color: var(--text-light); }
+.op-gal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; margin-top: .45rem; }
+.op-sources > summary { display: flex; align-items: center; gap: .55rem; list-style: none; font-size: 1rem; font-weight: 600; color: var(--primary); cursor: pointer; }
+.op-sources > summary::-webkit-details-marker { display: none; }
+.op-sources > summary::before { content: ""; flex: none; width: .42rem; height: .42rem; margin: 0 .15rem 0 .05rem; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg); transition: transform var(--transition); }
+.op-sources[open] > summary { margin-bottom: .6rem; }
+.op-sources[open] > summary::before { transform: rotate(45deg); }
+.op-sources > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* the short credit line stays visible under the closed box; with the box open the full credits are there instead */
+.op-credits-short { margin: .5rem 0 0; font-size: .72rem; line-height: 1.45; color: var(--text-light); }
+.op-sources[open] + .op-credits-short { display: none; }
+@media (max-width: 600px) { .op-map-ctrl { top: 2.9rem; right: .45rem; padding: .2rem; gap: .1rem; } .op-map-ctrl button { width: 1.9rem; height: 1.9rem; font-size: 1.15rem; } }
+
+/* Observing planner, map toolbar under the time slider: view and zoom as button pairs, full screen and red light as toggles
+   (aria-pressed, set by sky-map.js), the layers as chips around their checkboxes, photo survey and names as selects */
+.op-tb { display: flex; flex-direction: column; gap: .45rem; margin: .55rem 0 0; padding: .5rem .6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: .85rem; color: var(--text-light); }
+.op-tb-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .45rem 1.1rem; }
+.op-tb-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.op-tb-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; }
+.op-seg { display: inline-flex; border: 1px solid rgba(52,152,219,.55); border-radius: 6px; overflow: hidden; background: var(--white); }
+.op-seg button { min-width: 2.4rem; height: 2rem; padding: 0 .6rem; border: none; background: none; font: inherit; font-size: 1rem; line-height: 1; color: var(--accent); cursor: pointer; }
+.op-seg button + button { border-left: 1px solid rgba(52,152,219,.35); }
+.op-seg button:disabled { cursor: default; }
+.op-tb-btn { height: 2rem; padding: 0 .75rem; border: 1px solid rgba(52,152,219,.55); border-radius: 6px; background: var(--white); font: inherit; font-size: .85rem; color: var(--accent); cursor: pointer; white-space: nowrap; }
+.op-seg button:hover:not(:disabled), .op-tb-btn:hover { background: rgba(52,152,219,.1); }
+.op-tb-btn[aria-pressed="true"], .op-tb-btn[aria-pressed="true"]:hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.op-seg button:focus-visible, .op-tb-btn:focus-visible, .op-chip:has(input:focus-visible), .op-tb-select select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-chip { display: inline-flex; align-items: center; gap: .35rem; height: 1.9rem; padding: 0 .7rem 0 .55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--white); color: var(--text); cursor: pointer; user-select: none; }
+.op-chip input { margin: 0; accent-color: var(--accent); cursor: pointer; }
+.op-chip:has(input:checked) { border-color: rgba(52,152,219,.55); background: rgba(52,152,219,.1); color: var(--primary); }
+.op-tb-select { display: inline-flex; align-items: center; gap: .35rem; }
+.op-tb-select select { height: 2rem; max-width: 14rem; padding: 0 .45rem; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: .85rem; color: var(--text); background: var(--white); }
+@media (max-width: 600px) { .op-tb-row { gap: .45rem .7rem; } .op-tb-select select { max-width: 10.5rem; } }
+
+/* Observing planner, normal view: the time slider and the toolbar always sit directly under the star map, the info card of
+   a selected object after them. #op-sm-stage stays the positioned box that full screen needs (the card lies over the map
+   there), so the order comes from flex and display: contents instead of moving the card in the page */
+#op-sm-wrap:not(.op-sm-full) { display: flex; flex-direction: column; }
+#op-sm-wrap:not(.op-sm-full) > #op-sm-stage { display: contents; }
+#op-sm-wrap:not(.op-sm-full) #op-sm-info { order: 1; }
+
+/* Observing planner, full screen (#op-sm-wrap.op-sm-full, set by astro-tools/js/sky-map.js): the wrapper covers the screen,
+   and the info card lies over the bottom right of the map instead of pushing it up (which moved what had just been tapped) */
+#op-sm-wrap.op-sm-full { position: fixed; inset: 0; z-index: 3000; margin: 0; padding: .6rem .8rem; overflow: auto; background: var(--white); }
+#op-sm-wrap.op-sm-full #op-sm-info { position: absolute; right: .5rem; bottom: .5rem; z-index: 2; width: min(30rem, calc(100% - 1rem)); max-height: 70%; overflow: auto; margin: 0 !important; background: rgba(255,255,255,.95) !important; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+/* Observing planner, star map search (#op-sm-search, a combobox): a rounded field with a magnifier (inline SVG), the hits as
+   rows with their kind on the right. No display rule on the list, so its hidden attribute keeps working */
+.op-search { position: relative; margin: 0 0 .6rem; }
+.op-search-input { display: block; width: 100%; box-sizing: border-box; height: 2.6rem; padding: 0 .9rem 0 2.45rem; border: 1px solid var(--border); border-radius: 999px; font: inherit; font-size: 1rem; color: var(--text); background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a97a5' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M20 20l-4.6-4.6'/%3E%3C/svg%3E") no-repeat .9rem 50% / 1.05rem 1.05rem; box-shadow: 0 1px 3px rgba(26,42,58,.06); transition: border-color var(--transition), box-shadow var(--transition); }
+.op-search-input::placeholder { color: #8a97a5; }
+.op-search-input:hover { border-color: #c5d0db; }
+.op-search-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(52,152,219,.2); }
+.op-search-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; margin: .35rem 0 0; padding: .3rem; list-style: none; max-height: 20rem; overflow: auto; background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 28px rgba(26,42,58,.18); font-size: .9rem; }
+#op-sm-search-list li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .45rem .7rem; border-radius: 8px; cursor: pointer; line-height: 1.35; }
+#op-sm-search-list li:hover { background: rgba(52,152,219,.07); }
+#op-sm-search-list li[aria-selected="true"] { background: rgba(52,152,219,.14); }
+#op-sm-search-list li[aria-disabled="true"] { cursor: default; background: none; }
+.op-search-name { min-width: 0; overflow-wrap: anywhere; color: var(--primary); font-weight: 500; }
+#op-sm-search-list li small { flex: 0 1 auto; max-width: 55%; font-size: .78rem; text-align: right; color: var(--text-light); }
+/* the search's catalogue info box under the search field (renderCatalogInfo() in sky-map.js) */
+.op-cat-btn { display: inline-block; margin: .35rem 0 0 .95rem; padding: 0; border: 0; background: none; font: inherit; font-size: .8rem; line-height: 1.4; color: var(--accent); cursor: pointer; }
+.op-cat-btn::before { content: "\24D8\00A0"; }
+.op-cat-btn:hover, .op-cat-btn[aria-expanded="true"] { text-decoration: underline; }
+.op-cat-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.op-cat { margin: .45rem 0 0; }
+.op-cat p { margin: 0 0 .35rem; }
+.op-cat .op-cat-note { margin: .5rem 0 0; font-size: .8rem; color: var(--text-light); }
+.op-cat-wrap { overflow-x: auto; }
+.op-cat-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.op-cat-table th, .op-cat-table td { padding: .2rem .6rem .2rem 0; text-align: left; vertical-align: top; }
+.op-cat-table thead th { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--text-light); border-bottom: 1px solid rgba(26,42,58,.15); }
+.op-cat-table thead th:nth-child(2), .op-cat-table .op-cat-n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.op-cat-table td:last-child { color: var(--text-light); }
+.op-cat-group th { padding-top: .55rem; font-weight: 600; color: var(--primary); }
+.op-cat-group th span { font-weight: 400; color: var(--text-light); }
+/* Observing planner, red light (html.op-red, set by sky-map.js, red=1 in the link): the page turns dark, then two fixed
+   layers over everything turn it red: black in saturation mode leaves each pixel's luminance as grey, a dark red in multiply
+   mode keeps 60 % of it in the red channel (white becomes a deep red, not a glaring one; the same as the SVG colour matrix
+   used until September 2026, which Safari did not apply to the page). In real full screen the wrapper sits in the top
+   layer above them, so it carries the same two layers itself */
+html.op-red { background: #000; }
+html.op-red body::before, html.op-red body::after { content: ""; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
+html.op-red body::before { background: #000; mix-blend-mode: saturation; }
+html.op-red body::after { z-index: 2147483647; background: rgb(153,0,0); mix-blend-mode: multiply; }
+html.op-red body, html.op-red header, html.op-red footer { background: #000 !important; }
+html.op-red main *:not(canvas):not(img):not(input[type="range"]) { background-color: transparent !important; box-shadow: none !important; }
+html.op-red main *, html.op-red header *, html.op-red footer * { color: #b8b8b8 !important; border-color: #3c3c3c !important; }
+html.op-red main .btn, html.op-red main button, html.op-red main select, html.op-red main input[type="search"] { border: 1px solid #555 !important; }
+html.op-red .op-tb-btn[aria-pressed="true"], html.op-red .op-chip:has(input:checked) { border-color: #b8b8b8 !important; }
+html.op-red #op-nav, html.op-red #op-list th { background-color: #000 !important; }
+html.op-red #op-sm-wrap .op-map-ctrl { background-color: rgba(0,0,0,.8) !important; border: 1px solid #555; }
+html.op-red #op-nav a[aria-current="true"], html.op-red .op-show[aria-pressed="true"], html.op-red .op-fchip[aria-pressed="true"], html.op-red .op-seg button[aria-pressed="true"] { outline: 1px solid #b8b8b8; }
+html.op-red .op-chip { border: 1px solid #555 !important; }
+html.op-red #op-sm-wrap.op-sm-full, html.op-red #op-sm-search-list { background-color: #000 !important; }
+html.op-red #op-sm-wrap.op-sm-full #op-sm-info { background-color: #0d0d0d !important; }
+html.op-red #op-sm-wrap:fullscreen::before, html.op-red #op-sm-wrap:fullscreen::after { content: ""; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
+html.op-red #op-sm-wrap:fullscreen::before { background: #000; mix-blend-mode: saturation; }
+html.op-red #op-sm-wrap:fullscreen::after { z-index: 2147483647; background: rgb(153,0,0); mix-blend-mode: multiply; }
+html.op-red #op-sm-wrap:-webkit-full-screen::before, html.op-red #op-sm-wrap:-webkit-full-screen::after { content: ""; position: fixed; inset: 0; z-index: 2147483646; pointer-events: none; }
+html.op-red #op-sm-wrap:-webkit-full-screen::before { background: #000; mix-blend-mode: saturation; }
+html.op-red #op-sm-wrap:-webkit-full-screen::after { z-index: 2147483647; background: rgb(153,0,0); mix-blend-mode: multiply; }
+html.op-red #op-sm-wrap::backdrop { background: #000; }
+/* the cookie banner hangs in <body>, outside main; both of its buttons get the same look, as the consent rules require */
+html.op-red #cookie-banner, html.op-red #cookie-banner * { background: #000 !important; color: #b8b8b8 !important; border-color: #555 !important; box-shadow: none !important; }
+html.op-red #cookie-banner button { border: 1px solid #555 !important; }
+
+/* Observing planner: the date field opens the moon calendar (#op-moon-cal-toggle beside it), so the browser's own date
+   picker icon is hidden where it can be (Chromium, WebKit); typing a date still works. In red light the popover needs its
+   own dark ground, as everything in main turns transparent. */
+#op-date::-webkit-calendar-picker-indicator { display: none; }
+@media (max-width: 480px) { #op-moon-cal-toggle span { display: none; } } /* on phones the icon (a calendar with a crescent) stays, the words would push the date row off the screen; the button keeps its aria-label */
+html.op-red #op-moon-cal { background-color: #000 !important; }

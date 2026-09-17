@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a2a3a">
+  <meta name="description" content="7-day astronomical weather for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar in Andalusia: clouds, estimated seeing and transparency, wind, temperature, sun and moon – data from DWD ICON, NOAA GFS/HRRR and ECMWF via Open-Meteo.">
+  <title>Astro Weather &ndash; Svenesis.org</title>
+  <link rel="icon" type="image/svg+xml" href="../img/logo.svg">
+  <link rel="stylesheet" href="../css/style.css?v=024bd3ad">
+  <!-- SEO -->
+  <link rel="canonical" href="https://www.svenesis.org/astro-tools/astro-weather_en.html">
+  <link rel="alternate" hreflang="de" href="https://www.svenesis.org/astro-tools/astro-weather_de.html">
+  <link rel="alternate" hreflang="en" href="https://www.svenesis.org/astro-tools/astro-weather_en.html">
+  <link rel="alternate" hreflang="x-default" href="https://www.svenesis.org/astro-tools/astro-weather_de.html">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.svenesis.org/astro-tools/astro-weather_en.html">
+  <meta property="og:title" content="Astro Weather – Svenesis.org">
+  <meta property="og:description" content="7-day astronomical weather for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar in Andalusia: clouds, estimated seeing and transparency, wind, temperature, sun and moon – data from DWD ICON, NOAA GFS/HRRR and ECMWF via Open-Meteo.">
+  <meta property="og:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:site_name" content="Svenesis.org">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Astro Weather – Svenesis.org">
+  <meta name="twitter:description" content="7-day astronomical weather for Starfront (Texas), Hannover, Sankt Andreasberg and Finca Olivar in Andalusia: clouds, estimated seeing and transparency, wind, temperature, sun and moon – data from DWD ICON, NOAA GFS/HRRR and ECMWF via Open-Meteo.">
+  <meta name="twitter:image" content="https://www.svenesis.org/img/WebsiteStartImage.jpg">
+  <script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.svenesis.org/index_en.html"},{"@type":"ListItem","position":2,"name":"Astronomy","item":"https://www.svenesis.org/index_en.html"},{"@type":"ListItem","position":3,"name":"Astro Weather","item":"https://www.svenesis.org/astro-tools/astro-weather_en.html"}]}
+</script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="../index_en.html" class="logo"><img src="../img/logo.svg" alt="Svenesis.org Logo" class="logo-img" width="28" height="28"> Svenesis.org</a>
+      <button class="hamburger" onclick="toggleNav()" aria-label="Menu">&#9776;</button>
+      <nav>
+        <a href="../index_en.html">Home</a>
+        <a href="../about/about_en.html">About Me</a>
+<div class="dropdown">
+<a class="dropdown-toggle" href="#" onclick="toggleDropdown(this, event)">Technologies</a>
+<div class="dropdown-menu">
+<a href="../technologien/unicode-security-analyzer_en.html">Unicode Security Analyzer</a>
+<a href="../technologien/software-archiv_en.html">Software Archive</a>
+</div>
+</div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Finance</a>
+          <div class="dropdown-menu">
+            <a href="../finance/portfolio-wizard_en.html">Portfolio Wizard</a>
+            <a href="../finance/monte-carlo_en.html">Monte Carlo Simulation</a>
+          </div>
+        </div>
+        <div class="dropdown">
+          <a href="#" class="dropdown-toggle" onclick="toggleDropdown(this, event)">Astronomy</a>
+          <div class="dropdown-menu">
+            <a href="../astronomy/equipment_en.html">My Equipment @ Home</a>
+            <a href="../astronomy/starfront_en.html">My Rig @ Starfront in Texas</a>
+            <a href="astro-weather_en.html" class="active">Astro Weather</a>
+            <a href="observing-planner_en.html">Observing Planner</a>
+            <a href="../astronomy/siril-scripts_en.html">Siril Scripts</a>
+            <a href="../astronomy/volkssternwarte_en.html">Public Observatory Hannover</a>
+            <a href="../astronomy/astro-image-showcase_en.html">Astro Image Showcase</a>
+            <a href="../astronomy/presentations_en.html">Presentations</a>
+          </div>
+        </div>        <a href="../blog/blog_en.html">Blog</a><div class="lang-switch"><a class="lang-btn" href="astro-weather_de.html">DE</a><a class="lang-btn active" href="astro-weather_en.html">EN</a></div>
+      </nav>
+    </div>
+  </header>
+
+    <div class="breadcrumb">
+    <a href="../index_en.html">Home</a>
+    <span>&rsaquo;</span> Astronomy
+    <span>&rsaquo;</span> Astro Weather
+  </div>
+
+  <main>
+    <h1 style="color:var(--primary); margin-bottom:.75rem;">Astro Weather</h1>
+
+    <div class="content-box">
+      <p style="margin:0 0 1rem;">Seven days of forecast at a glance, made for one question: is the night worth it? Clouds at three heights, estimated seeing and transparency, wind, temperature and dew point &ndash; plus sun and moon altitude with the moon phase. In Europe the weather data come from the ICON model of Germany&rsquo;s national weather service, the DWD, elsewhere from the US models GFS and HRRR; a second cloud row shows the ECMWF model for comparison.</p>
+
+      <div style="margin:0 0 1.25rem; padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">
+        <p style="margin:0;">&#x1F512; The forecast is only loaded when you click <strong>Load forecast</strong>. Your browser then requests the data from Open-Meteo, a service based in Switzerland, and transmits your IP address in doing so. More in the <a href="../privacy/privacy_en.html">privacy policy</a>.</p>
+      </div>
+
+      <div id="aw-root">
+        <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:flex-end; margin:0 0 .75rem;">
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Location
+            <select id="aw-location" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white);">
+              <option value="31.5471,-99.3823">Starfront, Rockwood (Texas)</option>
+              <option value="52.36245,9.70556">Public Observatory Hannover</option>
+              <option value="51.731854,10.525897">Sankt Andreasberg Observatory</option>
+              <option value="36.51010,-5.32962">Finca Olivar, Gauc&iacute;n (Spain)</option>
+              <option value="custom">Custom coordinates</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Latitude
+            <input id="aw-lat" type="number" step="0.0001" min="-90" max="90" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:.2rem; font-size:.8rem; color:var(--text-light);">Longitude
+            <input id="aw-lon" type="number" step="0.0001" min="-180" max="180" inputmode="decimal" style="padding:.45rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:7.5rem;">
+          </label>
+          <div role="group" aria-label="Temperature unit" style="display:flex;">
+            <button type="button" id="aw-unit-c" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.95rem; padding:.5rem .8rem; border-radius:var(--radius) 0 0 var(--radius);">&deg;C</button>
+            <button type="button" id="aw-unit-f" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.95rem; padding:.5rem .8rem; border-radius:0 var(--radius) var(--radius) 0; margin-left:1px;">&deg;F</button>
+          </div>
+          <button type="button" id="aw-load" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.95rem; padding:.5rem .8rem; background:var(--primary);">Load forecast</button>
+        </div>
+        <div id="aw-unlock" hidden>
+          <div style="display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:0 0 .75rem; padding:.6rem .75rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">
+            <label for="aw-pw" style="font-size:.9rem;">Custom coordinates are protected &ndash; password:</label>
+            <input id="aw-pw" type="password" autocomplete="off" style="padding:.4rem .5rem; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.95rem; color:var(--text); background:var(--white); width:10rem;">
+            <button type="button" id="aw-pw-ok" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.9rem; padding:.45rem .75rem; background:var(--primary);">Unlock</button>
+            <button type="button" id="aw-pw-cancel" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.9rem; padding:.45rem .75rem; background:var(--text-light);">Cancel</button>
+            <span id="aw-pw-msg" role="status" style="font-size:.85rem; color:#c0392b;"></span>
+          </div>
+        </div>
+        <p id="aw-status" role="status" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);">No data loaded yet.</p>
+        <div id="aw-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--radius); background:#10151c;">
+          <div id="aw-chart-wrap" style="position:relative;">
+            <canvas id="aw-canvas" width="0" height="0" role="img" aria-label="Astro weather chart" style="display:block;"></canvas>
+            <div id="aw-tip" hidden style="position:absolute; z-index:2; max-width:340px; padding:.55rem .7rem; background:rgba(20,26,34,.96); color:#e4e9ef; border:1px solid rgba(255,255,255,.12); border-radius:6px; font-size:.78rem; line-height:1.5; pointer-events:none; white-space:nowrap;"></div>
+          </div>
+        </div>
+        <div id="aw-summary"></div>
+        <div id="aw-day" hidden style="margin:1.75rem 0 0;">
+          <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin:0 0 .5rem;">
+            <h2 style="margin:0; font-size:1.25rem;">Night in detail</h2>
+            <div style="display:flex; gap:.4rem; align-items:center;">
+              <button type="button" id="aw-day-prev" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:1rem; padding:.35rem .75rem;" aria-label="Previous night">&larr;</button>
+              <span id="aw-day-label" style="min-width:13rem; text-align:center; font-weight:600; color:var(--primary);"></span>
+              <button type="button" id="aw-day-next" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:1rem; padding:.35rem .75rem;" aria-label="Next night">&rarr;</button>
+            </div>
+          </div>
+          <p id="aw-day-model" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);"></p>
+          <div id="aw-day-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--radius); background:#10151c;">
+            <div id="aw-day-wrap" style="position:relative;">
+              <canvas id="aw-day-canvas" width="0" height="0" role="img" aria-label="Detailed chart of one night" style="display:block;"></canvas>
+              <div id="aw-day-tip" hidden style="position:absolute; z-index:2; max-width:340px; padding:.55rem .7rem; background:rgba(20,26,34,.96); color:#e4e9ef; border:1px solid rgba(255,255,255,.12); border-radius:6px; font-size:.78rem; line-height:1.5; pointer-events:none; white-space:nowrap;"></div>
+            </div>
+          </div>
+          <div id="aw-day-events"></div>
+        </div>
+        <p style="margin:1.5rem 0 0; padding:.75rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">&#x1F52D; Planets, the moon and the best objects of the night for this location: <a id="aw-planner-link" href="observing-planner_en.html">Observing Planner</a>.</p>
+        <div id="aw-mb" style="margin:1.75rem 0 0;">
+          <h2 style="margin:0 0 .5rem; font-size:1.25rem;">Weather map by meteoblue</h2>
+          <div id="aw-mb-consent">
+            <div style="padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">
+              <p style="margin:0 0 .75rem;">The animated map with satellite imagery, clouds, precipitation, temperature and sunshine comes from meteoblue (meteoblue AG, Basel, Switzerland) and shows the chosen location. It is only loaded once you click the button. Your browser then transmits your IP address and the location to meteoblue; meteoblue sets its own cookies, two of them for a year, and the widget also loads the Cloudflare Web Analytics statistics service (Cloudflare, Inc., USA). After reloading the page you will be asked again. More in the <a href="../privacy/privacy_en.html">privacy policy</a>.</p>
+              <button type="button" id="aw-mb-load" class="btn" style="border:none; cursor:pointer; font:inherit; font-size:.95rem; padding:.5rem .8rem; background:var(--primary);">Load map from meteoblue</button>
+              <span id="aw-mb-msg" role="status" style="margin-left:.6rem; font-size:.85rem; color:#c0392b;"></span>
+            </div>
+          </div>
+          <div id="aw-mb-frame" hidden></div>
+          <!-- meteoblue asks for this link next to the widget: do not remove -->
+          <p style="margin:.4rem 0 0; font-size:.85rem; color:var(--text-light);"><a id="aw-mb-link" href="https://www.meteoblue.com/en/weather/maps/" target="_blank" rel="noopener">meteoblue</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-box">
+      <h2 style="margin:0 0 .6rem;">How to read the chart</h2>
+      <p style="margin:0 0 1rem;">Every hour gets an <strong>overall rating</strong> from 0 to 100&nbsp;%: from 85&nbsp;% <em>Excellent</em>, from 65&nbsp;% <em>Good</em>, from 45&nbsp;% <em>Average</em>, from 25&nbsp;% <em>Poor</em>, below that <em>Very poor</em>. Clouds decide almost all of it: half covered means 25&nbsp;% at best.</p>
+
+      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">The seven-day chart</h3>
+      <ul>
+        <li><strong>Moon:</strong> symbol with the illuminated share, above its highest point.</li>
+        <li><strong>Sun and moon:</strong> yellow times the sun, white the moon, below them their altitude. Light columns day and twilight, dark ones astronomical night, red line <em>Now</em>.</li>
+        <li><strong>Hour bar:</strong> one symbol for the six hours around it, the most severe weather wins. &ldquo;Mainly clear&rdquo; allows almost 50&nbsp;% cloud.</li>
+        <li><strong>Overall, clouds, ECMWF, seeing, transp.:</strong> the stronger the blue, the better, dark grey means no data. ECMWF is the second model: agreement means a reliable forecast.</li>
+        <li><strong>Wind</strong> in km/h with a direction arrow: green to 10, yellow to 30, red from 40.</li>
+        <li><strong>Temperature</strong> (orange) and <strong>dew point</strong> (blue): close together means dew on the optics.</li>
+        <li><strong>Day bar:</strong> the rating hour by hour, above it the night&rsquo;s average.</li>
+      </ul>
+
+      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Table and night detail</h3>
+      <p style="margin:0 0 1rem;">One row per night, noon to noon: astronomically dark, of that dark with the moon down, the rating of those hours, the lit share of the moon, its rise (&uarr;) and set (&darr;). Clicking opens the night: weather per hour, the twilight band with a light-blue strip for the moonless time, then the values per hour &ndash; overall, seeing, clouds by height (low to 2&nbsp;km, mid to 6&nbsp;km, high above), ECMWF, AOD, water vapour, dust, visibility, rain &ndash; and below them wind, gusts, temperature, dew point with their <em>spread</em> and the humidity. The spread turns orange below 4&nbsp;&deg;C, red below 2&nbsp;&deg;C. Above the chart stands the weather model, the arrows switch nights, a tap shows every value of an hour.</p>
+
+      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Terms</h3>
+      <ul>
+        <li><strong>Astronomically dark:</strong> the sun more than 18&deg; below the horizon &ndash; it gets no darker here.</li>
+        <li><strong>Seeing:</strong> how steady the air is. Unsteady air makes stars twinkle and blurs planetary detail.</li>
+        <li><strong>Transparency:</strong> how clear the air is. Haze swallows the light of galaxies and nebulae.</li>
+        <li><strong>AOD:</strong> haze and dust through the whole air column. Around 0.1 very clear, from 0.3 milky.</li>
+        <li><strong>Water vapour</strong> (mm): below 10 dry, above 30 humid.</li>
+        <li><strong>Dust</strong> (&micro;g/m&sup3;): mineral dust near the ground, turns the sky milky.</li>
+        <li><strong>Dew point:</strong> once the air reaches it, lenses and mirrors fog up.</li>
+      </ul>
+
+      <h2 style="margin:1.8rem 0 .6rem;">Where the values come from &ndash; and where they are estimates</h2>
+      <p style="margin:0 0 1rem;"><strong>Clouds, wind, temperature, humidity and the weather symbols</strong> come straight from a weather model, up to seven days ahead. Which one depends on the location and stands above the night detail.</p>
+      <ul>
+        <li><strong>Europe</strong> (29.5 to 70.5&deg;&nbsp;N, 23.5&deg;&nbsp;W to 62.5&deg;&nbsp;E): the DWD&rsquo;s ICON &ndash; first ICON-D2 at 2.2&nbsp;km grid spacing, then ICON-EU at 7&nbsp;km, last ICON global at 11&nbsp;km, which carries no visibility.</li>
+        <li><strong>Rest of the world:</strong> NOAA &ndash; about two days of HRRR at 3&nbsp;km in North America, GFS at 13&nbsp;km elsewhere. The reason: over 30 nights at Starfront, GFS and HRRR sat closer to the airports&rsquo; hourly cloud reports than ICON.</li>
+        <li><strong>The ECMWF row:</strong> cloud cover from the IFS model at 9&nbsp;km, worldwide, as a second opinion. It does not feed into the overall rating.</li>
+      </ul>
+      <p style="margin:0 0 1rem;"><strong>Three rows are estimates.</strong> <em>Seeing</em> comes from no model; the chart derives it from the wind profile: the jet stream at about 10&nbsp;km, the shear between 1.5 and 10&nbsp;km, and the wind at the ground. <em>Transparency</em> comes from the aerosol optical depth (AOD) of the Copernicus CAMS forecast, damped by high humidity and much water vapour; CAMS reaches four to five days, after which the row stays dark grey. <em>Overall</em> is a weighting of my own in which clouds decide almost everything. All three catch the tendency, no more.</p>
+      <p style="margin:0 0 1rem;"><strong>Sun and moon</strong> are calculated by your browser; planets and the best objects of a night are shown by the <a href="observing-planner_en.html">Observing Planner</a>. <strong>The weather map</strong> is an embedded meteoblue service with their own data, not part of these calculations.</p>
+      <p style="margin:0; font-size:.85rem; color:var(--text-light);"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · Models: DWD ICON (Europe), NOAA GFS and HRRR (outside Europe), ECMWF IFS (comparison row, water vapour) · Aerosol: Copernicus Atmosphere Monitoring Service (CAMS) · Weather map: meteoblue. Seeing, transparency and the overall rating are derived from these data.</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Sven Ramuschkat &ndash; Svenesis.org</p>
+    <div class="footer-links">
+      <a href="../contact/contact_en.html">Contact &amp; Legal Notice</a>
+      <a href="../privacy/privacy_en.html">Privacy</a>
+      <a href="../cookies/cookies_en.html">Cookie Settings</a>    </div>
+  </footer>
+
+  <script src="../js/main.js?v=8d37bf18"></script>
+<script src="../js/cookie-consent.js?v=8c351784"></script>
+<script src="js/astro-core.js?v=5ea36c54"></script>
+<script src="js/astro-weather.js?v=3a70760b"></script>
+</body>
+</html>
