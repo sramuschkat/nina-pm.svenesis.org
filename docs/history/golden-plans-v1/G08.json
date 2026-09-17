@@ -1,0 +1,112 @@
+{
+  "id": "G08",
+  "title": "Mondfreie Zeit zuerst für restriktive Zeilen",
+  "requirements": [
+    "FA-SCH-13"
+  ],
+  "explanation": "L (6 geeignete Slots) ist restriktiver als Ha (12) → L zuerst, solange mondfrei.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "proportional",
+    "units": [
+      {
+        "id": "A",
+        "priority": 1,
+        "minTimeSlots": 1,
+        "lines": [
+          {
+            "id": "A-Ha",
+            "filter": "Ha",
+            "exposureS": 300,
+            "remaining": 4,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 25
+          },
+          {
+            "id": "A-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 4,
+            "eligibleSlots": [
+              [
+                0,
+                5
+              ]
+            ],
+            "order": 1,
+            "moonSeparationDeg": 90
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "A",
+        "fromSlot": 0,
+        "toSlot": 7
+      }
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 600,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 1200,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false
+      },
+      {
+        "atS": 1500,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false
+      },
+      {
+        "atS": 1800,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false
+      },
+      {
+        "atS": 2100,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false
+      }
+    ],
+    "diagnostics": {}
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "captures": [
+    {
+      "id": "0192a8…",
+      "frameType": "light",
+      "capturedAtUtc": "2026-09-18T08:06:16Z",
+      "night": "2026-09-17",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "projectId": "a91f…",
+      "panelId": "p001…",
+      "exposureLineId": "l001…",
+      "transitObservationId": null,
+      "filterShortName": "Ha",
+      "filterActual": "Ha 3nm",
+      "exposureS": 300,
+      "gain": 100,
+      "offset": 20,
+      "binning": 1,
+      "readoutMode": "High Gain Mode",
+      "raDeg": 13.2051,
+      "decDeg": 56.6301,
+      "rotationDeg": 90.4,
+      "pierSide": "east",
+      "rotatorMechDeg": 270.4,
+      "bonus": false,
+      "result": "saved",
+      "fileName": "NGC 281_Ha_300s_0023.fits",
+      "metrics": {
+        "hfr": 2.1,
+        "stars": 1432,
+        "meanAdu": 812,
+        "sensorTempC": -10.0,
+        "guidingRmsArcsec": 0.62,
+        "altitudeDeg": 61.2,
+        "airmass": 1.14,
+        "focusPosition": 14820
+      },
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "readoutModeIndex": 0
+    },
+    {
+      "id": "0192b1…",
+      "frameType": "flat",
+      "capturedAtUtc": "2026-09-18T11:12:03Z",
+      "night": "2026-09-17",
+      "projectIds": [
+        "a91f…",
+        "c3d0…"
+      ],
+      "filterShortName": "Ha",
+      "filterActual": "Ha 3nm",
+      "exposureS": 2.4,
+      "gain": 100,
+      "offset": 20,
+      "binning": 1,
+      "readoutMode": "High Gain Mode",
+      "rotatorMechDeg": 270.4,
+      "result": "saved",
+      "fileName": "FLAT_NGC 281_Ha_0001.fits",
+      "metrics": {
+        "meanAdu": 32100
+      },
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "readoutModeIndex": 0,
+      "flatsPlanned": 20,
+      "darkFlatsPlanned": 20
+    },
+    {
+      "id": "0192b9…",
+      "frameType": "dark_flat",
+      "capturedAtUtc": "2026-09-18T11:19:40Z",
+      "night": "2026-09-17",
+      "projectIds": [
+        "a91f…",
+        "c3d0…"
+      ],
+      "filterShortName": "Ha",
+      "filterActual": "Ha 3nm",
+      "exposureS": 2.4,
+      "gain": 100,
+      "offset": 20,
+      "binning": 1,
+      "readoutMode": "High Gain Mode",
+      "rotatorMechDeg": 270.4,
+      "result": "saved",
+      "fileName": "DARKFLAT_NGC 281_2.4s_0001.fits",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "readoutModeIndex": 0,
+      "flatsPlanned": 20,
+      "darkFlatsPlanned": 20
+    }
+  ]
+}

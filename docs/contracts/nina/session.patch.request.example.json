@@ -1,0 +1,21 @@
+{
+  "status": "completed",
+  "endedAtUtc": "2026-09-18T12:59:00Z",
+  "outboxPending": 7,
+  "ninaConditions": {
+    "sqm": {
+      "avg": 21.6,
+      "min": 21.3,
+      "max": 21.8
+    },
+    "ambientTempC": {
+      "avg": 14.2
+    },
+    "humidityPct": {
+      "avg": 38
+    },
+    "windMs": {
+      "max": 6.1
+    }
+  }
+}

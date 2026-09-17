@@ -1,0 +1,558 @@
+{
+  "$comment": "Verbindliche Aufzählungen. Quelle für packages/shared/src/enums.ts (generiert) und Plugin NinaPm.Core/Contracts. Änderungen nur additiv.",
+  "roles": [
+    "owner",
+    "admin",
+    "user"
+  ],
+  "superUserRoles": [
+    "super_user"
+  ],
+  "authContexts": [
+    "tenant",
+    "system",
+    "select"
+  ],
+  "permissionActions": [
+    "equipment.read",
+    "equipment.write",
+    "project.read",
+    "project.create",
+    "project.update",
+    "project.delete",
+    "project.submit",
+    "project.withdraw",
+    "project.rank",
+    "queue.read",
+    "queue.vote",
+    "queue.decide",
+    "project.status",
+    "rig.settings.write",
+    "simulation.run",
+    "nina.instance.manage",
+    "nina.instance.read",
+    "session.read",
+    "session.correct",
+    "session.review",
+    "sessionlog.write",
+    "transit.result.import",
+    "project.note.write",
+    "project.history.read",
+    "member.manage",
+    "member.admin.manage",
+    "member.leave",
+    "tenant.owner.transfer",
+    "tenant.security",
+    "tenant.settings",
+    "tenant.export",
+    "tenant.import",
+    "system.manage",
+    "system.tenant.owner",
+    "changeRequest.create",
+    "changeRequest.update",
+    "transit.lock",
+    "session.report.resend",
+    "notification.read",
+    "me.preferences",
+    "me.favorites",
+    "job.read",
+    "public"
+  ],
+  "approvalStatuses": [
+    "draft",
+    "submitted",
+    "approved",
+    "returned",
+    "rejected"
+  ],
+  "approvalActions": [
+    "submitted",
+    "withdrawn",
+    "approved",
+    "returned",
+    "rejected",
+    "expired",
+    "edited_by_admin"
+  ],
+  "projectStatuses": [
+    "planning",
+    "active",
+    "on_hold",
+    "ready_to_process",
+    "unfinished",
+    "completed",
+    "archived"
+  ],
+  "projectTypes": [
+    "deep_sky",
+    "exoplanet"
+  ],
+  "changeRequestStatuses": [
+    "open",
+    "approved",
+    "rejected",
+    "withdrawn"
+  ],
+  "voteSubjectKinds": [
+    "project",
+    "change_request"
+  ],
+  "effortTags": [
+    "single_night",
+    "multi_night",
+    "not_feasible",
+    "transit"
+  ],
+  "twilight": [
+    "astronomical",
+    "nautical",
+    "civil"
+  ],
+  "moonModes": [
+    "profile",
+    "project_default",
+    "none"
+  ],
+  "moonProfileBuiltins": [
+    "moonProfile.none",
+    "moonProfile.strict",
+    "moonProfile.moderate",
+    "moonProfile.relaxed"
+  ],
+  "filterTypes": [
+    "broadband",
+    "narrowband",
+    "luminance",
+    "uv_ir_cut",
+    "light_pollution",
+    "photometric",
+    "other"
+  ],
+  "observatoryTypes": [
+    "open_air",
+    "dome",
+    "roll_off_roof",
+    "fixed_pier",
+    "portable",
+    "remote_hosted"
+  ],
+  "strategies": [
+    "proportional",
+    "manual_priority"
+  ],
+  "playbackModes": [
+    "time_aware",
+    "sequential"
+  ],
+  "sortChainKeys": [
+    "lowest_peak_altitude",
+    "setting_soonest",
+    "most_remaining",
+    "constrained",
+    "most_moon_limited",
+    "mosaic_grouping",
+    "card_order",
+    "due_soonest"
+  ],
+  "planOrigins": [
+    "forecast_job",
+    "plugin_offline",
+    "server_plan",
+    "web_simulation"
+  ],
+  "planReasons": [
+    "initial",
+    "refresh",
+    "resume",
+    "reset",
+    "simulation",
+    "forecast"
+  ],
+  "planCmds": [
+    "slew_center_rotate",
+    "slew_center",
+    "filter",
+    "expose",
+    "expose_series",
+    "dither",
+    "wait",
+    "meridian_flip",
+    "autofocus_hint",
+    "end"
+  ],
+  "blockKinds": [
+    "regular",
+    "transit"
+  ],
+  "rotationModes": [
+    "rotator",
+    "fixed_camera"
+  ],
+  "diagnosticReasons": [
+    "start_date",
+    "not_visible",
+    "below_min_time",
+    "moon_blocked",
+    "prefiltered",
+    "outranked",
+    "no_need",
+    "transit_conflict",
+    "flip_in_transit",
+    "filter_not_found",
+    "rotation_mismatch"
+  ],
+  "sessionStatuses": [
+    "running",
+    "completed",
+    "aborted",
+    "stale"
+  ],
+  "reportStatuses": [
+    "none",
+    "pending",
+    "sent",
+    "failed",
+    "skipped"
+  ],
+  "sessionEventKinds": [
+    "plan_built",
+    "plan_rebuilt",
+    "block_start",
+    "block_end",
+    "block_skipped",
+    "center_failed",
+    "safety_pause",
+    "safety_resume",
+    "transit_start",
+    "transit_end",
+    "af",
+    "flip",
+    "flats_start",
+    "flats_end",
+    "rotation_mismatch",
+    "lease_conflict",
+    "lease_lost",
+    "flip_settings_mismatch",
+    "filter_not_found",
+    "readout_mode_not_found",
+    "trigger_suppressed",
+    "offline_start",
+    "offline_end",
+    "warning",
+    "error",
+    "session_end",
+    "lease_regained",
+    "rotation_unknown",
+    "flip_undetected",
+    "skipped_timeaware",
+    "past_mismatch"
+  ],
+  "heartbeatStates": [
+    "running",
+    "idle",
+    "paused",
+    "flats",
+    "offline",
+    "blocked"
+  ],
+  "frameTypes": [
+    "light",
+    "flat",
+    "dark_flat"
+  ],
+  "captureResults": [
+    "saved",
+    "aborted",
+    "failed"
+  ],
+  "captureAssignments": [
+    "assigned",
+    "unassigned"
+  ],
+  "captureIngestStatuses": [
+    "accepted",
+    "duplicate",
+    "archived",
+    "unassigned",
+    "rejected_invalid"
+  ],
+  "pierSides": [
+    "east",
+    "west"
+  ],
+  "rejectReasons": [
+    "clouds",
+    "wind",
+    "focus",
+    "satellite",
+    "guiding",
+    "other"
+  ],
+  "transitObservationStatuses": [
+    "requested",
+    "locked",
+    "observed",
+    "missed",
+    "cancelled"
+  ],
+  "transitResultFormats": [
+    "hops",
+    "exotic",
+    "manual"
+  ],
+  "ninaInstanceStatuses": [
+    "active",
+    "revoked"
+  ],
+  "ninaCommands": [
+    "refresh_targets",
+    "reset_plan"
+  ],
+  "jobKinds": [
+    "multi_sim",
+    "impact",
+    "effort",
+    "session_close",
+    "session_report",
+    "discord_post",
+    "export",
+    "import",
+    "thumbnail",
+    "transit_result_parse",
+    "catalog_refresh",
+    "forecast",
+    "reconcile",
+    "weather"
+  ],
+  "jobStatuses": [
+    "pending",
+    "running",
+    "done",
+    "failed"
+  ],
+  "schedules": [
+    "tick-5min",
+    "tick-hourly",
+    "daily",
+    "weekly"
+  ],
+  "discordCategories": [
+    "approvals",
+    "sessions",
+    "alerts"
+  ],
+  "discordEventKeys": {
+    "approvals": [
+      "submission.new",
+      "submission.withdrawn",
+      "approval.approved",
+      "approval.returned",
+      "approval.rejected",
+      "approval.expired",
+      "deadline.near",
+      "change_request.new",
+      "change_request.decided"
+    ],
+    "sessions": [
+      "session.started",
+      "session.completed",
+      "session.stale",
+      "transit.observed",
+      "transit.missed",
+      "session.report"
+    ],
+    "alerts": [
+      "session.no_heartbeat",
+      "plugin.dead_letters",
+      "rig.busy",
+      "nina.settings_mismatch",
+      "discord.channel_failed"
+    ]
+  },
+  "notificationKinds": [
+    "submission.new",
+    "submission.withdrawn",
+    "submission.edited_by_admin",
+    "approval.approved",
+    "approval.returned",
+    "approval.rejected",
+    "approval.expired",
+    "deadline.near",
+    "change_request.new",
+    "change_request.decided",
+    "vote.subject_changed",
+    "vote.subject_resubmitted",
+    "project.completed",
+    "transit.confirmation_needed",
+    "role.expiring",
+    "role.expired",
+    "role.changed",
+    "owner.transfer_requested",
+    "owner.reassigned",
+    "alert.session_no_heartbeat",
+    "alert.plugin_dead_letters",
+    "alert.nina_settings_mismatch",
+    "alert.discord_channel_failed"
+  ],
+  "catalogs": [
+    "dso",
+    "exoclock",
+    "nasa",
+    "toi"
+  ],
+  "correctionSources": [
+    "nina",
+    "correction",
+    "import"
+  ],
+  "sortChainDefault": [
+    "lowest_peak_altitude",
+    "setting_soonest",
+    "most_remaining",
+    "constrained"
+  ],
+  "simulatorWarnings": [
+    "idle_gap",
+    "la_unsafe",
+    "total_min",
+    "no_alloc",
+    "la_miss",
+    "filter_stuck",
+    "past_mismatch",
+    "panel_rotation_mismatch",
+    "twilight_grazing"
+  ],
+  "warningLevels": [
+    "warn",
+    "error"
+  ],
+  "slotWorkHints": [
+    "any",
+    "la_preferred",
+    "non_la_preferred"
+  ],
+  "blockSkipReasons": [
+    "elapsed",
+    "no_exposures",
+    "not_viable",
+    "center_failed",
+    "user_skip",
+    "rotation_mismatch",
+    "filter_not_found",
+    "lease_lost"
+  ],
+  "blockEndReasons": [
+    "completed",
+    "target_removed",
+    "transit_interrupt",
+    "user_skip",
+    "lease_lost",
+    "night_end",
+    "error",
+    "flats"
+  ],
+  "flatCombinationStatuses": [
+    "pending",
+    "running",
+    "done",
+    "skipped"
+  ],
+  "projectStatusTransitions": {
+    "planning": [
+      "active",
+      "on_hold",
+      "archived"
+    ],
+    "active": [
+      "on_hold",
+      "ready_to_process",
+      "unfinished",
+      "archived"
+    ],
+    "on_hold": [
+      "active",
+      "archived"
+    ],
+    "ready_to_process": [
+      "active",
+      "completed",
+      "archived"
+    ],
+    "unfinished": [
+      "active",
+      "archived"
+    ],
+    "completed": [
+      "active",
+      "archived"
+    ],
+    "archived": [
+      "active"
+    ]
+  },
+  "ownerStates": [
+    "active",
+    "pending"
+  ],
+  "tenantStatuses": [
+    "active",
+    "locked"
+  ],
+  "identityStatuses": [
+    "active",
+    "blocked"
+  ],
+  "superUserStatuses": [
+    "active",
+    "disabled"
+  ],
+  "memberStatuses": [
+    "active",
+    "disabled",
+    "removed"
+  ],
+  "loginAuditEvents": [
+    "login_ok",
+    "login_blocked",
+    "no_membership",
+    "no_access",
+    "tenant_selected",
+    "context_switch",
+    "mfa_required",
+    "refresh_reuse_detected",
+    "logout",
+    "invitation_preview",
+    "invitation_accepted"
+  ],
+  "changeLogActions": [
+    "create",
+    "update",
+    "delete",
+    "restore",
+    "status_change",
+    "role_change",
+    "settings_change"
+  ],
+  "blockedReasons": [
+    "lease_lost",
+    "rig_busy",
+    "token_invalid",
+    "clock_skew",
+    "plan_failed",
+    "engine_incompatible",
+    "tenant_locked"
+  ],
+  "tenantSettingsKeys": [
+    "userCorrections",
+    "exoUserLockNeedsAdmin",
+    "exoUserMaxOpenLocks",
+    "autoReactivateOnRemaining",
+    "autoReadyToProcess",
+    "adminSelfApproval",
+    "approvalDeadlineDays",
+    "sessionIdleHours",
+    "sessionMaxDays",
+    "mfaRequiredForAdmins",
+    "defaultLanguage"
+  ]
+}

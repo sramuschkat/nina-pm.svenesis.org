@@ -1,0 +1,127 @@
+{
+  "id": "G11",
+  "title": "Meridian-Flip im Block",
+  "requirements": [
+    "FA-SCH-17"
+  ],
+  "explanation": "Flip an der ersten Belichtungsgrenze ≥ Meridian + 5 min (2100 s); danach 4 Belichtungen bis Blockende 3600 s.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "proportional",
+    "meridianFlip": {
+      "meridianAtS": 1800,
+      "afterMin": 5,
+      "maxAfterMin": 15,
+      "durationS": 240
+    },
+    "units": [
+      {
+        "id": "A",
+        "priority": 1,
+        "minTimeSlots": 1,
+        "lines": [
+          {
+            "id": "A-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 20,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "A",
+        "fromSlot": 0,
+        "toSlot": 11
+      }
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 600,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 1200,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 1500,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 1800,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 2100,
+        "cmd": "meridian_flip",
+        "durationS": 240
+      },
+      {
+        "atS": 2340,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 2640,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 2940,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      },
+      {
+        "atS": 3240,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false
+      }
+    ],
+    "diagnostics": {}
+  }
+}

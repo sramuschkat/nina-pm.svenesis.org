@@ -1,0 +1,71 @@
+{
+  "id": "G04",
+  "title": "Mindestzeit nicht erreichbar",
+  "requirements": [
+    "FA-SCH-11"
+  ],
+  "explanation": "A hat nur 4 Slots bei Mindestzeit 6 und Restbedarf 12 → kein Kandidat.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "proportional",
+    "units": [
+      {
+        "id": "A",
+        "priority": 1,
+        "minTimeSlots": 6,
+        "lines": [
+          {
+            "id": "A-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 12,
+            "eligibleSlots": [
+              [
+                0,
+                3
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      },
+      {
+        "id": "B",
+        "priority": 2,
+        "minTimeSlots": 6,
+        "lines": [
+          {
+            "id": "B-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 12,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "B",
+        "fromSlot": 0,
+        "toSlot": 11
+      }
+    ],
+    "diagnostics": {
+      "A": "below_min_time"
+    }
+  }
+}

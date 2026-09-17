@@ -1,0 +1,80 @@
+{
+  "events": [
+    {
+      "id": "0192c1…",
+      "occurredAtUtc": "2026-09-18T02:01:58Z",
+      "kind": "plan_built",
+      "code": null,
+      "message": "Plan 1 mit 2 Blöcken (310 + 17 Aufnahmen)",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": null,
+      "data": {
+        "revision": 1,
+        "inputHash": "sha256:9c1e…"
+      }
+    },
+    {
+      "id": "0192c2…",
+      "occurredAtUtc": "2026-09-18T02:05:30Z",
+      "kind": "transit_start",
+      "message": "Transitfenster HAT-P-17 b 02:08–07:34 UTC",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "data": {
+        "transitObservationId": "o5…",
+        "epoch": 812
+      }
+    },
+    {
+      "id": "0192c3…",
+      "occurredAtUtc": "2026-09-18T02:06:10Z",
+      "kind": "trigger_suppressed",
+      "code": "autofocus",
+      "message": "AutofocusAfterTimeTrigger im Transitfenster unterdrückt",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "data": {
+        "type": "AutofocusAfterTimeTrigger",
+        "box": null
+      }
+    },
+    {
+      "id": "0192c4…",
+      "occurredAtUtc": "2026-09-18T04:32:41Z",
+      "kind": "flip",
+      "message": "Meridian-Flip im Transitfenster",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "data": {
+        "durationS": 228,
+        "pierSideBefore": "east",
+        "pierSideAfter": "west"
+      }
+    },
+    {
+      "id": "0192c5…",
+      "occurredAtUtc": "2026-09-18T07:34:00Z",
+      "kind": "block_end",
+      "code": "completed",
+      "message": "Transitblock beendet, 310 Aufnahmen",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "data": {
+        "exposures": 310,
+        "aborted": 0
+      }
+    },
+    {
+      "id": "0192c6…",
+      "occurredAtUtc": "2026-09-18T09:17:10Z",
+      "kind": "warning",
+      "code": "image_not_saved",
+      "message": "Kein ImageSaved binnen 120 s nach Enqueue",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "data": {
+        "captureId": "0192b0…"
+      }
+    }
+  ]
+}

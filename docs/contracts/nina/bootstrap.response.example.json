@@ -1,0 +1,155 @@
+{
+  "apiVersion": "1",
+  "server": {
+    "timeUtc": "2026-09-17T18:02:11Z",
+    "engineVersion": "3.2.0",
+    "minPluginVersion": "1.0.0"
+  },
+  "instance": {
+    "id": "7b1e…",
+    "name": "Starfront-PC"
+  },
+  "tenant": {
+    "key": "sternwarte-xy",
+    "name": "Sternwarte XY",
+    "timeZone": "Europe/Berlin"
+  },
+  "rig": {
+    "id": "c0a4…",
+    "name": "Starfront – GT81 – Ares-M",
+    "settingsVersion": 12,
+    "site": {
+      "name": "Starfront",
+      "latDeg": 31.5471,
+      "lonDeg": -99.3823,
+      "elevationM": 450,
+      "timeZone": "America/Chicago"
+    },
+    "telescope": {
+      "name": "GT81",
+      "apertureMm": 81,
+      "focalLengthMm": 382,
+      "reducerFactor": 1.0
+    },
+    "camera": {
+      "name": "Ares-M Pro",
+      "pixelSizeUm": 3.76,
+      "widthPx": 6248,
+      "heightPx": 4176,
+      "defaultGain": 100,
+      "defaultOffset": 20,
+      "readoutModes": [
+        {
+          "index": 0,
+          "name": "High Gain Mode"
+        },
+        {
+          "index": 1,
+          "name": "Low Noise Mode"
+        }
+      ],
+      "binning": [
+        1,
+        2
+      ]
+    },
+    "rotator": {
+      "present": true,
+      "defaultRotationDeg": 90,
+      "toleranceDeg": 5,
+      "skipOnMismatch": false
+    },
+    "filters": [
+      {
+        "shortName": "L",
+        "name": "Luminance",
+        "color": "#c8c8c8"
+      },
+      {
+        "shortName": "Ha",
+        "name": "H-alpha 3 nm",
+        "color": "#d0342c"
+      },
+      {
+        "shortName": "R",
+        "name": "Red",
+        "color": "#e53935"
+      }
+    ],
+    "scheduler": {
+      "strategy": "proportional",
+      "playback": "time_aware",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonus": {
+        "enabled": false
+      },
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": true,
+        "every": 1
+      },
+      "filterSwitch": {
+        "enabled": true,
+        "every": 40,
+        "tolerancePct": 50
+      },
+      "flats": {
+        "enabled": true,
+        "fullSet": false,
+        "count": 20,
+        "darkFlats": {
+          "enabled": true,
+          "count": null
+        }
+      },
+      "meridianFlip": {
+        "enabled": true,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      },
+      "overhead": {
+        "slewCenterS": 90,
+        "filterChangeS": 10,
+        "ditherSettleS": 15,
+        "afEveryMin": 60,
+        "afDurationS": 120,
+        "downloadS": 3
+      },
+      "overshootPct": 0
+    },
+    "leaseMinutes": 3
+  },
+  "moonProfiles": [
+    {
+      "id": "5d2e…",
+      "name": "Streng",
+      "separationDeg": 90,
+      "widthDays": 8,
+      "relax": 0,
+      "minAltDeg": -15,
+      "maxAltDeg": 5,
+      "maxIlluminationPct": 30,
+      "moonMustBeDown": false
+    }
+  ],
+  "nights": [
+    {
+      "night": "2026-09-17",
+      "startUtc": "2026-09-17T17:00:00Z",
+      "endUtc": "2026-09-18T17:00:00Z"
+    }
+  ],
+  "timeZoneTransitions": [
+    {
+      "atUtc": "2026-11-01T07:00:00Z",
+      "offsetMin": -360
+    }
+  ]
+}

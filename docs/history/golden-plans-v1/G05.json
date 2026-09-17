@@ -1,0 +1,75 @@
+{
+  "id": "G05",
+  "title": "Restposten unter der Mindestzeit",
+  "requirements": [
+    "FA-SCH-14",
+    "FA-SCH-03"
+  ],
+  "explanation": "Soll A 2 (Rundung), B 10; Schlupf beide 2 → setting_soonest → A; Restposten erlaubt 2 Slots.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "proportional",
+    "units": [
+      {
+        "id": "A",
+        "priority": 2,
+        "minTimeSlots": 6,
+        "lines": [
+          {
+            "id": "A-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 2,
+            "eligibleSlots": [
+              [
+                0,
+                3
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      },
+      {
+        "id": "B",
+        "priority": 1,
+        "minTimeSlots": 6,
+        "lines": [
+          {
+            "id": "B-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 12,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "A",
+        "fromSlot": 0,
+        "toSlot": 1
+      },
+      {
+        "unit": "B",
+        "fromSlot": 2,
+        "toSlot": 11
+      }
+    ],
+    "diagnostics": {}
+  }
+}

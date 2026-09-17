@@ -1,0 +1,49 @@
+{
+  "state": "running",
+  "sessionId": "0192a7c0-0000-7000-8000-000000000a01",
+  "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+  "pluginVersion": "1.0.0",
+  "engineVersion": "3.2.0",
+  "profileLocation": {
+    "latDeg": 31.5471,
+    "lonDeg": -99.3823
+  },
+  "cameraReadoutModes": [
+    {
+      "index": 0,
+      "name": "High Gain Mode"
+    },
+    {
+      "index": 1,
+      "name": "Low Noise Mode"
+    }
+  ],
+  "meridianFlip": {
+    "triggerPresent": true,
+    "afterMin": 5,
+    "maxAfterMin": 15,
+    "pauseBeforeMin": 0
+  },
+  "lastMeasuredRotationDeg": 90.4,
+  "filterWheel": [
+    {
+      "position": 0,
+      "name": "L"
+    },
+    {
+      "position": 1,
+      "name": "Ha 3nm"
+    },
+    {
+      "position": 2,
+      "name": "Red"
+    }
+  ],
+  "outboxPending": 0,
+  "deadLetters": 0,
+  "settingsVersion": 12,
+  "offlineUntil": null,
+  "ackedCommandIds": [
+    "0192d0…"
+  ]
+}

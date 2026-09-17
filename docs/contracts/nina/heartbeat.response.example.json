@@ -1,0 +1,15 @@
+{
+  "serverTimeUtc": "2026-09-18T02:10:00Z",
+  "lease": {
+    "untilUtc": "2026-09-18T02:13:00Z",
+    "leaseLost": false
+  },
+  "settingsVersion": 12,
+  "targetsEtag": "\"t-8f3a\"",
+  "commands": [
+    {
+      "id": "0192d1…",
+      "command": "refresh_targets"
+    }
+  ]
+}

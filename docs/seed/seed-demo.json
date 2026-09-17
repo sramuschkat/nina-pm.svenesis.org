@@ -1,0 +1,689 @@
+{
+  "$comment": "Demo-/Testdaten für lokalen Stack (pnpm db:seed) und den Test-Mandanten in prod (ops-cli seed --tenant test). Keine echten Discord-IDs, keine echten Standorte.",
+  "tenant": {
+    "id": "00000000-0000-7000-8000-000000000001",
+    "key": "demo",
+    "name": "Demo-Sternfreunde",
+    "defaultLanguage": "de",
+    "timeZone": "Europe/Berlin",
+    "settings": {
+      "adminSelfApproval": false,
+      "userCorrections": false,
+      "exoUserLockNeedsAdmin": true
+    }
+  },
+  "identities": [
+    {
+      "fixture": "owner",
+      "id": "00000000-0000-7000-8000-000000000010",
+      "discordUserId": "100000000000000001",
+      "discordName": "demo_owner",
+      "displayName": "Olivia Owner",
+      "mfa": true,
+      "role": "admin",
+      "isOwner": true
+    },
+    {
+      "fixture": "admin",
+      "id": "00000000-0000-7000-8000-000000000011",
+      "discordUserId": "100000000000000002",
+      "discordName": "demo_admin",
+      "displayName": "Anton Admin",
+      "mfa": true,
+      "role": "admin",
+      "roleExpiresInHours": 72
+    },
+    {
+      "fixture": "user1",
+      "id": "00000000-0000-7000-8000-000000000012",
+      "discordUserId": "100000000000000003",
+      "discordName": "demo_user1",
+      "displayName": "Uta User",
+      "mfa": false,
+      "role": "user"
+    },
+    {
+      "fixture": "user2",
+      "id": "00000000-0000-7000-8000-000000000013",
+      "discordUserId": "100000000000000004",
+      "discordName": "demo_user2",
+      "displayName": "Ben Benutzer",
+      "mfa": false,
+      "role": "user"
+    },
+    {
+      "fixture": "superuser",
+      "id": "00000000-0000-7000-8000-000000000014",
+      "discordUserId": "100000000000000005",
+      "discordName": "demo_super",
+      "displayName": "Sam System",
+      "mfa": true,
+      "superUser": true
+    },
+    {
+      "fixture": "outsider",
+      "id": "00000000-0000-7000-8000-000000000015",
+      "discordUserId": "100000000000000006",
+      "discordName": "demo_outsider",
+      "displayName": "Otto Fremd",
+      "mfa": false,
+      "tenantKey": "other"
+    }
+  ],
+  "otherTenant": {
+    "id": "00000000-0000-7000-8000-000000000002",
+    "key": "other",
+    "name": "Fremder Mandant (Isolationstests)"
+  },
+  "sites": [
+    {
+      "id": "00000000-0000-7000-8000-000000000020",
+      "name": "Demo-Sternwarte",
+      "latDeg": 51.0,
+      "lonDeg": 10.0,
+      "elevationM": 300,
+      "timeZone": "Europe/Berlin",
+      "observatoryType": "roll_off_roof",
+      "bortle": 4
+    }
+  ],
+  "telescopes": [
+    {
+      "id": "00000000-0000-7000-8000-000000000021",
+      "name": "Refraktor 80/480",
+      "apertureMm": 80,
+      "focalLengthMm": 480,
+      "reducerFactor": 1.0
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000022",
+      "name": "RASA 8",
+      "apertureMm": 203,
+      "focalLengthMm": 400,
+      "reducerFactor": 1.0
+    }
+  ],
+  "cameras": [
+    {
+      "id": "00000000-0000-7000-8000-000000000023",
+      "name": "Mono 26MP (IMX571)",
+      "pixelSizeUm": 3.76,
+      "widthPx": 6248,
+      "heightPx": 4176,
+      "mono": true,
+      "gainPresets": [
+        {
+          "name": "Unity",
+          "gain": 100,
+          "offset": 50
+        }
+      ],
+      "readoutModes": [
+        "High Gain",
+        "Low Noise"
+      ]
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000024",
+      "name": "OSC 26MP",
+      "pixelSizeUm": 3.76,
+      "widthPx": 6248,
+      "heightPx": 4176,
+      "mono": false,
+      "gainPresets": [
+        {
+          "name": "HCG",
+          "gain": 100,
+          "offset": 30
+        }
+      ],
+      "readoutModes": [
+        "Default"
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "shortName": "L",
+      "name": "Luminanz",
+      "type": "luminance",
+      "bandwidthNm": 300,
+      "color": "#E8E8E8"
+    },
+    {
+      "shortName": "R",
+      "name": "Rot",
+      "type": "broadband",
+      "bandwidthNm": 100,
+      "color": "#E53935"
+    },
+    {
+      "shortName": "G",
+      "name": "Grün",
+      "type": "broadband",
+      "bandwidthNm": 100,
+      "color": "#43A047"
+    },
+    {
+      "shortName": "B",
+      "name": "Blau",
+      "type": "broadband",
+      "bandwidthNm": 100,
+      "color": "#1E88E5"
+    },
+    {
+      "shortName": "Ha",
+      "name": "H-alpha 3 nm",
+      "type": "narrowband",
+      "centerNm": 656.3,
+      "bandwidthNm": 3,
+      "color": "#C62828"
+    },
+    {
+      "shortName": "OIII",
+      "name": "OIII 3 nm",
+      "type": "narrowband",
+      "centerNm": 500.7,
+      "bandwidthNm": 3,
+      "color": "#00897B"
+    },
+    {
+      "shortName": "SII",
+      "name": "SII 3 nm",
+      "type": "narrowband",
+      "centerNm": 671.6,
+      "bandwidthNm": 3,
+      "color": "#8E24AA"
+    }
+  ],
+  "moonProfiles": [
+    {
+      "key": "moonProfile.none",
+      "builtin": true,
+      "widthDays": 14,
+      "minAltDeg": -90,
+      "maxAltDeg": -2,
+      "separationDeg": 180,
+      "relax": 0,
+      "maxIlluminationPct": 0,
+      "moonMustBeDown": true
+    },
+    {
+      "key": "moonProfile.strict",
+      "builtin": true,
+      "widthDays": 8,
+      "minAltDeg": -15,
+      "maxAltDeg": 5,
+      "separationDeg": 90,
+      "relax": 0,
+      "maxIlluminationPct": 30,
+      "moonMustBeDown": false
+    },
+    {
+      "key": "moonProfile.moderate",
+      "builtin": true,
+      "widthDays": 5,
+      "minAltDeg": -15,
+      "maxAltDeg": 5,
+      "separationDeg": 60,
+      "relax": 2,
+      "maxIlluminationPct": 60,
+      "moonMustBeDown": false
+    },
+    {
+      "key": "moonProfile.relaxed",
+      "builtin": true,
+      "widthDays": 3,
+      "minAltDeg": -15,
+      "maxAltDeg": 5,
+      "separationDeg": 25,
+      "relax": 3,
+      "maxIlluminationPct": 80,
+      "moonMustBeDown": false
+    }
+  ],
+  "rigs": [
+    {
+      "id": "00000000-0000-7000-8000-000000000030",
+      "name": "Rig A – Refraktor mono mit Rotator",
+      "siteId": "00000000-0000-7000-8000-000000000020",
+      "telescopeId": "00000000-0000-7000-8000-000000000021",
+      "cameraId": "00000000-0000-7000-8000-000000000023",
+      "hasRotator": true,
+      "filterWheel": [
+        "L",
+        "R",
+        "G",
+        "B",
+        "Ha",
+        "OIII",
+        "SII"
+      ],
+      "showInPlanning": true,
+      "ninaDeliveryEnabled": true,
+      "scheduler": {
+        "strategy": "proportional",
+        "playback": "time_aware",
+        "sortChain": [
+          "lowest_peak_altitude",
+          "setting_soonest",
+          "most_remaining",
+          "constrained"
+        ],
+        "overshootPct": 0,
+        "overhead": {
+          "slewCenterS": 120,
+          "filterChangeS": 10,
+          "ditherSettleS": 20,
+          "afEveryMin": 60,
+          "afDurationS": 180,
+          "downloadS": 5
+        },
+        "mosaicPanelsIndependent": true,
+        "flats": {
+          "enabled": true,
+          "fullSet": false,
+          "count": 25,
+          "darkFlats": {
+            "enabled": true,
+            "count": null
+          }
+        },
+        "bonus": {
+          "enabled": false
+        },
+        "meridianFlip": {
+          "enabled": true,
+          "afterMin": 5,
+          "maxAfterMin": 15,
+          "pauseBeforeMin": 0,
+          "durationS": 240
+        },
+        "dither": {
+          "enabled": true,
+          "every": 3
+        },
+        "filterSwitch": {
+          "enabled": false,
+          "every": 10,
+          "tolerancePct": 50
+        },
+        "rotator": {
+          "toleranceDeg": 5,
+          "skipOnMismatch": false
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000031",
+      "name": "Rig B – RASA OSC ohne Rotator",
+      "siteId": "00000000-0000-7000-8000-000000000020",
+      "telescopeId": "00000000-0000-7000-8000-000000000022",
+      "cameraId": "00000000-0000-7000-8000-000000000024",
+      "hasRotator": false,
+      "defaultRotationDeg": 0,
+      "filterWheel": [],
+      "showInPlanning": true,
+      "ninaDeliveryEnabled": false,
+      "scheduler": {
+        "strategy": "manual_priority",
+        "playback": "sequential",
+        "sortChain": [
+          "card_order"
+        ],
+        "overshootPct": 10,
+        "overhead": {
+          "slewCenterS": 90,
+          "filterChangeS": 0,
+          "ditherSettleS": 15,
+          "afEveryMin": 90,
+          "afDurationS": 120,
+          "downloadS": 3
+        },
+        "mosaicPanelsIndependent": true,
+        "flats": {
+          "enabled": true,
+          "fullSet": false,
+          "count": 20,
+          "darkFlats": {
+            "enabled": true,
+            "count": null
+          }
+        },
+        "bonus": {
+          "enabled": true
+        },
+        "meridianFlip": {
+          "enabled": true,
+          "afterMin": 5,
+          "maxAfterMin": 15,
+          "pauseBeforeMin": 0,
+          "durationS": 240
+        },
+        "dither": {
+          "enabled": true,
+          "every": 5
+        },
+        "filterSwitch": {
+          "enabled": false,
+          "every": 10,
+          "tolerancePct": 50
+        },
+        "rotator": {
+          "toleranceDeg": 5,
+          "skipOnMismatch": true
+        }
+      }
+    }
+  ],
+  "projects": [
+    {
+      "id": "00000000-0000-7000-8000-000000000040",
+      "name": "NGC 281 Pacman (SHO)",
+      "type": "deep_sky",
+      "createdBy": "owner",
+      "rigId": "00000000-0000-7000-8000-000000000030",
+      "approvalStatus": "approved",
+      "status": "active",
+      "priority": 1,
+      "raJ2000Deg": 13.2458,
+      "decJ2000Deg": 56.63,
+      "rotationDeg": 90,
+      "minAltDeg": 30,
+      "twilight": "astronomical",
+      "minTimeOnTargetH": 1.0,
+      "dueDate": null,
+      "panels": [
+        {
+          "index": 0,
+          "name": "Hauptfeld",
+          "lines": [
+            {
+              "filter": "Ha",
+              "exposureS": 300,
+              "planned": 60,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.relaxed"
+            },
+            {
+              "filter": "OIII",
+              "exposureS": 300,
+              "planned": 60,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.moderate"
+            },
+            {
+              "filter": "SII",
+              "exposureS": 300,
+              "planned": 60,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.relaxed"
+            }
+          ]
+        }
+      ],
+      "counters": [
+        {
+          "filter": "Ha",
+          "night": "2026-09-10",
+          "acquired": 12,
+          "rejected": 1
+        },
+        {
+          "filter": "Ha",
+          "night": "2026-09-12",
+          "acquired": 10,
+          "rejected": 1
+        },
+        {
+          "filter": "OIII",
+          "night": "2026-09-12",
+          "acquired": 10,
+          "rejected": 0
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000041",
+      "name": "M31 Mosaik 2×1 (LRGB)",
+      "type": "deep_sky",
+      "createdBy": "admin",
+      "rigId": "00000000-0000-7000-8000-000000000030",
+      "approvalStatus": "approved",
+      "status": "active",
+      "priority": 2,
+      "raJ2000Deg": 10.6847,
+      "decJ2000Deg": 41.269,
+      "rotationDeg": 35,
+      "minAltDeg": 35,
+      "twilight": "astronomical",
+      "minTimeOnTargetH": 1.5,
+      "dueDate": "2026-12-15",
+      "panels": [
+        {
+          "index": 0,
+          "name": "Panel 1",
+          "raOffsetArcmin": -40,
+          "decOffsetArcmin": 0,
+          "lines": [
+            {
+              "filter": "L",
+              "exposureS": 120,
+              "planned": 120,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "Low Noise",
+              "moonProfile": "moonProfile.strict"
+            },
+            {
+              "filter": "R",
+              "exposureS": 180,
+              "planned": 40,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "Low Noise",
+              "moonProfile": "moonProfile.strict"
+            },
+            {
+              "filter": "G",
+              "exposureS": 180,
+              "planned": 40,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "Low Noise",
+              "moonProfile": "moonProfile.strict"
+            },
+            {
+              "filter": "B",
+              "exposureS": 180,
+              "planned": 40,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "Low Noise",
+              "moonProfile": "moonProfile.strict"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "name": "Panel 2",
+          "raOffsetArcmin": 40,
+          "decOffsetArcmin": 0,
+          "lines": "wie Panel 1"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000042",
+      "name": "IC 1805 Herznebel (HOO)",
+      "type": "deep_sky",
+      "createdBy": "user1",
+      "rigId": "00000000-0000-7000-8000-000000000030",
+      "approvalStatus": "submitted",
+      "status": null,
+      "raJ2000Deg": 38.175,
+      "decJ2000Deg": 61.45,
+      "rotationDeg": 0,
+      "minAltDeg": 30,
+      "twilight": "astronomical",
+      "minTimeOnTargetH": 1.0,
+      "submission": {
+        "wishFrom": "2026-10-01",
+        "wishTo": "2026-12-31",
+        "comment": "Gern vor Weihnachten",
+        "submitterRank": 1
+      },
+      "panels": [
+        {
+          "index": 0,
+          "name": "Hauptfeld",
+          "lines": [
+            {
+              "filter": "Ha",
+              "exposureS": 300,
+              "planned": 80,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.relaxed"
+            },
+            {
+              "filter": "OIII",
+              "exposureS": 300,
+              "planned": 80,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.moderate"
+            }
+          ]
+        }
+      ],
+      "votes": [
+        {
+          "voter": "user2"
+        },
+        {
+          "voter": "admin"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000043",
+      "name": "Sh2-129 Flying Bat (HOO)",
+      "type": "deep_sky",
+      "createdBy": "user2",
+      "rigId": "00000000-0000-7000-8000-000000000030",
+      "approvalStatus": "submitted",
+      "status": null,
+      "raJ2000Deg": 318.9,
+      "decJ2000Deg": 60.16,
+      "rotationDeg": 0,
+      "minAltDeg": 30,
+      "twilight": "astronomical",
+      "minTimeOnTargetH": 2.0,
+      "submission": {
+        "submitterRank": 1
+      },
+      "panels": [
+        {
+          "index": 0,
+          "name": "Hauptfeld",
+          "lines": [
+            {
+              "filter": "OIII",
+              "exposureS": 600,
+              "planned": 120,
+              "gain": 100,
+              "offset": 50,
+              "binning": 1,
+              "readoutMode": "High Gain",
+              "moonProfile": "moonProfile.strict"
+            }
+          ]
+        }
+      ],
+      "votes": [
+        {
+          "voter": "user1"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-7000-8000-000000000044",
+      "name": "HAT-P-17 b Transit",
+      "type": "exoplanet",
+      "createdBy": "user1",
+      "rigId": "00000000-0000-7000-8000-000000000031",
+      "approvalStatus": "draft",
+      "status": null,
+      "raJ2000Deg": 324.5363,
+      "decJ2000Deg": 30.4886,
+      "minAltDeg": 30,
+      "twilight": "nautical",
+      "exo": {
+        "planet": "HAT-P-17 b",
+        "ephemerisSource": "exoclock",
+        "kSigma": 1,
+        "baselineBeforeMin": 60,
+        "baselineAfterMin": 60,
+        "filter": "OSC",
+        "exposureS": 60,
+        "requestedNight": null
+      },
+      "panels": []
+    }
+  ],
+  "ninaInstances": [
+    {
+      "id": "00000000-0000-7000-8000-000000000050",
+      "rigId": "00000000-0000-7000-8000-000000000030",
+      "name": "Sternwarte-PC",
+      "tokenFixture": "npm_demoTokenNurLokalNieInProd000000000000000"
+    }
+  ],
+  "discord": {
+    "guildName": "Demo-Sternfreunde",
+    "channels": [
+      {
+        "id": "00000000-0000-7000-8000-000000000060",
+        "name": "#freigaben",
+        "categories": [
+          "approvals"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/0/placeholder-local-only"
+      },
+      {
+        "id": "00000000-0000-7000-8000-000000000061",
+        "name": "#nachtberichte",
+        "categories": [
+          "sessions"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/0/placeholder-local-only"
+      },
+      {
+        "id": "00000000-0000-7000-8000-000000000062",
+        "name": "#alarme",
+        "categories": [
+          "alerts"
+        ],
+        "webhookUrl": "https://discord.com/api/webhooks/0/placeholder-local-only"
+      }
+    ]
+  }
+}

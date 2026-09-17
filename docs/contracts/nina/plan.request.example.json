@@ -1,0 +1,38 @@
+{
+  "night": "2026-09-17",
+  "reason": "refresh",
+  "startAtUtc": "2026-09-18T07:34:00Z",
+  "pendingCaptures": [
+    {
+      "exposureLineId": "l001…",
+      "transitObservationId": null,
+      "count": 3
+    }
+  ],
+  "targetsEtag": "\"t-8f3a\"",
+  "sessionId": "0192a7c0-0000-7000-8000-000000000a01",
+  "tonight": {
+    "pastBlocks": [
+      {
+        "unitId": "e77c…/p0",
+        "fromUtc": "2026-09-18T02:05:30Z",
+        "toUtc": "2026-09-18T07:34:00Z"
+      }
+    ],
+    "exposedSecByUnit": {
+      "e77c…/p0": 18600
+    },
+    "lastAutofocusUtc": null,
+    "filterCycle": [
+      {
+        "unitId": "e77c…/p0",
+        "lineId": "l9…",
+        "subsOnLine": 310
+      }
+    ],
+    "flipDoneByPanel": {
+      "e77c…/p0": true
+    },
+    "currentUnitId": "e77c…/p0"
+  }
+}

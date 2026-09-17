@@ -1,0 +1,71 @@
+{
+  "id": "G06",
+  "title": "Manuelle Priorität verdrängt",
+  "requirements": [
+    "FA-SCH-01"
+  ],
+  "explanation": "Priorität 1 nimmt alles, was es braucht; B ist danach nicht mehr sichtbar.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "manual_priority",
+    "units": [
+      {
+        "id": "A",
+        "priority": 1,
+        "minTimeSlots": 1,
+        "lines": [
+          {
+            "id": "A-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 8,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      },
+      {
+        "id": "B",
+        "priority": 2,
+        "minTimeSlots": 1,
+        "lines": [
+          {
+            "id": "B-L",
+            "filter": "L",
+            "exposureS": 300,
+            "remaining": 6,
+            "eligibleSlots": [
+              [
+                0,
+                5
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "A",
+        "fromSlot": 0,
+        "toSlot": 7
+      }
+    ],
+    "diagnostics": {
+      "B": "outranked"
+    }
+  }
+}

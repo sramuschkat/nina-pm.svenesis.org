@@ -1,0 +1,531 @@
+{
+  "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+  "engineVersion": "3.2.0",
+  "inputHash": "sha256:9c1e…",
+  "night": "2026-09-17",
+  "revision": 1,
+  "startAtUtc": "2026-09-18T02:01:58Z",
+  "nightWindow": {
+    "startUtc": "2026-09-18T00:05:00Z",
+    "endUtc": "2026-09-18T12:59:00Z"
+  },
+  "darkness": {
+    "astronomicalStartUtc": "2026-09-18T02:01:58Z",
+    "astronomicalEndUtc": "2026-09-18T11:01:56Z"
+  },
+  "darknessEndUtc": "2026-09-18T11:01:56Z",
+  "flatsNotBeforeUtc": "2026-09-18T11:01:56Z",
+  "sessionEndUtc": "2026-09-18T12:59:00Z",
+  "blocks": [
+    {
+      "id": "0192a7c0-0000-7000-8000-000000000c01",
+      "kind": "transit",
+      "projectId": "e77c…",
+      "panelId": "p9…",
+      "transitObservationId": "o5…",
+      "startUtc": "2026-09-18T02:08:00Z",
+      "endUtc": "2026-09-18T07:34:00Z",
+      "raDeg": 324.5366,
+      "decDeg": 30.4886,
+      "rotationDeg": 0.0,
+      "rotationMode": "rotator",
+      "meridianFlip": {
+        "waitStartUtc": null,
+        "plannedUtc": "2026-09-18T04:32:13Z",
+        "durationS": 240,
+        "inTransitWindow": true,
+        "planned": false
+      },
+      "entries": [
+        {
+          "seq": 1,
+          "cmd": "slew_center_rotate",
+          "atUtc": "2026-09-18T02:05:30Z",
+          "durationS": 90
+        },
+        {
+          "seq": 2,
+          "cmd": "expose_series",
+          "atUtc": "2026-09-18T02:08:00Z",
+          "untilUtc": "2026-09-18T07:34:00Z",
+          "exposureLineId": "l9…",
+          "filter": "R",
+          "exposureS": 60,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0
+        },
+        {
+          "seq": 3,
+          "cmd": "end",
+          "atUtc": "2026-09-18T07:34:00Z"
+        }
+      ]
+    },
+    {
+      "id": "0192a7c0-0000-7000-8000-000000000c02",
+      "kind": "regular",
+      "projectId": "a91f…",
+      "panelId": "p001…",
+      "startUtc": "2026-09-18T07:34:00Z",
+      "endUtc": "2026-09-18T09:18:40Z",
+      "raDeg": 13.2046,
+      "decDeg": 56.6297,
+      "rotationDeg": 90.0,
+      "rotationMode": "rotator",
+      "meridianFlip": {
+        "waitStartUtc": "2026-09-18T07:42:43Z",
+        "plannedUtc": "2026-09-18T07:46:22Z",
+        "durationS": 240,
+        "inTransitWindow": false,
+        "planned": true
+      },
+      "entries": [
+        {
+          "seq": 1,
+          "cmd": "slew_center_rotate",
+          "atUtc": "2026-09-18T07:34:00Z",
+          "durationS": 90
+        },
+        {
+          "seq": 2,
+          "cmd": "filter",
+          "atUtc": "2026-09-18T07:35:30Z",
+          "durationS": 10,
+          "filter": "Ha"
+        },
+        {
+          "seq": 3,
+          "cmd": "autofocus_hint",
+          "atUtc": "2026-09-18T07:35:40Z",
+          "durationS": 120
+        },
+        {
+          "seq": 4,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T07:37:40Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 5,
+          "cmd": "wait",
+          "atUtc": "2026-09-18T07:42:43Z",
+          "durationS": 219
+        },
+        {
+          "seq": 6,
+          "cmd": "meridian_flip",
+          "atUtc": "2026-09-18T07:46:22Z",
+          "durationS": 240
+        },
+        {
+          "seq": 7,
+          "cmd": "slew_center_rotate",
+          "atUtc": "2026-09-18T07:50:22Z",
+          "durationS": 90
+        },
+        {
+          "seq": 8,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T07:51:52Z",
+          "durationS": 15
+        },
+        {
+          "seq": 9,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T07:52:07Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 10,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T07:57:10Z",
+          "durationS": 15
+        },
+        {
+          "seq": 11,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T07:57:25Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 12,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:02:28Z",
+          "durationS": 15
+        },
+        {
+          "seq": 13,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:02:43Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 14,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:07:46Z",
+          "durationS": 15
+        },
+        {
+          "seq": 15,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:08:01Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 16,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:13:04Z",
+          "durationS": 15
+        },
+        {
+          "seq": 17,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:13:19Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 18,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:18:22Z",
+          "durationS": 15
+        },
+        {
+          "seq": 19,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:18:37Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 20,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:23:40Z",
+          "durationS": 15
+        },
+        {
+          "seq": 21,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:23:55Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 22,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:28:58Z",
+          "durationS": 15
+        },
+        {
+          "seq": 23,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:29:13Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 24,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:34:16Z",
+          "durationS": 15
+        },
+        {
+          "seq": 25,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:34:31Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 26,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:39:34Z",
+          "durationS": 15
+        },
+        {
+          "seq": 27,
+          "cmd": "autofocus_hint",
+          "atUtc": "2026-09-18T08:39:49Z",
+          "durationS": 120
+        },
+        {
+          "seq": 28,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:41:49Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 29,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:46:52Z",
+          "durationS": 15
+        },
+        {
+          "seq": 30,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:47:07Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 31,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:52:10Z",
+          "durationS": 15
+        },
+        {
+          "seq": 32,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:52:25Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 33,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T08:57:28Z",
+          "durationS": 15
+        },
+        {
+          "seq": 34,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T08:57:43Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 35,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T09:02:46Z",
+          "durationS": 15
+        },
+        {
+          "seq": 36,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T09:03:01Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 37,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T09:08:04Z",
+          "durationS": 15
+        },
+        {
+          "seq": 38,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T09:08:19Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 39,
+          "cmd": "dither",
+          "atUtc": "2026-09-18T09:13:22Z",
+          "durationS": 15
+        },
+        {
+          "seq": 40,
+          "cmd": "expose",
+          "atUtc": "2026-09-18T09:13:37Z",
+          "exposureLineId": "l001…",
+          "filter": "Ha",
+          "exposureS": 300,
+          "gain": 100,
+          "offset": 20,
+          "binning": 1,
+          "readoutMode": "High Gain Mode",
+          "readoutModeIndex": 0,
+          "bonus": false,
+          "lastOfNight": false
+        },
+        {
+          "seq": 41,
+          "cmd": "end",
+          "atUtc": "2026-09-18T09:18:40Z"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "targets": 2,
+    "plannedFrames": {
+      "e77c…": {
+        "R": 310
+      },
+      "a91f…": {
+        "Ha": 17
+      }
+    }
+  },
+  "diagnostics": [
+    {
+      "projectId": "e77c…",
+      "panelId": "p9…",
+      "reason": "flip_in_transit",
+      "message": "Meridiandurchgang 04:27:13 UTC liegt im Transitfenster"
+    },
+    {
+      "projectId": "a91f…",
+      "panelId": "p001…",
+      "lineId": "l001…",
+      "reason": "no_need",
+      "message": "Planungsbedarf 17 Aufnahmen (20 − 3 gemeldete, noch nicht bestätigte) mit Blockende 09:18:40 UTC erfüllt"
+    },
+    {
+      "projectId": "b22…",
+      "reason": "moon_blocked"
+    },
+    {
+      "projectId": "c3d0…",
+      "reason": "outranked",
+      "message": "Nutzbare Zeit lag vollständig im gesperrten Transitfenster"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "no_alloc",
+      "level": "warn",
+      "unitId": "c3d0…/p0",
+      "message": "Arbeit und nutzbare Zeit, aber keine Belichtung – das Transitfenster sperrt 02:08–07:34 UTC"
+    }
+  ]
+}

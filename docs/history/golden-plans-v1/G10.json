@@ -1,0 +1,155 @@
+{
+  "id": "G10",
+  "title": "Filterwechsel alle 2 Belichtungen",
+  "requirements": [
+    "FA-SCH-07"
+  ],
+  "explanation": "Rundlauf R,G,B mit Stapeln von 2.",
+  "approvedBy": null,
+  "input": {
+    "slotS": 300,
+    "downloadS": 0,
+    "slots": 12,
+    "strategy": "proportional",
+    "filterSwitch": {
+      "enabled": true,
+      "every": 2,
+      "tolerancePct": 50
+    },
+    "units": [
+      {
+        "id": "A",
+        "priority": 1,
+        "minTimeSlots": 1,
+        "lines": [
+          {
+            "id": "A-R",
+            "filter": "R",
+            "exposureS": 300,
+            "remaining": 4,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 0,
+            "moonSeparationDeg": 0
+          },
+          {
+            "id": "A-G",
+            "filter": "G",
+            "exposureS": 300,
+            "remaining": 4,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 1,
+            "moonSeparationDeg": 0
+          },
+          {
+            "id": "A-B",
+            "filter": "B",
+            "exposureS": 300,
+            "remaining": 4,
+            "eligibleSlots": [
+              [
+                0,
+                11
+              ]
+            ],
+            "order": 2,
+            "moonSeparationDeg": 0
+          }
+        ]
+      }
+    ]
+  },
+  "expected": {
+    "blocks": [
+      {
+        "unit": "A",
+        "fromSlot": 0,
+        "toSlot": 11
+      }
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false
+      },
+      {
+        "atS": 600,
+        "cmd": "expose",
+        "line": "A-G",
+        "bonus": false
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-G",
+        "bonus": false
+      },
+      {
+        "atS": 1200,
+        "cmd": "expose",
+        "line": "A-B",
+        "bonus": false
+      },
+      {
+        "atS": 1500,
+        "cmd": "expose",
+        "line": "A-B",
+        "bonus": false
+      },
+      {
+        "atS": 1800,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false
+      },
+      {
+        "atS": 2100,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false
+      },
+      {
+        "atS": 2400,
+        "cmd": "expose",
+        "line": "A-G",
+        "bonus": false
+      },
+      {
+        "atS": 2700,
+        "cmd": "expose",
+        "line": "A-G",
+        "bonus": false
+      },
+      {
+        "atS": 3000,
+        "cmd": "expose",
+        "line": "A-B",
+        "bonus": false
+      },
+      {
+        "atS": 3300,
+        "cmd": "expose",
+        "line": "A-B",
+        "bonus": false
+      }
+    ],
+    "diagnostics": {}
+  }
+}
