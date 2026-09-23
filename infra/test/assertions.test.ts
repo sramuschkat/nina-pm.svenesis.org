@@ -4,8 +4,8 @@ import { resources, synth } from './synth';
 
 // CDK-Assertions nach specs/infra/iam.md §12. In AP-02a grün: Nr. 5, 6, 7, 10 und der Backup-Plan.
 // Nr. 1–4, 8, 9 folgen mit den Lambdas in AP-02b und AP-03.
-const { data, config: configTemplate, cert, web, edge } = synth();
-const all = { data, config: configTemplate, cert, web, edge };
+const { data, config: configTemplate, cert, web, edge, jobs, api, ops } = synth();
+const all = { data, config: configTemplate, cert, web, edge, jobs, api, ops };
 
 type Csp = Record<string, string[]>;
 function parseCsp(csp: string): Csp {
@@ -84,8 +84,9 @@ describe('Assertion 5: Buckets', () => {
 
   it('Web-Bucket ist nur über CloudFront mit OAC lesbar', () => {
     const cfg = distributionConfig();
-    expect(cfg.Origins).toHaveLength(1);
-    for (const origin of cfg.Origins) {
+    const s3Origins = cfg.Origins.filter((o) => o.S3OriginConfig);
+    expect(s3Origins).toHaveLength(1);
+    for (const origin of s3Origins) {
       expect(origin.OriginAccessControlId).toBeDefined();
       expect(origin.S3OriginConfig?.OriginAccessIdentity ?? '').toBe('');
     }

@@ -1,7 +1,8 @@
 /**
- * Smoke-Prüfung nach jedem prod-Deploy (TK 17, 18). Stand AP-02a: Platzhalterseite, SPA-Rewrite,
- * HTTPS-Umleitung und die Header-Politiken aller Behaviors (iam.md §10). Folgepakete ergänzen
- * /api/health mit 200 (AP-02b), DB-Erreichbarkeit über den Bootstrap (AP-17) und den Auth-Redirect.
+ * Smoke-Prüfung nach jedem prod-Deploy (TK 17, 18). Stand AP-02b: Platzhalterseite, SPA-Rewrite,
+ * HTTPS-Umleitung, Header-Politiken aller Behaviors (iam.md §10), `/api/health` über CloudFront und
+ * Direktaufruf der execute-api-Adresse → 403 (SV-16). Folgepakete ergänzen die DB-Erreichbarkeit über
+ * den Bootstrap (AP-17) und den Auth-Redirect.
  */
 export interface SmokeResult {
   readonly name: string;
@@ -52,7 +53,16 @@ export function headerProblems(kind: 'npm-html' | 'npm-api-static', headers: Hea
   return problems;
 }
 
-export async function runSmoke(baseUrl: string, fetchImpl: Fetch = fetch): Promise<SmokeResult[]> {
+export interface SmokeOptions {
+  /** execute-api-Adresse der HTTP API (Ausgabe `ApiEndpoint` von NinaPm-Api). */
+  readonly executeApiUrl?: string;
+}
+
+export async function runSmoke(
+  baseUrl: string,
+  fetchImpl: Fetch = fetch,
+  options: SmokeOptions = {},
+): Promise<SmokeResult[]> {
   const base = baseUrl.replace(/\/$/, '');
   const results: SmokeResult[] = [];
   const check = async (name: string, fn: () => Promise<string[]>) => {
@@ -82,6 +92,27 @@ export async function runSmoke(baseUrl: string, fetchImpl: Fetch = fetch): Promi
     await check(`${path} trägt npm-api-static`, async () => {
       const res = await fetchImpl(`${base}${path}`);
       return headerProblems('npm-api-static', res.headers);
+    });
+  }
+  await check('GET /api/health über CloudFront → 200 mit status ok', async () => {
+    const res = await fetchImpl(`${base}/api/health`);
+    if (res.status !== 200) return [`Status ${res.status}`];
+    const body = (await res.json()) as { status?: unknown; engineVersion?: unknown };
+    const problems = body.status === 'ok' ? [] : [`status ${String(body.status)}`];
+    if (typeof body.engineVersion !== 'string') problems.push('engineVersion fehlt');
+    return [...problems, ...headerProblems('npm-api-static', res.headers)];
+  });
+  if (options.executeApiUrl) {
+    const direct = options.executeApiUrl.replace(/\/$/, '');
+    await check('Direktaufruf der execute-api-Adresse → 403', async () => {
+      const res = await fetchImpl(`${direct}/api/health`);
+      return res.status === 403 ? [] : [`Status ${res.status}`];
+    });
+  } else {
+    results.push({
+      name: 'Direktaufruf der execute-api-Adresse → 403',
+      ok: false,
+      detail: 'execute-api-Adresse unbekannt',
     });
   }
   await check('HTTP wird auf HTTPS umgeleitet', async () => {

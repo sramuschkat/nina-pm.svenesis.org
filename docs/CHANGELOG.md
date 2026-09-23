@@ -4,6 +4,19 @@
 
 ## [Unveröffentlicht]
 
+### AP-02b – CDK: Api, Jobs, Ops (2026-09-23)
+
+Anforderungen: TK 4.1, 4.2, 7.4, 13, 16.1, 16.2; `specs/infra/iam.md` §1–§3, §5, §6, §8, §9, §11, §12; `rules/api.md`.
+
+- `apps/api`: Hono-App mit `GET /api/health` ohne DB-Ping (Status, `ENGINE_VERSION`, Build), Origin-Verify-Middleware (SSM-Cache 5 min, Vergleich in konstanter Zeit, sonst `403 permission.denied`), Problem Details aus `errors.json`; Worker-Dispatcher für `{tick}` und `{jobId}`; `ops-cli` mit `help` und `list-failed-jobs`.
+- `NinaPm-Jobs`: `nina-pm-worker` (2048 MB, 15 min, reserviert 5), SQS `nina-pm-worker-failures` (SSE-SQS, 14 Tage, nur TLS), `EventInvokeConfig` ohne Wiederholung mit `onFailure`, vier Zeitpläne über `LambdaInvoke`.
+- `NinaPm-Api`: HTTP API, `nina-pm-api` (1024 MB, 29 s, reserviert 20), Drosselung Stage 50/100, Routen nach `iam.md` §9, Zugriffsprotokoll als JSON **ohne IP** (API Gateway kann sie nicht kürzen; Entscheidung Sven).
+- `NinaPm-Ops`: `nina-pm-ops-cli` (nur `aws lambda invoke`), SNS `nina-pm-alarms` mit E-Mail, neun Alarme nach TK 16.2, Route-53-Health-Check auf `/api/health` über CloudFront **ohne Alarm** (Metriken nur in us-east-1; Entscheidung Sven), Budget 20 USD.
+- Je Lambda eine Rolle mit festem Namen über CDK-Grants genau nach `iam.md` §2, §3, §5; nur `AWSLambdaBasicExecutionRole`; X-Ray aktiv; alle Log-Gruppen 90 Tage (auch die Hilfs-Lambda der Platzhalterseite).
+- `NinaPm-Edge`: `/api/*` an die HTTP API mit `X-Origin-Verify` aus `/nina-pm/origin-verify`, alle Methoden, ohne Cache.
+- CDK-Assertions Nr. 1, 2, 3, 8, 9 und die Rechte-Tabellen als Tests; zwei Fehler dabei gefunden und behoben (Leserecht der API auf den Alarm-Webhook, Groß-/Kleinschreibung der Routen-Drosselung).
+- `pnpm deploy:prod` prüft `/nina-pm/origin-verify` vorab; Smoke prüft `/api/health` und den Direktaufruf der execute-api-Adresse (403).
+
 ### ADR-S1 in Konzepte und Regeln übernommen (2026-09-23)
 
 Entscheidung Sven. Technisches Konzept 1.22, Schema 1.19 (nur GRANT-Vorlage und Hinweise), `docs/concept/INDEX.md` neu erzeugt.

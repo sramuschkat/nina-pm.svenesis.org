@@ -14,23 +14,48 @@ const API_HEADERS = {
   'x-content-type-options': 'nosniff',
   'cross-origin-resource-policy': 'same-origin',
 };
+const EXECUTE_API = 'https://abc.execute-api.eu-central-1.amazonaws.com';
 
-function fakeFetch(
-  overrides: Record<string, { status: number; headers: Record<string, string> }> = {},
-) {
+interface Hit {
+  status: number;
+  headers: Record<string, string>;
+  body?: string;
+}
+
+/** Gefälschtes prod: CloudFront vor HTTP API und Web-Bucket; `overrides` je Pfad bzw. `http`/`direct`. */
+function fakeFetch(overrides: Record<string, Hit> = {}) {
   return (url: string) => {
     const path = new URL(url).pathname;
-    const isHttp = url.startsWith('http:');
-    const hit =
-      overrides[isHttp ? 'http' : path] ??
-      (isHttp
-        ? { status: 301, headers: { location: url.replace('http:', 'https:') } }
-        : /^\/(api|catalog|downloads)\//.test(path)
-          ? { status: 404, headers: API_HEADERS }
-          : { status: 200, headers: HTML_HEADERS });
-    return Promise.resolve(new Response(null, { status: hit.status, headers: hit.headers }));
+    let hit: Hit;
+    if (url.startsWith('http:')) {
+      hit = overrides.http ?? {
+        status: 301,
+        headers: { location: url.replace('http:', 'https:') },
+      };
+    } else if (url.startsWith(EXECUTE_API)) {
+      hit = overrides.direct ?? { status: 403, headers: {} };
+    } else if (overrides[path]) {
+      hit = overrides[path];
+    } else if (path === '/api/health') {
+      hit = {
+        status: 200,
+        headers: API_HEADERS,
+        body: '{"status":"ok","engineVersion":"0.0.0","build":"x"}',
+      };
+    } else if (/^\/(api|catalog|downloads)\//.test(path)) {
+      hit = { status: 404, headers: API_HEADERS };
+    } else {
+      hit = { status: 200, headers: HTML_HEADERS };
+    }
+    return Promise.resolve(
+      new Response(hit.body ?? null, { status: hit.status, headers: hit.headers }),
+    );
   };
 }
+
+const direct = { executeApiUrl: EXECUTE_API };
+const failed = (results: { ok: boolean; name: string }[]) =>
+  results.filter((r) => !r.ok).map((r) => r.name);
 
 describe('headerProblems', () => {
   it('akzeptiert die Header nach iam.md §10', () => {
@@ -58,9 +83,9 @@ describe('headerProblems', () => {
 
 describe('runSmoke', () => {
   it('ist grün, wenn alles stimmt', async () => {
-    const results = await runSmoke('https://nina-pm.svenesis.org', fakeFetch());
-    expect(results.filter((r) => !r.ok)).toEqual([]);
-    expect(results).toHaveLength(6);
+    const results = await runSmoke('https://nina-pm.svenesis.org', fakeFetch(), direct);
+    expect(failed(results)).toEqual([]);
+    expect(results).toHaveLength(8);
   });
 
   it('ist rot, wenn / nicht 200 liefert oder HTTP nicht umleitet', async () => {
@@ -70,10 +95,34 @@ describe('runSmoke', () => {
         '/': { status: 403, headers: HTML_HEADERS },
         http: { status: 200, headers: {} },
       }),
+      direct,
     );
-    expect(results.filter((r) => !r.ok).map((r) => r.name)).toEqual([
+    expect(failed(results)).toEqual([
       'GET / liefert die Seite mit npm-html',
       'HTTP wird auf HTTPS umgeleitet',
     ]);
+  });
+
+  it('ist rot, wenn /api/health nicht ok meldet', async () => {
+    const results = await runSmoke(
+      'https://nina-pm.svenesis.org',
+      fakeFetch({ '/api/health': { status: 500, headers: API_HEADERS } }),
+      direct,
+    );
+    expect(failed(results)).toEqual(['GET /api/health über CloudFront → 200 mit status ok']);
+  });
+
+  it('ist rot, wenn der Direktaufruf nicht 403 liefert', async () => {
+    const results = await runSmoke(
+      'https://nina-pm.svenesis.org',
+      fakeFetch({ direct: { status: 200, headers: {} } }),
+      direct,
+    );
+    expect(failed(results)).toEqual(['Direktaufruf der execute-api-Adresse → 403']);
+  });
+
+  it('ist rot, wenn die execute-api-Adresse fehlt', async () => {
+    const results = await runSmoke('https://nina-pm.svenesis.org', fakeFetch());
+    expect(failed(results)).toEqual(['Direktaufruf der execute-api-Adresse → 403']);
   });
 });

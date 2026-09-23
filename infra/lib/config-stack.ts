@@ -19,6 +19,9 @@ export class ConfigStack extends Stack {
     readonly alarmWebhook: ssm.IStringParameter;
   };
 
+  /** /nina-pm/web/build-id schreibt NinaPm-Edge; hier nur die Referenz zum Lesen (iam.md §2, §3). */
+  readonly webBuildId: ssm.IStringParameter;
+
   constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, props);
     // CloudFormation lehnt Stacks ohne Ressource ab. Die Referenzen unten erzeugen keine; dieser
@@ -43,5 +46,6 @@ export class ConfigStack extends Stack {
       dsqlEndpoint: plain('DsqlEndpoint', config.ssm.dsqlEndpoint),
       alarmWebhook: secure('AlarmWebhook', config.ssm.alarmWebhook),
     };
+    this.webBuildId = plain('WebBuildId', config.ssm.webBuildId);
   }
 }

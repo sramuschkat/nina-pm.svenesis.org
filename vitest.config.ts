@@ -5,5 +5,7 @@ export default defineConfig({
   test: {
     include: ['{apps,packages,tools,infra,spikes}/**/test/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
+    // Powertools-Logger in Tests stumm schalten.
+    env: { POWERTOOLS_LOG_LEVEL: 'SILENT' },
   },
 });
