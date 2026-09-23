@@ -1,13 +1,13 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
-Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-24, AP-25 und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Fünf Pakete liefern Bausteine, und viele weitere benutzen sie. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25 und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
 - **Ort:** `apps/web/src/components/<Name>/` mit `index.tsx`, `<Name>.module.css`, `<Name>.test.tsx`. Keine Geschäftslogik im Baustein – Daten kommen ausschließlich über Eigenschaften.
 - **Keine Rechteprüfung:** Ein Baustein kennt `can()` nicht. Die Seite entscheidet und übergibt `disabled` bzw. lässt Aktionen weg (`rules/ui.md`).
-- **Vier Zustände, immer:** `loading` (Skelett in Tokenfarben, keine Spinner-Zentrierung mit Sprung), `empty` (kurzer Satz + optional eine Aktion), `error` (Meldung aus `errors.*`-i18n + *Erneut versuchen*, wenn der Aufrufer `onRetry` gibt), `ready`. Jeder Baustein nimmt `state?: 'loading' | 'empty' | 'error' | 'ready'` oder leitet es aus den Daten ab; der Vertrag steht je Baustein unten.
+- **Vier Zustände, soweit der Vertrag des Bausteins sie nennt** (§2; rein darstellende Bausteine wie `FilterChip` und `StatusBadge` haben nur `ready`): `loading` (Skelett in Tokenfarben, keine Spinner-Zentrierung mit Sprung), `empty` (kurzer Satz + optional eine Aktion), `error` (Meldung aus `errors.*`-i18n + *Erneut versuchen*, wenn der Aufrufer `onRetry` gibt), `ready`. Jeder Baustein nimmt `state?: 'loading' | 'empty' | 'error' | 'ready'` oder leitet es aus den Daten ab; der Vertrag steht je Baustein unten.
 - **Größen:** Jeder Baustein nennt eine **Mindestbreite**. Unterhalb davon wird nicht umgebrochen, sondern der Inhalt reduziert (Spalten weg, Kurzform, Tooltip) – niemals horizontal gescrollt (NFA-01: Arbeitsseiten ab 768 px).
 - **Abstände und Farben** nur über Tokens (`--npm-space-*`, `--npm-*`); keine freien px-Werte außer den hier genannten Mindest-/Höchstgrößen.
 - **Themes:** Jeder Baustein funktioniert in `light` und `dark` (es gibt **keinen** Rotlicht-Modus); der Theme-Test (TK 11.3) prüft die berechneten Farben je Baustein automatisch gegen die Tokens.
@@ -18,7 +18,7 @@ Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-24, AP-25 und jedes P
 - **Symbole:** Lucide, Strichstärke 2, 16 px in Tabellen, 20 px in Knöpfen, 24 px in der Navigation. Kein Emoji.
 - **Tests je Baustein (Pflicht):** Zustände leer/laden/Fehler · Tastaturpfad · `vitest-axe` ohne *serious*/*critical* · Theme-Test für **beide** Themes · Dichte-Test für `compact`/`normal`/`wide` · Breitentest bei Mindestbreite und bei 2400 px · Grenzfall aus der Tabelle unten.
 
-## 2. Die neun Bausteine
+## 2. Die zehn Bausteine
 
 ### 2.1 `FilterChip`
 
@@ -48,12 +48,12 @@ Der wichtigste und am häufigsten wiederverwendete Baustein: Nachtdiagramm, Simu
 
 | | |
 |---|---|
-| Eigenschaften | `window: {startUtc, endUtc}` (Mittag–Mittag) · `twilight: {civil, nautical, astronomical}` je Rand · `series?: AltitudeSeries[]` (Höhenkurven je Ziel, `{id, label, color, points: [{atUtc, altDeg}]}`) · `moon?: {points, illuminationPct, riseUtc, setUtc}` · `blocks?: TimelineBlock[]` (`{id, fromUtc, toUtc, label, kind: 'regular' \| 'transit' \| 'flat' \| 'idle', actual?: boolean}`) · `markers?: {atUtc, kind: 'flip' \| 'transit' \| 'now' \| 'custom', label}[]` · `minAltDeg?: number` (gestrichelte Linie) · `timeZone: string` (Anzeige in Standortzeit) · `height?: number` · `onSelect?: (atUtc) => void` |
+| Eigenschaften | `window: {startUtc, endUtc}` (Mittag–Mittag) · `twilight: {civil, nautical, astronomical}` je Rand · `series?: AltitudeSeries[]` (Höhenkurven je Ziel, `{id, label, color, points: [{atUtc, altDeg}]}`) · `moon?: {points, illuminationPct, riseUtc, setUtc}` · `blocks?: TimelineBlock[]` (`{id, fromUtc, toUtc, label, kind: 'regular' \| 'transit' \| 'flat' \| 'idle', actual?: boolean}`) · `markers?: {atUtc, kind: 'flip' \| 'transit' \| 'now' \| 'custom', label}[]` · `minAltDeg?: number` (gestrichelte Linie) · `timeZone: string` (Anzeige in Standortzeit, IANA) · `secondaryTimeZone?: string` (optionale zweite Beschriftungszeile, z. B. Mandantenzeit; NT-03) · `height?: number` · `onSelect?: (atUtc) => void` |
 | Zustände | `window` fehlt → `error`; keine `series` und keine `blocks` → `empty` („keine Nacht mit Dunkelheit“, der Fall Polartag ist damit abgedeckt) |
-| Darstellung | Hintergrund nach Sonnenhöhe abgestuft, astronomische Dunkelheit als eigener Streifen, Mondband oben, Höhenkurven mittig, Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Marken als senkrechte Linien mit Kürzel |
+| Darstellung | Hintergrund nach Sonnenhöhe abgestuft, astronomische Dunkelheit als eigener Streifen, Mondband oben, Höhenkurven mittig, Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Marken als senkrechte Linien mit Kürzel. **Zeitachse (NT-03):** Stundenbeschriftung in `timeZone`, am Achsenende das Zonenkürzel aus `formatTzAbbr` (`rules/ui.md`, z. B. „CDT“); mit `secondaryTimeZone` eine zweite, gedämpfte Zeile mit eigenem Kürzel. Jede Beschriftung wird je Zeitpunkt über `Intl` aus dem UTC-Wert berechnet – **nie** über einen festen Versatz zwischen den Zonen. Tooltips und Marken zeigen Uhrzeit **mit** Kürzel (`21:08 CDT`) |
 | Größen | Mindestbreite **320 px**, Mindesthöhe 120 px; Standardhöhe 180 px (Editor) bzw. 240 px (Simulator). Unter 480 px entfallen die Stundenbeschriftungen bis auf jede dritte |
-| Grenzfälle | (1) **keine Dunkelheit** (Mitternachtssonne) → nur Dämmerungsstreifen, Hinweistext im Diagramm; (2) **durchgehende Dunkelheit** (Polarnacht) → kein Dämmerungsstreifen; (3) **Zeitumstellung in der Nacht** → die Achse folgt der Standortzeit und enthält 23 bzw. 25 Stunden, die Beschriftung springt sichtbar; (4) mehr als 12 `series` → nur die ersten 12 werden gezeichnet, der Rest als „+n weitere“ in der Legende |
-| Textalternative | `<details>`-Tabelle mit Dämmerungszeiten, je Ziel Auf-/Untergang und Kulmination, je Block Von/Bis/Label |
+| Grenzfälle | (1) **keine Dunkelheit** (Mitternachtssonne) → nur Dämmerungsstreifen, Hinweistext im Diagramm; (2) **durchgehende Dunkelheit** (Polarnacht) → kein Dämmerungsstreifen; (3) **Zeitumstellung in der Nacht** → die Achse folgt der Standortzeit und enthält 23 bzw. 25 Stunden, die Beschriftung springt sichtbar, das Kürzel wechselt an der Sprungstelle (z. B. „CDT“ → „CST“, Chicago 31.10./01.11.2026: 25 h); (3a) **nur eine der beiden Zonen stellt um** → die zweite Zeile verschiebt sich innerhalb der Nacht gegen die erste (Beispiel Standort `America/Chicago`, `secondaryTimeZone` `Europe/Berlin`, Nacht 24./25.10.2026: Berlin stellt um 01:00 UTC von MESZ auf MEZ um, Chicago erst am 01.11. – Abstand 7 h → 6 h, 19:30 CDT = 02:30 MESZ, 20:30 CDT = 02:30 MEZ); beide Zeilen tragen ihr jeweils gültiges Kürzel; (4) mehr als 12 `series` → nur die ersten 12 werden gezeichnet, der Rest als „+n weitere“ in der Legende |
+| Textalternative | `<details>`-Tabelle mit Dämmerungszeiten, je Ziel Auf-/Untergang und Kulmination, je Block Von/Bis/Label – alle Zeiten mit Kürzel |
 
 ### 2.4 `SeasonChart` (Saison-/Monatsdiagramm)
 
@@ -68,13 +68,24 @@ Der wichtigste und am häufigsten wiederverwendete Baustein: Nachtdiagramm, Simu
 
 ### 2.5 `WeatherChart` (Astro-Wetter-Grafik)
 
+Der Baustein zeichnet ausschließlich, was die Engine schon gerechnet hat. **Er bewertet nichts** – Formeln, Klassen, Nachtmittel und bestes Fenster stehen in `engine/weather.md`. Alles in diesem Vertrag ist reine Anzeige (WS-17): es verändert keinen Score, geht in keinen `outputHash` ein und ist deshalb hier und nicht in der Engine-Spezifikation festgelegt. Wertebereich aller Scores ist **0…1** (`engine/weather.md` §2).
+
 | | |
 |---|---|
 | Einsatz | Wetter, Standort, Projekt, Heute Nacht |
-| Eigenschaften | `hours: WeatherHour[]` (Wolken hoch/mittel/tief, Seeing, Transparenz, Wind, Temperatur, Taupunkt, ECMWF-Gesamtnote) · `nightWindows: {startUtc, endUtc}[]` · `nowUtc: string` · `days: 7 \| 14` · `compact?: boolean` (Variante für „Heute Nacht“: nur Farbband) |
+| Eigenschaften | `hours: WeatherHourly[]` (je Stunde die Felder aus `engine/weather.md` §3.4 `payload.hours[]`: Rohwerte nach §1.1, `jetKmh`, `shearKmh`, `moonAltDeg` (geometrische topozentrische Mondhöhe zum Stundenmittelpunkt `tUnix + 1800`, `engine/weather.md` §3.3 – nur die Grundlage von `moonFreeSec`, **nicht** die Planungs-Mondhöhe aus `engine/moon.md`), `modelId`, `cloudSrc`, `nest`, `aerosolMissing`, `seeingIncomplete`, `cloudScore`, `seeingScore`, `transparencyScore`, `overallScore`, `ratingIndex`) · `nights: WeatherNight[]` (`night`, `nightMean`, `coveredSec`, `darknessSec`, `coverage`, `bestWindow`; Typ definiert in TK 8.2 und `engine/weather.md` §3.4) · `nightWindows: {startUtc, endUtc}[]` (Nachtfenster, `engine/night.md` §3 – Hintergrund und Spaltenbereich) · `darkWindows: {startUtc, endUtc}[]` (astronomische Dunkelheit, `engine/night.md` §2 – Bezug von `nightMean` und `bestWindow`) · `sunAltDeg: number[]` (je Stunde, für die Tageslicht-Abstufung) · `nowUtc: string` · `days: 7` (Vorhersagehorizont der Stundenreihe, `forecast_days=7`, TK 14) · `compact?: boolean` (Variante für „Heute Nacht“: nur Farbband) |
 | Zustände | `hours` leer → `empty` („Vorhersage nicht verfügbar“, mit Zeitstempel des letzten Abrufs, wenn vorhanden); Abruffehler → `error` mit letztem Stand als gedämpfte Darstellung |
 | Größen | Mindestbreite 360 px (volle Variante) bzw. 160 px (Eigenschaft `compact` – nicht die Dichtestufe); wächst nach oben mit dem Container |
-| Grenzfall | Vorhersage endet mitten im Zeitraum → der Rest wird schraffiert und mit „keine Daten“ beschriftet, nicht auf 0 gesetzt |
+| **Farbrampe Teilbewertungen** (`cloudScore`, `seeingScore`, `transparencyScore`, `overallScore` in den Wertzeilen) | linear je Kanal von **blassem Graublau `rgb(198, 208, 220)`** bei 0 nach **gesättigtem Blau `rgb(30, 88, 190)`** bei 1: `kanal = round(schlecht + (gut − schlecht) · s)`. `null` → **`#262c34`** („keine Daten“, dieselbe Farbe wie die Lücke am Horizontende). **Tintenschwelle 0,55:** Zellentext weiß bei `s > 0,55`, sonst `#1b2633` – oberhalb 0,55 wird die Rampe für dunkle Schrift zu dunkel |
+| **Ampel Gesamtnote** (Farbband und Nacht-Ø) | Stützstellen an den **oberen drei** Klassengrenzen aus `engine/weather.md` §3.1 (0,45 / 0,65 / 0,85) plus den Randwerten 0 und 1; die Grenze **0,25 hat bewusst keinen eigenen Stop** (so in der Vorlage, `weather-core.js` `RATING_STOPS`) – zwischen 0 und 0,45 läuft die Rampe also durch, ohne bei *Schlecht* zu knicken: **0 → `rgb(216, 67, 59)`** · **0,45 → `rgb(224, 123, 43)`** · **0,65 → `rgb(217, 181, 43)`** · **0,85 → `rgb(63, 174, 76)`** · **1 → `rgb(63, 174, 76)`**; dazwischen linear je Kanal. Anschließend in den neutralen Grund **`rgb(31, 37, 46)`** eingeblendet mit `k = clamp((−sunAltDeg − 12)/6, 0, 1)` – `k = 0` bei nautischer Dämmerung (−12°), `k = 1` in astronomischer Dunkelheit (−18°); das Nacht-Ø wird immer mit `k = 1` gezeichnet. `overallScore == null` oder `k = 0` → nur der neutrale Grund |
+| **Skala in Worten** | Die Legende zeigt die fünf Klassen mit den Stützwerten **0,92 / 0,75 / 0,55 / 0,35 / 0,12** (`ratingIndex` 4/3/2/1/0), jeweils als Farbfleck der Teilbewertungs-Rampe plus Klassenname aus i18n `weather.rating.<n>`. Die Stützwerte sind Anzeigemittelpunkte der Klassen, **keine** Schwellen – die Schwellen sind 0,25/0,45/0,65/0,85 |
+| **Windstufen** (`wind10Kmh`, Windpfeil) | ≤ 10 km/h `#3fae4c` · ≤ 20 `#8fbf2f` · ≤ 30 `#d9b52b` · ≤ 40 `#e07b2b` · > 40 `#d8433b` · `null` → `#262c34`. Der Pfeil zeigt in die Richtung, in die der Wind weht (`windDir10Deg + 180°`); die Stufe trägt zusätzlich der Zahlenwert `Wind/Böen` unter dem Pfeil, nie nur die Farbe |
+| **Hilfsbewertungen (nur Zellfarbe)** | Vier Zeilen ohne jede Wirkung auf die Bewertung, gefärbt über dieselbe Teilbewertungs-Rampe: Wasserdampf `clamp(1 − (pwvMm − 10)/40, 0, 1)` · Staub `clamp(1 − dustUgM3/100, 0, 1)` · Sicht `clamp((visibilityM/1000 − 1)/19, 0, 1)` · Regenwahrscheinlichkeit `clamp(1 − precipProbPct/100, 0, 1)`. In jeder Zelle steht der **Messwert** mit Einheit (mm, µg/m³, km, %), nicht die Hilfsbewertung. `precipMm` und `precipProbPct` werden angezeigt, bewerten aber nichts (`engine/weather.md` §2, WS-E1) |
+| **Taugefahr** | Aus `spread = tempC − dewPointC`: `spread ≤ 4 °C` → Zelle orange hinterlegt `rgba(224, 123, 43, .38)`, `spread ≤ 2 °C` → rot `rgba(216, 67, 59, .6)`. Der Zahlenwert steht immer dabei; in Fahrenheit wird nur die Anzeige umgerechnet, die Schwellen bleiben 4 °C / 2 °C |
+| **Modellkürzel je Stunde** | Aus `modelId` (`engine/weather.md` §1.5): `d2` → „ICON-D2“ / „D2“ · `eu` → „ICON-EU“ / „EU“ · `global` → „ICON global“ / „IG“ · `dini` → „HARMONIE“ / „HA“ · `hrrr` → „HRRR“ / „HR“ · `gem` → „GEM“ / „GEM“ · `gfs` → „GFS“ / „GFS“. Die Zeile zeigt den langen Namen; reicht die Spaltenbreite nicht, das zweite Kürzel. Die Kürzel stehen im Baustein als Konstante, damit ein neuer Wert von `weatherModels` die Grafik nicht bricht: unbekannter `modelId` → der rohe Wert, kein Absturz (wie `StatusBadge`, §2.8) |
+| **Kennzeichen** | `aerosolMissing` → die Stunde bzw. Nacht trägt **„ohne Aerosol – Bewertung optimistisch“**, die Transparenzzelle ist „keine Daten“ (`#262c34`); `seeingIncomplete` → **„Seeing unvollständig“**; `coverage < 1` → **„Nacht unvollständig (n %)“**; `nest` → die Modellzelle wird hervorgehoben, weil die Stunde aus dem hochauflösenden Nest kommt. Jedes Kennzeichen ist **Text** (Zeile, Tooltip und Textalternative), nie nur eine Farbe. Die Seeing- und die Transparenzzeile sind zusätzlich dauerhaft als *geschätzt* beschriftet (FA-WET-01) |
+| Grenzfälle | (1) Vorhersage endet mitten im Zeitraum → der Rest wird schraffiert und mit „keine Daten“ beschriftet, **nicht** auf 0 gesetzt; (2) Nacht ohne astronomische Dunkelheit (Polartag) → kein Farbband, kein Nacht-Ø, Hinweistext „keine Dunkelheit“; (3) `bestWindow == null` → der Satz über der Grafik nennt nur das Nacht-Ø, es wird **kein** Fenster markiert; (4) `bestWindow.fair` → das Fenster wird gedämpft markiert und der Satz sagt „bestenfalls mittel“ |
+| Textalternative | `<details>`-Tabelle mit einer Zeile je Stunde: Zeitpunkt mit Zonenkürzel, `modelId`, Bedeckung, die vier Scores als Prozentzahl **und** Klassenname, Wind/Böen, Temperatur/Taupunkt, Sicht, Regen, Kennzeichen als Text; darunter je Nacht `nightMean`, `coverage` und `bestWindow` |
 
 ### 2.6 `CoordinateInput`
 
@@ -117,21 +128,40 @@ Der wichtigste und am häufigsten wiederverwendete Baustein: Nachtdiagramm, Simu
 | Zustände | `items` leer → `empty` |
 | Grenzfall | mehr als 8 Einträge und `compact` → „n von m erfüllt“ mit Aufklappen |
 
+### 2.10 `ConfirmDialog` (Bestätigungsdialog)
+
+Schutz gegen Versehen (Entscheidung E4 vom 21.09.2026): **Pflicht** vor jeder folgenreichen Aktion; `window.confirm` ist verboten (`rules/ui.md`).
+
+| | |
+|---|---|
+| Einsatz | Löschen (Projekt, Panel, Zeile, Stammdaten, Mandant), Rechte entziehen (Admin → User, Mitglied deaktivieren/entfernen), Owner übertragen, Ablehnen (Einreichung, Änderungsantrag), NINA-Token widerrufen, Sitzungen beenden |
+| Eigenschaften | `open: boolean` · `title: string` (Frage mit Objektname, z. B. „Projekt *NGC 7380* löschen?“) · `consequence: string` (Folgen in **einem** Satz, z. B. „Das Projekt wird in den Papierkorb verschoben und kann von Admins wiederhergestellt werden.“) · `confirmLabel: string` (**Verb**, z. B. „Löschen“, „Übertragen“, „Widerrufen“ – nie „OK“/„Ja“) · `variant?: 'default' \| 'danger'` · `confirmName?: string` (Variante *Namenseingabe*) · `state?: 'ready' \| 'loading' \| 'error'` · `errorKey?: string` (`errors.*`-i18n-Schlüssel) · `onConfirm: () => void \| Promise<void>` · `onCancel: () => void` |
+| Varianten | **`default`** – neutraler Aktionsknopf (z. B. Owner übertragen, Sitzungen beenden). **`danger`** („gefährlich“) – Aktionsknopf in der Gefahrenfarbe der Tokens, Symbol `triangle-alert` vor dem Titel (Löschen, Rechte entziehen, Ablehnen, Token widerrufen). **Namenseingabe** (`confirmName` gesetzt, immer mit `danger`) – **nur** beim Löschen eines Mandanten (S-80, FA-MAN-03): Eingabefeld „Zum Bestätigen `<tenant_key>` eingeben“; der Aktionsknopf bleibt gesperrt, bis die Eingabe nach Entfernen führender/folgender Leerzeichen **exakt** `confirmName` entspricht (Groß-/Kleinschreibung zählt; Einfügen erlaubt) |
+| Zustände | `ready`; `loading` – Aktion läuft: beide Knöpfe gesperrt, Aktionsknopf mit Fortschrittssymbol, `onConfirm` wird **genau einmal** ausgelöst; `error` – Meldung aus `errorKey` im Dialog, Dialog bleibt offen, Aktionsknopf wieder aktiv (z. B. `412 resource.version_conflict`, `409 member.owner_protected`). Kein `empty` |
+| Tastatur | Radix `AlertDialog` mit Fokusfalle. Beim Öffnen liegt der Fokus auf **Abbrechen** (bei Namenseingabe auf dem Eingabefeld); `Esc` = Abbrechen; `Enter` löst nur den fokussierten Knopf aus bzw. im Namensfeld nur bei Übereinstimmung; Klick außerhalb schließt **nicht**; nach dem Schließen kehrt der Fokus zum auslösenden Element zurück |
+| Größen | Breite 360–520 px (Ausnahme von der Breitenregel in §1: Dialoge wachsen nicht mit dem Fenster); Knöpfe mindestens 96 px breit und so hoch wie `--npm-row-h`; Reihenfolge rechts unten: *Abbrechen*, dann Aktionsknopf; lange Objektnamen im Titel werden nach 60 Zeichen mit „…“ gekürzt, der volle Name steht im `title` |
+| Textalternative | `role="alertdialog"`, `aria-labelledby` = Titel, `aria-describedby` = Folgesatz; die Gefahr trägt immer auch der Text (Verb im Knopf, Symbol), nie nur die Farbe; Fehlermeldung per `aria-live="assertive"` |
+| Grenzfall | Doppelklick oder `Enter`-Wiederholung auf dem Aktionsknopf → nur ein Aufruf; Dialog wird während `loading` per `Esc` **nicht** geschlossen; falsche Namenseingabe → Knopf gesperrt, kein Fehlertext vor dem ersten Verlassen des Felds |
+
+Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederherstellen* ohne Dialog, weil sie nichts zerstört) ist kein eigener Baustein, sondern ein Filter der Projektliste (Fachkonzept S-30).
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
 |---|---|
 | Heute Nacht · Ausrüstung · Planung · Projekte · NINA · Wetter · Auswertung · Administration · System | `moon-star` · `telescope` · `compass` · `folder-kanban` · `plug-zap` · `cloud-sun` · `chart-line` · `users` · `settings` |
 | Speichern · Einreichen · Freigeben · Zurückgeben · Ablehnen · Simulieren · Duplizieren · Löschen | `save` · `send` · `check` · `undo-2` · `x` · `play` · `copy` · `trash-2` |
-| Benachrichtigungen · Theme hell/dunkel/rot · Benutzer · Hilfe | `bell` · `sun`/`moon`/`lamp` · `user` · `circle-help` |
+| Benachrichtigungen · Theme hell/dunkel · Benutzer · Hilfe | `bell` · `sun`/`moon` · `user` · `circle-help` |
+| Gelöscht (Papierkorb) · Wiederherstellen · Warnung im `ConfirmDialog` | `trash` · `archive-restore` · `triangle-alert` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 
 ## 4. Abnahme (AP-06a und je liefernde Pakete)
 
-1. Für jeden der neun Bausteine existieren die vier Zustände und sind als Komponententest abgedeckt.
+1. Für jeden der zehn Bausteine existieren die im Vertrag genannten Zustände und sind als Komponententest abgedeckt.
 2. `pnpm test:a11y` (axe) meldet für keine Bausteingeschichte einen *serious*- oder *critical*-Verstoß.
 3. Der Theme-Test läuft für **beide** Themes über alle Bausteine und vergleicht die berechneten Farben mit der Token-Tabelle. Zusätzlich ein Dichte-Test: jeder Baustein in `compact`/`normal`/`wide` ohne Überlauf und ohne überlappenden Text.
-4. Die in §2 genannten **Grenzfälle** sind je Baustein als Test vorhanden – insbesondere Mitternachtssonne, Polarnacht und Zeitumstellung für `NightTimeline`, `acquired > planned` für `ProgressBar`, Dec über 90° für `CoordinateInput` und unbekannter Enum-Wert für `StatusBadge`.
+4. Die in §2 genannten **Grenzfälle** sind je Baustein als Test vorhanden – insbesondere Mitternachtssonne, Polarnacht, Zeitumstellung (auch nur in einer der zwei Zonen, Fall 3a) und Kürzel-Rückfall `GMT±x` → `CDT` für `NightTimeline`, `acquired > planned` für `ProgressBar`, Dec über 90° für `CoordinateInput`, unbekannter Enum-Wert für `StatusBadge`, Polartag ohne Dunkelheit, abbrechende Vorhersage, `bestWindow == null` und unbekannter `modelId` für `WeatherChart` sowie Doppelklick, `Esc` und falsche Namenseingabe für `ConfirmDialog`.
 5. Kein Baustein importiert `useCan`, `fetch`, TanStack Query oder ein Repository (ESLint-Regel `no-restricted-imports` für `components/**`).
 6. Mindestbreiten: ein Test rendert jeden Baustein bei seiner Mindestbreite **und** bei 2400 px und prüft beide Male `scrollWidth <= clientWidth` – die Arbeitsseiten nutzen die volle Fensterbreite, also muss jeder Baustein auch sehr breit sinnvoll aussehen.
+7. **`WeatherChart` bewertet nicht (WS-17):** Ein Test füttert den Baustein mit festen `hours` und prüft, dass jede Zelle den übergebenen Wert zeigt – der Baustein enthält keine der Formeln aus `engine/weather.md` §2. Dazu je Anzeige-Größe ein Farbtest gegen die Stützwerte aus §2.5 (Rampenenden `rgb(198, 208, 220)` / `rgb(30, 88, 190)`, Ampelstops an 0 / 0,45 / 0,65 / 0,85, Windstufen 10 / 20 / 30 / 40 km/h, Tintenschwelle 0,55, Taugefahr 4 °C / 2 °C, Skalen-Stützwerte 0,92 / 0,75 / 0,55 / 0,35 / 0,12) und ein Test, dass jedes Kennzeichen (`aerosolMissing`, `seeingIncomplete`, `coverage < 1`) als **Text** in der Textalternative steht, nicht nur als Farbe.

@@ -1,15 +1,19 @@
 {
   "night": "2026-09-17",
   "reason": "refresh",
-  "startAtUtc": "2026-09-18T07:34:00Z",
+  "startAtUtc": "2026-09-18T07:35:00Z",
   "pendingCaptures": [
     {
-      "exposureLineId": "l001…",
-      "transitObservationId": null,
-      "count": 3
+      "exposureLineId": "l9…",
+      "transitObservationId": "o5…",
+      "captureIds": [
+        "0192b7a1…",
+        "0192b7a2…",
+        "0192b7a3…"
+      ]
     }
   ],
-  "targetsEtag": "\"t-8f3a\"",
+  "targetsEtag": "\"t-9b41\"",
   "sessionId": "0192a7c0-0000-7000-8000-000000000a01",
   "tonight": {
     "pastBlocks": [
@@ -20,14 +24,14 @@
       }
     ],
     "exposedSecByUnit": {
-      "e77c…/p0": 18600
+      "e77c…/p0": 18300
     },
-    "lastAutofocusUtc": null,
+    "lastAutofocusUtc": "2026-09-18T01:12:30Z",
     "filterCycle": [
       {
         "unitId": "e77c…/p0",
         "lineId": "l9…",
-        "subsOnLine": 310
+        "subsOnLine": 305
       }
     ],
     "flipDoneByPanel": {

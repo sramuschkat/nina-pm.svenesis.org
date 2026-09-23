@@ -2,10 +2,10 @@
   "events": [
     {
       "id": "0192c1…",
-      "occurredAtUtc": "2026-09-18T02:01:58Z",
+      "occurredAtUtc": "2026-09-18T01:13:05Z",
       "kind": "plan_built",
       "code": null,
-      "message": "Plan 1 mit 2 Blöcken (310 + 17 Aufnahmen)",
+      "message": "Plan 1 mit 2 Blöcken (305 + 17 Aufnahmen)",
       "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
       "blockId": null,
       "data": {
@@ -17,12 +17,14 @@
       "id": "0192c2…",
       "occurredAtUtc": "2026-09-18T02:05:30Z",
       "kind": "transit_start",
-      "message": "Transitfenster HAT-P-17 b 02:08–07:34 UTC",
+      "message": "Transitblock HAT-P-17 b: Vorlauf (Slew/Zentrieren) beginnt",
       "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
       "blockId": "0192a7c0-0000-7000-8000-000000000c01",
       "data": {
         "transitObservationId": "o5…",
-        "epoch": 812
+        "epoch": 812,
+        "windowStartUtc": "2026-09-18T02:08:00Z",
+        "windowEndUtc": "2026-09-18T07:34:00Z"
       }
     },
     {
@@ -39,16 +41,33 @@
       }
     },
     {
-      "id": "0192c4…",
-      "occurredAtUtc": "2026-09-18T04:32:41Z",
-      "kind": "flip",
-      "message": "Meridian-Flip im Transitfenster",
+      "id": "0192c7…",
+      "occurredAtUtc": "2026-09-18T02:41:10Z",
+      "kind": "warning",
+      "code": "camera_temperature",
+      "message": "Sensortemperatur außerhalb der Toleranz – Belichtung läuft weiter",
       "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
       "blockId": "0192a7c0-0000-7000-8000-000000000c01",
       "data": {
+        "temperatureC": -8.7,
+        "setPointC": -10.0,
+        "toleranceC": 1.0,
+        "coolerOn": true,
+        "coolerPowerPct": 100
+      }
+    },
+    {
+      "id": "0192c4…",
+      "occurredAtUtc": "2026-09-18T04:37:45Z",
+      "kind": "flip",
+      "message": "Meridian-Flip im Transitfenster (Lücke in der Transitreihe)",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "data": {
+        "startedAtUtc": "2026-09-18T04:33:57Z",
         "durationS": 228,
-        "pierSideBefore": "east",
-        "pierSideAfter": "west"
+        "pierSideBefore": "west",
+        "pierSideAfter": "east"
       }
     },
     {
@@ -56,22 +75,36 @@
       "occurredAtUtc": "2026-09-18T07:34:00Z",
       "kind": "block_end",
       "code": "completed",
-      "message": "Transitblock beendet, 310 Aufnahmen",
+      "message": "Transitblock beendet, 305 Aufnahmen",
       "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
       "blockId": "0192a7c0-0000-7000-8000-000000000c01",
       "data": {
-        "exposures": 310,
+        "exposures": 305,
         "aborted": 0
       }
     },
     {
+      "id": "0192c8…",
+      "occurredAtUtc": "2026-09-18T07:34:40Z",
+      "kind": "plan_rebuilt",
+      "code": "refresh",
+      "message": "Plan 2 nach geänderten Zielen",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b02",
+      "blockId": null,
+      "data": {
+        "revision": 2,
+        "reason": "refresh",
+        "inputHash": "sha256:51a0…"
+      }
+    },
+    {
       "id": "0192c6…",
-      "occurredAtUtc": "2026-09-18T09:17:10Z",
+      "occurredAtUtc": "2026-09-18T09:22:01Z",
       "kind": "warning",
       "code": "image_not_saved",
       "message": "Kein ImageSaved binnen 120 s nach Enqueue",
-      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
-      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b02",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c11",
       "data": {
         "captureId": "0192b0…"
       }

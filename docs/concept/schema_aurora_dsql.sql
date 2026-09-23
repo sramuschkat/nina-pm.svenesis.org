@@ -1,6 +1,61 @@
 -- =====================================================================
 -- Svenesis NINA-PM – Datenbankschema für Amazon Aurora DSQL
--- Version 1.11 – Stand 17.09.2026 – abgestimmt mit Fachkonzept v1.15 und Technischem Konzept v1.12
+-- Version 1.18 – Stand 23.09.2026 – abgestimmt mit Fachkonzept und Technischem Konzept (Uebernahme des aktualisierten Website-Codes 23.09.2026)
+--   (1.18: Uebernahme des aktualisierten Website-Codes (WS-01 ... WS-31, WS-E1 ... E4) – KEINE neuen Spalten,
+--    nur Kommentare: weather_cache.model_set mit den neuen Modellketten und dem Hinweis, dass der Satz Teil des
+--    UNIQUE-Schluessels ist (WS-16); weather_cache.payload mit dem Aufbau (Rohwerte je Stunde, jetKmh, shearKmh,
+--    modelId, cloudSrc, nest, aerosolMissing, Teil- und Gesamtbewertung, coveredSec, bestes Fenster);
+--    dso_object.object_type auf das OpenNGC-Vokabular statt der Website-Kurzcodes (WS-26, Anzeigegruppen in
+--    contracts/enums.json), Herkunft von mag_v/mag_b/surf_br_mag_arcsec2 und der Groessen ausdruecklich OpenNGC
+--    NGC.csv (der Website-Auszug ngc.json liefert nur Namen, Aliase, Vorschaubilder und Wikipedia-Titel, WS-E4),
+--    Objektzahl einheitlich 13.957 (WS-27); position_angle_deg-Kommentar unveraendert (AST-D21).
+--    Nachtrag nach Gegenpruefung: weather_cache.payload um moonAltDeg, seeingIncomplete, ratingIndex,
+--    darknessSec und den Hinweis auf die ungerundete Speicherung ergaenzt (B-06/B-08/B-10); catalogs mit
+--    Verweis auf contracts/enums.json dsoCatalogPrefixes (B-34); position_angle_deg CHECK von
+--    "<= 180" auf "< 180" geaendert (Achsenwinkel-Konvention [0, 180), PosAng mod 180, NULL ohne
+--    MajAx/MinAx, B-28/B-29); Objektzahl praezisiert als 13.957 Zeilen aus NGC.csv + n_addendum aus
+--    addendum.csv (B-25))
+--   (1.17: Nachtablauf-Pruefung (NT-01 ... NT-48, NT-E1 ... E4) – camera.cooling_setpoint_c (nullable) und
+--    camera.cooling_tolerance_c (DEFAULT 1, CHECK > 0) fuer die Kuehlungswarnung (NT-E2); capture.temperature_deviation
+--    und capture.settings_deviation (boolean NOT NULL DEFAULT false, NT-E2/NT-E3), capture.exposure_mid_utc (Belichtungs-
+--    mitte fuer BJD_TDB, NT-10); filter.photometric_band mit CHECK (NT-41); rig.filter_wheel je Platz um ninaFilterName/
+--    ninaConfirmedAt/ninaConfirmedBy erweitert (jsonb, bestaetigte NINA-Zuordnung statt Laufzeit-Heuristik, NT-E1),
+--    rig.nina_filter_wheel mit focusOffset/reportedAt; rig.flats_source panel/sky (DEFAULT panel, NT-40);
+--    session.session_end_utc (massgebliches Sessionende der letzten Planrevision fuer Stale und Nachtbericht, NT-09);
+--    Gain/Offset in camera, exposure_template_line, exposure_line und capture nullable (null = NINA-Standard -1),
+--    im Schluessel von flat_combination bleibt NOT NULL mit -1 (NT-38); Kommentare zu filter.telescope_id (NT-43),
+--    exposure_line (Sperre bei Aufnahmen, NT-E3) und capture_night.integration_s = Summe capture.exposure_s (NT-E3).
+--    Nachtrag nach Gegenpruefung: rig_lease.released_session_id (Admin-Freigabe schliesst die alte Session vom Zurueckholen
+--    der Lease per Heartbeat aus, M5); Kommentar session.status: nur stale -> running, aborted/completed endgueltig (M6))
+--   (1.16: Security-Vereinfachung – auth_session als Sitzung mit session_hash statt Refresh-Rotation, created_at/
+--    last_seen_at/expires_at fuer 14 Tage Leerlauf und 30 Tage Hoechstdauer, Logout loescht die Zeile (SV-01);
+--    entfallen: auth_session.refresh_hash/prev_refresh_hash/rotated_at/new_token_used_at/discord_login_at/last_used_at/
+--    revoked_at und ix_auth_session_prev, app_user.member_version (SV-01), befristeter Admin mit app_user.role_expires_at/
+--    role_expiry_notified_at/role_granted_by/role_reason, CHECK und ix_app_user_role_expiry sowie invitation.role_duration_hours (E2),
+--    tenant.owner_state/owner_transfer_to/owner_transfer_expires_at (E2: Uebertragung sofort), Tabelle login_audit (SV-11),
+--    system_audit.aws_principal und Akteur bootstrap (SV-11), nina_instance.expires_at/token_last_used_at und
+--    ix_nina_instance_due (SV-08), Sicherheitsschluessel in tenant.settings (SV-03); discord_channel.webhook_url statt
+--    webhook_ssm_name (SV-10); project.deleted_at als Papierkorb mit ix_project_deleted (E4); GRANT-Vorlage ohne
+--    db-bootstrap, ohne app_migrate und ohne Audit-Ausnahmen (SV-13/SV-14, SEC-59 entfaellt).
+--    Nachtrag nach Gegenpruefung: invitation mit CHECK (role = 'user' OR max_uses = 1); discord_channel.webhook_url
+--    und webhook_hint nullable mit CHECK (webhook_url IS NOT NULL OR NOT enabled) fuer den Import ohne URL;
+--    GRANT-Vorlage mit INSERT fuer app_job (Mandanten-Import), kein Recht auf auth_session; Kommentare zu
+--    change_log (Rollenwechsel mit diff.reason), app_user.last_login_at und Systembenachrichtigungen)
+--   (1.15: Gegenpruefung des Astronomie-Durchgangs – min_aperture_mm und distance_pc sind jetzt WIRKLICH so benannt
+--    (1.14 hatte es nur im Kommentar behauptet, AST-D13/D14), dso_object erhaelt mag_b, mag_band_used und
+--    surf_br_mag_arcsec2 (AST-D6/D7 – dieselbe Luecke))
+--   (1.14: Astronomie-Durchgang – ephemeris mit time_system_source/O-C-Feldern (AST-T5), duration_h nullable plus
+--    duration_estimated (AST-T18), Winkelspalten auf double precision wegen der 1e-6-Zusage (AST-G07), Laenge OST POSITIV
+--    kommentiert (AST-G04/D12), Pole ausgeschlossen (AST-N18), echte OpenNGC-Typcodes und getrennte Baender mag_b/mag_v/
+--    surf_br (AST-D6/D7), min_aperture_mm statt _in (AST-D13), distance_pc statt _ly (AST-D14), bandtreue Wirtstern-
+--    Helligkeiten (AST-D15), quantum_efficiency_pct (AST-D22), disposition mit sechs TFOPWG-Werten (AST-D5),
+--    project.moon_must_be_down (AST-M7), Wertebereiche fuer RA/Dec/Periode/Winkel/Prozente (AST-D20/M12))
+--   (1.13: Sicherheits-Durchgang – nina_instance.expires_at und token_last_used_at mit Ablauf-Index (SEC-54),
+--    CHECK auf invitation.max_uses, GRANT-Vorlage nach Umfang statt pauschal mit system_audit/login_audit
+--    nur SELECT,INSERT (SEC-59))
+--   (1.12: Logik-Durchgang – UNIQUE (tenant_id, short_name) auf filter, UNIQUE (session_id, revision) auf night_plan,
+--    change_request.version fuer ETag/If-Match, Indizes ix_night_plan_session und ix_rig_lease_due (Job-Index),
+--    Obergrenze fuer invitation.role_duration_hours, Kommentar zu capture.project_id)
 --   (1.11: Sicherheits-Review – DB-Rollen app_rw (api) / app_job (worker) getrennt, app_ro entfaellt,
 --    GRANT-Vorlage mit beiden Anwendungsrollen und den IAM-Rollennamen je Lambda, mfaRequiredForAdmins Standard true)
 --   (1.10: Review 5 – job.dedupe_active mit UNIQUE statt deterministischer job.id, discord_delivery.tenant_id + Index,
@@ -17,7 +72,7 @@
 --    vollständige Sortierkette, notification ohne Discord-Zustellspalten, Job-Indizes, GRANT-Vorlage)
 --   (1.5: geteilte Flats; 1.4: Discord-Kanäle, Aufnahmetypen; 1.3: Review 1)
 --
--- Grundlage: Fachkonzept v1.15 (Kap. 7), Technisches Konzept v1.12 (Kapitel „Datenbank“) und Abgleich mit dem
+-- Grundlage: Fachkonzept v1.20 (Kap. 7), Technisches Konzept v1.20 (Kapitel „Datenbank“) und Abgleich mit dem
 -- Astro-PM-1.6.0-Export logbook.db.sql (SQLite).
 --
 -- DSQL-Regeln, die dieses Schema berücksichtigt:
@@ -63,7 +118,7 @@ CREATE TABLE identity (                            -- eine Person = ein Discord-
     email           text,                          -- nur falls Scope 'email' genutzt wird (optional)
     mfa_enabled     boolean NOT NULL DEFAULT false,-- von Discord gemeldet, bei jedem Login aktualisiert
     status          text NOT NULL DEFAULT 'active' CHECK (status IN ('active','blocked')),
-    last_login_at   timestamptz,
+    last_login_at   timestamptz,                   -- letzte Discord-Anmeldung; ersetzt login_audit (SV-11)
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -84,15 +139,11 @@ CREATE TABLE tenant (
     settings        jsonb NOT NULL DEFAULT '{}',   -- Schlüssel ausschließlich aus contracts/enums.json tenantSettingsKeys (DAT5-22):
                                                    -- userCorrections, exoUserLockNeedsAdmin (Standard true), exoUserMaxOpenLocks (Standard 3),
                                                    -- autoReactivateOnRemaining, autoReadyToProcess (Standard false), adminSelfApproval,
-                                                   -- approvalDeadlineDays, sessionIdleHours, sessionMaxDays,
-                                                   -- mfaRequiredForAdmins (Standard TRUE, SEC-29: Discord ist der einzige Identitaetsanbieter,
-                                                   --   eine Kontouebernahme ohne 2FA genuegte sonst fuer Schreibzugriff auf alle Projekte),
-                                                   -- defaultLanguage.
+                                                   -- approvalDeadlineDays, defaultLanguage.
+                                                   -- Keine Sicherheitsschluessel (SV-03): 2FA-Pflicht fuer Owner/Admin und Sitzungsdauer sind feste Regeln.
                                                    -- Unbekannte Schlüssel lehnt PATCH /web/v1/tenant/settings mit 422 validation.failed ab
-    owner_member_id uuid,                          -- app_user.id des Owners (FA-BEN-06); FK nicht möglich (app_user folgt), Prüfung im Repository; null nur bis zur Annahme der Owner-Einladung
-    owner_state     text NOT NULL DEFAULT 'pending' CHECK (owner_state IN ('active','pending')),  -- pending = Owner-Einladung offen/verfallen (FA-BEN-03)
-    owner_transfer_to uuid,                        -- laufende Übertragung an app_user.id (FA-BEN-09)
-    owner_transfer_expires_at timestamptz,
+    owner_member_id uuid,                          -- app_user.id des Owners (FA-BEN-06); FK nicht möglich (app_user folgt), Prüfung im Repository; null nur bis zur Annahme der Owner-Einladung;
+                                                   -- Owner-Uebertragung (FA-BEN-09) setzt die Spalte sofort um, ohne Annahmefrist (E2)
     discord_guild_name text,                       -- FA-DIS-01 (nur Anzeige)
     discord_guild_id text,
     discord_invite_url text,
@@ -103,9 +154,8 @@ CREATE TABLE tenant (
 
 CREATE TABLE system_audit (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    actor           text NOT NULL CHECK (actor IN ('super_user','ops_cli','bootstrap')),
-    super_user_id   uuid REFERENCES super_user(identity_id),   -- null bei ops_cli / bootstrap
-    aws_principal   text,                          -- IAM-Principal bei ops_cli
+    actor           text NOT NULL CHECK (actor IN ('super_user','ops_cli')),  -- einfache Tabelle, kein manipulationssicherer Nachweis (SV-11)
+    super_user_id   uuid REFERENCES super_user(identity_id),   -- null bei ops_cli
     tenant_id       uuid REFERENCES tenant(id),
     action          text NOT NULL,                 -- tenant.create, tenant.lock, invitation.create, super_user.add ...
     details         jsonb NOT NULL DEFAULT '{}',
@@ -115,20 +165,58 @@ CREATE INDEX ASYNC ix_system_audit_tenant ON system_audit (tenant_id, created_at
 
 -- Globale Referenzdaten -------------------------------------------------
 
-CREATE TABLE dso_object (                          -- Objektkatalog ~13.600 Einträge (Kopie ngc.json + dso-catalog.js)
+CREATE TABLE dso_object (                          -- Objektkatalog aus OpenNGC: 13.957 Zeilen aus NGC.csv, dazu die Zeilen
+                                                   -- der verwendeten addendum.csv-Version (13.957 + n_addendum; Dup/NonEx
+                                                   -- werden nicht als eigene Zeile gefuehrt),
+                                                   -- Feldabbildung und Importtests: specs/catalog/dso-import.md (WS-25/WS-27).
+                                                   -- Der Website-Auszug (ngc.json, dso-catalog.js) liefert nur zusaetzliche
+                                                   -- Namen/Aliase, Vorschaubilder und Wikipedia-Titel (WS-E4)
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     primary_id      text NOT NULL UNIQUE,          -- 'NGC 7380'
     names           jsonb NOT NULL DEFAULT '[]',   -- Aliase: ["Sh2-142","LBN 511","Zauberer-Nebel"]
-    catalogs        jsonb NOT NULL DEFAULT '[]',   -- ["NGC","Sh2","LBN"]
-    object_type     text NOT NULL,                 -- Gx, EN, RN, DN, PN, SNR, GC, OC, ...
+    catalogs        jsonb NOT NULL DEFAULT '[]',   -- ["NGC","Sh2","LBN"] - Katalogkuerzel der Bezeichnungen, Grundlage des
+                                                   -- Katalogfilters. Erlaubte Werte AUSSCHLIESSLICH aus
+                                                   -- contracts/enums.json dsoCatalogPrefixes (M, NGC, IC, C, Sh2, LBN,
+                                                   -- LDN, B, PGC, UGC, ESO, Mel, Cl); ein unbekanntes Kuerzel wird nicht
+                                                   -- geschrieben, sondern erzeugt eine Importwarnung
+                                                   -- (specs/catalog/dso-import.md 2)
+    object_type     text NOT NULL,                 -- OpenNGC-Typcode aus NGC.csv Spalte Type, Vokabular in
+                                                   -- contracts/enums.json dsoObjectTypes (WS-26):
+                                                   -- G, GPair, GTrpl, GGroup, OCl, GCl, Cl+N, PN, HII, DrkN, EmN, Neb,
+                                                   -- RfN, SNR, *, **, *Ass, Nova, Dup, NonEx, Other.
+                                                   -- NICHT die Website-Kurzcodes (Gx, EN, RN, ...) - die Oberflaeche
+                                                   -- zeigt Anzeigegruppen nach dsoObjectTypeGroups.
+                                                   -- Dup/NonEx werden beim Import nicht als eigene Zeile gefuehrt
+                                                   -- (Aliasaufloesung, specs/catalog/dso-import.md 3)
     constellation   text,
     ra_deg          double precision NOT NULL,     -- J2000
     dec_deg         double precision NOT NULL,
-    mag_v           real,
-    size_major_arcmin real,
-    size_minor_arcmin real,
-    position_angle_deg real,
-    source          text NOT NULL,
+    mag_v           real,                          -- OpenNGC NGC.csv Spalte V-Mag (Johnson V); KEIN B-Wert hier eintragen
+                                                   -- (AST-D6). Helligkeiten des Website-Auszugs sind gerundete Richtwerte
+                                                   -- ohne Bandangabe und werden NICHT uebernommen (WS-E4)
+    mag_b           real,                          -- OpenNGC NGC.csv Spalte B-Mag. Getrennt, weil B-V bei Emissionsnebeln > 1 mag betraegt: ein
+                                                   -- gemischtes Feld verschiebt jede Helligkeitsfilterung und die Filterempfehlung
+    mag_band_used   text CHECK (mag_band_used IS NULL OR mag_band_used IN ('V','B')),
+                                                   -- welches Band die Anzeige benutzt, wenn nur eines vorliegt (AST-D6)
+    surf_br_mag_arcsec2 real,                      -- OpenNGC NGC.csv Spalte SurfBr, mag/arcsec^2 - NUR fuer Flaechenobjekte sinnvoll. Die Sichtbarkeit
+                                                   -- eines ausgedehnten Nebels haengt an der FLAECHENhelligkeit, nicht an mag_v: NGC 7000
+                                                   -- hat mag_v 4, ist aber flaechig schwach (AST-D7). Regel des Schedulers ist es nicht; Anzeige,
+                                                   -- Filterempfehlung und Zielvorschlaege duerfen mag_b und die
+                                                   -- Flaechenhelligkeit nutzen (FK FA-FRM-13/15, WS-E4)
+    size_major_arcmin real,                        -- OpenNGC NGC.csv Spalte MajAx, Bogenminuten
+    size_minor_arcmin real,                        -- OpenNGC NGC.csv Spalte MinAx, Bogenminuten
+    position_angle_deg real CHECK (position_angle_deg IS NULL OR (position_angle_deg >= 0 AND position_angle_deg < 180)),
+                                                   -- Grossachsen-PA von Nord ueber Ost, Konvention [0, 180) - 180 Grad bezeichnet dieselbe
+                                                   -- ACHSE wie 0 Grad und ist deshalb kein eigener Wert: der Import rechnet
+                                                   -- PosAng mod 180 (180 -> 0), specs/catalog/dso-import.md 2 / T-KAT-01/03.
+                                                   -- NULL, wenn MajAx oder MinAx fehlt (ohne beide Achsen keine Ellipse).
+                                                   -- ANDERE Winkelart als der Kamera-PA in flip-rotation.md 3 (0..360,
+                                                   -- Bild-Oberkante); nicht verwechseln (AST-D21)
+    source          text NOT NULL,                 -- Herkunft der Zeile: 'openngc:NGC.csv <Version>' bzw.
+                                                   -- 'openngc:addendum.csv <Version>'; die Version und das Abrufdatum
+                                                   -- der verwendeten OpenNGC-Auslieferung stehen in
+                                                   -- specs/catalog/dso-import.md 1 und im Importlauf. Namen, Aliase und
+                                                   -- Bilder aus dem Website-Auszug aendern die Herkunft nicht
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ASYNC ix_dso_object_type ON dso_object (object_type, constellation);
@@ -138,26 +226,41 @@ CREATE TABLE exo_catalog_entry (
     catalog         text NOT NULL CHECK (catalog IN ('exoclock','nasa','toi')),
     planet          text NOT NULL,                 -- 'HAT-P-17b', 'TOI-4007.01'
     star            text NOT NULL,
-    disposition     text,                          -- TOI: PC/CP/KP
+    disposition     text CHECK (disposition IS NULL OR disposition IN ('APC','CP','FA','FP','KP','PC')),
+                                                   -- TFOPWG: APC ambiguous, CP confirmed, FA false alarm, FP false positive, KP known,
+                                                   -- PC candidate. FP/FA werden beim Import VERWORFEN und gezaehlt (AST-D5)
     ra_deg          double precision NOT NULL,
     dec_deg         double precision NOT NULL,
-    mag_v real, mag_r real, mag_g real, mag_t real,
+    mag_v_johnson   real,                          -- NASA sy_vmag (Johnson V)
+    mag_r_cousins   real,                          -- NUR ExoClock: das NASA-Archiv hat kein Johnson-R (AST-D15)
+    mag_sdss_g      real,                          -- NASA sy_gmag ist SDSS g, NICHT Gaia G
+    mag_gaia_g      real,                          -- NASA sy_gaiamag
+    mag_tess        real,                          -- NASA sy_tmag
+    mag_band_used   text,                          -- Fallback-Kette: NASA V -> Gaia G -> TESS T; ExoClock V -> R (AST-D15)
     teff_k          real,
-    distance_ly     real,
+    distance_pc     real CHECK (distance_pc IS NULL OR distance_pc > 0),
+                                                   -- PARSEC, die native Einheit von NASA sy_dist bzw. ExoClock. Nicht in
+                                                   -- Lichtjahren speichern (AST-D14): die UI zeigt Lj = pc * 3,26156, die
+                                                   -- Umrechnung gehoert in die Anzeige, nicht in die Ablage
     t0_bjd_tdb      double precision NOT NULL,
     t0_sigma_d      double precision,
-    period_d        double precision NOT NULL,
+    period_d        double precision NOT NULL CHECK (period_d > 0),  -- Tage; ohne > 0 gibt n0 = (JD - T0)/P unendlich (AST-D20)
     period_sigma_d  double precision,
-    duration_h      real NOT NULL,
+    duration_h      real CHECK (duration_h IS NULL OR duration_h > 0),  -- T14 in STUNDEN (pl_trandur); nullable, weil oft leer -
+                                                   -- T14 wird dann aus a_over_rs/inclination_deg/rp_over_rs gerechnet (AST-T18)
+    duration_estimated boolean NOT NULL DEFAULT false,  -- true = aus Geometrie gerechnet, nicht aus dem Katalog (AST-T18)
     depth_mmag      real,
     rp_over_rs      real,
     a_over_rs       real,
-    inclination_deg real,
+    inclination_deg real CHECK (inclination_deg IS NULL OR inclination_deg BETWEEN 0 AND 180),  -- Grad (AST-D20)
     planet_radius_re real,
     eq_temp_k       real,
     exoclock_priority text,                        -- alert/high/medium/low
     o_minus_c_min   real,
-    min_aperture_in real,
+    min_aperture_mm real CHECK (min_aperture_mm IS NULL OR min_aperture_mm > 0),
+                                                   -- MILLIMETER. ExoClock liefert Zoll; beim Import mit 25,4 multiplizieren
+                                                   -- (AST-D13). Teleskope stehen ueberall in mm (FA-TEL-01), deshalb ist der
+                                                   -- Vergleich aus FA-EXO-07 nur ohne Einheitenwechsel verlaesslich
     min_aperture_estimated boolean NOT NULL DEFAULT false,
     amateur_reachable boolean NOT NULL DEFAULT true,
     fetched_at      timestamptz NOT NULL,
@@ -169,8 +272,34 @@ CREATE TABLE weather_cache (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     lat_round       numeric(6,3) NOT NULL,
     lon_round       numeric(7,3) NOT NULL,
-    model_set       text NOT NULL,                 -- 'icon-eu+ecmwf', 'hrrr+gfs+ecmwf'
-    payload         jsonb NOT NULL,                -- stündliche Rohwerte + berechnete Scores
+    model_set       text NOT NULL,                 -- Modellsatz des Laufs, Teil des UNIQUE-Schluessels unten: ein Standort
+                                                   -- haelt je Modellsatz EINE Zeile, ein Wechsel der Kette legt also eine
+                                                   -- neue Zeile an und macht die alte nicht ungueltig (WS-16).
+                                                   -- Europa: 'icon-d2+harmonie+icon+ecmwf+gem+cams'
+                                                   -- sonst:  'hrrr+gem+gfs+ecmwf+nbm+cams'
+    payload         jsonb NOT NULL,                -- Aufbau (Einheiten und Formeln: specs/engine/weather.md):
+                                                   --  hours[]: Rohwerte je Stunde (cloudTotalPct + low/mid/high, tempC,
+                                                   --   dewPointC, humidityPct, wind10Kmh, gust10Kmh, windDir10Deg,
+                                                   --   wind250/500/700/850Kmh mit Richtungen, surfacePressureHPa,
+                                                   --   visibilityM, precipMm, precipProbPct, weatherCode, aod, dustUgM3,
+                                                   --   pwvMm), abgeleitet jetKmh, shearKmh und moonAltDeg (geometrische
+                                                   --   topozentrische Mondhoehe in Grad zum Stundenmittelpunkt
+                                                   --   tUnix + 1800, Grundlage von moonFreeSec - NICHT die
+                                                   --   Planungs-Mondhoehe aus specs/engine/moon.md), Herkunft modelId
+                                                   --   (d2|eu|global|dini|hrrr|gem|gfs), cloudSrc (dini|gem|null),
+                                                   --   nest (bool), aerosolMissing (bool, WS-E2), seeingIncomplete
+                                                   --   (bool, WS-04a), dazu cloudScore, seeingScore,
+                                                   --   transparencyScore (null ohne Aerosol), overallScore und
+                                                   --   ratingIndex (0..4, ganzzahlig)
+                                                   --  nights[]: je Nacht nightMean ueber die astronomische Dunkelheit
+                                                   --   mit coveredSec, darknessSec und coverage sowie bestes Fenster
+                                                   --   (Beginn, Ende, Dauer, mondfreier Anteil in Sekunden, meanScore,
+                                                   --   fair) und die Kennzeichen aerosolMissing/seeingIncomplete
+                                                   --   (WS-09/WS-10)
+                                                   -- Scores werden UNGERUNDET gespeichert; q(x, 1e3) erst unmittelbar
+                                                   -- vor Vergleich, outputHash und Ausgabe (WS-08)
+                                                   -- Niederschlag wird gespeichert und angezeigt, geht aber in KEINE
+                                                   -- Bewertung ein (WS-E1)
     fetched_at      timestamptz NOT NULL,
     expires_at      timestamptz NOT NULL,
     UNIQUE (lat_round, lon_round, model_set)
@@ -186,64 +315,51 @@ CREATE TABLE app_user (                            -- Mitgliedschaft einer Ident
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
     identity_id     uuid NOT NULL REFERENCES identity(id),
     display_name    text NOT NULL,                 -- Vorbelegung aus Discord, im Mandanten änderbar
-    role            text NOT NULL CHECK (role IN ('admin','user')),   -- Owner = tenant.owner_member_id (immer role='admin', unbefristet)
-    role_expires_at timestamptz,                   -- befristeter Admin (FA-BEN-07)
-    role_granted_by uuid REFERENCES app_user(id),
-    role_reason     text,
-    role_expiry_notified_at timestamptz,
-    member_version  integer NOT NULL DEFAULT 1,    -- +1 bei Rolle/Status/Befristung/Owner (Token-Claim mver)
+    role            text NOT NULL CHECK (role IN ('admin','user')),   -- Owner = tenant.owner_member_id (immer role='admin'); keine Befristung (E2),
+                                                   -- Rollenwechsel wirken ab der naechsten Anfrage (Sitzung liest die Mitgliedschaft je Anfrage, SV-01)
     status          text NOT NULL DEFAULT 'active' CHECK (status IN ('active','disabled','removed')),
-    CHECK (role_expires_at IS NULL OR role = 'admin'),
     invited_by      uuid REFERENCES app_user(id),
-    last_login_at   timestamptz,
+    last_login_at   timestamptz,                   -- letzte Anmeldung im Mandanten (POST /auth/context bzw. Callback mit direkter Mandantenwahl, FA-SU-03)
     allowed_rig_ids jsonb,                         -- optional (FA-BEN-05), null = alle
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
     UNIQUE (tenant_id, identity_id)
 );
 CREATE INDEX ASYNC ix_app_user_identity ON app_user (identity_id, status);
-CREATE INDEX ASYNC ix_app_user_role_expiry ON app_user (role_expires_at);   -- Job-Index (mandantenübergreifend, Ausnahme von der tenant_id-Regel)
 
 CREATE TABLE invitation (                          -- Einladungslink (FA-BEN-01)
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
-    token_hash      text NOT NULL UNIQUE,          -- SHA-256 des Link-Tokens
+    token_hash      text NOT NULL UNIQUE,          -- SHA-256 des Link-Tokens (256 Bit zufaellig, base64url); nie exportiert
     role            text NOT NULL CHECK (role IN ('owner','admin','user')),  -- 'owner' nur vom Super User bzw. ops-cli
-    role_duration_hours integer CHECK (role_duration_hours > 0 AND role = 'admin'),  -- nur bei role='admin': befristete Admin-Rechte, gerechnet ab Annahme
     discord_user_id text,                          -- optional: nur für dieses Discord-Konto gültig
     note            text,
-    max_uses        smallint NOT NULL DEFAULT 1,
+    max_uses        smallint NOT NULL DEFAULT 1 CHECK (max_uses BETWEEN 1 AND 50),
     used_count      smallint NOT NULL DEFAULT 0,
     expires_at      timestamptz NOT NULL,
     created_by_member uuid REFERENCES app_user(id),
     created_by_super uuid REFERENCES super_user(identity_id),
     revoked_at      timestamptz,
-    created_at      timestamptz NOT NULL DEFAULT now()
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    CHECK (role = 'user' OR max_uses = 1)          -- Owner- und Admin-Einladungen genau einmal; Owner-Einladung bei vorhandenem Owner -> invitation.invalid (TK 5.2)
 );
 CREATE INDEX ASYNC ix_invitation_tenant ON invitation (tenant_id, expires_at);
 CREATE INDEX ASYNC ix_invitation_expiry ON invitation (expires_at);   -- Job-Index
 
-CREATE TABLE auth_session (                        -- Refresh-Sitzung (rotierend, widerrufbar)
+CREATE TABLE auth_session (                        -- Anmeldesitzung (Cookie __Host-npm_sid, SV-01); Logout/Widerruf = Zeile loeschen
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_hash    text NOT NULL UNIQUE,          -- SHA-256 des Cookie-Werts (256 Bit zufaellig), Klartext nie gespeichert; je Anfrage eine indizierte Abfrage
     identity_id     uuid NOT NULL REFERENCES identity(id),
-    tenant_id       uuid REFERENCES tenant(id),    -- null = Super-User-Kontext bzw. noch keine Auswahl
+    tenant_id       uuid REFERENCES tenant(id),    -- gewaehlter Mandant (POST /auth/context); null = System-Kontext bzw. noch keine Auswahl
     context         text NOT NULL CHECK (context IN ('tenant','system','select')),
-    refresh_hash    text NOT NULL UNIQUE,
-    prev_refresh_hash text,                        -- vorheriges Token: Karenz 60 s nach Rotation (parallele Refreshes)
-    rotated_at      timestamptz,                   -- Zeitpunkt der letzten Rotation; die Karenz-Ausnahme gilt nur bis rotated_at + 10 min (DAT5-5)
-    user_agent      text,
+    user_agent      text,                          -- Anzeige in der Sitzungsliste
     ip_truncated    text,
-    expires_at      timestamptz NOT NULL,
-    last_used_at    timestamptz NOT NULL DEFAULT now(),
-    revoked_at      timestamptz,
     created_at      timestamptz NOT NULL DEFAULT now(),
-    discord_login_at timestamptz NOT NULL DEFAULT now(),  -- letzte echte Discord-Anmeldung: System-Kontext und Owner-Aktionen nur < 12 h danach (FA-SU-02, TK 5.3)
-    new_token_used_at timestamptz                  -- gesetzt, sobald das NEUE Refresh-Token benutzt wurde; JEDE Rotation setzt die Spalte wieder auf NULL.
-                                                   -- "Sitzungsfamilie" = diese Zeile (es gibt keine family_id): Rotation aktualisiert sie in place (DAT5-5, TK 5.3)
+    last_seen_at    timestamptz NOT NULL DEFAULT now(),  -- hoechstens alle 5 min geschrieben; Leerlauf-Ablauf: last_seen_at + 14 Tage (feste Konstante)
+    expires_at      timestamptz NOT NULL           -- Hoechstdauer: created_at + 30 Tage (feste Konstante), nie verlaengert
 );
-CREATE INDEX ASYNC ix_auth_session_identity ON auth_session (identity_id, revoked_at);
-CREATE INDEX ASYNC ix_auth_session_prev ON auth_session (prev_refresh_hash);
-CREATE INDEX ASYNC ix_auth_session_expiry ON auth_session (expires_at);   -- Job-Index
+CREATE INDEX ASYNC ix_auth_session_identity ON auth_session (identity_id);   -- Sitzungsliste, alle Sitzungen einer Identitaet beenden
+CREATE INDEX ASYNC ix_auth_session_expiry ON auth_session (expires_at);   -- Aufraeumen abgelaufener Zeilen durch api bei der Anmeldung (Hoechstdauer oder Leerlauf)
 
 CREATE TABLE user_preference (                     -- ersetzt Astro PMs AppSettings (UI-Zustände, Filter, Einheiten)
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
@@ -262,21 +378,9 @@ CREATE TABLE identity_preference (                 -- mandantenübergreifende Ei
     PRIMARY KEY (identity_id, pref_key)
 );
 
-CREATE TABLE login_audit (
-    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       uuid REFERENCES tenant(id),    -- gewählter Mandant (falls vorhanden)
-    identity_id     uuid REFERENCES identity(id),
-    discord_user_id text,
-    event           text NOT NULL,                 -- login_ok, no_membership, tenant_selected, mfa_required, invitation_accepted, logout, refresh_reuse_detected
-    success         boolean NOT NULL,
-    ip_truncated    text,
-    created_at      timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX ASYNC ix_login_audit_tenant ON login_audit (tenant_id, created_at);
-
 CREATE TABLE notification (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       uuid REFERENCES tenant(id),     -- NULL = Systembenachrichtigung an einen Super User (FA-SU-05, Owner-Einladung verfallen)
+    tenant_id       uuid REFERENCES tenant(id),     -- NULL = Systembenachrichtigung an einen Super User (z. B. alert.*, owner.reassigned)
     recipient_id    uuid REFERENCES app_user(id),   -- Mitglied im Mandanten ...
     recipient_identity_id uuid REFERENCES identity(id),  -- ... oder Identität (Super User ohne Mitgliedschaft); genau eines von beiden
     CHECK ((recipient_id IS NOT NULL) <> (recipient_identity_id IS NOT NULL)),
@@ -292,9 +396,9 @@ CREATE INDEX ASYNC ix_notification_identity  ON notification (recipient_identity
 CREATE TABLE change_log (                          -- Änderungsverlauf je Objekt (FA-BER-03, NFA-12)
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
-    entity          text NOT NULL,                 -- 'project','exposure_line','rig', ...
+    entity          text NOT NULL,                 -- 'project','exposure_line','rig','app_user' (Rollenwechsel: diff.reason optional) ...
     entity_id       uuid NOT NULL,
-    user_id         uuid REFERENCES app_user(id),
+    user_id         uuid REFERENCES app_user(id),   -- handelndes Mitglied; bei Rollenwechseln = Rolle vergeben von
     action          text NOT NULL,                 -- create/update/delete
     diff            jsonb NOT NULL DEFAULT '{}',
     created_at      timestamptz NOT NULL DEFAULT now()
@@ -313,10 +417,15 @@ CREATE TABLE site (                                -- Astro PM: ObservingSites
     pier_name       text,
     observatory_type text NOT NULL DEFAULT 'open_air'
                     CHECK (observatory_type IN ('open_air','dome','roll_off_roof','fixed_pier','portable','remote_hosted')),
-    latitude_deg    double precision NOT NULL CHECK (latitude_deg BETWEEN -90 AND 90),
-    longitude_deg   double precision NOT NULL CHECK (longitude_deg BETWEEN -180 AND 180),
-    elevation_m     real NOT NULL DEFAULT 0,
-    bortle_class    real,
+    latitude_deg    double precision NOT NULL CHECK (latitude_deg BETWEEN -89.9 AND 89.9),  -- Pole ausgeschlossen: bei |phi|=90 ist cos(phi)=0,
+                                                   -- die Hoehe zeitunabhaengig und 'LHA=0' nicht eindeutig loesbar (AST-N18)
+    longitude_deg   double precision NOT NULL CHECK (longitude_deg BETWEEN -180 AND 180),  -- OST POSITIV, West negativ (WGS84, lambda_Ost wie
+                                                   -- flip-rotation.md 1.1). West-positiv importiert dreht den Stundenwinkel um 2*lambda:
+                                                   -- in Texas 197 Grad = 13 h (AST-G04/D12). Plausibilitaetspruefung gegen die IANA-Zone:
+                                                   -- |lambda/15h - mittlerer tz-Offset| > 3 h => Warnung 'Laenge vermutlich falsch signiert'
+    elevation_m     real NOT NULL DEFAULT 0 CHECK (elevation_m BETWEEN -430 AND 9000),  -- Meter ueber NN; bewusst UNBENUTZT in der
+                                                   -- Rechnung: keine Kimmtiefe, Druck fest 1010 hPa (night.md 2, AST-N13)
+    bortle_class    real CHECK (bortle_class IS NULL OR bortle_class BETWEEN 1 AND 9),  -- Skala 1..9 (AST-D22)
     time_zone       text NOT NULL,                 -- IANA, z. B. 'America/Chicago' (Astro PM speichert Windows-Namen)
     weather_safety_url text,
     notes           text NOT NULL DEFAULT '',
@@ -348,7 +457,8 @@ CREATE TABLE telescope (
     optical_design  text NOT NULL,                 -- apochromatic_refractor, achromat, newtonian, rc, sct, maksutov, cdk, cassegrain, rasa
     aperture_mm     real NOT NULL CHECK (aperture_mm > 0),
     focal_length_mm real NOT NULL CHECK (focal_length_mm > 0),
-    reducer_factor  real NOT NULL DEFAULT 1.0,     -- 1.0 = kein Reducer (Astro PM: 0 = none)
+    reducer_factor  real NOT NULL DEFAULT 1.0 CHECK (reducer_factor > 0),  -- 1.0 = kein Reducer; Astro PM benutzt 0 = none, der Import
+                                                   -- bildet 0 auf 1.0 ab - ein 0-Wert gaebe effFocalMm = 0 und damit Massstab unendlich (AST-G08)
     obstruction_pct real NOT NULL DEFAULT 0,
     image_circle_mm real, backfocus_mm real, spot_axis_um real, spot_edge_um real,
     weight_kg real, length_mm real, focuser_travel_mm real, focuser_mm_per_turn real,
@@ -365,17 +475,21 @@ CREATE TABLE camera (
     brand           text NOT NULL DEFAULT '',
     model           text NOT NULL DEFAULT '',
     sensor_name     text NOT NULL DEFAULT '',
-    width_px        integer NOT NULL,
-    height_px       integer NOT NULL,
-    pixel_size_um   real NOT NULL,
+    width_px        integer NOT NULL CHECK (width_px > 0),        -- native Pixelzahl (AST-G08)
+    height_px       integer NOT NULL CHECK (height_px > 0),       -- native Pixelzahl (AST-G08)
+    pixel_size_um   real NOT NULL CHECK (pixel_size_um > 0),      -- Mikrometer (AST-G08)
     bit_depth       smallint NOT NULL DEFAULT 16,
     is_cooled       boolean NOT NULL DEFAULT true,
+    cooling_setpoint_c real,                        -- Kuehl-Soll in Grad C (null = keine Pruefung); Plugin warnt nur, belichtet weiter (NT-E2)
+    cooling_tolerance_c real NOT NULL DEFAULT 1 CHECK (cooling_tolerance_c > 0),  -- zulaessige |Temperatur - Soll| in K (NT-E2)
     is_color        boolean NOT NULL DEFAULT false,
     read_noise_e    real, full_well_e real, gain_e_per_adu real,
-    quantum_efficiency real DEFAULT 0.8,
+    quantum_efficiency_pct real DEFAULT 80 CHECK (quantum_efficiency_pct IS NULL OR quantum_efficiency_pct BETWEEN 0 AND 100),
+                                                   -- PROZENT wie transmission_pct - vorher ein Bruch (0,8) neben Prozentspalten
+                                                   -- und damit eine Faktor-100-Quelle in abgeleiteten Rechnungen (AST-D22)
     dark_current_e_s_20c real DEFAULT 0.005,
-    default_gain    integer NOT NULL,
-    default_offset  integer NOT NULL,
+    default_gain    integer,                       -- null = NINA-Standard (-1) (NT-38)
+    default_offset  integer,                       -- null = NINA-Standard (-1) (NT-38)
     default_binning smallint NOT NULL DEFAULT 1,
     default_readout_mode text NOT NULL DEFAULT 'Default',
     supported_binning jsonb NOT NULL DEFAULT '[1,2]',          -- [1,2,3,4]
@@ -394,16 +508,19 @@ CREATE TABLE moon_profile (
     tenant_id       uuid NOT NULL REFERENCES tenant(id),   -- Built-ins werden je Mandant angelegt
     name            text NOT NULL,
     description     text NOT NULL DEFAULT '',
-    separation_deg  real NOT NULL,
-    width_days      real NOT NULL,
-    relax_scale     real NOT NULL,
-    moon_min_alt_deg real NOT NULL,
-    moon_max_alt_deg real NOT NULL,
-    max_illumination_pct real NOT NULL,
+    separation_deg  real NOT NULL CHECK (separation_deg BETWEEN 0 AND 180),  -- Grad geforderter Abstand bei Vollmond (AST-M12)
+    width_days      real NOT NULL CHECK (width_days >= 0),  -- Tage bis der geforderte Abstand auf die Haelfte faellt (AST-M12)
+    relax_scale     real NOT NULL CHECK (relax_scale >= 0),  -- Grad geforderter Abstand je Grad Mondhoehe unter der Max-Hoehe;
+                                                   -- KEIN Multiplikator (moon.md 1, AST-M2/M12)
+    moon_min_alt_deg real NOT NULL CHECK (moon_min_alt_deg BETWEEN -90 AND 90),  -- Hoehe, unter der die Forderung ganz entfaellt (AST-M12)
+    moon_max_alt_deg real NOT NULL CHECK (moon_max_alt_deg BETWEEN -90 AND 90),  -- Hoehe, AB DER der volle Abstand gilt - gegenueber
+                                                   -- Astro PM INVERTIERTE Semantik, KEIN oberes Limit (moon.md 1, AST-M8)
+    max_illumination_pct real NOT NULL CHECK (max_illumination_pct BETWEEN 0 AND 100),  -- Prozent (AST-M12)
     moon_must_be_down boolean NOT NULL DEFAULT false,  -- harte Regel: nur Stufe 1 (Built-in "Kein Mond", FK 8.2)
     is_built_in     boolean NOT NULL DEFAULT false,
     created_at      timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, name)
+    UNIQUE (tenant_id, name),
+    CHECK (moon_min_alt_deg < moon_max_alt_deg)    -- bei min > max wird f negativ, We < 0 und der geforderte Abstand kollabiert
 );
 -- Seed je Mandant (Werte aus Astro PM):
 -- No Moon 180/14/0/-90/-2/0 · Strict 90/8/0/-15/5/30 · Moderate 60/5/2/-15/5/60 · Relaxed 25/3/3/-15/5/80
@@ -411,14 +528,16 @@ CREATE TABLE moon_profile (
 CREATE TABLE filter (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
-    telescope_id    uuid REFERENCES telescope(id), -- Filterrad-Zuordnung
-    short_name      text NOT NULL,                 -- Filterrad-Schlüssel: 'HA','OIII','LUMINOS'
+    telescope_id    uuid REFERENCES telescope(id), -- optionale Zuordnung fuer Uebersichten, NICHT Filterrad (maszgeblich: rig.filter_wheel, NT-43)
+    short_name      text NOT NULL,                 -- Anzeige-/Planungsschluessel: 'HA','OIII','LUMINOS'; NINA-Name kommt aus rig.filter_wheel (NT-E1)
     full_name       text NOT NULL DEFAULT '',
     brand           text NOT NULL DEFAULT '',
     filter_type     text NOT NULL CHECK (filter_type IN ('broadband','narrowband','luminance','uv_ir_cut','light_pollution','photometric','other')),
     size            text, shape text, mount_type text,
     bandwidth_nm    real,
     center_wavelength_nm real,
+    photometric_band text NOT NULL DEFAULT 'none' CHECK (photometric_band IN ('U','B','V','Rc','Ic','g','r','i','z','clear','lum','none')),
+                                                   -- Abbildung der Transit-Filterempfehlung auf das Filterrad (FA-EXO-08, NT-41)
     transmission_pct real,
     thickness_mm    real,
     color_hex       text NOT NULL DEFAULT '#CCCCCC',
@@ -427,7 +546,10 @@ CREATE TABLE filter (
     default_moon_profile_id uuid REFERENCES moon_profile(id),
     notes           text NOT NULL DEFAULT '',
     created_at      timestamptz NOT NULL DEFAULT now(),
-    updated_at      timestamptz NOT NULL DEFAULT now()
+    updated_at      timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (tenant_id, short_name)                 -- Kurzname ist Planungsschluessel, steckt im PK von
+                                                   -- flat_combination und in exposure_line.filter_short_name (FA-FIL-04);
+                                                   -- die Verbindung zu NINA stellt rig.filter_wheel her (NT-E1)
 );
 CREATE INDEX ASYNC ix_filter_telescope ON filter (tenant_id, telescope_id);
 
@@ -450,7 +572,7 @@ CREATE TABLE exposure_template_line (              -- Astro PM: ExposurePlanItem
     filter_short_name text NOT NULL,               -- Fallback, falls Filter gelöscht
     exposure_s      real NOT NULL CHECK (exposure_s > 0),
     planned_count   integer NOT NULL CHECK (planned_count >= 0),
-    gain            integer, offset_adu integer,   -- null = Kamera-Standard
+    gain            integer, offset_adu integer,   -- null = NINA-Standard (-1) (NT-38)
     binning         smallint NOT NULL DEFAULT 1,
     readout_mode    text,
     moon_mode       text NOT NULL DEFAULT 'profile' CHECK (moon_mode IN ('profile','project_default','none')),
@@ -469,10 +591,16 @@ CREATE TABLE rig (                                 -- Astro PM: ImagingSystems
     camera_id       uuid NOT NULL REFERENCES camera(id),
     show_in_planning boolean NOT NULL DEFAULT true, -- "In Framing und Simulator anzeigen" (FA-RIG-05)
     nina_delivery_enabled boolean NOT NULL DEFAULT true,  -- "An NINA ausliefern" (Rig in Betrieb)
-    filter_wheel    jsonb NOT NULL DEFAULT '[]',   -- Filterradbelegung [{position, filterId}] (FA-RIG-14)
-    nina_filter_wheel jsonb,                       -- vom Plugin gemeldete Namen [{position, name}]
+    filter_wheel    jsonb NOT NULL DEFAULT '[]',   -- Filterradbelegung (FA-RIG-14, NT-E1) je Platz:
+                                                   -- [{position, filterId, ninaFilterName, ninaConfirmedAt, ninaConfirmedBy}]
+                                                   -- ninaFilterName = bestaetigter NINA-Name (= nina_filter_name; null = nicht zugeordnet),
+                                                   -- ninaConfirmedAt = Zeitpunkt der Bestaetigung (= nina_confirmed_at; null = unbestaetigt),
+                                                   -- ninaConfirmedBy = app_user.id (Admin/Owner). Meldet der Heartbeat an einem Platz einen
+                                                   -- anderen Namen, setzt die Anwendung ninaConfirmedAt = null (Alarm filter_wheel_changed).
+                                                   -- Nur Zeilen mit bestaetigtem Namen werden geplant (Diagnose filter_not_found).
+    nina_filter_wheel jsonb,                       -- vom Plugin gemeldete Belegung [{position, name, focusOffset}] + reportedAt (Heartbeat, NT-E1)
     default_template_id uuid REFERENCES exposure_template(id),
-    default_rotation_deg real,                     -- ohne Rotator: fester Kamerawinkel (FA-RIG-10)
+    default_rotation_deg double precision CHECK (default_rotation_deg IS NULL OR (default_rotation_deg >= 0 AND default_rotation_deg < 360)),  -- ohne Rotator: fester Kamerawinkel (FA-RIG-10); double wegen der 1e-6-Zusage (AST-G07)
     has_rotator     boolean NOT NULL DEFAULT false,
     rotation_tolerance_deg real NOT NULL DEFAULT 5 CHECK (rotation_tolerance_deg BETWEEN 0 AND 90),
     skip_on_rotation_mismatch boolean NOT NULL DEFAULT false,
@@ -494,6 +622,9 @@ CREATE TABLE rig (                                 -- Astro PM: ImagingSystems
     flat_count      smallint NOT NULL DEFAULT 20 CHECK (flat_count > 0),
     dark_flats_enabled boolean NOT NULL DEFAULT true,
     dark_flat_count smallint CHECK (dark_flat_count > 0),  -- null = wie flat_count (FA-SCH-08)
+    flats_source    text NOT NULL DEFAULT 'panel' CHECK (flats_source IN ('panel','sky')),
+                                                   -- panel: ab darknessEndUtc, geparkt; sky: Himmelsflats Sonne -8 bis -2 Grad,
+                                                   -- flatsNotAfterUtc, nicht parken (FA-SCH-08, NT-40)
     -- Meridian-Flip (FA-SCH-17, Bedeutung wie NINA-Trigger)
     flip_enabled    boolean NOT NULL DEFAULT true,
     flip_after_meridian_min real NOT NULL DEFAULT 5,
@@ -516,9 +647,12 @@ CREATE TABLE rig_lease (
     active_session_id uuid,                        -- höchstens eine laufende Session je Rig (FA-RIG-06)
     lease_until     timestamptz,                   -- jetzt + 3 min, verlängert per Heartbeat (FA-RIG-06)
     offline_until   timestamptz,                   -- Offline-Modus des Plugins: Lease/Überwachung eingefroren bis (max. 14 Tage, FA-NIN-04)
+    released_session_id uuid,                      -- per Admin-Freigabe (lease/release) ausgeschlossene Session: ihre Heartbeats holen die Lease nicht zurueck (M5);
+                                                   -- ein Heartbeat mit sessionId uebernimmt die Lease sonst wieder, wenn active_session_id IS NULL OR = sessionId; neues POST /sessions setzt NULL
     updated_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ASYNC ix_rig_lease_tenant ON rig_lease (tenant_id, lease_until);
+CREATE INDEX ASYNC ix_rig_lease_due ON rig_lease (lease_until);  -- Job-Index (Ausnahme von der tenant_id-Regel, TK 6.1): Lease-Sweep in tick-5min laeuft ueber alle Mandanten
 
 CREATE TABLE nina_instance (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -534,7 +668,7 @@ CREATE TABLE nina_instance (
     profile_lon     double precision,
     last_state      jsonb,                         -- letzter Heartbeat-Inhalt (inkl. Flip-Trigger-Einstellungen der Sequenz, zuletzt gemessener Positionswinkel)
     last_calls      jsonb,                         -- Ringpuffer letzter API-Aufrufe/Fehler (FA-ADM-06)
-    last_seen_at    timestamptz,
+    last_seen_at    timestamptz,                   -- letzte Plugin-Anfrage; Token ohne Ablauf, Widerruf wirkt sofort (SV-08)
     settings_version_fetched integer,              -- zuletzt per /bootstrap abgerufene rig.settings_version (FA-SIM-09)
     settings_fetched_at timestamptz,
     created_by      uuid REFERENCES app_user(id),
@@ -562,21 +696,25 @@ CREATE TABLE project (
     description_md  text NOT NULL DEFAULT '',      -- Markdown statt RTF (Astro PM)
     ra_deg          double precision,              -- J2000 (Astro PM: RaHours); Entwürfe dürfen unvollständig sein
     dec_deg         double precision,
-    rotation_deg    real NOT NULL DEFAULT 0,
+    rotation_deg    double precision NOT NULL DEFAULT 0 CHECK (rotation_deg >= 0 AND rotation_deg < 360),  -- Positionswinkel Nord ueber Ost (AST-G07)
     panel_rows      smallint NOT NULL DEFAULT 1,
     panel_columns   smallint NOT NULL DEFAULT 1,
     panel_overlap_pct real NOT NULL DEFAULT 20,
     -- Bedingungen
-    min_altitude_deg real NOT NULL DEFAULT 30,
+    min_altitude_deg real NOT NULL DEFAULT 30 CHECK (min_altitude_deg BETWEEN 0 AND 90),  -- Grad, scheinbare Hoehe (AST-D20)
     min_time_on_target_h real NOT NULL DEFAULT 1.0,
     twilight        text NOT NULL DEFAULT 'astronomical' CHECK (twilight IN ('astronomical','nautical','civil')),
     moon_avoidance_enabled boolean NOT NULL DEFAULT false,
-    moon_separation_deg real NOT NULL DEFAULT 60,
-    moon_width_days real NOT NULL DEFAULT 5,
-    moon_relax_scale real NOT NULL DEFAULT 1,
-    moon_min_alt_deg real NOT NULL DEFAULT -15,
-    moon_max_alt_deg real NOT NULL DEFAULT 5,
-    moon_max_illumination_pct real NOT NULL DEFAULT 40,
+    moon_must_be_down boolean NOT NULL DEFAULT false,  -- Gegenstueck zu moon_profile.moon_must_be_down; ohne diese Spalte konnte
+                                                   -- exposure_line.moon_mode = 'project_default' nie "Kein Mond" ausdruecken (AST-M7)
+    moon_separation_deg real NOT NULL DEFAULT 60 CHECK (moon_separation_deg BETWEEN 0 AND 180),  -- Grad (AST-M12)
+    moon_width_days real NOT NULL DEFAULT 5 CHECK (moon_width_days >= 0),        -- Tage (AST-M12)
+    moon_relax_scale real NOT NULL DEFAULT 2 CHECK (moon_relax_scale >= 0),      -- Grad je Grad, KEIN Multiplikator; Vorgabe an das
+                                                   -- Built-in "Moderat" angeglichen (vorher 1 = undokumentierte vierte Stufe, AST-M7/M2)
+    moon_min_alt_deg real NOT NULL DEFAULT -15 CHECK (moon_min_alt_deg BETWEEN -90 AND 90),
+    moon_max_alt_deg real NOT NULL DEFAULT 5 CHECK (moon_max_alt_deg BETWEEN -90 AND 90),
+    moon_max_illumination_pct real NOT NULL DEFAULT 60 CHECK (moon_max_illumination_pct BETWEEN 0 AND 100),  -- Prozent; Vorgabe an
+                                                   -- "Moderat" angeglichen (vorher 40, AST-M7)
     -- Status, Freigabe, Priorität
     approval_status text NOT NULL DEFAULT 'draft'
                     CHECK (approval_status IN ('draft','submitted','approved','returned','rejected')),
@@ -601,13 +739,15 @@ CREATE TABLE project (
     thumbnail_s3_key text,                         -- Vorschaubild aus HiPS (kein BLOB in der DB)
     notes_md        text NOT NULL DEFAULT '',
     version         integer NOT NULL DEFAULT 1,    -- optimistische Sperre / Sync
-    deleted_at      timestamptz,                   -- Soft-Delete (FA-PRJ-15): nicht ausgeliefert, Historie bleibt
+    deleted_at      timestamptz,                   -- Papierkorb (FA-PRJ-15, E4): Loeschen setzt IMMER deleted_at; Ansicht Geloescht mit Wiederherstellen
+                                                   -- fuer Admin/Owner; kein automatisches Endloeschen; geloeschte Projekte nicht an NINA ausgeliefert
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
     CHECK ((approval_status = 'approved') = (status IS NOT NULL))
 );
 CREATE INDEX ASYNC ix_project_rig_status ON project (tenant_id, rig_id, status, priority);
 CREATE INDEX ASYNC ix_project_approval   ON project (tenant_id, approval_status, created_by);
+CREATE INDEX ASYNC ix_project_deleted    ON project (tenant_id, deleted_at);   -- Ansicht Geloescht (E4)
 
 CREATE TABLE favorite (
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
@@ -625,9 +765,9 @@ CREATE TABLE project_panel (                       -- Astro PM: MosaicPanels
     label           text NOT NULL DEFAULT 'Main',
     ra_deg          double precision NOT NULL,
     dec_deg         double precision NOT NULL,
-    rotation_deg    real NOT NULL DEFAULT 0,
+    rotation_deg    double precision NOT NULL DEFAULT 0 CHECK (rotation_deg >= 0 AND rotation_deg < 360),  -- Positionswinkel Nord ueber Ost (AST-G07)
     notes           text NOT NULL DEFAULT '',
-    deleted_at      timestamptz,                   -- Panels mit Aufnahmen nur archivieren (FA-PRJ-06)
+    deleted_at      timestamptz,                   -- Panels mit Aufnahmen weich loeschen, ohne Aufnahmen endgueltig (FA-PRJ-06, E4)
     UNIQUE (project_id, panel_index)
 );
 
@@ -640,10 +780,14 @@ CREATE TABLE exposure_line (                       -- Astro PM: ExposureSets (oh
     filter_short_name text NOT NULL,
     exposure_s      real NOT NULL CHECK (exposure_s > 0),
     planned_count   integer NOT NULL CHECK (planned_count >= 0),
-    gain            integer NOT NULL,
-    offset_adu      integer NOT NULL,
+    gain            integer,                       -- null = NINA-Standard (-1) (NT-38)
+    offset_adu      integer,                       -- null = NINA-Standard (-1) (NT-38)
     binning         smallint NOT NULL DEFAULT 1,
     readout_mode    text NOT NULL,
+                                                   -- Sperre (NT-E3): hat die Zeile Aufnahmen (acquired_count + bonus_count > 0 bzw. capture vorhanden),
+                                                   -- sind filter_id/filter_short_name, exposure_s, gain, offset_adu, binning und readout_mode unveraenderlich
+                                                   -- (409 line.locked_by_captures); aenderbar: planned_count, moon_mode/moon_profile_id, enabled.
+                                                   -- Aenderung ueber POST .../lines/{lineId}/duplicate (neue Zeile, Zaehler 0)
     moon_mode       text NOT NULL DEFAULT 'profile' CHECK (moon_mode IN ('profile','project_default','none')),
     moon_profile_id uuid REFERENCES moon_profile(id),
     enabled         boolean NOT NULL DEFAULT true,
@@ -656,9 +800,9 @@ CREATE TABLE exposure_line (                       -- Astro PM: ExposureSets (oh
     bonus_rejected_count integer NOT NULL DEFAULT 0,
     -- accepted = max(0, acquired - rejected) ; remaining = max(0, planned - accepted) ;
     -- planning_need = max(0, planned + ceil(planned * rig.overshoot_pct/100) - accepted)  (Fachkonzept 8.4)
-    -- integration_s = (accepted + bonus - bonus_rejected) * exposure_s  (Fachkonzept 8.4)
+    -- integration_s = Summe capture_night.integration_s (Summe der gemeldeten capture.exposure_s, NT-E3; Fachkonzept 8.4)
     -- Exoplaneten-Zeilen: Zähler je Transit-Beobachtung in transit_observation, hier nur Summen
-    deleted_at      timestamptz,                   -- Zeilen mit Aufnahmen nur archivieren (FA-PRJ-07)
+    deleted_at      timestamptz,                   -- Zeilen mit Aufnahmen weich loeschen, ohne Aufnahmen endgueltig (FA-PRJ-07, E4)
     notes           text NOT NULL DEFAULT '',
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now()
@@ -698,6 +842,8 @@ CREATE TABLE change_request (                      -- Änderungsantrag nach Frei
     submitter_rank  smallint CHECK (submitter_rank >= 1),  -- Rang beim Einreicher, solange offen
     final_votes     jsonb,                         -- Endstand der Stimmen bei Entscheidung
     base_version    integer NOT NULL,              -- project.version bei Antragstellung (Konflikterkennung)
+    version         integer NOT NULL DEFAULT 1,    -- eigene Version des Antrags fuer ETag/If-Match: Antragsteller und Admin
+                                                   -- duerfen denselben offenen Antrag bearbeiten (FA-FRG-08/14) -> 412 bei Konflikt
     updated_at      timestamptz NOT NULL DEFAULT now(),
     status          text NOT NULL DEFAULT 'open' CHECK (status IN ('open','approved','rejected','withdrawn')),
     decided_by      uuid REFERENCES app_user(id),
@@ -747,9 +893,16 @@ CREATE TABLE ephemeris (
     project_id      uuid NOT NULL REFERENCES project(id),
     t0_bjd_tdb      double precision NOT NULL,
     t0_sigma_d      double precision,
-    period_d        double precision NOT NULL,
+    period_d        double precision NOT NULL CHECK (period_d > 0),  -- Tage; ohne > 0 gibt n0 = (JD - T0)/P unendlich (AST-D20)
     period_sigma_d  double precision,
-    duration_h      real NOT NULL,
+    duration_h      real CHECK (duration_h IS NULL OR duration_h > 0),  -- T14 in STUNDEN; nullable wie in exo_catalog_entry (AST-T18)
+    duration_estimated boolean NOT NULL DEFAULT false,
+    time_system_source text NOT NULL DEFAULT 'bjd_tdb'  -- Quell-Zeitsystem der Epoche (transit.md 1, AST-T5)
+        CHECK (time_system_source IN ('bjd_tdb','bjd_utc','hjd_utc','jd_utc','btjd','bkjd','unknown')),
+    o_minus_c_min   real,                          -- letzte O-C in Minuten (verschiebt die Mitte, transit.md 2)
+    o_minus_c_sigma_min real,                      -- deren eigener Fehler; geht in sigma ein (AST-T4)
+    o_minus_c_epoch integer,                       -- Epochennummer n der O-C
+    o_minus_c_source_id uuid,                      -- Bezugs-Ephemeride der O-C (sonst doppelte Anwendung, AST-T12)
     depth_mmag      real,
     rp_over_rs      real,
     source          text NOT NULL,
@@ -834,9 +987,12 @@ CREATE TABLE night_plan (
                                                    --   meridianFlip:{waitStartUtc,plannedUtc,durationS,inTransitWindow,planned}|null, entries[]}] (TK 7.6, ENG5-4…7)
     log_s3_key      text,                          -- Planprotokoll als .json.gz in S3 (tenant/<tid>/plans/<id>.json.gz)
     created_by      uuid REFERENCES app_user(id),
-    created_at      timestamptz NOT NULL DEFAULT now()
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (session_id, revision)                  -- eine Revision je Session (TK 7.3); bei Prognose- und
+                                                   -- Simulationsplaenen ist session_id NULL und damit frei
 );
 CREATE INDEX ASYNC ix_night_plan_rig_night ON night_plan (tenant_id, rig_id, night, created_at);
+CREATE INDEX ASYNC ix_night_plan_session ON night_plan (tenant_id, session_id, revision);  -- Session-Detail: Revisionen (TK 6.3)
 
 CREATE TABLE session (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -847,8 +1003,13 @@ CREATE TABLE session (
     night_plan_id   uuid REFERENCES night_plan(id),  -- erste Revision; weitere über night_plan.session_id
     started_at      timestamptz NOT NULL,
     ended_at        timestamptz,
+    session_end_utc timestamptz,                   -- massgebliches Sessionende (sessionEndUtc) der LETZTEN Planrevision (NT-09);
+                                                   -- Basis fuer stale (+ 2 h) und report_due_at; Nachtbericht fruehestens
+                                                   -- max(ended_at, darknessEndUtc ?? session_end_utc) der letzten Revision
     status          text NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','aborted','stale')),
-                    -- stale = kein Heartbeat > 10 min während running (Prüfung tick-5min, nicht bei offline) bzw. nicht beendet 2 h nach Nachtende (Ende Nachtfenster, FK 8.1); aborted/stale -> running bei Neustart in derselben Nacht
+                    -- stale = kein Heartbeat > 10 min während running (Prüfung tick-5min, nicht bei offline) bzw. nicht beendet 2 h nach session_end_utc (Ende Nachtfenster, FK 8.1, NT-09);
+                    -- Uebergaenge: running -> completed | aborted | stale; einziger Rueckweg stale -> running (Heartbeat oder PATCH running derselben Session, M6);
+                    -- aborted und completed sind endgueltig (NT-11, NT-15; PATCH running darauf -> 409 session.closed)
     last_heartbeat_at timestamptz,
     created_offline boolean NOT NULL DEFAULT false, -- offline angelegt: Lease-Konflikt beim Nachmelden erlaubt (bleibt dauerhaft gesetzt)
     offline_since   timestamptz,                   -- gesetzt, solange das Plugin im Offline-Modus ist (NULL = online); das Einfrieren steuert rig_lease.offline_until
@@ -859,7 +1020,7 @@ CREATE TABLE session (
     forecast_snapshot jsonb,                       -- Wetterbewertung zum Sessionbeginn
     outbox_pending  integer,                       -- offene Plugin-Meldungen beim Sessionende
     report_status   text NOT NULL DEFAULT 'none' CHECK (report_status IN ('none','pending','sent','failed','skipped')),  -- Nachtbericht (FA-AUS-21)
-    report_due_at   timestamptz,                   -- spätester Versand (Ende + 2 h)
+    report_due_at   timestamptz,                   -- spaetester Versand = session_end_utc + 2 h (NT-09)
     report_sent_at  timestamptz,
     UNIQUE (rig_id, night, started_at)
 );
@@ -887,7 +1048,7 @@ CREATE TABLE capture (                             -- eine Zeile je Belichtung (
     id              uuid PRIMARY KEY,              -- vom Plugin erzeugt (idempotent, FA-SYN-04)
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
     session_id      uuid NOT NULL REFERENCES session(id),
-    project_id      uuid REFERENCES project(id),   -- null nur bei assignment='unassigned'
+    project_id      uuid REFERENCES project(id),      -- null bei assignment='unassigned' UND bei frame_type flat/dark_flat   -- null nur bei assignment='unassigned'
     panel_id        uuid REFERENCES project_panel(id),
     exposure_line_id uuid REFERENCES exposure_line(id),
     transit_observation_id uuid REFERENCES transit_observation(id),  -- Exoplaneten (FA-EXO-20)
@@ -897,26 +1058,31 @@ CREATE TABLE capture (                             -- eine Zeile je Belichtung (
     CHECK (frame_type <> 'light' OR assignment = 'unassigned' OR (project_id IS NOT NULL AND panel_id IS NOT NULL AND exposure_line_id IS NOT NULL)),
     CHECK (frame_type = 'light' OR (exposure_line_id IS NULL AND project_ids IS NOT NULL AND assignment = 'assigned')),   -- Flats/Dark-Flats: Zielliste statt Zeile
     night           date NOT NULL,
-    captured_at     timestamptz NOT NULL,
-    night_plan_id   uuid,                          -- Planrevision (Lights)
+    captured_at     timestamptz NOT NULL,          -- Belichtungsbeginn UTC (MetaData.Image.ExposureStart, NT-10)
+    exposure_mid_utc timestamptz,                  -- Belichtungsmitte UTC (ExposureMidPoint, Pflicht im Vertrag; Basis BJD_TDB FA-EXO-29, NT-10);
+                                                   -- nullable nur fuer Altbestand/Import
+    night_plan_id   uuid,                          -- Planrevision (Lights), auch der lokale Jint-Plan; null nur bei session.created_offline (NT-14)
     block_id        text,                          -- Lights: UUID aus night_plan.blocks
     filter_short_name text NOT NULL,               -- Kurzname (Filterrad-Schlüssel) für alle Aufnahmetypen
     filter_actual   text,
     exposure_s      real NOT NULL,
-    gain integer, offset_adu integer, binning smallint, readout_mode text,
+    gain integer, offset_adu integer, binning smallint, readout_mode text,  -- gain/offset null = NINA-Standard (-1) (NT-38)
     ra_deg          double precision,                          -- Soll-Koordinaten des Panels (J2000)
     dec_deg         double precision,
-    rotation_deg    real,                          -- Positionswinkel des letzten Plate-Solve im Block, sonst Soll
+    rotation_deg    double precision CHECK (rotation_deg IS NULL OR (rotation_deg >= 0 AND rotation_deg < 360)),  -- Positionswinkel des letzten Plate-Solve im Block, sonst Soll (AST-G07)
     pier_side       text CHECK (pier_side IN ('east','west')),   -- null = unbekannt
-    rotator_mech_deg real NOT NULL DEFAULT 0,      -- Lights: gemessener mechanischer Winkel (ohne Rotator 0); Flats/Dark-Flats: eingefrorener Repräsentant der Kombination (NIN5-8)
+    rotator_mech_deg double precision NOT NULL DEFAULT 0 CHECK (rotator_mech_deg >= 0 AND rotator_mech_deg < 360),  -- Lights: gemessener mechanischer Winkel (ohne Rotator 0); Flats/Dark-Flats: eingefrorener Repraesentant (AST-G07)
     result          text NOT NULL CHECK (result IN ('saved','aborted','failed')),
     is_bonus        boolean NOT NULL DEFAULT false,
+    temperature_deviation boolean NOT NULL DEFAULT false,  -- Kuehlung aus oder |Temperatur - Soll| > camera.cooling_tolerance_c; wird trotzdem gezaehlt (NT-E2)
+    settings_deviation boolean NOT NULL DEFAULT false,     -- Filter/Belichtung/Binning/Gain/Offset weichen von der Zeile ab; gespeichert und gezaehlt (NT-E3)
     rejected        boolean NOT NULL DEFAULT false,
     reject_reason   text,
     file_name       text,                          -- nur bei result='saved'
     CHECK (result <> 'saved' OR file_name IS NOT NULL),
     readout_mode_index smallint NOT NULL DEFAULT 0,  -- Pflicht laut TK 7.6; Rückfall 0, wenn die Kamera nur einen Modus hat (DAT5-22)
-    metrics         jsonb,                         -- optional: hfr, stars, meanAdu, sensorTempC, guidingRmsArcsec, altitudeDeg, airmass, focusPosition
+    metrics         jsonb,                         -- hfr, stars, meanAdu, sensorTempC, setPointC, guidingRmsArcsec, altitudeDeg, airmass, focusPosition;
+                                                   -- sensorTempC/setPointC Pflicht, wenn die Kamera sie liefert (NT-E2), uebrige optional
     received_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ASYNC ix_capture_line_night ON capture (tenant_id, exposure_line_id, night);
@@ -935,7 +1101,9 @@ CREATE TABLE capture_night (                       -- Aggregat je Zeile und Nach
     rejected_count  integer NOT NULL DEFAULT 0,     -- WIRKSAM = max(rejected_individual, rejected_correction) -- nie summieren (FA-AUS-06)
     bonus_count     integer NOT NULL DEFAULT 0,
     bonus_rejected_count integer NOT NULL DEFAULT 0,-- einzeln verworfene Bonus-Aufnahmen (FA-AUS-20)
-    integration_s   double precision NOT NULL DEFAULT 0,  -- (akzeptiert + bonus − bonus verworfen) x Belichtung
+    integration_s   double precision NOT NULL DEFAULT 0,  -- Summe capture.exposure_s der akzeptierten Aufnahmen inkl. nicht verworfener Bonus-Aufnahmen
+                                                   -- (NICHT Anzahl x Zeilen-Belichtung, NT-E3); Korrektur-Anzahlen ohne Einzelauswahl
+                                                   -- werden mit exposure_line.exposure_s abgezogen
     sources         jsonb NOT NULL DEFAULT '["nina"]',    -- Menge aus contracts/enums.json correctionSources (nina | correction | import); nur Information.
                                                    -- Seed/Import = Basis für den Abgleich-Job (DAT-18); PATCH /captures/{id}/assign ergänzt 'nina' (DAT5-12)
     updated_at      timestamptz NOT NULL DEFAULT now(),
@@ -963,7 +1131,7 @@ CREATE TABLE flat_combination (                    -- Kalibrier-Kombination je S
     rotator_mech_deg_dg integer NOT NULL DEFAULT 0,  -- Schlüssel: eingefrorener Repräsentant in ZEHNTELGRAD (round(deg*10)); 0 = Rig ohne Rotator.
                                                    -- Ganzzahl, weil ein real im Primärschlüssel nach Neustart/Rundung eine zweite Zeile erzeugen könnte (NIN5-8/DAT5-21)
     median_deg      double precision,              -- laufend beobachteter Median der gemessenen Winkel – reine Beobachtung, NICHT Teil des Schlüssels
-    gain integer NOT NULL, offset_adu integer NOT NULL, binning smallint NOT NULL,
+    gain integer NOT NULL, offset_adu integer NOT NULL, binning smallint NOT NULL,  -- Schluessel: NINA-Standard als -1 gespeichert (NOT NULL bleibt, NT-38)
     readout_mode_index smallint NOT NULL DEFAULT 0,  -- Index der Kameraliste (Schlüssel; Name nur zur Anzeige, NIN-16c)
     readout_mode    text NOT NULL DEFAULT '',      -- gemeldeter Name (Anzeige)
     status          text NOT NULL DEFAULT 'running' CHECK (status IN ('running','done','skipped')),  -- Zeile entsteht beim ersten Flat ('running'); session_close setzt 'done'/'skipped' (DAT5-7).
@@ -984,7 +1152,7 @@ CREATE TABLE session_log (                         -- Sitzungsprotokoll (Astro P
     end_time        timestamptz,
     seeing_arcsec   real,
     transparency_pct real,
-    sqm             real,
+    sqm             real CHECK (sqm IS NULL OR sqm BETWEEN 14 AND 23),  -- Himmelshelligkeit in mag/arcsec^2 (FA-AUS-14)
     temperature_c   real,
     humidity_pct    real,
     wind_kmh        real,
@@ -1021,8 +1189,9 @@ CREATE TABLE discord_channel (                     -- ausgehende Discord-Kanäle
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       uuid NOT NULL REFERENCES tenant(id),
     name            text NOT NULL,                 -- Anzeige, z. B. '#freigaben'
-    webhook_ssm_name text NOT NULL,                -- /nina-pm/tenants/<tid>/discord/<id> (SecureString, URL nie in der DB)
-    webhook_hint    text NOT NULL,                 -- letzte 4 Zeichen zur Anzeige
+    webhook_url     text,                          -- vollstaendige Webhook-URL (SV-10): nie ausgeliefert, nie geloggt, nie exportiert; Host nur discord.com/discordapp.com,
+                                                   -- vor jedem Senden erneut geprueft; NULL nach Mandanten-Import (Kanal deaktiviert, bis ein Admin die URL neu eintraegt)
+    webhook_hint    text,                          -- letzte 4 Zeichen zur Anzeige; NULL ohne URL
     categories      jsonb NOT NULL DEFAULT '[]',   -- ["approvals","sessions","alerts"]
     event_filter    jsonb NOT NULL DEFAULT '{}',   -- je Kategorie abgewählte Ereignisse, showMemberNames
     enabled         boolean NOT NULL DEFAULT true,
@@ -1032,7 +1201,8 @@ CREATE TABLE discord_channel (                     -- ausgehende Discord-Kanäle
     created_by      uuid REFERENCES app_user(id),
     created_at      timestamptz NOT NULL DEFAULT now(),
     updated_at      timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, name)
+    UNIQUE (tenant_id, name),
+    CHECK (webhook_url IS NOT NULL OR NOT enabled)  -- ohne URL nie aktiv
 );
 
 CREATE TABLE discord_delivery (                    -- Zustellzustand je Kanal und Ereignis (Deduplizierung, DAT-11)
@@ -1094,25 +1264,31 @@ CREATE TABLE system_setting (                      -- systemweite Einstellungen 
 -- =====================================================================
 -- Vorlage für GRANTs je Tabellen-Migration (DSQL; lokal ohne AWS IAM GRANT)
 -- =====================================================================
--- Migration 0000 läuft AUSSCHLIESSLICH in der Lambda `db-bootstrap` (Rolle NinaPmDbBootstrap,
--- dsql:DbConnectAdmin, kein CDK-Trigger, einmaliger Aufruf per aws lambda invoke, H-25).
--- Die Lambda `migrate` (Rolle NinaPmMigrate, nur dsql:DbConnect) PRUEFT beim Start nur, ob
--- Rollen und Grants existieren, und bricht sonst mit db.bootstrap_missing ab (TK 6.8, SEC-1).
+-- Die Lambda `migrate` (Ausfuehrungsrolle mit dsql:DbConnectAdmin, SV-13) verbindet als `admin` und
+-- fuehrt Migration 0000 inkl. Rollen und GRANTs idempotent selbst aus; Schema-Eigentuemer ist `admin`.
+-- Es gibt keine eigene Lambda `db-bootstrap` und keine DB-Rolle app_migrate (SV-14).
 --
 -- Migration 0000 (als admin, idempotent):
 --   CREATE ROLE app_rw      WITH LOGIN;   -- Lambda api und ops-cli
---   CREATE ROLE app_job     WITH LOGIN;   -- Lambda worker  (getrennt, SEC-4)
---   CREATE ROLE app_migrate WITH LOGIN;   -- Lambda migrate (Schema-Eigentuemer)
+--   CREATE ROLE app_job     WITH LOGIN;   -- Lambda worker  (getrennt: verarbeitet fremde Eingaben, SV-14)
 --   AWS IAM GRANT app_rw      TO 'arn:aws:iam::<account>:role/NinaPmApi';
 --   AWS IAM GRANT app_rw      TO 'arn:aws:iam::<account>:role/NinaPmOpsCli';
 --   AWS IAM GRANT app_job     TO 'arn:aws:iam::<account>:role/NinaPmWorker';
---   AWS IAM GRANT app_migrate TO 'arn:aws:iam::<account>:role/NinaPmMigrate';
---   GRANT USAGE, CREATE ON SCHEMA public TO app_migrate;
 --   GRANT USAGE ON SCHEMA public TO app_rw, app_job;
---   -- es gibt KEINE Rolle app_ro und KEINE IAM-Rolle NinaPmDbAccess mehr (SEC-4/SEC-12);
---   -- lesender Ad-hoc-Zugriff laeuft ueber ops-cli (NinaPmOpsInvoker, MFA).
+--   -- es gibt KEINE Rolle app_ro; lesender Ad-hoc-Zugriff laeuft ueber ops-cli
+--   -- (Aufruf nur per aws lambda invoke mit Admin-Profil, SV-13).
 --
--- je neue Tabelle <t> (eigene Transaktionen nach dem CREATE TABLE), BEIDE Saetze Pflicht:
---   GRANT SELECT, INSERT, UPDATE, DELETE ON <t> TO app_rw;
---   GRANT <Umfang laut TK 6.2 "Rechte je Gruppe"> ON <t> TO app_job;
--- Der DSQL-Lint in CI lehnt jede CREATE TABLE ohne beide GRANT-Saetze ab (TK 6.8).
+-- je neue Tabelle <t> (eigene Transaktionen nach dem CREATE TABLE), BEIDE Saetze Pflicht,
+-- jeweils mit dem Umfang aus TK 6.2 "Rechte je Gruppe":
+--   GRANT <Umfang laut TK 6.2, Spalte app_rw>  ON <t> TO app_rw;
+--   GRANT <Umfang laut TK 6.2, Spalte app_job> ON <t> TO app_job;
+-- Audit-Tabellen (system_audit, change_log, approval_event) erhalten normale Rechte (SV-11).
+-- app_job (Lambda worker) erhaelt fuer den Mandanten-Import (Job import) INSERT auf die fachlichen Mandantentabellen
+-- nach TK 6.2 (Ausruestung ausser nina_instance, Projekte & Freigabe, exo_project, discord_channel ohne URL);
+-- NIE INSERT auf identity, super_user, app_user, invitation, auth_session, nina_instance; auf auth_session gar kein Recht:
+--   GRANT SELECT, INSERT ON site TO app_job;          -- Beispiel; Umfang je Tabelle laut TK 6.2
+--   -- kein GRANT ... ON auth_session TO app_job
+-- Ausnahme von "app_rw darf alles":
+--   GRANT SELECT ON dso_object, exo_catalog_entry, weather_cache TO app_rw;  -- Kataloge pflegt app_job
+-- Der DSQL-Lint in CI lehnt jede CREATE TABLE ohne beide GRANT-Saetze ab und vergleicht den
+-- Umfang gegen die Tabelle in TK 6.2 (TK 6.8).

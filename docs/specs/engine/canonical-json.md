@@ -18,12 +18,12 @@ Alle Quantisierungen in der Engine laufen über **eine** Funktion, und zwar mit 
 roundHalfAwayFromZero(x) = (x >= 0) ? floor(x + 0.5) : -floor(-x + 0.5)   # 0,5 → 1 ; −0,5 → −1
 q(x, inv)                = roundHalfAwayFromZero(x * inv) / inv           # inv = 1/Schritt, ganzzahlig
 ```
-Erlaubte `inv`-Werte: `1e6` (Winkel, Schritt 1e-6°), `1e9` (Zahlen im kanonischen JSON), `10` (Rotatorwinkel 0,1°), `1` (Sekunden). **Die Variante `roundHalfAwayFromZero(x/step)*step` ist verboten**: die Rückmultiplikation ist in IEEE 754 nicht exakt – nachgerechnet liefert sie `q(2,0000005; 1e-6) = 2.0000009999999997` (statt `2.000001`) und `q(0,1+0,2; 1e-9) = 0.30000000000000004` (statt `0.3`); mit `inv` stimmen beide Werte exakt.
+Erlaubte `inv`-Werte: `1e6` (Winkel, Schritt 1e-6°), `1e9` (Zahlen im kanonischen JSON), **`1e3` (Wetter-Scores, Schritt 0,001 – `specs/engine/weather.md` §2, WS-08)**, `10` (Rotatorwinkel 0,1°), `1` (Sekunden). **Die Variante `roundHalfAwayFromZero(x/step)*step` ist verboten**: die Rückmultiplikation ist in IEEE 754 nicht exakt – nachgerechnet liefert sie `q(2,0000005; 1e-6) = 2.0000009999999997` (statt `2.000001`) und `q(0,1+0,2; 1e-9) = 0.30000000000000004` (statt `0.3`); mit `inv` stimmen beide Werte exakt.
 
 `Math.round` ist **verboten** (rundet halbe Werte Richtung +∞, −0,5 → 0, und ist in Jint nicht garantiert identisch); die ESLint-Regel für das Engine-Paket verbietet es zusammen mit den Trigonometrie-Funktionen.
 
 ## Hashes
-- `inputHash = sha256hex(canonicalInputJson(PlanInput))`
+- `inputHash = sha256hex(canonicalInputJson(PlanInput))`, **Hash-Eingabe sind die UTF-8-Bytes** der kanonischen Zeichenkette (verbindlich, AST-D10). Zusätzlich werden **alle Codepunkte > U+007F als `\uXXXX` escaped**, damit die Zeichenkette ASCII-rein ist und die Kodierungsfrage nicht entsteht: ECMAScript- und .NET-Zeichenketten sind UTF-16, `SHA256.HashData` arbeitet auf Bytes – ohne Festlegung liefert derselbe Projektname mit Umlaut in Node und Jint **verschiedene** Hashes. Pflicht-Testvektor mit Nicht-ASCII plus ein Jint-Paritätsfall mit Umlaut im Projektnamen.
 - `outputHash = sha256hex(canonicalInputJson(NightPlan ohne {inputHash, outputHash, computedAt}))`
 - SHA-256 eigene reine Implementierung in `packages/engine/src/hash` (kein `crypto` – Jint-Kompatibilität).
 

@@ -1,419 +1,383 @@
 {
-  "$comment": "Problem-Details-Codes (application/problem+json, Feld code). i18nKey in packages/i18n. Neue Codes nur hier ergänzen.",
-  "errors": [
-    {
-      "code": "validation.failed",
-      "http": 422,
-      "i18nKey": "errors.validation.failed",
-      "titleDe": "Eingaben ungültig"
-    },
-    {
-      "code": "auth.unauthenticated",
-      "http": 401,
-      "i18nKey": "errors.auth.unauthenticated",
-      "titleDe": "Nicht angemeldet"
-    },
-    {
-      "code": "auth.token_stale",
-      "http": 401,
-      "i18nKey": "errors.auth.tokenStale",
-      "titleDe": "Anmeldung veraltet – bitte erneut laden"
-    },
-    {
-      "code": "auth.refresh_invalid",
-      "http": 401,
-      "i18nKey": "errors.auth.refreshInvalid",
-      "titleDe": "Sitzung abgelaufen"
-    },
-    {
-      "code": "auth.refresh_reused",
-      "http": 401,
-      "i18nKey": "errors.auth.refreshReused",
-      "titleDe": "Sitzung aus Sicherheitsgründen beendet"
-    },
-    {
-      "code": "auth.no_membership",
-      "http": 403,
-      "i18nKey": "errors.auth.noMembership",
-      "titleDe": "Kein Zugang zu diesem Mandanten"
-    },
-    {
-      "code": "auth.identity_blocked",
-      "http": 403,
-      "i18nKey": "errors.auth.identityBlocked",
-      "titleDe": "Konto gesperrt"
-    },
-    {
-      "code": "auth.mfa_required",
-      "http": 403,
-      "i18nKey": "errors.auth.mfaRequired",
-      "titleDe": "Zwei-Faktor-Authentifizierung bei Discord erforderlich"
-    },
-    {
-      "code": "auth.system_context_expired",
-      "http": 401,
-      "i18nKey": "errors.auth.systemContextExpired",
-      "titleDe": "Systemkontext abgelaufen (max. 12 h)"
-    },
-    {
-      "code": "auth.csrf_missing",
-      "http": 403,
-      "i18nKey": "errors.auth.csrfMissing",
-      "titleDe": "Sicherheitsheader fehlt"
-    },
-    {
-      "code": "auth.origin_invalid",
-      "http": 403,
-      "i18nKey": "errors.auth.originInvalid",
-      "titleDe": "Ungültiger Ursprung"
-    },
-    {
-      "code": "auth.rate_limited",
-      "http": 429,
-      "i18nKey": "errors.auth.rateLimited",
-      "titleDe": "Zu viele Versuche"
-    },
-    {
-      "code": "permission.denied",
-      "http": 403,
-      "i18nKey": "errors.permission.denied",
-      "titleDe": "Keine Berechtigung"
-    },
-    {
-      "code": "tenant.not_found",
-      "http": 404,
-      "i18nKey": "errors.tenant.notFound",
-      "titleDe": "Mandant nicht gefunden"
-    },
-    {
-      "code": "tenant.locked",
-      "http": 403,
-      "i18nKey": "errors.tenant.locked",
-      "titleDe": "Mandant gesperrt"
-    },
-    {
-      "code": "resource.not_found",
-      "http": 404,
-      "i18nKey": "errors.resource.notFound",
-      "titleDe": "Nicht gefunden"
-    },
-    {
-      "code": "resource.version_conflict",
-      "http": 412,
-      "i18nKey": "errors.resource.versionConflict",
-      "titleDe": "Wurde inzwischen geändert"
-    },
-    {
-      "code": "resource.in_use",
-      "http": 409,
-      "i18nKey": "errors.resource.inUse",
-      "titleDe": "Wird noch verwendet"
-    },
-    {
-      "code": "invitation.invalid",
-      "http": 404,
-      "i18nKey": "errors.invitation.invalid",
-      "titleDe": "Einladung ungültig"
-    },
-    {
-      "code": "invitation.expired",
-      "http": 410,
-      "i18nKey": "errors.invitation.expired",
-      "titleDe": "Einladung abgelaufen"
-    },
-    {
-      "code": "invitation.already_member",
-      "http": 409,
-      "i18nKey": "errors.invitation.alreadyMember",
-      "titleDe": "Bereits Mitglied"
-    },
-    {
-      "code": "member.owner_protected",
-      "http": 409,
-      "i18nKey": "errors.member.ownerProtected",
-      "titleDe": "Der Owner kann so nicht geändert werden"
-    },
-    {
-      "code": "member.cannot_change_self",
-      "http": 409,
-      "i18nKey": "errors.member.cannotChangeSelf",
-      "titleDe": "Eigene Rolle kann nicht geändert werden"
-    },
-    {
-      "code": "member.owner_cannot_leave",
-      "http": 409,
-      "i18nKey": "errors.member.ownerCannotLeave",
-      "titleDe": "Owner muss die Rolle erst übertragen"
-    },
-    {
-      "code": "member.expiry_invalid",
-      "http": 422,
-      "i18nKey": "errors.member.expiryInvalid",
-      "titleDe": "Befristung ungültig"
-    },
-    {
-      "code": "owner_transfer.pending",
-      "http": 409,
-      "i18nKey": "errors.owner_transfer.pending",
-      "titleDe": "Übertragung läuft bereits"
-    },
-    {
-      "code": "owner_transfer.target_invalid",
-      "http": 422,
-      "i18nKey": "errors.owner_transfer.targetInvalid",
-      "titleDe": "Empfänger muss aktives Mitglied sein"
-    },
-    {
-      "code": "owner_transfer.confirm_mismatch",
-      "http": 422,
-      "i18nKey": "errors.owner_transfer.confirmMismatch",
-      "titleDe": "Mandantenschlüssel stimmt nicht"
-    },
-    {
-      "code": "owner_transfer.not_pending",
-      "http": 409,
-      "i18nKey": "errors.owner_transfer.notPending",
-      "titleDe": "Keine offene Übertragung"
-    },
-    {
-      "code": "security.owner_mfa_missing",
-      "http": 409,
-      "i18nKey": "errors.security.ownerMfaMissing",
-      "titleDe": "Owner hat keine 2FA"
-    },
-    {
-      "code": "approval.not_allowed",
-      "http": 409,
-      "i18nKey": "errors.approval.notAllowed",
-      "titleDe": "Übergang in diesem Status nicht erlaubt"
-    },
-    {
-      "code": "approval.own_object",
-      "http": 409,
-      "i18nKey": "errors.approval.ownObject",
-      "titleDe": "Eigene Objekte können nicht freigegeben werden"
-    },
-    {
-      "code": "approval.incomplete",
-      "http": 422,
-      "i18nKey": "errors.approval.incomplete",
-      "titleDe": "Pflichtangaben fehlen für die Einreichung"
-    },
-    {
-      "code": "approval.rig_conflict",
-      "http": 409,
-      "i18nKey": "errors.approval.rigConflict",
-      "titleDe": "Rig-Wechsel mit Konflikten"
-    },
-    {
-      "code": "vote.own_object",
-      "http": 409,
-      "i18nKey": "errors.vote.ownObject",
-      "titleDe": "Für eigene Objekte kann nicht abgestimmt werden"
-    },
-    {
-      "code": "vote.closed",
-      "http": 409,
-      "i18nKey": "errors.vote.closed",
-      "titleDe": "Abstimmung geschlossen"
-    },
-    {
-      "code": "ranking.incomplete",
-      "http": 422,
-      "i18nKey": "errors.ranking.incomplete",
-      "titleDe": "Rangfolge muss alle offenen Einreichungen enthalten"
-    },
-    {
-      "code": "change_request.conflict",
-      "http": 409,
-      "i18nKey": "errors.change_request.conflict",
-      "titleDe": "Projekt wurde seit dem Antrag geändert"
-    },
-    {
-      "code": "change_request.not_open",
-      "http": 409,
-      "i18nKey": "errors.change_request.notOpen",
-      "titleDe": "Antrag nicht mehr offen"
-    },
-    {
-      "code": "transit.lock_not_allowed",
-      "http": 409,
-      "i18nKey": "errors.transit.lockNotAllowed",
-      "titleDe": "Transit kann nicht festgelegt werden"
-    },
-    {
-      "code": "transit.deadline_passed",
-      "http": 409,
-      "i18nKey": "errors.transit.deadlinePassed",
-      "titleDe": "Frist abgelaufen"
-    },
-    {
-      "code": "rig.sort_chain_invalid",
-      "http": 422,
-      "i18nKey": "errors.rig.sortChainInvalid",
-      "titleDe": "Sortierkette ungültig"
-    },
-    {
-      "code": "rig.flip_settings_invalid",
-      "http": 422,
-      "i18nKey": "errors.rig.flipSettingsInvalid",
-      "titleDe": "Flip-Einstellungen ungültig"
-    },
-    {
-      "code": "discord.webhook_invalid",
-      "http": 422,
-      "i18nKey": "errors.discord.webhookInvalid",
-      "titleDe": "Webhook-URL ungültig"
-    },
-    {
-      "code": "discord.test_failed",
-      "http": 502,
-      "i18nKey": "errors.discord.testFailed",
-      "titleDe": "Testnachricht fehlgeschlagen"
-    },
-    {
-      "code": "job.not_found",
-      "http": 404,
-      "i18nKey": "errors.job.notFound",
-      "titleDe": "Aufgabe nicht gefunden"
-    },
-    {
-      "code": "file.too_large",
-      "http": 413,
-      "i18nKey": "errors.file.tooLarge",
-      "titleDe": "Datei zu groß"
-    },
-    {
-      "code": "file.type_not_allowed",
-      "http": 415,
-      "i18nKey": "errors.file.typeNotAllowed",
-      "titleDe": "Dateityp nicht erlaubt"
-    },
-    {
-      "code": "nina.token_invalid",
-      "http": 401,
-      "i18nKey": "errors.nina.tokenInvalid",
-      "titleDe": "Token ungültig oder widerrufen"
-    },
-    {
-      "code": "engine.incompatible",
-      "http": 409,
-      "i18nKey": "errors.engine.incompatible",
-      "titleDe": "Engine-Version inkompatibel"
-    },
-    {
-      "code": "session.rig_busy",
-      "http": 409,
-      "i18nKey": "errors.session.rigBusy",
-      "titleDe": "Rig wird von einer anderen Instanz verwendet"
-    },
-    {
-      "code": "session.unknown",
-      "http": 409,
-      "i18nKey": "errors.session.unknown",
-      "titleDe": "Session unbekannt"
-    },
-    {
-      "code": "session.closed",
-      "http": 409,
-      "i18nKey": "errors.session.closed",
-      "titleDe": "Session bereits beendet"
-    },
-    {
-      "code": "capture.batch_too_large",
-      "http": 413,
-      "i18nKey": "errors.capture.batchTooLarge",
-      "titleDe": "Höchstens 500 Meldungen je Anfrage"
-    },
-    {
-      "code": "plan.targets_etag_mismatch",
-      "http": 409,
-      "i18nKey": "errors.plan.targetsEtagMismatch",
-      "titleDe": "Ziele haben sich geändert – neu abrufen"
-    },
-    {
-      "code": "canonical.non_finite",
-      "http": 500,
-      "i18nKey": "errors.canonical.nonFinite",
-      "titleDe": "Nicht-endliche Zahl in Planeingabe"
-    },
-    {
-      "code": "system.maintenance",
-      "http": 503,
-      "i18nKey": "errors.system.maintenance",
-      "titleDe": "Wartung"
-    },
-    {
-      "code": "internal.error",
-      "http": 500,
-      "i18nKey": "errors.internal.error",
-      "titleDe": "Interner Fehler"
-    },
-    {
-      "code": "auth.token_expired",
-      "http": 401,
-      "i18nKey": "errors.auth.tokenExpired",
-      "titleDe": "Anmeldung abgelaufen – wird erneuert"
-    },
-    {
-      "code": "session.lease_lost",
-      "http": 409,
-      "i18nKey": "errors.session.leaseLost",
-      "titleDe": "Rig wurde in der Web-App übernommen"
-    },
-    {
-      "code": "transit.share_mismatch",
-      "http": 409,
-      "i18nKey": "errors.transit.shareMismatch",
-      "titleDe": "Transit-Zeilen der Projekte unterscheiden sich – Beobachtung kann nicht geteilt werden"
-    },
-    {
-      "code": "transit.too_many_open",
-      "http": 409,
-      "i18nKey": "errors.transit.tooManyOpen",
-      "titleDe": "Zu viele offene Transit-Festlegungen"
-    },
-    {
-      "code": "transit.window_overlap",
-      "http": 409,
-      "i18nKey": "errors.transit.windowOverlap",
-      "titleDe": "Transitfenster überlappt eine andere Festlegung"
-    },
-    {
-      "code": "validation.min_time_too_small",
-      "http": 422,
-      "i18nKey": "errors.validation.minTimeTooSmall",
-      "titleDe": "Mindestzeit kleiner als eine Belichtung"
-    },
-    {
-      "code": "project.status_transition_invalid",
-      "http": 409,
-      "i18nKey": "errors.project.statusTransitionInvalid",
-      "titleDe": "Statuswechsel nicht erlaubt"
-    },
-    {
-      "code": "rig.change_has_captures",
-      "http": 409,
-      "i18nKey": "errors.rig.changeHasCaptures",
-      "titleDe": "Projekt hat Aufnahmen mit dem bisherigen Rig"
-    },
-    {
-      "code": "correction.conflict",
-      "http": 409,
-      "i18nKey": "errors.correction.conflict",
-      "titleDe": "Korrektur überschneidet sich mit einzeln verworfenen Aufnahmen"
-    },
-    {
-      "code": "capture.assign_mismatch",
-      "http": 409,
-      "i18nKey": "errors.capture.assignMismatch",
-      "titleDe": "Aufnahme passt nicht zur gewählten Zeile"
-    },
-    {
-      "code": "db.bootstrap_missing",
-      "http": 500,
-      "i18nKey": "errors.db.bootstrapMissing",
-      "titleDe": "Datenbank nicht vorbereitet"
-    }
-  ]
+ "$comment": "Problem-Details-Codes (application/problem+json, Feld code). i18nKey in packages/i18n. Neue Codes nur hier ergänzen.",
+ "errors": [
+  {
+   "code": "validation.failed",
+   "http": 422,
+   "i18nKey": "errors.validation.failed",
+   "titleDe": "Eingaben ungültig"
+  },
+  {
+   "code": "auth.unauthenticated",
+   "http": 401,
+   "i18nKey": "errors.auth.unauthenticated",
+   "titleDe": "Nicht angemeldet oder Sitzung abgelaufen"
+  },
+  {
+   "code": "auth.no_membership",
+   "http": 403,
+   "i18nKey": "errors.auth.noMembership",
+   "titleDe": "Kein Zugang zu diesem Mandanten"
+  },
+  {
+   "code": "auth.identity_blocked",
+   "http": 403,
+   "i18nKey": "errors.auth.identityBlocked",
+   "titleDe": "Konto gesperrt"
+  },
+  {
+   "code": "auth.mfa_required",
+   "http": 403,
+   "i18nKey": "errors.auth.mfaRequired",
+   "titleDe": "Zwei-Faktor-Authentifizierung bei Discord erforderlich"
+  },
+  {
+   "code": "auth.csrf_missing",
+   "http": 403,
+   "i18nKey": "errors.auth.csrfMissing",
+   "titleDe": "Sicherheitsheader fehlt"
+  },
+  {
+   "code": "auth.rate_limited",
+   "http": 429,
+   "i18nKey": "errors.auth.rateLimited",
+   "titleDe": "Zu viele Versuche"
+  },
+  {
+   "code": "permission.denied",
+   "http": 403,
+   "i18nKey": "errors.permission.denied",
+   "titleDe": "Keine Berechtigung"
+  },
+  {
+   "code": "tenant.not_found",
+   "http": 404,
+   "i18nKey": "errors.tenant.notFound",
+   "titleDe": "Mandant nicht gefunden"
+  },
+  {
+   "code": "tenant.locked",
+   "http": 403,
+   "i18nKey": "errors.tenant.locked",
+   "titleDe": "Mandant gesperrt"
+  },
+  {
+   "code": "resource.not_found",
+   "http": 404,
+   "i18nKey": "errors.resource.notFound",
+   "titleDe": "Nicht gefunden"
+  },
+  {
+   "code": "resource.version_conflict",
+   "http": 412,
+   "i18nKey": "errors.resource.versionConflict",
+   "titleDe": "Wurde inzwischen geändert"
+  },
+  {
+   "code": "resource.in_use",
+   "http": 409,
+   "i18nKey": "errors.resource.inUse",
+   "titleDe": "Wird noch verwendet"
+  },
+  {
+   "code": "invitation.invalid",
+   "http": 404,
+   "i18nKey": "errors.invitation.invalid",
+   "titleDe": "Einladung ungültig"
+  },
+  {
+   "code": "invitation.expired",
+   "http": 410,
+   "i18nKey": "errors.invitation.expired",
+   "titleDe": "Einladung abgelaufen"
+  },
+  {
+   "code": "invitation.already_member",
+   "http": 409,
+   "i18nKey": "errors.invitation.alreadyMember",
+   "titleDe": "Bereits Mitglied"
+  },
+  {
+   "code": "member.owner_protected",
+   "http": 409,
+   "i18nKey": "errors.member.ownerProtected",
+   "titleDe": "Der Owner kann so nicht geändert werden"
+  },
+  {
+   "code": "super_user.last_protected",
+   "http": 409,
+   "i18nKey": "errors.superUser.lastProtected",
+   "titleDe": "Der letzte aktive Super User kann nicht entfernt werden"
+  },
+  {
+   "code": "member.cannot_change_self",
+   "http": 409,
+   "i18nKey": "errors.member.cannotChangeSelf",
+   "titleDe": "Eigene Rolle kann nicht geändert werden"
+  },
+  {
+   "code": "member.owner_cannot_leave",
+   "http": 409,
+   "i18nKey": "errors.member.ownerCannotLeave",
+   "titleDe": "Owner muss die Rolle erst übertragen"
+  },
+  {
+   "code": "owner_transfer.target_invalid",
+   "http": 422,
+   "i18nKey": "errors.owner_transfer.targetInvalid",
+   "titleDe": "Empfänger muss aktives Mitglied mit Admin-Rolle sein"
+  },
+  {
+   "code": "approval.not_allowed",
+   "http": 409,
+   "i18nKey": "errors.approval.notAllowed",
+   "titleDe": "Übergang in diesem Status nicht erlaubt"
+  },
+  {
+   "code": "approval.own_object",
+   "http": 409,
+   "i18nKey": "errors.approval.ownObject",
+   "titleDe": "Eigene Objekte können nicht freigegeben werden"
+  },
+  {
+   "code": "approval.incomplete",
+   "http": 422,
+   "i18nKey": "errors.approval.incomplete",
+   "titleDe": "Pflichtangaben fehlen für die Einreichung"
+  },
+  {
+   "code": "approval.rig_conflict",
+   "http": 409,
+   "i18nKey": "errors.approval.rigConflict",
+   "titleDe": "Rig-Wechsel mit Konflikten"
+  },
+  {
+   "code": "vote.own_object",
+   "http": 409,
+   "i18nKey": "errors.vote.ownObject",
+   "titleDe": "Für eigene Objekte kann nicht abgestimmt werden"
+  },
+  {
+   "code": "vote.closed",
+   "http": 409,
+   "i18nKey": "errors.vote.closed",
+   "titleDe": "Abstimmung geschlossen"
+  },
+  {
+   "code": "ranking.incomplete",
+   "http": 422,
+   "i18nKey": "errors.ranking.incomplete",
+   "titleDe": "Rangfolge muss alle offenen Einreichungen enthalten"
+  },
+  {
+   "code": "change_request.conflict",
+   "http": 409,
+   "i18nKey": "errors.change_request.conflict",
+   "titleDe": "Projekt wurde seit dem Antrag geändert"
+  },
+  {
+   "code": "change_request.not_open",
+   "http": 409,
+   "i18nKey": "errors.change_request.notOpen",
+   "titleDe": "Antrag nicht mehr offen"
+  },
+  {
+   "code": "transit.lock_not_allowed",
+   "http": 409,
+   "i18nKey": "errors.transit.lockNotAllowed",
+   "titleDe": "Transit kann nicht festgelegt werden"
+  },
+  {
+   "code": "transit.deadline_passed",
+   "http": 409,
+   "i18nKey": "errors.transit.deadlinePassed",
+   "titleDe": "Frist abgelaufen"
+  },
+  {
+   "code": "rig.sort_chain_invalid",
+   "http": 422,
+   "i18nKey": "errors.rig.sortChainInvalid",
+   "titleDe": "Sortierkette ungültig"
+  },
+  {
+   "code": "rig.flip_settings_invalid",
+   "http": 422,
+   "i18nKey": "errors.rig.flipSettingsInvalid",
+   "titleDe": "Flip-Einstellungen ungültig"
+  },
+  {
+   "code": "discord.webhook_invalid",
+   "http": 422,
+   "i18nKey": "errors.discord.webhookInvalid",
+   "titleDe": "Webhook-URL ungültig"
+  },
+  {
+   "code": "discord.test_failed",
+   "http": 502,
+   "i18nKey": "errors.discord.testFailed",
+   "titleDe": "Testnachricht fehlgeschlagen"
+  },
+  {
+   "code": "job.not_found",
+   "http": 404,
+   "i18nKey": "errors.job.notFound",
+   "titleDe": "Aufgabe nicht gefunden"
+  },
+  {
+   "code": "file.too_large",
+   "http": 413,
+   "i18nKey": "errors.file.tooLarge",
+   "titleDe": "Datei zu groß"
+  },
+  {
+   "code": "file.type_not_allowed",
+   "http": 415,
+   "i18nKey": "errors.file.typeNotAllowed",
+   "titleDe": "Dateityp nicht erlaubt"
+  },
+  {
+   "code": "nina.token_invalid",
+   "http": 401,
+   "i18nKey": "errors.nina.tokenInvalid",
+   "titleDe": "Token ungültig oder widerrufen"
+  },
+  {
+   "code": "engine.incompatible",
+   "http": 409,
+   "i18nKey": "errors.engine.incompatible",
+   "titleDe": "Engine-Version inkompatibel"
+  },
+  {
+   "code": "session.rig_busy",
+   "http": 409,
+   "i18nKey": "errors.session.rigBusy",
+   "titleDe": "Rig wird von einer anderen Instanz verwendet"
+  },
+  {
+   "code": "session.unknown",
+   "http": 409,
+   "i18nKey": "errors.session.unknown",
+   "titleDe": "Session unbekannt"
+  },
+  {
+   "code": "session.closed",
+   "http": 409,
+   "i18nKey": "errors.session.closed",
+   "titleDe": "Session bereits beendet"
+  },
+  {
+   "code": "capture.batch_too_large",
+   "http": 413,
+   "i18nKey": "errors.capture.batchTooLarge",
+   "titleDe": "Höchstens 500 Meldungen je Anfrage"
+  },
+  {
+   "code": "plan.targets_etag_mismatch",
+   "http": 409,
+   "i18nKey": "errors.plan.targetsEtagMismatch",
+   "titleDe": "Ziele haben sich geändert – neu abrufen"
+  },
+  {
+   "code": "canonical.non_finite",
+   "http": 500,
+   "i18nKey": "errors.canonical.nonFinite",
+   "titleDe": "Nicht-endliche Zahl in Planeingabe"
+  },
+  {
+   "code": "system.maintenance",
+   "http": 503,
+   "i18nKey": "errors.system.maintenance",
+   "titleDe": "Wartung"
+  },
+  {
+   "code": "internal.error",
+   "http": 500,
+   "i18nKey": "errors.internal.error",
+   "titleDe": "Interner Fehler"
+  },
+  {
+   "code": "transit.share_mismatch",
+   "http": 409,
+   "i18nKey": "errors.transit.shareMismatch",
+   "titleDe": "Transit-Zeilen der Projekte unterscheiden sich – Beobachtung kann nicht geteilt werden"
+  },
+  {
+   "code": "transit.too_many_open",
+   "http": 409,
+   "i18nKey": "errors.transit.tooManyOpen",
+   "titleDe": "Zu viele offene Transit-Festlegungen"
+  },
+  {
+   "code": "transit.window_overlap",
+   "http": 409,
+   "i18nKey": "errors.transit.windowOverlap",
+   "titleDe": "Transitfenster überlappt eine andere Festlegung"
+  },
+  {
+   "code": "transit.ephemeris_stale",
+   "http": 409,
+   "i18nKey": "errors.transit.ephemerisStale",
+   "titleDe": "Die Ephemeride ist zu unsicher für eine Festlegung"
+  },
+  {
+   "code": "exo.epoch_out_of_range",
+   "http": 422,
+   "i18nKey": "errors.exo.epochOutOfRange",
+   "titleDe": "Die Katalog-Epoche liegt außerhalb des erwarteten Bereichs"
+  },
+  {
+   "code": "transit.result_time_system",
+   "http": 422,
+   "i18nKey": "errors.transit.resultTimeSystem",
+   "titleDe": "Die Ergebnisdatei nennt ein anderes Zeitsystem als BJD_TDB"
+  },
+  {
+   "code": "validation.min_time_too_small",
+   "http": 422,
+   "i18nKey": "errors.validation.minTimeTooSmall",
+   "titleDe": "Mindestzeit kleiner als eine Belichtung"
+  },
+  {
+   "code": "project.status_transition_invalid",
+   "http": 409,
+   "i18nKey": "errors.project.statusTransitionInvalid",
+   "titleDe": "Statuswechsel nicht erlaubt"
+  },
+  {
+   "code": "rig.change_has_captures",
+   "http": 409,
+   "i18nKey": "errors.rig.changeHasCaptures",
+   "titleDe": "Projekt hat Aufnahmen mit dem bisherigen Rig"
+  },
+  {
+   "code": "correction.conflict",
+   "http": 409,
+   "i18nKey": "errors.correction.conflict",
+   "titleDe": "Korrektur überschneidet sich mit einzeln verworfenen Aufnahmen"
+  },
+  {
+   "code": "capture.assign_mismatch",
+   "http": 409,
+   "i18nKey": "errors.capture.assignMismatch",
+   "titleDe": "Aufnahme passt nicht zur gewählten Zeile"
+  },
+  {
+   "code": "line.locked_by_captures",
+   "http": 409,
+   "i18nKey": "errors.line.lockedByCaptures",
+   "titleDe": "Zeile hat Aufnahmen – Filter, Belichtungszeit, Gain, Offset, Binning und Auslesemodus sind gesperrt; Zeile duplizieren"
+  },
+  {
+   "code": "nina.night_invalid",
+   "http": 422,
+   "i18nKey": "errors.nina.nightInvalid",
+   "titleDe": "Nacht ist weder die aktuelle noch die folgende Nacht des Standorts"
+  },
+  {
+   "code": "engine.input_invalid",
+   "http": 422,
+   "i18nKey": "errors.engine.inputInvalid",
+   "titleDe": "Planungseingabe unvollständig (z. B. Nacht-Tabelle zu kurz)"
+  }
+ ]
 }

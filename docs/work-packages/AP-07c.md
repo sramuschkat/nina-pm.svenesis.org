@@ -1,17 +1,18 @@
-# AP-07c – Mandanteneinstellungen, Sicherheit, Owner-Übertragung, Protokolle
+# AP-07c – Mandanteneinstellungen, Owner-Übertragung, Protokolle
 
 **Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-07b · **Menschliche Aufgaben:** –
 
 ## Ziel
-Mandanteneinstellungen, Sicherheitseinstellungen des Owners, Owner-Übertragung und Protokolle sind bedienbar. Damit ist die Benutzerverwaltung R1 vollständig.
+Mandanteneinstellungen, die sofortige Owner-Übertragung, das Änderungsprotokoll und die eigenen Anmeldesitzungen sind bedienbar. Damit ist die Benutzerverwaltung R1 vollständig.
 
 ## Anforderungen
-FA-BEN-06…10, FA-ADM, S-71, S-72, S-73
+FA-BEN-09, FA-ADM, S-70, S-71, S-72, S-73
 
 ## Lesen (nur diese Abschnitte)
 - FK 6.12–6.14
-- FK 14.3 (S-71…S-73)
-- TK 7.2 (Mandant, Sicherheit, Rollen & Owner)
+- FK 14.3 (S-70 *Owner übertragen*, S-71…S-73)
+- TK 5.3 (Sitzungsliste)
+- TK 7.2 (Mandant, Rollen & Owner, Auth)
 - rules/ui.md
 - specs/ui/components.md
 - contracts/errors.json
@@ -19,9 +20,10 @@ FA-BEN-06…10, FA-ADM, S-71, S-72, S-73
 - `CLAUDE.md`, `docs/rules/testing.md`; Abschnitt → Zeilen: `docs/concept/INDEX.md`
 
 ## Liefern
-- S-71 Einstellungen (Allgemein), Reiter Sicherheit (nur Owner, 2FA-Pflicht nur mit Owner-2FA), Owner-Übertragung mit Bestätigung per Mandantenschlüssel
-- S-72 Anmelde- und Änderungsprotokoll
-- S-73 persönliche Einstellungen, Anmeldesitzungen
+- S-71 Mandanteneinstellungen (Reiter *Allgemein*; Schlüssel ausschließlich aus `contracts/enums.json` `tenantSettingsKeys`) – **kein** Reiter *Sicherheit*: Sitzungsdauer und 2FA-Regel sind fest (SV-01, SV-03)
+- *Owner übertragen* in S-70 (nur Owner): Auswahl eines aktiven Admins, `ConfirmDialog` („Owner-Rolle an … übertragen? Du bleibst Admin.“), wirkt sofort über `POST /web/v1/tenant/owner-transfer`
+- S-72 Änderungsprotokoll (`GET /web/v1/audit/changes`)
+- S-73 persönliche Einstellungen und Anmeldesitzungen (`GET/DELETE /auth/sessions`, *Beenden* je Sitzung und *Überall abmelden* mit `ConfirmDialog`, letzte Anmeldung aus `identity.last_login_at`)
 
 ## Nicht im Umfang
 - Discord-Reiter (AP-60)
@@ -29,7 +31,8 @@ FA-BEN-06…10, FA-ADM, S-71, S-72, S-73
 ## Checkliste Bildschirm (S-71…S-73)
 - [ ] Jedes Feld und jede Aktion aus FK 14.3 für S-71…S-73 vorhanden (Liste im PR abhaken)
 - [ ] Wiederverwendbare Bausteine nur nach `docs/specs/ui/components.md`; Abstände über `--npm-space-*`, Symbole aus `components/icons.ts`, kein Emoji
-- [ ] Rechte je Rolle (Owner, Admin, befristeter Admin, User) über `useCan` ein-/ausgeblendet; API lehnt trotzdem ab
+- [ ] Rechte je Rolle (Owner, Admin, User; Admin oder Owner ohne Discord-2FA wirkt als User) über `useCan` ein-/ausgeblendet; API lehnt trotzdem ab
+- [ ] Folgenreiche Aktionen (Löschen, Rechte entziehen, Owner übertragen, Ablehnen, Token widerrufen, Sitzungen beenden) nur über `ConfirmDialog` (`docs/specs/ui/components.md` §2.10), nie `window.confirm`; Markdown-Felder nur über `react-markdown` ohne rohes HTML
 - [ ] Zustände leer / laden / Fehler (Problem Details → i18n `errors.*`) / 412-Konflikt
 - [ ] Texte DE/EN über i18n, Zeiten mit Zeitzonen-Kürzel (FK 8.1)
 - [ ] Themes `light` und `dark` (Theme-Test gegen die Tokens, TK 11.3); Dichtestufen `compact`/`normal`/`wide`
@@ -38,8 +41,10 @@ FA-BEN-06…10, FA-ADM, S-71, S-72, S-73
 - [ ] `axe`-Komponententest ohne Verstöße der Stufen *serious* und *critical* (`@axe-core/playwright` im E2E bzw. `vitest-axe` im Komponententest; CI-Schritt `pnpm test:a11y`, TK 18) – **kein** Lighthouse-Schwellwert
 
 ## Automatisierte Abnahme
-- [ ] E2E: Owner überträgt → Empfänger nimmt an → alter Owner bleibt Admin
-- [ ] Admin ändert Sicherheit → 403
+- [ ] E2E: Owner überträgt nach `ConfirmDialog` an einen Admin → der Empfänger ist sofort Owner, der alte Owner bleibt Admin
+- [ ] *Owner übertragen* ist für Admins nicht sichtbar; die API lehnt mit 403 ab
+- [ ] unbekannter Schlüssel auf `PATCH /web/v1/tenant/settings` → `422 validation.failed`
+- [ ] E2E: *Überall abmelden* → ein zweiter Tab erhält bei der nächsten Anfrage `401 auth.unauthenticated`
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe

@@ -617,5 +617,108 @@ section('Orbital data (data/sky-events.json)');
   }
 }
 
+/* ---------------------------------------------------------------- weather pages */
+section('Weather pages (astro-weather, weather-history)');
+{
+  /* the shared scoring and colour module both weather pages build on */
+  try { new vm.Script(read('js/weather-core.js'), { filename: 'js/weather-core.js' }); check('js/weather-core.js parses', true); }
+  catch (e) { check('js/weather-core.js parses', false, e.message); }
+  try { new vm.Script(read('js/weather-history.js'), { filename: 'js/weather-history.js' }); check('js/weather-history.js parses', true); }
+  catch (e) { check('js/weather-history.js parses', false, e.message); }
+
+  const wxBox = { window: { SvAstro: A } };
+  vm.createContext(wxBox);
+  vm.runInContext(read('js/weather-core.js'), wxBox, { filename: 'js/weather-core.js' });
+  const WX = wxBox.window.SvWx;
+  check('SvWx exports scoring, colours and the canvas primitives',
+    !!(WX && WX.cloudScore && WX.overallScore && WX.scoreColour && WX.ratingColour && WX.stickyLabels && WX.cellPaint));
+  if (WX) {
+    /* the values astro-weather relied on before the extraction */
+    check('cloudScore maps 0/50/100 % to 1/0.5/0',
+      WX.cloudScore(0) === 1 && WX.cloudScore(50) === 0.5 && WX.cloudScore(100) === 0 && WX.cloudScore(null) === null);
+    check('overallScore squares the cloud term and hands a missing estimate its weight over',
+      Math.abs(WX.overallScore(1, null, null) - 1) < 1e-12 &&
+      Math.abs(WX.overallScore(0.5, null, null) - 0.25) < 1e-12 &&
+      Math.abs(WX.overallScore(1, 1, 1) - 1) < 1e-12 &&
+      Math.abs(WX.overallScore(1, 0, 0) - 0.7) < 1e-12);
+    check('rating cuts unchanged at 0.25 / 0.45 / 0.65 / 0.85',
+      JSON.stringify(WX.RATING_CUTS) === '[0.25,0.45,0.65,0.85]' &&
+      WX.ratingIndex(0.9) === 4 && WX.ratingIndex(0.7) === 3 && WX.ratingIndex(0.5) === 2 &&
+      WX.ratingIndex(0.3) === 1 && WX.ratingIndex(0.1) === 0 && WX.ratingIndex(null) === null);
+    check('scoreColour keeps the blue ramp and the no-data grey',
+      WX.scoreColour(1) === 'rgb(30,88,190)' && WX.scoreColour(0) === 'rgb(198,208,220)' && WX.scoreColour(null) === WX.COL.noData);
+  }
+
+  /* both page pairs: script order, and the ids the scripts look up */
+  const pageSets = [
+    { name: 'astro-weather', prefix: 'aw', scripts: ['js/astro-weather.js'],
+      want: ['main.js', 'cookie-consent.js', 'astro-core.js', 'weather-core.js', 'astro-weather.js'] },
+    { name: 'weather-history', prefix: 'wh', scripts: ['js/weather-history.js'],
+      want: ['main.js', 'cookie-consent.js', 'astro-core.js', 'weather-core.js', 'weather-history.js'] }
+  ];
+  for (const p of pageSets) {
+    const ids = {};
+    for (const lang of ['de', 'en']) {
+      const html = read(p.name + '_' + lang + '.html');
+      const got = [...html.matchAll(/<script src="(?:\.\.\/)?js\/([^"?]+)(?:\?v=[0-9a-f]+)?"/g)].map(m => m[1]);
+      check(`script order, ${p.name} (${lang})`, JSON.stringify(got) === JSON.stringify(p.want), got.join(', '));
+      check(`${p.name} (${lang}) loads the consent script`, /cookie-consent\.js/.test(html));
+      ids[lang] = new Set([...html.matchAll(new RegExp('\\sid="(' + p.prefix + '-[^"]+)"', 'g'))].map(m => m[1]));
+    }
+    const diff = [...ids.de].filter(x => !ids.en.has(x)).concat([...ids.en].filter(x => !ids.de.has(x)));
+    check(`same ${p.prefix}-* element ids in DE and EN, ${p.name}`, diff.length === 0,
+      ids.de.size + ' ids' + (diff.length ? '; differing: ' + diff.join(', ') : ''));
+    const used = [...new Set([...p.scripts.map(read).join('').matchAll(new RegExp("getElementById\\('(" + p.prefix + "-[^']+)'\\)", 'g'))].map(m => m[1]))];
+    const missing = used.filter(x => !ids.de.has(x));
+    check(`every element id ${p.name} looks up exists`, missing.length === 0,
+      used.length + ' looked up' + (missing.length ? '; missing: ' + missing.join(', ') : ''));
+  }
+}
+
+/* ---------------------------------------------------------------- forecast history */
+section('Forecast history (js/weather-history.js)');
+{
+  const wh = read('js/weather-history.js');
+
+  /* The page computes everything live in the browser; there is no generated file any more.
+     The chain per lead is what the forecast page would have used: the finest model that still
+     reaches that far. Short-range models drop out by themselves after about a day. */
+  const WANT_CHAIN = {
+    starfront: ['ncep_hrrr_conus', 'cmc_gem_seamless', 'ncep_gfs_global'],
+    hannover: ['icon_d2', 'dmi_harmonie_arome_europe', 'icon_eu', 'icon_global'],
+    andreasberg: ['icon_d2', 'dmi_harmonie_arome_europe', 'icon_eu', 'icon_global'],
+    gaucin: ['icon_eu', 'icon_global']
+  };
+  const wrong = [];
+  for (const key in WANT_CHAIN) {
+    const m = wh.match(new RegExp("key: '" + key + "'[\\s\\S]*?chain: \\[([^\\]]*)\\]"));
+    if (!m) { wrong.push(key + ': not in SITES'); continue; }
+    const got = m[1].split(',').map(x => x.trim().replace(/'/g, ''));
+    if (JSON.stringify(got) !== JSON.stringify(WANT_CHAIN[key])) wrong.push(`${key}: ${got.join(', ')}`);
+  }
+  /* Gaucín lies outside both fine-mesh domains — naming them there would be wrong */
+  check('the model chain per location matches the forecast page', wrong.length === 0, wrong.join('; '));
+
+  check('the archive is read one station at a time', /setTimeout\(r, 1100\)/.test(wh) && /429/.test(wh),
+    'the ASOS archive answers 429 to parallel requests');
+  check('nights are counted from the running night, not from a calendar date',
+    /nightKeyOf\(nowSec, off\)/.test(wh) && /st\.to > nowSec/.test(wh));
+  check('night means keep the 80 % darkness-coverage gate', /MIN_COVER = 0\.8/.test(wh));
+
+  /* CLAUDE.md: every host the browser contacts has to stand in the privacy policy, with the page
+     it loads on. This is the one rule that cannot be checked by looking at the page alone. */
+  const HOSTS = ['previous-runs-api.open-meteo.com', 'mesonet.agron.iastate.edu'];
+  const scripts = ['js/weather-history.js', 'js/astro-weather.js', 'js/observing-planner.js', 'js/sky-map.js']
+    .map(f => read(f)).join('');
+  const priv = { de: fs.readFileSync(path.join(ROOT, '..', 'privacy', 'privacy_de.html'), 'utf8'),
+    en: fs.readFileSync(path.join(ROOT, '..', 'privacy', 'privacy_en.html'), 'utf8') };
+  const undisclosed = [];
+  for (const h of HOSTS) {
+    if (!scripts.includes(h)) { undisclosed.push(h + ': not requested any more — drop it from this list'); continue; }
+    for (const lang of ['de', 'en']) if (!priv[lang].includes(h)) undisclosed.push(h + ' missing from privacy_' + lang + '.html');
+  }
+  check('every third-party host the history page calls is named in the privacy policy', undisclosed.length === 0, undisclosed.join('; '));
+}
+
 console.log(`\n${passed} passed, ${failed} failed, ${warned} warnings`);
 process.exitCode = failed ? 1 : 0;
