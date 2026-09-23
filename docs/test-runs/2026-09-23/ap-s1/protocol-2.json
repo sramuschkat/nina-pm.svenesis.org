@@ -1,0 +1,1479 @@
+{
+  "tool": "pnpm test:dsql --spike (tools/deploy/src/test-dsql.ts, spikes/dsql)",
+  "startedAt": "2026-09-23T18:42:41.711Z",
+  "caller": "arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev",
+  "environment": {
+    "node": "v24.11.1",
+    "region": "eu-central-1",
+    "optionen": "--skip-long",
+    "messort": "lokal auf dem Rechner von Sven (nicht aus Lambda, CC-6)"
+  },
+  "checks": [
+    {
+      "id": "S1-01",
+      "title": "Fremdschlüssel, auch nachträglich mit NOT VALID",
+      "tk": "(1)",
+      "verdict": "bestätigt",
+      "summary": "FK-Verletzung abgelehnt (23503); NOT VALID ok; ASYNC VALIDATE ok (Job bpi3zvoc3fcstkhlrzfjs4t3z4)",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_parent (id uuid PRIMARY KEY, name text NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 189,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_child (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), parent_id uuid NOT NULL REFERENCES spike_parent(id))",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 172,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_parent (id, name) VALUES ($1, $2) -- Parameter: [\"00000000-0000-4000-8000-000000000001\",\"p1\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 106,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_child (parent_id) VALUES ($1) -- Parameter: [\"00000000-0000-4000-8000-000000000001\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 44,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_child (parent_id) VALUES ($1) -- Parameter: [\"00000000-0000-4000-8000-00000000dead\"]",
+          "expect": "error",
+          "expectCodes": [
+            "23503"
+          ],
+          "outcome": "error",
+          "sqlstate": "23503",
+          "message": "insert or update on table \"spike_child\" violates foreign key constraint \"spike_child_parent_id_fkey\"",
+          "durationMs": 18,
+          "matched": true,
+          "note": "FK-Verletzung muss abgelehnt werden"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_child2 (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), parent_id uuid)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 61,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_child2 (parent_id) VALUES ($1) -- Parameter: [\"00000000-0000-4000-8000-000000000001\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 41,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_child2 ADD CONSTRAINT fk_child2_parent_direct FOREIGN KEY (parent_id) REFERENCES spike_parent(id)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported ALTER TABLE ADD CONSTRAINT statement",
+          "durationMs": 17,
+          "matched": true,
+          "note": "laut TK 6.0 nachträglich nur mit NOT VALID"
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_child2 ADD CONSTRAINT fk_child2_parent FOREIGN KEY (parent_id) REFERENCES spike_parent(id) NOT VALID",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 43,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE ASYNC spike_child2 VALIDATE CONSTRAINT fk_child2_parent",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "sample": "[{\"job_id\":\"bpi3zvoc3fcstkhlrzfjs4t3z4\"}]",
+          "durationMs": 52,
+          "matched": true,
+          "note": "asynchrone Validierung laut TK 6.0"
+        },
+        {
+          "conn": "admin",
+          "command": "CALL sys.wait_for_job('bpi3zvoc3fcstkhlrzfjs4t3z4')",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "sample": "[{\"succeeded\":true}]",
+          "durationMs": 2041,
+          "matched": true,
+          "note": "Prozedur, daher CALL"
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT job_id, status, job_type FROM sys.jobs WHERE job_id = $1 -- Parameter: [\"bpi3zvoc3fcstkhlrzfjs4t3z4\"]",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"job_id\":\"bpi3zvoc3fcstkhlrzfjs4t3z4\",\"status\":\"completed\",\"job_type\":\"VALIDATE_CONSTRAINT\"}]",
+          "durationMs": 28,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_child2 (parent_id) VALUES ($1) -- Parameter: [\"00000000-0000-4000-8000-00000000dead\"]",
+          "expect": "error",
+          "expectCodes": [
+            "23503"
+          ],
+          "outcome": "error",
+          "sqlstate": "23503",
+          "message": "insert or update on table \"spike_child2\" violates foreign key constraint \"fk_child2_parent\"",
+          "durationMs": 27,
+          "matched": true,
+          "note": "nach NOT VALID gilt der FK für neue Zeilen"
+        }
+      ],
+      "durationMs": 2840
+    },
+    {
+      "id": "S1-02",
+      "title": "jsonb als Spaltentyp, Grenze 1 MiB komprimiert",
+      "tk": "(2)",
+      "verdict": "bestätigt",
+      "summary": "Spalte ok; Operatoren {\"a\":\"1\",\"d\":\"x\",\"contains\":true,\"b\":\"array\"}; 1,6 MiB zufällig abgelehnt (54000)",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_doc (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), doc jsonb NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 62,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_doc (doc) VALUES ('{\"a\": 1, \"b\": [1, 2], \"c\": {\"d\": \"x\"}}'::jsonb)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 41,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT doc->>'a' AS a, doc->'c'->>'d' AS d, doc @> '{\"a\": 1}' AS contains, jsonb_typeof(doc->'b') AS b FROM spike_doc",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"a\":\"1\",\"d\":\"x\",\"contains\":true,\"b\":\"array\"}]",
+          "durationMs": 24,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_doc (doc) VALUES (jsonb_build_object('blob', repeat('x', $1::int))) -- Parameter: 2 MiB gut komprimierbar",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 121,
+          "matched": true,
+          "note": "unkomprimiert > 1 MiB, komprimiert klein"
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_doc (doc) VALUES (jsonb_build_object('blob', $1::text)) -- Parameter: 0,8 MiB zufällig",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 145,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_doc (doc) VALUES (jsonb_build_object('blob', $1::text)) -- Parameter: 1,6 MiB zufällig",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "54000",
+          "message": "datatype limit greater than 1048576 bytes not supported for jsonb",
+          "durationMs": 94,
+          "matched": true,
+          "note": "über 1 MiB komprimiert"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE INDEX ASYNC ix_spike_doc_doc ON spike_doc (doc)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "datatype jsonb is not supported in a key",
+          "durationMs": 20,
+          "matched": true,
+          "note": "jsonb laut TK 6.0 nicht indexierbar"
+        }
+      ],
+      "durationMs": 511
+    },
+    {
+      "id": "S1-03",
+      "title": "ALTER TABLE ADD COLUMN mit DEFAULT",
+      "tk": "ALTER TABLE",
+      "verdict": "bestätigt",
+      "summary": "ADD COLUMN mit DEFAULT Fehler 0A000, mit NOT NULL DEFAULT Fehler 0A000; ohne Default ok; SET DEFAULT ok (neue Zeile: {\"c\":\"x\"}); SET NOT NULL Fehler 0A000; DROP NOT NULL ok; DROP DEFAULT ok; RENAME ok; DROP COLUMN ok",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_add (id int PRIMARY KEY)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 57,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_add (id) VALUES (1), (2), (3)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 3,
+          "durationMs": 39,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ADD COLUMN c text DEFAULT 'x'",
+          "expect": "error",
+          "expectCodes": [
+            "0A000"
+          ],
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "ALTER TABLE ADD COLUMN with constraint not supported",
+          "durationMs": 16,
+          "matched": true,
+          "note": "Lauf 1: ADD COLUMN with constraint not supported"
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ADD COLUMN n int NOT NULL DEFAULT 0",
+          "expect": "error",
+          "expectCodes": [
+            "0A000"
+          ],
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "ALTER TABLE ADD COLUMN with constraint not supported",
+          "durationMs": 17,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ADD COLUMN c text",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 37,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ALTER COLUMN c SET DEFAULT 'x'",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 93,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_add (id) VALUES (4)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 29,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT c FROM spike_add WHERE id = 4",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"c\":\"x\"}]",
+          "durationMs": 20,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "UPDATE spike_add SET c = 'x' WHERE c IS NULL",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 3,
+          "durationMs": 25,
+          "matched": true,
+          "note": "Nachfüllen (in prod in Stapeln ≤ 2.500)"
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ALTER COLUMN c SET NOT NULL",
+          "expect": "any",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported ALTER TABLE ALTER COLUMN ... SET NOT NULL statement",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ALTER COLUMN c DROP NOT NULL",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 31,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ALTER COLUMN c DROP DEFAULT",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 54,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add ALTER COLUMN c TYPE varchar(10)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported ALTER TABLE ALTER COLUMN ... SET DATA TYPE statement",
+          "durationMs": 16,
+          "matched": true,
+          "note": "laut TK 6.0 nicht unterstützt"
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add RENAME COLUMN c TO c2",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 38,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "ALTER TABLE spike_add DROP COLUMN c2",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 55,
+          "matched": true
+        }
+      ],
+      "durationMs": 545
+    },
+    {
+      "id": "S1-04",
+      "title": "SELECT … FOR UPDATE verhindert Schreib-Schiefe (OCC)",
+      "tk": "Nebenläufigkeit",
+      "verdict": "bestätigt",
+      "summary": "ohne FOR UPDATE: zweiter Commit ok (Schreib-Schiefe möglich); mit FOR UPDATE: Konflikt 40001; gleiche Zeile: Konflikt 40001",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_guard (id int PRIMARY KEY, v int NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 56,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_ws (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), who text NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 60,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_guard (id, v) VALUES (1, 0)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 124,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "SHOW transaction_isolation",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "sample": "[{\"transaction_isolation\":\"repeatable read\"}]",
+          "durationMs": 16,
+          "matched": true,
+          "note": "erwartet repeatable read"
+        },
+        {
+          "conn": "A",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true,
+          "note": "ohne FOR UPDATE"
+        },
+        {
+          "conn": "A",
+          "command": "SELECT v FROM spike_guard WHERE id = 1",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"v\":0}]",
+          "durationMs": 108,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "SELECT v FROM spike_guard WHERE id = 1",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"v\":0}]",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "INSERT INTO spike_ws (who) VALUES ($1) -- Parameter: [\"ohne FOR UPDATE-A\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 26,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "COMMIT",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 35,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "INSERT INTO spike_ws (who) VALUES ($1) -- Parameter: [\"ohne FOR UPDATE-B\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 25,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "COMMIT",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 25,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 17,
+          "matched": true,
+          "note": "mit FOR UPDATE"
+        },
+        {
+          "conn": "A",
+          "command": "SELECT v FROM spike_guard WHERE id = 1 FOR UPDATE",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"v\":0}]",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "SELECT v FROM spike_guard WHERE id = 1 FOR UPDATE",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"v\":0}]",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "INSERT INTO spike_ws (who) VALUES ($1) -- Parameter: [\"mit FOR UPDATE-A\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "COMMIT",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 23,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "INSERT INTO spike_ws (who) VALUES ($1) -- Parameter: [\"mit FOR UPDATE-B\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "COMMIT",
+          "expect": "error",
+          "expectCodes": [
+            "40001",
+            "OC000",
+            "OC001"
+          ],
+          "outcome": "error",
+          "sqlstate": "40001",
+          "message": "change conflicts with another transaction (OC000)",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "gleiche Zeile schreiben"
+        },
+        {
+          "conn": "A",
+          "command": "UPDATE spike_guard SET v = v + 1 WHERE id = 1",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 17,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "UPDATE spike_guard SET v = v + 1 WHERE id = 1",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 17,
+          "matched": true
+        },
+        {
+          "conn": "A",
+          "command": "COMMIT",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 23,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "COMMIT",
+          "expect": "error",
+          "expectCodes": [
+            "40001",
+            "OC000",
+            "OC001"
+          ],
+          "outcome": "error",
+          "sqlstate": "40001",
+          "message": "change conflicts with another transaction (OC000)",
+          "durationMs": 18,
+          "matched": true
+        },
+        {
+          "conn": "B",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true
+        }
+      ],
+      "durationMs": 1306
+    },
+    {
+      "id": "S1-05",
+      "title": "INSERT … ON CONFLICT",
+      "tk": "(3)",
+      "verdict": "bestätigt",
+      "summary": "DO NOTHING: neu 1 / Duplikat 0 Zeile(n); DO UPDATE: n = 2",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_upsert (id uuid PRIMARY KEY, n int NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 60,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_upsert (id, n) VALUES ($1, 1) ON CONFLICT (id) DO NOTHING RETURNING id -- Parameter: [\"00000000-0000-4000-8000-0000000000aa\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"id\":\"00000000-0000-4000-8000-0000000000aa\"}]",
+          "durationMs": 42,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_upsert (id, n) VALUES ($1, 1) ON CONFLICT (id) DO NOTHING RETURNING id -- Parameter: [\"00000000-0000-4000-8000-0000000000aa\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 0,
+          "durationMs": 17,
+          "matched": true,
+          "note": "Duplikat: keine Zeile zurück"
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_upsert (id, n) VALUES ($1, 1) ON CONFLICT (id) DO UPDATE SET n = spike_upsert.n + EXCLUDED.n RETURNING n -- Parameter: [\"00000000-0000-4000-8000-0000000000aa\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"n\":2}]",
+          "durationMs": 28,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_upsert (id, n) VALUES ($1, 5) ON CONFLICT DO NOTHING -- Parameter: [\"00000000-0000-4000-8000-0000000000aa\"]",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 0,
+          "durationMs": 16,
+          "matched": true,
+          "note": "ohne Konfliktziel"
+        }
+      ],
+      "durationMs": 163
+    },
+    {
+      "id": "S1-06",
+      "title": "CREATE INDEX ASYNC und Wartefunktion",
+      "tk": "(4)",
+      "verdict": "bestätigt",
+      "summary": "Job-ID 4mnye5meqjdrvnkw7sbs5ojc5e; CALL sys.wait_for_job ok; sys-Funktionen: base32_str_to_uuid, base_type_oid, cluster_size, cluster_size_limit, current_session_id, current_transaction_id, decode_job_ext_status, decode_job_statement, decode_job_status, dsql_major_version, fetch_seq_data_tuple, get_key_desc, iam_session_user, job_err_msg, supported_datatypes, uuid_to_base32_str, wait_for_job",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "SELECT p.proname AS name, pg_get_function_arguments(p.oid) AS args FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'sys' ORDER BY 1",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 17,
+          "sample": "[{\"name\":\"base32_str_to_uuid\",\"args\":\"text\"},{\"name\":\"base_type_oid\",\"args\":\"oid\"},{\"name\":\"cluster_size\",\"args\":\"\"}]",
+          "durationMs": 65,
+          "matched": true,
+          "note": "Funktionen im Schema sys"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_idx (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id uuid NOT NULL, k text)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 60,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_idx (tenant_id, k) VALUES (gen_random_uuid(), $1), (gen_random_uuid(), $2) -- Parameter: [\"a\",\"b\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 2,
+          "durationMs": 40,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE INDEX ASYNC ix_spike_idx_tenant_k ON spike_idx (tenant_id, k)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "sample": "[{\"job_id\":\"4mnye5meqjdrvnkw7sbs5ojc5e\"}]",
+          "durationMs": 50,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT sys.wait_for_job($1) AS done -- Parameter: [\"4mnye5meqjdrvnkw7sbs5ojc5e\"]",
+          "expect": "error",
+          "expectCodes": [
+            "42809"
+          ],
+          "outcome": "error",
+          "sqlstate": "42809",
+          "message": "sys.wait_for_job(unknown) is a procedure",
+          "durationMs": 16,
+          "matched": true,
+          "note": "Lauf 1: Prozedur, nicht per SELECT"
+        },
+        {
+          "conn": "admin",
+          "command": "CALL sys.wait_for_job('4mnye5meqjdrvnkw7sbs5ojc5e')",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "sample": "[{\"succeeded\":true}]",
+          "durationMs": 30203,
+          "matched": true,
+          "note": "Prozedur, daher CALL"
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT job_id, status, job_type FROM sys.jobs WHERE job_id = $1 -- Parameter: [\"4mnye5meqjdrvnkw7sbs5ojc5e\"]",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"job_id\":\"4mnye5meqjdrvnkw7sbs5ojc5e\",\"status\":\"completed\",\"job_type\":\"INDEX_BUILD\"}]",
+          "durationMs": 18,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'spike_idx' ORDER BY 1",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 2,
+          "sample": "[{\"indexname\":\"ix_spike_idx_tenant_k\",\"indexdef\":\"CREATE INDEX ix_spike_idx_tenant_k ON public.spike_idx USING btree_index (tenant…(87)\"},{\"indexname\":\"spike_idx_pkey\",\"indexdef\":\"CREATE UNIQUE INDEX spike_idx_pkey ON public.spike_idx USING btree_index (id) IN…(100)\"}]",
+          "durationMs": 41,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE INDEX ix_spike_idx_k ON spike_idx (k)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported mode. please use CREATE INDEX ASYNC.",
+          "durationMs": 16,
+          "matched": true,
+          "note": "ohne ASYNC laut rules/dsql.md verboten"
+        }
+      ],
+      "durationMs": 30510
+    },
+    {
+      "id": "S1-07",
+      "title": "Rollen, GRANT und AWS IAM GRANT",
+      "tk": "(5)",
+      "verdict": "bestätigt",
+      "summary": "AWS IAM GRANT ok; GRANT ok; als spike_app: SELECT ok, INSERT abgelehnt (42501)",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE ROLE spike_app WITH LOGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 31,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "AWS IAM GRANT spike_app TO 'arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev'",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 31,
+          "matched": true,
+          "note": "Aufrufer als Principal; in prod Lambda-Rollen"
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT * FROM sys.iam_pg_role_mappings",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"iam_oid\":26448,\"arn\":\"arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev\",\"pg_role_oid\":26446,\"pg_role_name\":\"spike_app\",\"grantor_pg_role_oid\":15579,\"grantor_pg_role_name\":\"admin\"}]",
+          "durationMs": 54,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_granted (id int PRIMARY KEY, v text NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 127,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "INSERT INTO spike_granted (id, v) VALUES (1, 'a')",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 45,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "GRANT USAGE ON SCHEMA public TO spike_app",
+          "expect": "error",
+          "expectCodes": [
+            "0A000"
+          ],
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "feature not supported on system entity",
+          "durationMs": 18,
+          "matched": true,
+          "note": "Lauf 1: feature not supported on system entity; SELECT ging trotzdem"
+        },
+        {
+          "conn": "admin",
+          "command": "GRANT SELECT ON spike_granted TO spike_app",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 25,
+          "matched": true
+        },
+        {
+          "conn": "spike_app",
+          "command": "Verbindung als spike_app (IAM-Token dsql:DbConnect)",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "ok",
+          "durationMs": 210,
+          "matched": true
+        },
+        {
+          "conn": "spike_app",
+          "command": "SELECT v FROM spike_granted WHERE id = 1",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"v\":\"a\"}]",
+          "durationMs": 102,
+          "matched": true
+        },
+        {
+          "conn": "spike_app",
+          "command": "INSERT INTO spike_granted (id, v) VALUES (2, 'b')",
+          "expect": "error",
+          "expectCodes": [
+            "42501"
+          ],
+          "outcome": "error",
+          "sqlstate": "42501",
+          "message": "permission denied for table spike_granted",
+          "durationMs": 19,
+          "matched": true,
+          "note": "ohne INSERT-Recht"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE ROLE spike_app WITH LOGIN",
+          "expect": "error",
+          "expectCodes": [
+            "42710"
+          ],
+          "outcome": "error",
+          "sqlstate": "42710",
+          "message": "role \"spike_app\" already exists",
+          "durationMs": 103,
+          "matched": true,
+          "note": "zweites Anlegen: Migration 0000 muss vorher prüfen"
+        },
+        {
+          "conn": "admin",
+          "command": "SELECT rolname FROM pg_roles WHERE rolname = $1 -- Parameter: [\"spike_app\"]",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"rolname\":\"spike_app\"}]",
+          "durationMs": 21,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "AWS IAM REVOKE spike_app FROM 'arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev'",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 28,
+          "matched": true
+        }
+      ],
+      "durationMs": 830
+    },
+    {
+      "id": "S1-08",
+      "title": "Node-Connector, Rückfall ohne Connector und Latenz vom Rechner",
+      "tk": "6.5",
+      "verdict": "bestätigt",
+      "summary": "Abfrage-Latenz p50 17 ms, p95 20 ms, max 105 ms; Verbindungsaufbau Connector 118 ms, pg+Signer 102 ms; PostgreSQL 16",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "SELECT version() AS version",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"version\":\"PostgreSQL 16\"}]",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "30 × SELECT 1 über bestehende Verbindung",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "p50 17 ms, p95 20 ms, max 105 ms",
+          "durationMs": 0,
+          "matched": true
+        },
+        {
+          "conn": "neu",
+          "command": "Verbindungsaufbau AuroraDSQLClient (Token + TLS + Anmeldung)",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "ok",
+          "durationMs": 118,
+          "matched": true
+        },
+        {
+          "conn": "pg+Signer",
+          "command": "SELECT 1 AS ok",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 1,
+          "sample": "[{\"ok\":1}]",
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "pg+Signer",
+          "command": "Verbindungsaufbau node-postgres + DsqlSigner",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "ok",
+          "durationMs": 102,
+          "matched": true
+        }
+      ],
+      "durationMs": 869
+    },
+    {
+      "id": "S1-09",
+      "title": "Grenzen je Transaktion: Zeilen, Datenvolumen, Laufzeit, DDL",
+      "tk": "(6) Grenzen",
+      "verdict": "bestätigt",
+      "summary": "3.000 Zeilen ok, 3.001 abgelehnt (54000); Volumen zuletzt ok 8 MiB, Grenze bei 16 MiB: 54000 transaction size limit 10mb exceeded; Laufzeit: übersprungen (--skip-long); zwei DDL abgelehnt, DDL+DML abgelehnt",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_rows (id int PRIMARY KEY, pad text)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 116,
+          "matched": true
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_vol (id int PRIMARY KEY, pad text NOT NULL)",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 59,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 14,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_rows (id, pad) SELECT g, 'x' FROM generate_series(1, 3000) g",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": 3000,
+          "durationMs": 54,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 51,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_rows (id, pad) SELECT g, 'x' FROM generate_series(3001, 6001) g",
+          "expect": "any",
+          "outcome": "error",
+          "sqlstate": "54000",
+          "message": "transaction row limit exceeded",
+          "durationMs": 35,
+          "matched": true,
+          "note": "3.001 Zeilen"
+        },
+        {
+          "conn": "C",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "1 MiB"
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (1 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 199,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (1 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 51,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (1 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 36,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 42,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "2 MiB"
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 103,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "4 MiB"
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 77,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "8 MiB"
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 118,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true,
+          "note": "16 MiB"
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (16 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 28,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (16 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 27,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_vol (id, pad) VALUES ($1, $2) -- Parameter: id, 256 KiB zufällig (16 MiB gesamt)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": 1,
+          "durationMs": 31,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "COMMIT",
+          "expect": "any",
+          "outcome": "error",
+          "sqlstate": "54000",
+          "message": "transaction size limit 10mb exceeded",
+          "durationMs": 30,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "… 118 weitere Einfügeschritte zu 256 KiB (alle ohne Fehler, sofern unten nicht anders)",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "gekürzt",
+          "durationMs": 0,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 14,
+          "matched": true,
+          "note": "zwei DDL"
+        },
+        {
+          "conn": "C",
+          "command": "CREATE TABLE spike_ddl1 (id int PRIMARY KEY)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 46,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "CREATE TABLE spike_ddl2 (id int PRIMARY KEY)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "multiple ddl statements not supported in a transaction",
+          "durationMs": 103,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 15,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "BEGIN",
+          "expect": "ok",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 16,
+          "matched": true,
+          "note": "DDL + DML"
+        },
+        {
+          "conn": "C",
+          "command": "CREATE TABLE spike_ddl3 (id int PRIMARY KEY)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 44,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "INSERT INTO spike_parent (id, name) VALUES (gen_random_uuid(), 'mix')",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "ddl and dml are not supported in the same transaction",
+          "durationMs": 17,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "ROLLBACK",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 14,
+          "matched": true
+        },
+        {
+          "conn": "C",
+          "command": "Transaktion > 5 min",
+          "expect": "any",
+          "outcome": "ok",
+          "sample": "übersprungen (--skip-long)",
+          "durationMs": 0,
+          "matched": true
+        }
+      ],
+      "durationMs": 5480
+    },
+    {
+      "id": "S1-10",
+      "title": "Nicht unterstützte Funktionen (rules/dsql.md)",
+      "tk": "Nicht unterstützt",
+      "verdict": "bestätigt",
+      "summary": "TRUNCATE abgelehnt; TEMP TABLE abgelehnt; PL/pgSQL abgelehnt; Trigger abgelehnt; Extension abgelehnt; Sequenz abgelehnt; ON DELETE CASCADE möglich",
+      "steps": [
+        {
+          "conn": "admin",
+          "command": "TRUNCATE spike_rows",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported statement: Truncate",
+          "durationMs": 16,
+          "matched": true,
+          "note": "TRUNCATE"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TEMP TABLE spike_tmp (id int)",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "TEMPORARY or TEMP table not supported for CREATE TABLE",
+          "durationMs": 16,
+          "matched": true,
+          "note": "TEMP TABLE"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE FUNCTION spike_fn() RETURNS int LANGUAGE plpgsql AS 'BEGIN RETURN 1; END'",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "CREATE FUNCTION with language plpgsql not supported",
+          "durationMs": 15,
+          "matched": true,
+          "note": "PL/pgSQL"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TRIGGER spike_trg BEFORE INSERT ON spike_rows FOR EACH ROW EXECUTE FUNCTION spike_fn()",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "CREATE TRIGGER not supported",
+          "durationMs": 16,
+          "matched": true,
+          "note": "Trigger"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE EXTENSION IF NOT EXISTS pgcrypto",
+          "expect": "error",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "unsupported statement: CreateExtension",
+          "durationMs": 16,
+          "matched": true,
+          "note": "Extension"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE SEQUENCE spike_seq",
+          "expect": "any",
+          "outcome": "error",
+          "sqlstate": "0A000",
+          "message": "CREATE SEQUENCE is not supported without an explicit cache size. please define CACHE greater than or equal to 65536 or equal to 1",
+          "durationMs": 16,
+          "matched": true,
+          "note": "Sequenz (bei uns ohnehin nicht genutzt)"
+        },
+        {
+          "conn": "admin",
+          "command": "CREATE TABLE spike_cascade (id uuid PRIMARY KEY, p uuid REFERENCES spike_parent(id) ON DELETE CASCADE)",
+          "expect": "any",
+          "outcome": "ok",
+          "rowCount": null,
+          "durationMs": 74,
+          "matched": true,
+          "note": "ON DELETE: laut TK unterstützt, bei uns nicht genutzt"
+        }
+      ],
+      "durationMs": 170
+    }
+  ],
+  "notes": [
+    "Erste Verbindung als admin über den Connector: 300 ms"
+  ],
+  "cluster": {
+    "identifier": "jzudhx3mgzeybve7g6lilye2oy",
+    "region": "eu-central-1",
+    "endpoint": "jzudhx3mgzeybve7g6lilye2oy.dsql.eu-central-1.on.aws",
+    "createMs": 671,
+    "activeMs": 5374
+  },
+  "finishedAt": "2026-09-23T18:43:31.635Z"
+}

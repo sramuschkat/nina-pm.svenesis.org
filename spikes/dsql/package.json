@@ -1,0 +1,22 @@
+{
+  "name": "@nina-pm/spike-dsql",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wegwerf-Prüfungen für Aurora DSQL (AP-S1, TK 6.0). Kein Produktivcode.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/dsql-signer": "3.1137.0",
+    "@aws/aurora-dsql-node-postgres-connector": "0.1.9",
+    "pg": "8.23.0",
+    "pg-connection-string": "^2.14.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

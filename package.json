@@ -13,7 +13,8 @@
     "format": "prettier --write . && eslint . --fix",
     "test": "vitest run",
     "cdk": "pnpm --filter @nina-pm/infra exec cdk",
-    "deploy:prod": "tsx tools/deploy/src/deploy-prod.ts"
+    "deploy:prod": "tsx tools/deploy/src/deploy-prod.ts",
+    "test:dsql": "tsx tools/deploy/src/test-dsql.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
