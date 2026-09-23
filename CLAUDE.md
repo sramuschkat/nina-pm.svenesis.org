@@ -54,7 +54,7 @@ Fehlt lokal ein Werkzeug oder der Netzzugang: **nicht improvisieren**, sondern d
 - `dotnet build apps/nina-plugin/NinaPm.Core` · `dotnet test apps/nina-plugin/NinaPm.Core.Tests` · `dotnet build apps/nina-plugin/NinaPm.Nina` · `dotnet build apps/nina-plugin/NinaPm.Nina.Tests` (die vier lokal vor jedem Plugin-PR, TK 10.5) · vollständige Lösung inkl. `NinaPm.Nina.Ui` und die Adapter-Tests nur auf `windows-latest`
 
 ## Harte Regeln (Kurzfassung – Details in `docs/rules/`)
-1. Aurora DSQL: keine Trigger/PL/pgSQL/TRUNCATE/TEMP TABLE/ON DELETE-Aktionen/ALTER COLUMN TYPE; Indizes nur `CREATE INDEX ASYNC`; eine DDL je Transaktion; ≤ 3.000 Zeilen je Transaktion; OCC-Retry über `withTx`; Invarianten mit `guard` (`SELECT … FOR UPDATE`). FKs, jsonb, `ADD COLUMN … DEFAULT` sind erlaubt.
+1. Aurora DSQL: keine Trigger/PL/pgSQL/TRUNCATE/TEMP TABLE/ON DELETE-Aktionen/ALTER COLUMN TYPE; Indizes nur `CREATE INDEX ASYNC`; eine DDL je Transaktion; ≤ 3.000 Zeilen je Transaktion; OCC-Retry über `withTx`; Invarianten mit `guard` (`SELECT … FOR UPDATE`). FKs und jsonb sind erlaubt; `ADD COLUMN` nur ohne `DEFAULT`/Constraint (Default danach per `SET DEFAULT`, Bestand in Stapeln nachfüllen, nachträglich kein `NOT NULL`); Warten auf ASYNC-Jobs mit `CALL sys.wait_for_job`; Grenzen 10 MiB und 300 s je Transaktion (ADR-S1).
 2. Datenbankzugriff nur in `packages/db/src/repositories`, jede Abfrage mandantengebunden.
 3. Jede Route deklariert eine Berechtigungs-Aktion und hat generierte Rechte-Tests.
 4. Engine rein und deterministisch: kein `Date`/`Intl`/`Math.random`/I/O; Trigonometrie nur aus `engine/src/math`; Hashes über `canonicalInputJson`; Soll-Pläne exakt.
