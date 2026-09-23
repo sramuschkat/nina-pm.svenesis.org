@@ -1,0 +1,10 @@
+{
+  "name": "@nina-pm/repo-check",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Repository-Prüfungen: Kopiervorlagen und Katalogdaten unverändert (AP-01)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

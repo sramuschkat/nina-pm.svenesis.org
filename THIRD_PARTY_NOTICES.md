@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Vorlage für das Repository-Root (AP-01). Weitere Einträge (z. B. OpenNGC CC BY-SA 4.0, Jint, NuGet-Pakete) ergänzt Claude Code.
+Lizenzhinweise für übernommenen Code und übernommene Daten. Weitere Einträge (z. B. Jint, NuGet-Pakete) ergänzt Claude Code mit dem jeweiligen Arbeitspaket.
 
 ## Astro PM – N.I.N.A. Plugin
 
@@ -30,3 +30,36 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## OpenNGC
+
+Quelle: https://github.com/mattiaverga/OpenNGC (Mattia Verga), `NGC.csv` und `addendum.csv`
+Lizenz: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/
+Verwendung: `packages/catalog-data/data/ngc.json` (abgeleitet aus OpenNGC, ergänzt um Sharpless-Regionen aus VizieR VII/20 mit SIMBAD-Positionen und Caldwell-Nummern aus der englischen Wikipedia, ebenfalls CC BY-SA 4.0; die Datei steht unter CC BY-SA 4.0). Ab AP-20 Quelle des Objektkatalogs `dso_object`; Version und Abrufdatum hält jeder Importlauf fest (`docs/specs/catalog/dso-import.md`).
+
+## d3-celestial
+
+Quelle: https://github.com/ofrohn/d3-celestial (Olaf Frohn)
+Verwendung: Sterndaten `packages/catalog-data/data/stars-8.bin` (erzeugt aus den Datendateien von d3-celestial, XHIP/Hipparcos); ab AP-21 Basis der Sternkarte.
+
+```
+Copyright (c) 2015, Olaf Frohn
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Weitere Datenquellen in `packages/catalog-data`
+
+- Hipparcos New Reduction (van Leeuwen 2007, VizieR I/311): Eigenbewegungen und Parallaxen in `data/stars-8.bin`.
+- Washington Double Star Catalog (Mason et al., U.S. Naval Observatory) über VizieR B/wds/wds: `data/doubles.json`.
+- SIMBAD und VizieR (CDS, Straßburg): Positionen in `data/ngc.json`, `data/doubles.json` und `js/dso-catalog.js`.
+- CelesTrak (Bahnelemente), Heavens-Above (Helligkeiten), JPL Small-Body Database (Kometen): `data/sky-events.json`.

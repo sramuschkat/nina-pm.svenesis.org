@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/ui-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Design-Tokens --npm-* nach Vorbild svenesis.org (TK 3.1, 11.3)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

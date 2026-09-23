@@ -1,0 +1,11 @@
+# pnpm-Workspace nach TK 3.1. apps/nina-plugin ist eine C#-Lösung und kein pnpm-Paket.
+packages:
+  - apps/web
+  - apps/api
+  - packages/*
+  - infra
+  - tools/*
+
+# Build-Skripte von Abhängigkeiten nur nach ausdrücklicher Freigabe.
+allowBuilds:
+  esbuild: true

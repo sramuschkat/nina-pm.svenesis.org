@@ -1,0 +1,7 @@
+{
+  "name": "@nina-pm/infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CDK-App (bin/app.ts, lib/*-stack.ts, config.ts), folgt mit AP-02a (TK 3.1, 4)"
+}
