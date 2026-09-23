@@ -15,7 +15,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-01](AP-01.md) | Monorepo-Gerüst | M | – | H-02, H-03 | ☑ 23.09.2026 |
 | [AP-02a](AP-02a.md) | CDK-Grundgerüst: Data, Config, Cert, Web, Edge | M | AP-01 | H-01, H-04, H-06 | ☑ 23.09.2026 |
 | [AP-S1](AP-S1.md) | Spike Aurora DSQL | S | AP-02a | H-01, H-22 | ☑ 23.09.2026 |
-| [AP-02b](AP-02b.md) | CDK: Api, Jobs, Ops (Lambdas, Rollen, Zeitpläne, Alarme) | M | AP-02a, AP-S1 | H-05, H-06, H-09 | ◐ |
+| [AP-02b](AP-02b.md) | CDK: Api, Jobs, Ops (Lambdas, Rollen, Zeitpläne, Alarme) | M | AP-02a, AP-S1 | H-05, H-06, H-09 | ☑ 23.09.2026 |
 | [AP-03](AP-03.md) | Datenbankpaket und Migrationen | L | AP-02b | H-06, H-22 | ☐ |
 | [AP-05](AP-05.md) | Shared: Rechte, Fehler, Verträge, Middleware, Job-Infrastruktur | M | AP-03 | – | ☐ |
 | [AP-04a](AP-04a.md) | Anmeldung mit Discord und Sitzungen | L | AP-05 | H-05, H-07, H-08 | ☐ |
