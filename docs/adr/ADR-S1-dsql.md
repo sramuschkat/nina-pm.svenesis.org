@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **vorgeschlagen** – Go/No-Go durch Sven (H-22) |
+| Status | **angenommen** – Go für Aurora DSQL durch Sven am 23.09.2026 (H-22) |
 | Datum | 2026-09-23 |
 | Arbeitspaket | AP-S1 |
 | Anforderungen | TK 6.0 (Reihenfolge = Risiko), TK 6.5, 6.6, 6.8, TK 17, `rules/dsql.md` |
@@ -27,7 +27,7 @@ Schema und Regeln stützen sich auf DSQL-Eigenschaften, die bisher nur aus der D
 | S1-10 | Nicht unterstützt | `TRUNCATE`, `TEMP TABLE`, PL/pgSQL, Trigger, Extension, Sequenz, `ON DELETE CASCADE` | ✔ Alle abgelehnt (0A000). Sequenzen gehen nur mit `CACHE ≥ 65536` oder `= 1` (bei uns nicht genutzt). `ON DELETE CASCADE` ist möglich (bei uns nicht genutzt). |
 
 ## Entscheidung
-**Vorschlag: Go für Aurora DSQL.** Alle Punkte mit hohem Risiko halten: Fremdschlüssel, `jsonb` als Spaltentyp, `FOR UPDATE` als Wächter, `ON CONFLICT`, `AWS IAM GRANT` mit getrennten DB-Rollen und der offizielle Node-Connector. Die Rückfälle aus TK 6.0 (FKs weglassen, `jsonb` als `text`) entfallen. Verbindlich ab jetzt:
+**Go für Aurora DSQL** (Sven, 23.09.2026). Alle Punkte mit hohem Risiko halten: Fremdschlüssel, `jsonb` als Spaltentyp, `FOR UPDATE` als Wächter, `ON CONFLICT`, `AWS IAM GRANT` mit getrennten DB-Rollen und der offizielle Node-Connector. Die Rückfälle aus TK 6.0 (FKs weglassen, `jsonb` als `text`) entfallen. Verbindlich ab jetzt:
 
 1. **Neue Spalten in Folge-Migrationen** werden ohne `DEFAULT` und ohne Constraint angelegt. Danach setzt `ALTER COLUMN … SET DEFAULT` den Standard für neue Zeilen, und der Bestand wird in Stapeln ≤ 2.500 nachgefüllt. Nachträglich ist **kein `NOT NULL`** möglich. Solche Spalten sind in der Datenbank nullbar, die Pflicht sichert das zod-Schema. `NOT NULL`, `DEFAULT` und `CHECK` gibt es nur beim `CREATE TABLE`.
 2. **Warten auf asynchrone Jobs** mit `CALL sys.wait_for_job('<job_id>')`. Das gilt für `CREATE INDEX ASYNC` und `ALTER TABLE ASYNC … VALIDATE CONSTRAINT`.
