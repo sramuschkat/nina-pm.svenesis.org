@@ -1,6 +1,6 @@
 # Index der Konzepte (Abschnitt → Zeilen)
 
-Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.21, Schema 1.18). Zum gezielten Laden: `sed -n 'VON,BISp' <Datei>` bzw. Read mit offset/limit. Nach jeder Änderung an einem Konzept neu erzeugen.
+Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Schema 1.19). Zum gezielten Laden: `sed -n 'VON,BISp' <Datei>` bzw. Read mit offset/limit. Nach jeder Änderung an einem Konzept neu erzeugen.
 
 ## Fachkonzept_Svenesis-NINA-PM.md
 
@@ -113,8 +113,8 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.21, Sch
 | &nbsp;&nbsp;5.4 Super User und Notfallzugang | 422–428 |
 | &nbsp;&nbsp;5.5 Autorisierung | 429–471 |
 | &nbsp;&nbsp;5.6 NINA-Instanzen | 472–488 |
-| 6. Datenbank (Aurora DSQL) | 489–654 |
-| &nbsp;&nbsp;6.0 DSQL-Fakten (geprüft 17.09.2026) | 495–510 |
+| 6. Datenbank (Aurora DSQL) | 489–655 |
+| &nbsp;&nbsp;6.0 DSQL-Fakten (geprüft 17.09.2026, im Spike AP-S1 am 23.09.2026 nachgewiesen) | 495–510 |
 | &nbsp;&nbsp;6.1 Leitlinien | 511–525 |
 | &nbsp;&nbsp;6.2 Tabellengruppen | 526–549 |
 | &nbsp;&nbsp;6.3 Wichtige Abfragen (Indizes darauf ausgelegt) | 550–560 |
@@ -122,114 +122,114 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.21, Sch
 | &nbsp;&nbsp;6.5 Verbindung aus Lambda | 565–585 |
 | &nbsp;&nbsp;6.6 Transaktionen, Konflikte, Idempotenz | 586–610 |
 | &nbsp;&nbsp;6.7 Mandanten-Guard | 611–627 |
-| &nbsp;&nbsp;6.8 Migrationen | 628–637 |
-| &nbsp;&nbsp;6.9 Lokale Entwicklung | 638–643 |
-| &nbsp;&nbsp;6.10 Datensicherung | 644–654 |
-| 7. API | 655–2023 |
-| &nbsp;&nbsp;7.1 Konventionen | 657–672 |
-| &nbsp;&nbsp;7.2 Endpunkte Web (Auszug, vollständig in OpenAPI) | 673–710 |
-| &nbsp;&nbsp;7.3 Endpunkte NINA (`/nina/v1`) | 711–730 |
-| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 731–754 |
-| &nbsp;&nbsp;7.5 Verträge | 755–758 |
-| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 759–2003 |
-| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2004–2023 |
-| 8. Scheduler- und Astronomie-Engine | 2024–2172 |
-| &nbsp;&nbsp;8.1 Grundsätze | 2026–2035 |
-| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2036–2094 |
-| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2095–2112 |
-| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2113–2156 |
-| &nbsp;&nbsp;8.5 Transitrechnung | 2157–2164 |
-| &nbsp;&nbsp;8.6 Leistung | 2165–2172 |
-| 9. Referenzwerte mit Python/astropy | 2173–2247 |
-| &nbsp;&nbsp;9.1 Aufbau | 2177–2201 |
-| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2202–2247 |
-| 10. NINA-Plugin | 2248–2426 |
-| &nbsp;&nbsp;10.1 Rahmen | 2250–2261 |
-| &nbsp;&nbsp;10.2 Struktur | 2262–2322 |
-| &nbsp;&nbsp;10.3 Ablauf im Container | 2323–2345 |
-| &nbsp;&nbsp;10.4 Offline | 2346–2352 |
-| &nbsp;&nbsp;10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows | 2353–2426 |
-| 11. Frontend (React + TypeScript) | 2427–2540 |
-| &nbsp;&nbsp;11.1 Technologie | 2429–2448 |
-| &nbsp;&nbsp;11.2 Struktur | 2449–2478 |
-| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2479–2530 |
-| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2531–2540 |
-| 12. Dateien und S3 | 2541–2562 |
-| 13. Hintergrund-Jobs | 2563–2583 |
-| 14. Externe Dienste | 2584–2602 |
-| 15. Sicherheit | 2603–2647 |
-| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2611–2628 |
-| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2629–2632 |
-| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2633–2647 |
-| 16. Betrieb, Monitoring und Kosten | 2648–2693 |
-| &nbsp;&nbsp;16.1 Logging und Tracing | 2650–2657 |
-| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2658–2675 |
-| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2676–2693 |
-| 17. Teststrategie | 2694–2723 |
-| 18. CI/CD und Deployment | 2724–2752 |
-| 19. Umsetzungsplan für Claude Code | 2753–2875 |
-| &nbsp;&nbsp;R1 – MVP Planung | 2762–2802 |
-| &nbsp;&nbsp;R2 – Framing und Wetter | 2803–2813 |
-| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2814–2824 |
-| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2825–2843 |
-| &nbsp;&nbsp;R4 – Exoplaneten | 2844–2854 |
-| &nbsp;&nbsp;R5 – Komfort | 2855–2864 |
-| &nbsp;&nbsp;R6 – Optional | 2865–2875 |
-| 20. CLAUDE.md | 2876–2904 |
-| 21. Offene technische Punkte und Risiken | 2905–2945 |
+| &nbsp;&nbsp;6.8 Migrationen | 628–638 |
+| &nbsp;&nbsp;6.9 Lokale Entwicklung | 639–644 |
+| &nbsp;&nbsp;6.10 Datensicherung | 645–655 |
+| 7. API | 656–2024 |
+| &nbsp;&nbsp;7.1 Konventionen | 658–673 |
+| &nbsp;&nbsp;7.2 Endpunkte Web (Auszug, vollständig in OpenAPI) | 674–711 |
+| &nbsp;&nbsp;7.3 Endpunkte NINA (`/nina/v1`) | 712–731 |
+| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 732–755 |
+| &nbsp;&nbsp;7.5 Verträge | 756–759 |
+| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 760–2004 |
+| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2005–2024 |
+| 8. Scheduler- und Astronomie-Engine | 2025–2173 |
+| &nbsp;&nbsp;8.1 Grundsätze | 2027–2036 |
+| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2037–2095 |
+| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2096–2113 |
+| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2114–2157 |
+| &nbsp;&nbsp;8.5 Transitrechnung | 2158–2165 |
+| &nbsp;&nbsp;8.6 Leistung | 2166–2173 |
+| 9. Referenzwerte mit Python/astropy | 2174–2248 |
+| &nbsp;&nbsp;9.1 Aufbau | 2178–2202 |
+| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2203–2248 |
+| 10. NINA-Plugin | 2249–2427 |
+| &nbsp;&nbsp;10.1 Rahmen | 2251–2262 |
+| &nbsp;&nbsp;10.2 Struktur | 2263–2323 |
+| &nbsp;&nbsp;10.3 Ablauf im Container | 2324–2346 |
+| &nbsp;&nbsp;10.4 Offline | 2347–2353 |
+| &nbsp;&nbsp;10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows | 2354–2427 |
+| 11. Frontend (React + TypeScript) | 2428–2541 |
+| &nbsp;&nbsp;11.1 Technologie | 2430–2449 |
+| &nbsp;&nbsp;11.2 Struktur | 2450–2479 |
+| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2480–2531 |
+| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2532–2541 |
+| 12. Dateien und S3 | 2542–2563 |
+| 13. Hintergrund-Jobs | 2564–2584 |
+| 14. Externe Dienste | 2585–2603 |
+| 15. Sicherheit | 2604–2648 |
+| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2612–2629 |
+| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2630–2633 |
+| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2634–2648 |
+| 16. Betrieb, Monitoring und Kosten | 2649–2694 |
+| &nbsp;&nbsp;16.1 Logging und Tracing | 2651–2658 |
+| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2659–2676 |
+| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2677–2694 |
+| 17. Teststrategie | 2695–2724 |
+| 18. CI/CD und Deployment | 2725–2753 |
+| 19. Umsetzungsplan für Claude Code | 2754–2876 |
+| &nbsp;&nbsp;R1 – MVP Planung | 2763–2803 |
+| &nbsp;&nbsp;R2 – Framing und Wetter | 2804–2814 |
+| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2815–2825 |
+| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2826–2844 |
+| &nbsp;&nbsp;R4 – Exoplaneten | 2845–2855 |
+| &nbsp;&nbsp;R5 – Komfort | 2856–2865 |
+| &nbsp;&nbsp;R6 – Optional | 2866–2876 |
+| 20. CLAUDE.md | 2877–2905 |
+| 21. Offene technische Punkte und Risiken | 2906–2946 |
 
 ## schema_aurora_dsql.sql
 
 | Tabelle | Zeilen |
 |---|---|
-| `identity` | 112–125 |
-| `super_user` | 126–132 |
-| `tenant` | 133–154 |
-| `system_audit` | 155–167 |
-| `dso_object` | 168–223 |
-| `exo_catalog_entry` | 224–270 |
-| `weather_cache` | 271–312 |
-| `app_user` | 313–329 |
-| `invitation` | 330–348 |
-| `auth_session` | 349–363 |
-| `user_preference` | 364–372 |
-| `identity_preference` | 373–380 |
-| `notification` | 381–395 |
-| `change_log` | 396–412 |
-| `site` | 413–437 |
-| `site_link` | 438–450 |
-| `telescope` | 451–470 |
-| `camera` | 471–505 |
-| `moon_profile` | 506–527 |
-| `filter` | 528–555 |
-| `exposure_template` | 556–566 |
-| `exposure_template_line` | 567–584 |
-| `rig` | 585–643 |
-| `rig_lease` | 644–656 |
-| `nina_instance` | 657–683 |
-| `project` | 684–751 |
-| `favorite` | 752–759 |
-| `project_panel` | 760–773 |
-| `exposure_line` | 774–811 |
-| `project_note` | 812–822 |
-| `approval_event` | 823–834 |
-| `change_request` | 835–856 |
-| `queue_vote` | 857–873 |
-| `exo_project` | 874–889 |
-| `ephemeris` | 890–914 |
-| `transit_observation` | 915–947 |
-| `transit_result` | 948–973 |
-| `night_plan` | 974–996 |
-| `session` | 997–1030 |
-| `session_event` | 1031–1046 |
-| `capture` | 1047–1092 |
-| `capture_night` | 1093–1113 |
-| `correction` | 1114–1126 |
-| `flat_combination` | 1127–1147 |
-| `session_log` | 1148–1167 |
-| `site_night_stat` | 1168–1177 |
-| `command` | 1178–1187 |
-| `discord_channel` | 1188–1207 |
-| `discord_delivery` | 1208–1224 |
-| `job` | 1225–1247 |
-| `system_setting` | 1248–1294 |
+| `identity` | 115–128 |
+| `super_user` | 129–135 |
+| `tenant` | 136–157 |
+| `system_audit` | 158–170 |
+| `dso_object` | 171–226 |
+| `exo_catalog_entry` | 227–273 |
+| `weather_cache` | 274–315 |
+| `app_user` | 316–332 |
+| `invitation` | 333–351 |
+| `auth_session` | 352–366 |
+| `user_preference` | 367–375 |
+| `identity_preference` | 376–383 |
+| `notification` | 384–398 |
+| `change_log` | 399–415 |
+| `site` | 416–440 |
+| `site_link` | 441–453 |
+| `telescope` | 454–473 |
+| `camera` | 474–508 |
+| `moon_profile` | 509–530 |
+| `filter` | 531–558 |
+| `exposure_template` | 559–569 |
+| `exposure_template_line` | 570–587 |
+| `rig` | 588–646 |
+| `rig_lease` | 647–659 |
+| `nina_instance` | 660–686 |
+| `project` | 687–754 |
+| `favorite` | 755–762 |
+| `project_panel` | 763–776 |
+| `exposure_line` | 777–814 |
+| `project_note` | 815–825 |
+| `approval_event` | 826–837 |
+| `change_request` | 838–859 |
+| `queue_vote` | 860–876 |
+| `exo_project` | 877–892 |
+| `ephemeris` | 893–917 |
+| `transit_observation` | 918–950 |
+| `transit_result` | 951–976 |
+| `night_plan` | 977–999 |
+| `session` | 1000–1033 |
+| `session_event` | 1034–1049 |
+| `capture` | 1050–1095 |
+| `capture_night` | 1096–1116 |
+| `correction` | 1117–1129 |
+| `flat_combination` | 1130–1150 |
+| `session_log` | 1151–1170 |
+| `site_night_stat` | 1171–1180 |
+| `command` | 1181–1190 |
+| `discord_channel` | 1191–1210 |
+| `discord_delivery` | 1211–1227 |
+| `job` | 1228–1250 |
+| `system_setting` | 1251–1302 |

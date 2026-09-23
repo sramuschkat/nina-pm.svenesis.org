@@ -56,7 +56,7 @@ Kein Zugriff auf `webBucket`, kein SSM-Schreibrecht (Discord-Webhooks liegen in 
 | SSM `/nina-pm/dsql-endpoint` | `grantRead(migrate)` | Endpunkt |
 
 - Aufruf ausschließlich als CDK-`triggers.Trigger` bei jedem Deploy, **vor** `NinaPm-Api`/`NinaPm-Jobs`. Keine Route, keine URL.
-- `migrate` führt **Migration 0000 selbst und idempotent** aus (SV-13): DB-Rollen `app_rw` und `app_job` anlegen (Existenzprüfung statt `IF NOT EXISTS`), `AWS IAM GRANT app_rw` an `NinaPmApi` und `NinaPmOpsCli`, `AWS IAM GRANT app_job` an `NinaPmWorker`, `GRANT USAGE ON SCHEMA`. Jede weitere Tabellen-Migration trägt ihre `GRANT`s an `app_rw`/`app_job` selbst (Vorlage am Ende von `schema_aurora_dsql.sql`).
+- `migrate` führt **Migration 0000 selbst und idempotent** aus (SV-13): DB-Rollen `app_rw` und `app_job` anlegen (Existenzprüfung in `pg_roles` statt `IF NOT EXISTS`), `AWS IAM GRANT app_rw` an `NinaPmApi` und `NinaPmOpsCli`, `AWS IAM GRANT app_job` an `NinaPmWorker` (vorher in `sys.iam_pg_role_mappings` prüfen). Kein `GRANT USAGE ON SCHEMA public` (DSQL: `0A000`, nicht nötig; AP-S1). Jede weitere Tabellen-Migration trägt ihre `GRANT`s an `app_rw`/`app_job` selbst (Vorlage am Ende von `schema_aurora_dsql.sql`).
 - **Entfallen (SV-13, SV-14):** Lambda `db-bootstrap`, Rolle `NinaPmDbBootstrap`, H-25, Fehlercode `db.bootstrap_missing`, DB-Rolle `app_migrate`.
 
 ## 5. `NinaPmOpsCli` (Lambda `ops-cli`)

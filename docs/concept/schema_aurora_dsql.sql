@@ -1,6 +1,9 @@
 -- =====================================================================
 -- Svenesis NINA-PM – Datenbankschema für Amazon Aurora DSQL
--- Version 1.18 – Stand 23.09.2026 – abgestimmt mit Fachkonzept und Technischem Konzept (Uebernahme des aktualisierten Website-Codes 23.09.2026)
+-- Version 1.19 – Stand 23.09.2026 – abgestimmt mit Fachkonzept und Technischem Konzept (DSQL-Spike AP-S1, ADR-S1)
+--   (1.19: DSQL-Spike AP-S1 – KEINE neuen Spalten, nur die GRANT-Vorlage: GRANT USAGE ON SCHEMA public entfaellt
+--    (DSQL: 0A000, nicht noetig), Idempotenz ueber pg_roles und sys.iam_pg_role_mappings; Hinweis, dass neue Spalten
+--    in Folge-Migrationen ohne DEFAULT/NOT NULL/CHECK angelegt werden und Warten per CALL sys.wait_for_job)
 --   (1.18: Uebernahme des aktualisierten Website-Codes (WS-01 ... WS-31, WS-E1 ... E4) – KEINE neuen Spalten,
 --    nur Kommentare: weather_cache.model_set mit den neuen Modellketten und dem Hinweis, dass der Satz Teil des
 --    UNIQUE-Schluessels ist (WS-16); weather_cache.payload mit dem Aufbau (Rohwerte je Stunde, jetKmh, shearKmh,
@@ -1269,12 +1272,14 @@ CREATE TABLE system_setting (                      -- systemweite Einstellungen 
 -- Es gibt keine eigene Lambda `db-bootstrap` und keine DB-Rolle app_migrate (SV-14).
 --
 -- Migration 0000 (als admin, idempotent):
+--   -- Idempotenz (AP-S1): CREATE ROLE nur, wenn SELECT 1 FROM pg_roles WHERE rolname = ... leer ist (sonst 42710);
+--   -- AWS IAM GRANT nur, wenn die Zuordnung in sys.iam_pg_role_mappings fehlt.
 --   CREATE ROLE app_rw      WITH LOGIN;   -- Lambda api und ops-cli
 --   CREATE ROLE app_job     WITH LOGIN;   -- Lambda worker  (getrennt: verarbeitet fremde Eingaben, SV-14)
 --   AWS IAM GRANT app_rw      TO 'arn:aws:iam::<account>:role/NinaPmApi';
 --   AWS IAM GRANT app_rw      TO 'arn:aws:iam::<account>:role/NinaPmOpsCli';
 --   AWS IAM GRANT app_job     TO 'arn:aws:iam::<account>:role/NinaPmWorker';
---   GRANT USAGE ON SCHEMA public TO app_rw, app_job;
+--   -- KEIN GRANT USAGE ON SCHEMA public: DSQL lehnt ihn ab (0A000) und er ist nicht noetig (AP-S1).
 --   -- es gibt KEINE Rolle app_ro; lesender Ad-hoc-Zugriff laeuft ueber ops-cli
 --   -- (Aufruf nur per aws lambda invoke mit Admin-Profil, SV-13).
 --
@@ -1290,5 +1295,8 @@ CREATE TABLE system_setting (                      -- systemweite Einstellungen 
 --   -- kein GRANT ... ON auth_session TO app_job
 -- Ausnahme von "app_rw darf alles":
 --   GRANT SELECT ON dso_object, exo_catalog_entry, weather_cache TO app_rw;  -- Kataloge pflegt app_job
+-- Neue Spalten in Folge-Migrationen: ADD COLUMN ohne DEFAULT/NOT NULL/CHECK (DSQL: 0A000), danach eigene Migration
+-- ALTER COLUMN ... SET DEFAULT und Nachfuellen in Stapeln; nachtraeglich kein SET NOT NULL. Asynchrone Jobs
+-- (CREATE INDEX ASYNC, ALTER TABLE ASYNC ... VALIDATE CONSTRAINT) wartet der Runner mit CALL sys.wait_for_job('<job_id>') ab.
 -- Der DSQL-Lint in CI lehnt jede CREATE TABLE ohne beide GRANT-Saetze ab und vergleicht den
 -- Umfang gegen die Tabelle in TK 6.2 (TK 6.8).
