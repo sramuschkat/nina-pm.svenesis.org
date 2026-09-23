@@ -89,7 +89,12 @@ describe.skipIf(!url)('PostgreSQL 16: Migrationen, Rechte, withTx, Isolation', (
     expect(
       await count("SELECT count(*)::int AS n FROM tenant WHERE tenant_key IN ('demo','other')"),
     ).toBe(2);
-    expect(await count('SELECT count(*)::int AS n FROM app_user')).toBe(5);
+    // Nur die Seed-Mandanten zählen – die Suites (z. B. D-07) legen eigene Mitglieder an.
+    expect(
+      await count(
+        "SELECT count(*)::int AS n FROM app_user a JOIN tenant t ON t.id = a.tenant_id WHERE t.tenant_key IN ('demo','other')",
+      ),
+    ).toBe(5);
     expect(await count('SELECT count(*)::int AS n FROM super_user')).toBe(1);
     const owner = await admin.query(
       "SELECT i.discord_username FROM tenant t JOIN app_user a ON a.id = t.owner_member_id JOIN identity i ON i.id = a.identity_id WHERE t.tenant_key = 'demo'",
