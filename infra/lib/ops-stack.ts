@@ -49,6 +49,7 @@ export class OpsStack extends Stack {
       dsqlClusterArn: props.dsqlClusterArn,
       environment: {
         DSQL_ENDPOINT_PARAM: config.ssm.dsqlEndpoint,
+        DSQL_DB_ROLE: 'app_rw',
         FAILURE_QUEUE_URL: props.failureQueue.queueUrl,
       },
     });

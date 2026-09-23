@@ -65,6 +65,7 @@ export class ApiStack extends Stack {
         BUILD_ID: props.buildId,
         ORIGIN_VERIFY_PARAM: config.ssm.originVerify,
         DSQL_ENDPOINT_PARAM: config.ssm.dsqlEndpoint,
+        DSQL_DB_ROLE: 'app_rw',
         WORKER_FUNCTION_NAME: config.lambdas.worker.functionName,
         DATA_BUCKET: props.dataBucket.bucketName,
       },

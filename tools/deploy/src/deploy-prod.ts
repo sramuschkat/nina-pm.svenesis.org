@@ -4,8 +4,9 @@
  * NUR Sven führt dieses Skript aus, lokal mit seinem Admin-Profil. Claude Code führt es nie aus,
  * und GitHub hat keinen AWS-Zugang. Ablauf im Grundzug (AP-02a):
  *   Vorbedingungen → cdk diff → Bestätigung → cdk deploy --all → Hinweise → Smoke-Test.
- * Folgepakete ergänzen: On-Demand-Backup vor Migrationen (AP-03), Fake-Plugin-Nacht (AP-14c).
+ * Folgepakete ergänzen: Fake-Plugin-Nacht (AP-14c).
  * AP-02b: Vorprüfung /nina-pm/origin-verify, Smoke mit /api/health und Direktaufruf der execute-api-Adresse.
+ * AP-03: bei neuen Migrationen test:dsql grün für den Stand (H-22) und On-Demand-Backup vor dem Deploy.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -14,6 +15,8 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { config } from '@nina-pm/infra/config';
 import { runSmoke } from '@nina-pm/smoke';
+import { loadMigrations, migrationsHash } from '@nina-pm/db/migrate';
+import { findGreenProtocol } from './dsql/protocol';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const outputsFile = `${repoRoot}infra/cdk-outputs.json`;
@@ -36,6 +39,99 @@ function fail(message: string): never {
 
 function step(title: string): void {
   console.log(`\n▶ ${title}`);
+}
+
+/** Neue Migrationen seit dem zuletzt deployten Commit (`/nina-pm/web/build-id`)? Unbekannt zählt als neu. */
+function detectNewMigrations(): boolean {
+  const last = capture('aws', [
+    'ssm',
+    'get-parameter',
+    '--name',
+    config.ssm.webBuildId,
+    '--region',
+    config.region,
+    '--query',
+    'Parameter.Value',
+    '--output',
+    'text',
+  ]).out;
+  if (!/^[0-9a-f]{40}$/.test(last) || !capture('git', ['cat-file', '-e', `${last}^{commit}`]).ok)
+    return true;
+  const paths = ['packages/db/migrations', 'packages/db/src/migrate/migration-0000.ts'];
+  return capture('git', ['diff', '--name-only', last, 'HEAD', '--', ...paths]).out !== '';
+}
+
+/** On-Demand-Backup des DSQL-Clusters in den Standard-Vault und warten bis COMPLETED (TK 18, iam.md §11). */
+async function backupBeforeMigrations(): Promise<void> {
+  step('On-Demand-Backup vor Migrationen');
+  const aws = (args: string[]) =>
+    capture('aws', [...args, '--region', config.region, '--output', 'text']);
+  const clusterArn = aws([
+    'cloudformation',
+    'describe-stacks',
+    '--stack-name',
+    'NinaPm-Data',
+    '--query',
+    "Stacks[0].Outputs[?OutputKey=='DsqlClusterArn'].OutputValue",
+  ]).out;
+  const planId = aws([
+    'backup',
+    'list-backup-plans',
+    '--query',
+    "BackupPlansList[?BackupPlanName=='nina-pm-dsql'].BackupPlanId",
+  ]).out;
+  const selectionId = aws([
+    'backup',
+    'list-backup-selections',
+    '--backup-plan-id',
+    planId,
+    '--query',
+    'BackupSelectionsList[0].SelectionId',
+  ]).out;
+  const roleArn = aws([
+    'backup',
+    'get-backup-selection',
+    '--backup-plan-id',
+    planId,
+    '--selection-id',
+    selectionId,
+    '--query',
+    'BackupSelection.IamRoleArn',
+  ]).out;
+  if (!clusterArn.startsWith('arn:') || !roleArn.startsWith('arn:'))
+    fail('Cluster-ARN oder Backup-Rolle nicht gefunden.');
+  const job = aws([
+    'backup',
+    'start-backup-job',
+    '--backup-vault-name',
+    config.backup.vaultName,
+    '--resource-arn',
+    clusterArn,
+    '--iam-role-arn',
+    roleArn,
+    '--query',
+    'BackupJobId',
+  ]);
+  if (!job.ok || !job.out) fail('Backup-Job ließ sich nicht starten.');
+  console.log(`  Backup-Job ${job.out} gestartet, warte auf COMPLETED …`);
+  for (let i = 0; i < 180; i += 1) {
+    const state = aws([
+      'backup',
+      'describe-backup-job',
+      '--backup-job-id',
+      job.out,
+      '--query',
+      'State',
+    ]).out;
+    if (state === 'COMPLETED') {
+      console.log('  Backup abgeschlossen.');
+      return;
+    }
+    if (['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'].includes(state))
+      fail(`Backup-Job ${job.out} endete mit ${state}.`);
+    await new Promise((resolve) => setTimeout(resolve, 20_000));
+  }
+  fail(`Backup-Job ${job.out} nach 60 min nicht abgeschlossen.`);
 }
 
 async function main(): Promise<void> {
@@ -112,6 +208,21 @@ async function main(): Promise<void> {
     `  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}, Backup-Vault und Origin-Verify vorhanden`,
   );
 
+  // Neue Migrationen seit dem letzten Deploy? Dann gilt: test:dsql grün für genau diesen Stand (H-22),
+  // und vor dem Deploy läuft ein On-Demand-Backup (TK 18, AP-03).
+  const migrationsChanged = detectNewMigrations();
+  if (migrationsChanged) {
+    const hash = migrationsHash(loadMigrations());
+    const green = findGreenProtocol(`${repoRoot}docs/test-runs`, hash);
+    if (!green) {
+      fail(
+        `Neue Migrationen (Stand ${hash}), aber kein grünes Protokoll von \`pnpm test:dsql\` für diesen Stand (H-22).\n` +
+          '  Erst `pnpm test:dsql` ausführen und das Protokoll committen.',
+      );
+    }
+    console.log(`  Neue Migrationen; test:dsql grün laut ${green.replace(repoRoot, '')}`);
+  }
+
   const context = ['-c', `buildId=${sha}`];
   step('cdk diff – bitte vollständig lesen');
   run('pnpm', ['cdk', 'diff', ...context]);
@@ -123,7 +234,7 @@ async function main(): Promise<void> {
   rl.close();
   if (answer !== 'ja') fail('Abgebrochen.');
 
-  // AP-03: bei neuen Migrationen hier On-Demand-Backup des DSQL-Clusters starten und auf COMPLETED warten.
+  if (migrationsChanged) await backupBeforeMigrations();
 
   step('cdk deploy --all');
   run('pnpm', ['cdk', 'deploy', '--all', ...context, '--outputs-file', outputsFile]);

@@ -1,17 +1,28 @@
 /**
- * `pnpm test:dsql --spike` – DSQL-Spike AP-S1 gegen einen kurzlebigen Cluster (TK 17, 18, H-22, E1).
+ * `pnpm test:dsql` – Prüfungen gegen einen kurzlebigen DSQL-Cluster (TK 17, 18, H-22, E1).
  *
  * NUR Sven führt das aus, lokal mit seinem Admin-Profil; Claude Code nie, GitHub nie.
- * Ablauf: Konto prüfen → Cluster mit Tag purpose=ci anlegen → Prüfungen aus spikes/dsql →
- * Cluster im finally löschen → Protokoll nach docs/test-runs/<datum>/ap-s1/.
- * Ohne `--spike` folgt hier mit AP-03 der Lauf „Migrationen inkl. 0000 + Repository-/OCC-Tests“.
- *
- * Optionen: --spike (Pflicht bis AP-03) · --skip-long (ohne den 5-Minuten-Laufzeittest)
+ *   ohne Option: AP-03 – Migration 0000 und alle Migrationen, danach die Suites aus
+ *                @nina-pm/db/testing (Idempotenz, Rechte-Matrix, SEC-4, OCC, 3.000 Zeilen, Isolation);
+ *                Protokoll nach docs/test-runs/<datum>/ap-03/ (Vorbedingung für `pnpm deploy:prod`)
+ *   --spike:     AP-S1 – Prüfpunkte aus spikes/dsql; Protokoll nach docs/test-runs/<datum>/ap-s1/
+ *   --skip-long: nur mit --spike, ohne den 5-Minuten-Laufzeittest
+ * Der Cluster trägt purpose=ci und wird im finally gelöscht, auch bei Fehler oder Ctrl-C.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DSQLClient } from '@aws-sdk/client-dsql';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { execFileSync } from 'node:child_process';
+import { openDatabase } from '@nina-pm/db';
+import {
+  connectDsql,
+  loadMigrations,
+  migrationsHash,
+  prodIamGrants,
+  type IamGrant,
+} from '@nina-pm/db/migrate';
+import { suites, type SuiteEnv } from '@nina-pm/db/testing';
 import { config } from '@nina-pm/infra/config';
 import {
   connectWithConnector,
@@ -26,6 +37,7 @@ import {
   manualDeleteCommand,
   withEphemeralCluster,
 } from './dsql/ephemeral-cluster';
+import { writeProtocol as writeDbProtocol, type DsqlTestProtocol } from './dsql/protocol';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -53,9 +65,6 @@ function writeProtocol(protocol: Protocol): string {
 
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
-  if (!args.has('--spike')) {
-    fail('Bis AP-03 gibt es nur den Spike: pnpm test:dsql --spike [--skip-long]');
-  }
   const skipLong = args.has('--skip-long');
   const region = config.region;
 
@@ -74,6 +83,11 @@ async function main(): Promise<void> {
       '\n! Übrig gebliebene Test-Cluster (purpose=ci) gefunden – bitte prüfen und löschen:',
     );
     for (const id of leftovers) console.warn(`  ${manualDeleteCommand(id, region)}`);
+  }
+
+  if (!args.has('--spike')) {
+    await runDbSuites(dsql, region, callerArn);
+    return;
   }
 
   const protocol: Protocol = {
@@ -133,6 +147,104 @@ async function main(): Promise<void> {
     off.length === 0 ? '\n✓ Alle Prüfpunkte bestätigt.' : `\n! Abweichungen: ${off.join(', ')}`,
   );
   process.exit(exitCode);
+}
+
+/** AP-03: Migrationen und Datenbank-Suites gegen den kurzlebigen Cluster. */
+async function runDbSuites(dsql: DSQLClient, region: string, callerArn: string): Promise<void> {
+  const migrations = loadMigrations();
+  const commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  }).trim();
+  const principal = iamPrincipalForGrant(callerArn);
+  // Prod-Zuordnungen prüfen, dass die echten Rollen-ARNs angenommen werden; der Aufrufer bekommt beide
+  // Rollen, damit die Suites sich als app_rw und app_job anmelden können.
+  const iamGrants: IamGrant[] = [
+    ...prodIamGrants(config.account),
+    { role: 'app_rw', arn: principal },
+    { role: 'app_job', arn: principal },
+  ];
+  const protocol: DsqlTestProtocol = {
+    tool: 'pnpm test:dsql (tools/deploy/src/test-dsql.ts, @nina-pm/db/testing)',
+    startedAt: new Date().toISOString(),
+    migrationsHash: migrationsHash(migrations),
+    commit,
+    caller: callerArn,
+    suites: [],
+    notes: [],
+  };
+  console.log(
+    `\n▶ Kurzlebigen DSQL-Cluster in ${region} anlegen (Tag purpose=ci) – Migrationsstand ${protocol.migrationsHash} …`,
+  );
+  try {
+    await withEphemeralCluster(
+      { client: dsql, region, tags: { project: 'nina-pm', run: 'ap-03' } },
+      async (cluster) => {
+        protocol.cluster = {
+          identifier: cluster.identifier,
+          region,
+          createMs: cluster.createMs,
+          activeMs: cluster.activeMs,
+        };
+        const admin = await connectDsql(cluster.endpoint, 'admin');
+        const env: SuiteEnv = {
+          mode: 'dsql',
+          admin,
+          migrations,
+          migration0000: { mode: 'dsql', iamGrants },
+          connectAs: (role) => connectDsql(cluster.endpoint, role),
+          openDatabase: (role) => openDatabase({ kind: 'dsql', endpoint: cluster.endpoint, role }),
+        };
+        try {
+          for (const suite of suites) {
+            console.log(`▶ ${suite.id} ${suite.title}`);
+            const t0 = Date.now();
+            try {
+              const summary = await suite.run(env);
+              protocol.suites.push({
+                id: suite.id,
+                title: suite.title,
+                ok: true,
+                summary,
+                durationMs: Date.now() - t0,
+              });
+              console.log(`  ✓ ${summary}`);
+            } catch (error) {
+              const summary = error instanceof Error ? error.message : String(error);
+              protocol.suites.push({
+                id: suite.id,
+                title: suite.title,
+                ok: false,
+                summary,
+                durationMs: Date.now() - t0,
+              });
+              console.log(`  ✗ ${summary}`);
+              if (suite.id === 'D-01') break; // ohne Migrationen sind die übrigen Prüfungen sinnlos
+            }
+          }
+        } finally {
+          await admin.end();
+        }
+      },
+    );
+  } catch (error) {
+    protocol.notes.push(
+      `Lauf abgebrochen: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    console.error(`\n✗ Lauf abgebrochen: ${String(error)}`);
+  } finally {
+    protocol.finishedAt = new Date().toISOString();
+    protocol.passed =
+      protocol.suites.length === suites.length &&
+      protocol.suites.every((x) => x.ok) &&
+      protocol.notes.length === 0;
+    const file = writeDbProtocol(`${repoRoot}docs/test-runs/${localDate()}/ap-03`, protocol);
+    console.log(
+      `\n▶ Protokoll: ${file.replace(repoRoot, '')}.md (und .json) – bitte committen (H-22).`,
+    );
+    console.log(protocol.passed ? '\n✓ test:dsql grün.' : '\n✗ test:dsql rot.');
+    process.exit(protocol.passed ? 0 : 1);
+  }
 }
 
 await main();

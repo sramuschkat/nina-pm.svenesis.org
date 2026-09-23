@@ -5,6 +5,7 @@
   "type": "module",
   "description": "CDK-App der einzigen Umgebung prod (TK 4). Deploy nur lokal durch Sven (H-06).",
   "dependencies": {
+    "@nina-pm/db": "workspace:*",
     "aws-cdk-lib": "2.270.0",
     "constructs": "^10.8.1"
   },

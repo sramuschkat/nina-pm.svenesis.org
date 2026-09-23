@@ -13,13 +13,15 @@ export interface AppFunctionProps {
   /** Fester Rollenname (iam.md §1). */
   readonly roleName: string;
   /** Datei unter apps/api/src/handlers/ ohne Endung. */
-  readonly handlerFile: 'api' | 'worker' | 'ops-cli';
+  readonly handlerFile: 'api' | 'worker' | 'ops-cli' | 'migrate';
   readonly memorySize: number;
   readonly timeout: Duration;
   readonly reservedConcurrentExecutions?: number;
   readonly environment?: Record<string, string>;
   /** DSQL-Cluster-ARN für `dsql:DbConnect` (PolicyStatement, DSQL hat keinen Grant). */
   readonly dsqlClusterArn: string;
+  /** Nur `migrate` verbindet als admin (iam.md §4, Assertion 4). */
+  readonly dsqlAction?: 'dsql:DbConnect' | 'dsql:DbConnectAdmin';
 }
 
 /**
@@ -43,7 +45,10 @@ export class AppFunction extends Construct {
       ],
     });
     this.role.addToPolicy(
-      new iam.PolicyStatement({ actions: ['dsql:DbConnect'], resources: [props.dsqlClusterArn] }),
+      new iam.PolicyStatement({
+        actions: [props.dsqlAction ?? 'dsql:DbConnect'],
+        resources: [props.dsqlClusterArn],
+      }),
     );
     this.logGroup = new logs.LogGroup(this, 'Logs', {
       logGroupName: `/aws/lambda/${props.functionName}`,
@@ -83,6 +88,8 @@ export class AppFunction extends Construct {
         externalModules: ['@aws-sdk/*'],
         banner:
           "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+        // Migrationen liegen als Text im Bundle von `migrate` (packages/db/src/migrate/bundled.ts).
+        loader: { '.sql': 'text' },
       },
     });
   }

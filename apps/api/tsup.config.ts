@@ -14,4 +14,5 @@ export default defineConfig({
   outDir: 'dist',
   clean: true,
   sourcemap: true,
+  loader: { '.sql': 'text' },
 });

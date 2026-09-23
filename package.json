@@ -9,12 +9,16 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present run typecheck",
-    "lint": "eslint . --max-warnings 0 && prettier --check .",
+    "lint": "eslint . --max-warnings 0 && prettier --check . && pnpm db:lint",
     "format": "prettier --write . && eslint . --fix",
     "test": "vitest run",
     "cdk": "pnpm --filter @nina-pm/infra exec cdk",
     "deploy:prod": "tsx tools/deploy/src/deploy-prod.ts",
-    "test:dsql": "tsx tools/deploy/src/test-dsql.ts"
+    "test:dsql": "tsx tools/deploy/src/test-dsql.ts",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "pnpm --filter @nina-pm/db migrate",
+    "db:seed": "pnpm --filter @nina-pm/db seed",
+    "db:lint": "pnpm --filter @nina-pm/db lint:sql"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -29,6 +29,7 @@ export function synth(extraContext: Record<string, unknown> = {}) {
     cert: Template.fromStack(stacks.cert),
     web: Template.fromStack(stacks.web),
     edge: Template.fromStack(stacks.edge),
+    migrate: Template.fromStack(stacks.migrate),
     jobs: Template.fromStack(stacks.jobs),
     api: Template.fromStack(stacks.api),
     ops: Template.fromStack(stacks.ops),

@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "types": ["node", "aws-lambda"] },
-  "include": ["src", "test", "tsup.config.ts"]
+  "include": ["src", "test", "tsup.config.ts", "../../packages/db/src/sql.d.ts"]
 }
