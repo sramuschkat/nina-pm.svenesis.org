@@ -1,5 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node", "aws-lambda"] },
-  "include": ["src", "test", "tsup.config.ts", "../../packages/db/src/sql.d.ts"]
+  "compilerOptions": {
+    "types": ["node", "aws-lambda"]
+  },
+  "include": ["src", "test", "scripts", "tsup.config.ts", "../../packages/db/src/sql.d.ts"]
 }

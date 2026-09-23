@@ -1,0 +1,104 @@
+{
+  "$comment": "Testvektoren currentNight (NT-01, specs/engine/night.md §1.1 und §4). Gemeinsam für packages/shared (TypeScript) und NinaPm.Core.Tests (C#, AP-16b) – unverändert benutzen. Starfront (America/Chicago); nightWindowEndUtc aus night.md §4 (Nachtfenster-Rundung). expect = Nacht-Schlüssel oder error = Fehlercode aus errors.json.",
+  "tables": {
+    "starfront0917": [
+      {
+        "night": "2026-09-17",
+        "noonStartUtc": "2026-09-17T17:00:00Z",
+        "noonEndUtc": "2026-09-18T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-18T13:00:00Z"
+      },
+      {
+        "night": "2026-09-18",
+        "noonStartUtc": "2026-09-18T17:00:00Z",
+        "noonEndUtc": "2026-09-19T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-19T13:00:00Z"
+      },
+      {
+        "night": "2026-09-19",
+        "noonStartUtc": "2026-09-19T17:00:00Z",
+        "noonEndUtc": "2026-09-20T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-20T13:05:00Z"
+      }
+    ],
+    "starfront0918": [
+      {
+        "night": "2026-09-18",
+        "noonStartUtc": "2026-09-18T17:00:00Z",
+        "noonEndUtc": "2026-09-19T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-19T13:00:00Z"
+      },
+      {
+        "night": "2026-09-19",
+        "noonStartUtc": "2026-09-19T17:00:00Z",
+        "noonEndUtc": "2026-09-20T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-20T13:05:00Z"
+      }
+    ],
+    "onlyNight0917": [
+      {
+        "night": "2026-09-17",
+        "noonStartUtc": "2026-09-17T17:00:00Z",
+        "noonEndUtc": "2026-09-18T17:00:00Z",
+        "nightWindowEndUtc": "2026-09-18T13:00:00Z"
+      }
+    ],
+    "empty": []
+  },
+  "cases": [
+    {
+      "name": "02:00 CDT, vor Nachtfensterende",
+      "table": "starfront0917",
+      "now": "2026-09-18T07:00:00Z",
+      "expect": "2026-09-17"
+    },
+    {
+      "name": "eine Sekunde vor nightWindowEndUtc",
+      "table": "starfront0917",
+      "now": "2026-09-18T12:59:59Z",
+      "expect": "2026-09-17"
+    },
+    {
+      "name": "genau nightWindowEndUtc",
+      "table": "starfront0917",
+      "now": "2026-09-18T13:00:00Z",
+      "expect": "2026-09-18"
+    },
+    {
+      "name": "09:00 CDT, Morgen nach Nachtfensterende",
+      "table": "starfront0917",
+      "now": "2026-09-18T14:00:00Z",
+      "expect": "2026-09-18"
+    },
+    {
+      "name": "13:00 CDT, nach lokalem Mittag",
+      "table": "starfront0917",
+      "now": "2026-09-18T18:00:00Z",
+      "expect": "2026-09-18"
+    },
+    {
+      "name": "Tabelle ab 2026-09-18 (Web, from), Mittagsnacht fehlt (H1)",
+      "table": "starfront0918",
+      "now": "2026-09-18T14:00:00Z",
+      "expect": "2026-09-18"
+    },
+    {
+      "name": "Folgenacht fehlt nach Nachtfensterende",
+      "table": "onlyNight0917",
+      "now": "2026-09-18T14:00:00Z",
+      "error": "engine.input_invalid"
+    },
+    {
+      "name": "now hinter dem Tabellenende",
+      "table": "starfront0918",
+      "now": "2026-09-20T17:00:00Z",
+      "error": "engine.input_invalid"
+    },
+    {
+      "name": "leere Tabelle",
+      "table": "empty",
+      "now": "2026-09-18T14:00:00Z",
+      "error": "engine.input_invalid"
+    }
+  ]
+}

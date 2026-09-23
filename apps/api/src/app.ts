@@ -1,44 +1,82 @@
-import { ENGINE_VERSION } from '@nina-pm/engine';
-import { Hono } from 'hono';
+import { OpenAPIHono } from '@hono/zod-openapi';
+import { isProblemError, toFieldErrors } from '@nina-pm/shared';
+import { anonymousOnly, session, type ResolveAuth } from './lib/auth';
+import { csrf } from './lib/csrf';
+import type { ApiEnv } from './lib/env';
 import { logger } from './lib/logger';
 import { originVerify } from './lib/origin-verify';
 import { problemResponse } from './lib/problem';
+import { redact } from './lib/redact';
+import { requestIdMiddleware, requestLog } from './lib/request-log';
+import { healthRoute, healthRoutes } from './routes/health';
+import type { ApiServices } from './routes/services';
+import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
+import { getJobRoute, webJobRoutes } from './routes/web-jobs';
 
 export interface AppDeps {
   /** Erwarteter Wert des Headers X-Origin-Verify (SSM-Cache). */
   readonly originVerifyValue: () => Promise<string>;
   /** Build-Kennung (Commit), gesetzt beim Deploy. */
   readonly buildId: string;
+  /** Sitzungsprüfung je Anfrage; bis AP-04a ein Stub (immer anonym). */
+  readonly resolveAuth?: ResolveAuth;
+  /** Dienste (DB, S3, Lambda) – erst beim ersten Bedarf erzeugt, damit /api/health ohne DB läuft. */
+  readonly services?: () => Promise<ApiServices>;
 }
 
+/** Alle Routen mit ihrer Aktion (TK 5.5) – Quelle für Rechte-Testgenerator und OpenAPI. */
+export const ROUTES = [healthRoute, getJobRoute, downloadUrlRoute] as const;
+
+const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
+
 /**
- * Hono-App der Lambda `api` (TK 7). Stand AP-02b: nur `GET /api/health` – öffentlich, ohne DB-Ping
- * (SV-07). Fachliche Routen folgen ab AP-04a/AP-05.
+ * Hono-App der Lambda `api` (TK 7). Reihenfolge: Request-ID → Origin-Verify (SV-16) → Logging →
+ * CSRF (SV-04) → Sitzung (TK 5.3) → je Route `authorize(action)` (TK 5.5) → zod-Validierung → Handler.
  */
 export function createApp(deps: AppDeps) {
-  const app = new Hono();
-
-  app.use('*', originVerify(deps.originVerifyValue));
-
-  app.get('/api/health', (c) => {
-    c.header('cache-control', 'no-store');
-    return c.json({ status: 'ok', engineVersion: ENGINE_VERSION, build: deps.buildId });
+  const services = deps.services ?? noServices;
+  const app = new OpenAPIHono<ApiEnv>({
+    defaultHook: (result, c) => {
+      if (!result.success) {
+        return problemResponse('validation.failed', {
+          requestId: c.get('requestId'),
+          errors: toFieldErrors(result.error),
+        });
+      }
+      return undefined;
+    },
   });
 
-  app.notFound(() => problemResponse('resource.not_found'));
+  app.use('*', requestIdMiddleware());
+  app.use('*', originVerify(deps.originVerifyValue));
+  app.use('*', requestLog());
+  app.use('*', csrf());
+  app.use('*', session(deps.resolveAuth ?? anonymousOnly));
+
+  app.route('/', healthRoutes(deps.buildId));
+  app.route('/', webJobRoutes(services));
+  app.route('/', webFileRoutes(services));
+
+  app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));
 
   app.onError((error, c) => {
-    const lambdaEvent = (
-      c.env as { event?: { requestContext?: { requestId?: string } } } | undefined
-    )?.event;
-    const requestId =
-      lambdaEvent?.requestContext?.requestId ??
-      c.req.header('x-amzn-requestid') ??
-      c.req.header('x-amz-cf-id');
+    const requestId = c.get('requestId');
+    if (isProblemError(error)) {
+      if (error.status >= 500)
+        logger.error('problem_error', { code: error.code, requestId, error: redact(error) });
+      return problemResponse(error.code, { requestId, errors: error.errors });
+    }
     // Details nur ins Log, nie in die Antwort (rules/api.md). `route` speist den Alarm für /api/nina/v1.
-    logger.error('unhandled_error', { route: c.req.path, method: c.req.method, requestId, error });
-    return problemResponse('internal.error', requestId);
+    logger.error('unhandled_error', {
+      route: c.req.path,
+      method: c.req.method,
+      requestId,
+      error: redact(error),
+    });
+    return problemResponse('internal.error', { requestId });
   });
 
   return app;
 }
+
+export type App = ReturnType<typeof createApp>;

@@ -14,6 +14,16 @@ export {
   type DbConfig,
   type OpenDatabase,
 } from './repositories/database';
+export {
+  JobQueue,
+  JobRepository,
+  parseJobError,
+  type EnqueueInput,
+  type EnqueueResult,
+  type Job,
+  type JobError,
+  type StaleJob,
+} from './repositories/job';
 export { TenantRepository, type Tenant } from './repositories/tenant';
 export {
   isOccConflict,
@@ -25,4 +35,4 @@ export {
   type GuardRow,
   type WithTxOptions,
 } from './tx';
-export type { Database } from './types';
+export type { Database, JobTable } from './types';

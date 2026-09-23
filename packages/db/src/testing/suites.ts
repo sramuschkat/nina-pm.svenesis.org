@@ -275,6 +275,116 @@ export const suites: readonly Suite[] = [
       return 'fremder Mandant unsichtbar; fehlender Filter wird erkannt';
     },
   },
+  {
+    id: 'D-07',
+    title: 'Jobs: dedupe_active, höchstens 3 offene Jobs je Mitglied, Übernahme (AP-05)',
+    async run(env) {
+      const tenantA = await insertTenant(env.admin, `job-a-${Date.now().toString(36)}`);
+      const tenantB = await insertTenant(env.admin, `job-b-${Date.now().toString(36)}`);
+      const member = await insertMember(env.admin, tenantA);
+      const rw = env.openDatabase('app_rw');
+      const job = env.openDatabase('app_job');
+      try {
+        const repo = rw.repositories({ tenantId: tenantA, memberId: member }).job;
+        const sim = (n: number) => ({
+          kind: 'multi_sim' as const,
+          input: { nights: 14 },
+          dedupeKey: `multi_sim:${member}:2026-09-${10 + n}`,
+          createdBy: member,
+        });
+        const created = [];
+        for (const n of [1, 2, 3]) created.push(await repo.enqueue(sim(n)));
+        assert.ok(
+          created.every((c) => c.created),
+          'drei Jobs angelegt',
+        );
+        const again = await repo.enqueue(sim(1));
+        assert.deepEqual(
+          again,
+          { jobId: created[0]?.jobId, created: false },
+          'Dedupe liefert offenen Job',
+        );
+        await assert.rejects(repo.enqueue(sim(4)), (e: unknown) => {
+          assert.equal((e as { code?: string }).code, 'auth.rate_limited');
+          return true;
+        });
+        assert.equal(await repo.countOpenUserJobs(member), 3);
+
+        // Übernahme und Abschluss durch den worker (app_job); danach läuft derselbe Schlüssel neu an (DAT5-1).
+        const queue = job.jobQueue();
+        const now = new Date();
+        const claimed = await queue.claim(created[0]?.jobId ?? '', now);
+        assert.equal(claimed?.status, 'running');
+        assert.equal(claimed?.attempts, 1);
+        assert.equal(
+          await queue.claim(created[0]?.jobId ?? '', now),
+          undefined,
+          'zweite Übernahme',
+        );
+        await queue.finish(
+          created[0]?.jobId ?? '',
+          now,
+          `tenant/${tenantA}/jobs/${created[0]?.jobId}.json`,
+        );
+        const done = await repo.byId(created[0]?.jobId ?? '');
+        assert.equal(done?.status, 'done');
+        assert.equal(done?.dedupeActive, null);
+        const rerun = await repo.enqueue(sim(1));
+        assert.ok(
+          rerun.created && rerun.jobId !== created[0]?.jobId,
+          'Schlüssel nach done wieder frei',
+        );
+
+        await queue.claim(created[1]?.jobId ?? '', now);
+        await queue.fail(created[1]?.jobId ?? '', now, {
+          code: 'validation.failed',
+          errors: [{ path: '$', message: 'x' }],
+        });
+        const failed = await repo.byId(created[1]?.jobId ?? '');
+        assert.equal(failed?.status, 'failed');
+        assert.equal(JSON.parse(failed?.error ?? '{}').code, 'validation.failed');
+
+        // tick-5min: pending > 2 min; Zeitplan-Jobs vor benutzerausgelösten (TK 13).
+        const old = new Date(now.getTime() - 5 * 60_000);
+        const system = await repo.enqueue({ kind: 'noop', runAfter: old });
+        await env.admin.query('UPDATE job SET run_after = $1 WHERE id IN ($2, $3)', [
+          old.toISOString(),
+          created[2]?.jobId,
+          rerun.jobId,
+        ]);
+        const stale = await queue.stale(now);
+        const ids = stale.map((s) => s.id);
+        assert.ok(
+          ids.includes(system.jobId) && ids.includes(rerun.jobId),
+          'liegengebliebene Jobs gefunden',
+        );
+        assert.ok(ids.indexOf(system.jobId) < ids.indexOf(rerun.jobId), 'Zeitplan-Job zuerst');
+
+        const other = rw.repositories({ tenantId: tenantB }).job;
+        await assertIsolated([
+          { name: 'JobRepository.byId(A)', call: () => other.byId(system.jobId) },
+        ]);
+      } finally {
+        await rw.close();
+        await job.close();
+      }
+      return '3 offene Jobs, 4. → auth.rate_limited; Dedupe über dedupe_active; claim/finish/fail; Vorrang in stale()';
+    },
+  },
 ];
+
+async function insertMember(admin: SqlClient, tenantId: string): Promise<string> {
+  const identity = uuid();
+  const member = uuid();
+  await admin.query(
+    'INSERT INTO identity (id, discord_user_id, discord_username) VALUES ($1, $2, $3)',
+    [identity, `d-${identity.slice(0, 8)}`, 'job-test'],
+  );
+  await admin.query(
+    "INSERT INTO app_user (id, tenant_id, identity_id, display_name, role) VALUES ($1, $2, $3, 'Job-Test', 'user')",
+    [member, tenantId, identity],
+  );
+  return member;
+}
 
 export { isOccConflict };

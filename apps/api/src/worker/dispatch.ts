@@ -8,18 +8,14 @@ export type WorkerEvent = { tick: Tick } | { jobId: string };
 
 export type Task = () => Promise<void>;
 
-/**
- * Aufgaben je Zeitplan. Stand AP-02b leer; die Aufgaben aus TK 13 kommen mit ihren Paketen
- * (Jobs-Infrastruktur AP-05, Wetter AP-23, Kataloge AP-20/AP-40 …).
- */
+/** Aufgaben je Zeitplan; die Aufgaben aus TK 13 kommen mit ihren Paketen (Wetter AP-23 …). */
 export type TickTasks = Readonly<Record<Tick, readonly { name: string; run: Task }[]>>;
 
-export const defaultTickTasks: TickTasks = {
-  'tick-5min': [],
-  'tick-hourly': [],
-  daily: [],
-  weekly: [],
-};
+export interface DispatchDeps {
+  readonly tasks: TickTasks;
+  /** Führt einen Job aus der Tabelle `job` aus (worker/jobs.ts). */
+  readonly runJob: (jobId: string) => Promise<unknown>;
+}
 
 export function isWorkerEvent(event: unknown): event is WorkerEvent {
   if (typeof event !== 'object' || event === null) return false;
@@ -33,21 +29,17 @@ export function isWorkerEvent(event: unknown): event is WorkerEvent {
  * Ein unbekanntes Ereignis ist ein Konfigurationsfehler und wirft – das landet über EventInvokeConfig
  * in der SQS `nina-pm-worker-failures` und löst den Alarm aus.
  */
-export async function dispatch(
-  event: unknown,
-  tasks: TickTasks = defaultTickTasks,
-): Promise<{ ran: string[] }> {
+export async function dispatch(event: unknown, deps: DispatchDeps): Promise<{ ran: string[] }> {
   if (!isWorkerEvent(event)) {
     logger.error('worker_unknown_event', { event });
     throw new Error('Unbekanntes Worker-Ereignis');
   }
   if ('jobId' in event) {
-    // Jobs aus der Tabelle `job` führt der Dispatcher ab AP-05 aus.
-    logger.warn('worker_job_not_implemented', { jobId: event.jobId });
-    return { ran: [] };
+    await deps.runJob(event.jobId);
+    return { ran: [`job:${event.jobId}`] };
   }
   const ran: string[] = [];
-  for (const task of tasks[event.tick]) {
+  for (const task of deps.tasks[event.tick]) {
     const started = Date.now();
     await task.run();
     logger.info('worker_task_done', {

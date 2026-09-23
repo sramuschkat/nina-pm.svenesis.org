@@ -18,7 +18,8 @@
     "db:up": "docker compose up -d db",
     "db:migrate": "pnpm --filter @nina-pm/db migrate",
     "db:seed": "pnpm --filter @nina-pm/db seed",
-    "db:lint": "pnpm --filter @nina-pm/db lint:sql"
+    "db:lint": "pnpm --filter @nina-pm/db lint:sql",
+    "contracts:generate": "tsx packages/shared/scripts/generate-contracts.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

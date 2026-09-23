@@ -11,3 +11,6 @@ coverage/
 infra/cdk.out/
 infra/edge/
 infra/cdk.context.json
+
+# Generiert (pnpm contracts:generate) – contracts.spec.ts vergleicht byte-genau
+**/src/generated/

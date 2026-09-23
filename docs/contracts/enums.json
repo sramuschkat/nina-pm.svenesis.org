@@ -335,7 +335,8 @@
   "catalog_refresh",
   "forecast",
   "reconcile",
-  "weather"
+  "weather",
+  "noop"
  ],
  "jobStatuses": [
   "pending",
@@ -649,5 +650,14 @@
   "adminSelfApproval",
   "approvalDeadlineDays",
   "defaultLanguage"
+ ],
+ "uploadPurposes": [
+  "transit_result",
+  "tenant_import",
+  "plan_log"
+ ],
+ "downloadPurposes": [
+  "job_result",
+  "export"
  ]
 }

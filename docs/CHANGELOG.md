@@ -4,6 +4,19 @@
 
 ## [Unveröffentlicht]
 
+### AP-05 – Shared: Rechte, Fehler, Verträge, Middleware, Job-Infrastruktur (2026-09-23)
+
+Anforderungen: FK 6.14, TK 5.3 (CSRF), 5.5, 7.1, 7.4, 7.5, 12, 13; SV-03, SV-04, SV-06, SV-09, SV-16; SEC-23, SEC-51, SEC-56, SEC-57; DAT5-1; NT-01.
+
+- Verträge: `errors.json` mit `titleEn` für alle 63 Codes; `enums.json` um `jobKinds: noop` sowie `uploadPurposes` (`transit_result`, `tenant_import`, `plan_log`) und `downloadPurposes` (`job_result`, `export`) ergänzt (additiv, Master-Paket nachgezogen).
+- `packages/shared`: `errors.ts`/`enums.ts` generiert (`pnpm contracts:generate`), `ProblemError`, `AuthContext` und Sitzungskonstanten, `permissions.ts` mit `can()` nach TK 5.5/FK 6.14 (Owner-Regeln, Admin ohne 2FA = User, System-Kontext nur `system.*`), `currentNight` mit gemeinsamen Testvektoren `contracts/test-vectors/current-night.json` (auch für `NinaPm.Core.Tests`, AP-16b), zod-Basisschemas (Nacht-Tabelle, Jobs mit `nights ≤ 14`, Dateien, Problem Details), Parser für hochgeladenes JSON (`JSON.parse` + `.max()`-Grenzen → `validation.failed`).
+- `packages/i18n`: `errors.*` DE/EN aus `errors.json` generiert.
+- `apps/api`: Middleware-Kette Request-ID → Origin-Verify → Logging mit Redaktion → CSRF (`X-NPM-Request: 1`, `/api/nina/v1` ausgenommen) → Sitzung (Stub bis AP-04a: anonym) → `authorize(action)` je Route; Problem Details aus `errors.json`, Validierung → `422 validation.failed` mit `errors[]`, unerwartete Fehler → `500 internal.error` nur mit `requestId`.
+- Routen-Registry mit `meta.action` (`x-npm-action` in OpenAPI); OpenAPI 3.1 generiert und eingecheckt (`docs/api/openapi.yaml`, `pnpm --filter @nina-pm/api openapi:generate`, Diff-Test); Rechte-Testgenerator Route × {Owner, Admin, Admin ohne 2FA, User, fremder Mandant, anonym, Super User}.
+- Routen `GET /api/web/v1/jobs/{id}` (`job.read`) und `GET /api/web/v1/files/download-url` (feste Aktion je Zweck, Schlüssel serverseitig).
+- Upload-Helfer `createUploadTicket`: presigned POST mit `content-length-range`, `eq $Content-Type` und `eq $key` (nie `starts-with`), `uploadTicketId` HMAC-signiert (Schlüssel aus `/nina-pm/oauth/cookie-secret` abgeleitet) mit `verifyUploadTicket`; Tests mit Nachbildung der S3-Politikprüfung statt MinIO.
+- Jobs: `JobRepository` (Dedupe über `dedupe_active` mit `ON CONFLICT DO NOTHING`, höchstens 3 offene `multi_sim`/`impact` je Mitglied mit Wächter auf `app_user` → `429 auth.rate_limited`), `JobQueue` für den `worker`, `enqueueJob` (async Invoke nur mit `{jobId}`), Dispatcher mit Registry und Beispiel-Job `noop`, `tick-5min` übernimmt liegengebliebene Jobs (Zeitplan-Jobs zuerst, 3 Versuche, `discord_post` 5). Suite D-07 für PostgreSQL (CI) und `pnpm test:dsql`.
+
 ### AP-03 abgenommen (2026-09-23)
 
 - Deploy mit Migration durch Sven: On-Demand-Backup vor dem Deploy, `nina-pm-migrate` legte Migration 0000 (zwei Rollen, drei `AWS IAM GRANT`s) und 194 Anweisungen an, Smoke grün. Die erste Migration lief rund 13 min (Grenze 15 min); Folgemigrationen sind klein, ein Abbruch würde beim nächsten Deploy fortgesetzt.
