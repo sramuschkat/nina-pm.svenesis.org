@@ -46,8 +46,8 @@ export function buildApp(app: App) {
     params,
     webBuildIdParam: configStack.webBuildId,
   });
-  jobs.addDependency(migrate);
-  api.addDependency(migrate);
+  jobs.addStackDependency(migrate);
+  api.addStackDependency(migrate);
   const edge = new EdgeStack(app, 'NinaPm-Edge', {
     env,
     crossRegionReferences: true,
