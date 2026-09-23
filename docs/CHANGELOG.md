@@ -4,6 +4,11 @@
 
 ## [Unveröffentlicht]
 
+### Deploy: Vorprüfung Backup-Vault (2026-09-23)
+
+- Erster `pnpm deploy:prod` scheiterte am Backup-Plan, weil der AWS-Backup-Standard-Vault `Default` im Konto fehlte. `pnpm deploy:prod` prüft ihn jetzt vorab und nennt den Befehl zum Anlegen; H-04 um diesen einmaligen Schritt ergänzt.
+- `cdk diff` im Deploy-Skript ohne das unbekannte `--all`.
+
 ### AP-02a – CDK-Grundgerüst: Data, Config, Cert, Web, Edge (2026-09-23)
 
 Anforderungen: TK 4.1–4.5, ADR-14, NFA Betrieb, TK 15.1, TK 18, `specs/infra/iam.md` §7, §8, §10–§12.

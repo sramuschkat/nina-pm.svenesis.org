@@ -70,11 +70,29 @@ async function main(): Promise<void> {
       `Falsches AWS-Konto (${account.out || 'keine Anmeldung'}), erwartet ${config.account}. Admin-Profil setzen (AWS_PROFILE).`,
     );
   }
-  console.log(`  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}`);
+  const vault = capture('aws', [
+    'backup',
+    'describe-backup-vault',
+    '--backup-vault-name',
+    config.backup.vaultName,
+    '--region',
+    config.region,
+    '--query',
+    'BackupVaultName',
+    '--output',
+    'text',
+  ]);
+  if (vault.out !== config.backup.vaultName) {
+    fail(
+      `AWS-Backup-Vault "${config.backup.vaultName}" fehlt in ${config.region}. Einmalig anlegen (H-04):\n` +
+        `  aws backup create-backup-vault --backup-vault-name ${config.backup.vaultName} --region ${config.region}`,
+    );
+  }
+  console.log(`  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}, Backup-Vault vorhanden`);
 
   const context = ['-c', `buildId=${sha}`];
   step('cdk diff – bitte vollständig lesen');
-  run('pnpm', ['cdk', 'diff', '--all', ...context]);
+  run('pnpm', ['cdk', 'diff', ...context]);
 
   const rl = createInterface({ input: stdin, output: stdout });
   const answer = (await rl.question('\nDeploy nach prod ausführen? (ja/nein) '))
