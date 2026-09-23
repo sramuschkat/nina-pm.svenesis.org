@@ -139,7 +139,7 @@ describe('runSpike', () => {
     const db = () =>
       fakeClient((sql) => {
         if (sql.startsWith('CREATE INDEX ASYNC') || sql.startsWith('ALTER TABLE ASYNC'))
-          return [{ job_id: 'job-1' }];
+          return [{ job_id: '5nojsvs2fjbxrdt4poxgm5klym' }];
         if (sql.startsWith('SELECT version()')) return [{ version: 'PostgreSQL 16 (fake)' }];
         if (sql.includes('FROM pg_proc')) return [{ name: 'wait_for_job', args: 'job_id text' }];
         if (sql.includes('count(*)')) return [{ n: 3 }];

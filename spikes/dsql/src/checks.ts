@@ -48,6 +48,24 @@ function jobIdOf(rows: Record<string, unknown>[]): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+/** Wartet auf einen DSQL-Job. Lauf 1: `sys.wait_for_job` ist eine Prozedur (SELECT → 42809). */
+async function waitForJob(rec: Recorder, admin: SqlClient, job: string) {
+  if (!/^[a-z0-9]+$/.test(job)) throw new Error(`unerwartete Job-ID ${job}`);
+  const call = await rec.step(admin, 'admin', `CALL sys.wait_for_job('${job}')`, {
+    note: 'Prozedur, daher CALL',
+  });
+  await rec.step(
+    admin,
+    'admin',
+    'SELECT job_id, status, job_type FROM sys.jobs WHERE job_id = $1',
+    {
+      params: [job],
+      expect: 'any',
+    },
+  );
+  return call;
+}
+
 async function closeQuietly(client: SqlClient | undefined) {
   try {
     await client?.end();
@@ -111,8 +129,7 @@ export const checks: readonly Check[] = [
         },
       );
       const job = jobIdOf(val.rows);
-      if (job)
-        await rec.step(admin, a, 'SELECT sys.wait_for_job($1)', { params: [job], expect: 'any' });
+      if (job) await waitForJob(rec, admin, job);
       await rec.step(admin, a, 'INSERT INTO spike_child2 (parent_id) VALUES ($1)', {
         params: [DEAD],
         expect: 'error',
@@ -188,23 +205,65 @@ export const checks: readonly Check[] = [
       const a = 'admin';
       await rec.step(admin, a, 'CREATE TABLE spike_add (id int PRIMARY KEY)');
       await rec.step(admin, a, 'INSERT INTO spike_add (id) VALUES (1), (2), (3)');
-      const add = await rec.step(admin, a, "ALTER TABLE spike_add ADD COLUMN c text DEFAULT 'x'");
-      const filled = await rec.step(
-        admin,
-        a,
-        "SELECT count(*)::int AS n FROM spike_add WHERE c = 'x'",
-      );
+      const add = await rec.step(admin, a, "ALTER TABLE spike_add ADD COLUMN c text DEFAULT 'x'", {
+        expect: 'error',
+        codes: ['0A000'],
+        note: 'Lauf 1: ADD COLUMN with constraint not supported',
+      });
       const notNull = await rec.step(
         admin,
         a,
         'ALTER TABLE spike_add ADD COLUMN n int NOT NULL DEFAULT 0',
+        {
+          expect: 'error',
+          codes: ['0A000'],
+        },
+      );
+      // Ersatzweg für Expand-Migrationen: Spalte ohne Default, Default danach, Bestand nachfüllen.
+      const plain = await rec.step(admin, a, 'ALTER TABLE spike_add ADD COLUMN c text');
+      const setDefault = await rec.step(
+        admin,
+        a,
+        "ALTER TABLE spike_add ALTER COLUMN c SET DEFAULT 'x'",
+        {
+          expect: 'any',
+        },
+      );
+      await rec.step(admin, a, 'INSERT INTO spike_add (id) VALUES (4)');
+      const newRow = await rec.step(admin, a, 'SELECT c FROM spike_add WHERE id = 4');
+      await rec.step(admin, a, "UPDATE spike_add SET c = 'x' WHERE c IS NULL", {
+        note: 'Nachfüllen (in prod in Stapeln ≤ 2.500)',
+      });
+      const setNotNull = await rec.step(
+        admin,
+        a,
+        'ALTER TABLE spike_add ALTER COLUMN c SET NOT NULL',
+        { expect: 'any' },
+      );
+      const dropNotNull = await rec.step(
+        admin,
+        a,
+        'ALTER TABLE spike_add ALTER COLUMN c DROP NOT NULL',
+        { expect: 'any' },
+      );
+      const dropDefault = await rec.step(
+        admin,
+        a,
+        'ALTER TABLE spike_add ALTER COLUMN c DROP DEFAULT',
+        { expect: 'any' },
       );
       await rec.step(admin, a, 'ALTER TABLE spike_add ALTER COLUMN c TYPE varchar(10)', {
         expect: 'error',
         note: 'laut TK 6.0 nicht unterstützt',
       });
-      await rec.step(admin, a, 'ALTER TABLE spike_add DROP COLUMN n', { expect: 'any' });
-      return `ADD COLUMN DEFAULT ${add.ok ? 'ok' : 'Fehler'}, Bestandszeilen mit Default: ${String(filled.rows[0]?.n ?? '?')} von 3; NOT NULL DEFAULT ${notNull.ok ? 'ok' : `Fehler ${notNull.code ?? ''}`}`;
+      const rename = await rec.step(admin, a, 'ALTER TABLE spike_add RENAME COLUMN c TO c2', {
+        expect: 'any',
+      });
+      const drop = await rec.step(admin, a, 'ALTER TABLE spike_add DROP COLUMN c2', {
+        expect: 'any',
+      });
+      const st = (r: { ok: boolean; code?: string }) => (r.ok ? 'ok' : `Fehler ${r.code ?? ''}`);
+      return `ADD COLUMN mit DEFAULT ${st(add)}, mit NOT NULL DEFAULT ${st(notNull)}; ohne Default ${st(plain)}; SET DEFAULT ${st(setDefault)} (neue Zeile: ${JSON.stringify(newRow.rows[0] ?? null)}); SET NOT NULL ${st(setNotNull)}; DROP NOT NULL ${st(dropNotNull)}; DROP DEFAULT ${st(dropDefault)}; RENAME ${st(rename)}; DROP COLUMN ${st(drop)}`;
     },
   },
   {
@@ -343,17 +402,16 @@ export const checks: readonly Check[] = [
       const job = jobIdOf(created.rows);
       let waitResult = 'keine Job-ID';
       if (job) {
-        const wait = await rec.step(admin, a, 'SELECT sys.wait_for_job($1) AS done', {
+        await rec.step(admin, a, 'SELECT sys.wait_for_job($1) AS done', {
           params: [job],
-          note: 'Kandidat laut Doku',
+          expect: 'error',
+          codes: ['42809'],
+          note: 'Lauf 1: Prozedur, nicht per SELECT',
         });
+        const wait = await waitForJob(rec, admin, job);
         waitResult = wait.ok
-          ? `sys.wait_for_job ok (${JSON.stringify(wait.rows[0])})`
-          : `sys.wait_for_job Fehler ${wait.code ?? ''}`;
-        await rec.step(admin, a, 'SELECT * FROM sys.jobs WHERE job_id = $1', {
-          params: [job],
-          expect: 'any',
-        });
+          ? 'CALL sys.wait_for_job ok'
+          : `CALL sys.wait_for_job Fehler ${wait.code ?? ''}`;
       }
       await rec.step(
         admin,
@@ -383,7 +441,11 @@ export const checks: readonly Check[] = [
       await rec.step(admin, a, 'SELECT * FROM sys.iam_pg_role_mappings', { expect: 'any' });
       await rec.step(admin, a, 'CREATE TABLE spike_granted (id int PRIMARY KEY, v text NOT NULL)');
       await rec.step(admin, a, "INSERT INTO spike_granted (id, v) VALUES (1, 'a')");
-      await rec.step(admin, a, `GRANT USAGE ON SCHEMA public TO ${role}`);
+      await rec.step(admin, a, `GRANT USAGE ON SCHEMA public TO ${role}`, {
+        expect: 'error',
+        codes: ['0A000'],
+        note: 'Lauf 1: feature not supported on system entity; SELECT ging trotzdem',
+      });
       const grant = await rec.step(admin, a, `GRANT SELECT ON spike_granted TO ${role}`);
       let asRole: SqlClient | undefined;
       let summary = `AWS IAM GRANT ${iam.ok ? 'ok' : `Fehler ${iam.code ?? ''}`}; GRANT ${grant.ok ? 'ok' : 'Fehler'}`;

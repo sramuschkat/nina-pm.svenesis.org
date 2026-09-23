@@ -8,7 +8,7 @@
  *
  * Optionen: --spike (Pflicht bis AP-03) · --skip-long (ohne den 5-Minuten-Laufzeittest)
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DSQLClient } from '@aws-sdk/client-dsql';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
@@ -43,9 +43,12 @@ function writeProtocol(protocol: Protocol): string {
   const dir = `${repoRoot}docs/test-runs/${localDate()}/ap-s1`;
   mkdirSync(dir, { recursive: true });
   protocol.finishedAt = new Date().toISOString();
-  writeFileSync(`${dir}/protocol.json`, `${JSON.stringify(protocol, null, 2)}\n`);
-  writeFileSync(`${dir}/protocol.md`, renderMarkdown(protocol));
-  return dir;
+  // Weitere Läufe am selben Tag überschreiben nichts: protocol-2, protocol-3, …
+  let name = 'protocol';
+  for (let n = 2; existsSync(`${dir}/${name}.json`); n += 1) name = `protocol-${n}`;
+  writeFileSync(`${dir}/${name}.json`, `${JSON.stringify(protocol, null, 2)}\n`);
+  writeFileSync(`${dir}/${name}.md`, renderMarkdown(protocol));
+  return `${dir}/${name}`;
 }
 
 async function main(): Promise<void> {
@@ -120,7 +123,7 @@ async function main(): Promise<void> {
     console.error(`\n✗ Lauf abgebrochen: ${String(error)}`);
   } finally {
     const dir = writeProtocol(protocol);
-    console.log(`\n▶ Protokoll: ${dir.replace(repoRoot, '')}/protocol.md (und protocol.json)`);
+    console.log(`\n▶ Protokoll: ${dir.replace(repoRoot, '')}.md (und .json)`);
     console.log('  Bitte committen oder an Claude Code geben (H-22).');
   }
   const off = protocol.checks
