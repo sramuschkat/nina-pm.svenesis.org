@@ -80,7 +80,11 @@
     <h1 style="color:var(--primary); margin-bottom:.75rem;">Astro-Wetter</h1>
 
     <div class="content-box">
-      <p style="margin:0 0 1rem;">Sieben Tage Vorhersage auf einen Blick, gemacht f&uuml;r die eine Frage: Lohnt sich die Nacht? Wolken in drei H&ouml;hen, gesch&auml;tztes Seeing und Transparenz, Wind, Temperatur und Taupunkt &ndash; dazu Sonnen- und Mondh&ouml;he mit Mondphase. Die Wetterdaten kommen in Europa aus dem ICON-Modell des Deutschen Wetterdienstes, anderswo aus den US-Modellen GFS und HRRR; eine zweite Wolkenzeile zeigt zum Vergleich das Modell des ECMWF.</p>
+      <p style="margin:0 0 1rem;">Sieben Tage Vorhersage auf einen Blick, gemacht f&uuml;r die eine Frage: Lohnt sich die Nacht? Wolken in drei H&ouml;hen, gesch&auml;tztes Seeing und Transparenz, Wind, Temperatur und Taupunkt &ndash; dazu Sonnen- und Mondh&ouml;he mit Mondphase. Die Wetterdaten kommen in Europa aus ICON des DWD und HARMONIE des d&auml;nischen Wetterdienstes, anderswo aus HRRR und GFS der NOAA &ndash; wobei dort schon nach 30 Stunden das kanadische GEM die Wolken &uuml;bernimmt, auf denen die Bewertung beruht. Zwei weitere Wolkenzeilen zeigen zum Vergleich das Modell des ECMWF und, je nach Region, GEM, das NBM der NOAA oder GFS.</p>
+
+      <div style="margin:0 0 1.25rem; padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--primary); border-radius:var(--radius);">
+        <p style="margin:0;">&#x1F4D6; Warum es diese Seite gibt und woher jede Zahl darin kommt, steht im Blog: <a href="../blog/2026-09-astro-wetter_de.html">Lohnt sich die Nacht? Mein Astro-Wetter &rarr;</a><br>&#x1F4CA; Wie zuverl&auml;ssig die Vorhersage tats&auml;chlich ist, rechnet die <a href="weather-history_de.html">Historie nach &rarr;</a></p>
+      </div>
 
       <div style="margin:0 0 1.25rem; padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">
         <p style="margin:0;">&#x1F512; Die Vorhersage wird erst geladen, wenn Sie auf <strong>Vorhersage laden</strong> klicken. Dann fragt Ihr Browser die Daten bei Open-Meteo ab, einem Dienst aus der Schweiz, und &uuml;bertr&auml;gt dabei Ihre IP-Adresse. Mehr dazu in der <a href="../privacy/privacy_de.html">Datenschutzerkl&auml;rung</a>.</p>
@@ -118,14 +122,15 @@
             <span id="aw-pw-msg" role="status" style="font-size:.85rem; color:#c0392b;"></span>
           </div>
         </div>
-        <p id="aw-status" role="status" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);">Noch keine Daten geladen.</p>
+        <p id="aw-verdict" hidden style="margin:0 0 .7rem; font-size:1.02rem; font-weight:600; color:var(--primary); line-height:1.5;"></p>
+        <p id="aw-status" role="status" style="margin:0 0 .6rem; font-size:.82rem; color:var(--text-light);">Noch keine Daten geladen.</p>
         <div id="aw-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--radius); background:#10151c;">
           <div id="aw-chart-wrap" style="position:relative;">
             <canvas id="aw-canvas" width="0" height="0" role="img" aria-label="Astro-Wetter-Diagramm" style="display:block;"></canvas>
             <div id="aw-tip" hidden style="position:absolute; z-index:2; max-width:340px; padding:.55rem .7rem; background:rgba(20,26,34,.96); color:#e4e9ef; border:1px solid rgba(255,255,255,.12); border-radius:6px; font-size:.78rem; line-height:1.5; pointer-events:none; white-space:nowrap;"></div>
           </div>
         </div>
-        <div id="aw-summary"></div>
+        <div id="aw-scale" hidden style="display:flex; flex-wrap:wrap; gap:.15rem .9rem; align-items:center; margin:.45rem 0 0; font-size:.75rem; color:var(--text-light);"></div>
         <div id="aw-day" hidden style="margin:1.75rem 0 0;">
           <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin:0 0 .5rem;">
             <h2 style="margin:0; font-size:1.25rem;">Nacht im Detail</h2>
@@ -163,21 +168,25 @@
 
     <div class="content-box">
       <h2 style="margin:0 0 .6rem;">So liest man die Grafik</h2>
-      <p style="margin:0 0 1rem;">Jede Stunde bekommt eine <strong>Gesamtbewertung</strong> von 0 bis 100&nbsp;%: ab 85&nbsp;% <em>Ausgezeichnet</em>, ab 65&nbsp;% <em>Gut</em>, ab 45&nbsp;% <em>Mittel</em>, ab 25&nbsp;% <em>Schlecht</em>, darunter <em>Sehr schlecht</em>. Die Wolken bestimmen fast alles: halb bedeckt hei&szlig;t h&ouml;chstens 25&nbsp;%.</p>
+      <p style="margin:0 0 1rem;">Jede Stunde bekommt eine <strong>Gesamtbewertung</strong> von 0 bis 100&nbsp;%: ab 85&nbsp;% <em>Ausgezeichnet</em>, ab 65&nbsp;% <em>Gut</em>, ab 45&nbsp;% <em>Mittel</em>, ab 25&nbsp;% <em>Schlecht</em>, darunter <em>Sehr schlecht</em>. Die Wolken bestimmen fast alles: halb bedeckt hei&szlig;t h&ouml;chstens 25&nbsp;%. Der Farbschl&uuml;ssel unter der Grafik zeigt die f&uuml;nf Stufen.</p>
+      <p style="margin:0 0 1rem;"><strong>&Uuml;ber der Grafik steht die Antwort in einem Satz</strong> &ndash; f&uuml;r die gew&auml;hlte Nacht: wie lange der Himmel am St&uuml;ck gut ist, ab wann, und wie viel davon der Mond in Ruhe l&auml;sst. Die Pfeile am Nachtdetail weiter unten wechseln die Nacht und schreiben den Satz um. <em>Gut</em> hei&szlig;t dabei &uuml;ber 65&nbsp;%; gibt es keine solche Strecke, nennt der Satz die beste &uuml;ber 45&nbsp;% und kennzeichnet sie als <em>mittel</em>.</p>
 
       <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Die Sieben-Tage-Grafik</h3>
       <ul>
         <li><strong>Mond:</strong> Symbol mit beleuchtetem Anteil, &uuml;ber seinem H&ouml;chststand.</li>
         <li><strong>Sonne und Mond:</strong> gelbe Zeiten Sonne, wei&szlig;e Mond, darunter ihre H&ouml;he. Helle Spalten Tag und D&auml;mmerung, dunkle astronomische Nacht, rote Linie <em>Jetzt</em>.</li>
         <li><strong>Uhrzeitenleiste:</strong> ein Symbol f&uuml;r die sechs Stunden ringsum, das kr&auml;ftigste Wetter gewinnt. &bdquo;&Uuml;berwiegend klar&ldquo; erlaubt fast 50&nbsp;% Wolken.</li>
-        <li><strong>Gesamt, Wolken, ECMWF, Seeing, Transp.:</strong> je kr&auml;ftiger das Blau, desto besser, dunkelgrau hei&szlig;t keine Daten. ECMWF ist das zweite Modell: Einigkeit hei&szlig;t verl&auml;ssliche Vorhersage.</li>
-        <li><strong>Wind</strong> in km/h mit Richtungspfeil: gr&uuml;n bis 10, gelb bis 30, rot ab 40.</li>
+        <li><strong>Gesamt</strong> ist keine Messung, sondern die Note: Wolken im Quadrat, dazu Seeing und Transparenz mit je 15&nbsp;%, die das Ergebnis h&ouml;chstens d&auml;mpfen k&ouml;nnen. Deshalb &auml;hnelt sie der Wolkenzeile &ndash; wo beide auseinanderlaufen, liegt es an Seeing oder Transparenz.</li>
+        <li><strong>Wolken, Wolken ECMWF, Wolken GEM bzw. NBM:</strong> dreimal dieselbe Gr&ouml;&szlig;e, die Gesamtbedeckung, aus drei Modellen. Gerechnet wird mit der ersten Zeile; die beiden anderen sind unabh&auml;ngige Zweitmeinungen und flie&szlig;en in keine Note ein. Sind sich alle drei einig, ist die Vorhersage verl&auml;sslich; weichen sie ab, ist sie unsicher.</li>
+        <li><strong>Seeing und Transp.:</strong> je kr&auml;ftiger das Blau, desto besser, dunkelgrau hei&szlig;t keine Daten.</li>
+        <li><strong>Zeile Modell:</strong> Sie nennt f&uuml;r jede Strecke, welches Modell die Wolkenzeile geliefert hat; &uuml;ber dem Nachtdetail steht es noch einmal f&uuml;r die gew&auml;hlte Nacht. Wo es wechselt, steht eine gestrichelte senkrechte Linie &ndash; ein Sprung an dieser Stelle kann der Modellwechsel sein und nicht das Wetter.</li>
+        <li><strong>Wind</strong> in km/h mit Richtungspfeil: gr&uuml;n bis 10, gelb bis 30, orange bis 40, dar&uuml;ber rot.</li>
         <li><strong>Temperatur</strong> (orange) und <strong>Taupunkt</strong> (blau): nahe beieinander hei&szlig;t Tau auf der Optik.</li>
         <li><strong>Tagesleiste:</strong> die Bewertung Stunde f&uuml;r Stunde, dar&uuml;ber der Schnitt der Nacht.</li>
       </ul>
 
-      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Tabelle und Nachtdetail</h3>
-      <p style="margin:0 0 1rem;">Eine Zeile pro Nacht, Mittag bis Mittag: astronomisch dunkel, davon dunkel ohne Mond, die Bewertung dieser Stunden, der beleuchtete Mondanteil, Aufgang (&uarr;) und Untergang (&darr;). Ein Klick &ouml;ffnet die Nacht: Wetter je Stunde, D&auml;mmerungsband mit hellblauem Streifen f&uuml;r die mondlose Zeit, dann die Werte je Stunde &ndash; Gesamt, Seeing, Wolken nach H&ouml;he (tief bis 2&nbsp;km, mittel bis 6&nbsp;km, hoch dar&uuml;ber), ECMWF, AOD, Wasserdampf, Staub, Sicht, Regen &ndash; und unten Wind, B&ouml;en, Temperatur, Taupunkt mit <em>Abstand</em> und Feuchte. Der Abstand wird orange unter 4&nbsp;&deg;C, rot unter 2&nbsp;&deg;C. &Uuml;ber der Grafik steht das Wettermodell, die Pfeile wechseln die Nacht, ein Tipp zeigt alle Werte einer Stunde.</p>
+      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Das Nachtdetail</h3>
+      <p style="margin:0 0 1rem;">Unter der Grafik l&auml;sst sich jede Nacht einzeln aufklappen; die Pfeile wechseln durch die Woche. Zu sehen sind Wetter je Stunde, das D&auml;mmerungsband mit hellblauem Streifen f&uuml;r die mondlose Zeit, dann die Werte je Stunde &ndash; Gesamt, Wolken nach H&ouml;he (tief bis 2&nbsp;km, mittel bis 6&nbsp;km, hoch dar&uuml;ber), Wolken ECMWF und die dritte Wolkenzeile, Seeing, AOD, Wasserdampf, Staub, Sicht, Regen &ndash; und unten Wind, B&ouml;en, Temperatur, Taupunkt mit <em>Abstand</em> und Feuchte. Der Abstand wird orange unter 4&nbsp;&deg;C, rot unter 2&nbsp;&deg;C. &Uuml;ber der Grafik steht das Wettermodell dieser Nacht, ein Tipp zeigt alle Werte einer Stunde. Eine Nacht, die schon l&auml;uft, wird vollst&auml;ndig geladen &ndash; nur am Ende der Woche kann eine Nacht unvollst&auml;ndig sein, und dann steht es dort.</p>
 
       <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Begriffe</h3>
       <ul>
@@ -193,13 +202,15 @@
       <h2 style="margin:1.8rem 0 .6rem;">Woher die Werte kommen &ndash; und wo sie sch&auml;tzen</h2>
       <p style="margin:0 0 1rem;"><strong>Wolken, Wind, Temperatur, Feuchte und die Wettersymbole</strong> kommen direkt aus einem Wettermodell, bis zu sieben Tage im Voraus. Welches es ist, h&auml;ngt vom Standort ab und steht &uuml;ber dem Nachtdetail.</p>
       <ul>
-        <li><strong>Europa</strong> (29,5 bis 70,5&deg;&nbsp;N, 23,5&deg;&nbsp;W bis 62,5&deg;&nbsp;O): ICON des DWD &ndash; erst ICON-D2 mit 2,2&nbsp;km Gitterweite, dann ICON-EU mit 7&nbsp;km, zuletzt ICON global mit 11&nbsp;km, das keine Sichtweite liefert.</li>
-        <li><strong>Rest der Welt:</strong> NOAA &ndash; in Nordamerika rund zwei Tage HRRR mit 3&nbsp;km, sonst GFS mit 13&nbsp;km. Der Grund: &Uuml;ber 30 N&auml;chte an Starfront lagen GFS und HRRR n&auml;her an den Wolkenmeldungen der Flugh&auml;fen als ICON.</li>
+        <li><strong>Europa</strong> (29,5 bis 70,5&deg;&nbsp;N, 23,5&deg;&nbsp;W bis 62,5&deg;&nbsp;O): ICON des DWD &ndash; erst ICON-D2 mit 2,2&nbsp;km Gitterweite, dann ICON-EU mit 7&nbsp;km, zuletzt ICON global mit 11&nbsp;km, das keine Sichtweite liefert. F&uuml;r die Wolken schiebt sich zwischen D2 und EU das HARMONIE-AROME-Modell des d&auml;nischen Wetterdienstes mit 2&nbsp;km (Mittel- und Nordeuropa, rund drei Tage) &ndash; s&uuml;dlich seines Gebiets, etwa in Andalusien, bleibt es bei ICON-EU, dem dort feinsten verf&uuml;gbaren Modell.</li>
+        <li><strong>Rest der Welt:</strong> NOAA, erg&auml;nzt um GEM. In Nordamerika liefert HRRR mit 3&nbsp;km die ersten 30 Vorhersagestunden, danach &uuml;bernimmt das kanadische GEM mit 10&nbsp;km den Rest der Woche &ndash; mitsamt den Zeilen tief, mittel und hoch, sodass nur eine Naht im Verlauf bleibt. Beides ist gemessen und nicht geraten: &Uuml;ber rund 60 N&auml;chte an Starfront war GEM ab dem zweiten Tag bei jeder Vorlaufzeit n&auml;her an den Wolkenmeldungen der Flugh&auml;fen als NAM, NBM, ECMWF und GFS &ndash; und HRRR selbst kippt am Ende seiner Reichweite: Im ersten Tag liegt es mit 4,6 Prozentpunkten vorn, im zweiten mit 14,2 hinter GEMs 7,9. Daher die 30 Stunden. Nachpr&uuml;fbar in der <a href="weather-history_de.html">Historie</a>. NBM mit 2,5&nbsp;km liefert dort weiterhin die Sichtweite und als einziges Modell eine eigene Regenwahrscheinlichkeit; beide werden &uuml;bernommen, und NBM f&uuml;llt die dritte Wolkenzeile. Alles &Uuml;brige &ndash; Wind, Feuchte, Temperatur &ndash; kommt aus GFS mit 13&nbsp;km, au&szlig;erhalb Nordamerikas auch die Wolken.</li>
         <li><strong>Zeile ECMWF:</strong> die Bew&ouml;lkung des IFS-Modells mit 9&nbsp;km, weltweit, als zweite Meinung. In die Gesamtbewertung flie&szlig;t sie nicht ein.</li>
+        <li><strong>Dritte Wolkenzeile:</strong> In Europa das kanadische GEM des CMC, global mit 15&nbsp;km und nur alle drei Stunden &ndash; dasselbe Modell, mit dem die Clear Sky Charts rechnen. In Nordamerika, wo GEM schon die erste Zeile f&uuml;llt, steht hier stattdessen NBM, das Ensemble-Mittel der NOAA mit 2,5&nbsp;km. NBM gibt es allerdings nur &uuml;ber den zusammenh&auml;ngenden USA; anderswo au&szlig;erhalb Europas zeigt die Zeile GFS &ndash; also das, was die erste Zeile s&auml;he, wenn GEM sie nicht &uuml;bernommen h&auml;tte. Welches Modell es gerade ist, steht in der Beschriftung der Zeile. Sie dient nur dem Vergleich.</li>
       </ul>
       <p style="margin:0 0 1rem;"><strong>Gesch&auml;tzt sind drei Zeilen.</strong> <em>Seeing</em> liefert kein Modell; die Grafik rechnet es aus dem Windprofil: Jetstream in etwa 10&nbsp;km H&ouml;he, Scherung zwischen 1,5 und 10&nbsp;km, Wind am Boden. <em>Transparenz</em> kommt aus der Aerosol-Dichte (AOD) der Copernicus-Vorhersage CAMS, ged&auml;mpft bei hoher Feuchte und viel Wasserdampf; CAMS reicht vier bis f&uuml;nf Tage, danach bleibt die Zeile dunkelgrau. <em>Gesamt</em> ist eine eigene Gewichtung, in der die Wolken fast alles bestimmen. Alle drei treffen die Tendenz, mehr nicht.</p>
       <p style="margin:0 0 1rem;"><strong>Sonne und Mond</strong> berechnet Ihr Browser selbst; Planeten und die besten Objekte einer Nacht zeigt der <a href="observing-planner_de.html">Beobachtungsplaner</a>. <strong>Die Wetterkarte</strong> ist ein eingebettetes Angebot von meteoblue mit deren eigenen Daten und nicht Teil dieser Berechnungen.</p>
-      <p style="margin:0; font-size:.85rem; color:var(--text-light);"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · Modelle: DWD ICON (Europa), NOAA GFS und HRRR (au&szlig;erhalb Europas), ECMWF IFS (Vergleichszeile, Wasserdampf) · Aerosol: Copernicus Atmosphere Monitoring Service (CAMS) · Wetterkarte: meteoblue. Seeing, Transparenz und Gesamtbewertung sind aus diesen Daten abgeleitet.</p>
+      <p style="margin:0 0 1rem;"><strong>Und wie gut trifft das alles zu?</strong> Die <a href="weather-history_de.html">Astro-Wetter-Historie</a> stellt f&uuml;r jede Nacht der letzten Wochen nebeneinander, was hier ein bis f&uuml;nf Tage vorher stand und was daraus wurde &ndash; gemessen an der Modellanalyse und an den Wolkenmeldungen der Flugh&auml;fen.</p>
+      <p style="margin:0; font-size:.85rem; color:var(--text-light);"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · Modelle: DWD ICON und DMI HARMONIE AROME (Europa), NOAA HRRR, NBM und GFS sowie CMC GEM (au&szlig;erhalb Europas), ECMWF IFS (Vergleichszeile, Wasserdampf) · Aerosol: Copernicus Atmosphere Monitoring Service (CAMS) · Wetterkarte: meteoblue. Seeing, Transparenz und Gesamtbewertung sind aus diesen Daten abgeleitet.</p>
     </div>
   </main>
 
@@ -214,6 +225,7 @@
   <script src="../js/main.js?v=8d37bf18"></script>
 <script src="../js/cookie-consent.js?v=8c351784"></script>
 <script src="js/astro-core.js?v=5ea36c54"></script>
-<script src="js/astro-weather.js?v=3a70760b"></script>
+<script src="js/weather-core.js?v=87c5fc9f"></script>
+<script src="js/astro-weather.js?v=143bef97"></script>
 </body>
 </html>

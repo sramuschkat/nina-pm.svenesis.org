@@ -14,7 +14,7 @@
   'use strict';
 
   var root = document.getElementById('aw-root');
-  if (!root || !window.SvAstro) return;
+  if (!root || !window.SvAstro || !window.SvWx) return;
 
   var LANG = document.documentElement.lang === 'en' ? 'en' : 'de';
 
@@ -23,7 +23,9 @@
       loading: 'Vorhersage wird geladen …',
       loaded: 'Vorhersage für {name} geladen · {model} · Zeiten in Ortszeit ({utc})',
       srcIcon: 'Modell DWD ICON',
-      srcGfs: 'Modell NOAA GFS/HRRR',
+      srcIconFine: 'Modelle DWD ICON und HARMONIE',
+      srcGfs: 'Modelle NOAA HRRR und GFS mit GEM (CMC)',
+      srcGfsNest: 'Modelle NOAA HRRR und GFS',
       srcGfsOnly: 'Modell NOAA GFS',
       error: 'Die Vorhersage konnte nicht geladen werden: ',
       badCoords: 'Bitte gültige Koordinaten eingeben (Breite −90 bis 90, Länge −180 bis 180).',
@@ -33,7 +35,7 @@
       mbNoLocation: 'Bitte zuerst einen Standort wählen oder die Vorhersage laden.',
       pwNoCrypto: 'Dieser Browser kann das Passwort nicht prüfen.',
       noAerosol: 'keine Daten',
-      rows: { sun: 'Sonne', moon: 'Mond', overall: 'Gesamt', clouds: 'Wolken', clouds2: 'ECMWF', seeing: 'Seeing', transp: 'Transp.', wind: 'Wind', temp: 'Temp', dew: 'Taupunkt', night: 'Nacht Ø' },
+      rows: { sun: 'Sonne', moon: 'Mond', overall: 'Gesamt', clouds: 'Wolken', clouds2: 'Wolken ECMWF', cmp3: 'Wolken {m}', model: 'Modell', seeing: 'Seeing', transp: 'Transp.', wind: 'Wind', temp: 'Temp', dew: 'Taupunkt', night: 'Nacht Ø' },
       now: 'Jetzt',
       days: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
       daysLong: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
@@ -42,6 +44,10 @@
       tipOverall: 'Gesamt',
       tipClouds: 'Wolken',
       tipClouds2: 'Wolken ECMWF',
+      tipClouds3: 'Wolken {m}',
+      /* the third cloud row: the Canadian GEM in Europe, NOAA's NBM over North America */
+      cmp3: { gem: { short: 'GEM', tip: 'GEM (Kanada)', long: 'das kanadische GEM, global mit 15 km' }, nbm: { short: 'NBM', tip: 'NBM (NOAA)', long: 'das NBM der NOAA mit 2,5 km' },
+        baseGfs: { short: 'GFS', tip: 'GFS (NOAA)', long: 'das GFS der NOAA mit rund 13 km' }, baseIcon: { short: 'ICON', tip: 'ICON (DWD)', long: 'ICON des DWD' } },
       tipLayers: 'tief {l} · mittel {m} · hoch {h}',
       tipSeeing: 'Seeing (Schätzung)',
       tipJet: 'Jet {j} · Scherung {s} · Boden {g} km/h',
@@ -55,36 +61,37 @@
       tipHum: 'Feuchte',
       tipSun: 'Sonne',
       tipMoon: 'Mond',
-      sumNight: 'Nacht',
-      sumDark: 'Astronomisch dunkel',
-      sumOverall: 'Gesamt Ø',
-      sumMoon: 'Mond',
-      sumNoDark: 'keine astronomische Dunkelheit',
       sumPartial: 'nur {a} von {b} h mit Daten',
-      sumMoonFree: 'Dunkel ohne Mond',
-      sumMoonUp: 'Mond die ganze Zeit am Himmel',
-      hours: 'h',
       lit: 'beleuchtet',
       dayNight: 'Nacht {a} → {b}',
       dayModel: 'Modell: {m} · stündliche Werte',
       modelThen: ', danach ',
-      modelNames: { d2: 'ICON-D2 mit 2,2 km', eu: 'ICON-EU mit 7 km', global: 'ICON global mit rund 11 km', hrrr: 'HRRR (NOAA) mit 3 km', gfs: 'GFS (NOAA) mit rund 13 km' },
-      dayEcmwf: ' · Zeile ECMWF: IFS mit 9 km zum Vergleich',
+      modelNames: { d2: 'ICON-D2 mit 2,2 km', eu: 'ICON-EU mit 7 km', global: 'ICON global mit rund 11 km', dini: 'HARMONIE AROME (DMI) mit 2 km für die Wolken über ICON', hrrr: 'HRRR (NOAA) mit 3 km', gem: 'GEM (CMC) mit 10 km für die Wolken über GFS', gfs: 'GFS (NOAA) mit rund 13 km' },
+      dayEcmwf: ' · Vergleichszeilen: ECMWF IFS mit 9 km und {m}',
+      dayEcmwfOnly: ' · Zeile ECMWF: IFS mit 9 km zum Vergleich',
+      verdictGood: '{n}: {h} h am Stück gut ab {t}, davon {m} h mondfrei.',
+      verdictGoodFree: '{n}: {h} h am Stück gut ab {t}, und der Mond stört nicht.',
+      verdictGoodMoon: '{n}: {h} h am Stück gut ab {t}, aber der Mond steht die ganze Zeit am Himmel.',
+      verdictFair: '{n}: nur mittelmäßig – bestes Fenster {h} h ab {t}.',
+      verdictNone: '{n}: kein brauchbares Fenster, Gesamt {p} %.',
+      verdictNoDark: '{n}: keine astronomische Dunkelheit.',
+      scaleTitle: 'Bewertung:',
       dayPartial: ' · für diese Nacht liegen nur teilweise Daten vor',
-      rowsDay: { wx: 'Wetter', twi: 'Dämmerung', alt: 'Höhe', overall: 'Gesamt %', clouds: 'Wolken %', clouds2: 'ECMWF %', low: 'tief', mid: 'mittel', high: 'hoch', seeing: 'Seeing %', transp: 'AOD', pwv: 'Wasserdampf mm', dust: 'Staub µg/m³', vis: 'Sicht km', precip: 'Regen %', wind: 'Wind', windtxt: 'km/h / Böen', temp: 'Temp', dew: 'Taupunkt', spread: 'Abstand', hum: 'Feuchte' },
+      rowsDay: { wx: 'Wetter', twi: 'Dämmerung', alt: 'Höhe', overall: 'Gesamt %', clouds: 'Wolken %', clouds2: 'Wolken ECMWF %', cmp3: 'Wolken {m} %', low: 'tief', mid: 'mittel', high: 'hoch', seeing: 'Seeing %', transp: 'AOD', pwv: 'Wasserdampf mm', dust: 'Staub µg/m³', vis: 'Sicht km', precip: 'Regen %', wind: 'Wind', windtxt: 'km/h / Böen', temp: 'Temp', dew: 'Taupunkt', spread: 'Abstand', hum: 'Feuchte' },
       ev: { sunset: 'Sonnenuntergang', astroEnd: 'Beginn astronomische Nacht', astroStart: 'Ende astronomische Nacht', sunrise: 'Sonnenaufgang', moonrise: 'Mondaufgang', moonset: 'Monduntergang', noNight: 'keine astronomische Nacht', darkSpan: 'astronomisch dunkel {a}–{b} ({h} h)', moonFreeShort: ' · ohne Mond {h} h', moonFree: 'dunkel ohne Mond {t}', illum: 'Mond um Mitternacht {p} % beleuchtet' },
       tipVis: 'Sicht',
       tipPrecip: 'Regen',
       tipWx: 'Wetter',
-      sumMoonTimes: 'Mond ↑ auf · ↓ unter',
       wx: { 0: 'Klar', 1: 'Überwiegend klar', 2: 'Teilweise bewölkt', 3: 'Bedeckt', 45: 'Nebel', 48: 'Nebel mit Reif', 51: 'Leichter Nieselregen', 53: 'Nieselregen', 55: 'Starker Nieselregen', 56: 'Gefrierender Nieselregen', 57: 'Starker gefrierender Nieselregen', 61: 'Leichter Regen', 63: 'Regen', 65: 'Starker Regen', 66: 'Gefrierender Regen', 67: 'Starker gefrierender Regen', 71: 'Leichter Schneefall', 73: 'Schneefall', 75: 'Starker Schneefall', 77: 'Schneegriesel', 80: 'Leichte Regenschauer', 81: 'Regenschauer', 82: 'Heftige Regenschauer', 85: 'Schneeschauer', 86: 'Starke Schneeschauer', 95: 'Gewitter', 96: 'Gewitter mit Hagel', 99: 'Starkes Gewitter mit Hagel' }
     },
     en: {
       loading: 'Loading forecast …',
-      loaded: 'Forecast for {name} loaded · {model} · times in local time ({utc})',
-      srcIcon: 'model DWD ICON',
-      srcGfs: 'model NOAA GFS/HRRR',
-      srcGfsOnly: 'model NOAA GFS',
+      loaded: 'Forecast for {name} loaded · {model} · all times local ({utc})',
+      srcIcon: 'DWD ICON model',
+      srcIconFine: 'DWD ICON and HARMONIE models',
+      srcGfs: 'NOAA HRRR and GFS models with CMC GEM',
+      srcGfsNest: 'NOAA HRRR and GFS models',
+      srcGfsOnly: 'NOAA GFS model',
       error: 'The forecast could not be loaded: ',
       badCoords: 'Please enter valid coordinates (latitude −90 to 90, longitude −180 to 180).',
       pwWrong: 'Wrong password.',
@@ -93,7 +100,7 @@
       mbNoLocation: 'Please choose a location or load the forecast first.',
       pwNoCrypto: 'This browser cannot check the password.',
       noAerosol: 'no data',
-      rows: { sun: 'Sun', moon: 'Moon', overall: 'Overall', clouds: 'Clouds', clouds2: 'ECMWF', seeing: 'Seeing', transp: 'Transp.', wind: 'Wind', temp: 'Temp', dew: 'Dew', night: 'Night avg.' },
+      rows: { sun: 'Sun', moon: 'Moon', overall: 'Overall', clouds: 'Clouds', clouds2: 'Clouds ECMWF', cmp3: 'Clouds {m}', model: 'Model', seeing: 'Seeing', transp: 'Transp.', wind: 'Wind', temp: 'Temp', dew: 'Dew', night: 'Night avg.' },
       now: 'Now',
       days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
       daysLong: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
@@ -102,6 +109,9 @@
       tipOverall: 'Overall',
       tipClouds: 'Clouds',
       tipClouds2: 'Clouds ECMWF',
+      tipClouds3: 'Clouds {m}',
+      cmp3: { gem: { short: 'GEM', tip: 'GEM (Canada)', long: 'the Canadian GEM, global at 15 km' }, nbm: { short: 'NBM', tip: 'NBM (NOAA)', long: "NOAA's NBM at 2.5 km" },
+        baseGfs: { short: 'GFS', tip: 'GFS (NOAA)', long: "NOAA's GFS at about 13 km" }, baseIcon: { short: 'ICON', tip: 'ICON (DWD)', long: "the DWD's ICON" } },
       tipLayers: 'low {l} · mid {m} · high {h}',
       tipSeeing: 'Seeing (estimate)',
       tipJet: 'jet {j} · shear {s} · ground {g} km/h',
@@ -115,28 +125,27 @@
       tipHum: 'Hum',
       tipSun: 'Sun',
       tipMoon: 'Moon',
-      sumNight: 'Night',
-      sumDark: 'Astronomically dark',
-      sumOverall: 'Overall avg.',
-      sumMoon: 'Moon',
-      sumNoDark: 'no astronomical darkness',
       sumPartial: 'only {a} of {b} h with data',
-      sumMoonFree: 'Dark, moon down',
-      sumMoonUp: 'moon up throughout',
-      hours: 'h',
       lit: 'lit',
       dayNight: 'Night {a} → {b}',
       dayModel: 'Model: {m} · hourly values',
       modelThen: ', then ',
-      modelNames: { d2: 'ICON-D2 at 2.2 km', eu: 'ICON-EU at 7 km', global: 'ICON global at about 11 km', hrrr: 'HRRR (NOAA) at 3 km', gfs: 'GFS (NOAA) at about 13 km' },
-      dayEcmwf: ' · ECMWF row: IFS at 9 km for comparison',
+      modelNames: { d2: 'ICON-D2 at 2.2 km', eu: 'ICON-EU at 7 km', global: 'ICON global at about 11 km', dini: 'HARMONIE AROME (DMI) at 2 km, cloud instead of ICON', hrrr: 'HRRR (NOAA) at 3 km', gem: 'GEM (CMC) at 10 km, cloud instead of GFS', gfs: 'GFS (NOAA) at about 13 km' },
+      dayEcmwf: ' · comparison rows: ECMWF IFS at 9 km and {m}',
+      dayEcmwfOnly: ' · ECMWF row: IFS at 9 km for comparison',
+      verdictGood: '{n}: {h} h of good sky in a row from {t}, {m} h of it moonless.',
+      verdictGoodFree: '{n}: {h} h of good sky in a row from {t}, and the moon stays out of it.',
+      verdictGoodMoon: '{n}: {h} h of good sky in a row from {t}, but the moon is up throughout.',
+      verdictFair: '{n}: average at best – best window {h} h from {t}.',
+      verdictNone: '{n}: no usable window, overall {p} %.',
+      verdictNoDark: '{n}: no astronomical darkness.',
+      scaleTitle: 'Rating:',
       dayPartial: ' · data cover only part of this night',
-      rowsDay: { wx: 'Weather', twi: 'Twilight', alt: 'Altitude', overall: 'Overall %', clouds: 'Clouds %', clouds2: 'ECMWF %', low: 'low', mid: 'mid', high: 'high', seeing: 'Seeing %', transp: 'AOD', pwv: 'Water vap. mm', dust: 'Dust µg/m³', vis: 'Vis. km', precip: 'Rain %', wind: 'Wind', windtxt: 'km/h / gusts', temp: 'Temp', dew: 'Dew', spread: 'Spread', hum: 'Hum.' },
+      rowsDay: { wx: 'Weather', twi: 'Twilight', alt: 'Altitude', overall: 'Overall %', clouds: 'Clouds %', clouds2: 'Clouds ECMWF %', cmp3: 'Clouds {m} %', low: 'low', mid: 'mid', high: 'high', seeing: 'Seeing %', transp: 'AOD', pwv: 'Water vap. mm', dust: 'Dust µg/m³', vis: 'Vis. km', precip: 'Rain %', wind: 'Wind', windtxt: 'km/h / gusts', temp: 'Temp', dew: 'Dew', spread: 'Spread', hum: 'Hum.' },
       ev: { sunset: 'Sunset', astroEnd: 'Astronomical night begins', astroStart: 'Astronomical night ends', sunrise: 'Sunrise', moonrise: 'Moonrise', moonset: 'Moonset', noNight: 'no astronomical night', darkSpan: 'astronomically dark {a}–{b} ({h} h)', moonFreeShort: ' · moon down {h} h', moonFree: 'dark with the moon down {t}', illum: 'Moon {p} % lit at midnight' },
       tipVis: 'Visibility',
       tipPrecip: 'Rain',
       tipWx: 'Weather',
-      sumMoonTimes: 'Moon ↑ rise · ↓ set',
       wx: { 0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 56: 'Freezing drizzle', 57: 'Heavy freezing drizzle', 61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Heavy freezing rain', 71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains', 80: 'Light rain showers', 81: 'Rain showers', 82: 'Violent rain showers', 85: 'Snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Severe thunderstorm with hail' }
     }
   }[LANG];
@@ -149,54 +158,14 @@
     crossings = A.crossings, TWI = A.TWI, twilightClass = A.twilightClass, drawMoonIcon = A.drawMoonIcon,
     pad = A.pad, localDate = A.localDate, hhmm = A.hhmm, offsetFn = A.offsetFn, fromLocal = A.fromLocal, nightKeyOf = A.nightKeyOf;
 
-  /* ------------------------------------------------------------------ *
-   * Scores (0 = bad … 1 = good). Estimates — documented on the page.   *
-   * ------------------------------------------------------------------ */
-  function cloudScore(c) { return c == null ? null : clamp(1 - c / 100, 0, 1); }
+  /* scores, colours and the two canvas primitives both weather pages share: js/weather-core.js */
+  var X = window.SvWx;
+  var cloudScore = X.cloudScore, windShear = X.windShear, seeingScore = X.seeingScore,
+    transparencyScore = X.transparencyScore, overallScore = X.overallScore, ratingIndex = X.ratingIndex,
+    COL = X.COL, scoreColour = X.scoreColour, windColour = X.windColour, ratingColour = X.ratingColour,
+    EMOJI_FONT = X.EMOJI_FONT, wxSymbol = X.wxSymbol, stickyLabels = X.stickyLabels;
 
-  /* vector difference of two winds (speed, direction in degrees) */
-  function windShear(s1, d1, s2, d2) {
-    if (s1 == null || s2 == null || d1 == null || d2 == null) return null;
-    var du = s1 * Math.sin(d1 * RAD) - s2 * Math.sin(d2 * RAD), dv = s1 * Math.cos(d1 * RAD) - s2 * Math.cos(d2 * RAD);
-    return Math.sqrt(du * du + dv * dv);
-  }
-
-  /* Seeing from the wind profile: a fast jet stream, strong shear between about 1.5 and 10 km
-     (850 and 250 hPa) and wind at the ground all mean turbulent air. The weights are an own
-     estimate; the jet-only version called almost every hour at Starfront excellent. */
-  function seeingScore(r) {
-    if (r.jet == null) return null;
-    var penalty = 0.45 * clamp((r.jet - 20) / 110, 0, 1) +
-      0.35 * clamp(((r.shear == null ? 0 : r.shear) - 20) / 100, 0, 1) +
-      0.20 * clamp(((r.wind_speed_10m || 0) - 8) / 25, 0, 1);
-    return clamp(1 - penalty, 0, 1);
-  }
-
-  /* Transparency from aerosol optical depth (dust included), damped by high humidity at the ground
-     and, gently, by a lot of water vapour in the air column, which absorbs little visible light. */
-  function transparencyScore(aod, rh, pwv) {
-    if (aod == null) return null;
-    var s = clamp(1 - (aod - 0.05) / 0.45, 0, 1);
-    if (rh != null && rh > 80) s *= clamp(1 - (rh - 80) / 40, 0.5, 1);
-    if (pwv != null) s *= clamp(1 - (pwv - 25) / 150, 0.85, 1);
-    return s;
-  }
-
-  /* Clouds dominate; seeing and transparency only shade a clear hour. A missing estimate hands its
-     weight to the others instead of counting as average: after the aerosol forecast ends, clear
-     hours would otherwise drop by about six points for no reason in the sky. */
-  function overallScore(c, se, tr) {
-    if (c == null) return null;
-    var sum = 0.7, weight = 0.7;
-    if (se != null) { sum += 0.15 * se; weight += 0.15; }
-    if (tr != null) { sum += 0.15 * tr; weight += 0.15; }
-    return clamp(c * c * sum / weight, 0, 1);
-  }
-
-  function rating(s) {
-    if (s == null) return '–';
-    return T.ratings[s >= 0.85 ? 4 : s >= 0.65 ? 3 : s >= 0.45 ? 2 : s >= 0.25 ? 1 : 0];
-  }
+  function rating(s) { return s == null ? '–' : T.ratings[ratingIndex(s)]; }
 
   /* ------------------------------------------------------------------ *
    * Formatting                                                         *
@@ -233,11 +202,12 @@
     unitF: document.getElementById('aw-unit-f'),
     load: document.getElementById('aw-load'),
     status: document.getElementById('aw-status'),
+    verdict: document.getElementById('aw-verdict'),
+    scale: document.getElementById('aw-scale'),
     scroll: document.getElementById('aw-scroll'),
     wrap: document.getElementById('aw-chart-wrap'),
     canvas: document.getElementById('aw-canvas'),
     tip: document.getElementById('aw-tip'),
-    summary: document.getElementById('aw-summary'),
     day: document.getElementById('aw-day'),
     dayPrev: document.getElementById('aw-day-prev'),
     dayNext: document.getElementById('aw-day-next'),
@@ -454,7 +424,10 @@
     updatePlannerLink();
     el.status.textContent = T.loading;
     el.load.disabled = true;
-    var q = 'latitude=' + lat + '&longitude=' + lon + '&forecast_days=7&timeformat=unixtime';
+    /* past_days=1 so that a night already under way is complete: without it the request starts at the
+     current hour and the night's average rested on the remaining hours ("only 6 of 9 h with data").
+     The rows before the running night are dropped again below. */
+    var q = 'latitude=' + lat + '&longitude=' + lon + '&forecast_days=7&past_days=1&timeformat=unixtime';
     /* ICON inside the ICON-EU domain (D2 in Central Europe); elsewhere GFS, which Open-Meteo fills
        with HRRR over North America. Checked against airport cloud reports near Starfront over
        30 nights: ICON was clearly the weakest model there. */
@@ -463,26 +436,69 @@
       '&timezone=auto&wind_speed_unit=kmh&hourly=' + HOURLY.join(','));
     var aerosol = getJson('https://air-quality-api.open-meteo.com/v1/air-quality?' + q + '&timezone=auto&hourly=aerosol_optical_depth,dust')
       .catch(function () { return null; }); /* transparency is optional; the chart works without it */
-    /* ECMWF clouds and water vapour as a second opinion. The same request brings the high-resolution
-       nest, ICON-D2 or HRRR: an hour whose seamless temperature and cloud cover equal the nest's is a nest hour. */
+    /* One request for everything that is not the seamless series: ECMWF clouds and water vapour as a second
+       opinion, a third model for the comparison row, the high-resolution nest (ICON-D2 or HRRR: an hour whose
+       seamless temperature and cloud cover equal the nest's is a nest hour), and the model that carries the
+       cloud rows once the nest has run out.
+       Which model that is was measured, not assumed (tools/weather-verify.js --lead): over 60 days at
+       Starfront, GEM beat NAM, NBM, ECMWF and GFS at every lead beyond the first day, so over North America
+       GEM takes the cloud rows after HRRR — one seam instead of the two that NAM and NBM used to make — and
+       NBM, which is still the finest source for visibility and precipitation probability, fills the third
+       row. In Europe the chain (ICON-D2, then HARMONIE AROME, then ICON) and the GEM row stay as they were. */
+    var fine = source === 'icon' ? 'dmi_harmonie_arome_europe' : 'cmc_gem_seamless';
+    /* NBM has data only over the contiguous USA, so outside Europe and outside CONUS the third row
+       falls back to the base model of the seamless series (cmp3Id below, decided once the data are in) */
+    var cmp3 = source === 'icon' ? 'cmc_gem_seamless' : 'ncep_nbm_conus';
+    var cmp3Id = source === 'icon' ? 'gem' : 'nbm';
+    /* How far the high-resolution nest is allowed to reach. HRRR is the best model there is for the
+       first day and the worst of the fine ones for the second: over 59 nights at Starfront, dark
+       hours only, it sits 4.6 points from the airport reports at 0–24 hours and 14.2 at 24–48, where
+       GEM sits at 7.9 (tools/weather-verify.js --lead --nights, and the same ordering against the
+       analysis). Beyond this many hours the nest is dropped and GEM takes over. 30 rather than 24 so
+       that a night is not cut in half; the measurement only resolves whole days anyway.
+       ICON-D2 does not have that weakness — 13.0 against ICON-EU's 14.3 at 24–48 hours in Hannover,
+       11.5 against 11.2 in Sankt Andreasberg — so in Europe the nest runs as far as it reaches. */
+    var NEST_MAX_H = source === 'icon' ? Infinity : 30;
+    /* the moment the nest stops being used. A name of its own on purpose: the response handler below
+       declares its own nowSec with var, which shadows an outer one and is still undefined while the
+       rows are being built — the comparison then reads NaN and every hour falls out of the nest. */
+    var nestUntil = Date.now() / 1000 + NEST_MAX_H * 3600;
+    var CMP = ['ecmwf_ifs', fine, cmp3].concat(source === 'icon' ? ['icon_d2'] : ['ncep_hrrr_conus', 'ncep_nbm_conus'])
+      .filter(function (m, i, a) { return a.indexOf(m) === i; });
     var compare = getJson('https://api.open-meteo.com/v1/forecast?' + q + '&timezone=auto' +
-      '&hourly=cloud_cover,total_column_integrated_water_vapour,temperature_2m&models=ecmwf_ifs,' + (source === 'icon' ? 'icon_d2' : 'ncep_hrrr_conus'))
+      '&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,total_column_integrated_water_vapour,temperature_2m,visibility,precipitation_probability&models=' + CMP.join(','))
       .catch(function () { return null; }); /* optional as well */
 
     Promise.all([weather, aerosol, compare]).then(function (res) {
-      var w = res[0], a = res[1], c = res[2] && res[2].hourly, h = w.hourly, aodByTime = {}, dustByTime = {}, ecByTime = {}, pwvByTime = {}, nestT = {}, nestC = {};
+      var w = res[0], a = res[1], c = res[2] && res[2].hourly, h = w.hourly, aodByTime = {}, dustByTime = {}, ecByTime = {}, pwvByTime = {}, nestT = {}, nestC = {}, cmp3ByTime = {}, fineByTime = {}, nbmByTime = {};
       var offAt = offsetFn(w.timezone, w.utc_offset_seconds);
       if (a && a.hourly) a.hourly.time.forEach(function (t, i) { aodByTime[t] = a.hourly.aerosol_optical_depth[i]; if (a.hourly.dust) dustByTime[t] = a.hourly.dust[i]; });
       if (c) {
         /* keys carry model suffixes only where both models have data; otherwise the one left is plain */
         var ec = c.cloud_cover_ecmwf_ifs || c.cloud_cover, pw = c.total_column_integrated_water_vapour_ecmwf_ifs || c.total_column_integrated_water_vapour;
         var nt = c.temperature_2m_icon_d2 || c.temperature_2m_ncep_hrrr_conus, nc = c.cloud_cover_icon_d2 || c.cloud_cover_ncep_hrrr_conus;
+        var gm = c['cloud_cover_' + cmp3], nbm = c.cloud_cover_ncep_nbm_conus;
+        /* NBM publishes its own visibility and, unlike the others, a native precipitation probability —
+           GEM has neither, so those two keep coming from NBM over North America */
+        var nbmV = c.visibility_ncep_nbm_conus, nbmP = c.precipitation_probability_ncep_nbm_conus;
+        /* the model that takes over once the nest has run out: GEM over North America, DMI's HARMONIE
+           AROME (DINI, 2 km, Central and Northern Europe) in Europe. Both carry their own cloud layers. */
+        var fnC = c['cloud_cover_' + fine], fnL = c['cloud_cover_low_' + fine], fnM = c['cloud_cover_mid_' + fine], fnH = c['cloud_cover_high_' + fine];
+        var fnV = c['visibility_' + fine];
         c.time.forEach(function (t, i) {
           if (ec) ecByTime[t] = ec[i];
           if (pw) pwvByTime[t] = pw[i];
+          if (gm) cmp3ByTime[t] = gm[i];
+          if (nbm && nbm[i] != null) nbmByTime[t] = { c: nbm[i], vis: nbmV && nbmV[i], prob: nbmP && nbmP[i] };
+          if (fnC && fnC[i] != null) fineByTime[t] = { c: fnC[i], low: fnL && fnL[i], mid: fnM && fnM[i], high: fnH && fnH[i], vis: fnV && fnV[i] };
           if (nt && nc) { nestT[t] = nt[i]; nestC[t] = nc[i]; }
         });
       }
+      /* nothing came back for the third model — show what the base model said instead, which is the
+         one number the chart no longer draws anywhere once the finer model has taken the cloud row over */
+      var cmp3Base = !Object.keys(cmp3ByTime).length;
+      if (cmp3Base) cmp3Id = source === 'icon' ? 'baseIcon' : 'baseGfs';
+
       var nestSeen = false, nestOver = false;
       var rows = h.time.map(function (t, i) {
         var r = { t: t };
@@ -492,19 +508,49 @@
         r.dust = dustByTime[t] == null ? null : dustByTime[t];
         r.pwv = pwvByTime[t] == null ? null : pwvByTime[t];
         r.cloud_ecmwf = ecByTime[t] == null ? null : ecByTime[t];
+        r.cloud_cmp3 = cmp3Base ? r.cloud_cover : (cmp3ByTime[t] == null ? null : cmp3ByTime[t]);
         /* nest hours run from the start; once the seamless series has left the nest it does not return,
            so a chance match of temperature and cloud cover later on is not mistaken for one */
         var nestHere = nestT[t] != null && nestC[t] != null && r.temperature_2m != null &&
           Math.abs(nestT[t] - r.temperature_2m) < 0.05 && nestC[t] === r.cloud_cover;
         if (nestSeen && nestT[t] != null && !nestHere) nestOver = true;
-        r.nest = nestHere && !nestOver;
-        if (r.nest) nestSeen = true;
+        if (nestHere && !nestOver) nestSeen = true; /* the latch follows the detection, not the cut-off */
+        r.nest = nestHere && !nestOver && t <= nestUntil;
+        /* Once the 3 km nest has run out, the seamless series falls back to GFS at 13 km (ICON global in
+           Europe). A better model takes over the cloud cover the rating is built on, layers included: GEM
+           over North America, HARMONIE AROME in Europe. Everything else stays with the base model, except
+           visibility and the precipitation probability, which NBM supplies over North America. */
+        if (!r.nest) {
+          var nm = fineByTime[t];
+          if (nm && nm.c != null) {
+            r.cloud_cover = nm.c; r.cloudSrc = source === 'icon' ? 'dini' : 'gem';
+            if (nm.low != null) r.cloud_cover_low = nm.low;
+            if (nm.mid != null) r.cloud_cover_mid = nm.mid;
+            if (nm.high != null) r.cloud_cover_high = nm.high;
+            if (nm.vis > 0) r.visibility = nm.vis; /* a plain 0 is a fill value, not a fogged-in hour */
+          }
+          /* NBM is the finer source for these two wherever the seamless series has fallen back to GFS */
+          var nb = nbmByTime[t];
+          if (nb) {
+            if (nb.vis > 0) r.visibility = nb.vis; /* about four days, then nothing */
+            /* the probability is a preceding-hour value, so the hour from t carries the stamp t+1h */
+            var nbNext = nbmByTime[t + 3600];
+            if (nbNext && nbNext.prob != null) r.precipitation_probability = nbNext.prob;
+          }
+        }
+        /* the symbol comes from the base model, the cloud row may not: where a finer model supplies the
+           cover, a pure cloud code (0–3) is taken from that number instead, so symbol and figure agree.
+           Precipitation codes stay untouched — they carry what the cloud number cannot say. */
+        if (r.cloudSrc && r.weather_code != null && r.weather_code <= 3 && r.cloud_cover != null) {
+          r.weather_code = r.cloud_cover < 12.5 ? 0 : r.cloud_cover < 37.5 ? 1 : r.cloud_cover < 75 ? 2 : 3;
+        }
         var mid = (t + 1800) * 1000;
         r.sun = sunAltitude(mid, lat, lon);
         r.moon = moonAltitude(mid, lat, lon);
         r.illum = moonIllumination(mid);
         r.sClouds = cloudScore(r.cloud_cover);
         r.sClouds2 = cloudScore(r.cloud_ecmwf);
+        r.sCmp3 = cloudScore(r.cloud_cmp3);
         r.jet = r.wind_speed_250hPa == null && r.wind_speed_500hPa == null ? null : Math.max(r.wind_speed_250hPa || 0, (r.wind_speed_500hPa || 0) * 1.3);
         /* lower end of the shear: 850 hPa (about 1.5 km), or the next level up where that lies in the terrain */
         var low = r.surface_pressure != null && r.surface_pressure < 900 ? (r.surface_pressure < 750 ? 500 : 700) : 850;
@@ -514,7 +560,10 @@
         r.sOverall = overallScore(r.sClouds, r.sSeeing, r.sTransp);
         return r;
       });
-      state.data = { rows: rows, lat: lat, lon: lon, off: offAt, name: locationName(), source: source, index: {} };
+      /* keep the night that is under way whole, drop the nights that are over */
+      var keepKey = nightKeyOf(Date.now() / 1000, offAt);
+      rows = rows.filter(function (r) { return nightKeyOf(r.t, offAt) >= keepKey; });
+      state.data = { rows: rows, lat: lat, lon: lon, off: offAt, name: locationName(), source: source, cmp3: cmp3Id, index: {} };
       rows.forEach(function (r, i) { state.data.index[r.t] = i; });
       /* default: the night still running; once the sun is up in the morning, the coming night */
       var nowSec = Date.now() / 1000, keys = nightKeys();
@@ -522,7 +571,10 @@
       if (localDate(nowSec, offAt).getUTCHours() < 12 && sunAltitude(nowSec * 1000, lat, lon) > -0.833) nowKey += 1;
       state.night = keys.indexOf(nowKey) >= 0 ? nowKey : keys[0];
       state.scrollNow = state.scrollDay = true;
-      el.status.textContent = T.loaded.replace('{name}', state.data.name).replace('{model}', source === 'icon' ? T.srcIcon : rows.some(function (r) { return r.nest; }) ? T.srcGfs : T.srcGfsOnly)
+      var usedFine = rows.some(function (r) { return r.cloudSrc; }), usedNest = rows.some(function (r) { return r.nest; });
+      var srcTxt = source === 'icon' ? (usedFine ? T.srcIconFine : T.srcIcon)
+        : usedFine ? T.srcGfs : usedNest ? T.srcGfsNest : T.srcGfsOnly;
+      el.status.textContent = T.loaded.replace('{name}', state.data.name).replace('{model}', srcTxt)
         .replace('{utc}', utcLabel(offAt(rows[0].t)) + (offAt(rows[rows.length - 1].t) !== offAt(rows[0].t) ? ' → ' + utcLabel(offAt(rows[rows.length - 1].t)) : ''));
       render();
       updateMeteoblue();
@@ -536,85 +588,18 @@
   /* ------------------------------------------------------------------ *
    * Drawing                                                            *
    * ------------------------------------------------------------------ */
-  var COL = {
-    bg: '#10151c', label: '#0b0f14', grid: 'rgba(255,255,255,.06)', gridDay: 'rgba(255,255,255,.18)',
-    text: '#9aa7b6', textBright: '#e4e9ef', sunLine: '#d9c24a', sunFill: 'rgba(200,170,50,.45)', moonLine: 'rgba(230,232,236,.85)',
-    temp: '#e3a33b', dew: '#3fa9e6', now: '#e5484d', dayBar: '#1f6fd6', noData: '#262c34'
-  };
-
-  function scoreColour(s) {
-    if (s == null) return COL.noData;
-    /* bad = pale grey-blue, good = saturated blue */
-    var bad = [198, 208, 220], good = [30, 88, 190];
-    var c = bad.map(function (b, i) { return Math.round(b + (good[i] - b) * s); });
-    return 'rgb(' + c.join(',') + ')';
-  }
-
-  function windColour(v) {
-    return v == null ? COL.noData : v <= 10 ? '#3fae4c' : v <= 20 ? '#8fbf2f' : v <= 30 ? '#d9b52b' : v <= 40 ? '#e07b2b' : '#d8433b';
-  }
-
-  /* overall rating as a traffic light, stops at the rating thresholds; k fades it into the
-     neutral ground (0 = daylight, 1 = astronomical night) */
-  var RATING_STOPS = [[0, [216, 67, 59]], [0.45, [224, 123, 43]], [0.65, [217, 181, 43]], [0.85, [63, 174, 76]], [1, [63, 174, 76]]];
-  function ratingColour(s, k) {
-    var base = [31, 37, 46], c = base;
-    if (s != null && k > 0) {
-      for (var i = 1; i < RATING_STOPS.length; i++) {
-        if (s <= RATING_STOPS[i][0]) {
-          var a = RATING_STOPS[i - 1], b = RATING_STOPS[i], f = (s - a[0]) / (b[0] - a[0]);
-          c = a[1].map(function (v, j) { return v + (b[1][j] - v) * f; });
-          break;
-        }
-      }
-      c = base.map(function (v, j) { return Math.round(v + (c[j] - v) * k); });
-    }
-    return 'rgb(' + c.join(',') + ')';
-  }
-
-  /* WMO weather code as a symbol; a clear or mainly clear night shows the moon */
-  var EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-  function wxSymbol(code, night) {
-    if (code == null) return '';
-    if (code >= 95) return '⛈️';
-    if (code >= 85 || (code >= 71 && code <= 77)) return '🌨️';
-    if (code >= 61) return '🌧️';
-    if (code >= 51) return night ? '🌧️' : '🌦️';
-    if (code >= 45) return '🌫️';
-    if (code === 3) return '☁️';
-    if (code === 2) return night ? '☁️' : '⛅';
-    if (code === 1) return night ? '🌙' : '🌤️';
-    return night ? '🌙' : '☀️';
-  }
-
-  /* a copy of the label column that stays put while a chart scrolls sideways on narrow screens */
-  function stickyLabels(wrap, canvas, width, height) {
-    var lab = wrap.querySelector('canvas.aw-labels');
-    if (!lab) {
-      lab = document.createElement('canvas');
-      lab.className = 'aw-labels';
-      lab.setAttribute('aria-hidden', 'true');
-      lab.style.cssText = 'position:sticky; left:0; display:block; z-index:1;';
-      wrap.insertBefore(lab, canvas);
-    }
-    var dpr = window.devicePixelRatio || 1;
-    lab.width = Math.round(width * dpr); lab.height = canvas.height;
-    lab.style.width = width + 'px'; lab.style.height = height + 'px'; lab.style.marginBottom = -height + 'px';
-    lab.getContext('2d').drawImage(canvas, 0, 0, lab.width, lab.height, 0, 0, lab.width, lab.height);
-  }
-
   function spans(list, off) { return list.map(function (p) { return hhmm(p[0], off) + '–' + hhmm(p[1], off); }).join(' · '); }
 
   function render() {
     var d = state.data, rows = d.rows, n = rows.length, off = d.off, unit = state.unit;
-    var LEFT = 72, RIGHT = 12;
+    var LEFT = 100, RIGHT = 12; /* wide enough for the longest row label, "Wolken ECMWF" */
     var colW = Math.max(4.5, (el.scroll.clientWidth - LEFT - RIGHT) / n); /* fits a desktop column, scrolls on phones */
     var W = Math.round(LEFT + RIGHT + colW * n);
 
     var y = 0, R = {};
     function band(key, h) { R[key] = [y, y + h]; y += h; }
     band('moons', 24); band('times', 26); band('sky', 50); band('ticks', 18);
-    band('overall', 15); band('clouds', 15); band('clouds2', 15); band('seeing', 15); band('transp', 15); y += 8;
+    band('model', 14); band('overall', 15); band('clouds', 15); band('clouds2', 11); band('cmp3', 11); band('seeing', 15); band('transp', 15); y += 8;
     band('wind', 36); band('temp', 84); band('days', 24); band('rating', 32);
     var H = y;
 
@@ -716,10 +701,54 @@
     riseSet(function (sec) { return moonAltitude(sec * 1000, d.lat, d.lon); }, R.times[0] + 19, COL.moonLine);
 
     /* score rows */
-    [['overall', 'sOverall'], ['clouds', 'sClouds'], ['clouds2', 'sClouds2'], ['seeing', 'sSeeing'], ['transp', 'sTransp']].forEach(function (pair) {
+    [['overall', 'sOverall'], ['clouds', 'sClouds'], ['clouds2', 'sClouds2'], ['cmp3', 'sCmp3'], ['seeing', 'sSeeing'], ['transp', 'sTransp']].forEach(function (pair) {
       var b = R[pair[0]];
+      /* the two comparison rows are narrower and paler: they explain the forecast, they are not the answer */
+      ctx.globalAlpha = pair[0] === 'clouds2' || pair[0] === 'cmp3' ? 0.72 : 1;
       rows.forEach(function (r, i) { ctx.fillStyle = scoreColour(r[pair[1]]); ctx.fillRect(LEFT + i * colW, b[0] + 1, colW + 0.5, b[1] - b[0] - 2); });
+      ctx.globalAlpha = 1;
     });
+
+    /* where the cloud row changes model, a dashed mark: a step at that column can be the model, not the weather */
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = COL.seam;
+    rows.forEach(function (r, i) {
+      if (!i || modelId(r) === modelId(rows[i - 1])) return;
+      var x = Math.round(LEFT + i * colW) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, R.overall[0]); ctx.lineTo(x, R.transp[1]); ctx.stroke();
+    });
+    ctx.restore();
+
+    /* which model the cloud row came from, as a row of its own: on top of the cells it covered the very
+       colours it describes. Each stretch gets its name, centred, and a divider where it changes. */
+    ctx.save(); ctx.font = '9px system-ui, -apple-system, Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    var mb = R.model, yM = Math.round((mb[0] + mb[1]) / 2) + 0.5, segStart = 0;
+    ctx.fillStyle = 'rgba(255,255,255,.035)'; ctx.fillRect(LEFT, mb[0] + 1, n * colW, mb[1] - mb[0] - 2);
+    ctx.strokeStyle = 'rgba(228,233,239,.5)'; ctx.lineWidth = 1;
+    /* own names: the drawing function already has span, tick and head in scope */
+    function mdlTick(x) { ctx.beginPath(); ctx.moveTo(x, mb[0] + 3); ctx.lineTo(x, mb[1] - 3); ctx.stroke(); }
+    function mdlHead(x, dir) { ctx.beginPath(); ctx.moveTo(x + dir * 4, yM - 3); ctx.lineTo(x, yM); ctx.lineTo(x + dir * 4, yM + 3); ctx.stroke(); }
+    function mdlLine(x, y2) { ctx.beginPath(); ctx.moveTo(x, yM); ctx.lineTo(y2, yM); ctx.stroke(); }
+    rows.forEach(function (r, i) {
+      var last = i === rows.length - 1;
+      if (!last && modelId(rows[i + 1]) === modelId(r)) return;
+      /* a dimension line from where the model starts to where it ends, its name in the gap between */
+      var x0 = Math.round(LEFT + segStart * colW) + 0.5, x1 = Math.round(LEFT + (i + 1) * colW) - 0.5, nm = modelShort(r);
+      var a = x0 + 2, b = x1 - 2, w = b - a;
+      /* a short stretch still says which model it is, abbreviated rather than left blank */
+      if (nm && w <= ctx.measureText(nm).width + 26) {
+        var abbr = modelTiny(r);
+        nm = abbr && w > ctx.measureText(abbr).width + 22 ? abbr : null;
+      }
+      var tw = nm ? ctx.measureText(nm).width : 0;
+      mdlTick(x0); mdlTick(x1);
+      if (nm && w > tw + 26) {
+        var cx = (a + b) / 2, gap = tw / 2 + 5;
+        mdlLine(a + 4, cx - gap); mdlLine(cx + gap, b - 4); mdlHead(a, 1); mdlHead(b, -1);
+        ctx.fillStyle = COL.textBright; ctx.fillText(nm, cx, yM);
+      } else if (w > 12) { mdlLine(a + 4, b - 4); mdlHead(a, 1); mdlHead(b, -1); }
+      segStart = i + 1;
+    });
+    ctx.restore();
 
     /* wind: one marker every few hours so they never overlap */
     var step = Math.max(1, Math.ceil(22 / colW)), wy = R.wind[0] + 12;
@@ -796,6 +825,7 @@
     var byNight = {}, ry = R.rating[0] + 9; /* text above the strip, so it never hides the gradient */
     rows.forEach(function (r) { var k = nightKeyOf(r.t, off); (byNight[k] = byNight[k] || []).push(r); });
     ctx.font = '600 10px system-ui, -apple-system, Segoe UI, sans-serif'; ctx.textAlign = 'center';
+    var lastRight = -Infinity;
     Object.keys(byNight).forEach(function (k) {
       var st = nightStats(+k, byNight[k]);
       if (st.from == null || st.avg == null) return;
@@ -803,6 +833,13 @@
       var pct = Math.round(st.avg * 100) + ' %', full = rating(st.avg) + ' ' + pct;
       var txt = ctx.measureText(full).width + 10 <= 22 * colW ? full : pct, tw = ctx.measureText(txt).width + 8;
       xc = clamp(xc, LEFT + tw / 2, LEFT + n * colW - tw / 2);
+      /* the neighbour's label is the other limit: first drop the word, then the label altogether */
+      if (xc - tw / 2 < lastRight + 4 && txt !== pct) {
+        txt = pct; tw = ctx.measureText(txt).width + 8;
+        xc = clamp(xc, LEFT + tw / 2, LEFT + n * colW - tw / 2);
+      }
+      if (xc - tw / 2 < lastRight + 4) return;
+      lastRight = xc + tw / 2;
       ctx.fillStyle = ratingColour(st.avg, 1); ctx.fillText(txt, xc, ry);
     });
     ctx.font = '10px system-ui, -apple-system, Segoe UI, sans-serif';
@@ -821,7 +858,7 @@
     /* label column last, so it covers everything scrolled beneath it */
     ctx.fillStyle = COL.label; ctx.fillRect(0, 0, LEFT - 2, H);
     ctx.textAlign = 'right'; ctx.fillStyle = COL.text;
-    var labels = [['times', T.rows.sun, -6, COL.sunLine], ['times', T.rows.moon, 6, COL.moonLine], ['overall', T.rows.overall], ['clouds', T.rows.clouds], ['clouds2', T.rows.clouds2],
+    var labels = [['times', T.rows.sun, -6, COL.sunLine], ['times', T.rows.moon, 6, COL.moonLine], ['model', T.rows.model], ['overall', T.rows.overall], ['clouds', T.rows.clouds], ['clouds2', T.rows.clouds2], ['cmp3', T.rows.cmp3.replace('{m}', cmp3Text().short)],
       ['seeing', T.rows.seeing], ['transp', T.rows.transp], ['wind', T.rows.wind, -4], ['temp', T.rows.temp, -10, COL.temp], ['temp', T.rows.dew, 10, COL.dew], ['days', ''], ['rating', T.rows.night, 0]];
     labels.forEach(function (l) {
       ctx.fillStyle = l[3] || COL.text;
@@ -835,7 +872,8 @@
       if (nowSec >= t0 && nowSec <= t0 + span) el.scroll.scrollLeft = Math.max(0, xOf(nowSec) - LEFT - 12);
     }
 
-    renderSummary();
+    renderVerdict(nightItems());
+    renderScale();
     el.canvas.setAttribute('aria-label', el.status.textContent);
     renderDay();
   }
@@ -845,10 +883,14 @@
    * ------------------------------------------------------------------ */
   /* which model delivered an hour: the nest where it matched, ICON global where ICON has no visibility */
   function modelId(r) {
-    if (state.data.source === 'icon') return r.nest ? 'd2' : r.visibility != null ? 'eu' : 'global';
-    return r.nest ? 'hrrr' : 'gfs';
+    if (state.data.source === 'icon') return r.nest ? 'd2' : r.cloudSrc === 'dini' ? 'dini' : r.visibility != null ? 'eu' : 'global';
+    return r.nest ? 'hrrr' : r.cloudSrc === 'gem' ? 'gem' : 'gfs';
   }
-  function modelShort(r) { return { d2: 'ICON-D2', eu: 'ICON-EU', global: 'ICON global', hrrr: 'HRRR', gfs: 'GFS' }[modelId(r)]; }
+  function modelShort(r) { return { d2: 'ICON-D2', eu: 'ICON-EU', global: 'ICON global', dini: 'HARMONIE', hrrr: 'HRRR', gem: 'GEM', gfs: 'GFS' }[modelId(r)]; }
+  /* which model fills the third cloud row — GEM in Europe, NBM over North America (see CMP above) */
+  function cmp3Text() { return T.cmp3[(state.data && state.data.cmp3) || 'gem']; }
+  /* for a stretch too narrow for the name: short enough to fit, distinct enough to tell the ICON variants apart */
+  function modelTiny(r) { return { d2: 'D2', eu: 'EU', global: 'IG', dini: 'HA', hrrr: 'HR', gem: 'GEM', gfs: 'GFS' }[modelId(r)]; }
 
   function tipHtml(i) {
     var d = state.data, r = d.rows[i], off = d.off, u = state.unit === 'f' ? '°F' : '°C';
@@ -856,8 +898,10 @@
       '<strong>' + esc(dayLabel(r.t, off)) + ' ' + hhmm(r.t, off) + '</strong>',
       r.weather_code == null ? null : T.tipWx + ': ' + esc(T.wx[r.weather_code] || r.weather_code),
       T.tipOverall + ': ' + rating(r.sOverall) + (r.sOverall == null ? '' : ' (' + Math.round(r.sOverall * 100) + ' %)'),
-      T.tipClouds + ' (' + modelShort(r) + '): ' + num(r.cloud_cover) + ' % · ' + T.tipLayers.replace('{l}', num(r.cloud_cover_low)).replace('{m}', num(r.cloud_cover_mid)).replace('{h}', num(r.cloud_cover_high)),
+      T.tipClouds + ' (' + modelShort(r) + '): ' + num(r.cloud_cover) + ' %' +
+        ' · ' + T.tipLayers.replace('{l}', num(r.cloud_cover_low)).replace('{m}', num(r.cloud_cover_mid)).replace('{h}', num(r.cloud_cover_high)),
       r.cloud_ecmwf == null ? null : T.tipClouds2 + ': ' + num(r.cloud_ecmwf) + ' %',
+      r.cloud_cmp3 == null ? null : T.tipClouds3.replace('{m}', cmp3Text().tip) + ': ' + num(r.cloud_cmp3) + ' %',
       T.tipSeeing + ': ' + rating(r.sSeeing) + ' · ' + T.tipJet.replace('{j}', num(r.jet)).replace('{s}', num(r.shear)).replace('{g}', num(r.wind_speed_10m)),
       T.tipTransp + ': ' + (r.aod == null ? T.noAerosol : rating(r.sTransp) + ' (AOD ' + num(r.aod, 2) + (r.dust ? ' · ' + T.tipDust + ' ' + num(r.dust) + ' µg/m³' : '') + ')'),
       r.pwv == null ? null : T.tipPwv + ': ' + num(r.pwv) + ' mm',
@@ -910,60 +954,72 @@
     return st;
   }
 
-  function renderSummary() {
+  /* the one sentence the whole page is for, over the chart: how long the sky is good at a stretch in the
+     chosen night, and how much of that the moon leaves alone */
+  function renderVerdict(items) {
+    if (!el.verdict) return;
+    var it = items.filter(function (x) { return x.key === state.night; })[0] || items[0];
+    if (!it) { el.verdict.hidden = true; return; }
+    var txt;
+    if (it.avg == null) txt = T.verdictNoDark.replace('{n}', it.label);
+    else if (!it.raw) txt = T.verdictNone.replace('{n}', it.label).replace('{p}', Math.round(it.avg * 100));
+    else {
+      var h = num(it.raw.sec / 3600, 1), t = hhmm(it.raw.a, state.data.off), free = it.raw.free;
+      txt = (it.raw.fair ? T.verdictFair
+        : free >= it.raw.sec - 900 ? T.verdictGoodFree
+        : free < 1800 ? T.verdictGoodMoon : T.verdictGood)
+        .replace('{n}', it.label).replace('{h}', h).replace('{t}', t).replace('{m}', num(free / 3600, 1));
+    }
+    el.verdict.textContent = txt;
+    el.verdict.hidden = false;
+  }
+
+  /* the rating scale in words, so the colours do not have to be guessed */
+  function renderScale() {
+    if (!el.scale) return;
+    var steps = [[0.92, 4], [0.75, 3], [0.55, 2], [0.35, 1], [0.12, 0]];
+    el.scale.innerHTML = '<span>' + esc(T.scaleTitle) + '</span>' + steps.map(function (s) {
+      return '<span style="display:inline-flex; align-items:center; gap:.3rem;">' +
+        '<span style="width:15px; height:10px; border-radius:2px; background:' + scoreColour(s[0]) + '; display:inline-block;"></span>' +
+        esc(T.ratings[s[1]]) + '</span>';
+    }).join('');
+    el.scale.hidden = false;
+  }
+
+  /* One record per night, for the sentence above the chart. Until September 2026 this also filled a
+     table of every night (darkness, average, best window, moon); that table was dropped because the
+     week chart already carries the same picture in colour and the night detail below has its own
+     arrows. Only what renderVerdict() reads is still worked out here. */
+  function nightItems() {
     var d = state.data, off = d.off, nights = {}, order = [];
     d.rows.forEach(function (r) {
       var key = nightKeyOf(r.t, off);
       if (!nights[key]) { nights[key] = []; order.push(key); }
       nights[key].push(r);
     });
-    var items = order.map(function (key) {
+    return order.map(function (key) {
       var st = nightStats(key, nights[key]), from = st.from, to = st.to;
-      var it = { key: key, label: dayLabel(st.evening, off) + ' → ' + dayLabel(st.next, off), dark: T.sumNoDark, free: '–', overall: '–', moon: '–' };
-      if (from != null) {
-        it.dark = hhmm(from, off) + '–' + hhmm(to, off) + ' (' + num((to - from) / 3600, 1) + ' ' + T.hours + ')';
-        it.free = st.moonFree.length ? spans(st.moonFree, off) + ' (' + num(st.moonFreeSec / 3600, 1) + ' ' + T.hours + ')' : T.sumMoonUp;
-        if (st.avg != null) {
-          it.overall = '<strong>' + rating(st.avg) + '</strong> (' + Math.round(st.avg * 100) + ' %)';
-          if (st.covered < to - from - 900) {
-            it.overall += '<br><span style="font-size:.78rem; color:var(--text-light);">' +
-              esc(T.sumPartial.replace('{a}', num(st.covered / 3600, 1)).replace('{b}', num((to - from) / 3600, 1))) + '</span>';
-          }
-        }
-        it.moon = Math.round(moonIllumination((from + to) / 2 * 1000).fraction * 100) + ' % ' + T.lit;
+      var it = { key: key, label: dayLabel(st.evening, off) + ' \u2192 ' + dayLabel(st.next, off) };
+      if (from == null) return it;
+      it.avg = st.avg;
+      /* what one actually plans by: the longest run of hours that are good at a stretch, and how much of
+         it the moon leaves alone. "Good" is the rating's own threshold (65 %), 45 % as the fallback tier. */
+      function best(thr) {
+        var win = null, cur = null, free = 0;
+        nights[key].forEach(function (r) {
+          var part = Math.min(r.t + 3600, to) - Math.max(r.t, from);
+          if (!(part > 0) || r.sOverall == null || r.sOverall < thr) { cur = null; return; }
+          if (r.moon != null && r.moon < -0.833) free += part;
+          if (!cur) cur = { a: Math.max(r.t, from), sec: 0, sum: 0 };
+          cur.b = Math.min(r.t + 3600, to); cur.sec += part; cur.sum += part * r.sOverall;
+          if (!win || cur.sec > win.sec) win = cur;
+        });
+        return win ? { win: win, free: free } : null;
       }
-      /* moonrise and moonset between noon and noon, same definition as the charts */
-      it.moonTimes = crossings(function (sec) { return moonAltitude(sec * 1000, d.lat, d.lon); }, st.evening, st.next, 60, -0.833)
-        .map(function (c) { return (c.rising ? '↑ ' : '↓ ') + hhmm(c.t, off); }).join(' · ') || '–';
+      var bw = best(0.65), fair = false;
+      if (!bw) { bw = best(0.45); fair = !!bw; }
+      if (bw && bw.win.sec >= 1800) it.raw = { a: bw.win.a, sec: bw.win.sec, free: bw.free, fair: fair };
       return it;
-    });
-    if (el.summary.clientWidth < 560) {
-      /* narrow screens: one card per night instead of a table that has to be scrolled sideways */
-      el.summary.innerHTML = '<div style="margin:1rem 0 0;">' + items.map(function (it) {
-        var sel = it.key === state.night;
-        function lab(k) { return '<span style="color:var(--text-light);">' + T[k] + ':</span> '; }
-        return '<div data-night="' + it.key + '" style="cursor:pointer; margin:.5rem 0 0; padding:.6rem .75rem; border-radius:var(--radius); border:1px solid ' +
-          (sel ? 'rgba(52,152,219,.55); background:rgba(52,152,219,.10);' : 'rgba(26,42,58,.12);') + '">' +
-          '<div style="font-weight:600; color:var(--primary); margin:0 0 .3rem;">' + esc(it.label) + '</div>' +
-          '<div style="font-size:.86rem; line-height:1.6;">' + lab('sumOverall') + it.overall + '<br>' + lab('sumDark') + it.dark + '<br>' +
-          lab('sumMoonFree') + it.free + '<br>' + lab('sumMoon') + it.moon + ' · ' + it.moonTimes + '</div></div>';
-      }).join('') + '</div>';
-    } else {
-      var html = '<table style="width:100%; min-width:760px; border-collapse:collapse; font-size:.88rem;"><thead><tr style="background:rgba(26,42,58,.06);">' +
-        ['sumNight', 'sumDark', 'sumMoonFree', 'sumOverall', 'sumMoon', 'sumMoonTimes'].map(function (k) {
-          return '<th style="text-align:left; padding:.45rem .6rem; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--primary); border-bottom:1px solid rgba(26,42,58,.18);">' + T[k] + '</th>';
-        }).join('') + '</tr></thead><tbody>';
-      items.forEach(function (it, idx) {
-        var cell = 'padding:.45rem .6rem; border-bottom:1px solid rgba(26,42,58,.07);';
-        var shade = it.key === state.night ? ' background:rgba(52,152,219,.16);' : idx % 2 ? ' background:rgba(26,42,58,.028);' : '';
-        html += '<tr data-night="' + it.key + '" style="cursor:pointer;">' +
-          [esc(it.label), it.dark, it.free, it.overall, it.moon].map(function (v) { return '<td style="' + cell + shade + '">' + v + '</td>'; }).join('') +
-          '<td style="' + cell + shade + ' white-space:nowrap;">' + it.moonTimes + '</td></tr>';
-      });
-      el.summary.innerHTML = '<div style="overflow-x:auto; -webkit-overflow-scrolling:touch; margin:1rem 0 0; border:1px solid rgba(26,42,58,.12); border-radius:var(--radius);">' + html + '</tbody></table></div>';
-    }
-    Array.prototype.forEach.call(el.summary.querySelectorAll('[data-night]'), function (row) {
-      row.addEventListener('click', function () { selectNight(parseInt(row.getAttribute('data-night'), 10)); });
     });
   }
 
@@ -1002,7 +1058,8 @@
     var seq = [];
     have.forEach(function (r) { var m = modelId(r); if (seq[seq.length - 1] !== m) seq.push(m); });
     el.dayModel.textContent = (seq.length ? T.dayModel.replace('{m}', seq.map(function (m) { return T.modelNames[m]; }).join(T.modelThen)) : '') +
-      (have.some(function (r) { return r.cloud_ecmwf != null; }) ? T.dayEcmwf : '') + (have.length < nH ? T.dayPartial : '');
+      (have.some(function (r) { return r.cloud_ecmwf != null; }) ? (have.some(function (r) { return r.cloud_cmp3 != null; }) ? T.dayEcmwf.replace('{m}', cmp3Text().long) : T.dayEcmwfOnly) : '') +
+      (have.length < nH ? T.dayPartial : '');
 
     var LEFT = 104, RIGHT = 10;
     var colW = Math.max(34, (el.dayScroll.clientWidth - LEFT - RIGHT) / nH);
@@ -1011,7 +1068,7 @@
     function band(k, h) { R[k] = [y, y + h]; y += h; }
     function mid(b) { return (b[0] + b[1]) / 2; }
     band('hours', 18); band('wx', 20); band('twi', 22); band('sunEv', 15); band('moonEv', 15); band('alt', 80); band('rating', 32); y += 2;
-    ['overall', 'clouds', 'low', 'mid', 'high', 'clouds2', 'seeing', 'transp', 'pwv', 'dust', 'vis', 'precip'].forEach(function (k) { band(k, 19); });
+    ['overall', 'clouds', 'low', 'mid', 'high', 'clouds2', 'cmp3', 'seeing', 'transp', 'pwv', 'dust', 'vis', 'precip'].forEach(function (k) { band(k, 19); });
     y += 6;
     band('wind', 26); band('windtxt', 17); band('temp', 17); band('dew', 17); band('spread', 17); band('hum', 17);
     var H = y + 4;
@@ -1175,12 +1232,22 @@
     cellRow('mid', function (r) { return r.cloud_cover_mid; }, cloudScore, num);
     cellRow('high', function (r) { return r.cloud_cover_high; }, cloudScore, num);
     cellRow('clouds2', function (r) { return r.cloud_ecmwf; }, cloudScore, num);
+    cellRow('cmp3', function (r) { return r.cloud_cmp3; }, cloudScore, num);
     cellRow('seeing', function (r) { return r.sSeeing; }, same, pct100);
     cellRow('transp', function (r) { return r.aod; }, function (v, r) { return r.sTransp; }, function (v) { return num(v, 2); });
     cellRow('pwv', function (r) { return r.pwv; }, function (v) { return clamp(1 - (v - 10) / 40, 0, 1); }, num); /* colour for reading only */
     cellRow('dust', function (r) { return r.dust; }, function (v) { return clamp(1 - v / 100, 0, 1); }, num);
     cellRow('vis', function (r) { return r.visibility; }, function (v) { return clamp((v / 1000 - 1) / 19, 0, 1); }, function (v) { return num(v / 1000, v < 10000 ? 1 : 0); });
     cellRow('precip', function (r) { return r.precipitation_probability; }, function (v) { return clamp(1 - v / 100, 0, 1); }, num);
+
+    /* the same mark as in the week chart where the cloud row changes model */
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = COL.seam;
+    cols.forEach(function (r, i) {
+      if (!i || !r || !cols[i - 1] || modelId(r) === modelId(cols[i - 1])) return;
+      var x = Math.round(LEFT + i * colW) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, R.overall[0]); ctx.lineTo(x, R.precip[1]); ctx.stroke();
+    });
+    ctx.restore();
 
     /* wind, temperature, dew point, spread, humidity */
     cols.forEach(function (r, i) {
@@ -1214,7 +1281,7 @@
     ctx.textAlign = 'right';
     var RL = T.rowsDay;
     [['wx', RL.wx], ['twi', RL.twi], ['sunEv', T.rows.sun, COL.sunLine], ['moonEv', T.rows.moon, COL.moonLine], ['alt', RL.alt], ['rating', T.rows.night], ['overall', RL.overall], ['clouds', RL.clouds], ['low', RL.low], ['mid', RL.mid],
-      ['high', RL.high], ['clouds2', RL.clouds2], ['seeing', RL.seeing], ['transp', RL.transp], ['pwv', RL.pwv], ['dust', RL.dust], ['vis', RL.vis], ['precip', RL.precip], ['wind', RL.wind], ['windtxt', RL.windtxt],
+      ['high', RL.high], ['clouds2', RL.clouds2], ['cmp3', RL.cmp3.replace('{m}', cmp3Text().short)], ['seeing', RL.seeing], ['transp', RL.transp], ['pwv', RL.pwv], ['dust', RL.dust], ['vis', RL.vis], ['precip', RL.precip], ['wind', RL.wind], ['windtxt', RL.windtxt],
       ['temp', RL.temp + (unit === 'f' ? ' °F' : ' °C'), COL.temp], ['dew', RL.dew, COL.dew], ['spread', RL.spread], ['hum', RL.hum]].forEach(function (l) {
       ctx.fillStyle = l[2] || COL.text; ctx.fillText(l[1], LEFT - 8, mid(R[l[0]]));
     });
@@ -1254,7 +1321,7 @@
   function selectNight(k) {
     state.night = k;
     state.scrollDay = true;
-    renderSummary();
+    renderVerdict(nightItems());
     renderDay();
   }
 

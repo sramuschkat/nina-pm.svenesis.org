@@ -43,6 +43,7 @@
               "order": 0,
               "enabled": true,
               "filter": "Ha",
+              "ninaFilterName": "Ha 3nm",
               "exposureS": 300,
               "gain": 100,
               "offset": 20,
@@ -54,11 +55,11 @@
               },
               "counts": {
                 "planned": 40,
-                "acquired": 22,
+                "acquired": 25,
                 "rejected": 2,
-                "accepted": 20,
-                "remaining": 20,
-                "planningNeed": 20,
+                "accepted": 23,
+                "remaining": 17,
+                "planningNeed": 17,
                 "bonus": 0,
                 "bonusRejected": 0
               },
@@ -97,6 +98,7 @@
             {
               "id": "l9…",
               "filter": "R",
+              "ninaFilterName": "Red",
               "exposureS": 60,
               "gain": 100,
               "offset": 20,
@@ -132,7 +134,7 @@
           "allowAutofocus": false,
           "allowRecenter": true,
           "counts": {
-            "planned": 312,
+            "planned": 310,
             "acquired": 0,
             "rejected": 0
           }

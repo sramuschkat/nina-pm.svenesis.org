@@ -1,7 +1,7 @@
 {
   "apiVersion": "1",
+  "serverTimeUtc": "2026-09-17T18:02:11Z",
   "server": {
-    "timeUtc": "2026-09-17T18:02:11Z",
     "engineVersion": "3.2.0",
     "minPluginVersion": "1.0.0"
   },
@@ -51,7 +51,9 @@
       "binning": [
         1,
         2
-      ]
+      ],
+      "setpointC": -10,
+      "toleranceC": 1
     },
     "rotator": {
       "present": true,
@@ -63,17 +65,23 @@
       {
         "shortName": "L",
         "name": "Luminance",
-        "color": "#c8c8c8"
+        "color": "#c8c8c8",
+        "position": 0,
+        "ninaFilterName": "L"
       },
       {
         "shortName": "Ha",
         "name": "H-alpha 3 nm",
-        "color": "#d0342c"
+        "color": "#d0342c",
+        "position": 1,
+        "ninaFilterName": "Ha 3nm"
       },
       {
         "shortName": "R",
         "name": "Red",
-        "color": "#e53935"
+        "color": "#e53935",
+        "position": 2,
+        "ninaFilterName": "Red"
       }
     ],
     "scheduler": {
@@ -100,6 +108,7 @@
       },
       "flats": {
         "enabled": true,
+        "source": "panel",
         "fullSet": false,
         "count": 20,
         "darkFlats": {
@@ -139,17 +148,35 @@
       "moonMustBeDown": false
     }
   ],
+  "tzdataVersion": "2026a",
   "nights": [
     {
       "night": "2026-09-17",
-      "startUtc": "2026-09-17T17:00:00Z",
-      "endUtc": "2026-09-18T17:00:00Z"
+      "noonStartUtc": "2026-09-17T17:00:00Z",
+      "noonEndUtc": "2026-09-18T17:00:00Z",
+      "nightWindowEndUtc": "2026-09-18T13:00:00Z"
+    },
+    {
+      "night": "2026-09-18",
+      "noonStartUtc": "2026-09-18T17:00:00Z",
+      "noonEndUtc": "2026-09-19T17:00:00Z",
+      "nightWindowEndUtc": "2026-09-19T13:00:00Z"
+    },
+    {
+      "night": "2026-09-19",
+      "noonStartUtc": "2026-09-19T17:00:00Z",
+      "noonEndUtc": "2026-09-20T17:00:00Z",
+      "nightWindowEndUtc": "2026-09-20T13:05:00Z"
     }
   ],
   "timeZoneTransitions": [
     {
+      "atUtc": "2026-03-08T08:00:00Z",
+      "utcOffsetMinutes": -300
+    },
+    {
       "atUtc": "2026-11-01T07:00:00Z",
-      "offsetMin": -360
+      "utcOffsetMinutes": -360
     }
   ]
 }

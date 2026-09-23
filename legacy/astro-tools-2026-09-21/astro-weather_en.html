@@ -80,10 +80,14 @@
     <h1 style="color:var(--primary); margin-bottom:.75rem;">Astro Weather</h1>
 
     <div class="content-box">
-      <p style="margin:0 0 1rem;">Seven days of forecast at a glance, made for one question: is the night worth it? Clouds at three heights, estimated seeing and transparency, wind, temperature and dew point &ndash; plus sun and moon altitude with the moon phase. In Europe the weather data come from the ICON model of Germany&rsquo;s national weather service, the DWD, elsewhere from the US models GFS and HRRR; a second cloud row shows the ECMWF model for comparison.</p>
+      <p style="margin:0 0 1rem;">A week&rsquo;s forecast at a glance, made for one question: is the night worth it? Clouds at three heights, estimated seeing and transparency, wind, temperature and dew point &ndash; plus sun and moon altitude with the moon phase. In Europe the weather data come from the DWD&rsquo;s ICON and the Danish weather service&rsquo;s HARMONIE, elsewhere from NOAA&rsquo;s HRRR and GFS &ndash; with the Canadian GEM taking over the cloud cover the rating rests on after just 30 hours. Two further cloud rows show the ECMWF model and, depending on the region, GEM, NOAA&rsquo;s NBM or GFS for comparison.</p>
+
+      <div style="margin:0 0 1.25rem; padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--primary); border-radius:var(--radius);">
+        <p style="margin:0;">&#x1F4D6; Why this page exists and where every number in it comes from, over on the blog: <a href="../blog/2026-09-astro-wetter_en.html">Is tonight worth it? My Astro Weather page &rarr;</a><br>&#x1F4CA; How reliable the forecast actually is, the <a href="weather-history_en.html">history works out &rarr;</a></p>
+      </div>
 
       <div style="margin:0 0 1.25rem; padding:.85rem 1rem; background:rgba(26,42,58,.05); border-left:4px solid var(--accent); border-radius:var(--radius);">
-        <p style="margin:0;">&#x1F512; The forecast is only loaded when you click <strong>Load forecast</strong>. Your browser then requests the data from Open-Meteo, a service based in Switzerland, and transmits your IP address in doing so. More in the <a href="../privacy/privacy_en.html">privacy policy</a>.</p>
+        <p style="margin:0;">&#x1F512; The forecast is only loaded when you click <strong>Load forecast</strong>. Your browser then requests the data from Open-Meteo, a service based in Switzerland, and sends your IP address with the request. More in the <a href="../privacy/privacy_en.html">privacy policy</a>.</p>
       </div>
 
       <div id="aw-root">
@@ -118,14 +122,15 @@
             <span id="aw-pw-msg" role="status" style="font-size:.85rem; color:#c0392b;"></span>
           </div>
         </div>
-        <p id="aw-status" role="status" style="margin:0 0 .6rem; font-size:.9rem; color:var(--text-light);">No data loaded yet.</p>
+        <p id="aw-verdict" hidden style="margin:0 0 .7rem; font-size:1.02rem; font-weight:600; color:var(--primary); line-height:1.5;"></p>
+        <p id="aw-status" role="status" style="margin:0 0 .6rem; font-size:.82rem; color:var(--text-light);">No data loaded yet.</p>
         <div id="aw-scroll" style="overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--radius); background:#10151c;">
           <div id="aw-chart-wrap" style="position:relative;">
             <canvas id="aw-canvas" width="0" height="0" role="img" aria-label="Astro weather chart" style="display:block;"></canvas>
             <div id="aw-tip" hidden style="position:absolute; z-index:2; max-width:340px; padding:.55rem .7rem; background:rgba(20,26,34,.96); color:#e4e9ef; border:1px solid rgba(255,255,255,.12); border-radius:6px; font-size:.78rem; line-height:1.5; pointer-events:none; white-space:nowrap;"></div>
           </div>
         </div>
-        <div id="aw-summary"></div>
+        <div id="aw-scale" hidden style="display:flex; flex-wrap:wrap; gap:.15rem .9rem; align-items:center; margin:.45rem 0 0; font-size:.75rem; color:var(--text-light);"></div>
         <div id="aw-day" hidden style="margin:1.75rem 0 0;">
           <div style="display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin:0 0 .5rem;">
             <h2 style="margin:0; font-size:1.25rem;">Night in detail</h2>
@@ -163,43 +168,49 @@
 
     <div class="content-box">
       <h2 style="margin:0 0 .6rem;">How to read the chart</h2>
-      <p style="margin:0 0 1rem;">Every hour gets an <strong>overall rating</strong> from 0 to 100&nbsp;%: from 85&nbsp;% <em>Excellent</em>, from 65&nbsp;% <em>Good</em>, from 45&nbsp;% <em>Average</em>, from 25&nbsp;% <em>Poor</em>, below that <em>Very poor</em>. Clouds decide almost all of it: half covered means 25&nbsp;% at best.</p>
+      <p style="margin:0 0 1rem;">Every hour gets an <strong>overall rating</strong> from 0 to 100&nbsp;%: 85&nbsp;% and up is <em>Excellent</em>, 65&nbsp;% <em>Good</em>, 45&nbsp;% <em>Average</em>, 25&nbsp;% <em>Poor</em>, below that <em>Very poor</em>. Cloud accounts for almost all of it: half covered means 25&nbsp;% at best. The colour key under the chart shows the five steps.</p>
+      <p style="margin:0 0 1rem;"><strong>The answer is in one sentence above the chart</strong> &ndash; for the chosen night: how long the sky stays good in a row, from when, and how much of it the moon leaves alone. The arrows at the night detail further down switch nights and rewrite the sentence. <em>Good</em> means above 65 per cent; where there is no such stretch, the sentence names the best one above 45 per cent and marks it <em>fair</em>.</p>
 
       <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">The seven-day chart</h3>
       <ul>
         <li><strong>Moon:</strong> symbol with the illuminated share, above its highest point.</li>
-        <li><strong>Sun and moon:</strong> yellow times the sun, white the moon, below them their altitude. Light columns day and twilight, dark ones astronomical night, red line <em>Now</em>.</li>
-        <li><strong>Hour bar:</strong> one symbol for the six hours around it, the most severe weather wins. &ldquo;Mainly clear&rdquo; allows almost 50&nbsp;% cloud.</li>
-        <li><strong>Overall, clouds, ECMWF, seeing, transp.:</strong> the stronger the blue, the better, dark grey means no data. ECMWF is the second model: agreement means a reliable forecast.</li>
-        <li><strong>Wind</strong> in km/h with a direction arrow: green to 10, yellow to 30, red from 40.</li>
+        <li><strong>Sun and moon:</strong> yellow for the sun, white for the moon, below them their altitude. Light columns day and twilight, dark ones astronomical night, red line <em>Now</em>.</li>
+        <li><strong>Hour bar:</strong> one symbol for the six hours around it; the most severe weather wins. &ldquo;Mainly clear&rdquo; allows almost 50&nbsp;% cloud.</li>
+        <li><strong>Overall</strong> is not a measurement but the rating: cloud squared, plus seeing and transparency at 15&nbsp;per cent each, which can only pull the result down. That is why it resembles the cloud row &ndash; where the two diverge, seeing or transparency is the reason.</li>
+        <li><strong>Clouds, clouds ECMWF, clouds GEM or NBM:</strong> the same quantity three times, the total cloud cover, from three models. The first row is the one the rating uses; the other two are independent second opinions and feed into nothing. When all three agree the forecast is reliable; when they differ it is uncertain.</li>
+        <li><strong>Seeing and transp.:</strong> the stronger the blue, the better; dark grey means no data.</li>
+        <li><strong>Model row:</strong> it names, for each stretch, which model supplies the cloud row; above the night detail it is stated once more for the night chosen. Where it changes, a dashed vertical line marks the spot &ndash; a step there can be a change of model rather than the weather.</li>
+        <li><strong>Wind</strong> in km/h with a direction arrow: green to 10, yellow to 30, orange to 40, red above that.</li>
         <li><strong>Temperature</strong> (orange) and <strong>dew point</strong> (blue): close together means dew on the optics.</li>
         <li><strong>Day bar:</strong> the rating hour by hour, above it the night&rsquo;s average.</li>
       </ul>
 
-      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Table and night detail</h3>
-      <p style="margin:0 0 1rem;">One row per night, noon to noon: astronomically dark, of that dark with the moon down, the rating of those hours, the lit share of the moon, its rise (&uarr;) and set (&darr;). Clicking opens the night: weather per hour, the twilight band with a light-blue strip for the moonless time, then the values per hour &ndash; overall, seeing, clouds by height (low to 2&nbsp;km, mid to 6&nbsp;km, high above), ECMWF, AOD, water vapour, dust, visibility, rain &ndash; and below them wind, gusts, temperature, dew point with their <em>spread</em> and the humidity. The spread turns orange below 4&nbsp;&deg;C, red below 2&nbsp;&deg;C. Above the chart stands the weather model, the arrows switch nights, a tap shows every value of an hour.</p>
+      <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">The night in detail</h3>
+      <p style="margin:0 0 1rem;">Below the chart, any night can be opened on its own; the arrows step through the week. It shows the weather per hour, the twilight band with a light-blue strip for the moonless time, then the values per hour &ndash; overall, clouds by height (low to 2&nbsp;km, mid to 6&nbsp;km, high above that), clouds ECMWF and the third cloud row, seeing, AOD, water vapour, dust, visibility, rain &ndash; and below them wind, gusts, temperature, dew point with their <em>spread</em> and the humidity. The spread turns orange below 4&nbsp;&deg;C, red below 2&nbsp;&deg;C. Above the chart stands the weather model for that night, and a tap shows every value of an hour. A night already under way is loaded in full &ndash; only a night at the far end of the week can be incomplete, and it says so there.</p>
 
       <h3 style="margin:1.4rem 0 .5rem; font-size:1.05rem;">Terms</h3>
       <ul>
-        <li><strong>Astronomically dark:</strong> the sun more than 18&deg; below the horizon &ndash; it gets no darker here.</li>
+        <li><strong>Astronomically dark:</strong> the sun more than 18&deg; below the horizon &ndash; it gets no darker than that.</li>
         <li><strong>Seeing:</strong> how steady the air is. Unsteady air makes stars twinkle and blurs planetary detail.</li>
         <li><strong>Transparency:</strong> how clear the air is. Haze swallows the light of galaxies and nebulae.</li>
-        <li><strong>AOD:</strong> haze and dust through the whole air column. Around 0.1 very clear, from 0.3 milky.</li>
+        <li><strong>AOD:</strong> haze and dust through the whole air column. Around 0.1 very clear, 0.3 and up milky.</li>
         <li><strong>Water vapour</strong> (mm): below 10 dry, above 30 humid.</li>
-        <li><strong>Dust</strong> (&micro;g/m&sup3;): mineral dust near the ground, turns the sky milky.</li>
+        <li><strong>Dust</strong> (&micro;g/m&sup3;): mineral dust near the ground; it turns the sky milky.</li>
         <li><strong>Dew point:</strong> once the air reaches it, lenses and mirrors fog up.</li>
       </ul>
 
       <h2 style="margin:1.8rem 0 .6rem;">Where the values come from &ndash; and where they are estimates</h2>
-      <p style="margin:0 0 1rem;"><strong>Clouds, wind, temperature, humidity and the weather symbols</strong> come straight from a weather model, up to seven days ahead. Which one depends on the location and stands above the night detail.</p>
+      <p style="margin:0 0 1rem;"><strong>Clouds, wind, temperature, humidity and the weather symbols</strong> come straight from a weather model, up to seven days ahead. Which one depends on the location and is named above the night detail.</p>
       <ul>
-        <li><strong>Europe</strong> (29.5 to 70.5&deg;&nbsp;N, 23.5&deg;&nbsp;W to 62.5&deg;&nbsp;E): the DWD&rsquo;s ICON &ndash; first ICON-D2 at 2.2&nbsp;km grid spacing, then ICON-EU at 7&nbsp;km, last ICON global at 11&nbsp;km, which carries no visibility.</li>
-        <li><strong>Rest of the world:</strong> NOAA &ndash; about two days of HRRR at 3&nbsp;km in North America, GFS at 13&nbsp;km elsewhere. The reason: over 30 nights at Starfront, GFS and HRRR sat closer to the airports&rsquo; hourly cloud reports than ICON.</li>
+        <li><strong>Europe</strong> (29.5 to 70.5&deg;&nbsp;N, 23.5&deg;&nbsp;W to 62.5&deg;&nbsp;E): the DWD&rsquo;s ICON &ndash; first ICON-D2 at 2.2&nbsp;km grid spacing, then ICON-EU at 7&nbsp;km, last ICON global at 11&nbsp;km, which has no visibility data. For the cloud rows, the Danish weather service&rsquo;s HARMONIE AROME at 2&nbsp;km (Central and Northern Europe, about three days) slots in between D2 and EU &ndash; south of its domain, in Andalusia for instance, ICON-EU remains the finest-grid model available.</li>
+        <li><strong>Outside Europe:</strong> NOAA, together with GEM. In North America HRRR at 3&nbsp;km covers the first 30 forecast hours, after which the Canadian GEM at 10&nbsp;km takes over the rest of the week &ndash; the low, mid and high rows included, so only one seam is left in the run. Both are measured, not assumed: over some 60 nights at Starfront, GEM sat closer to the airports&rsquo; hourly cloud reports than NAM, NBM, ECMWF and GFS at every lead time beyond the first day &ndash; and HRRR itself tips over at the end of its range: 4.6 percentage points out on the first day, 14.2 on the second against GEM&rsquo;s 7.9. Hence the 30 hours. Checkable in the <a href="weather-history_en.html">history</a>. NBM at 2.5&nbsp;km still supplies the visibility there and, alone among these models, a native precipitation probability; both are used, and NBM fills the third cloud row. Everything else &ndash; wind, humidity, temperature &ndash; comes from GFS at 13&nbsp;km, as do the clouds outside North America.</li>
         <li><strong>The ECMWF row:</strong> cloud cover from the IFS model at 9&nbsp;km, worldwide, as a second opinion. It does not feed into the overall rating.</li>
+        <li><strong>The third cloud row:</strong> in Europe the CMC&rsquo;s Canadian GEM, global at 15&nbsp;km and only three-hourly &ndash; the model the Clear Sky Charts are built on. In North America, where GEM already fills the first row, NBM stands here instead: NOAA&rsquo;s blend of models at 2.5&nbsp;km. NBM covers only the contiguous USA, though; anywhere else outside Europe the row shows GFS &ndash; what the first row would read if GEM had not taken it over. The row&rsquo;s label says which model it currently is. It is there for comparison only.</li>
       </ul>
-      <p style="margin:0 0 1rem;"><strong>Three rows are estimates.</strong> <em>Seeing</em> comes from no model; the chart derives it from the wind profile: the jet stream at about 10&nbsp;km, the shear between 1.5 and 10&nbsp;km, and the wind at the ground. <em>Transparency</em> comes from the aerosol optical depth (AOD) of the Copernicus CAMS forecast, damped by high humidity and much water vapour; CAMS reaches four to five days, after which the row stays dark grey. <em>Overall</em> is a weighting of my own in which clouds decide almost everything. All three catch the tendency, no more.</p>
-      <p style="margin:0 0 1rem;"><strong>Sun and moon</strong> are calculated by your browser; planets and the best objects of a night are shown by the <a href="observing-planner_en.html">Observing Planner</a>. <strong>The weather map</strong> is an embedded meteoblue service with their own data, not part of these calculations.</p>
-      <p style="margin:0; font-size:.85rem; color:var(--text-light);"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · Models: DWD ICON (Europe), NOAA GFS and HRRR (outside Europe), ECMWF IFS (comparison row, water vapour) · Aerosol: Copernicus Atmosphere Monitoring Service (CAMS) · Weather map: meteoblue. Seeing, transparency and the overall rating are derived from these data.</p>
+      <p style="margin:0 0 1rem;"><strong>Three rows are estimates.</strong> <em>Seeing</em> comes from no model; the chart derives it from the wind profile: the jet stream at about 10&nbsp;km, the shear between 1.5 and 10&nbsp;km, and the wind at the ground. <em>Transparency</em> comes from the aerosol optical depth (AOD) of the Copernicus CAMS forecast, damped by high humidity and by a lot of water vapour; CAMS reaches four to five days ahead, after which the row stays dark grey. <em>Overall</em> is a weighting of my own in which cloud dominates almost everything. All three catch the trend, no more.</p>
+      <p style="margin:0 0 1rem;"><strong>Sun and moon</strong> are calculated by your browser; planets and the best objects of a night are shown by the <a href="observing-planner_en.html">Observing Planner</a>. <strong>The weather map</strong> is an embedded meteoblue service with meteoblue&rsquo;s own data, not part of these calculations.</p>
+      <p style="margin:0 0 1rem;"><strong>And how well does any of it hold?</strong> The <a href="weather-history_en.html">astro weather history</a> puts side by side, for every night of the past weeks, what stood here one to five days earlier and what came of it &ndash; measured against the model analysis and against the airports&rsquo; cloud reports.</p>
+      <p style="margin:0; font-size:.85rem; color:var(--text-light);"><a href="https://open-meteo.com/" target="_blank" rel="noopener">Weather data by Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · Models: DWD ICON and DMI HARMONIE AROME (Europe), NOAA HRRR, NBM and GFS plus CMC GEM (outside Europe), ECMWF IFS (comparison row, water vapour) · Aerosol: Copernicus Atmosphere Monitoring Service (CAMS) · Weather map: meteoblue. Seeing, transparency and the overall rating are derived from these data.</p>
     </div>
   </main>
 
@@ -214,6 +225,7 @@
   <script src="../js/main.js?v=8d37bf18"></script>
 <script src="../js/cookie-consent.js?v=8c351784"></script>
 <script src="js/astro-core.js?v=5ea36c54"></script>
-<script src="js/astro-weather.js?v=3a70760b"></script>
+<script src="js/weather-core.js?v=87c5fc9f"></script>
+<script src="js/astro-weather.js?v=143bef97"></script>
 </body>
 </html>

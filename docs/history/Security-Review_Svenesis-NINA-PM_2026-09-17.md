@@ -5,14 +5,63 @@ Schwerpunkt laut Auftrag: **Anwendung, API und AWS-Umsetzung mit Least Privilege
 
 Prüfweise: jede Aussage ist am Dokument belegt (Kapitelangabe). Wo ich eine Lücke behaupte, habe ich vorher über alle Dateien (ohne `history/` und `concept/`) gegengesucht – die Suchbegriffe stehen jeweils dabei.
 
-**Status: vollständig eingearbeitet** (17.09.2026) → Fachkonzept 1.14 · Technisches Konzept 1.11 · Schema 1.11 · zwei neue Specs · Paket über den Generator neu erzeugt.
+**Status:** eingearbeitet 17./18.09.2026, **in großen Teilen aufgehoben am 21.09.2026** (dritter Nachtrag unten) → Fachkonzept 1.14 · Technisches Konzept 1.11 · Schema 1.11 · zwei neue Specs · Paket über den Generator neu erzeugt.
 
->**Nachtrag (Entscheidungen vom 17.09.2026, FK 1.15 / TK 1.12):** Drei Punkte dieses Reviews sind bewusst **anders** entschieden worden, als hier vorgeschlagen:
+>**Nachtrag (Entscheidungen vom 17./18.09.2026, FK 1.15 / TK 1.14):** Vier Punkte dieses Reviews sind bewusst **anders** entschieden worden, als hier vorgeschlagen:
 > - **UI-1** ist übererfüllt: die Arbeitsseiten nutzen jetzt **immer die volle Fensterbreite** (die bisherige Obergrenze von 1800 px ist weg); Mindestbreite bleibt 768 px. Der Layout-Umschalter Tablet/Laptop/Desktop wurde zum **Dichte-Schalter** `compact`/`normal`/`wide` mit eigenen Tokens.
 > - **UI-2** entfällt: Es gibt **keinen Rotlicht-Modus**. Nur `light` und `dark`; der Dunkelmodus genügt am Teleskop, und eine dritte Farbwelt müsste in jedem Bildschirm, jedem Diagramm und jedem Baustein mitgepflegt werden.
 > - **SEC-15**: **Kein AWS WAF**, auch nicht an der CloudFront-Distribution (≈ 6 $/Monat gegen 20 € Budget). Der Schutz gegen Direktaufrufe und Lastspitzen trägt endgültig über Origin-Verify, Drosselung, reservierte Parallelität und den Budget-/Throttle-Alarm; AP-17 prüft das mit einem Lasttest statt mit einer offenen ADR-Frage.
 >
-> **Einarbeitung – was entstanden ist.** Neue verbindliche Spezifikationen: **`specs/infra/iam.md`** (eine Rolle je Lambda mit fertigen Politiken, KMS-Schlüssel, API-Gateway-Drosselung, beide CloudFront-Header-Politiken, acht CDK-Assertions) und **`specs/ui/components.md`** (Verträge der neun Bausteine mit Zuständen, Mindestgrößen, Grenzfällen und Symbolsatz). Kernänderungen: `migrate` verliert `dsql:DbConnectAdmin` an die einmalig aufgerufene Lambda `db-bootstrap` (neue Aufgabe H-25) · getrennte DB-Rollen `app_rw`/`app_job` mit Rechten je Tabellengruppe (TK 6.2) · pfadgenauer SSM-Zugriff mit eigenem KMS-Schlüssel · `lambda:InvokeFunction`, `sqs:SendMessage` und die Scheduler-Rolle festgeschrieben · `NinaPmDeployBoundary` statt `AdministratorAccess` mit technischem Schutz der Website-Distribution (H-04 neu gefasst) · vollständige CSP inklusive `style-src 'unsafe-inline'` und Header-Politiken auf allen vier Behaviors · Drosselung für `/api/auth/*`, `/api/health` und je NINA-Instanz plus reservierte Parallelität · Herkunftsprüfung gegen CSRF · presigned **POST** mit Größengrenze und Strukturgrenzen für JSON · CloudTrail mit Alarmen und Backup-Vault mit Vault Lock · Mindestbreite 768 px und Rotlicht-Modus als Abnahmekriterium in allen Briefs · Anordnungsskizzen für S-31, S-40 und S-61.
+> - **SEC-20** nur zur Hälfte (18.09.2026): Der eigene Backup-Vault `nina-pm-prod` und seine Zugriffspolitik kommen, der **Vault Lock entfällt**. Begründung: den Schutz trägt ohnehin die Kombination aus Vault-Zugriffspolitik (`backup:DeleteRecoveryPoint` nur für `NinaPmOpsInvoker`) und den Deny-Anweisungen in `NinaPmDeployBoundary`; der Lock im Governance-Modus bremst darüber hinaus nur einen Menschen mit Adminrechten um einen Zwischenschritt – und diese Rechte hat Sven selbst. **Dafür neu:** `backup:PutBackupVaultAccessPolicy` kommt in die Deny-Liste der Deploy-Grenze (sonst könnte sie die schützende Politik einfach überschreiben) und ein Alarm auf `backup:DeleteRecoveryPoint`/`DeleteBackupVault`/`PutBackupVaultAccessPolicy` ersetzt den Lock als Nachweis.
+> - **SEC-19 korrigiert (18.09.2026):** Der Vorschlag – und die erste Einarbeitung – nannten als Trail-Ziel nur den S3-Präfix `audit/`, zusammen mit Metrikfiltern und Alarmen. Das war falsch: Metrikfilter gibt es ausschließlich auf CloudWatch-Log-Gruppen, ein Trail mit S3 als einzigem Ziel kann keinen Alarm tragen. Der Trail liefert jetzt an **beide** Ziele (S3 `audit/` und `/aws/cloudtrail/nina-pm-management`, je 400 Tage, plus Zustellrolle). Ohne diese Korrektur hätte Claude Code Alarme gebaut, die nie gefeuert hätten – besonders der auf `bootstrap-super-users` (SEC-21).
+>
+> **Einarbeitung – was entstanden ist.** Neue verbindliche Spezifikationen: **`specs/infra/iam.md`** (eine Rolle je Lambda mit fertigen Politiken, KMS-Schlüssel, API-Gateway-Drosselung, beide CloudFront-Header-Politiken, acht CDK-Assertions) und **`specs/ui/components.md`** (Verträge der neun Bausteine mit Zuständen, Mindestgrößen, Grenzfällen und Symbolsatz). Kernänderungen: `migrate` verliert `dsql:DbConnectAdmin` an die einmalig aufgerufene Lambda `db-bootstrap` (neue Aufgabe H-25) · getrennte DB-Rollen `app_rw`/`app_job` mit Rechten je Tabellengruppe (TK 6.2) · pfadgenauer SSM-Zugriff mit eigenem KMS-Schlüssel · `lambda:InvokeFunction`, `sqs:SendMessage` und die Scheduler-Rolle festgeschrieben · `NinaPmDeployBoundary` statt `AdministratorAccess` mit technischem Schutz der Website-Distribution (H-04 neu gefasst) · vollständige CSP inklusive `style-src 'unsafe-inline'` und Header-Politiken auf allen vier Behaviors · Drosselung für `/api/auth/*`, `/api/health` und je NINA-Instanz plus reservierte Parallelität · Herkunftsprüfung gegen CSRF · presigned **POST** mit Größengrenze und Strukturgrenzen für JSON · CloudTrail mit Alarmen und eigener Backup-Vault mit Zugriffspolitik · Mindestbreite 768 px als Abnahmekriterium in allen Briefs · Anordnungsskizzen für S-31, S-40 und S-61.
+
+> **Dritter Nachtrag – Sicherheits-Vereinfachung (21.09.2026, FK 1.18 / TK 1.18 / Schema 1.16).** Der Auftraggeber hat das Sicherheitsziel neu gefasst: (1) Angreifer **von außen** kommen über API, Web und Plugin-Schnittstelle nicht an Anwendung, Daten oder AWS-Ressourcen; (2) das **Deployment ist nicht Teil der Sicherheitsarchitektur** – Sven deployt lokal mit Admin-Profil; (3) innen genügt **Schutz gegen Versehen**. Große Teile dieses Reviews zielten auf Insider mit AWS-Zugang und auf Deploy-Härtung und sind damit **aufgehoben**. Verbindlich ist jetzt TK 15 (Leitlinie, 15.1 Bedrohung von außen → Maßnahme, 15.2 Schutz gegen Versehen, 15.3 bewusst nicht vorgesehen).
+>
+> - **Aufgehoben:** SEC-1 (db-bootstrap getrennt – `migrate` verbindet als Admin), SEC-3/SEC-22/SEC-31…SEC-39 (Deploy-Boundary, Deny-Listen, `--custom-permissions-boundary`), SEC-6/SEC-44 (eigener KMS-Schlüssel → `alias/aws/ssm`), SEC-9/SEC-38 (Invoker-Rolle mit MFA, SNS-Selbstmeldung – `ops-cli` per `aws lambda invoke` mit Admin-Profil), SEC-10 (eigene Scheduler-Rolle), SEC-19/SEC-46 (CloudTrail-Trail und Metrikfilter), SEC-20 (Vault-Zugriffspolitik – Backup-Plan im Standard-Vault bleibt), SEC-21 (Deny/Alarm/Leeren um `bootstrap-super-users`), SEC-30 (400 Tage Logs → 90), SEC-40…SEC-42 (GitHub-OIDC-Rollen – GitHub hat keinen AWS-Zugang mehr), SEC-49 (Sonderregeln gegen den Super User), SEC-54/SEC-55 (Token-Ablauf und Widerrufs-Cache), SEC-59 (manipulationssichere Audit-Tabellen), JWT mit Refresh-Rotation (→ serverseitige Sitzung), Herkunftsprüfung als dritte CSRF-Stufe, Drosselung je NINA-Instanz, `login_audit`, befristete Admins, Owner-Übertragung mit Annahmefrist, Sicherheitseinstellungen je Mandant, `X-Origin-Verify`-Rotation.
+> - **Bleibt (Schutz von außen):** Discord-OAuth mit `state` und neu **PKCE**, Sitzungs-Cookie `__Host-npm_sid` (nur Hash gespeichert, 14/30 Tage), CSRF-Header auf allen schreibenden Routen, Rechteprüfung je Route und Mandantentrennung, 2FA für Owner/Admin/Super User als feste Regel, gehashte Plugin-Tokens, Uploads mit `eq $key`/`content-length-range`, CSP und Header an CloudFront (SEC-2/16/25/43), Markdown ohne rohes HTML (neu), Origin-Verify (ein Wert), Drosselung am API Gateway und reservierte Parallelität (SEC-15/17/24), **eine Ausführungsrolle je Lambda** über CDK-Grants (SEC-4/5/7/11/13 in einfacher Form), getrennte DB-Rollen `app_rw`/`app_job`, Webhook-URL mit Host-Prüfung vor jedem Senden (jetzt in der DB statt SSM, damit `api` kein SSM-Schreibrecht braucht).
+> - **Neu gegen Versehen:** Papierkorb für Projekte (immer weich löschen, Wiederherstellen durch Admin/Owner), Baustein `ConfirmDialog`, Owner-Übertragung sofort mit Bestätigung.
+> - **Gegenprüfung:** Eine unabhängige Prüfung der Umsetzung fand keinen Rückschritt der Schwere „hoch“, aber 25 kleinere Punkte – darunter zwei, die erst durch die Vereinfachung entstanden wären: Die Webhook-URL wäre über den Mandanten-Export herunterladbar geworden (jetzt ausgeschlossen, Import legt Kanäle ohne URL an), und die Auth-Drossel hätte auch `/auth/me` getroffen (jetzt nur Discord-Start und Einladungsrouten). Alle 25 sind behoben.
+
+## Zweiter Durchgang: SEC-31 … SEC-59 (18.09.2026, eingearbeitet in TK 1.16 / Schema 1.13)
+
+Ein erneuter Durchgang durch Anwendung, API, Schema und `specs/infra/iam.md` – nach der Einarbeitung des ersten Reviews und mit besonderem Blick auf die Deploy-Grenze. **31 Befunde, alle eingearbeitet.**
+
+**Der Kernbefund war ein Cluster.** `NinaPmDeployBoundary` sollte die CloudFormation-Ausführungsrolle einhegen, hatte aber eine Dienstliste als Erlaubnisseite (`iam:*`, `lambda:*`, `dsql:*`, `ssm:*`, `kms:*`, `cloudtrail:*`) und eine handgeschriebene Aktionsliste als Verweigerungsseite – **die Grenze trug sich selbst nicht.** Sie durfte sich selbst durch `Allow *` ersetzen (sie heißt ja `policy/NinaPm*`), eine Rolle `NinaPmX` mit `AdministratorAccess` anlegen, `dsql:DbConnectAdmin` benutzen, `ops-cli` ohne die MFA-Pflicht aufrufen, `jwt/signing-keys` lesen **und** überschreiben, und am Ende den CloudTrail abschalten, der das belegen würde. Wer einen prod-Deploy durchbringt oder eine CDK-Abhängigkeit unterwandert, war damit Kontoadmin.
+
+| ID | Befund | Behandlung |
+|---|---|---|
+| SEC-31 | `dsql:*` schließt `DbConnectAdmin` ein | `dsql:`-Aktionen aufgezählt, `DbConnect*` verweigert |
+| SEC-32 | Grenze kann sich selbst überschreiben | `NoBoundarySelfEdit` auf `policy/NinaPmDeployBoundary` |
+| SEC-33 | Sicherungsplan löschbar, kein Alarm | `DeleteBackupPlan`/`StopBackupJob` verweigert, zwei Backup-Metrik-Alarme |
+| SEC-34 | Rolle ohne Grenze baubar | `NoUnboundedRoles` + `cdk bootstrap --custom-permissions-boundary` (H-04) |
+| SEC-35 | Bucket konnte öffentlich gestellt werden | `NoBucketConfigChange`, Assertion 13 |
+| SEC-36/37 | Geheimnisse lesbar und überschreibbar | `NoSecretParameterAccess`, `NoKeyUse`, Regel gegen `{{resolve:ssm-secure:` (Assertion 12) |
+| SEC-38 | Notfallpfad ohne MFA aufrufbar | `NoEmergencyInvoke` |
+| SEC-39 | Nachweis abschaltbar | drei `NoAudit…`-Anweisungen |
+| SEC-40 | OIDC-Vertrauen unbestimmt | alle drei Vertrauensbeziehungen ausgeschrieben, `aud` + `StringEquals`, Assertion 10, H-27 |
+| SEC-41 | `lookup`-Rolle = `ReadOnlyAccess` | aus der `AssumeRole`-Bedingung gestrichen, kein `fromLookup`, Assertion 11 |
+| SEC-42 | Upload-Rolle für `downloads/` undefiniert | eigene Rolle `NinaPmGithubPlugin` (§7.3) |
+| SEC-43 | gespeichertes XSS über `/catalog/*` und `/downloads/*` | harte CSP auf `npm-api-static`, Assertion 16 |
+| SEC-44 | KMS-Politik ohne Logs-Principal | Anweisung mit `ArnLike` auf den Verschlüsselungskontext |
+| SEC-45 | `/api/health/shallow` 200 rps ohne Alarm | 5 rps, Alarme auf Stage-`Count` und 403-Quote |
+| SEC-46 | CloudTrail-Bucket-Politik ohne `aws:SourceArn` | Politik nach AWS-Vorlage, `ReadWriteType: All` |
+| SEC-47 | Admin konnte 2FA-Pflicht abschalten | `tenantSecurityKeys` als eigene Liste |
+| SEC-48 | jeder Admin konnte Owner werden | Aktion `tenant.owner.accept` mit Empfängerprüfung |
+| SEC-49 | Super User konnte Mandantendaten lesen | Owner-Einladung an fremde Discord-ID gebunden, nicht selbst einlösbar, Meldung an die Admins |
+| SEC-50 | Berechtigung hing am Rumpffeld `role` | zwei getrennte Einladungsrouten |
+| SEC-51 | ein User konnte den `worker` aller Mandanten belegen | Dedupe-Pflicht, `nights ≤ 14`, Quoten, Vorrang für Zeitplan-Jobs |
+| SEC-52 | Ereignis-Pakete ohne Mengengrenze | ≤ 200, Feldgrenzen, `413`/`422` |
+| SEC-53 | fremde Session beendbar | Filter auf `tenant_id` **und** `rig_id`, `404`, Isolationstest je Route |
+| SEC-54 | Sync-Token unbegrenzt, im Klartext | `expires_at`, `token_last_used_at`, Ablauf-Sweep, DPAPI-Ablage |
+| SEC-55 | Widerruf wirkte erst nach 60 s | Schreibrouten prüfen ohne Instanz-Cache (≤ 5 s) |
+| SEC-56 | presigned POST mit `starts-with $key` | `eq $key`, Schlüssel serverseitig |
+| SEC-57 | Schlüssel vom Client bei Download und Import | Zweck + Objekt-ID bzw. `uploadTicketId` |
+| SEC-58 | CORS `GET/PUT` statt `GET/POST` | Konfiguration ausgeschrieben |
+| SEC-59 | Audit-Tabellen änderbar | `system_audit`/`login_audit` nur `SELECT, INSERT` für `app_rw`, GRANT-Vorlage nach Umfang |
+
+Zwei Befunde des ersten Durchgangs waren **unvollständig eingearbeitet** und sind hier nachgezogen: SEC-21 (das Deny betraf nur `bootstrap-super-users`, nicht `jwt/*`) und SEC-23 (der Löschschritt nach einer Größenabweichung war der Rolle gar nicht erlaubt; jetzt eng auf `imports/` und `results/` gewährt).
 
 ## Gesamturteil
 

@@ -29,7 +29,7 @@ FA-SCH-01…16, FA-SCH-19, FK 8.2, 8.3
 ## Automatisierte Abnahme
 - [ ] Kompatibilitätsmodus: identische `SlotAssignment` für alle Grids + ≥ 500 Zufallsgrids
 - [ ] Paint-Soll-Pläne exakt
-- [ ] Panel-Koordinaten und Panel-PA gegen die Testtabelle `geometry.md` §2.3 (δ₀ = 70°, ξ = η = 6,75′ → α = 26,98992°, γ = +25,4278°)
+- [ ] Panel-Koordinaten und Panel-PA gegen die Testtabelle `geometry.md` §2.3 (δ₀ = 70°, ξ = η = 6,75° → Δα = 26,98992°, γ = +25,4278°)
 - [ ] Eigenschaftstests: nie zwei Einheiten je Slot, gesperrte Slots unverändert, **Σ b_i ≤ supply nach der Normierung (A-27)**, deterministisch, Neuplanung ohne Änderung ändert nichts
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 

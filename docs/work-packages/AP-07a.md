@@ -11,6 +11,7 @@ FA-SU-01…09, FA-LOG-05, S-80, S-81
 ## Lesen (nur diese Abschnitte)
 - FK 6.13 (Super User)
 - FK 14.3 (S-80, S-81)
+- TK 5.4 (keine fachlichen Aktionen im Mandanten)
 - TK 7.2 (System)
 - rules/ui.md
 - specs/ui/components.md
@@ -19,7 +20,7 @@ FA-SU-01…09, FA-LOG-05, S-80, S-81
 - `CLAUDE.md`, `docs/rules/testing.md`; Abschnitt → Zeilen: `docs/concept/INDEX.md`
 
 ## Liefern
-- S-80 Mandanten (Liste, anlegen, sperren, Owner-Einladung, Notfall-Neuzuweisung mit Begründung)
+- S-80 Mandanten (Liste, anlegen, sperren, Owner-Einladung, Notfall-Neuzuweisung mit Begründung und `ConfirmDialog`, *Löschen* mit Namenseingabe der Mandanten-ID)
 - S-81 Super User
 - System-Audit inkl. `GET /web/v1/audit/system`
 - Identität systemweit sperren
@@ -31,7 +32,8 @@ FA-SU-01…09, FA-LOG-05, S-80, S-81
 ## Checkliste Bildschirm (S-80, S-81)
 - [ ] Jedes Feld und jede Aktion aus FK 14.3 für S-80, S-81 vorhanden (Liste im PR abhaken)
 - [ ] Wiederverwendbare Bausteine nur nach `docs/specs/ui/components.md`; Abstände über `--npm-space-*`, Symbole aus `components/icons.ts`, kein Emoji
-- [ ] Rechte je Rolle (Owner, Admin, befristeter Admin, User) über `useCan` ein-/ausgeblendet; API lehnt trotzdem ab
+- [ ] Rechte je Rolle (Owner, Admin, User; Admin oder Owner ohne Discord-2FA wirkt als User) über `useCan` ein-/ausgeblendet; API lehnt trotzdem ab
+- [ ] Folgenreiche Aktionen (Löschen, Rechte entziehen, Owner übertragen, Ablehnen, Token widerrufen, Sitzungen beenden) nur über `ConfirmDialog` (`docs/specs/ui/components.md` §2.10), nie `window.confirm`; Markdown-Felder nur über `react-markdown` ohne rohes HTML
 - [ ] Zustände leer / laden / Fehler (Problem Details → i18n `errors.*`) / 412-Konflikt
 - [ ] Texte DE/EN über i18n, Zeiten mit Zeitzonen-Kürzel (FK 8.1)
 - [ ] Themes `light` und `dark` (Theme-Test gegen die Tokens, TK 11.3); Dichtestufen `compact`/`normal`/`wide`
@@ -42,6 +44,7 @@ FA-SU-01…09, FA-LOG-05, S-80, S-81
 ## Automatisierte Abnahme
 - [ ] E2E: Super User legt Mandant an → Einladung → Owner-Login (Test-Login-Fixtures)
 - [ ] Jede Aktion erzeugt `system_audit`
+- [ ] E2E: Mandant löschen erst nach exakter Eingabe der Mandanten-ID (`ConfirmDialog` mit Namenseingabe)
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe

@@ -26,7 +26,7 @@ FA-BEN (Hinweise), FK 11 R1
 
 ## Checkliste Komponente (Glocke, Startseite)
 - [ ] Vertrag aus `docs/specs/ui/components.md` §2 eingehalten: Eigenschaften, Zustände, Mindestgrößen, Grenzfälle, Textalternative
-- [ ] Zustände leer / laden / Fehler / bereit; keine Annahmen über Rechte (die Seite entscheidet); kein Import von `useCan`, `fetch` oder Repositories
+- [ ] Zustände leer / laden / Fehler / bereit; keine eigenen Rechteentscheidungen (die Seite entscheidet); kein Import von `useCan`, `fetch` oder Repositories
 - [ ] Texte DE/EN über i18n, Zeiten mit Zeitzonen-Kürzel (FK 8.1)
 - [ ] Themes `light` und `dark` (Theme-Test gegen die Tokens); Dichtestufen `compact`/`normal`/`wide` ohne Überlauf
 - [ ] Mindestbreite laut `components.md` **und** 2400 px ohne horizontales Scrollen (`scrollWidth <= clientWidth`), Tastaturbedienung mit sichtbarem Fokusring

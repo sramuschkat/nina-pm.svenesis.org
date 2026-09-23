@@ -3,9 +3,10 @@
     {
       "id": "0192a8…",
       "frameType": "light",
-      "capturedAtUtc": "2026-09-18T08:06:16Z",
+      "capturedAtUtc": "2026-09-18T08:04:04Z",
+      "exposureMidUtc": "2026-09-18T08:06:34Z",
       "night": "2026-09-17",
-      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "blockId": "0192a7c0-0000-7000-8000-000000000c11",
       "projectId": "a91f…",
       "panelId": "p001…",
       "exposureLineId": "l001…",
@@ -17,12 +18,13 @@
       "offset": 20,
       "binning": 1,
       "readoutMode": "High Gain Mode",
-      "raDeg": 13.2051,
-      "decDeg": 56.6301,
-      "rotationDeg": 90.4,
+      "raDeg": 13.2046,
+      "decDeg": 56.6297,
+      "rotationDeg": 270.4,
       "pierSide": "east",
       "rotatorMechDeg": 270.4,
       "bonus": false,
+      "temperatureDeviation": false,
       "result": "saved",
       "fileName": "NGC 281_Ha_300s_0023.fits",
       "metrics": {
@@ -30,22 +32,23 @@
         "stars": 1432,
         "meanAdu": 812,
         "sensorTempC": -10.0,
+        "setPointC": -10.0,
         "guidingRmsArcsec": 0.62,
         "altitudeDeg": 61.2,
         "airmass": 1.14,
         "focusPosition": 14820
       },
-      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b02",
       "readoutModeIndex": 0
     },
     {
       "id": "0192b1…",
       "frameType": "flat",
-      "capturedAtUtc": "2026-09-18T11:12:03Z",
+      "capturedAtUtc": "2026-09-18T11:31:35Z",
+      "exposureMidUtc": "2026-09-18T11:31:36.200Z",
       "night": "2026-09-17",
       "projectIds": [
-        "a91f…",
-        "c3d0…"
+        "a91f…"
       ],
       "filterShortName": "Ha",
       "filterActual": "Ha 3nm",
@@ -55,12 +58,15 @@
       "binning": 1,
       "readoutMode": "High Gain Mode",
       "rotatorMechDeg": 270.4,
+      "temperatureDeviation": false,
       "result": "saved",
       "fileName": "FLAT_NGC 281_Ha_0001.fits",
       "metrics": {
-        "meanAdu": 32100
+        "meanAdu": 32100,
+        "sensorTempC": -10.0,
+        "setPointC": -10.0
       },
-      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b03",
       "readoutModeIndex": 0,
       "flatsPlanned": 20,
       "darkFlatsPlanned": 20
@@ -68,11 +74,11 @@
     {
       "id": "0192b9…",
       "frameType": "dark_flat",
-      "capturedAtUtc": "2026-09-18T11:19:40Z",
+      "capturedAtUtc": "2026-09-18T11:37:10Z",
+      "exposureMidUtc": "2026-09-18T11:37:11.200Z",
       "night": "2026-09-17",
       "projectIds": [
-        "a91f…",
-        "c3d0…"
+        "a91f…"
       ],
       "filterShortName": "Ha",
       "filterActual": "Ha 3nm",
@@ -82,9 +88,14 @@
       "binning": 1,
       "readoutMode": "High Gain Mode",
       "rotatorMechDeg": 270.4,
+      "temperatureDeviation": false,
       "result": "saved",
       "fileName": "DARKFLAT_NGC 281_2.4s_0001.fits",
-      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b01",
+      "metrics": {
+        "sensorTempC": -10.0,
+        "setPointC": -10.0
+      },
+      "nightPlanId": "0192a7c0-0000-7000-8000-000000000b03",
       "readoutModeIndex": 0,
       "flatsPlanned": 20,
       "darkFlatsPlanned": 20

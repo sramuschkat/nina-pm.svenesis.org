@@ -4,7 +4,7 @@ Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. 
 
 ## Vorgehen
 1. **AP-13a:** `tools/astropm-oracle` bauen (allocation.md §11.2): C#-Quellen des Astro-PM-Plugins (MIT, Commit `5dd621d`) mit Minimal-Patch in einer .NET-8-Konsolen-App; CI-Job `oracle.yml` auf `ubuntu-latest`; Grid-Format (unten) und Adapter festlegen.
-2. **AP-13b (Paint):** TS-Zuteilung im **Kompatibilitätsmodus** (Schalterliste allocation.md §11.1) gegen das Orakel prüfen (alle Grids + ≥ 500 Zufallsgrids, identische `SlotAssignment`); danach Paint-Soll-Pläne im **Produktivmodus** (Abweichungen A-1…A-30) mit `expected.slotAssignment`, Erklärung und `oracleDiff`.
+2. **AP-13b (Paint):** TS-Zuteilung im **Kompatibilitätsmodus** (Schalterliste allocation.md §11.1) gegen das Orakel prüfen (alle Grids + ≥ 500 Zufallsgrids, identische `SlotAssignment`); danach Paint-Soll-Pläne im **Produktivmodus** (Abweichungen A-1…A-31) mit `expected.slotAssignment`, Erklärung und `oracleDiff`.
 3. **AP-13c (Ablauf, Teil 1):** `walk`/`pick`/`planNight`; Vergleich auf die Belichtungsfolge erweitern. **AP-13d (Teil 2):** Flip, Transit, Diagnose und die Ablauf-Soll-Pläne mit `expected.entries`, `warnings`, `diagnostics`.
 4. Sven nimmt jeden Soll-Plan ab (`approvedBy`, H-13). **Merge-Bedingung** des jeweiligen PR, keine Startsperre für Folgepakete; bis zur Abnahme gelten nicht abgenommene Pläne als „vorläufig“ (Test läuft, blockiert aber nicht).
 

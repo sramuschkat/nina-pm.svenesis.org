@@ -20,23 +20,59 @@
   ],
   "meridianFlip": {
     "triggerPresent": true,
+    "useSideOfPier": true,
+    "recenter": false,
+    "autoFocusAfterFlip": false,
+    "settleTimeS": 30,
+    "pauseBeforeMin": 0,
     "afterMin": 5,
-    "maxAfterMin": 15,
-    "pauseBeforeMin": 0
+    "maxAfterMin": 15
   },
-  "lastMeasuredRotationDeg": 90.4,
+  "rotator": {
+    "connected": true,
+    "rangeType": "FULL",
+    "rangeStartMechanicalDeg": 0,
+    "reverse": false
+  },
+  "plateSolve": {
+    "rotationToleranceDeg": 1.0
+  },
+  "mount": {
+    "equatorialSystem": "JNOW",
+    "siteLatDeg": 31.5471,
+    "siteLonDeg": -99.3823,
+    "siderealTimeDeltaS": 0.4
+  },
+  "sequenceTriggers": {
+    "autofocus": [
+      "AutofocusAfterTimeTrigger",
+      "AutofocusAfterHFRIncreaseTrigger"
+    ],
+    "autofocusAfterTimeMin": 60,
+    "dither": []
+  },
+  "camera": {
+    "temperatureC": -10.1,
+    "setPointC": -10.0,
+    "coolerOn": true,
+    "coolerPowerPct": 38
+  },
+  "lastMeasuredRotationDeg": 0.3,
   "filterWheel": [
     {
       "position": 0,
-      "name": "L"
+      "name": "L",
+      "focusOffset": 0
     },
     {
       "position": 1,
-      "name": "Ha 3nm"
+      "name": "Ha 3nm",
+      "focusOffset": 35
     },
     {
       "position": 2,
-      "name": "Red"
+      "name": "Red",
+      "focusOffset": 12
     }
   ],
   "outboxPending": 0,
