@@ -23,7 +23,7 @@
 - `contracts/` – Aufzählungen, Fehlercodes, Soll-Pläne, NINA-API-Beispiele
 - `seed/` – Demo- und Testdaten
 - `ops/` – menschliche Aufgaben, Go-live, Plugin-Tests, Discord-Meldungen
-- `work-packages/` – Brief je Arbeitspaket (R1–R6)
+- `work-packages/` – Brief je Arbeitspaket (R1–R6, Plugin-Block RP direkt vor R4)
 - `concept/` – Fachkonzept, Technisches Konzept, Schema und `INDEX.md` (Abschnitt → Zeilen, per Skript erzeugt) – jeweils aktueller Stand (Versionen im Kopf der Dateien). Master liegt im Projektordner; bei Änderungen dort ändern, hierher kopieren und INDEX neu erzeugen
 - `adr/` – `ADR-TEMPLATE.md`; Spikes und Architekturentscheidungen legt Claude Code hier als `ADR-xx-….md` ab
 - `history/` – Reviews, Analyse des Astro-PM-Plugins, überholte Soll-Pläne v1

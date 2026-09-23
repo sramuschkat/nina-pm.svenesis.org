@@ -1,6 +1,6 @@
 # AP-08c – Engine-Bundle und Jint-Parität
 
-**Release:** R1 · **Größe:** S · **Abhängigkeiten:** AP-08b, AP-S2c · **Menschliche Aufgaben:** –
+**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-08b, AP-S2c · **Menschliche Aufgaben:** –
 
 ## Ziel
 Die Engine liegt als `engine.iife.js` vor und liefert in Jint dieselben Hashes wie in Node. Das sichert die Offline-Planung im Plugin ab.

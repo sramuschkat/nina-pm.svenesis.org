@@ -1,6 +1,6 @@
 # AP-16e – Plugin: Aufnahme-Zuordnung, Heartbeat, Lease
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-16d · **Menschliche Aufgaben:** H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-16d · **Menschliche Aufgaben:** H-15
 
 ## Ziel
 Jede gespeicherte Belichtung wird genau einmal korrekt gemeldet, der Heartbeat läuft unabhängig von der Sequenz, und die Lease-Zustandsmaschine mit allen Übergängen verhindert Doppelbetrieb.

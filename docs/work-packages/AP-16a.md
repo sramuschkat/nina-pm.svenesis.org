@@ -1,6 +1,6 @@
 # AP-16a – Plugin: Lösung, Core, Kopplung, NINA-Test-Server
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-S2b, AP-S2c, AP-08c, AP-14a · **Menschliche Aufgaben:** H-14, H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-S2b, AP-S2c, AP-08c, AP-14a · **Menschliche Aufgaben:** H-14, H-15
 
 ## Ziel
 Die Plugin-Lösung mit testbarem Kern, lokalem SQLite-Speicher und Kopplung steht. Der NINA-Test-Server macht alle weiteren Plugin-Tests tagsüber möglich.

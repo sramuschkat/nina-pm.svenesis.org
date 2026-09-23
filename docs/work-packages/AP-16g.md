@@ -1,6 +1,6 @@
 # AP-16g – Plugin: Outbox, Offline-Modus, Bedienung
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-16f · **Menschliche Aufgaben:** H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-16f · **Menschliche Aufgaben:** H-15
 
 ## Ziel
 Meldungen gehen auch bei Netzproblemen, Offline-Modus, Neustart oder widerrufenem Token nicht verloren und erzeugen keine Endlosschleifen; Bedienung (Zurücksetzen, Block überspringen) funktioniert.

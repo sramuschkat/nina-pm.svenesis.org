@@ -38,7 +38,7 @@ Mehrstufige Aufgaben (H-04, H-06, H-22) sind so zu lesen: Claude Code liefert Co
 | H-27 | *entfällt (SV-13, 21.09.2026)* – keine GitHub-OIDC-Rollen mehr (E1) | – | – | – | – |
 
 ## Reihenfolge
-H-02 → H-03 → (AP-01) → H-14 (Voraussetzung für AP-S2b und AP-S2c, parallel) → H-01 → H-04 → H-05/H-07 → (AP-02a) → (AP-02b, AP-S1) → **H-22** (Spike und DSQL-Tests lokal, danach bei jedem PR mit Migrationen) → (AP-03) → H-09 → H-08 → (AP-04a/b) → H-12a → H-13 (beim Merge von AP-13b/d) → H-12b → H-15 … → H-24 → H-16/H-17/H-20/H-23 → Go-live → H-18. H-06 bei jedem Deploy, H-10 nur bei Bedarf.
+H-02 → H-03 → (AP-01) → H-01 → H-04 → H-05/H-07 → (AP-02a) → (AP-02b, AP-S1) → **H-22** (Spike und DSQL-Tests lokal, danach bei jedem PR mit Migrationen) → (AP-03) → H-09 → H-08 → (AP-04a/b) → H-12a → H-13 (beim Merge von AP-13b/d) → H-12b → H-24 → H-16/H-17/H-20/H-23 → Go-live R1 → H-18 → (R2, R3) → H-14 (Voraussetzung für AP-S2b und AP-S2c, Block RP direkt vor R4) → H-15 … → (R4). H-06 bei jedem Deploy, H-10 nur bei Bedarf.
 
 ## Regeln für Claude Code
 - Nie Geheimnisse erfragen oder in Dateien/Chat schreiben; nur Namen der SSM-Parameter verwenden.

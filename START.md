@@ -72,7 +72,7 @@ Setze dann AP-01 um:
 Sag mir am Ende, was im CI noch grün werden muss und was ich als Nächstes tun soll.
 ```
 
-Danach laufen zwei Schienen parallel. **Plugin-Schiene:** **AP-S2c** (Build-Nachweis ohne Windows) und **AP-S2b** (Spike NINA-Laufzeit) – beide brauchen H-14, siehe den Abschnitt „Plugin: was auf welchem Rechner läuft“. **AWS-Schiene:** **AP-02a** (braucht H-01 und H-04).
+Danach geht es mit **AP-02a** weiter (braucht H-01 und H-04). Das NINA-Plugin ist seit 23.09.2026 ein eigener Block **RP** direkt vor R4: **AP-S2c** (Build-Nachweis ohne Windows) und **AP-S2b** (Spike NINA-Laufzeit) brauchen H-14 erst dann, siehe den Abschnitt „Plugin: was auf welchem Rechner läuft“.
 
 ## Folgesitzungen (kurz)
 
@@ -86,7 +86,7 @@ lies dessen Brief und nur die genannten Abschnitte, prüfe blockierende H-Aufgab
 | Aufgabe | Wird gebraucht für | Vorher nötig? |
 |---|---|---|
 | H-02 Repo, H-03 Astro-Tools | AP-01 | **ja**, sonst kann Sitzung 1 nicht starten |
-| H-14 Windows + NINA-Simulatoren, **Referenz-Assemblies** (fünf davon für den Adapter) | AP-S2c, AP-S2b | ja, für die Plugin-Schiene |
+| H-14 Windows + NINA-Simulatoren, **Referenz-Assemblies** (fünf davon für den Adapter) | AP-S2c, AP-S2b (Block RP, direkt vor R4) | ja, aber erst für RP |
 | H-01 AWS-Konto (inkl. Lambda-Parallelitäts-Kontingent ≥ 125), H-04 Standard-`cdk bootstrap` | AP-02a | ja |
 | H-05 SSM-Parameter, H-09 SNS-Bestätigung | AP-02b | nein – nur für die **Abnahme** von AP-02b |
 | H-07 Discord-Anwendung | AP-04a | ja | 

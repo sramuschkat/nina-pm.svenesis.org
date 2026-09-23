@@ -1,9 +1,9 @@
 # AP-16h – Plugin: Live-Status, Zielbrowser, Trigger-Sets, Anweisungskatalog
 
-**Release:** R1 · **Größe:** L · **Abhängigkeiten:** AP-16g · **Menschliche Aufgaben:** H-12b, H-15
+**Release:** RP · **Größe:** L · **Abhängigkeiten:** AP-16g · **Menschliche Aufgaben:** H-12b, H-15
 
 ## Ziel
-Das Plugin zeigt Live-Status, Zielbrowser und Trigger-Sets und wird als Release-ZIP mit Beispielsequenzen ausgeliefert. Damit ist das Plugin R1 fertig.
+Das Plugin zeigt Live-Status, Zielbrowser und Trigger-Sets und wird als Release-ZIP mit Beispielsequenzen ausgeliefert. Damit ist der Plugin-Umfang R1 fertig (Block RP).
 
 ## Anforderungen
 FA-NIN-02, FA-NIN-13, FA-NIN-16, FA-NIN-25
@@ -33,4 +33,4 @@ FA-NIN-02, FA-NIN-13, FA-NIN-16, FA-NIN-25
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe
-P-11
+P-11; Plugin-Nacht P-05 mit Simulatorgeräten im Test-Mandanten: Aufnahmen im Web, Zähler stimmen (bis 23.09.2026 Teil der Go-live-Checkliste R1)
