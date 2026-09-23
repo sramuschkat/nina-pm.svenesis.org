@@ -4,6 +4,11 @@
 
 ## [Unveröffentlicht]
 
+### AP-03 abgenommen (2026-09-23)
+
+- Deploy mit Migration durch Sven: On-Demand-Backup vor dem Deploy, `nina-pm-migrate` legte Migration 0000 (zwei Rollen, drei `AWS IAM GRANT`s) und 194 Anweisungen an, Smoke grün. Die erste Migration lief rund 13 min (Grenze 15 min); Folgemigrationen sind klein, ein Abbruch würde beim nächsten Deploy fortgesetzt.
+- CDK: `addStackDependency` statt des veralteten `addDependency`.
+
 ### AP-03 – Datenbankpaket und Migrationen (2026-09-23)
 
 Anforderungen: TK 6.1–6.9, NFA Mandantenisolation, `iam.md` §4, §12 Nr. 4, TK 17, TK 18, ADR-S1.
