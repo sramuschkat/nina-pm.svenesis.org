@@ -12,7 +12,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-01](AP-01.md) | Monorepo-Gerüst | M | – | H-02, H-03 | ◐ |
+| [AP-01](AP-01.md) | Monorepo-Gerüst | M | – | H-02, H-03 | ☑ 23.09.2026 |
 | [AP-S2b](AP-S2b.md) | Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent) | S | AP-01 | H-14, H-15 | ☐ |
 | [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | H-14 | ☐ |
 | [AP-02a](AP-02a.md) | CDK-Grundgerüst: Data, Config, Cert, Web, Edge | M | AP-01 | H-01, H-04, H-06 | ☐ |
