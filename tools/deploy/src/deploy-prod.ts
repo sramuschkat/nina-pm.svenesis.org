@@ -5,6 +5,7 @@
  * und GitHub hat keinen AWS-Zugang. Ablauf im Grundzug (AP-02a):
  *   Vorbedingungen → cdk diff → Bestätigung → cdk deploy --all → Hinweise → Smoke-Test.
  * Folgepakete ergänzen: On-Demand-Backup vor Migrationen (AP-03), Fake-Plugin-Nacht (AP-14c).
+ * AP-02b: Vorprüfung /nina-pm/origin-verify, Smoke mit /api/health und Direktaufruf der execute-api-Adresse.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -88,7 +89,28 @@ async function main(): Promise<void> {
         `  aws backup create-backup-vault --backup-vault-name ${config.backup.vaultName} --region ${config.region}`,
     );
   }
-  console.log(`  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}, Backup-Vault vorhanden`);
+  // CloudFront bekommt /nina-pm/origin-verify beim Deploy als Origin-Header (SV-16); fehlt er, bricht CloudFormation ab.
+  const originVerify = capture('aws', [
+    'ssm',
+    'get-parameter',
+    '--name',
+    config.ssm.originVerify,
+    '--region',
+    config.region,
+    '--query',
+    'Parameter.Type',
+    '--output',
+    'text',
+  ]);
+  if (originVerify.out !== 'String') {
+    fail(
+      `SSM-Parameter ${config.ssm.originVerify} fehlt (H-05). Anlegen, der Wert kommt nie in den Chat:\n` +
+        `  aws ssm put-parameter --name ${config.ssm.originVerify} --type String --region ${config.region} --value "$(openssl rand -base64 32)"`,
+    );
+  }
+  console.log(
+    `  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}, Backup-Vault und Origin-Verify vorhanden`,
+  );
 
   const context = ['-c', `buildId=${sha}`];
   step('cdk diff – bitte vollständig lesen');
@@ -106,11 +128,10 @@ async function main(): Promise<void> {
   step('cdk deploy --all');
   run('pnpm', ['cdk', 'deploy', '--all', ...context, '--outputs-file', outputsFile]);
 
-  if (existsSync(outputsFile)) {
-    const outputs = JSON.parse(readFileSync(outputsFile, 'utf8')) as Record<
-      string,
-      Record<string, string>
-    >;
+  const outputs = existsSync(outputsFile)
+    ? (JSON.parse(readFileSync(outputsFile, 'utf8')) as Record<string, Record<string, string>>)
+    : {};
+  {
     const endpoint = outputs['NinaPm-Data']?.DsqlEndpoint;
     const param = capture('aws', [
       'ssm',
@@ -133,7 +154,12 @@ async function main(): Promise<void> {
   }
 
   step(`Smoke-Test https://${config.domainName}`);
-  const results = await runSmoke(`https://${config.domainName}`);
+  const executeApiUrl = outputs['NinaPm-Api']?.ApiEndpoint;
+  const results = await runSmoke(
+    `https://${config.domainName}`,
+    fetch,
+    executeApiUrl ? { executeApiUrl } : {},
+  );
   for (const r of results)
     console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ` – ${r.detail}`}`);
   if (results.some((r) => !r.ok)) {

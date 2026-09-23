@@ -13,7 +13,13 @@ const readJson = (name: string) =>
 export function synth(extraContext: Record<string, unknown> = {}) {
   const cdkJson = readJson('cdk.json') as { context: Record<string, unknown> };
   const app = new App({
-    context: { ...cdkJson.context, ...readJson('cdk.context.json'), ...extraContext },
+    // Ohne Bündeln der Lambdas (schneller); das echte Bündeln prüft `pnpm cdk synth` im CI.
+    context: {
+      ...cdkJson.context,
+      ...readJson('cdk.context.json'),
+      'aws:cdk:bundling-stacks': [],
+      ...extraContext,
+    },
   });
   const stacks = buildApp(app);
   return {
@@ -23,6 +29,9 @@ export function synth(extraContext: Record<string, unknown> = {}) {
     cert: Template.fromStack(stacks.cert),
     web: Template.fromStack(stacks.web),
     edge: Template.fromStack(stacks.edge),
+    jobs: Template.fromStack(stacks.jobs),
+    api: Template.fromStack(stacks.api),
+    ops: Template.fromStack(stacks.ops),
   };
 }
 

@@ -1,9 +1,11 @@
 import { fileURLToPath } from 'node:url';
-import { Annotations, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import { Annotations, Duration, Fn, Stack, type StackProps } from 'aws-cdk-lib';
+import type * as apigw from 'aws-cdk-lib/aws-apigatewayv2';
 import type * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -18,6 +20,8 @@ export interface EdgeStackProps extends StackProps {
   readonly webBucket: s3.IBucket;
   /** Wert für /nina-pm/web/build-id; `pnpm deploy:prod` setzt ihn per `-c buildId=<commit>`. */
   readonly buildId: string;
+  /** HTTP API aus NinaPm-Api als Origin für /api/* (AP-02b). */
+  readonly httpApi: apigw.IHttpApi;
 }
 
 const fromHere = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -114,9 +118,24 @@ export class EdgeStack extends Stack {
         compress: true,
       },
       additionalBehaviors: {
-        // Bis AP-02b zeigt /api/* auf den Web-Bucket (liefert 403/404). AP-02b stellt auf die
-        // HTTP API um: alle Methoden, AllViewerExceptHostHeader, Origin-Header X-Origin-Verify.
-        '/api/*': { ...staticBehavior, cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED },
+        // HTTP API mit dem einen Origin-Verify-Wert aus SSM (SV-16); die Lambda prüft ihn.
+        '/api/*': {
+          origin: new origins.HttpOrigin(Fn.select(2, Fn.split('/', props.httpApi.apiEndpoint)), {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+            customHeaders: {
+              'X-Origin-Verify': ssm.StringParameter.valueForStringParameter(
+                this,
+                config.ssm.originVerify,
+              ),
+            },
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          responseHeadersPolicy: apiStaticHeaders,
+          compress: true,
+        },
         '/catalog/*': staticBehavior,
         '/downloads/*': staticBehavior,
       },
@@ -174,6 +193,10 @@ export class EdgeStack extends Stack {
       cacheControl: [s3deploy.CacheControl.noCache()],
       distribution: this.distribution,
       distributionPaths: ['/index.html'],
+      // 90 Tage für alle Log-Gruppen (SV-15), auch für die CDK-Hilfs-Lambda.
+      logGroup: new logs.LogGroup(this, 'PlaceholderDeploymentLogs', {
+        retention: logs.RetentionDays.THREE_MONTHS,
+      }),
     });
   }
 }

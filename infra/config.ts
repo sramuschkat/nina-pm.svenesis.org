@@ -22,6 +22,26 @@ export const config = {
     retentionDays: 35,
   },
   logRetentionDays: 90,
+  /** Empfänger der Alarm-Mails (SNS, H-09). */
+  alarmEmail: 'sven@ramuschkat.de',
+  /** Monatsbudget; AWS Budgets rechnet in USD (≈ 20 €, TK 16.2). */
+  budgetUsd: 20,
+  /** Feste Namen: Migration 0000 nennt die Rollen-ARNs in AWS IAM GRANT (iam.md §1). */
+  lambdas: {
+    api: { functionName: 'nina-pm-api', roleName: 'NinaPmApi' },
+    worker: { functionName: 'nina-pm-worker', roleName: 'NinaPmWorker' },
+    opsCli: { functionName: 'nina-pm-ops-cli', roleName: 'NinaPmOpsCli' },
+  },
+  workerFailureQueue: 'nina-pm-worker-failures',
+  scheduleGroup: 'nina-pm',
+  alarmTopic: 'nina-pm-alarms',
+  /** Drosselung und Parallelität (iam.md §9, SV-06). */
+  throttle: {
+    stage: { rate: 50, burst: 100 },
+    nina: { rate: 20, burst: 40 },
+    sensitive: { rate: 5, burst: 10 },
+  },
+  reservedConcurrency: { api: 20, worker: 5 },
   /** SSM-Parameternamen (iam.md §8). */
   ssm: {
     cookieSecret: '/nina-pm/oauth/cookie-secret',
