@@ -24,6 +24,7 @@ pnpm test
 
 ## Hinweise
 
+- **Backup-Vault `Default`:** muss in `eu-central-1` existieren (H-04). AWS legt ihn nur beim ersten Öffnen der Backup-Konsole selbst an; `pnpm deploy:prod` bricht sonst vorab mit dem passenden Befehl ab.
 - **Import-Modus:** `-c dsqlClusterId=<id>` übernimmt einen vorhandenen Cluster statt einen neuen anzulegen (Restore, TK 6.10).
 - **`/nina-pm/dsql-endpoint`** legt Sven nach dem ersten Deploy aus der Ausgabe `DsqlEndpoint` an (H-05). `pnpm deploy:prod` zeigt den Befehl an, wenn der Parameter fehlt oder abweicht.
 - **`/api/*`** zeigt bis AP-02b auf den Web-Bucket und liefert dort 403 oder 404. AP-02b stellt auf die HTTP API mit `X-Origin-Verify` um.
