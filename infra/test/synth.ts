@@ -1,0 +1,38 @@
+import { readFileSync } from 'node:fs';
+import { App } from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { buildApp } from '../lib/app';
+
+const readJson = (name: string) =>
+  JSON.parse(readFileSync(new URL(`../${name}`, import.meta.url), 'utf8')) as Record<
+    string,
+    unknown
+  >;
+
+/** Synthese mit den eingecheckten Feature-Flags und Lookup-Werten, ohne AWS-Zugang (TK 18). */
+export function synth(extraContext: Record<string, unknown> = {}) {
+  const cdkJson = readJson('cdk.json') as { context: Record<string, unknown> };
+  const app = new App({
+    context: { ...cdkJson.context, ...readJson('cdk.context.json'), ...extraContext },
+  });
+  const stacks = buildApp(app);
+  return {
+    stacks,
+    data: Template.fromStack(stacks.data),
+    config: Template.fromStack(stacks.config),
+    cert: Template.fromStack(stacks.cert),
+    web: Template.fromStack(stacks.web),
+    edge: Template.fromStack(stacks.edge),
+  };
+}
+
+export interface Resource {
+  Type: string;
+  Properties: Record<string, unknown>;
+  DeletionPolicy?: string;
+  UpdateReplacePolicy?: string;
+}
+
+export function resources(template: Template, type: string): [string, Resource][] {
+  return Object.entries(template.findResources(type)) as [string, Resource][];
+}

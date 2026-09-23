@@ -23,9 +23,11 @@ cdk.out/
 .venv/
 __pycache__/
 
-# .NET (apps/nina-plugin, tools/astropm-oracle)
-bin/
-obj/
+# .NET (nur in den C#-Ordnern; infra/bin/ ist der CDK-Einstieg und gehört ins Repo)
+apps/nina-plugin/**/bin/
+apps/nina-plugin/**/obj/
+tools/astropm-oracle/**/bin/
+tools/astropm-oracle/**/obj/
 *.user
 TestResults/
 
@@ -34,3 +36,6 @@ apps/nina-plugin/refs/**
 !apps/nina-plugin/refs/
 !apps/nina-plugin/refs/*/
 !apps/nina-plugin/refs/**/README.md
+
+# CDK-Ausgaben des lokalen Deploys
+infra/cdk-outputs.json

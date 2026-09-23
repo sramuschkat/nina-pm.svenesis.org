@@ -1,0 +1,14 @@
+{
+  "name": "@nina-pm/deploy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lokale Skripte mit Svens Admin-Profil (TK 18, H-06). Claude Code führt sie nie aus.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/infra": "workspace:*",
+    "@nina-pm/smoke": "workspace:*"
+  }
+}

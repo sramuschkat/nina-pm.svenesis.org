@@ -1,6 +1,6 @@
 # CI nach TK 18 (AP-01: install, lint, typecheck, test, build, gitleaks).
 # GitHub hat keinen AWS-Zugang (E1): dieser Workflow prüft und baut nur, er deployt nie.
-# PostgreSQL-Service, a11y, OpenAPI-Diff, cdk synth und E2E kommen mit ihren Arbeitspaketen dazu.
+# PostgreSQL-Service, a11y, OpenAPI-Diff und E2E kommen mit ihren Arbeitspaketen dazu.
 name: ci
 
 on:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   check:
-    name: install · lint · typecheck · test · build
+    name: install · lint · typecheck · test · build · cdk synth
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -32,6 +32,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # cdk synth ohne AWS-Zugang: Lookup-Werte aus infra/cdk.context.json (TK 18)
+      - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   gitleaks:
     name: gitleaks

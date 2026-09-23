@@ -82,6 +82,9 @@ export default defineConfig([
     'legacy/',
     'packages/catalog-data/',
     'apps/nina-plugin/',
+    'infra/cdk.out/',
+    // CloudFront Functions Runtime 2.0, Wortlaut nach TK 4.3; getestet in infra/test/viewer-request.test.ts
+    'infra/edge/',
   ]),
   js.configs.recommended,
   tseslint.configs.strict,
