@@ -8,7 +8,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-dsql": "3.1137.0",
+    "@aws-sdk/client-sts": "3.1137.0",
     "@nina-pm/infra": "workspace:*",
-    "@nina-pm/smoke": "workspace:*"
+    "@nina-pm/smoke": "workspace:*",
+    "@nina-pm/spike-dsql": "workspace:*"
   }
 }

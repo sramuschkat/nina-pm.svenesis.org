@@ -5,6 +5,7 @@ packages:
   - packages/*
   - infra
   - tools/*
+  - spikes/*
 
 # Build-Skripte von Abhängigkeiten nur nach ausdrücklicher Freigabe.
 allowBuilds:
