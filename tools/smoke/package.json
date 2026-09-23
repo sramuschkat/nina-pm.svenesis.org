@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/smoke",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Smoke-Prüfung nach jedem prod-Deploy (TK 3.1, 17)",
+  "exports": {
+    ".": "./src/smoke.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

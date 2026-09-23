@@ -13,7 +13,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
 | [AP-01](AP-01.md) | Monorepo-Gerüst | M | – | H-02, H-03 | ☑ 23.09.2026 |
-| [AP-02a](AP-02a.md) | CDK-Grundgerüst: Data, Config, Cert, Web, Edge | M | AP-01 | H-01, H-04, H-06 | ☐ |
+| [AP-02a](AP-02a.md) | CDK-Grundgerüst: Data, Config, Cert, Web, Edge | M | AP-01 | H-01, H-04, H-06 | ◐ |
 | [AP-S1](AP-S1.md) | Spike Aurora DSQL | S | AP-02a | H-01, H-22 | ☐ |
 | [AP-02b](AP-02b.md) | CDK: Api, Jobs, Ops (Lambdas, Rollen, Zeitpläne, Alarme) | M | AP-02a, AP-S1 | H-05, H-06, H-09 | ☐ |
 | [AP-03](AP-03.md) | Datenbankpaket und Migrationen | L | AP-02b | H-06, H-22 | ☐ |

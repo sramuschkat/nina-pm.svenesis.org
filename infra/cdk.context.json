@@ -1,0 +1,10 @@
+{
+  "hosted-zone:account=509219055019:domainName=svenesis.org:region=eu-central-1": {
+    "Id": "/hostedzone/Z09830632WB5EBBMV8SQ",
+    "Name": "svenesis.org."
+  },
+  "hosted-zone:account=509219055019:domainName=svenesis.org:region=us-east-1": {
+    "Id": "/hostedzone/Z09830632WB5EBBMV8SQ",
+    "Name": "svenesis.org."
+  }
+}

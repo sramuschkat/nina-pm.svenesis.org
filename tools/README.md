@@ -1,7 +1,9 @@
 # tools
 
-Hilfswerkzeuge nach TK 3.1. Mit AP-01 angelegt:
+Hilfswerkzeuge nach TK 3.1.
 
-- `repo-check/` – prüft im Test, dass `legacy/astro-tools-2026-09-21/` und `packages/catalog-data/` unverändert den Prüfsummenlisten entsprechen.
+- `repo-check/` – prüft im Test, dass `legacy/astro-tools-2026-09-21/` und `packages/catalog-data/` unverändert den Prüfsummenlisten entsprechen (AP-01).
+- `deploy/` – `pnpm deploy:prod`, lokaler prod-Deploy **nur durch Sven** mit Admin-Profil (AP-02a, H-06). Claude Code führt es nie aus.
+- `smoke/` – Smoke-Prüfung nach jedem Deploy: Platzhalterseite, SPA-Rewrite, HTTPS-Umleitung, Header-Politiken (AP-02a; Folgepakete erweitern).
 
-Weitere Werkzeuge (`reference/`, `astropm-oracle/`, `nina-test-server/`, `catalog-import/`, `catalog/`, `fake-plugin/`, `test-run-check/`, `fetch-nina-refs.ps1`, `discord-mock/`, `deploy/`, `smoke/`, `astropm-import/`) entstehen mit ihren Arbeitspaketen.
+Weitere Werkzeuge (`reference/`, `astropm-oracle/`, `nina-test-server/`, `catalog-import/`, `catalog/`, `fake-plugin/`, `test-run-check/`, `fetch-nina-refs.ps1`, `discord-mock/`, `astropm-import/`, `deploy/test-dsql.ts`) entstehen mit ihren Arbeitspaketen.

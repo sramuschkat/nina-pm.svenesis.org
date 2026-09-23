@@ -34,3 +34,6 @@ apps/nina-plugin/refs/**
 !apps/nina-plugin/refs/
 !apps/nina-plugin/refs/*/
 !apps/nina-plugin/refs/**/README.md
+
+# CDK-Ausgaben des lokalen Deploys
+infra/cdk-outputs.json
