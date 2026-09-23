@@ -86,3 +86,18 @@ describe('Wächter und Zeilenzähler', () => {
     );
   });
 });
+
+describe('Seed-IDs', () => {
+  it('memberId ist stabil, eindeutig je Identität und Mandant und eine gültige UUID', async () => {
+    const { memberId } = await import('../src/seed');
+    const t = '00000000-0000-7000-8000-000000000001';
+    const a = memberId('00000000-0000-7000-8000-000000000010', t);
+    const b = memberId('00000000-0000-7000-8000-000000000011', t);
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(a).not.toBe(b);
+    expect(memberId('00000000-0000-7000-8000-000000000010', t)).toBe(a);
+    expect(
+      memberId('00000000-0000-7000-8000-000000000010', '00000000-0000-7000-8000-000000000002'),
+    ).not.toBe(a);
+  });
+});

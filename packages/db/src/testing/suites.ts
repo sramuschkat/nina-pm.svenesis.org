@@ -148,7 +148,7 @@ export const suites: readonly Suite[] = [
         );
         await expectDenied(
           job,
-          'UPDATE nina_instance SET name = name WHERE false',
+          'UPDATE nina_instance SET id = id WHERE false',
           'app_job UPDATE nina_instance',
         );
         for (const t of ['identity', 'super_user', 'app_user', 'invitation', 'nina_instance']) {
@@ -157,7 +157,7 @@ export const suites: readonly Suite[] = [
         await expectDenied(rw, 'INSERT INTO dso_object DEFAULT VALUES', 'app_rw INSERT dso_object');
         await expectDenied(
           rw,
-          'UPDATE dso_object SET name = name WHERE false',
+          'UPDATE dso_object SET id = id WHERE false',
           'app_rw UPDATE dso_object',
         );
         await rw.query('SELECT 1 FROM dso_object LIMIT 1');
@@ -196,7 +196,7 @@ export const suites: readonly Suite[] = [
             await Promise.race([bReady, timeout(500)]);
             await touch('A')(trx);
           },
-          { guard: [{ table: 'tenant', id: guardId }] },
+          { guard: [{ table: 'tenant', id: guardId }], onRetry: () => (retries += 1) },
         );
         const txB = withTx(
           b.db,

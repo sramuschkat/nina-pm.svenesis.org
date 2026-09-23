@@ -4,6 +4,7 @@
  * NINA-Instanzen und Discord-Kanäle seeden die Pakete, die diese Tabellen fachlich validieren
  * (AP-09a, AP-11a, AP-14c, AP-60). Idempotent über ON CONFLICT.
  */
+import { createHash } from 'node:crypto';
 import type { SqlClient } from './migrate/types';
 
 interface SeedIdentity {
@@ -26,9 +27,11 @@ export interface SeedDemo {
   identities: SeedIdentity[];
 }
 
-/** Stabile UUID für die Mitgliedschaft einer Identität in einem Mandanten (reproduzierbarer Seed). */
+/** Stabile UUID (Version 8, aus einem Hash) für die Mitgliedschaft einer Identität in einem Mandanten. */
 export function memberId(identityId: string, tenantId: string): string {
-  return `${identityId.slice(0, 24)}${tenantId.slice(-12)}`;
+  const h = createHash('sha256').update(`app_user:${tenantId}:${identityId}`).digest('hex');
+  const variant = ((parseInt(h.slice(16, 17), 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-8${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
 export interface SeedResult {
