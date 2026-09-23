@@ -1,6 +1,6 @@
 # AP-16d – Plugin Adapter: Trigger-Walk, Filter und Auslesemodus, Neuplanung im Block
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-16c · **Menschliche Aufgaben:** H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-16c · **Menschliche Aufgaben:** H-15
 
 ## Ziel
 Trigger-Walk über alle Vorfahren, Filter- und Auslesemodus-Auflösung und die Neuplanung im laufenden Block sind integriert. Damit läuft eine Nacht mit fremden Triggern (Autofokus, Flip, Zentrieren) korrekt.

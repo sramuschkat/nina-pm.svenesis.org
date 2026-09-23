@@ -31,12 +31,12 @@ Jeder Punkt mit Nachweis (Link auf CI-Lauf, Ausgabe von `pnpm deploy:prod`, Scre
 - ☐ Abhängigkeits-Audit ohne kritische Befunde
 - ☐ Datenschutz/Rechtliches (H-17) freigegeben
 
-## Funktion (Test-Mandant, echtes Discord, NINA-Simulator)
+## Funktion (Test-Mandant, echtes Discord, Fake-Plugin)
 - ☐ Mandant anlegen → Owner-Einladung → Owner-Login mit 2FA
 - ☐ User einladen → User legt Objekt an → einreichen → Stimme eines anderen Users → Admin gibt frei
 - ☐ Simulator zeigt Plan; Diagnose plausibel
-- ☐ Plugin-Nacht (P-05) mit Simulatorgeräten: Aufnahmen im Web, Zähler stimmen
 - ☐ Fake-Plugin-Nacht nach Deploy grün
+- Die Plugin-Nacht P-05 mit Simulatorgeräten ist seit 23.09.2026 Abnahme von AP-16h (Block RP vor R4), nicht Teil dieses Go-live.
 - ☐ Benachrichtigung in der App empfangen
 - ☐ Visuelle Abnahme (H-16) in **beiden Themes** (hell, dunkel), in allen drei Dichtestufen und bei 768 px sowie bei 2560 px Breite (volle Breite ohne Obergrenze)
 

@@ -1,6 +1,6 @@
 # Index der Konzepte (Abschnitt → Zeilen)
 
-Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.20, TK 1.20, Schema 1.18). Zum gezielten Laden: `sed -n 'VON,BISp' <Datei>` bzw. Read mit offset/limit. Nach jeder Änderung an einem Konzept neu erzeugen.
+Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.21, Schema 1.18). Zum gezielten Laden: `sed -n 'VON,BISp' <Datei>` bzw. Read mit offset/limit. Nach jeder Änderung an einem Konzept neu erzeugen.
 
 ## Fachkonzept_Svenesis-NINA-PM.md
 
@@ -52,39 +52,39 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.20, TK 1.20, Sch
 | &nbsp;&nbsp;9.1 Bestandsaufnahme | 1081–1094 |
 | &nbsp;&nbsp;9.2 Nötige Anpassungen | 1095–1108 |
 | 10. Nicht-funktionale Anforderungen | 1109–1136 |
-| 11. Ausbaustufen (Release-Plan) | 1137–1151 |
-| 12. Offene Punkte und Entscheidungen | 1152–1187 |
-| 13. Glossar | 1188–1253 |
-| 14. Bildschirmkonzept | 1254–1504 |
-| &nbsp;&nbsp;14.1 Rahmen (Shell) | 1258–1282 |
-| &nbsp;&nbsp;14.2 Navigationsstruktur | 1283–1298 |
-| &nbsp;&nbsp;14.3 Bildschirme im Detail | 1299–1485 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-01 Anmeldung | 1303–1305 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-02 Heute Nacht *(Startseite ab R3; bis dahin „Meine Objekte“ bzw. Projektliste)* | 1306–1308 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-10 Rigs *(Imaging Systems)* | 1309–1317 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-11 Standorte | 1318–1320 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-12 Teleskope | 1321–1323 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-13 Kameras | 1324–1326 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-14 Filter & Belichtungsplan-Vorlagen | 1327–1329 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-15 Mondprofile | 1330–1332 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-20 Sternkarte *(SkyView)* | 1333–1339 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-21 Objektbrowser & Zielvorschläge *(neu)* | 1340–1342 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-22 Exoplaneten | 1343–1349 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-30 Projektliste *(je Status)* | 1350–1352 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-31 Projekt-Editor | 1353–1392 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(User)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(Admin)* | 1393–1397 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-40 Nacht-Simulator | 1398–1443 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-41 An NINA ausgeliefert *(Cloud Targets)* | 1444–1446 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-42 NINA-Instanzen & Tokens *(Admin)* | 1447–1449 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-50 Wettervorhersage | 1450–1452 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-60 Sessions · S-61 Session-Detail | 1453–1476 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-62 Folgeplanung · S-63 Projektbericht · S-64 Klarnacht-Statistik | 1477–1481 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-70 … S-73 Administration · S-80 … S-82 System | 1482–1485 |
-| &nbsp;&nbsp;14.4 Wiederverwendbare Bausteine (UI-Komponenten) | 1486–1504 |
-| 15. Anhang A – Abgleich mit Astro PM 1.6.0 | 1505–1550 |
-| &nbsp;&nbsp;15.1 Erkenntnisse aus den Screenshots | 1507–1523 |
-| &nbsp;&nbsp;15.2 Erkenntnisse aus `logbook.db.sql` | 1524–1543 |
-| &nbsp;&nbsp;15.3 Migration (optional, OP-20) | 1544–1550 |
+| 11. Ausbaustufen (Release-Plan) | 1137–1152 |
+| 12. Offene Punkte und Entscheidungen | 1153–1188 |
+| 13. Glossar | 1189–1254 |
+| 14. Bildschirmkonzept | 1255–1505 |
+| &nbsp;&nbsp;14.1 Rahmen (Shell) | 1259–1283 |
+| &nbsp;&nbsp;14.2 Navigationsstruktur | 1284–1299 |
+| &nbsp;&nbsp;14.3 Bildschirme im Detail | 1300–1486 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-01 Anmeldung | 1304–1306 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-02 Heute Nacht *(Startseite ab R3; bis dahin „Meine Objekte“ bzw. Projektliste)* | 1307–1309 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-10 Rigs *(Imaging Systems)* | 1310–1318 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-11 Standorte | 1319–1321 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-12 Teleskope | 1322–1324 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-13 Kameras | 1325–1327 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-14 Filter & Belichtungsplan-Vorlagen | 1328–1330 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-15 Mondprofile | 1331–1333 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-20 Sternkarte *(SkyView)* | 1334–1340 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-21 Objektbrowser & Zielvorschläge *(neu)* | 1341–1343 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-22 Exoplaneten | 1344–1350 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-30 Projektliste *(je Status)* | 1351–1353 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-31 Projekt-Editor | 1354–1393 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(User)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(Admin)* | 1394–1398 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-40 Nacht-Simulator | 1399–1444 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-41 An NINA ausgeliefert *(Cloud Targets)* | 1445–1447 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-42 NINA-Instanzen & Tokens *(Admin)* | 1448–1450 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-50 Wettervorhersage | 1451–1453 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-60 Sessions · S-61 Session-Detail | 1454–1477 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-62 Folgeplanung · S-63 Projektbericht · S-64 Klarnacht-Statistik | 1478–1482 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-70 … S-73 Administration · S-80 … S-82 System | 1483–1486 |
+| &nbsp;&nbsp;14.4 Wiederverwendbare Bausteine (UI-Komponenten) | 1487–1505 |
+| 15. Anhang A – Abgleich mit Astro PM 1.6.0 | 1506–1551 |
+| &nbsp;&nbsp;15.1 Erkenntnisse aus den Screenshots | 1508–1524 |
+| &nbsp;&nbsp;15.2 Erkenntnisse aus `logbook.db.sql` | 1525–1544 |
+| &nbsp;&nbsp;15.3 Migration (optional, OP-20) | 1545–1551 |
 
 ## Technisches_Konzept_Svenesis-NINA-PM.md
 
@@ -167,15 +167,16 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.20, TK 1.20, Sch
 | &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2676–2693 |
 | 17. Teststrategie | 2694–2723 |
 | 18. CI/CD und Deployment | 2724–2752 |
-| 19. Umsetzungsplan für Claude Code | 2753–2868 |
-| &nbsp;&nbsp;R1 – MVP „Eine Nacht automatisch“ | 2762–2814 |
-| &nbsp;&nbsp;R2 – Framing und Wetter | 2815–2825 |
-| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2826–2836 |
-| &nbsp;&nbsp;R4 – Exoplaneten | 2837–2847 |
-| &nbsp;&nbsp;R5 – Komfort | 2848–2857 |
-| &nbsp;&nbsp;R6 – Optional | 2858–2868 |
-| 20. CLAUDE.md | 2869–2897 |
-| 21. Offene technische Punkte und Risiken | 2898–2938 |
+| 19. Umsetzungsplan für Claude Code | 2753–2875 |
+| &nbsp;&nbsp;R1 – MVP Planung | 2762–2802 |
+| &nbsp;&nbsp;R2 – Framing und Wetter | 2803–2813 |
+| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2814–2824 |
+| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2825–2843 |
+| &nbsp;&nbsp;R4 – Exoplaneten | 2844–2854 |
+| &nbsp;&nbsp;R5 – Komfort | 2855–2864 |
+| &nbsp;&nbsp;R6 – Optional | 2865–2875 |
+| 20. CLAUDE.md | 2876–2904 |
+| 21. Offene technische Punkte und Risiken | 2905–2945 |
 
 ## schema_aurora_dsql.sql
 

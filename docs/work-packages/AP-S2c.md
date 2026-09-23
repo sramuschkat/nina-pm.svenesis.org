@@ -1,6 +1,6 @@
 # AP-S2c – Spike Build: Adapter ohne Windows bauen (Mensch + Agent)
 
-**Release:** R1 · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** H-14
+**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** H-14
 
 ## Ziel
 Nachweisen, dass sich `NinaPm.Core` **und** der Adapter `NinaPm.Nina` mit dem .NET-8-SDK ohne Windows bauen lassen, sobald die NINA-Referenz-Assemblies aus H-14 vorliegen. Damit findet die Plugin-Entwicklung auf dem Entwicklungsrechner statt und Windows bleibt für die Laufzeit. Nachgewiesen wird an Minimalprojekten unter `spikes/nina-build/`, weil die echten Projekte erst ab AP-08c/AP-16a existieren. Ergebnis sind die Build-Dateien (`Directory.Build.props`, `tools/fetch-nina-refs.ps1`, die CI-Aufträge `refs` und `cross-build`) und ein ADR mit Go/No-Go, kein Plugin-Code.

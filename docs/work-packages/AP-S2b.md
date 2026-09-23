@@ -1,6 +1,6 @@
 # AP-S2b – Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent)
 
-**Release:** R1 · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** H-14, H-15
+**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** H-14, H-15
 
 ## Ziel
 Früh klären, ob die NINA-Stellen ohne Vorbild im Astro-PM-Plugin (Bildzuordnung für Lights, Flip-Erkennung, Trigger-Filter, Belichtungsabbruch, Auslesemodus) mit der aktuellen NINA-Version funktionieren. Ergebnis ist ein ADR mit Go/No-Go, kein Produktivcode.

@@ -1,6 +1,6 @@
 # AP-16b – Plugin Core: Planung, Neuplanung, Offline-Plan
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-16a, AP-S2a, AP-13d · **Menschliche Aufgaben:** H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-16a, AP-S2a, AP-13d · **Menschliche Aufgaben:** H-15
 
 ## Ziel
 Der Plugin-Kern plant online und offline und entscheidet nachvollziehbar, wann neu geplant wird (Hysterese, Fälle a/b/c). Alles ist ohne NINA auf Linux getestet.

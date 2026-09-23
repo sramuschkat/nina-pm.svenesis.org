@@ -1,6 +1,6 @@
 # AP-16c – Plugin Adapter: Container, interne Items, Blockablauf
 
-**Release:** R1 · **Größe:** L · **Abhängigkeiten:** AP-16b, AP-14b · **Menschliche Aufgaben:** H-14, H-15
+**Release:** RP · **Größe:** L · **Abhängigkeiten:** AP-16b, AP-14b · **Menschliche Aufgaben:** H-14, H-15
 
 ## Ziel
 Der NINA-Container führt Blöcke nach dem Astro-PM-Muster aus: ein Block je Aufruf, Slew/Zentrieren mit Wiederholungsleiter, interne Belichtungselemente und die Tabelle Eintrag → Aktion. Gesperrte Zustände warten, statt in eine Dauerschleife zu laufen.

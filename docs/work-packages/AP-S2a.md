@@ -1,6 +1,6 @@
 # AP-S2a – Spike Jint-Laufzeit
 
-**Release:** R1 · **Größe:** S · **Abhängigkeiten:** AP-08c · **Menschliche Aufgaben:** –
+**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-08c · **Menschliche Aufgaben:** –
 
 ## Ziel
 Messen, ob `planNight` in Jint für Offline-Pläne schnell genug ist, und die Grenzen festhalten. Ergebnis ist ein ADR mit Empfehlung.

@@ -1,6 +1,6 @@
 # AP-16f – Plugin: Rotator, Flip, Standort- und Sequenzprüfung, Playback-Verzug
 
-**Release:** R1 · **Größe:** M · **Abhängigkeiten:** AP-16e · **Menschliche Aufgaben:** H-15
+**Release:** RP · **Größe:** M · **Abhängigkeiten:** AP-16e · **Menschliche Aufgaben:** H-15
 
 ## Ziel
 Rotator, Meridian-Flip, Standort- und Uhrprüfung sowie die Sequenzprüfung arbeiten zuverlässig und melden Abweichungen.
