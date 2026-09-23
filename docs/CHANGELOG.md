@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### AP-05 abgenommen (2026-09-23)
+
+- PR #15 nach Review gemergt, CI grün (inkl. PostgreSQL-Suite D-07). Keine Infrastruktur-Änderung, kein Deploy nötig. D-07 läuft beim nächsten `pnpm test:dsql` (H-22) auch gegen DSQL.
+
 ### AP-05 – Shared: Rechte, Fehler, Verträge, Middleware, Job-Infrastruktur (2026-09-23)
 
 Anforderungen: FK 6.14, TK 5.3 (CSRF), 5.5, 7.1, 7.4, 7.5, 12, 13; SV-03, SV-04, SV-06, SV-09, SV-16; SEC-23, SEC-51, SEC-56, SEC-57; DAT5-1; NT-01.
