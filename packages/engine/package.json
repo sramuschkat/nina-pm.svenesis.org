@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Astronomie und Scheduler, rein und deterministisch, ohne Laufzeit-Abhängigkeiten (TK 3.1, rules/engine.md)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json"
+  }
+}

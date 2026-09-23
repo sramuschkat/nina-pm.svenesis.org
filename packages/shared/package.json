@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "zod-Schemas (Vertragsquelle), DTO-Typen, Berechtigungsmatrix, Fehlercodes, Enums, Konstanten (TK 3.1)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

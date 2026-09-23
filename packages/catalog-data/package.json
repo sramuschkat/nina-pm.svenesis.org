@@ -1,0 +1,11 @@
+{
+  "name": "@nina-pm/catalog-data",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Katalog- und Sterndaten, unveränderte Kopie aus legacy/astro-tools-2026-09-21 (TK 3.1, FK 9)",
+  "files": [
+    "data",
+    "js",
+    "README.md"
+  ]
+}

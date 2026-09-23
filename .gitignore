@@ -1,9 +1,36 @@
+# System und Editoren
 .DS_Store
-.env
-.env.*
-node_modules/
-.venv/
-__pycache__/
-*.log
 .idea/
 .vscode/
+
+# Geheimnisse (nie committen; Werte nur in SSM, H-05)
+.env
+.env.*
+
+# Node / Build
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+*.log
+.vite/
+
+# CDK
+cdk.out/
+
+# Python (tools/reference)
+.venv/
+__pycache__/
+
+# .NET (apps/nina-plugin, tools/astropm-oracle)
+bin/
+obj/
+*.user
+TestResults/
+
+# NINA-Referenz-Assemblies (H-14): nur die README.md je Version wird eingecheckt
+apps/nina-plugin/refs/**
+!apps/nina-plugin/refs/
+!apps/nina-plugin/refs/*/
+!apps/nina-plugin/refs/**/README.md

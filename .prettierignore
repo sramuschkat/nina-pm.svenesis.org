@@ -1,0 +1,10 @@
+# Umsetzungspaket und Kopiervorlagen werden nicht umformatiert.
+docs/
+legacy/
+packages/catalog-data/
+apps/nina-plugin/
+*.md
+pnpm-lock.yaml
+dist/
+build/
+coverage/

@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DE/EN-Texte, errors.* aus docs/contracts/errors.json generiert (TK 3.1)",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
