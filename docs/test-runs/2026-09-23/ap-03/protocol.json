@@ -1,0 +1,60 @@
+{
+  "tool": "pnpm test:dsql (tools/deploy/src/test-dsql.ts, @nina-pm/db/testing)",
+  "startedAt": "2026-09-23T20:00:45.329Z",
+  "migrationsHash": "7c0962bb0335f4c3",
+  "commit": "fb9f777",
+  "caller": "arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev",
+  "suites": [
+    {
+      "id": "D-01",
+      "title": "Migration 0000 und Migrationen, idempotent",
+      "ok": true,
+      "summary": "0000: 7 Änderungen, danach 0; Migrationen: 194 Anweisungen angewandt, zweiter Lauf 0; 51 Tabellen",
+      "durationMs": 753575
+    },
+    {
+      "id": "D-02",
+      "title": "Rechte-Matrix je DB-Rolle nach TK 6.2",
+      "ok": true,
+      "summary": "412 Rechte geprüft, alle wie TK 6.2",
+      "durationMs": 7588
+    },
+    {
+      "id": "D-03",
+      "title": "SEC-4: app_job schreibt keine Sitzungen/Tokens, app_rw keine Kataloge",
+      "ok": true,
+      "summary": "10 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe ok",
+      "durationMs": 1230
+    },
+    {
+      "id": "D-04",
+      "title": "withTx: OCC-Konflikt über Wächterzeile wird wiederholt",
+      "ok": true,
+      "summary": "beide Transaktionen erfolgreich, 1 Wiederholung(en) nach 40001",
+      "durationMs": 798
+    },
+    {
+      "id": "D-05",
+      "title": "Grenze 3.000 geänderte Zeilen je Transaktion",
+      "ok": true,
+      "summary": "3.001 Zeilen abgelehnt (DSQL 54000), nichts übernommen",
+      "durationMs": 318
+    },
+    {
+      "id": "D-06",
+      "title": "Mandantenisolation (TenantRepository) und Gegenprobe",
+      "ok": true,
+      "summary": "fremder Mandant unsichtbar; fehlender Filter wird erkannt",
+      "durationMs": 250
+    }
+  ],
+  "notes": [],
+  "cluster": {
+    "identifier": "mvudh4d2g5sfd55faphfqljmsm",
+    "region": "eu-central-1",
+    "createMs": 606,
+    "activeMs": 5506
+  },
+  "finishedAt": "2026-09-23T20:13:35.947Z",
+  "passed": true
+}
