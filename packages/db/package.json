@@ -5,9 +5,25 @@
   "type": "module",
   "description": "Kysely-Typen, Migrationen, Migration-Runner, Repositories, DSQL-Verbindung (TK 3.1)",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate/index.ts",
+    "./migrate/bundled": "./src/migrate/bundled.ts",
+    "./testing": "./src/testing/index.ts",
+    "./seed": "./src/seed.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint:sql": "tsx lint/cli.ts",
+    "migrate": "tsx src/cli/migrate.ts",
+    "seed": "tsx src/cli/seed.ts"
+  },
+  "dependencies": {
+    "@aws/aurora-dsql-node-postgres-connector": "0.1.9",
+    "kysely": "0.29.6",
+    "pg": "8.23.0",
+    "pg-connection-string": "^2.14.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

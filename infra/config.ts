@@ -31,6 +31,7 @@ export const config = {
     api: { functionName: 'nina-pm-api', roleName: 'NinaPmApi' },
     worker: { functionName: 'nina-pm-worker', roleName: 'NinaPmWorker' },
     opsCli: { functionName: 'nina-pm-ops-cli', roleName: 'NinaPmOpsCli' },
+    migrate: { functionName: 'nina-pm-migrate', roleName: 'NinaPmMigrate' },
   },
   workerFailureQueue: 'nina-pm-worker-failures',
   scheduleGroup: 'nina-pm',

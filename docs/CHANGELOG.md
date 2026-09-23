@@ -4,6 +4,19 @@
 
 ## [Unveröffentlicht]
 
+### AP-03 – Datenbankpaket und Migrationen (2026-09-23)
+
+Anforderungen: TK 6.1–6.9, NFA Mandantenisolation, `iam.md` §4, §12 Nr. 4, TK 17, TK 18, ADR-S1.
+
+- `packages/db`: Verbindung über den DSQL-Connector bzw. PostgreSQL (Repeatable Read), `withTx` mit OCC-Wiederholung, Wächtern in fester Reihenfolge und Zeilenzähler (≤ 3.000), Mandanten-Guard (`TenantRepo`) mit Beispiel `TenantRepository`.
+- Migrationen 0001–0005 aus dem Schema (51 Tabellen, 50 Indizes), je Tabelle beide GRANT-Sätze nach TK 6.2 (`src/grants.ts`); Runner mit Buchführung je Anweisung und `CALL sys.wait_for_job`; Migration 0000 (Rollen, `AWS IAM GRANT`, idempotent, ohne `GRANT USAGE ON SCHEMA`).
+- DSQL-Lint (`pnpm db:lint`, Teil von `pnpm lint`) mit allen Verboten aus TK 6.8/ADR-S1 und GRANT-Prüfung je neue Tabelle.
+- Prüf-Suites D-01…D-06 (Idempotenz, Rechte-Matrix, SEC-4, OCC-Wiederholung, 3.000 Zeilen, Isolation mit Gegenprobe) für CI (PostgreSQL-16-Service) und `pnpm test:dsql` (DSQL, H-22).
+- `NinaPm-Migrate`: Lambda `nina-pm-migrate` mit Rolle `NinaPmMigrate` als CDK-Trigger vor Api und Jobs; `DSQL_DB_ROLE` je Lambda; Assertion 4.
+- `pnpm db:up/db:migrate/db:seed`, `docker-compose.yml`; Seed für Mandanten, Identitäten, Super User und Mitgliedschaften.
+- `pnpm deploy:prod`: bei neuen Migrationen grünes `test:dsql`-Protokoll für den Stand verlangt, On-Demand-Backup vor dem Deploy.
+- `pnpm test:dsql` durch Sven (H-22, 23.09.2026) grün gegen DSQL: 194 Anweisungen idempotent, 412 Rechte wie TK 6.2 (inkl. Spaltenrechte), SEC-4, OCC-Wiederholung, 3.000-Zeilen-Grenze (54000), Isolation; Protokoll `docs/test-runs/2026-09-23/ap-03/`.
+
 ### AP-02b – Alarme erreichen SNS (2026-09-23)
 
 - Nach dem ersten Deploy meldete CloudWatch „Failed to execute action“ für das Topic `nina-pm-alarms`. Die eigene Topic-Richtlinie (Freigabe für Budgets) ersetzte die Standardrichtlinie, und die TLS-Deny-Regel aus `enforceSSL` blockierte zusätzlich. Die Richtlinie erlaubt jetzt `cloudwatch.amazonaws.com` ausdrücklich (auf das Konto begrenzt); `enforceSSL` am Topic entfällt. Assertion ergänzt.

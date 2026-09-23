@@ -12,7 +12,7 @@ CDK-App der einzigen Umgebung **prod** (`nina-pm.svenesis.org`, TK 4). Konfigura
 | `NinaPm-Jobs` | eu-central-1 | Lambda `nina-pm-worker` (Rolle `NinaPmWorker`, reserviert 5), SQS `nina-pm-worker-failures`, vier Zeitpläne in der Gruppe `nina-pm` | AP-02b |
 | `NinaPm-Api` | eu-central-1 | HTTP API mit Drosselung nach `iam.md` §9, Lambda `nina-pm-api` (Rolle `NinaPmApi`, reserviert 20), Zugriffsprotokoll; Ausgabe `ApiEndpoint` | AP-02b |
 | `NinaPm-Ops` | eu-central-1 | Lambda `nina-pm-ops-cli` (Rolle `NinaPmOpsCli`), SNS `nina-pm-alarms`, Alarme nach TK 16.2, Route-53-Health-Check, Budget | AP-02b |
-| `NinaPm-Migrate` | eu-central-1 | Lambda `migrate`, Migrationen | AP-03 |
+| `NinaPm-Migrate` | eu-central-1 | Lambda `nina-pm-migrate` (Rolle `NinaPmMigrate`, `dsql:DbConnectAdmin`) als CDK-Trigger vor Api und Jobs: Migration 0000 und alle offenen Migrationen | AP-03 |
 
 ## Befehle
 

@@ -17,6 +17,7 @@
     "@aws-lambda-powertools/parameters": "2.35.0",
     "@aws-sdk/client-sqs": "3.1137.0",
     "@aws-sdk/client-ssm": "3.1137.0",
+    "@nina-pm/db": "workspace:*",
     "@nina-pm/engine": "workspace:*",
     "hono": "4.13.8"
   }

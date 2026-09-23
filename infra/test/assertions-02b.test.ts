@@ -4,7 +4,7 @@ import { resources, synth, type Resource } from './synth';
 
 // CDK-Assertions nach specs/infra/iam.md §12, Stand AP-02b: Nr. 1, 2, 3, 8, 9 und die Tabellen §2, §3, §5, §6, §9.
 const t = synth();
-const all = [t.data, t.config, t.cert, t.web, t.edge, t.jobs, t.api, t.ops];
+const all = [t.data, t.config, t.cert, t.web, t.migrate, t.edge, t.jobs, t.api, t.ops];
 
 interface Statement {
   Effect: string;
@@ -36,6 +36,7 @@ const ROLES = Object.values(config.lambdas).map((l) => l.roleName);
 const apiRole = appRole(config.lambdas.api.roleName);
 const workerRole = appRole(config.lambdas.worker.roleName);
 const opsRole = appRole(config.lambdas.opsCli.roleName);
+const migrateRole = appRole(config.lambdas.migrate.roleName);
 
 describe('Assertion 1: keine *-Ressourcen, keine Managed Policies außer AWSLambdaBasicExecutionRole', () => {
   it.each(ROLES)('%s', (roleName) => {
@@ -52,15 +53,29 @@ describe('Assertion 1: keine *-Ressourcen, keine Managed Policies außer AWSLamb
     expect(json(managed[0])).toContain('service-role/AWSLambdaBasicExecutionRole');
   });
 
-  it('dsql:DbConnect genau einmal je Rolle auf den Cluster-ARN, DbConnectAdmin nirgends', () => {
+  it('dsql:DbConnect genau einmal je Anwendungsrolle auf den Cluster-ARN', () => {
     for (const { statements } of [apiRole, workerRole, opsRole]) {
       const dsql = statements.filter((s) => actionsOf(s).some((a) => a.startsWith('dsql:')));
       expect(dsql).toHaveLength(1);
       expect(actionsOf(dsql[0] as Statement)).toEqual(['dsql:DbConnect']);
       expect(json(dsql[0]?.Resource)).toContain('ClusterResourceArn');
     }
-    for (const template of all)
-      expect(json(template.toJSON())).not.toContain('dsql:DbConnectAdmin');
+  });
+
+  it('Assertion 4: dsql:DbConnectAdmin steht nur in NinaPmMigrate', () => {
+    const dsql = migrateRole.statements.filter((s) =>
+      actionsOf(s).some((a) => a.startsWith('dsql:')),
+    );
+    expect(dsql).toHaveLength(1);
+    expect(actionsOf(dsql[0] as Statement)).toEqual(['dsql:DbConnectAdmin']);
+    expect(json(dsql[0]?.Resource)).toContain('ClusterResourceArn');
+    for (const template of all) {
+      for (const [, p] of resources(template, 'AWS::IAM::Policy')) {
+        const doc = json(p.Properties.PolicyDocument);
+        if (doc.includes('dsql:DbConnectAdmin'))
+          expect(json(p.Properties.Roles)).toContain('MigrateRole');
+      }
+    }
   });
 });
 
@@ -287,7 +302,7 @@ describe('Lambdas und Logs (TK 4.2, 16.1, SV-15)', () => {
     .filter(([, f]) => String(f.Properties.FunctionName ?? '').startsWith('nina-pm-'))
     .map(([, f]) => f);
 
-  it('drei Anwendungs-Lambdas: Node 24, arm64, X-Ray aktiv, Source Maps', () => {
+  it('vier Lambdas (api, worker, ops-cli, migrate): Node 24, arm64, X-Ray aktiv, Source Maps', () => {
     expect(appFunctions.map((f) => f.Properties.FunctionName).sort()).toEqual(
       Object.values(config.lambdas)
         .map((l) => l.functionName)

@@ -55,6 +55,7 @@ export class JobsStack extends Stack {
       dsqlClusterArn: props.dsqlClusterArn,
       environment: {
         DSQL_ENDPOINT_PARAM: config.ssm.dsqlEndpoint,
+        DSQL_DB_ROLE: 'app_job',
         WEB_BUILD_ID_PARAM: config.ssm.webBuildId,
         ALARM_WEBHOOK_PARAM: config.ssm.alarmWebhook,
         DATA_BUCKET: props.dataBucket.bucketName,

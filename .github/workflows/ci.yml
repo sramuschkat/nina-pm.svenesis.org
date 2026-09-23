@@ -1,6 +1,6 @@
 # CI nach TK 18 (AP-01: install, lint, typecheck, test, build, gitleaks).
 # GitHub hat keinen AWS-Zugang (E1): dieser Workflow prüft und baut nur, er deployt nie.
-# PostgreSQL-Service, a11y, OpenAPI-Diff und E2E kommen mit ihren Arbeitspaketen dazu.
+# a11y, OpenAPI-Diff und E2E kommen mit ihren Arbeitspaketen dazu.
 name: ci
 
 on:
@@ -20,6 +20,24 @@ jobs:
     name: install · lint · typecheck · test · build · cdk synth
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # PostgreSQL 16 als DSQL-Ersatz für Migrationen, Rechte- und Repository-Tests (TK 17, 18).
+    # Repeatable Read setzt jede Verbindung selbst (Service-Container kennen kein `command`).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ninapm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ninapm
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
