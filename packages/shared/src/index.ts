@@ -1,3 +1,7 @@
-// @nina-pm/shared – Verträge (zod-Schemas), DTO-Typen, Berechtigungsmatrix, Fehlercodes und Enums.
-// Inhalt folgt mit AP-05 (Verträge zuerst, Quelle docs/contracts).
-export {};
+// @nina-pm/shared – Verträge (zod-Schemas), DTO-Typen, Berechtigungsmatrix, Fehlercodes und Enums (TK 3.1).
+export * from './auth';
+export * from './contracts';
+export * from './enums';
+export * from './errors';
+export * from './night';
+export * from './permissions';

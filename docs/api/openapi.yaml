@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: Svenesis NINA-PM API
+  version: "1"
+  description: "Generiert aus packages/shared (zod) – nicht von Hand ändern. Fehler als application/problem+json mit Codes aus docs/contracts/errors.json. Nicht-GET unter /api/auth, /api/web/v1, /api/system/v1 verlangt X-NPM-Request: 1 (SV-04)."
+servers:
+  - url: https://nina-pm.svenesis.org
+components:
+  schemas:
+    JobView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        kind:
+          type: string
+          enum:
+            - multi_sim
+            - impact
+            - effort
+            - session_close
+            - session_report
+            - discord_post
+            - export
+            - import
+            - thumbnail
+            - transit_result_parse
+            - catalog_refresh
+            - forecast
+            - reconcile
+            - weather
+            - noop
+        status:
+          type: string
+          enum:
+            - pending
+            - running
+            - done
+            - failed
+        attempts:
+          type: integer
+        errorCode:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        startedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        finishedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        hasResult:
+          type: boolean
+      required:
+        - id
+        - kind
+        - status
+        - attempts
+        - errorCode
+        - createdAt
+        - startedAt
+        - finishedAt
+        - hasResult
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+          enum:
+            - validation.failed
+            - auth.unauthenticated
+            - auth.no_membership
+            - auth.identity_blocked
+            - auth.mfa_required
+            - auth.csrf_missing
+            - auth.rate_limited
+            - permission.denied
+            - tenant.not_found
+            - tenant.locked
+            - resource.not_found
+            - resource.version_conflict
+            - resource.in_use
+            - invitation.invalid
+            - invitation.expired
+            - invitation.already_member
+            - member.owner_protected
+            - super_user.last_protected
+            - member.cannot_change_self
+            - member.owner_cannot_leave
+            - owner_transfer.target_invalid
+            - approval.not_allowed
+            - approval.own_object
+            - approval.incomplete
+            - approval.rig_conflict
+            - vote.own_object
+            - vote.closed
+            - ranking.incomplete
+            - change_request.conflict
+            - change_request.not_open
+            - transit.lock_not_allowed
+            - transit.deadline_passed
+            - rig.sort_chain_invalid
+            - rig.flip_settings_invalid
+            - discord.webhook_invalid
+            - discord.test_failed
+            - job.not_found
+            - file.too_large
+            - file.type_not_allowed
+            - nina.token_invalid
+            - engine.incompatible
+            - session.rig_busy
+            - session.unknown
+            - session.closed
+            - capture.batch_too_large
+            - plan.targets_etag_mismatch
+            - canonical.non_finite
+            - system.maintenance
+            - internal.error
+            - transit.share_mismatch
+            - transit.too_many_open
+            - transit.window_overlap
+            - transit.ephemeris_stale
+            - exo.epoch_out_of_range
+            - transit.result_time_system
+            - validation.min_time_too_small
+            - project.status_transition_invalid
+            - rig.change_has_captures
+            - correction.conflict
+            - capture.assign_mismatch
+            - line.locked_by_captures
+            - nina.night_invalid
+            - engine.input_invalid
+        requestId:
+          type: string
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              message:
+                type: string
+            required:
+              - path
+              - message
+      required:
+        - type
+        - title
+        - status
+        - code
+    DownloadUrl:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - url
+        - expiresAt
+  parameters: {}
+paths:
+  /api/health:
+    get:
+      summary: Health (öffentlich, ohne DB-Ping)
+      tags:
+        - system
+      description: "Aktion: `public` · SV-07, TK 4.2"
+      x-npm-action: public
+      x-npm-requirements:
+        - SV-07
+        - TK 4.2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                  engineVersion:
+                    type: string
+                  build:
+                    type: string
+                required:
+                  - status
+                  - engineVersion
+                  - build
+  /api/web/v1/jobs/{id}:
+    get:
+      summary: Job-Status abfragen
+      tags:
+        - jobs
+      description: "Aktion: `job.read` · TK 7.4, FA-SIM-04, FA-FRG-05"
+      x-npm-action: job.read
+      x-npm-requirements:
+        - TK 7.4
+        - FA-SIM-04
+        - FA-FRG-05
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: job.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/files/download-url:
+    get:
+      summary: Download-Link (presigned GET, 15 min) über Zweck und Objekt-ID
+      tags:
+        - files
+      description: "Aktion: `job.read` · TK 12, SEC-57, FA-ADM-04"
+      x-npm-action: job.read
+      x-npm-requirements:
+        - TK 12
+        - SEC-57
+        - FA-ADM-04
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - job_result
+              - export
+          required: true
+          name: purpose
+          in: query
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: query
+      responses:
+        "200":
+          description: Link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadUrl"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Objekt nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+webhooks: {}

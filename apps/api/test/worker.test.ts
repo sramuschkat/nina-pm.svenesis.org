@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dispatch, TICKS, type TickTasks } from '../src/worker/dispatch';
+import { dispatch, TICKS, type DispatchDeps, type TickTasks } from '../src/worker/dispatch';
 
 const empty: TickTasks = { 'tick-5min': [], 'tick-hourly': [], daily: [], weekly: [] };
+const deps = (
+  tasks: TickTasks = empty,
+  runJob = vi.fn(() => Promise.resolve('done')),
+): DispatchDeps => ({
+  tasks,
+  runJob,
+});
 
 describe('Worker-Dispatcher', () => {
   it('kennt genau die vier Zeitpläne aus TK 13', () => {
@@ -17,25 +24,29 @@ describe('Worker-Dispatcher', () => {
         { name: 'b', run: () => Promise.resolve(void order.push('b')) },
       ],
     };
-    expect(await dispatch({ tick: 'daily' }, tasks)).toEqual({ ran: ['a', 'b'] });
+    expect(await dispatch({ tick: 'daily' }, deps(tasks))).toEqual({ ran: ['a', 'b'] });
     expect(order).toEqual(['a', 'b']);
   });
 
-  it('nimmt {jobId} an (Ausführung folgt mit AP-05)', async () => {
-    expect(await dispatch({ jobId: '0199-job' }, empty)).toEqual({ ran: [] });
+  it('führt {jobId} über den Job-Runner aus', async () => {
+    const runJob = vi.fn(() => Promise.resolve('done'));
+    expect(await dispatch({ jobId: '0199-job' }, deps(empty, runJob))).toEqual({
+      ran: ['job:0199-job'],
+    });
+    expect(runJob).toHaveBeenCalledWith('0199-job');
   });
 
   it.each([[null], [{}], [{ tick: 'hourly' }], [{ jobId: '' }], ['tick-5min']])(
     'wirft bei unbekanntem Ereignis %j',
     async (event) => {
-      await expect(dispatch(event, empty)).rejects.toThrow('Unbekanntes Worker-Ereignis');
+      await expect(dispatch(event, deps())).rejects.toThrow('Unbekanntes Worker-Ereignis');
     },
   );
 
   it('gibt den Fehler einer Aufgabe weiter (→ onFailure-SQS)', async () => {
     const failing = vi.fn(() => Promise.reject(new Error('kaputt')));
     await expect(
-      dispatch({ tick: 'weekly' }, { ...empty, weekly: [{ name: 'x', run: failing }] }),
+      dispatch({ tick: 'weekly' }, deps({ ...empty, weekly: [{ name: 'x', run: failing }] })),
     ).rejects.toThrow('kaputt');
   });
 });

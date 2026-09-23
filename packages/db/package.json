@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@aws/aurora-dsql-node-postgres-connector": "0.1.9",
+    "@nina-pm/shared": "workspace:*",
     "kysely": "0.29.6",
     "pg": "8.23.0",
     "pg-connection-string": "^2.14.0"
