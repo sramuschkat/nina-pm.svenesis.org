@@ -56,8 +56,20 @@ export class OpsStack extends Stack {
     props.failureQueue.grantConsumeMessages(this.opsCli.fn);
 
     // --- SNS → E-Mail (H-09 bestätigt das Abo).
-    this.topic = new sns.Topic(this, 'Alarms', { topicName: config.alarmTopic, enforceSSL: true });
+    // Ohne enforceSSL: die Deny-Regel für unverschlüsselte Aufrufe ließ CloudWatch-Alarme scheitern
+    // („Failed to execute action“, Deploy AP-02b 23.09.2026).
+    this.topic = new sns.Topic(this, 'Alarms', { topicName: config.alarmTopic });
     this.topic.addSubscription(new subs.EmailSubscription(config.alarmEmail));
+    // Eine eigene Topic-Richtlinie ersetzt die Standardrichtlinie; deshalb CloudWatch ausdrücklich erlauben.
+    this.topic.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: 'AllowCloudWatchAlarms',
+        principals: [new iam.ServicePrincipal('cloudwatch.amazonaws.com')],
+        actions: ['sns:Publish'],
+        resources: [this.topic.topicArn],
+        conditions: { StringEquals: { 'aws:SourceAccount': this.account } },
+      }),
+    );
     this.topic.addToResourcePolicy(
       new iam.PolicyStatement({
         sid: 'AllowBudgets',

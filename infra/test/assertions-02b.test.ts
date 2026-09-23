@@ -361,6 +361,20 @@ describe('Ops: SNS, Alarme nach TK 16.2, Health-Check, Budget', () => {
     });
   });
 
+  it('Topic-Richtlinie erlaubt CloudWatch und Budgets, ohne Deny-Regel', () => {
+    const policies = resources(t.ops, 'AWS::SNS::TopicPolicy');
+    expect(policies).toHaveLength(1);
+    const statements = (
+      policies[0]?.[1].Properties.PolicyDocument as {
+        Statement: { Effect: string; Principal: unknown }[];
+      }
+    ).Statement;
+    expect(statements.filter((s) => s.Effect === 'Deny')).toEqual([]);
+    const principals = statements.map((s) => json(s.Principal));
+    expect(principals.some((p) => p.includes('cloudwatch.amazonaws.com'))).toBe(true);
+    expect(principals.some((p) => p.includes('budgets.amazonaws.com'))).toBe(true);
+  });
+
   it('die Alarme aus TK 16.2 schicken an das Topic', () => {
     const alarms = resources(t.ops, 'AWS::CloudWatch::Alarm').map(([, a]) => a.Properties);
     expect(alarms.map((a) => a.AlarmName).sort()).toEqual(

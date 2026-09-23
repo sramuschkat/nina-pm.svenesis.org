@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### AP-02b – Alarme erreichen SNS (2026-09-23)
+
+- Nach dem ersten Deploy meldete CloudWatch „Failed to execute action“ für das Topic `nina-pm-alarms`. Die eigene Topic-Richtlinie (Freigabe für Budgets) ersetzte die Standardrichtlinie, und die TLS-Deny-Regel aus `enforceSSL` blockierte zusätzlich. Die Richtlinie erlaubt jetzt `cloudwatch.amazonaws.com` ausdrücklich (auf das Konto begrenzt); `enforceSSL` am Topic entfällt. Assertion ergänzt.
+
 ### AP-02b – CDK: Api, Jobs, Ops (2026-09-23)
 
 Anforderungen: TK 4.1, 4.2, 7.4, 13, 16.1, 16.2; `specs/infra/iam.md` §1–§3, §5, §6, §8, §9, §11, §12; `rules/api.md`.
