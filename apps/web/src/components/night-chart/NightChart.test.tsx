@@ -8,7 +8,15 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
-import { hourTicks } from './model';
+import { SKY_STOPS } from '@nina-pm/ui-tokens';
+import {
+  hourBands,
+  hourTicks,
+  maskIntervals,
+  skyColor,
+  sunAltFromTwilight,
+  twilightCrossings,
+} from './model';
 import { NightChart, type AltitudeSeries } from './index';
 
 beforeAll(() => {
@@ -138,6 +146,126 @@ describe('NightChart', () => {
   });
 });
 
+describe('Legende mit Ebenen und Stundenstreifen (Entscheidung 24.09.2026)', () => {
+  const twilight = {
+    civil: { startUtc: START + H, endUtc: END - H },
+    nautical: { startUtc: START + 1.5 * H, endUtc: END - 1.5 * H },
+    astronomical: { startUtc: START + 2 * H, endUtc: END - 2 * H },
+  };
+
+  it('Checkboxen je Ebene, Stundensummen je Streifen, Tabelle mit Zeiträumen', async () => {
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        twilight={twilight}
+        series={[series('ngc281', 'NGC 281')]}
+        moon={{
+          points: [
+            { atUtc: START, altDeg: 40 },
+            { atUtc: START + 4 * H, altDeg: 0 },
+            { atUtc: END, altDeg: -40 },
+          ],
+          illuminationPct: 45,
+        }}
+        recommended={[{ fromUtc: START + 3 * H, toUtc: START + 8 * H }]}
+        minAltDeg={30}
+        timeZone="America/Chicago"
+      />,
+    );
+    const legend = screen.getByRole('group', { name: 'Legende' });
+    const boxes = within(legend).getAllByRole('checkbox');
+    // NGC 281, Mond, Mindesthöhe, fünf Streifen
+    expect(boxes).toHaveLength(8);
+    expect(boxes.every((b) => (b as HTMLInputElement).checked)).toBe(true);
+    const dark = within(legend).getByRole('checkbox', { name: /Astronomisch dunkel/ });
+    expect(dark.closest('label')).toHaveTextContent('Astronomisch dunkel9,0 h');
+    expect(
+      within(legend)
+        .getByRole('checkbox', { name: /Empfohlene Belichtungszeit/ })
+        .closest('label'),
+    ).toHaveTextContent('5,0 h');
+    fireEvent.click(dark);
+    expect(dark).not.toBeChecked();
+    fireEvent.click(within(legend).getByRole('checkbox', { name: /^Mond \(45/ }));
+    expect(within(legend).getByRole('checkbox', { name: /Mond \(45/ })).not.toBeChecked();
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Empfohlene Belichtungszeit').nextSibling).toHaveTextContent(
+      '5,0 h · 22:00 CDT – 03:00 CDT',
+    );
+    await expectNoSeriousA11y();
+  });
+});
+
+describe('Himmel und Stundenstreifen (model)', () => {
+  it('skyColor: Stützstellen exakt, dazwischen linear, außerhalb die Randfarbe', () => {
+    expect(skyColor(10, SKY_STOPS)).toBe('rgb(166, 140, 69)');
+    expect(skyColor(-18, SKY_STOPS)).toBe('rgb(9, 14, 24)');
+    expect(skyColor(-40, SKY_STOPS)).toBe('rgb(9, 14, 24)');
+    // Mitte zwischen −12° (26, 50, 86) und −18° (9, 14, 24)
+    expect(skyColor(-15, SKY_STOPS)).toBe('rgb(18, 32, 55)');
+  });
+
+  it('sunAltFromTwilight und twilightCrossings: Stufen und B/N/A-Wechsel im Fenster', () => {
+    const win = { fromUtc: START, toUtc: END };
+    const tw = {
+      civil: { startUtc: START + H, endUtc: END - H },
+      nautical: { startUtc: START + 2 * H, endUtc: END - 2 * H },
+      astronomical: { startUtc: null, endUtc: null },
+    };
+    expect(sunAltFromTwilight(tw, START + 0.5 * H, win)).toBe(0);
+    expect(sunAltFromTwilight(tw, START + 1.5 * H, win)).toBe(-6);
+    expect(sunAltFromTwilight(tw, START + 6 * H, win)).toBe(-12);
+    expect(twilightCrossings(tw, win).map((c) => c.kind)).toEqual([
+      'civil',
+      'nautical',
+      'nautical',
+      'civil',
+    ]);
+    // Polarnacht: ganz dunkel, keine Wechsel
+    const polar = { ...tw, astronomical: { startUtc: null, endUtc: null, allNight: true } };
+    expect(sunAltFromTwilight(polar, START, win)).toBe(-18);
+  });
+
+  it('hourBands: dunkel, über Mindesthöhe, davon mit/ohne Mond; empfohlen aus der Engine', () => {
+    const win = { fromUtc: START, toUtc: START + 4 * H };
+    const bands = hourBands({
+      window: win,
+      sun: [
+        { atUtc: START, altDeg: -10 },
+        { atUtc: START + H, altDeg: -20 },
+        { atUtc: START + 4 * H, altDeg: -20 },
+      ],
+      target: [
+        { atUtc: START, altDeg: 50 },
+        { atUtc: START + 3 * H, altDeg: 50 },
+        { atUtc: START + 3 * H + 1, altDeg: 10 },
+        { atUtc: START + 4 * H, altDeg: 10 },
+      ],
+      moon: [
+        { atUtc: START, altDeg: 10 },
+        { atUtc: START + 2 * H, altDeg: 10 },
+        { atUtc: START + 2 * H + 1, altDeg: -5 },
+        { atUtc: START + 4 * H, altDeg: -5 },
+      ],
+      minAltDeg: 30,
+      recommended: [{ fromUtc: START + H, toUtc: START + 2 * H }],
+    });
+    const total = Object.fromEntries(bands.map((b) => [b.key, b.totalSec / 60]));
+    // Sonne ≤ −18° ab 00:48Z (linear −10 → −20 in 1 h), auf 5-min-Mitten gerastert: ab 00:50Z
+    expect(total).toEqual({ recommended: 60, moonless: 60, moonlit: 70, above: 130, dark: 190 });
+    expect(bands.find((b) => b.key === 'moonlit')?.intervals).toEqual([
+      { fromUtc: START + 50 * 60, toUtc: START + 2 * H },
+    ]);
+  });
+
+  it('maskIntervals fasst benachbarte Slots zusammen', () => {
+    expect(maskIntervals([0, 300, 600, 900, 1200], [true, true, false, true])).toEqual([
+      { fromUtc: 0, toUtc: 600 },
+      { fromUtc: 900, toUtc: 1200 },
+    ]);
+  });
+});
+
 describe('Zeitachse (NT-03, components.md §2.3 Grenzfälle)', () => {
   it('Chicago 31.10./01.11.2026: 25 Stunden, die Beschriftung springt (01 zweimal)', () => {
     const start = Date.UTC(2026, 9, 31, 17) / 1000;
@@ -192,5 +320,8 @@ describe('Engine-Adapter (AP-10, menschliche Freigabe „NGC 281 plausibel“)',
     expect(
       Math.abs((props.markers?.[0]?.atUtc ?? 0) - Date.UTC(2026, 8, 18, 7, 42, 55) / 1000),
     ).toBeLessThanOrEqual(30); // Referenztoleranz ±30 s (flip-rotation.md §1.1)
+    // Himmel aus der Sonnenkurve, empfohlene Zeit = Dämmerung + Mindesthöhe (ohne Mondprofil)
+    expect(props.sun).toHaveLength(157);
+    expect(props.recommended?.length).toBeGreaterThan(0);
   });
 });

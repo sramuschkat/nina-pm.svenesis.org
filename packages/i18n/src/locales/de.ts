@@ -607,6 +607,7 @@ export const de = {
     error: 'Das Nachtdiagramm kann nicht gezeichnet werden.',
     keyboardHint: 'Mit ← und → das Diagramm in 5-Minuten-Schritten abtasten.',
     moon: 'Mond',
+    moonBadge: 'Mond {{pct}} %',
     moonLegend: 'Mond ({{pct}} % beleuchtet)',
     minAlt: 'Mindesthöhe {{deg}}°',
     more: '+{{count}} weitere',
@@ -616,6 +617,20 @@ export const de = {
     culmination: 'höchster Stand {{at}} ({{deg}}°)',
     above: 'über {{deg}}° von {{from}} bis {{to}}',
     neverAbove: 'nie über {{deg}}°',
+    legend: 'Legende',
+    hours: '{{h}} h',
+    band: {
+      recommended: 'Empfohlene Belichtungszeit',
+      moonless: 'Über {{deg}}° ohne Mond',
+      moonlit: 'Über {{deg}}° mit Mond',
+      above: 'Über {{deg}}°',
+      dark: 'Astronomisch dunkel',
+    },
+    twilightShort: {
+      civil: 'B',
+      nautical: 'N',
+      astronomical: 'A',
+    },
     twilight: {
       civil: 'Bürgerliche Dämmerung',
       nautical: 'Nautische Dämmerung',
@@ -987,7 +1002,8 @@ export const de = {
       telescopeHint: 'nur für Übersichten – maßgeblich ist die Filterradbelegung des Rigs',
       shortNameHint: 'Anzeige- und Planungsschlüssel, z. B. L, R, Ha, OIII',
       spectrumLabel: 'Durchlasskurven der Filter über der Wellenlänge',
-      spectrumAxis: 'Wellenlänge in nm; Höhe = Transmission',
+      spectrumAxisX: 'Wellenlänge (nm)',
+      spectrumAxisY: 'Transmission [%]',
       spectrumMissing: 'Ohne Zentralwellenlänge/Bandbreite nicht dargestellt: {{names}}',
       view: {
         collection: 'Meine Sammlung',

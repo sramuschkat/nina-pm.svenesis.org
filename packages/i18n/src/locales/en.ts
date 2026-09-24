@@ -603,6 +603,7 @@ export const en: Messages = {
     error: 'The night chart cannot be drawn.',
     keyboardHint: 'Use ← and → to step through the chart in 5-minute steps.',
     moon: 'Moon',
+    moonBadge: 'Moon {{pct}} %',
     moonLegend: 'Moon ({{pct}} % illuminated)',
     minAlt: 'Minimum altitude {{deg}}°',
     more: '+{{count}} more',
@@ -612,6 +613,20 @@ export const en: Messages = {
     culmination: 'highest at {{at}} ({{deg}}°)',
     above: 'above {{deg}}° from {{from}} to {{to}}',
     neverAbove: 'never above {{deg}}°',
+    legend: 'Legend',
+    hours: '{{h}} h',
+    band: {
+      recommended: 'Recommended exposure',
+      moonless: 'Above {{deg}}°, moonless',
+      moonlit: 'Above {{deg}}°, moon up',
+      above: 'Above {{deg}}°',
+      dark: 'Astronomically dark',
+    },
+    twilightShort: {
+      civil: 'C',
+      nautical: 'N',
+      astronomical: 'A',
+    },
     twilight: {
       civil: 'Civil twilight',
       nautical: 'Nautical twilight',
@@ -980,7 +995,8 @@ export const en: Messages = {
       telescopeHint: 'for overviews only – the rig’s filter wheel is what counts',
       shortNameHint: 'Display and planning key, e.g. L, R, Ha, OIII',
       spectrumLabel: 'Filter passbands over wavelength',
-      spectrumAxis: 'Wavelength in nm; height = transmission',
+      spectrumAxisX: 'Wavelength (nm)',
+      spectrumAxisY: 'Transmission [%]',
       spectrumMissing: 'Not shown without centre wavelength/bandwidth: {{names}}',
       view: {
         collection: 'My collection',

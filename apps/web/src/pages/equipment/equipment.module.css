@@ -305,6 +305,40 @@ fieldset.inline {
   height: var(--npm-chart-h);
   display: block;
 }
+.spectrum {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.spectrumGrid {
+  stroke: var(--npm-text-light);
+  stroke-opacity: 0.45;
+  stroke-width: 1;
+}
+.spectrumFrame {
+  fill: none;
+  stroke: var(--npm-text);
+  stroke-width: 1.5;
+}
+.spectrumTick {
+  fill: var(--npm-text-light);
+  font-size: 14px;
+}
+.spectrumTitle {
+  fill: var(--npm-text-light);
+  font-size: 14px;
+  font-style: italic;
+  font-weight: 600;
+}
+.spectrumLabel {
+  font-size: 14px;
+  font-weight: 600;
+  /* Hof in der Grundfarbe: Führungslinien anderer Filter laufen unter der Schrift durch. */
+  paint-order: stroke;
+  stroke: var(--npm-white);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
 .chartAxis {
   stroke: var(--npm-border);
   stroke-width: 1;
