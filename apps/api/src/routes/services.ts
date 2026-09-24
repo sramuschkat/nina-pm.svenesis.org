@@ -4,6 +4,7 @@ import type {
   EnqueueResult,
   Job,
   MemberRepository,
+  NotificationRepository,
   PreferenceRepository,
   SystemActor,
   TenantAdminRepository,
@@ -22,6 +23,7 @@ export interface ApiRepositories {
   };
   readonly member: MemberRepository;
   preference(): PreferenceRepository;
+  notification(): NotificationRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */

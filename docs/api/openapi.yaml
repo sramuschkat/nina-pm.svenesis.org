@@ -200,10 +200,13 @@ components:
               type: string
             name:
               type: string
+            timeZone:
+              type: string
           required:
             - id
             - key
             - name
+            - timeZone
         member:
           type:
             - object
@@ -629,6 +632,111 @@ components:
       type: object
       properties:
         value: {}
+    NotificationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationView"
+        unreadCount:
+          type: integer
+        nextCursor:
+          type:
+            - string
+            - "null"
+      required:
+        - items
+        - unreadCount
+        - nextCursor
+    NotificationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        kind:
+          type: string
+          enum:
+            - submission.new
+            - submission.withdrawn
+            - submission.edited_by_admin
+            - approval.approved
+            - approval.returned
+            - approval.rejected
+            - approval.expired
+            - deadline.near
+            - change_request.new
+            - change_request.decided
+            - vote.subject_changed
+            - vote.subject_resubmitted
+            - project.completed
+            - transit.confirmation_needed
+            - role.changed
+            - owner.reassigned
+            - alert.rig_busy
+            - alert.session_no_heartbeat
+            - alert.plugin_dead_letters
+            - alert.nina_settings_mismatch
+            - alert.discord_channel_failed
+        payload:
+          type: object
+          additionalProperties: {}
+        projectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        readAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - kind
+        - payload
+        - projectId
+        - readAt
+        - createdAt
+    UnreadCount:
+      type: object
+      properties:
+        unreadCount:
+          type: integer
+      required:
+        - unreadCount
+    MarkNotificationsRead:
+      anyOf:
+        - type: object
+          properties:
+            ids:
+              type: array
+              items:
+                type: string
+                format: uuid
+                description: UUID
+              minItems: 1
+              maxItems: 200
+          required:
+            - ids
+          additionalProperties: false
+        - type: object
+          properties:
+            all:
+              type: boolean
+              enum:
+                - true
+          required:
+            - all
+          additionalProperties: false
     TenantAdminView:
       type: object
       properties:
@@ -1804,6 +1912,93 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/notifications:
+    get:
+      summary: Eigene Benachrichtigungen (neueste zuerst) mit Anzahl ungelesener
+      tags:
+        - notifications
+      description: "Aktion: `notification.read` · FA-FRG-11, TK 7.2"
+      x-npm-action: notification.read
+      x-npm-requirements:
+        - FA-FRG-11
+        - TK 7.2
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            maxLength: 200
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: unread
+          in: query
+      responses:
+        "200":
+          description: Benachrichtigungen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein Mandanten-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/notifications/read:
+    post:
+      summary: Eigene Benachrichtigungen als gelesen markieren (einzelne oder alle)
+      tags:
+        - notifications
+      description: "Aktion: `notification.read` · FA-FRG-11, TK 7.2"
+      x-npm-action: notification.read
+      x-npm-requirements:
+        - FA-FRG-11
+        - TK 7.2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkNotificationsRead"
+      responses:
+        "200":
+          description: Verbleibende ungelesene
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCount"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein Mandanten-Kontext
           content:
             application/problem+json:
               schema:

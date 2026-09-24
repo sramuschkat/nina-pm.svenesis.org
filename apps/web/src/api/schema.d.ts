@@ -1556,6 +1556,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eigene Benachrichtigungen (neueste zuerst) mit Anzahl ungelesener
+         * @description Aktion: `notification.read` · FA-FRG-11, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                    unread?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Benachrichtigungen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Kein Mandanten-Kontext */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eigene Benachrichtigungen als gelesen markieren (einzelne oder alle)
+         * @description Aktion: `notification.read` · FA-FRG-11, TK 7.2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MarkNotificationsRead"];
+                };
+            };
+            responses: {
+                /** @description Verbleibende ungelesene */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnreadCount"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Kein Mandanten-Kontext */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -2343,6 +2465,7 @@ export interface components {
                 id: string;
                 key: string;
                 name: string;
+                timeZone: string;
             } | null;
             member: {
                 /**
@@ -2548,6 +2671,47 @@ export interface components {
         };
         PreferenceValue: {
             value?: unknown;
+        };
+        NotificationList: {
+            items: components["schemas"]["NotificationView"][];
+            unreadCount: number;
+            nextCursor: string | null;
+        };
+        NotificationView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /** @enum {string} */
+            kind: "submission.new" | "submission.withdrawn" | "submission.edited_by_admin" | "approval.approved" | "approval.returned" | "approval.rejected" | "approval.expired" | "deadline.near" | "change_request.new" | "change_request.decided" | "vote.subject_changed" | "vote.subject_resubmitted" | "project.completed" | "transit.confirmation_needed" | "role.changed" | "owner.reassigned" | "alert.rig_busy" | "alert.session_no_heartbeat" | "alert.plugin_dead_letters" | "alert.nina_settings_mismatch" | "alert.discord_channel_failed";
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            readAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        UnreadCount: {
+            unreadCount: number;
+        };
+        MarkNotificationsRead: {
+            ids: string[];
+        } | {
+            /** @enum {boolean} */
+            all: true;
         };
         TenantAdminView: {
             /**

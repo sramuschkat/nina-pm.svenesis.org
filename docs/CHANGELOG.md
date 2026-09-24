@@ -4,6 +4,17 @@
 
 ## [Unveröffentlicht]
 
+### AP-06b – Benachrichtigungen in der App und Startseite R1 (2026-09-24)
+
+Anforderungen: FA-FRG-11, FA-BEN-06/08/09 (Hinweise), FK 11 R1, FK 14.3 (S-02 bis R3); TK 7.2.
+
+- Verträge: `NotificationView`, `NotificationList` (Cursor-Paginierung), `MarkNotificationsRead` (`ids` oder `all`), Art aus `enums.json notificationKinds`; `/auth/me` liefert die Mandantenzeitzone (`tenant.timeZone`, Standard `Europe/Berlin`).
+- `NotificationRepository` (nur eigene Benachrichtigungen des Mitglieds im eigenen Mandanten) und `insertNotifications` als einzige Schreibstelle (Rollenwechsel, Owner-Neuzuweisung nutzen sie); `createNotificationService(db, hooks).notify(tenantId, kind, recipients, payload)` mit Hook-Punkt für die Discord-Zustellung (AP-60).
+- Routen `GET /api/web/v1/notifications` und `POST /api/web/v1/notifications/read` (Aktion `notification.read`), Rechte-Tests generiert.
+- Glocke in der App-Leiste (nur im Mandanten): Zähler ungelesener Einträge mit Textalternative, Liste im Popover, einzeln und „Alle als gelesen markieren“, Nachladen etwa minütlich; Baustein `NotificationList` ohne Daten/Rechte (leer/laden/Fehler/bereit), ein Text je Art in DE/EN, Zeiten in Mandantenzeit mit Kürzel.
+- Startseite R1: Karte „Meine Objekte“ (User) bzw. „Projektliste“ (Admin) mit Platzhalterseiten `/meine-objekte` und `/projekte` im Rahmen.
+- Tests: Empfänger- und Mandantenisolation, gelesen markieren nur eigene, Cursor-Paginierung, Hook-Aufruf; Playwright Rollenwechsel → Zähler → gelesen, Startseiten-Links, Glocke bei 768 px; axe mit geöffneter Glocke in beiden Themes.
+
 ### AP-06a abgenommen (2026-09-24)
 
 - Deploys durch Sven (`8773661` SPA statt Platzhalterseite, `64c940d` Logo der Website); verwaiste Log-Gruppe `PlaceholderDeploymentLogs` von Sven gelöscht.

@@ -10,7 +10,7 @@ import { api } from '../api/client';
 import { ApiError, AuthProvider, useAuth } from '../auth';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
-import { HomePage, NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
+import { HomePage, NotFoundPage, PlaceholderPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -104,7 +104,15 @@ export function createRouter() {
     {
       element: <Providers />,
       children: [
-        { path: '/', element: <Root />, children: [{ index: true, element: <HomePage /> }] },
+        {
+          path: '/',
+          element: <Root />,
+          children: [
+            { index: true, element: <HomePage /> },
+            { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
+            { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+          ],
+        },
         { path: '/mandant-waehlen', element: <SelectTenantPage /> },
         { path: '/kein-zugang', element: <NoAccessPage /> },
         { path: '/einladung', element: <InvitationPage /> },

@@ -11,7 +11,26 @@ import { AuthProvider } from '../auth';
 import { Shell } from './Shell';
 
 const me = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('../api/client', () => ({ api: { me: () => Promise.resolve(me.current) } }));
+vi.mock('../api/client', () => ({
+  api: {
+    me: () => Promise.resolve(me.current),
+    notifications: () =>
+      Promise.resolve({
+        items: [
+          {
+            id: '00000000-0000-4000-8000-0000000000f1',
+            kind: 'role.changed',
+            payload: { from: 'user', to: 'admin' },
+            projectId: null,
+            readAt: null,
+            createdAt: '2026-09-24T10:00:00.000Z',
+          },
+        ],
+        unreadCount: 1,
+        nextCursor: null,
+      }),
+  },
+}));
 
 function member(
   role: 'owner' | 'admin' | 'user',
@@ -28,7 +47,12 @@ function member(
       mfa,
     },
     context: 'tenant',
-    tenant: { id: '00000000-0000-4000-8000-00000000000a', key: 'demo', name: 'Demo' },
+    tenant: {
+      id: '00000000-0000-4000-8000-00000000000a',
+      key: 'demo',
+      name: 'Demo',
+      timeZone: 'Europe/Berlin',
+    },
     member: { id: '00000000-0000-4000-8000-0000000000a1', displayName: 'Uta', role, effectiveRole },
     isSuperUser: false,
     mfaRequired: role !== 'user' && !mfa,
@@ -77,5 +101,12 @@ describe('Rechteanzeige in der Shell', () => {
       'Admin-Rechte ruhen, bis Discord-2FA aktiv ist',
     );
     expect(screen.getByRole('button', { name: 'Benutzermenü' })).toHaveTextContent('(Owner)');
+  });
+
+  it('Glocke im Mandanten zeigt den Zähler ungelesener Benachrichtigungen (AP-06b)', async () => {
+    await renderShell(member('user', 'user', false));
+    expect(
+      await screen.findByRole('button', { name: 'Benachrichtigungen, 1 ungelesen' }),
+    ).toHaveTextContent('1');
   });
 });

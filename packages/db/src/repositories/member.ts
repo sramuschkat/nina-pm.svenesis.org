@@ -4,12 +4,13 @@
  * OCC-Retry), damit parallele Rollen-/Owner-Änderungen die Invarianten nicht gemeinsam brechen:
  * `tenant.owner_member_id` zeigt immer auf ein aktives Mitglied mit `role='admin'`.
  */
-import { ProblemError, type ResourceMeta } from '@nina-pm/shared';
+import { ProblemError, type NotificationKind, type ResourceMeta } from '@nina-pm/shared';
 import type { Kysely, Selectable, Transaction } from 'kysely';
 import { withTx, type WithTxOptions } from '../tx';
 import type { AppUserTable, Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { insertInvitation, type CreatedInvitation } from './invitations';
+import { insertNotifications } from './notification';
 
 export type Member = Selectable<AppUserTable>;
 
@@ -92,24 +93,17 @@ export class MemberRepository extends TenantRepo {
   private async notify(
     trx: Trx,
     recipients: readonly string[],
-    kind: string,
+    kind: NotificationKind,
     payload: object,
     now: Date,
   ) {
-    const unique = [...new Set(recipients)];
-    if (unique.length === 0) return;
-    await trx
-      .insertInto('notification')
-      .values(
-        unique.map((recipientId) => ({
-          tenantId: this.ctx.tenantId,
-          recipientId,
-          kind,
-          payload: JSON.stringify(payload),
-          createdAt: now,
-        })),
-      )
-      .execute();
+    await insertNotifications(trx, {
+      tenantId: this.ctx.tenantId,
+      recipients,
+      kind,
+      payload: payload as Record<string, unknown>,
+      now,
+    });
   }
 
   private async activeAdmins(trx: Trx): Promise<string[]> {

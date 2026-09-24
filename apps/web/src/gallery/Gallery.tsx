@@ -10,6 +10,7 @@ import { CheckList } from '../components/CheckList';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CoordinateInput } from '../components/CoordinateInput';
 import { FilterChip } from '../components/FilterChip';
+import { NotificationList } from '../components/NotificationList';
 import { ProgressBar } from '../components/ProgressBar';
 import { RigSelect, type RigOption } from '../components/RigSelect';
 import { SiteTime } from '../components/SiteTime';
@@ -102,6 +103,37 @@ export default function Gallery() {
       </section>
       <section data-component="SiteTime">
         <SiteTime atUtc="2026-09-18T02:08:00Z" siteTimeZone="America/Chicago" />
+      </section>
+      <section data-component="NotificationList" style={{ maxWidth: 420 }}>
+        <NotificationList
+          state="ready"
+          tenantTimeZone="Europe/Berlin"
+          onMarkRead={() => undefined}
+          items={[
+            {
+              id: 'n1',
+              kind: 'role.changed',
+              payload: { from: 'user', to: 'admin' },
+              readAt: null,
+              createdAt: '2026-09-24T10:00:00Z',
+            },
+            {
+              id: 'n2',
+              kind: 'approval.returned',
+              payload: { subject: 'NGC 7380 – Fischkopfnebel, sehr langer Objektname mit Umbruch' },
+              readAt: null,
+              createdAt: '2026-09-23T19:30:00Z',
+            },
+            {
+              id: 'n3',
+              kind: 'alert.session_no_heartbeat',
+              payload: {},
+              readAt: '2026-09-23T06:00:00Z',
+              createdAt: '2026-09-23T02:08:00Z',
+            },
+          ]}
+        />
+        <NotificationList state="ready" tenantTimeZone="Europe/Berlin" items={[]} />
       </section>
       <section data-component="Table">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

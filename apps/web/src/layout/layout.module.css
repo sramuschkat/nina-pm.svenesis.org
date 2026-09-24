@@ -185,6 +185,59 @@
 .iconButton:hover:not(:disabled) {
   background: var(--npm-note-bg);
 }
+.iconButton {
+  position: relative;
+}
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--npm-danger);
+  color: var(--npm-on-button);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.notificationPanel {
+  width: min(420px, calc(100vw - 2 * var(--npm-space-4)));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  z-index: 300;
+}
+.notificationHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border-bottom: 1px solid var(--npm-border);
+}
+.notificationHead h2 {
+  font-size: var(--npm-font-h3);
+}
+.notificationBody {
+  overflow-y: auto;
+}
+.linkButton {
+  background: none;
+  border: none;
+  color: var(--npm-link);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: var(--npm-space-1);
+  min-height: 32px;
+}
 .iconButton:disabled {
   color: var(--npm-muted);
   cursor: default;

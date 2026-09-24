@@ -9,6 +9,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import { withTx, type WithTxOptions } from '../tx';
 import type { Database } from '../types';
 import { insertInvitation, type CreatedInvitation } from './invitations';
+import { insertNotifications } from './notification';
 
 export type SystemActor =
   { readonly kind: 'super_user'; readonly identityId: string } | { readonly kind: 'ops_cli' };
@@ -320,25 +321,13 @@ export class TenantAdminRepository {
         const recipients = [
           ...new Set([...admins.map((a) => a.id), ...(previous ? [previous] : [])]),
         ];
-        if (recipients.length > 0) {
-          await trx
-            .insertInto('notification')
-            .values(
-              recipients.map((recipientId) => ({
-                tenantId,
-                recipientId,
-                kind: 'owner.reassigned',
-                payload: JSON.stringify({
-                  from: previous,
-                  to: newOwner,
-                  by: 'super_user',
-                  reason: req.reason,
-                }),
-                createdAt: now,
-              })),
-            )
-            .execute();
-        }
+        await insertNotifications(trx, {
+          tenantId,
+          recipients,
+          kind: 'owner.reassigned',
+          payload: { from: previous, to: newOwner, by: 'super_user', reason: req.reason },
+          now,
+        });
         await this.audit(
           trx,
           'tenant.owner.reassign',

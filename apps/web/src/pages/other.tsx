@@ -2,16 +2,21 @@
 import { privacyMarkdown, sourcesMarkdown, type Language } from '@nina-pm/i18n';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { useAuth } from '../auth';
+import { useAuth, useCan } from '../auth';
 import { Markdown } from '../components/Markdown';
 import { TextLayout } from '../layout/Frame';
 import styles from './pages.module.css';
 
-/** Startseite nach der Anmeldung; „Heute Nacht“ (S-02) und „Meine Objekte“ folgen mit ihren Paketen. */
+/**
+ * Startseite nach der Anmeldung (FK 14.3 S-02, FK 11 R1): bis „Heute Nacht“ (R3) verlinkt sie „Meine
+ * Objekte“ (User) bzw. die Projektliste (Admin); beide Seiten sind bis zu ihren Paketen Platzhalter.
+ */
 export function HomePage() {
   const { t } = useTranslation();
   const { me } = useAuth();
+  const isAdmin = useCan('project.status');
   const system = me?.context === 'system';
+  const start = isAdmin ? START_LINKS.projects : START_LINKS.myObjects;
   return (
     <section className={styles.panel}>
       <h1>{t('home.title')}</h1>
@@ -22,6 +27,43 @@ export function HomePage() {
         </h2>
         <p>{system ? t('home.systemIntro') : t('home.tenantIntro')}</p>
       </div>
+      {system ? null : (
+        <ul className={styles.cards}>
+          <li>
+            <Link className={styles.cardLink} to={start.path}>
+              <span className={styles.cardTitle}>{t(start.title)}</span>
+              <span className={styles.cardMeta}>{t(start.hint)}</span>
+            </Link>
+          </li>
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export const START_LINKS = {
+  myObjects: {
+    path: '/meine-objekte',
+    title: 'startLinks.myObjects.title',
+    hint: 'startLinks.myObjects.hint',
+  },
+  projects: {
+    path: '/projekte',
+    title: 'startLinks.projects.title',
+    hint: 'startLinks.projects.hint',
+  },
+} as const;
+
+/** Platzhalter für Listen, die mit ihren Paketen folgen (R1: Meine Objekte, Projektliste). */
+export function PlaceholderPage({ link }: { link: keyof typeof START_LINKS }) {
+  const { t } = useTranslation();
+  return (
+    <section className={styles.panel}>
+      <h1>{t(START_LINKS[link].title)}</h1>
+      <p className={styles.note}>{t('common.comingSoon')}</p>
+      <p>
+        <Link to="/">{t('common.back')}</Link>
+      </p>
     </section>
   );
 }

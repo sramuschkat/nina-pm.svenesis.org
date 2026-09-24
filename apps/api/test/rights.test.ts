@@ -171,6 +171,12 @@ function memberExamples(): Record<string, Example> {
     },
     'GET /api/web/v1/invitations': { url: '/api/web/v1/invitations' },
     'GET /api/web/v1/me/preferences': { url: '/api/web/v1/me/preferences' },
+    'GET /api/web/v1/notifications': { url: '/api/web/v1/notifications' },
+    'POST /api/web/v1/notifications/read': {
+      url: '/api/web/v1/notifications/read',
+      method: 'POST',
+      body: { all: true },
+    },
     'PUT /api/web/v1/me/preferences/{key}': {
       url: '/api/web/v1/me/preferences/ui.theme',
       method: 'PUT',

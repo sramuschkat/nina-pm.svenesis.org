@@ -178,6 +178,68 @@ export const de = {
       transit: 'Transit',
     },
   },
+  startLinks: {
+    myObjects: {
+      title: 'Meine Objekte',
+      hint: 'Deine Projekte und Einreichungen mit Freigabestatus',
+    },
+    projects: {
+      title: 'Projektliste',
+      hint: 'Alle Projekte des Mandanten mit Status und Fortschritt',
+    },
+  },
+  notifications: {
+    bellUnread: 'Benachrichtigungen, {{count}} ungelesen',
+    empty: 'Keine Benachrichtigungen.',
+    unread: 'Ungelesen',
+    markRead: 'Als gelesen markieren',
+    markAllRead: 'Alle als gelesen markieren',
+    timeHint: 'Mandantenzeit ({{zone}})',
+    unknownKind: 'Benachrichtigung',
+    kind: {
+      submission: {
+        new: 'Neue Einreichung in der Freigabe-Warteschlange',
+        withdrawn: 'Eine Einreichung wurde zurückgezogen',
+        edited_by_admin: 'Ein Admin hat dein eingereichtes Objekt geändert',
+      },
+      approval: {
+        approved: 'Dein Objekt wurde freigegeben',
+        returned: 'Dein Objekt wurde zur Überarbeitung zurückgegeben',
+        rejected: 'Dein Objekt wurde abgelehnt',
+        expired: 'Die Freigabe deines Objekts ist verfallen',
+      },
+      deadline: {
+        near: 'Eine Frist rückt näher',
+      },
+      change_request: {
+        new: 'Neuer Änderungsantrag',
+        decided: 'Über deinen Änderungsantrag wurde entschieden',
+      },
+      vote: {
+        subject_changed: 'Ein Objekt, für das du gestimmt hast, wurde geändert',
+        subject_resubmitted: 'Ein Objekt, für das du gestimmt hast, wurde erneut eingereicht',
+      },
+      project: {
+        completed: 'Ein Projekt ist fertiggestellt',
+      },
+      transit: {
+        confirmation_needed: 'Ein Transit wartet auf Bestätigung',
+      },
+      role: {
+        changed: 'Deine Rolle wurde von {{from}} zu {{to}} geändert',
+      },
+      owner: {
+        reassigned: 'Der Owner des Mandanten wurde neu zugewiesen',
+      },
+      alert: {
+        rig_busy: 'Betriebsalarm: Eine zweite NINA-Instanz meldet sich am belegten Rig',
+        session_no_heartbeat: 'Betriebsalarm: Laufende Session ohne Heartbeat seit über 10 Minuten',
+        plugin_dead_letters: 'Betriebsalarm: Plugin-Meldungen konnten nicht zugestellt werden',
+        nina_settings_mismatch: 'Betriebsalarm: NINA-Einstellungen weichen ab',
+        discord_channel_failed: 'Betriebsalarm: Discord-Kanal nicht erreichbar',
+      },
+    },
+  },
   time: {
     siteTimeHint: 'Standortzeit ({{zone}})',
     tenantTimeHint: 'Mandantenzeit ({{zone}}); Standortzeit {{site}}',

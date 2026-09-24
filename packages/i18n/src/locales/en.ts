@@ -177,6 +177,69 @@ export const en: Messages = {
       transit: 'Transit',
     },
   },
+  startLinks: {
+    myObjects: {
+      title: 'My objects',
+      hint: 'Your projects and submissions with approval status',
+    },
+    projects: {
+      title: 'Project list',
+      hint: 'All projects of the tenant with status and progress',
+    },
+  },
+  notifications: {
+    bellUnread: 'Notifications, {{count}} unread',
+    empty: 'No notifications.',
+    unread: 'Unread',
+    markRead: 'Mark as read',
+    markAllRead: 'Mark all as read',
+    timeHint: 'Tenant time ({{zone}})',
+    unknownKind: 'Notification',
+    kind: {
+      submission: {
+        new: 'New submission in the approval queue',
+        withdrawn: 'A submission was withdrawn',
+        edited_by_admin: 'An admin changed your submitted object',
+      },
+      approval: {
+        approved: 'Your object was approved',
+        returned: 'Your object was returned for revision',
+        rejected: 'Your object was rejected',
+        expired: 'The approval of your object has expired',
+      },
+      deadline: {
+        near: 'A deadline is approaching',
+      },
+      change_request: {
+        new: 'New change request',
+        decided: 'Your change request has been decided',
+      },
+      vote: {
+        subject_changed: 'An object you voted for was changed',
+        subject_resubmitted: 'An object you voted for was resubmitted',
+      },
+      project: {
+        completed: 'A project is complete',
+      },
+      transit: {
+        confirmation_needed: 'A transit awaits confirmation',
+      },
+      role: {
+        changed: 'Your role was changed from {{from}} to {{to}}',
+      },
+      owner: {
+        reassigned: 'The tenant owner was reassigned',
+      },
+      alert: {
+        rig_busy: 'Operational alert: a second NINA instance reports on the busy rig',
+        session_no_heartbeat:
+          'Operational alert: running session without heartbeat for over 10 minutes',
+        plugin_dead_letters: 'Operational alert: plugin messages could not be delivered',
+        nina_settings_mismatch: 'Operational alert: NINA settings differ',
+        discord_channel_failed: 'Operational alert: Discord channel unreachable',
+      },
+    },
+  },
   time: {
     siteTimeHint: 'Site time ({{zone}})',
     tenantTimeHint: 'Tenant time ({{zone}}); site time {{site}}',
