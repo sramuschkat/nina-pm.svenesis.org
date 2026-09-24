@@ -1,0 +1,362 @@
+{
+  "id": "G31",
+  "title": "Pierseitenwechsel zwischen Blöcken (NT-27)",
+  "requirements": [
+    "FA-SCH-17",
+    "FA-SCH-10"
+  ],
+  "explanation": "Ergebnis: 21 Belichtungen (A-L 11, B-L 10), 2 Slews. A hat den Meridian schon hinter sich (Pierseite `east`), B steht bei Blockbeginn noch östlich des Meridians (`west`). Weil B unmittelbar auf A folgt, muss die Montierung die Seite wechseln: der Slew von B dauert 90 s + 240 s Flip-Dauer = 330 s (wie in der Beispielnacht). Einen Flip innerhalb eines Blocks gibt es hier nicht.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 24 Belichtungen (A-L 12, B-L 12), 2 Slews. Original: kein Pierseitenwechsel, Slew ohne Zeit.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 24,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 90,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": true,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": -600,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            12,
+            23
+          ]
+        ],
+        "meridianAtS": 9000,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 90
+      },
+      {
+        "atS": 90,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 90,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 390,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 690,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 990,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1290,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1590,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1890,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2190,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2490,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2790,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3090,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3390,
+        "cmd": "end"
+      },
+      {
+        "atS": 3600,
+        "cmd": "slew_center",
+        "unit": "B",
+        "panel": null,
+        "durationS": 330
+      },
+      {
+        "atS": 3930,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 3930,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4230,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4530,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4830,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5130,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5430,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5730,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6030,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6330,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6630,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6930,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}

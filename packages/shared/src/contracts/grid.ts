@@ -128,7 +128,11 @@ export const GoldenPlanSchema = z.strictObject({
   expected: z.strictObject({
     slotAssignment: z.array(z.string().nullable()).optional(),
     entries: z.array(Entry).optional(),
-    warnings: z.array(z.strictObject({ code: z.string(), atS: Int.optional() })).optional(),
+    warnings: z
+      .array(
+        z.strictObject({ code: z.string(), unitId: z.string().optional(), atS: Int.optional() }),
+      )
+      .optional(),
     diagnostics: z
       .array(
         z.strictObject({

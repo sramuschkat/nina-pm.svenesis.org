@@ -1,0 +1,184 @@
+{
+  "id": "G25",
+  "title": "Nachtende-Kulanz (A-24, NT-13)",
+  "requirements": [
+    "FA-SCH-15"
+  ],
+  "explanation": "Ergebnis: 6 Belichtungen (A-L 6), 1 Slews. Letzter Block der Nacht (Nachtende 3600 s), 600-s-Belichtungen, Slew 100 s. Die sechste Belichtung ab 3100 s endete um 3700 s, also nach dem Blockende. Sie ist als einzige `lastOfNight`-Belichtung erlaubt, weil sie vor der Kulanzgrenze `min(darknessEndUtc 4000 s, eigene Dämmerungsgrenze 3800 s)` endet. Eine siebte gäbe es nicht.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 6 Belichtungen (A-L 6), 1 Slews. Original: ohne Slew-Zeit passen genau 6 Belichtungen bis 3600 s; die Kulanz des Originals prüft keine Dämmerungsgrenze (A-24).",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 100,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 600,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ],
+        "twilightEndS": 3800
+      }
+    ],
+    "tonight": null,
+    "darknessEndS": 4000
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 100
+      },
+      {
+        "atS": 100,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 100,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 700,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1300,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1900,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2500,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3100,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": true
+      },
+      {
+        "atS": 3700,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}

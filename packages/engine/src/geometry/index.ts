@@ -9,3 +9,4 @@ export {
   type MosaicInput,
   type MosaicPanel,
 } from './mosaic';
+export { rotationDeltaDeg, rotationWithinTolerance } from './rotation';

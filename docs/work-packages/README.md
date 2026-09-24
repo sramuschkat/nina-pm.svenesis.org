@@ -40,7 +40,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-13a](AP-13a.md) | Engine: Vergleichsorakel, Grid-Format, CI | M | AP-10 | – | ◐ |
 | [AP-13b](AP-13b.md) | Engine: Zuteilung (`paint`) + Soll-Pläne Paint | L | AP-13a | H-13 | ◐ |
 | [AP-13c](AP-13c.md) | Engine: Ablauf (`walk`/`pick`), Blöcke, `planNight` | L | AP-13b | – | ◐ |
-| [AP-13d](AP-13d.md) | Engine: Flip, Transit, Diagnose + Soll-Pläne Ablauf | M | AP-13c | H-13 | ☐ |
+| [AP-13d](AP-13d.md) | Engine: Flip, Transit, Diagnose + Soll-Pläne Ablauf | M | AP-13c | H-13 | ◐ |
 | [AP-13e](AP-13e.md) | Engine: Aufwand-Kennzeichen + Job + Einfügeposition | M | AP-13d, AP-12c | – | ☐ |
 | [AP-13f](AP-13f.md) | Simulator S-40 | L | AP-13d, AP-09c, AP-11a, AP-06a | – | ☐ |
 | [AP-14a](AP-14a.md) | NINA-API: Instanz-Token, Bootstrap, Ziele, Plan | M | AP-13c, AP-12a, AP-11a | – | ☐ |

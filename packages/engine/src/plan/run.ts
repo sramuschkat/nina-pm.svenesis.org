@@ -7,7 +7,8 @@ import { buildMatrix } from './matrix';
 import type { ExcludedUnit, Matrix } from './model';
 import { paint } from './paint';
 import { setupFromGrid } from './profiles';
-import { walk, type WalkBlock } from './walk';
+import { validatePlan, type UnitDiagnostic, type UnitWarning } from './validate';
+import { walk, type TransitFlip, type WalkBlock, type WalkSettings } from './walk';
 import { walkCompat, type CompatEntry } from './walk-compat';
 
 export interface PaintResult {
@@ -64,21 +65,38 @@ export function planGridCompat(grid: GridInput): CompatPlanResult {
 }
 
 export interface PlanGridResult extends PaintResult {
+  readonly warnings: readonly UnitWarning[];
+  readonly diagnostics: readonly UnitDiagnostic[];
   readonly blocks: readonly WalkBlock[];
   readonly walkSlotAssignment: readonly (string | null)[];
+  readonly emitted: ReadonlyMap<string, number>;
+  readonly transitFlips: readonly TransitFlip[];
 }
 
 /** Produktivmodus: Zuteilung und Ablauf aus einem Grid (Soll-Pläne Ablauf, Eigenschaftstests). */
-export function planGrid(
-  grid: GridInput,
-  options: { readonly rotator?: boolean } = {},
-): PlanGridResult {
+export interface PlanGridOptions {
+  readonly rotator?: boolean;
+  /** Astronomie aus `planNight` statt der Grid-Werte (Meridian, Pierseite). */
+  readonly meridian?: WalkSettings['meridian'];
+  readonly upperMeridian?: WalkSettings['upperMeridian'];
+  readonly pierSide?: WalkSettings['pierSide'];
+}
+
+export function planGrid(grid: GridInput, options: PlanGridOptions = {}): PlanGridResult {
   const painted = paintGrid(grid);
   const m = painted.matrix;
   const s = grid.settings;
   const o = s.overhead;
   const twilight = new Map(grid.units.map((u) => [u.unitId, u.twilightEndS ?? null]));
-  const { blocks } = walk(m, {
+  const units = new Map(grid.units.map((u) => [u.unitId, u]));
+  /** Meridiandurchgang je Einheit/Panel: Panelwert, sonst Einheit (A-19). */
+  const meridianOf = (unitId: string, panelIndex: number | null): number | null => {
+    const u = units.get(unitId);
+    if (!u) return null;
+    const panel = panelIndex === null ? undefined : u.panels.find((p) => p.index === panelIndex);
+    return panel?.meridianAtS ?? u.meridianAtS;
+  };
+  const { blocks, emitted, transitFlips } = walk(m, {
     slewCenterS: o.slewCenterS,
     filterChangeS: o.filterChangeS,
     ditherSettleS: o.ditherSettleS,
@@ -102,7 +120,50 @@ export function planGrid(
         { lineId: c.lineId, subs: c.subsOnLine },
       ]),
     ),
+    flip: s.flip,
+    meridian:
+      options.meridian ??
+      ((unitId, panelIndex) => {
+        const tm = meridianOf(unitId, panelIndex);
+        return tm === null ? [] : [tm];
+      }),
+    upperMeridian: options.upperMeridian ?? meridianOf,
+    pierSide:
+      options.pierSide ??
+      ((unitId, panelIndex, t) => {
+        const tm = meridianOf(unitId, panelIndex);
+        return tm === null ? null : t < tm ? 'west' : 'east';
+      }),
+    flipDone: new Set(
+      Object.entries(grid.tonight?.flipDoneByPanel ?? {})
+        .filter(([, done]) => done)
+        .map(([unitId]) => unitId),
+    ),
   });
   const unitAt = (r: number) => (r >= 0 ? (m.rows[r]?.profile.unitId ?? null) : null);
-  return { ...painted, blocks, walkSlotAssignment: m.assignment.map(unitAt) };
+  const pastSec = new Map<string, number>();
+  for (const u of m.setup.past?.byUnit ?? [])
+    if (u !== null) pastSec.set(u, (pastSec.get(u) ?? 0) + 300);
+  const { warnings, diagnostics } = validatePlan({
+    matrix: m,
+    blocks,
+    emitted,
+    transitFlips,
+    excluded: painted.excluded,
+    downloadS: o.downloadS,
+    flipDurationS: s.flip.durationS,
+    slewCenterS: o.slewCenterS,
+    tonight: grid.tonight
+      ? { pastSecByUnit: pastSec, exposedSecByUnit: grid.tonight.exposedSecByUnit }
+      : null,
+  });
+  return {
+    ...painted,
+    warnings,
+    diagnostics,
+    blocks,
+    emitted,
+    transitFlips,
+    walkSlotAssignment: m.assignment.map(unitAt),
+  };
 }

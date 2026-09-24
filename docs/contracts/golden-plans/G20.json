@@ -1,0 +1,284 @@
+{
+  "id": "G20",
+  "title": "Filterwechsel mit Toleranz, Zyklus je Zeile (A-22)",
+  "requirements": [
+    "FA-SCH-07"
+  ],
+  "explanation": "Ergebnis: 16 Belichtungen (A-L300 6, A-L120 7, A-R 3), 1 Slews. Filterwechsel alle 3 Belichtungen mit 100 % Toleranz; zwei Zeilen mit demselben Filter L (300 s und 120 s) und eine R-Zeile mit nur 3 Aufnahmen. Der Zyklus zählt je **Zeile**: nach 3 × L 300 s kommt 3 × L 120 s (ohne Filterwechsel-Eintrag, gleicher Filter), dann 3 × R, danach wieder L 300 s und L 120 s. Um 3420 s wäre wieder L 300 s dran, passt aber nicht mehr (Toleranz: 3 Belichtungen oder der Rest müssen bis Blockende passen) – deshalb bleibt L 120 s. Um 3540 s passt nichts mehr, der Block endet (A-29).",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 14 Belichtungen (A-L300 11, A-L120 3), 1 Slews. Original: Zyklus am Filternamen – beide L-Zeilen zählen als ein Filter, die Belichtungen springen zwischen 300 s und 120 s, R kommt nie dran.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": true,
+        "every": 3,
+        "tolerancePct": 100
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L300",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              },
+              {
+                "id": "A-L120",
+                "filter": "L",
+                "exposureS": 120,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              },
+              {
+                "id": "A-R",
+                "filter": "R",
+                "exposureS": 300,
+                "planned": 3,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 600,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1020,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1140,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1260,
+        "cmd": "filter",
+        "filter": "R",
+        "durationS": 0
+      },
+      {
+        "atS": 1260,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1560,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1860,
+        "cmd": "expose",
+        "line": "A-R",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2160,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 2160,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2460,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2760,
+        "cmd": "expose",
+        "line": "A-L300",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3060,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3180,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3300,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3420,
+        "cmd": "expose",
+        "line": "A-L120",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3540,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}

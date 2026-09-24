@@ -1,0 +1,374 @@
+{
+  "id": "G22",
+  "title": "Mosaik mit Panel-Rotation (ohne Panel-Einheiten)",
+  "requirements": [
+    "FA-SCH-05"
+  ],
+  "explanation": "Ergebnis: 23 Belichtungen (M-p0-L 17, M-p1-L 6), 3 Slews. Mosaik mit zwei Panels als eine Einheit (Panels nicht getrennt geplant), Mindestzeit 30 min, Slew 60 s. Nach 30 min auf Panel 0 wird zu Panel 1 rotiert (neuer Block mit Slew auf Panel 1, §8.4), nach weiteren 30 min zurück zu Panel 0. Weniger als 30 min vor Blockende wird nicht mehr rotiert (Panel-Sperre, A-19) – Panel 0 bleibt bis zum Ende. Der erste Slew zielt schon auf Panel 0, nicht auf das Projektzentrum.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 20 Belichtungen (M-p0-L 20), 1 Slews. Original: ohne Filterwechsel-Zyklus kennt die Filterwahl kein aktives Panel und rotiert nie – die ganze Nacht auf Panel 0 (A-22).",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 24,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": false,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 60,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "M",
+        "projectId": "M",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "M-p0-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "lines": [
+              {
+                "id": "M-p1-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M",
+      "M"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "M",
+        "panel": 0,
+        "durationS": 60
+      },
+      {
+        "atS": 60,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 60,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 360,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 660,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 960,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1260,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1560,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1860,
+        "cmd": "end"
+      },
+      {
+        "atS": 1860,
+        "cmd": "slew_center",
+        "unit": "M",
+        "panel": 1,
+        "durationS": 60
+      },
+      {
+        "atS": 1920,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 1920,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2220,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2520,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2820,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3120,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3420,
+        "cmd": "expose",
+        "line": "M-p1-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3720,
+        "cmd": "end"
+      },
+      {
+        "atS": 3720,
+        "cmd": "slew_center",
+        "unit": "M",
+        "panel": 0,
+        "durationS": 60
+      },
+      {
+        "atS": 3780,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 3780,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4080,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4380,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4680,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4980,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5280,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5580,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5880,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6180,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6480,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6780,
+        "cmd": "expose",
+        "line": "M-p0-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 7080,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}
