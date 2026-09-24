@@ -26,6 +26,10 @@
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
+.logoImg {
+  display: inline-block;
+  flex-shrink: 0;
+}
 .logo:hover {
   color: var(--npm-accent);
   text-decoration: none;
