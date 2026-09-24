@@ -47,6 +47,12 @@ export {
   type TemplateRow,
 } from './repositories/equipment';
 export {
+  ApprovalRepository,
+  expireSubmissions,
+  type QueueEntry,
+  type VoteSummary,
+} from './repositories/approval';
+export {
   ProjectRepository,
   type LineDetail,
   type ProjectDetail,

@@ -39,6 +39,18 @@ describe('Worker-Dispatcher', () => {
     expect(cleanupInvitations).toHaveBeenCalledOnce();
   });
 
+  it('tick-hourly lässt überfällige Einreichungen verfallen (AP-12a)', async () => {
+    const expireSubmissions = vi.fn(() => Promise.resolve(2));
+    const tasks = tickTasks(
+      { queue: () => Promise.reject(new Error('nicht benutzt')) },
+      { cleanupInvitations: () => Promise.resolve(0), expireSubmissions },
+    );
+    expect(await dispatch({ tick: 'tick-hourly' }, deps(tasks))).toEqual({
+      ran: ['submission_expiry'],
+    });
+    expect(expireSubmissions).toHaveBeenCalledOnce();
+  });
+
   it('führt {jobId} über den Job-Runner aus', async () => {
     const runJob = vi.fn(() => Promise.resolve('done'));
     expect(await dispatch({ jobId: '0199-job' }, deps(empty, runJob))).toEqual({

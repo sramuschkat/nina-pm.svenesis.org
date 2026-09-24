@@ -574,7 +574,138 @@ async function projectExamples(): Promise<Record<string, Example>> {
       body: { projectId: Q },
       resource: qRes,
     },
+    ...(await approvalExamples(base, filter.id)),
   };
+
+  /**
+   * Freigabe-Workflow (AP-12a): eingereichtes Objekt eines eigenen Einreichers (keine Persona, damit
+   * „eigene Objekte“ die Rechte-Erwartung nicht verändern), Entwurf und Einreichung des Owners für
+   * Einreichen/Zurückziehen. Jedes Beispiel stellt den Ausgangsstatus wieder her.
+   */
+  async function approvalExamples(
+    common: typeof base,
+    filterId: string,
+  ): Promise<Record<string, Example>> {
+    const identity = await stack.seed.identity();
+    const submitter = await stack.seed.member(identity.id, world.tenantA, 'user');
+    const complete = async (memberId: string, name: string) => {
+      const repo = stack.services.repositories({ tenantId: world.tenantA, memberId }).projects();
+      const d = await repo.create({ ...common, id: crypto.randomUUID(), name }, now);
+      await repo.addLine(
+        d.project.id,
+        {
+          id: crypto.randomUUID(),
+          panelId: d.panels[0]?.id as string,
+          filterId,
+          exposureS: 300,
+          plannedCount: 20,
+          gain: null,
+          offsetAdu: null,
+          binning: 1,
+          readoutMode: null,
+          moonMode: 'none',
+          moonProfileId: null,
+          enabled: true,
+          notes: '',
+        },
+        now,
+      );
+      return d.project.id;
+    };
+    const S = await complete(submitter, 'Eingereicht');
+    const OD = await complete(owner, 'Owner-Entwurf');
+    const OS = await complete(owner, 'Owner-Einreichung');
+    const submitted = (id: string) =>
+      admin().query(
+        "UPDATE project SET approval_status = 'submitted', status = NULL, rig_id = NULL, submitter_rank = 1 WHERE id = $1",
+        [id],
+      );
+    await submitted(S);
+    await submitted(OS);
+    const sRes: ResourceMeta = {
+      tenantId: world.tenantA,
+      createdBy: submitter,
+      approvalStatus: 'submitted',
+    };
+    const odRes: ResourceMeta = {
+      tenantId: world.tenantA,
+      createdBy: owner,
+      approvalStatus: 'draft',
+    };
+    const osRes: ResourceMeta = {
+      tenantId: world.tenantA,
+      createdBy: owner,
+      approvalStatus: 'submitted',
+    };
+    const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
+    return {
+      [`POST ${P}/{id}/submit`]: {
+        url: `${P}/${OD}/submit`,
+        method: 'POST',
+        body: {},
+        resource: odRes,
+        reset: () =>
+          admin().query(
+            "UPDATE project SET approval_status = 'draft', submitter_rank = NULL WHERE id = $1",
+            [OD],
+          ),
+      },
+      [`POST ${P}/{id}/withdraw`]: {
+        url: `${P}/${OS}/withdraw`,
+        method: 'POST',
+        resource: osRes,
+        reset: () => submitted(OS),
+      },
+      [`POST ${P}/{id}/approve`]: {
+        url: `${P}/${S}/approve`,
+        method: 'POST',
+        body: { rigId: common.rigId, status: 'active' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
+      [`POST ${P}/{id}/return`]: {
+        url: `${P}/${S}/return`,
+        method: 'POST',
+        body: { comment: 'Bitte überarbeiten' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
+      [`POST ${P}/{id}/reject`]: {
+        url: `${P}/${S}/reject`,
+        method: 'POST',
+        body: { comment: 'Außerhalb der Saison' },
+        resource: sRes,
+        reset: () => submitted(S),
+      },
+      'GET /api/web/v1/queue': { url: '/api/web/v1/queue' },
+      'PUT /api/web/v1/queue/{kind}/{id}/vote': {
+        url: `/api/web/v1/queue/project/${S}/vote`,
+        method: 'PUT',
+        resource: sRes,
+        reset: clearVotes,
+      },
+      'DELETE /api/web/v1/queue/{kind}/{id}/vote': {
+        url: `/api/web/v1/queue/project/${S}/vote`,
+        method: 'DELETE',
+        resource: sRes,
+      },
+      'POST /api/web/v1/queue/{kind}/{id}/vote/acknowledge': {
+        url: `/api/web/v1/queue/project/${S}/vote/acknowledge`,
+        method: 'POST',
+        resource: sRes,
+        okStatus: 204,
+      },
+      // Leere Rangfolge: vollständig für alle ohne offene Einreichung; der Owner hat eine (422).
+      'PUT /api/web/v1/me/submission-ranking': {
+        url: '/api/web/v1/me/submission-ranking',
+        method: 'PUT',
+        body: { items: [] },
+        okStatus: 204,
+        expect: { Owner: 422 },
+      },
+      'GET /api/web/v1/drafts': { url: '/api/web/v1/drafts' },
+    };
+  }
 }
 
 function systemExamples(): Record<string, Example> {

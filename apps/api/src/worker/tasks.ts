@@ -6,16 +6,26 @@ export interface MaintenanceDeps {
   readonly cleanupInvitations: () => Promise<number>;
   /** Speicherbedarf je Mandant messen (AP-07d, `daily`); liefert die Anzahl gemessener Mandanten. */
   readonly measureStorage?: () => Promise<number>;
+  /** Offene Einreichungen nach `approvalDeadlineDays` verfallen lassen (AP-12a, `tick-hourly`). */
+  readonly expireSubmissions?: () => Promise<number>;
 }
 
 /**
  * Aufgaben je Zeitplan (TK 13). Stand AP-04b: `tick-5min` übernimmt liegengebliebene Jobs (7.4),
- * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d).
+ * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
+ * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
     'tick-5min': [{ name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) }],
-    'tick-hourly': [],
+    'tick-hourly': maintenance?.expireSubmissions
+      ? [
+          {
+            name: 'submission_expiry',
+            run: async () => void (await maintenance.expireSubmissions?.()),
+          },
+        ]
+      : [],
     daily: maintenance
       ? [
           {

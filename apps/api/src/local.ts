@@ -11,6 +11,7 @@ import { serve } from '@hono/node-server';
 import {
   AuditRepository,
   EquipmentRepository,
+  ApprovalRepository,
   ProjectRepository,
   AuthRepository,
   JobQueue,
@@ -79,6 +80,7 @@ const services: ApiServices = {
     audit: () => new AuditRepository(db, ctx),
     equipment: () => new EquipmentRepository(db, ctx),
     projects: () => new ProjectRepository(db, ctx),
+    approvals: () => new ApprovalRepository(db, ctx),
     tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),

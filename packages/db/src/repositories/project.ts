@@ -33,6 +33,7 @@ import { withTx } from '../tx';
 import type { Database, ExposureLineTable, ProjectPanelTable, ProjectTable } from '../types';
 import { TenantRepo } from './base';
 import { EquipmentRepository, type FilterWheelEntry } from './equipment';
+import { insertNotifications } from './notification';
 
 type Tx = Transaction<Database>;
 export type ProjectRow = Selectable<ProjectTable>;
@@ -368,12 +369,78 @@ export class ProjectRepository extends TenantRepo {
 
   /** Version, `effort_stale`, `updated_at` (jede inhaltliche Änderung, auch an Panels/Zeilen). */
   private async touch(trx: Tx, p: ProjectRow, now: Date, set: Record<string, unknown> = {}) {
+    const adminEdit =
+      p.approvalStatus === 'submitted' &&
+      this.ctx.memberId !== undefined &&
+      this.ctx.memberId !== null &&
+      this.ctx.memberId !== p.createdBy;
     await trx
       .updateTable('project')
-      .set({ ...set, version: p.version + 1, effortStale: true, updatedAt: now })
+      .set({
+        ...set,
+        ...(adminEdit ? { contentChangedAt: now } : {}),
+        version: p.version + 1,
+        effortStale: true,
+        updatedAt: now,
+      })
       .where('tenantId', '=', this.tenantId)
       .where('id', '=', p.id)
       .execute();
+    if (adminEdit) await this.adminEdited(trx, p, Object.keys(set), now);
+  }
+
+  /**
+   * Admin ändert ein eingereichtes Objekt, ohne zu entscheiden (FA-FRG-14): Ereignis
+   * `edited_by_admin`, „geändert seit deiner Stimme“ über `content_changed_at`; Einreicher und
+   * Stimmende werden benachrichtigt – höchstens einmal je 15 Minuten, damit eine Folge kleiner
+   * Änderungen nicht jede einzeln meldet.
+   */
+  private async adminEdited(trx: Tx, p: ProjectRow, fields: string[], now: Date) {
+    const recent = await trx
+      .selectFrom('approvalEvent')
+      .select('id')
+      .where('tenantId', '=', this.tenantId)
+      .where('projectId', '=', p.id)
+      .where('action', '=', 'edited_by_admin')
+      .where('createdAt', '>', new Date(now.getTime() - 15 * 60_000))
+      .executeTakeFirst();
+    await trx
+      .insertInto('approvalEvent')
+      .values({
+        tenantId: this.tenantId,
+        projectId: p.id,
+        userId: this.ctx.memberId ?? null,
+        action: 'edited_by_admin',
+        comment: null,
+        snapshot: json({ fields }),
+        createdAt: now,
+      })
+      .execute();
+    if (recent) return;
+    const voters = await trx
+      .selectFrom('queueVote')
+      .select('voterId')
+      .where('tenantId', '=', this.tenantId)
+      .where('subjectKind', '=', 'project')
+      .where('subjectId', '=', p.id)
+      .execute();
+    const me = this.ctx.memberId;
+    await insertNotifications(trx, {
+      tenantId: this.tenantId,
+      recipients: [p.createdBy].filter((r) => r !== me),
+      kind: 'submission.edited_by_admin',
+      projectId: p.id,
+      payload: { name: p.name },
+      now,
+    });
+    await insertNotifications(trx, {
+      tenantId: this.tenantId,
+      recipients: voters.map((v) => v.voterId).filter((r) => r !== me),
+      kind: 'vote.subject_changed',
+      projectId: p.id,
+      payload: { name: p.name },
+      now,
+    });
   }
 
   patch(

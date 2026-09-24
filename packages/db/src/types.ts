@@ -433,6 +433,16 @@ export interface ApprovalEventTable {
   createdAt: Timestamp;
 }
 
+export interface QueueVoteTable {
+  tenantId: string;
+  subjectKind: string;
+  subjectId: string;
+  projectId: string;
+  voterId: string;
+  createdAt: Timestamp;
+  acknowledgedAt: Timestamp;
+}
+
 export interface CaptureNightTable {
   tenantId: string;
   exposureLineId: string;
@@ -546,6 +556,7 @@ export interface Database {
   exposureLine: ExposureLineTable;
   projectNote: ProjectNoteTable;
   approvalEvent: ApprovalEventTable;
+  queueVote: QueueVoteTable;
   captureNight: CaptureNightTable;
   userPreference: UserPreferenceTable;
 }

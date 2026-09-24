@@ -4742,6 +4742,341 @@ components:
         - conflicts
         - hasCaptures
         - opticsChanged
+    SubmitInput:
+      type: object
+      properties:
+        requestedRigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+      additionalProperties: false
+    ApproveInput:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        priorityPosition:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+            - planning
+            - active
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+        acceptRigConflicts:
+          type: boolean
+      required:
+        - rigId
+        - status
+      additionalProperties: false
+    DecisionComment:
+      type: object
+      properties:
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      required:
+        - comment
+      additionalProperties: false
+    QueueItem:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - project
+            - change-request
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        projectType:
+          type: string
+          enum:
+            - deep_sky
+            - exoplanet
+        targetName:
+          type:
+            - string
+            - "null"
+        targetType:
+          type:
+            - string
+            - "null"
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
+        createdByName:
+          type: string
+        submittedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        requestedRigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+        contentChangedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        votes:
+          $ref: "#/components/schemas/QueueVotes"
+        submitterRank:
+          type:
+            - object
+            - "null"
+          properties:
+            rank:
+              type: integer
+            of:
+              type: integer
+          required:
+            - rank
+            - of
+        planSummary:
+          type: array
+          items:
+            type: object
+            properties:
+              filterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              filterShortName:
+                type: string
+              count:
+                type: integer
+              exposureS:
+                type: number
+              gain:
+                type:
+                  - integer
+                  - "null"
+              offset:
+                type:
+                  - integer
+                  - "null"
+              binning:
+                type: integer
+              readoutMode:
+                type:
+                  - string
+                  - "null"
+              moonMode:
+                type: string
+                enum:
+                  - profile
+                  - project_default
+                  - none
+              moonProfileId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+            required:
+              - filterId
+              - filterShortName
+              - count
+              - exposureS
+              - gain
+              - offset
+              - binning
+              - readoutMode
+              - moonMode
+              - moonProfileId
+        panelCount:
+          type: integer
+        estimatedHours:
+          type: number
+        effort:
+          type:
+            - object
+            - "null"
+          properties:
+            tag:
+              type: string
+            nights:
+              type:
+                - number
+                - "null"
+            earliestCompletion:
+              type:
+                - string
+                - "null"
+              format: date
+              example: 2026-09-18
+            achievablePct:
+              type:
+                - number
+                - "null"
+            limitingFactor:
+              type:
+                - string
+                - "null"
+          required:
+            - tag
+            - nights
+            - earliestCompletion
+            - achievablePct
+            - limitingFactor
+        suggestedPriorityPosition:
+          type:
+            - integer
+            - "null"
+        version:
+          type: integer
+      required:
+        - kind
+        - id
+        - projectId
+        - name
+        - projectType
+        - targetName
+        - targetType
+        - createdBy
+        - createdByName
+        - submittedAt
+        - requestedRigId
+        - requestPeriodFrom
+        - requestPeriodTo
+        - requestComment
+        - contentChangedAt
+        - votes
+        - submitterRank
+        - planSummary
+        - panelCount
+        - estimatedHours
+        - effort
+        - suggestedPriorityPosition
+        - version
+    QueueVotes:
+      type: object
+      properties:
+        count:
+          type: integer
+        voters:
+          type: array
+          items:
+            type: object
+            properties:
+              memberId:
+                type: string
+                format: uuid
+                description: UUID
+              displayName:
+                type: string
+              changedSinceVote:
+                type: boolean
+            required:
+              - memberId
+              - displayName
+              - changedSinceVote
+        mine:
+          type: boolean
+        mineChangedSince:
+          type: boolean
+      required:
+        - count
+        - voters
+        - mine
+        - mineChangedSince
+    SubmissionRanking:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum:
+                  - project
+                  - change-request
+              id:
+                type: string
+                format: uuid
+                description: UUID
+            required:
+              - kind
+              - id
+            additionalProperties: false
+          maxItems: 500
+      required:
+        - items
+      additionalProperties: false
     TenantAdminView:
       type: object
       properties:
@@ -9919,6 +10254,670 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/submit:
+    post:
+      summary: Einreichen (Pflichtprüfung, Wunschangaben, ans Ende der eigenen Rangfolge)
+      tags:
+        - approval
+      description: "Aktion: `project.submit` · FA-FRG-02, FA-FRG-15, FA-PRJ-01"
+      x-npm-action: project.submit
+      x-npm-requirements:
+        - FA-FRG-02
+        - FA-FRG-15
+        - FA-PRJ-01
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitInput"
+      responses:
+        "200":
+          description: Neuer Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed / approval.own_object / approval.rig_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/withdraw:
+    post:
+      summary: Einreichung zurückziehen → Entwurf
+      tags:
+        - approval
+      description: "Aktion: `project.withdraw` · FA-FRG-03, FA-FRG-15"
+      x-npm-action: project.withdraw
+      x-npm-requirements:
+        - FA-FRG-03
+        - FA-FRG-15
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      responses:
+        "200":
+          description: Neuer Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed / approval.own_object / approval.rig_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/approve:
+    post:
+      summary: Freigeben mit Rig, Position je Rig, Projektstatus, Terminen
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-FRG-06, FA-FRG-10, FA-FRG-14, FA-RIG-12"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-FRG-06
+        - FA-FRG-10
+        - FA-FRG-14
+        - FA-RIG-12
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveInput"
+      responses:
+        "200":
+          description: Neuer Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed / approval.own_object / approval.rig_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/return:
+    post:
+      summary: Zurückgeben mit Pflichtkommentar → Zurückgegeben
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-FRG-07, FA-FRG-14"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-FRG-07
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionComment"
+      responses:
+        "200":
+          description: Neuer Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed / approval.own_object / approval.rig_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/reject:
+    post:
+      summary: Ablehnen mit Pflichtkommentar → Abgelehnt (endgültig)
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-FRG-07, FA-FRG-14"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-FRG-07
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionComment"
+      responses:
+        "200":
+          description: Neuer Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed / approval.own_object / approval.rig_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/queue:
+    get:
+      summary: "Warteschlange: eingereichte Objekte mit Stimmen, Rang, Plan-Chips"
+      tags:
+        - approval
+      description: "Aktion: `queue.read` · FA-FRG-04, FA-FRG-14, FA-FRG-16"
+      x-npm-action: queue.read
+      x-npm-requirements:
+        - FA-FRG-04
+        - FA-FRG-14
+        - FA-FRG-16
+      responses:
+        "200":
+          description: Warteschlange
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QueueItem"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/queue/{kind}/{id}/vote:
+    put:
+      summary: Stimme abgeben (nicht für eigene, nur solange eingereicht)
+      tags:
+        - approval
+      description: "Aktion: `queue.vote` · FA-FRG-14"
+      x-npm-action: queue.vote
+      x-npm-requirements:
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - project
+              - change-request
+          required: true
+          name: kind
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Stimmen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueVotes"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: vote.own_object / vote.closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Stimme zurücknehmen
+      tags:
+        - approval
+      description: "Aktion: `queue.vote` · FA-FRG-14"
+      x-npm-action: queue.vote
+      x-npm-requirements:
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - project
+              - change-request
+          required: true
+          name: kind
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Stimmen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueVotes"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: vote.own_object / vote.closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/queue/{kind}/{id}/vote/acknowledge:
+    post:
+      summary: Hinweis „geändert seit deiner Stimme“ quittieren
+      tags:
+        - approval
+      description: "Aktion: `queue.vote` · FA-FRG-14"
+      x-npm-action: queue.vote
+      x-npm-requirements:
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - project
+              - change-request
+          required: true
+          name: kind
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Quittiert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/me/submission-ranking:
+    put:
+      summary: Rangfolge der eigenen offenen Gegenstände (vollständige Liste, sonst 422)
+      tags:
+        - approval
+      description: "Aktion: `project.rank` · FA-FRG-15"
+      x-npm-action: project.rank
+      x-npm-requirements:
+        - FA-FRG-15
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionRanking"
+      responses:
+        "204":
+          description: Gespeichert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: ranking.incomplete / validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/drafts:
+    get:
+      summary: Entwürfe und zurückgegebene Objekte aller Mitglieder (S-34)
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-BER-02"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-BER-02
+      responses:
+        "200":
+          description: Entwürfe
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProjectListItem"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
           content:
             application/problem+json:
               schema:

@@ -1,6 +1,11 @@
 /** Lambda `worker`: Job-Dispatcher für Zeitpläne und Jobs (TK 13, 7.4). */
 import { S3Client } from '@aws-sdk/client-s3';
-import { deleteExpiredInvitations, recordTenantStorage, tenantIdsForStorage } from '@nina-pm/db';
+import {
+  deleteExpiredInvitations,
+  expireSubmissions,
+  recordTenantStorage,
+  tenantIdsForStorage,
+} from '@nina-pm/db';
 import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
 import { logger } from '../lib/logger';
@@ -16,6 +21,11 @@ const maintenance = {
     const deleted = await deleteExpiredInvitations((await lambdaDatabase()).db, new Date());
     logger.info('invitation_cleanup', { deleted });
     return deleted;
+  },
+  expireSubmissions: async () => {
+    const expired = await expireSubmissions((await lambdaDatabase()).db, new Date());
+    logger.info('submission_expiry', { expired });
+    return expired;
   },
   measureStorage: async () => {
     const db = (await lambdaDatabase()).db;
