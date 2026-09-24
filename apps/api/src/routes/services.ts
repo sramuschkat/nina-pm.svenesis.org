@@ -3,6 +3,7 @@ import type {
   AuthRepository,
   EnqueueInput,
   EnqueueResult,
+  EquipmentRepository,
   Job,
   MemberRepository,
   NotificationRepository,
@@ -28,6 +29,7 @@ export interface ApiRepositories {
   preference(): PreferenceRepository;
   notification(): NotificationRepository;
   audit(): AuditRepository;
+  equipment(): EquipmentRepository;
   tenant(): TenantRepository;
 }
 

@@ -93,6 +93,13 @@
    "titleEn": "Still in use"
   },
   {
+   "code": "resource.read_only",
+   "http": 409,
+   "i18nKey": "errors.resource.readOnly",
+   "titleDe": "Mitgeliefert und nicht änderbar",
+   "titleEn": "Built in and read-only"
+  },
+  {
    "code": "invitation.invalid",
    "http": 404,
    "i18nKey": "errors.invitation.invalid",

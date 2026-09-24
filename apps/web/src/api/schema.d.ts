@@ -1949,6 +1949,3011 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/web/v1/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Standort: Liste
+         * @description Aktion: `equipment.read` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["SiteView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Standort: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SiteCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sites/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Standort: lesen
+         * @description Aktion: `equipment.read` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Standort */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Standort: ändern
+         * @description Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SiteInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Standort: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/site-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Standort-Link: Liste
+         * @description Aktion: `equipment.read` · FA-STO-05, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUID */
+                    siteId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["SiteLinkView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Standort-Link: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-STO-05, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SiteLinkCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteLinkView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/site-links/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Standort-Link: lesen
+         * @description Aktion: `equipment.read` · FA-STO-05, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Standort-Link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteLinkView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Standort-Link: ändern
+         * @description Aktion: `equipment.write` · FA-STO-05, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SiteLinkInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteLinkView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Standort-Link: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-STO-05, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/telescopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teleskop: Liste
+         * @description Aktion: `equipment.read` · FA-TEL-01, FA-TEL-02, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["TelescopeView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Teleskop: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TelescopeCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelescopeView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/telescopes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teleskop: lesen
+         * @description Aktion: `equipment.read` · FA-TEL-01, FA-TEL-02, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Teleskop */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelescopeView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Teleskop: ändern
+         * @description Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TelescopeInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelescopeView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Teleskop: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/cameras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kamera: Liste
+         * @description Aktion: `equipment.read` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["CameraView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Kamera: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CameraCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CameraView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/cameras/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kamera: lesen
+         * @description Aktion: `equipment.read` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Kamera */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CameraView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Kamera: ändern
+         * @description Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CameraInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CameraView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Kamera: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Filter: Liste
+         * @description Aktion: `equipment.read` · FA-FIL-01…05, NT-41, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["FilterView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Filter: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FilterCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FilterView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/filters/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Filter: lesen
+         * @description Aktion: `equipment.read` · FA-FIL-01…05, NT-41, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Filter */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FilterView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Filter: ändern
+         * @description Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FilterInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FilterView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Filter: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/moon-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mondprofil: Liste
+         * @description Aktion: `equipment.read` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["MoonProfileView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Mondprofil: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MoonProfileCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MoonProfileView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/moon-profiles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mondprofil: lesen
+         * @description Aktion: `equipment.read` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Mondprofil */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MoonProfileView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Mondprofil: ändern
+         * @description Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MoonProfileInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MoonProfileView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Mondprofil: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]), resource.read_only (mitgeliefert) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/exposure-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Belichtungsvorlage: Liste
+         * @description Aktion: `equipment.read` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["ExposureTemplateView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Belichtungsvorlage: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExposureTemplateCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExposureTemplateView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/exposure-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Belichtungsvorlage: lesen
+         * @description Aktion: `equipment.read` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Belichtungsvorlage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExposureTemplateView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Belichtungsvorlage: ändern
+         * @description Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExposureTemplateInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExposureTemplateView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Belichtungsvorlage: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/rigs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rig: Liste
+         * @description Aktion: `equipment.read` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liste */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["RigView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Rig: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)
+         * @description Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2, rules/api.md Idempotenz
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RigCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RigView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/rigs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rig: lesen
+         * @description Aktion: `equipment.read` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Rig */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RigView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Rig: ändern
+         * @description Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RigInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RigView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.read_only (mitgelieferte Mondprofile) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Rig: löschen (gesperrt, solange verwendet)
+         * @description Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2, FA-RIG-13
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (Verwender in errors[]) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/rigs/{id}/scheduler-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Scheduler-Einstellungen des Rigs (erhöht settingsVersion)
+         * @description Aktion: `rig.settings.write` · FA-RIG-04, FA-SCH, sort-chain.md, flip-rotation.md §1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SchedulerSettings"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RigView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed, rig.sort_chain_invalid, rig.flip_settings_invalid */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/rigs/{id}/filter-wheel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Filterradbelegung mit NINA-Meldung und Vorschlägen
+         * @description Aktion: `equipment.read` · FA-RIG-14, NT-E1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Belegung */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FilterWheelView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Filterradbelegung bestätigen (nur Admin/Owner; erhöht settingsVersion)
+         * @description Aktion: `rig.settings.write` · FA-RIG-14, NT-E1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["FilterWheelPut"];
+                };
+            };
+            responses: {
+                /** @description Bestätigt */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FilterWheelView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sites/{id}/nights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nacht-Tabelle des Standorts (ab from bzw. ab der Mittagsnacht, count ≤ 400)
+         * @description Aktion: `project.read` · NT-02, NT-01, H1, night.md §1
+         */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    count?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Nacht-Tabelle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteNightsView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -3007,7 +6012,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
             requestId?: string;
             errors?: {
                 path: string;
@@ -3397,6 +6402,1101 @@ export interface components {
                 adminSelfApproval?: boolean;
                 approvalDeadlineDays?: number | null;
             };
+        };
+        SiteView: {
+            name: string;
+            /** @default null */
+            pierName: string | null;
+            /**
+             * @default open_air
+             * @enum {string}
+             */
+            observatoryType: "open_air" | "dome" | "roll_off_roof" | "fixed_pier" | "portable" | "remote_hosted";
+            latitudeDeg: number;
+            longitudeDeg: number;
+            /** @default 0 */
+            elevationM: number;
+            /** @default null */
+            bortleClass: number | null;
+            timeZone: string;
+            /**
+             * Format: uri
+             * @default null
+             */
+            weatherSafetyUrl: string | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        SiteCreate: {
+            name: string;
+            /** @default null */
+            pierName: string | null;
+            /**
+             * @default open_air
+             * @enum {string}
+             */
+            observatoryType: "open_air" | "dome" | "roll_off_roof" | "fixed_pier" | "portable" | "remote_hosted";
+            latitudeDeg: number;
+            longitudeDeg: number;
+            /** @default 0 */
+            elevationM: number;
+            /** @default null */
+            bortleClass: number | null;
+            timeZone: string;
+            /**
+             * Format: uri
+             * @default null
+             */
+            weatherSafetyUrl: string | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        SiteInput: {
+            name: string;
+            /** @default null */
+            pierName: string | null;
+            /**
+             * @default open_air
+             * @enum {string}
+             */
+            observatoryType: "open_air" | "dome" | "roll_off_roof" | "fixed_pier" | "portable" | "remote_hosted";
+            latitudeDeg: number;
+            longitudeDeg: number;
+            /** @default 0 */
+            elevationM: number;
+            /** @default null */
+            bortleClass: number | null;
+            timeZone: string;
+            /**
+             * Format: uri
+             * @default null
+             */
+            weatherSafetyUrl: string | null;
+            /** @default  */
+            notes: string;
+        };
+        SiteLinkView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            serviceType: string;
+            name: string;
+            remoteIdOrUrl: string;
+            /** @default  */
+            notes: string;
+            /** @default false */
+            isDefault: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        SiteLinkCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            serviceType: string;
+            name: string;
+            remoteIdOrUrl: string;
+            /** @default  */
+            notes: string;
+            /** @default false */
+            isDefault: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        SiteLinkInput: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            serviceType: string;
+            name: string;
+            remoteIdOrUrl: string;
+            /** @default  */
+            notes: string;
+            /** @default false */
+            isDefault: boolean;
+        };
+        TelescopeView: {
+            name: string;
+            /** @default  */
+            brand: string;
+            /** @default  */
+            model: string;
+            /** @enum {string} */
+            opticalDesign: "apochromatic_refractor" | "achromat" | "newtonian" | "rc" | "sct" | "maksutov" | "cdk" | "cassegrain" | "rasa";
+            apertureMm: number;
+            focalLengthMm: number;
+            /** @default 1 */
+            reducerFactor: number;
+            /** @default 0 */
+            obstructionPct: number;
+            /** @default null */
+            imageCircleMm: number | null;
+            /** @default null */
+            backfocusMm: number | null;
+            /** @default null */
+            weightKg: number | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        TelescopeCreate: {
+            name: string;
+            /** @default  */
+            brand: string;
+            /** @default  */
+            model: string;
+            /** @enum {string} */
+            opticalDesign: "apochromatic_refractor" | "achromat" | "newtonian" | "rc" | "sct" | "maksutov" | "cdk" | "cassegrain" | "rasa";
+            apertureMm: number;
+            focalLengthMm: number;
+            /** @default 1 */
+            reducerFactor: number;
+            /** @default 0 */
+            obstructionPct: number;
+            /** @default null */
+            imageCircleMm: number | null;
+            /** @default null */
+            backfocusMm: number | null;
+            /** @default null */
+            weightKg: number | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        TelescopeInput: {
+            name: string;
+            /** @default  */
+            brand: string;
+            /** @default  */
+            model: string;
+            /** @enum {string} */
+            opticalDesign: "apochromatic_refractor" | "achromat" | "newtonian" | "rc" | "sct" | "maksutov" | "cdk" | "cassegrain" | "rasa";
+            apertureMm: number;
+            focalLengthMm: number;
+            /** @default 1 */
+            reducerFactor: number;
+            /** @default 0 */
+            obstructionPct: number;
+            /** @default null */
+            imageCircleMm: number | null;
+            /** @default null */
+            backfocusMm: number | null;
+            /** @default null */
+            weightKg: number | null;
+            /** @default  */
+            notes: string;
+        };
+        CameraView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            brand: string;
+            model: string;
+            sensorName: string;
+            widthPx: number;
+            heightPx: number;
+            pixelSizeUm: number;
+            bitDepth: number;
+            isCooled: boolean;
+            coolingSetpointC: number | null;
+            coolingToleranceC: number;
+            isColor: boolean;
+            readNoiseE: number | null;
+            fullWellE: number | null;
+            gainEPerAdu: number | null;
+            quantumEfficiencyPct: number | null;
+            darkCurrentES20c: number | null;
+            defaultGain: number | null;
+            defaultOffset: number | null;
+            defaultBinning: number;
+            defaultReadoutMode: string;
+            supportedBinning: number[];
+            gainModes: {
+                name: string;
+                gain: number;
+                /** @default null */
+                readNoiseE: number | null;
+                /** @default null */
+                fullWellE: number | null;
+                /** @default null */
+                ePerAdu: number | null;
+            }[];
+            readoutModes: string[];
+            ninaReported?: unknown;
+            notes: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        CameraCreate: {
+            name: string;
+            /** @default  */
+            brand: string;
+            /** @default  */
+            model: string;
+            /** @default  */
+            sensorName: string;
+            widthPx: number;
+            heightPx: number;
+            pixelSizeUm: number;
+            /** @default 16 */
+            bitDepth: number;
+            /** @default true */
+            isCooled: boolean;
+            /** @default null */
+            coolingSetpointC: number | null;
+            /** @default 1 */
+            coolingToleranceC: number;
+            /** @default false */
+            isColor: boolean;
+            /** @default null */
+            readNoiseE: number | null;
+            /** @default null */
+            fullWellE: number | null;
+            /** @default null */
+            gainEPerAdu: number | null;
+            /** @default 80 */
+            quantumEfficiencyPct: number | null;
+            /** @default 0.005 */
+            darkCurrentES20c: number | null;
+            /** @default null */
+            defaultGain: number | null;
+            /** @default null */
+            defaultOffset: number | null;
+            /** @default 1 */
+            defaultBinning: number;
+            /** @default Default */
+            defaultReadoutMode: string;
+            /**
+             * @default [
+             *       1,
+             *       2
+             *     ]
+             */
+            supportedBinning: number[];
+            /** @default [] */
+            gainModes: {
+                name: string;
+                gain: number;
+                /** @default null */
+                readNoiseE: number | null;
+                /** @default null */
+                fullWellE: number | null;
+                /** @default null */
+                ePerAdu: number | null;
+            }[];
+            /**
+             * @default [
+             *       "Default"
+             *     ]
+             */
+            readoutModes: string[];
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        CameraInput: {
+            name: string;
+            /** @default  */
+            brand: string;
+            /** @default  */
+            model: string;
+            /** @default  */
+            sensorName: string;
+            widthPx: number;
+            heightPx: number;
+            pixelSizeUm: number;
+            /** @default 16 */
+            bitDepth: number;
+            /** @default true */
+            isCooled: boolean;
+            /** @default null */
+            coolingSetpointC: number | null;
+            /** @default 1 */
+            coolingToleranceC: number;
+            /** @default false */
+            isColor: boolean;
+            /** @default null */
+            readNoiseE: number | null;
+            /** @default null */
+            fullWellE: number | null;
+            /** @default null */
+            gainEPerAdu: number | null;
+            /** @default 80 */
+            quantumEfficiencyPct: number | null;
+            /** @default 0.005 */
+            darkCurrentES20c: number | null;
+            /** @default null */
+            defaultGain: number | null;
+            /** @default null */
+            defaultOffset: number | null;
+            /** @default 1 */
+            defaultBinning: number;
+            /** @default Default */
+            defaultReadoutMode: string;
+            /**
+             * @default [
+             *       1,
+             *       2
+             *     ]
+             */
+            supportedBinning: number[];
+            /** @default [] */
+            gainModes: {
+                name: string;
+                gain: number;
+                /** @default null */
+                readNoiseE: number | null;
+                /** @default null */
+                fullWellE: number | null;
+                /** @default null */
+                ePerAdu: number | null;
+            }[];
+            /**
+             * @default [
+             *       "Default"
+             *     ]
+             */
+            readoutModes: string[];
+            /** @default  */
+            notes: string;
+        };
+        FilterView: {
+            shortName: string;
+            /** @default  */
+            fullName: string;
+            /** @default  */
+            brand: string;
+            /** @enum {string} */
+            filterType: "broadband" | "narrowband" | "luminance" | "uv_ir_cut" | "light_pollution" | "photometric" | "other";
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            telescopeId: string | null;
+            /** @default null */
+            size: string | null;
+            /** @default null */
+            shape: string | null;
+            /** @default null */
+            mountType: string | null;
+            /** @default null */
+            bandwidthNm: number | null;
+            /** @default null */
+            centerWavelengthNm: number | null;
+            /**
+             * @default none
+             * @enum {string}
+             */
+            photometricBand: "U" | "B" | "V" | "Rc" | "Ic" | "g" | "r" | "i" | "z" | "clear" | "lum" | "none";
+            /** @default null */
+            transmissionPct: number | null;
+            /** @default null */
+            thicknessMm: number | null;
+            /** @default #CCCCCC */
+            colorHex: string;
+            /** @default false */
+            defaultOnNewProject: boolean;
+            /** @default null */
+            defaultExposureS: number | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultMoonProfileId: string | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        FilterCreate: {
+            shortName: string;
+            /** @default  */
+            fullName: string;
+            /** @default  */
+            brand: string;
+            /** @enum {string} */
+            filterType: "broadband" | "narrowband" | "luminance" | "uv_ir_cut" | "light_pollution" | "photometric" | "other";
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            telescopeId: string | null;
+            /** @default null */
+            size: string | null;
+            /** @default null */
+            shape: string | null;
+            /** @default null */
+            mountType: string | null;
+            /** @default null */
+            bandwidthNm: number | null;
+            /** @default null */
+            centerWavelengthNm: number | null;
+            /**
+             * @default none
+             * @enum {string}
+             */
+            photometricBand: "U" | "B" | "V" | "Rc" | "Ic" | "g" | "r" | "i" | "z" | "clear" | "lum" | "none";
+            /** @default null */
+            transmissionPct: number | null;
+            /** @default null */
+            thicknessMm: number | null;
+            /** @default #CCCCCC */
+            colorHex: string;
+            /** @default false */
+            defaultOnNewProject: boolean;
+            /** @default null */
+            defaultExposureS: number | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultMoonProfileId: string | null;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        FilterInput: {
+            shortName: string;
+            /** @default  */
+            fullName: string;
+            /** @default  */
+            brand: string;
+            /** @enum {string} */
+            filterType: "broadband" | "narrowband" | "luminance" | "uv_ir_cut" | "light_pollution" | "photometric" | "other";
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            telescopeId: string | null;
+            /** @default null */
+            size: string | null;
+            /** @default null */
+            shape: string | null;
+            /** @default null */
+            mountType: string | null;
+            /** @default null */
+            bandwidthNm: number | null;
+            /** @default null */
+            centerWavelengthNm: number | null;
+            /**
+             * @default none
+             * @enum {string}
+             */
+            photometricBand: "U" | "B" | "V" | "Rc" | "Ic" | "g" | "r" | "i" | "z" | "clear" | "lum" | "none";
+            /** @default null */
+            transmissionPct: number | null;
+            /** @default null */
+            thicknessMm: number | null;
+            /** @default #CCCCCC */
+            colorHex: string;
+            /** @default false */
+            defaultOnNewProject: boolean;
+            /** @default null */
+            defaultExposureS: number | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultMoonProfileId: string | null;
+            /** @default  */
+            notes: string;
+        };
+        MoonProfileView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            description: string;
+            separationDeg: number;
+            widthDays: number;
+            relaxScale: number;
+            moonMinAltDeg: number;
+            moonMaxAltDeg: number;
+            maxIlluminationPct: number;
+            moonMustBeDown: boolean;
+            isBuiltIn: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        MoonProfileCreate: {
+            name: string;
+            /** @default  */
+            description: string;
+            separationDeg: number;
+            widthDays: number;
+            relaxScale: number;
+            moonMinAltDeg: number;
+            moonMaxAltDeg: number;
+            maxIlluminationPct: number;
+            /** @default false */
+            moonMustBeDown: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        MoonProfileInput: {
+            name: string;
+            /** @default  */
+            description: string;
+            separationDeg: number;
+            widthDays: number;
+            relaxScale: number;
+            moonMinAltDeg: number;
+            moonMaxAltDeg: number;
+            maxIlluminationPct: number;
+            /** @default false */
+            moonMustBeDown: boolean;
+        };
+        ExposureTemplateView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            telescopeId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            cameraId: string | null;
+            notes: string;
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string | null;
+                filterShortName: string;
+                exposureS: number;
+                plannedCount: number;
+                gain: number | null;
+                offsetAdu: number | null;
+                binning: number;
+                readoutMode: string | null;
+                /** @enum {string} */
+                moonMode: "profile" | "project_default" | "none";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                moonProfileId: string | null;
+                enabled: boolean;
+            }[];
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        ExposureTemplateCreate: {
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            telescopeId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            cameraId: string | null;
+            /** @default  */
+            notes: string;
+            /** @default [] */
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string;
+                exposureS: number;
+                plannedCount: number;
+                /** @default null */
+                gain: number | null;
+                /** @default null */
+                offsetAdu: number | null;
+                /** @default 1 */
+                binning: number;
+                /** @default null */
+                readoutMode: string | null;
+                /**
+                 * @default profile
+                 * @enum {string}
+                 */
+                moonMode: "profile" | "project_default" | "none";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 * @default null
+                 */
+                moonProfileId: string | null;
+                /** @default true */
+                enabled: boolean;
+            }[];
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        ExposureTemplateInput: {
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            telescopeId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            cameraId: string | null;
+            /** @default  */
+            notes: string;
+            /** @default [] */
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string;
+                exposureS: number;
+                plannedCount: number;
+                /** @default null */
+                gain: number | null;
+                /** @default null */
+                offsetAdu: number | null;
+                /** @default 1 */
+                binning: number;
+                /** @default null */
+                readoutMode: string | null;
+                /**
+                 * @default profile
+                 * @enum {string}
+                 */
+                moonMode: "profile" | "project_default" | "none";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 * @default null
+                 */
+                moonProfileId: string | null;
+                /** @default true */
+                enabled: boolean;
+            }[];
+        };
+        RigView: {
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            telescopeId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            cameraId: string;
+            /** @default true */
+            showInPlanning: boolean;
+            /** @default true */
+            ninaDeliveryEnabled: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultTemplateId: string | null;
+            /** @default null */
+            defaultRotationDeg: number | null;
+            /** @default false */
+            hasRotator: boolean;
+            /** @default 5 */
+            rotationToleranceDeg: number;
+            /** @default false */
+            skipOnRotationMismatch: boolean;
+            /** @default false */
+            sessionReportDiscord: boolean;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            scheduler: components["schemas"]["SchedulerSettings"];
+            filterWheel: components["schemas"]["FilterWheelSlot"][];
+            settingsVersion: number;
+            derived: {
+                effFocalMm: number;
+                scaleArcsecPx: number;
+                fovWidthDeg: number;
+                fovHeightDeg: number;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        SchedulerSettings: {
+            /** @enum {string} */
+            strategy: "proportional" | "manual_priority";
+            /** @enum {string} */
+            playback: "time_aware" | "sequential";
+            sortChain: string[];
+            bonusEnabled: boolean;
+            overshootPct: number;
+            mosaicPanelsIndependent: boolean;
+            ditherEnabled: boolean;
+            ditherEvery: number;
+            filterSwitchEnabled: boolean;
+            filterSwitchEvery: number;
+            filterSwitchTolerancePct: number;
+            flatsEnabled: boolean;
+            flatsFullSet: boolean;
+            flatCount: number;
+            darkFlatsEnabled: boolean;
+            darkFlatCount: number | null;
+            /** @enum {string} */
+            flatsSource: "panel" | "sky";
+            flipEnabled: boolean;
+            flipAfterMeridianMin: number;
+            flipMaxAfterMeridianMin: number;
+            flipPauseBeforeMeridianMin: number;
+            flipDurationS: number;
+            overhead: {
+                /** @default 120 */
+                slewCenterS: number;
+                /** @default 10 */
+                filterChangeS: number;
+                /** @default 20 */
+                ditherSettleS: number;
+                /** @default 60 */
+                afEveryMin: number;
+                /** @default 180 */
+                afDurationS: number;
+                /** @default 5 */
+                downloadS: number;
+            };
+        };
+        FilterWheelSlot: {
+            position: number;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            filterId: string | null;
+            ninaFilterName: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            ninaConfirmedAt: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            ninaConfirmedBy: string | null;
+        };
+        RigCreate: {
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            telescopeId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            cameraId: string;
+            /** @default true */
+            showInPlanning: boolean;
+            /** @default true */
+            ninaDeliveryEnabled: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultTemplateId: string | null;
+            /** @default null */
+            defaultRotationDeg: number | null;
+            /** @default false */
+            hasRotator: boolean;
+            /** @default 5 */
+            rotationToleranceDeg: number;
+            /** @default false */
+            skipOnRotationMismatch: boolean;
+            /** @default false */
+            sessionReportDiscord: boolean;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        RigInput: {
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            telescopeId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            cameraId: string;
+            /** @default true */
+            showInPlanning: boolean;
+            /** @default true */
+            ninaDeliveryEnabled: boolean;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            defaultTemplateId: string | null;
+            /** @default null */
+            defaultRotationDeg: number | null;
+            /** @default false */
+            hasRotator: boolean;
+            /** @default 5 */
+            rotationToleranceDeg: number;
+            /** @default false */
+            skipOnRotationMismatch: boolean;
+            /** @default false */
+            sessionReportDiscord: boolean;
+            /** @default  */
+            notes: string;
+        };
+        FilterWheelView: {
+            slots: {
+                position: number;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string | null;
+                ninaFilterName: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                ninaConfirmedAt: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                ninaConfirmedBy: string | null;
+                reportedName: string | null;
+                suggestion: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                suggestedFilterId: string | null;
+                changedByNina: boolean;
+            }[];
+            reported: {
+                slots: {
+                    position: number;
+                    name: string;
+                    focusOffset: number | null;
+                }[];
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                reportedAt: string | null;
+            } | null;
+            settingsVersion: number;
+        };
+        FilterWheelPut: {
+            slots: {
+                position: number;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string | null;
+                ninaFilterName: string | null;
+            }[];
+        };
+        SiteNightsView: {
+            /** Format: date */
+            currentNight: string;
+            tzdataVersion: string;
+            timeZoneTransitions: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+                utcOffsetMinutes: number;
+            }[];
+            nights: {
+                /** Format: date */
+                night: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                noonStartUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                noonEndUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nightWindowEndUtc: string;
+            }[];
         };
         TenantAdminView: {
             /**

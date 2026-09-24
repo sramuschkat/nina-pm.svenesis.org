@@ -5,6 +5,7 @@
  */
 import {
   AuditRepository,
+  EquipmentRepository,
   AuthRepository,
   JobRepository,
   MemberRepository,
@@ -66,6 +67,7 @@ export async function createStack() {
       preference: () => new PreferenceRepository(pg.db, ctx),
       notification: () => new NotificationRepository(pg.db, ctx),
       audit: () => new AuditRepository(pg.db, ctx),
+      equipment: () => new EquipmentRepository(pg.db, ctx),
       tenant: () => new TenantRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),

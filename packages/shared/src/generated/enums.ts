@@ -51,6 +51,9 @@ export type PhotometricBand = (typeof photometricBands)[number];
 export const observatoryTypes = ["open_air","dome","roll_off_roof","fixed_pier","portable","remote_hosted"] as const;
 export type ObservatoryType = (typeof observatoryTypes)[number];
 
+export const opticalDesigns = ["apochromatic_refractor","achromat","newtonian","rc","sct","maksutov","cdk","cassegrain","rasa"] as const;
+export type OpticalDesign = (typeof opticalDesigns)[number];
+
 export const strategies = ["proportional","manual_priority"] as const;
 export type Strategy = (typeof strategies)[number];
 

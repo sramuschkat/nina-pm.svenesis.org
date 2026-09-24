@@ -6,7 +6,8 @@
  */
 import { randomUUID } from 'node:crypto';
 import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
-import type { TenantAdminRepository } from '@nina-pm/db';
+import type { EquipmentRepository, TenantAdminRepository } from '@nina-pm/db';
+import { seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
 import {
   DiscordUserId,
   INVITATION_DEFAULT_DAYS,
@@ -16,6 +17,7 @@ import {
   Uuid,
 } from '@nina-pm/shared';
 import { z } from 'zod';
+import seedDemo from '../../../../docs/seed/seed-demo.json' with { type: 'json' };
 import { invitationLink, isoUtc } from '../lib/format';
 
 export interface SqsLike {
@@ -29,6 +31,8 @@ export interface OpsDeps {
   readonly failureQueueUrl: string;
   /** Systemverwaltung mit Akteur `ops_cli` (DB-Rolle app_rw). */
   readonly admin: () => Promise<TenantAdminRepository>;
+  /** Ausrüstung eines Mandanten (Seed, AP-09a); DB-Rolle app_rw. */
+  readonly equipment: (tenantId: string) => Promise<EquipmentRepository>;
   /** Basis-URL für Einladungslinks, z. B. https://nina-pm.svenesis.org. */
   readonly appOrigin: string;
   readonly now?: () => Date;
@@ -54,7 +58,7 @@ const HELP = {
     '{"command":"block-identity","discordId":"…","unblock"?:true} – Sperre beendet alle Sitzungen.',
   'revoke-sessions':
     '{"command":"revoke-sessions","identity":"<discordId|identity.id>"} – alle Sitzungen beenden.',
-  seed: '{"command":"seed","tenant":"test"} – Demo-Daten (Stand AP-04b: Built-in-Mondprofile; Ausrüstung/Projekte folgen mit AP-09a/AP-11a).',
+  seed: '{"command":"seed","tenant":"test"} – Demo-Daten: Built-in-Mondprofile und Ausrüstung aus seed-demo.json (idempotent; Projekte folgen mit AP-11a).',
   'list-failed-jobs':
     'Zeigt bis zu 10 Nachrichten aus nina-pm-worker-failures, ohne sie zu löschen.',
 } as const;
@@ -169,11 +173,18 @@ async function execute(
       const tenant = await admin.tenantByKey(a.tenant);
       if (!tenant) return { error: 'tenant.not_found', hint: 'zuerst create-tenant' };
       const moonProfiles = await admin.ensureBuiltInMoonProfiles(tenant.id, now);
+      const equipment = await seedEquipment(
+        await deps.equipment(tenant.id),
+        tenant.id,
+        seedDemo as SeedDemo,
+        now,
+      );
       return {
         tenantKey: a.tenant,
         moonProfilesAdded: moonProfiles,
+        equipment,
         pending:
-          'Ausrüstung, Rigs und Projekte seedet der Befehl ab AP-09a/AP-11a; Identitäten werden in prod nie angelegt (docs/seed/README.md).',
+          'Projekte seedet der Befehl ab AP-11a; Identitäten werden in prod nie angelegt (docs/seed/README.md).',
       };
     }
   }

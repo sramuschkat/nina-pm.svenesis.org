@@ -27,7 +27,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ☑ |
 | [AP-08a](AP-08a.md) | Engine-Grundlagen: Mathematik, kanonisches JSON, Hash | M | AP-01 | – | ☑ |
 | [AP-08b](AP-08b.md) | Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (Port astro-core) | L | AP-08a | H-03 | ☑ |
-| [AP-09a](AP-09a.md) | Ausrüstung: API | L | AP-05, AP-04b, AP-08b | – | ☐ |
+| [AP-09a](AP-09a.md) | Ausrüstung: API | L | AP-05, AP-04b, AP-08b | – | ◐ |
 | [AP-09b](AP-09b.md) | Stammdaten-Bildschirme S-11 … S-15 | M | AP-09a, AP-06a | – | ☐ |
 | [AP-09c](AP-09c.md) | Rig-Bildschirm S-10 | M | AP-09b | – | ☐ |
 | [AP-10](AP-10.md) | Engine: Sichtbarkeit, Saisonende, Mondvermeidung, Nachtdiagramm | M | AP-08b, AP-06a | – | ☐ |

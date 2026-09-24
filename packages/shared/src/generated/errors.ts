@@ -14,6 +14,7 @@ export const ERRORS = {
   "resource.not_found": { http: 404, i18nKey: "errors.resource.notFound", titleDe: "Nicht gefunden", titleEn: "Not found" },
   "resource.version_conflict": { http: 412, i18nKey: "errors.resource.versionConflict", titleDe: "Wurde inzwischen geändert", titleEn: "Changed in the meantime" },
   "resource.in_use": { http: 409, i18nKey: "errors.resource.inUse", titleDe: "Wird noch verwendet", titleEn: "Still in use" },
+  "resource.read_only": { http: 409, i18nKey: "errors.resource.readOnly", titleDe: "Mitgeliefert und nicht änderbar", titleEn: "Built in and read-only" },
   "invitation.invalid": { http: 404, i18nKey: "errors.invitation.invalid", titleDe: "Einladung ungültig", titleEn: "Invitation invalid" },
   "invitation.expired": { http: 410, i18nKey: "errors.invitation.expired", titleDe: "Einladung abgelaufen", titleEn: "Invitation expired" },
   "invitation.already_member": { http: 409, i18nKey: "errors.invitation.alreadyMember", titleDe: "Bereits Mitglied", titleEn: "Already a member" },

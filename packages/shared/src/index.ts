@@ -6,3 +6,4 @@ export * from './errors';
 export * from './night';
 export * from './permissions';
 export * from './time';
+export * from './equipment';

@@ -1,6 +1,6 @@
 /** ops-cli (TK 5.4, iam.md §5, SV-11/SV-17): Befehle gegen PGlite; jeder Aufruf schreibt system_audit mit Akteur ops_cli. */
 import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
-import { TenantAdminRepository } from '@nina-pm/db';
+import { EquipmentRepository, TenantAdminRepository } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runOpsCommand, type OpsDeps, type SqsLike } from '../src/ops/commands';
@@ -32,6 +32,7 @@ beforeEach(async () => {
     sqs: { send },
     failureQueueUrl: queueUrl,
     admin: () => Promise.resolve(new TenantAdminRepository(pg.db, { kind: 'ops_cli' })),
+    equipment: (tenantId) => Promise.resolve(new EquipmentRepository(pg.db, { tenantId })),
     appOrigin: 'https://nina-pm.svenesis.org',
     now: () => new Date('2026-09-24T12:00:00Z'),
   };
@@ -211,6 +212,25 @@ describe('ops-cli', () => {
     expect(await run({ command: 'seed', tenant: 'test' })).toMatchObject({
       output: { moonProfilesAdded: 0 },
     });
+    // Ausrüstung aus seed-demo.json (AP-09a): 1 Standort, 2 Teleskope, 2 Kameras, 7 Filter, 2 Rigs.
+    const counts = (
+      await pg.admin.query(
+        `SELECT 'site' AS t, count(*)::int AS n FROM site UNION ALL SELECT 'rig', count(*)::int FROM rig
+         UNION ALL SELECT 'filter', count(*)::int FROM filter`,
+      )
+    ).rows as { t: string; n: number }[];
+    expect(Object.fromEntries(counts.map((r) => [r.t, r.n]))).toEqual({
+      site: 1,
+      rig: 2,
+      filter: 7,
+    });
+    const [rig] = (
+      await pg.admin.query(
+        "SELECT settings_version, filter_wheel FROM rig WHERE name LIKE 'Rig A%'",
+      )
+    ).rows as { settings_version: number; filter_wheel: unknown[] }[];
+    expect(rig?.filter_wheel).toHaveLength(7);
+    expect(rig?.settings_version).toBe(3);
   });
 
   it('jeder Aufruf schreibt system_audit mit Akteur ops_cli (SV-11)', async () => {

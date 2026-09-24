@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import {
   AuditRepository,
+  EquipmentRepository,
   AuthRepository,
   JobQueue,
   JobRepository,
@@ -22,7 +23,7 @@ import {
   readMaintenanceBanner,
   TenantRepository,
 } from '@nina-pm/db';
-import { seedCore, type SeedDemo } from '@nina-pm/db/seed';
+import { seedCore, seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
 import { openPglite } from '@nina-pm/db/testing/pglite';
 import { COOKIE_NAMES, safeNext } from '@nina-pm/shared';
 import { Hono } from 'hono';
@@ -55,6 +56,12 @@ async function database(): Promise<OpenDatabase['db']> {
   }
   const pg = await openPglite();
   await seedCore(pg.admin, seed);
+  await seedEquipment(
+    new EquipmentRepository(pg.db, { tenantId: seed.tenant.id }),
+    seed.tenant.id,
+    seed,
+    new Date(),
+  );
   logger.info('local_db', { kind: 'pglite', seeded: true });
   return pg.db;
 }
@@ -69,6 +76,7 @@ const services: ApiServices = {
     preference: () => new PreferenceRepository(db, ctx),
     notification: () => new NotificationRepository(db, ctx),
     audit: () => new AuditRepository(db, ctx),
+    equipment: () => new EquipmentRepository(db, ctx),
     tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),

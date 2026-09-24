@@ -91,6 +91,7 @@
     {
       "id": "00000000-0000-7000-8000-000000000021",
       "name": "Refraktor 80/480",
+      "opticalDesign": "apochromatic_refractor",
       "apertureMm": 80,
       "focalLengthMm": 480,
       "reducerFactor": 1.0
@@ -98,6 +99,7 @@
     {
       "id": "00000000-0000-7000-8000-000000000022",
       "name": "RASA 8",
+      "opticalDesign": "rasa",
       "apertureMm": 203,
       "focalLengthMm": 400,
       "reducerFactor": 1.0
