@@ -1,0 +1,5536 @@
+{
+ "cases": [
+  {
+   "decJ2000Deg": 56.6194,
+   "from": "2026-09-17",
+   "id": "ngc281-starfront",
+   "minAltDeg": 30,
+   "minTimeSec": 3600,
+   "nights": [
+    {
+     "longestRunSec": 31500,
+     "night": "2026-09-17",
+     "usableSec": 31500
+    },
+    {
+     "longestRunSec": 31500,
+     "night": "2026-09-18",
+     "usableSec": 31500
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-09-19",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-09-20",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-09-21",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32700,
+     "night": "2026-09-22",
+     "usableSec": 32700
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-09-23",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-09-24",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-09-25",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-09-26",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-09-27",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-09-28",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-09-29",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-09-30",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-01",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-02",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-03",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-04",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-05",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-06",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-10-07",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-08",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-09",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-10",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-11",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-12",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-13",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-14",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 35400,
+     "night": "2026-10-15",
+     "usableSec": 35400
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-16",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-17",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-18",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-19",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-10-20",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-10-21",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-22",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-23",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-24",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33600,
+     "night": "2026-10-25",
+     "usableSec": 33600
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-10-26",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-10-27",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-10-28",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-10-29",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 32700,
+     "night": "2026-10-30",
+     "usableSec": 32700
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-10-31",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-11-01",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-11-02",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-11-03",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-11-04",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 31500,
+     "night": "2026-11-05",
+     "usableSec": 31500
+    },
+    {
+     "longestRunSec": 31500,
+     "night": "2026-11-06",
+     "usableSec": 31500
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-11-07",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 30900,
+     "night": "2026-11-08",
+     "usableSec": 30900
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-11-09",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-11-10",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-11-11",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 30300,
+     "night": "2026-11-12",
+     "usableSec": 30300
+    },
+    {
+     "longestRunSec": 30000,
+     "night": "2026-11-13",
+     "usableSec": 30000
+    },
+    {
+     "longestRunSec": 29700,
+     "night": "2026-11-14",
+     "usableSec": 29700
+    },
+    {
+     "longestRunSec": 29400,
+     "night": "2026-11-15",
+     "usableSec": 29400
+    },
+    {
+     "longestRunSec": 29400,
+     "night": "2026-11-16",
+     "usableSec": 29400
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2026-11-17",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 28800,
+     "night": "2026-11-18",
+     "usableSec": 28800
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2026-11-19",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2026-11-20",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28200,
+     "night": "2026-11-21",
+     "usableSec": 28200
+    },
+    {
+     "longestRunSec": 27900,
+     "night": "2026-11-22",
+     "usableSec": 27900
+    },
+    {
+     "longestRunSec": 27600,
+     "night": "2026-11-23",
+     "usableSec": 27600
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2026-11-24",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2026-11-25",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2026-11-26",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27000,
+     "night": "2026-11-27",
+     "usableSec": 27000
+    },
+    {
+     "longestRunSec": 26700,
+     "night": "2026-11-28",
+     "usableSec": 26700
+    },
+    {
+     "longestRunSec": 26400,
+     "night": "2026-11-29",
+     "usableSec": 26400
+    },
+    {
+     "longestRunSec": 26400,
+     "night": "2026-11-30",
+     "usableSec": 26400
+    },
+    {
+     "longestRunSec": 26100,
+     "night": "2026-12-01",
+     "usableSec": 26100
+    },
+    {
+     "longestRunSec": 25800,
+     "night": "2026-12-02",
+     "usableSec": 25800
+    },
+    {
+     "longestRunSec": 25500,
+     "night": "2026-12-03",
+     "usableSec": 25500
+    },
+    {
+     "longestRunSec": 25200,
+     "night": "2026-12-04",
+     "usableSec": 25200
+    },
+    {
+     "longestRunSec": 24900,
+     "night": "2026-12-05",
+     "usableSec": 24900
+    },
+    {
+     "longestRunSec": 24600,
+     "night": "2026-12-06",
+     "usableSec": 24600
+    },
+    {
+     "longestRunSec": 24300,
+     "night": "2026-12-07",
+     "usableSec": 24300
+    },
+    {
+     "longestRunSec": 24000,
+     "night": "2026-12-08",
+     "usableSec": 24000
+    },
+    {
+     "longestRunSec": 24000,
+     "night": "2026-12-09",
+     "usableSec": 24000
+    },
+    {
+     "longestRunSec": 23700,
+     "night": "2026-12-10",
+     "usableSec": 23700
+    },
+    {
+     "longestRunSec": 23400,
+     "night": "2026-12-11",
+     "usableSec": 23400
+    },
+    {
+     "longestRunSec": 23100,
+     "night": "2026-12-12",
+     "usableSec": 23100
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2026-12-13",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2026-12-14",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 22500,
+     "night": "2026-12-15",
+     "usableSec": 22500
+    },
+    {
+     "longestRunSec": 22200,
+     "night": "2026-12-16",
+     "usableSec": 22200
+    },
+    {
+     "longestRunSec": 21900,
+     "night": "2026-12-17",
+     "usableSec": 21900
+    },
+    {
+     "longestRunSec": 21900,
+     "night": "2026-12-18",
+     "usableSec": 21900
+    },
+    {
+     "longestRunSec": 21600,
+     "night": "2026-12-19",
+     "usableSec": 21600
+    },
+    {
+     "longestRunSec": 21000,
+     "night": "2026-12-20",
+     "usableSec": 21000
+    },
+    {
+     "longestRunSec": 20700,
+     "night": "2026-12-21",
+     "usableSec": 20700
+    },
+    {
+     "longestRunSec": 20400,
+     "night": "2026-12-22",
+     "usableSec": 20400
+    },
+    {
+     "longestRunSec": 20400,
+     "night": "2026-12-23",
+     "usableSec": 20400
+    },
+    {
+     "longestRunSec": 20100,
+     "night": "2026-12-24",
+     "usableSec": 20100
+    },
+    {
+     "longestRunSec": 19800,
+     "night": "2026-12-25",
+     "usableSec": 19800
+    },
+    {
+     "longestRunSec": 19500,
+     "night": "2026-12-26",
+     "usableSec": 19500
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2026-12-27",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2026-12-28",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 18600,
+     "night": "2026-12-29",
+     "usableSec": 18600
+    },
+    {
+     "longestRunSec": 18300,
+     "night": "2026-12-30",
+     "usableSec": 18300
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2026-12-31",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 17700,
+     "night": "2027-01-01",
+     "usableSec": 17700
+    },
+    {
+     "longestRunSec": 17700,
+     "night": "2027-01-02",
+     "usableSec": 17700
+    },
+    {
+     "longestRunSec": 17400,
+     "night": "2027-01-03",
+     "usableSec": 17400
+    },
+    {
+     "longestRunSec": 17100,
+     "night": "2027-01-04",
+     "usableSec": 17100
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-01-05",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 16500,
+     "night": "2027-01-06",
+     "usableSec": 16500
+    },
+    {
+     "longestRunSec": 16200,
+     "night": "2027-01-07",
+     "usableSec": 16200
+    },
+    {
+     "longestRunSec": 15900,
+     "night": "2027-01-08",
+     "usableSec": 15900
+    },
+    {
+     "longestRunSec": 15600,
+     "night": "2027-01-09",
+     "usableSec": 15600
+    },
+    {
+     "longestRunSec": 15300,
+     "night": "2027-01-10",
+     "usableSec": 15300
+    },
+    {
+     "longestRunSec": 15300,
+     "night": "2027-01-11",
+     "usableSec": 15300
+    },
+    {
+     "longestRunSec": 15000,
+     "night": "2027-01-12",
+     "usableSec": 15000
+    },
+    {
+     "longestRunSec": 14400,
+     "night": "2027-01-13",
+     "usableSec": 14400
+    },
+    {
+     "longestRunSec": 14100,
+     "night": "2027-01-14",
+     "usableSec": 14100
+    },
+    {
+     "longestRunSec": 13800,
+     "night": "2027-01-15",
+     "usableSec": 13800
+    },
+    {
+     "longestRunSec": 13800,
+     "night": "2027-01-16",
+     "usableSec": 13800
+    },
+    {
+     "longestRunSec": 13500,
+     "night": "2027-01-17",
+     "usableSec": 13500
+    },
+    {
+     "longestRunSec": 13200,
+     "night": "2027-01-18",
+     "usableSec": 13200
+    },
+    {
+     "longestRunSec": 12600,
+     "night": "2027-01-19",
+     "usableSec": 12600
+    },
+    {
+     "longestRunSec": 12600,
+     "night": "2027-01-20",
+     "usableSec": 12600
+    },
+    {
+     "longestRunSec": 12300,
+     "night": "2027-01-21",
+     "usableSec": 12300
+    },
+    {
+     "longestRunSec": 12000,
+     "night": "2027-01-22",
+     "usableSec": 12000
+    },
+    {
+     "longestRunSec": 11700,
+     "night": "2027-01-23",
+     "usableSec": 11700
+    },
+    {
+     "longestRunSec": 11400,
+     "night": "2027-01-24",
+     "usableSec": 11400
+    },
+    {
+     "longestRunSec": 11400,
+     "night": "2027-01-25",
+     "usableSec": 11400
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-01-26",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-01-27",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-01-28",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-01-29",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-01-30",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-01-31",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9000,
+     "night": "2027-02-01",
+     "usableSec": 9000
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-02-02",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-02-03",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-02-04",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8100,
+     "night": "2027-02-05",
+     "usableSec": 8100
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-02-06",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-02-07",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-02-08",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-02-09",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-02-10",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-02-11",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-02-12",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-02-13",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-02-14",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-02-15",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-02-16",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-02-17",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-02-18",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-02-19",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-02-20",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-02-21",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-02-22",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-02-23",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-02-24",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-02-25",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-02-26",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-02-27",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-02-28",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1200,
+     "night": "2027-03-01",
+     "usableSec": 1200
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-02",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-03",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-03-04",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-03-05",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-05-24",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-05-25",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-05-26",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-05-27",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-05-28",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 1200,
+     "night": "2027-05-29",
+     "usableSec": 1200
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-05-30",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-05-31",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-06-01",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-06-02",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-06-03",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-06-04",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-06-05",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-06-06",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-06-07",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-06-08",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-06-09",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-06-10",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-06-11",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-06-12",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-06-13",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-06-14",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-06-15",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-06-16",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-06-17",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-06-18",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-06-19",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-06-20",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-06-21",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-06-22",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-06-23",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-06-24",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-06-25",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-06-26",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 8100,
+     "night": "2027-06-27",
+     "usableSec": 8100
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-06-28",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-06-29",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-06-30",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 9000,
+     "night": "2027-07-01",
+     "usableSec": 9000
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-07-02",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-07-03",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-07-04",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-07-05",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-06",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-07",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 11100,
+     "night": "2027-07-08",
+     "usableSec": 11100
+    },
+    {
+     "longestRunSec": 11100,
+     "night": "2027-07-09",
+     "usableSec": 11100
+    },
+    {
+     "longestRunSec": 11400,
+     "night": "2027-07-10",
+     "usableSec": 11400
+    },
+    {
+     "longestRunSec": 11700,
+     "night": "2027-07-11",
+     "usableSec": 11700
+    },
+    {
+     "longestRunSec": 12300,
+     "night": "2027-07-12",
+     "usableSec": 12300
+    },
+    {
+     "longestRunSec": 12600,
+     "night": "2027-07-13",
+     "usableSec": 12600
+    },
+    {
+     "longestRunSec": 12600,
+     "night": "2027-07-14",
+     "usableSec": 12600
+    },
+    {
+     "longestRunSec": 12900,
+     "night": "2027-07-15",
+     "usableSec": 12900
+    },
+    {
+     "longestRunSec": 13200,
+     "night": "2027-07-16",
+     "usableSec": 13200
+    },
+    {
+     "longestRunSec": 13500,
+     "night": "2027-07-17",
+     "usableSec": 13500
+    },
+    {
+     "longestRunSec": 13800,
+     "night": "2027-07-18",
+     "usableSec": 13800
+    },
+    {
+     "longestRunSec": 14100,
+     "night": "2027-07-19",
+     "usableSec": 14100
+    },
+    {
+     "longestRunSec": 14400,
+     "night": "2027-07-20",
+     "usableSec": 14400
+    },
+    {
+     "longestRunSec": 14700,
+     "night": "2027-07-21",
+     "usableSec": 14700
+    },
+    {
+     "longestRunSec": 15000,
+     "night": "2027-07-22",
+     "usableSec": 15000
+    },
+    {
+     "longestRunSec": 15000,
+     "night": "2027-07-23",
+     "usableSec": 15000
+    },
+    {
+     "longestRunSec": 15600,
+     "night": "2027-07-24",
+     "usableSec": 15600
+    },
+    {
+     "longestRunSec": 15900,
+     "night": "2027-07-25",
+     "usableSec": 15900
+    },
+    {
+     "longestRunSec": 16200,
+     "night": "2027-07-26",
+     "usableSec": 16200
+    },
+    {
+     "longestRunSec": 16500,
+     "night": "2027-07-27",
+     "usableSec": 16500
+    },
+    {
+     "longestRunSec": 16500,
+     "night": "2027-07-28",
+     "usableSec": 16500
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-07-29",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 17400,
+     "night": "2027-07-30",
+     "usableSec": 17400
+    },
+    {
+     "longestRunSec": 17700,
+     "night": "2027-07-31",
+     "usableSec": 17700
+    },
+    {
+     "longestRunSec": 17700,
+     "night": "2027-08-01",
+     "usableSec": 17700
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2027-08-02",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 18300,
+     "night": "2027-08-03",
+     "usableSec": 18300
+    },
+    {
+     "longestRunSec": 18900,
+     "night": "2027-08-04",
+     "usableSec": 18900
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2027-08-05",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2027-08-06",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 19500,
+     "night": "2027-08-07",
+     "usableSec": 19500
+    },
+    {
+     "longestRunSec": 19800,
+     "night": "2027-08-08",
+     "usableSec": 19800
+    },
+    {
+     "longestRunSec": 20400,
+     "night": "2027-08-09",
+     "usableSec": 20400
+    },
+    {
+     "longestRunSec": 20700,
+     "night": "2027-08-10",
+     "usableSec": 20700
+    },
+    {
+     "longestRunSec": 20700,
+     "night": "2027-08-11",
+     "usableSec": 20700
+    },
+    {
+     "longestRunSec": 21000,
+     "night": "2027-08-12",
+     "usableSec": 21000
+    },
+    {
+     "longestRunSec": 21300,
+     "night": "2027-08-13",
+     "usableSec": 21300
+    },
+    {
+     "longestRunSec": 21600,
+     "night": "2027-08-14",
+     "usableSec": 21600
+    },
+    {
+     "longestRunSec": 21900,
+     "night": "2027-08-15",
+     "usableSec": 21900
+    },
+    {
+     "longestRunSec": 22200,
+     "night": "2027-08-16",
+     "usableSec": 22200
+    },
+    {
+     "longestRunSec": 22500,
+     "night": "2027-08-17",
+     "usableSec": 22500
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2027-08-18",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 23100,
+     "night": "2027-08-19",
+     "usableSec": 23100
+    },
+    {
+     "longestRunSec": 23400,
+     "night": "2027-08-20",
+     "usableSec": 23400
+    },
+    {
+     "longestRunSec": 23700,
+     "night": "2027-08-21",
+     "usableSec": 23700
+    },
+    {
+     "longestRunSec": 24000,
+     "night": "2027-08-22",
+     "usableSec": 24000
+    },
+    {
+     "longestRunSec": 24300,
+     "night": "2027-08-23",
+     "usableSec": 24300
+    },
+    {
+     "longestRunSec": 24600,
+     "night": "2027-08-24",
+     "usableSec": 24600
+    },
+    {
+     "longestRunSec": 24600,
+     "night": "2027-08-25",
+     "usableSec": 24600
+    },
+    {
+     "longestRunSec": 25200,
+     "night": "2027-08-26",
+     "usableSec": 25200
+    },
+    {
+     "longestRunSec": 25500,
+     "night": "2027-08-27",
+     "usableSec": 25500
+    },
+    {
+     "longestRunSec": 25800,
+     "night": "2027-08-28",
+     "usableSec": 25800
+    },
+    {
+     "longestRunSec": 25800,
+     "night": "2027-08-29",
+     "usableSec": 25800
+    },
+    {
+     "longestRunSec": 26100,
+     "night": "2027-08-30",
+     "usableSec": 26100
+    },
+    {
+     "longestRunSec": 26400,
+     "night": "2027-08-31",
+     "usableSec": 26400
+    },
+    {
+     "longestRunSec": 26700,
+     "night": "2027-09-01",
+     "usableSec": 26700
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2027-09-02",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2027-09-03",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27600,
+     "night": "2027-09-04",
+     "usableSec": 27600
+    },
+    {
+     "longestRunSec": 27900,
+     "night": "2027-09-05",
+     "usableSec": 27900
+    },
+    {
+     "longestRunSec": 28200,
+     "night": "2027-09-06",
+     "usableSec": 28200
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2027-09-07",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28800,
+     "night": "2027-09-08",
+     "usableSec": 28800
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2027-09-09",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 29400,
+     "night": "2027-09-10",
+     "usableSec": 29400
+    },
+    {
+     "longestRunSec": 29700,
+     "night": "2027-09-11",
+     "usableSec": 29700
+    },
+    {
+     "longestRunSec": 29700,
+     "night": "2027-09-12",
+     "usableSec": 29700
+    },
+    {
+     "longestRunSec": 30000,
+     "night": "2027-09-13",
+     "usableSec": 30000
+    },
+    {
+     "longestRunSec": 30300,
+     "night": "2027-09-14",
+     "usableSec": 30300
+    },
+    {
+     "longestRunSec": 30900,
+     "night": "2027-09-15",
+     "usableSec": 30900
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2027-09-16",
+     "usableSec": 31200
+    }
+   ],
+   "raJ2000Deg": 13.2458,
+   "seasonEnd": "2027-02-20",
+   "seasonStart": null,
+   "site": "starfront",
+   "status": "in_season",
+   "target": "ngc281",
+   "twilight": "astronomical"
+  },
+  {
+   "decJ2000Deg": 41.269,
+   "from": "2026-09-17",
+   "id": "m31-hannover",
+   "minAltDeg": 30,
+   "minTimeSec": 3600,
+   "nights": [
+    {
+     "longestRunSec": 27000,
+     "night": "2026-09-17",
+     "usableSec": 27000
+    },
+    {
+     "longestRunSec": 27000,
+     "night": "2026-09-18",
+     "usableSec": 27000
+    },
+    {
+     "longestRunSec": 27600,
+     "night": "2026-09-19",
+     "usableSec": 27600
+    },
+    {
+     "longestRunSec": 27600,
+     "night": "2026-09-20",
+     "usableSec": 27600
+    },
+    {
+     "longestRunSec": 28200,
+     "night": "2026-09-21",
+     "usableSec": 28200
+    },
+    {
+     "longestRunSec": 28200,
+     "night": "2026-09-22",
+     "usableSec": 28200
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2026-09-23",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28800,
+     "night": "2026-09-24",
+     "usableSec": 28800
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2026-09-25",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 29400,
+     "night": "2026-09-26",
+     "usableSec": 29400
+    },
+    {
+     "longestRunSec": 29700,
+     "night": "2026-09-27",
+     "usableSec": 29700
+    },
+    {
+     "longestRunSec": 30000,
+     "night": "2026-09-28",
+     "usableSec": 30000
+    },
+    {
+     "longestRunSec": 30300,
+     "night": "2026-09-29",
+     "usableSec": 30300
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-09-30",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-10-01",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-10-02",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-10-03",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-10-04",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-10-05",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-10-06",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-10-07",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-10-08",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32700,
+     "night": "2026-10-09",
+     "usableSec": 32700
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-10-10",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-10-11",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-10-12",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-13",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-10-14",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-10-15",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-10-16",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-10-17",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-18",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-19",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 35400,
+     "night": "2026-10-20",
+     "usableSec": 35400
+    },
+    {
+     "longestRunSec": 35400,
+     "night": "2026-10-21",
+     "usableSec": 35400
+    },
+    {
+     "longestRunSec": 35700,
+     "night": "2026-10-22",
+     "usableSec": 35700
+    },
+    {
+     "longestRunSec": 36000,
+     "night": "2026-10-23",
+     "usableSec": 36000
+    },
+    {
+     "longestRunSec": 35700,
+     "night": "2026-10-24",
+     "usableSec": 35700
+    },
+    {
+     "longestRunSec": 35700,
+     "night": "2026-10-25",
+     "usableSec": 35700
+    },
+    {
+     "longestRunSec": 35700,
+     "night": "2026-10-26",
+     "usableSec": 35700
+    },
+    {
+     "longestRunSec": 35400,
+     "night": "2026-10-27",
+     "usableSec": 35400
+    },
+    {
+     "longestRunSec": 35400,
+     "night": "2026-10-28",
+     "usableSec": 35400
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-29",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-10-30",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 35100,
+     "night": "2026-10-31",
+     "usableSec": 35100
+    },
+    {
+     "longestRunSec": 34800,
+     "night": "2026-11-01",
+     "usableSec": 34800
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-11-02",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-11-03",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34500,
+     "night": "2026-11-04",
+     "usableSec": 34500
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-11-05",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 34200,
+     "night": "2026-11-06",
+     "usableSec": 34200
+    },
+    {
+     "longestRunSec": 33900,
+     "night": "2026-11-07",
+     "usableSec": 33900
+    },
+    {
+     "longestRunSec": 33600,
+     "night": "2026-11-08",
+     "usableSec": 33600
+    },
+    {
+     "longestRunSec": 33600,
+     "night": "2026-11-09",
+     "usableSec": 33600
+    },
+    {
+     "longestRunSec": 33600,
+     "night": "2026-11-10",
+     "usableSec": 33600
+    },
+    {
+     "longestRunSec": 33300,
+     "night": "2026-11-11",
+     "usableSec": 33300
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-11-12",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 32700,
+     "night": "2026-11-13",
+     "usableSec": 32700
+    },
+    {
+     "longestRunSec": 33000,
+     "night": "2026-11-14",
+     "usableSec": 33000
+    },
+    {
+     "longestRunSec": 32700,
+     "night": "2026-11-15",
+     "usableSec": 32700
+    },
+    {
+     "longestRunSec": 32400,
+     "night": "2026-11-16",
+     "usableSec": 32400
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-11-17",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-11-18",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 32100,
+     "night": "2026-11-19",
+     "usableSec": 32100
+    },
+    {
+     "longestRunSec": 31800,
+     "night": "2026-11-20",
+     "usableSec": 31800
+    },
+    {
+     "longestRunSec": 31500,
+     "night": "2026-11-21",
+     "usableSec": 31500
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-11-22",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-11-23",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 31200,
+     "night": "2026-11-24",
+     "usableSec": 31200
+    },
+    {
+     "longestRunSec": 30900,
+     "night": "2026-11-25",
+     "usableSec": 30900
+    },
+    {
+     "longestRunSec": 30600,
+     "night": "2026-11-26",
+     "usableSec": 30600
+    },
+    {
+     "longestRunSec": 30300,
+     "night": "2026-11-27",
+     "usableSec": 30300
+    },
+    {
+     "longestRunSec": 30300,
+     "night": "2026-11-28",
+     "usableSec": 30300
+    },
+    {
+     "longestRunSec": 30000,
+     "night": "2026-11-29",
+     "usableSec": 30000
+    },
+    {
+     "longestRunSec": 29700,
+     "night": "2026-11-30",
+     "usableSec": 29700
+    },
+    {
+     "longestRunSec": 29400,
+     "night": "2026-12-01",
+     "usableSec": 29400
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2026-12-02",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2026-12-03",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 29100,
+     "night": "2026-12-04",
+     "usableSec": 29100
+    },
+    {
+     "longestRunSec": 28800,
+     "night": "2026-12-05",
+     "usableSec": 28800
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2026-12-06",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28500,
+     "night": "2026-12-07",
+     "usableSec": 28500
+    },
+    {
+     "longestRunSec": 28200,
+     "night": "2026-12-08",
+     "usableSec": 28200
+    },
+    {
+     "longestRunSec": 27900,
+     "night": "2026-12-09",
+     "usableSec": 27900
+    },
+    {
+     "longestRunSec": 27600,
+     "night": "2026-12-10",
+     "usableSec": 27600
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2026-12-11",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27300,
+     "night": "2026-12-12",
+     "usableSec": 27300
+    },
+    {
+     "longestRunSec": 27000,
+     "night": "2026-12-13",
+     "usableSec": 27000
+    },
+    {
+     "longestRunSec": 26700,
+     "night": "2026-12-14",
+     "usableSec": 26700
+    },
+    {
+     "longestRunSec": 26400,
+     "night": "2026-12-15",
+     "usableSec": 26400
+    },
+    {
+     "longestRunSec": 26100,
+     "night": "2026-12-16",
+     "usableSec": 26100
+    },
+    {
+     "longestRunSec": 25800,
+     "night": "2026-12-17",
+     "usableSec": 25800
+    },
+    {
+     "longestRunSec": 25500,
+     "night": "2026-12-18",
+     "usableSec": 25500
+    },
+    {
+     "longestRunSec": 25200,
+     "night": "2026-12-19",
+     "usableSec": 25200
+    },
+    {
+     "longestRunSec": 24900,
+     "night": "2026-12-20",
+     "usableSec": 24900
+    },
+    {
+     "longestRunSec": 24900,
+     "night": "2026-12-21",
+     "usableSec": 24900
+    },
+    {
+     "longestRunSec": 24600,
+     "night": "2026-12-22",
+     "usableSec": 24600
+    },
+    {
+     "longestRunSec": 24300,
+     "night": "2026-12-23",
+     "usableSec": 24300
+    },
+    {
+     "longestRunSec": 24000,
+     "night": "2026-12-24",
+     "usableSec": 24000
+    },
+    {
+     "longestRunSec": 23700,
+     "night": "2026-12-25",
+     "usableSec": 23700
+    },
+    {
+     "longestRunSec": 23700,
+     "night": "2026-12-26",
+     "usableSec": 23700
+    },
+    {
+     "longestRunSec": 23100,
+     "night": "2026-12-27",
+     "usableSec": 23100
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2026-12-28",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 22500,
+     "night": "2026-12-29",
+     "usableSec": 22500
+    },
+    {
+     "longestRunSec": 22200,
+     "night": "2026-12-30",
+     "usableSec": 22200
+    },
+    {
+     "longestRunSec": 22200,
+     "night": "2026-12-31",
+     "usableSec": 22200
+    },
+    {
+     "longestRunSec": 21900,
+     "night": "2027-01-01",
+     "usableSec": 21900
+    },
+    {
+     "longestRunSec": 21300,
+     "night": "2027-01-02",
+     "usableSec": 21300
+    },
+    {
+     "longestRunSec": 21000,
+     "night": "2027-01-03",
+     "usableSec": 21000
+    },
+    {
+     "longestRunSec": 21000,
+     "night": "2027-01-04",
+     "usableSec": 21000
+    },
+    {
+     "longestRunSec": 20700,
+     "night": "2027-01-05",
+     "usableSec": 20700
+    },
+    {
+     "longestRunSec": 20400,
+     "night": "2027-01-06",
+     "usableSec": 20400
+    },
+    {
+     "longestRunSec": 19800,
+     "night": "2027-01-07",
+     "usableSec": 19800
+    },
+    {
+     "longestRunSec": 19500,
+     "night": "2027-01-08",
+     "usableSec": 19500
+    },
+    {
+     "longestRunSec": 19500,
+     "night": "2027-01-09",
+     "usableSec": 19500
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2027-01-10",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 18600,
+     "night": "2027-01-11",
+     "usableSec": 18600
+    },
+    {
+     "longestRunSec": 18300,
+     "night": "2027-01-12",
+     "usableSec": 18300
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2027-01-13",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2027-01-14",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 17400,
+     "night": "2027-01-15",
+     "usableSec": 17400
+    },
+    {
+     "longestRunSec": 17100,
+     "night": "2027-01-16",
+     "usableSec": 17100
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-01-17",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-01-18",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 16200,
+     "night": "2027-01-19",
+     "usableSec": 16200
+    },
+    {
+     "longestRunSec": 15900,
+     "night": "2027-01-20",
+     "usableSec": 15900
+    },
+    {
+     "longestRunSec": 15600,
+     "night": "2027-01-21",
+     "usableSec": 15600
+    },
+    {
+     "longestRunSec": 15300,
+     "night": "2027-01-22",
+     "usableSec": 15300
+    },
+    {
+     "longestRunSec": 15000,
+     "night": "2027-01-23",
+     "usableSec": 15000
+    },
+    {
+     "longestRunSec": 14700,
+     "night": "2027-01-24",
+     "usableSec": 14700
+    },
+    {
+     "longestRunSec": 14400,
+     "night": "2027-01-25",
+     "usableSec": 14400
+    },
+    {
+     "longestRunSec": 13800,
+     "night": "2027-01-26",
+     "usableSec": 13800
+    },
+    {
+     "longestRunSec": 13500,
+     "night": "2027-01-27",
+     "usableSec": 13500
+    },
+    {
+     "longestRunSec": 13500,
+     "night": "2027-01-28",
+     "usableSec": 13500
+    },
+    {
+     "longestRunSec": 12900,
+     "night": "2027-01-29",
+     "usableSec": 12900
+    },
+    {
+     "longestRunSec": 12600,
+     "night": "2027-01-30",
+     "usableSec": 12600
+    },
+    {
+     "longestRunSec": 12300,
+     "night": "2027-01-31",
+     "usableSec": 12300
+    },
+    {
+     "longestRunSec": 12000,
+     "night": "2027-02-01",
+     "usableSec": 12000
+    },
+    {
+     "longestRunSec": 11700,
+     "night": "2027-02-02",
+     "usableSec": 11700
+    },
+    {
+     "longestRunSec": 11400,
+     "night": "2027-02-03",
+     "usableSec": 11400
+    },
+    {
+     "longestRunSec": 11100,
+     "night": "2027-02-04",
+     "usableSec": 11100
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-02-05",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-02-06",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-02-07",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-02-08",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-02-09",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9000,
+     "night": "2027-02-10",
+     "usableSec": 9000
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-02-11",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-02-12",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8100,
+     "night": "2027-02-13",
+     "usableSec": 8100
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-02-14",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-02-15",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-02-16",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-02-17",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-02-18",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-02-19",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-02-20",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-02-21",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-02-22",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-02-23",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-02-24",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-02-25",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-02-26",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-02-27",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-02-28",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-03-01",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-03-02",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-03-03",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-03-04",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-05",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-06",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-03-07",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-04-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-05-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-06-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-07-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-07-25",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-07-26",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-07-27",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-07-28",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-07-29",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-07-30",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-07-31",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-08-01",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-08-02",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-08-03",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-08-04",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-08-05",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 11100,
+     "night": "2027-08-06",
+     "usableSec": 11100
+    },
+    {
+     "longestRunSec": 11700,
+     "night": "2027-08-07",
+     "usableSec": 11700
+    },
+    {
+     "longestRunSec": 12300,
+     "night": "2027-08-08",
+     "usableSec": 12300
+    },
+    {
+     "longestRunSec": 12900,
+     "night": "2027-08-09",
+     "usableSec": 12900
+    },
+    {
+     "longestRunSec": 13200,
+     "night": "2027-08-10",
+     "usableSec": 13200
+    },
+    {
+     "longestRunSec": 13500,
+     "night": "2027-08-11",
+     "usableSec": 13500
+    },
+    {
+     "longestRunSec": 14100,
+     "night": "2027-08-12",
+     "usableSec": 14100
+    },
+    {
+     "longestRunSec": 14400,
+     "night": "2027-08-13",
+     "usableSec": 14400
+    },
+    {
+     "longestRunSec": 15000,
+     "night": "2027-08-14",
+     "usableSec": 15000
+    },
+    {
+     "longestRunSec": 15300,
+     "night": "2027-08-15",
+     "usableSec": 15300
+    },
+    {
+     "longestRunSec": 15600,
+     "night": "2027-08-16",
+     "usableSec": 15600
+    },
+    {
+     "longestRunSec": 16200,
+     "night": "2027-08-17",
+     "usableSec": 16200
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-08-18",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 16800,
+     "night": "2027-08-19",
+     "usableSec": 16800
+    },
+    {
+     "longestRunSec": 17400,
+     "night": "2027-08-20",
+     "usableSec": 17400
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2027-08-21",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 18000,
+     "night": "2027-08-22",
+     "usableSec": 18000
+    },
+    {
+     "longestRunSec": 18600,
+     "night": "2027-08-23",
+     "usableSec": 18600
+    },
+    {
+     "longestRunSec": 18900,
+     "night": "2027-08-24",
+     "usableSec": 18900
+    },
+    {
+     "longestRunSec": 19200,
+     "night": "2027-08-25",
+     "usableSec": 19200
+    },
+    {
+     "longestRunSec": 19500,
+     "night": "2027-08-26",
+     "usableSec": 19500
+    },
+    {
+     "longestRunSec": 20100,
+     "night": "2027-08-27",
+     "usableSec": 20100
+    },
+    {
+     "longestRunSec": 20100,
+     "night": "2027-08-28",
+     "usableSec": 20100
+    },
+    {
+     "longestRunSec": 20700,
+     "night": "2027-08-29",
+     "usableSec": 20700
+    },
+    {
+     "longestRunSec": 21300,
+     "night": "2027-08-30",
+     "usableSec": 21300
+    },
+    {
+     "longestRunSec": 21300,
+     "night": "2027-08-31",
+     "usableSec": 21300
+    },
+    {
+     "longestRunSec": 21900,
+     "night": "2027-09-01",
+     "usableSec": 21900
+    },
+    {
+     "longestRunSec": 22200,
+     "night": "2027-09-02",
+     "usableSec": 22200
+    },
+    {
+     "longestRunSec": 22500,
+     "night": "2027-09-03",
+     "usableSec": 22500
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2027-09-04",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 22800,
+     "night": "2027-09-05",
+     "usableSec": 22800
+    },
+    {
+     "longestRunSec": 23400,
+     "night": "2027-09-06",
+     "usableSec": 23400
+    },
+    {
+     "longestRunSec": 23700,
+     "night": "2027-09-07",
+     "usableSec": 23700
+    },
+    {
+     "longestRunSec": 24000,
+     "night": "2027-09-08",
+     "usableSec": 24000
+    },
+    {
+     "longestRunSec": 24300,
+     "night": "2027-09-09",
+     "usableSec": 24300
+    },
+    {
+     "longestRunSec": 24600,
+     "night": "2027-09-10",
+     "usableSec": 24600
+    },
+    {
+     "longestRunSec": 24900,
+     "night": "2027-09-11",
+     "usableSec": 24900
+    },
+    {
+     "longestRunSec": 25500,
+     "night": "2027-09-12",
+     "usableSec": 25500
+    },
+    {
+     "longestRunSec": 25500,
+     "night": "2027-09-13",
+     "usableSec": 25500
+    },
+    {
+     "longestRunSec": 26100,
+     "night": "2027-09-14",
+     "usableSec": 26100
+    },
+    {
+     "longestRunSec": 26100,
+     "night": "2027-09-15",
+     "usableSec": 26100
+    },
+    {
+     "longestRunSec": 26400,
+     "night": "2027-09-16",
+     "usableSec": 26400
+    }
+   ],
+   "raJ2000Deg": 10.6847,
+   "seasonEnd": "2027-02-26",
+   "seasonStart": null,
+   "site": "hannover",
+   "status": "in_season",
+   "target": "m31",
+   "twilight": "astronomical"
+  },
+  {
+   "decJ2000Deg": -24.3867,
+   "from": "2026-11-15",
+   "id": "m8-starfront",
+   "minAltDeg": 30,
+   "minTimeSec": 3600,
+   "nights": [
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-11-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2026-12-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-01-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-02-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-03-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-03-22",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-03-23",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-03-24",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-03-25",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-26",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-27",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-03-28",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 1200,
+     "night": "2027-03-29",
+     "usableSec": 1200
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-03-30",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-03-31",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-04-01",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-04-02",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-04-03",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-04-04",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-04-05",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-04-06",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-04-07",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-04-08",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-04-09",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-04-10",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-04-11",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-04-12",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-04-13",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-04-14",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-04-15",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-04-16",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-04-17",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-04-18",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-04-19",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-04-20",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-04-21",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-04-22",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-04-23",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-04-24",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-04-25",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-04-26",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-04-27",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-04-28",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-04-29",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-04-30",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-05-01",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-05-02",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-05-03",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-05-04",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-05-05",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-05-06",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-05-07",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-05-08",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-05-09",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-05-10",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 8100,
+     "night": "2027-05-11",
+     "usableSec": 8100
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-05-12",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-05-13",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-05-14",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-05-15",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 9000,
+     "night": "2027-05-16",
+     "usableSec": 9000
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-05-17",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-05-18",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-05-19",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-05-20",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-05-21",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-05-22",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-05-23",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-05-24",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-05-25",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-05-26",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-05-27",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-05-28",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-05-29",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-05-30",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-05-31",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-01",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-02",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-03",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-04",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-05",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-06",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-07",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-08",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-09",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-10",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-11",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-12",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-13",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-14",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-15",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-16",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-17",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-18",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-19",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-20",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-21",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-22",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-23",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-24",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-25",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-26",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-27",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-28",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-06-29",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-06-30",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-01",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-02",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-03",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-04",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-05",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-06",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-07",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-08",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-09",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-10",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-11",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-12",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-13",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-14",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-15",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-16",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-17",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10800,
+     "night": "2027-07-18",
+     "usableSec": 10800
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-19",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-20",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-07-21",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 10500,
+     "night": "2027-07-22",
+     "usableSec": 10500
+    },
+    {
+     "longestRunSec": 10200,
+     "night": "2027-07-23",
+     "usableSec": 10200
+    },
+    {
+     "longestRunSec": 9900,
+     "night": "2027-07-24",
+     "usableSec": 9900
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-07-25",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9600,
+     "night": "2027-07-26",
+     "usableSec": 9600
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-07-27",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9300,
+     "night": "2027-07-28",
+     "usableSec": 9300
+    },
+    {
+     "longestRunSec": 9000,
+     "night": "2027-07-29",
+     "usableSec": 9000
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-07-30",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 8700,
+     "night": "2027-07-31",
+     "usableSec": 8700
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-08-01",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8400,
+     "night": "2027-08-02",
+     "usableSec": 8400
+    },
+    {
+     "longestRunSec": 8100,
+     "night": "2027-08-03",
+     "usableSec": 8100
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-08-04",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-08-05",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 7800,
+     "night": "2027-08-06",
+     "usableSec": 7800
+    },
+    {
+     "longestRunSec": 7500,
+     "night": "2027-08-07",
+     "usableSec": 7500
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-08-08",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-08-09",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 7200,
+     "night": "2027-08-10",
+     "usableSec": 7200
+    },
+    {
+     "longestRunSec": 6900,
+     "night": "2027-08-11",
+     "usableSec": 6900
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-08-12",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-08-13",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6600,
+     "night": "2027-08-14",
+     "usableSec": 6600
+    },
+    {
+     "longestRunSec": 6300,
+     "night": "2027-08-15",
+     "usableSec": 6300
+    },
+    {
+     "longestRunSec": 6000,
+     "night": "2027-08-16",
+     "usableSec": 6000
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-08-17",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-08-18",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 5700,
+     "night": "2027-08-19",
+     "usableSec": 5700
+    },
+    {
+     "longestRunSec": 5400,
+     "night": "2027-08-20",
+     "usableSec": 5400
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-08-21",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-08-22",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 5100,
+     "night": "2027-08-23",
+     "usableSec": 5100
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-08-24",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4800,
+     "night": "2027-08-25",
+     "usableSec": 4800
+    },
+    {
+     "longestRunSec": 4500,
+     "night": "2027-08-26",
+     "usableSec": 4500
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-08-27",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-08-28",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 4200,
+     "night": "2027-08-29",
+     "usableSec": 4200
+    },
+    {
+     "longestRunSec": 3900,
+     "night": "2027-08-30",
+     "usableSec": 3900
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-08-31",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-09-01",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3600,
+     "night": "2027-09-02",
+     "usableSec": 3600
+    },
+    {
+     "longestRunSec": 3300,
+     "night": "2027-09-03",
+     "usableSec": 3300
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-09-04",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-09-05",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 3000,
+     "night": "2027-09-06",
+     "usableSec": 3000
+    },
+    {
+     "longestRunSec": 2700,
+     "night": "2027-09-07",
+     "usableSec": 2700
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-09-08",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2400,
+     "night": "2027-09-09",
+     "usableSec": 2400
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-09-10",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-09-11",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 2100,
+     "night": "2027-09-12",
+     "usableSec": 2100
+    },
+    {
+     "longestRunSec": 1800,
+     "night": "2027-09-13",
+     "usableSec": 1800
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-09-14",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1200,
+     "night": "2027-09-15",
+     "usableSec": 1200
+    },
+    {
+     "longestRunSec": 1500,
+     "night": "2027-09-16",
+     "usableSec": 1500
+    },
+    {
+     "longestRunSec": 1200,
+     "night": "2027-09-17",
+     "usableSec": 1200
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-09-18",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-09-19",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 900,
+     "night": "2027-09-20",
+     "usableSec": 900
+    },
+    {
+     "longestRunSec": 600,
+     "night": "2027-09-21",
+     "usableSec": 600
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-09-22",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 300,
+     "night": "2027-09-23",
+     "usableSec": 300
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-09-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-14",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-15",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-16",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-17",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-18",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-19",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-20",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-21",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-22",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-23",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-24",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-25",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-26",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-27",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-28",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-29",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-30",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-10-31",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-01",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-02",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-03",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-04",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-05",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-06",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-07",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-08",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-09",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-10",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-11",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-12",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-13",
+     "usableSec": 0
+    },
+    {
+     "longestRunSec": 0,
+     "night": "2027-11-14",
+     "usableSec": 0
+    }
+   ],
+   "raJ2000Deg": 270.9042,
+   "seasonEnd": "2027-09-02",
+   "seasonStart": "2027-04-13",
+   "site": "starfront",
+   "status": "out_of_season",
+   "target": "m8",
+   "twilight": "astronomical"
+  }
+ ],
+ "meta": {
+  "astropy": "6.1.4",
+  "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
+  "generator": "tools/reference/season",
+  "leapSecondsExpire": "2027-06-28 00:00:00.000",
+  "numpy": "2.1.3",
+  "refraction": "geometrisch (pressure = 0); scheinbar \u00fcber Saemundsson wie die Engine (AST-D30)",
+  "ut1": "UT1 = UTC (iers_degraded_accuracy = ignore), wie die Engine"
+ }
+}
