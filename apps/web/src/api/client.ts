@@ -234,8 +234,10 @@ export const equipmentApi = {
       ...json('PUT', { slots }),
       ...ifMatch(version),
     }),
-  nights: (siteId: string, count = 60) =>
-    apiFetch<SiteNightsView>(`${V1}/sites/${siteId}/nights?count=${String(count)}`),
+  nights: (siteId: string, count = 60, from?: string) =>
+    apiFetch<SiteNightsView>(
+      `${V1}/sites/${siteId}/nights?count=${String(count)}${from ? `&from=${from}` : ''}`,
+    ),
 };
 
 export type ProjectView = Schemas['ProjectView'];
@@ -292,6 +294,15 @@ export const projectsApi = {
   history: (id: string) => apiFetch<{ items: HistoryEntry[] }>(`${V1}/projects/${id}/history`),
   rigCheck: (rigId: string, projectId: string) =>
     apiFetch<RigCheckView>(`${V1}/rigs/${rigId}/compatibility`, json('POST', { projectId })),
+};
+
+export type SimulationCreate = Schemas['SimulationCreate'];
+export type SimulationSaved = Schemas['SimulationSaved'];
+
+/** Simulator S-40 (AP-13f): im Browser gerechneten Plan speichern (`night_plan`, TK 7.2). */
+export const simulationApi = {
+  save: (body: SimulationCreate) =>
+    apiFetch<SimulationSaved>(`${V1}/simulations`, json('POST', body)),
 };
 
 export type QueueItem = Schemas['QueueItem'];

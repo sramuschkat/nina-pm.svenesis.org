@@ -5203,6 +5203,570 @@ components:
       required:
         - items
       additionalProperties: false
+    SimulationSaved:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - createdAt
+    SimulationCreate:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        plan:
+          $ref: "#/components/schemas/NightPlan"
+      required:
+        - rigId
+        - night
+        - plan
+      additionalProperties: false
+    NightPlan:
+      type: object
+      properties:
+        nightPlanId:
+          type: string
+          format: uuid
+        engineVersion:
+          type: string
+        inputHash:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        outputHash:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        startAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nightWindow:
+          type: object
+          properties:
+            startUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            endUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - startUtc
+            - endUtc
+          additionalProperties: false
+        darkness:
+          type: object
+          properties:
+            civilStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            civilEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            nauticalStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            nauticalEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            astronomicalStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            astronomicalEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - civilStartUtc
+            - civilEndUtc
+            - nauticalStartUtc
+            - nauticalEndUtc
+            - astronomicalStartUtc
+            - astronomicalEndUtc
+          additionalProperties: false
+        darknessEndUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        flatsNotBeforeUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        flatsNotAfterUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sessionEndUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        blocks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              kind:
+                type: string
+                enum:
+                  - regular
+                  - transit
+              projectId:
+                type: string
+                minLength: 1
+                maxLength: 80
+              panelId:
+                type:
+                  - string
+                  - "null"
+                minLength: 1
+                maxLength: 80
+              transitObservationId:
+                type:
+                  - string
+                  - "null"
+                minLength: 1
+                maxLength: 80
+              startUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              endUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              twilightEndUtc:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              raDeg:
+                type: number
+              decDeg:
+                type: number
+              rotationDeg:
+                type: number
+              rotationMode:
+                type: string
+                enum:
+                  - rotator
+                  - fixed_camera
+              meridianFlip:
+                type:
+                  - object
+                  - "null"
+                properties:
+                  waitStartUtc:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  plannedUtc:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  durationS:
+                    type: number
+                    minimum: 0
+                  inTransitWindow:
+                    type: boolean
+                  planned:
+                    type: boolean
+                  gapStartUtc:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  gapDurationS:
+                    type:
+                      - number
+                      - "null"
+                    minimum: 0
+                required:
+                  - waitStartUtc
+                  - plannedUtc
+                  - durationS
+                  - inTransitWindow
+                  - planned
+                  - gapStartUtc
+                  - gapDurationS
+                additionalProperties: false
+              entries:
+                type: array
+                items:
+                  oneOf:
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - slew_center
+                            - slew_center_rotate
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - filter
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                        filter:
+                          type: string
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                        - filter
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - expose
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        exposureLineId:
+                          type: string
+                          minLength: 1
+                          maxLength: 80
+                        filter:
+                          type: string
+                        exposureS:
+                          type: number
+                          exclusiveMinimum: 0
+                        gain:
+                          type:
+                            - integer
+                            - "null"
+                        offset:
+                          type:
+                            - integer
+                            - "null"
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutMode:
+                          type:
+                            - string
+                            - "null"
+                        bonus:
+                          type: boolean
+                        lastOfNight:
+                          type: boolean
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - exposureLineId
+                        - filter
+                        - exposureS
+                        - gain
+                        - offset
+                        - binning
+                        - readoutMode
+                        - bonus
+                        - lastOfNight
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - expose_series
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        untilUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        exposureLineId:
+                          type: string
+                          minLength: 1
+                          maxLength: 80
+                        filter:
+                          type: string
+                        exposureS:
+                          type: number
+                          exclusiveMinimum: 0
+                        gain:
+                          type:
+                            - integer
+                            - "null"
+                        offset:
+                          type:
+                            - integer
+                            - "null"
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutMode:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - untilUtc
+                        - exposureLineId
+                        - filter
+                        - exposureS
+                        - gain
+                        - offset
+                        - binning
+                        - readoutMode
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - dither
+                            - autofocus_hint
+                            - wait
+                            - meridian_flip
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                      additionalProperties: false
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - end
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                      additionalProperties: false
+                minItems: 1
+            required:
+              - id
+              - kind
+              - projectId
+              - panelId
+              - transitObservationId
+              - startUtc
+              - endUtc
+              - twilightEndUtc
+              - raDeg
+              - decDeg
+              - rotationDeg
+              - rotationMode
+              - meridianFlip
+              - entries
+            additionalProperties: false
+        summary:
+          type: object
+          properties:
+            targets:
+              type: integer
+              minimum: 0
+            plannedFrames:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: integer
+                  minimum: 0
+          required:
+            - targets
+            - plannedFrames
+          additionalProperties: false
+        diagnostics:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                minLength: 1
+                maxLength: 80
+              panelId:
+                type: string
+                minLength: 1
+                maxLength: 80
+              lineId:
+                type: string
+                minLength: 1
+                maxLength: 80
+              reason:
+                type: string
+                enum:
+                  - start_date
+                  - not_visible
+                  - below_min_time
+                  - moon_blocked
+                  - prefiltered
+                  - outranked
+                  - no_need
+                  - transit_conflict
+                  - flip_in_transit
+                  - filter_not_found
+                  - rotation_mismatch
+              message:
+                type: string
+            required:
+              - projectId
+              - reason
+            additionalProperties: false
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum:
+                  - idle_gap
+                  - la_unsafe
+                  - total_min
+                  - no_alloc
+                  - la_miss
+                  - filter_stuck
+                  - past_mismatch
+                  - panel_rotation_mismatch
+                  - twilight_grazing
+              level:
+                type: string
+                enum:
+                  - warn
+                  - error
+              unitId:
+                type: string
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              durationS:
+                type: number
+                minimum: 0
+              message:
+                type: string
+            required:
+              - code
+              - level
+            additionalProperties: false
+      required:
+        - nightPlanId
+        - engineVersion
+        - inputHash
+        - outputHash
+        - night
+        - startAtUtc
+        - nightWindow
+        - darkness
+        - darknessEndUtc
+        - flatsNotBeforeUtc
+        - flatsNotAfterUtc
+        - sessionEndUtc
+        - blocks
+        - summary
+        - diagnostics
+        - warnings
+      additionalProperties: false
     TenantAdminView:
       type: object
       properties:
@@ -11044,6 +11608,54 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/simulations:
+    post:
+      summary: Nachtplan einer Simulation speichern
+      tags:
+        - simulation
+      description: "Aktion: `simulation.run` · FA-SIM-01, FA-SIM-05, TK 7.2"
+      x-npm-action: simulation.run
+      x-npm-requirements:
+        - FA-SIM-01
+        - FA-SIM-05
+        - TK 7.2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationCreate"
+      responses:
+        "201":
+          description: Gespeichert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationSaved"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

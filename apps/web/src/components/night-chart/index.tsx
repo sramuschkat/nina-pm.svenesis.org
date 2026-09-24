@@ -24,13 +24,23 @@ import {
   type AltitudeSeries,
   type Band,
   type BandKey,
+  type FilterBar,
+  type TimelineBlock,
   type Interval,
   type NightMarker,
   type TwilightSpan,
 } from './model';
 import styles from './NightChart.module.css';
 
-export type { AltitudeSeries, AltPoint, Interval, NightMarker, TwilightSpan } from './model';
+export type {
+  AltitudeSeries,
+  AltPoint,
+  FilterBar,
+  Interval,
+  NightMarker,
+  TimelineBlock,
+  TwilightSpan,
+} from './model';
 
 export interface NightChartProps {
   /** Nachtfenster in Unix-Sekunden; fehlt es, ist das Diagramm im Fehlerzustand. */
@@ -51,6 +61,10 @@ export interface NightChartProps {
   /** Nutzbare Zeit des Hauptziels aus der Engine (Streifen „Empfohlene Belichtungszeit“). */
   recommended?: readonly Interval[];
   markers?: readonly NightMarker[];
+  /** Belegte Blöcke als Balken unter dem Diagramm (Simulator, Session-Soll/Ist). */
+  blocks?: readonly TimelineBlock[];
+  /** Filterbalken über den Blöcken in Filterfarben (FA-SIM-07). */
+  filterBars?: readonly FilterBar[];
   /** Gestrichelte Linie der Mindesthöhe. */
   minAltDeg?: number;
   /** IANA-Zone des Standorts (Beschriftung, NT-03). */
@@ -72,6 +86,9 @@ const STEP = 300;
 /** Stundenstreifen: Höhe je Zeile und Abstand (px). */
 const BAND_ROW = 6;
 const BAND_GAP = 3;
+/** Filter- und Blockzeile unter den Stundenstreifen (px). */
+const FILTER_ROW = 5;
+const BLOCK_ROW = 12;
 const PAD = { left: 34, right: 40, top: 18, axis: 32 };
 
 /** CSS-Variable am Element (Tokens aus `@nina-pm/ui-tokens`, keine festen Farben). */
@@ -102,6 +119,8 @@ export function NightChart(props: NightChartProps) {
     sun,
     recommended,
     markers = [],
+    blocks = [],
+    filterBars = [],
     minAltDeg,
     timeZone,
     secondaryTimeZone,
@@ -135,7 +154,12 @@ export function NightChart(props: NightChartProps) {
         : [],
     [win, sun, twilight, primary, moon, minAltDeg, recommended],
   );
-  const bandsH = bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP) + BAND_GAP;
+  const blockRowsH =
+    blocks.length === 0
+      ? 0
+      : (filterBars.length > 0 ? FILTER_ROW + BAND_GAP : 0) + BLOCK_ROW + BAND_GAP * 2;
+  const bandsH =
+    (bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP) + BAND_GAP) + blockRowsH;
 
   // Die Zeichenfläche gibt es erst im Zustand „bereit“ – beim Wechsel aus Laden/Fehler/leer neu messen.
   const drawable =
@@ -336,6 +360,42 @@ export function NightChart(props: NightChartProps) {
       for (const iv of band.intervals)
         ctx.fillRect(x(iv.fromUtc), top, Math.max(1, x(iv.toUtc) - x(iv.fromUtc)), BAND_ROW);
     });
+    // Filterbalken und Blöcke (FA-SIM-07) unter den Stundenstreifen
+    if (blocks.length > 0) {
+      let top = plotB + (bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP)) + BAND_GAP;
+      if (filterBars.length > 0) {
+        for (const f of filterBars) {
+          ctx.fillStyle = resolveColor(canvas, f.color);
+          ctx.fillRect(x(f.fromUtc), top, Math.max(1, x(f.toUtc) - x(f.fromUtc)), FILTER_ROW);
+        }
+        top += FILTER_ROW + BAND_GAP;
+      }
+      ctx.font = font(10);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      for (const b of blocks) {
+        const x0 = x(b.fromUtc);
+        const w = Math.max(1, x(b.toUtc) - x0);
+        const h = b.actual ? BLOCK_ROW / 2 : BLOCK_ROW;
+        ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
+        ctx.fillRect(x0, top, w, h);
+        if (b.kind === 'transit') {
+          ctx.strokeStyle = c('violet');
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x0 + 1, top + 1, Math.max(1, w - 2), h - 2);
+          ctx.lineWidth = 1;
+        }
+        if (w > 60) {
+          ctx.fillStyle = c('text');
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x0, top, w, h);
+          ctx.clip();
+          ctx.fillText(b.label, x0 + 3, top + h / 2);
+          ctx.restore();
+        }
+      }
+    }
     // Zeitachse in Standortzeit; Beschriftung nur alle n Stunden, damit sie nicht kollidiert
     const pxPerHour = (plotW * 3600) / span;
     const every = width < 480 ? 3 : ([1, 2, 3, 4, 6].find((n) => n * pxPerHour >= 56) ?? 6);
@@ -382,6 +442,8 @@ export function NightChart(props: NightChartProps) {
     props.height,
     bands,
     bandsH,
+    blocks,
+    filterBars,
     off,
     secondaryTimeZone,
     t,
@@ -583,6 +645,14 @@ export function NightChart(props: NightChartProps) {
                         )
                         .join(', ')}`
                     : ''}
+                </td>
+              </tr>
+            ))}
+            {blocks.map((b) => (
+              <tr key={`block:${b.id}`}>
+                <th scope="row">{b.label}</th>
+                <td>
+                  {clock(b.fromUtc, timeZone)} – {clock(b.toUtc, timeZone)}
                 </td>
               </tr>
             ))}

@@ -34,6 +34,7 @@ import { ProjectListPage } from '../pages/projects/ProjectListPage';
 import { MyObjectsPage } from '../pages/projects/MyObjectsPage';
 import { DraftsPage } from '../pages/projects/DraftsPage';
 import { QueuePage } from '../pages/projects/QueuePage';
+import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -151,6 +152,7 @@ export function createRouter() {
             { path: 'projekte/entwuerfe', element: <DraftsPage /> },
             { path: 'projekte/warteschlange', element: <QueuePage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
+            { path: 'nina/simulator', element: <SimulatorPage /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {
               path: 'ausruestung',

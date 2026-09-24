@@ -1,0 +1,667 @@
+/**
+ * S-40 Nacht-Simulator (AP-13f; FK 6.7, 14.3; FA-SIM-01…08): Rig und Nacht wählen, Schritt 1
+ * Einstellungen (Admin bearbeitbar), Schritt 2 Zielkarten, Schritt 3 Plangrafik und Protokoll mit
+ * Kopieren/CSV. Daten: Rig, Projekte, Mondprofile und Nacht-Tabelle des Servers (NT-02) → `buildPlanInput`
+ * → `planNight` im Web Worker. Entwürfe des Users nur lokal; Speichern als `night_plan`.
+ */
+import { daysFromKey, keyFromDays } from '@nina-pm/engine';
+import { formatTzAbbr, formatZonedTime, formatNightKey } from '@nina-pm/shared';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useId, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
+import {
+  equipmentApi,
+  projectsApi,
+  simulationApi,
+  type ProjectView,
+  type RigView,
+} from '../../api/client';
+import { useCan } from '../../auth';
+import { CheckList, type CheckItem } from '../../components/CheckList';
+import { FilterChip } from '../../components/FilterChip';
+import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
+import { NightChart } from '../../components/night-chart';
+import { ProblemMessage } from '../../components/ProblemMessage';
+import { RigSelect, type RigOption } from '../../components/RigSelect';
+import { SchedulerForm } from '../equipment/RigsPage';
+import { problemCode, useEquipmentList } from '../equipment/shared';
+import { PROTOCOL_COLUMNS, cell, protocolCsv, protocolTsv, siteClock } from './protocol';
+import type { Check, SimulationRequest, SimulationResult, TargetCard } from './simulate';
+import styles from './simulator.module.css';
+import { useSimulator } from './use-simulator';
+
+const EDITABLE_OWN = new Set(['draft', 'submitted', 'returned']);
+const hm = (atUtc: string, tz: string) =>
+  `${formatZonedTime(atUtc, tz)} ${formatTzAbbr(atUtc, tz)}`;
+const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+const shiftNight = (night: string, days: number) => keyFromDays(daysFromKey(night) + days);
+
+export function SimulatorPage() {
+  const { t, i18n } = useTranslation();
+  const client = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const rigs = useEquipmentList('rigs');
+  const sites = useEquipmentList('sites');
+  const telescopes = useEquipmentList('telescopes');
+  const cameras = useEquipmentList('cameras');
+  const filters = useEquipmentList('filters');
+  const moonProfiles = useEquipmentList('moon-profiles');
+  const canSettings = useCan('rig.settings.write');
+  const canToggle = useCan('project.status');
+  const canSave = useCan('simulation.run');
+  const [withDrafts, setWithDrafts] = useState(false);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const ids = { drafts: useId(), slider: useId() };
+
+  const rigList = rigs.data ?? [];
+  const rigId =
+    params.get('rig') ?? rigList.find((r) => r.showInPlanning)?.id ?? rigList[0]?.id ?? null;
+  const rig: RigView | null = rigList.find((r) => r.id === rigId) ?? null;
+  const site = (sites.data ?? []).find((s) => s.id === rig?.siteId) ?? null;
+  const telescope = (telescopes.data ?? []).find((x) => x.id === rig?.telescopeId) ?? null;
+  const rigOptions: RigOption[] = rigList.map((r) => ({
+    id: r.id,
+    name: r.name,
+    siteName: (sites.data ?? []).find((s) => s.id === r.siteId)?.name ?? '',
+    telescopeName: (telescopes.data ?? []).find((x) => x.id === r.telescopeId)?.name ?? '',
+    cameraName: (cameras.data ?? []).find((x) => x.id === r.cameraId)?.name ?? '',
+    scaleArcsecPx: r.derived.scaleArcsecPx,
+    fovDeg: [r.derived.fovWidthDeg, r.derived.fovHeightDeg],
+    showInPlanning: r.showInPlanning,
+  }));
+
+  // Nacht-Tabelle des Servers: „Heute Nacht“ = currentNight (NT-01), gewählte Nacht ab `from`.
+  const current = useQuery({
+    queryKey: ['site-nights', site?.id, 'current'],
+    queryFn: () => equipmentApi.nights(site?.id ?? '', 2),
+    enabled: site !== null,
+  });
+  const night = params.get('nacht') ?? current.data?.currentNight ?? null;
+  const table = useQuery({
+    queryKey: ['site-nights', site?.id, 'from', night],
+    queryFn: () => equipmentApi.nights(site?.id ?? '', 2, night ?? undefined),
+    enabled: site !== null && night !== null,
+  });
+  const go = (next: { rig?: string | null; nacht?: string | null }) => {
+    const p = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(next)) {
+      if (v === null || v === undefined) p.delete(k);
+      else p.set(k, v);
+    }
+    setCursor(null);
+    setParams(p, { replace: true });
+  };
+
+  // Projekte des Rigs: freigegeben und aktiv; auf Wunsch eigene Entwürfe und Einreichungen (nur lokal).
+  const approved = useQuery({
+    queryKey: ['projects', 'simulator', rigId],
+    queryFn: async () =>
+      (await projectsApi.list(`?rigId=${rigId ?? ''}&approvalStatus=approved&status=active`)).items,
+    enabled: rigId !== null,
+  });
+  const mine = useQuery({
+    queryKey: ['projects', 'simulator-mine'],
+    queryFn: async () => (await projectsApi.list('?mine=true')).items,
+    enabled: withDrafts,
+  });
+  const projectIds = useMemo(() => {
+    const own = withDrafts
+      ? (mine.data ?? []).filter((p) => p.rigId === rigId && EDITABLE_OWN.has(p.approvalStatus))
+      : [];
+    return [...new Set([...(approved.data ?? []), ...own].map((p) => p.id))].sort();
+  }, [approved.data, mine.data, withDrafts, rigId]);
+  const details = useQueries({
+    queries: projectIds.map((id) => ({
+      queryKey: ['projects', id],
+      queryFn: () => projectsApi.get(id),
+    })),
+  });
+  const projects = details.map((d) => d.data).filter((p): p is ProjectView => p !== undefined);
+
+  const request = useMemo((): SimulationRequest | null => {
+    if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
+    if (details.some((d) => d.isPending) || approved.isPending) return null;
+    return {
+      rig: rig as SimulationRequest['rig'],
+      projects: projects as unknown as SimulationRequest['projects'],
+      moonProfiles: moonProfiles.data,
+      nights: table.data,
+      night,
+      site: {
+        latitudeDeg: site.latitudeDeg,
+        longitudeDeg: site.longitudeDeg,
+        elevationM: site.elevationM,
+        timeZone: site.timeZone,
+      },
+      selection: withDrafts ? 'given' : 'plannable',
+      filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
+      moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
+    };
+    // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
+  }, [rig, site, night, table.data, moonProfiles.data, filters.data, projects, withDrafts]);
+  const run = useSimulator();
+  const key = request ? JSON.stringify(request) : '';
+  const sim = useQuery({
+    queryKey: ['simulation', key],
+    queryFn: () => run(request as SimulationRequest),
+    enabled: request !== null,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const save = useMutation({
+    mutationFn: (r: SimulationResult) =>
+      simulationApi.save({
+        rigId: rig?.id ?? '',
+        night: night ?? '',
+        plan: r.plan as never,
+      }),
+  });
+  const toggle = useMutation({
+    mutationFn: (v: { projectId: string; lineId: string; enabled: boolean }) =>
+      projectsApi.patchLine(v.projectId, v.lineId, { enabled: v.enabled }),
+    onSuccess: (_d, v) => client.invalidateQueries({ queryKey: ['projects', v.projectId] }),
+  });
+
+  const tz = site?.timeZone ?? 'UTC';
+  const result = sim.data ?? null;
+  const nowIso = new Date().toISOString();
+
+  if (rigs.isPending) return <p role="status">{t('common.loading')}</p>;
+  if (rigList.length === 0)
+    return (
+      <div className={styles.page}>
+        <h1>{t('simulator.title')}</h1>
+        <p className={styles.note}>{t('simulator.noRig')}</p>
+      </div>
+    );
+
+  return (
+    <div className={styles.page}>
+      <nav aria-label={t('simulator.crumbs')} className={styles.muted}>
+        {t('simulator.crumbs')}
+      </nav>
+      <div className={styles.head}>
+        <h1>{t('simulator.title')}</h1>
+        <div className={styles.headActions}>
+          <button
+            type="button"
+            className={styles.buttonPrimary}
+            onClick={() => void sim.refetch()}
+            disabled={request === null || sim.isFetching}
+          >
+            <actionIcons.simulate size={ICON_SIZE.button} aria-hidden />
+            {t('simulator.simulate')}
+          </button>
+          {canSave && result ? (
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => save.mutate(result)}
+              disabled={save.isPending}
+            >
+              <actionIcons.save size={ICON_SIZE.button} aria-hidden />
+              {t('simulator.save')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      {save.isSuccess ? (
+        <p className={styles.success} role="status">
+          {t('simulator.saved')}
+        </p>
+      ) : null}
+      {save.error ? <ProblemMessage code={problemCode(save.error)} /> : null}
+
+      <div className={styles.rigRow}>
+        <div className={styles.rigSelect}>
+          <RigSelect
+            rigs={rigOptions}
+            value={rigId}
+            onChange={(id) => go({ rig: id })}
+            label={t('simulator.rig')}
+          />
+        </div>
+        <dl className={styles.facts}>
+          <dt>{t('simulator.site')}</dt>
+          <dd>{site?.name ?? '–'}</dd>
+          <dt>{t('simulator.telescope')}</dt>
+          <dd>{telescope?.name ?? '–'}</dd>
+        </dl>
+      </div>
+
+      {rig ? (
+        <details className={styles.step} open>
+          <summary>{t('simulator.stepSettings')}</summary>
+          <div className={styles.stepBody}>
+            <div className={styles.settings}>
+              <p className={styles.note}>{t('simulator.howItWorks')}</p>
+              <SchedulerForm rig={rig} canWrite={canSettings} />
+            </div>
+            <aside className={styles.nina} aria-label={t('simulator.nina')}>
+              <h3>{t('simulator.nina')}</h3>
+              <p>{t('simulator.settingsVersion', { version: rig.settingsVersion })}</p>
+              <p className={styles.muted}>{t('simulator.ninaNone')}</p>
+            </aside>
+          </div>
+        </details>
+      ) : null}
+
+      <div className={styles.dateRow}>
+        <button
+          type="button"
+          className={styles.button}
+          aria-label={t('simulator.prevNight')}
+          title={t('simulator.prevNight')}
+          disabled={!night}
+          onClick={() => night && go({ nacht: shiftNight(night, -1) })}
+        >
+          <uiIcons.previous size={ICON_SIZE.button} aria-hidden />
+        </button>
+        <strong>{night ? t('simulator.night', { night: formatNightKey(night) }) : '–'}</strong>
+        <button
+          type="button"
+          className={styles.button}
+          aria-label={t('simulator.nextNight')}
+          title={t('simulator.nextNight')}
+          disabled={!night}
+          onClick={() => night && go({ nacht: shiftNight(night, 1) })}
+        >
+          <uiIcons.next size={ICON_SIZE.button} aria-hidden />
+        </button>
+        <button type="button" className={styles.button} onClick={() => go({ nacht: null })}>
+          {t('simulator.tonight')}
+        </button>
+        <span className={styles.stats}>
+          {t('simulator.stats.siteTime', { time: hm(nowIso, tz) })}
+          {result ? (
+            <>
+              {' · '}
+              {t('simulator.stats.dark', {
+                hours: result.header.darkHours.toLocaleString(i18n.language),
+              })}
+              {' · '}
+              {t('simulator.stats.targets', { n: result.header.targets })}
+              {' · '}
+              {t('simulator.stats.frames', { n: result.header.frames })}
+              {' · '}
+              {t('simulator.stats.moon', { pct: result.header.moonIllumPct })}
+            </>
+          ) : null}
+        </span>
+        <label className={styles.check} htmlFor={ids.drafts}>
+          <input
+            id={ids.drafts}
+            type="checkbox"
+            checked={withDrafts}
+            onChange={(e) => setWithDrafts(e.target.checked)}
+          />
+          {t('simulator.withDrafts')}
+        </label>
+      </div>
+
+      {sim.isError ? (
+        <ProblemMessage code={problemCode(sim.error)} onRetry={() => void sim.refetch()} />
+      ) : sim.isFetching && !result ? (
+        <p role="status">{t('simulator.running')}</p>
+      ) : null}
+
+      {result ? (
+        <>
+          <details className={styles.step} open>
+            <summary>{t('simulator.stepTargets')}</summary>
+            {result.cards.length === 0 && result.unallocated.length === 0 ? (
+              <p className={styles.note}>{t('simulator.empty')}</p>
+            ) : (
+              <div className={styles.cards}>
+                {result.cards.map((c) => (
+                  <TargetCardView
+                    key={c.projectId}
+                    card={c}
+                    tz={tz}
+                    hasRotator={rig?.hasRotator ?? false}
+                    canToggle={canToggle}
+                    onToggle={(lineId, enabled) =>
+                      toggle.mutate({ projectId: c.projectId, lineId, enabled })
+                    }
+                  />
+                ))}
+                {result.unallocated.length > 0 ? (
+                  <article className={styles.card} aria-label={t('simulator.unallocated')}>
+                    <h3>{t('simulator.unallocated')}</h3>
+                    <ul className={styles.plain}>
+                      {result.unallocated.map((u) => (
+                        <li key={u.projectId}>
+                          <strong>{u.name}</strong>{' '}
+                          <span className={styles.muted}>
+                            {u.reasons.length === 0
+                              ? t('simulator.noReason')
+                              : [
+                                  ...new Set(
+                                    u.reasons.map((r) =>
+                                      t(`effort.reason.${r.reason}`, { defaultValue: r.reason }),
+                                    ),
+                                  ),
+                                ].join(', ')}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ) : null}
+              </div>
+            )}
+            {toggle.error ? <ProblemMessage code={problemCode(toggle.error)} /> : null}
+          </details>
+
+          <details className={styles.step} open>
+            <summary>
+              {t('simulator.stepPlan', {
+                zone: formatTzAbbr(result.plan.nightWindow.startUtc, tz),
+              })}
+            </summary>
+            <NightChart
+              {...result.chart}
+              markers={[
+                ...(result.chart.markers ?? []),
+                ...(cursor !== null
+                  ? [{ atUtc: cursor, kind: 'now' as const, label: hm(iso(cursor), tz) }]
+                  : []),
+              ]}
+              state="ready"
+            />
+            <TimeSlider
+              id={ids.slider}
+              result={result}
+              tz={tz}
+              value={cursor}
+              onChange={setCursor}
+            />
+            <div className={styles.protocolHead}>
+              <h3>{t('simulator.protocol')}</h3>
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() =>
+                  void navigator.clipboard
+                    ?.writeText(protocolTsv(result.protocol, t, tz))
+                    .then(() => setCopied(true))
+                }
+              >
+                <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
+                {t('simulator.copy')}
+              </button>
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => downloadCsv(protocolCsv(result.protocol, t, tz), night ?? 'plan')}
+              >
+                <actionIcons.export size={ICON_SIZE.button} aria-hidden />
+                {t('simulator.csv')}
+              </button>
+              {copied ? (
+                <span className={styles.muted} role="status">
+                  {t('simulator.copied')}
+                </span>
+              ) : null}
+            </div>
+            <div
+              className={styles.tableWrap}
+              // Breite Tabelle scrollt waagrecht: per Tastatur erreichbar (axe scrollable-region-focusable).
+              tabIndex={0}
+              role="region"
+              aria-label={t('simulator.protocol')}
+            >
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    {PROTOCOL_COLUMNS.map((c) => (
+                      <th key={c} scope="col">
+                        {t(`simulator.col.${c}`)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.protocol.map((r) => (
+                    <tr key={r.key}>
+                      {PROTOCOL_COLUMNS.map((c) => (
+                        <td key={c} className={c === 'time' ? styles.num : undefined}>
+                          {cell(r, c, t, tz)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Findings result={result} tz={tz} />
+            <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
+          </details>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function downloadCsv(text: string, night: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planprotokoll-${night}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const checkOk = (c: Check): boolean | null => (c === 'none' ? null : c === 'ok');
+
+function TargetCardView({
+  card,
+  tz,
+  hasRotator,
+  canToggle,
+  onToggle,
+}: {
+  card: TargetCard;
+  tz: string;
+  hasRotator: boolean;
+  canToggle: boolean;
+  onToggle: (lineId: string, enabled: boolean) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const hours = (card.allocatedS / 3600).toLocaleString(i18n.language, {
+    maximumFractionDigits: 1,
+  });
+  const items: CheckItem[] = [
+    {
+      id: 'altitude',
+      label: t('simulator.card.check.altitude'),
+      ok: checkOk(card.checks.altitude),
+    },
+    { id: 'time', label: t('simulator.card.check.time'), ok: checkOk(card.checks.time) },
+    { id: 'moon', label: t('simulator.card.check.moon'), ok: checkOk(card.checks.moon) },
+    {
+      id: 'darkness',
+      label: t('simulator.card.check.darkness'),
+      ok: checkOk(card.checks.darkness),
+    },
+    {
+      id: 'rotation',
+      label: t('simulator.card.check.rotation'),
+      ok: card.checks.rotation === 'ok',
+      detail:
+        card.checks.rotation === 'warn'
+          ? t('simulator.card.rotationWarn')
+          : hasRotator
+            ? t('simulator.card.rotationRotator')
+            : t('simulator.card.rotationFixed'),
+    },
+  ];
+  return (
+    <article className={styles.card} aria-label={card.name}>
+      <h3 className={styles.cardTitle}>
+        <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
+        {card.name}
+        {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
+      </h3>
+      <dl className={styles.facts}>
+        <dt>{t('simulator.card.window')}</dt>
+        <dd>
+          {card.fromUtc && card.toUtc ? `${hm(card.fromUtc, tz)} – ${hm(card.toUtc, tz)}` : '–'}
+        </dd>
+        <dt>{t('simulator.card.hours')}</dt>
+        <dd>{hours} h</dd>
+        <dt>{t('simulator.card.altitude')}</dt>
+        <dd>
+          {card.altMinDeg === null || card.altMaxDeg === null
+            ? '–'
+            : `${card.altMinDeg.toFixed(0)}° – ${card.altMaxDeg.toFixed(0)}°`}
+        </dd>
+        <dt>{t('simulator.card.moonSep')}</dt>
+        <dd>{card.moonSepMinDeg === null ? '–' : `≥ ${card.moonSepMinDeg.toFixed(0)}°`}</dd>
+      </dl>
+      {card.flips.map((f) => (
+        <p key={f.atUtc} className={styles.flag}>
+          {f.inTransitWindow
+            ? t('simulator.card.flipInWindow', { time: hm(f.atUtc, tz) })
+            : t('simulator.card.flip', {
+                time: hm(f.atUtc, tz),
+                min: Math.round(f.durationS / 60),
+              })}
+        </p>
+      ))}
+      {card.transit ? <p className={styles.note}>{t('simulator.card.transitBox')}</p> : null}
+      <h4 className={styles.subhead}>{t('simulator.card.lines')}</h4>
+      <ul className={styles.lines}>
+        {card.lines.map((l) => (
+          <li key={l.lineId}>
+            <FilterChip shortName={l.filter} color={l.color} size="sm" />
+            <span className={styles.muted}>
+              {t('simulator.card.remaining', { need: l.need, tonight: l.tonight })}
+            </span>
+            {l.la ? (
+              <abbr className={styles.tag} title={t('simulator.card.laTitle')}>
+                {t('simulator.card.la')}
+              </abbr>
+            ) : null}
+            {canToggle ? (
+              <label className={styles.check}>
+                <input
+                  type="checkbox"
+                  checked={l.enabled}
+                  onChange={(e) => onToggle(l.lineId, e.target.checked)}
+                />
+                <span className="visually-hidden">
+                  {t('simulator.card.enabled', { filter: l.filter })}
+                </span>
+              </label>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <CheckList items={items} />
+    </article>
+  );
+}
+
+/** FA-SIM-02: „Was macht das Rig um 02:14 CDT?“ – Schieber über das Nachtfenster in 5-min-Schritten. */
+function TimeSlider({
+  id,
+  result,
+  tz,
+  value,
+  onChange,
+}: {
+  id: string;
+  result: SimulationResult;
+  tz: string;
+  value: number | null;
+  onChange: (v: number) => void;
+}) {
+  const { t } = useTranslation();
+  const start = Date.parse(result.plan.nightWindow.startUtc) / 1000;
+  const end = Date.parse(result.plan.nightWindow.endUtc) / 1000;
+  const at = value ?? start;
+  const atIso = iso(at);
+  const block = result.plan.blocks.find(
+    (b) => Date.parse(b.startUtc) / 1000 <= at && at < Date.parse(b.endUtc) / 1000,
+  );
+  const entry = block
+    ? [...block.entries].reverse().find((e) => Date.parse(e.atUtc) / 1000 <= at)
+    : undefined;
+  const row = entry
+    ? result.protocol.find((r) => r.key === `${block?.id ?? ''}:${String(entry.seq)}`)
+    : undefined;
+  const doing = row
+    ? `${row.projectName} · ${cell(row, 'cmd', t, tz)}${row.filter ? ` ${row.filter}` : ''}`
+    : t('simulator.sliderIdle');
+  return (
+    <div className={styles.slider}>
+      <label htmlFor={id}>{t('simulator.slider', { time: hm(atIso, tz) })}</label>
+      <input
+        id={id}
+        type="range"
+        min={start}
+        max={end}
+        step={300}
+        value={at}
+        aria-valuetext={`${hm(atIso, tz)}: ${doing}`}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <output htmlFor={id}>{doing}</output>
+    </div>
+  );
+}
+
+function Findings({ result, tz }: { result: SimulationResult; tz: string }) {
+  const { t } = useTranslation();
+  const names = new Map(result.cards.map((c) => [c.projectId, c.name]));
+  for (const u of result.unallocated) names.set(u.projectId, u.name);
+  return (
+    <div className={styles.findings}>
+      <section aria-labelledby="sim-warnings">
+        <h3 id="sim-warnings">{t('simulator.warnings')}</h3>
+        {result.plan.warnings.length === 0 ? (
+          <p className={styles.muted}>{t('simulator.noWarnings')}</p>
+        ) : (
+          <ul className={styles.plain}>
+            {result.plan.warnings.map((w, i) => (
+              <li
+                key={`${w.code}:${String(i)}`}
+                className={w.level === 'error' ? styles.error : styles.warn}
+              >
+                <strong>
+                  {t(`simulator.level.${w.level}`)} · {w.code}
+                </strong>
+                {': '}
+                {t(`simulator.warning.${w.code}`, { defaultValue: w.code })}
+                {w.atUtc ? ` · ${siteClock(w.atUtc, tz)}` : ''}
+                {w.durationS ? ` · ${String(Math.round(w.durationS / 60))} min` : ''}
+                {w.message ? ` – ${w.message}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section aria-labelledby="sim-diagnostics">
+        <h3 id="sim-diagnostics">{t('simulator.diagnostics')}</h3>
+        {result.plan.diagnostics.length === 0 ? (
+          <p className={styles.muted}>{t('simulator.noDiagnostics')}</p>
+        ) : (
+          <ul className={styles.plain}>
+            {result.plan.diagnostics.map((d, i) => (
+              <li key={`${d.projectId}:${d.lineId ?? ''}:${d.reason}:${String(i)}`}>
+                <strong>{names.get(d.projectId) ?? d.projectId}</strong>
+                {d.lineId ? ` (${result.lineNames[d.lineId] ?? d.lineId})` : ''}
+                {': '}
+                {t(`effort.reason.${d.reason}`, { defaultValue: d.reason })}
+                {d.message ? ` – ${d.message}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
