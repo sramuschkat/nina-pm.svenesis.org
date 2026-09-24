@@ -4,6 +4,12 @@
 
 ## [Unveröffentlicht]
 
+### AP-07a, AP-07b, AP-07c abgenommen (2026-09-24)
+
+- Deploy durch Sven (`4f74090`, Smoke-Test 10/10), dabei neu: `s3:DeleteObject*` der api-Rolle auf `tenant/*`.
+- Entscheidung `approvalDeadlineDays`: Tage ab Einreichung bis zum Verfall einer offenen Einreichung, `null` = keine Frist; umgesetzt wird die Regel in AP-12a (Hinweis im Brief ergänzt).
+- Speicherbedarf je Mandant (FA-SU-03) als neues Paket **AP-07d** vor AP-17 aufgenommen; AP-17 hängt jetzt auch von AP-07d ab.
+
 ### AP-07c – Mandanteneinstellungen, Owner-Übertragung, Protokolle (2026-09-24)
 
 Anforderungen: FA-BEN-09, FA-MAN-05, FA-ADM-03, FA-LOG-08, S-70 (*Owner übertragen*), S-71, S-72, S-73; TK 5.3, 7.2; DAT5-22; SV-01, SV-03, SV-11.
