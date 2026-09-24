@@ -43,3 +43,6 @@ infra/cdk-outputs.json
 # Playwright
 test-results/
 playwright-report/
+
+# Vitest-Berichte (lokale Messungen)
+.vitest/

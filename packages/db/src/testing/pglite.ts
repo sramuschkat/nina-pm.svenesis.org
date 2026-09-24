@@ -17,6 +17,11 @@ export interface PgliteDatabase {
   readonly pg: PGlite;
   readonly db: Kysely<Database>;
   readonly admin: SqlClient;
+  /**
+   * Leert alle Tabellen außer `schema_migration` – für „eine Datenbank je Testdatei“ statt je Test.
+   * Nur PostgreSQL/PGlite (TRUNCATE gibt es in DSQL nicht; die Migrationen prüft der DSQL-Lint).
+   */
+  reset(): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -53,5 +58,13 @@ export async function openPglite(): Promise<PgliteDatabase> {
     }),
     plugins: [new CamelCasePlugin()],
   });
-  return { pg, db, admin, close: () => pg.close() };
+  const tables = (
+    await pg.query<{ tablename: string }>(
+      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'schema_migration' ORDER BY tablename",
+    )
+  ).rows.map((r) => `"${r.tablename}"`);
+  const reset = async () => {
+    await pg.exec(`TRUNCATE TABLE ${tables.join(', ')} CASCADE`);
+  };
+  return { pg, db, admin, reset, close: () => pg.close() };
 }

@@ -1,6 +1,7 @@
 /**
  * Lokaler Test-Stack ohne Docker: API-App mit echten Repositories auf PGlite (alle Migrationen),
  * Discord-Nachbildung, verstellbarer Uhr und Cookie-Handhabung. Dieselben Tests laufen im CI.
+ * Eine Instanz je Testdatei (`beforeAll`), zwischen den Tests `reset()` statt neuer Migrationen.
  */
 import {
   AuthRepository,
@@ -41,7 +42,8 @@ export function setCookies(res: Response): Record<string, { value: string; raw: 
 
 export async function createStack() {
   const pg: PgliteDatabase = await openPglite();
-  let now = new Date('2026-09-24T10:00:00Z');
+  const START = new Date('2026-09-24T10:00:00Z');
+  let now = START;
   const discord = new FakeDiscord();
   let bootstrapIds: string[] = [];
   const auth = new AuthRepository(pg.db);
@@ -215,6 +217,13 @@ export async function createStack() {
       advance: (ms: number) => (now = new Date(now.getTime() + ms)),
     },
     setBootstrapIds: (ids: string[]) => (bootstrapIds = ids),
+    /** Ausgangszustand für den nächsten Test: leere Tabellen, Uhr, Discord-Nachbildung, Bootstrap-Liste. */
+    reset: async () => {
+      await pg.reset();
+      now = START;
+      discord.clear();
+      bootstrapIds = [];
+    },
     close: () => pg.close(),
   };
 }

@@ -4,7 +4,7 @@
  */
 import { deleteExpiredInvitations } from '@nina-pm/db';
 import { COOKIE_NAMES } from '@nina-pm/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { discordProfile } from './support/fake-discord';
 import { createStack, setCookies, type Stack } from './support/stack';
 
@@ -36,8 +36,13 @@ async function person(
   return { identityId: identity.id, memberId, sid };
 }
 
-beforeEach(async () => {
+beforeAll(async () => {
   s = await createStack();
+});
+afterAll(() => s.close());
+
+beforeEach(async () => {
+  await s.reset();
   const tenantId = await s.seed.tenant('sternwarte');
   const owner = await person(tenantId, 'admin');
   await s.seed.owner(tenantId, owner.memberId);
@@ -50,7 +55,6 @@ beforeEach(async () => {
     disabled: await person(tenantId, 'admin', 'disabled'),
   };
 });
-afterEach(() => s.close());
 
 const as = (p: Person, path: string, method = 'GET', body?: unknown) =>
   s.request(path, {

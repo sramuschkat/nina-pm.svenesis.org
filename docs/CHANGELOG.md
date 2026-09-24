@@ -4,6 +4,11 @@
 
 ## [Unveröffentlicht]
 
+### Tests: eine Datenbank je Testdatei (2026-09-24)
+
+- API-Integrationstests legen die PGlite-Datenbank (alle Migrationen) einmal je Datei an und leeren zwischen den Tests nur die Tabellen (`reset()` in `@nina-pm/db/testing/pglite` und im Test-Stack) statt je Test neu zu migrieren.
+- Laufzeit: `auth.test.ts` 19,3 s → 0,9 s, `members.test.ts` 13,4 s → 0,7 s, `ops-cli.test.ts` 6,4 s → 0,3 s; `pnpm test` gesamt ≈ 21 s → 5,2 s. Unabhängigkeit mit zufälliger Reihenfolge (`--sequence.shuffle`, drei Seeds) geprüft.
+
 ### AP-04b abgenommen (2026-09-24)
 
 - Deploy durch Sven (Commit `569547c`, keine Migration).

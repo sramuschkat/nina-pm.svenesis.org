@@ -17,6 +17,13 @@ export class FakeDiscord implements DiscordClient {
   private seq = 0;
   exchanges: CodeExchange[] = [];
 
+  /** Zurücksetzen zwischen Tests (eine Instanz je Testdatei). */
+  clear(): void {
+    this.grants.clear();
+    this.exchanges = [];
+    this.seq = 0;
+  }
+
   /** „Der Browser meldet sich bei Discord an“: liefert den Code für den Callback. */
   authorize(authorizeUrl: string, profile: DiscordProfile): { code: string; state: string } {
     const url = new URL(authorizeUrl);
