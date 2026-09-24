@@ -1,6 +1,10 @@
 # CI nach TK 18 (AP-01: install, lint, typecheck, test, build, gitleaks).
 # GitHub hat keinen AWS-Zugang (E1): dieser Workflow prüft und baut nur, er deployt nie.
-# OpenAPI-Diff läuft in `pnpm test` (AP-05), E2E seit AP-04a; a11y folgt mit AP-06a.
+# OpenAPI-Diff läuft in `pnpm test` (AP-05), E2E seit AP-04a, a11y seit AP-06a.
+#
+# Tempo (24.09.2026): Die Prüfungen laufen als parallele Jobs statt nacheinander; Playwright-Browser
+# kommen aus dem Cache; reine Doku-Änderungen (Arbeitspakete, Changelog, Betrieb, Specs) überspringen
+# Tests, Build und E2E. Übersprungene Jobs gelten für GitHub als erfolgreich.
 name: ci
 
 on:
@@ -16,8 +20,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: install · lint · typecheck · test · build · cdk synth
+  changes:
+    name: Änderungen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Nur Doku geändert?
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Doku ohne Wirkung auf Code oder Tests; alles andere (auch docs/contracts, docs/api, docs/seed,
+          # docs/test-runs, docs/concept, docs/rules) löst die volle CI aus.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(git diff --name-only "$BASE" HEAD)
+          code=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              docs/CHANGELOG.md|docs/changelog.d/*|docs/work-packages/*|docs/ops/*|docs/history/*|docs/adr/*|docs/specs/*|docs/runbooks/*|CLAUDE.md|START.md|README.md|*/README.md) ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "Code geändert: $code"
+
+  static:
+    name: lint · typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  test:
+    name: test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # PostgreSQL 16 als DSQL-Ersatz für Migrationen, Rechte- und Repository-Tests (TK 17, 18).
@@ -46,15 +97,30 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
       - run: pnpm test
+
+  build:
+    name: build · cdk synth
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
       # cdk synth ohne AWS-Zugang: Lookup-Werte aus infra/cdk.context.json (TK 18)
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e:
     name: e2e + a11y (Playwright, lokaler Stack)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
@@ -67,7 +133,20 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - id: pw
+        name: Playwright-Version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Chromium installieren (nur ohne Cache)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Systembibliotheken für Chromium (mit Cache)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
       - run: pnpm e2e
       - uses: actions/upload-artifact@v7
         if: failure()

@@ -144,11 +144,9 @@ async function backupBeforeMigrations(): Promise<void> {
   fail(`Backup-Job ${job.out} nach 60 min nicht abgeschlossen.`);
 }
 
-async function main(): Promise<void> {
-  step('Vorbedingungen');
-  if (capture('git', ['status', '--porcelain']).out !== '') fail('Arbeitsbaum ist nicht sauber.');
-  const sha = capture('git', ['rev-parse', 'HEAD']).out;
-  const ci = capture('gh', [
+/** Letzter CI-Lauf (ci.yml) eines Commits: `<status> <conclusion>` oder leer. */
+function ciState(sha: string): string {
+  return capture('gh', [
     'run',
     'list',
     '--commit',
@@ -161,9 +159,73 @@ async function main(): Promise<void> {
     'status,conclusion',
     '--jq',
     '.[0].status + " " + .[0].conclusion',
-  ]);
-  if (ci.out !== 'completed success')
-    fail(`CI auf ${sha.slice(0, 7)} ist nicht grün (${ci.out || 'kein Lauf'}).`);
+  ]).out;
+}
+
+/**
+ * CI-Vorbedingung (TK 18) ohne unnötiges Warten:
+ * 1. grüner Lauf auf HEAD, oder
+ * 2. grüner Lauf auf einem Commit mit **identischem Dateistand** (gleicher Git-Tree) – nach einem
+ *    Merge-Commit eines aktuellen PR-Branches ist das der PR-Lauf; gleiche Dateien, gleiche Prüfungen, oder
+ * 3. der Lauf auf HEAD läuft noch → warten (`gh run watch`), statt abzubrechen.
+ */
+async function ensureGreenCi(sha: string): Promise<string> {
+  if (ciState(sha) === 'completed success') return 'Lauf auf diesem Commit';
+  const tree = capture('git', ['rev-parse', `${sha}^{tree}`]).out;
+  const recent = capture('gh', [
+    'run',
+    'list',
+    '--workflow',
+    'ci.yml',
+    '--status',
+    'success',
+    '--limit',
+    '40',
+    '--json',
+    'headSha',
+    '--jq',
+    '.[].headSha',
+  ]).out.split('\n');
+  for (const candidate of recent) {
+    if (!candidate || candidate === sha) continue;
+    const t = capture('git', ['rev-parse', `${candidate}^{tree}`]);
+    if (t.ok && t.out === tree) return `gleicher Stand wie ${candidate.slice(0, 7)}`;
+  }
+  const state = ciState(sha);
+  if (
+    state.startsWith('in_progress') ||
+    state.startsWith('queued') ||
+    state.startsWith('waiting')
+  ) {
+    console.log(`  CI auf ${sha.slice(0, 7)} läuft noch – warte …`);
+    const id = capture('gh', [
+      'run',
+      'list',
+      '--commit',
+      sha,
+      '--workflow',
+      'ci.yml',
+      '--limit',
+      '1',
+      '--json',
+      'databaseId',
+      '--jq',
+      '.[0].databaseId',
+    ]).out;
+    spawnSync('gh', ['run', 'watch', id, '--interval', '15', '--exit-status'], {
+      cwd: repoRoot,
+      stdio: 'ignore',
+    });
+    if (ciState(sha) === 'completed success') return 'Lauf auf diesem Commit, abgewartet';
+  }
+  return fail(`CI auf ${sha.slice(0, 7)} ist nicht grün (${ciState(sha) || 'kein Lauf'}).`);
+}
+
+async function main(): Promise<void> {
+  step('Vorbedingungen');
+  if (capture('git', ['status', '--porcelain']).out !== '') fail('Arbeitsbaum ist nicht sauber.');
+  const sha = capture('git', ['rev-parse', 'HEAD']).out;
+  const ciSource = await ensureGreenCi(sha);
   const account = capture('aws', [
     'sts',
     'get-caller-identity',
@@ -215,7 +277,7 @@ async function main(): Promise<void> {
     );
   }
   console.log(
-    `  Commit ${sha.slice(0, 7)}, CI grün, Konto ${account.out}, Backup-Vault und Origin-Verify vorhanden`,
+    `  Commit ${sha.slice(0, 7)}, CI grün (${ciSource}), Konto ${account.out}, Backup-Vault und Origin-Verify vorhanden`,
   );
 
   // Neue Migrationen seit dem letzten Deploy? Dann gilt: test:dsql grün für genau diesen Stand (H-22),
@@ -238,7 +300,8 @@ async function main(): Promise<void> {
   runEnv('pnpm', ['--filter', '@nina-pm/web', 'build'], { BUILD_ID: sha, VITE_GALLERY: '' });
   const context = ['-c', `buildId=${sha}`, '-c', 'requireWebDist=true'];
   step('cdk diff – bitte vollständig lesen');
-  run('pnpm', ['cdk', 'diff', ...context]);
+  // Vorlagen-Diff statt Changesets: gleiche Änderungsliste, ohne je Stack ein Changeset anzulegen.
+  run('pnpm', ['cdk', 'diff', '--method=template', ...context]);
 
   const rl = createInterface({ input: stdin, output: stdout });
   const answer = (await rl.question('\nDeploy nach prod ausführen? (ja/nein) '))
@@ -250,7 +313,17 @@ async function main(): Promise<void> {
   if (migrationsChanged) await backupBeforeMigrations();
 
   step('cdk deploy --all');
-  run('pnpm', ['cdk', 'deploy', '--all', ...context, '--outputs-file', outputsFile]);
+  // Unabhängige Stacks parallel; Abhängigkeiten (Data → Api → Edge …) hält CDK selbst ein.
+  run('pnpm', [
+    'cdk',
+    'deploy',
+    '--all',
+    '--concurrency',
+    '4',
+    ...context,
+    '--outputs-file',
+    outputsFile,
+  ]);
 
   const outputs = existsSync(outputsFile)
     ? (JSON.parse(readFileSync(outputsFile, 'utf8')) as Record<string, Record<string, string>>)

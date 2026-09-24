@@ -3,12 +3,12 @@
 Web-App (React/TS) + AWS-Backend (CDK, Lambda/TS, API Gateway, Aurora DSQL, S3) + NINA-Plugin (C#) zur Planung von Astrofotografie-Projekten, die NINA automatisch ausführt. Einzige Umgebung: **prod** unter `https://nina-pm.svenesis.org`.
 
 ## So arbeitest du hier
-1. Nächstes Arbeitspaket mit Status ☐ in `docs/work-packages/README.md` wählen, dessen Abhängigkeiten ☑ sind (die Reihenfolge innerhalb eines Releases ist **verbindlich**, `docs/work-packages/README.md`), und dessen Brief `docs/work-packages/AP-xx.md` lesen. Status höchstens auf ◐ setzen; ☑ setzt Sven.
+1. Nächstes Arbeitspaket mit Status ☐ in `docs/work-packages/README.md` wählen, dessen Abhängigkeiten ☑ sind (die Reihenfolge innerhalb eines Releases ist **verbindlich**, `docs/work-packages/README.md`), und dessen Brief `docs/work-packages/AP-xx.md` lesen. Status höchstens auf ◐ setzen; ☑ nur auf Svens ausdrückliche Abnahme – eingetragen im **nächsten Paket-PR**, kein eigener Status-PR.
 2. **Nur** die im Brief unter „Lesen“ genannten Abschnitte laden (Zeilenbereiche in `docs/concept/INDEX.md`). Die vollständigen Konzepte liegen in `docs/concept/` – nicht komplett einlesen.
 3. Menschliche Aufgaben aus `docs/ops/human-tasks.md` prüfen: fehlt eine **Voraussetzung (Start)**, nachfragen statt umgehen; eine offene **Abnahme**-Aufgabe hält nur den Abschluss auf (PR liefern, Status ◐ lassen).
 4. Verträge zuerst (`packages/shared/contracts`, Enums/Fehler aus `docs/contracts`), dann Implementierung, dann Tests.
 5. Bei Unklarheit in einer Spec: nicht raten – Frage stellen und Spec-Ergänzung vorschlagen. **Vorrang bei Widersprüchen:** Brief > `docs/specs/` und `docs/contracts/` > `docs/rules/` > Technisches Konzept > Fachkonzept.
-6. PR mit AP-ID + Anforderungs-IDs; `docs/CHANGELOG.md` ergänzen. Menschliche Freigaben nie selbst abhaken; keine Tags/Releases setzen (macht Sven).
+6. PR mit AP-ID + Anforderungs-IDs, Basis immer `main` (auch bei aufeinander aufbauenden Paketen); Changelog-Eintrag als Datei `docs/changelog.d/YYYY-MM-DD-<ap>.md` (nicht `docs/CHANGELOG.md` direkt, `pnpm changelog:collect` sammelt). Sven landet PRs mit `pnpm pr:land <nr…> [--deploy]`. Menschliche Freigaben nie selbst abhaken; keine Tags/Releases setzen (macht Sven).
 
 ## Karte
 | Bereich | Datei |
@@ -50,6 +50,7 @@ Fehlt lokal ein Werkzeug oder der Netzzugang: **nicht improvisieren**, sondern d
 - `pnpm db:up` · `pnpm db:migrate` · `pnpm db:seed`
 - `pnpm dev:web` · `pnpm dev:api`
 - `pnpm cdk synth` (ohne AWS-Zugang; Lookup-Werte aus der eingecheckten `cdk.context.json`) · Deploy nur durch Sven mit `pnpm deploy:prod` (H-06)
+- `pnpm pr:land <nr…> [--deploy]` (nur Sven: auf CI warten, mergen, optional deployen) · `pnpm changelog:collect`
 - `pnpm e2e` · `pnpm fake-plugin` · `pnpm engine:bundle` · `pnpm nina-test-server` · `pnpm test-run:check <ordner>` · `pnpm oracle:run <grid>`
 - `dotnet build apps/nina-plugin/NinaPm.Core` · `dotnet test apps/nina-plugin/NinaPm.Core.Tests` · `dotnet build apps/nina-plugin/NinaPm.Nina` · `dotnet build apps/nina-plugin/NinaPm.Nina.Tests` (die vier lokal vor jedem Plugin-PR, TK 10.5) · vollständige Lösung inkl. `NinaPm.Nina.Ui` und die Adapter-Tests nur auf `windows-latest`
 
