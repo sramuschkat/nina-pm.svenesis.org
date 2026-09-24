@@ -4,3 +4,4 @@ export * from './files';
 export * from './jobs';
 export * from './nights';
 export * from './upload-json';
+export * from './tenants';

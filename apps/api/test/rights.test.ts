@@ -14,7 +14,10 @@ import { createStack, type Stack } from './support/stack';
 interface Example {
   readonly url: string;
   readonly method?: string;
+  /** Rumpf; als Funktion je Aufruf neu (z. B. frische Client-UUID). */
   readonly body?: unknown;
+  /** Stellt nach jedem Aufruf den Ausgangszustand wieder her (verändernde Routen). */
+  readonly reset?: () => Promise<unknown>;
   /** Objekt, auf das die Route zugreift (für `can` mit Objekt); fehlt bei Routen ohne Objekt. */
   readonly resource?: ResourceMeta;
   readonly okStatus?: number;
@@ -77,15 +80,165 @@ beforeAll(async () => {
       okStatus: 404,
     },
     'DELETE /api/auth/sessions': { url: '/api/auth/sessions', method: 'DELETE', okStatus: 204 },
+    'POST /api/auth/invitations/preview': {
+      url: '/api/auth/invitations/preview',
+      method: 'POST',
+      body: { token: 'A'.repeat(43) },
+      okStatus: 404,
+    },
     'GET /api/web/v1/jobs/{id}': { url: `/api/web/v1/jobs/${jobId}`, resource: ownJob },
     'GET /api/web/v1/files/download-url': {
       url: `/api/web/v1/files/download-url?purpose=job_result&id=${jobId}`,
       resource: ownJob,
     },
+    ...memberExamples(),
+    ...systemExamples(),
   };
 });
 
 afterAll(() => stack.close());
+
+const admin = () => stack.pg.admin;
+const target = () => ({
+  tenantId: world.tenantA,
+  targetMemberId: world.members.user2,
+  targetRole: 'user' as const,
+});
+
+function memberExamples(): Record<string, Example> {
+  const m = world.members;
+  const onlyOwner = { Admin: 403 };
+  return {
+    'GET /api/web/v1/members': { url: '/api/web/v1/members' },
+    'PATCH /api/web/v1/members/{id}': {
+      url: `/api/web/v1/members/${m.user2}`,
+      method: 'PATCH',
+      body: { displayName: 'User Zwei' },
+      resource: target(),
+      okStatus: 204,
+    },
+    'DELETE /api/web/v1/members/{id}': {
+      url: `/api/web/v1/members/${m.user2}`,
+      method: 'DELETE',
+      resource: target(),
+      okStatus: 204,
+      reset: () => admin().query("UPDATE app_user SET status = 'active' WHERE status = 'removed'"),
+    },
+    // Rollen nur durch den Owner (E2): Route-Aktion member.manage, Rollenwechsel member.admin.manage.
+    'PUT /api/web/v1/members/{id}/role': {
+      url: `/api/web/v1/members/${m.user2}/role`,
+      method: 'PUT',
+      body: { role: 'user' },
+      resource: target(),
+      okStatus: 204,
+      expect: onlyOwner,
+    },
+    'DELETE /api/web/v1/members/{id}/sessions': {
+      url: `/api/web/v1/members/${m.user2}/sessions`,
+      method: 'DELETE',
+      resource: target(),
+      okStatus: 204,
+    },
+    'POST /api/web/v1/me/leave': {
+      url: '/api/web/v1/me/leave',
+      method: 'POST',
+      okStatus: 204,
+      expect: { Owner: 409 },
+      reset: () => admin().query("UPDATE app_user SET status = 'active' WHERE status = 'removed'"),
+    },
+    'POST /api/web/v1/tenant/owner-transfer': {
+      url: '/api/web/v1/tenant/owner-transfer',
+      method: 'POST',
+      body: { memberId: m.admin },
+      okStatus: 204,
+      reset: () =>
+        admin().query('UPDATE tenant SET owner_member_id = $1 WHERE id = $2', [
+          m.owner,
+          world.tenantA,
+        ]),
+    },
+    'POST /api/web/v1/invitations': {
+      url: '/api/web/v1/invitations',
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID() }),
+      okStatus: 201,
+    },
+    'POST /api/web/v1/invitations/admin': {
+      url: '/api/web/v1/invitations/admin',
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID() }),
+      okStatus: 201,
+    },
+    'GET /api/web/v1/invitations': { url: '/api/web/v1/invitations' },
+    'DELETE /api/web/v1/invitations/{id}': {
+      url: `/api/web/v1/invitations/${crypto.randomUUID()}`,
+      method: 'DELETE',
+      okStatus: 404,
+    },
+  };
+}
+
+function systemExamples(): Record<string, Example> {
+  let n = 0;
+  return {
+    'GET /api/system/v1/tenants': { url: '/api/system/v1/tenants' },
+    'POST /api/system/v1/tenants': {
+      url: '/api/system/v1/tenants',
+      method: 'POST',
+      body: () => ({ tenantKey: `rights-${(n += 1)}`, displayName: 'Rechte-Test' }),
+      okStatus: 201,
+    },
+    'PATCH /api/system/v1/tenants/{id}': {
+      url: `/api/system/v1/tenants/${world.tenantB}`,
+      method: 'PATCH',
+      body: { status: 'active' },
+    },
+    'POST /api/system/v1/tenants/{id}/invitations': {
+      url: `/api/system/v1/tenants/${world.tenantB}/invitations`,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID() }),
+      okStatus: 201,
+    },
+    'PUT /api/system/v1/tenants/{id}/owner': {
+      url: `/api/system/v1/tenants/${world.tenantB}/owner`,
+      method: 'PUT',
+      body: {
+        memberId: world.members.foreignAdmin,
+        reason: 'Rechte-Test',
+        keepPreviousAsAdmin: true,
+      },
+      reset: () =>
+        admin().query('UPDATE tenant SET owner_member_id = NULL WHERE id = $1', [world.tenantB]),
+    },
+    'GET /api/system/v1/tenants/{id}/members': {
+      url: `/api/system/v1/tenants/${world.tenantA}/members`,
+    },
+    'GET /api/system/v1/super-users': { url: '/api/system/v1/super-users' },
+    'POST /api/system/v1/super-users': {
+      url: '/api/system/v1/super-users',
+      method: 'POST',
+      body: { discordUserId: '9'.repeat(18) },
+      okStatus: 404,
+    },
+    'PATCH /api/system/v1/super-users/{id}': {
+      url: `/api/system/v1/super-users/${world.identities.superUser}`,
+      method: 'PATCH',
+      body: { status: 'active' },
+      okStatus: 204,
+    },
+    'DELETE /api/system/v1/super-users/{id}': {
+      url: `/api/system/v1/super-users/${crypto.randomUUID()}`,
+      method: 'DELETE',
+      okStatus: 404,
+    },
+    'PATCH /api/system/v1/identities/{id}': {
+      url: `/api/system/v1/identities/${world.identities.user2}`,
+      method: 'PATCH',
+      body: { status: 'active' },
+      okStatus: 204,
+    },
+  };
+}
 
 const routeKey = (r: { method: string; path: string }) => `${r.method.toUpperCase()} ${r.path}`;
 const metaOf = (r: object) => r as { 'x-npm-action': Action; 'x-npm-session'?: 'required' };
@@ -95,11 +248,14 @@ async function call(persona: Persona, example: Example) {
   const auth = sid
     ? (await resolveSessionState(stack.services.auth, sid, stack.clock.now())).auth
     : null;
+  const body =
+    typeof example.body === 'function' ? (example.body as () => unknown)() : example.body;
   const res = await stack.request(example.url, {
     method: example.method ?? 'GET',
-    ...(example.body !== undefined ? { body: example.body } : {}),
+    ...(body !== undefined ? { body } : {}),
     ...(sid ? { cookies: { [COOKIE_NAMES.session]: sid } } : {}),
   });
+  await example.reset?.();
   const text = await res.text();
   const code = text.startsWith('{') ? (JSON.parse(text) as { code?: string }).code : undefined;
   return { status: res.status, code, auth };

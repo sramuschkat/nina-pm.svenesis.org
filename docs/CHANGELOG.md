@@ -4,6 +4,18 @@
 
 ## [Unveröffentlicht]
 
+### AP-04b – Mandanten, Einladungen, Owner-Invarianten (2026-09-24)
+
+Anforderungen: FA-SU-05…09, FA-BEN-01…11, FA-MAN-01/02, TK 5.4, 5.5, 7.2; E2, E3, SEC-50, SV-11, SV-17.
+
+- System (`/api/system/v1`, Super User im System-Kontext mit 2FA): Mandanten anlegen (mit den vier Built-in-Mondprofilen), auflisten, sperren/entsperren; Owner-Einladung; Notfall-Neuzuweisung des Owners (Mitglied oder neue Owner-Einladung, alter Owner standardmäßig deaktiviert, `owner.reassigned` an alle Admins einschließlich des bisherigen Owners); Mitgliederliste nur mit Anzeigename, Rolle, Status; Super User verwalten mit Invariante „mindestens ein aktiver“ (`409 super_user.last_protected`, „Entfernen“ deaktiviert wegen der FK aus dem System-Audit); Identität sperren.
+- Mandant (`/api/web/v1`): Mitgliederliste, Anzeigename/Status ändern, entfernen, Sitzungen eines Mitglieds beenden, `PUT /members/{id}/role` (nur Owner), `POST /me/leave`, `POST /tenant/owner-transfer` (sofort, alter Owner bleibt Admin); Einladungen als **zwei Routen** (SEC-50: `/invitations` fest `user`, `/invitations/admin` nur Owner), Liste, Widerruf (Einladungen des Owners nur durch den Owner); `POST /api/auth/invitations/preview`.
+- `MemberRepository` mit Wächter auf `tenant` (`SELECT … FOR UPDATE`, OCC-Retry): `409 member.owner_protected`, `409 member.cannot_change_self`, `409 member.owner_cannot_leave`, `422 owner_transfer.target_invalid`; `change_log` (Rollenwechsel mit `diff.reason`) und `notification` (`role.changed`, `owner.reassigned`).
+- Einladungslink `https://nina-pm.svenesis.org/einladung#<token>` – Token im Fragment, erreicht keine Zugriffslogs (DAT-20); Client-UUID macht die Anlage idempotent (`409 resource.in_use` bei Wiederholung).
+- `ops-cli`: `help`, `create-tenant`, `create-invitation`, `set-owner`, `grant-super-user`, `block-identity`, `revoke-sessions`, `seed` (Stand: Built-in-Mondprofile), `list-failed-jobs`; jeder Aufruf schreibt `system_audit` mit Akteur `ops_cli`.
+- `daily`: abgelaufene Einladungen in Stapeln löschen.
+- Rechte-Generator über 35 Routen × 7 Rollen (281 Fälle) mit echten Sitzungen.
+
 ### AP-04a abgenommen (2026-09-24)
 
 - Deploy durch Sven (Commit `dd80708`, keine Migration), Smoke 10/10 inkl. `/api/auth/test-login` → 404 und Redirect zu Discord.

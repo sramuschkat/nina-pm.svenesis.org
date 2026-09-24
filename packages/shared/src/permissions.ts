@@ -133,7 +133,9 @@ export function can(
       // Nur der Owner, nie an sich selbst (E2).
       return owner && res?.targetMemberId !== ctx.memberId;
     case 'member.leave':
-      return !ctx.isOwner;
+      // Jedes Mitglied; dass der Owner nicht austreten kann, ist eine Invariante mit eigenem Code
+      // (`409 member.owner_cannot_leave`, Brief AP-04b) und keine Berechtigungsfrage.
+      return true;
     case 'job.read':
       // Eigene Jobs; Admins alle Jobs des Mandanten.
       return admin || res === undefined || res.createdBy === ctx.memberId;

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { dispatch, TICKS, type DispatchDeps, type TickTasks } from '../src/worker/dispatch';
+import { tickTasks } from '../src/worker/tasks';
 
 const empty: TickTasks = { 'tick-5min': [], 'tick-hourly': [], daily: [], weekly: [] };
 const deps = (
@@ -26,6 +27,16 @@ describe('Worker-Dispatcher', () => {
     };
     expect(await dispatch({ tick: 'daily' }, deps(tasks))).toEqual({ ran: ['a', 'b'] });
     expect(order).toEqual(['a', 'b']);
+  });
+
+  it('daily räumt abgelaufene Einladungen auf (TK 13)', async () => {
+    const cleanupInvitations = vi.fn(() => Promise.resolve(3));
+    const tasks = tickTasks(
+      { queue: () => Promise.reject(new Error('nicht benutzt')) },
+      { cleanupInvitations },
+    );
+    expect(await dispatch({ tick: 'daily' }, deps(tasks))).toEqual({ ran: ['invitation_cleanup'] });
+    expect(cleanupInvitations).toHaveBeenCalledOnce();
   });
 
   it('führt {jobId} über den Job-Runner aus', async () => {

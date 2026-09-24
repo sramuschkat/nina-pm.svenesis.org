@@ -12,6 +12,8 @@ import { redact } from './lib/redact';
 import { requestIdMiddleware, requestLog } from './lib/request-log';
 import { AUTH_ROUTES, authRoutes } from './routes/auth';
 import { healthRoute, healthRoutes } from './routes/health';
+import { SYSTEM_ROUTES, systemRoutes } from './routes/system';
+import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
 import { getJobRoute, webJobRoutes } from './routes/web-jobs';
@@ -28,7 +30,14 @@ export interface AppDeps {
 }
 
 /** Alle Routen mit ihrer Aktion (TK 5.5) – Quelle für Rechte-Testgenerator und OpenAPI. */
-export const ROUTES = [healthRoute, ...AUTH_ROUTES, getJobRoute, downloadUrlRoute] as const;
+export const ROUTES = [
+  healthRoute,
+  ...AUTH_ROUTES,
+  getJobRoute,
+  downloadUrlRoute,
+  ...MEMBER_ROUTES,
+  ...SYSTEM_ROUTES,
+] as const;
 
 const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
 
@@ -73,6 +82,8 @@ export function createApp(deps: AppDeps) {
   app.route('/', authRoutes(services));
   app.route('/', webJobRoutes(services));
   app.route('/', webFileRoutes(services));
+  app.route('/', webMemberRoutes(services));
+  app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));
 

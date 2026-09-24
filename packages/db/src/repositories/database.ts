@@ -7,11 +7,19 @@ import type { TenantContext } from './base';
 export type { AppDbRole, DbConfig } from '../connection';
 import { AuthRepository } from './auth';
 import { JobQueue, JobRepository } from './job';
+import { MemberRepository } from './member';
+import { TenantAdminRepository, type SystemActor } from './tenant-admin';
 import { TenantRepository } from './tenant';
 
 export interface OpenDatabase {
   readonly db: Kysely<Database>;
-  repositories(ctx: TenantContext): { tenant: TenantRepository; job: JobRepository };
+  repositories(ctx: TenantContext): {
+    tenant: TenantRepository;
+    job: JobRepository;
+    member: MemberRepository;
+  };
+  /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
+  tenantAdmin(actor: SystemActor): TenantAdminRepository;
   /** Warteschlange des `worker` über alle Mandanten (TK 7.4). */
   jobQueue(): JobQueue;
   /** Anmeldung und Sitzungen – an Sitzung/Identität gebunden (TK 5.3). */
@@ -26,7 +34,9 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
     repositories: (ctx) => ({
       tenant: new TenantRepository(db, ctx),
       job: new JobRepository(db, ctx),
+      member: new MemberRepository(db, ctx),
     }),
+    tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),
     auth: () => new AuthRepository(db),
     close: () => db.destroy(),

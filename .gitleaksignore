@@ -1,0 +1,3 @@
+# Geprüfte Fehlalarme (nur mit genauem Fingerabdruck: Commit, Datei, Regel, Zeile).
+# AP-04b: erfundene Discord-ID im Rechte-Test (kein Geheimnis; im Folgecommit ersetzt).
+909cec5796ebcbf302615cf386a30e354faa32b6:apps/api/test/rights.test.ts:discord-client-id:220

@@ -19,6 +19,7 @@ const services = lazy<ApiServices>(async () => {
   const now = () => new Date();
   return {
     repositories: (ctx) => db.repositories(ctx),
+    tenantAdmin: (actor) => db.tenantAdmin(actor),
     auth: db.auth(),
     authConfig: {
       cookieSecret: ssmSecret(requiredEnv('COOKIE_SECRET_PARAM')),
