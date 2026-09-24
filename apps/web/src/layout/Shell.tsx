@@ -10,6 +10,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
+import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
 import { api, memberApi } from '../api/client';
 import { useAppearance } from '../app/theme';
@@ -231,7 +232,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   const system = me?.context === 'system';
   const areas: NavArea[] = [
     { key: 'tonight', visible: !system },
-    { key: 'equipment', visible: !system },
+    { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.sites },
     { key: 'planning', visible: !system },
     { key: 'projects', visible: !system },
     { key: 'nina', visible: !system },

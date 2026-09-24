@@ -175,3 +175,60 @@ export const sessionApi = {
   end: (id: string) => apiFetch<undefined>(`/api/auth/sessions/${id}`, json('DELETE')),
   endAll: () => apiFetch<undefined>('/api/auth/sessions', json('DELETE')),
 };
+
+export type SiteView = Schemas['SiteView'];
+export type SiteLinkView = Schemas['SiteLinkView'];
+export type TelescopeView = Schemas['TelescopeView'];
+export type CameraView = Schemas['CameraView'];
+export type FilterView = Schemas['FilterView'];
+export type MoonProfileView = Schemas['MoonProfileView'];
+export type ExposureTemplateView = Schemas['ExposureTemplateView'];
+export type RigView = Schemas['RigView'];
+export type FilterWheelView = Schemas['FilterWheelView'];
+export type SiteNightsView = Schemas['SiteNightsView'];
+
+/** Pfade der Stammdaten unter `/api/web/v1` (TK 7.2) mit Ansicht je Objektart. */
+export interface EquipmentKinds {
+  sites: SiteView;
+  'site-links': SiteLinkView;
+  telescopes: TelescopeView;
+  cameras: CameraView;
+  filters: FilterView;
+  'moon-profiles': MoonProfileView;
+  'exposure-templates': ExposureTemplateView;
+  rigs: RigView;
+}
+export type EquipmentKind = keyof EquipmentKinds;
+
+const V1 = '/api/web/v1';
+const ifMatch = (version: number | undefined) =>
+  version === undefined ? {} : { headers: { 'If-Match': `"${String(version)}"` } };
+
+/** Ausrüstung (S-10…S-15, AP-09a): CRUD je Objektart, Scheduler, Filterrad, Nacht-Tabelle. */
+export const equipmentApi = {
+  list: <K extends EquipmentKind>(kind: K, query = '') =>
+    apiFetch<{ items: EquipmentKinds[K][] }>(`${V1}/${kind}${query}`),
+  create: <K extends EquipmentKind>(kind: K, body: object & { id: string }) =>
+    apiFetch<EquipmentKinds[K]>(`${V1}/${kind}`, json('POST', body)),
+  update: <K extends EquipmentKind>(kind: K, id: string, body: object) =>
+    apiFetch<EquipmentKinds[K]>(`${V1}/${kind}/${id}`, json('PUT', body)),
+  remove: (kind: EquipmentKind, id: string) =>
+    apiFetch<undefined>(`${V1}/${kind}/${id}`, json('DELETE')),
+  schedulerSettings: (id: string, body: RigView['scheduler'], version?: number) =>
+    apiFetch<RigView>(`${V1}/rigs/${id}/scheduler-settings`, {
+      ...json('PUT', body),
+      ...ifMatch(version),
+    }),
+  filterWheel: (id: string) => apiFetch<FilterWheelView>(`${V1}/rigs/${id}/filter-wheel`),
+  putFilterWheel: (
+    id: string,
+    slots: { position: number; filterId: string | null; ninaFilterName: string | null }[],
+    version?: number,
+  ) =>
+    apiFetch<FilterWheelView>(`${V1}/rigs/${id}/filter-wheel`, {
+      ...json('PUT', { slots }),
+      ...ifMatch(version),
+    }),
+  nights: (siteId: string, count = 60) =>
+    apiFetch<SiteNightsView>(`${V1}/sites/${siteId}/nights?count=${String(count)}`),
+};

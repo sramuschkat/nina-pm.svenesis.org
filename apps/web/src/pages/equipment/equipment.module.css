@@ -1,0 +1,335 @@
+/* Ausrüstung S-10…S-15: volle Breite, Spalten nur über das Raster; Abstände/Farben nur über Tokens. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.head {
+  composes: head from '../admin/admin.module.css';
+}
+.panel {
+  composes: panel from '../admin/admin.module.css';
+}
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+.input {
+  composes: input from '../admin/admin.module.css';
+}
+.check {
+  composes: check from '../admin/admin.module.css';
+}
+.actions {
+  composes: actions from '../admin/admin.module.css';
+}
+.button {
+  composes: button from '../admin/admin.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../admin/admin.module.css';
+}
+.buttonDanger {
+  composes: buttonDanger from '../admin/admin.module.css';
+}
+.success {
+  composes: success from '../admin/admin.module.css';
+}
+.table {
+  composes: table from '../admin/admin.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../admin/admin.module.css';
+}
+.num {
+  composes: num from '../admin/admin.module.css';
+}
+.pillOk {
+  composes: pillOk from '../admin/admin.module.css';
+}
+.pillWarn {
+  composes: pillWarn from '../admin/admin.module.css';
+}
+.pillDanger {
+  composes: pillDanger from '../admin/admin.module.css';
+}
+.pill {
+  composes: pill from '../admin/admin.module.css';
+}
+.tabs {
+  composes: tabs from '../admin/admin.module.css';
+}
+.tab {
+  composes: tab from '../admin/admin.module.css';
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.readOnly {
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  background: var(--npm-note-bg);
+  border-left: 4px solid var(--npm-accent);
+  font-size: var(--npm-font-small);
+}
+
+/* Auswahl | Formular | Berechnet – ab 1280 px drei Spalten, darunter gestapelt (768 px ohne Scrollen). */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 3fr) minmax(260px, 1.5fr);
+  gap: var(--npm-space-5);
+  align-items: start;
+}
+.layoutTwo {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+  gap: var(--npm-space-5);
+  align-items: start;
+}
+@media (max-width: 1279px) {
+  .layout {
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+  }
+  .layout > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 900px) {
+  .layout,
+  .layoutTwo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+  min-width: 0;
+}
+
+.pick {
+  composes: panel;
+  gap: var(--npm-space-2);
+}
+.pickHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+}
+.pickHead h2 {
+  font-size: var(--npm-font-h3);
+}
+.pickList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pickItem {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  width: 100%;
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  background: none;
+  border: none;
+  border-radius: calc(var(--npm-radius) / 2);
+  color: var(--npm-text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.pickItem:hover {
+  background: var(--npm-note-bg);
+}
+.pickItem[aria-current='true'] {
+  background: var(--npm-note-bg);
+  box-shadow: inset 3px 0 0 var(--npm-accent);
+  font-weight: 600;
+}
+.pickItem > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pickMeta {
+  margin-left: auto;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+
+.form {
+  composes: panel;
+}
+.formTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  flex-wrap: wrap;
+}
+.formTitle h2 {
+  font-size: var(--npm-font-h3);
+  margin-right: auto;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--npm-space-3);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.field label {
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+}
+.fieldWide {
+  grid-column: 1 / -1;
+}
+.fieldError {
+  color: var(--npm-danger);
+  font-size: var(--npm-font-small);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding-top: var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+}
+.section h3 {
+  font-size: var(--npm-font-base);
+}
+.formFoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding-top: var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+}
+fieldset.inline {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  align-items: center;
+}
+
+.derived {
+  composes: panel;
+}
+.derived dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+}
+.derived dt {
+  color: var(--npm-text-light);
+}
+.derived dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  background: var(--npm-warning-bg);
+  border-left: 4px solid var(--npm-warning);
+  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+}
+.usage ul {
+  margin: 0;
+  padding-left: var(--npm-space-5);
+}
+.usage button {
+  align-self: flex-start;
+}
+.usageTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-weight: 600;
+  margin: 0;
+}
+.note {
+  composes: readOnly;
+}
+.warning {
+  composes: usage;
+}
+
+.listEditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.listEditor table input,
+.listEditor table select {
+  min-width: 64px;
+}
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: calc(var(--npm-radius) / 2);
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  border-color: var(--npm-border);
+  color: var(--npm-danger);
+}
+
+.chart {
+  width: 100%;
+  height: var(--npm-chart-h);
+  display: block;
+}
+.chartAxis {
+  stroke: var(--npm-border);
+  stroke-width: 1;
+}
+.chartLabel {
+  fill: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: var(--npm-space-1);
+  border: 1px solid var(--npm-border);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  font-size: var(--npm-font-small);
+}
+.details summary {
+  cursor: pointer;
+  font-size: var(--npm-font-small);
+  color: var(--npm-link);
+}

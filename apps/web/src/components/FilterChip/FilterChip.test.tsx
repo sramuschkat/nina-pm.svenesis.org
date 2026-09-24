@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
-import { chipTextColor, contrastRatio, FilterChip } from './index';
+import { chipBackground, chipTextColor, contrastRatio, FilterChip } from './index';
 
 describe('FilterChip (§2.1)', () => {
   it('ohne onToggle ein span, mit onToggle ein button aria-pressed; Tastatur', async () => {
@@ -38,5 +38,17 @@ describe('FilterChip (§2.1)', () => {
     '#e040fb',
   ])('Grenzfall Kontrast: Schrift auf %s ≥ 4,5:1', (color) => {
     expect(contrastRatio(chipTextColor(color), color)).toBeGreaterThanOrEqual(4.5);
+    expect(chipBackground(color)).toBe(color);
   });
+
+  // Mitteltöne (Seed: OIII, SII, G): keine Schriftfarbe erreicht 4,5:1 → Hintergrund leicht dunkler.
+  it.each(['#00897B', '#8E24AA', '#43A047', '#E53935'])(
+    'Grenzfall Mittelton %s: abgedunkelter Hintergrund mit Schrift ≥ 4,5:1',
+    (color) => {
+      const bg = chipBackground(color);
+      expect(contrastRatio(chipTextColor(bg), bg)).toBeGreaterThanOrEqual(4.5);
+      render(<FilterChip shortName="OIII" color={color} />);
+      expect(screen.getByText('OIII')).toHaveStyle({ background: bg });
+    },
+  );
 });
