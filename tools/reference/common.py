@@ -1,6 +1,6 @@
 """Gemeinsame Einstellungen des Referenzgenerators (TK 9.1).
 
-- Ephemeride de432s über jplephem (`solar_system_ephemeris.set('de432s')`).
+- Ephemeride de432s **aus der Datei** `kernels/de432s.bsp` (Prüfsumme in `kernels/SHA256SUMS`), kein Netzzugriff.
 - UT1 ≈ UTC wie die Engine: keine IERS-Downloads, `iers_degraded_accuracy = 'ignore'`.
 - Refraktion: geometrische Höhen aus astropy (`pressure = 0`), scheinbar über **dieselbe**
   Saemundsson-Formel wie die Engine (AST-D30) – ein Implementierungstest, kein Modellvergleich.
@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -21,11 +22,22 @@ from astropy.coordinates import EarthLocation, solar_system_ephemeris
 from astropy.time import Time
 from astropy.utils import iers
 
+HERE = Path(__file__).resolve().parent
+KERNEL = HERE / "kernels" / "de432s.bsp"
+
+
+def _check_kernel() -> None:
+    expected = (HERE / "kernels" / "SHA256SUMS").read_text(encoding="utf-8").split()[0]
+    actual = hashlib.sha256(KERNEL.read_bytes()).hexdigest()
+    if actual != expected:
+        raise SystemExit(f"de432s.bsp: Prüfsumme {actual} statt {expected}")
+
+
 iers.conf.auto_download = False
 iers.conf.iers_degraded_accuracy = "ignore"
-solar_system_ephemeris.set("de432s")
+_check_kernel()
+solar_system_ephemeris.set(str(KERNEL))
 
-HERE = Path(__file__).resolve().parent
 OUT = HERE.parent.parent / "packages" / "engine" / "test" / "fixtures"
 
 
@@ -120,7 +132,7 @@ def write(name: str, payload) -> None:
             "generator": f"tools/reference/{name.replace('.json', '')}",
             "astropy": astropy.__version__,
             "numpy": np.__version__,
-            "ephemeris": "de432s (jplephem)",
+            "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
             "ut1": "UT1 = UTC (iers_degraded_accuracy = ignore), wie die Engine",
             "refraction": "geometrisch (pressure = 0); scheinbar über Saemundsson wie die Engine (AST-D30)",
             "leapSecondsExpire": str(iers.LeapSeconds.auto_open().expires),

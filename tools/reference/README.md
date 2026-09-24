@@ -14,4 +14,4 @@ Standard ist der CI-Job `reference.yml` (Artefakt `reference-fixtures`; die Fixt
 cd tools/reference && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && python gen_all.py
 ```
 
-**Ephemeride:** `de432s` lädt astropy beim ersten Lauf (≈ 10 MB) aus dem JPL-Archiv nach. TK 9.1 sieht vor, den Kernel mit Prüfsumme unter `kernels/` einzuchecken; bis dahin lädt ihn der CI-Job.
+**Ephemeride:** `kernels/de432s.bsp` liegt im Repository (Prüfsumme `kernels/SHA256SUMS`, Herkunft in `kernels/README.md`); der Generator prüft sie und lädt sie aus der Datei – kein Netzzugriff zur Laufzeit (TK 9.1, AST-T11).

@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### Referenzgenerator: Ephemeride im Repository (2026-09-24)
+
+- `tools/reference/kernels/de432s.bsp` (JPL DE432 gekürzt, NAIF-Archiv, abgerufen 24.09.2026, gemeinfrei) mit Prüfsumme `SHA256SUMS` und Herkunftsnachweis; `common.py` prüft die Prüfsumme und lädt den Kern aus der Datei (TK 9.1, AST-T11). Der CI-Job `reference.yml` braucht damit kein Nachladen mehr. Fixtures unverändert (nur die Quellenangabe in den Metadaten).
+
 ### AP-08b – Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (2026-09-25)
 
 Anforderungen: FK 8.1, 9; TK 8.4, 9.1–9.2, 18 (`reference.yml`); specs/engine/night.md §1–§4, moon.md §1–2, flip-rotation.md §1.1; NT-02, NT-07, NT-40, NT-46; WS-20…WS-24, WS-28/29.
