@@ -97,7 +97,13 @@ export const SessionView = z
   .meta({ id: 'SessionView' });
 export type SessionView = z.infer<typeof SessionView>;
 
-export const SessionList = z.object({ sessions: z.array(SessionView) }).meta({ id: 'SessionList' });
+export const SessionList = z
+  .object({
+    sessions: z.array(SessionView),
+    /** Letzte Discord-Anmeldung der Identität (`identity.last_login_at`, S-73). */
+    lastLoginAt: UtcInstant.nullable(),
+  })
+  .meta({ id: 'SessionList' });
 
 /** Einladungs-Token: 256 Bit base64url (43 Zeichen). */
 export const InvitationToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/);

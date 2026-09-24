@@ -8,7 +8,13 @@ import { can } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { memberApi, type Invitation, type InvitationCreated, type Member } from '../../api/client';
+import {
+  memberApi,
+  tenantApi,
+  type Invitation,
+  type InvitationCreated,
+  type Member,
+} from '../../api/client';
 import { useAuth } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
@@ -69,6 +75,7 @@ export function MembersPage() {
         )}
       </div>
       <InvitationList />
+      <OwnerTransfer members={list} />
     </AdminLayout>
   );
 }
@@ -544,5 +551,72 @@ function InvitationRow({ invitation }: { invitation: Invitation }) {
         />
       </td>
     </tr>
+  );
+}
+
+/**
+ * *Owner übertragen* (FA-BEN-09, E2) – nur für den Owner sichtbar: an einen aktiven Admin, sofort, mit
+ * `ConfirmDialog` („Du bleibst Admin“). Danach gelten die neuen Rechte ab der nächsten Anfrage.
+ */
+function OwnerTransfer({ members }: { members: readonly Member[] }) {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const { context, refresh } = useAuth();
+  const [target, setTarget] = useState('');
+  const allowed = can(context, 'tenant.owner.transfer');
+  const admins = members.filter((m) => m.role === 'admin' && m.status === 'active');
+  const name = admins.find((m) => m.id === target)?.displayName ?? '';
+  const transfer = useConfirm(async () => {
+    await tenantApi.transferOwner(target);
+    setTarget('');
+    await refresh();
+    await client.invalidateQueries({ queryKey: MEMBERS_KEY });
+  });
+  if (!allowed) return null;
+  const Crown = actionIcons.transferOwner;
+  return (
+    <section className={styles.panel} aria-labelledby="owner-transfer">
+      <h2 id="owner-transfer">{t('admin.owner.title')}</h2>
+      <p className={styles.muted}>{t('admin.owner.hint')}</p>
+      {admins.length === 0 ? (
+        <p className={styles.muted}>{t('admin.owner.noAdmins')}</p>
+      ) : (
+        <form
+          className={styles.row}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (target) transfer.open();
+          }}
+        >
+          <div className={styles.field}>
+            <label htmlFor="owner-target">{t('admin.owner.target')}</label>
+            <select
+              id="owner-target"
+              className={styles.input}
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            >
+              <option value="">{t('system.tenants.reassignChoose')}</option>
+              {admins.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                  {m.rightsDormant ? ` (${t('admin.members.rightsDormant')})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" className={styles.button} disabled={!target}>
+            <Crown size={ICON_SIZE.button} aria-hidden />
+            {t('admin.owner.submit')}
+          </button>
+        </form>
+      )}
+      <ConfirmDialog
+        {...transfer.dialog}
+        title={t('admin.owner.confirmTitle', { name })}
+        consequence={t('admin.owner.confirmConsequence')}
+        confirmLabel={t('admin.owner.submit')}
+      />
+    </section>
   );
 }

@@ -1777,6 +1777,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/audit/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Änderungsprotokoll des Mandanten (change_log, neueste zuerst)
+         * @description Aktion: `tenant.settings` · S-72, TK 7.2, FA-BEN-08, SV-11
+         */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                    entity?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Einträge */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeLogList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nur Admins */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/tenant/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mandanteneinstellungen (mit Standardwerten)
+         * @description Aktion: `tenant.settings` · FA-MAN-05, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Einstellungen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantSettingsView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nur Admins */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mandanteneinstellungen ändern (nur Schlüssel aus tenantSettingsKeys)
+         * @description Aktion: `tenant.settings` · FA-MAN-05, TK 7.2, DAT5-22, SV-03
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TenantSettingsPatch"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TenantSettingsView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Nur Admins */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed (unbekannter Schlüssel oder ungültiger Wert) */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -2912,6 +3084,11 @@ export interface components {
         };
         SessionList: {
             sessions: components["schemas"]["SessionView"][];
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            lastLoginAt: string | null;
         };
         SessionView: {
             /**
@@ -3162,6 +3339,64 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             createdAt: string;
+        };
+        ChangeLogList: {
+            items: components["schemas"]["ChangeLogEntry"][];
+            nextCursor: string | null;
+        };
+        ChangeLogEntry: {
+            /** Format: uuid */
+            id: string;
+            entity: string;
+            /** Format: uuid */
+            entityId: string;
+            actorName: string | null;
+            subjectName: string | null;
+            action: string;
+            diff: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        TenantSettingsView: {
+            displayName: string;
+            settings: components["schemas"]["TenantSettings"];
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+        };
+        TenantSettings: {
+            tenantTimezone: string;
+            /** @enum {string} */
+            defaultLanguage: "de" | "en";
+            userCorrections: boolean;
+            exoUserLockNeedsAdmin: boolean;
+            exoUserMaxOpenLocks: number;
+            autoReactivateOnRemaining: boolean;
+            autoReadyToProcess: boolean;
+            adminSelfApproval: boolean;
+            approvalDeadlineDays: number | null;
+        };
+        TenantSettingsPatch: {
+            displayName?: string;
+            settings?: {
+                tenantTimezone?: string;
+                /** @enum {string} */
+                defaultLanguage?: "de" | "en";
+                userCorrections?: boolean;
+                exoUserLockNeedsAdmin?: boolean;
+                exoUserMaxOpenLocks?: number;
+                autoReactivateOnRemaining?: boolean;
+                autoReadyToProcess?: boolean;
+                adminSelfApproval?: boolean;
+                approvalDeadlineDays?: number | null;
+            };
         };
         TenantAdminView: {
             /**

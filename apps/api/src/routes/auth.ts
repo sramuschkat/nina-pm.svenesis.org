@@ -434,6 +434,7 @@ export function authRoutes(services: () => Promise<ApiServices>) {
     const auth = requireAuth(c);
     const iso = (d: Date | string) => new Date(d).toISOString().replace(/\.\d{3}Z$/, 'Z');
     const rows = await svc.auth.listSessions(auth.identityId, svc.now());
+    const identity = await svc.auth.identityById(auth.identityId);
     noStore(c);
     return c.json(
       {
@@ -445,6 +446,7 @@ export function authRoutes(services: () => Promise<ApiServices>) {
           createdAt: iso(r.createdAt),
           lastSeenAt: iso(r.lastSeenAt),
         })),
+        lastLoginAt: identity?.lastLoginAt ? iso(identity.lastLoginAt) : null,
       },
       200,
     );

@@ -4,6 +4,19 @@
 
 ## [Unveröffentlicht]
 
+### AP-07c – Mandanteneinstellungen, Owner-Übertragung, Protokolle (2026-09-24)
+
+Anforderungen: FA-BEN-09, FA-MAN-05, FA-ADM-03, FA-LOG-08, S-70 (*Owner übertragen*), S-71, S-72, S-73; TK 5.3, 7.2; DAT5-22; SV-01, SV-03, SV-11.
+
+- Verträge: `TenantSettings` (je Schlüssel aus `tenantSettingsKeys` ein Schema, zur Übersetzungszeit gegen die Aufzählung geprüft), `TENANT_SETTING_DEFAULTS` nach FK (FA-FRG-10 an, FA-PRJ-12 automatisch „Bereit zur Bearbeitung“ aus / zurück nach „Aktiv“ an, FA-AUS-06 aus, FA-EXO-18), `TenantSettingsPatch` (`displayName` und `settings`, beide strikt – unbekannte Schlüssel → `422 validation.failed`), `ChangeLogEntry`/`ChangeLogList`; `SessionList` um `lastLoginAt` erweitert.
+- Routen: `GET/PATCH /web/v1/tenant/settings` und `GET /web/v1/audit/changes` (Aktion `tenant.settings`); jede Einstellungsänderung steht mit altem und neuem Wert im Änderungsprotokoll (`entity = 'tenant'`); die Mandantenzeitzone wirkt sofort auf `/auth/me`.
+- S-70 *Owner übertragen* (nur Owner): Auswahl eines aktiven Admins, `ConfirmDialog` („Du bleibst Admin“), wirkt sofort über `POST /web/v1/tenant/owner-transfer` (AP-04b).
+- S-71 Mandanteneinstellungen, Reiter *Allgemein*: Anzeigename, Standardsprache, Zeitzone, Freigabe, Projekte/Aufnahmen, Exoplaneten; **kein** Reiter *Sicherheit* (Hinweis auf die festen Regeln); *Discord* folgt mit AP-60.
+- S-72 Protokoll: Änderungsprotokoll mit Filter je Objektart, Akteur und Betroffenem, lesbaren Änderungen (alt → neu) und „Weitere laden“; darunter die Super-User-Aktionen des Mandanten (`GET /web/v1/audit/system`).
+- S-73 Persönliche Einstellungen (Sprache, Erscheinungsbild, Dichte) und *Meine Anmeldesitzungen* (Gerät, gekürzte IP, Beginn, letzte Aktivität, letzte Anmeldung) mit *Beenden* je Sitzung und *Überall abmelden*, jeweils mit `ConfirmDialog`; erreichbar über das Benutzermenü in jedem Kontext.
+- Tests: API (Standardwerte, Speichern mit Protokoll und Wirkung auf `/auth/me`, unbekannte/Sicherheits-Schlüssel und ungültige Werte → 422, User 403, Änderungsprotokoll mit Grund/Cursor/Isolation, letzte Anmeldung), Playwright (Owner überträgt nach `ConfirmDialog` → Empfänger sofort Owner, alter Owner Admin; *Owner übertragen* für Admins unsichtbar und API 403; Einstellung speichern → Mandantenzeit und Protokoll; *Überall abmelden* → zweiter Tab 401; 768/2400 px), axe für S-71…S-73 in beiden Themes. Zeitlimit des CSRF-Tests mit eigener Datenbank auf 30 s angehoben (lief im Gesamtlauf knapp über 5 s).
+- Offen (Spec-Frage): Bedeutung und Standard von `approvalDeadlineDays` sind nicht festgelegt – umgesetzt als Tage bis zum Verfall offener Einreichungen, `null` = keine Frist.
+
 ### AP-07b – Mitglieder, Einladungen, Admin-Rechte (Owner) (2026-09-24)
 
 Anforderungen: FA-BEN-01…11, S-70; TK 5.5, 7.2; E2, E4; SV-03.

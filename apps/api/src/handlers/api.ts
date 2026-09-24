@@ -21,7 +21,10 @@ const services = lazy<ApiServices>(async () => {
   const now = () => new Date();
   const s3 = new S3Client({});
   return {
-    repositories: (ctx) => db.repositories(ctx),
+    repositories: (ctx) => {
+      const repos = db.repositories(ctx);
+      return { ...repos, tenant: () => repos.tenant };
+    },
     tenantAdmin: (actor) => db.tenantAdmin(actor),
     auth: db.auth(),
     authConfig: {

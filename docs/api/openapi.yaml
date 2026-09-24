@@ -308,8 +308,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SessionView"
+        lastLoginAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
       required:
         - sessions
+        - lastLoginAt
     SessionView:
       type: object
       properties:
@@ -826,6 +833,156 @@ components:
         - action
         - details
         - createdAt
+    ChangeLogList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeLogEntry"
+        nextCursor:
+          type:
+            - string
+            - "null"
+      required:
+        - items
+        - nextCursor
+    ChangeLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entity:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        actorName:
+          type:
+            - string
+            - "null"
+        subjectName:
+          type:
+            - string
+            - "null"
+        action:
+          type: string
+        diff:
+          type: object
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - entity
+        - entityId
+        - actorName
+        - subjectName
+        - action
+        - diff
+        - createdAt
+    TenantSettingsView:
+      type: object
+      properties:
+        displayName:
+          type: string
+        settings:
+          $ref: "#/components/schemas/TenantSettings"
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - displayName
+        - settings
+        - updatedAt
+    TenantSettings:
+      type: object
+      properties:
+        tenantTimezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        defaultLanguage:
+          type: string
+          enum:
+            - de
+            - en
+        userCorrections:
+          type: boolean
+        exoUserLockNeedsAdmin:
+          type: boolean
+        exoUserMaxOpenLocks:
+          type: integer
+          minimum: 1
+          maximum: 20
+        autoReactivateOnRemaining:
+          type: boolean
+        autoReadyToProcess:
+          type: boolean
+        adminSelfApproval:
+          type: boolean
+        approvalDeadlineDays:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 365
+      required:
+        - tenantTimezone
+        - defaultLanguage
+        - userCorrections
+        - exoUserLockNeedsAdmin
+        - exoUserMaxOpenLocks
+        - autoReactivateOnRemaining
+        - autoReadyToProcess
+        - adminSelfApproval
+        - approvalDeadlineDays
+      additionalProperties: false
+    TenantSettingsPatch:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        settings:
+          type: object
+          properties:
+            tenantTimezone:
+              type: string
+              minLength: 1
+              maxLength: 64
+            defaultLanguage:
+              type: string
+              enum:
+                - de
+                - en
+            userCorrections:
+              type: boolean
+            exoUserLockNeedsAdmin:
+              type: boolean
+            exoUserMaxOpenLocks:
+              type: integer
+              minimum: 1
+              maximum: 20
+            autoReactivateOnRemaining:
+              type: boolean
+            autoReadyToProcess:
+              type: boolean
+            adminSelfApproval:
+              type: boolean
+            approvalDeadlineDays:
+              type:
+                - integer
+                - "null"
+              minimum: 1
+              maximum: 365
+          additionalProperties: false
+      additionalProperties: false
     TenantAdminView:
       type: object
       properties:
@@ -2235,6 +2392,129 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Nur Admins
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/audit/changes:
+    get:
+      summary: Änderungsprotokoll des Mandanten (change_log, neueste zuerst)
+      tags:
+        - audit
+      description: "Aktion: `tenant.settings` · S-72, TK 7.2, FA-BEN-08, SV-11"
+      x-npm-action: tenant.settings
+      x-npm-requirements:
+        - S-72
+        - TK 7.2
+        - FA-BEN-08
+        - SV-11
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            maxLength: 200
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            maxLength: 40
+          required: false
+          name: entity
+          in: query
+      responses:
+        "200":
+          description: Einträge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeLogList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Nur Admins
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/tenant/settings:
+    get:
+      summary: Mandanteneinstellungen (mit Standardwerten)
+      tags:
+        - tenant
+      description: "Aktion: `tenant.settings` · FA-MAN-05, TK 7.2"
+      x-npm-action: tenant.settings
+      x-npm-requirements:
+        - FA-MAN-05
+        - TK 7.2
+      responses:
+        "200":
+          description: Einstellungen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantSettingsView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Nur Admins
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      summary: Mandanteneinstellungen ändern (nur Schlüssel aus tenantSettingsKeys)
+      tags:
+        - tenant
+      description: "Aktion: `tenant.settings` · FA-MAN-05, TK 7.2, DAT5-22, SV-03"
+      x-npm-action: tenant.settings
+      x-npm-requirements:
+        - FA-MAN-05
+        - TK 7.2
+        - DAT5-22
+        - SV-03
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantSettingsPatch"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantSettingsView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Nur Admins
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed (unbekannter Schlüssel oder ungültiger Wert)
           content:
             application/problem+json:
               schema:

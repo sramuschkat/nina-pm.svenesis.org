@@ -70,6 +70,24 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('Escape');
     });
 
+    test('S-71…S-73 Einstellungen, Protokoll, Sitzungen (AP-07c)', async ({ page }) => {
+      await testLogin(page, 'owner');
+      for (const [path, heading] of [
+        ['/verwaltung/einstellungen', 'Mandanteneinstellungen'],
+        ['/verwaltung/protokoll', 'Protokoll'],
+        ['/einstellungen', 'Persönliche Einstellungen'],
+      ] as const) {
+        await page.goto(path);
+        await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+        await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
+        await expectNoSerious(page, path);
+      }
+      await page.getByRole('button', { name: 'Überall abmelden' }).click();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await expectNoSerious(page, 'S-73 Dialog');
+      await page.keyboard.press('Escape');
+    });
+
     test('Glocke geöffnet (AP-06b); Tastatur: Enter öffnet, Escape schließt', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');

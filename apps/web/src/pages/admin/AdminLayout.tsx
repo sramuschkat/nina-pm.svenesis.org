@@ -6,6 +6,8 @@ import { SectionTabs } from './shared';
 
 export const ADMIN_PATHS = {
   members: '/verwaltung/mitglieder',
+  settings: '/verwaltung/einstellungen',
+  log: '/verwaltung/protokoll',
 } as const;
 
 export function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
@@ -14,7 +16,11 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
     <div className={styles.page}>
       <SectionTabs
         label={t('admin.tabsLabel')}
-        tabs={[{ to: ADMIN_PATHS.members, label: t('admin.members.tab') }]}
+        tabs={[
+          { to: ADMIN_PATHS.members, label: t('admin.members.tab') },
+          { to: ADMIN_PATHS.settings, label: t('admin.settings.tab') },
+          { to: ADMIN_PATHS.log, label: t('admin.log.tab') },
+        ]}
       />
       <div className={styles.head}>
         <h1>{title}</h1>

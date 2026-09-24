@@ -14,7 +14,10 @@ import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { HomePage, NotFoundPage, PlaceholderPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
+import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
 import { MembersPage } from '../pages/admin/MembersPage';
+import { TenantSettingsPage } from '../pages/admin/TenantSettingsPage';
+import { PersonalSettingsPage } from '../pages/me/PersonalSettingsPage';
 import { SuperUsersPage } from '../pages/system/SuperUsersPage';
 import { SystemAuditPage } from '../pages/system/SystemAuditPage';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
@@ -131,12 +134,20 @@ export function createRouter() {
             { index: true, element: <HomePage /> },
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
             { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+            { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {
               path: 'verwaltung',
               element: <RequireAction action="member.manage" />,
               children: [
                 { index: true, element: <Navigate to={ADMIN_PATHS.members} replace /> },
                 { path: 'mitglieder', element: <MembersPage /> },
+                {
+                  element: <RequireAction action="tenant.settings" />,
+                  children: [
+                    { path: 'einstellungen', element: <TenantSettingsPage /> },
+                    { path: 'protokoll', element: <ChangeLogPage /> },
+                  ],
+                },
               ],
             },
             {
