@@ -142,18 +142,7 @@
   color: var(--npm-warning);
 }
 
-/* Oberer Bereich: Zielinformationen | Bedingungen | Vorschau */
-.top {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--npm-space-4);
-  align-items: start;
-}
-@media (max-width: 1279px) {
-  .top {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 .column {
   composes: panel;
   display: flex;
@@ -197,6 +186,27 @@
   padding: var(--npm-space-2) var(--npm-space-3);
   border-left: 3px solid var(--npm-border);
   font-size: var(--npm-font-small);
+}
+
+/* Oberer Bereich als Reiter: Zielinformationen | Bedingungen | Vorschau (Entscheidung 24.09.2026) */
+.topTabs {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.topTabs > section[hidden] {
+  display: none;
+}
+.tabError {
+  margin-left: var(--npm-space-2);
+  padding: 0 var(--npm-space-1);
+  border-radius: var(--npm-radius);
+  background: var(--npm-danger-bg);
+  color: var(--npm-danger);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
 }
 
 /* Mittlerer Bereich: Reiter */

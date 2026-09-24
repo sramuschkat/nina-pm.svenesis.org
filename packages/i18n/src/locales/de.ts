@@ -658,6 +658,8 @@ export const de = {
     effortPending: 'Aufwand: Schätzung folgt',
     effortHint:
       'Das Aufwand-Kennzeichen (1 Nacht, mehrere Nächte, nicht machbar) wird berechnet, sobald die Planungs-Engine es liefert.',
+    topTabs: 'Bereiche des Projekts: Zielinformationen, Bedingungen, Vorschau',
+    tabHasErrors: 'Fehler',
     targetInfo: 'Zielinformationen',
     target: 'Ziel',
     conditions: 'Bedingungen',

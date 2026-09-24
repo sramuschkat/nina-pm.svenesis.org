@@ -654,6 +654,8 @@ export const en: Messages = {
     effortPending: 'Effort: estimate pending',
     effortHint:
       'The effort tag (one night, several nights, not feasible) is computed as soon as the planning engine provides it.',
+    topTabs: 'Project sections: target information, conditions, preview',
+    tabHasErrors: 'error',
     targetInfo: 'Target information',
     target: 'Target',
     conditions: 'Conditions',
