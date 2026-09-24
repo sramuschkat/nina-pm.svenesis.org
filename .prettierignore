@@ -16,3 +16,4 @@ infra/cdk.context.json
 **/src/generated/
 test-results/
 playwright-report/
+.vitest/
