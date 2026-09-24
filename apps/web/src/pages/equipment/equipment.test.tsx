@@ -13,6 +13,8 @@ import type { Me } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { CamerasPage, readoutMismatch } from './CamerasPage';
 import { filterPassband } from './FiltersPage';
+import { labelRows, readableOn, spectrumRange, spectrumRgb } from './FilterSpectrum';
+import { contrastRatio } from '../../components/FilterChip';
 import { MoonProfilesPage, requiredSeparation } from './MoonProfilesPage';
 import { longitudeSuspicious } from './SitesPage';
 import { TelescopesPage } from './TelescopesPage';
@@ -285,6 +287,28 @@ describe('Hilfsfunktionen', () => {
       to: 657.8,
     });
     expect(filterPassband({ centerWavelengthNm: null, bandwidthNm: 100 })).toBeNull();
+  });
+
+  it('Spektrum: Bereich 380–750 nm, von IR-Filtern erweitert; Spektralfarben; Beschriftungszeilen', () => {
+    expect(spectrumRange([{ from: 654, to: 658 }])).toEqual({ from: 380, to: 750 });
+    expect(spectrumRange([{ from: 685, to: 1000 }])).toEqual({ from: 380, to: 1000 });
+    expect(spectrumRgb(700)).toEqual([255, 0, 0]);
+    expect(spectrumRgb(300)).toEqual(spectrumRgb(380)); // UV: Randfarbe
+    // OIII allein, Hα und SII überlappen → SII in die zweite Zeile (wie in Svens Vorlage)
+    const rows = labelRows([
+      { id: 'oiii', center: 300, width: 170 },
+      { id: 'ha', center: 760, width: 170 },
+      { id: 'sii', center: 800, width: 170 },
+    ]);
+    expect(Object.fromEntries(rows)).toEqual({ oiii: 0, ha: 0, sii: 1 });
+  });
+
+  it('Beschriftung in Filterfarbe mit mindestens 4,5:1 auf hellem und dunklem Grund', () => {
+    for (const color of ['#ffeb3b', '#00bcd4', '#e53935', '#ffffff']) {
+      expect(contrastRatio(readableOn(color, '#ffffff'), '#ffffff')).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(readableOn(color, '#1a2a3a'), '#1a2a3a')).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(readableOn('#b3261e', '#ffffff')).toBe('#b3261e'); // genügt schon
   });
 
   it('NINA-Abgleich der Auslesemodi: ohne Meldung kein Hinweis', () => {

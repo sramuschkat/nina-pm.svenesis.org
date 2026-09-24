@@ -287,13 +287,17 @@ export function NightChart(props: NightChartProps) {
     for (const s of shown)
       if (!off.has(`series:${s.id}`)) line(s.points, resolveColor(canvas, s.color), 2);
     ctx.restore();
-    // Mond-Beleuchtung oben rechts im Diagramm
+    // Mond-Beleuchtung oben rechts im Diagramm (Text, kein Symbolzeichen – rules/ui.md)
     if (moon && !off.has('moon')) {
       ctx.font = font(11, '600 ');
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
       ctx.fillStyle = c('chart-label');
-      ctx.fillText(`☽ ${moon.illuminationPct.toFixed(0)} %`, PAD.left + plotW - 6, PAD.top + 5);
+      ctx.fillText(
+        t('nightChart.moonBadge', { pct: moon.illuminationPct.toFixed(0) }),
+        PAD.left + plotW - 6,
+        PAD.top + 5,
+      );
     }
     // Marken: Linie im Diagramm, Beschriftung darüber
     ctx.font = font(11);

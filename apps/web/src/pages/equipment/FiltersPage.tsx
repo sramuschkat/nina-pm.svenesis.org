@@ -25,7 +25,10 @@ import {
   useMoonProfileLabel,
   useNumber,
 } from './shared';
+import { FilterSpectrum } from './FilterSpectrum';
 import { TemplateEditor } from './TemplateEditor';
+
+export { filterPassband } from './FilterSpectrum';
 
 interface FilterDraft {
   shortName: string;
@@ -423,121 +426,5 @@ function FilterCollection({
         {byType.map((x) => `${t(`equipment.filterType.${x.type}`)}: ${String(x.n)}`).join(' · ')}
       </p>
     </div>
-  );
-}
-
-/** Spektrum 300–1100 nm: Durchlassbereich als Trapez aus Zentralwellenlänge ± Bandbreite/2. */
-const LAMBDA_MIN = 300;
-const LAMBDA_MAX = 1100;
-
-export function filterPassband(f: {
-  centerWavelengthNm: number | null;
-  bandwidthNm: number | null;
-}): { from: number; to: number } | null {
-  if (f.centerWavelengthNm === null || f.bandwidthNm === null) return null;
-  return {
-    from: Math.max(LAMBDA_MIN, f.centerWavelengthNm - f.bandwidthNm / 2),
-    to: Math.min(LAMBDA_MAX, f.centerWavelengthNm + f.bandwidthNm / 2),
-  };
-}
-
-function FilterSpectrum({ filters }: { filters: FilterView[] }) {
-  const { t } = useTranslation();
-  const num = useNumber();
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  const W = 800;
-  const H = 200;
-  const x = (nm: number) => ((nm - LAMBDA_MIN) / (LAMBDA_MAX - LAMBDA_MIN)) * W;
-  const withBand = filters.filter((f) => filterPassband(f));
-  const without = filters.filter((f) => !filterPassband(f));
-  return (
-    <figure className={styles.listEditor}>
-      <div className={styles.legend}>
-        {withBand.map((f) => (
-          <FilterChip
-            key={f.id}
-            shortName={f.shortName}
-            color={f.colorHex}
-            selected={!hidden.has(f.id)}
-            onToggle={() =>
-              setHidden((h) => {
-                const next = new Set(h);
-                if (next.has(f.id)) next.delete(f.id);
-                else next.add(f.id);
-                return next;
-              })
-            }
-            title={f.fullName || f.shortName}
-          />
-        ))}
-      </div>
-      <svg
-        className={styles.chart}
-        viewBox={`0 0 ${String(W)} ${String(H + 24)}`}
-        role="img"
-        aria-label={t('equipment.filters.spectrumLabel')}
-      >
-        {[400, 500, 600, 700, 800, 900, 1000].map((nm) => (
-          <g key={nm}>
-            <line className={styles.chartAxis} x1={x(nm)} x2={x(nm)} y1={0} y2={H} />
-            <text className={styles.chartLabel} x={x(nm)} y={H + 16} textAnchor="middle">
-              {nm}
-            </text>
-          </g>
-        ))}
-        <line className={styles.chartAxis} x1={0} x2={W} y1={H} y2={H} />
-        {withBand
-          .filter((f) => !hidden.has(f.id))
-          .map((f) => {
-            const band = filterPassband(f);
-            if (!band) return null;
-            const top = H - ((f.transmissionPct ?? 90) / 100) * (H - 10);
-            const edge = Math.min(4, (x(band.to) - x(band.from)) / 4);
-            return (
-              <polygon
-                key={f.id}
-                points={`${String(x(band.from))},${String(H)} ${String(x(band.from) + edge)},${String(top)} ${String(x(band.to) - edge)},${String(top)} ${String(x(band.to))},${String(H)}`}
-                fill={f.colorHex}
-                fillOpacity={0.35}
-                stroke={f.colorHex}
-                strokeWidth={2}
-              />
-            );
-          })}
-      </svg>
-      <figcaption className={styles.muted}>{t('equipment.filters.spectrumAxis')}</figcaption>
-      {without.length > 0 ? (
-        <p className={styles.muted}>
-          {t('equipment.filters.spectrumMissing', {
-            names: without.map((f) => f.shortName).join(', '),
-          })}
-        </p>
-      ) : null}
-      <details className={styles.details}>
-        <summary>{t('equipment.textAlternative')}</summary>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>{t('equipment.filters.field.shortName')}</th>
-              <th className={styles.num}>{t('equipment.filters.field.center')}</th>
-              <th className={styles.num}>{t('equipment.filters.field.bandwidth')}</th>
-              <th className={styles.num}>{t('equipment.filters.field.transmission')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {withBand.map((f) => (
-              <tr key={f.id}>
-                <td>{f.shortName}</td>
-                <td className={styles.num}>{num(f.centerWavelengthNm, 1)} nm</td>
-                <td className={styles.num}>{num(f.bandwidthNm, 1)} nm</td>
-                <td className={styles.num}>
-                  {f.transmissionPct === null ? '–' : `${num(f.transmissionPct, 0)} %`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
-    </figure>
   );
 }

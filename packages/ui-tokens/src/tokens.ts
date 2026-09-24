@@ -99,6 +99,34 @@ export const SKY_STOPS: readonly (readonly [
   [-18, [9, 14, 24]],
 ];
 
+/**
+ * Spektralfarben des Filterspektrums (S-14, Entscheidung 24.09.2026 nach Svens Vorlage): Wellenlänge in
+ * nm → sRGB, aufsteigend, dazwischen linear je Kanal; unter der ersten bzw. über der letzten Stützstelle
+ * (UV/IR) gilt die Randfarbe. Themen-unabhängig: der Grund der Grafik ist dieselbe Farbe mit geringer
+ * Deckkraft über dem Theme-Hintergrund, der Balken am Fuß die volle Farbe.
+ */
+export const SPECTRUM_STOPS: readonly (readonly [
+  nm: number,
+  rgb: readonly [number, number, number],
+])[] = [
+  [380, [80, 0, 90]],
+  [400, [130, 0, 200]],
+  [430, [80, 20, 255]],
+  [450, [20, 40, 255]],
+  [470, [0, 120, 255]],
+  [490, [0, 220, 255]],
+  [500, [0, 255, 200]],
+  [510, [0, 255, 40]],
+  [540, [120, 255, 0]],
+  [570, [230, 255, 0]],
+  [585, [255, 220, 0]],
+  [600, [255, 170, 0]],
+  [625, [255, 90, 0]],
+  [645, [255, 20, 0]],
+  [700, [255, 0, 0]],
+  [750, [150, 0, 0]],
+];
+
 /** Übrige Farben des Nachtdiagramms auf dem Himmelsgrund (themen-unabhängig, Kontrast gegen `SKY_STOPS`). */
 export const CHART: Readonly<Record<string, string>> = {
   'chart-sky-night': 'rgb(9, 14, 24)',
