@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### Fix: D-04 (OCC-Wiederholung) deterministisch (2026-09-24)
+
+- Die Suite D-04 startete beide Transaktionen gleichzeitig; war die Verbindung von B schneller, lief B vollständig vor A durch – kein Konflikt, keine Wiederholung, Test rot (CI auf `main`, `ee903ae`). Jetzt werden beide Pools vorab verbunden und B startet erst, wenn A die Wächterzeile hält. Ablauf in DSQL (`pnpm test:dsql`) unverändert.
+
 ### Tests: eine Datenbank je Testdatei (2026-09-24)
 
 - API-Integrationstests legen die PGlite-Datenbank (alle Migrationen) einmal je Datei an und leeren zwischen den Tests nur die Tabellen (`reset()` in `@nina-pm/db/testing/pglite` und im Test-Stack) statt je Test neu zu migrieren.
