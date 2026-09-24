@@ -56,6 +56,27 @@ export function chipTextColor(hex: string): string {
   return contrastRatio(preferred, hex) >= contrastRatio(other, hex) ? preferred : other;
 }
 
+const MIN_CONTRAST = 4.5;
+const hex2 = (n: number) => Math.round(n).toString(16).padStart(2, '0');
+
+/**
+ * Hintergrund der Marke: die Filterfarbe; erreicht bei Mitteltönen (z. B. `#00897B`) keine der beiden
+ * Schriftfarben 4,5:1, wird sie schrittweise abgedunkelt, bis helle Schrift genügt (components.md §2.1).
+ */
+export function chipBackground(hex: string): string {
+  const ok = (h: string) =>
+    Math.max(contrastRatio(DARK_TEXT, h), contrastRatio(LIGHT_TEXT, h)) >= MIN_CONTRAST;
+  const c = rgb(hex);
+  if (!c || ok(hex)) return hex;
+  let [r, g, b] = c;
+  let out = hex;
+  for (let i = 0; i < 40 && !ok(out); i += 1) {
+    [r, g, b] = [r * 0.95, g * 0.95, b * 0.95];
+    out = `#${hex2(r)}${hex2(g)}${hex2(b)}`;
+  }
+  return out;
+}
+
 export function FilterChip({
   shortName,
   color,
@@ -67,7 +88,8 @@ export function FilterChip({
 }: FilterChipProps) {
   const label = shortName.length > MAX_CHARS ? shortName.slice(0, MAX_CHARS) : shortName;
   const fullTitle = title ?? (shortName.length > MAX_CHARS ? shortName : undefined);
-  const style = { background: color, color: chipTextColor(color) };
+  const background = chipBackground(color);
+  const style = { background, color: chipTextColor(background) };
   const className = `${styles.chip} ${size === 'sm' ? styles.sm : styles.md} ${selected ? styles.selected : ''}`;
   if (!onToggle) {
     return (

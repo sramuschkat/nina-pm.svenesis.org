@@ -1,0 +1,691 @@
+/**
+ * Gemeinsame Teile der Ausrüstungsseiten S-10…S-15 (AP-09b): Reiter, Stammdaten-Abfragen, Formularfelder
+ * mit zod-Prüfung aus `packages/shared`, auswählbare Liste und die Löschsperre mit Verwenderliste
+ * (FA-RIG-13, `409 resource.in_use`).
+ */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useId, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { equipmentApi, type EquipmentKind, type EquipmentKinds } from '../../api/client';
+import { ApiError, useAuth, useCan } from '../../auth';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
+import styles from './equipment.module.css';
+import { SectionTabs, newId, problemCode } from '../admin/shared';
+
+export { newId, problemCode };
+
+export const EQUIPMENT_PATHS = {
+  sites: '/ausruestung/standorte',
+  telescopes: '/ausruestung/teleskope',
+  cameras: '/ausruestung/kameras',
+  filters: '/ausruestung/filter',
+  moonProfiles: '/ausruestung/mondprofile',
+} as const;
+
+export function EquipmentLayout({
+  title,
+  actions,
+  children,
+}: {
+  title: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { me } = useAuth();
+  const canWrite = useCan('equipment.write');
+  return (
+    <div className={styles.page}>
+      <SectionTabs
+        label={t('equipment.tabsLabel')}
+        tabs={[
+          { to: EQUIPMENT_PATHS.sites, label: t('equipment.sites.tab') },
+          { to: EQUIPMENT_PATHS.telescopes, label: t('equipment.telescopes.tab') },
+          { to: EQUIPMENT_PATHS.cameras, label: t('equipment.cameras.tab') },
+          { to: EQUIPMENT_PATHS.filters, label: t('equipment.filters.tab') },
+          { to: EQUIPMENT_PATHS.moonProfiles, label: t('equipment.moonProfiles.tab') },
+        ]}
+      />
+      <div className={styles.head}>
+        <h1>{title}</h1>
+        {actions}
+      </div>
+      {/* Nur-Lese-Hinweis: User sehen die Stammdaten; ohne 2FA ruhen Admin-Rechte (SV-03). */}
+      {canWrite ? null : (
+        <p className={styles.readOnly} role="note">
+          {me?.mfaRequired ? t('errors.auth.mfaRequired') : t('equipment.readOnly')}
+        </p>
+      )}
+      {children}
+    </div>
+  );
+}
+
+// ---- Abfragen -------------------------------------------------------------------------------------
+
+export const equipmentKey = (kind: EquipmentKind) => ['equipment', kind] as const;
+
+export function useEquipmentList<K extends EquipmentKind>(kind: K) {
+  return useQuery({
+    queryKey: equipmentKey(kind),
+    queryFn: async () => (await equipmentApi.list(kind)).items,
+  });
+}
+
+/**
+ * Speichern (Anlage mit Client-UUID bzw. Änderung) und Löschen einer Objektart. Nach Erfolg wird die
+ * Liste neu geladen; Rigs hängen an Standort/Teleskop/Kamera und werden mit aktualisiert.
+ */
+export function useEquipmentMutations<K extends EquipmentKind>(kind: K) {
+  const client = useQueryClient();
+  const refresh = async () => {
+    await client.invalidateQueries({ queryKey: equipmentKey(kind) });
+    if (kind !== 'rigs') await client.invalidateQueries({ queryKey: equipmentKey('rigs') });
+  };
+  const save = useMutation({
+    mutationFn: ({ id, body }: { id: string | null; body: object }) =>
+      id === null
+        ? equipmentApi.create(kind, { id: newId(), ...body })
+        : equipmentApi.update(kind, id, body),
+    onSuccess: refresh,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => equipmentApi.remove(kind, id),
+    onSuccess: refresh,
+  });
+  return { save, remove };
+}
+
+export type Item<K extends EquipmentKind> = EquipmentKinds[K];
+
+// ---- Validierung ----------------------------------------------------------------------------------
+
+export type FieldErrors = Readonly<Record<string, string>>;
+
+/** Das Nötige eines zod-Schemas aus `packages/shared` (ohne eigene zod-Abhängigkeit der Web-App). */
+export interface Schema<T = unknown> {
+  safeParse(value: unknown):
+    | { success: true; data: T }
+    | {
+        success: false;
+        error: { issues: readonly { path: readonly PropertyKey[]; message: string }[] };
+      };
+}
+
+/** zod-Prüfung mit den Schemas aus `packages/shared`; Fehler je Feldpfad (`lines.0.filterId`). */
+export function validate<T>(
+  schema: Schema<T>,
+  value: unknown,
+): { ok: true; data: T } | { ok: false; errors: FieldErrors } {
+  const result = schema.safeParse(value);
+  if (result.success) return { ok: true, data: result.data };
+  const errors: Record<string, string> = {};
+  for (const issue of result.error.issues) {
+    const path = issue.path.map(String).join('.');
+    errors[path] ??= issue.message;
+  }
+  return { ok: false, errors };
+}
+
+/** Feldfehler aus Problem Details (`errors[].path` wie `lines[0].filterId`) in dieselbe Form. */
+export function serverFieldErrors(error: unknown): FieldErrors {
+  if (!(error instanceof ApiError) || error.problem.code !== 'validation.failed') return {};
+  return Object.fromEntries(
+    (error.problem.errors ?? []).map((e) => [e.path.replace(/\[(\d+)\]/g, '.$1'), e.message]),
+  );
+}
+
+// ---- Formularfelder -------------------------------------------------------------------------------
+
+interface FieldBase {
+  label: string;
+  error?: string | undefined;
+  hint?: string | undefined;
+  disabled?: boolean | undefined;
+  /** Breite im Raster: `wide` belegt die ganze Zeile. */
+  wide?: boolean;
+}
+
+function FieldShell({
+  id,
+  label,
+  error,
+  hint,
+  wide,
+  children,
+}: FieldBase & { id: string; children: ReactNode }) {
+  return (
+    <div className={`${styles.field} ${wide ? styles.fieldWide : ''}`}>
+      <label htmlFor={id}>{label}</label>
+      {children}
+      {hint ? (
+        <span id={`${id}-hint`} className={styles.muted}>
+          {hint}
+        </span>
+      ) : null}
+      {error ? (
+        <span id={`${id}-error`} className={styles.fieldError}>
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+const describedBy = (id: string, hint?: string, error?: string) =>
+  [hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined;
+
+export function TextField({
+  value,
+  onChange,
+  maxLength = 120,
+  multiline,
+  type = 'text',
+  list,
+  ...base
+}: FieldBase & {
+  value: string;
+  onChange: (value: string) => void;
+  maxLength?: number;
+  multiline?: boolean;
+  type?: 'text' | 'url';
+  list?: string;
+}) {
+  const id = useId();
+  const common = {
+    id,
+    className: styles.input,
+    value,
+    maxLength,
+    disabled: base.disabled,
+    'aria-invalid': base.error ? true : undefined,
+    'aria-describedby': describedBy(id, base.hint, base.error),
+  } as const;
+  return (
+    <FieldShell id={id} {...base}>
+      {multiline ? (
+        <textarea {...common} rows={3} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input {...common} type={type} list={list} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </FieldShell>
+  );
+}
+
+/** Zahl; leer ergibt `null` (optionale Felder) – Pflichtfelder meldet die zod-Prüfung. */
+export function NumberField({
+  value,
+  onChange,
+  step = 'any',
+  min,
+  max,
+  unit,
+  ...base
+}: FieldBase & {
+  value: number | null;
+  onChange: (value: number | null) => void;
+  step?: number | 'any';
+  min?: number;
+  max?: number;
+  unit?: string;
+}) {
+  const id = useId();
+  const [text, setText] = useState(value === null ? '' : String(value));
+  const [last, setLast] = useState(value);
+  // Externe Änderung (anderes Objekt gewählt) übernehmen, ohne die laufende Eingabe zu stören.
+  if (value !== last) {
+    setLast(value);
+    if (value !== (text.trim() === '' ? null : Number(text.replace(',', '.'))))
+      setText(value === null ? '' : String(value));
+  }
+  return (
+    <FieldShell id={id} {...base} label={unit ? `${base.label} (${unit})` : base.label}>
+      <input
+        id={id}
+        className={styles.input}
+        type="number"
+        inputMode="decimal"
+        step={step}
+        min={min}
+        max={max}
+        value={text}
+        disabled={base.disabled}
+        aria-invalid={base.error ? true : undefined}
+        aria-describedby={describedBy(id, base.hint, base.error)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const raw = e.target.value.trim();
+          const n = raw === '' ? null : Number(raw);
+          const next = n === null || Number.isFinite(n) ? n : null;
+          setLast(next);
+          onChange(next);
+        }}
+      />
+    </FieldShell>
+  );
+}
+
+export function SelectField<V extends string>({
+  value,
+  onChange,
+  options,
+  ...base
+}: FieldBase & {
+  value: V;
+  onChange: (value: V) => void;
+  options: readonly { value: V; label: string }[];
+}) {
+  const id = useId();
+  return (
+    <FieldShell id={id} {...base}>
+      <select
+        id={id}
+        className={styles.input}
+        value={value}
+        disabled={base.disabled}
+        aria-invalid={base.error ? true : undefined}
+        aria-describedby={describedBy(id, base.hint, base.error)}
+        onChange={(e) => onChange(e.target.value as V)}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </FieldShell>
+  );
+}
+
+export function CheckField({
+  label,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean | undefined;
+}) {
+  return (
+    <label className={styles.check}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      {label}
+    </label>
+  );
+}
+
+// ---- Liste und Formularrahmen ---------------------------------------------------------------------
+
+/**
+ * Auswahlliste links (FK 14.3 „Auswahl +/-“): eine Zeile je Objekt als Knopf, die gewählte Zeile
+ * markiert; *Neu* nur mit Schreibrecht.
+ */
+export function PickList<T extends { id: string }>({
+  label,
+  items,
+  selectedId,
+  onSelect,
+  onNew,
+  render,
+  state,
+  onRetry,
+  emptyText,
+}: {
+  label: string;
+  items: readonly T[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onNew?: (() => void) | undefined;
+  render: (item: T) => ReactNode;
+  state: 'loading' | 'error' | 'ready';
+  onRetry?: () => void;
+  emptyText: string;
+}) {
+  const { t } = useTranslation();
+  const Add = actionIcons.add;
+  return (
+    <section className={styles.pick} aria-label={label}>
+      <div className={styles.pickHead}>
+        <h2>{label}</h2>
+        {onNew ? (
+          <button type="button" className={styles.button} onClick={onNew}>
+            <Add size={ICON_SIZE.table} aria-hidden />
+            {t('equipment.new')}
+          </button>
+        ) : null}
+      </div>
+      {state === 'loading' ? (
+        <p role="status">{t('common.loading')}</p>
+      ) : state === 'error' ? (
+        <ProblemMessage code="internal.error" onRetry={onRetry} />
+      ) : items.length === 0 ? (
+        <p className={styles.muted}>{emptyText}</p>
+      ) : (
+        <ul className={styles.pickList}>
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                className={styles.pickItem}
+                aria-current={item.id === selectedId ? 'true' : undefined}
+                onClick={() => onSelect(item.id)}
+              >
+                {render(item)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Speichern / Löschen unter einem Formular; Löschen nur nach `ConfirmDialog` (E4). */
+export function FormActions({
+  canWrite,
+  saving,
+  saved,
+  error,
+  onDelete,
+  deleteLabel,
+  extra,
+}: {
+  canWrite: boolean;
+  saving: boolean;
+  saved: boolean;
+  error: unknown;
+  onDelete?: (() => void) | undefined;
+  deleteLabel?: string;
+  extra?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  if (!canWrite) return null;
+  const Save = actionIcons.save;
+  const Delete = actionIcons.delete;
+  const code = error ? problemCode(error) : null;
+  return (
+    <div className={styles.formFoot}>
+      {code && code !== 'validation.failed' ? <ProblemMessage code={code} /> : null}
+      {code === 'validation.failed' ? (
+        <p className={styles.fieldError} role="alert">
+          {t('errors.validation.failed')}
+        </p>
+      ) : null}
+      <div className={styles.actions}>
+        <button type="submit" className={styles.buttonPrimary} disabled={saving}>
+          <Save size={ICON_SIZE.button} aria-hidden />
+          {t('equipment.save')}
+        </button>
+        {extra}
+        {onDelete ? (
+          <button type="button" className={styles.buttonDanger} onClick={onDelete}>
+            <Delete size={ICON_SIZE.button} aria-hidden />
+            {deleteLabel ?? t('equipment.delete')}
+          </button>
+        ) : null}
+        {saved ? (
+          <span className={styles.success} role="status">
+            {t('equipment.saved')}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ---- Löschen mit Löschsperre ----------------------------------------------------------------------
+
+export interface Usage {
+  readonly name: string;
+  readonly users: readonly { kind: string; name: string }[];
+}
+
+/**
+ * Löschen nach `ConfirmDialog`; liefert die API `409 resource.in_use`, schließt der Dialog und die Seite
+ * zeigt die Verwender (FA-RIG-13) – der Dialog selbst trägt nur Titel, Folge und Verb.
+ */
+export function useDeleteWithUsage(run: (id: string) => Promise<unknown>, onDeleted: () => void) {
+  const [target, setTarget] = useState<{ id: string; name: string } | null>(null);
+  const [state, setState] = useState<'ready' | 'loading' | 'error'>('ready');
+  const [errorKey, setErrorKey] = useState<string | undefined>();
+  const [usage, setUsage] = useState<Usage | null>(null);
+  return {
+    usage,
+    clearUsage: () => setUsage(null),
+    ask: (id: string, name: string) => {
+      setUsage(null);
+      setState('ready');
+      setTarget({ id, name });
+    },
+    dialog: {
+      open: target !== null,
+      name: target?.name ?? '',
+      state,
+      ...(errorKey ? { errorKey } : {}),
+      onCancel: () => setTarget(null),
+      onConfirm: async () => {
+        if (!target) return;
+        setState('loading');
+        try {
+          await run(target.id);
+          setTarget(null);
+          onDeleted();
+        } catch (e) {
+          if (e instanceof ApiError && e.problem.code === 'resource.in_use') {
+            setUsage({
+              name: target.name,
+              users: (e.problem.errors ?? []).map((u) => ({ kind: u.path, name: u.message })),
+            });
+            setTarget(null);
+            return;
+          }
+          setErrorKey(problemI18nKey(e instanceof ApiError ? e.problem.code : 'internal.error'));
+          setState('error');
+        }
+      },
+    },
+  };
+}
+
+/** Zähl-Arten (`sessions`, `nightPlans`, `nightStats`) tragen eine Anzahl statt eines Namens. */
+const COUNT_KINDS = new Set(['sessions', 'nightPlans', 'nightStats', 'activeSession']);
+
+export function UsageNotice({ usage, onClose }: { usage: Usage; onClose: () => void }) {
+  const { t } = useTranslation();
+  const Warn = actionIcons.warning;
+  return (
+    <div className={styles.usage} role="alert">
+      <p className={styles.usageTitle}>
+        <Warn size={ICON_SIZE.button} aria-hidden />
+        {t('equipment.inUse.title', { name: usage.name })}
+      </p>
+      <p>{t('equipment.inUse.hint')}</p>
+      <ul>
+        {usage.users.map((u) => (
+          <li key={`${u.kind}:${u.name}`}>
+            {COUNT_KINDS.has(u.kind)
+              ? t(`equipment.inUse.count.${u.kind}`, { count: Number(u.name) || 0, id: u.name })
+              : `${t(`equipment.inUse.kind.${u.kind}`, { defaultValue: u.kind })}: ${u.name}`}
+          </li>
+        ))}
+      </ul>
+      <button type="button" className={styles.button} onClick={onClose}>
+        {t('equipment.inUse.close')}
+      </button>
+    </div>
+  );
+}
+
+export function DeleteDialog({
+  dialog,
+}: {
+  dialog: ReturnType<typeof useDeleteWithUsage>['dialog'];
+}) {
+  const { t } = useTranslation();
+  return (
+    <ConfirmDialog
+      open={dialog.open}
+      title={t('equipment.deleteTitle', { name: dialog.name })}
+      consequence={t('equipment.deleteConsequence')}
+      confirmLabel={t('equipment.delete')}
+      variant="danger"
+      state={dialog.state}
+      {...(dialog.errorKey ? { errorKey: dialog.errorKey } : {})}
+      onCancel={dialog.onCancel}
+      onConfirm={dialog.onConfirm}
+    />
+  );
+}
+
+/** Lade-/Fehlerzustand einer Seite, sonst der Inhalt. */
+export function Loadable({
+  query,
+  children,
+}: {
+  query: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+  children: () => ReactNode;
+}) {
+  const { t } = useTranslation();
+  if (query.isError)
+    return <ProblemMessage code={problemCode(query.error)} onRetry={() => void query.refetch()} />;
+  if (query.isPending) return <p role="status">{t('common.loading')}</p>;
+  return <>{children()}</>;
+}
+
+/** Zahl in Anzeigeform der Sprache (Nachkommastellen fest). */
+export function useNumber() {
+  const { i18n } = useTranslation();
+  return (value: number | null | undefined, digits = 2) =>
+    value === null || value === undefined || !Number.isFinite(value)
+      ? '–'
+      : new Intl.NumberFormat(i18n.language, {
+          minimumFractionDigits: digits,
+          maximumFractionDigits: digits,
+        }).format(value);
+}
+
+// ---- Auswahl + Formular -------------------------------------------------------------------------
+
+/**
+ * Zustand einer Stammdatenseite: Liste, gewähltes Objekt (`null` = neu), Entwurf, Feldfehler (Client-
+ * Prüfung mit dem zod-Schema aus `packages/shared`, danach Feldfehler des Servers), Speichern/Löschen.
+ */
+export function useEditor<K extends EquipmentKind, D extends object>({
+  kind,
+  schema,
+  toDraft,
+  empty,
+}: {
+  kind: K;
+  schema: Schema;
+  toDraft: (item: Item<K>) => D;
+  empty: () => D;
+}) {
+  const list = useEquipmentList(kind);
+  const { save, remove } = useEquipmentMutations(kind);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<D>(empty);
+  const [clientErrors, setClientErrors] = useState<FieldErrors>({});
+  const [saved, setSaved] = useState(false);
+  const [picked, setPicked] = useState(false);
+  const items = (list.data ?? []) as Item<K>[];
+  // Erstes Objekt vorwählen, sobald die Liste da ist.
+  if (!picked && list.data) {
+    setPicked(true);
+    const first = items[0];
+    if (first) {
+      setSelectedId(first.id);
+      setDraft(toDraft(first));
+    }
+  }
+  const selected = items.find((i) => i.id === selectedId) ?? null;
+  const reset = () => {
+    setClientErrors({});
+    setSaved(false);
+    save.reset();
+  };
+  const del = useDeleteWithUsage(
+    (id) => remove.mutateAsync(id),
+    () => {
+      setSelectedId(null);
+      setDraft(empty());
+      reset();
+    },
+  );
+  return {
+    list,
+    items,
+    selected,
+    selectedId,
+    draft,
+    set: <F extends keyof D>(field: F, value: D[F]) => {
+      setSaved(false);
+      setDraft((d) => ({ ...d, [field]: value }));
+    },
+    replace: (next: D) => {
+      setSaved(false);
+      setDraft(next);
+    },
+    select: (id: string) => {
+      const item = items.find((i) => i.id === id);
+      if (!item) return;
+      setSelectedId(id);
+      setDraft(toDraft(item));
+      reset();
+      del.clearUsage();
+    },
+    startNew: (from?: D) => {
+      setSelectedId(null);
+      setDraft(from ?? empty());
+      reset();
+      del.clearUsage();
+    },
+    errors: { ...serverFieldErrors(save.error), ...clientErrors } as FieldErrors,
+    saved,
+    save,
+    submit: async (body: unknown = draft) => {
+      const result = validate(schema, body);
+      if (!result.ok) {
+        setClientErrors(result.errors);
+        return;
+      }
+      setClientErrors({});
+      const view = (await save
+        .mutateAsync({ id: selectedId, body: result.data as object })
+        .catch(() => null)) as Item<K> | null;
+      if (view) {
+        setSelectedId(view.id);
+        setDraft(toDraft(view));
+        setSaved(true);
+      }
+    },
+    del,
+    /** Löschen des gewählten Objekts (nach `ConfirmDialog`); ohne Auswahl kein Knopf. */
+    onDelete: (nameOf: (item: Item<K>) => string) => {
+      const item = items.find((i) => i.id === selectedId);
+      return item ? () => del.ask(item.id, nameOf(item)) : undefined;
+    },
+  };
+}
+
+/** Fehlermeldungen der zod-Prüfung sind technisch (englisch); angezeigt wird ein i18n-Text je Feld. */
+export function useFieldError(errors: FieldErrors) {
+  const { t } = useTranslation();
+  return (path: string) => (errors[path] ? t('equipment.invalid') : undefined);
+}
+
+/** Anzeigename eines Mondprofils: mitgelieferte Profile heißen `moonProfile.<key>` (moon.md, FA-MON-02). */
+export function useMoonProfileLabel() {
+  const { t } = useTranslation();
+  return (name: string) =>
+    name.startsWith('moonProfile.') ? t(`moonProfile.${name.slice('moonProfile.'.length)}`) : name;
+}

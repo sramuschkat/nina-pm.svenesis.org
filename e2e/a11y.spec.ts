@@ -88,6 +88,32 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('Escape');
     });
 
+    test('S-11…S-15 Ausrüstung mit Reitern und Lösch-Dialog (AP-09b)', async ({ page }) => {
+      await testLogin(page, 'owner');
+      for (const [path, heading] of [
+        ['/ausruestung/standorte', 'Standorte'],
+        ['/ausruestung/teleskope', 'Teleskope'],
+        ['/ausruestung/kameras', 'Kameras'],
+        ['/ausruestung/filter', 'Filter & Belichtungsplan-Vorlagen'],
+        ['/ausruestung/mondprofile', 'Mondprofile'],
+      ] as const) {
+        await page.goto(path);
+        await expect(
+          page.getByRole('heading', { level: 1, name: heading, exact: true }),
+        ).toBeVisible();
+        await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
+        await expectNoSerious(page, path);
+      }
+      await page.goto('/ausruestung/filter');
+      await page.getByRole('tab', { name: 'Spektrum' }).click();
+      await expectNoSerious(page, 'S-14 Spektrum');
+      await page.goto('/ausruestung/teleskope');
+      await page.getByRole('button', { name: 'Löschen' }).click();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await expectNoSerious(page, 'S-12 Löschen');
+      await page.keyboard.press('Escape');
+    });
+
     test('Glocke geöffnet (AP-06b); Tastatur: Enter öffnet, Escape schließt', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');

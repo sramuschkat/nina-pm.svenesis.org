@@ -22,6 +22,12 @@ import { SuperUsersPage } from '../pages/system/SuperUsersPage';
 import { SystemAuditPage } from '../pages/system/SystemAuditPage';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
 import { SystemTenantsPage } from '../pages/system/SystemTenantsPage';
+import { CamerasPage } from '../pages/equipment/CamerasPage';
+import { FiltersPage } from '../pages/equipment/FiltersPage';
+import { MoonProfilesPage } from '../pages/equipment/MoonProfilesPage';
+import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
+import { SitesPage } from '../pages/equipment/SitesPage';
+import { TelescopesPage } from '../pages/equipment/TelescopesPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -135,6 +141,18 @@ export function createRouter() {
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
             { path: 'projekte', element: <PlaceholderPage link="projects" /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
+            {
+              path: 'ausruestung',
+              element: <RequireAction action="equipment.read" />,
+              children: [
+                { index: true, element: <Navigate to={EQUIPMENT_PATHS.sites} replace /> },
+                { path: 'standorte', element: <SitesPage /> },
+                { path: 'teleskope', element: <TelescopesPage /> },
+                { path: 'kameras', element: <CamerasPage /> },
+                { path: 'filter', element: <FiltersPage /> },
+                { path: 'mondprofile', element: <MoonProfilesPage /> },
+              ],
+            },
             {
               path: 'verwaltung',
               element: <RequireAction action="member.manage" />,
