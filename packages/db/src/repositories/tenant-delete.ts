@@ -44,6 +44,7 @@ export const TENANT_DELETE_ORDER: readonly { table: string; key: readonly string
   { table: 'session_log', key: ['session_id'] },
   { table: 'site_link', key: ['id'] },
   { table: 'site_night_stat', key: ['site_id', 'night'] },
+  { table: 'tenant_storage', key: ['tenant_id'] },
   { table: 'transit_result', key: ['id'] },
   { table: 'user_preference', key: ['user_id', 'pref_key'] },
   { table: 'discord_channel', key: ['id'] },

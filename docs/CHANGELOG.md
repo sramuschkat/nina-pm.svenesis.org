@@ -14,6 +14,16 @@ Anforderungen: TK 8.1, NFA-03 (Determinismus); rules/engine.md Nr. 1–5, 9; spe
 - Spec-Korrektur `canonical-json.md`: Der Testvektor `{"Z":1,"a":2,"É":3}` stand unescaped da, widersprach aber der verbindlichen Hash-Regel (Nicht-ASCII escaped); jetzt `{"Z":1,"a":2,"\u00c9":3}`, dazu die Escape-Form (UTF-16-Codeeinheiten, kleine Hex-Ziffern).
 - Tests: je Funktion 10.000 deterministische Zufallswerte gegen `Math.*` (|Δ| ≤ 1e-15, oberhalb |y| = 1 relativ), Sonderwerte (±0, ±∞, NaN, Subnormale) samt aller Paare für `atan2`/`pow`; Pflicht-Testvektoren aus `canonical-json.md`; SHA-256 mit FIPS-Vektoren und 500 Zufallstexten mit Umlauten/Emoji gegen `node:crypto`. Bekannt: fdlibm liefert `exp(1)` 1 ulp neben `Math.E` – gewollt, alle Hosts rechnen denselben Port.
 
+### AP-07d – Speicherbedarf je Mandant (2026-09-25)
+
+Anforderungen: FA-SU-03, S-80; TK 12, 13 (`daily`), TK 6.2.
+
+- Migration **0006** (additiv): Tabelle `tenant_storage` (Bytes, Anzahl Dateien, Messzeitpunkt je Mandant) mit GRANTs nach TK 6.2 (`app_rw` alle, `app_job` SELECT/INSERT/UPDATE); in der Löschreihenfolge für FA-MAN-03 enthalten (Schematest). Eigene Tabelle statt Spalten an `tenant`, weil ein nachträgliches Spaltenrecht für `app_job` den GRANT-Lint je Migration bräche – Brief entsprechend angepasst.
+- `worker`, Zeitplan `daily`: Aufgabe `tenant_storage` listet je Mandant `tenant/<id>/` im Daten-Bucket (seitenweise), summiert Größen und schreibt eine Zeile; ein Fehler bei einem Mandanten bricht die übrigen nicht ab. Keine neuen IAM-Rechte (`grantReadWrite(worker, 'tenant/*')` enthält das Auflisten, `iam.md` §1).
+- `TenantAdminView` um `storageBytes`, `storageFileCount`, `storageMeasuredAt`; S-80 zeigt Spalte „Dateien“ (SI-Einheiten, Anzahl und Stand in Betreiberzeit mit Kürzel im Tooltip) bzw. „noch nicht gemessen“.
+- Tests: S3-Summe über mehrere Seiten, fremde Präfixe zählen nicht, ohne Dateien → 0; täglicher Lauf mit Fehler bei einem Mandanten; Anzeige in der Liste (API und Komponententest); `daily` enthält die Aufgabe.
+- `pnpm test:dsql` durch Sven (H-22, 24.09.2026, Migrationsstand `387475bdb1135fb0`): D-01…D-07 grün, 52 Tabellen, 420 Rechte wie TK 6.2 – Protokoll `docs/test-runs/2026-09-24/ap-03/`.
+
 ### AP-07a, AP-07b, AP-07c abgenommen (2026-09-24)
 
 - Deploy durch Sven (`4f74090`, Smoke-Test 10/10), dabei neu: `s3:DeleteObject*` der api-Rolle auf `tenant/*`.

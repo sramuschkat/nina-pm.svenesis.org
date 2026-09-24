@@ -61,6 +61,9 @@ const tenantView = (t: TenantSummary) => ({
   ninaInstances: t.ninaInstances,
   ninaLastSeenAt: t.ninaLastSeenAt ? isoUtc(t.ninaLastSeenAt) : null,
   lastLoginAt: t.lastLoginAt ? isoUtc(t.lastLoginAt) : null,
+  storageBytes: t.storageBytes,
+  storageFileCount: t.storageFileCount,
+  storageMeasuredAt: t.storageMeasuredAt ? isoUtc(t.storageMeasuredAt) : null,
   createdAt: isoUtc(t.createdAt),
 });
 

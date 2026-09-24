@@ -83,3 +83,4 @@ export {
   TENANT_DELETE_BATCH,
   TENANT_DELETE_ORDER,
 } from './repositories/tenant-delete';
+export { recordTenantStorage, tenantIdsForStorage } from './repositories/tenant-storage';
