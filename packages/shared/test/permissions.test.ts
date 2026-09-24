@@ -36,7 +36,7 @@ describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
 
   it('jede Mandanten-Aktion ist für den Owner mit 2FA erlaubt (keine fällt durch)', () => {
     for (const action of ACTIONS) {
-      if (action.startsWith('system.') || action === 'member.leave') continue;
+      if (action.startsWith('system.')) continue;
       expect(can(owner, action), action).toBe(true);
     }
   });
@@ -144,10 +144,9 @@ describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
       ).toBe(false);
     });
 
-    it('member.leave: jeder außer dem Owner', () => {
+    it('member.leave: jedes Mitglied (Owner → 409 member.owner_cannot_leave im Repository)', () => {
       expect(can(user, 'member.leave')).toBe(true);
-      expect(can(admin, 'member.leave')).toBe(true);
-      expect(can(owner, 'member.leave')).toBe(false);
+      expect(can(owner, 'member.leave')).toBe(true);
     });
 
     it('transit.lock: User nur eigene freigegebene, unter der Grenze offener Festlegungen', () => {

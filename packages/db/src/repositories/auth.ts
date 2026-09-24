@@ -70,6 +70,7 @@ export interface ClaimableInvitation {
   readonly tenantId: string;
   readonly tenantName: string;
   readonly role: 'owner' | 'admin' | 'user';
+  readonly expiresAt: Date;
 }
 
 /** Sitzung gültig: `last_seen_at > jetzt − 14 Tage` und `expires_at > jetzt` (TK 5.3). */
@@ -391,7 +392,13 @@ export class AuthRepository {
       throw new ProblemError('invitation.expired');
     if (row.role === 'owner' && row.ownerMemberId !== null)
       throw new ProblemError('invitation.invalid');
-    return { id: row.id, tenantId: row.tenantId, tenantName: row.tenantName, role: row.role };
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      tenantName: row.tenantName,
+      role: row.role,
+      expiresAt: new Date(row.expiresAt),
+    };
   }
 
   /**

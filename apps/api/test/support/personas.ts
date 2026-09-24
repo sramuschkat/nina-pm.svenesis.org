@@ -15,7 +15,11 @@ export interface Persona {
 export interface PersonaWorld {
   readonly tenantA: string;
   readonly tenantB: string;
-  readonly members: Record<'owner' | 'admin' | 'adminNoMfa' | 'user' | 'user2', string>;
+  readonly members: Record<
+    'owner' | 'admin' | 'adminNoMfa' | 'user' | 'user2' | 'foreignAdmin',
+    string
+  >;
+  readonly identities: Record<'user2' | 'superUser', string>;
   readonly personas: readonly Persona[];
 }
 
@@ -49,7 +53,9 @@ export async function seedPersonas(stack: Stack): Promise<PersonaWorld> {
       adminNoMfa: adminNoMfa.memberId,
       user: user.memberId,
       user2: user2.memberId,
+      foreignAdmin: foreign.memberId,
     },
+    identities: { user2: user2.identity.id, superUser: superIdentity.id },
     personas: [
       { name: 'Owner', session: inTenant(owner) },
       { name: 'Admin', session: inTenant(admin) },

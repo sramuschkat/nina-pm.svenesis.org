@@ -26,6 +26,22 @@ export {
   type SessionRow,
 } from './repositories/auth';
 export {
+  insertInvitation,
+  type CreatedInvitation,
+  type NewInvitation,
+} from './repositories/invitations';
+export {
+  MemberRepository,
+  type Member,
+  type MemberWithIdentity,
+  type TargetCheck,
+} from './repositories/member';
+export {
+  deleteExpiredInvitations,
+  TenantAdminRepository,
+  type SystemActor,
+} from './repositories/tenant-admin';
+export {
   JobQueue,
   JobRepository,
   parseJobError,

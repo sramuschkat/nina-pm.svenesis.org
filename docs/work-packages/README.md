@@ -19,7 +19,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-03](AP-03.md) | Datenbankpaket und Migrationen | L | AP-02b | H-06, H-22 | ☑ 23.09.2026 |
 | [AP-05](AP-05.md) | Shared: Rechte, Fehler, Verträge, Middleware, Job-Infrastruktur | M | AP-03 | – | ☑ |
 | [AP-04a](AP-04a.md) | Anmeldung mit Discord und Sitzungen | L | AP-05 | H-05, H-07, H-08 | ☑ |
-| [AP-04b](AP-04b.md) | Mandanten, Einladungen, Owner-Invarianten | L | AP-04a | H-08, H-12a | ☐ |
+| [AP-04b](AP-04b.md) | Mandanten, Einladungen, Owner-Invarianten | L | AP-04a | H-08, H-12a | ◐ |
 | [AP-06a](AP-06a.md) | Frontend-Shell, Gestaltung, Anmelde-Bildschirme | L | AP-04b | H-16 | ☐ |
 | [AP-06b](AP-06b.md) | Benachrichtigungen in der App und Startseite R1 | S | AP-06a | – | ☐ |
 | [AP-07a](AP-07a.md) | System-Administration (Super User) | M | AP-06a | – | ☐ |

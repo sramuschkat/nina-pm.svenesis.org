@@ -102,6 +102,45 @@ export interface SystemAuditTable {
   createdAt: Timestamp;
 }
 
+export interface NotificationTable {
+  id: Generated<string>;
+  tenantId: string | null;
+  recipientId: string | null;
+  recipientIdentityId: string | null;
+  kind: string;
+  projectId: string | null;
+  payload: ColumnType<unknown, string | undefined, string>;
+  readAt: Timestamp | null;
+  createdAt: Timestamp;
+}
+
+export interface ChangeLogTable {
+  id: Generated<string>;
+  tenantId: string;
+  entity: string;
+  entityId: string;
+  userId: string | null;
+  action: string;
+  diff: ColumnType<unknown, string | undefined, string>;
+  createdAt: Timestamp;
+}
+
+export interface MoonProfileTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  description: Generated<string>;
+  separationDeg: number;
+  widthDays: number;
+  relaxScale: number;
+  moonMinAltDeg: number;
+  moonMaxAltDeg: number;
+  maxIlluminationPct: number;
+  moonMustBeDown: Generated<boolean>;
+  isBuiltIn: Generated<boolean>;
+  createdAt: Timestamp;
+}
+
 export type JobStatusValue = 'pending' | 'running' | 'done' | 'failed';
 
 /** Tabelle `job` (Migration 0005, TK 7.4). `input` ist jsonb und wird als JSON-Text geschrieben. */
@@ -133,4 +172,7 @@ export interface Database {
   authSession: AuthSessionTable;
   invitation: InvitationTable;
   systemAudit: SystemAuditTable;
+  notification: NotificationTable;
+  changeLog: ChangeLogTable;
+  moonProfile: MoonProfileTable;
 }

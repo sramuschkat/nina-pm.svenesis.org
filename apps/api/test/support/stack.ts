@@ -2,7 +2,12 @@
  * Lokaler Test-Stack ohne Docker: API-App mit echten Repositories auf PGlite (alle Migrationen),
  * Discord-Nachbildung, verstellbarer Uhr und Cookie-Handhabung. Dieselben Tests laufen im CI.
  */
-import { AuthRepository, JobRepository } from '@nina-pm/db';
+import {
+  AuthRepository,
+  JobRepository,
+  MemberRepository,
+  TenantAdminRepository,
+} from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
 import { COOKIE_NAMES } from '@nina-pm/shared';
 import { createApp } from '../../src/app';
@@ -41,7 +46,11 @@ export async function createStack() {
   let bootstrapIds: string[] = [];
   const auth = new AuthRepository(pg.db);
   const services: ApiServices = {
-    repositories: (ctx) => ({ job: new JobRepository(pg.db, ctx) }),
+    repositories: (ctx) => ({
+      job: new JobRepository(pg.db, ctx),
+      member: new MemberRepository(pg.db, ctx),
+    }),
+    tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,
     authConfig: {
       cookieSecret: () => Promise.resolve(COOKIE_SECRET),

@@ -123,6 +123,33 @@ components:
           pattern: ^[A-Za-z0-9_-]{43}$
       required:
         - token
+    InvitationPreview:
+      type: object
+      properties:
+        tenantName:
+          type: string
+        role:
+          type: string
+          enum:
+            - owner
+            - admin
+            - user
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - tenantName
+        - role
+        - expiresAt
+    InvitationPreviewRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      required:
+        - token
     MeResponse:
       type: object
       properties:
@@ -374,6 +401,420 @@ components:
       required:
         - url
         - expiresAt
+    MemberView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        displayName:
+          type: string
+        discordUsername:
+          type: string
+        avatarHash:
+          type:
+            - string
+            - "null"
+        role:
+          type: string
+          enum:
+            - owner
+            - admin
+            - user
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+            - removed
+        mfa:
+          type: boolean
+        rightsDormant:
+          type: boolean
+        lastLoginAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - displayName
+        - discordUsername
+        - avatarHash
+        - role
+        - status
+        - mfa
+        - rightsDormant
+        - lastLoginAt
+    MemberPatch:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+      additionalProperties: false
+    RoleChangeRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        reason:
+          type: string
+          maxLength: 500
+      required:
+        - role
+      additionalProperties: false
+    OwnerTransferRequest:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - memberId
+      additionalProperties: false
+    InvitationCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        role:
+          type: string
+          enum:
+            - owner
+            - admin
+            - user
+        link:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - role
+        - link
+        - expiresAt
+    CreateUserInvitationRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        discordUserId:
+          type: string
+          pattern: ^\d{5,25}$
+        validDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 7
+        note:
+          type: string
+          maxLength: 500
+        maxUses:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 1
+      required:
+        - id
+      additionalProperties: false
+    CreateSingleUseInvitationRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        discordUserId:
+          type: string
+          pattern: ^\d{5,25}$
+        validDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 7
+        note:
+          type: string
+          maxLength: 500
+      required:
+        - id
+      additionalProperties: false
+    InvitationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        role:
+          type: string
+          enum:
+            - owner
+            - admin
+            - user
+        discordUserId:
+          type:
+            - string
+            - "null"
+        note:
+          type:
+            - string
+            - "null"
+        maxUses:
+          type: integer
+        usedCount:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        revokedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        ownerOnly:
+          type: boolean
+      required:
+        - id
+        - role
+        - discordUserId
+        - note
+        - maxUses
+        - usedCount
+        - expiresAt
+        - revokedAt
+        - createdAt
+        - ownerOnly
+    TenantAdminView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        tenantKey:
+          type: string
+        displayName:
+          type: string
+        contact:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - active
+            - locked
+        ownerMemberId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        admins:
+          type: integer
+        users:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - tenantKey
+        - displayName
+        - contact
+        - status
+        - ownerMemberId
+        - admins
+        - users
+        - createdAt
+    CreateTenantRequest:
+      type: object
+      properties:
+        tenantKey:
+          type: string
+          pattern: ^[a-z0-9-]{3,32}$
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        contact:
+          type: string
+          maxLength: 200
+      required:
+        - tenantKey
+        - displayName
+    TenantStatusPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - active
+            - locked
+      required:
+        - status
+    OwnerReassignRequest:
+      anyOf:
+        - type: object
+          properties:
+            memberId:
+              type: string
+              format: uuid
+              description: UUID
+            reason:
+              type: string
+              minLength: 1
+              maxLength: 500
+            keepPreviousAsAdmin:
+              type: boolean
+              default: false
+          required:
+            - memberId
+            - reason
+          additionalProperties: false
+        - type: object
+          properties:
+            invite:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: UUID
+                discordUserId:
+                  type: string
+                  pattern: ^\d{5,25}$
+                validDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  default: 7
+              required:
+                - id
+              additionalProperties: false
+            reason:
+              type: string
+              minLength: 1
+              maxLength: 500
+            keepPreviousAsAdmin:
+              type: boolean
+              default: false
+          required:
+            - invite
+            - reason
+          additionalProperties: false
+    SystemMemberView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        displayName:
+          type: string
+        role:
+          type: string
+          enum:
+            - owner
+            - admin
+            - user
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+            - removed
+      required:
+        - id
+        - displayName
+        - role
+        - status
+    SuperUserView:
+      type: object
+      properties:
+        identityId:
+          type: string
+          format: uuid
+          description: UUID
+        discordUserId:
+          type: string
+        discordUsername:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+        mfa:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - identityId
+        - discordUserId
+        - discordUsername
+        - status
+        - mfa
+        - createdAt
+    AddSuperUserRequest:
+      type: object
+      properties:
+        discordUserId:
+          type: string
+          pattern: ^\d{5,25}$
+      required:
+        - discordUserId
+      additionalProperties: false
+    SuperUserPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+      required:
+        - status
+      additionalProperties: false
+    IdentityStatusPatch:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - active
+            - blocked
+      required:
+        - status
+      additionalProperties: false
   parameters: {}
 paths:
   /api/health:
@@ -503,6 +944,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvitationClaimResponse"
+        "404":
+          description: invitation.invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "410":
+          description: invitation.expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/invitations/preview:
+    post:
+      summary: Vorschau eines Einladungslinks (Token im Body, nicht im Pfad)
+      tags:
+        - auth
+      description: "Aktion: `public` · TK 7.2, FA-BEN-01, DAT-20"
+      x-npm-action: public
+      x-npm-requirements:
+        - TK 7.2
+        - FA-BEN-01
+        - DAT-20
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationPreviewRequest"
+      responses:
+        "200":
+          description: Vorschau
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationPreview"
         "404":
           description: invitation.invalid
           content:
@@ -775,6 +1252,953 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: Objekt nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/members:
+    get:
+      summary: Mitgliederliste
+      tags:
+        - members
+      description: "Aktion: `member.manage` · FA-BEN-04"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-04
+      responses:
+        "200":
+          description: Mitglieder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MemberView"
+                required:
+                  - members
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/members/{id}:
+    patch:
+      summary: Anzeigename bzw. Status (aktiv/deaktiviert) ändern
+      tags:
+        - members
+      description: "Aktion: `member.manage` · FA-BEN-02, FA-BEN-08"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-02
+        - FA-BEN-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberPatch"
+      responses:
+        "204":
+          description: Geändert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: member.owner_protected, member.cannot_change_self, member.owner_cannot_leave
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Mitglied entfernen
+      tags:
+        - members
+      description: "Aktion: `member.manage` · FA-BEN-02, FA-BEN-08"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-02
+        - FA-BEN-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Entfernt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: member.owner_protected, member.cannot_change_self, member.owner_cannot_leave
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/members/{id}/role:
+    put:
+      summary: Admin ernennen oder entziehen (nur Owner)
+      tags:
+        - members
+      description: "Aktion: `member.manage` · FA-BEN-06, FA-BEN-08, E2"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-06
+        - FA-BEN-08
+        - E2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleChangeRequest"
+      responses:
+        "204":
+          description: Geändert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: member.owner_protected, member.cannot_change_self, member.owner_cannot_leave
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/members/{id}/sessions:
+    delete:
+      summary: Anmeldesitzungen eines Mitglieds in diesem Mandanten beenden (nie für den Owner)
+      tags:
+        - members
+      description: "Aktion: `member.manage` · TK 5.3, FA-BEN-08"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - TK 5.3
+        - FA-BEN-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Beendet
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: member.owner_protected, member.cannot_change_self, member.owner_cannot_leave
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/me/leave:
+    post:
+      summary: Mandant verlassen (nicht für den Owner)
+      tags:
+        - members
+      description: "Aktion: `member.leave` · FA-BEN-10"
+      x-npm-action: member.leave
+      x-npm-requirements:
+        - FA-BEN-10
+      responses:
+        "204":
+          description: Verlassen
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: member.owner_protected, member.cannot_change_self, member.owner_cannot_leave
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/tenant/owner-transfer:
+    post:
+      summary: Owner sofort an einen aktiven Admin übertragen
+      tags:
+        - members
+      description: "Aktion: `tenant.owner.transfer` · FA-BEN-09, E2"
+      x-npm-action: tenant.owner.transfer
+      x-npm-requirements:
+        - FA-BEN-09
+        - E2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerTransferRequest"
+      responses:
+        "204":
+          description: Übertragen
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: owner_transfer.target_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/invitations:
+    post:
+      summary: User-Einladung (Rolle fest `user`)
+      tags:
+        - invitations
+      description: "Aktion: `member.manage` · FA-BEN-01, SEC-50"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-01
+        - SEC-50
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserInvitationRequest"
+      responses:
+        "201":
+          description: Einladung (Link nur einmal)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    get:
+      summary: Einladungen des Mandanten
+      tags:
+        - invitations
+      description: "Aktion: `member.manage` · FA-BEN-01, FA-BEN-04"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-01
+        - FA-BEN-04
+      responses:
+        "200":
+          description: Einladungen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InvitationView"
+                required:
+                  - invitations
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/invitations/admin:
+    post:
+      summary: Admin-Einladung (nur Owner, eine Nutzung)
+      tags:
+        - invitations
+      description: "Aktion: `member.admin.manage` · FA-BEN-01, FA-BEN-06, SEC-50"
+      x-npm-action: member.admin.manage
+      x-npm-requirements:
+        - FA-BEN-01
+        - FA-BEN-06
+        - SEC-50
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSingleUseInvitationRequest"
+      responses:
+        "201":
+          description: Einladung (Link nur einmal)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/invitations/{id}:
+    delete:
+      summary: Einladung widerrufen (Einladungen des Owners nur durch den Owner)
+      tags:
+        - invitations
+      description: "Aktion: `member.manage` · FA-BEN-01, FA-BEN-08"
+      x-npm-action: member.manage
+      x-npm-requirements:
+        - FA-BEN-01
+        - FA-BEN-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Widerrufen
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/tenants:
+    get:
+      summary: Mandantenliste
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-03"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-03
+      responses:
+        "200":
+          description: Mandanten
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TenantAdminView"
+                required:
+                  - tenants
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Mandant anlegen (mit Built-in-Mondprofilen)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · TK 5.4, FA-SU-04, FA-MAN-01"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - TK 5.4
+        - FA-SU-04
+        - FA-MAN-01
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantAdminView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Mandanten-ID vergeben)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/tenants/{id}:
+    patch:
+      summary: Mandant sperren/entsperren
+      tags:
+        - system
+      description: "Aktion: `system.manage` · TK 5.4, FA-SU-04, FA-MAN-02"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - TK 5.4
+        - FA-SU-04
+        - FA-MAN-02
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantStatusPatch"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantAdminView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/tenants/{id}/invitations:
+    post:
+      summary: Owner-Einladung (eine Nutzung, optional an eine Discord-ID gebunden)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-05, E3"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-05
+        - E3
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSingleUseInvitationRequest"
+      responses:
+        "201":
+          description: Einladung (Link nur einmal)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/tenants/{id}/owner:
+    put:
+      summary: Owner im Notfall neu zuweisen (Mitglied oder neue Owner-Einladung)
+      tags:
+        - system
+      description: "Aktion: `system.tenant.owner` · FA-SU-05, TK 5.5"
+      x-npm-action: system.tenant.owner
+      x-npm-requirements:
+        - FA-SU-05
+        - TK 5.5
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerReassignRequest"
+      responses:
+        "200":
+          description: Neu zugewiesen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/InvitationCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: owner_transfer.target_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/tenants/{id}/members:
+    get:
+      summary: Mitglieder für die Owner-Neuzuweisung (nur Anzeigename, Rolle, Status)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-05, FA-SU-07"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-05
+        - FA-SU-07
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Mitglieder
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SystemMemberView"
+                required:
+                  - members
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/super-users:
+    get:
+      summary: Super User
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-06"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-06
+      responses:
+        "200":
+          description: Super User
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  superUsers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SuperUserView"
+                required:
+                  - superUsers
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Super User hinzufügen (Identität muss sich einmal angemeldet haben)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-06"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-06
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddSuperUserRequest"
+      responses:
+        "204":
+          description: Hinzugefügt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/super-users/{id}:
+    patch:
+      summary: Super User aktivieren/deaktivieren (letzter aktiver geschützt)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-06"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-06
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuperUserPatch"
+      responses:
+        "204":
+          description: Geändert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: super_user.last_protected
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Super User entfernen (deaktiviert; Zeile bleibt für das System-Audit; letzter aktiver geschützt)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-06"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-06
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Entfernt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: super_user.last_protected
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/identities/{id}:
+    patch:
+      summary: Identität systemweit sperren/entsperren (beendet alle Sitzungen)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-LOG-05"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-LOG-05
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityStatusPatch"
+      responses:
+        "204":
+          description: Geändert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:

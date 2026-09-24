@@ -10,6 +10,8 @@ import {
   INVITE_COOKIE_TTL_SECONDS,
   InvitationClaimRequest,
   InvitationClaimResponse,
+  InvitationPreview,
+  InvitationPreviewRequest,
   MeResponse,
   OAUTH_COOKIE_TTL_SECONDS,
   ProblemError,
@@ -27,6 +29,7 @@ import { pkceChallenge, randomToken, sha256Hex } from '../auth/crypto';
 import { resolveSessionState } from '../auth/session';
 import { clearCookie, readCookie, serializeCookie, signValue, verifyValue } from '../lib/cookies';
 import type { ApiEnv } from '../lib/env';
+import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import { defineRoute, problemContent, redirectResponse } from './define';
 import type { ApiServices } from './services';
@@ -112,6 +115,30 @@ export const invitationClaimRoute = defineRoute(
       200: {
         description: 'Einladung gültig',
         content: { 'application/json': { schema: InvitationClaimResponse } },
+      },
+      404: problemContent('invitation.invalid'),
+      410: problemContent('invitation.expired'),
+    },
+  },
+);
+
+export const invitationPreviewRoute = defineRoute(
+  { action: 'public', requirements: ['TK 7.2', 'FA-BEN-01', 'DAT-20'] },
+  {
+    method: 'post',
+    path: '/api/auth/invitations/preview',
+    summary: 'Vorschau eines Einladungslinks (Token im Body, nicht im Pfad)',
+    tags: ['auth'],
+    request: {
+      body: {
+        content: { 'application/json': { schema: InvitationPreviewRequest } },
+        required: true,
+      },
+    },
+    responses: {
+      200: {
+        description: 'Vorschau',
+        content: { 'application/json': { schema: InvitationPreview } },
       },
       404: problemContent('invitation.invalid'),
       410: problemContent('invitation.expired'),
@@ -214,6 +241,7 @@ export const AUTH_ROUTES = [
   discordStartRoute,
   discordCallbackRoute,
   invitationClaimRoute,
+  invitationPreviewRoute,
   contextRoute,
   logoutRoute,
   meRoute,
@@ -345,6 +373,16 @@ export function authRoutes(services: () => Promise<ApiServices>) {
     );
     noStore(c);
     return c.json({ tenantName: invitation.tenantName, role: invitation.role }, 200);
+  });
+
+  app.openapi(invitationPreviewRoute, async (c) => {
+    const svc = await services();
+    const inv = await svc.auth.claimableInvitation(sha256Hex(c.req.valid('json').token), svc.now());
+    noStore(c);
+    return c.json(
+      { tenantName: inv.tenantName, role: inv.role, expiresAt: isoUtc(inv.expiresAt) },
+      200,
+    );
   });
 
   app.openapi(contextRoute, async (c) => {

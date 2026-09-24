@@ -12,7 +12,9 @@ import {
   AuthRepository,
   JobQueue,
   JobRepository,
+  MemberRepository,
   openDatabase,
+  TenantAdminRepository,
   type OpenDatabase,
 } from '@nina-pm/db';
 import { seedCore, type SeedDemo } from '@nina-pm/db/seed';
@@ -55,7 +57,11 @@ const db = await database();
 const now = () => new Date();
 const queue = new JobQueue(db);
 const services: ApiServices = {
-  repositories: (ctx) => ({ job: new JobRepository(db, ctx) }),
+  repositories: (ctx) => ({
+    job: new JobRepository(db, ctx),
+    member: new MemberRepository(db, ctx),
+  }),
+  tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
   auth: new AuthRepository(db),
   authConfig: {
     cookieSecret: () =>
