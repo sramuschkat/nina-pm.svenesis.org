@@ -4,6 +4,11 @@
 
 ## [Unveröffentlicht]
 
+### AP-04a abgenommen (2026-09-24)
+
+- Deploy durch Sven (Commit `dd80708`, keine Migration), Smoke 10/10 inkl. `/api/auth/test-login` → 404 und Redirect zu Discord.
+- Menschliche Freigabe: erster Login mit echtem Discord in prod – Super User per Bootstrap angelegt (`isSuperUser: true`, 2FA aktiv, `mfaRequired: false`, Kontext `select`).
+
 ### AP-04a – Anmeldung mit Discord und Sitzungen (2026-09-24)
 
 Anforderungen: FA-LOG-01…10, FA-SU-01…04, TK 5.1–5.4, TK 17; SV-01, SV-02, SV-03, SV-04, SV-17; DAT5-8, DAT5-15.
