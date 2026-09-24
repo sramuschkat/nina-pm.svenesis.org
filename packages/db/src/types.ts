@@ -119,6 +119,9 @@ export interface TenantStorageTable {
 /** jsonb: gelesen als Objekt, geschrieben als JSON-Zeichenkette. */
 type Json = ColumnType<unknown, string | undefined, string>;
 
+/** `date`-Spalten (Nacht-Schlüssel, NT-04): als `YYYY-MM-DD` gelesen (Typ-Parser in connection.ts), geschrieben als Zeichenkette. */
+type DateKey = ColumnType<string, string, string>;
+
 export interface SiteTable {
   id: Generated<string>;
   tenantId: string;
@@ -312,6 +315,140 @@ export interface RigTable {
   updatedAt: Timestamp;
 }
 
+export interface ProjectTable {
+  id: Generated<string>;
+  tenantId: string;
+  rigId: string | null;
+  requestedRigId: string | null;
+  createdBy: string;
+  projectType: Generated<'deep_sky' | 'exoplanet'>;
+  name: string;
+  targetName: string | null;
+  targetType: string | null;
+  dsoObjectId: string | null;
+  catalogNames: Generated<string>;
+  descriptionMd: Generated<string>;
+  raDeg: number | null;
+  decDeg: number | null;
+  rotationDeg: Generated<number>;
+  panelRows: Generated<number>;
+  panelColumns: Generated<number>;
+  panelOverlapPct: Generated<number>;
+  minAltitudeDeg: Generated<number>;
+  minTimeOnTargetH: Generated<number>;
+  twilight: Generated<string>;
+  moonAvoidanceEnabled: Generated<boolean>;
+  moonMustBeDown: Generated<boolean>;
+  moonSeparationDeg: Generated<number>;
+  moonWidthDays: Generated<number>;
+  moonRelaxScale: Generated<number>;
+  moonMinAltDeg: Generated<number>;
+  moonMaxAltDeg: Generated<number>;
+  moonMaxIlluminationPct: Generated<number>;
+  approvalStatus: Generated<string>;
+  status: string | null;
+  priority: Generated<number>;
+  requestPeriodFrom: DateKey | null;
+  requestPeriodTo: DateKey | null;
+  submitterRank: number | null;
+  contentChangedAt: Timestamp | null;
+  effortStale: Generated<boolean>;
+  requestComment: string | null;
+  startDate: DateKey | null;
+  dueDate: DateKey | null;
+  completedAt: Timestamp | null;
+  notesMd: Generated<string>;
+  version: Generated<number>;
+  deletedAt: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface FavoriteTable {
+  tenantId: string;
+  userId: string;
+  projectId: string;
+  createdAt: Timestamp;
+}
+
+export interface ProjectPanelTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  panelIndex: number;
+  label: Generated<string>;
+  raDeg: number;
+  decDeg: number;
+  rotationDeg: Generated<number>;
+  notes: Generated<string>;
+  deletedAt: Timestamp | null;
+}
+
+export interface ExposureLineTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  panelId: string;
+  filterId: string | null;
+  filterShortName: string;
+  exposureS: number;
+  plannedCount: number;
+  gain: number | null;
+  offsetAdu: number | null;
+  binning: Generated<number>;
+  readoutMode: string;
+  moonMode: Generated<string>;
+  moonProfileId: string | null;
+  enabled: Generated<boolean>;
+  disabledForNight: DateKey | null;
+  orderIndex: Generated<number>;
+  acquiredCount: Generated<number>;
+  rejectedCount: Generated<number>;
+  bonusCount: Generated<number>;
+  bonusRejectedCount: Generated<number>;
+  deletedAt: Timestamp | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ProjectNoteTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  userId: string;
+  sessionId: string | null;
+  bodyMd: string;
+  createdAt: Timestamp;
+}
+
+export interface ApprovalEventTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  userId: string | null;
+  action: string;
+  comment: string | null;
+  snapshot: Json | null;
+  createdAt: Timestamp;
+}
+
+export interface CaptureNightTable {
+  tenantId: string;
+  exposureLineId: string;
+  night: DateKey;
+  projectId: string;
+  acquiredCount: Generated<number>;
+  rejectedIndividual: Generated<number>;
+  rejectedCorrection: Generated<number>;
+  rejectedCount: Generated<number>;
+  bonusCount: Generated<number>;
+  bonusRejectedCount: Generated<number>;
+  integrationS: Generated<number>;
+  sources: Json;
+  updatedAt: Timestamp;
+}
+
 export interface NotificationTable {
   id: Generated<string>;
   tenantId: string | null;
@@ -403,5 +540,12 @@ export interface Database {
   exposureTemplate: ExposureTemplateTable;
   exposureTemplateLine: ExposureTemplateLineTable;
   rig: RigTable;
+  project: ProjectTable;
+  favorite: FavoriteTable;
+  projectPanel: ProjectPanelTable;
+  exposureLine: ExposureLineTable;
+  projectNote: ProjectNoteTable;
+  approvalEvent: ApprovalEventTable;
+  captureNight: CaptureNightTable;
   userPreference: UserPreferenceTable;
 }

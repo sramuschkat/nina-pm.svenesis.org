@@ -2,7 +2,8 @@
  * Demo-Seed (docs/seed/seed-demo.json, TK 6.9): Mandanten mit Built-in-Mondprofilen, Identitäten, Super
  * User und Mitgliedschaften. Die Ausrüstung spielt `seedEquipment` über das Repository ein (AP-09a,
  * seed-equipment.ts); Projekte, NINA-Instanzen und Discord-Kanäle seeden die Pakete, die diese Tabellen
- * fachlich validieren (AP-11a, AP-14c, AP-60). Idempotent über ON CONFLICT.
+ * fachlich validieren (AP-12a – die Demo-Projekte sind eingereicht/freigegeben –, AP-14c, AP-60).
+ * Idempotent über ON CONFLICT.
  */
 import { createHash } from 'node:crypto';
 import { BUILT_IN_MOON_PROFILES } from '@nina-pm/shared';

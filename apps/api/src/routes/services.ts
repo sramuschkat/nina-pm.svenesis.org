@@ -4,6 +4,7 @@ import type {
   EnqueueInput,
   EnqueueResult,
   EquipmentRepository,
+  ProjectRepository,
   Job,
   MemberRepository,
   NotificationRepository,
@@ -30,6 +31,7 @@ export interface ApiRepositories {
   notification(): NotificationRepository;
   audit(): AuditRepository;
   equipment(): EquipmentRepository;
+  projects(): ProjectRepository;
   tenant(): TenantRepository;
 }
 

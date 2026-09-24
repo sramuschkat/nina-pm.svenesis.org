@@ -4,7 +4,13 @@
  * wird, was `can()` mit dem Kontext der echten Sitzungsprüfung und dem Beispielobjekt sagt. Eine neue
  * Route ohne Beispiel in EXAMPLES lässt den Test scheitern.
  */
-import { can, COOKIE_NAMES, type Action, type ResourceMeta } from '@nina-pm/shared';
+import {
+  can,
+  COOKIE_NAMES,
+  ProjectConditions,
+  type Action,
+  type ResourceMeta,
+} from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROUTES } from '../src/app';
 import { resolveSessionState } from '../src/auth/session';
@@ -112,6 +118,7 @@ beforeAll(async () => {
     ...memberExamples(),
     ...systemExamples(),
     ...(await equipmentExamples()),
+    ...(await projectExamples()),
   };
 });
 
@@ -329,6 +336,243 @@ async function equipmentExamples(): Promise<Record<string, Example>> {
     'GET /api/web/v1/sites/{id}/nights': {
       url: `/api/web/v1/sites/${site.id}/nights?from=2026-09-17&count=3`,
       resource: own,
+    },
+  };
+}
+
+/** Projekte (AP-11a): Entwurf D des Owners und freigegebenes Projekt Q; Papierkorb-Projekt T. */
+async function projectExamples(): Promise<Record<string, Example>> {
+  const repos = stack.services.repositories({
+    tenantId: world.tenantA,
+    memberId: world.members.owner,
+  });
+  const eq = repos.equipment();
+  const now = stack.clock.now();
+  const site = await eq.createSite(crypto.randomUUID(), { ...SITE, name: 'Projekt-Standort' }, now);
+  const telescope = await eq.createTelescope(
+    crypto.randomUUID(),
+    { ...TELESCOPE, name: 'Projekt-Teleskop' },
+    now,
+  );
+  const camera = await eq.createCamera(
+    crypto.randomUUID(),
+    { ...CAMERA, name: 'Projekt-Kamera' },
+    now,
+  );
+  const filter = await eq.createFilter(crypto.randomUUID(), filterInput('Ha'), now);
+  const template = await eq.createTemplate(
+    crypto.randomUUID(),
+    { name: 'Leer', telescopeId: null, cameraId: null, notes: '', lines: [] },
+    now,
+  );
+  const rig = await eq.createRig(
+    crypto.randomUUID(),
+    { ...rigInput(site.id, telescope.id, camera.id), name: 'Projekt-Rig' },
+    now,
+  );
+  const projects = repos.projects();
+  const base = {
+    rigId: rig.id,
+    targetName: 'NGC 281',
+    targetType: null,
+    catalogNames: '',
+    descriptionMd: '',
+    raDeg: 13.2458,
+    decDeg: 56.6194,
+    rotationDeg: 0,
+    startDate: null,
+    dueDate: null,
+    requestPeriodFrom: null,
+    requestPeriodTo: null,
+    requestComment: null,
+    conditions: ProjectConditions.parse({}),
+  };
+  const draft = await projects.create({ ...base, id: crypto.randomUUID(), name: 'Entwurf' }, now);
+  const approved = await projects.create(
+    { ...base, id: crypto.randomUUID(), name: 'Freigegeben' },
+    now,
+  );
+  const trash = await projects.create(
+    { ...base, id: crypto.randomUUID(), name: 'Papierkorb' },
+    now,
+  );
+  const D = draft.project.id;
+  const Q = approved.project.id;
+  const T = trash.project.id;
+  const panel = draft.panels[0]?.id as string;
+  const withLine = await projects.addLine(
+    D,
+    {
+      id: crypto.randomUUID(),
+      panelId: panel,
+      filterId: filter.id,
+      exposureS: 300,
+      plannedCount: 20,
+      gain: null,
+      offsetAdu: null,
+      binning: 1,
+      readoutMode: null,
+      moonMode: 'none',
+      moonProfileId: null,
+      enabled: true,
+      notes: '',
+    },
+    now,
+  );
+  const line = withLine.panels[0]?.lines[0]?.id as string;
+  await admin().query(
+    "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
+    [Q],
+  );
+  await admin().query('UPDATE project SET deleted_at = now() WHERE id = $1', [T]);
+  const owner = world.members.owner;
+  const draftRes: ResourceMeta = {
+    tenantId: world.tenantA,
+    createdBy: owner,
+    approvalStatus: 'draft',
+  };
+  const qRes: ResourceMeta = {
+    tenantId: world.tenantA,
+    createdBy: owner,
+    approvalStatus: 'approved',
+  };
+  const P = '/api/web/v1/projects';
+  const lineBody = () => ({
+    id: crypto.randomUUID(),
+    panelId: panel,
+    filterId: filter.id,
+    exposureS: 120,
+    plannedCount: 5,
+    moonMode: 'none',
+  });
+  // Duplizieren: Routen-Aktion project.create (jedes Mitglied); die Quelle muss lesbar sein.
+  const readableOnly = { User: 403, 'Admin ohne 2FA': 403 };
+  return {
+    [`GET ${P}`]: { url: P },
+    [`POST ${P}`]: {
+      url: P,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID(), name: 'Neu' }),
+      okStatus: 201,
+    },
+    [`GET ${P}/{id}`]: { url: `${P}/${D}`, resource: draftRes },
+    [`PATCH ${P}/{id}`]: {
+      url: `${P}/${D}`,
+      method: 'PATCH',
+      body: { name: 'Entwurf' },
+      resource: draftRes,
+    },
+    [`DELETE ${P}/{id}`]: {
+      url: `${P}/${D}`,
+      method: 'DELETE',
+      resource: draftRes,
+      okStatus: 204,
+      reset: () => admin().query('UPDATE project SET deleted_at = NULL WHERE id = $1', [D]),
+    },
+    [`POST ${P}/{id}/restore`]: {
+      url: `${P}/${T}`.concat('/restore'),
+      method: 'POST',
+      resource: draftRes,
+      reset: () => admin().query('UPDATE project SET deleted_at = now() WHERE id = $1', [T]),
+    },
+    [`POST ${P}/{id}/duplicate`]: {
+      url: `${P}/${D}/duplicate`,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID() }),
+      resource: draftRes,
+      okStatus: 201,
+      expect: readableOnly,
+    },
+    [`POST ${P}/{id}/panels`]: {
+      url: `${P}/${D}/panels`,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID(), raDeg: 13.9, decDeg: 56.6 }),
+      resource: draftRes,
+      okStatus: 201,
+    },
+    [`PATCH ${P}/{id}/panels/{panelId}`]: {
+      url: `${P}/${D}/panels/${panel}`,
+      method: 'PATCH',
+      body: { label: 'Main' },
+      resource: draftRes,
+    },
+    [`DELETE ${P}/{id}/panels/{panelId}`]: {
+      url: `${P}/${D}/panels/${crypto.randomUUID()}`,
+      method: 'DELETE',
+      resource: draftRes,
+      okStatus: 404,
+    },
+    [`POST ${P}/{id}/lines`]: {
+      url: `${P}/${D}/lines`,
+      method: 'POST',
+      body: lineBody,
+      resource: draftRes,
+      okStatus: 201,
+    },
+    [`PATCH ${P}/{id}/lines/{lineId}`]: {
+      url: `${P}/${D}/lines/${line}`,
+      method: 'PATCH',
+      body: { plannedCount: 20 },
+      resource: draftRes,
+    },
+    [`DELETE ${P}/{id}/lines/{lineId}`]: {
+      url: `${P}/${D}/lines/${crypto.randomUUID()}`,
+      method: 'DELETE',
+      resource: draftRes,
+      okStatus: 404,
+    },
+    [`POST ${P}/{id}/lines/{lineId}/duplicate`]: {
+      url: `${P}/${D}/lines/${line}/duplicate`,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID() }),
+      resource: draftRes,
+      okStatus: 201,
+    },
+    [`POST ${P}/{id}/apply-template`]: {
+      url: `${P}/${D}/apply-template`,
+      method: 'POST',
+      body: { templateId: template.id, replace: false },
+      resource: draftRes,
+    },
+    [`PUT ${P}/{id}/status`]: {
+      url: `${P}/${Q}/status`,
+      method: 'PUT',
+      body: { status: 'on_hold' },
+      resource: qRes,
+      reset: () => admin().query("UPDATE project SET status = 'active' WHERE id = $1", [Q]),
+    },
+    [`PUT ${P}/{id}/priority`]: {
+      url: `${P}/${Q}/priority`,
+      method: 'PUT',
+      body: { position: 1 },
+      resource: qRes,
+    },
+    'PUT /api/web/v1/me/favorites/{projectId}': {
+      url: `/api/web/v1/me/favorites/${Q}`,
+      method: 'PUT',
+      resource: qRes,
+      okStatus: 204,
+    },
+    'DELETE /api/web/v1/me/favorites/{projectId}': {
+      url: `/api/web/v1/me/favorites/${Q}`,
+      method: 'DELETE',
+      resource: qRes,
+      okStatus: 204,
+    },
+    [`GET ${P}/{id}/notes`]: { url: `${P}/${Q}/notes`, resource: qRes },
+    [`POST ${P}/{id}/notes`]: {
+      url: `${P}/${Q}/notes`,
+      method: 'POST',
+      body: { bodyMd: 'Framing passt.' },
+      resource: qRes,
+      okStatus: 201,
+    },
+    [`GET ${P}/{id}/history`]: { url: `${P}/${Q}/history`, resource: qRes },
+    'POST /api/web/v1/rigs/{id}/compatibility': {
+      url: `/api/web/v1/rigs/${rig.id}/compatibility`,
+      method: 'POST',
+      body: { projectId: Q },
+      resource: qRes,
     },
   };
 }
