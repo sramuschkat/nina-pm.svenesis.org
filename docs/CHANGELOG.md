@@ -8,6 +8,12 @@
 
 - `tools/reference/kernels/de432s.bsp` (JPL DE432 gekürzt, NAIF-Archiv, abgerufen 24.09.2026, gemeinfrei) mit Prüfsumme `SHA256SUMS` und Herkunftsnachweis; `common.py` prüft die Prüfsumme und lädt den Kern aus der Datei (TK 9.1, AST-T11). Der CI-Job `reference.yml` braucht damit kein Nachladen mehr. Fixtures unverändert (nur die Quellenangabe in den Metadaten).
 
+### AP-07d, AP-08a, AP-08b abgenommen (2026-09-24)
+
+- Deploy durch Sven (`43884df`, Migration 0006 nach On-Demand-Backup, Smoke-Test 10/10).
+- Bestätigt: Korrektur des Testvektors in `specs/engine/canonical-json.md` (`É` → `\u00c9`, Nicht-ASCII escaped nach AST-D10).
+- Entschieden: die Ephemeride `de432s.bsp` kommt mit Prüfsumme nach `tools/reference/kernels/` (TK 9.1) – folgt als eigener PR.
+
 ### AP-08b – Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (2026-09-25)
 
 Anforderungen: FK 8.1, 9; TK 8.4, 9.1–9.2, 18 (`reference.yml`); specs/engine/night.md §1–§4, moon.md §1–2, flip-rotation.md §1.1; NT-02, NT-07, NT-40, NT-46; WS-20…WS-24, WS-28/29.
