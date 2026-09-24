@@ -29,6 +29,7 @@ export function ProjectsLayout({ title, children }: { title: string; children: R
         tabs={[
           { to: PROJECT_AREA.list, label: t('projectArea.list') },
           { to: PROJECT_AREA.mine, label: t('projectArea.mine') },
+          { to: PROJECT_AREA.queue, label: t('projectArea.queue') },
           ...(canAdmin ? [{ to: PROJECT_AREA.drafts, label: t('projectArea.drafts') }] : []),
         ]}
       />

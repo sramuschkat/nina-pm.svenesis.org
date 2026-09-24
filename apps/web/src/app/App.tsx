@@ -33,6 +33,7 @@ import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { ProjectListPage } from '../pages/projects/ProjectListPage';
 import { MyObjectsPage } from '../pages/projects/MyObjectsPage';
 import { DraftsPage } from '../pages/projects/DraftsPage';
+import { QueuePage } from '../pages/projects/QueuePage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -148,6 +149,7 @@ export function createRouter() {
             { path: 'projekte/neu', element: <ProjectEditorPage /> },
             { path: 'projekte/meine-objekte', element: <MyObjectsPage /> },
             { path: 'projekte/entwuerfe', element: <DraftsPage /> },
+            { path: 'projekte/warteschlange', element: <QueuePage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {

@@ -608,3 +608,70 @@ tr[data-dragging='true'] {
   margin: 0;
   font-size: var(--npm-font-base);
 }
+
+/* ---- S-33 Warteschlange ---- */
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sortButton:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+tr[data-selected='true'] td {
+  background: var(--npm-note-bg);
+}
+.planChips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.voteCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  font-variant-numeric: tabular-nums;
+}
+.voteButton[aria-pressed='true'] {
+  color: var(--npm-link);
+}
+.voterNames {
+  display: block;
+  max-width: 14em;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.decision {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  border-left: 4px solid var(--npm-accent);
+}
+.decision h2 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.decision fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+.decision legend {
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+}

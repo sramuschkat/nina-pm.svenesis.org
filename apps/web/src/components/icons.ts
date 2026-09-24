@@ -49,6 +49,7 @@ import {
   ExternalLink,
   Star,
   GripVertical,
+  ThumbsUp,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -91,6 +92,8 @@ export const actionIcons = {
   clone: Copy,
   /** Favorit (FA-PRJ-16), Zurück, externer Recherche-Link (S-31, AP-11b). */
   favorite: Star,
+  /** Stimme in der Warteschlange (FA-FRG-14, S-33). */
+  vote: ThumbsUp,
   back: ArrowLeft,
   external: ExternalLink,
 } as const;
