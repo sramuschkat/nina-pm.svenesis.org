@@ -7,9 +7,11 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "openapi:generate": "tsx scripts/generate-openapi.ts"
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "dev": "POWERTOOLS_SERVICE_NAME=nina-pm-api-local tsx src/local.ts"
   },
   "devDependencies": {
+    "@hono/node-server": "2.1.1",
     "@types/aws-lambda": "8.10.163",
     "tsup": "^8.5.1",
     "yaml": "2.9.1"

@@ -9,7 +9,8 @@
     "./migrate": "./src/migrate/index.ts",
     "./migrate/bundled": "./src/migrate/bundled.ts",
     "./testing": "./src/testing/index.ts",
-    "./seed": "./src/seed.ts"
+    "./seed": "./src/seed.ts",
+    "./testing/pglite": "./src/testing/pglite.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "pg-connection-string": "^2.14.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@types/pg": "8.23.1"
   }
 }

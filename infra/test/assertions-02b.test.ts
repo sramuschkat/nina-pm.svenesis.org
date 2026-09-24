@@ -258,6 +258,20 @@ describe('Assertion 9 und Jobs', () => {
     }
   });
 
+  it('api kennt die Anmelde-Parameter nur als Namen, nie als Werte (AP-04a, iam.md §8)', () => {
+    const api = resources(t.api, 'AWS::Lambda::Function').find(
+      ([, fn]) => fn.Properties.FunctionName === config.lambdas.api.functionName,
+    );
+    const env = api?.[1].Properties.Environment as
+      { Variables?: Record<string, unknown> } | undefined;
+    expect(env?.Variables).toMatchObject({
+      COOKIE_SECRET_PARAM: '/nina-pm/oauth/cookie-secret',
+      DISCORD_CLIENT_ID_PARAM: '/nina-pm/discord/client-id',
+      DISCORD_CLIENT_SECRET_PARAM: '/nina-pm/discord/client-secret',
+      BOOTSTRAP_SUPER_USERS_PARAM: '/nina-pm/bootstrap-super-users',
+    });
+  });
+
   it('genau vier Zeitpläne in der Gruppe nina-pm, UTC, mit {tick}', () => {
     const schedules = resources(t.jobs, 'AWS::Scheduler::Schedule').map(([, s]) => s.Properties);
     expect(schedules.map((s) => [s.Name, s.ScheduleExpression]).sort()).toEqual(

@@ -19,10 +19,14 @@
     "db:migrate": "pnpm --filter @nina-pm/db migrate",
     "db:seed": "pnpm --filter @nina-pm/db seed",
     "db:lint": "pnpm --filter @nina-pm/db lint:sql",
-    "contracts:generate": "tsx packages/shared/scripts/generate-contracts.ts"
+    "contracts:generate": "tsx packages/shared/scripts/generate-contracts.ts",
+    "dev:api": "pnpm --filter @nina-pm/api dev",
+    "dev:web": "pnpm --filter @nina-pm/web dev",
+    "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "^24.13.6",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",

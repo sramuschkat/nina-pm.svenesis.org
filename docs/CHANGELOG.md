@@ -4,6 +4,23 @@
 
 ## [Unveröffentlicht]
 
+### AP-04a – Anmeldung mit Discord und Sitzungen (2026-09-24)
+
+Anforderungen: FA-LOG-01…10, FA-SU-01…04, TK 5.1–5.4, TK 17; SV-01, SV-02, SV-03, SV-04, SV-17; DAT5-8, DAT5-15.
+
+- Menschliche Aufgaben erledigt (Sven, 24.09.2026): H-07 Discord-Anwendung (Client-ID `1552568154146742332`), H-05 alle SSM-Parameter, H-08 Super-User-Konto mit 2FA.
+- `/api/auth/discord/start|callback`: `state` und PKCE S256 im signierten Cookie `__Host-npm_oauth` (10 min, HMAC mit Schlüssel aus `/nina-pm/oauth/cookie-secret`), `next` nur relativ (`^/(?![/\\])`); Identität anlegen/aktualisieren inkl. `mfa_enabled` und `last_login_at`; Mandantenwahl (ein Mandant bzw. `?mandant` → direkt, mehrere → `/mandant-waehlen`, keiner → `/kein-zugang`); Fehler → `/?anmeldung=fehler`.
+- Einladung: `POST /api/auth/invitation/claim` setzt `__Host-npm_invite` (15 min); der Callback löst in einer Transaktion ein (Wächter auf Einladung und Mandant; Owner-Einladung setzt `tenant.owner_member_id` nur, wenn leer).
+- Serverseitige Sitzung: Cookie `__Host-npm_sid` (256 Bit), in `auth_session` nur SHA-256; 14 Tage Leerlauf, 30 Tage höchstens; `last_seen_at` höchstens alle 5 min; bis zu 500 abgelaufene Zeilen je Anmeldung aufgeräumt.
+- Sitzungsprüfung je Anfrage in **einer** Abfrage ohne Cache, nur bei Bedarf (öffentliche Routen wie `/api/health` lesen die DB nicht); Admin/Owner ohne 2FA wirkt als User (`mfaRequired`); gesperrte Identität → `403 auth.identity_blocked`, gesperrter Mandant → `403 tenant.locked`, System-Kontext nur mit 2FA.
+- `POST /api/auth/context`, `POST /api/auth/logout`, `GET /api/auth/me`, `GET/DELETE /api/auth/sessions[/{id}]`; Routen-Meta `session: 'required'` für Anmelderouten ohne fachliche Aktion.
+- Super-User-Bootstrap aus `/nina-pm/bootstrap-super-users` (nur mit 2FA, `system_audit` `super_user.bootstrap`).
+- Lokaler Node-Adapter `apps/api/src/local.ts` (`pnpm dev:api`) mit Test-Login (`AUTH_TEST_MODE`, Fixtures aus `docs/seed/seed-demo.json`) und PGlite, wenn keine `DATABASE_URL` gesetzt ist; nie im Lambda-Bundle.
+- Tests auf PGlite (alle Migrationen, echtes SQL, ohne Docker): Anmeldeablauf mit Discord-Nachbildung, die PKCE prüft; Rechte-Generator jetzt mit echten Sitzungen.
+- Playwright-Grundgerüst (`e2e/`, `pnpm e2e`, CI-Job `e2e`): Vite + lokale API, Smoke-Test Test-Login → `/auth/me` → Abmelden.
+- `apps/web/src/auth`: `apiFetch` mit `X-NPM-Request`, `401` → `/?next=…` ohne Wiederholung.
+- CDK: API-Lambda kennt die vier Anmelde-Parameter (nur Namen); Smoke prod: `/api/auth/test-login` → 404 und Redirect zu Discord.
+
 ### AP-05 abgenommen (2026-09-23)
 
 - PR #15 nach Review gemergt, CI grün (inkl. PostgreSQL-Suite D-07). Keine Infrastruktur-Änderung, kein Deploy nötig. D-07 läuft beim nächsten `pnpm test:dsql` (H-22) auch gegen DSQL.

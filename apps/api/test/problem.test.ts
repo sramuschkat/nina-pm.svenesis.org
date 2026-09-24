@@ -2,7 +2,11 @@ import { ERRORS } from '@nina-pm/shared';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../src/app';
 import { problemBody } from '../src/lib/problem';
-import { SECRET, viaCloudFront } from './support/app';
+import type { AuthContext } from '@nina-pm/shared';
+import { ORIGIN_SECRET as SECRET } from './support/stack';
+
+const viaCloudFront = { 'x-origin-verify': SECRET };
+const fixed = (auth: AuthContext) => () => Promise.resolve({ auth });
 
 describe('Problem Details (TK 7.1)', () => {
   it('Status und Titel aus errors.json', () => {
@@ -24,19 +28,18 @@ describe('Problem Details (TK 7.1)', () => {
     const app = createApp({
       originVerifyValue: () => Promise.resolve(SECRET),
       buildId: 'b',
-      resolveAuth: () =>
-        Promise.resolve({
-          identityId: 'i',
-          sessionId: 's',
-          ctx: 'tenant',
-          tenantId: 't',
-          memberId: 'm',
-          role: 'user',
-          isOwner: false,
-          isSuperUser: false,
-          mfa: true,
-          mfaRequired: false,
-        }),
+      resolveSession: fixed({
+        identityId: 'i',
+        sessionId: 's',
+        ctx: 'tenant',
+        tenantId: 't',
+        memberId: 'm',
+        role: 'user',
+        isOwner: false,
+        isSuperUser: false,
+        mfa: true,
+        mfaRequired: false,
+      }),
     });
     const res = await app.request('/api/web/v1/jobs/keine-uuid', { headers: viaCloudFront });
     expect(res.status).toBe(422);
@@ -55,19 +58,18 @@ describe('Problem Details (TK 7.1)', () => {
     const app = createApp({
       originVerifyValue: () => Promise.resolve(SECRET),
       buildId: 'b',
-      resolveAuth: () =>
-        Promise.resolve({
-          identityId: 'i',
-          sessionId: 's',
-          ctx: 'tenant',
-          tenantId: 't',
-          memberId: 'm',
-          role: 'admin',
-          isOwner: false,
-          isSuperUser: false,
-          mfa: true,
-          mfaRequired: false,
-        }),
+      resolveSession: fixed({
+        identityId: 'i',
+        sessionId: 's',
+        ctx: 'tenant',
+        tenantId: 't',
+        memberId: 'm',
+        role: 'admin',
+        isOwner: false,
+        isSuperUser: false,
+        mfa: true,
+        mfaRequired: false,
+      }),
       services: () => Promise.reject(leak),
     });
     const res = await app.request('/api/web/v1/jobs/00000000-0000-4000-8000-000000000001', {

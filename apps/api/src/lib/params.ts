@@ -11,6 +11,15 @@ export function ssmString(name: string): () => Promise<string> {
   };
 }
 
+/** SecureString (Standardschlüssel `alias/aws/ssm`, SV-13) – Wert nie loggen. */
+export function ssmSecret(name: string): () => Promise<string> {
+  return async () => {
+    const value = await getParameter(name, { maxAge: SSM_MAX_AGE_SECONDS, decrypt: true });
+    if (!value) throw new Error(`SSM-Parameter ${name} ist leer`);
+    return value;
+  };
+}
+
 export function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Umgebungsvariable ${name} fehlt`);

@@ -15,6 +15,17 @@ export {
   type OpenDatabase,
 } from './repositories/database';
 export {
+  AuthRepository,
+  sessionAlive,
+  type AuthSession,
+  type ClaimableInvitation,
+  type DiscordProfile,
+  type Identity,
+  type Membership,
+  type NewSession,
+  type SessionRow,
+} from './repositories/auth';
+export {
   JobQueue,
   JobRepository,
   parseJobError,

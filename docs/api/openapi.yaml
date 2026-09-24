@@ -7,72 +7,20 @@ servers:
   - url: https://nina-pm.svenesis.org
 components:
   schemas:
-    JobView:
+    InvitationClaimResponse:
       type: object
       properties:
-        id:
+        tenantName:
           type: string
-          format: uuid
-          description: UUID
-        kind:
+        role:
           type: string
           enum:
-            - multi_sim
-            - impact
-            - effort
-            - session_close
-            - session_report
-            - discord_post
-            - export
-            - import
-            - thumbnail
-            - transit_result_parse
-            - catalog_refresh
-            - forecast
-            - reconcile
-            - weather
-            - noop
-        status:
-          type: string
-          enum:
-            - pending
-            - running
-            - done
-            - failed
-        attempts:
-          type: integer
-        errorCode:
-          type:
-            - string
-            - "null"
-        createdAt:
-          type: string
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        startedAt:
-          type:
-            - string
-            - "null"
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        finishedAt:
-          type:
-            - string
-            - "null"
-          format: date-time
-          example: 2026-09-18T13:00:00Z
-        hasResult:
-          type: boolean
+            - owner
+            - admin
+            - user
       required:
-        - id
-        - kind
-        - status
-        - attempts
-        - errorCode
-        - createdAt
-        - startedAt
-        - finishedAt
-        - hasResult
+        - tenantName
+        - role
     ProblemDetails:
       type: object
       properties:
@@ -167,6 +115,252 @@ components:
         - title
         - status
         - code
+    InvitationClaimRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      required:
+        - token
+    MeResponse:
+      type: object
+      properties:
+        identity:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            discordUserId:
+              type: string
+            username:
+              type: string
+            globalName:
+              type:
+                - string
+                - "null"
+            avatarHash:
+              type:
+                - string
+                - "null"
+            mfa:
+              type: boolean
+          required:
+            - id
+            - discordUserId
+            - username
+            - globalName
+            - avatarHash
+            - mfa
+        context:
+          type: string
+          enum:
+            - tenant
+            - system
+            - select
+        tenant:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            key:
+              type: string
+            name:
+              type: string
+          required:
+            - id
+            - key
+            - name
+        member:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            displayName:
+              type: string
+            role:
+              type: string
+              enum:
+                - owner
+                - admin
+                - user
+            effectiveRole:
+              type: string
+              enum:
+                - admin
+                - user
+          required:
+            - id
+            - displayName
+            - role
+            - effectiveRole
+        isSuperUser:
+          type: boolean
+        mfaRequired:
+          type: boolean
+        memberships:
+          type: array
+          items:
+            type: object
+            properties:
+              tenantKey:
+                type: string
+              tenantName:
+                type: string
+              role:
+                type: string
+                enum:
+                  - owner
+                  - admin
+                  - user
+            required:
+              - tenantKey
+              - tenantName
+              - role
+      required:
+        - identity
+        - context
+        - tenant
+        - member
+        - isSuperUser
+        - mfaRequired
+        - memberships
+    ContextRequest:
+      anyOf:
+        - type: object
+          properties:
+            tenantKey:
+              type: string
+              pattern: ^[a-z0-9-]{3,32}$
+          required:
+            - tenantKey
+          additionalProperties: false
+        - type: object
+          properties:
+            system:
+              type: boolean
+              enum:
+                - true
+          required:
+            - system
+          additionalProperties: false
+    SessionList:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionView"
+      required:
+        - sessions
+    SessionView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        current:
+          type: boolean
+        device:
+          type:
+            - string
+            - "null"
+        ipTruncated:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        lastSeenAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - current
+        - device
+        - ipTruncated
+        - createdAt
+        - lastSeenAt
+    JobView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        kind:
+          type: string
+          enum:
+            - multi_sim
+            - impact
+            - effort
+            - session_close
+            - session_report
+            - discord_post
+            - export
+            - import
+            - thumbnail
+            - transit_result_parse
+            - catalog_refresh
+            - forecast
+            - reconcile
+            - weather
+            - noop
+        status:
+          type: string
+          enum:
+            - pending
+            - running
+            - done
+            - failed
+        attempts:
+          type: integer
+        errorCode:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        startedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        finishedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        hasResult:
+          type: boolean
+      required:
+        - id
+        - kind
+        - status
+        - attempts
+        - errorCode
+        - createdAt
+        - startedAt
+        - finishedAt
+        - hasResult
     DownloadUrl:
       type: object
       properties:
@@ -212,6 +406,281 @@ paths:
                   - status
                   - engineVersion
                   - build
+  /api/auth/discord/start:
+    get:
+      summary: Anmeldung mit Discord beginnen (state + PKCE S256 im signierten Cookie)
+      tags:
+        - auth
+      description: "Aktion: `public` · TK 5.2, FA-LOG-01, FA-LOG-05, SV-02"
+      x-npm-action: public
+      x-npm-requirements:
+        - TK 5.2
+        - FA-LOG-01
+        - FA-LOG-05
+        - SV-02
+      parameters:
+        - schema:
+            type: string
+            maxLength: 2048
+          required: false
+          name: next
+          in: query
+        - schema:
+            type: string
+            maxLength: 64
+          required: false
+          name: mandant
+          in: query
+      responses:
+        "302":
+          description: Weiterleitung zu Discord
+          headers:
+            Location:
+              schema:
+                type: string
+  /api/auth/discord/callback:
+    get:
+      summary: "Rückkehr von Discord: state/PKCE prüfen, Identität, Einladung, Sitzung"
+      tags:
+        - auth
+      description: "Aktion: `public` · TK 5.2, FA-LOG-01, FA-LOG-05, SV-02, FA-LOG-02, FA-LOG-07, FA-SU-01"
+      x-npm-action: public
+      x-npm-requirements:
+        - TK 5.2
+        - FA-LOG-01
+        - FA-LOG-05
+        - SV-02
+        - FA-LOG-02
+        - FA-LOG-07
+        - FA-SU-01
+      parameters:
+        - schema:
+            type: string
+            maxLength: 512
+          required: false
+          name: code
+          in: query
+        - schema:
+            type: string
+            maxLength: 512
+          required: false
+          name: state
+          in: query
+        - schema:
+            type: string
+            maxLength: 256
+          required: false
+          name: error
+          in: query
+      responses:
+        "302":
+          description: Weiterleitung zu `next`, `/mandant-waehlen`, `/kein-zugang` oder `/?anmeldung=fehler`
+          headers:
+            Location:
+              schema:
+                type: string
+  /api/auth/invitation/claim:
+    post:
+      summary: Einladungslink vormerken (Cookie __Host-npm_invite, 15 min); eingelöst wird im Callback
+      tags:
+        - auth
+      description: "Aktion: `public` · TK 5.2, FA-BEN-01, DAT5-15"
+      x-npm-action: public
+      x-npm-requirements:
+        - TK 5.2
+        - FA-BEN-01
+        - DAT5-15
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationClaimRequest"
+      responses:
+        "200":
+          description: Einladung gültig
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationClaimResponse"
+        "404":
+          description: invitation.invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "410":
+          description: invitation.expired
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/context:
+    post:
+      summary: Mandant bzw. System-Kontext wählen (dieselbe Sitzungszeile)
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · TK 5.2, FA-LOG-02, FA-SU-02"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - TK 5.2
+        - FA-LOG-02
+        - FA-SU-02
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextRequest"
+      responses:
+        "200":
+          description: Neuer Kontext
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: auth.no_membership, auth.mfa_required, tenant.locked, permission.denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/logout:
+    post:
+      summary: "Abmelden: Sitzungszeile löschen, Cookie entfernen"
+      tags:
+        - auth
+      description: "Aktion: `public` · TK 5.3, FA-LOG-06"
+      x-npm-action: public
+      x-npm-requirements:
+        - TK 5.3
+        - FA-LOG-06
+      responses:
+        "204":
+          description: Abgemeldet
+  /api/auth/me:
+    get:
+      summary: Angemeldete Person, Kontext, wirksame Rolle und mfaRequired
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · TK 5.3, FA-LOG-07, FA-LOG-10"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - TK 5.3
+        - FA-LOG-07
+        - FA-LOG-10
+      responses:
+        "200":
+          description: Ich
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: auth.identity_blocked
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/sessions:
+    get:
+      summary: Eigene Anmeldesitzungen
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · TK 5.3, FA-LOG-08, SV-11"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - TK 5.3
+        - FA-LOG-08
+        - SV-11
+      responses:
+        "200":
+          description: Sitzungen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Überall abmelden (alle eigenen Sitzungen, sofort wirksam)
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · TK 5.3, FA-LOG-08"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - TK 5.3
+        - FA-LOG-08
+      responses:
+        "204":
+          description: Beendet
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/sessions/{id}:
+    delete:
+      summary: Eigene Sitzung beenden (sofort wirksam)
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · TK 5.3, FA-LOG-08"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - TK 5.3
+        - FA-LOG-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Beendet
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/jobs/{id}:
     get:
       summary: Job-Status abfragen

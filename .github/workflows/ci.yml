@@ -1,6 +1,6 @@
 # CI nach TK 18 (AP-01: install, lint, typecheck, test, build, gitleaks).
 # GitHub hat keinen AWS-Zugang (E1): dieser Workflow prüft und baut nur, er deployt nie.
-# a11y, OpenAPI-Diff und E2E kommen mit ihren Arbeitspaketen dazu.
+# OpenAPI-Diff läuft in `pnpm test` (AP-05), E2E seit AP-04a; a11y folgt mit AP-06a.
 name: ci
 
 on:
@@ -52,6 +52,30 @@ jobs:
       - run: pnpm build
       # cdk synth ohne AWS-Zugang: Lookup-Werte aus infra/cdk.context.json (TK 18)
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
+
+  e2e:
+    name: e2e (Playwright, lokaler Stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Lokaler Stack: Vite + API im Node-Adapter mit Test-Login und PGlite (TK 17); kein AWS, kein Docker.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
   gitleaks:
     name: gitleaks

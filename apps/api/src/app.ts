@@ -1,6 +1,8 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { isProblemError, toFieldErrors } from '@nina-pm/shared';
-import { anonymousOnly, session, type ResolveAuth } from './lib/auth';
+import { COOKIE_NAMES, isProblemError, toFieldErrors } from '@nina-pm/shared';
+import { resolveSessionState } from './auth/session';
+import { session, type ResolveSession } from './lib/auth';
+import { readCookie } from './lib/cookies';
 import { csrf } from './lib/csrf';
 import type { ApiEnv } from './lib/env';
 import { logger } from './lib/logger';
@@ -8,6 +10,7 @@ import { originVerify } from './lib/origin-verify';
 import { problemResponse } from './lib/problem';
 import { redact } from './lib/redact';
 import { requestIdMiddleware, requestLog } from './lib/request-log';
+import { AUTH_ROUTES, authRoutes } from './routes/auth';
 import { healthRoute, healthRoutes } from './routes/health';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
@@ -18,20 +21,20 @@ export interface AppDeps {
   readonly originVerifyValue: () => Promise<string>;
   /** Build-Kennung (Commit), gesetzt beim Deploy. */
   readonly buildId: string;
-  /** Sitzungsprüfung je Anfrage; bis AP-04a ein Stub (immer anonym). */
-  readonly resolveAuth?: ResolveAuth;
+  /** Sitzungsprüfung je Anfrage; Standard: Cookie `__Host-npm_sid` gegen `auth_session` (TK 5.3). */
+  readonly resolveSession?: ResolveSession;
   /** Dienste (DB, S3, Lambda) – erst beim ersten Bedarf erzeugt, damit /api/health ohne DB läuft. */
   readonly services?: () => Promise<ApiServices>;
 }
 
 /** Alle Routen mit ihrer Aktion (TK 5.5) – Quelle für Rechte-Testgenerator und OpenAPI. */
-export const ROUTES = [healthRoute, getJobRoute, downloadUrlRoute] as const;
+export const ROUTES = [healthRoute, ...AUTH_ROUTES, getJobRoute, downloadUrlRoute] as const;
 
 const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
 
 /**
  * Hono-App der Lambda `api` (TK 7). Reihenfolge: Request-ID → Origin-Verify (SV-16) → Logging →
- * CSRF (SV-04) → Sitzung (TK 5.3) → je Route `authorize(action)` (TK 5.5) → zod-Validierung → Handler.
+ * CSRF (SV-04) → Sitzung (TK 5.3, erst bei Bedarf) → je Route `authorize(action)` (TK 5.5) → zod → Handler.
  */
 export function createApp(deps: AppDeps) {
   const services = deps.services ?? noServices;
@@ -51,9 +54,23 @@ export function createApp(deps: AppDeps) {
   app.use('*', originVerify(deps.originVerifyValue));
   app.use('*', requestLog());
   app.use('*', csrf());
-  app.use('*', session(deps.resolveAuth ?? anonymousOnly));
+  app.use(
+    '*',
+    session(
+      deps.resolveSession ??
+        (async (c) => {
+          const svc = await services();
+          return resolveSessionState(
+            svc.auth,
+            readCookie(c.req.header('cookie'), COOKIE_NAMES.session),
+            svc.now(),
+          );
+        }),
+    ),
+  );
 
   app.route('/', healthRoutes(deps.buildId));
+  app.route('/', authRoutes(services));
   app.route('/', webJobRoutes(services));
   app.route('/', webFileRoutes(services));
 

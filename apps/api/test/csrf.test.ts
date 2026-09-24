@@ -2,8 +2,7 @@
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { csrf, requiresCsrfHeader } from '../src/lib/csrf';
-import { testApp, viaCloudFront } from './support/app';
-import { PERSONAS } from './support/personas';
+import { createStack } from './support/stack';
 
 // Beispielrouten der späteren Pakete (AP-04a u. a.) – geprüft wird nur die Middleware davor.
 const app = new Hono();
@@ -73,12 +72,13 @@ describe('CSRF-Middleware', () => {
   });
 
   it('ist in createApp vor Sitzung und Routing eingebaut', async () => {
-    const owner = PERSONAS[0]?.auth ?? null;
-    const { app: full } = testApp(owner);
-    const res = await full.request('/api/web/v1/jobs/00000000-0000-4000-8000-000000000001', {
-      method: 'POST',
-      headers: viaCloudFront,
-    });
-    expect(await res.json()).toMatchObject({ code: 'auth.csrf_missing' });
+    const stack = await createStack();
+    try {
+      const res = await stack.request('/api/auth/logout', { method: 'POST', noCsrf: true });
+      expect(await res.json()).toMatchObject({ code: 'auth.csrf_missing' });
+      expect((await stack.request('/api/auth/logout', { method: 'POST' })).status).toBe(204);
+    } finally {
+      await stack.close();
+    }
   });
 });

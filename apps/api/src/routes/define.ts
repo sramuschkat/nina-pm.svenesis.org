@@ -11,6 +11,8 @@ export interface RouteMeta {
   readonly action: Action;
   /** Anforderungs-IDs für die OpenAPI-Beschreibung (rules/api.md). */
   readonly requirements: readonly string[];
+  /** Nur mit Aktion `public`: Sitzung trotzdem Pflicht (Anmelderouten wie `/auth/me`, jeder Kontext). */
+  readonly session?: 'required';
 }
 
 export function defineRoute<
@@ -21,17 +23,23 @@ export function defineRoute<
     ...config,
     description: [
       config.description,
-      `Aktion: \`${meta.action}\` · ${meta.requirements.join(', ')}`,
+      `Aktion: \`${meta.action}\`${meta.session ? ' (mit Sitzung)' : ''} · ${meta.requirements.join(', ')}`,
     ]
       .filter(Boolean)
       .join('\n\n'),
     'x-npm-action': meta.action,
+    ...(meta.session ? { 'x-npm-session': meta.session } : {}),
     'x-npm-requirements': [...meta.requirements],
-    middleware: [authorize(meta.action)] as const,
+    middleware: [authorize(meta.action, meta.session ? { session: meta.session } : {})] as const,
   });
 }
 
 export const problemContent = (description: string) => ({
   description,
   content: { 'application/problem+json': { schema: ProblemDetails } },
+});
+
+export const redirectResponse = (description: string) => ({
+  description,
+  headers: { Location: { schema: { type: 'string' as const } } },
 });

@@ -1,50 +1,67 @@
-/** Rollen für den Rechte-Testgenerator (TK 5.5): Route × Persona. */
-import type { AuthContext } from '@nina-pm/shared';
-
-export const TENANT_A = '0190c3f4-0000-7000-8000-00000000000a';
-export const TENANT_B = '0190c3f4-0000-7000-8000-00000000000b';
-export const MEMBER = {
-  owner: '0190c3f4-0000-7000-8000-0000000000a1',
-  admin: '0190c3f4-0000-7000-8000-0000000000a2',
-  user: '0190c3f4-0000-7000-8000-0000000000a3',
-  foreignAdmin: '0190c3f4-0000-7000-8000-0000000000b1',
-} as const;
-
-const base = (over: Partial<AuthContext>): AuthContext => ({
-  identityId: 'identity',
-  sessionId: 'session',
-  ctx: 'tenant',
-  tenantId: TENANT_A,
-  memberId: MEMBER.user,
-  role: 'user',
-  isOwner: false,
-  isSuperUser: false,
-  mfa: true,
-  mfaRequired: false,
-  ...over,
-});
+/**
+ * Rollen für den Rechte-Testgenerator (TK 5.5): echte Identitäten, Mitgliedschaften und Sitzungen in
+ * PGlite – der `AuthContext` entsteht über die echte Sitzungsprüfung.
+ */
+import type { Stack } from './stack';
 
 export interface Persona {
   readonly name: string;
-  readonly auth: AuthContext | null;
+  /** Legt je Aufruf eine frische Sitzung an; `null` = anonym. */
+  readonly session: () => Promise<string | null>;
   /** Mandant ist ein anderer als der der Beispielobjekte. */
   readonly foreign?: boolean;
 }
 
-export const PERSONAS: readonly Persona[] = [
-  { name: 'Owner', auth: base({ memberId: MEMBER.owner, role: 'admin', isOwner: true }) },
-  { name: 'Admin', auth: base({ memberId: MEMBER.admin, role: 'admin' }) },
-  // Ohne 2FA liefert die Sitzungsprüfung role 'user' (SV-03): muss sich wie User verhalten.
-  { name: 'Admin ohne 2FA', auth: base({ memberId: MEMBER.admin, role: 'user', mfa: false }) },
-  { name: 'User', auth: base({ memberId: MEMBER.user, role: 'user' }) },
-  {
-    name: 'fremder Mandant (Admin)',
-    auth: base({ tenantId: TENANT_B, memberId: MEMBER.foreignAdmin, role: 'admin' }),
-    foreign: true,
-  },
-  { name: 'anonym', auth: null },
-  {
-    name: 'Super User im System-Kontext',
-    auth: base({ ctx: 'system', tenantId: null, memberId: null, role: null, isSuperUser: true }),
-  },
-];
+export interface PersonaWorld {
+  readonly tenantA: string;
+  readonly tenantB: string;
+  readonly members: Record<'owner' | 'admin' | 'adminNoMfa' | 'user' | 'user2', string>;
+  readonly personas: readonly Persona[];
+}
+
+export async function seedPersonas(stack: Stack): Promise<PersonaWorld> {
+  const { seed } = stack;
+  const tenantA = await seed.tenant('tenant-a');
+  const tenantB = await seed.tenant('tenant-b');
+  const person = async (tenantId: string, role: 'admin' | 'user', mfa: boolean) => {
+    const identity = await seed.identity({ mfaEnabled: mfa });
+    const memberId = await seed.member(identity.id, tenantId, role);
+    return { identity, memberId, tenantId };
+  };
+  const owner = await person(tenantA, 'admin', true);
+  await seed.owner(tenantA, owner.memberId);
+  const admin = await person(tenantA, 'admin', true);
+  const adminNoMfa = await person(tenantA, 'admin', false);
+  const user = await person(tenantA, 'user', false);
+  const user2 = await person(tenantA, 'user', false);
+  const foreign = await person(tenantB, 'admin', true);
+  const superIdentity = await seed.identity({ mfaEnabled: true });
+  await seed.superUser(superIdentity.id);
+
+  const inTenant = (p: { identity: { id: string }; tenantId: string }) => () =>
+    seed.session(p.identity.id, p.tenantId, 'tenant');
+  return {
+    tenantA,
+    tenantB,
+    members: {
+      owner: owner.memberId,
+      admin: admin.memberId,
+      adminNoMfa: adminNoMfa.memberId,
+      user: user.memberId,
+      user2: user2.memberId,
+    },
+    personas: [
+      { name: 'Owner', session: inTenant(owner) },
+      { name: 'Admin', session: inTenant(admin) },
+      { name: 'Admin ohne 2FA', session: inTenant(adminNoMfa) },
+      { name: 'User', session: inTenant(user) },
+      { name: 'User 2', session: inTenant(user2) },
+      { name: 'fremder Mandant (Admin)', session: inTenant(foreign), foreign: true },
+      { name: 'anonym', session: () => Promise.resolve(null) },
+      {
+        name: 'Super User im System-Kontext',
+        session: () => seed.session(superIdentity.id, null, 'system'),
+      },
+    ],
+  };
+}

@@ -5,6 +5,7 @@ import type { Database } from '../types';
 import type { TenantContext } from './base';
 
 export type { AppDbRole, DbConfig } from '../connection';
+import { AuthRepository } from './auth';
 import { JobQueue, JobRepository } from './job';
 import { TenantRepository } from './tenant';
 
@@ -13,6 +14,8 @@ export interface OpenDatabase {
   repositories(ctx: TenantContext): { tenant: TenantRepository; job: JobRepository };
   /** Warteschlange des `worker` über alle Mandanten (TK 7.4). */
   jobQueue(): JobQueue;
+  /** Anmeldung und Sitzungen – an Sitzung/Identität gebunden (TK 5.3). */
+  auth(): AuthRepository;
   close(): Promise<void>;
 }
 
@@ -25,6 +28,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       job: new JobRepository(db, ctx),
     }),
     jobQueue: () => new JobQueue(db),
+    auth: () => new AuthRepository(db),
     close: () => db.destroy(),
   };
 }
