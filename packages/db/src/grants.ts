@@ -46,6 +46,8 @@ export const TABLE_GRANTS: Readonly<Record<string, TableGrant>> = {
   tenant: g(SYSTEM, ALL, S),
   system_audit: g(SYSTEM, ALL, ALL),
   system_setting: g(SYSTEM, ALL, S),
+  // Speicherbedarf je Mandant (AP-07d): worker misst täglich, api liest und löscht mit dem Mandanten.
+  tenant_storage: g(SYSTEM, ALL, SIU),
   dso_object: g(SYSTEM, S, ALL),
   exo_catalog_entry: g(SYSTEM, S, ALL),
   weather_cache: g(SYSTEM, S, ALL),

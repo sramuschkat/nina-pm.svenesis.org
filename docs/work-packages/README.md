@@ -47,7 +47,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-14b](AP-14b.md) | NINA-API: Sessions, Lease, Offline, Ingest, Heartbeat | L | AP-14a | – | ☐ |
 | [AP-14c](AP-14c.md) | NINA-Instanzen S-42, Auslieferung S-41, Fake-Plugin | M | AP-14b, AP-13f | H-12b, H-24 | ☐ |
 | [AP-15](AP-15.md) | Sessions und Auswertung R1 | M | AP-14c | – | ☐ |
-| [AP-07d](AP-07d.md) | Speicherbedarf je Mandant (S-80, FA-SU-03) | S | AP-07a | – | ☐ |
+| [AP-07d](AP-07d.md) | Speicherbedarf je Mandant (S-80, FA-SU-03) | S | AP-07a | – | ◐ |
 | [AP-17](AP-17.md) | Härtung und Go-live | L | AP-15, AP-07c, AP-07d | H-17, H-18, H-20, H-23 | ☐ |
 
 ## R2

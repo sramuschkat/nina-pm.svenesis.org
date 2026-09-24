@@ -139,6 +139,17 @@ export class TenantAdminRepository {
         sql<Date | null>`(SELECT max(m.last_login_at) FROM app_user m WHERE m.tenant_id = t.id)`.as(
           'lastLoginAt',
         ),
+        sql<
+          string | null
+        >`(SELECT s.file_bytes::text FROM tenant_storage s WHERE s.tenant_id = t.id)`.as(
+          'storageBytes',
+        ),
+        sql<number | null>`(SELECT s.file_count FROM tenant_storage s WHERE s.tenant_id = t.id)`.as(
+          'storageFileCount',
+        ),
+        sql<Date | null>`(SELECT s.measured_at FROM tenant_storage s WHERE s.tenant_id = t.id)`.as(
+          'storageMeasuredAt',
+        ),
       ]);
     if (tenantId) q = q.where('t.id', '=', tenantId);
     const rows = await q.orderBy('t.tenantKey').execute();
@@ -150,6 +161,9 @@ export class TenantAdminRepository {
       ninaInstances: Number(r.ninaInstances),
       ninaLastSeenAt: r.ninaLastSeenAt ? new Date(r.ninaLastSeenAt) : null,
       lastLoginAt: r.lastLoginAt ? new Date(r.lastLoginAt) : null,
+      storageBytes: r.storageBytes === null ? null : Number(r.storageBytes),
+      storageFileCount: r.storageFileCount === null ? null : Number(r.storageFileCount),
+      storageMeasuredAt: r.storageMeasuredAt ? new Date(r.storageMeasuredAt) : null,
     }));
   }
 
