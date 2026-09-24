@@ -8,25 +8,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { CONTACT_PATH, siteHref, SITE_NAV, WEBSITE } from './site-nav';
 import styles from './layout.module.css';
+import logoUrl from './svenesis-logo.svg';
 
-/** Platzhalter-Logo bis zur Übernahme von `img/logo.svg` der Website (H-16). */
+/** Logo der Website (`img/logo.svg` von www.svenesis.org, als Datei im Repo – keine Laufzeit-Einbindung). */
 export function LogoMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden focusable="false">
-      <circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" strokeWidth="2.5" />
-      <ellipse
-        cx="16"
-        cy="16"
-        rx="15"
-        ry="5"
-        fill="none"
-        stroke="var(--npm-accent)"
-        strokeWidth="2"
-        transform="rotate(-20 16 16)"
-      />
-      <circle cx="16" cy="16" r="3" fill="currentColor" />
-    </svg>
-  );
+  return <img src={logoUrl} alt="" width={size} height={size} className={styles.logoImg} />;
 }
 
 export function SvenesisHeader() {

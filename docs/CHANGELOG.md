@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### Logo der Website statt Platzhalter (2026-09-24)
+
+- `img/logo.svg` von www.svenesis.org (von Sven bereitgestellt) als `apps/web/src/layout/svenesis-logo.svg` im Kopf und auf der Einstiegsseite sowie als Favicon (`apps/web/public/favicon.svg`); Anmerkung 3 aus AP-06a/H-16 erledigt.
+
 ### AP-06a – Frontend-Shell, Gestaltung, Anmelde-Bildschirme (2026-09-24)
 
 Anforderungen: FA-WEB-01…04, FA-ADM-07, NFA UX, S-01; TK 11; NT-03, NT-04; SV-01, SV-03, SV-04, SV-05; E4; SEC-2; UI-1, UI-4; CC-5, CC-12, CC5-9.
