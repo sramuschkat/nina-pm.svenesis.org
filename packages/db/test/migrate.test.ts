@@ -174,6 +174,7 @@ describe('Migrationsdateien', () => {
       '0003_ausruestung',
       '0004_projekte_exoplaneten',
       '0005_ausfuehrung',
+      '0006_speicherbedarf',
     ]);
     const bundled = readFileSync(
       fileURLToPath(new URL('../src/migrate/bundled.ts', import.meta.url)),

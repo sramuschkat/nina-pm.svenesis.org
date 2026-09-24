@@ -109,6 +109,13 @@ export interface SystemSettingTable {
   updatedAt: Timestamp;
 }
 
+export interface TenantStorageTable {
+  tenantId: string;
+  fileBytes: ColumnType<string, number | bigint | string, number | bigint | string>;
+  fileCount: number;
+  measuredAt: Timestamp;
+}
+
 export interface NotificationTable {
   id: Generated<string>;
   tenantId: string | null;
@@ -188,6 +195,7 @@ export interface Database {
   invitation: InvitationTable;
   systemAudit: SystemAuditTable;
   systemSetting: SystemSettingTable;
+  tenantStorage: TenantStorageTable;
   notification: NotificationTable;
   changeLog: ChangeLogTable;
   moonProfile: MoonProfileTable;

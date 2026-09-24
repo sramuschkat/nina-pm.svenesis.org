@@ -4,6 +4,16 @@
 
 ## [Unveröffentlicht]
 
+### AP-07d – Speicherbedarf je Mandant (2026-09-25)
+
+Anforderungen: FA-SU-03, S-80; TK 12, 13 (`daily`), TK 6.2.
+
+- Migration **0006** (additiv): Tabelle `tenant_storage` (Bytes, Anzahl Dateien, Messzeitpunkt je Mandant) mit GRANTs nach TK 6.2 (`app_rw` alle, `app_job` SELECT/INSERT/UPDATE); in der Löschreihenfolge für FA-MAN-03 enthalten (Schematest). Eigene Tabelle statt Spalten an `tenant`, weil ein nachträgliches Spaltenrecht für `app_job` den GRANT-Lint je Migration bräche – Brief entsprechend angepasst.
+- `worker`, Zeitplan `daily`: Aufgabe `tenant_storage` listet je Mandant `tenant/<id>/` im Daten-Bucket (seitenweise), summiert Größen und schreibt eine Zeile; ein Fehler bei einem Mandanten bricht die übrigen nicht ab. Keine neuen IAM-Rechte (`grantReadWrite(worker, 'tenant/*')` enthält das Auflisten, `iam.md` §1).
+- `TenantAdminView` um `storageBytes`, `storageFileCount`, `storageMeasuredAt`; S-80 zeigt Spalte „Dateien“ (SI-Einheiten, Anzahl und Stand in Betreiberzeit mit Kürzel im Tooltip) bzw. „noch nicht gemessen“.
+- Tests: S3-Summe über mehrere Seiten, fremde Präfixe zählen nicht, ohne Dateien → 0; täglicher Lauf mit Fehler bei einem Mandanten; Anzeige in der Liste (API und Komponententest); `daily` enthält die Aufgabe.
+- `pnpm test:dsql` durch Sven (H-22, 24.09.2026, Migrationsstand `387475bdb1135fb0`): D-01…D-07 grün, 52 Tabellen, 420 Rechte wie TK 6.2 – Protokoll `docs/test-runs/2026-09-24/ap-03/`.
+
 ### AP-07a, AP-07b, AP-07c abgenommen (2026-09-24)
 
 - Deploy durch Sven (`4f74090`, Smoke-Test 10/10), dabei neu: `s3:DeleteObject*` der api-Rolle auf `tenant/*`.
