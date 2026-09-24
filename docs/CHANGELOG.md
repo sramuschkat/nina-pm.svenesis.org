@@ -4,6 +4,16 @@
 
 ## [Unveröffentlicht]
 
+### AP-08a – Engine-Grundlagen: Mathematik, kanonisches JSON, Hash (2026-09-25)
+
+Anforderungen: TK 8.1, NFA-03 (Determinismus); rules/engine.md Nr. 1–5, 9; specs/engine/canonical-json.md.
+
+- `packages/engine/src/math`: Port von fdlibm 5.3 – `sin`, `cos`, `tan` (mit Winkelreduktion Cody-Waite und Payne-Hanek für große Argumente), `asin`, `acos`, `atan`, `atan2`, `exp`, `log`, `log10`, `pow`; Wortzugriff über eine `DataView` mit fester Byte-Reihenfolge. `fmod` ist der exakt festgelegte ECMAScript-Operator `%` (Regel in `rules/engine.md` Nr. 2 ergänzt).
+- `q(x, inv)` und `roundHalfAwayFromZero` (Kehrwert statt Schritt), `canonicalInputJson` (Schlüssel nach UTF-16 sortiert, Zahlen über `q(x, 1e9)`, `-0` → `0`, `undefined` weggelassen, Fehler `canonical.non_finite`, alle Codeeinheiten > U+007F als `\uxxxx`), `canonicalHash`, reine `sha256hex` über UTF-8-Bytes (ohne `crypto`, ohne BigInt).
+- `ENGINE_VERSION` 0.1.0. Die ESLint-Allowlist für das Engine-Paket (AP-01) gilt unverändert scharf; die neuen Module halten sie ein.
+- Spec-Korrektur `canonical-json.md`: Der Testvektor `{"Z":1,"a":2,"É":3}` stand unescaped da, widersprach aber der verbindlichen Hash-Regel (Nicht-ASCII escaped); jetzt `{"Z":1,"a":2,"\u00c9":3}`, dazu die Escape-Form (UTF-16-Codeeinheiten, kleine Hex-Ziffern).
+- Tests: je Funktion 10.000 deterministische Zufallswerte gegen `Math.*` (|Δ| ≤ 1e-15, oberhalb |y| = 1 relativ), Sonderwerte (±0, ±∞, NaN, Subnormale) samt aller Paare für `atan2`/`pow`; Pflicht-Testvektoren aus `canonical-json.md`; SHA-256 mit FIPS-Vektoren und 500 Zufallstexten mit Umlauten/Emoji gegen `node:crypto`. Bekannt: fdlibm liefert `exp(1)` 1 ulp neben `Math.E` – gewollt, alle Hosts rechnen denselben Port.
+
 ### AP-07d – Speicherbedarf je Mandant (2026-09-25)
 
 Anforderungen: FA-SU-03, S-80; TK 12, 13 (`daily`), TK 6.2.
