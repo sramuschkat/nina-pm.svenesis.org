@@ -1,0 +1,47 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  width: 100%;
+}
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--npm-space-2);
+  min-height: calc(var(--npm-row-h) * 0.75);
+}
+.icon {
+  flex-shrink: 0;
+  align-self: center;
+}
+.ok .icon {
+  color: var(--npm-success);
+}
+.failed .icon {
+  color: var(--npm-danger);
+}
+.unchecked .icon {
+  color: var(--npm-muted);
+}
+.detail {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.empty,
+.summary {
+  color: var(--npm-text-light);
+}
+.toggle {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--npm-link);
+  cursor: pointer;
+  padding: 0;
+}

@@ -7,6 +7,7 @@ import {
   AuthRepository,
   JobRepository,
   MemberRepository,
+  PreferenceRepository,
   TenantAdminRepository,
 } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
@@ -51,6 +52,7 @@ export async function createStack() {
     repositories: (ctx) => ({
       job: new JobRepository(pg.db, ctx),
       member: new MemberRepository(pg.db, ctx),
+      preference: () => new PreferenceRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,

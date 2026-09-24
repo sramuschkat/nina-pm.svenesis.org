@@ -54,10 +54,11 @@ jobs:
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e:
-    name: e2e (Playwright, lokaler Stack)
+    name: e2e + a11y (Playwright, lokaler Stack)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Lokaler Stack: Vite + API im Node-Adapter mit Test-Login und PGlite (TK 17); kein AWS, kein Docker.
+    # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
+    # und PGlite (TK 17); kein AWS, kein Docker. Enthält `pnpm test:a11y` (a11y.spec.ts, TK 18).
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6

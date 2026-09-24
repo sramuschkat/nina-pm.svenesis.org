@@ -13,6 +13,7 @@ import {
   JobQueue,
   JobRepository,
   MemberRepository,
+  PreferenceRepository,
   openDatabase,
   TenantAdminRepository,
   type OpenDatabase,
@@ -60,6 +61,7 @@ const services: ApiServices = {
   repositories: (ctx) => ({
     job: new JobRepository(db, ctx),
     member: new MemberRepository(db, ctx),
+    preference: () => new PreferenceRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
   auth: new AuthRepository(db),

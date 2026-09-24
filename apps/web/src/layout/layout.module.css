@@ -1,0 +1,361 @@
+/* Rahmen (TK 11.3): Kopf/Fuß wie www.svenesis.org, Arbeitsbereich ohne Breitenobergrenze. */
+
+/* ---------- Svenesis-Kopf ---------- */
+.siteHeader {
+  background: var(--npm-primary);
+  color: var(--npm-on-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.siteHeaderInner {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-4);
+  min-height: var(--npm-header-h);
+  padding: 0 var(--npm-space-5);
+}
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  color: var(--npm-on-primary);
+  font-size: calc(22px * var(--npm-font-scale));
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.logo:hover {
+  color: var(--npm-accent);
+  text-decoration: none;
+}
+.appName {
+  color: var(--npm-on-primary);
+  font-weight: 700;
+  padding-left: var(--npm-space-3);
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+.appName:hover {
+  color: var(--npm-on-primary);
+}
+.siteNav {
+  display: flex;
+  gap: var(--npm-space-1);
+  margin-left: auto;
+  min-width: 0;
+}
+.siteNav a {
+  color: var(--npm-on-primary-muted);
+  padding: var(--npm-space-1) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  font-size: calc(14.4px * var(--npm-font-scale));
+  white-space: nowrap;
+}
+.siteNav a:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--npm-on-primary);
+  text-decoration: none;
+}
+.langSwitch {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.langSwitch button {
+  background: transparent;
+  color: var(--npm-on-primary-muted);
+  border: none;
+  padding: var(--npm-space-1) var(--npm-space-2);
+  font-size: calc(12.8px * var(--npm-font-scale));
+  font-weight: 600;
+  cursor: pointer;
+}
+.langSwitch .langActive {
+  background: var(--npm-button);
+  color: var(--npm-on-button);
+}
+/* Unter 1100 px: Website-Menü ausgeblendet (Logo führt zur Website) – kein horizontales Scrollen (UI-1). */
+@media (max-width: 1100px) {
+  .siteNav {
+    display: none;
+  }
+  .langSwitch {
+    margin-left: auto;
+  }
+}
+
+.breadcrumb {
+  max-width: var(--npm-max-width);
+  margin: 0 auto;
+  width: 100%;
+  padding: var(--npm-space-3) var(--npm-space-5);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-2);
+}
+.crumb {
+  display: inline-flex;
+  gap: var(--npm-space-2);
+}
+
+/* ---------- Textseiten ---------- */
+.textMain {
+  flex: 1;
+  width: 100%;
+  max-width: var(--npm-max-width);
+  margin: 0 auto;
+  padding: 0 var(--npm-space-5) var(--npm-space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+}
+
+/* ---------- Svenesis-Fuß ---------- */
+.siteFooter {
+  background: var(--npm-primary);
+  color: var(--npm-on-primary-muted);
+  text-align: center;
+  padding: var(--npm-space-5);
+  font-size: var(--npm-font-small);
+}
+.siteFooter a {
+  color: var(--npm-on-primary);
+}
+.footerLinks {
+  margin-top: var(--npm-space-2);
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2) var(--npm-space-5);
+}
+
+/* ---------- App-Leiste ---------- */
+.appBar {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-3);
+  min-height: calc(var(--npm-row-h) + var(--npm-space-3));
+  padding: 0 var(--npm-space-5);
+  background: var(--npm-white);
+  border-bottom: 1px solid var(--npm-border);
+}
+.appBarName {
+  font-weight: 700;
+  color: var(--npm-text);
+}
+.tenant {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  color: var(--npm-text-light);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switch {
+  display: inline-flex;
+  color: var(--npm-link);
+}
+.spacer {
+  flex: 1;
+}
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--npm-row-h);
+  height: var(--npm-row-h);
+  border-radius: var(--npm-radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--npm-text);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  background: var(--npm-note-bg);
+}
+.iconButton:disabled {
+  color: var(--npm-muted);
+  cursor: default;
+}
+.userButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border-radius: var(--npm-radius);
+  border: 1px solid var(--npm-border);
+  background: transparent;
+  color: var(--npm-text);
+  cursor: pointer;
+  max-width: 320px;
+}
+.avatar {
+  border-radius: 50%;
+}
+.userName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.userRole {
+  color: var(--npm-text-light);
+}
+.menu {
+  min-width: 220px;
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-1);
+  z-index: 300;
+}
+.menuItem {
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: calc(var(--npm-radius) / 2);
+  cursor: pointer;
+  outline: none;
+  color: var(--npm-text);
+}
+.menuItem[data-highlighted] {
+  background: var(--npm-note-bg);
+}
+.menuItem[data-disabled] {
+  color: var(--npm-muted);
+  cursor: default;
+}
+.menuSeparator {
+  height: 1px;
+  background: var(--npm-border);
+  margin: var(--npm-space-1) 0;
+}
+
+.mfaBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-5);
+  background: var(--npm-warning-bg);
+  color: var(--npm-text);
+  border-bottom: 1px solid var(--npm-border);
+}
+
+/* ---------- Arbeitsbereich: volle Fensterbreite, kein max-width ---------- */
+.work {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+.workMain {
+  flex: 1;
+  min-width: 0;
+  padding: var(--npm-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+}
+
+.sideNav {
+  flex-shrink: 0;
+  width: 220px;
+  background: var(--npm-white);
+  border-right: 1px solid var(--npm-border);
+  padding: var(--npm-space-2);
+}
+.sideNavCollapsed {
+  width: calc(var(--npm-row-h) + var(--npm-space-4));
+}
+.sideNavCollapsed .navLabel {
+  display: none;
+}
+.sideNav ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.navToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--npm-row-h);
+  height: var(--npm-row-h);
+  margin-bottom: var(--npm-space-2);
+  border: none;
+  background: transparent;
+  color: var(--npm-text-light);
+  cursor: pointer;
+  border-radius: var(--npm-radius);
+}
+.navItemDisabled {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-3);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  color: var(--npm-text-light);
+  cursor: default;
+  white-space: nowrap;
+}
+.navLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- App-Fußleiste ---------- */
+.appFooter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-5);
+  background: var(--npm-white);
+  border-top: 1px solid var(--npm-border);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.density {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.densityLabel {
+  margin-right: var(--npm-space-1);
+}
+.density button {
+  border: 1px solid var(--npm-border);
+  background: transparent;
+  color: var(--npm-text);
+  padding: 0 var(--npm-space-2);
+  min-height: calc(var(--npm-row-h) * 0.8);
+  border-radius: var(--npm-radius);
+  cursor: pointer;
+}
+.density .densityActive {
+  background: var(--npm-button);
+  border-color: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.version {
+  font-variant-numeric: tabular-nums;
+}
+.help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+
+@media (max-width: 1279px) {
+  .sideNav {
+    width: 180px;
+  }
+}

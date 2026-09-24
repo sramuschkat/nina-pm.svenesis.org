@@ -5,3 +5,4 @@ export * from './jobs';
 export * from './nights';
 export * from './upload-json';
 export * from './tenants';
+export * from './preferences';

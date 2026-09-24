@@ -1,16 +1,19 @@
 /**
- * Playwright-Grundgerüst (TK 17, CC-5): lokaler Stack aus Vite (Web) und dem Node-Adapter der API mit
- * Test-Login und PGlite (kein Docker nötig). AP-06a erweitert die Tests für die Oberfläche.
+ * Playwright (TK 17, AP-06a): prod-naher lokaler Stack – die **gebaute** SPA (mit Bausteinübersicht
+ * `VITE_GALLERY=1`) hinter einem Server mit den Headern aus iam.md §10 und die API im Node-Adapter mit
+ * Test-Login und PGlite (kein Docker). Browserzone Europe/Berlin (rules/ui.md, Zeitzonen-Tests).
+ * `pnpm e2e` – alle Tests; `pnpm test:a11y` – nur die axe-Prüfungen.
  */
 import { defineConfig, devices } from '@playwright/test';
 
 const API_PORT = 8787;
-const WEB_PORT = 5173;
+const WEB_PORT = 4173;
 
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
   fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: process.env.CI
@@ -43,12 +46,12 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: 'pnpm dev:web',
+      command: 'pnpm --filter @nina-pm/web build:e2e && pnpm exec tsx e2e/server.ts',
       cwd: '..',
-      url: `http://localhost:${WEB_PORT}`,
-      env: { API_PORT: String(API_PORT) },
+      url: `http://localhost:${WEB_PORT}/datenschutz`,
+      env: { PORT: String(WEB_PORT), API_PORT: String(API_PORT) },
       reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
+      timeout: 120_000,
     },
   ],
 });

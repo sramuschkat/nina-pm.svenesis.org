@@ -4,6 +4,20 @@
 
 ## [Unveröffentlicht]
 
+### AP-06a – Frontend-Shell, Gestaltung, Anmelde-Bildschirme (2026-09-24)
+
+Anforderungen: FA-WEB-01…04, FA-ADM-07, NFA UX, S-01; TK 11; NT-03, NT-04; SV-01, SV-03, SV-04, SV-05; E4; SEC-2; UI-1, UI-4; CC-5, CC-12, CC5-9.
+
+- `packages/ui-tokens`: Farben/Typografie nach www.svenesis.org, Abstandsskala `--npm-space-1…7` × Dichte-Faktor, zwei Themes `light`/`dark` (kein Rotlicht), Dichte `compact`/`normal`/`wide`; `tokens.css` generiert aus `tokens.ts`, Kontrasttest ≥ 4,5:1 in beiden Themes. Abweichung für WCAG AA: Text/Knöpfe in einer dunkleren Stufe des Akzentblaus (`#1f6aa5`); Werte des Dunkel-Themes als Vorschlag (H-16).
+- Web-App: React Router, TanStack Query, react-i18next (DE/EN), Radix; Rahmen mit Svenesis-Kopf/-Fuß, App-Leiste (Mandant, Theme, Benutzermenü mit Abmelden und „Überall abmelden“ über `ConfirmDialog`), einklappbare Navigation nach FK 14.2, App-Fußleiste mit Dichte-Schalter; Arbeitsbereich ohne Breitenobergrenze, Textseiten 1100 px.
+- S-01: Einstiegsseite mit „Mit Discord anmelden“, Mandantenauswahl (inkl. System), Kein Zugang, Einladung annehmen (Token im Fragment, sofort aus der Adresszeile entfernt); Hinweis „Admin-Rechte ruhen“ bei `mfaRequired`; Datenschutz- und Quellenseite (Entwurf, rechtliche Durchsicht vor Go-live).
+- Bausteine nach `components.md`: `ConfirmDialog`, `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, dazu `SiteTime`, `Markdown` (ohne HTML), `ProblemMessage`; Symbole in `components/icons.ts` (Lucide).
+- `packages/shared`: `formatTzAbbr` (Kürzel-Regel `de-DE` → `en-US` → `UTC±h`), Doppeldatum „17./18.09.“.
+- Theme und Dichte in `user_preference` (neue Route `GET/PUT /api/web/v1/me/preferences`, Aktion `me.preferences`), Sofortwert im `localStorage`.
+- Generierter Web-API-Client (`openapi-typescript`) mit Aktualitätstest; i18n-Lint (fehlende/überzählige/unbenutzte Schlüssel); ESLint gegen `new Date('…')` (NT-04), `dangerouslySetInnerHTML` (SV-05) und Daten/Rechte in Bausteinen.
+- Playwright gegen die **gebaute** SPA mit den prod-Headern (CSP aus `infra/lib/headers.ts`): Anmeldeabläufe, Abmelden tabübergreifend, axe (`pnpm test:a11y`) in beiden Themes, Theme-Test gegen die Token-Tabelle, Dichte-Test, Breiten 768/1280/2400 px, `SiteTime` mit Browserzone Europe/Berlin, CSP-Abnahme mit Radix-Menü und -Dialog.
+- Deployment: `NinaPm-Edge` liefert die SPA statt der Platzhalterseite (`index.html` ohne Cache, `assets/<buildId>/` 1 Jahr, ohne Quelltext-Maps, `prune: false`); `pnpm deploy:prod` baut die Web-App mit der Commit-ID.
+
 ### Fix: D-04 (OCC-Wiederholung) deterministisch (2026-09-24)
 
 - Die Suite D-04 startete beide Transaktionen gleichzeitig; war die Verbindung von B schneller, lief B vollständig vor A durch – kein Konflikt, keine Wiederholung, Test rot (CI auf `main`, `ee903ae`). Jetzt werden beide Pools vorab verbunden und B startet erst, wenn A die Wächterzeile hält. Ablauf in DSQL (`pnpm test:dsql`) unverändert.

@@ -1,0 +1,19 @@
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+.md h2 {
+  margin-top: var(--npm-space-4);
+  padding-bottom: var(--npm-space-1);
+  border-bottom: 2px solid var(--npm-accent);
+}
+.md ul,
+.md ol {
+  padding-left: var(--npm-space-5);
+}
+.md p a,
+.md li a {
+  /* Links im Fließtext nicht nur über die Farbe erkennbar (WCAG 1.4.1, axe link-in-text-block). */
+  text-decoration: underline;
+}

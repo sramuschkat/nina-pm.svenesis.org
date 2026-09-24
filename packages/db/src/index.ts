@@ -30,6 +30,7 @@ export {
   type CreatedInvitation,
   type NewInvitation,
 } from './repositories/invitations';
+export { PreferenceRepository } from './repositories/preference';
 export {
   MemberRepository,
   type Member,

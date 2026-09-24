@@ -1,0 +1,128 @@
+/* Seiten: Karten, Hinweise und Knöpfe im Stil der Website (TK 11.3: .card, .note, .btn). */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--npm-space-4);
+  padding: var(--npm-space-6);
+  background: var(--npm-white);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  border-top: 4px solid var(--npm-accent);
+  color: var(--npm-text);
+}
+.hero h1 {
+  color: var(--npm-text);
+}
+.lead {
+  font-size: calc(17.6px * var(--npm-font-scale));
+  color: var(--npm-text-light);
+}
+.hint {
+  color: var(--npm-text-light);
+}
+.note {
+  background: var(--npm-note-bg);
+  border-left: 4px solid var(--npm-accent);
+  padding: var(--npm-space-4) var(--npm-space-5);
+  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.draft {
+  background: var(--npm-warning-bg);
+  border-left: 4px solid var(--npm-warning);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+}
+.contentBox,
+.panel {
+  background: var(--npm-white);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+}
+
+.discordButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  background: var(--npm-button);
+  color: var(--npm-on-button);
+  padding: var(--npm-space-3) var(--npm-space-5);
+  border-radius: var(--npm-radius);
+  font-weight: 600;
+  min-height: var(--npm-row-h);
+}
+.discordButton:hover {
+  background: var(--npm-button-hover);
+  color: var(--npm-on-button);
+  text-decoration: none;
+}
+
+.cards {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--npm-space-4);
+}
+.cardButton {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-5);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border: 1px solid var(--npm-border);
+  border-top: 4px solid var(--npm-accent);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  cursor: pointer;
+  position: relative;
+}
+.cardButton:hover:not(:disabled) {
+  border-color: var(--npm-accent);
+}
+.cardButton:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.cardTitle {
+  font-size: var(--npm-font-h3);
+  font-weight: 700;
+  color: var(--npm-link);
+}
+.cardMeta {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.cardBadge {
+  position: absolute;
+  top: var(--npm-space-3);
+  right: var(--npm-space-3);
+  font-size: var(--npm-font-label);
+  color: var(--npm-success);
+  font-weight: 600;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--npm-space-2) var(--npm-space-5);
+  background: var(--npm-white);
+  padding: var(--npm-space-5);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+}
+.facts dt {
+  color: var(--npm-text-light);
+}
+.facts dd {
+  font-weight: 600;
+}

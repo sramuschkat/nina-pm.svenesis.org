@@ -16,6 +16,8 @@ import { config } from '../config';
 import { API_STATIC_CSP, HSTS_MAX_AGE_SECONDS, HTML_CSP, PERMISSIONS_POLICY } from './headers';
 
 export interface EdgeStackProps extends StackProps {
+  /** Gebaute SPA (`apps/web/dist`, mit BUILD_ID gebaut); in Tests die Platzhalterseite. */
+  readonly webDistPath: string;
   readonly certificate: acm.ICertificate;
   readonly webBucket: s3.IBucket;
   /** Wert für /nina-pm/web/build-id; `pnpm deploy:prod` setzt ihn per `-c buildId=<commit>`. */
@@ -185,18 +187,30 @@ export class EdgeStack extends Stack {
       description: 'Aktueller Web-Build (schreibt der Deploy, DAT5-6)',
     });
 
-    // Platzhalterseite bis zur SPA (AP-06a). prune: false – vorhandene Objekte bleiben (TK 4.1).
-    new s3deploy.BucketDeployment(this, 'Placeholder', {
-      sources: [s3deploy.Source.asset(fromHere('../placeholder'))],
+    // SPA (TK 4.1, AP-06a): gehashte Dateien unter assets/<buildId>/ mit 1 Jahr Cache, index.html ohne
+    // Cache mit Invalidierung. prune: false – alte Chunks bleiben für offene Tabs; aufgeräumt wird über
+    // den weekly-Job (letzte 3 Builds, DAT-4). Quelltext-Maps werden nicht ausgeliefert.
+    const deploymentLogs = new logs.LogGroup(this, 'SpaDeploymentLogs', {
+      // 90 Tage für alle Log-Gruppen (SV-15), auch für die CDK-Hilfs-Lambda.
+      retention: logs.RetentionDays.THREE_MONTHS,
+    });
+    const spaAssets = new s3deploy.BucketDeployment(this, 'SpaAssets', {
+      sources: [s3deploy.Source.asset(props.webDistPath, { exclude: ['index.html', '**/*.map'] })],
+      destinationBucket: webBucket,
+      prune: false,
+      cacheControl: [s3deploy.CacheControl.fromString('public, max-age=31536000, immutable')],
+      logGroup: deploymentLogs,
+    });
+    const spaIndex = new s3deploy.BucketDeployment(this, 'SpaIndex', {
+      sources: [s3deploy.Source.asset(props.webDistPath, { exclude: ['*', '!index.html'] })],
       destinationBucket: webBucket,
       prune: false,
       cacheControl: [s3deploy.CacheControl.noCache()],
       distribution: this.distribution,
       distributionPaths: ['/index.html'],
-      // 90 Tage für alle Log-Gruppen (SV-15), auch für die CDK-Hilfs-Lambda.
-      logGroup: new logs.LogGroup(this, 'PlaceholderDeploymentLogs', {
-        retention: logs.RetentionDays.THREE_MONTHS,
-      }),
+      logGroup: deploymentLogs,
     });
+    // index.html erst nach den Chunks, auf die sie verweist.
+    spaIndex.node.addDependency(spaAssets);
   }
 }

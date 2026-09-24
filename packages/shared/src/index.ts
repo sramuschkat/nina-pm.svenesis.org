@@ -5,3 +5,4 @@ export * from './enums';
 export * from './errors';
 export * from './night';
 export * from './permissions';
+export * from './time';

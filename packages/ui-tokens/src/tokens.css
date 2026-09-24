@@ -1,0 +1,102 @@
+/* Generiert aus src/tokens.ts – nicht von Hand ändern (pnpm --filter @nina-pm/ui-tokens generate). */
+:root,
+:root[data-theme="light"] {
+  --npm-radius: 8px;
+  --npm-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --npm-max-width: 1100px;
+  --npm-transition: 0.25s ease;
+  --npm-font: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --npm-focus-ring: 2px solid var(--npm-accent);
+  --npm-header-h: 64px;
+  --npm-primary: #1a2a3a;
+  --npm-primary-light: #2c3e50;
+  --npm-accent: #3498db;
+  --npm-accent-hover: #2980b9;
+  --npm-link: #1f6aa5;
+  --npm-link-hover: #174f7c;
+  --npm-button: #1f6aa5;
+  --npm-button-hover: #174f7c;
+  --npm-on-button: #ffffff;
+  --npm-text: #333333;
+  --npm-text-light: #595959;
+  --npm-bg: #f8f9fa;
+  --npm-white: #ffffff;
+  --npm-border: #e0e0e0;
+  --npm-on-primary: #ffffff;
+  --npm-on-primary-muted: rgba(255, 255, 255, 0.85);
+  --npm-note-bg: rgba(26, 42, 58, 0.05);
+  --npm-danger: #b3261e;
+  --npm-danger-hover: #8c1d18;
+  --npm-danger-bg: #fdecea;
+  --npm-success: #1e7e4f;
+  --npm-warning: #8a5a00;
+  --npm-warning-bg: #fff3cd;
+  --npm-muted: #6b7785;
+  --npm-skeleton: #e9ecef;
+  --npm-row-h: 34px;
+  --npm-font-scale: 1;
+  --npm-space-scale: 1;
+  --npm-chart-h: 180px;
+  --npm-space-1: calc(4px * var(--npm-space-scale));
+  --npm-space-2: calc(8px * var(--npm-space-scale));
+  --npm-space-3: calc(12px * var(--npm-space-scale));
+  --npm-space-4: calc(16px * var(--npm-space-scale));
+  --npm-space-5: calc(24px * var(--npm-space-scale));
+  --npm-space-6: calc(32px * var(--npm-space-scale));
+  --npm-space-7: calc(48px * var(--npm-space-scale));
+  --npm-font-base: calc(16px * var(--npm-font-scale));
+  --npm-font-h1: calc(32px * var(--npm-font-scale));
+  --npm-font-h2: calc(20px * var(--npm-font-scale));
+  --npm-font-h3: calc(16.8px * var(--npm-font-scale));
+  --npm-font-label: calc(12.8px * var(--npm-font-scale));
+  --npm-font-field: calc(15.2px * var(--npm-font-scale));
+  --npm-font-small: calc(13.6px * var(--npm-font-scale));
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --npm-primary: #0b1621;
+  --npm-primary-light: #1a2a3a;
+  --npm-accent: #5dade2;
+  --npm-accent-hover: #85c1e9;
+  --npm-link: #85c1e9;
+  --npm-link-hover: #aed6f1;
+  --npm-button: #5dade2;
+  --npm-button-hover: #85c1e9;
+  --npm-on-button: #0b1621;
+  --npm-text: #e6edf3;
+  --npm-text-light: #a9b6c3;
+  --npm-bg: #0f1a24;
+  --npm-white: #1a2a3a;
+  --npm-border: #2c3e50;
+  --npm-on-primary: #ffffff;
+  --npm-on-primary-muted: rgba(255, 255, 255, 0.85);
+  --npm-note-bg: rgba(255, 255, 255, 0.05);
+  --npm-danger: #f28b82;
+  --npm-danger-hover: #f6aea9;
+  --npm-danger-bg: #3b1f1f;
+  --npm-success: #6fcf97;
+  --npm-warning: #f0b429;
+  --npm-warning-bg: #3a2f12;
+  --npm-muted: #8b98a5;
+  --npm-skeleton: #243647;
+  --npm-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+:root[data-density="compact"] {
+  --npm-row-h: 28px;
+  --npm-font-scale: 0.9;
+  --npm-space-scale: 0.75;
+  --npm-chart-h: 140px;
+}
+:root[data-density="normal"] {
+  --npm-row-h: 34px;
+  --npm-font-scale: 1;
+  --npm-space-scale: 1;
+  --npm-chart-h: 180px;
+}
+:root[data-density="wide"] {
+  --npm-row-h: 40px;
+  --npm-font-scale: 1.05;
+  --npm-space-scale: 1.25;
+  --npm-chart-h: 240px;
+}

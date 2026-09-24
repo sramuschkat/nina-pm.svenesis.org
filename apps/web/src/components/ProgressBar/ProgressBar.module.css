@@ -1,0 +1,58 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  width: 100%;
+  min-width: 96px;
+}
+.empty {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.bar {
+  position: relative;
+  flex: 1;
+  display: flex;
+  overflow: visible;
+  background: var(--npm-skeleton);
+  border-radius: 999px;
+}
+.sm .bar {
+  height: 6px;
+}
+.md .bar {
+  height: 10px;
+}
+.accepted {
+  background: var(--npm-accent);
+  border-radius: 999px 0 0 999px;
+}
+.rejected {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--npm-muted),
+    var(--npm-muted) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+.bonus {
+  background: var(--npm-link-hover);
+  opacity: 0.6;
+}
+/* Überhang (acquired > planned): Markierung über der Linie, ohne den Container zu verlassen. */
+.overflow {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  width: 6px;
+  height: calc(100% + 8px);
+  background: var(--npm-success);
+  border-radius: 2px;
+}
+.label {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
