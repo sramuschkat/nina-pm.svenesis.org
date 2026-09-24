@@ -217,7 +217,7 @@ function systemExamples(): Record<string, Example> {
     'POST /api/system/v1/super-users': {
       url: '/api/system/v1/super-users',
       method: 'POST',
-      body: { discordUserId: '123456789012345678' },
+      body: { discordUserId: '9'.repeat(18) },
       okStatus: 404,
     },
     'PATCH /api/system/v1/super-users/{id}': {
