@@ -21,7 +21,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-04a](AP-04a.md) | Anmeldung mit Discord und Sitzungen | L | AP-05 | H-05, H-07, H-08 | ☑ |
 | [AP-04b](AP-04b.md) | Mandanten, Einladungen, Owner-Invarianten | L | AP-04a | H-08, H-12a | ☑ |
 | [AP-06a](AP-06a.md) | Frontend-Shell, Gestaltung, Anmelde-Bildschirme | L | AP-04b | H-16 | ☑ |
-| [AP-06b](AP-06b.md) | Benachrichtigungen in der App und Startseite R1 | S | AP-06a | – | ◐ |
+| [AP-06b](AP-06b.md) | Benachrichtigungen in der App und Startseite R1 | S | AP-06a | – | ☑ |
 | [AP-07a](AP-07a.md) | System-Administration (Super User) | M | AP-06a | – | ☐ |
 | [AP-07b](AP-07b.md) | Mitglieder, Einladungen, Admin-Rechte (Owner) | M | AP-07a | – | ☐ |
 | [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ☐ |
