@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { GoldenPlanSchema } from '../src/contracts/grid';
+import { NightPlanSchema, PlanInputSchema } from '../src/contracts/plan';
 
 export interface ErrorContract {
   code: string;
@@ -103,4 +104,14 @@ export function renderI18nErrors(): string {
 export function renderGridSchema(): string {
   const schema = z.toJSONSchema(GoldenPlanSchema, { target: 'draft-2020-12' });
   return `${JSON.stringify({ ...schema, title: 'Svenesis NINA-PM – Soll-Plan / Grid (allocation.md §11.2)' }, null, 2)}\n`;
+}
+
+/** JSON Schemas des Planungsvertrags (AP-13c, TK 7.5): `PlanInput` und `NightPlan`. */
+export function renderPlanSchemas(): { planInput: string; nightPlan: string } {
+  const render = (schema: z.ZodType, title: string) =>
+    `${JSON.stringify({ ...z.toJSONSchema(schema, { target: 'draft-2020-12', io: 'input' }), title }, null, 2)}\n`;
+  return {
+    planInput: render(PlanInputSchema, 'Svenesis NINA-PM – PlanInput (TK 8.2)'),
+    nightPlan: render(NightPlanSchema, 'Svenesis NINA-PM – NightPlan (TK 7.6)'),
+  };
 }

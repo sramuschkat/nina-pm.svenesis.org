@@ -81,6 +81,12 @@ export interface PastSlots {
   readonly startSlot: number;
 }
 
+/** Panels eines Projekts mit allen Zeilen (auch bei Panel-Einheiten), nach Panel-Index. */
+export interface ProjectLines {
+  readonly projectId: string;
+  readonly panels: readonly { readonly index: number; readonly lines: readonly UnitLine[] }[];
+}
+
 /** Alles, was `paint` außer den Profilen braucht. */
 export interface NightSetup {
   readonly mode: GridMode;
@@ -95,6 +101,8 @@ export interface NightSetup {
   readonly profiles: readonly UnitProfile[];
   readonly excluded: readonly ExcludedUnit[];
   readonly past: PastSlots | null;
+  /** Projekte in Reihenfolge des ersten Auftretens (Walk, Filterwahl). */
+  readonly projects: readonly ProjectLines[];
 }
 
 /** Zeile der Matrix (§4); `tierWorkSec` wird beim Malen verringert (live). */

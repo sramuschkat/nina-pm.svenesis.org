@@ -146,22 +146,21 @@ function preClaimTransits(m: Matrix): void {
       const mid = s * SLOT_S + SLOT_S / 2;
       if (mid < t.startS) continue;
       if (mid >= t.endS) break;
+      // Produktiv: jedes Überlappen mit einem schon gesperrten Transit ist ein Konflikt (A-20, ENG-14).
+      if (sw.transitByLockedAt && lockedByTransit(s)) conflict = true;
       if (!canImage(m, row, s)) continue;
-      if (m.assignment[s] !== -1) {
-        // Kompatibilität: früheres Fenster gewinnt den Slot; produktiv sperrt der spätere nichts.
-        if (sw.transitByLockedAt && lockedByTransit(s)) conflict = true;
-        continue;
-      }
+      if (m.assignment[s] !== -1) continue; // Kompatibilität: früheres Fenster gewinnt den Slot
       claim.push(s);
     }
-    // Produktiv: Slew-/Zentrier-Vorlauf [start − slewCenterS − 60 s, start) mitsperren (NT-25).
+    // Produktiv: Slew-/Zentrier-Vorlauf vor dem ersten gesperrten Slot mitsperren (NT-25).
     const lead: number[] = [];
-    if (sw.transitByLockedAt) {
-      const from = t.startS - m.setup.slewCenterS - 60;
-      for (let s = 0; s < m.slots; s++) {
+    const first = claim[0];
+    if (sw.transitByLockedAt && first !== undefined) {
+      const seriesStart = Math.max(t.startS, first * SLOT_S);
+      const from = seriesStart - m.setup.slewCenterS - 60;
+      for (let s = 0; s < first; s++) {
         const a = s * SLOT_S;
-        const mid = a + SLOT_S / 2;
-        if (a + SLOT_S <= from || a >= t.startS || mid >= t.startS) continue;
+        if (a + SLOT_S <= from || a >= seriesStart) continue;
         if (m.assignment[s] !== -1) {
           if (lockedByTransit(s)) conflict = true;
           continue;
@@ -180,7 +179,7 @@ function preClaimTransits(m: Matrix): void {
       m.locked[s] = true;
       m.hint[s] = 'any';
     }
-    if (claim.length + lead.length > 0) row.hasLockedWindow = true;
+    if (claim.length > 0) row.hasLockedWindow = true;
   }
 }
 
