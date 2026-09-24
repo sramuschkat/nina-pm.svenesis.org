@@ -1,0 +1,46 @@
+# Referenzwerte mit astropy (TK 9.1, TK 18): erzeugt die Engine-Fixtures mit gepinnten Versionen und
+# vergleicht sie mit den eingecheckten. Abweichung → Artefakt `reference-fixtures` und Fehlschlag;
+# die Fixtures werden dann eingecheckt (kein Schreibrecht des Jobs auf das Repository).
+name: reference
+
+on:
+  pull_request:
+    paths:
+      - 'tools/reference/**'
+      - 'packages/engine/test/fixtures/**'
+      - '.github/workflows/reference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/reference/requirements.txt
+      - name: Abhängigkeiten (gepinnt)
+        run: pip install -r tools/reference/requirements.txt
+      - name: Ephemeride de432s vorab laden
+        working-directory: tools/reference
+        run: python -c "from astropy.coordinates import solar_system_ephemeris, get_body; from astropy.time import Time; solar_system_ephemeris.set('de432s'); get_body('moon', Time('2026-01-01'))"
+      - name: Fixtures erzeugen
+        working-directory: tools/reference
+        run: python gen_all.py
+      - name: Artefakt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-fixtures
+          path: packages/engine/test/fixtures/
+          if-no-files-found: error
+      - name: Unverändert gegenüber dem Repository?
+        run: |
+          git add -N packages/engine/test/fixtures
+          git diff --stat --exit-code -- packages/engine/test/fixtures

@@ -4,6 +4,16 @@
 
 ## [Unveröffentlicht]
 
+### AP-08b – Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (2026-09-25)
+
+Anforderungen: FK 8.1, 9; TK 8.4, 9.1–9.2, 18 (`reference.yml`); specs/engine/night.md §1–§4, moon.md §1–2, flip-rotation.md §1.1; NT-02, NT-07, NT-40, NT-46; WS-20…WS-24, WS-28/29.
+
+- `packages/engine/src/astro`: Zeit (JD, **TT = UT + 69 s** in Sonne, Mond, Präzession und Nutation, nicht in der Sternzeit; GMST IAU 1982 + Äquinoktialgleichung → GAST), Kalender ohne `Date`, Zeitzonen **nur** aus der Übergangstabelle (Nacht Mittag–Mittag mit 23/25 h, `validation.failed` für nicht existierende Ortszeiten), Nutation (Meeus 22, Kurzreihe) und ε₀ (22.2), strenge Präzession (Meeus 21), Sonne nach Meeus 25, Mond nach Meeus 47 mit **allen 60 Termen von 47.B** (Vorlage: 30), topozentrische Parallaxe, **Saemundsson aus der geometrischen Höhe** (unter −1° konstant 38,795′), Beleuchtung aus der geozentrischen Elongation mit `atan2`, Phasenmaß `d`, Winkelabstand in der `atan2`-Form.
+- Dämmerung je Grenze (−6/−12/−18°) über **Transit/Antitransit und Bisektion auf 1 s** (kein Raster, keine Mitternachts-Heuristik), Polartag/-nacht je Grenze, `grazing`, Sonnenauf-/-untergang (−0,8333°), Nachtfenster nach NT-07 (5-min-Rundung ab/auf, Polartag 18:00 + 12 h, Polarnacht Mittag–Mittag), Himmelsflats −8°/−2° (NT-40), Mondauf-/-untergang (scheinbare Mitte = 0°), feste Ziele (Präzession + Nutation, ohne Aberration) und Meridiandurchgang in der geschlossenen Form (WS-24).
+- `tools/reference` (astropy 6.1.4, de432s, gepinnt): `gen_sun_moon.py` (fünf Standorte × zwölf Nächte plus Starfront 2026-09-15/-17/-18/-19 und Hannover 21.06./29.07.) und `gen_targets.py`; CI-Job **`reference.yml`** erzeugt die Fixtures und prüft sie auf Unverändertheit; die Fixtures sind aus dem CI-Artefakt eingecheckt. Konventionen wie die Engine (UT1 = UTC, Höhe 0 m, Saemundsson, geozentrische Beleuchtung; Meridiandurchgang **ohne Aberration** – am Pol sonst 72 s Modellunterschied, AST-D30).
+- Tests: `night.spec.ts` (Pflichtfälle night.md §4 inkl. Nachtfenster-Rundung ±5 s, 156/155 Slots, Zeitumstellung Chicago/Berlin, Kiritimati, Apia), `moon.spec.ts` (Refraktion, Beleuchtungsvektoren, topo- vs. geozentrisch 1,003°), `legacy-checks.spec.ts` (Positivliste WS-22: Meeus 47.a und 22.a, JPL Horizons mit ΔT, Präzessions-Rundlauf, USNO; Negativliste WS-23 dokumentiert), `reference.spec.ts` (TK 9.2: Dämmerung ±60 s, Mondauf-/-untergang ±30 s, Mondhöhe ±0,05°, Mondort ±0,1°, Beleuchtung ±1 %, Zielhöhe ±0,05°, Meridiandurchgang ±30 s).
+- Befunde zur Spec: (1) Das Beispiel in `moon.md` (NGC 281, 74,084°/75,087°) ist mit **J2000**-Koordinaten gerechnet; mit Koordinaten zum Datum sind es 73,830°/74,832° – der Unterschied 1,003° und die Entscheidung bleiben. (2) Der NGC-281-Meridiandurchgang in `flip-rotation.md` (07:42:55Z) nutzt andere J2000-Koordinaten als `targets.yaml`; HAT-P-17 trifft 04:28:23Z exakt. (3) Der Kernel de432s wird im CI-Lauf geladen statt eingecheckt (TK 9.1 sieht `kernels/` vor).
+
 ### AP-08a – Engine-Grundlagen: Mathematik, kanonisches JSON, Hash (2026-09-25)
 
 Anforderungen: TK 8.1, NFA-03 (Determinismus); rules/engine.md Nr. 1–5, 9; specs/engine/canonical-json.md.

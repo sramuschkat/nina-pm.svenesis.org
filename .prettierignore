@@ -20,3 +20,5 @@ playwright-report/
 packages/ui-tokens/src/tokens.css
 apps/web/src/api/schema.d.ts
 dist-e2e/
+# Von tools/reference erzeugt (astropy), nicht umformatieren.
+packages/engine/test/fixtures/

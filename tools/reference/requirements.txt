@@ -1,0 +1,4 @@
+astropy==6.1.4
+jplephem==2.22
+numpy==2.1.3
+pyyaml==6.0.2
