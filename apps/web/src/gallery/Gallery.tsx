@@ -10,6 +10,8 @@ import { CheckList } from '../components/CheckList';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CoordinateInput } from '../components/CoordinateInput';
 import { FilterChip } from '../components/FilterChip';
+import { NightChart } from '../components/night-chart';
+import { nightChartFromEngine } from '../lib/night-chart-data';
 import { NotificationList } from '../components/NotificationList';
 import { ProgressBar } from '../components/ProgressBar';
 import { RigSelect, type RigOption } from '../components/RigSelect';
@@ -38,6 +40,34 @@ const RIGS: RigOption[] = [
     showInPlanning: false,
   },
 ];
+
+/** NGC 281 an Starfront, Nacht 17./18.09.2026 (menschliche Freigabe AP-10: „Diagramm NGC 281 plausibel“). */
+const NGC281_NIGHT = nightChartFromEngine({
+  site: { latDeg: 31.5471, lonDeg: -99.3823 },
+  night: '2026-09-17',
+  timeZoneTransitions: [
+    { atUtc: Date.UTC(2026, 2, 8, 8) / 1000, utcOffsetMinutes: -300 },
+    { atUtc: Date.UTC(2026, 10, 1, 7) / 1000, utcOffsetMinutes: -360 },
+  ],
+  timeZone: 'America/Chicago',
+  targets: [
+    {
+      id: 'ngc281',
+      label: 'NGC 281',
+      color: '#1f6aa5',
+      target: { raJ2000Deg: 13.2458, decJ2000Deg: 56.6194 },
+    },
+    {
+      id: 'hat-p-17',
+      label: 'HAT-P-17',
+      color: '#b3261e',
+      target: { raJ2000Deg: 324.536375, decJ2000Deg: 30.488722 },
+    },
+  ],
+  minAltDeg: 30,
+  twilight: 'astronomical',
+  transitLabel: 'Meridian',
+}).props;
 
 export default function Gallery() {
   const [params] = useSearchParams();
@@ -157,6 +187,10 @@ export default function Gallery() {
             ))}
           </tbody>
         </table>
+      </section>
+      <section data-component="NightChart">
+        <NightChart {...NGC281_NIGHT} secondaryTimeZone="Europe/Berlin" />
+        <NightChart window={NGC281_NIGHT.window} series={[]} timeZone="America/Chicago" />
       </section>
       <section data-component="ConfirmDialog">
         <button type="button" onClick={() => setDialog(true)}>
