@@ -18,6 +18,7 @@ import { AUDIT_ROUTES, webAuditRoutes } from './routes/web-audit';
 import { TENANT_ROUTES, webTenantRoutes } from './routes/web-tenant';
 import { EQUIPMENT_ROUTES, webEquipmentRoutes } from './routes/web-equipment';
 import { PROJECT_ROUTES, webProjectRoutes } from './routes/web-projects';
+import { APPROVAL_ROUTES, webApprovalRoutes } from './routes/web-approval';
 import { ME_ROUTES, webMeRoutes } from './routes/web-me';
 import { NOTIFICATION_ROUTES, webNotificationRoutes } from './routes/web-notifications';
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
@@ -50,6 +51,7 @@ export const ROUTES = [
   ...TENANT_ROUTES,
   ...EQUIPMENT_ROUTES,
   ...PROJECT_ROUTES,
+  ...APPROVAL_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -104,6 +106,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webTenantRoutes(services));
   app.route('/', webEquipmentRoutes(services));
   app.route('/', webProjectRoutes(services));
+  app.route('/', webApprovalRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

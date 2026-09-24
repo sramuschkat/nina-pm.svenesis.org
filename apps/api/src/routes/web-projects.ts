@@ -173,7 +173,7 @@ export function filterPlanSummary(d: ProjectDetail) {
   return [...out.values()];
 }
 
-const listItem = (d: ProjectDetail & { createdByName: string }) => {
+export const listItem = (d: ProjectDetail & { createdByName: string }) => {
   const view: Partial<ReturnType<typeof projectView>> = projectView(d);
   delete view.panels;
   delete view.descriptionMd;

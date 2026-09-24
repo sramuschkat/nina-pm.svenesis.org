@@ -4,6 +4,7 @@ import type {
   EnqueueInput,
   EnqueueResult,
   EquipmentRepository,
+  ApprovalRepository,
   ProjectRepository,
   Job,
   MemberRepository,
@@ -32,6 +33,7 @@ export interface ApiRepositories {
   audit(): AuditRepository;
   equipment(): EquipmentRepository;
   projects(): ProjectRepository;
+  approvals(): ApprovalRepository;
   tenant(): TenantRepository;
 }
 
