@@ -32,6 +32,16 @@ function run(cmd: string, args: string[]): void {
     fail(`${cmd} ${args.join(' ')} ist fehlgeschlagen (Exit ${res.status ?? '–'}).`);
 }
 
+function runEnv(cmd: string, args: string[], env: Record<string, string>): void {
+  const res = spawnSync(cmd, args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    env: { ...process.env, ...env },
+  });
+  if (res.status !== 0)
+    fail(`${cmd} ${args.join(' ')} ist fehlgeschlagen (Exit ${res.status ?? '–'}).`);
+}
+
 function fail(message: string): never {
   console.error(`\n✗ ${message}`);
   process.exit(1);
@@ -223,7 +233,10 @@ async function main(): Promise<void> {
     console.log(`  Neue Migrationen; test:dsql grün laut ${green.replace(repoRoot, '')}`);
   }
 
-  const context = ['-c', `buildId=${sha}`];
+  // SPA mit derselben Build-ID bauen (Chunks unter assets/<buildId>/, TK 4.1); ohne Bausteinübersicht.
+  step('Web-App bauen');
+  runEnv('pnpm', ['--filter', '@nina-pm/web', 'build'], { BUILD_ID: sha, VITE_GALLERY: '' });
+  const context = ['-c', `buildId=${sha}`, '-c', 'requireWebDist=true'];
   step('cdk diff – bitte vollständig lesen');
   run('pnpm', ['cdk', 'diff', ...context]);
 

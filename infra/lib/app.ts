@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { type App, Tags } from 'aws-cdk-lib';
 import { certEnv, env } from '../config';
 import { ApiStack } from './api-stack';
@@ -14,6 +17,7 @@ import { WebStack } from './web-stack';
 export function buildApp(app: App) {
   const importClusterId = app.node.tryGetContext('dsqlClusterId') as string | undefined;
   const buildId = (app.node.tryGetContext('buildId') as string | undefined) ?? 'placeholder';
+  const webDistPath = resolveWebDist(app, buildId);
 
   const data = new DataStack(app, 'NinaPm-Data', {
     env,
@@ -55,6 +59,7 @@ export function buildApp(app: App) {
     webBucket: web.webBucket,
     buildId,
     httpApi: api.httpApi,
+    webDistPath,
   });
   const ops = new OpsStack(app, 'NinaPm-Ops', {
     env,
@@ -69,4 +74,21 @@ export function buildApp(app: App) {
 
   Tags.of(app).add('project', 'nina-pm');
   return { data, config: configStack, cert, web, migrate, edge, jobs, api, ops };
+}
+
+/**
+ * Gebaute SPA (`apps/web/dist`). `pnpm deploy:prod` baut sie mit `BUILD_ID=<commit>` und setzt
+ * `-c requireWebDist=true`: dann muss `assets/<buildId>/` existieren. Ohne Build (Unit-Tests, reines
+ * `cdk synth`) dient die Platzhalterseite.
+ */
+function resolveWebDist(app: App, buildId: string): string {
+  const dist = fileURLToPath(new URL('../../apps/web/dist/', import.meta.url));
+  const required = String(app.node.tryGetContext('requireWebDist')) === 'true';
+  if (required && !existsSync(join(dist, 'assets', buildId))) {
+    throw new Error(
+      `apps/web/dist ist nicht mit BUILD_ID=${buildId} gebaut – zuerst BUILD_ID=${buildId} pnpm --filter @nina-pm/web build`,
+    );
+  }
+  if (existsSync(join(dist, 'index.html'))) return dist;
+  return fileURLToPath(new URL('../placeholder/', import.meta.url));
 }

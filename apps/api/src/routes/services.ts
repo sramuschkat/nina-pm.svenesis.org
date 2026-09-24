@@ -4,6 +4,7 @@ import type {
   EnqueueResult,
   Job,
   MemberRepository,
+  PreferenceRepository,
   SystemActor,
   TenantAdminRepository,
   TenantContext,
@@ -20,6 +21,7 @@ export interface ApiRepositories {
     enqueue(input: EnqueueInput): Promise<EnqueueResult>;
   };
   readonly member: MemberRepository;
+  preference(): PreferenceRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */

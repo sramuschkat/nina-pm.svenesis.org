@@ -609,6 +609,26 @@ components:
         - revokedAt
         - createdAt
         - ownerOnly
+    Preferences:
+      type: object
+      properties:
+        ui.theme:
+          type: string
+          enum:
+            - light
+            - dark
+        ui.density:
+          type: string
+          enum:
+            - compact
+            - normal
+            - wide
+        ui.navCollapsed:
+          type: boolean
+    PreferenceValue:
+      type: object
+      properties:
+        value: {}
     TenantAdminView:
       type: object
       properties:
@@ -1708,6 +1728,82 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/me/preferences:
+    get:
+      summary: Persönliche Einstellungen (Theme, Dichte, Navigation)
+      tags:
+        - me
+      description: "Aktion: `me.preferences` · TK 7.2, TK 11.3"
+      x-npm-action: me.preferences
+      x-npm-requirements:
+        - TK 7.2
+        - TK 11.3
+      responses:
+        "200":
+          description: Einstellungen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein Mandanten-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/me/preferences/{key}:
+    put:
+      summary: Eine persönliche Einstellung setzen
+      tags:
+        - me
+      description: "Aktion: `me.preferences` · TK 7.2, TK 11.3"
+      x-npm-action: me.preferences
+      x-npm-requirements:
+        - TK 7.2
+        - TK 11.3
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - ui.theme
+              - ui.density
+              - ui.navCollapsed
+          required: true
+          name: key
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferenceValue"
+      responses:
+        "204":
+          description: Gespeichert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein Mandanten-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

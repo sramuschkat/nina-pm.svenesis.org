@@ -1,0 +1,21 @@
+.problem {
+  background: var(--npm-danger-bg);
+  border-left: 4px solid var(--npm-danger);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+  color: var(--npm-text);
+}
+.meta {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  margin-top: var(--npm-space-1);
+}
+.retry {
+  margin-top: var(--npm-space-2);
+  background: none;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  padding: var(--npm-space-1) var(--npm-space-3);
+  cursor: pointer;
+  color: var(--npm-link);
+}

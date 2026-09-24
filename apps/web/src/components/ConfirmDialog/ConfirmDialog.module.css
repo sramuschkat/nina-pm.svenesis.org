@@ -1,0 +1,126 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 33, 0.55);
+}
+
+.content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Ausnahme von der Breitenregel: Dialoge 360–520 px (components.md §2.10). */
+  width: min(520px, calc(100vw - var(--npm-space-6)));
+  min-width: min(360px, calc(100vw - var(--npm-space-6)));
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-h2);
+}
+
+.warning {
+  color: var(--npm-danger);
+  flex-shrink: 0;
+}
+
+.consequence {
+  color: var(--npm-text-light);
+}
+
+.nameField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.nameField label {
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.nameField input {
+  font-size: var(--npm-font-field);
+  padding: var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.nameField input[aria-invalid='true'] {
+  border-color: var(--npm-danger);
+}
+.fieldError,
+.error {
+  color: var(--npm-danger);
+  font-size: var(--npm-font-small);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--npm-space-2);
+  margin-top: var(--npm-space-2);
+}
+
+.cancel,
+.confirm,
+.danger {
+  min-width: 96px;
+  min-height: var(--npm-row-h);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-radius: var(--npm-radius);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--npm-space-1);
+}
+.cancel {
+  background: transparent;
+  border: 1px solid var(--npm-border);
+  color: var(--npm-text);
+}
+.confirm {
+  background: var(--npm-button);
+  border: 1px solid var(--npm-button);
+  color: var(--npm-on-button);
+}
+.confirm:hover:not(:disabled) {
+  background: var(--npm-button-hover);
+}
+.danger {
+  background: var(--npm-danger);
+  border: 1px solid var(--npm-danger);
+  color: var(--npm-white);
+}
+.danger:hover:not(:disabled) {
+  background: var(--npm-danger-hover);
+}
+.cancel:disabled,
+.confirm:disabled,
+.danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.live:empty {
+  display: none;
+}

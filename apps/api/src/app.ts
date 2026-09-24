@@ -13,6 +13,7 @@ import { requestIdMiddleware, requestLog } from './lib/request-log';
 import { AUTH_ROUTES, authRoutes } from './routes/auth';
 import { healthRoute, healthRoutes } from './routes/health';
 import { SYSTEM_ROUTES, systemRoutes } from './routes/system';
+import { ME_ROUTES, webMeRoutes } from './routes/web-me';
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
@@ -36,6 +37,7 @@ export const ROUTES = [
   getJobRoute,
   downloadUrlRoute,
   ...MEMBER_ROUTES,
+  ...ME_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -83,6 +85,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webJobRoutes(services));
   app.route('/', webFileRoutes(services));
   app.route('/', webMemberRoutes(services));
+  app.route('/', webMeRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

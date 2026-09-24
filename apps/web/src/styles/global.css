@@ -1,0 +1,77 @@
+/* Global: Reset, Tokens, Grundtypografie (TK 11.3). Farben/Abstände nur über --npm-* (rules/ui.md). */
+@import '@nina-pm/ui-tokens/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--npm-font);
+  font-size: var(--npm-font-base);
+  color: var(--npm-text);
+  background: var(--npm-bg);
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.6;
+  background: var(--npm-bg);
+  color: var(--npm-text);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--npm-link);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--npm-link-hover);
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: var(--npm-font-h1);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--npm-text);
+}
+h2 {
+  font-size: var(--npm-font-h2);
+  font-weight: 700;
+  line-height: 1.3;
+}
+h3 {
+  font-size: var(--npm-font-h3);
+  font-weight: 700;
+}
+
+:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

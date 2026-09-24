@@ -141,6 +141,14 @@ export interface MoonProfileTable {
   createdAt: Timestamp;
 }
 
+export interface UserPreferenceTable {
+  tenantId: string;
+  userId: string;
+  prefKey: string;
+  value: ColumnType<unknown, string, string>;
+  updatedAt: Timestamp;
+}
+
 export type JobStatusValue = 'pending' | 'running' | 'done' | 'failed';
 
 /** Tabelle `job` (Migration 0005, TK 7.4). `input` ist jsonb und wird als JSON-Text geschrieben. */
@@ -175,4 +183,5 @@ export interface Database {
   notification: NotificationTable;
   changeLog: ChangeLogTable;
   moonProfile: MoonProfileTable;
+  userPreference: UserPreferenceTable;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApiFetch, discordLoginUrl, loginUrl } from '../src/auth';
+import { createApiFetch, discordLoginUrl, loginUrl } from '../src/auth/api-fetch';
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });

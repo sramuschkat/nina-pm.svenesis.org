@@ -170,6 +170,13 @@ function memberExamples(): Record<string, Example> {
       okStatus: 201,
     },
     'GET /api/web/v1/invitations': { url: '/api/web/v1/invitations' },
+    'GET /api/web/v1/me/preferences': { url: '/api/web/v1/me/preferences' },
+    'PUT /api/web/v1/me/preferences/{key}': {
+      url: '/api/web/v1/me/preferences/ui.theme',
+      method: 'PUT',
+      body: { value: 'dark' },
+      okStatus: 204,
+    },
     'DELETE /api/web/v1/invitations/{id}': {
       url: `/api/web/v1/invitations/${crypto.randomUUID()}`,
       method: 'DELETE',

@@ -46,3 +46,4 @@ playwright-report/
 
 # Vitest-Berichte (lokale Messungen)
 .vitest/
+dist-e2e/

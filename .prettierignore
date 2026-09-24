@@ -17,3 +17,6 @@ infra/cdk.context.json
 test-results/
 playwright-report/
 .vitest/
+packages/ui-tokens/src/tokens.css
+apps/web/src/api/schema.d.ts
+dist-e2e/
