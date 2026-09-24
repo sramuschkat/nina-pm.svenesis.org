@@ -29,7 +29,9 @@ try {
   } finally {
     await db.close();
   }
-  console.log('  Projekte, NINA-Instanzen und Discord-Kanäle folgen mit AP-11a, AP-14c, AP-60.');
+  console.log(
+    '  Projekte, NINA-Instanzen und Discord-Kanäle folgen mit AP-12a (Freigabe), AP-14c, AP-60.',
+  );
 } finally {
   await client.end();
 }

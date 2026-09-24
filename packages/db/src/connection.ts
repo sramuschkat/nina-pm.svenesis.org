@@ -8,6 +8,12 @@ import { CamelCasePlugin, Kysely, PostgresDialect } from 'kysely';
 import pg from 'pg';
 import type { Database } from './types';
 
+/**
+ * `date` (OID 1082) als Zeichenkette `YYYY-MM-DD` statt JS-`Date` um lokale Mitternacht: Nacht-Schlüssel
+ * (NT-04) dürfen nie durch eine Zeitzone wandern.
+ */
+pg.types.setTypeParser(1082, (value: string) => value);
+
 export type AppDbRole = 'app_rw' | 'app_job';
 
 export type DbConfig =

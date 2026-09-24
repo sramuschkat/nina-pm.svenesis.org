@@ -3416,6 +3416,1239 @@ components:
         - tzdataVersion
         - timeZoneTransitions
         - nights
+    ProjectListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        projectType:
+          type: string
+          enum:
+            - deep_sky
+            - exoplanet
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
+        targetName:
+          type:
+            - string
+            - "null"
+        targetType:
+          type:
+            - string
+            - "null"
+        catalogNames:
+          type: string
+        raDeg:
+          type:
+            - number
+            - "null"
+        decDeg:
+          type:
+            - number
+            - "null"
+        rotationDeg:
+          type: number
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+              default: 30
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+              default: 1
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+              default: astronomical
+            moonAvoidanceEnabled:
+              type: boolean
+              default: false
+            moonMustBeDown:
+              type: boolean
+              default: false
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+              default: 60
+            moonWidthDays:
+              type: number
+              minimum: 0
+              default: 5
+            moonRelaxScale:
+              type: number
+              minimum: 0
+              default: 2
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: -15
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: 5
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+              default: 60
+          additionalProperties: false
+        approvalStatus:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - approved
+            - returned
+            - rejected
+        status:
+          type:
+            - string
+            - "null"
+          enum:
+            - planning
+            - active
+            - on_hold
+            - ready_to_process
+            - unfinished
+            - completed
+            - archived
+            - null
+        priority:
+          type: integer
+        effortStale:
+          type: boolean
+        favorite:
+          type: boolean
+        version:
+          type: integer
+        deletedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        progress:
+          type: object
+          properties:
+            targetReached:
+              type: boolean
+            finished:
+              type: boolean
+            planningNeed:
+              type: integer
+            percentDone:
+              type: number
+            plannedS:
+              type: number
+            integrationS:
+              type: number
+          required:
+            - targetReached
+            - finished
+            - planningNeed
+            - percentDone
+            - plannedS
+            - integrationS
+      required:
+        - id
+        - name
+        - projectType
+        - rigId
+        - createdBy
+        - targetName
+        - targetType
+        - catalogNames
+        - raDeg
+        - decDeg
+        - rotationDeg
+        - startDate
+        - dueDate
+        - requestPeriodFrom
+        - requestPeriodTo
+        - requestComment
+        - conditions
+        - approvalStatus
+        - status
+        - priority
+        - effortStale
+        - favorite
+        - version
+        - deletedAt
+        - createdAt
+        - updatedAt
+        - progress
+    ProjectView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        projectType:
+          type: string
+          enum:
+            - deep_sky
+            - exoplanet
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
+        targetName:
+          type:
+            - string
+            - "null"
+        targetType:
+          type:
+            - string
+            - "null"
+        catalogNames:
+          type: string
+        descriptionMd:
+          type: string
+        raDeg:
+          type:
+            - number
+            - "null"
+        decDeg:
+          type:
+            - number
+            - "null"
+        rotationDeg:
+          type: number
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+              default: 30
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+              default: 1
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+              default: astronomical
+            moonAvoidanceEnabled:
+              type: boolean
+              default: false
+            moonMustBeDown:
+              type: boolean
+              default: false
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+              default: 60
+            moonWidthDays:
+              type: number
+              minimum: 0
+              default: 5
+            moonRelaxScale:
+              type: number
+              minimum: 0
+              default: 2
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: -15
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: 5
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+              default: 60
+          additionalProperties: false
+        approvalStatus:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - approved
+            - returned
+            - rejected
+        status:
+          type:
+            - string
+            - "null"
+          enum:
+            - planning
+            - active
+            - on_hold
+            - ready_to_process
+            - unfinished
+            - completed
+            - archived
+            - null
+        priority:
+          type: integer
+        effortStale:
+          type: boolean
+        favorite:
+          type: boolean
+        version:
+          type: integer
+        deletedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        progress:
+          type: object
+          properties:
+            targetReached:
+              type: boolean
+            finished:
+              type: boolean
+            planningNeed:
+              type: integer
+            percentDone:
+              type: number
+            plannedS:
+              type: number
+            integrationS:
+              type: number
+          required:
+            - targetReached
+            - finished
+            - planningNeed
+            - percentDone
+            - plannedS
+            - integrationS
+        panels:
+          type: array
+          items:
+            $ref: "#/components/schemas/PanelView"
+      required:
+        - id
+        - name
+        - projectType
+        - rigId
+        - createdBy
+        - targetName
+        - targetType
+        - catalogNames
+        - descriptionMd
+        - raDeg
+        - decDeg
+        - rotationDeg
+        - startDate
+        - dueDate
+        - requestPeriodFrom
+        - requestPeriodTo
+        - requestComment
+        - conditions
+        - approvalStatus
+        - status
+        - priority
+        - effortStale
+        - favorite
+        - version
+        - deletedAt
+        - createdAt
+        - updatedAt
+        - progress
+        - panels
+    PanelView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        panelIndex:
+          type: integer
+        label:
+          type: string
+        raDeg:
+          type: number
+        decDeg:
+          type: number
+        rotationDeg:
+          type: number
+        notes:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineView"
+      required:
+        - id
+        - panelIndex
+        - label
+        - raDeg
+        - decDeg
+        - rotationDeg
+        - notes
+        - lines
+    LineView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        panelId:
+          type: string
+          format: uuid
+          description: UUID
+        filterId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        filterShortName:
+          type: string
+        exposureS:
+          type: number
+        plannedCount:
+          type: integer
+        gain:
+          type:
+            - integer
+            - "null"
+        offsetAdu:
+          type:
+            - integer
+            - "null"
+        binning:
+          type: integer
+        readoutMode:
+          type:
+            - string
+            - "null"
+        moonMode:
+          type: string
+          enum:
+            - profile
+            - project_default
+            - none
+        moonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        enabled:
+          type: boolean
+        orderIndex:
+          type: integer
+        notes:
+          type: string
+        hasCaptures:
+          type: boolean
+        counters:
+          type: object
+          properties:
+            planned:
+              type: integer
+            acquired:
+              type: integer
+            rejected:
+              type: integer
+            accepted:
+              type: integer
+            remaining:
+              type: integer
+            planningNeed:
+              type: integer
+            bonus:
+              type: integer
+            bonusRejected:
+              type: integer
+            percentDone:
+              type: number
+            integrationS:
+              type: number
+          required:
+            - planned
+            - acquired
+            - rejected
+            - accepted
+            - remaining
+            - planningNeed
+            - bonus
+            - bonusRejected
+            - percentDone
+            - integrationS
+      required:
+        - id
+        - panelId
+        - filterId
+        - filterShortName
+        - exposureS
+        - plannedCount
+        - gain
+        - offsetAdu
+        - binning
+        - readoutMode
+        - moonMode
+        - moonProfileId
+        - enabled
+        - orderIndex
+        - notes
+        - hasCaptures
+        - counters
+    ProjectCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        targetName:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+          default: null
+        targetType:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        catalogNames:
+          type: string
+          maxLength: 500
+          default: ""
+        descriptionMd:
+          type: string
+          maxLength: 20000
+          default: ""
+        raDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+          default: null
+        decDeg:
+          type:
+            - number
+            - "null"
+          minimum: -90
+          maximum: 90
+          default: null
+        rotationDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+          default: 0
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          default: null
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          default: null
+          example: 2026-09-18
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          default: null
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          default: null
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+          default: null
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+              default: 30
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+              default: 1
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+              default: astronomical
+            moonAvoidanceEnabled:
+              type: boolean
+              default: false
+            moonMustBeDown:
+              type: boolean
+              default: false
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+              default: 60
+            moonWidthDays:
+              type: number
+              minimum: 0
+              default: 5
+            moonRelaxScale:
+              type: number
+              minimum: 0
+              default: 2
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: -15
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+              default: 5
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+              default: 60
+          default:
+            minAltitudeDeg: 30
+            minTimeOnTargetH: 1
+            twilight: astronomical
+            moonAvoidanceEnabled: false
+            moonMustBeDown: false
+            moonSeparationDeg: 60
+            moonWidthDays: 5
+            moonRelaxScale: 2
+            moonMinAltDeg: -15
+            moonMaxAltDeg: 5
+            moonMaxIlluminationPct: 60
+          additionalProperties: false
+      required:
+        - id
+        - name
+      additionalProperties: false
+    ProjectPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        targetName:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+        targetType:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+        catalogNames:
+          type: string
+          maxLength: 500
+        descriptionMd:
+          type: string
+          maxLength: 20000
+        raDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+        decDeg:
+          type:
+            - number
+            - "null"
+          minimum: -90
+          maximum: 90
+        rotationDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodFrom:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestPeriodTo:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        requestComment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+            moonAvoidanceEnabled:
+              type: boolean
+            moonMustBeDown:
+              type: boolean
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+            moonWidthDays:
+              type: number
+              minimum: 0
+            moonRelaxScale:
+              type: number
+              minimum: 0
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+          additionalProperties: false
+        acceptRigConflicts:
+          type: boolean
+      additionalProperties: false
+    ProjectDuplicate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+      required:
+        - id
+      additionalProperties: false
+    PanelCreate:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 60
+          default: Main
+        raDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        decDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        rotationDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+          default: 0
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - raDeg
+        - decDeg
+        - id
+      additionalProperties: false
+    PanelPatch:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 60
+        raDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        decDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        rotationDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        notes:
+          type: string
+          maxLength: 4000
+      additionalProperties: false
+    LineCreate:
+      type: object
+      properties:
+        filterId:
+          type: string
+          format: uuid
+          description: UUID
+        exposureS:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 7200
+        plannedCount:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        gain:
+          type:
+            - integer
+            - "null"
+          default: null
+        offsetAdu:
+          type:
+            - integer
+            - "null"
+          default: null
+        binning:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+        readoutMode:
+          type:
+            - string
+            - "null"
+          maxLength: 60
+          default: null
+        moonMode:
+          type: string
+          enum:
+            - profile
+            - project_default
+            - none
+          default: project_default
+        moonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        enabled:
+          type: boolean
+          default: true
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        panelId:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - filterId
+        - exposureS
+        - plannedCount
+        - id
+        - panelId
+      additionalProperties: false
+    LinePatch:
+      type: object
+      properties:
+        filterId:
+          type: string
+          format: uuid
+          description: UUID
+        exposureS:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 7200
+        plannedCount:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        gain:
+          type:
+            - integer
+            - "null"
+        offsetAdu:
+          type:
+            - integer
+            - "null"
+        binning:
+          type: integer
+          minimum: 1
+          maximum: 4
+        readoutMode:
+          type:
+            - string
+            - "null"
+          maxLength: 60
+        moonMode:
+          type: string
+          enum:
+            - profile
+            - project_default
+            - none
+        moonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        enabled:
+          type: boolean
+        notes:
+          type: string
+          maxLength: 4000
+      additionalProperties: false
+    LineDuplicate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        deactivateSource:
+          type: boolean
+          default: false
+      required:
+        - id
+      additionalProperties: false
+    ApplyTemplate:
+      type: object
+      properties:
+        templateId:
+          type: string
+          format: uuid
+          description: UUID
+        panelId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        replace:
+          type: boolean
+          default: true
+      required:
+        - templateId
+      additionalProperties: false
+    StatusChange:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - planning
+            - active
+            - on_hold
+            - ready_to_process
+            - unfinished
+            - completed
+            - archived
+      required:
+        - status
+      additionalProperties: false
+    PriorityChange:
+      type: object
+      properties:
+        position:
+          type: integer
+          minimum: 1
+      required:
+        - position
+      additionalProperties: false
+    NoteView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        userId:
+          type: string
+          format: uuid
+          description: UUID
+        authorName:
+          type: string
+        bodyMd:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - userId
+        - authorName
+        - bodyMd
+        - createdAt
+    NoteCreate:
+      type: object
+      properties:
+        bodyMd:
+          type: string
+          minLength: 1
+          maxLength: 20000
+      required:
+        - bodyMd
+      additionalProperties: false
+    HistoryEntry:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - approval
+            - change
+        action:
+          type: string
+        userId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        userName:
+          type:
+            - string
+            - "null"
+        entity:
+          type: string
+        detail: {}
+        comment:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - kind
+        - action
+        - userId
+        - userName
+        - entity
+        - comment
+        - createdAt
+    RigCheckView:
+      type: object
+      properties:
+        conflicts:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              lineId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              detail:
+                type: string
+            required:
+              - code
+              - lineId
+              - detail
+        hasCaptures:
+          type: boolean
+        opticsChanged:
+          type: boolean
+      required:
+        - conflicts
+        - hasCaptures
+        - opticsChanged
     TenantAdminView:
       type: object
       properties:
@@ -7201,6 +8434,1377 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SiteNightsView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects:
+    get:
+      summary: Projektliste (Filter Status/Rig/Freigabe/eigene/Favoriten); `deleted=true` = Papierkorb (nur Admin)
+      tags:
+        - projects
+      description: "Aktion: `project.read` · FA-PRJ-14, FA-PRJ-19, FA-PRJ-15, FA-BER-02"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-PRJ-14
+        - FA-PRJ-19
+        - FA-PRJ-15
+        - FA-BER-02
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: deleted
+          in: query
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - planning
+              - active
+              - on_hold
+              - ready_to_process
+              - unfinished
+              - completed
+              - archived
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum:
+              - draft
+              - submitted
+              - approved
+              - returned
+              - rejected
+          required: false
+          name: approvalStatus
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: mine
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: favorites
+          in: query
+      responses:
+        "200":
+          description: Projekte
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ProjectListItem"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Projekt als Entwurf anlegen (Client-UUID; unvollständig erlaubt)
+      tags:
+        - projects
+      description: "Aktion: `project.create` · FA-PRJ-01, FA-PRJ-03, FA-PRJ-18, NT-04"
+      x-npm-action: project.create
+      x-npm-requirements:
+        - FA-PRJ-01
+        - FA-PRJ-03
+        - FA-PRJ-18
+        - NT-04
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}:
+    get:
+      summary: Projekt mit Panels, Zeilen und Zählern
+      tags:
+        - projects
+      description: "Aktion: `project.read` · FA-PRJ-10, FA-PRJ-21, FK 8.4"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-PRJ-10
+        - FA-PRJ-21
+        - FK 8.4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Projekt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      summary: "Projekt ändern (If-Match: version); Rig-Wechsel mit Konfliktprüfung"
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-01, FA-PRJ-03, FA-RIG-12, TK 7.1"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-01
+        - FA-PRJ-03
+        - FA-RIG-12
+        - TK 7.1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectPatch"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.rig_conflict, rig.change_has_captures
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Projekt in den Papierkorb (immer weich)
+      tags:
+        - projects
+      description: "Aktion: `project.delete` · FA-PRJ-15, E4"
+      x-npm-action: project.delete
+      x-npm-requirements:
+        - FA-PRJ-15
+        - E4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/restore:
+    post:
+      summary: Projekt aus dem Papierkorb wiederherstellen (unveränderter Status)
+      tags:
+        - projects
+      description: "Aktion: `project.status` · FA-PRJ-15, E4"
+      x-npm-action: project.status
+      x-npm-requirements:
+        - FA-PRJ-15
+        - E4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Wiederhergestellt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/duplicate:
+    post:
+      summary: Projekt als neuen Entwurf duplizieren (Zähler 0)
+      tags:
+        - projects
+      description: "Aktion: `project.create` · FA-PRJ-08, FA-RIG-12"
+      x-npm-action: project.create
+      x-npm-requirements:
+        - FA-PRJ-08
+        - FA-RIG-12
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectDuplicate"
+      responses:
+        "201":
+          description: Dupliziert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/panels:
+    post:
+      summary: Panel hinzufügen
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-06"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-06
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PanelCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/panels/{panelId}:
+    patch:
+      summary: Panel ändern (Koordinaten, Rotation, Bezeichnung)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-06"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-06
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: panelId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PanelPatch"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Panel löschen (mit Aufnahmen weich, sonst endgültig)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-06, E4"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-06
+        - E4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: panelId
+          in: path
+      responses:
+        "200":
+          description: Gelöscht
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  soft:
+                    type: boolean
+                required:
+                  - soft
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/lines:
+    post:
+      summary: Belichtungszeile hinzufügen
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-05, FA-PRJ-20, FA-PRJ-22, NT-38"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-05
+        - FA-PRJ-20
+        - FA-PRJ-22
+        - NT-38
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/lines/{lineId}:
+    patch:
+      summary: "Zeile ändern (mit Aufnahmen: nur geplant, Mondprofil, aktiv)"
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-05, FA-PRJ-07, NT-E3"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-05
+        - FA-PRJ-07
+        - NT-E3
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: lineId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinePatch"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: line.locked_by_captures
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Zeile löschen (mit Aufnahmen weich, sonst endgültig)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-07, E4"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-07
+        - E4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: lineId
+          in: path
+      responses:
+        "200":
+          description: Gelöscht
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  soft:
+                    type: boolean
+                required:
+                  - soft
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/lines/{lineId}/duplicate:
+    post:
+      summary: Zeile duplizieren (Zähler 0; alte optional deaktivieren)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-05, NT-E3"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-05
+        - NT-E3
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: lineId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineDuplicate"
+      responses:
+        "201":
+          description: Dupliziert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/apply-template:
+    post:
+      summary: Belichtungsvorlage anwenden (nur ohne Aufnahmen)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-BPL-04, FA-BPL-05, FA-PRJ-05"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-BPL-04
+        - FA-BPL-05
+        - FA-PRJ-05
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyTemplate"
+      responses:
+        "200":
+          description: Angewendet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: line.locked_by_captures
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/status:
+    put:
+      summary: Projektstatus ändern (projectStatusTransitions; Aktivieren prüft Vollständigkeit)
+      tags:
+        - projects
+      description: "Aktion: `project.status` · FA-PRJ-11, FA-PRJ-12, FA-PRJ-01"
+      x-npm-action: project.status
+      x-npm-requirements:
+        - FA-PRJ-11
+        - FA-PRJ-12
+        - FA-PRJ-01
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusChange"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: project.status_transition_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: approval.incomplete
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/priority:
+    put:
+      summary: Priorität im Rig (1 = höchste); die übrigen Projekte des Rigs rücken nach
+      tags:
+        - projects
+      description: "Aktion: `project.status` · FA-PRJ-13"
+      x-npm-action: project.status
+      x-npm-requirements:
+        - FA-PRJ-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PriorityChange"
+      responses:
+        "200":
+          description: Neue Reihenfolge
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                      description: UUID
+                required:
+                  - order
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: project.status_transition_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/me/favorites/{projectId}:
+    put:
+      summary: Projekt als Favorit markieren
+      tags:
+        - projects
+      description: "Aktion: `me.favorites` · FA-PRJ-16"
+      x-npm-action: me.favorites
+      x-npm-requirements:
+        - FA-PRJ-16
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: projectId
+          in: path
+      responses:
+        "204":
+          description: Markiert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Favorit entfernen
+      tags:
+        - projects
+      description: "Aktion: `me.favorites` · FA-PRJ-16"
+      x-npm-action: me.favorites
+      x-npm-requirements:
+        - FA-PRJ-16
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: projectId
+          in: path
+      responses:
+        "204":
+          description: Entfernt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/notes:
+    get:
+      summary: Notizverlauf des Projekts
+      tags:
+        - projects
+      description: "Aktion: `project.read` · FA-PRJ-17"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-PRJ-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Notizen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NoteView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: Notiz hinzufügen (Markdown)
+      tags:
+        - projects
+      description: "Aktion: `project.note.write` · FA-PRJ-17"
+      x-npm-action: project.note.write
+      x-npm-requirements:
+        - FA-PRJ-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/history:
+    get:
+      summary: Freigabe- und Änderungsverlauf
+      tags:
+        - projects
+      description: "Aktion: `project.history.read` · FA-BER-03, FA-FRG-12"
+      x-npm-action: project.history.read
+      x-npm-requirements:
+        - FA-BER-03
+        - FA-FRG-12
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Verlauf
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HistoryEntry"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/compatibility:
+    post:
+      summary: "Rig-Wechsel prüfen: Filterrad, Binning, Auslesemodus, Bildfeld, Optik mit Aufnahmen"
+      tags:
+        - projects
+      description: "Aktion: `project.read` · FA-RIG-12"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-RIG-12
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+                  format: uuid
+                  description: UUID
+              required:
+                - projectId
+              additionalProperties: false
+      responses:
+        "200":
+          description: Konflikte
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RigCheckView"
         "401":
           description: Nicht angemeldet
           content:

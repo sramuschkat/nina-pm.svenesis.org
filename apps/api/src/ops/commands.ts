@@ -58,7 +58,7 @@ const HELP = {
     '{"command":"block-identity","discordId":"…","unblock"?:true} – Sperre beendet alle Sitzungen.',
   'revoke-sessions':
     '{"command":"revoke-sessions","identity":"<discordId|identity.id>"} – alle Sitzungen beenden.',
-  seed: '{"command":"seed","tenant":"test"} – Demo-Daten: Built-in-Mondprofile und Ausrüstung aus seed-demo.json (idempotent; Projekte folgen mit AP-11a).',
+  seed: '{"command":"seed","tenant":"test"} – Demo-Daten: Built-in-Mondprofile und Ausrüstung aus seed-demo.json (idempotent; Projekte folgen mit AP-12a).',
   'list-failed-jobs':
     'Zeigt bis zu 10 Nachrichten aus nina-pm-worker-failures, ohne sie zu löschen.',
 } as const;
@@ -184,7 +184,7 @@ async function execute(
         moonProfilesAdded: moonProfiles,
         equipment,
         pending:
-          'Projekte seedet der Befehl ab AP-11a; Identitäten werden in prod nie angelegt (docs/seed/README.md).',
+          'Projekte seedet der Befehl ab AP-12a (Freigabe); Identitäten werden in prod nie angelegt (docs/seed/README.md).',
       };
     }
   }

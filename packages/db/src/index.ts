@@ -47,6 +47,13 @@ export {
   type TemplateRow,
 } from './repositories/equipment';
 export {
+  ProjectRepository,
+  type LineDetail,
+  type ProjectDetail,
+  type ProjectMeta,
+  type RigConflict,
+} from './repositories/project';
+export {
   encodeCursor,
   insertNotifications,
   NotificationRepository,

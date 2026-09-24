@@ -10,3 +10,4 @@ export * from './notifications';
 export * from './system';
 export * from './tenant-settings';
 export * from './equipment';
+export * from './projects';

@@ -4966,6 +4966,1803 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Projektliste (Filter Status/Rig/Freigabe/eigene/Favoriten); `deleted=true` = Papierkorb (nur Admin)
+         * @description Aktion: `project.read` · FA-PRJ-14, FA-PRJ-19, FA-PRJ-15, FA-BER-02
+         */
+        get: {
+            parameters: {
+                query?: {
+                    deleted?: "true" | "false";
+                    /** @description UUID */
+                    rigId?: string;
+                    status?: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+                    approvalStatus?: "draft" | "submitted" | "approved" | "returned" | "rejected";
+                    mine?: "true" | "false";
+                    favorites?: "true" | "false";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Projekte */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["ProjectListItem"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Projekt als Entwurf anlegen (Client-UUID; unvollständig erlaubt)
+         * @description Aktion: `project.create` · FA-PRJ-01, FA-PRJ-03, FA-PRJ-18, NT-04
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Projekt mit Panels, Zeilen und Zählern
+         * @description Aktion: `project.read` · FA-PRJ-10, FA-PRJ-21, FK 8.4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Projekt */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Projekt in den Papierkorb (immer weich)
+         * @description Aktion: `project.delete` · FA-PRJ-15, E4
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Projekt ändern (If-Match: version); Rig-Wechsel mit Konfliktprüfung
+         * @description Aktion: `project.update` · FA-PRJ-01, FA-PRJ-03, FA-RIG-12, TK 7.1
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Projekts; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectPatch"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description approval.rig_conflict, rig.change_has_captures */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Projekt aus dem Papierkorb wiederherstellen (unveränderter Status)
+         * @description Aktion: `project.status` · FA-PRJ-15, E4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Wiederhergestellt */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Projekt als neuen Entwurf duplizieren (Zähler 0)
+         * @description Aktion: `project.create` · FA-PRJ-08, FA-RIG-12
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProjectDuplicate"];
+                };
+            };
+            responses: {
+                /** @description Dupliziert */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/panels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Panel hinzufügen
+         * @description Aktion: `project.update` · FA-PRJ-06
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PanelCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/panels/{panelId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Panel löschen (mit Aufnahmen weich, sonst endgültig)
+         * @description Aktion: `project.update` · FA-PRJ-06, E4
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    panelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            soft: boolean;
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Panel ändern (Koordinaten, Rotation, Bezeichnung)
+         * @description Aktion: `project.update` · FA-PRJ-06
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    panelId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PanelPatch"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Belichtungszeile hinzufügen
+         * @description Aktion: `project.update` · FA-PRJ-05, FA-PRJ-20, FA-PRJ-22, NT-38
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LineCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Zeile löschen (mit Aufnahmen weich, sonst endgültig)
+         * @description Aktion: `project.update` · FA-PRJ-07, E4
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    lineId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            soft: boolean;
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Zeile ändern (mit Aufnahmen: nur geplant, Mondprofil, aktiv)
+         * @description Aktion: `project.update` · FA-PRJ-05, FA-PRJ-07, NT-E3
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    lineId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LinePatch"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description line.locked_by_captures */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/lines/{lineId}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Zeile duplizieren (Zähler 0; alte optional deaktivieren)
+         * @description Aktion: `project.update` · FA-PRJ-05, NT-E3
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    lineId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LineDuplicate"];
+                };
+            };
+            responses: {
+                /** @description Dupliziert */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/apply-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Belichtungsvorlage anwenden (nur ohne Aufnahmen)
+         * @description Aktion: `project.update` · FA-BPL-04, FA-BPL-05, FA-PRJ-05
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApplyTemplate"];
+                };
+            };
+            responses: {
+                /** @description Angewendet */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description line.locked_by_captures */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Projektstatus ändern (projectStatusTransitions; Aktivieren prüft Vollständigkeit)
+         * @description Aktion: `project.status` · FA-PRJ-11, FA-PRJ-12, FA-PRJ-01
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StatusChange"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description project.status_transition_invalid */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description approval.incomplete */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Priorität im Rig (1 = höchste); die übrigen Projekte des Rigs rücken nach
+         * @description Aktion: `project.status` · FA-PRJ-13
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PriorityChange"];
+                };
+            };
+            responses: {
+                /** @description Neue Reihenfolge */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            order: string[];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description project.status_transition_invalid */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/me/favorites/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Projekt als Favorit markieren
+         * @description Aktion: `me.favorites` · FA-PRJ-16
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Markiert */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Favorit entfernen
+         * @description Aktion: `me.favorites` · FA-PRJ-16
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    projectId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Entfernt */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notizverlauf des Projekts
+         * @description Aktion: `project.read` · FA-PRJ-17
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notizen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["NoteView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Notiz hinzufügen (Markdown)
+         * @description Aktion: `project.note.write` · FA-PRJ-17
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NoteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Freigabe- und Änderungsverlauf
+         * @description Aktion: `project.history.read` · FA-BER-03, FA-FRG-12
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Verlauf */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["HistoryEntry"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/rigs/{id}/compatibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rig-Wechsel prüfen: Filterrad, Binning, Auslesemodus, Bildfeld, Optik mit Aufnahmen
+         * @description Aktion: `project.read` · FA-RIG-12
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        projectId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Konflikte */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RigCheckView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -7509,6 +9306,610 @@ export interface components {
                  */
                 nightWindowEndUtc: string;
             }[];
+        };
+        ProjectListItem: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            projectType: "deep_sky" | "exoplanet";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
+            targetName: string | null;
+            targetType: string | null;
+            catalogNames: string;
+            raDeg: number | null;
+            decDeg: number | null;
+            rotationDeg: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            startDate: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            dueDate: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodFrom: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodTo: string | null;
+            requestComment: string | null;
+            conditions: {
+                /** @default 30 */
+                minAltitudeDeg: number;
+                /** @default 1 */
+                minTimeOnTargetH: number;
+                /**
+                 * @default astronomical
+                 * @enum {string}
+                 */
+                twilight: "astronomical" | "nautical" | "civil";
+                /** @default false */
+                moonAvoidanceEnabled: boolean;
+                /** @default false */
+                moonMustBeDown: boolean;
+                /** @default 60 */
+                moonSeparationDeg: number;
+                /** @default 5 */
+                moonWidthDays: number;
+                /** @default 2 */
+                moonRelaxScale: number;
+                /** @default -15 */
+                moonMinAltDeg: number;
+                /** @default 5 */
+                moonMaxAltDeg: number;
+                /** @default 60 */
+                moonMaxIlluminationPct: number;
+            };
+            /** @enum {string} */
+            approvalStatus: "draft" | "submitted" | "approved" | "returned" | "rejected";
+            /** @enum {string|null} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
+            priority: number;
+            effortStale: boolean;
+            favorite: boolean;
+            version: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            deletedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+            progress: {
+                targetReached: boolean;
+                finished: boolean;
+                planningNeed: number;
+                percentDone: number;
+                plannedS: number;
+                integrationS: number;
+            };
+        };
+        ProjectView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            projectType: "deep_sky" | "exoplanet";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
+            targetName: string | null;
+            targetType: string | null;
+            catalogNames: string;
+            descriptionMd: string;
+            raDeg: number | null;
+            decDeg: number | null;
+            rotationDeg: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            startDate: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            dueDate: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodFrom: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodTo: string | null;
+            requestComment: string | null;
+            conditions: {
+                /** @default 30 */
+                minAltitudeDeg: number;
+                /** @default 1 */
+                minTimeOnTargetH: number;
+                /**
+                 * @default astronomical
+                 * @enum {string}
+                 */
+                twilight: "astronomical" | "nautical" | "civil";
+                /** @default false */
+                moonAvoidanceEnabled: boolean;
+                /** @default false */
+                moonMustBeDown: boolean;
+                /** @default 60 */
+                moonSeparationDeg: number;
+                /** @default 5 */
+                moonWidthDays: number;
+                /** @default 2 */
+                moonRelaxScale: number;
+                /** @default -15 */
+                moonMinAltDeg: number;
+                /** @default 5 */
+                moonMaxAltDeg: number;
+                /** @default 60 */
+                moonMaxIlluminationPct: number;
+            };
+            /** @enum {string} */
+            approvalStatus: "draft" | "submitted" | "approved" | "returned" | "rejected";
+            /** @enum {string|null} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
+            priority: number;
+            effortStale: boolean;
+            favorite: boolean;
+            version: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            deletedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+            progress: {
+                targetReached: boolean;
+                finished: boolean;
+                planningNeed: number;
+                percentDone: number;
+                plannedS: number;
+                integrationS: number;
+            };
+            panels: components["schemas"]["PanelView"][];
+        };
+        PanelView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            panelIndex: number;
+            label: string;
+            raDeg: number;
+            decDeg: number;
+            rotationDeg: number;
+            notes: string;
+            lines: components["schemas"]["LineView"][];
+        };
+        LineView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            panelId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            filterId: string | null;
+            filterShortName: string;
+            exposureS: number;
+            plannedCount: number;
+            gain: number | null;
+            offsetAdu: number | null;
+            binning: number;
+            readoutMode: string | null;
+            /** @enum {string} */
+            moonMode: "profile" | "project_default" | "none";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            moonProfileId: string | null;
+            enabled: boolean;
+            orderIndex: number;
+            notes: string;
+            hasCaptures: boolean;
+            counters: {
+                planned: number;
+                acquired: number;
+                rejected: number;
+                accepted: number;
+                remaining: number;
+                planningNeed: number;
+                bonus: number;
+                bonusRejected: number;
+                percentDone: number;
+                integrationS: number;
+            };
+        };
+        ProjectCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            rigId: string | null;
+            /** @default null */
+            targetName: string | null;
+            /** @default null */
+            targetType: string | null;
+            /** @default  */
+            catalogNames: string;
+            /** @default  */
+            descriptionMd: string;
+            /** @default null */
+            raDeg: number | null;
+            /** @default null */
+            decDeg: number | null;
+            /** @default 0 */
+            rotationDeg: number;
+            /**
+             * Format: date
+             * @default null
+             * @example 2026-09-18
+             */
+            startDate: string | null;
+            /**
+             * Format: date
+             * @default null
+             * @example 2026-09-18
+             */
+            dueDate: string | null;
+            /**
+             * Format: date
+             * @default null
+             * @example 2026-09-18
+             */
+            requestPeriodFrom: string | null;
+            /**
+             * Format: date
+             * @default null
+             * @example 2026-09-18
+             */
+            requestPeriodTo: string | null;
+            /** @default null */
+            requestComment: string | null;
+            /**
+             * @default {
+             *       "minAltitudeDeg": 30,
+             *       "minTimeOnTargetH": 1,
+             *       "twilight": "astronomical",
+             *       "moonAvoidanceEnabled": false,
+             *       "moonMustBeDown": false,
+             *       "moonSeparationDeg": 60,
+             *       "moonWidthDays": 5,
+             *       "moonRelaxScale": 2,
+             *       "moonMinAltDeg": -15,
+             *       "moonMaxAltDeg": 5,
+             *       "moonMaxIlluminationPct": 60
+             *     }
+             */
+            conditions: {
+                /** @default 30 */
+                minAltitudeDeg: number;
+                /** @default 1 */
+                minTimeOnTargetH: number;
+                /**
+                 * @default astronomical
+                 * @enum {string}
+                 */
+                twilight: "astronomical" | "nautical" | "civil";
+                /** @default false */
+                moonAvoidanceEnabled: boolean;
+                /** @default false */
+                moonMustBeDown: boolean;
+                /** @default 60 */
+                moonSeparationDeg: number;
+                /** @default 5 */
+                moonWidthDays: number;
+                /** @default 2 */
+                moonRelaxScale: number;
+                /** @default -15 */
+                moonMinAltDeg: number;
+                /** @default 5 */
+                moonMaxAltDeg: number;
+                /** @default 60 */
+                moonMaxIlluminationPct: number;
+            };
+        };
+        ProjectPatch: {
+            name?: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId?: string | null;
+            targetName?: string | null;
+            targetType?: string | null;
+            catalogNames?: string;
+            descriptionMd?: string;
+            raDeg?: number | null;
+            decDeg?: number | null;
+            rotationDeg?: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            startDate?: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            dueDate?: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodFrom?: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            requestPeriodTo?: string | null;
+            requestComment?: string | null;
+            conditions?: {
+                minAltitudeDeg?: number;
+                minTimeOnTargetH?: number;
+                /** @enum {string} */
+                twilight?: "astronomical" | "nautical" | "civil";
+                moonAvoidanceEnabled?: boolean;
+                moonMustBeDown?: boolean;
+                moonSeparationDeg?: number;
+                moonWidthDays?: number;
+                moonRelaxScale?: number;
+                moonMinAltDeg?: number;
+                moonMaxAltDeg?: number;
+                moonMaxIlluminationPct?: number;
+            };
+            acceptRigConflicts?: boolean;
+        };
+        ProjectDuplicate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name?: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId?: string | null;
+        };
+        PanelCreate: {
+            /** @default Main */
+            label: string;
+            raDeg: number;
+            decDeg: number;
+            /** @default 0 */
+            rotationDeg: number;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+        };
+        PanelPatch: {
+            label?: string;
+            raDeg?: number;
+            decDeg?: number;
+            rotationDeg?: number;
+            notes?: string;
+        };
+        LineCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            filterId: string;
+            exposureS: number;
+            plannedCount: number;
+            /** @default null */
+            gain: number | null;
+            /** @default null */
+            offsetAdu: number | null;
+            /** @default 1 */
+            binning: number;
+            /** @default null */
+            readoutMode: string | null;
+            /**
+             * @default project_default
+             * @enum {string}
+             */
+            moonMode: "profile" | "project_default" | "none";
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            moonProfileId: string | null;
+            /** @default true */
+            enabled: boolean;
+            /** @default  */
+            notes: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            panelId: string;
+        };
+        LinePatch: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            filterId?: string;
+            exposureS?: number;
+            plannedCount?: number;
+            gain?: number | null;
+            offsetAdu?: number | null;
+            binning?: number;
+            readoutMode?: string | null;
+            /** @enum {string} */
+            moonMode?: "profile" | "project_default" | "none";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            moonProfileId?: string | null;
+            enabled?: boolean;
+            notes?: string;
+        };
+        LineDuplicate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /** @default false */
+            deactivateSource: boolean;
+        };
+        ApplyTemplate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            templateId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            panelId: string | null;
+            /** @default true */
+            replace: boolean;
+        };
+        StatusChange: {
+            /** @enum {string} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+        };
+        PriorityChange: {
+            position: number;
+        };
+        NoteView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            userId: string;
+            authorName: string;
+            bodyMd: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        NoteCreate: {
+            bodyMd: string;
+        };
+        HistoryEntry: {
+            /** @enum {string} */
+            kind: "approval" | "change";
+            action: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            userId: string | null;
+            userName: string | null;
+            entity: string;
+            detail?: unknown;
+            comment: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        RigCheckView: {
+            conflicts: {
+                code: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                lineId: string | null;
+                detail: string;
+            }[];
+            hasCaptures: boolean;
+            opticsChanged: boolean;
         };
         TenantAdminView: {
             /**

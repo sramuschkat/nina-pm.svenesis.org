@@ -27,7 +27,8 @@ export interface PgliteDatabase {
 
 /** Legt eine frische In-Memory-Datenbank an und führt alle Migrationen (ohne 0000/Rollen) aus. */
 export async function openPglite(): Promise<PgliteDatabase> {
-  const pg = await PGlite.create();
+  // `date` als `YYYY-MM-DD` wie in connection.ts (NT-04).
+  const pg = await PGlite.create({ parsers: { 1082: (value: string) => value } });
   await pg.exec("SET default_transaction_isolation = 'repeatable read'");
   const admin: SqlClient = {
     query: async (text: string, params?: unknown[]) => {
