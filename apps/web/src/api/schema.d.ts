@@ -4487,7 +4487,10 @@ export interface paths {
         put: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description `settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict */
+                    "if-match"?: string;
+                };
                 path: {
                     /** @description UUID */
                     id: string;
@@ -4538,6 +4541,15 @@ export interface paths {
                 };
                 /** @description resource.read_only (mitgelieferte Mondprofile) */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
                     headers: {
                         [name: string]: unknown;
                     };

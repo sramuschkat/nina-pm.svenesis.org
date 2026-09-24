@@ -212,6 +212,9 @@ export const equipmentApi = {
     apiFetch<EquipmentKinds[K]>(`${V1}/${kind}`, json('POST', body)),
   update: <K extends EquipmentKind>(kind: K, id: string, body: object) =>
     apiFetch<EquipmentKinds[K]>(`${V1}/${kind}/${id}`, json('PUT', body)),
+  /** Rig ändern mit `If-Match` (`settingsVersion`, 412 bei parallelem Speichern). */
+  updateRig: (id: string, body: object, version: number) =>
+    apiFetch<RigView>(`${V1}/rigs/${id}`, { ...json('PUT', body), ...ifMatch(version) }),
   remove: (kind: EquipmentKind, id: string) =>
     apiFetch<undefined>(`${V1}/${kind}/${id}`, json('DELETE')),
   schedulerSettings: (id: string, body: RigView['scheduler'], version?: number) =>

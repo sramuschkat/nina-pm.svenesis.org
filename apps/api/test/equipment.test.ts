@@ -289,6 +289,24 @@ describe('Scheduler-Einstellungen (FA-RIG-04, sort-chain.md, flip-rotation.md §
     expect(denied.status).toBe(403);
   });
 
+  it('PUT /rigs/{id} mit If-Match: passende Version speichert, veraltete → 412', async () => {
+    const t = await setup();
+    const { site, telescope, camera, rig } = await withRig(t);
+    const body = { ...rigInput(site.id, telescope.id, camera.id), hasRotator: true };
+    const ok = await t.call(`/rigs/${rig.id}`, {
+      method: 'PUT',
+      body,
+      headers: { 'if-match': '"1"' },
+    });
+    expect([ok.status, ok.body.settingsVersion, ok.body.hasRotator]).toEqual([200, 2, true]);
+    const stale = await t.call(`/rigs/${rig.id}`, {
+      method: 'PUT',
+      body,
+      headers: { 'if-match': '"1"' },
+    });
+    expect([stale.status, stale.body.code]).toEqual([412, 'resource.version_conflict']);
+  });
+
   it('Änderungen an der Kamera erhöhen settingsVersion des Rigs (FA-RIG-07)', async () => {
     const t = await setup();
     const { camera, rig } = await withRig(t);
@@ -350,6 +368,42 @@ describe('Filterradbelegung (FA-RIG-14, NT-E1)', () => {
       expect.objectContaining({ position: 2, suggestion: 'Ha 3nm', changedByNina: false }),
     ]);
     expect((await t.call(`/rigs/${rig.id}`)).body.filterWheel).toHaveLength(2);
+  });
+});
+
+describe('NINA-Meldung des Filterrads (NT-E1)', () => {
+  it('anderer Name an einem bestätigten Platz → unbestätigt, „von NINA geändert“, Version steigt', async () => {
+    const t = await setup();
+    const { rig } = await withRig(t);
+    const ha = await t.create('/filters', filterInput('Ha'));
+    await t.call(`/rigs/${rig.id}/filter-wheel`, {
+      method: 'PUT',
+      body: { slots: [{ position: 2, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
+    });
+    const repo = s.services.repositories({ tenantId: t.tenantId }).equipment();
+    const same = await repo.reportNinaFilterWheel(
+      rig.id,
+      [{ position: 2, name: 'Ha 3nm', focusOffset: 0 }],
+      s.clock.now(),
+    );
+    expect(same.changedPositions).toEqual([]);
+    const changed = await repo.reportNinaFilterWheel(
+      rig.id,
+      [{ position: 2, name: 'SII 3nm', focusOffset: 0 }],
+      s.clock.now(),
+    );
+    expect(changed.changedPositions).toEqual([2]);
+    const view = await t.call(`/rigs/${rig.id}/filter-wheel`);
+    expect(view.body.settingsVersion).toBe(3);
+    expect(view.body.slots).toEqual([
+      expect.objectContaining({
+        position: 2,
+        ninaFilterName: 'Ha 3nm',
+        ninaConfirmedAt: null,
+        reportedName: 'SII 3nm',
+        changedByNina: true,
+      }),
+    ]);
   });
 });
 

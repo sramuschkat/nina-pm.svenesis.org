@@ -333,3 +333,84 @@ fieldset.inline {
   font-size: var(--npm-font-small);
   color: var(--npm-link);
 }
+.chain {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.chainItem {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-bg);
+  cursor: grab;
+}
+.chainItem[data-dragging='true'] {
+  opacity: 0.5;
+}
+.chainRank {
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
+.chainLabel {
+  margin-right: auto;
+}
+.linkButton {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--npm-link);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--npm-space-5);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.statusOk {
+  composes: pillOk;
+}
+.statusWarn {
+  composes: pillWarn;
+}
+.statusDanger {
+  composes: pillDanger;
+}
+.statusNone {
+  composes: pill;
+}
+.label {
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+}
+.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  font-size: var(--npm-font-small);
+}
+.facts dt {
+  color: var(--npm-text-light);
+}
+.facts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

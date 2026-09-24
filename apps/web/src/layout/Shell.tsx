@@ -232,7 +232,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   const system = me?.context === 'system';
   const areas: NavArea[] = [
     { key: 'tonight', visible: !system },
-    { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.sites },
+    { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.rigs },
     { key: 'planning', visible: !system },
     { key: 'projects', visible: !system },
     { key: 'nina', visible: !system },

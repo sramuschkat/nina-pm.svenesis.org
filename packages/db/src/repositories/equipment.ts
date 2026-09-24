@@ -1298,6 +1298,53 @@ export class EquipmentRepository extends TenantRepo {
     );
   }
 
+  /**
+   * Vom Plugin gemeldetes Filterrad speichern (NT-E1; Heartbeat ab AP-14). Meldet NINA an einem
+   * bestätigten Platz einen anderen Namen, gilt der Platz als unbestätigt (`ninaConfirmedAt = null`,
+   * Alarm `filter_wheel_changed` folgt mit AP-14); dann steigt auch `settings_version`.
+   */
+  reportNinaFilterWheel(
+    id: string,
+    slots: ReportedWheel['slots'],
+    now: Date,
+  ): Promise<{ changedPositions: number[] }> {
+    return this.tx(
+      async (trx) => {
+        const rig = await this.rig(id, trx);
+        if (!rig) throw notFound();
+        const reportedAt = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
+        const changedPositions: number[] = [];
+        const wheel = rig.filterWheel.map((slot) => {
+          const reported = slots.find((r) => r.position === slot.position);
+          const differs =
+            slot.ninaFilterName !== null &&
+            slot.ninaConfirmedAt !== null &&
+            reported?.name !== slot.ninaFilterName;
+          if (!differs) return slot;
+          changedPositions.push(slot.position);
+          return { ...slot, ninaConfirmedAt: null };
+        });
+        await trx
+          .updateTable('rig')
+          .set({
+            ninaFilterWheel: json({ slots, reportedAt }),
+            ...(changedPositions.length > 0
+              ? {
+                  filterWheel: json(wheel),
+                  settingsVersion: rig.settingsVersion + 1,
+                  updatedAt: now,
+                }
+              : {}),
+          })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', id)
+          .execute();
+        return { changedPositions };
+      },
+      [{ table: 'rig', id }],
+    );
+  }
+
   deleteRig(id: string, now: Date): Promise<void> {
     return this.tx(
       async (trx) => {

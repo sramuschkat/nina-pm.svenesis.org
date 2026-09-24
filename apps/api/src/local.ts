@@ -158,6 +158,29 @@ if (AUTH_TEST_MODE) {
     if (invite) c.header('set-cookie', clearCookie(COOKIE_NAMES.invite), { append: true });
     return c.json({ location: result.location, context: result.context });
   });
+
+  // NINA-Filterrad-Meldung ohne Plugin (E2E zu S-10, AP-09c) – dieselbe Repository-Methode wie der
+  // Heartbeat (AP-14). Mandant aus dem Seed; nur mit AUTH_TEST_MODE, nie im Lambda-Bundle.
+  const Report = z.object({
+    rigId: z.uuid(),
+    slots: z
+      .array(
+        z.object({
+          position: z.number().int().min(1).max(20),
+          name: z.string().min(1).max(60),
+          focusOffset: z.number().nullable().default(null),
+        }),
+      )
+      .max(20),
+  });
+  app.post('/api/auth/test-nina-filter-wheel', async (c) => {
+    const parsed = Report.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return problemResponse('validation.failed');
+    const result = await new EquipmentRepository(db, {
+      tenantId: seed.tenant.id,
+    }).reportNinaFilterWheel(parsed.data.rigId, parsed.data.slots, now());
+    return c.json(result);
+  });
 }
 
 // Lokal gibt es kein CloudFront: den Origin-Verify-Header hier ergänzen.

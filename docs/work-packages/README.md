@@ -29,7 +29,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-08b](AP-08b.md) | Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (Port astro-core) | L | AP-08a | H-03 | ☑ |
 | [AP-09a](AP-09a.md) | Ausrüstung: API | L | AP-05, AP-04b, AP-08b | – | ◐ |
 | [AP-09b](AP-09b.md) | Stammdaten-Bildschirme S-11 … S-15 | M | AP-09a, AP-06a | – | ◐ |
-| [AP-09c](AP-09c.md) | Rig-Bildschirm S-10 | M | AP-09b | – | ☐ |
+| [AP-09c](AP-09c.md) | Rig-Bildschirm S-10 | M | AP-09b | – | ◐ |
 | [AP-10](AP-10.md) | Engine: Sichtbarkeit, Saisonende, Mondvermeidung, Nachtdiagramm | M | AP-08b, AP-06a | – | ☐ |
 | [AP-11a](AP-11a.md) | Projekte: API | L | AP-09a | – | ☐ |
 | [AP-11b](AP-11b.md) | Projekt-Editor S-31 | L | AP-11a, AP-10 | – | ☐ |

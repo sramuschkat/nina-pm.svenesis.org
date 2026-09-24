@@ -6866,6 +6866,13 @@ paths:
           description: UUID
           name: id
           in: path
+        - schema:
+            type: string
+            description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          required: false
+          description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          name: if-match
+          in: header
       requestBody:
         required: true
         content:
@@ -6899,6 +6906,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
           content:
             application/problem+json:
               schema:
