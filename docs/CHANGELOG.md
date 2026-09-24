@@ -4,6 +4,11 @@
 
 ## [Unveröffentlicht]
 
+### AP-06a abgenommen (2026-09-24)
+
+- Deploys durch Sven (`8773661` SPA statt Platzhalterseite, `64c940d` Logo der Website); verwaiste Log-Gruppe `PlaceholderDeploymentLogs` von Sven gelöscht.
+- H-16: Aussehen freigegeben (Sven, 24.09.2026) – dunklere Linkfarbe für WCAG AA, Werte des Dunkel-Themes und Logo übernommen.
+
 ### Logo der Website statt Platzhalter (2026-09-24)
 
 - `img/logo.svg` von www.svenesis.org (von Sven bereitgestellt) als `apps/web/src/layout/svenesis-logo.svg` im Kopf und auf der Einstiegsseite sowie als Favicon (`apps/web/public/favicon.svg`); Anmerkung 3 aus AP-06a/H-16 erledigt.
