@@ -3,7 +3,7 @@
  * ohne Browser, mit echtem SQL auf PGlite und einer Discord-Nachbildung, die PKCE prüft.
  */
 import { COOKIE_NAMES, SESSION_IDLE_DAYS, SESSION_MAX_DAYS } from '@nina-pm/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../src/auth/crypto';
 import { signValue } from '../src/lib/cookies';
 import { discordProfile } from './support/fake-discord';
@@ -11,10 +11,11 @@ import { COOKIE_SECRET, createStack, setCookies, type Stack } from './support/st
 
 const DAY = 86_400_000;
 let s: Stack;
-beforeEach(async () => {
+beforeAll(async () => {
   s = await createStack();
 });
-afterEach(() => s.close());
+beforeEach(() => s.reset());
+afterAll(() => s.close());
 
 const sidCookie = (sid: string | undefined) => ({ [COOKIE_NAMES.session]: sid ?? '' });
 const me = (sid: string | undefined) => s.request('/api/auth/me', { cookies: sidCookie(sid) });

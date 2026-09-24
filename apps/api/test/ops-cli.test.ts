@@ -2,7 +2,7 @@
 import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
 import { TenantAdminRepository } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runOpsCommand, type OpsDeps, type SqsLike } from '../src/ops/commands';
 
 const queueUrl = 'https://sqs.eu-central-1.amazonaws.com/1/nina-pm-worker-failures';
@@ -10,8 +10,13 @@ let pg: PgliteDatabase;
 let deps: OpsDeps;
 let send: ReturnType<typeof vi.fn<SqsLike['send']>>;
 
-beforeEach(async () => {
+beforeAll(async () => {
   pg = await openPglite();
+});
+afterAll(() => pg.close());
+
+beforeEach(async () => {
+  await pg.reset();
   send = vi.fn<SqsLike['send']>(() =>
     Promise.resolve({
       Messages: [
@@ -31,7 +36,6 @@ beforeEach(async () => {
     now: () => new Date('2026-09-24T12:00:00Z'),
   };
 });
-afterEach(() => pg.close());
 
 const run = (event: object) => runOpsCommand(event, deps);
 const audit = async () =>
