@@ -25,6 +25,7 @@ Erlaubte `inv`-Werte: `1e6` (Winkel, Schritt 1e-6°), `1e9` (Zahlen im kanonisch
 ## Hashes
 - `inputHash = sha256hex(canonicalInputJson(PlanInput))`, **Hash-Eingabe sind die UTF-8-Bytes** der kanonischen Zeichenkette (verbindlich, AST-D10). Zusätzlich werden **alle Codepunkte > U+007F als `\uXXXX` escaped**, damit die Zeichenkette ASCII-rein ist und die Kodierungsfrage nicht entsteht: ECMAScript- und .NET-Zeichenketten sind UTF-16, `SHA256.HashData` arbeitet auf Bytes – ohne Festlegung liefert derselbe Projektname mit Umlaut in Node und Jint **verschiedene** Hashes. Pflicht-Testvektor mit Nicht-ASCII plus ein Jint-Paritätsfall mit Umlaut im Projektnamen.
 - `outputHash = sha256hex(canonicalInputJson(NightPlan ohne {inputHash, outputHash, computedAt}))`
+- Escape-Form: je **UTF-16-Codeeinheit** über U+007F `\u` + vier **kleine** Hex-Ziffern (Surrogatpaare also als zwei Escapes, z. B. 🔭 → `\ud83d\udd2d`), wie `JSON.stringify` es für einzelne Surrogate tut.
 - SHA-256 eigene reine Implementierung in `packages/engine/src/hash` (kein `crypto` – Jint-Kompatibilität).
 
 ## Testvektoren (Pflicht)
@@ -35,7 +36,7 @@ Erlaubte `inv`-Werte: `1e6` (Winkel, Schritt 1e-6°), `1e9` (Zahlen im kanonisch
 | `{"a":0.1+0.2}` | `{"a":0.3}` |
 | `{"a":1e21}` | `{"a":1e+21}` |
 | `{"a":[3,1,2]}` | `{"a":[3,1,2]}` |
-| `{"Z":1,"a":2,"É":3}` | `{"Z":1,"a":2,"É":3}` |
+| `{"Z":1,"a":2,"É":3}` | `{"Z":1,"a":2,"\u00c9":3}` (Sortierung nach UTF-16, Nicht-ASCII escaped – §Hashes; bis AP-08a stand hier irrtümlich `"É"` unescaped) |
 | `{"a":undefined,"b":null}` | `{"b":null}` |
 | `{"a":NaN}` | Fehler `canonical.non_finite` |
 | `sha256hex("")` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
