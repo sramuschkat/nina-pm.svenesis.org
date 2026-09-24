@@ -102,6 +102,13 @@ export interface SystemAuditTable {
   createdAt: Timestamp;
 }
 
+export interface SystemSettingTable {
+  key: string;
+  value: ColumnType<unknown, string, string>;
+  updatedBy: string | null;
+  updatedAt: Timestamp;
+}
+
 export interface NotificationTable {
   id: Generated<string>;
   tenantId: string | null;
@@ -180,6 +187,7 @@ export interface Database {
   authSession: AuthSessionTable;
   invitation: InvitationTable;
   systemAudit: SystemAuditTable;
+  systemSetting: SystemSettingTable;
   notification: NotificationTable;
   changeLog: ChangeLogTable;
   moonProfile: MoonProfileTable;

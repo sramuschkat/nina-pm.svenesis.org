@@ -651,6 +651,9 @@
   "approvalDeadlineDays",
   "defaultLanguage"
  ],
+ "systemSettingKeys": [
+  "maintenanceBanner"
+ ],
  "uploadPurposes": [
   "transit_result",
   "tenant_import",

@@ -80,6 +80,8 @@ export class ApiStack extends Stack {
     // Rechte genau nach iam.md §2.
     props.dataBucket.grantRead(fn, 'tenant/*');
     props.dataBucket.grantPut(fn, 'tenant/*');
+    // Mandant löschen (FA-MAN-03): Dateien unter tenant/<id>/ entfernen.
+    props.dataBucket.grantDelete(fn, 'tenant/*');
     props.worker.grantInvoke(fn);
     // Genau die sieben Parameter aus §2 – ausdrücklich, damit nie ein weiterer mitrutscht.
     const {

@@ -80,8 +80,14 @@ export const TenantAdminView = z
     status: z.enum(tenantStatuses),
     /** `null` = Owner ausstehend (Einladung offen, FA-BEN-03). */
     ownerMemberId: Uuid.nullable(),
+    ownerDisplayName: z.string().nullable(),
     admins: z.number().int(),
     users: z.number().int(),
+    /** Kennzahlen FA-SU-03 (ohne fachliche Inhalte, FA-SU-07). */
+    rigs: z.number().int(),
+    ninaInstances: z.number().int(),
+    ninaLastSeenAt: UtcInstant.nullable(),
+    lastLoginAt: UtcInstant.nullable(),
     createdAt: UtcInstant,
   })
   .meta({ id: 'TenantAdminView' });

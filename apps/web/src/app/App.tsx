@@ -2,15 +2,21 @@
  * Router und Provider (TK 11.2): Query, i18n, Theme/Dichte, Auth. Anmeldeseiten sind Textseiten, alle
  * Seiten nach der Anmeldung liegen im Rahmen (`Shell`).
  */
+import type { Action } from '@nina-pm/shared';
 import type { Density, Theme } from '@nina-pm/ui-tokens';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { lazy, Suspense, useCallback, type ReactNode } from 'react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 import { api } from '../api/client';
-import { ApiError, AuthProvider, useAuth } from '../auth';
+import { ApiError, AuthProvider, useAuth, useCan } from '../auth';
+import { ProblemMessage } from '../components/ProblemMessage';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { HomePage, NotFoundPage, PlaceholderPage, PrivacyPage, SourcesPage } from '../pages/other';
+import { SuperUsersPage } from '../pages/system/SuperUsersPage';
+import { SystemAuditPage } from '../pages/system/SystemAuditPage';
+import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
+import { SystemTenantsPage } from '../pages/system/SystemTenantsPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -85,6 +91,15 @@ export function RequireContext({ children }: { children: ReactNode }) {
   return <Shell>{children}</Shell>;
 }
 
+/**
+ * Seiten mit Aktionsrecht (TK 11.4 `RequireContext`): ohne Recht der Hinweis `permission.denied` statt
+ * der Seite – die API lehnt ohnehin ab (TK 5.5).
+ */
+function RequireAction({ action }: { action: Action }) {
+  const allowed = useCan(action);
+  return allowed ? <Outlet /> : <ProblemMessage code="permission.denied" />;
+}
+
 // Nur im Test-Build: ohne VITE_GALLERY entfernt der Build den Import samt Chunk vollständig.
 const Gallery =
   import.meta.env.VITE_GALLERY === '1' ? lazy(() => import('../gallery/Gallery')) : null;
@@ -111,6 +126,16 @@ export function createRouter() {
             { index: true, element: <HomePage /> },
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
             { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+            {
+              path: 'system',
+              element: <RequireAction action="system.manage" />,
+              children: [
+                { index: true, element: <Navigate to={SYSTEM_PATHS.tenants} replace /> },
+                { path: 'mandanten', element: <SystemTenantsPage /> },
+                { path: 'super-user', element: <SuperUsersPage /> },
+                { path: 'audit', element: <SystemAuditPage /> },
+              ],
+            },
           ],
         },
         { path: '/mandant-waehlen', element: <SelectTenantPage /> },

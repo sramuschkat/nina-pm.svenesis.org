@@ -165,6 +165,9 @@ describe('Rechte-Tabellen iam.md §2, §3, §5', () => {
     const s3 = s3Of(apiRole.statements);
     expect(s3.join()).toContain('/tenant/*');
     expect(s3.join()).not.toContain('WebBucket');
+    // Löschen nur unter tenant/* (Mandant löschen, FA-MAN-03).
+    const deletes = apiRole.statements.filter((s) => actionsOf(s).includes('s3:DeleteObject*'));
+    expect(deletes.map((s) => json(s.Resource))).toEqual([expect.stringContaining('/tenant/*')]);
     expect(apiRole.statements.some((s) => actionsOf(s).some((a) => a.startsWith('sqs:')))).toBe(
       false,
     );

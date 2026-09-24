@@ -35,6 +35,17 @@ const errorCodes = new Set(
     ) as { errors: { code: string }[] }
   ).errors.map((e) => e.code),
 );
+/** Berechtigungs-Aktionen (`system.manage`) sind ebenfalls keine i18n-Schlüssel. */
+const permissionActions = new Set(
+  (
+    JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL('../../../docs/contracts/enums.json', import.meta.url)),
+        'utf8',
+      ),
+    ) as { permissionActions: string[] }
+  ).permissionActions,
+);
 const deKeys = flattenKeys(de);
 const enKeys = flattenKeys(en);
 
@@ -55,9 +66,13 @@ describe('i18n-Lint (CC-12)', () => {
 
   it('jeder im Code benutzte Schlüssel existiert', () => {
     const areas = new Set(Object.keys(de));
-    // Fehlercodes (`auth.unauthenticated`) sind keine i18n-Schlüssel – deren Text liegt unter `errors.*`.
+    // Fehlercodes (`auth.unauthenticated`) und Aktionen sind keine i18n-Schlüssel – Fehlertexte liegen unter `errors.*`.
     const used = [...literals].filter(
-      (k): k is string => k !== undefined && !errorCodes.has(k) && areas.has(k.split('.')[0] ?? ''),
+      (k): k is string =>
+        k !== undefined &&
+        !errorCodes.has(k) &&
+        !permissionActions.has(k) &&
+        areas.has(k.split('.')[0] ?? ''),
     );
     expect(
       used.filter((k) => !deKeys.includes(k) && !deKeys.some((d) => d.startsWith(`${k}.`))),

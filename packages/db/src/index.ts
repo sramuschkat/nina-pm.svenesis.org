@@ -71,3 +71,15 @@ export {
   type WithTxOptions,
 } from './tx';
 export type { Database, JobTable } from './types';
+export {
+  AuditRepository,
+  listSystemAudit,
+  readMaintenanceBanner,
+  type AuditPage,
+  type SystemAuditRow,
+} from './repositories/audit';
+export {
+  deleteTenantData,
+  TENANT_DELETE_BATCH,
+  TENANT_DELETE_ORDER,
+} from './repositories/tenant-delete';

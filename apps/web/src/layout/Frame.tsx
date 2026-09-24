@@ -9,6 +9,7 @@ import { Link } from 'react-router';
 import { CONTACT_PATH, siteHref, SITE_NAV, WEBSITE } from './site-nav';
 import styles from './layout.module.css';
 import logoUrl from './svenesis-logo.svg';
+import { MaintenanceBanner } from './MaintenanceBanner';
 
 /** Logo der Website (`img/logo.svg` von www.svenesis.org, als Datei im Repo – keine Laufzeit-Einbindung). */
 export function LogoMark({ size = 28 }: { size?: number }) {
@@ -108,6 +109,7 @@ export function TextLayout({
   return (
     <>
       <SvenesisHeader />
+      <MaintenanceBanner />
       <Breadcrumbs items={crumbs} />
       <main className={styles.textMain} id="main">
         {children}

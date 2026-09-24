@@ -4,12 +4,14 @@
  * Eine Instanz je Testdatei (`beforeAll`), zwischen den Tests `reset()` statt neuer Migrationen.
  */
 import {
+  AuditRepository,
   AuthRepository,
   JobRepository,
   MemberRepository,
   NotificationRepository,
   PreferenceRepository,
   TenantAdminRepository,
+  readMaintenanceBanner,
 } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
 import { COOKIE_NAMES } from '@nina-pm/shared';
@@ -49,12 +51,20 @@ export async function createStack() {
   const discord = new FakeDiscord();
   let bootstrapIds: string[] = [];
   const auth = new AuthRepository(pg.db);
+  const deletedFiles: string[] = [];
+  const tenantFiles = {
+    deleteTenantFiles: (tenantId: string) => {
+      deletedFiles.push(tenantId);
+      return Promise.resolve(0);
+    },
+  };
   const services: ApiServices = {
     repositories: (ctx) => ({
       job: new JobRepository(pg.db, ctx),
       member: new MemberRepository(pg.db, ctx),
       preference: () => new PreferenceRepository(pg.db, ctx),
       notification: () => new NotificationRepository(pg.db, ctx),
+      audit: () => new AuditRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,
@@ -73,6 +83,8 @@ export async function createStack() {
           expiresAt: '2026-09-24T10:15:00Z',
         }),
     },
+    tenantFiles,
+    maintenanceBanner: () => readMaintenanceBanner(pg.db),
     jobInvoker: { invoke: () => Promise.resolve() },
     now: () => now,
   };
@@ -213,6 +225,7 @@ export async function createStack() {
     services,
     discord,
     request,
+    deletedFiles,
     seed,
     login,
     clock: {

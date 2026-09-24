@@ -11,8 +11,10 @@ import { problemResponse } from './lib/problem';
 import { redact } from './lib/redact';
 import { requestIdMiddleware, requestLog } from './lib/request-log';
 import { AUTH_ROUTES, authRoutes } from './routes/auth';
+import { bannerRoute, bannerRoutes } from './routes/banner';
 import { healthRoute, healthRoutes } from './routes/health';
 import { SYSTEM_ROUTES, systemRoutes } from './routes/system';
+import { AUDIT_ROUTES, webAuditRoutes } from './routes/web-audit';
 import { ME_ROUTES, webMeRoutes } from './routes/web-me';
 import { NOTIFICATION_ROUTES, webNotificationRoutes } from './routes/web-notifications';
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
@@ -34,12 +36,14 @@ export interface AppDeps {
 /** Alle Routen mit ihrer Aktion (TK 5.5) – Quelle für Rechte-Testgenerator und OpenAPI. */
 export const ROUTES = [
   healthRoute,
+  bannerRoute,
   ...AUTH_ROUTES,
   getJobRoute,
   downloadUrlRoute,
   ...MEMBER_ROUTES,
   ...ME_ROUTES,
   ...NOTIFICATION_ROUTES,
+  ...AUDIT_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -83,12 +87,14 @@ export function createApp(deps: AppDeps) {
   );
 
   app.route('/', healthRoutes(deps.buildId));
+  app.route('/', bannerRoutes(services));
   app.route('/', authRoutes(services));
   app.route('/', webJobRoutes(services));
   app.route('/', webFileRoutes(services));
   app.route('/', webMemberRoutes(services));
   app.route('/', webMeRoutes(services));
   app.route('/', webNotificationRoutes(services));
+  app.route('/', webAuditRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));
