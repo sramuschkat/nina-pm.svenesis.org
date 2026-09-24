@@ -213,20 +213,24 @@ describe('ops-cli', () => {
       output: { moonProfilesAdded: 0 },
     });
     // Ausrüstung aus seed-demo.json (AP-09a): 1 Standort, 2 Teleskope, 2 Kameras, 7 Filter, 2 Rigs.
-    const counts = await pg.admin.query<{ t: string; n: number }>(
-      `SELECT 'site' AS t, count(*)::int AS n FROM site UNION ALL SELECT 'rig', count(*)::int FROM rig
-       UNION ALL SELECT 'filter', count(*)::int FROM filter`,
-    );
-    expect(Object.fromEntries(counts.rows.map((r) => [r.t, r.n]))).toEqual({
+    const counts = (
+      await pg.admin.query(
+        `SELECT 'site' AS t, count(*)::int AS n FROM site UNION ALL SELECT 'rig', count(*)::int FROM rig
+         UNION ALL SELECT 'filter', count(*)::int FROM filter`,
+      )
+    ).rows as { t: string; n: number }[];
+    expect(Object.fromEntries(counts.map((r) => [r.t, r.n]))).toEqual({
       site: 1,
       rig: 2,
       filter: 7,
     });
-    const rig = await pg.admin.query<{ settings_version: number; filter_wheel: unknown[] }>(
-      "SELECT settings_version, filter_wheel FROM rig WHERE name LIKE 'Rig A%'",
-    );
-    expect(rig.rows[0]?.filter_wheel).toHaveLength(7);
-    expect(rig.rows[0]?.settings_version).toBe(3);
+    const [rig] = (
+      await pg.admin.query(
+        "SELECT settings_version, filter_wheel FROM rig WHERE name LIKE 'Rig A%'",
+      )
+    ).rows as { settings_version: number; filter_wheel: unknown[] }[];
+    expect(rig?.filter_wheel).toHaveLength(7);
+    expect(rig?.settings_version).toBe(3);
   });
 
   it('jeder Aufruf schreibt system_audit mit Akteur ops_cli (SV-11)', async () => {
