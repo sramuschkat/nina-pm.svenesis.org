@@ -12,7 +12,7 @@ Anforderungen: FA-SU-03, S-80; TK 12, 13 (`daily`), TK 6.2.
 - `worker`, Zeitplan `daily`: Aufgabe `tenant_storage` listet je Mandant `tenant/<id>/` im Daten-Bucket (seitenweise), summiert Größen und schreibt eine Zeile; ein Fehler bei einem Mandanten bricht die übrigen nicht ab. Keine neuen IAM-Rechte (`grantReadWrite(worker, 'tenant/*')` enthält das Auflisten, `iam.md` §1).
 - `TenantAdminView` um `storageBytes`, `storageFileCount`, `storageMeasuredAt`; S-80 zeigt Spalte „Dateien“ (SI-Einheiten, Anzahl und Stand in Betreiberzeit mit Kürzel im Tooltip) bzw. „noch nicht gemessen“.
 - Tests: S3-Summe über mehrere Seiten, fremde Präfixe zählen nicht, ohne Dateien → 0; täglicher Lauf mit Fehler bei einem Mandanten; Anzeige in der Liste (API und Komponententest); `daily` enthält die Aufgabe.
-- Vor dem Merge: `pnpm test:dsql` durch Sven (H-22, Migration 0006).
+- `pnpm test:dsql` durch Sven (H-22, 24.09.2026, Migrationsstand `387475bdb1135fb0`): D-01…D-07 grün, 52 Tabellen, 420 Rechte wie TK 6.2 – Protokoll `docs/test-runs/2026-09-24/ap-03/`.
 
 ### AP-07a, AP-07b, AP-07c abgenommen (2026-09-24)
 
