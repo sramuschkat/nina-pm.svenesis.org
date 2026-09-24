@@ -7,6 +7,23 @@ servers:
   - url: https://nina-pm.svenesis.org
 components:
   schemas:
+    PublicBanner:
+      type: object
+      properties:
+        banner:
+          type:
+            - object
+            - "null"
+          properties:
+            de:
+              type: string
+            en:
+              type: string
+          required:
+            - de
+            - en
+      required:
+        - banner
     InvitationClaimResponse:
       type: object
       properties:
@@ -737,6 +754,64 @@ components:
           required:
             - all
           additionalProperties: false
+    SystemAuditList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SystemAuditEntry"
+        nextCursor:
+          type:
+            - string
+            - "null"
+      required:
+        - items
+        - nextCursor
+    SystemAuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        actor:
+          type: string
+          enum:
+            - super_user
+            - ops_cli
+        actorName:
+          type:
+            - string
+            - "null"
+        tenantId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        tenantKey:
+          type:
+            - string
+            - "null"
+        action:
+          type: string
+        details:
+          type: object
+          additionalProperties: {}
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - actor
+        - actorName
+        - tenantId
+        - tenantKey
+        - action
+        - details
+        - createdAt
     TenantAdminView:
       type: object
       properties:
@@ -763,10 +838,30 @@ components:
             - "null"
           format: uuid
           description: UUID
+        ownerDisplayName:
+          type:
+            - string
+            - "null"
         admins:
           type: integer
         users:
           type: integer
+        rigs:
+          type: integer
+        ninaInstances:
+          type: integer
+        ninaLastSeenAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        lastLoginAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
         createdAt:
           type: string
           format: date-time
@@ -778,8 +873,13 @@ components:
         - contact
         - status
         - ownerMemberId
+        - ownerDisplayName
         - admins
         - users
+        - rigs
+        - ninaInstances
+        - ninaLastSeenAt
+        - lastLoginAt
         - createdAt
     CreateTenantRequest:
       type: object
@@ -943,6 +1043,68 @@ components:
       required:
         - status
       additionalProperties: false
+    DeleteTenantRequest:
+      type: object
+      properties:
+        confirmTenantKey:
+          type: string
+          maxLength: 64
+      required:
+        - confirmTenantKey
+      additionalProperties: false
+    SystemSettingView:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+            - maintenanceBanner
+        value: {}
+        updatedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - key
+        - updatedAt
+    IdentityAdminView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        discordUserId:
+          type: string
+        discordUsername:
+          type: string
+        globalName:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - active
+            - blocked
+        isSuperUser:
+          type: boolean
+        lastLoginAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - discordUserId
+        - discordUsername
+        - globalName
+        - status
+        - isSuperUser
+        - lastLoginAt
   parameters: {}
 paths:
   /api/health:
@@ -975,6 +1137,22 @@ paths:
                   - status
                   - engineVersion
                   - build
+  /api/banner:
+    get:
+      summary: Aktiver Wartungshinweis (öffentlich)
+      tags:
+        - system
+      description: "Aktion: `public` · FA-SU-08"
+      x-npm-action: public
+      x-npm-requirements:
+        - FA-SU-08
+      responses:
+        "200":
+          description: Hinweis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBanner"
   /api/auth/discord/start:
     get:
       summary: Anmeldung mit Discord beginnen (state + PKCE S256 im signierten Cookie)
@@ -2003,6 +2181,50 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/audit/system:
+    get:
+      summary: Super-User-Aktionen, die den eigenen Mandanten betreffen (neueste zuerst)
+      tags:
+        - audit
+      description: "Aktion: `tenant.settings` · FA-SU-09, TK 7.2"
+      x-npm-action: tenant.settings
+      x-npm-requirements:
+        - FA-SU-09
+        - TK 7.2
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            maxLength: 512
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Einträge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemAuditList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Nur Admins
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/system/v1/tenants:
     get:
       summary: Mandantenliste
@@ -2126,6 +2348,58 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Mandant mit allen Daten löschen (nur mit exakter Mandanten-ID)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-MAN-03, FA-SU-04, E4"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-MAN-03
+        - FA-SU-04
+        - E4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteTenantRequest"
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed (Mandanten-ID stimmt nicht)
           content:
             application/problem+json:
               schema:
@@ -2476,6 +2750,185 @@ paths:
       responses:
         "204":
           description: Geändert
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/audit:
+    get:
+      summary: System-Audit (neueste zuerst, optional je Mandant)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-09, SV-11"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-09
+        - SV-11
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+            maxLength: 200
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: tenantId
+          in: query
+      responses:
+        "200":
+          description: Einträge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemAuditList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/settings/{key}:
+    get:
+      summary: Systemweite Einstellung lesen
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-08"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-08
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - maintenanceBanner
+          required: true
+          name: key
+          in: path
+      responses:
+        "200":
+          description: Wert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemSettingView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: Systemweite Einstellung setzen (u. a. Wartungsbanner)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-SU-08"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-SU-08
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - maintenanceBanner
+          required: true
+          name: key
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value: {}
+              additionalProperties: false
+      responses:
+        "200":
+          description: Gesetzt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemSettingView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Kein System-Kontext
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/identities:
+    get:
+      summary: Identität über die Discord-User-ID finden (zum Sperren)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-LOG-05"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-LOG-05
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d{5,25}$
+          required: true
+          name: discordUserId
+          in: query
+      responses:
+        "200":
+          description: Identität
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdentityAdminView"
         "401":
           description: Nicht angemeldet
           content:

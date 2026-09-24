@@ -27,7 +27,7 @@ Region ist überall `eu-central-1`. `dataBucket` = `svenesis-nina-pm-data`, `web
 | Ressource | CDK-Grant | Zweck |
 |---|---|---|
 | DSQL-Cluster | `dsql:DbConnect` auf den Cluster-ARN (`PolicyStatement`, DSQL hat keinen Grant) | DB-Rolle `app_rw` |
-| `dataBucket`, Präfix `tenant/*` | `dataBucket.grantRead(api, 'tenant/*')` · `dataBucket.grantPut(api, 'tenant/*')` | presigned POST/GET für Uploads und Downloads (TK 12) |
+| `dataBucket`, Präfix `tenant/*` | `dataBucket.grantRead(api, 'tenant/*')` · `dataBucket.grantPut(api, 'tenant/*')` · `dataBucket.grantDelete(api, 'tenant/*')` | presigned POST/GET für Uploads und Downloads (TK 12); Löschen der Dateien eines Mandanten (FA-MAN-03, AP-07a) |
 | Lambda `worker` | `worker.grantInvoke(api)` | Jobs asynchron starten – **einziges** Invoke-Recht der `api`, insbesondere keines auf `ops-cli` |
 | SSM `/nina-pm/oauth/cookie-secret`, `/nina-pm/discord/client-id`, `/nina-pm/discord/client-secret`, `/nina-pm/origin-verify`, `/nina-pm/web/build-id`, `/nina-pm/dsql-endpoint`, `/nina-pm/bootstrap-super-users` | je Parameter `StringParameter.from…(…).grantRead(api)` | §8 |
 

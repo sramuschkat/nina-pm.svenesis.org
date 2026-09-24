@@ -5,6 +5,9 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import {
   AddSuperUserRequest,
+  DeleteTenantRequest,
+  IdentityAdminView,
+  IdentityLookupQuery,
   CreateSingleUseInvitationRequest,
   CreateTenantRequest,
   IdentityStatusPatch,
@@ -13,11 +16,16 @@ import {
   ProblemError,
   SuperUserPatch,
   SuperUserView,
+  SystemAuditList,
+  SystemAuditQuery,
   SystemMemberView,
+  SystemSettingKeySchema,
+  SystemSettingView,
   TenantAdminView,
   TenantStatusPatch,
   Uuid,
 } from '@nina-pm/shared';
+import type { SystemAuditRow, TenantAdminRepository } from '@nina-pm/db';
 import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
 import { invitationLink, isoUtc } from '../lib/format';
@@ -37,26 +45,34 @@ function admin(services: ApiServices, c: Context<ApiEnv>) {
   return services.tenantAdmin({ kind: 'super_user', identityId: auth.identityId });
 }
 
-const tenantView = (t: {
-  id: string;
-  tenantKey: string;
-  displayName: string;
-  contact: string | null;
-  status: 'active' | 'locked';
-  ownerMemberId: string | null;
-  createdAt: Date;
-  admins?: number;
-  users?: number;
-}) => ({
+type TenantSummary = Awaited<ReturnType<TenantAdminRepository['tenantSummary']>>;
+
+const tenantView = (t: TenantSummary) => ({
   id: t.id,
   tenantKey: t.tenantKey,
   displayName: t.displayName,
   contact: t.contact,
   status: t.status,
   ownerMemberId: t.ownerMemberId,
-  admins: t.admins ?? 0,
-  users: t.users ?? 0,
+  ownerDisplayName: t.ownerDisplayName ?? null,
+  admins: t.admins,
+  users: t.users,
+  rigs: t.rigs,
+  ninaInstances: t.ninaInstances,
+  ninaLastSeenAt: t.ninaLastSeenAt ? isoUtc(t.ninaLastSeenAt) : null,
+  lastLoginAt: t.lastLoginAt ? isoUtc(t.lastLoginAt) : null,
   createdAt: isoUtc(t.createdAt),
+});
+
+export const auditView = (r: SystemAuditRow) => ({
+  id: r.id,
+  actor: r.actor,
+  actorName: r.actorName,
+  tenantId: r.tenantId,
+  tenantKey: r.tenantKey ?? (typeof r.details.tenantKey === 'string' ? r.details.tenantKey : null),
+  action: r.action,
+  details: r.details,
+  createdAt: isoUtc(r.createdAt),
 });
 
 export const listTenantsRoute = defineRoute(
@@ -285,6 +301,105 @@ export const identityStatusRoute = defineRoute(
   },
 );
 
+export const deleteTenantRoute = defineRoute(
+  { action: 'system.manage', requirements: ['FA-MAN-03', 'FA-SU-04', 'E4'] },
+  {
+    method: 'delete',
+    path: '/api/system/v1/tenants/{id}',
+    summary: 'Mandant mit allen Daten löschen (nur mit exakter Mandanten-ID)',
+    tags: ['system'],
+    request: {
+      params: idParam,
+      body: { content: { 'application/json': { schema: DeleteTenantRequest } }, required: true },
+    },
+    responses: {
+      204: { description: 'Gelöscht' },
+      ...common,
+      404: problemContent('tenant.not_found'),
+      422: problemContent('validation.failed (Mandanten-ID stimmt nicht)'),
+    },
+  },
+);
+
+export const systemAuditRoute = defineRoute(
+  { action: 'system.manage', requirements: ['FA-SU-09', 'SV-11'] },
+  {
+    method: 'get',
+    path: '/api/system/v1/audit',
+    summary: 'System-Audit (neueste zuerst, optional je Mandant)',
+    tags: ['system'],
+    request: { query: SystemAuditQuery },
+    responses: {
+      200: {
+        description: 'Einträge',
+        content: { 'application/json': { schema: SystemAuditList } },
+      },
+      ...common,
+    },
+  },
+);
+
+const settingParam = z.object({ key: SystemSettingKeySchema });
+
+export const getSettingRoute = defineRoute(
+  { action: 'system.manage', requirements: ['FA-SU-08'] },
+  {
+    method: 'get',
+    path: '/api/system/v1/settings/{key}',
+    summary: 'Systemweite Einstellung lesen',
+    tags: ['system'],
+    request: { params: settingParam },
+    responses: {
+      200: { description: 'Wert', content: { 'application/json': { schema: SystemSettingView } } },
+      ...common,
+    },
+  },
+);
+
+export const putSettingRoute = defineRoute(
+  { action: 'system.manage', requirements: ['FA-SU-08'] },
+  {
+    method: 'put',
+    path: '/api/system/v1/settings/{key}',
+    summary: 'Systemweite Einstellung setzen (u. a. Wartungsbanner)',
+    tags: ['system'],
+    request: {
+      params: settingParam,
+      body: {
+        content: { 'application/json': { schema: z.object({ value: z.unknown() }).strict() } },
+        required: true,
+      },
+    },
+    responses: {
+      200: {
+        description: 'Gesetzt',
+        content: { 'application/json': { schema: SystemSettingView } },
+      },
+      ...common,
+      422: problemContent('validation.failed'),
+    },
+  },
+);
+
+export const identityLookupRoute = defineRoute(
+  { action: 'system.manage', requirements: ['FA-LOG-05'] },
+  {
+    method: 'get',
+    path: '/api/system/v1/identities',
+    summary: 'Identität über die Discord-User-ID finden (zum Sperren)',
+    tags: ['system'],
+    request: { query: IdentityLookupQuery },
+    responses: {
+      200: {
+        description: 'Identität',
+        content: { 'application/json': { schema: IdentityAdminView } },
+      },
+      ...common,
+      404: problemContent('resource.not_found'),
+    },
+  },
+);
+
 export const SYSTEM_ROUTES = [
   listTenantsRoute,
   createTenantRoute,
@@ -297,6 +412,11 @@ export const SYSTEM_ROUTES = [
   patchSuperUserRoute,
   deleteSuperUserRoute,
   identityStatusRoute,
+  deleteTenantRoute,
+  systemAuditRoute,
+  getSettingRoute,
+  putSettingRoute,
+  identityLookupRoute,
 ] as const;
 
 export function systemRoutes(services: () => Promise<ApiServices>) {
@@ -310,18 +430,17 @@ export function systemRoutes(services: () => Promise<ApiServices>) {
 
   app.openapi(createTenantRoute, async (c) => {
     const svc = await services();
-    const tenant = await admin(svc, c).createTenant(c.req.valid('json'), svc.now());
-    return c.json(tenantView(tenant), 201);
+    const repo = admin(svc, c);
+    const tenant = await repo.createTenant(c.req.valid('json'), svc.now());
+    return c.json(tenantView(await repo.tenantSummary(tenant.id)), 201);
   });
 
   app.openapi(patchTenantRoute, async (c) => {
     const svc = await services();
-    const tenant = await admin(svc, c).setTenantStatus(
-      c.req.valid('param').id,
-      c.req.valid('json').status,
-      svc.now(),
-    );
-    return c.json(tenantView(tenant), 200);
+    const repo = admin(svc, c);
+    const { id } = c.req.valid('param');
+    await repo.setTenantStatus(id, c.req.valid('json').status, svc.now());
+    return c.json(tenantView(await repo.tenantSummary(id)), 200);
   });
 
   app.openapi(ownerInvitationRoute, async (c) => {
@@ -415,6 +534,68 @@ export function systemRoutes(services: () => Promise<ApiServices>) {
       svc.now(),
     );
     return c.body(null, 204);
+  });
+
+  app.openapi(deleteTenantRoute, async (c) => {
+    const svc = await services();
+    const repo = admin(svc, c);
+    const { id } = c.req.valid('param');
+    const { confirmTenantKey } = c.req.valid('json');
+    const tenant = await repo.tenantById(id);
+    if (!tenant) throw new ProblemError('tenant.not_found');
+    if (confirmTenantKey.trim() !== tenant.tenantKey)
+      throw new ProblemError('validation.failed', [
+        { path: 'confirmTenantKey', message: 'Mandanten-ID stimmt nicht überein' },
+      ]);
+    // Dateien zuerst: scheitert S3, bleibt der Mandant bestehen und das Löschen ist wiederholbar.
+    await svc.tenantFiles.deleteTenantFiles(id);
+    await repo.deleteTenant(id, confirmTenantKey, svc.now());
+    return c.body(null, 204);
+  });
+
+  app.openapi(systemAuditRoute, async (c) => {
+    const svc = await services();
+    const page = await admin(svc, c).listAudit(c.req.valid('query'));
+    return c.json({ items: page.items.map(auditView), nextCursor: page.nextCursor }, 200);
+  });
+
+  app.openapi(getSettingRoute, async (c) => {
+    const svc = await services();
+    const row = await admin(svc, c).getSetting(c.req.valid('param').key);
+    return c.json(
+      { key: row.key, value: row.value, updatedAt: row.updatedAt ? isoUtc(row.updatedAt) : null },
+      200,
+    );
+  });
+
+  app.openapi(putSettingRoute, async (c) => {
+    const svc = await services();
+    const row = await admin(svc, c).putSetting(
+      c.req.valid('param').key,
+      c.req.valid('json').value,
+      svc.now(),
+    );
+    return c.json(
+      { key: row.key, value: row.value, updatedAt: row.updatedAt ? isoUtc(row.updatedAt) : null },
+      200,
+    );
+  });
+
+  app.openapi(identityLookupRoute, async (c) => {
+    const svc = await services();
+    const row = await admin(svc, c).identityByDiscordId(c.req.valid('query').discordUserId);
+    return c.json(
+      {
+        id: row.id,
+        discordUserId: row.discordUserId,
+        discordUsername: row.discordUsername,
+        globalName: row.discordGlobalName,
+        status: row.status,
+        isSuperUser: row.superUserId !== null,
+        lastLoginAt: row.lastLoginAt ? isoUtc(row.lastLoginAt) : null,
+      },
+      200,
+    );
   });
 
   return app;

@@ -4,12 +4,19 @@
  * (FA-SU-07): sichtbar sind nur Stammdaten, Anzeigenamen, Rollen und Status. Jede Aktion schreibt
  * `system_audit` (SV-11).
  */
-import { BUILT_IN_MOON_PROFILES, ProblemError } from '@nina-pm/shared';
+import {
+  BUILT_IN_MOON_PROFILES,
+  ProblemError,
+  SYSTEM_SETTING_SCHEMAS,
+  type SystemSettingKey,
+} from '@nina-pm/shared';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import { withTx, type WithTxOptions } from '../tx';
 import type { Database } from '../types';
 import { insertInvitation, type CreatedInvitation } from './invitations';
+import { listSystemAudit, type AuditPage } from './audit';
 import { insertNotifications } from './notification';
+import { deleteTenantData } from './tenant-delete';
 
 export type SystemActor =
   { readonly kind: 'super_user'; readonly identityId: string } | { readonly kind: 'ops_cli' };
@@ -99,8 +106,9 @@ export class TenantAdminRepository {
     return Number(res.numInsertedOrUpdatedRows ?? 0);
   }
 
-  async listTenants() {
-    const rows = await this.db
+  /** Mandantenliste mit Kennzahlen (FA-SU-03); ohne `tenantId` alle, sonst nur dieser. */
+  async listTenants(tenantId?: string) {
+    let q = this.db
       .selectFrom('tenant as t')
       .select([
         't.id',
@@ -110,16 +118,142 @@ export class TenantAdminRepository {
         't.status',
         't.ownerMemberId',
         't.createdAt',
+        sql<
+          string | null
+        >`(SELECT o.display_name FROM app_user o WHERE o.id = t.owner_member_id AND o.tenant_id = t.id)`.as(
+          'ownerDisplayName',
+        ),
         sql<number>`(SELECT count(*)::int FROM app_user m WHERE m.tenant_id = t.id AND m.status = 'active' AND m.role = 'admin')`.as(
           'admins',
         ),
         sql<number>`(SELECT count(*)::int FROM app_user m WHERE m.tenant_id = t.id AND m.status = 'active' AND m.role = 'user')`.as(
           'users',
         ),
+        sql<number>`(SELECT count(*)::int FROM rig r WHERE r.tenant_id = t.id)`.as('rigs'),
+        sql<number>`(SELECT count(*)::int FROM nina_instance n WHERE n.tenant_id = t.id AND n.status = 'active')`.as(
+          'ninaInstances',
+        ),
+        sql<Date | null>`(SELECT max(n.last_seen_at) FROM nina_instance n WHERE n.tenant_id = t.id)`.as(
+          'ninaLastSeenAt',
+        ),
+        sql<Date | null>`(SELECT max(m.last_login_at) FROM app_user m WHERE m.tenant_id = t.id)`.as(
+          'lastLoginAt',
+        ),
+      ]);
+    if (tenantId) q = q.where('t.id', '=', tenantId);
+    const rows = await q.orderBy('t.tenantKey').execute();
+    return rows.map((r) => ({
+      ...r,
+      admins: Number(r.admins),
+      users: Number(r.users),
+      rigs: Number(r.rigs),
+      ninaInstances: Number(r.ninaInstances),
+      ninaLastSeenAt: r.ninaLastSeenAt ? new Date(r.ninaLastSeenAt) : null,
+      lastLoginAt: r.lastLoginAt ? new Date(r.lastLoginAt) : null,
+    }));
+  }
+
+  async tenantSummary(tenantId: string) {
+    const [row] = await this.listTenants(tenantId);
+    if (!row) throw new ProblemError('tenant.not_found');
+    return row;
+  }
+
+  /**
+   * Mandant löschen (FA-MAN-03): nur nach exakter Eingabe der Mandanten-ID (E4), sonst
+   * `422 validation.failed`. Sperrt zuerst (keine Anmeldung, keine NINA-Daten mehr), löscht dann
+   * stapelweise und zuletzt die `tenant`-Zeile; das System-Audit behält den Vorgang ohne Fremdschlüssel.
+   */
+  async deleteTenant(tenantId: string, confirmTenantKey: string, now: Date) {
+    const tenant = await this.tenantById(tenantId);
+    if (!tenant) throw new ProblemError('tenant.not_found');
+    if (confirmTenantKey.trim() !== tenant.tenantKey)
+      throw new ProblemError('validation.failed', [
+        { path: 'confirmTenantKey', message: 'Mandanten-ID stimmt nicht überein' },
+      ]);
+    if (tenant.status !== 'locked')
+      await this.db
+        .updateTable('tenant')
+        .set({ status: 'locked', updatedAt: now })
+        .where('id', '=', tenantId)
+        .execute();
+    const rows = await deleteTenantData(this.db, tenant, this.txOptions);
+    await withTx(
+      this.db,
+      async (trx) => {
+        await trx.deleteFrom('tenant').where('id', '=', tenantId).execute();
+        await this.audit(
+          trx,
+          'tenant.delete',
+          null,
+          { tenantId, tenantKey: tenant.tenantKey, displayName: tenant.displayName, rows },
+          now,
+        );
+      },
+      this.txOptions,
+    );
+    return rows;
+  }
+
+  /** System-Audit (FA-SU-09), neueste zuerst; optional auf einen Mandanten gefiltert. */
+  listAudit(page: AuditPage & { tenantId?: string | undefined }) {
+    return listSystemAudit(this.db, page);
+  }
+
+  async getSetting(key: SystemSettingKey) {
+    const row = await this.db
+      .selectFrom('systemSetting')
+      .select(['key', 'value', 'updatedAt'])
+      .where('key', '=', key)
+      .executeTakeFirst();
+    return { key, value: row?.value ?? null, updatedAt: row?.updatedAt ?? null };
+  }
+
+  /** Systemweite Einstellung setzen (FA-SU-08); Wert je Schlüssel gegen sein Schema geprüft. */
+  async putSetting(key: SystemSettingKey, value: unknown, now: Date) {
+    const parsed = SYSTEM_SETTING_SCHEMAS[key].safeParse(value);
+    if (!parsed.success)
+      throw new ProblemError(
+        'validation.failed',
+        parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      );
+    const json = JSON.stringify(parsed.data);
+    const updatedBy = this.actor.kind === 'super_user' ? this.actor.identityId : null;
+    await withTx(
+      this.db,
+      async (trx) => {
+        await trx
+          .insertInto('systemSetting')
+          .values({ key, value: json, updatedBy, updatedAt: now })
+          .onConflict((oc) =>
+            oc.column('key').doUpdateSet({ value: json, updatedBy, updatedAt: now }),
+          )
+          .execute();
+        await this.audit(trx, 'system_setting.update', null, { key, value: parsed.data }, now);
+      },
+      this.txOptions,
+    );
+    return this.getSetting(key);
+  }
+
+  /** Identität für das Sperren nachschlagen (FA-LOG-05) – nur Discord-Stammdaten. */
+  async identityByDiscordId(discordUserId: string) {
+    const row = await this.db
+      .selectFrom('identity as i')
+      .leftJoin('superUser as s', 's.identityId', 'i.id')
+      .select([
+        'i.id',
+        'i.discordUserId',
+        'i.discordUsername',
+        'i.discordGlobalName',
+        'i.status',
+        'i.lastLoginAt',
+        's.identityId as superUserId',
       ])
-      .orderBy('t.tenantKey')
-      .execute();
-    return rows.map((r) => ({ ...r, admins: Number(r.admins), users: Number(r.users) }));
+      .where('i.discordUserId', '=', discordUserId)
+      .executeTakeFirst();
+    if (!row) throw new ProblemError('resource.not_found');
+    return row;
   }
 
   tenantById(tenantId: string) {

@@ -153,6 +153,7 @@ Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederhe
 | Speichern · Einreichen · Freigeben · Zurückgeben · Ablehnen · Simulieren · Duplizieren · Löschen | `save` · `send` · `check` · `undo-2` · `x` · `play` · `copy` · `trash-2` |
 | Benachrichtigungen · Theme hell/dunkel · Benutzer · Hilfe | `bell` · `sun`/`moon` · `user` · `circle-help` |
 | Gelöscht (Papierkorb) · Wiederherstellen · Warnung im `ConfirmDialog` | `trash` · `archive-restore` · `triangle-alert` |
+| Sperren · Entsperren · Einladen · Owner übertragen · Hinzufügen · Mandant wechseln · Abmelden (Verwaltung, AP-07a…c) | `lock` · `lock-open` · `user-plus` · `crown` · `plus` · `arrow-left-right` · `log-out` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import {
+  AuditRepository,
   AuthRepository,
   JobQueue,
   JobRepository,
@@ -18,16 +19,18 @@ import {
   openDatabase,
   TenantAdminRepository,
   type OpenDatabase,
+  readMaintenanceBanner,
 } from '@nina-pm/db';
 import { seedCore, type SeedDemo } from '@nina-pm/db/seed';
 import { openPglite } from '@nina-pm/db/testing/pglite';
-import { safeNext } from '@nina-pm/shared';
+import { COOKIE_NAMES, safeNext } from '@nina-pm/shared';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createApp } from './app';
 import { parseIdList } from './auth/config';
 import { httpDiscordClient } from './auth/discord';
 import { establishSession } from './auth/login';
+import { clearCookie, readCookie, verifyValue } from './lib/cookies';
 import type { ApiEnv } from './lib/env';
 import { logger } from './lib/logger';
 import { problemResponse } from './lib/problem';
@@ -64,6 +67,7 @@ const services: ApiServices = {
     member: new MemberRepository(db, ctx),
     preference: () => new PreferenceRepository(db, ctx),
     notification: () => new NotificationRepository(db, ctx),
+    audit: () => new AuditRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
   auth: new AuthRepository(db),
@@ -84,6 +88,8 @@ const services: ApiServices = {
         expiresAt: now().toISOString(),
       }),
   },
+  tenantFiles: { deleteTenantFiles: () => Promise.resolve(0) },
+  maintenanceBanner: () => readMaintenanceBanner(db),
   // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
   jobInvoker: {
     invoke: (jobId) => {
@@ -123,14 +129,23 @@ if (AUTH_TEST_MODE) {
       },
       now(),
     );
+    // Wie der Discord-Callback: ein zuvor über /auth/invitation/claim gesetztes Einladungs-Cookie einlösen.
+    const invite = verifyValue<{ t?: unknown }>(
+      await services.authConfig.cookieSecret(),
+      'invite',
+      readCookie(c.req.header('cookie'), COOKIE_NAMES.invite),
+      Math.floor(now().getTime() / 1000),
+    );
     const result = await establishSession(services.auth, c as never, {
       identity,
       tenantKey: parsed.data.mandant,
+      invitationToken: typeof invite?.t === 'string' ? invite.t : undefined,
       bootstrapIds: [],
       next: safeNext(parsed.data.next),
       now: now(),
     });
     c.header('set-cookie', result.setCookie);
+    if (invite) c.header('set-cookie', clearCookie(COOKIE_NAMES.invite), { append: true });
     return c.json({ location: result.location, context: result.context });
   });
 }

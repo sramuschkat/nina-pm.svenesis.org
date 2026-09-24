@@ -56,7 +56,7 @@ export function encodeCursor(row: Pick<NotificationRow, 'createdAt' | 'id'>): st
   return Buffer.from(`${new Date(row.createdAt).toISOString()}|${row.id}`).toString('base64url');
 }
 
-function decodeCursor(cursor: string): { at: Date; id: string } | undefined {
+export function decodeCursor(cursor: string): { at: Date; id: string } | undefined {
   const [at, id] = Buffer.from(cursor, 'base64url').toString('utf8').split('|');
   const date = at ? new Date(Date.parse(at)) : undefined;
   if (!date || Number.isNaN(date.getTime()) || !id || !/^[0-9a-f-]{36}$/i.test(id))

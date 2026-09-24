@@ -288,6 +288,9 @@ export type BlockedReason = (typeof blockedReasons)[number];
 export const tenantSettingsKeys = ["tenantTimezone","userCorrections","exoUserLockNeedsAdmin","exoUserMaxOpenLocks","autoReactivateOnRemaining","autoReadyToProcess","adminSelfApproval","approvalDeadlineDays","defaultLanguage"] as const;
 export type TenantSettingsKey = (typeof tenantSettingsKeys)[number];
 
+export const systemSettingKeys = ["maintenanceBanner"] as const;
+export type SystemSettingKey = (typeof systemSettingKeys)[number];
+
 export const uploadPurposes = ["transit_result","tenant_import","plan_log"] as const;
 export type UploadPurpose = (typeof uploadPurposes)[number];
 

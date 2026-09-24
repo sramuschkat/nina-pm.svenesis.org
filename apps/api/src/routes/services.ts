@@ -1,4 +1,5 @@
 import type {
+  AuditRepository,
   AuthRepository,
   EnqueueInput,
   EnqueueResult,
@@ -13,6 +14,7 @@ import type {
 import type { AuthConfig } from '../auth/config';
 import type { DiscordClient } from '../auth/discord';
 import type { DownloadSigner } from '../files/download';
+import type { TenantFileStore } from '../files/tenant-files';
 import type { JobInvoker } from '../jobs/enqueue';
 
 /** Was die Routen von der Datenbank brauchen – im Test auf PGlite bzw. durch Fälschungen ersetzbar. */
@@ -24,6 +26,7 @@ export interface ApiRepositories {
   readonly member: MemberRepository;
   preference(): PreferenceRepository;
   notification(): NotificationRepository;
+  audit(): AuditRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */
@@ -36,6 +39,10 @@ export interface ApiServices {
   readonly authConfig: AuthConfig;
   readonly discord: DiscordClient;
   readonly downloads: DownloadSigner;
+  /** Dateien eines gelöschten Mandanten (FA-MAN-03). */
+  readonly tenantFiles: TenantFileStore;
+  /** Aktiver Wartungshinweis für alle (FA-SU-08). */
+  maintenanceBanner(): Promise<{ de: string; en: string } | null>;
   readonly jobInvoker: JobInvoker;
   now(): Date;
 }

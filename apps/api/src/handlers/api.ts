@@ -6,10 +6,12 @@ import { createApp } from '../app';
 import { parseIdList, PROD_REDIRECT_URI } from '../auth/config';
 import { httpDiscordClient } from '../auth/discord';
 import { s3DownloadSigner } from '../files/download';
+import { s3TenantFileStore } from '../files/tenant-files';
 import { lambdaJobInvoker } from '../jobs/enqueue';
 import { lambdaDatabase } from '../lib/database';
 import { lazy } from '../lib/lazy';
 import { requiredEnv, ssmSecret, ssmString } from '../lib/params';
+import { readMaintenanceBanner } from '@nina-pm/db';
 import type { ApiServices } from '../routes/services';
 
 const bootstrapSuperUsers = ssmString(requiredEnv('BOOTSTRAP_SUPER_USERS_PARAM'));
@@ -17,6 +19,7 @@ const bootstrapSuperUsers = ssmString(requiredEnv('BOOTSTRAP_SUPER_USERS_PARAM')
 const services = lazy<ApiServices>(async () => {
   const db = await lambdaDatabase();
   const now = () => new Date();
+  const s3 = new S3Client({});
   return {
     repositories: (ctx) => db.repositories(ctx),
     tenantAdmin: (actor) => db.tenantAdmin(actor),
@@ -29,7 +32,9 @@ const services = lazy<ApiServices>(async () => {
       redirectUri: PROD_REDIRECT_URI,
     },
     discord: httpDiscordClient(),
-    downloads: s3DownloadSigner(new S3Client({}), requiredEnv('DATA_BUCKET'), now),
+    downloads: s3DownloadSigner(s3, requiredEnv('DATA_BUCKET'), now),
+    tenantFiles: s3TenantFileStore(s3, requiredEnv('DATA_BUCKET')),
+    maintenanceBanner: () => readMaintenanceBanner(db.db),
     jobInvoker: lambdaJobInvoker(new LambdaClient({}), requiredEnv('WORKER_FUNCTION_NAME')),
     now,
   };

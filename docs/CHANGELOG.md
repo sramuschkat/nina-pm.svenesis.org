@@ -4,6 +4,19 @@
 
 ## [Unveröffentlicht]
 
+### AP-07a – System-Administration (Super User) (2026-09-24)
+
+Anforderungen: FA-SU-01…09, FA-MAN-01…03, FA-LOG-05, S-80, S-81, S-82 (Audit & Wartung); TK 5.4, 7.2; E3, E4; SV-11, SV-13.
+
+- Verträge: `DeleteTenantRequest`, `SystemAuditEntry`/`SystemAuditList`, `MaintenanceBanner`, `PublicBanner`, `IdentityAdminView`; `TenantAdminView` um Owner-Namen, Rigs, NINA-Instanzen (zuletzt gesehen) und letzte Anmeldung erweitert; neue Aufzählung `systemSettingKeys` (`maintenanceBanner`) in `enums.json`.
+- Routen: `DELETE /system/v1/tenants/{id}` (nur mit exakter Mandanten-ID, sonst `422`), `GET /system/v1/audit` (Cursor, Filter je Mandant), `GET/PUT /system/v1/settings/{key}`, `GET /system/v1/identities?discordUserId=`, `GET /web/v1/audit/system` (Admins sehen Super-User-Aktionen ihres Mandanten, `tenant.settings`), öffentlich `GET /api/banner`.
+- Mandant löschen **synchron** (Entscheidung Sven, 24.09.2026): zuerst sperren und die Dateien unter `tenant/<id>/` löschen, dann alle Tabellen mit `tenant_id` in Fremdschlüssel-Reihenfolge, je Stapel (1.000 Zeilen) eine Transaktion; Selbstbezüge werden vorher geleert. Das System-Audit bleibt (`tenant_id` → `null`, Mandanten-ID in `details`). Wiederholbar nach Abbruch. Ein Schematest prüft Vollständigkeit, Reihenfolge und Schlüssel gegen das migrierte Schema.
+- IAM: `dataBucket.grantDelete(api, 'tenant/*')` (Tabelle in `specs/infra/iam.md` ergänzt, Infrastrukturtest).
+- Oberfläche: System-Navigation mit Reitern; S-80 Mandanten (Liste mit „Owner ausstehend“, anlegen samt Owner-Einladung, sperren/entsperren, Owner-Einladung, Owner neu zuweisen mit Begründung und `ConfirmDialog`, löschen mit Namenseingabe); S-81 Super User (hinzufügen, deaktivieren, entfernen) und Identität systemweit sperren; S-82 Wartungshinweis (DE/EN) und System-Audit. Der Wartungshinweis erscheint für alle, auch auf der Einstiegsseite. Zeiten im System-Kontext in Betreiberzeit (`Europe/Berlin`) mit Kürzel.
+- Lokaler Test-Login löst wie der Discord-Callback ein vorgemerktes Einladungs-Cookie ein (nur `src/local.ts`); i18n-Lint behandelt Berechtigungs-Aktionen nicht als Schlüssel; Symbole `lock`, `lock-open`, `user-plus`, `crown`, `plus` in `components.md` §3 ergänzt.
+- Tests: API (Löschen inkl. Stapelgröße 1 und Wiederholung, Audit mit Cursor und Mandantensicht, Banner, Identität), Playwright (Mandant anlegen → Einladung → Owner-Login, Löschen erst nach exakter Eingabe, Banner vor der Anmeldung, System-Seiten nur im System-Kontext, 768/2400 px), axe für S-80…S-82 in beiden Themes.
+- Offen: Speicherbedarf je Mandant (FA-SU-03) fehlt noch – dafür gibt es bisher keine Datenquelle; Kataloge in S-82 folgen mit R2/R4.
+
 ### AP-06b abgenommen (2026-09-24)
 
 - Deploy durch Sven (`6f82f2f`, Smoke-Test 10/10); Glocke und Startseite R1 in prod geprüft.

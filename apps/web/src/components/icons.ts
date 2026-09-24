@@ -35,6 +35,11 @@ import {
   LogOut,
   ChevronDown,
   ArrowLeftRight,
+  Crown,
+  Lock,
+  LockOpen,
+  UserPlus,
+  Plus,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -67,6 +72,11 @@ export const actionIcons = {
   warning: TriangleAlert,
   logout: LogOut,
   switchTenant: ArrowLeftRight,
+  lock: Lock,
+  unlock: LockOpen,
+  invite: UserPlus,
+  transferOwner: Crown,
+  add: Plus,
 } as const;
 
 /** Rahmen und Status. */

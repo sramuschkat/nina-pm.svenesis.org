@@ -3,8 +3,8 @@
  * Rechteentscheidung – die Glocke lädt und entscheidet. Ein Text je Art (`notifications.kind.*`), Zeit in
  * Mandantenzeit mit Kürzel (FK 8.1), ungelesene Einträge hervorgehoben und einzeln als gelesen markierbar.
  */
-import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../lib/time';
 import { uiIcons, ICON_SIZE } from '../icons';
 import { ProblemMessage } from '../ProblemMessage';
 import styles from './NotificationList.module.css';
@@ -38,15 +38,6 @@ function values(payload: Record<string, unknown>, t: (k: string) => string) {
       out[key] = ROLES.has(value) ? t(`appBar.role.${value}`) : value;
   }
   return out;
-}
-
-function formatDate(atUtc: string, timeZone: string, lang: string): string {
-  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'de-DE', {
-    timeZone,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(Date.parse(atUtc)));
 }
 
 export function NotificationList({
@@ -90,7 +81,7 @@ export function NotificationList({
                 dateTime={n.createdAt}
                 title={t('notifications.timeHint', { zone: tenantTimeZone })}
               >
-                {`${formatDate(n.createdAt, tenantTimeZone, i18n.language)} ${formatZonedTime(n.createdAt, tenantTimeZone)} ${formatTzAbbr(n.createdAt, tenantTimeZone)}`}
+                {formatDateTime(n.createdAt, tenantTimeZone, i18n.language)}
               </time>
             </div>
             {unread && onMarkRead ? (

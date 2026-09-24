@@ -8,13 +8,15 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
 import { api } from '../api/client';
 import { useAppearance } from '../app/theme';
 import { useAuth, useCan } from '../auth';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { actionIcons, areaIcons, ICON_SIZE, uiIcons } from '../components/icons';
 import { SvenesisFooter, SvenesisHeader } from './Frame';
+import { MaintenanceBanner } from './MaintenanceBanner';
 import { NotificationBell } from './NotificationBell';
 import styles from './layout.module.css';
 
@@ -24,6 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <>
       <SvenesisHeader />
       <AppBar />
+      <MaintenanceBanner />
       <MfaBanner />
       <div className={styles.work}>
         <SideNav collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
@@ -178,12 +181,15 @@ function AppBar() {
 interface NavArea {
   key: keyof typeof areaIcons;
   visible: boolean;
+  /** Ziel, sobald der Bereich gebaut ist; sonst deaktiviert mit Hinweis. */
+  to?: string;
 }
 
 /** Navigation nach FK 14.2; Fachbereiche folgen mit ihren Paketen (bis dahin deaktiviert mit Hinweis). */
 function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { t } = useTranslation();
   const { me } = useAuth();
+  const location = useLocation();
   const canAdmin = useCan('member.manage');
   const system = me?.context === 'system';
   const areas: NavArea[] = [
@@ -195,9 +201,10 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     { key: 'weather', visible: !system },
     { key: 'evaluation', visible: !system },
     { key: 'administration', visible: !system && canAdmin },
-    { key: 'system', visible: system },
+    { key: 'system', visible: system, to: SYSTEM_PATHS.tenants },
   ];
   const Toggle = collapsed ? uiIcons.expand : uiIcons.collapse;
+  const section = (to: string) => `/${to.split('/')[1] ?? ''}`;
   return (
     <nav
       className={`${styles.sideNav} ${collapsed ? styles.sideNavCollapsed : ''}`}
@@ -219,14 +226,26 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
             const Icon = areaIcons[a.key];
             return (
               <li key={a.key}>
-                <span
-                  className={styles.navItemDisabled}
-                  aria-disabled="true"
-                  title={`${t(`nav.${a.key}`)} – ${t('common.comingSoon')}`}
-                >
-                  <Icon size={ICON_SIZE.nav} aria-hidden />
-                  <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
-                </span>
+                {a.to ? (
+                  <Link
+                    to={a.to}
+                    className={styles.navItem}
+                    title={t(`nav.${a.key}`)}
+                    aria-current={location.pathname.startsWith(section(a.to)) ? 'page' : undefined}
+                  >
+                    <Icon size={ICON_SIZE.nav} aria-hidden />
+                    <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
+                  </Link>
+                ) : (
+                  <span
+                    className={styles.navItemDisabled}
+                    aria-disabled="true"
+                    title={`${t(`nav.${a.key}`)} – ${t('common.comingSoon')}`}
+                  >
+                    <Icon size={ICON_SIZE.nav} aria-hidden />
+                    <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
+                  </span>
+                )}
               </li>
             );
           })}

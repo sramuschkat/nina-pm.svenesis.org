@@ -353,6 +353,26 @@
   cursor: pointer;
   border-radius: var(--npm-radius);
 }
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-3);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  color: var(--npm-text);
+  border-radius: calc(var(--npm-radius) / 2);
+  white-space: nowrap;
+}
+.navItem:hover {
+  background: var(--npm-note-bg);
+  text-decoration: none;
+}
+.navItem[aria-current='page'] {
+  background: var(--npm-note-bg);
+  color: var(--npm-link);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--npm-accent);
+}
 .navItemDisabled {
   display: flex;
   align-items: center;

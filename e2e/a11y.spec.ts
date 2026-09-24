@@ -34,6 +34,30 @@ for (const theme of ['light', 'dark'] as const) {
       }
     });
 
+    test('System-Seiten S-80…S-82 mit Detail und Lösch-Dialog (AP-07a)', async ({ page }) => {
+      await testLogin(page, 'superuser');
+      await page.request.post('/api/auth/context', {
+        data: { system: true },
+        headers: { 'X-NPM-Request': '1' },
+      });
+      await page.goto('/system/mandanten');
+      await page.getByRole('button', { name: 'demo', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Mandant löschen' })).toBeVisible();
+      await expectNoSerious(page, 'S-80');
+      await page.getByRole('button', { name: 'Mandant löschen' }).click();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await expectNoSerious(page, 'S-80 Löschen');
+      await page.keyboard.press('Escape');
+      await page.goto('/system/super-user');
+      await expect(
+        page.getByRole('heading', { name: 'Identität systemweit sperren' }),
+      ).toBeVisible();
+      await expectNoSerious(page, 'S-81');
+      await page.goto('/system/audit');
+      await expect(page.getByRole('heading', { name: 'System-Audit', exact: true })).toBeVisible();
+      await expectNoSerious(page, 'S-82');
+    });
+
     test('Glocke geöffnet (AP-06b); Tastatur: Enter öffnet, Escape schließt', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');

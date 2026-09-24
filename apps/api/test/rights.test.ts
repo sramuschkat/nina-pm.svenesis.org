@@ -54,6 +54,8 @@ beforeAll(async () => {
   );
   EXAMPLES = {
     'GET /api/health': { url: '/api/health' },
+    'GET /api/banner': { url: '/api/banner' },
+    'GET /api/web/v1/audit/system': { url: '/api/web/v1/audit/system' },
     'GET /api/auth/discord/start': { url: '/api/auth/discord/start?next=/projekte', okStatus: 302 },
     'GET /api/auth/discord/callback': {
       url: '/api/auth/discord/callback?code=x&state=y',
@@ -249,6 +251,23 @@ function systemExamples(): Record<string, Example> {
       method: 'PATCH',
       body: { status: 'active' },
       okStatus: 204,
+    },
+    'DELETE /api/system/v1/tenants/{id}': {
+      url: `/api/system/v1/tenants/${crypto.randomUUID()}`,
+      method: 'DELETE',
+      body: { confirmTenantKey: 'gibt-es-nicht' },
+      okStatus: 404,
+    },
+    'GET /api/system/v1/audit': { url: '/api/system/v1/audit' },
+    'GET /api/system/v1/settings/{key}': { url: '/api/system/v1/settings/maintenanceBanner' },
+    'PUT /api/system/v1/settings/{key}': {
+      url: '/api/system/v1/settings/maintenanceBanner',
+      method: 'PUT',
+      body: { value: { active: false, textDe: '', textEn: '' } },
+    },
+    'GET /api/system/v1/identities': {
+      url: '/api/system/v1/identities?discordUserId=' + '9'.repeat(18),
+      okStatus: 404,
     },
   };
 }
