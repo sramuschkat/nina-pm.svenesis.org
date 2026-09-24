@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Rechteanzeige (AP-06a): Administration nur mit member.manage; Hinweis bei mfaRequired statt stiller Ausblendung (SV-03). */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../test/setup';
@@ -92,6 +92,15 @@ describe('Rechteanzeige in der Shell', () => {
   it('User: keine Administration', async () => {
     await renderShell(member('user', 'user', false));
     expect(nav()).not.toHaveTextContent('Administration');
+  });
+
+  it('Projekte ist ein Link (S-31, AP-11b); nicht gebaute Bereiche bleiben deaktiviert', async () => {
+    await renderShell(member('user', 'user', false));
+    expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
+      'href',
+      '/projekte',
+    );
+    expect(within(nav()).queryByRole('link', { name: 'Planung' })).not.toBeInTheDocument();
   });
 
   it('Owner ohne 2FA: wirkt als User (keine Administration) und sieht den Hinweis', async () => {

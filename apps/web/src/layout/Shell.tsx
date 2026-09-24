@@ -234,7 +234,8 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     { key: 'tonight', visible: !system },
     { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.rigs },
     { key: 'planning', visible: !system },
-    { key: 'projects', visible: !system },
+    // Projektliste folgt mit AP-11c; bis dahin Platzhalter mit *Neues Projekt* und der Editor S-31.
+    { key: 'projects', visible: !system, to: '/projekte' },
     { key: 'nina', visible: !system },
     { key: 'weather', visible: !system },
     { key: 'evaluation', visible: !system },
