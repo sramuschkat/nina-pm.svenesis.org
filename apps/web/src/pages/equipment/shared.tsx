@@ -17,6 +17,7 @@ import { SectionTabs, newId, problemCode } from '../admin/shared';
 export { newId, problemCode };
 
 export const EQUIPMENT_PATHS = {
+  rigs: '/ausruestung/rigs',
   sites: '/ausruestung/standorte',
   telescopes: '/ausruestung/teleskope',
   cameras: '/ausruestung/kameras',
@@ -41,6 +42,7 @@ export function EquipmentLayout({
       <SectionTabs
         label={t('equipment.tabsLabel')}
         tabs={[
+          { to: EQUIPMENT_PATHS.rigs, label: t('rigs.tab') },
           { to: EQUIPMENT_PATHS.sites, label: t('equipment.sites.tab') },
           { to: EQUIPMENT_PATHS.telescopes, label: t('equipment.telescopes.tab') },
           { to: EQUIPMENT_PATHS.cameras, label: t('equipment.cameras.tab') },

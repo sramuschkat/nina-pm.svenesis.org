@@ -88,9 +88,10 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('Escape');
     });
 
-    test('S-11…S-15 Ausrüstung mit Reitern und Lösch-Dialog (AP-09b)', async ({ page }) => {
+    test('S-10…S-15 Ausrüstung mit Reitern und Lösch-Dialog (AP-09b/c)', async ({ page }) => {
       await testLogin(page, 'owner');
       for (const [path, heading] of [
+        ['/ausruestung/rigs', 'Rigs'],
         ['/ausruestung/standorte', 'Standorte'],
         ['/ausruestung/teleskope', 'Teleskope'],
         ['/ausruestung/kameras', 'Kameras'],

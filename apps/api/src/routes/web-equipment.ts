@@ -134,6 +134,12 @@ function rigView(
 
 // ---- Routen ---------------------------------------------------------------------------------------
 
+const ifMatch = z.object({
+  'if-match': z.string().optional().meta({
+    description: '`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict',
+  }),
+});
+
 interface CrudSpec<P extends string> {
   readonly path: P;
   readonly tag: string;
@@ -145,6 +151,8 @@ interface CrudSpec<P extends string> {
   readonly listQuery?: z.ZodObject;
   /** Zusätzliche Löschsperren-/Konfliktbeschreibung. */
   readonly conflicts?: string;
+  /** Änderung mit `If-Match` (`settingsVersion`, nur Rigs) → sonst `412 resource.version_conflict`. */
+  readonly versioned?: boolean;
 }
 
 function crudRoutes<P extends string>(spec: CrudSpec<P>) {
@@ -198,11 +206,16 @@ function crudRoutes<P extends string>(spec: CrudSpec<P>) {
         path: `${BASE}${spec.path}/{id}`,
         summary: `${spec.noun}: ändern`,
         tags: [spec.tag],
-        request: { params: idParam, body: { ...json(spec.input), required: true } },
+        request: {
+          params: idParam,
+          ...(spec.versioned ? { headers: ifMatch } : {}),
+          body: { ...json(spec.input), required: true },
+        },
         responses: {
           200: { description: 'Geändert', ...json(spec.view) },
           ...write,
           409: problemContent('resource.read_only (mitgelieferte Mondprofile)'),
+          ...(spec.versioned ? { 412: problemContent('resource.version_conflict') } : {}),
         },
       },
     ),
@@ -293,13 +306,9 @@ const rigRoutes = crudRoutes({
   create: RigCreate,
   input: RigInput,
   view: RigView,
+  versioned: true,
 });
 
-const ifMatch = z.object({
-  'if-match': z.string().optional().meta({
-    description: '`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict',
-  }),
-});
 const versioned = {
   ...write,
   412: problemContent('resource.version_conflict'),
@@ -404,7 +413,7 @@ interface CrudOps<Row> {
   list(repo: Repo, query: Record<string, string | undefined>): Promise<Row[]>;
   get(repo: Repo, id: string): Promise<Row | undefined>;
   create(repo: Repo, id: string, input: never, now: Date): Promise<Row>;
-  update(repo: Repo, id: string, input: never, now: Date): Promise<Row>;
+  update(repo: Repo, id: string, input: never, now: Date, version?: number): Promise<Row>;
   remove(repo: Repo, id: string, now: Date): Promise<void>;
   view(row: Row, repo: Repo): unknown;
 }
@@ -472,6 +481,7 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
         valid(c, 'param').id as string,
         valid(c, 'json') as never,
         svc.now(),
+        expectedVersion(c.req.header('if-match')),
       );
       return c.json(await ops.view(row, repo), 200);
     });
@@ -542,7 +552,7 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     list: (r) => r.rigs(),
     get: (r, id) => r.rig(id),
     create: (r, id, input, now) => r.createRig(id, input, now),
-    update: (r, id, input, now) => r.updateRig(id, input, now),
+    update: (r, id, input, now, version) => r.updateRig(id, input, now, version),
     remove: (r, id, now) => r.deleteRig(id, now),
     view: async (row, repo) => (await rigContext(repo))(row),
   });

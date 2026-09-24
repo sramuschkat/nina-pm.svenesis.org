@@ -41,6 +41,8 @@ import {
   UserPlus,
   Plus,
   MapPin,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -97,4 +99,6 @@ export const uiIcons = {
   collapse: PanelLeftClose,
   expand: PanelLeftOpen,
   menu: ChevronDown,
+  up: ArrowUp,
+  down: ArrowDown,
 } as const;

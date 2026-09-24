@@ -25,6 +25,7 @@ import { SystemTenantsPage } from '../pages/system/SystemTenantsPage';
 import { CamerasPage } from '../pages/equipment/CamerasPage';
 import { FiltersPage } from '../pages/equipment/FiltersPage';
 import { MoonProfilesPage } from '../pages/equipment/MoonProfilesPage';
+import { RigsPage } from '../pages/equipment/RigsPage';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
@@ -145,7 +146,8 @@ export function createRouter() {
               path: 'ausruestung',
               element: <RequireAction action="equipment.read" />,
               children: [
-                { index: true, element: <Navigate to={EQUIPMENT_PATHS.sites} replace /> },
+                { index: true, element: <Navigate to={EQUIPMENT_PATHS.rigs} replace /> },
+                { path: 'rigs', element: <RigsPage /> },
                 { path: 'standorte', element: <SitesPage /> },
                 { path: 'teleskope', element: <TelescopesPage /> },
                 { path: 'kameras', element: <CamerasPage /> },
