@@ -137,6 +137,9 @@ export function NightChart(props: NightChartProps) {
   );
   const bandsH = bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP) + BAND_GAP;
 
+  // Die Zeichenfläche gibt es erst im Zustand „bereit“ – beim Wechsel aus Laden/Fehler/leer neu messen.
+  const drawable =
+    win !== null && props.state !== 'loading' && props.state !== 'error' && series.length > 0;
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
@@ -146,7 +149,7 @@ export function NightChart(props: NightChartProps) {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [drawable]);
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined;

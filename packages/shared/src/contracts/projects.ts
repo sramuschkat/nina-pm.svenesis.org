@@ -64,6 +64,12 @@ export const ProjectConditions = z
   })
   .strict();
 
+/**
+ * Vollständige Bedingungen ohne Standardwerte – Wert der Einstellung `project.defaultConditions`
+ * („Als Standard setzen“, FA-PRJ-04: Vorbelegung neuer Projekte je Mitglied).
+ */
+export const ConditionsValue = z.object(conditionShape).strict();
+
 /** Teiländerung der Bedingungen – **ohne** Standardwerte, sonst setzte ein Patch alle übrigen zurück. */
 const ConditionsPatch = z.object(conditionShape).partial().strict();
 

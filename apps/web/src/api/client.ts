@@ -44,8 +44,10 @@ export const api = {
   claimInvitation: (token: string) =>
     quiet<InvitationClaim>('/api/auth/invitation/claim', { method: 'POST', json: { token } }),
   preferences: () => apiFetch<Preferences>('/api/web/v1/me/preferences'),
-  setPreference: (key: 'ui.theme' | 'ui.density' | 'ui.navCollapsed', value: unknown) =>
-    apiFetch<undefined>(`/api/web/v1/me/preferences/${key}`, { method: 'PUT', json: { value } }),
+  setPreference: (
+    key: 'ui.theme' | 'ui.density' | 'ui.navCollapsed' | 'project.defaultConditions',
+    value: unknown,
+  ) => apiFetch<undefined>(`/api/web/v1/me/preferences/${key}`, { method: 'PUT', json: { value } }),
   notifications: (limit = 50) =>
     apiFetch<NotificationList>(`/api/web/v1/notifications?limit=${limit}`),
   banner: () => quiet<{ banner: { de: string; en: string } | null }>('/api/banner'),
@@ -234,4 +236,55 @@ export const equipmentApi = {
     }),
   nights: (siteId: string, count = 60) =>
     apiFetch<SiteNightsView>(`${V1}/sites/${siteId}/nights?count=${String(count)}`),
+};
+
+export type ProjectView = Schemas['ProjectView'];
+export type ProjectListItem = Schemas['ProjectListItem'];
+export type PanelView = Schemas['PanelView'];
+export type LineView = Schemas['LineView'];
+export type NoteView = Schemas['NoteView'];
+export type HistoryEntry = Schemas['HistoryEntry'];
+export type RigCheckView = Schemas['RigCheckView'];
+export type ProjectConditionsView = ProjectView['conditions'];
+
+/** Projekte (S-31, AP-11a/b): Projekt mit Panels und Zeilen; Änderungen am Projekt mit `If-Match`. */
+export const projectsApi = {
+  list: (query = '') => apiFetch<{ items: ProjectListItem[] }>(`${V1}/projects${query}`),
+  get: (id: string) => apiFetch<ProjectView>(`${V1}/projects/${id}`),
+  create: (body: object & { id: string }) =>
+    apiFetch<ProjectView>(`${V1}/projects`, json('POST', body)),
+  /** Teiländerung mit `If-Match: "<version>"` (412 `resource.version_conflict`). */
+  patch: (id: string, body: object, version: number) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}`, { ...json('PATCH', body), ...ifMatch(version) }),
+  remove: (id: string) => apiFetch<undefined>(`${V1}/projects/${id}`, json('DELETE')),
+  duplicate: (id: string, body: { id: string; name?: string }) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/duplicate`, json('POST', body)),
+  addPanel: (id: string, body: object & { id: string }) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/panels`, json('POST', body)),
+  patchPanel: (id: string, panelId: string, body: object) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/panels/${panelId}`, json('PATCH', body)),
+  deletePanel: (id: string, panelId: string) =>
+    apiFetch<{ soft: boolean }>(`${V1}/projects/${id}/panels/${panelId}`, json('DELETE')),
+  addLine: (id: string, body: object & { id: string; panelId: string }) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/lines`, json('POST', body)),
+  patchLine: (id: string, lineId: string, body: object) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/lines/${lineId}`, json('PATCH', body)),
+  deleteLine: (id: string, lineId: string) =>
+    apiFetch<{ soft: boolean }>(`${V1}/projects/${id}/lines/${lineId}`, json('DELETE')),
+  duplicateLine: (id: string, lineId: string, body: { id: string; deactivateSource: boolean }) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/lines/${lineId}/duplicate`, json('POST', body)),
+  applyTemplate: (
+    id: string,
+    body: { templateId: string; panelId: string | null; replace: boolean },
+  ) => apiFetch<ProjectView>(`${V1}/projects/${id}/apply-template`, json('POST', body)),
+  setStatus: (id: string, status: string) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/status`, json('PUT', { status })),
+  favorite: (id: string, on: boolean) =>
+    apiFetch<undefined>(`${V1}/me/favorites/${id}`, json(on ? 'PUT' : 'DELETE')),
+  notes: (id: string) => apiFetch<{ items: NoteView[] }>(`${V1}/projects/${id}/notes`),
+  addNote: (id: string, bodyMd: string) =>
+    apiFetch<NoteView>(`${V1}/projects/${id}/notes`, json('POST', { bodyMd })),
+  history: (id: string) => apiFetch<{ items: HistoryEntry[] }>(`${V1}/projects/${id}/history`),
+  rigCheck: (rigId: string, projectId: string) =>
+    apiFetch<RigCheckView>(`${V1}/rigs/${rigId}/compatibility`, json('POST', { projectId })),
 };
