@@ -191,6 +191,8 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
   const canEdit = saved ? canUpdate : canCreate;
 
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
+  const [topTab, setTopTab] = useState<TopTab>('target');
+  const topTabsId = useId();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [defaultSaved, setDefaultSaved] = useState(false);
 
@@ -232,7 +234,11 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
     onMutate: () => setClientErrors({}),
     onSuccess: onSaved,
     onError: (e) => {
+      const found = e instanceof FormErrors ? e.errors : serverErrors(e);
       if (e instanceof FormErrors) setClientErrors(e.errors);
+      // Fehler in einem verdeckten Reiter: dorthin wechseln, damit das Feld sichtbar ist.
+      const first = Object.keys(found)[0];
+      if (first) setTopTab(tabOf(first));
     },
   });
   const submit = (e: FormEvent) => {
@@ -240,6 +246,7 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
     save.mutate(false);
   };
   const errors: FieldErrors = { ...serverErrors(save.error), ...clientErrors };
+  const tabsWithErrors = new Set(Object.keys(errors).map(tabOf));
   const fieldError = (path: string) => (errors[path] ? t('equipment.invalid') : undefined);
   const disabled = !canEdit;
   const formId = useId();
@@ -468,9 +475,33 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
       )}
 
-      <form id={formId} className={styles.top} onSubmit={submit} noValidate>
-        <section className={styles.column} aria-labelledby="target-title">
-          <h2 id="target-title">{t('projectEditor.targetInfo')}</h2>
+      <form id={formId} className={styles.topTabs} onSubmit={submit} noValidate>
+        <div className={styles.tabs} role="tablist" aria-label={t('projectEditor.topTabs')}>
+          {TOP_TABS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              id={`${topTabsId}-${key}`}
+              aria-selected={topTab === key}
+              aria-controls={`${topTabsId}-${key}-panel`}
+              className={styles.tab}
+              onClick={() => setTopTab(key)}
+            >
+              {t(TOP_TAB_LABEL[key])}
+              {tabsWithErrors.has(key) ? (
+                <span className={styles.tabError}>{t('projectEditor.tabHasErrors')}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+        <section
+          className={styles.stack}
+          role="tabpanel"
+          id={`${topTabsId}-target-panel`}
+          aria-labelledby={`${topTabsId}-target`}
+          hidden={topTab !== 'target'}
+        >
           <div className={styles.grid}>
             <TextField
               label={t('projectEditor.field.name')}
@@ -568,8 +599,13 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
           ) : null}
         </section>
 
-        <section className={styles.column} aria-labelledby="conditions-title">
-          <h2 id="conditions-title">{t('projectEditor.conditions')}</h2>
+        <section
+          className={styles.stack}
+          role="tabpanel"
+          id={`${topTabsId}-conditions-panel`}
+          aria-labelledby={`${topTabsId}-conditions`}
+          hidden={topTab !== 'conditions'}
+        >
           <div className={styles.grid}>
             <NumberField
               label={t('projectEditor.cond.minAltitude')}
@@ -698,8 +734,13 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
           </div>
         </section>
 
-        <section className={styles.column} aria-labelledby="preview-title">
-          <h2 id="preview-title">{t('projectEditor.preview')}</h2>
+        <section
+          className={styles.stack}
+          role="tabpanel"
+          id={`${topTabsId}-preview-panel`}
+          aria-labelledby={`${topTabsId}-preview`}
+          hidden={topTab !== 'preview'}
+        >
           <div className={styles.preview}>{t('projectEditor.previewLater')}</div>
           <dl className={styles.facts}>
             <dt>{t('projectEditor.facts.site')}</dt>
@@ -767,6 +808,17 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
     </div>
   );
 }
+
+/** Reiter des oberen Bereichs (Entscheidung Sven 24.09.2026 statt drei Spalten nebeneinander). */
+const TOP_TABS = ['target', 'conditions', 'preview'] as const;
+type TopTab = (typeof TOP_TABS)[number];
+const TOP_TAB_LABEL: Record<TopTab, string> = {
+  target: 'projectEditor.targetInfo',
+  conditions: 'projectEditor.conditions',
+  preview: 'projectEditor.preview',
+};
+/** Reiter eines Feldpfads: Bedingungen unter `conditions.*`, alles andere Zielinformationen. */
+const tabOf = (path: string): TopTab => (path.startsWith('conditions.') ? 'conditions' : 'target');
 
 /** Fehler der Client-Prüfung (zod) als Feldpfade. */
 class FormErrors extends Error {

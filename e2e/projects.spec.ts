@@ -52,6 +52,7 @@ test('S-31: Projekt anlegen, Zeile ergänzen, speichern (If-Match)', async ({ pa
   const current = (await (await page.request.get(`/api/web/v1/projects/${id}`)).json()) as {
     version: number;
   };
+  await page.getByRole('tab', { name: 'Bedingungen' }).click();
   await page.getByLabel('Mindesthöhe (°)').fill('35');
   await expect(page.getByText('Ungespeicherte Änderungen')).toBeVisible();
   const patch = page.waitForRequest(
@@ -77,8 +78,11 @@ test('S-31: Projekt anlegen, Zeile ergänzen, speichern (If-Match)', async ({ pa
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'inzwischen geändert' })).toBeVisible();
   await page.getByRole('button', { name: 'Neu laden' }).click();
-  await expect(page.getByLabel('Katalognamen')).toHaveValue('Sh2-184');
   await expect(page.getByLabel('Mindesthöhe (°)')).toHaveValue('35');
+  await page.getByRole('tab', { name: 'Zielinformationen' }).click();
+  await expect(page.getByLabel('Katalognamen')).toHaveValue('Sh2-184');
+  // Oberer Bereich als Reiter: die übrigen Felder sind verdeckt, nicht entfernt.
+  await expect(page.getByLabel('Mindesthöhe (°)')).toBeHidden();
 });
 
 test('S-31: User öffnet einen fremden Entwurf nicht (FA-BER-02), keine Bearbeitung', async ({
