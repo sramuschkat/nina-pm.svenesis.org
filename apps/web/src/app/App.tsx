@@ -29,6 +29,7 @@ import { RigsPage } from '../pages/equipment/RigsPage';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
+import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -141,6 +142,8 @@ export function createRouter() {
             { index: true, element: <HomePage /> },
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
             { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+            { path: 'projekte/neu', element: <ProjectEditorPage /> },
+            { path: 'projekte/:id', element: <ProjectEditorPage /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {
               path: 'ausruestung',

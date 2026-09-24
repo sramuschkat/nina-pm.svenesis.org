@@ -154,6 +154,7 @@ Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederhe
 | Benachrichtigungen · Theme hell/dunkel · Benutzer · Hilfe | `bell` · `sun`/`moon` · `user` · `circle-help` |
 | Gelöscht (Papierkorb) · Wiederherstellen · Warnung im `ConfirmDialog` | `trash` · `archive-restore` · `triangle-alert` |
 | Sperren · Entsperren · Einladen · Owner übertragen · Hinzufügen · Mandant wechseln · Abmelden (Verwaltung, AP-07a…c) | `lock` · `lock-open` · `user-plus` · `crown` · `plus` · `arrow-left-right` · `log-out` |
+| Favorit · Zurück · vorige/nächste Nacht · externer Link (Projekt-Editor, AP-11b) | `star` · `arrow-left` · `chevron-left`/`chevron-right` · `external-link` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 

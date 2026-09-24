@@ -1542,7 +1542,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "ui.theme" | "ui.density" | "ui.navCollapsed";
+                    key: "ui.theme" | "ui.density" | "ui.navCollapsed" | "project.defaultConditions";
                 };
                 cookie?: never;
             };
@@ -8080,6 +8080,20 @@ export interface components {
             /** @enum {string} */
             "ui.density"?: "compact" | "normal" | "wide";
             "ui.navCollapsed"?: boolean;
+            "project.defaultConditions"?: {
+                minAltitudeDeg: number;
+                minTimeOnTargetH: number;
+                /** @enum {string} */
+                twilight: "astronomical" | "nautical" | "civil";
+                moonAvoidanceEnabled: boolean;
+                moonMustBeDown: boolean;
+                moonSeparationDeg: number;
+                moonWidthDays: number;
+                moonRelaxScale: number;
+                moonMinAltDeg: number;
+                moonMaxAltDeg: number;
+                moonMaxIlluminationPct: number;
+            };
         };
         PreferenceValue: {
             value?: unknown;

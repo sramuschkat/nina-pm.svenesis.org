@@ -667,6 +667,62 @@ components:
             - wide
         ui.navCollapsed:
           type: boolean
+        project.defaultConditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+            moonAvoidanceEnabled:
+              type: boolean
+            moonMustBeDown:
+              type: boolean
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+            moonWidthDays:
+              type: number
+              minimum: 0
+            moonRelaxScale:
+              type: number
+              minimum: 0
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+          required:
+            - minAltitudeDeg
+            - minTimeOnTargetH
+            - twilight
+            - moonAvoidanceEnabled
+            - moonMustBeDown
+            - moonSeparationDeg
+            - moonWidthDays
+            - moonRelaxScale
+            - moonMinAltDeg
+            - moonMaxAltDeg
+            - moonMaxIlluminationPct
+          additionalProperties: false
     PreferenceValue:
       type: object
       properties:
@@ -5918,6 +5974,7 @@ paths:
               - ui.theme
               - ui.density
               - ui.navCollapsed
+              - project.defaultConditions
           required: true
           name: key
           in: path

@@ -43,6 +43,11 @@ import {
   MapPin,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Star,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -83,6 +88,10 @@ export const actionIcons = {
   map: MapPin,
   /** Klonen (Mondprofile) = Duplizieren (components.md §3). */
   clone: Copy,
+  /** Favorit (FA-PRJ-16), Zurück, externer Recherche-Link (S-31, AP-11b). */
+  favorite: Star,
+  back: ArrowLeft,
+  external: ExternalLink,
 } as const;
 
 /** Rahmen und Status. */
@@ -101,4 +110,7 @@ export const uiIcons = {
   menu: ChevronDown,
   up: ArrowUp,
   down: ArrowDown,
+  /** Vorige/nächste Nacht (Nachtdiagramm im Projekt-Editor). */
+  previous: ChevronLeft,
+  next: ChevronRight,
 } as const;

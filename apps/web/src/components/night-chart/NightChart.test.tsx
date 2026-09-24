@@ -5,7 +5,7 @@
  * axe; dazu der Engine-Adapter für NGC 281.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { SKY_STOPS } from '@nina-pm/ui-tokens';
@@ -89,6 +89,32 @@ describe('NightChart', () => {
     fireEvent.keyDown(chart, { key: 'Enter' });
     expect(selected).toEqual([START]);
     expect(screen.getByText('Mond (42 % beleuchtet)')).toBeInTheDocument();
+  });
+
+  it('zeichnet nach dem Wechsel aus dem Ladezustand (Breite erst mit Zeichenfläche messbar)', () => {
+    const calls: string[] = [];
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) => () => {
+          calls.push(String(key));
+        },
+        set: () => true,
+      },
+    );
+    const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as never);
+    const { rerender } = render(
+      <NightChart window={null} state="loading" timeZone="America/Chicago" />,
+    );
+    rerender(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('a', 'NGC 281')]}
+        timeZone="America/Chicago"
+      />,
+    );
+    expect(calls).toContain('fillRect');
+    spy.mockRestore();
   });
 
   it('Zustände: laden, Fehler (ohne Fenster) mit Erneut versuchen, leer', () => {

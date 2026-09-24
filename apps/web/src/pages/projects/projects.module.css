@@ -1,0 +1,332 @@
+/* Projekt-Editor S-31 (FK 14.3): volle Breite; oben drei Spalten ab 1280 px, darunter gestapelt;
+   Abstände und Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den Ausrüstungsseiten. */
+.page {
+  composes: page from '../equipment/equipment.module.css';
+}
+.panel {
+  composes: panel from '../equipment/equipment.module.css';
+}
+.muted {
+  composes: muted from '../equipment/equipment.module.css';
+}
+.button {
+  composes: button from '../equipment/equipment.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../equipment/equipment.module.css';
+}
+.buttonDanger {
+  composes: buttonDanger from '../equipment/equipment.module.css';
+}
+.input {
+  composes: input from '../equipment/equipment.module.css';
+}
+.grid {
+  composes: grid from '../equipment/equipment.module.css';
+}
+.table {
+  composes: table from '../equipment/equipment.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../equipment/equipment.module.css';
+}
+.num {
+  composes: num from '../equipment/equipment.module.css';
+}
+.tabs {
+  composes: tabs from '../equipment/equipment.module.css';
+}
+.tab {
+  composes: tab from '../equipment/equipment.module.css';
+}
+.note {
+  composes: note from '../equipment/equipment.module.css';
+}
+.warning {
+  composes: warning from '../equipment/equipment.module.css';
+}
+.success {
+  composes: success from '../equipment/equipment.module.css';
+}
+.fieldError {
+  composes: fieldError from '../equipment/equipment.module.css';
+}
+.facts {
+  composes: facts from '../equipment/equipment.module.css';
+}
+.iconButton {
+  composes: iconButton from '../equipment/equipment.module.css';
+}
+.check {
+  composes: check from '../equipment/equipment.module.css';
+}
+.field {
+  composes: field from '../equipment/equipment.module.css';
+}
+.rig {
+  flex: 1 1 320px;
+  min-width: 260px;
+  max-width: 480px;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+
+/* Brotkrumen und Kopf */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.crumbs li + li::before {
+  content: '›';
+  margin-right: var(--npm-space-2);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3);
+}
+.head h1 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+  margin-left: auto;
+}
+.headFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-4);
+  margin: 0;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.headFacts strong {
+  color: var(--npm-text);
+  font-variant-numeric: tabular-nums;
+}
+.effort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  padding: 0 var(--npm-space-2);
+  border: 1px dashed var(--npm-border);
+  border-radius: var(--npm-radius);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.favorite[aria-pressed='true'] {
+  color: var(--npm-warning);
+}
+.dirty {
+  font-size: var(--npm-font-small);
+  color: var(--npm-warning);
+}
+
+/* Oberer Bereich: Zielinformationen | Bedingungen | Vorschau */
+.top {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (max-width: 1279px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.column {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.column h2,
+.plan h2 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: var(--npm-space-3);
+  border: 1px dashed var(--npm-border);
+  border-radius: var(--npm-radius);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  text-align: center;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+}
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  color: var(--npm-link);
+}
+.markdownPreview {
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-left: 3px solid var(--npm-border);
+  font-size: var(--npm-font-small);
+}
+
+/* Mittlerer Bereich: Reiter */
+.middle {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.nightNav {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.nightNav strong {
+  min-width: 7em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notes li {
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-left: 3px solid var(--npm-accent);
+  background: var(--npm-note-bg);
+}
+.noteMeta {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+
+/* Unterer Bereich: Belichtungsplan */
+.plan {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.planHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3);
+}
+.planHead .templates {
+  margin-left: auto;
+}
+.templates,
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+.quick legend {
+  float: left;
+  margin-right: var(--npm-space-2);
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+  align-self: center;
+}
+.quick label,
+.templates label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+}
+.quick .radio {
+  flex-direction: row;
+  align-items: center;
+  font-weight: 400;
+}
+.small {
+  width: 7em;
+}
+.lineTable input,
+.lineTable select {
+  min-width: 0;
+  width: 100%;
+  max-width: 9em;
+}
+.lineTable td {
+  vertical-align: middle;
+}
+.lineTable tr[data-enabled='false'] td {
+  color: var(--npm-text-light);
+}
+.locked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  white-space: nowrap;
+}
+.flag {
+  display: inline-block;
+  margin-left: var(--npm-space-1);
+  font-size: var(--npm-font-label);
+  color: var(--npm-warning);
+}
+.rowActions {
+  display: flex;
+  gap: var(--npm-space-1);
+}
+.sums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-4);
+  margin: 0;
+  padding-top: var(--npm-space-2);
+  border-top: 1px solid var(--npm-border);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.sums strong {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.duplicateBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  background: var(--npm-note-bg);
+  border-radius: var(--npm-radius);
+}
