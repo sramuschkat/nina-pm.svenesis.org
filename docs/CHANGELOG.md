@@ -4,6 +4,12 @@
 
 ## [Unveröffentlicht]
 
+### AP-04b abgenommen (2026-09-24)
+
+- Deploy durch Sven (Commit `569547c`, keine Migration).
+- Menschliche Freigabe: Test-Mandant `test` per `ops-cli create-tenant` angelegt, Owner-Einladung (an Svens Discord-ID gebunden) per `ops-cli create-invitation` eingelöst; `/api/auth/me` zeigt Kontext `tenant`, Rolle `owner`, wirksam `admin`, Super User unverändert.
+- H-12a teilweise: zwei Zweit-Discord-Konten als User stehen noch aus.
+
 ### AP-04b – Mandanten, Einladungen, Owner-Invarianten (2026-09-24)
 
 Anforderungen: FA-SU-05…09, FA-BEN-01…11, FA-MAN-01/02, TK 5.4, 5.5, 7.2; E2, E3, SEC-50, SV-11, SV-17.
