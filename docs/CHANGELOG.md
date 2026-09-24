@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### Referenzgenerator: Ephemeride im Repository (2026-09-24)
+
+- `tools/reference/kernels/de432s.bsp` (JPL DE432 gekürzt, NAIF-Archiv, abgerufen 24.09.2026, gemeinfrei) mit Prüfsumme `SHA256SUMS` und Herkunftsnachweis; `common.py` prüft die Prüfsumme und lädt den Kern aus der Datei (TK 9.1, AST-T11). Der CI-Job `reference.yml` braucht damit kein Nachladen mehr. Fixtures unverändert (nur die Quellenangabe in den Metadaten).
+
 ### AP-07d, AP-08a, AP-08b abgenommen (2026-09-24)
 
 - Deploy durch Sven (`43884df`, Migration 0006 nach On-Demand-Backup, Smoke-Test 10/10).

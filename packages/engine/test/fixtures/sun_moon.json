@@ -1,7 +1,7 @@
 {
  "meta": {
   "astropy": "6.1.4",
-  "ephemeris": "de432s (jplephem)",
+  "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
   "generator": "tools/reference/sun_moon",
   "leapSecondsExpire": "2027-06-28 00:00:00.000",
   "numpy": "2.1.3",

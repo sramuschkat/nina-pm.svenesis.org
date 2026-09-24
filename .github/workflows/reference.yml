@@ -27,9 +27,6 @@ jobs:
           cache-dependency-path: tools/reference/requirements.txt
       - name: Abhängigkeiten (gepinnt)
         run: pip install -r tools/reference/requirements.txt
-      - name: Ephemeride de432s vorab laden
-        working-directory: tools/reference
-        run: python -c "from astropy.coordinates import solar_system_ephemeris, get_body; from astropy.time import Time; solar_system_ephemeris.set('de432s'); get_body('moon', Time('2026-01-01'))"
       - name: Fixtures erzeugen
         working-directory: tools/reference
         run: python gen_all.py
