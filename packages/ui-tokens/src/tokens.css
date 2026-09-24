@@ -47,6 +47,7 @@
   --npm-warning-bg: #fff3cd;
   --npm-muted: #6b7785;
   --npm-skeleton: #e9ecef;
+  --npm-violet: #6a3fb5;
   --npm-row-h: 34px;
   --npm-font-scale: 1;
   --npm-space-scale: 1;
@@ -93,6 +94,7 @@
   --npm-warning-bg: #3a2f12;
   --npm-muted: #8b98a5;
   --npm-skeleton: #243647;
+  --npm-violet: #c3a6f5;
   --npm-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }

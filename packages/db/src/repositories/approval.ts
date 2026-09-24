@@ -662,6 +662,58 @@ export class ApprovalRepository extends TenantRepo {
     );
   }
 
+  /**
+   * Freigegebene Projekte je Rig in Prioritätsreihenfolge mit dem Endstand der Stimmen ihrer letzten
+   * Freigabe (FA-FRG-16, Einfügeposition). Ohne Freigabeereignis (z. B. vom Admin selbst angelegt) 0.
+   */
+  async rigPriorityVotes(
+    rigIds: readonly string[],
+  ): Promise<Map<string, { projectId: string; priority: number; votes: number }[]>> {
+    const out = new Map<string, { projectId: string; priority: number; votes: number }[]>();
+    if (rigIds.length === 0) return out;
+    const peers = await this.db
+      .selectFrom('project')
+      .select(['id', 'rigId', 'priority'])
+      .where('tenantId', '=', this.tenantId)
+      .where('rigId', 'in', [...new Set(rigIds)])
+      .where('approvalStatus', '=', 'approved')
+      .where('deletedAt', 'is', null)
+      .orderBy('priority')
+      .orderBy('id')
+      .execute();
+    const events =
+      peers.length === 0
+        ? []
+        : await this.db
+            .selectFrom('approvalEvent')
+            .select(['projectId', 'snapshot', 'createdAt'])
+            .where('tenantId', '=', this.tenantId)
+            .where('action', '=', 'approved')
+            .where(
+              'projectId',
+              'in',
+              peers.map((p) => p.id),
+            )
+            .orderBy('createdAt', 'desc')
+            .execute();
+    const votesOf = new Map<string, number>();
+    for (const e of events) {
+      if (votesOf.has(e.projectId)) continue;
+      const snap = (typeof e.snapshot === 'string' ? JSON.parse(e.snapshot) : e.snapshot) as {
+        votes?: { count?: unknown };
+      } | null;
+      const n = snap?.votes?.count;
+      votesOf.set(e.projectId, typeof n === 'number' ? n : 0);
+    }
+    for (const p of peers) {
+      if (p.rigId === null) continue;
+      const list = out.get(p.rigId) ?? [];
+      list.push({ projectId: p.id, priority: p.priority, votes: votesOf.get(p.id) ?? 0 });
+      out.set(p.rigId, list);
+    }
+    return out;
+  }
+
   /** Entwürfe und zurückgegebene Objekte aller Mitglieder (S-34, FA-BER-02; nur Admin). */
   async drafts() {
     const projects = this.projects();

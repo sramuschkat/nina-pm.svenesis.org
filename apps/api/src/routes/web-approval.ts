@@ -19,6 +19,7 @@ import {
   QueueVotes,
   SubmissionRanking,
   SubmitInput,
+  suggestPriorityPosition,
   Uuid,
   type Action,
   type AuthContext,
@@ -29,7 +30,8 @@ import { isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
-import { listItem, projectView } from './web-projects';
+import { scheduleEffort } from './effort-trigger';
+import { effortView, listItem, projectView } from './web-projects';
 
 const BASE = '/api/web/v1';
 const idParam = z.object({ id: Uuid });
@@ -230,7 +232,10 @@ export const APPROVAL_ROUTES = [
 
 // ---- Ansichten ------------------------------------------------------------------------------------
 
-function queueItem(e: QueueEntry): z.output<typeof QueueItem> {
+function queueItem(
+  e: QueueEntry,
+  suggestedPriorityPosition: number | null,
+): z.output<typeof QueueItem> {
   const p = e.detail.project;
   const active = e.detail.panels.flatMap((panel) => panel.lines).filter((l) => l.enabled);
   return {
@@ -266,9 +271,8 @@ function queueItem(e: QueueEntry): z.output<typeof QueueItem> {
     })),
     panelCount: e.detail.panels.length,
     estimatedHours: active.reduce((s, l) => s + l.plannedCount * l.exposureS, 0) / 3600,
-    effort: null,
-    // Vorschlag der Einfügeposition folgt mit AP-13e (nur Admins).
-    suggestedPriorityPosition: null,
+    effort: effortView(p),
+    suggestedPriorityPosition,
     version: p.version,
   };
 }
@@ -289,7 +293,14 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
     const repos = svc.repositories(tenant);
-    return { svc, auth, projects: repos.projects(), approvals: repos.approvals() };
+    return {
+      svc,
+      auth,
+      projects: repos.projects(),
+      approvals: repos.approvals(),
+      /** Aufwand-Kennzeichen nach Einreichen/Freigeben neu rechnen (Job `effort`, AP-13e). */
+      effort: (projectId: string) => scheduleEffort(svc, repos, projectId),
+    };
   };
 
   /** Objekt laden und Aktion mit dem Objekt prüfen (wie Projekte): fremde/gelöschte → 404, fehlendes Recht → 403. */
@@ -324,6 +335,7 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
       x.svc.now(),
       expectedVersion(c.req.valid('header')['if-match']),
     );
+    await x.effort(id);
     return c.json(projectView(d), 200);
   });
 
@@ -349,6 +361,7 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
       x.svc.now(),
       expectedVersion(c.req.valid('header')['if-match']),
     );
+    await x.effort(id);
     return c.json(projectView(d), 200);
   });
 
@@ -381,8 +394,29 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
   app.openapi(queueRoute, async (c) => {
     const x = await ctx(c);
     const entries = await x.approvals.queue();
+    // Einfügeposition nur für Admins (FA-FRG-16): je Wunsch-Rig die freigegebenen Projekte mit Endstand.
+    const admin = can(x.auth, 'queue.decide');
+    const peers = admin
+      ? await x.approvals.rigPriorityVotes(
+          entries.flatMap((e) => {
+            const rig = e.detail.project.requestedRigId ?? e.detail.project.rigId;
+            return rig ? [rig] : [];
+          }),
+        )
+      : new Map<string, { projectId: string; votes: number }[]>();
     c.header('cache-control', 'no-store');
-    return c.json({ items: entries.map(queueItem) }, 200);
+    return c.json(
+      {
+        items: entries.map((e) => {
+          const rig = e.detail.project.requestedRigId ?? e.detail.project.rigId;
+          return queueItem(
+            e,
+            admin && rig ? suggestPriorityPosition(e.votes.count, peers.get(rig) ?? []) : null,
+          );
+        }),
+      },
+      200,
+    );
   });
 
   const voteSubject = async (x: Awaited<ReturnType<typeof ctx>>, kind: string, id: string) => {

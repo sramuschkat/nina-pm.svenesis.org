@@ -14,6 +14,7 @@ import { useAuth } from '../../auth';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
+import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
@@ -251,6 +252,7 @@ function ObjectCard({ project: p }: { project: ProjectListItem }) {
           <Link to={`/projekte/${p.id}`}>{p.name}</Link>
           <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
           {p.status ? <StatusBadge kind="project" value={p.status} size="sm" /> : null}
+          <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
         </h3>
         {showComment && decision ? (
           <p className={styles.note}>

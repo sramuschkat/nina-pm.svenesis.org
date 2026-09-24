@@ -4,6 +4,7 @@
  * (docs/rules/engine.md).
  */
 export * from './astro';
+export * from './effort';
 export * from './geometry';
 export * from './plan';
 export * from './visibility';

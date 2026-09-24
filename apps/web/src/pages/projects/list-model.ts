@@ -1,6 +1,6 @@
 /**
  * Reine Hilfen der Projektliste S-30 (AP-11c; FK 14.3, FA-PRJ-14/16/19): Filter (Rig, Objekttyp,
- * Ersteller, Freigabestatus, Projektstatus, Favoriten), Gruppen je Rig mit Zählern je Status und die
+ * Ersteller, Freigabestatus, Projektstatus, Favoriten, Aufwand), Gruppen je Rig mit Zählern je Status und die
  * Reihenfolge (freigegebene Projekte nach Priorität, danach die übrigen nach Name).
  */
 import type { ProjectListItem } from '../../api/client';
@@ -12,6 +12,24 @@ export interface ListFilters {
   readonly approvalStatus: string;
   readonly status: string;
   readonly favorites: boolean;
+  /** Aufwand-Kennzeichen (FA-PRJ-14/23): `effortTags`, `done` (fertig) oder `none` (noch nicht berechnet). */
+  readonly effort: string;
+}
+
+/** Filterwerte des Aufwand-Kennzeichens (S-30, S-33). */
+export const EFFORT_FILTERS = [
+  'single_night',
+  'multi_night',
+  'not_feasible',
+  'transit',
+  'done',
+  'none',
+] as const;
+
+/** Filterwert eines Kennzeichens: Tag, `done` bei Planungsbedarf 0, `none` ohne Berechnung. */
+export function effortKey(effort: { tag: string | null } | null | undefined): string {
+  if (!effort) return 'none';
+  return effort.tag ?? 'done';
 }
 
 export const NO_FILTERS: ListFilters = {
@@ -21,6 +39,7 @@ export const NO_FILTERS: ListFilters = {
   approvalStatus: '',
   status: '',
   favorites: false,
+  effort: '',
 };
 
 /** Kennung der Gruppe ohne Rig (Entwürfe ohne Rig-Wunsch). */
@@ -37,7 +56,8 @@ export function filterProjects(
       (!f.createdBy || p.createdBy === f.createdBy) &&
       (!f.approvalStatus || p.approvalStatus === f.approvalStatus) &&
       (!f.status || p.status === f.status) &&
-      (!f.favorites || p.favorite),
+      (!f.favorites || p.favorite) &&
+      (!f.effort || effortKey(p.effort) === f.effort),
   );
 }
 

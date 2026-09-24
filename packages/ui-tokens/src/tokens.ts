@@ -40,6 +40,8 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'warning-bg': '#fff3cd',
     muted: '#6b7785',
     skeleton: '#e9ecef',
+    /** Aufwand-Kennzeichen „Transit“ (FA-PRJ-23: violett). */
+    violet: '#6a3fb5',
   },
   dark: {
     primary: '#0b1621',
@@ -67,6 +69,7 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'warning-bg': '#3a2f12',
     muted: '#8b98a5',
     skeleton: '#243647',
+    violet: '#c3a6f5',
   },
 };
 

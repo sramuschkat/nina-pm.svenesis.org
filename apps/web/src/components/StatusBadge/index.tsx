@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import styles from './StatusBadge.module.css';
 
 export type StatusKind = 'project' | 'approval' | 'session' | 'transit' | 'effort';
-type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'muted';
+type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'muted' | 'violet';
 
 const TONES: Readonly<Record<StatusKind, Readonly<Record<string, Tone>>>> = {
   project: {
@@ -33,7 +33,12 @@ const TONES: Readonly<Record<StatusKind, Readonly<Record<string, Tone>>>> = {
     missed: 'danger',
     cancelled: 'muted',
   },
-  effort: { single_night: 'success', multi_night: 'info', not_feasible: 'danger', transit: 'info' },
+  effort: {
+    single_night: 'success',
+    multi_night: 'info',
+    not_feasible: 'danger',
+    transit: 'violet',
+  },
 };
 
 export interface StatusBadgeProps {

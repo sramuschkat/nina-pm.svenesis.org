@@ -3624,6 +3624,8 @@ components:
           type: integer
         effortStale:
           type: boolean
+        effort:
+          $ref: "#/components/schemas/EffortView"
         favorite:
           type: boolean
         version:
@@ -3694,6 +3696,7 @@ components:
         - status
         - priority
         - effortStale
+        - effort
         - favorite
         - version
         - deletedAt
@@ -3703,6 +3706,148 @@ components:
         - createdByName
         - panelCount
         - filters
+    EffortView:
+      type:
+        - object
+        - "null"
+      properties:
+        tag:
+          type:
+            - string
+            - "null"
+          enum:
+            - single_night
+            - multi_night
+            - not_feasible
+            - transit
+            - null
+        nights:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        earliestCompletion:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        achievablePct:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 100
+        requiredHours:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        bestNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        bestNightHoursByStage:
+          type: array
+          items:
+            type: object
+            properties:
+              moonProfileId:
+                type:
+                  - string
+                  - "null"
+              filters:
+                type: array
+                items:
+                  type: string
+              hours:
+                type: number
+                minimum: 0
+            required:
+              - moonProfileId
+              - filters
+              - hours
+        limitingFactor:
+          $ref: "#/components/schemas/EffortLimitingFactor"
+        fullyObservable:
+          type:
+            - boolean
+            - "null"
+        coveragePct:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 100
+        fromNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        toNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        stride:
+          type: integer
+          minimum: 1
+        engineVersion:
+          type: string
+        computedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - tag
+        - nights
+        - earliestCompletion
+        - achievablePct
+        - requiredHours
+        - bestNight
+        - bestNightHoursByStage
+        - limitingFactor
+        - fullyObservable
+        - coveragePct
+        - fromNight
+        - toNight
+        - stride
+        - engineVersion
+        - computedAt
+    EffortLimitingFactor:
+      type:
+        - object
+        - "null"
+      properties:
+        lineId:
+          type: string
+        filterShortName:
+          type: string
+        reason:
+          type:
+            - string
+            - "null"
+          enum:
+            - start_date
+            - not_visible
+            - below_min_time
+            - moon_blocked
+            - prefiltered
+            - outranked
+            - no_need
+            - transit_conflict
+            - flip_in_transit
+            - filter_not_found
+            - rotation_mismatch
+            - null
+      required:
+        - lineId
+        - filterShortName
+        - reason
     FilterPlanSummary:
       type: object
       properties:
@@ -3883,6 +4028,8 @@ components:
           type: integer
         effortStale:
           type: boolean
+        effort:
+          $ref: "#/components/schemas/EffortView"
         favorite:
           type: boolean
         version:
@@ -3950,6 +4097,7 @@ components:
         - status
         - priority
         - effortStale
+        - effort
         - favorite
         - version
         - deletedAt
@@ -4967,36 +5115,7 @@ components:
         estimatedHours:
           type: number
         effort:
-          type:
-            - object
-            - "null"
-          properties:
-            tag:
-              type: string
-            nights:
-              type:
-                - number
-                - "null"
-            earliestCompletion:
-              type:
-                - string
-                - "null"
-              format: date
-              example: 2026-09-18
-            achievablePct:
-              type:
-                - number
-                - "null"
-            limitingFactor:
-              type:
-                - string
-                - "null"
-          required:
-            - tag
-            - nights
-            - earliestCompletion
-            - achievablePct
-            - limitingFactor
+          $ref: "#/components/schemas/EffortView"
         suggestedPriorityPosition:
           type:
             - integer

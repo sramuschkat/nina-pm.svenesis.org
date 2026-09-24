@@ -5,6 +5,7 @@
  * sein (Koordinaten, Rig); Panels und Zeilen setzen Koordinaten voraus (Schema `project_panel`).
  */
 import { z } from 'zod';
+import { EffortView } from './effort';
 import { approvalStatuses, moonModes, projectStatuses, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
@@ -336,6 +337,8 @@ export const ProjectView = z
     status: z.enum(projectStatuses).nullable(),
     priority: z.number().int(),
     effortStale: z.boolean(),
+    /** Gespeichertes Aufwand-Kennzeichen (Job `effort`); `null` = noch nicht berechnet. */
+    effort: EffortView.nullable(),
     favorite: z.boolean(),
     version: z.number().int(),
     deletedAt: UtcInstant.nullable(),

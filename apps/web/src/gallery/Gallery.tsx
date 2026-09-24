@@ -18,6 +18,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { RigSelect, type RigOption } from '../components/RigSelect';
 import { SiteTime } from '../components/SiteTime';
 import { StatusBadge } from '../components/StatusBadge';
+import { EffortChip } from '../components/EffortChip';
 
 const RIGS: RigOption[] = [
   {
@@ -71,6 +72,24 @@ const NGC281_NIGHT = nightChartFromEngine({
   moonProfile: BUILT_IN_MOON_PROFILES.find((p) => p.name === 'moonProfile.moderate') ?? null,
 }).props;
 
+const GALLERY_EFFORT = {
+  tag: 'single_night' as const,
+  nights: 1,
+  achievablePct: null,
+  requiredHours: 4.2,
+  bestNight: '2026-10-12',
+  bestNightHoursByStage: [
+    { moonProfileId: null, filters: ['Ha', 'OIII'], hours: 2.1 },
+    { moonProfileId: 'p', filters: ['L'], hours: 2.1 },
+  ],
+  limitingFactor: null,
+  earliestCompletion: '2026-10-12',
+  fullyObservable: null,
+  coveragePct: null,
+  fromNight: '2026-09-24',
+  toNight: '2027-01-15',
+};
+
 export default function Gallery() {
   const [params] = useSearchParams();
   const { setTheme, setDensity } = useAppearance();
@@ -116,6 +135,31 @@ export default function Gallery() {
         <StatusBadge kind="session" value="stale" />
         <StatusBadge kind="transit" value="locked" />
         <StatusBadge kind="project" value="unknown_value" />
+      </section>
+      <section
+        data-component="EffortChip"
+        style={{ display: 'flex', gap: 'var(--npm-space-2)', flexWrap: 'wrap' }}
+      >
+        <EffortChip effort={GALLERY_EFFORT} />
+        <EffortChip effort={{ ...GALLERY_EFFORT, tag: 'multi_night', nights: 4 }} stale />
+        <EffortChip
+          effort={{
+            ...GALLERY_EFFORT,
+            tag: 'not_feasible',
+            nights: 20,
+            achievablePct: 66,
+            earliestCompletion: null,
+            limitingFactor: { lineId: 'l', filterShortName: 'L', reason: 'moon_blocked' },
+          }}
+          size="sm"
+        />
+        <EffortChip
+          effort={{ ...GALLERY_EFFORT, tag: 'transit', fullyObservable: false, coveragePct: 80 }}
+        />
+        <EffortChip effort={{ ...GALLERY_EFFORT, tag: null }} />
+        <EffortChip effort={null} />
+        <EffortChip effort={null} state="loading" />
+        <EffortChip effort={null} state="error" onRetry={() => undefined} />
       </section>
       <section data-component="CheckList">
         <CheckList

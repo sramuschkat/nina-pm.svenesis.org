@@ -9,6 +9,8 @@ import type { ProjectDetail, ProjectRepository } from '@nina-pm/db';
 import {
   ApplyTemplate,
   can,
+  EffortDetail,
+  EffortView,
   HistoryEntry,
   LineCreate,
   lineCounters,
@@ -39,6 +41,7 @@ import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
+import { scheduleEffort } from './effort-trigger';
 import { requireTenant } from './tenant';
 
 const BASE = '/api/web/v1';
@@ -60,6 +63,30 @@ const ifMatch = z.object({
 });
 
 // ---- Ansicht --------------------------------------------------------------------------------------
+
+/**
+ * Gespeichertes Aufwand-Kennzeichen (`project.effort_*`, AP-13e) als `EffortView`; `null`, solange der
+ * Job noch nie gerechnet hat. Ein unlesbares `effort_detail` (ältere Engine) gilt als nicht berechnet.
+ */
+export function effortView(p: {
+  effortTag: string | null;
+  effortNights: number | null;
+  effortDetail: unknown;
+  effortComputedAt: Date | string | null;
+}): EffortView | null {
+  if (p.effortComputedAt === null) return null;
+  const detail = EffortDetail.safeParse(
+    typeof p.effortDetail === 'string' ? JSON.parse(p.effortDetail) : p.effortDetail,
+  );
+  if (!detail.success) return null;
+  const tag = EffortView.shape.tag.safeParse(p.effortTag);
+  return {
+    ...detail.data,
+    tag: tag.success ? tag.data : null,
+    nights: p.effortNights,
+    computedAt: isoUtc(new Date(p.effortComputedAt)),
+  };
+}
 
 export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
   const p = d.project;
@@ -101,6 +128,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
     status: p.status as ProjectStatus | null,
     priority: p.priority,
     effortStale: p.effortStale,
+    effort: effortView(p),
     favorite: d.favorite,
     version: p.version,
     deletedAt: isoUtcOrNull(p.deletedAt),
@@ -544,7 +572,10 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
   const ctx = async (c: Context<ApiEnv>) => {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
-    return { svc, auth, repo: svc.repositories(tenant).projects() };
+    const repos = svc.repositories(tenant);
+    /** Aufwand-Kennzeichen neu rechnen (Job `effort`, AP-13e). */
+    const effort = (projectId: string) => scheduleEffort(svc, repos, projectId);
+    return { svc, auth, repo: repos.projects(), effort };
   };
 
   /**
@@ -594,8 +625,10 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
   });
 
   app.openapi(createProjectRoute, async (c) => {
-    const { repo, svc } = await ctx(c);
-    return c.json(projectView(await repo.create(c.req.valid('json'), svc.now())), 201);
+    const { repo, svc, effort } = await ctx(c);
+    const d = await repo.create(c.req.valid('json'), svc.now());
+    await effort(d.project.id);
+    return c.json(projectView(d), 201);
   });
 
   app.openapi(getProjectRoute, async (c) => {
@@ -609,7 +642,7 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
   });
 
   app.openapi(patchProjectRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
     const body = c.req.valid('json');
@@ -619,6 +652,7 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
       svc.now(),
       expectedVersion(c.req.valid('header')['if-match']),
     );
+    await effort(id);
     c.header('etag', `"${String(d.project.version)}"`);
     return c.json(projectView(d), 200);
   });
@@ -632,82 +666,95 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
   });
 
   app.openapi(restoreProjectRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.status', true);
-    return c.json(projectView(await repo.restore(id, svc.now())), 200);
+    const result = projectView(await repo.restore(id, svc.now()));
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(duplicateProjectRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.read');
-    return c.json(projectView(await repo.duplicate(id, c.req.valid('json'), svc.now())), 201);
+    const d = await repo.duplicate(id, c.req.valid('json'), svc.now());
+    await effort(d.project.id);
+    return c.json(projectView(d), 201);
   });
 
   app.openapi(addPanelRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(projectView(await repo.addPanel(id, c.req.valid('json'), svc.now())), 201);
+    const result = projectView(await repo.addPanel(id, c.req.valid('json'), svc.now()));
+    await effort(id);
+    return c.json(result, 201);
   });
 
   app.openapi(patchPanelRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id, panelId } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(
-      projectView(await repo.patchPanel(id, panelId, c.req.valid('json'), svc.now())),
-      200,
-    );
+    const result = projectView(await repo.patchPanel(id, panelId, c.req.valid('json'), svc.now()));
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(deletePanelRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id, panelId } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(await repo.deletePanel(id, panelId, svc.now()), 200);
+    const result = await repo.deletePanel(id, panelId, svc.now());
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(addLineRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(projectView(await repo.addLine(id, c.req.valid('json'), svc.now())), 201);
+    const result = projectView(await repo.addLine(id, c.req.valid('json'), svc.now()));
+    await effort(id);
+    return c.json(result, 201);
   });
 
   app.openapi(patchLineRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id, lineId } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(
-      projectView(await repo.patchLine(id, lineId, c.req.valid('json'), svc.now())),
-      200,
-    );
+    const result = projectView(await repo.patchLine(id, lineId, c.req.valid('json'), svc.now()));
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(deleteLineRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id, lineId } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(await repo.deleteLine(id, lineId, svc.now()), 200);
+    const result = await repo.deleteLine(id, lineId, svc.now());
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(duplicateLineRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id, lineId } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(
-      projectView(await repo.duplicateLine(id, lineId, c.req.valid('json'), svc.now())),
-      201,
+    const result = projectView(
+      await repo.duplicateLine(id, lineId, c.req.valid('json'), svc.now()),
     );
+    await effort(id);
+    return c.json(result, 201);
   });
 
   app.openapi(applyTemplateRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, effort } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.update');
-    return c.json(projectView(await repo.applyTemplate(id, c.req.valid('json'), svc.now())), 200);
+    const result = projectView(await repo.applyTemplate(id, c.req.valid('json'), svc.now()));
+    await effort(id);
+    return c.json(result, 200);
   });
 
   app.openapi(statusRoute, async (c) => {

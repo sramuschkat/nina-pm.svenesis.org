@@ -12,6 +12,7 @@ import { AuditRepository } from './audit';
 import { EquipmentRepository } from './equipment';
 import { ProjectRepository } from './project';
 import { ApprovalRepository } from './approval';
+import { EffortRepository } from './effort';
 import { NotificationRepository } from './notification';
 import { PreferenceRepository } from './preference';
 import { TenantAdminRepository, type SystemActor } from './tenant-admin';
@@ -29,6 +30,7 @@ export interface OpenDatabase {
     equipment: () => EquipmentRepository;
     projects: () => ProjectRepository;
     approvals: () => ApprovalRepository;
+    effort: () => EffortRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -53,6 +55,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       equipment: () => new EquipmentRepository(db, ctx),
       projects: () => new ProjectRepository(db, ctx),
       approvals: () => new ApprovalRepository(db, ctx),
+      effort: () => new EffortRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

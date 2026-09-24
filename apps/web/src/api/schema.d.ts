@@ -10343,6 +10343,7 @@ export interface components {
             status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
             priority: number;
             effortStale: boolean;
+            effort: components["schemas"]["EffortView"];
             favorite: boolean;
             version: number;
             /**
@@ -10372,6 +10373,54 @@ export interface components {
             panelCount: number;
             filters: components["schemas"]["FilterPlanSummary"][];
         };
+        EffortView: {
+            /** @enum {string|null} */
+            tag: "single_night" | "multi_night" | "not_feasible" | "transit" | null;
+            nights: number | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            earliestCompletion: string | null;
+            achievablePct: number | null;
+            requiredHours: number | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            bestNight: string | null;
+            bestNightHoursByStage: {
+                moonProfileId: string | null;
+                filters: string[];
+                hours: number;
+            }[];
+            limitingFactor: components["schemas"]["EffortLimitingFactor"];
+            fullyObservable: boolean | null;
+            coveragePct: number | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            fromNight: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            toNight: string | null;
+            stride: number;
+            engineVersion: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            computedAt: string;
+        } | null;
+        EffortLimitingFactor: {
+            lineId: string;
+            filterShortName: string;
+            /** @enum {string|null} */
+            reason: "start_date" | "not_visible" | "below_min_time" | "moon_blocked" | "prefiltered" | "outranked" | "no_need" | "transit_conflict" | "flip_in_transit" | "filter_not_found" | "rotation_mismatch" | null;
+        } | null;
         FilterPlanSummary: {
             /**
              * Format: uuid
@@ -10464,6 +10513,7 @@ export interface components {
             status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
             priority: number;
             effortStale: boolean;
+            effort: components["schemas"]["EffortView"];
             favorite: boolean;
             version: number;
             /**
@@ -11009,17 +11059,7 @@ export interface components {
             }[];
             panelCount: number;
             estimatedHours: number;
-            effort: {
-                tag: string;
-                nights: number | null;
-                /**
-                 * Format: date
-                 * @example 2026-09-18
-                 */
-                earliestCompletion: string | null;
-                achievablePct: number | null;
-                limitingFactor: string | null;
-            } | null;
+            effort: components["schemas"]["EffortView"];
             suggestedPriorityPosition: number | null;
             version: number;
         };

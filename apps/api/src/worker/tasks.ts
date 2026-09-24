@@ -8,24 +8,37 @@ export interface MaintenanceDeps {
   readonly measureStorage?: () => Promise<number>;
   /** Offene Einreichungen nach `approvalDeadlineDays` verfallen lassen (AP-12a, `tick-hourly`). */
   readonly expireSubmissions?: () => Promise<number>;
+  /** Aufwand-Kennzeichen je Standort und Nacht nach dem lokalen Mittag (AP-13e, NT-08, `tick-hourly`). */
+  readonly effortSiteNights?: () => Promise<number>;
 }
 
 /**
  * Aufgaben je Zeitplan (TK 13). Stand AP-04b: `tick-5min` übernimmt liegengebliebene Jobs (7.4),
  * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
- * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a).
+ * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
+ * die Aufwand-Kennzeichen (AP-13e, NT-08).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
     'tick-5min': [{ name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) }],
-    'tick-hourly': maintenance?.expireSubmissions
-      ? [
-          {
-            name: 'submission_expiry',
-            run: async () => void (await maintenance.expireSubmissions?.()),
-          },
-        ]
-      : [],
+    'tick-hourly': [
+      ...(maintenance?.expireSubmissions
+        ? [
+            {
+              name: 'submission_expiry',
+              run: async () => void (await maintenance.expireSubmissions?.()),
+            },
+          ]
+        : []),
+      ...(maintenance?.effortSiteNights
+        ? [
+            {
+              name: 'effort_site_nights',
+              run: async () => void (await maintenance.effortSiteNights?.()),
+            },
+          ]
+        : []),
+    ],
     daily: maintenance
       ? [
           {

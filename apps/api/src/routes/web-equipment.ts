@@ -83,7 +83,7 @@ function pick<S extends z.ZodObject>(schema: S, row: object): z.output<S> {
 }
 
 const cameraView = (row: CameraRow) => pick(CameraView, row);
-const moonProfileView = (row: MoonProfileRow) => pick(MoonProfileView, row);
+export const moonProfileView = (row: MoonProfileRow) => pick(MoonProfileView, row);
 const telescopeView = (row: TelescopeRow) => pick(TelescopeView, row);
 
 function templateView(row: TemplateRow): z.output<typeof ExposureTemplateView> {
@@ -106,7 +106,7 @@ function templateView(row: TemplateRow): z.output<typeof ExposureTemplateView> {
   };
 }
 
-function rigView(
+export function rigView(
   row: RigRow,
   telescope: TelescopeRow | undefined,
   camera: CameraRow | undefined,

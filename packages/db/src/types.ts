@@ -353,6 +353,12 @@ export interface ProjectTable {
   submitterRank: number | null;
   contentChangedAt: Timestamp | null;
   effortStale: Generated<boolean>;
+  /** Aufwand-Kennzeichen (FA-PRJ-23, AP-13e); `effortTag = null` bei gesetztem `effortComputedAt` = fertig. */
+  effortTag: string | null;
+  effortNights: number | null;
+  effortDetail: Json | null;
+  effortInputHash: string | null;
+  effortComputedAt: Timestamp | null;
   requestComment: string | null;
   startDate: DateKey | null;
   dueDate: DateKey | null;

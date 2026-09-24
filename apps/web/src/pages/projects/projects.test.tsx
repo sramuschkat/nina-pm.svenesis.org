@@ -181,6 +181,7 @@ const project = (lines: LineView[], over: Partial<ProjectView> = {}): ProjectVie
     status: null,
     priority: 0,
     effortStale: true,
+    effort: null,
     favorite: false,
     version: 3,
     deletedAt: null,

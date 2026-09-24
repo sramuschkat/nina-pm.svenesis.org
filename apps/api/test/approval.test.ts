@@ -375,6 +375,30 @@ describe('Rangfolge, Warteschlange, Entwürfe', () => {
     const drafts = await t.call('/drafts');
     expect(drafts.body.items?.map((d) => d.id)).toEqual([draft]);
   });
+
+  it('Einfügeposition nach Stimmen nur für Admins (FA-FRG-16)', async () => {
+    const t = await setup();
+    // Freigegeben: A mit 1 Stimme (Position 1), B ohne Stimme (Position 2).
+    const a = await project(t);
+    const b = await project(t);
+    await submit(t, a);
+    await submit(t, b);
+    await t.call(`/queue/project/${a}/vote`, { method: 'PUT', as: 'user2' });
+    await t.call(`/projects/${a}/approve`, { method: 'POST', body: approveBody(t) });
+    await t.call(`/projects/${b}/approve`, { method: 'POST', body: approveBody(t) });
+    // Eingereicht: C mit 1 Stimme → hinter A, vor B; D ohne Stimme → ans Ende.
+    const c = await project(t);
+    const d = await project(t);
+    await submit(t, c);
+    await submit(t, d);
+    await t.call(`/queue/project/${c}/vote`, { method: 'PUT', as: 'user2' });
+    const admin = await queue(t);
+    const position = (pid: string) =>
+      admin.find((i) => i.id === pid)?.suggestedPriorityPosition as number | null | undefined;
+    expect([position(c), position(d)]).toEqual([2, 3]);
+    const user = await queue(t, 'user2');
+    expect(user.map((i) => i.suggestedPriorityPosition)).toEqual([null, null]);
+  });
 });
 
 describe('Verfall nach approvalDeadlineDays (Entscheidung 24.09.2026)', () => {

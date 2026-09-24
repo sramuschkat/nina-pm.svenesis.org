@@ -117,6 +117,11 @@ const DUPLICATE_SKIP = new Set([
   'contentChangedAt',
   'completedAt',
   'effortStale',
+  'effortTag',
+  'effortNights',
+  'effortDetail',
+  'effortInputHash',
+  'effortComputedAt',
   'createdBy',
 ]);
 
