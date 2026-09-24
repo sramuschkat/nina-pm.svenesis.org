@@ -1,0 +1,240 @@
+{
+  "id": "G16",
+  "title": "Neuplanung mit tonight (Nachtfairness A-10)",
+  "requirements": [
+    "FA-SCH-01",
+    "FA-SCH-16"
+  ],
+  "explanation": "Ergebnis: A 0–23 · B 24–47. Wie G02, aber neu geplant nach der ersten Stunde (startAtS = 3600): A hat in Slots 0–11 belichtet (12 Aufnahmen akzeptiert). Die vergangenen Slots bleiben A zugeordnet und gesperrt. Pass 2 rechnet die Vergangenheit ein (supply′ = 36 + 12 Slots, d′_A = 28 + 12, d′_B = 40) und zieht sie danach ab: A erhält noch 12, B 24 Slots. Über die Nacht bleibt es bei 24 : 24 wie im Erstplan (G02), das Ergebnis ist mit dem Erstplan identisch.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): B 0–27 · A 28–47. Original: kennt keine Neuplanung (tonight wird ignoriert) und verteilt die ganze Nacht nach Restbedarf neu – B 28 Slots, A 20; A hätte über die Nacht 32 Slots, B nur 28, und der Plan bräche mit der Vergangenheit.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 48,
+    "startAtS": 3600,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 40,
+                "accepted": 12,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 40,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": {
+      "pastBlocks": [
+        {
+          "unitId": "A",
+          "fromS": 0,
+          "toS": 3600
+        }
+      ],
+      "exposedSecByUnit": {
+        "A": 3600
+      },
+      "lastAutofocusS": null,
+      "filterCycle": [],
+      "flipDoneByPanel": {},
+      "currentUnitId": "A"
+    }
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B"
+    ]
+  }
+}

@@ -162,6 +162,16 @@ Damit hängt das Ergebnis nicht an IEEE-Details (NFA-03).
 - Fehlt `tonight.lastAutofocusUtc`, gilt der Autofokus als **fällig** (`letzterAF = −∞`, §8).
 - **Determinismus:** gleiche Eingabe (inkl. `tonight`) → gleicher Restplan. Wann das Plugin neu plant, regelt `specs/nina/execution.md` §3.
 
+### 5.4 Auslegungen (AP-13b, Vorschlag – mit den Soll-Plänen abzunehmen, H-13)
+Stellen, an denen der Text oben zwei Lesarten zulässt oder sich selbst widerspricht; so ist es in `packages/engine/src/plan` umgesetzt:
+1. **Vorfilter mit `fix` (A-16):** Produktiv enthält MinChunk die Blockfixkosten. Damit ein Restposten (`MinChunk = work + fix`) nicht am eigenen `fix` scheitert, zählt `fix` im Vorfilter (§5 und §6) zur erreichbaren Zeit, sobald Arbeit erreichbar ist: `accessible + fix < MinChunk → PreFiltered`.
+2. **Bedarf mit `fix` je offenem Block (A-16):** In `fairShare` ist `d_i = Pass-Bedarf + fix · max(0, nBlocks_i − Läufe_i)`, wobei `Läufe_i` die bereits gemalten Läufe der Einheit zählt. So wird `fix` je erwartetem Block einmal eingeplant und nicht in jedem Pass erneut.
+3. **Mindestzeit bei Nachtfairness (A-10):** `min_i` in §5.1 prüft `existing_i` **ohne** vergangene Slots. Vergangenes steckt bereits in `supply'` und `d'_i`; zählte es zusätzlich in `existing_i`, entfiele die Mindestzeit nur für die Einheit mit Vergangenheit. Zwei gleiche Ziele kämen dann nach der Neuplanung nicht mehr auf gleiche Anteile (21 : 27 statt 24 : 24, Eigenschaft §11.3). Die Restangebot-Runde prüft `existing_i + b_i` weiter **mit** vergangenen Slots.
+4. **Vergangene Slots (§5.3):** Slots vor `startAtS` sind für alle Einheiten nicht mehr `CanImage`; die in `pastBlocks` belegten stehen gesperrt bei ihrer Einheit, sofern sie heute noch teilnimmt.
+5. **Einheiten ohne Arbeit (§3.5, A-25):** Produktiv entfällt jede Einheit ohne Restarbeit (Diagnose `no_need`), außer Transit-Einheiten mit Fenster, die bis Fensterende belichten (A-21).
+6. **Mosaik-Gruppen (A-15):** Die Gruppe steht in der Reihenfolge ihrer Gruppenschlüssel (Minimum/Summe wie in §5.2, letzter Tie-Break Projekt-ID). Pass 3a mit Gruppen: Fenster der Gruppe = [kleinster erster, größter letzter nutzbarer Slot der Panels], `accessible_P` = Summe; die Reserve wird wie in `fairShare` auf die Panels verteilt.
+7. **Transitkonflikt (A-20):** Ein späterer Transit gilt als überlappend, sobald ein Slot seines Fensters oder Vorlaufs schon für einen anderen Transit gesperrt ist.
+
 ## 6. Strategie manuelle Priorität (`paintGreedy`)
 ```
 preClaimTransits()

@@ -1,0 +1,243 @@
+{
+  "id": "G08",
+  "title": "Nur-mondlos-Arbeit (Pass 1a) und ganze Slots (A-27)",
+  "requirements": [
+    "FA-SCH-13",
+    "FA-SCH-12"
+  ],
+  "explanation": "Ergebnis: A 0–23 · B 24–47. Mond unten in Slots 0–23, oben ab 24. A hat 12 × R mit Profil „Kein Mond“ (nur bei Mond unten möglich) und 30 × L, B 40 × L. Pass 1a gibt die mondfreie Zeit zuerst der Arbeit, die nur dann geht: A erhält 12 Slots. Pass 2 teilt die übrigen 12 mondfreien Slots: A hat seine Mindestzeit schon, B bekommt sie (12). Pass 3 teilt die 24 Mond-oben-Slots nach erreichbarer Arbeit (A 30, B 28 Slots) – mit ganzen Slots je 12. `defragment` legt A-B-A zu A…A B…B zusammen: A 0–23, B 24–47.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): A 0–24 · B 25–47. Original: Budgets als Bruchzahlen (A 12,4 → ⌈…⌉ = 13 Slots, B 11); B beginnt einen Slot später und erhält die freie Endzeit erst über `absorb`.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 48,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "nomoon",
+        "distanceDeg": 180,
+        "maxIllumPct": 0,
+        "mustBeDown": true,
+        "widthDays": 14
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-R",
+                "filter": "R",
+                "exposureS": 300,
+                "planned": 12,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "nomoon",
+                "safe": []
+              },
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 30,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 40,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B"
+    ]
+  }
+}

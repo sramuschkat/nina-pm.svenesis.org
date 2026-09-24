@@ -52,6 +52,19 @@ describe('Grid-Schema', () => {
   });
 });
 
+describe('Soll-Pläne', () => {
+  it('alle G*.json bestehen Schema und Querbezüge', () => {
+    const dir = join(ORACLE_DIR, '..', '..', 'docs', 'contracts', 'golden-plans');
+    const files = gridFiles([dir]).filter((f) => /\/G[0-9]+[a-z]?\.json$/.test(f));
+    expect(files.length).toBeGreaterThanOrEqual(18);
+    for (const file of files) {
+      const plan = JSON.parse(readFileSync(file, 'utf8')) as unknown;
+      expect(GoldenPlanSchema.safeParse(plan).error?.issues ?? [], file).toEqual([]);
+      expect(validateGrid(plan).problems, file).toEqual([]);
+    }
+  });
+});
+
 describe('Quellen und Patch', () => {
   it('Pin: Commit 5dd621d, sechs Dateien mit SHA-256', () => {
     const pin = loadPin();

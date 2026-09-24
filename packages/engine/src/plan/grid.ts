@@ -83,6 +83,8 @@ export interface GridMoonProfile {
   readonly distanceDeg: number;
   readonly maxIllumPct: number;
   readonly mustBeDown: boolean;
+  /** Breite `W` in Tagen; produktiv Pflicht außer bei `mustBeDown` (Restriktivität A-31). */
+  readonly widthDays?: number;
 }
 
 export interface GridOverhead {
@@ -159,6 +161,8 @@ export type GridIssueCode =
   | 'grid.duplicate_line'
   | 'grid.duplicate_profile'
   | 'grid.unknown_profile'
+  | 'grid.profile_width'
+  | 'grid.profile_name'
   | 'grid.project_mixed'
   | 'grid.project_inconsistent'
   | 'grid.panels'
@@ -220,8 +224,14 @@ export function checkGrid(grid: GridInput): GridIssue[] {
 
   const profiles = new Set<string>();
   grid.moonProfiles.forEach((p, i) => {
-    if (profiles.has(p.id)) add('grid.duplicate_profile', `moonProfiles[${String(i)}]`, p.id);
+    const at = `moonProfiles[${String(i)}]`;
+    if (profiles.has(p.id)) add('grid.duplicate_profile', at, p.id);
     profiles.add(p.id);
+    if (grid.mode === 'productive' && !p.mustBeDown && p.widthDays === undefined)
+      add('grid.profile_width', `${at}.widthDays`, 'produktiv braucht die Breite W (A-31)');
+    // Das Original erkennt „Kein Mond“ am Namen (SE 55): der Name ist dafür reserviert.
+    if (grid.mode === 'compat' && !p.mustBeDown && p.id.toLowerCase() === 'no moon')
+      add('grid.profile_name', `${at}.id`, '„No Moon“ nur für mustBeDown');
   });
 
   const unitIds = new Set<string>();

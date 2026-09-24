@@ -1,0 +1,249 @@
+{
+  "id": "G09",
+  "title": "Exklusiv vs. flexibel (Pass 1b)",
+  "requirements": [
+    "FA-SCH-13"
+  ],
+  "explanation": "Ergebnis: A 0–23 · B 24–47. Mond unten in Slots 0–23. A (Profil streng) ist bei Mond oben nur in 4 Slots sicher – weniger als seine Mindestzeit (12 Slots) → „exklusiv“, braucht die mondfreie Zeit. B (entspannt) ist bei Mond oben überall sicher → „flexibel“. Produktiv ist B in den Mond-oben-Slots 28–47 einziger Kandidat mit Arbeit (A-6: `UsableSlot`) und bekommt sie in Pass 0. Pass 1b gibt der exklusiven Einheit zuerst: A erhält 20 mondfreie Slots (0–19). Die restlichen 4 mondfreien Slots wären für B ein Splitter unter der Mindestzeit, B hat seinen Block schon → nicht gemalt; Pass 3 gibt B die Slots 24–27. `absorb` schlägt 20–23 dem Nachbarn A zu.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): A 0–19 · B 20–47. Original: Pass 0 prüft nur `CanImage`, deshalb gibt es keine exklusiven Slots; B erhält in Pass 1b die restlichen 4 mondfreien Slots (20–23) und alles Weitere in Pass 3 – im Ergebnis 4 Slots mehr für B, 4 weniger für A.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 48,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "strict",
+        "distanceDeg": 90,
+        "maxIllumPct": 30,
+        "mustBeDown": false,
+        "widthDays": 8
+      },
+      {
+        "id": "relaxed",
+        "distanceDeg": 25,
+        "maxIllumPct": 80,
+        "mustBeDown": false,
+        "widthDays": 3
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-Ha",
+                "filter": "Ha",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "strict",
+                "safe": [
+                  [
+                    24,
+                    27
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 50,
+        "canImage": [
+          [
+            0,
+            47
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-Ha",
+                "filter": "Ha",
+                "exposureS": 300,
+                "planned": 30,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "relaxed",
+                "safe": [
+                  [
+                    24,
+                    47
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B"
+    ]
+  }
+}

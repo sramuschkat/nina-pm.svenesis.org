@@ -4,6 +4,7 @@
  * (docs/rules/engine.md).
  */
 export * from './astro';
+export * from './geometry';
 export * from './plan';
 export * from './visibility';
 export { canonicalHash, canonicalInputJson, CanonicalError } from './canonical';
@@ -12,4 +13,4 @@ export * as math from './math';
 export { q, roundHalfAwayFromZero, type QuantizeInv } from './round';
 
 /** SemVer; bei jeder Verhaltensänderung erhöhen, Major = inkompatibler PlanInput/NightPlan. */
-export const ENGINE_VERSION = '0.2.0';
+export const ENGINE_VERSION = '0.3.0';

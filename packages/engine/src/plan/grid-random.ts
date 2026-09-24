@@ -53,10 +53,10 @@ function rngFor(seed: number): Rng {
 }
 
 const PROFILE_TEMPLATES: readonly GridMoonProfile[] = [
-  { id: 'strict', distanceDeg: 90, maxIllumPct: 30, mustBeDown: false },
-  { id: 'moderate', distanceDeg: 60, maxIllumPct: 60, mustBeDown: false },
-  { id: 'relaxed', distanceDeg: 25, maxIllumPct: 80, mustBeDown: false },
-  { id: 'nomoon', distanceDeg: 180, maxIllumPct: 0, mustBeDown: true },
+  { id: 'strict', distanceDeg: 90, maxIllumPct: 30, mustBeDown: false, widthDays: 8 },
+  { id: 'moderate', distanceDeg: 60, maxIllumPct: 60, mustBeDown: false, widthDays: 5 },
+  { id: 'relaxed', distanceDeg: 25, maxIllumPct: 80, mustBeDown: false, widthDays: 3 },
+  { id: 'nomoon', distanceDeg: 180, maxIllumPct: 0, mustBeDown: true, widthDays: 14 },
 ];
 const FILTERS = ['L', 'R', 'G', 'B', 'Ha', 'OIII', 'SII'] as const;
 const EXPOSURES = [30, 60, 120, 180, 300, 600] as const;

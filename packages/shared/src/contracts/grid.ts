@@ -55,6 +55,8 @@ export const GridMoonProfileSchema = z.strictObject({
   distanceDeg: z.number().min(0).max(180),
   maxIllumPct: z.number().min(0).max(100),
   mustBeDown: z.boolean(),
+  /** Breite `W` (Tage); produktiv Pflicht außer bei `mustBeDown` (A-31). */
+  widthDays: z.number().min(0).max(30).optional(),
 });
 
 export const GridSettingsSchema = z.strictObject({

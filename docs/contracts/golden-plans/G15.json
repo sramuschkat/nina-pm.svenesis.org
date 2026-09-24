@@ -1,0 +1,243 @@
+{
+  "id": "G15",
+  "title": "Mosaik als Panel-Einheiten mit Deckel je Projekt (A-15)",
+  "requirements": [
+    "FA-SCH-05",
+    "FA-SCH-03"
+  ],
+  "explanation": "Ergebnis: M/p0 0–11 · S 12–23. Mosaik M mit drei getrennt geplanten Panels (je 20 Slots, Mindestzeit 1 h) und Einzelziel S (30 Slots), 24 gemeinsame Slots. Die Panels treten in `fairShare` als **eine** Gruppe auf: Mindestzeit der Gruppe 12 Slots, S 12 Slots, zusammen genau das Angebot → M 12, S 12. Die 12 Slots der Gruppe reichen nicht für mehrere Panels mit Mindestzeit; nach der Regel bekommt das erste Panel mit nutzbaren Slots (p0) den Anteil.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): M/p0 0–11 · M/p1 12–23. Original: jedes Panel konkurriert einzeln. Im Knapp-Fall kommen in Sortierreihenfolge p0 und p1 zuerst (geringere Höhe) → M 24 Slots, S nichts.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 24,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "M/p0",
+        "projectId": "M",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 40,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "M-p0-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "M/p1",
+        "projectId": "M",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 40,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 1,
+            "lines": [
+              {
+                "id": "M-p1-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "M/p2",
+        "projectId": "M",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 40,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 2,
+            "lines": [
+              {
+                "id": "M-p2-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "S",
+        "projectId": "S",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "S-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 30,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "M/p0",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S",
+      "S"
+    ]
+  }
+}
