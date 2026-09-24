@@ -1,0 +1,32 @@
+/** Nachtplanung (AP-13a…13d, `specs/engine/allocation.md`): Grid-Format, Kompatibilitätsschalter. */
+export {
+  checkGrid,
+  DEFAULT_SORT_CHAIN,
+  GRID_SLOT_SECONDS,
+  gridMasks,
+  maskToRanges,
+  panelUnitIndex,
+  rangesToMask,
+  SORT_CHAIN_KEYS,
+  type GridFlip,
+  type GridInput,
+  type GridIssue,
+  type GridIssueCode,
+  type GridLine,
+  type GridLineMask,
+  type GridMasks,
+  type GridMode,
+  type GridMoonProfile,
+  type GridOverhead,
+  type GridPanel,
+  type GridPanelMask,
+  type GridSettings,
+  type GridTonight,
+  type GridTransit,
+  type GridUnit,
+  type GridUnitMask,
+  type SlotRange,
+  type SortChainKey,
+} from './grid';
+export { randomGrid, seededRandom, type RandomGridOptions } from './grid-random';
+export { compatSwitches, DEVIATION_IDS, type CompatSwitches } from './compat';

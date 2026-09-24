@@ -1,0 +1,105 @@
+{
+  "mode": "compat",
+  "slotS": 300,
+  "slots": 60,
+  "startAtS": null,
+  "moonAltDeg": [
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+  ],
+  "settings": {
+    "strategy": "proportional",
+    "sortChain": ["lowest_peak_altitude", "setting_soonest", "most_remaining", "constrained"],
+    "bonusEnabled": false,
+    "overshootPct": 10,
+    "mosaicPanelsIndependent": false,
+    "dither": {
+      "enabled": false,
+      "every": 3
+    },
+    "filterSwitch": {
+      "enabled": true,
+      "every": 3,
+      "tolerancePct": 100
+    },
+    "overhead": {
+      "slewCenterS": 0,
+      "filterChangeS": 0,
+      "ditherSettleS": 0,
+      "afEveryMin": 0,
+      "afDurationS": 0,
+      "downloadS": 0
+    },
+    "flip": {
+      "enabled": false,
+      "afterMin": 5,
+      "maxAfterMin": 15,
+      "pauseBeforeMin": 0,
+      "durationS": 240
+    }
+  },
+  "moonProfiles": [
+    {
+      "id": "relaxed",
+      "distanceDeg": 25,
+      "maxIllumPct": 80,
+      "mustBeDown": false
+    }
+  ],
+  "units": [
+    {
+      "unitId": "W",
+      "projectId": "W",
+      "priority": 1,
+      "minTimeOnTargetH": 0.5,
+      "dueDate": null,
+      "peakAltDeg": 55,
+      "canImage": [[0, 59]],
+      "meridianAtS": null,
+      "transit": null,
+      "panels": [
+        {
+          "index": 0,
+          "lines": [
+            {
+              "id": "W-p0-L",
+              "filter": "L",
+              "exposureS": 300,
+              "planned": 20,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": null,
+              "safe": []
+            },
+            {
+              "id": "W-p0-Ha",
+              "filter": "Ha",
+              "exposureS": 300,
+              "planned": 10,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": "relaxed",
+              "safe": [[0, 59]]
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "lines": [
+            {
+              "id": "W-p1-L",
+              "filter": "L",
+              "exposureS": 300,
+              "planned": 20,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": null,
+              "safe": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tonight": null
+}

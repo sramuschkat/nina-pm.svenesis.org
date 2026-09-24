@@ -47,6 +47,8 @@ Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. 
 - **Transit** je Einheit: `{"windowS": [von, bis], "lineId": "A-R", "lockedAtS": 0}` (Sekunden ab Slot 0; `lockedAtS` entscheidet bei Überlappung, A-20).
 - **Neuplanung:** `startAtS` (Sekunden ab Slot 0) plus `tonight` in Sekunden: `{"pastBlocks": [{"unitId": "A", "fromS": 0, "toS": 3600}], "exposedSecByUnit": {"A": 3300}, "lastAutofocusS": 600, "filterCycle": [{"unitId": "A", "lineId": "A-Ha", "subsOnLine": 9}], "flipDoneByPanel": {}, "currentUnitId": "A"}`.
 - `mode` ist das **einzige** Modusfeld (`productive` | `compat`, allocation.md §11.1).
+- **Schema:** `grid.schema.json` (JSON Schema 2020-12, erzeugt aus `packages/shared/src/contracts/grid.ts` mit `pnpm contracts:generate`). Querbezüge (Einheiten-/Zeilen-IDs, Profile, Bereiche, Panel-Einheiten, `due_soonest` im Kompatibilitätsmodus) prüft `checkGrid` in `packages/engine/src/plan/grid.ts`.
+- **Orakel-Ausgabe** und Adapter-Regeln: `tools/astropm-oracle/README.md` (AP-13a).
 - Das Grid enthält keine Astronomie; der Adapter `grid → Matrix` ist Teil des Tests.
 
 ## Pflichtfälle (Mindestumfang)

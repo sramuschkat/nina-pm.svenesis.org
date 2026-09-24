@@ -1,6 +1,8 @@
 /** Renderer für die generierten Vertragsdateien (auch vom Test contracts.spec.ts benutzt). */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+import { GoldenPlanSchema } from '../src/contracts/grid';
 
 export interface ErrorContract {
   code: string;
@@ -95,4 +97,10 @@ export function renderI18nErrors(): string {
     '} as const;',
     '',
   ].join('\n');
+}
+
+/** JSON Schema des Soll-Plan-/Grid-Formats (AP-13a) aus dem zod-Vertrag. */
+export function renderGridSchema(): string {
+  const schema = z.toJSONSchema(GoldenPlanSchema, { target: 'draft-2020-12' });
+  return `${JSON.stringify({ ...schema, title: 'Svenesis NINA-PM – Soll-Plan / Grid (allocation.md §11.2)' }, null, 2)}\n`;
 }
