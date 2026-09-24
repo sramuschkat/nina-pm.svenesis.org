@@ -24,7 +24,7 @@ Verbindlich für AP-10 und AP-13b. Bezug: Fachkonzept 8.1, 8.2, FA-MON-01…05. 
 
 ## Algorithmus
 ```
-if mustBeDown: return moonAlt <= maxAlt   # Stufe 1 mit Reserve: "Kein Mond" hat maxAlt = -2 (AST-M11)
+if mustBeDown: return moonAlt <= 0        # nur Stufe 1, wie MoonDown (Entscheidung 24.09.2026; maxAlt wirkt hier nicht)
 if moonAlt <= 0:           return true      # Stufe 1 (≤ 0 wie MoonDown in allocation.md §2)
 if moonAlt <= minAlt:      return true      # Stufe 2 (nur relevant bei minAlt ≥ 0)
 if illum <= maxIllum and sep >= A_floor: return true   # Stufe 3, A_floor = 15 Grad (AST-M1)
@@ -39,7 +39,7 @@ required = (We == 0) ? 0 : Ae / (1 + (d / We)²)
 return sep >= required                      # Stufe 4
 ```
 
-Hinweis: Stufe 1 prüft den Horizont 0° (Mondmittelpunkt, scheinbar) mit **≤ 0** – derselbe Operator wie `MoonDown` in der Planung. Bei den Built-ins mit `minAlt < 0` wirkt Stufe 2 nie; die Relaxierung beginnt knapp über dem Horizont.
+Hinweis: Stufe 1 prüft den Horizont 0° (Mondmittelpunkt, scheinbar) mit **≤ 0** – derselbe Operator wie `MoonDown` in der Planung. **„Mond muss unter dem Horizont sein“** (Built-in *Kein Mond*) nutzt ausschließlich diese Stufe: sicher genau bei `moonAlt ≤ 0`, wie `allocation.md` §3 („Kein Mond ⇔ MoonDown“), FK 8.2 und die Grenzfall-Tabelle; die frühere Reserve `moonAlt ≤ maxAlt` (−2°, AST-M11) widersprach beiden und entfällt (Entscheidung 24.09.2026). Bei den Built-ins mit `minAlt < 0` wirkt Stufe 2 nie; die Relaxierung beginnt knapp über dem Horizont.
 
 **Mondauf-/-untergang (verbindlich, AST-3):** „Mond unten“, `MoonDown`, `mustBeDown` und die Auf-/Untergangszeiten in Anzeige und Referenztests benutzen **dieselbe** Definition: scheinbare topozentrische Höhe des **Mondmittelpunkts** = 0°. Die Sonnenkonvention −0,833° (Oberrand) und die Oberrand-Definition von USNO/astroplan gelten hier **nicht** (Unterschied bis 0,26° ≈ 1,7–3 min). Der Referenz-Generator `gen_sun_moon.py` rechnet Mondzeiten genauso; die Toleranz in TK 9.2 gilt gegen diese Definition.
 
