@@ -12,5 +12,4 @@ export { sha256hex } from './hash/sha256';
 export * as math from './math';
 export { q, roundHalfAwayFromZero, type QuantizeInv } from './round';
 
-/** SemVer; bei jeder Verhaltensänderung erhöhen, Major = inkompatibler PlanInput/NightPlan. */
-export const ENGINE_VERSION = '0.3.0';
+export { ENGINE_VERSION } from './version';

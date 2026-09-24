@@ -273,6 +273,20 @@ für s = FirstUsableSlot … LastUsableSlot:
 - **8.3 Panel-Koordinaten:** Slew und `tM` je aktivem Panel.
 - **8.4 Blöcke:** neuer Block bei jedem Slew (Einheit, Panel oder nach Leerlauf) und nach jedem `wait`; Blockende = Start des nächsten Blocks bzw. Nachtende. Jeder Block endet mit einem `end`-Eintrag bei `blockEnd` (Zeitmarke, `execution.md` §4.2). `lastOfNight = true` trägt genau der Eintrag, der die Nachtende-Kulanz nutzt; sonst `false`. Blöcke ohne `expose`/`expose_series` entfallen (ihre Slots sind dann Leerlauf). Block-IDs: UUID v7 aus `nightPlanId` + laufender Nummer (deterministisch: `uuidv7FromHash(nightPlanInputHash, n)`).
 
+- **8.5 Auslegungen (AP-13c, Vorschlag):**
+  1. **`end` und `wait`:** `end` steht bei der Zeit, zu der die letzte Aktion des Blocks endet (A-29) bzw. am Ende seines Laufs (wie im Beispiel TK 7.6: `end` 09:20:01). Ein Leerlauf von mindestens 5 min vor dem nächsten Block steht als `wait` am **Ende des vorigen** Blocks (danach dessen `end`). Damit liegt kein Eintrag vor dem Blockbeginn, außer dem Transit-Vorlauf.
+  2. **Dither (ENG5-6):** Der Dither nach einer Belichtung wird zurückgestellt. Er entsteht erst, wenn `pick` zur Zeit `t + ditherSettleS` noch eine passende Belichtung im Block findet.
+  3. **Panelwechsel** eines Mosaiks ohne Panel-Einheiten beginnt einen neuen Block (§8.4). Der erste Slew des Blocks zielt auf das Panel der ersten Belichtung (A-19), nicht auf das Projektzentrum.
+  4. **Mondsicherheit ab Belichtungsbeginn:** Bei LA-Zeilen zählt `headroom` ab `t`, nicht ab Slotbeginn (`headroom(cs) − (t − cs·300) ≥ exposureS + downloadS`, A-26).
+  5. **Filterwechsel muss passen:** Passt `filterChangeS + exposureS + downloadS` nicht mehr bis Blockende, gilt `pick` als leer (A-29).
+  6. **Filterzyklus:** Bleibt die Zeile gleich, zählt `subsOnLine` weiter; `(pick, 1)` nur bei gewechselter Zeile. Die Panel-Zeit zählt `exposureS + downloadS`.
+  7. **Transit (bis AP-13d ohne Flip-Lücke):**
+     - Der Vorlauf steht vor dem ersten gesperrten Fenster-Slot.
+     - Die Serie beginnt am Fensterbeginn, wenn dessen Slot gesperrt ist.
+     - Sie endet am Fensterende, spätestens aber mit dem letzten gesperrten Slot: Wo das Ziel unter die Mindesthöhe fällt, ist nichts gesperrt.
+     - Überlappende Transits: Jeder Slot des Fensters zählt, auch ohne `CanImage`.
+  8. **`planNight` nur produktiv:** Den Kompatibilitätsmodus gibt es nur für Grids und das Orakel; `mode: compat` ergibt `engine.input_invalid`.
+
 ## 9. Filter- und Panelwahl (`pick`)
 
 ```

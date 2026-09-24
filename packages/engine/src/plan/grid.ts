@@ -76,6 +76,8 @@ export interface GridUnit {
   readonly meridianAtS: number | null;
   readonly transit: GridTransit | null;
   readonly panels: readonly GridPanel[];
+  /** Aufwärtsdurchgang der eigenen Dämmerungsgrenze (s ab Slot 0, `block.twilightEndUtc`); fehlt = `null`. */
+  readonly twilightEndS?: number | null;
 }
 
 export interface GridMoonProfile {
@@ -149,6 +151,8 @@ export interface GridInput {
   readonly moonProfiles: readonly GridMoonProfile[];
   readonly units: readonly GridUnit[];
   readonly tonight: GridTonight | null;
+  /** `darknessEndUtc` in s ab Slot 0 (NT-12); fehlt = `null` (Kulanz nur bis Blockende). */
+  readonly darknessEndS?: number | null;
 }
 
 export type GridIssueCode =

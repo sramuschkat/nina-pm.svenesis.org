@@ -13,3 +13,4 @@ export * from './equipment';
 export * from './projects';
 export * from './approval';
 export * from './grid';
+export * from './plan';

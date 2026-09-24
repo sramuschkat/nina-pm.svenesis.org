@@ -48,6 +48,7 @@ export const GridUnitSchema = z.strictObject({
     })
     .nullable(),
   panels: z.array(GridPanelSchema).min(1),
+  twilightEndS: Int.nullable().optional(),
 });
 
 export const GridMoonProfileSchema = z.strictObject({
@@ -107,6 +108,7 @@ export const GridInputSchema = z.strictObject({
   moonProfiles: z.array(GridMoonProfileSchema),
   units: z.array(GridUnitSchema),
   tonight: GridTonightSchema.nullable(),
+  darknessEndS: Int.nullable().optional(),
 });
 export type GridInputDto = z.infer<typeof GridInputSchema>;
 

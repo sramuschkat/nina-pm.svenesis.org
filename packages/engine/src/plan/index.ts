@@ -33,7 +33,23 @@ export { compatSwitches, DEVIATION_IDS, type CompatSwitches } from './compat';
 export { buildMatrix, priorityOrder } from './matrix';
 export { budgetSlots, decrementWork, paint, type BudgetInput, type PaintStage } from './paint';
 export { effectiveRemaining, setupFromGrid } from './profiles';
-export { paintGrid, type PaintResult } from './run';
+export {
+  paintGrid,
+  planGrid,
+  planGridCompat,
+  type CompatPlanResult,
+  type PaintResult,
+  type PlanGridResult,
+} from './run';
+export {
+  walk,
+  type Picked,
+  type WalkBlock,
+  type WalkEntry,
+  type WalkResult,
+  type WalkSettings,
+} from './walk';
+export { walkCompat, type CompatEntry, type CompatWalkSettings } from './walk-compat';
 export { applySortChain, moonDownChain } from './sort-chain';
 export type {
   ExcludedUnit,
@@ -41,9 +57,28 @@ export type {
   Matrix,
   NightSetup,
   PastSlots,
+  ProjectLines,
   Row,
   Tier,
   UnitLine,
   UnitProfile,
   UnitTransit,
 } from './model';
+export { isoFromUnix, unixFromIso, uuidv7FromHash } from './iso';
+export { planNight } from './plan-night';
+export type {
+  NightPlan,
+  PlanBlock,
+  PlanDiagnostic,
+  PlanEntry,
+  PlanInput,
+  PlanLine,
+  PlanMoonProfile,
+  PlanPanel,
+  PlanProject,
+  PlanScheduler,
+  PlanTonight,
+  PlanTransit,
+  PlanWarning,
+  TwilightName,
+} from './plan-input';

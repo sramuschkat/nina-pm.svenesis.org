@@ -21,6 +21,7 @@ import {
   type ExcludedUnit,
   type NightSetup,
   type PastSlots,
+  type ProjectLines,
   type Tier,
   type UnitLine,
   type UnitProfile,
@@ -184,6 +185,7 @@ export function setupFromGrid(grid: GridInput): NightSetup {
 
   const excluded: ExcludedUnit[] = [];
   const out: UnitProfile[] = [];
+  const projectLines = new Map<string, ProjectLines>();
   // Das Original rechnet mit ganzzahligem Prozentwert (`int overshootPercent`).
   const overshoot =
     grid.mode === 'compat' ? Math.trunc(grid.settings.overshootPct) : grid.settings.overshootPct;
@@ -225,7 +227,13 @@ export function setupFromGrid(grid: GridInput): NightSetup {
         safe: lineSafe(l),
       };
     };
-    const projectLines = project.panels.flatMap((p) => p.lines.map((l) => toLine(p, l)));
+    const byPanel = project.panels.map((p) => ({
+      index: p.index,
+      lines: p.lines.map((l) => toLine(p, l)),
+    }));
+    if (!projectLines.has(u.projectId))
+      projectLines.set(u.projectId, { projectId: u.projectId, panels: byPanel });
+    const projectLines_ = byPanel.flatMap((p) => p.lines);
     const lines = unitPanels.flatMap((p) => p.lines.map((l) => toLine(p, l)));
     const workOf = (ls: readonly UnitLine[]) => {
       let sum = 0;
@@ -260,7 +268,7 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       if (t === 0) return new Array<boolean>(n).fill(true);
       if (tier.requiresMoonDown) return [...moonDown];
       if (!sw.tierSafeAnyLine) {
-        const rep = projectLines.find((l) => l.tier === t);
+        const rep = projectLines_.find((l) => l.tier === t);
         return moonDown.map((down, s) => down || (rep?.safe[s] ?? false));
       }
       const withWork = lines.filter((l) => l.tier === t && l.effRemaining > 0);
@@ -272,7 +280,7 @@ export function setupFromGrid(grid: GridInput): NightSetup {
     if (u.transit) {
       const [from, to] = u.transit.windowS;
       const overlaps = !(to <= 0 || from >= n * SLOT_S);
-      const hasWork = sw.transitUntilWindowEnd || workOf(projectLines) > 0;
+      const hasWork = sw.transitUntilWindowEnd || workOf(projectLines_) > 0;
       if (!overlaps || !hasWork) {
         excluded.push({ unitId: u.unitId, reason: 'no_transit_window' });
         continue;
@@ -326,5 +334,9 @@ export function setupFromGrid(grid: GridInput): NightSetup {
     profiles: out,
     excluded,
     past: pastSlots(grid, sw),
+    projects: [...projects.keys()].flatMap((id) => {
+      const p = projectLines.get(id);
+      return p ? [p] : [];
+    }),
   };
 }
