@@ -1,6 +1,6 @@
 # Soll-Pläne (Golden Plans)
 
-Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle entstehen in **AP-13b**, Ablauf-Fälle in **AP-13d** (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
+Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle **G01–G18** aus **AP-13b** (vorläufig bis zur Abnahme H-13), Ablauf-Fälle folgen in **AP-13d** (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
 
 ## Vorgehen
 1. **AP-13a:** `tools/astropm-oracle` bauen (allocation.md §11.2): C#-Quellen des Astro-PM-Plugins (MIT, Commit `5dd621d`) mit Minimal-Patch in einer .NET-8-Konsolen-App; CI-Job `oracle.yml` auf `ubuntu-latest`; Grid-Format (unten) und Adapter festlegen.
@@ -22,7 +22,7 @@ Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. 
                   "dither": { "enabled": false, "every": 3 }, "filterSwitch": { "enabled": false, "every": 10, "tolerancePct": 50 },
                   "overhead": { "slewCenterS": 0, "filterChangeS": 0, "ditherSettleS": 0, "afEveryMin": 0, "afDurationS": 0, "downloadS": 0 },
                   "flip": { "enabled": false, "afterMin": 5, "maxAfterMin": 15, "pauseBeforeMin": 0, "durationS": 240 } },
-    "moonProfiles": [ { "id": "strict", "distanceDeg": 90, "maxIllumPct": 30, "mustBeDown": false } ],
+    "moonProfiles": [ { "id": "strict", "distanceDeg": 90, "maxIllumPct": 30, "mustBeDown": false, "widthDays": 8 } ],
     "units": [ { "unitId": "A", "projectId": "A", "priority": 1, "minTimeOnTargetH": 1.0, "dueDate": null,
                  "peakAltDeg": 60, "canImage": [[0, 23]], "meridianAtS": null,
                  "transit": null,
@@ -47,6 +47,8 @@ Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. 
 - **Transit** je Einheit: `{"windowS": [von, bis], "lineId": "A-R", "lockedAtS": 0}` (Sekunden ab Slot 0; `lockedAtS` entscheidet bei Überlappung, A-20).
 - **Neuplanung:** `startAtS` (Sekunden ab Slot 0) plus `tonight` in Sekunden: `{"pastBlocks": [{"unitId": "A", "fromS": 0, "toS": 3600}], "exposedSecByUnit": {"A": 3300}, "lastAutofocusS": 600, "filterCycle": [{"unitId": "A", "lineId": "A-Ha", "subsOnLine": 9}], "flipDoneByPanel": {}, "currentUnitId": "A"}`.
 - `mode` ist das **einzige** Modusfeld (`productive` | `compat`, allocation.md §11.1).
+- **Mondprofile:** `widthDays` (Breite `W`) ist im Produktivmodus Pflicht (außer bei `mustBeDown`), weil die Restriktivität `A · W · arctan(14,77/W)` sie braucht (A-31, AP-13b). Im Kompatibilitätsmodus zählt nur `A × (1 + 100/(maxIllum + 1))`.
+- **Vergleich mit dem Orakel:** Soll-Pläne laufen als Kompatibilitäts-Kopie (`mode: compat`, ohne `startAtS`/`tonight`/`due_soonest`) gegen das Orakel. `oracleDiff` beschreibt die Abweichung der Zuteilung zum Original.
 - **Schema:** `grid.schema.json` (JSON Schema 2020-12, erzeugt aus `packages/shared/src/contracts/grid.ts` mit `pnpm contracts:generate`). Querbezüge (Einheiten-/Zeilen-IDs, Profile, Bereiche, Panel-Einheiten, `due_soonest` im Kompatibilitätsmodus) prüft `checkGrid` in `packages/engine/src/plan/grid.ts`.
 - **Orakel-Ausgabe** und Adapter-Regeln: `tools/astropm-oracle/README.md` (AP-13a).
 - Das Grid enthält keine Astronomie; der Adapter `grid → Matrix` ist Teil des Tests.

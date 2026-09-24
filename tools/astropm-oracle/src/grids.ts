@@ -9,13 +9,16 @@ export interface GridProblem {
   readonly problems: readonly string[];
 }
 
-/** Dateien und Ordner (alle `*.json` außer Orakel-Ausgaben), ordinal sortiert. */
+/** Dateien und Ordner (alle `*.json` außer Orakel-Ausgaben und Schemas), ordinal sortiert. */
 export function gridFiles(paths: readonly string[]): string[] {
   return paths
     .flatMap((p) =>
       statSync(p).isDirectory()
         ? readdirSync(p)
-            .filter((f) => f.endsWith('.json') && !f.endsWith('.oracle.json'))
+            .filter(
+              (f) =>
+                f.endsWith('.json') && !f.endsWith('.oracle.json') && !f.endsWith('.schema.json'),
+            )
             .map((f) => join(p, f))
         : [p],
     )
@@ -25,6 +28,24 @@ export function gridFiles(paths: readonly string[]): string[] {
 /** Soll-Plan (mit `input`) oder reines Grid → Grid-Eingabe. */
 export function gridOf(json: unknown): unknown {
   return json !== null && typeof json === 'object' && 'input' in json ? json.input : json;
+}
+
+/**
+ * Kompatibilitäts-Kopie eines produktiven Grids für den Orakel-Vergleich (golden-plans/README.md:
+ * „dieselben Grids laufen zusätzlich mit mode compat“): Neuplanung und `due_soonest` kennt das Original
+ * nicht und fallen weg.
+ */
+export function compatCopy(grid: GridInput): GridInput {
+  return {
+    ...grid,
+    mode: 'compat',
+    startAtS: null,
+    tonight: null,
+    settings: {
+      ...grid.settings,
+      sortChain: grid.settings.sortChain.filter((k) => k !== 'due_soonest'),
+    },
+  };
 }
 
 export function validateGrid(json: unknown): { grid?: GridInput; problems: string[] } {

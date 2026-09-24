@@ -1,0 +1,251 @@
+{
+  "id": "G10",
+  "title": "Mindestzeit: verlängern und leihen",
+  "requirements": [
+    "FA-SCH-11"
+  ],
+  "explanation": "Ergebnis: A 0–17 · B 18–29 · C 30–35. Manuelle Priorität. A (1) belegt chronologisch Slots 0–19 und damit auch die ganze mondfreie Zeit. B (2) hat 10 × R „Kein Mond“ und 2 × L; die mondfreie Zeit ist weg, B bekommt nur 2 Slots (20–21) für L. C (3) nimmt 26–35. `enforceMinimum` für B (Mindestzeit 12 Slots): **verlängern** in die freien Slots 22–25 (6), dann **leihen** – vorwärts von C, solange C einen zusammenhängenden Lauf ≥ seiner Mindestzeit (6) behält (26–29), rückwärts von A (18–19). B hat 12 Slots.",
+  "approvedBy": null,
+  "oracleDiff": "Keine Abweichung in der Zuteilung: Original (Kompatibilitätsmodus) A 0–17 · B 18–29 · C 30–35.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 36,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "manual_priority",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "nomoon",
+        "distanceDeg": 180,
+        "maxIllumPct": 0,
+        "mustBeDown": true,
+        "widthDays": 14
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            35
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 2,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            35
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-R",
+                "filter": "R",
+                "exposureS": 300,
+                "planned": 10,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "nomoon",
+                "safe": []
+              },
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 2,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "C",
+        "projectId": "C",
+        "priority": 3,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            26,
+            35
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "C-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 10,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C"
+    ]
+  }
+}

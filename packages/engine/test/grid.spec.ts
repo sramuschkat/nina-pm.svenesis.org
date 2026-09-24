@@ -102,7 +102,7 @@ const grid = (over: Partial<GridInput> = {}): GridInput => ({
     flip: { enabled: false, afterMin: 5, maxAfterMin: 15, pauseBeforeMin: 0, durationS: 240 },
   },
   moonProfiles: [
-    { id: 'strict', distanceDeg: 90, maxIllumPct: 30, mustBeDown: false },
+    { id: 'strict', distanceDeg: 90, maxIllumPct: 30, mustBeDown: false, widthDays: 8 },
     { id: 'nomoon', distanceDeg: 180, maxIllumPct: 0, mustBeDown: true },
   ],
   units: [unit()],

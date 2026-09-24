@@ -262,6 +262,11 @@
               },
               "mustBeDown": {
                 "type": "boolean"
+              },
+              "widthDays": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 30
               }
             },
             "required": [

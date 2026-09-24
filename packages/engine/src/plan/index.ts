@@ -30,3 +30,20 @@ export {
 } from './grid';
 export { randomGrid, seededRandom, type RandomGridOptions } from './grid-random';
 export { compatSwitches, DEVIATION_IDS, type CompatSwitches } from './compat';
+export { buildMatrix, priorityOrder } from './matrix';
+export { budgetSlots, decrementWork, paint, type BudgetInput, type PaintStage } from './paint';
+export { effectiveRemaining, setupFromGrid } from './profiles';
+export { paintGrid, type PaintResult } from './run';
+export { applySortChain, moonDownChain } from './sort-chain';
+export type {
+  ExcludedUnit,
+  Hint,
+  Matrix,
+  NightSetup,
+  PastSlots,
+  Row,
+  Tier,
+  UnitLine,
+  UnitProfile,
+  UnitTransit,
+} from './model';

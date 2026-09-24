@@ -1,7 +1,8 @@
 # Vergleichsorakel (AP-13a, TK 18, specs/engine/allocation.md §11.2): C#-Original des Astro-PM-NINA-
-# Plugins (gepinnter Commit, oracle.patch) gegen Grids. Beispiel-Grids + 500 Zufallsgrids, zwei Läufe
-# byte-genau gleich (Determinismus); ab AP-13b zusätzlich Vergleich mit der TS-Engine im
-# Kompatibilitätsmodus. Bericht und Orakel-Ausgaben als Artefakt `oracle-report`.
+# Plugins (gepinnter Commit, oracle.patch) gegen Grids: Beispiel-Grids, Soll-Pläne (als
+# Kompatibilitäts-Kopie) und 500 Zufallsgrids, zwei Läufe byte-genau gleich (Determinismus). Danach
+# Vergleich mit der TS-Engine im Kompatibilitätsmodus (AP-13b: Zuteilung). Bericht, Vergleich und
+# Orakel-Ausgaben als Artefakt `oracle-report`.
 name: oracle
 
 on:
@@ -37,11 +38,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: pnpm install --frozen-lockfile
-      - name: Orakel rechnen (Beispiel-Grids + 500 Zufallsgrids, zwei Läufe)
-        run: pnpm oracle:run tools/astropm-oracle/grids --random 500 --seed 1 --repeat 2 --out oracle-out
+      - name: Orakel rechnen (Beispiel-Grids, Soll-Pläne, 500 Zufallsgrids, zwei Läufe)
+        run: >-
+          pnpm oracle:run tools/astropm-oracle/grids docs/contracts/golden-plans
+          --random 500 --seed 1 --repeat 2 --out oracle-out
+      - name: Vergleich TS ↔ Orakel (Kompatibilitätsmodus)
+        run: pnpm vitest run tools/astropm-oracle/test/compare.test.ts
+        env:
+          ORACLE_OUT: oracle-out
       - name: Bericht
         if: always()
-        run: cat oracle-out/report.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat oracle-out/report.md oracle-out/compare.md >> "$GITHUB_STEP_SUMMARY" || true
       - name: Artefakt
         if: always()
         uses: actions/upload-artifact@v4

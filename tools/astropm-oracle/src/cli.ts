@@ -2,8 +2,9 @@
  * `pnpm oracle:run [<grid.json|ordner>...] [--random <n>] [--seed <s>] [--repeat <k>] [--out <ordner>]`
  * (AP-13a, allocation.md §11.2).
  *
- * 1. Grids sammeln: angegebene Dateien/Ordner, dazu `--random n` Zufallsgrids (Seeds s … s+n−1,
- *    Kompatibilitätsmodus) unter `<out>/grids/`. Jedes Grid wird gegen Schema und `checkGrid` geprüft.
+ * 1. Grids sammeln: angegebene Dateien/Ordner (Soll-Pläne als Kompatibilitäts-Kopie unter
+ *    `<out>/compat/`), dazu `--random n` Zufallsgrids (Seeds s … s+n−1, Kompatibilitätsmodus) unter
+ *    `<out>/grids/`. Jedes Grid wird gegen Schema und `checkGrid` geprüft.
  * 2. Originalquellen laden und patchen (`fetch.ts`), Orakel mit `dotnet build` übersetzen.
  * 3. Orakel `k`-mal rechnen (`<out>/run-1` …) und byte-genau vergleichen (Determinismus).
  * 4. Bericht `<out>/report.md` (Artefakt in `oracle.yml`); Exit 1 bei ungültigen Grids, Orakelfehlern
@@ -14,9 +15,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { randomGrid } from '@nina-pm/engine';
+import { randomGrid, type GridInput } from '@nina-pm/engine';
 import { fetchSources, loadPin, ORACLE_DIR } from './fetch';
-import { gridFiles, validateFiles } from './grids';
+import { compatCopy, gridFiles, gridOf, validateFiles } from './grids';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -49,6 +50,20 @@ function writeRandomGrids(): string | null {
       `${JSON.stringify(randomGrid(seed), null, 2)}\n`,
     );
   return dir;
+}
+
+/** Produktive Grids (Soll-Pläne) als Kompatibilitäts-Kopie unter `<out>/compat/` rechnen. */
+function compatInputs(files: readonly string[]): string[] {
+  const dir = join(out, 'compat');
+  rmSync(dir, { recursive: true, force: true });
+  return files.map((file) => {
+    const grid = gridOf(JSON.parse(readFileSync(file, 'utf8'))) as GridInput;
+    if (grid.mode === 'compat') return file;
+    mkdirSync(dir, { recursive: true });
+    const copy = join(dir, basename(file));
+    writeFileSync(copy, `${JSON.stringify(compatCopy(grid), null, 2)}\n`);
+    return copy;
+  });
 }
 
 function build(): string {
@@ -99,7 +114,7 @@ async function main(): Promise<number> {
     console.error('Keine Grids: Dateien/Ordner angeben oder --random <n>.');
     return 64;
   }
-  const files = gridFiles(inputs);
+  const files = compatInputs(gridFiles(inputs));
   const invalid = validateFiles(files);
   const report: string[] = [
     '# Orakel-Bericht (AP-13a)',
