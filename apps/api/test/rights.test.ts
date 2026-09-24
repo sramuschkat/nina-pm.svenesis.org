@@ -56,6 +56,13 @@ beforeAll(async () => {
     'GET /api/health': { url: '/api/health' },
     'GET /api/banner': { url: '/api/banner' },
     'GET /api/web/v1/audit/system': { url: '/api/web/v1/audit/system' },
+    'GET /api/web/v1/audit/changes': { url: '/api/web/v1/audit/changes' },
+    'GET /api/web/v1/tenant/settings': { url: '/api/web/v1/tenant/settings' },
+    'PATCH /api/web/v1/tenant/settings': {
+      url: '/api/web/v1/tenant/settings',
+      method: 'PATCH',
+      body: { settings: { defaultLanguage: 'de' } },
+    },
     'GET /api/auth/discord/start': { url: '/api/auth/discord/start?next=/projekte', okStatus: 302 },
     'GET /api/auth/discord/callback': {
       url: '/api/auth/discord/callback?code=x&state=y',

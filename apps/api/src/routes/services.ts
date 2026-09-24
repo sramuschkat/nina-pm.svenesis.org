@@ -10,6 +10,7 @@ import type {
   SystemActor,
   TenantAdminRepository,
   TenantContext,
+  TenantRepository,
 } from '@nina-pm/db';
 import type { AuthConfig } from '../auth/config';
 import type { DiscordClient } from '../auth/discord';
@@ -27,6 +28,7 @@ export interface ApiRepositories {
   preference(): PreferenceRepository;
   notification(): NotificationRepository;
   audit(): AuditRepository;
+  tenant(): TenantRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */

@@ -20,6 +20,7 @@ import {
   TenantAdminRepository,
   type OpenDatabase,
   readMaintenanceBanner,
+  TenantRepository,
 } from '@nina-pm/db';
 import { seedCore, type SeedDemo } from '@nina-pm/db/seed';
 import { openPglite } from '@nina-pm/db/testing/pglite';
@@ -68,6 +69,7 @@ const services: ApiServices = {
     preference: () => new PreferenceRepository(db, ctx),
     notification: () => new NotificationRepository(db, ctx),
     audit: () => new AuditRepository(db, ctx),
+    tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
   auth: new AuthRepository(db),

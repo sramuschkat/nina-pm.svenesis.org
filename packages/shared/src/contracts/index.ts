@@ -8,3 +8,4 @@ export * from './tenants';
 export * from './preferences';
 export * from './notifications';
 export * from './system';
+export * from './tenant-settings';

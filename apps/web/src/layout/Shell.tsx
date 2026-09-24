@@ -141,7 +141,10 @@ function AppBar() {
                 {t('appBar.switchTenant')}
               </DropdownMenu.Item>
             ) : null}
-            <DropdownMenu.Item className={styles.menuItem} disabled>
+            <DropdownMenu.Item
+              className={styles.menuItem}
+              onSelect={() => void navigate('/einstellungen')}
+            >
               {t('appBar.sessions')}
             </DropdownMenu.Item>
             {me.context === 'tenant' && me.member && me.member.role !== 'owner' ? (

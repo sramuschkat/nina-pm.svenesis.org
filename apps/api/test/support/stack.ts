@@ -12,6 +12,7 @@ import {
   PreferenceRepository,
   TenantAdminRepository,
   readMaintenanceBanner,
+  TenantRepository,
 } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
 import { COOKIE_NAMES } from '@nina-pm/shared';
@@ -65,6 +66,7 @@ export async function createStack() {
       preference: () => new PreferenceRepository(pg.db, ctx),
       notification: () => new NotificationRepository(pg.db, ctx),
       audit: () => new AuditRepository(pg.db, ctx),
+      tenant: () => new TenantRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,

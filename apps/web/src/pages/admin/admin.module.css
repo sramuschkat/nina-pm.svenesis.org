@@ -273,3 +273,6 @@ textarea.input {
   margin-right: var(--npm-space-3);
   float: left;
 }
+.nowrap {
+  white-space: nowrap;
+}

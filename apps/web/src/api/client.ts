@@ -13,6 +13,10 @@ export type InvitationClaim = Schemas['InvitationClaimResponse'];
 export type NotificationList = Schemas['NotificationList'];
 export type TenantAdmin = Schemas['TenantAdminView'];
 export type Member = Schemas['MemberView'];
+export type TenantSettingsView = Schemas['TenantSettingsView'];
+export type TenantSettings = Schemas['TenantSettings'];
+export type ChangeLogEntry = Schemas['ChangeLogEntry'];
+export type SessionList = Schemas['SessionList'];
 export type Invitation = Schemas['InvitationView'];
 export type SystemMember = Schemas['SystemMemberView'];
 export type SuperUser = Schemas['SuperUserView'];
@@ -142,4 +146,32 @@ export const memberApi = {
   revokeInvitation: (id: string) =>
     apiFetch<undefined>(`/api/web/v1/invitations/${id}`, json('DELETE')),
   leave: () => apiFetch<undefined>('/api/web/v1/me/leave', json('POST')),
+};
+
+/** Mandant (S-70 Owner übertragen, S-71 Einstellungen, S-72 Protokolle). */
+export const tenantApi = {
+  settings: () => apiFetch<TenantSettingsView>('/api/web/v1/tenant/settings'),
+  updateSettings: (body: { displayName?: string; settings?: Partial<TenantSettings> }) =>
+    apiFetch<TenantSettingsView>('/api/web/v1/tenant/settings', json('PATCH', body)),
+  transferOwner: (memberId: string) =>
+    apiFetch<undefined>('/api/web/v1/tenant/owner-transfer', json('POST', { memberId })),
+  changes: (q: { cursor?: string | undefined; entity?: string | undefined }) => {
+    const p = new URLSearchParams({ limit: '50' });
+    if (q.cursor) p.set('cursor', q.cursor);
+    if (q.entity) p.set('entity', q.entity);
+    return apiFetch<{ items: ChangeLogEntry[]; nextCursor: string | null }>(
+      `/api/web/v1/audit/changes?${p.toString()}`,
+    );
+  },
+  systemAudit: (cursor?: string) =>
+    apiFetch<SystemAuditList>(
+      `/api/web/v1/audit/system?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    ),
+};
+
+/** Eigene Anmeldesitzungen (S-73, TK 5.3) – in jedem Kontext. */
+export const sessionApi = {
+  list: () => apiFetch<SessionList>('/api/auth/sessions'),
+  end: (id: string) => apiFetch<undefined>(`/api/auth/sessions/${id}`, json('DELETE')),
+  endAll: () => apiFetch<undefined>('/api/auth/sessions', json('DELETE')),
 };

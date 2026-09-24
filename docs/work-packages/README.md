@@ -24,7 +24,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-06b](AP-06b.md) | Benachrichtigungen in der App und Startseite R1 | S | AP-06a | – | ☑ |
 | [AP-07a](AP-07a.md) | System-Administration (Super User) | M | AP-06a | – | ◐ |
 | [AP-07b](AP-07b.md) | Mitglieder, Einladungen, Admin-Rechte (Owner) | M | AP-07a | – | ◐ |
-| [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ☐ |
+| [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ◐ |
 | [AP-08a](AP-08a.md) | Engine-Grundlagen: Mathematik, kanonisches JSON, Hash | M | AP-01 | – | ☐ |
 | [AP-08b](AP-08b.md) | Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (Port astro-core) | L | AP-08a | H-03 | ☐ |
 | [AP-09a](AP-09a.md) | Ausrüstung: API | L | AP-05, AP-04b, AP-08b | – | ☐ |

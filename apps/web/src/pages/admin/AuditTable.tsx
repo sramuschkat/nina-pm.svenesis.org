@@ -61,7 +61,7 @@ export function AuditTable({
           <tbody>
             {items.map((e) => (
               <tr key={e.id}>
-                <td style={{ whiteSpace: 'nowrap' }}>
+                <td className={styles.nowrap}>
                   <DateTime at={e.createdAt} zone={zone} />
                 </td>
                 <td>

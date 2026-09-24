@@ -80,5 +80,6 @@ describe('CSRF-Middleware', () => {
     } finally {
       await stack.close();
     }
-  });
+    // Legt eine eigene PGlite-Datenbank an – unter Last im Gesamtlauf deutlich über 5 s.
+  }, 30_000);
 });
