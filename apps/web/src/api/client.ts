@@ -257,6 +257,11 @@ export const projectsApi = {
   patch: (id: string, body: object, version: number) =>
     apiFetch<ProjectView>(`${V1}/projects/${id}`, { ...json('PATCH', body), ...ifMatch(version) }),
   remove: (id: string) => apiFetch<undefined>(`${V1}/projects/${id}`, json('DELETE')),
+  /** Papierkorb: wiederherstellen (Admin/Owner, E4). */
+  restore: (id: string) => apiFetch<ProjectView>(`${V1}/projects/${id}/restore`, json('POST')),
+  /** Priorität je Rig (FA-PRJ-13): neue Position 1-basiert unter den freigegebenen Projekten. */
+  priority: (id: string, position: number) =>
+    apiFetch<unknown>(`${V1}/projects/${id}/priority`, json('PUT', { position })),
   duplicate: (id: string, body: { id: string; name?: string }) =>
     apiFetch<ProjectView>(`${V1}/projects/${id}/duplicate`, json('POST', body)),
   addPanel: (id: string, body: object & { id: string }) =>

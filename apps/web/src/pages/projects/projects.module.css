@@ -330,3 +330,208 @@
   background: var(--npm-note-bg);
   border-radius: var(--npm-radius);
 }
+
+/* ---- S-30 Projektliste ---- */
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.filterBar legend {
+  padding: 0 var(--npm-space-1);
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+}
+.filterBar label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+  min-width: 140px;
+}
+.filterBar label.check {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  font-weight: 400;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+}
+.segment,
+.segmentActive {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: none;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  cursor: pointer;
+}
+.segment + .segment,
+.segment + .segmentActive,
+.segmentActive + .segment {
+  border-left: 1px solid var(--npm-border);
+}
+.segmentActive {
+  background: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.segment:focus-visible,
+.segmentActive:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: -2px;
+}
+.group {
+  composes: panel;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.groupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-3);
+}
+.groupHead h2 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.priorityCell {
+  white-space: nowrap;
+}
+.dragHandle {
+  display: inline-block;
+  min-width: 1.5em;
+  cursor: grab;
+  font-variant-numeric: tabular-nums;
+  color: var(--npm-text-light);
+}
+tr[data-dragging='true'] {
+  opacity: 0.5;
+}
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+}
+.coords {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.filterPlan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 180px;
+}
+.filterPlan li {
+  display: grid;
+  grid-template-columns: auto minmax(96px, 1fr);
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+  gap: var(--npm-space-3);
+}
+@media (max-width: 900px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.detailCards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--npm-space-3);
+}
+.card {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 2fr) minmax(180px, 1fr);
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cardSide,
+.cardMain,
+.cardPlan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  padding: var(--npm-space-1);
+  border: 1px dashed var(--npm-border);
+  border-radius: calc(var(--npm-radius) / 2);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  text-align: center;
+}
+.cardTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  margin: 0;
+  font-size: var(--npm-font-base);
+}
+.typeTag {
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  font-size: var(--npm-font-label);
+  font-weight: 400;
+  color: var(--npm-text-light);
+}
+
+.cardFacts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  font-size: var(--npm-font-small);
+}
+.cardFacts dt {
+  color: var(--npm-text-light);
+}
+.cardFacts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cardTitle .effort {
+  font-weight: 400;
+}
+.tabIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}

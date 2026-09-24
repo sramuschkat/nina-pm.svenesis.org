@@ -346,9 +346,27 @@ export const ProjectView = z
   })
   .meta({ id: 'ProjectView' });
 
-export const ProjectListItem = ProjectView.omit({ panels: true, descriptionMd: true }).meta({
-  id: 'ProjectListItem',
-});
+/** Plan je Filter über alle aktiven Zeilen (Projektkarte FA-PRJ-14, Plan-Chips FA-FRG-04). */
+export const FilterPlanSummary = z
+  .object({
+    filterId: Uuid.nullable(),
+    filterShortName: z.string(),
+    /** Belichtung der ersten aktiven Zeile dieses Filters (Chip „14/15 × 600 s“). */
+    exposureS: z.number(),
+    planned: z.number().int(),
+    accepted: z.number().int(),
+    lines: z.number().int(),
+  })
+  .meta({ id: 'FilterPlanSummary' });
+
+export const ProjectListItem = ProjectView.omit({ panels: true, descriptionMd: true })
+  .extend({
+    /** Anzeigename des Erstellers im Mandanten (Filter „Ersteller“, Ansicht „Gelöscht“). */
+    createdByName: z.string(),
+    panelCount: z.number().int(),
+    filters: z.array(FilterPlanSummary),
+  })
+  .meta({ id: 'ProjectListItem' });
 
 export const ProjectListQuery = z.object({
   deleted: z.enum(['true', 'false']).optional(),

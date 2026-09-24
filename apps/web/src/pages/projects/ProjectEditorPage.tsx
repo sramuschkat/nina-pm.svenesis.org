@@ -26,7 +26,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
-import { ProblemMessage } from '../../components/ProblemMessage';
+import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { StatusBadge } from '../../components/StatusBadge';
 import {
@@ -702,7 +702,7 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
         confirmLabel={t('projectEditor.delete')}
         variant="danger"
         state={remove.isPending ? 'loading' : remove.isError ? 'error' : 'ready'}
-        {...(remove.error ? { errorKey: problemCode(remove.error) } : {})}
+        {...(remove.error ? { errorKey: problemI18nKey(problemCode(remove.error)) } : {})}
         onConfirm={() => remove.mutateAsync().catch(() => undefined)}
         onCancel={() => setConfirmDelete(false)}
       />

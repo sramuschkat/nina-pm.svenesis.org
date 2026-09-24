@@ -142,11 +142,47 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
   };
 }
 
-const listItem = (d: ProjectDetail) => {
+/** Plan je Filter über alle aktiven, nicht gelöschten Zeilen (Reihenfolge wie im Plan). */
+export function filterPlanSummary(d: ProjectDetail) {
+  const out = new Map<
+    string,
+    {
+      filterId: string | null;
+      filterShortName: string;
+      exposureS: number;
+      planned: number;
+      accepted: number;
+      lines: number;
+    }
+  >();
+  for (const panel of d.panels)
+    for (const l of panel.lines) {
+      if (!l.enabled) continue;
+      const key = l.filterId ?? l.filterShortName;
+      const c = lineCounters(l, d.overshootPct);
+      const prev = out.get(key);
+      out.set(key, {
+        filterId: l.filterId,
+        filterShortName: l.filterShortName,
+        exposureS: prev?.exposureS ?? l.exposureS,
+        planned: (prev?.planned ?? 0) + c.planned,
+        accepted: (prev?.accepted ?? 0) + c.accepted,
+        lines: (prev?.lines ?? 0) + 1,
+      });
+    }
+  return [...out.values()];
+}
+
+const listItem = (d: ProjectDetail & { createdByName: string }) => {
   const view: Partial<ReturnType<typeof projectView>> = projectView(d);
   delete view.panels;
   delete view.descriptionMd;
-  return view as Omit<ReturnType<typeof projectView>, 'panels' | 'descriptionMd'>;
+  return {
+    ...(view as Omit<ReturnType<typeof projectView>, 'panels' | 'descriptionMd'>),
+    createdByName: d.createdByName,
+    panelCount: d.panels.length,
+    filters: filterPlanSummary(d),
+  };
 };
 
 // ---- Routen ---------------------------------------------------------------------------------------

@@ -280,7 +280,25 @@ export class ProjectRepository extends TenantRepo {
           .where('userId', '=', this.ctx.memberId as string),
       );
     const projects = await q.orderBy('priority').orderBy('name').execute();
-    return Promise.all(projects.map((p) => this.detailOf(this.db, p)));
+    const creators = [...new Set(projects.map((p) => p.createdBy))];
+    const names = new Map(
+      creators.length === 0
+        ? []
+        : (
+            await this.db
+              .selectFrom('appUser')
+              .select(['id', 'displayName'])
+              .where('tenantId', '=', this.tenantId)
+              .where('id', 'in', creators)
+              .execute()
+          ).map((u) => [u.id, u.displayName] as const),
+    );
+    return Promise.all(
+      projects.map(async (p) => ({
+        ...(await this.detailOf(this.db, p)),
+        createdByName: names.get(p.createdBy) ?? '',
+      })),
+    );
   }
 
   // ---- Projekt ------------------------------------------------------------------------------------

@@ -3664,6 +3664,14 @@ components:
             - percentDone
             - plannedS
             - integrationS
+        createdByName:
+          type: string
+        panelCount:
+          type: integer
+        filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilterPlanSummary"
       required:
         - id
         - name
@@ -3692,6 +3700,35 @@ components:
         - createdAt
         - updatedAt
         - progress
+        - createdByName
+        - panelCount
+        - filters
+    FilterPlanSummary:
+      type: object
+      properties:
+        filterId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        filterShortName:
+          type: string
+        exposureS:
+          type: number
+        planned:
+          type: integer
+        accepted:
+          type: integer
+        lines:
+          type: integer
+      required:
+        - filterId
+        - filterShortName
+        - exposureS
+        - planned
+        - accepted
+        - lines
     ProjectView:
       type: object
       properties:

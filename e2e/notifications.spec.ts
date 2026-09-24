@@ -65,7 +65,7 @@ test('Owner ändert die Rolle von user1 → Glocke zählt → alle als gelesen',
   expect(ownerList.items.filter((n) => n.kind === 'role.changed')).toEqual([]);
 });
 
-test('Startseite R1: User → „Meine Objekte“, Admin → Projektliste (Platzhalter im Rahmen)', async ({
+test('Startseite R1: User → „Meine Objekte“, Admin → Projektliste S-30 (im Rahmen)', async ({
   browser,
 }) => {
   const user = await pageAs(browser, 'user1');
@@ -79,7 +79,7 @@ test('Startseite R1: User → „Meine Objekte“, Admin → Projektliste (Platz
   await expect(owner.getByRole('link', { name: /Meine Objekte/ })).toHaveCount(0);
   await owner.getByRole('link', { name: /Projektliste/ }).click();
   await expect(owner).toHaveURL('/projekte');
-  await expect(owner.getByRole('heading', { name: 'Projektliste' })).toBeVisible();
+  await expect(owner.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
 });
 
 test('Glocke bei 768 px: Liste passt ins Fenster, kein horizontales Scrollen', async ({
