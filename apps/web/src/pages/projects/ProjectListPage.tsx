@@ -40,6 +40,7 @@ import {
   type ListFilters,
 } from './list-model';
 import { engineMoonProfile } from './model';
+import { ProjectsLayout } from './ProjectsLayout';
 import styles from './projects.module.css';
 
 type View = 'list' | 'cards' | 'detail';
@@ -49,22 +50,10 @@ const DELETED_KEY = ['projects', 'deleted'] as const;
 export function ProjectListPage() {
   const { t } = useTranslation();
   const canAdmin = useCan('project.status');
-  const canCreate = useCan('project.create');
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
   const baseId = useId();
   return (
-    <div className={styles.page}>
-      <div className={styles.head}>
-        <h1>{t('projectList.title')}</h1>
-        {canCreate ? (
-          <div className={styles.headActions}>
-            <Link to="/projekte/neu" className={styles.buttonPrimary}>
-              <actionIcons.add size={ICON_SIZE.button} aria-hidden />
-              {t('projectEditor.new')}
-            </Link>
-          </div>
-        ) : null}
-      </div>
+    <ProjectsLayout title={t('projectList.title')}>
       {canAdmin ? (
         <div className={styles.tabs} role="tablist" aria-label={t('projectList.views')}>
           {(['active', 'deleted'] as const).map((key) => (
@@ -96,7 +85,7 @@ export function ProjectListPage() {
       >
         {tab === 'deleted' && canAdmin ? <DeletedView /> : <ActiveView />}
       </div>
-    </div>
+    </ProjectsLayout>
   );
 }
 
@@ -363,7 +352,7 @@ function ActiveView() {
 }
 
 /** Plan je Filter als Chip mit Minibalken „14/15 × 600 s“ (FA-PRJ-14). */
-function FilterPlan({
+export function FilterPlan({
   project,
   filters,
 }: {

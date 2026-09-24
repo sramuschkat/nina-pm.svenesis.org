@@ -39,6 +39,12 @@
 .tab {
   composes: tab from '../equipment/equipment.module.css';
 }
+/* Reiter als Schaltflächen (role=tab): aktiver Reiter wie die Navigations-Reiter hervorgehoben. */
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--npm-accent);
+  font-weight: 600;
+  color: var(--npm-link);
+}
 .note {
   composes: note from '../equipment/equipment.module.css';
 }
@@ -534,4 +540,71 @@ tr[data-dragging='true'] {
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
+}
+
+/* ---- S-32 Meine Objekte, S-34 Entwürfe ---- */
+.objectCard {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .objectCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.rankList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rankItem {
+  display: grid;
+  grid-template-columns: auto 2em minmax(160px, 2fr) minmax(90px, 1fr) minmax(140px, 1.5fr) auto;
+  align-items: center;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.rankItem[data-dragging='true'] {
+  opacity: 0.5;
+}
+@media (max-width: 1100px) {
+  .rankItem {
+    grid-template-columns: auto 2em minmax(0, 1fr);
+  }
+}
+.rankNo {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rankName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rankPlan {
+  grid-column: 3 / -1;
+}
+.submitPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-accent);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.submitPanel h3 {
+  margin: 0;
+  font-size: var(--npm-font-base);
 }

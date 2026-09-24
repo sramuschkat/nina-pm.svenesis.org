@@ -43,7 +43,7 @@ export function HomePage() {
 
 export const START_LINKS = {
   myObjects: {
-    path: '/meine-objekte',
+    path: '/projekte/meine-objekte',
     title: 'startLinks.myObjects.title',
     hint: 'startLinks.myObjects.hint',
   },
@@ -53,31 +53,6 @@ export const START_LINKS = {
     hint: 'startLinks.projects.hint',
   },
 } as const;
-
-/**
- * Platzhalter für Listen, die mit ihren Paketen folgen (R1: Meine Objekte AP-12b, Projektliste AP-11c);
- * bis dahin führt *Neues Projekt* in den Projekt-Editor S-31 (AP-11b).
- */
-export function PlaceholderPage({ link }: { link: keyof typeof START_LINKS }) {
-  const { t } = useTranslation();
-  const canCreate = useCan('project.create');
-  return (
-    <section className={styles.panel}>
-      <h1>{t(START_LINKS[link].title)}</h1>
-      <p className={styles.note}>{t('common.comingSoon')}</p>
-      {canCreate ? (
-        <p>
-          <Link className={styles.cardLink} to="/projekte/neu">
-            <span className={styles.cardTitle}>{t('projectEditor.new')}</span>
-          </Link>
-        </p>
-      ) : null}
-      <p>
-        <Link to="/">{t('common.back')}</Link>
-      </p>
-    </section>
-  );
-}
 
 const lang = (l: string): Language => (l === 'en' ? 'en' : 'de');
 

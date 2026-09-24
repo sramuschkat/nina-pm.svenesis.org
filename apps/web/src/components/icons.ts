@@ -48,6 +48,7 @@ import {
   ChevronRight,
   ExternalLink,
   Star,
+  GripVertical,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -113,4 +114,6 @@ export const uiIcons = {
   /** Vorige/nächste Nacht (Nachtdiagramm im Projekt-Editor). */
   previous: ChevronLeft,
   next: ChevronRight,
+  /** Griff zum Ziehen (Rangfolge S-32, Priorität S-30). */
+  drag: GripVertical,
 } as const;

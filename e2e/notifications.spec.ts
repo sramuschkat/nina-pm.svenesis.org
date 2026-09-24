@@ -71,7 +71,7 @@ test('Startseite R1: User → „Meine Objekte“, Admin → Projektliste S-30 (
   const user = await pageAs(browser, 'user1');
   await user.goto('/');
   await user.getByRole('link', { name: /Meine Objekte/ }).click();
-  await expect(user).toHaveURL('/meine-objekte');
+  await expect(user).toHaveURL('/projekte/meine-objekte');
   await expect(user.getByRole('heading', { name: 'Meine Objekte' })).toBeVisible();
   await expect(user.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
   const owner = await pageAs(browser, 'owner');

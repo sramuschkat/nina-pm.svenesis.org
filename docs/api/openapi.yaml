@@ -4860,6 +4860,12 @@ components:
             - "null"
           format: date-time
           example: 2026-09-18T13:00:00Z
+        expiresAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
         requestedRigId:
           type:
             - string
@@ -5008,6 +5014,7 @@ components:
         - createdBy
         - createdByName
         - submittedAt
+        - expiresAt
         - requestedRigId
         - requestPeriodFrom
         - requestPeriodTo
