@@ -1,4 +1,5 @@
-/* Nachtdiagramm (components.md §2.3): Mindestbreite 320 px, Höhe aus der Dichtestufe, Farben aus Tokens. */
+/* Nachtdiagramm (components.md §2.3): Mindestbreite 320 px, Höhe aus der Dichtestufe, Farben aus Tokens.
+   Legende rechts neben dem Diagramm, bei schmalem Container darunter. */
 .figure {
   margin: 0;
   display: flex;
@@ -7,13 +8,23 @@
   width: 100%;
   min-width: 0;
 }
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  align-items: flex-start;
+}
+.chartCol {
+  flex: 1 1 480px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
 .canvasWrap {
   position: relative;
   width: 100%;
   min-width: 320px;
-  height: max(120px, var(--npm-chart-h));
-  border-radius: calc(var(--npm-radius) / 2);
-  background: var(--npm-white);
 }
 .canvasWrap:focus-visible {
   outline: var(--npm-focus-ring);
@@ -24,13 +35,6 @@
   width: 100%;
   height: 100%;
 }
-.axisZone {
-  position: absolute;
-  right: var(--npm-space-2);
-  top: 0;
-  font-size: var(--npm-font-label);
-  color: var(--npm-text-light);
-}
 .live {
   margin: 0;
   min-height: 1.4em;
@@ -38,22 +42,95 @@
   color: var(--npm-text-light);
 }
 .legend {
+  flex: 0 1 280px;
+  min-width: 240px;
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-3);
+  flex-direction: column;
+  gap: var(--npm-space-1);
   font-size: var(--npm-font-small);
 }
-.swatch,
-.swatchDashed {
+.legendTitle {
+  padding: 0 var(--npm-space-1);
+  font-weight: 600;
+  color: var(--npm-link);
+}
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: 24px;
+  cursor: pointer;
+}
+.legendItem input {
+  margin: 0;
+  accent-color: var(--npm-button);
+}
+.legendHours {
+  margin-left: auto;
+  padding-left: var(--npm-space-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--npm-text-light);
+}
+.legendMore {
+  color: var(--npm-text-light);
+}
+.swatchLine,
+.swatchDashed,
+.swatchMoon,
+.swatchBox {
+  flex: none;
   display: inline-block;
   width: 14px;
-  height: 3px;
-  margin-right: var(--npm-space-1);
-  vertical-align: middle;
+}
+.swatchLine {
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+  /* Linienfarben sind für den Nachthimmel gewählt – in der Legende auf demselben Grund zeigen. */
+  background:
+    linear-gradient(transparent 4px, currentColor 4px, currentColor 7px, transparent 7px),
+    var(--npm-chart-sky-night);
 }
 .swatchDashed {
-  border-top: 2px dashed var(--npm-text-light);
-  height: 0;
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+  background:
+    repeating-linear-gradient(90deg, var(--npm-chart-min-alt) 0 4px, transparent 4px 7px) 0 4px /
+      100% 2px no-repeat,
+    var(--npm-chart-sky-night);
+}
+.swatchMoon {
+  width: 18px;
+  height: 10px;
+  border-top: 2px solid var(--npm-chart-moon);
+  background: var(--npm-chart-moon-fill);
+}
+.swatchBox {
+  width: 18px;
+  height: 10px;
+  border-radius: 2px;
+}
+.band_recommended {
+  background: var(--npm-chart-recommended);
+}
+.band_moonless {
+  background: var(--npm-chart-moonless);
+}
+.band_moonlit {
+  background: var(--npm-chart-moonlit);
+}
+.band_above {
+  background: var(--npm-chart-above);
+}
+.band_dark {
+  background: var(--npm-chart-dark);
 }
 .details summary {
   cursor: pointer;

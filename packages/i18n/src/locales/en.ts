@@ -612,6 +612,20 @@ export const en: Messages = {
     culmination: 'highest at {{at}} ({{deg}}°)',
     above: 'above {{deg}}° from {{from}} to {{to}}',
     neverAbove: 'never above {{deg}}°',
+    legend: 'Legend',
+    hours: '{{h}} h',
+    band: {
+      recommended: 'Recommended exposure',
+      moonless: 'Above {{deg}}°, moonless',
+      moonlit: 'Above {{deg}}°, moon up',
+      above: 'Above {{deg}}°',
+      dark: 'Astronomically dark',
+    },
+    twilightShort: {
+      civil: 'C',
+      nautical: 'N',
+      astronomical: 'A',
+    },
     twilight: {
       civil: 'Civil twilight',
       nautical: 'Nautical twilight',

@@ -616,6 +616,20 @@ export const de = {
     culmination: 'höchster Stand {{at}} ({{deg}}°)',
     above: 'über {{deg}}° von {{from}} bis {{to}}',
     neverAbove: 'nie über {{deg}}°',
+    legend: 'Legende',
+    hours: '{{h}} h',
+    band: {
+      recommended: 'Empfohlene Belichtungszeit',
+      moonless: 'Über {{deg}}° ohne Mond',
+      moonlit: 'Über {{deg}}° mit Mond',
+      above: 'Über {{deg}}°',
+      dark: 'Astronomisch dunkel',
+    },
+    twilightShort: {
+      civil: 'B',
+      nautical: 'N',
+      astronomical: 'A',
+    },
     twilight: {
       civil: 'Bürgerliche Dämmerung',
       nautical: 'Nautische Dämmerung',

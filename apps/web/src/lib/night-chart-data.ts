@@ -7,12 +7,14 @@ import {
   buildEligibility,
   buildNightContext,
   meridianTransitUtc,
+  type MoonProfile,
   type NightContext,
   type Target,
   type TimeZoneTransition,
   type TwilightLimit,
 } from '@nina-pm/engine';
 import type { NightChartProps } from '../components/night-chart';
+import { maskIntervals } from '../components/night-chart/model';
 
 export interface ChartTarget {
   readonly id: string;
@@ -30,6 +32,8 @@ export interface NightChartInput {
   readonly minAltDeg: number;
   readonly twilight: TwilightLimit;
   readonly transitLabel: string;
+  /** Mondprofil des Hauptziels für den Streifen „Empfohlene Belichtungszeit“; ohne nur Dämmerung und Höhe. */
+  readonly moonProfile?: MoonProfile | null;
 }
 
 const span = (c: { startUtc: number | null; endUtc: number | null; kind: string }) => ({
@@ -48,12 +52,21 @@ export function nightChartFromEngine(input: NightChartInput): {
     timeZoneTransitions: input.timeZoneTransitions,
   });
   const { startUtc, endUtc } = ctx.times.nightWindow;
-  const series = input.targets.map((t) => {
+  let recommended: { fromUtc: number; toUtc: number }[] | undefined;
+  const series = input.targets.map((t, i) => {
     const e = buildEligibility(ctx, {
       target: t.target,
       twilight: input.twilight,
       minAltDeg: input.minAltDeg,
+      lines: [{ id: 'main', moonProfile: input.moonProfile ?? null }],
     });
+    if (i === 0) {
+      const safe = e.lines[0]?.safe ?? [];
+      recommended = maskIntervals(
+        ctx.boundaryUtc,
+        e.canImage.map((ok, k) => ok && safe[k] !== false),
+      );
+    }
     return {
       id: t.id,
       label: t.label,
@@ -82,7 +95,9 @@ export function nightChartFromEngine(input: NightChartInput): {
         nautical: span(ctx.times.twilight.nautical),
         astronomical: span(ctx.times.twilight.astronomical),
       },
+      sun: ctx.sunAltDeg.map((altDeg, k) => ({ atUtc: ctx.boundaryUtc[k] as number, altDeg })),
       series,
+      recommended,
       moon: {
         points: ctx.moon.map((m, k) => ({ atUtc: ctx.boundaryUtc[k] as number, altDeg: m.altDeg })),
         illuminationPct: mid?.illumPct ?? 0,

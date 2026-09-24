@@ -2,6 +2,7 @@
  * Bausteinübersicht `/_bausteine` – nur mit `VITE_GALLERY=1` (Playwright: Theme-, Dichte-, Breiten- und
  * a11y-Tests je Baustein, components.md §4). Nie im prod-Build. Theme/Dichte über `?theme=&density=`.
  */
+import { BUILT_IN_MOON_PROFILES } from '@nina-pm/shared';
 import { DENSITIES, THEMES, type Density, type Theme } from '@nina-pm/ui-tokens';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -54,19 +55,20 @@ const NGC281_NIGHT = nightChartFromEngine({
     {
       id: 'ngc281',
       label: 'NGC 281',
-      color: '#1f6aa5',
+      color: 'var(--npm-chart-target)',
       target: { raJ2000Deg: 13.2458, decJ2000Deg: 56.6194 },
     },
     {
       id: 'hat-p-17',
       label: 'HAT-P-17',
-      color: '#b3261e',
+      color: 'var(--npm-chart-target-2)',
       target: { raJ2000Deg: 324.536375, decJ2000Deg: 30.488722 },
     },
   ],
   minAltDeg: 30,
   twilight: 'astronomical',
   transitLabel: 'Meridian',
+  moonProfile: BUILT_IN_MOON_PROFILES.find((p) => p.name === 'moonProfile.moderate') ?? null,
 }).props;
 
 export default function Gallery() {

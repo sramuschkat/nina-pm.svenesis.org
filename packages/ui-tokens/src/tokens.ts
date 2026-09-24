@@ -81,6 +81,42 @@ export const BASE: Readonly<Record<string, string>> = {
   'header-h': '64px',
 };
 
+/**
+ * Himmelsfarben des Nachtdiagramms nach Sonnenhöhe (components.md §2.3 „Hintergrund nach Sonnenhöhe
+ * abgestuft“). Bewusst **themen-unabhängig**: das Diagramm zeigt den Himmel, in beiden Themes gleich
+ * (Entscheidung 24.09.2026). Stützstellen absteigend, dazwischen linear je Kanal; über der ersten gilt
+ * deren Farbe, unter der letzten die letzte. Vorbild: `chartSky` in legacy/…/observing-planner.js.
+ */
+export const SKY_STOPS: readonly (readonly [
+  sunAltDeg: number,
+  rgb: readonly [number, number, number],
+])[] = [
+  [6, [166, 140, 69]],
+  [0, [176, 138, 74]],
+  [-3, [96, 110, 140]],
+  [-6, [62, 104, 150]],
+  [-12, [26, 50, 86]],
+  [-18, [9, 14, 24]],
+];
+
+/** Übrige Farben des Nachtdiagramms auf dem Himmelsgrund (themen-unabhängig, Kontrast gegen `SKY_STOPS`). */
+export const CHART: Readonly<Record<string, string>> = {
+  'chart-sky-night': 'rgb(9, 14, 24)',
+  'chart-grid': 'rgba(255, 255, 255, 0.16)',
+  'chart-label': 'rgba(228, 233, 239, 0.8)',
+  'chart-target': '#e8ecf2',
+  'chart-target-2': '#7fc8f8',
+  'chart-moon': '#d8433b',
+  'chart-moon-fill': 'rgba(216, 67, 59, 0.28)',
+  'chart-min-alt': '#e5484d',
+  'chart-marker': '#7fb2e5',
+  'chart-recommended': '#2ecc71',
+  'chart-moonless': '#16a085',
+  'chart-moonlit': '#e5484d',
+  'chart-above': '#e67e22',
+  'chart-dark': '#7a8799',
+};
+
 /** Abstandsskala (UI-4): `--npm-space-n` = Basis × `--npm-space-scale`. */
 export const SPACE_PX = [4, 8, 12, 16, 24, 32, 48] as const;
 
@@ -126,6 +162,7 @@ export function renderTokensCss(): string {
     ':root,',
     ':root[data-theme="light"] {',
     decl(BASE),
+    decl(CHART),
     decl(COLORS.light),
     decl(DENSITY.normal),
     space,
