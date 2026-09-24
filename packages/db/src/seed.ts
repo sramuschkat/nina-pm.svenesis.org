@@ -1,11 +1,15 @@
 /**
- * Demo-Seed (docs/seed/seed-demo.json, TK 6.9). Stand AP-03: Mandanten, Identitäten, Super User und
- * Mitgliedschaften – das, was Anmeldung und Mandanten (AP-04a/b) brauchen. Ausrüstung, Rigs, Projekte,
- * NINA-Instanzen und Discord-Kanäle seeden die Pakete, die diese Tabellen fachlich validieren
- * (AP-09a, AP-11a, AP-14c, AP-60). Idempotent über ON CONFLICT.
+ * Demo-Seed (docs/seed/seed-demo.json, TK 6.9): Mandanten mit Built-in-Mondprofilen, Identitäten, Super
+ * User und Mitgliedschaften. Die Ausrüstung spielt `seedEquipment` über das Repository ein (AP-09a,
+ * seed-equipment.ts); Projekte, NINA-Instanzen und Discord-Kanäle seeden die Pakete, die diese Tabellen
+ * fachlich validieren (AP-11a, AP-14c, AP-60). Idempotent über ON CONFLICT.
  */
 import { createHash } from 'node:crypto';
+import { BUILT_IN_MOON_PROFILES } from '@nina-pm/shared';
 import type { SqlClient } from './migrate/types';
+import type { SeedEquipment } from './seed-equipment';
+
+export { seedEquipment, seedObjectId, type SeedEquipmentResult } from './seed-equipment';
 
 interface SeedIdentity {
   fixture: string;
@@ -21,7 +25,7 @@ interface SeedIdentity {
   roleExpiresInHours?: number;
 }
 
-export interface SeedDemo {
+export interface SeedDemo extends SeedEquipment {
   tenant: { id: string; key: string; name: string; settings?: Record<string, unknown> };
   otherTenant: { id: string; key: string; name: string };
   identities: SeedIdentity[];
@@ -63,6 +67,25 @@ export async function seedCore(client: SqlClient, seed: SeedDemo): Promise<SeedR
       'INSERT INTO tenant (id, tenant_key, display_name, settings) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO NOTHING',
       [t.id, t.key, t.name, JSON.stringify(t.settings)],
     );
+    // Wie bei jeder Mandantenanlage (FA-MON-02): die mitgelieferten Mondprofile.
+    for (const p of BUILT_IN_MOON_PROFILES) {
+      await client.query(
+        `INSERT INTO moon_profile (tenant_id, name, separation_deg, width_days, relax_scale,
+           moon_min_alt_deg, moon_max_alt_deg, max_illumination_pct, moon_must_be_down, is_built_in)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true) ON CONFLICT (tenant_id, name) DO NOTHING`,
+        [
+          t.id,
+          p.name,
+          p.separationDeg,
+          p.widthDays,
+          p.relaxScale,
+          p.moonMinAltDeg,
+          p.moonMaxAltDeg,
+          p.maxIlluminationPct,
+          p.moonMustBeDown,
+        ],
+      );
+    }
   }
   const tenantByKey = new Map(tenants.map((t) => [t.key, t.id]));
 

@@ -149,6 +149,17 @@
   "portable",
   "remote_hosted"
  ],
+ "opticalDesigns": [
+  "apochromatic_refractor",
+  "achromat",
+  "newtonian",
+  "rc",
+  "sct",
+  "maksutov",
+  "cdk",
+  "cassegrain",
+  "rasa"
+ ],
  "strategies": [
   "proportional",
   "manual_priority"

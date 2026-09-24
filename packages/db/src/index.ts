@@ -32,6 +32,21 @@ export {
 } from './repositories/invitations';
 export { PreferenceRepository } from './repositories/preference';
 export {
+  DEFAULT_OVERHEAD,
+  EquipmentRepository,
+  type CameraRow,
+  type FilterRow,
+  type FilterWheelEntry,
+  type MoonProfileRow,
+  type ReportedWheel,
+  type RigRow,
+  type SiteLinkRow,
+  type SiteRow,
+  type TelescopeRow,
+  type TemplateLineRow,
+  type TemplateRow,
+} from './repositories/equipment';
+export {
   encodeCursor,
   insertNotifications,
   NotificationRepository,

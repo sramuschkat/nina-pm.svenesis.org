@@ -9,3 +9,4 @@ export * from './preferences';
 export * from './notifications';
 export * from './system';
 export * from './tenant-settings';
+export * from './equipment';

@@ -13,6 +13,7 @@ export async function handler(event: unknown) {
     sqs,
     failureQueueUrl: requiredEnv('FAILURE_QUEUE_URL'),
     admin: async () => (await lambdaDatabase()).tenantAdmin({ kind: 'ops_cli' }),
+    equipment: async (tenantId) => (await lambdaDatabase()).repositories({ tenantId }).equipment(),
     appOrigin: new URL(PROD_REDIRECT_URI).origin,
   });
   logger.info('ops_cli_command', { command: result.command, ok: result.ok });

@@ -63,6 +63,7 @@ components:
             - resource.not_found
             - resource.version_conflict
             - resource.in_use
+            - resource.read_only
             - invitation.invalid
             - invitation.expired
             - invitation.already_member
@@ -983,6 +984,2438 @@ components:
               maximum: 365
           additionalProperties: false
       additionalProperties: false
+    SiteView:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        pierName:
+          type:
+            - string
+            - "null"
+          maxLength: 120
+          default: null
+        observatoryType:
+          type: string
+          enum:
+            - open_air
+            - dome
+            - roll_off_roof
+            - fixed_pier
+            - portable
+            - remote_hosted
+          default: open_air
+        latitudeDeg:
+          type: number
+          minimum: -89.9
+          maximum: 89.9
+        longitudeDeg:
+          type: number
+          minimum: -180
+          maximum: 180
+        elevationM:
+          type: number
+          minimum: -430
+          maximum: 9000
+          default: 0
+        bortleClass:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 9
+          default: null
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        weatherSafetyUrl:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+          format: uri
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - name
+        - latitudeDeg
+        - longitudeDeg
+        - timeZone
+        - id
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    SiteCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        pierName:
+          type:
+            - string
+            - "null"
+          maxLength: 120
+          default: null
+        observatoryType:
+          type: string
+          enum:
+            - open_air
+            - dome
+            - roll_off_roof
+            - fixed_pier
+            - portable
+            - remote_hosted
+          default: open_air
+        latitudeDeg:
+          type: number
+          minimum: -89.9
+          maximum: 89.9
+        longitudeDeg:
+          type: number
+          minimum: -180
+          maximum: 180
+        elevationM:
+          type: number
+          minimum: -430
+          maximum: 9000
+          default: 0
+        bortleClass:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 9
+          default: null
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        weatherSafetyUrl:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+          format: uri
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - latitudeDeg
+        - longitudeDeg
+        - timeZone
+        - id
+      additionalProperties: false
+    SiteInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        pierName:
+          type:
+            - string
+            - "null"
+          maxLength: 120
+          default: null
+        observatoryType:
+          type: string
+          enum:
+            - open_air
+            - dome
+            - roll_off_roof
+            - fixed_pier
+            - portable
+            - remote_hosted
+          default: open_air
+        latitudeDeg:
+          type: number
+          minimum: -89.9
+          maximum: 89.9
+        longitudeDeg:
+          type: number
+          minimum: -180
+          maximum: 180
+        elevationM:
+          type: number
+          minimum: -430
+          maximum: 9000
+          default: 0
+        bortleClass:
+          type:
+            - number
+            - "null"
+          minimum: 1
+          maximum: 9
+          default: null
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        weatherSafetyUrl:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+          format: uri
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+      required:
+        - name
+        - latitudeDeg
+        - longitudeDeg
+        - timeZone
+      additionalProperties: false
+    SiteLinkView:
+      type: object
+      properties:
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        serviceType:
+          type: string
+          minLength: 1
+          maxLength: 40
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        remoteIdOrUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        isDefault:
+          type: boolean
+          default: false
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - siteId
+        - serviceType
+        - name
+        - remoteIdOrUrl
+        - id
+        - createdAt
+      additionalProperties: false
+    SiteLinkCreate:
+      type: object
+      properties:
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        serviceType:
+          type: string
+          minLength: 1
+          maxLength: 40
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        remoteIdOrUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        isDefault:
+          type: boolean
+          default: false
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - siteId
+        - serviceType
+        - name
+        - remoteIdOrUrl
+        - id
+      additionalProperties: false
+    SiteLinkInput:
+      type: object
+      properties:
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        serviceType:
+          type: string
+          minLength: 1
+          maxLength: 40
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        remoteIdOrUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        isDefault:
+          type: boolean
+          default: false
+      required:
+        - siteId
+        - serviceType
+        - name
+        - remoteIdOrUrl
+      additionalProperties: false
+    TelescopeView:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        model:
+          type: string
+          maxLength: 120
+          default: ""
+        opticalDesign:
+          type: string
+          enum:
+            - apochromatic_refractor
+            - achromat
+            - newtonian
+            - rc
+            - sct
+            - maksutov
+            - cdk
+            - cassegrain
+            - rasa
+        apertureMm:
+          type: number
+          exclusiveMinimum: 0
+        focalLengthMm:
+          type: number
+          exclusiveMinimum: 0
+        reducerFactor:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        obstructionPct:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+        imageCircleMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        backfocusMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        weightKg:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - name
+        - opticalDesign
+        - apertureMm
+        - focalLengthMm
+        - id
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    TelescopeCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        model:
+          type: string
+          maxLength: 120
+          default: ""
+        opticalDesign:
+          type: string
+          enum:
+            - apochromatic_refractor
+            - achromat
+            - newtonian
+            - rc
+            - sct
+            - maksutov
+            - cdk
+            - cassegrain
+            - rasa
+        apertureMm:
+          type: number
+          exclusiveMinimum: 0
+        focalLengthMm:
+          type: number
+          exclusiveMinimum: 0
+        reducerFactor:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        obstructionPct:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+        imageCircleMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        backfocusMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        weightKg:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - opticalDesign
+        - apertureMm
+        - focalLengthMm
+        - id
+      additionalProperties: false
+    TelescopeInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        model:
+          type: string
+          maxLength: 120
+          default: ""
+        opticalDesign:
+          type: string
+          enum:
+            - apochromatic_refractor
+            - achromat
+            - newtonian
+            - rc
+            - sct
+            - maksutov
+            - cdk
+            - cassegrain
+            - rasa
+        apertureMm:
+          type: number
+          exclusiveMinimum: 0
+        focalLengthMm:
+          type: number
+          exclusiveMinimum: 0
+        reducerFactor:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        obstructionPct:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+        imageCircleMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        backfocusMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        weightKg:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+      required:
+        - name
+        - opticalDesign
+        - apertureMm
+        - focalLengthMm
+      additionalProperties: false
+    CameraView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        sensorName:
+          type: string
+        widthPx:
+          type: integer
+        heightPx:
+          type: integer
+        pixelSizeUm:
+          type: number
+        bitDepth:
+          type: integer
+        isCooled:
+          type: boolean
+        coolingSetpointC:
+          type:
+            - number
+            - "null"
+        coolingToleranceC:
+          type: number
+        isColor:
+          type: boolean
+        readNoiseE:
+          type:
+            - number
+            - "null"
+        fullWellE:
+          type:
+            - number
+            - "null"
+        gainEPerAdu:
+          type:
+            - number
+            - "null"
+        quantumEfficiencyPct:
+          type:
+            - number
+            - "null"
+        darkCurrentES20c:
+          type:
+            - number
+            - "null"
+        defaultGain:
+          type:
+            - integer
+            - "null"
+        defaultOffset:
+          type:
+            - integer
+            - "null"
+        defaultBinning:
+          type: integer
+        defaultReadoutMode:
+          type: string
+        supportedBinning:
+          type: array
+          items:
+            type: integer
+        gainModes:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 60
+              gain:
+                type: integer
+              readNoiseE:
+                type:
+                  - number
+                  - "null"
+                minimum: 0
+                default: null
+              fullWellE:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+              ePerAdu:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+            required:
+              - name
+              - gain
+            additionalProperties: false
+        readoutModes:
+          type: array
+          items:
+            type: string
+        ninaReported: {}
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - name
+        - brand
+        - model
+        - sensorName
+        - widthPx
+        - heightPx
+        - pixelSizeUm
+        - bitDepth
+        - isCooled
+        - coolingSetpointC
+        - coolingToleranceC
+        - isColor
+        - readNoiseE
+        - fullWellE
+        - gainEPerAdu
+        - quantumEfficiencyPct
+        - darkCurrentES20c
+        - defaultGain
+        - defaultOffset
+        - defaultBinning
+        - defaultReadoutMode
+        - supportedBinning
+        - gainModes
+        - readoutModes
+        - notes
+        - createdAt
+        - updatedAt
+    CameraCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        model:
+          type: string
+          maxLength: 120
+          default: ""
+        sensorName:
+          type: string
+          maxLength: 120
+          default: ""
+        widthPx:
+          type: integer
+          exclusiveMinimum: 0
+        heightPx:
+          type: integer
+          exclusiveMinimum: 0
+        pixelSizeUm:
+          type: number
+          exclusiveMinimum: 0
+        bitDepth:
+          type: integer
+          minimum: 8
+          maximum: 32
+          default: 16
+        isCooled:
+          type: boolean
+          default: true
+        coolingSetpointC:
+          type:
+            - number
+            - "null"
+          minimum: -60
+          maximum: 40
+          default: null
+        coolingToleranceC:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        isColor:
+          type: boolean
+          default: false
+        readNoiseE:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          default: null
+        fullWellE:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        gainEPerAdu:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        quantumEfficiencyPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+          default: 80
+        darkCurrentES20c:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          default: 0.005
+        defaultGain:
+          type:
+            - integer
+            - "null"
+          default: null
+        defaultOffset:
+          type:
+            - integer
+            - "null"
+          default: null
+        defaultBinning:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+        defaultReadoutMode:
+          type: string
+          maxLength: 60
+          default: Default
+        supportedBinning:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 4
+          minItems: 1
+          maxItems: 4
+          default:
+            - 1
+            - 2
+        gainModes:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 60
+              gain:
+                type: integer
+              readNoiseE:
+                type:
+                  - number
+                  - "null"
+                minimum: 0
+                default: null
+              fullWellE:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+              ePerAdu:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+            required:
+              - name
+              - gain
+            additionalProperties: false
+          maxItems: 20
+          default: []
+        readoutModes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          minItems: 1
+          maxItems: 20
+          default:
+            - Default
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - widthPx
+        - heightPx
+        - pixelSizeUm
+        - id
+      additionalProperties: false
+    CameraInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        model:
+          type: string
+          maxLength: 120
+          default: ""
+        sensorName:
+          type: string
+          maxLength: 120
+          default: ""
+        widthPx:
+          type: integer
+          exclusiveMinimum: 0
+        heightPx:
+          type: integer
+          exclusiveMinimum: 0
+        pixelSizeUm:
+          type: number
+          exclusiveMinimum: 0
+        bitDepth:
+          type: integer
+          minimum: 8
+          maximum: 32
+          default: 16
+        isCooled:
+          type: boolean
+          default: true
+        coolingSetpointC:
+          type:
+            - number
+            - "null"
+          minimum: -60
+          maximum: 40
+          default: null
+        coolingToleranceC:
+          type: number
+          exclusiveMinimum: 0
+          default: 1
+        isColor:
+          type: boolean
+          default: false
+        readNoiseE:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          default: null
+        fullWellE:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        gainEPerAdu:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        quantumEfficiencyPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+          default: 80
+        darkCurrentES20c:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          default: 0.005
+        defaultGain:
+          type:
+            - integer
+            - "null"
+          default: null
+        defaultOffset:
+          type:
+            - integer
+            - "null"
+          default: null
+        defaultBinning:
+          type: integer
+          minimum: 1
+          maximum: 4
+          default: 1
+        defaultReadoutMode:
+          type: string
+          maxLength: 60
+          default: Default
+        supportedBinning:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 4
+          minItems: 1
+          maxItems: 4
+          default:
+            - 1
+            - 2
+        gainModes:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 1
+                maxLength: 60
+              gain:
+                type: integer
+              readNoiseE:
+                type:
+                  - number
+                  - "null"
+                minimum: 0
+                default: null
+              fullWellE:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+              ePerAdu:
+                type:
+                  - number
+                  - "null"
+                exclusiveMinimum: 0
+                default: null
+            required:
+              - name
+              - gain
+            additionalProperties: false
+          maxItems: 20
+          default: []
+        readoutModes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 60
+          minItems: 1
+          maxItems: 20
+          default:
+            - Default
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+      required:
+        - name
+        - widthPx
+        - heightPx
+        - pixelSizeUm
+      additionalProperties: false
+    FilterView:
+      type: object
+      properties:
+        shortName:
+          type: string
+          minLength: 1
+          maxLength: 20
+        fullName:
+          type: string
+          maxLength: 120
+          default: ""
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        filterType:
+          type: string
+          enum:
+            - broadband
+            - narrowband
+            - luminance
+            - uv_ir_cut
+            - light_pollution
+            - photometric
+            - other
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        size:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        shape:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        mountType:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        bandwidthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        centerWavelengthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        photometricBand:
+          type: string
+          enum:
+            - U
+            - B
+            - V
+            - Rc
+            - Ic
+            - g
+            - r
+            - i
+            - z
+            - clear
+            - lum
+            - none
+          default: none
+        transmissionPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+          default: null
+        thicknessMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        colorHex:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+          default: "#CCCCCC"
+        defaultOnNewProject:
+          type: boolean
+          default: false
+        defaultExposureS:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        defaultMoonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - shortName
+        - filterType
+        - id
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    FilterCreate:
+      type: object
+      properties:
+        shortName:
+          type: string
+          minLength: 1
+          maxLength: 20
+        fullName:
+          type: string
+          maxLength: 120
+          default: ""
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        filterType:
+          type: string
+          enum:
+            - broadband
+            - narrowband
+            - luminance
+            - uv_ir_cut
+            - light_pollution
+            - photometric
+            - other
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        size:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        shape:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        mountType:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        bandwidthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        centerWavelengthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        photometricBand:
+          type: string
+          enum:
+            - U
+            - B
+            - V
+            - Rc
+            - Ic
+            - g
+            - r
+            - i
+            - z
+            - clear
+            - lum
+            - none
+          default: none
+        transmissionPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+          default: null
+        thicknessMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        colorHex:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+          default: "#CCCCCC"
+        defaultOnNewProject:
+          type: boolean
+          default: false
+        defaultExposureS:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        defaultMoonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - shortName
+        - filterType
+        - id
+      additionalProperties: false
+    FilterInput:
+      type: object
+      properties:
+        shortName:
+          type: string
+          minLength: 1
+          maxLength: 20
+        fullName:
+          type: string
+          maxLength: 120
+          default: ""
+        brand:
+          type: string
+          maxLength: 120
+          default: ""
+        filterType:
+          type: string
+          enum:
+            - broadband
+            - narrowband
+            - luminance
+            - uv_ir_cut
+            - light_pollution
+            - photometric
+            - other
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        size:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        shape:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        mountType:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+          default: null
+        bandwidthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        centerWavelengthNm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        photometricBand:
+          type: string
+          enum:
+            - U
+            - B
+            - V
+            - Rc
+            - Ic
+            - g
+            - r
+            - i
+            - z
+            - clear
+            - lum
+            - none
+          default: none
+        transmissionPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+          default: null
+        thicknessMm:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        colorHex:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+          default: "#CCCCCC"
+        defaultOnNewProject:
+          type: boolean
+          default: false
+        defaultExposureS:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          default: null
+        defaultMoonProfileId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+      required:
+        - shortName
+        - filterType
+      additionalProperties: false
+    MoonProfileView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        description:
+          type: string
+        separationDeg:
+          type: number
+        widthDays:
+          type: number
+        relaxScale:
+          type: number
+        moonMinAltDeg:
+          type: number
+        moonMaxAltDeg:
+          type: number
+        maxIlluminationPct:
+          type: number
+        moonMustBeDown:
+          type: boolean
+        isBuiltIn:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - name
+        - description
+        - separationDeg
+        - widthDays
+        - relaxScale
+        - moonMinAltDeg
+        - moonMaxAltDeg
+        - maxIlluminationPct
+        - moonMustBeDown
+        - isBuiltIn
+        - createdAt
+    MoonProfileCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+          default: ""
+        separationDeg:
+          type: number
+          minimum: 0
+          maximum: 180
+        widthDays:
+          type: number
+          minimum: 0
+        relaxScale:
+          type: number
+          minimum: 0
+        moonMinAltDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        moonMaxAltDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        maxIlluminationPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        moonMustBeDown:
+          type: boolean
+          default: false
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - separationDeg
+        - widthDays
+        - relaxScale
+        - moonMinAltDeg
+        - moonMaxAltDeg
+        - maxIlluminationPct
+        - id
+      additionalProperties: false
+    MoonProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: string
+          maxLength: 1000
+          default: ""
+        separationDeg:
+          type: number
+          minimum: 0
+          maximum: 180
+        widthDays:
+          type: number
+          minimum: 0
+        relaxScale:
+          type: number
+          minimum: 0
+        moonMinAltDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        moonMaxAltDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        maxIlluminationPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        moonMustBeDown:
+          type: boolean
+          default: false
+      required:
+        - name
+        - separationDeg
+        - widthDays
+        - relaxScale
+        - moonMinAltDeg
+        - moonMaxAltDeg
+        - maxIlluminationPct
+      additionalProperties: false
+    ExposureTemplateView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        cameraId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        notes:
+          type: string
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: UUID
+              filterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              filterShortName:
+                type: string
+              exposureS:
+                type: number
+              plannedCount:
+                type: integer
+              gain:
+                type:
+                  - integer
+                  - "null"
+              offsetAdu:
+                type:
+                  - integer
+                  - "null"
+              binning:
+                type: integer
+              readoutMode:
+                type:
+                  - string
+                  - "null"
+              moonMode:
+                type: string
+                enum:
+                  - profile
+                  - project_default
+                  - none
+              moonProfileId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              enabled:
+                type: boolean
+            required:
+              - id
+              - filterId
+              - filterShortName
+              - exposureS
+              - plannedCount
+              - gain
+              - offsetAdu
+              - binning
+              - readoutMode
+              - moonMode
+              - moonProfileId
+              - enabled
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - name
+        - telescopeId
+        - cameraId
+        - notes
+        - lines
+        - createdAt
+        - updatedAt
+    ExposureTemplateCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        cameraId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              filterId:
+                type: string
+                format: uuid
+                description: UUID
+              exposureS:
+                type: number
+                exclusiveMinimum: 0
+              plannedCount:
+                type: integer
+                minimum: 0
+              gain:
+                type:
+                  - integer
+                  - "null"
+                default: null
+              offsetAdu:
+                type:
+                  - integer
+                  - "null"
+                default: null
+              binning:
+                type: integer
+                minimum: 1
+                maximum: 4
+                default: 1
+              readoutMode:
+                type:
+                  - string
+                  - "null"
+                maxLength: 60
+                default: null
+              moonMode:
+                type: string
+                enum:
+                  - profile
+                  - project_default
+                  - none
+                default: profile
+              moonProfileId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                default: null
+                description: UUID
+              enabled:
+                type: boolean
+                default: true
+            required:
+              - filterId
+              - exposureS
+              - plannedCount
+            additionalProperties: false
+          maxItems: 50
+          default: []
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - id
+      additionalProperties: false
+    ExposureTemplateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        telescopeId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        cameraId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              filterId:
+                type: string
+                format: uuid
+                description: UUID
+              exposureS:
+                type: number
+                exclusiveMinimum: 0
+              plannedCount:
+                type: integer
+                minimum: 0
+              gain:
+                type:
+                  - integer
+                  - "null"
+                default: null
+              offsetAdu:
+                type:
+                  - integer
+                  - "null"
+                default: null
+              binning:
+                type: integer
+                minimum: 1
+                maximum: 4
+                default: 1
+              readoutMode:
+                type:
+                  - string
+                  - "null"
+                maxLength: 60
+                default: null
+              moonMode:
+                type: string
+                enum:
+                  - profile
+                  - project_default
+                  - none
+                default: profile
+              moonProfileId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                default: null
+                description: UUID
+              enabled:
+                type: boolean
+                default: true
+            required:
+              - filterId
+              - exposureS
+              - plannedCount
+            additionalProperties: false
+          maxItems: 50
+          default: []
+      required:
+        - name
+      additionalProperties: false
+    RigView:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        telescopeId:
+          type: string
+          format: uuid
+          description: UUID
+        cameraId:
+          type: string
+          format: uuid
+          description: UUID
+        showInPlanning:
+          type: boolean
+          default: true
+        ninaDeliveryEnabled:
+          type: boolean
+          default: true
+        defaultTemplateId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        defaultRotationDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+          default: null
+        hasRotator:
+          type: boolean
+          default: false
+        rotationToleranceDeg:
+          type: number
+          minimum: 0
+          maximum: 90
+          default: 5
+        skipOnRotationMismatch:
+          type: boolean
+          default: false
+        sessionReportDiscord:
+          type: boolean
+          default: false
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        scheduler:
+          $ref: "#/components/schemas/SchedulerSettings"
+        filterWheel:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilterWheelSlot"
+        settingsVersion:
+          type: integer
+        derived:
+          type: object
+          properties:
+            effFocalMm:
+              type: number
+            scaleArcsecPx:
+              type: number
+            fovWidthDeg:
+              type: number
+            fovHeightDeg:
+              type: number
+          required:
+            - effFocalMm
+            - scaleArcsecPx
+            - fovWidthDeg
+            - fovHeightDeg
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - name
+        - siteId
+        - telescopeId
+        - cameraId
+        - id
+        - scheduler
+        - filterWheel
+        - settingsVersion
+        - derived
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+    SchedulerSettings:
+      type: object
+      properties:
+        strategy:
+          type: string
+          enum:
+            - proportional
+            - manual_priority
+        playback:
+          type: string
+          enum:
+            - time_aware
+            - sequential
+        sortChain:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          maxItems: 8
+        bonusEnabled:
+          type: boolean
+        overshootPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        mosaicPanelsIndependent:
+          type: boolean
+        ditherEnabled:
+          type: boolean
+        ditherEvery:
+          type: integer
+          minimum: 1
+          maximum: 100
+        filterSwitchEnabled:
+          type: boolean
+        filterSwitchEvery:
+          type: integer
+          minimum: 1
+          maximum: 100
+        filterSwitchTolerancePct:
+          type: number
+          minimum: 0
+          maximum: 100
+        flatsEnabled:
+          type: boolean
+        flatsFullSet:
+          type: boolean
+        flatCount:
+          type: integer
+          minimum: 1
+          maximum: 500
+        darkFlatsEnabled:
+          type: boolean
+        darkFlatCount:
+          type:
+            - integer
+            - "null"
+          minimum: 1
+          maximum: 500
+        flatsSource:
+          type: string
+          enum:
+            - panel
+            - sky
+        flipEnabled:
+          type: boolean
+        flipAfterMeridianMin:
+          type: number
+          minimum: 0
+          maximum: 120
+        flipMaxAfterMeridianMin:
+          type: number
+          minimum: 0
+          maximum: 240
+        flipPauseBeforeMeridianMin:
+          type: number
+          minimum: 0
+          maximum: 120
+        flipDurationS:
+          type: number
+          minimum: 0
+          maximum: 3600
+        overhead:
+          type: object
+          properties:
+            slewCenterS:
+              type: number
+              minimum: 0
+              maximum: 3600
+              default: 120
+            filterChangeS:
+              type: number
+              minimum: 0
+              maximum: 600
+              default: 10
+            ditherSettleS:
+              type: number
+              minimum: 0
+              maximum: 600
+              default: 20
+            afEveryMin:
+              type: number
+              minimum: 0
+              maximum: 1440
+              default: 60
+            afDurationS:
+              type: number
+              minimum: 0
+              maximum: 3600
+              default: 180
+            downloadS:
+              type: number
+              minimum: 0
+              maximum: 600
+              default: 5
+          additionalProperties: false
+      required:
+        - strategy
+        - playback
+        - sortChain
+        - bonusEnabled
+        - overshootPct
+        - mosaicPanelsIndependent
+        - ditherEnabled
+        - ditherEvery
+        - filterSwitchEnabled
+        - filterSwitchEvery
+        - filterSwitchTolerancePct
+        - flatsEnabled
+        - flatsFullSet
+        - flatCount
+        - darkFlatsEnabled
+        - darkFlatCount
+        - flatsSource
+        - flipEnabled
+        - flipAfterMeridianMin
+        - flipMaxAfterMeridianMin
+        - flipPauseBeforeMeridianMin
+        - flipDurationS
+        - overhead
+      additionalProperties: false
+    FilterWheelSlot:
+      type: object
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 20
+        filterId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        ninaFilterName:
+          type:
+            - string
+            - "null"
+          maxLength: 60
+        ninaConfirmedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        ninaConfirmedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+      required:
+        - position
+        - filterId
+        - ninaFilterName
+        - ninaConfirmedAt
+        - ninaConfirmedBy
+    RigCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        telescopeId:
+          type: string
+          format: uuid
+          description: UUID
+        cameraId:
+          type: string
+          format: uuid
+          description: UUID
+        showInPlanning:
+          type: boolean
+          default: true
+        ninaDeliveryEnabled:
+          type: boolean
+          default: true
+        defaultTemplateId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        defaultRotationDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+          default: null
+        hasRotator:
+          type: boolean
+          default: false
+        rotationToleranceDeg:
+          type: number
+          minimum: 0
+          maximum: 90
+          default: 5
+        skipOnRotationMismatch:
+          type: boolean
+          default: false
+        sessionReportDiscord:
+          type: boolean
+          default: false
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+        id:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - name
+        - siteId
+        - telescopeId
+        - cameraId
+        - id
+      additionalProperties: false
+    RigInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        telescopeId:
+          type: string
+          format: uuid
+          description: UUID
+        cameraId:
+          type: string
+          format: uuid
+          description: UUID
+        showInPlanning:
+          type: boolean
+          default: true
+        ninaDeliveryEnabled:
+          type: boolean
+          default: true
+        defaultTemplateId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
+        defaultRotationDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+          default: null
+        hasRotator:
+          type: boolean
+          default: false
+        rotationToleranceDeg:
+          type: number
+          minimum: 0
+          maximum: 90
+          default: 5
+        skipOnRotationMismatch:
+          type: boolean
+          default: false
+        sessionReportDiscord:
+          type: boolean
+          default: false
+        notes:
+          type: string
+          maxLength: 4000
+          default: ""
+      required:
+        - name
+        - siteId
+        - telescopeId
+        - cameraId
+      additionalProperties: false
+    FilterWheelView:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                minimum: 1
+                maximum: 20
+              filterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              ninaFilterName:
+                type:
+                  - string
+                  - "null"
+                maxLength: 60
+              ninaConfirmedAt:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              ninaConfirmedBy:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              reportedName:
+                type:
+                  - string
+                  - "null"
+              suggestion:
+                type:
+                  - string
+                  - "null"
+              suggestedFilterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              changedByNina:
+                type: boolean
+            required:
+              - position
+              - filterId
+              - ninaFilterName
+              - ninaConfirmedAt
+              - ninaConfirmedBy
+              - reportedName
+              - suggestion
+              - suggestedFilterId
+              - changedByNina
+        reported:
+          type:
+            - object
+            - "null"
+          properties:
+            slots:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: integer
+                  name:
+                    type: string
+                  focusOffset:
+                    type:
+                      - number
+                      - "null"
+                required:
+                  - position
+                  - name
+                  - focusOffset
+            reportedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - slots
+            - reportedAt
+        settingsVersion:
+          type: integer
+      required:
+        - slots
+        - reported
+        - settingsVersion
+    FilterWheelPut:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                minimum: 1
+                maximum: 20
+              filterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              ninaFilterName:
+                type:
+                  - string
+                  - "null"
+                minLength: 1
+                maxLength: 60
+            required:
+              - position
+              - filterId
+              - ninaFilterName
+            additionalProperties: false
+          maxItems: 20
+      required:
+        - slots
+      additionalProperties: false
+    SiteNightsView:
+      type: object
+      properties:
+        currentNight:
+          type: string
+          format: date
+        tzdataVersion:
+          type: string
+        timeZoneTransitions:
+          type: array
+          items:
+            type: object
+            properties:
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              utcOffsetMinutes:
+                type: integer
+            required:
+              - atUtc
+              - utcOffsetMinutes
+        nights:
+          type: array
+          items:
+            type: object
+            properties:
+              night:
+                type: string
+                format: date
+              noonStartUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              noonEndUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              nightWindowEndUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - night
+              - noonStartUtc
+              - noonEndUtc
+              - nightWindowEndUtc
+      required:
+        - currentNight
+        - tzdataVersion
+        - timeZoneTransitions
+        - nights
     TenantAdminView:
       type: object
       properties:
@@ -2532,6 +4965,2249 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed (unbekannter Schlüssel oder ungültiger Wert)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sites:
+    get:
+      summary: "Standort: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-STO-01
+        - FA-STO-04
+        - FA-STO-06
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SiteView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Standort: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-01
+        - FA-STO-04
+        - FA-STO-06
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sites/{id}:
+    get:
+      summary: "Standort: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-STO-01
+        - FA-STO-04
+        - FA-STO-06
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Standort
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Standort: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-01
+        - FA-STO-04
+        - FA-STO-06
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Standort: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-01, FA-STO-04, FA-STO-06, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-01
+        - FA-STO-04
+        - FA-STO-06
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/site-links:
+    get:
+      summary: "Standort-Link: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-STO-05, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-STO-05
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: siteId
+          in: query
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SiteLinkView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Standort-Link: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-05, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-05
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteLinkCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteLinkView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/site-links/{id}:
+    get:
+      summary: "Standort-Link: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-STO-05, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-STO-05
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Standort-Link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteLinkView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Standort-Link: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-05, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-05
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SiteLinkInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteLinkView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Standort-Link: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-STO-05, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-STO-05
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/telescopes:
+    get:
+      summary: "Teleskop: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-TEL-01, FA-TEL-02, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-TEL-01
+        - FA-TEL-02
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TelescopeView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Teleskop: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-TEL-01
+        - FA-TEL-02
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelescopeCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelescopeView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/telescopes/{id}:
+    get:
+      summary: "Teleskop: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-TEL-01, FA-TEL-02, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-TEL-01
+        - FA-TEL-02
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Teleskop
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelescopeView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Teleskop: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-TEL-01
+        - FA-TEL-02
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelescopeInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelescopeView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Teleskop: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-TEL-01, FA-TEL-02, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-TEL-01
+        - FA-TEL-02
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/cameras:
+    get:
+      summary: "Kamera: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-KAM-01…06
+        - NT-E2
+        - NT-38
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CameraView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Kamera: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-KAM-01…06
+        - NT-E2
+        - NT-38
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CameraCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CameraView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/cameras/{id}:
+    get:
+      summary: "Kamera: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-KAM-01…06
+        - NT-E2
+        - NT-38
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Kamera
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CameraView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Kamera: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-KAM-01…06
+        - NT-E2
+        - NT-38
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CameraInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CameraView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Kamera: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-KAM-01…06, NT-E2, NT-38, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-KAM-01…06
+        - NT-E2
+        - NT-38
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/filters:
+    get:
+      summary: "Filter: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-FIL-01…05, NT-41, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-FIL-01…05
+        - NT-41
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FilterView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Filter: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-FIL-01…05
+        - NT-41
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilterCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/filters/{id}:
+    get:
+      summary: "Filter: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-FIL-01…05, NT-41, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-FIL-01…05
+        - NT-41
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Filter: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-FIL-01…05
+        - NT-41
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilterInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Filter: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-FIL-01…05, NT-41, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-FIL-01…05
+        - NT-41
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/moon-profiles:
+    get:
+      summary: "Mondprofil: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-MON-01
+        - FA-MON-02
+        - moon.md §1
+        - AST-M8
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MoonProfileView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Mondprofil: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-MON-01
+        - FA-MON-02
+        - moon.md §1
+        - AST-M8
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoonProfileCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoonProfileView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/moon-profiles/{id}:
+    get:
+      summary: "Mondprofil: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-MON-01
+        - FA-MON-02
+        - moon.md §1
+        - AST-M8
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Mondprofil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoonProfileView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Mondprofil: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-MON-01
+        - FA-MON-02
+        - moon.md §1
+        - AST-M8
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoonProfileInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoonProfileView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Mondprofil: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-MON-01, FA-MON-02, moon.md §1, AST-M8, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-MON-01
+        - FA-MON-02
+        - moon.md §1
+        - AST-M8
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[]), resource.read_only (mitgeliefert)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/exposure-templates:
+    get:
+      summary: "Belichtungsvorlage: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-BPL-01
+        - FA-BPL-02
+        - NT-38
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExposureTemplateView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Belichtungsvorlage: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-BPL-01
+        - FA-BPL-02
+        - NT-38
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExposureTemplateCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureTemplateView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/exposure-templates/{id}:
+    get:
+      summary: "Belichtungsvorlage: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-BPL-01
+        - FA-BPL-02
+        - NT-38
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Belichtungsvorlage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureTemplateView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Belichtungsvorlage: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-BPL-01
+        - FA-BPL-02
+        - NT-38
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExposureTemplateInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExposureTemplateView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Belichtungsvorlage: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-BPL-01, FA-BPL-02, NT-38, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-BPL-01
+        - FA-BPL-02
+        - NT-38
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs:
+    get:
+      summary: "Rig: Liste"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-RIG-01…03
+        - FA-RIG-05
+        - FA-RIG-08…11
+        - TK 7.2
+      responses:
+        "200":
+          description: Liste
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RigView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "Rig: anlegen (Client-UUID; Wiederholung liefert das Objekt erneut)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2, rules/api.md Idempotenz"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-RIG-01…03
+        - FA-RIG-05
+        - FA-RIG-08…11
+        - TK 7.2
+        - rules/api.md Idempotenz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RigCreate"
+      responses:
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RigView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}:
+    get:
+      summary: "Rig: lesen"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-RIG-01…03
+        - FA-RIG-05
+        - FA-RIG-08…11
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Rig
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RigView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: "Rig: ändern"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-RIG-01…03
+        - FA-RIG-05
+        - FA-RIG-08…11
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RigInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RigView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.read_only (mitgelieferte Mondprofile)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: "Rig: löschen (gesperrt, solange verwendet)"
+      tags:
+        - equipment
+      description: "Aktion: `equipment.write` · FA-RIG-01…03, FA-RIG-05, FA-RIG-08…11, TK 7.2, FA-RIG-13"
+      x-npm-action: equipment.write
+      x-npm-requirements:
+        - FA-RIG-01…03
+        - FA-RIG-05
+        - FA-RIG-08…11
+        - TK 7.2
+        - FA-RIG-13
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Verwender in errors[])
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/scheduler-settings:
+    put:
+      summary: Scheduler-Einstellungen des Rigs (erhöht settingsVersion)
+      tags:
+        - equipment
+      description: "Aktion: `rig.settings.write` · FA-RIG-04, FA-SCH, sort-chain.md, flip-rotation.md §1"
+      x-npm-action: rig.settings.write
+      x-npm-requirements:
+        - FA-RIG-04
+        - FA-SCH
+        - sort-chain.md
+        - flip-rotation.md §1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          required: false
+          description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchedulerSettings"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RigView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed, rig.sort_chain_invalid, rig.flip_settings_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/filter-wheel:
+    get:
+      summary: Filterradbelegung mit NINA-Meldung und Vorschlägen
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · FA-RIG-14, NT-E1"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - FA-RIG-14
+        - NT-E1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Belegung
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterWheelView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    put:
+      summary: Filterradbelegung bestätigen (nur Admin/Owner; erhöht settingsVersion)
+      tags:
+        - equipment
+      description: "Aktion: `rig.settings.write` · FA-RIG-14, NT-E1"
+      x-npm-action: rig.settings.write
+      x-npm-requirements:
+        - FA-RIG-14
+        - NT-E1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          required: false
+          description: "`settingsVersion` aus dem ETag; abweichend → 412 resource.version_conflict"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FilterWheelPut"
+      responses:
+        "200":
+          description: Bestätigt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilterWheelView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sites/{id}/nights:
+    get:
+      summary: Nacht-Tabelle des Standorts (ab from bzw. ab der Mittagsnacht, count ≤ 400)
+      tags:
+        - equipment
+      description: "Aktion: `project.read` · NT-02, NT-01, H1, night.md §1"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - NT-02
+        - NT-01
+        - H1
+        - night.md §1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: date
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 400
+            default: 60
+          required: false
+          name: count
+          in: query
+      responses:
+        "200":
+          description: Nacht-Tabelle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteNightsView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

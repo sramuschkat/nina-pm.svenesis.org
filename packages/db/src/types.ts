@@ -116,6 +116,202 @@ export interface TenantStorageTable {
   measuredAt: Timestamp;
 }
 
+/** jsonb: gelesen als Objekt, geschrieben als JSON-Zeichenkette. */
+type Json = ColumnType<unknown, string | undefined, string>;
+
+export interface SiteTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  pierName: string | null;
+  observatoryType: Generated<string>;
+  latitudeDeg: number;
+  longitudeDeg: number;
+  elevationM: Generated<number>;
+  bortleClass: number | null;
+  timeZone: string;
+  weatherSafetyUrl: string | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface SiteLinkTable {
+  id: Generated<string>;
+  tenantId: string;
+  siteId: string;
+  serviceType: string;
+  name: string;
+  remoteIdOrUrl: string;
+  notes: Generated<string>;
+  isDefault: Generated<boolean>;
+  createdAt: Timestamp;
+}
+
+export interface TelescopeTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  brand: Generated<string>;
+  model: Generated<string>;
+  opticalDesign: string;
+  apertureMm: number;
+  focalLengthMm: number;
+  reducerFactor: Generated<number>;
+  obstructionPct: Generated<number>;
+  imageCircleMm: number | null;
+  backfocusMm: number | null;
+  spotAxisUm: number | null;
+  spotEdgeUm: number | null;
+  weightKg: number | null;
+  lengthMm: number | null;
+  focuserTravelMm: number | null;
+  focuserMmPerTurn: number | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface CameraTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  brand: Generated<string>;
+  model: Generated<string>;
+  sensorName: Generated<string>;
+  widthPx: number;
+  heightPx: number;
+  pixelSizeUm: number;
+  bitDepth: Generated<number>;
+  isCooled: Generated<boolean>;
+  coolingSetpointC: number | null;
+  coolingToleranceC: Generated<number>;
+  isColor: Generated<boolean>;
+  readNoiseE: number | null;
+  fullWellE: number | null;
+  quantumEfficiencyPct: number | null;
+  /**
+   * `gain_e_per_adu` und `dark_current_e_s_20c`: Das CamelCasePlugin bildet keinen camelCase-Namen auf
+   * sie ab (Großbuchstabenfolge bzw. Ziffer nach Unterstrich). Geschrieben wird daher unter dem
+   * Spaltennamen selbst, gelesen kommen sie als `gainEPerAdu` bzw. `darkCurrentES20c` zurück
+   * (repositories/equipment.ts).
+   */
+  gain_e_per_adu: number | null;
+  dark_current_e_s_20c: number | null;
+  defaultGain: number | null;
+  defaultOffset: number | null;
+  defaultBinning: Generated<number>;
+  defaultReadoutMode: Generated<string>;
+  supportedBinning: Json;
+  gainModes: Json;
+  readoutModes: Json;
+  ninaReported: Json | null;
+  ninaReportDismissedHash: string | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface FilterTable {
+  id: Generated<string>;
+  tenantId: string;
+  telescopeId: string | null;
+  shortName: string;
+  fullName: Generated<string>;
+  brand: Generated<string>;
+  filterType: string;
+  size: string | null;
+  shape: string | null;
+  mountType: string | null;
+  bandwidthNm: number | null;
+  centerWavelengthNm: number | null;
+  photometricBand: Generated<string>;
+  transmissionPct: number | null;
+  thicknessMm: number | null;
+  colorHex: Generated<string>;
+  defaultOnNewProject: Generated<boolean>;
+  defaultExposureS: number | null;
+  defaultMoonProfileId: string | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ExposureTemplateTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  telescopeId: string | null;
+  cameraId: string | null;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface ExposureTemplateLineTable {
+  id: Generated<string>;
+  tenantId: string;
+  templateId: string;
+  filterId: string | null;
+  filterShortName: string;
+  exposureS: number;
+  plannedCount: number;
+  gain: number | null;
+  offsetAdu: number | null;
+  binning: Generated<number>;
+  readoutMode: string | null;
+  moonMode: Generated<string>;
+  moonProfileId: string | null;
+  enabled: Generated<boolean>;
+  orderIndex: Generated<number>;
+}
+
+export interface RigTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  siteId: string;
+  telescopeId: string;
+  cameraId: string;
+  showInPlanning: Generated<boolean>;
+  ninaDeliveryEnabled: Generated<boolean>;
+  filterWheel: Json;
+  ninaFilterWheel: Json | null;
+  defaultTemplateId: string | null;
+  defaultRotationDeg: number | null;
+  hasRotator: Generated<boolean>;
+  rotationToleranceDeg: Generated<number>;
+  skipOnRotationMismatch: Generated<boolean>;
+  sessionReportDiscord: Generated<boolean>;
+  strategy: Generated<string>;
+  playback: Generated<string>;
+  sortChain: Json;
+  bonusEnabled: Generated<boolean>;
+  overshootPct: Generated<number>;
+  mosaicPanelsIndependent: Generated<boolean>;
+  ditherEnabled: Generated<boolean>;
+  ditherEvery: Generated<number>;
+  filterSwitchEnabled: Generated<boolean>;
+  filterSwitchEvery: Generated<number>;
+  filterSwitchTolerancePct: Generated<number>;
+  flatsEnabled: Generated<boolean>;
+  flatsFullSet: Generated<boolean>;
+  flatCount: Generated<number>;
+  darkFlatsEnabled: Generated<boolean>;
+  darkFlatCount: number | null;
+  flatsSource: Generated<string>;
+  flipEnabled: Generated<boolean>;
+  flipAfterMeridianMin: Generated<number>;
+  flipMaxAfterMeridianMin: Generated<number>;
+  flipPauseBeforeMeridianMin: Generated<number>;
+  flipDurationS: Generated<number>;
+  overhead: Json;
+  settingsVersion: Generated<number>;
+  notes: Generated<string>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 export interface NotificationTable {
   id: Generated<string>;
   tenantId: string | null;
@@ -199,5 +395,13 @@ export interface Database {
   notification: NotificationTable;
   changeLog: ChangeLogTable;
   moonProfile: MoonProfileTable;
+  site: SiteTable;
+  siteLink: SiteLinkTable;
+  telescope: TelescopeTable;
+  camera: CameraTable;
+  filter: FilterTable;
+  exposureTemplate: ExposureTemplateTable;
+  exposureTemplateLine: ExposureTemplateLineTable;
+  rig: RigTable;
   userPreference: UserPreferenceTable;
 }

@@ -9,6 +9,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ROUTES } from '../src/app';
 import { resolveSessionState } from '../src/auth/session';
 import { seedPersonas, type Persona, type PersonaWorld } from './support/personas';
+import {
+  CAMERA,
+  filterInput,
+  MOON,
+  rigInput,
+  SCHEDULER,
+  SITE,
+  TELESCOPE,
+} from './support/equipment';
 import { createStack, type Stack } from './support/stack';
 
 interface Example {
@@ -102,6 +111,7 @@ beforeAll(async () => {
     },
     ...memberExamples(),
     ...systemExamples(),
+    ...(await equipmentExamples()),
   };
 });
 
@@ -196,6 +206,129 @@ function memberExamples(): Record<string, Example> {
       url: `/api/web/v1/invitations/${crypto.randomUUID()}`,
       method: 'DELETE',
       okStatus: 404,
+    },
+  };
+}
+
+/** Ausrüstung (AP-09a): je Objektart ein Bestandsobjekt; Löschen zielt auf eine unbekannte ID. */
+async function equipmentExamples(): Promise<Record<string, Example>> {
+  const eq = stack.services
+    .repositories({ tenantId: world.tenantA, memberId: world.members.owner })
+    .equipment();
+  const now = stack.clock.now();
+  const site = await eq.createSite(crypto.randomUUID(), SITE, now);
+  const link = await eq.createSiteLink(
+    crypto.randomUUID(),
+    {
+      siteId: site.id,
+      serviceType: 'web',
+      name: 'Allsky',
+      remoteIdOrUrl: 'https://example.org',
+      notes: '',
+      isDefault: false,
+    },
+    now,
+  );
+  const telescope = await eq.createTelescope(crypto.randomUUID(), TELESCOPE, now);
+  const camera = await eq.createCamera(crypto.randomUUID(), CAMERA, now);
+  const filter = await eq.createFilter(crypto.randomUUID(), filterInput('L'), now);
+  const moon = await eq.createMoonProfile(crypto.randomUUID(), MOON, now);
+  const template = await eq.createTemplate(
+    crypto.randomUUID(),
+    { name: 'LRGB', telescopeId: null, cameraId: null, notes: '', lines: [] },
+    now,
+  );
+  const rig = await eq.createRig(
+    crypto.randomUUID(),
+    rigInput(site.id, telescope.id, camera.id),
+    now,
+  );
+  let n = 0;
+  const unique = (prefix: string) => `${prefix} ${String((n += 1))}`;
+  const gone = crypto.randomUUID();
+  const own: ResourceMeta = { tenantId: world.tenantA };
+  const crud = (
+    path: string,
+    id: string,
+    body: object,
+    fresh: () => object,
+    foreignRefs = false,
+  ): Record<string, Example> => {
+    const post: Example = {
+      url: `/api/web/v1/${path}`,
+      method: 'POST',
+      body: () => ({ id: crypto.randomUUID(), ...fresh() }),
+      okStatus: 201,
+    };
+    return {
+      [`GET /api/web/v1/${path}`]: { url: `/api/web/v1/${path}` },
+      [`GET /api/web/v1/${path}/{id}`]: { url: `/api/web/v1/${path}/${id}`, resource: own },
+      [`POST /api/web/v1/${path}`]: post,
+      [`PUT /api/web/v1/${path}/{id}`]: {
+        url: `/api/web/v1/${path}/${id}`,
+        method: 'PUT',
+        body,
+        resource: own,
+      },
+      [`DELETE /api/web/v1/${path}/{id}`]: {
+        url: `/api/web/v1/${path}/${gone}`,
+        method: 'DELETE',
+        okStatus: 404,
+        resource: own,
+      },
+      ...(foreignRefs
+        ? { [`POST /api/web/v1/${path}`]: { ...post, expect: { 'fremder Mandant (Admin)': 422 } } }
+        : {}),
+    };
+  };
+  const linkBody = {
+    siteId: site.id,
+    serviceType: 'web',
+    name: 'Allsky',
+    remoteIdOrUrl: 'https://example.org',
+  };
+  return {
+    ...crud('sites', site.id, SITE, () => ({ ...SITE, name: unique('Standort') })),
+    ...crud('site-links', link.id, linkBody, () => ({ ...linkBody, name: unique('Link') }), true),
+    ...crud('telescopes', telescope.id, TELESCOPE, () => ({
+      ...TELESCOPE,
+      name: unique('Teleskop'),
+    })),
+    ...crud('cameras', camera.id, CAMERA, () => ({ ...CAMERA, name: unique('Kamera') })),
+    ...crud('filters', filter.id, filterInput('L'), () => filterInput(unique('F'))),
+    ...crud('moon-profiles', moon.id, MOON, () => ({ ...MOON, name: unique('Mond') })),
+    ...crud('exposure-templates', template.id, { name: 'LRGB' }, () => ({
+      name: unique('Vorlage'),
+    })),
+    ...crud(
+      'rigs',
+      rig.id,
+      rigInput(site.id, telescope.id, camera.id),
+      () => ({
+        ...rigInput(site.id, telescope.id, camera.id),
+        name: unique('Rig'),
+      }),
+      true,
+    ),
+    'PUT /api/web/v1/rigs/{id}/scheduler-settings': {
+      url: `/api/web/v1/rigs/${rig.id}/scheduler-settings`,
+      method: 'PUT',
+      body: SCHEDULER,
+      resource: own,
+    },
+    'GET /api/web/v1/rigs/{id}/filter-wheel': {
+      url: `/api/web/v1/rigs/${rig.id}/filter-wheel`,
+      resource: own,
+    },
+    'PUT /api/web/v1/rigs/{id}/filter-wheel': {
+      url: `/api/web/v1/rigs/${rig.id}/filter-wheel`,
+      method: 'PUT',
+      body: { slots: [{ position: 1, filterId: filter.id, ninaFilterName: 'L' }] },
+      resource: own,
+    },
+    'GET /api/web/v1/sites/{id}/nights': {
+      url: `/api/web/v1/sites/${site.id}/nights?from=2026-09-17&count=3`,
+      resource: own,
     },
   };
 }
