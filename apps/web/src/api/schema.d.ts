@@ -9425,6 +9425,21 @@ export interface components {
                 plannedS: number;
                 integrationS: number;
             };
+            createdByName: string;
+            panelCount: number;
+            filters: components["schemas"]["FilterPlanSummary"][];
+        };
+        FilterPlanSummary: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            filterId: string | null;
+            filterShortName: string;
+            exposureS: number;
+            planned: number;
+            accepted: number;
+            lines: number;
         };
         ProjectView: {
             /**

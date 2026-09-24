@@ -259,6 +259,31 @@ describe('Zähler (FK 8.4)', () => {
   });
 });
 
+describe('Liste S-30 (FA-PRJ-14)', () => {
+  it('liefert Ersteller, Panelzahl und Plan je Filter (nur aktive Zeilen)', async () => {
+    const t = await setup();
+    const p = await project(t, 'admin');
+    const panel = p.panels[0]?.id as string;
+    await addLine(t, p.id, panel, { plannedCount: 10 });
+    await addLine(t, p.id, panel, { plannedCount: 5 });
+    await addLine(t, p.id, panel, { plannedCount: 7, enabled: false });
+    const list = await t.call('/projects');
+    const item = (list.body.items as Record<string, unknown>[])[0];
+    expect(item).toMatchObject({ id: p.id, panelCount: 1 });
+    expect(typeof item?.createdByName).toBe('string');
+    expect(item?.filters).toEqual([
+      {
+        filterId: t.ha.id,
+        filterShortName: 'Ha',
+        exposureS: expect.any(Number) as number,
+        planned: 15,
+        accepted: 0,
+        lines: 2,
+      },
+    ]);
+  });
+});
+
 describe('Papierkorb (FA-PRJ-15, E4)', () => {
   it('Löschen ist weich: aus Listen und Detail verschwunden; nur Admin sieht und stellt unverändert wieder her', async () => {
     const t = await setup();

@@ -30,6 +30,7 @@ import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
 import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
+import { ProjectListPage } from '../pages/projects/ProjectListPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -141,7 +142,7 @@ export function createRouter() {
           children: [
             { index: true, element: <HomePage /> },
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
-            { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+            { path: 'projekte', element: <ProjectListPage /> },
             { path: 'projekte/neu', element: <ProjectEditorPage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
