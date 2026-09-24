@@ -4,6 +4,7 @@
  * jede Methode filtert nach `session_hash`, `identity_id` oder dem Token-Hash einer Einladung.
  */
 import {
+  DEFAULT_TENANT_TIMEZONE,
   ProblemError,
   SESSION_IDLE_DAYS,
   SESSION_MAX_DAYS,
@@ -313,6 +314,16 @@ export class AuthRepository {
       .select(['id', 'tenantKey', 'displayName', 'status', 'ownerMemberId'])
       .where('id', '=', tenantId)
       .executeTakeFirst();
+  }
+
+  /** `tenant.settings.tenantTimezone` (IANA) oder der Standard (FA-MAN-05). */
+  async tenantTimeZone(tenantId: string): Promise<string> {
+    const row = await this.db
+      .selectFrom('tenant')
+      .select(sql<string | null>`settings->>'tenantTimezone'`.as('tz'))
+      .where('id', '=', tenantId)
+      .executeTakeFirst();
+    return row?.tz ?? DEFAULT_TENANT_TIMEZONE;
   }
 
   async memberOf(identityId: string, tenantId: string) {

@@ -14,6 +14,7 @@ import { AUTH_ROUTES, authRoutes } from './routes/auth';
 import { healthRoute, healthRoutes } from './routes/health';
 import { SYSTEM_ROUTES, systemRoutes } from './routes/system';
 import { ME_ROUTES, webMeRoutes } from './routes/web-me';
+import { NOTIFICATION_ROUTES, webNotificationRoutes } from './routes/web-notifications';
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
@@ -38,6 +39,7 @@ export const ROUTES = [
   downloadUrlRoute,
   ...MEMBER_ROUTES,
   ...ME_ROUTES,
+  ...NOTIFICATION_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -86,6 +88,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webFileRoutes(services));
   app.route('/', webMemberRoutes(services));
   app.route('/', webMeRoutes(services));
+  app.route('/', webNotificationRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

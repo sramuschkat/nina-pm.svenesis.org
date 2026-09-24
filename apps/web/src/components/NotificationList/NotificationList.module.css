@@ -1,0 +1,76 @@
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+  min-height: var(--npm-row-h);
+}
+.list li:first-child {
+  border-top: none;
+}
+.unread {
+  background: var(--npm-note-bg);
+}
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 0.5em;
+  border-radius: 50%;
+}
+.unread .dot {
+  background: var(--npm-accent);
+}
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.text {
+  overflow-wrap: anywhere;
+}
+.unread .text {
+  font-weight: 600;
+}
+.subject,
+.time {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  overflow-wrap: anywhere;
+}
+.markRead {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--npm-radius);
+  border: 1px solid var(--npm-border);
+  background: transparent;
+  color: var(--npm-text);
+  cursor: pointer;
+}
+.markRead:hover {
+  border-color: var(--npm-accent);
+}
+.status {
+  padding: var(--npm-space-3);
+  color: var(--npm-text-light);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

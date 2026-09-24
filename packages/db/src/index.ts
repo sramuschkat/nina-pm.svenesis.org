@@ -32,6 +32,13 @@ export {
 } from './repositories/invitations';
 export { PreferenceRepository } from './repositories/preference';
 export {
+  encodeCursor,
+  insertNotifications,
+  NotificationRepository,
+  type NewNotifications,
+  type NotificationRow,
+} from './repositories/notification';
+export {
   MemberRepository,
   type Member,
   type MemberWithIdentity,

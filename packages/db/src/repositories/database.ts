@@ -8,6 +8,7 @@ export type { AppDbRole, DbConfig } from '../connection';
 import { AuthRepository } from './auth';
 import { JobQueue, JobRepository } from './job';
 import { MemberRepository } from './member';
+import { NotificationRepository } from './notification';
 import { PreferenceRepository } from './preference';
 import { TenantAdminRepository, type SystemActor } from './tenant-admin';
 import { TenantRepository } from './tenant';
@@ -19,6 +20,7 @@ export interface OpenDatabase {
     job: JobRepository;
     member: MemberRepository;
     preference: () => PreferenceRepository;
+    notification: () => NotificationRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -38,6 +40,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       job: new JobRepository(db, ctx),
       member: new MemberRepository(db, ctx),
       preference: () => new PreferenceRepository(db, ctx),
+      notification: () => new NotificationRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

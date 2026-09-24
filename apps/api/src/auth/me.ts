@@ -18,7 +18,12 @@ export async function buildMe(repo: AuthRepository, auth: AuthContext): Promise<
     },
     context: auth.ctx,
     tenant: current
-      ? { id: current.tenantId, key: current.tenantKey, name: current.tenantName }
+      ? {
+          id: current.tenantId,
+          key: current.tenantKey,
+          name: current.tenantName,
+          timeZone: await repo.tenantTimeZone(current.tenantId),
+        }
       : null,
     member:
       current && auth.role

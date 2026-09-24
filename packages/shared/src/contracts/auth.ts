@@ -48,7 +48,15 @@ export const MeResponse = z
       mfa: z.boolean(),
     }),
     context: AuthContextKindSchema,
-    tenant: z.object({ id: Uuid, key: z.string(), name: z.string() }).nullable(),
+    tenant: z
+      .object({
+        id: Uuid,
+        key: z.string(),
+        name: z.string(),
+        /** Mandantenzeit (`tenantTimezone`, IANA) für Zeitpunkte ohne Standortbezug (NT-03). */
+        timeZone: z.string(),
+      })
+      .nullable(),
     member: z
       .object({
         id: Uuid,

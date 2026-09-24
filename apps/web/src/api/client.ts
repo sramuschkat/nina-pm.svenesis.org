@@ -10,6 +10,7 @@ export type Me = Schemas['MeResponse'];
 export type Preferences = Schemas['Preferences'];
 export type InvitationPreview = Schemas['InvitationPreview'];
 export type InvitationClaim = Schemas['InvitationClaimResponse'];
+export type NotificationList = Schemas['NotificationList'];
 
 /** Für `/auth/me`: 401 heißt „anonym“, keine Weiterleitung. */
 const quiet = createApiFetch(fetch, { currentPath: () => '/', go: () => undefined });
@@ -27,4 +28,11 @@ export const api = {
   preferences: () => apiFetch<Preferences>('/api/web/v1/me/preferences'),
   setPreference: (key: 'ui.theme' | 'ui.density' | 'ui.navCollapsed', value: unknown) =>
     apiFetch<undefined>(`/api/web/v1/me/preferences/${key}`, { method: 'PUT', json: { value } }),
+  notifications: (limit = 50) =>
+    apiFetch<NotificationList>(`/api/web/v1/notifications?limit=${limit}`),
+  markNotificationsRead: (body: { ids: string[] } | { all: true }) =>
+    apiFetch<{ unreadCount: number }>('/api/web/v1/notifications/read', {
+      method: 'POST',
+      json: body,
+    }),
 };

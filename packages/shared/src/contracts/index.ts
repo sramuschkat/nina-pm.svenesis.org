@@ -6,3 +6,4 @@ export * from './nights';
 export * from './upload-json';
 export * from './tenants';
 export * from './preferences';
+export * from './notifications';

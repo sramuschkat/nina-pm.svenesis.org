@@ -86,6 +86,22 @@
   cursor: pointer;
   position: relative;
 }
+.cardLink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-5);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border: 1px solid var(--npm-border);
+  border-top: 4px solid var(--npm-accent);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+}
+.cardLink:hover {
+  border-color: var(--npm-accent);
+  text-decoration: none;
+}
 .cardButton:hover:not(:disabled) {
   border-color: var(--npm-accent);
 }

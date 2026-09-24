@@ -15,6 +15,7 @@ import { useAuth, useCan } from '../auth';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { actionIcons, areaIcons, ICON_SIZE, uiIcons } from '../components/icons';
 import { SvenesisFooter, SvenesisHeader } from './Frame';
+import { NotificationBell } from './NotificationBell';
 import styles from './layout.module.css';
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -65,7 +66,6 @@ function AppBar() {
         : '';
   const canSwitch = me.memberships.length > 1 || me.isSuperUser;
   const ThemeIcon = theme === 'dark' ? uiIcons.themeLight : uiIcons.themeDark;
-  const Bell = uiIcons.notifications;
   const UserIcon = uiIcons.user;
   const Chevron = uiIcons.menu;
   // Nach dem Abmelden: fachliche Daten verwerfen, `/auth/me` neu laden (→ anonym) und zur Einstiegsseite.
@@ -91,16 +91,10 @@ function AppBar() {
         ) : null}
       </span>
       <span className={styles.spacer} />
-      {/* Benachrichtigungen folgen mit AP-06b. */}
-      <button
-        type="button"
-        className={styles.iconButton}
-        disabled
-        aria-label={t('appBar.notifications')}
-        title={t('common.comingSoon')}
-      >
-        <Bell size={ICON_SIZE.button} aria-hidden />
-      </button>
+      {/* Benachrichtigungen gibt es nur im Mandanten (Empfänger ist ein Mitglied). */}
+      {me.context === 'tenant' && me.tenant ? (
+        <NotificationBell tenantTimeZone={me.tenant.timeZone} />
+      ) : null}
       <button
         type="button"
         className={styles.iconButton}

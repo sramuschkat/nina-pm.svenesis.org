@@ -7,6 +7,7 @@ import {
   AuthRepository,
   JobRepository,
   MemberRepository,
+  NotificationRepository,
   PreferenceRepository,
   TenantAdminRepository,
 } from '@nina-pm/db';
@@ -53,6 +54,7 @@ export async function createStack() {
       job: new JobRepository(pg.db, ctx),
       member: new MemberRepository(pg.db, ctx),
       preference: () => new PreferenceRepository(pg.db, ctx),
+      notification: () => new NotificationRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,

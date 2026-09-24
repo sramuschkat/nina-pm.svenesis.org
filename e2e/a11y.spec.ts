@@ -34,6 +34,21 @@ for (const theme of ['light', 'dark'] as const) {
       }
     });
 
+    test('Glocke geöffnet (AP-06b); Tastatur: Enter öffnet, Escape schließt', async ({ page }) => {
+      await testLogin(page, 'owner');
+      await page.goto('/');
+      const bell = page.getByRole('button', { name: /^Benachrichtigungen/ });
+      await bell.focus();
+      await page.keyboard.press('Enter');
+      const panel = page.getByRole('dialog', { name: 'Benachrichtigungen' });
+      await expect(panel).toBeVisible();
+      await expect(panel.locator('[role=status]')).toHaveCount(0);
+      await expectNoSerious(page, 'notifications');
+      await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
+      await expect(bell).toBeFocused();
+    });
+
     test('Shell im Mandanten, Benutzermenü, ConfirmDialog, Mandantenauswahl', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');

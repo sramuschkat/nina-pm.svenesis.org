@@ -6,6 +6,9 @@ import { memberStatuses, roles, superUserStatuses, tenantStatuses } from '../gen
 import { TenantKey } from './auth';
 import { Uuid, UtcInstant } from './common';
 
+/** Mandantenzeit, solange `tenantTimezone` nicht gesetzt ist (FA-MAN-05). */
+export const DEFAULT_TENANT_TIMEZONE = 'Europe/Berlin';
+
 export const DiscordUserId = z.string().regex(/^\d{5,25}$/);
 
 /** Built-in-Mondprofile je Mandant (specs/engine/moon.md, Name = i18n-Schlüssel). */
