@@ -47,6 +47,8 @@ export interface QueueEntry {
   readonly detail: ProjectDetail;
   readonly createdByName: string;
   readonly submittedAt: Date | null;
+  /** Verfall nach `approvalDeadlineDays` (Entscheidung 24.09.2026); `null` ohne Frist. */
+  readonly expiresAt: Date | null;
   readonly votes: VoteSummary;
   readonly rank: { rank: number; of: number } | null;
 }
@@ -629,6 +631,12 @@ export class ApprovalRepository extends TenantRepo {
         .execute(),
     ]);
     const projects = this.projects();
+    const tenant = await this.db
+      .selectFrom('tenant')
+      .select('settings')
+      .where('id', '=', this.tenantId)
+      .executeTakeFirst();
+    const days = effectiveTenantSettings(tenant?.settings).approvalDeadlineDays;
     const entries = await Promise.all(
       rows.map(async (p, i): Promise<QueueEntry> => {
         const at = events.find((e) => e.projectId === p.id)?.at;
@@ -637,6 +645,10 @@ export class ApprovalRepository extends TenantRepo {
           detail: (await projects.detail(p.id)) as ProjectDetail,
           createdByName: names.find((n) => n.id === p.createdBy)?.displayName ?? '',
           submittedAt: at ? new Date(at as unknown as string) : null,
+          expiresAt:
+            at && days !== null
+              ? new Date(new Date(at as unknown as string).getTime() + days * 86_400_000)
+              : null,
           votes: votes[i] as VoteSummary,
           rank: p.submitterRank ? { rank: p.submitterRank, of } : null,
         };

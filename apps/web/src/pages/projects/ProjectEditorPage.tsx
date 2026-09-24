@@ -17,10 +17,10 @@ import {
   type ProjectStatus,
 } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api, projectsApi, type ProjectView, type RigView } from '../../api/client';
+import { api, approvalApi, projectsApi, type ProjectView, type RigView } from '../../api/client';
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
@@ -55,6 +55,7 @@ import {
   type ProjectDraft,
 } from './model';
 import { ProjectTabs } from './ProjectTabs';
+import { SubmitPanel } from './SubmitPanel';
 import styles from './projects.module.css';
 
 export const PROJECT_PATHS = {
@@ -178,6 +179,15 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
   const canDelete = useCan('project.delete', resource);
   const canStatus = useCan('project.status');
   const canFavorite = useCan('me.favorites');
+  const canSubmit = useCan('project.submit', resource);
+  const canWithdraw = useCan('project.withdraw', resource);
+  const [submitting, setSubmitting] = useState(false);
+  // „Geändert seit deiner Stimme“ gilt als gesehen, sobald das Objekt geöffnet ist (FA-FRG-14).
+  const savedId = saved?.id;
+  const ackNeeded = saved?.approvalStatus === 'submitted' && saved.createdBy !== me?.member?.id;
+  useEffect(() => {
+    if (savedId && ackNeeded) void approvalApi.acknowledge(savedId).catch(() => undefined);
+  }, [savedId, ackNeeded]);
   const canEdit = saved ? canUpdate : canCreate;
 
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
@@ -244,6 +254,10 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
   const favorite = useMutation({
     mutationFn: (on: boolean) => projectsApi.favorite(saved?.id ?? '', on),
     onSuccess: () => onReload(),
+  });
+  const withdraw = useMutation({
+    mutationFn: () => approvalApi.withdraw(saved?.id ?? '', saved?.version ?? 0),
+    onSuccess: onSaved,
   });
   const duplicate = useMutation({
     mutationFn: () => projectsApi.duplicate(saved?.id ?? '', { id: newId() }),
@@ -338,6 +352,31 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
               {t('projectEditor.save')}
             </button>
           ) : null}
+          {saved &&
+          canSubmit &&
+          (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned') ? (
+            <button
+              type="button"
+              className={styles.button}
+              disabled={dirty}
+              title={dirty ? t('approvalFlow.saveFirst') : undefined}
+              onClick={() => setSubmitting(true)}
+            >
+              <actionIcons.submit size={ICON_SIZE.button} aria-hidden />
+              {t('approvalFlow.submit')}
+            </button>
+          ) : null}
+          {saved && canWithdraw && saved.approvalStatus === 'submitted' ? (
+            <button
+              type="button"
+              className={styles.button}
+              disabled={withdraw.isPending}
+              onClick={() => withdraw.mutate()}
+            >
+              <actionIcons.return size={ICON_SIZE.button} aria-hidden />
+              {t('approvalFlow.withdraw')}
+            </button>
+          ) : null}
           {saved && canCreate ? (
             <button type="button" className={styles.button} onClick={() => duplicate.mutate()}>
               <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
@@ -406,7 +445,26 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
       ) : save.error ? (
         <ProblemMessage code={problemCode(save.error)} />
       ) : null}
-      {[status.error, favorite.error, duplicate.error].map((e, i) =>
+      {saved && submitting ? (
+        <SubmitPanel
+          project={{
+            id: saved.id,
+            name: saved.name,
+            version: saved.version,
+            rigId: saved.rigId,
+            requestPeriodFrom: saved.requestPeriodFrom,
+            requestPeriodTo: saved.requestPeriodTo,
+            requestComment: saved.requestComment,
+          }}
+          rigs={rigs.data ?? []}
+          onDone={(view) => {
+            setSubmitting(false);
+            onSaved(view);
+          }}
+          onCancel={() => setSubmitting(false)}
+        />
+      ) : null}
+      {[status.error, favorite.error, duplicate.error, withdraw.error].map((e, i) =>
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
       )}
 

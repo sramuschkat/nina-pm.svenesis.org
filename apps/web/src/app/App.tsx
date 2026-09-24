@@ -12,7 +12,7 @@ import { ApiError, AuthProvider, useAuth, useCan } from '../auth';
 import { ProblemMessage } from '../components/ProblemMessage';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
-import { HomePage, NotFoundPage, PlaceholderPage, PrivacyPage, SourcesPage } from '../pages/other';
+import { HomePage, NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
 import { MembersPage } from '../pages/admin/MembersPage';
@@ -31,6 +31,8 @@ import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
 import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { ProjectListPage } from '../pages/projects/ProjectListPage';
+import { MyObjectsPage } from '../pages/projects/MyObjectsPage';
+import { DraftsPage } from '../pages/projects/DraftsPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -141,9 +143,11 @@ export function createRouter() {
           element: <Root />,
           children: [
             { index: true, element: <HomePage /> },
-            { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
+            { path: 'meine-objekte', element: <Navigate to="/projekte/meine-objekte" replace /> },
             { path: 'projekte', element: <ProjectListPage /> },
             { path: 'projekte/neu', element: <ProjectEditorPage /> },
+            { path: 'projekte/meine-objekte', element: <MyObjectsPage /> },
+            { path: 'projekte/entwuerfe', element: <DraftsPage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {

@@ -293,3 +293,67 @@ export const projectsApi = {
   rigCheck: (rigId: string, projectId: string) =>
     apiFetch<RigCheckView>(`${V1}/rigs/${rigId}/compatibility`, json('POST', { projectId })),
 };
+
+export type QueueItem = Schemas['QueueItem'];
+export type QueueVotes = Schemas['QueueVotes'];
+
+/** Freigabe-Workflow (AP-12a): Einreichen … Ablehnen mit `If-Match`, Stimmen, Rangfolge, Entwürfe. */
+export const approvalApi = {
+  submit: (
+    id: string,
+    body: {
+      requestedRigId?: string | null;
+      requestPeriodFrom?: string | null;
+      requestPeriodTo?: string | null;
+      requestComment?: string | null;
+    },
+    version: number,
+  ) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/submit`, {
+      ...json('POST', body),
+      ...ifMatch(version),
+    }),
+  withdraw: (id: string, version: number) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/withdraw`, {
+      ...json('POST'),
+      ...ifMatch(version),
+    }),
+  approve: (
+    id: string,
+    body: {
+      rigId: string;
+      priorityPosition?: number;
+      status: 'planning' | 'active';
+      startDate?: string | null;
+      dueDate?: string | null;
+      comment?: string | null;
+      acceptRigConflicts?: boolean;
+    },
+    version: number,
+  ) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/approve`, {
+      ...json('POST', body),
+      ...ifMatch(version),
+    }),
+  returnToUser: (id: string, comment: string, version: number) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/return`, {
+      ...json('POST', { comment }),
+      ...ifMatch(version),
+    }),
+  reject: (id: string, comment: string, version: number) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/reject`, {
+      ...json('POST', { comment }),
+      ...ifMatch(version),
+    }),
+  queue: () => apiFetch<{ items: QueueItem[] }>(`${V1}/queue`),
+  vote: (id: string, on: boolean) =>
+    apiFetch<QueueVotes>(`${V1}/queue/project/${id}/vote`, json(on ? 'PUT' : 'DELETE')),
+  acknowledge: (id: string) =>
+    apiFetch<undefined>(`${V1}/queue/project/${id}/vote/acknowledge`, json('POST')),
+  ranking: (ids: readonly string[]) =>
+    apiFetch<undefined>(
+      `${V1}/me/submission-ranking`,
+      json('PUT', { items: ids.map((id) => ({ kind: 'project', id })) }),
+    ),
+  drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
+};

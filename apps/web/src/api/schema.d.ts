@@ -10956,6 +10956,11 @@ export interface components {
              */
             submittedAt: string | null;
             /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            expiresAt: string | null;
+            /**
              * Format: uuid
              * @description UUID
              */

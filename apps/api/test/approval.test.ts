@@ -387,6 +387,10 @@ describe('Verfall nach approvalDeadlineDays (Entscheidung 24.09.2026)', () => {
     const pid = await project(t);
     await submit(t, pid);
     await t.call(`/queue/project/${pid}/vote`, { method: 'PUT', as: 'user2' });
+    const [queued] = await queue(t);
+    expect(queued?.expiresAt).toBe(
+      new Date(s.clock.now().getTime() + 2 * 86_400_000).toISOString(),
+    );
     expect(await expireSubmissions(s.pg.db, new Date(s.clock.now().getTime() + 86_400_000))).toBe(
       0,
     );

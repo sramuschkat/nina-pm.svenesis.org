@@ -244,6 +244,7 @@ function queueItem(e: QueueEntry): z.output<typeof QueueItem> {
     createdBy: p.createdBy,
     createdByName: e.createdByName,
     submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
+    expiresAt: e.expiresAt ? e.expiresAt.toISOString() : null,
     requestedRigId: p.requestedRigId ?? p.rigId,
     requestPeriodFrom: p.requestPeriodFrom,
     requestPeriodTo: p.requestPeriodTo,

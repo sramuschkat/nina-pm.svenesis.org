@@ -114,6 +114,8 @@ export const QueueItem = z
     createdBy: Uuid,
     createdByName: z.string(),
     submittedAt: UtcInstant.nullable(),
+    /** Verfall nach `approvalDeadlineDays` ab Einreichung; `null` = keine Frist (FA-FRG-04 „Frist“). */
+    expiresAt: UtcInstant.nullable(),
     requestedRigId: Uuid.nullable(),
     requestPeriodFrom: NightKey.nullable(),
     requestPeriodTo: NightKey.nullable(),
