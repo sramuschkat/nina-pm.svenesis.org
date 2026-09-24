@@ -4,18 +4,27 @@
  * Einreichung ↑), abgelaufener Wunschzeitraum gegenüber dem heutigen Datum in Mandantenzeit.
  */
 import type { QueueItem } from '../../api/client';
+import { effortKey } from './list-model';
 
 export interface QueueFilters {
   readonly withoutMyVote: boolean;
   readonly changedSinceMyVote: boolean;
+  /** Aufwand-Kennzeichen (FA-FRG-04, AP-13e); Werte wie `EFFORT_FILTERS`. */
+  readonly effort: string;
 }
 
-export const NO_QUEUE_FILTERS: QueueFilters = { withoutMyVote: false, changedSinceMyVote: false };
+export const NO_QUEUE_FILTERS: QueueFilters = {
+  withoutMyVote: false,
+  changedSinceMyVote: false,
+  effort: '',
+};
 
 export function filterQueue(items: readonly QueueItem[], f: QueueFilters): QueueItem[] {
   return items.filter(
     (q) =>
-      (!f.withoutMyVote || !q.votes.mine) && (!f.changedSinceMyVote || q.votes.mineChangedSince),
+      (!f.withoutMyVote || !q.votes.mine) &&
+      (!f.changedSinceMyVote || q.votes.mineChangedSince) &&
+      (!f.effort || effortKey(q.effort) === f.effort),
   );
 }
 

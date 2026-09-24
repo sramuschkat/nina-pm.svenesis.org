@@ -9,3 +9,5 @@ export * from './time';
 export * from './equipment';
 export * from './projects';
 export * from './plan-input';
+export * from './effort';
+export * from './priority';

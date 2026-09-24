@@ -122,6 +122,7 @@ const item = (n: number, over: Partial<ProjectListItem> = {}): ProjectListItem =
     status: null,
     priority: 0,
     effortStale: true,
+    effort: null,
     favorite: false,
     version: 1,
     deletedAt: null,

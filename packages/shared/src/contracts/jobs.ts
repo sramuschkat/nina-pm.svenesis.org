@@ -43,11 +43,23 @@ export type MultiSimInput = z.infer<typeof MultiSimInput>;
 export const ImpactInput = z.object({ queueItemId: Uuid }).meta({ id: 'ImpactInput' });
 export type ImpactInput = z.infer<typeof ImpactInput>;
 
+/**
+ * Job `effort` (TK 7.4, 13; AP-13e): je Projekt (`effort:<projectId>`) oder als Standortlauf einmal je
+ * `(site, night)` (`effort:<siteId>:<night>`, NT-08), der die Projekt-Jobs des Standorts anlegt.
+ */
+export const EffortJobInput = z.union([
+  z.object({ projectId: Uuid }).strict(),
+  z.object({ siteId: Uuid, night: NightKey }).strict(),
+]);
+export type EffortJobInput = z.infer<typeof EffortJobInput>;
+
 /** `dedupe_key` ist für `multi_sim` und `impact` Pflicht (TK 7.4, SEC-51). */
 export const dedupeKeys = {
   multiSim: (i: Pick<MultiSimInput, 'rigId' | 'nightFrom'>) =>
     `multi_sim:${i.rigId}:${i.nightFrom}`,
   impact: (i: ImpactInput) => `impact:${i.queueItemId}`,
+  effort: (projectId: string) => `effort:${projectId}`,
+  effortSiteNight: (siteId: string, night: string) => `effort:${siteId}:${night}`,
 } as const;
 
 export const JobAccepted = z.object({ jobId: Uuid }).meta({ id: 'JobAccepted' });

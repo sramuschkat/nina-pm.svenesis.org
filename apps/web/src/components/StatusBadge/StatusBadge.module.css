@@ -31,3 +31,6 @@
 .muted {
   color: var(--npm-muted);
 }
+.violet {
+  color: var(--npm-violet);
+}

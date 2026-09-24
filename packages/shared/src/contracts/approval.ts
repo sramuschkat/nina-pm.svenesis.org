@@ -6,6 +6,7 @@
  * *Zurückgegeben* (Entscheidung Sven, 24.09.2026, wie FA-FRG-09).
  */
 import { z } from 'zod';
+import { EffortView } from './effort';
 import { moonModes } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
@@ -127,17 +128,9 @@ export const QueueItem = z
     planSummary: z.array(PlanChip),
     panelCount: z.number().int(),
     estimatedHours: z.number(),
-    /** Aufwand-Kennzeichen – bis AP-13e `null`. */
-    effort: z
-      .object({
-        tag: z.string(),
-        nights: z.number().nullable(),
-        earliestCompletion: NightKey.nullable(),
-        achievablePct: z.number().nullable(),
-        limitingFactor: z.string().nullable(),
-      })
-      .nullable(),
-    /** Nur für Admins; bis AP-13e `null`. */
+    /** Aufwand-Kennzeichen (AP-13e); `null` = noch nicht berechnet. */
+    effort: EffortView.nullable(),
+    /** Vorschlag der Einfügeposition in die Rig-Priorität (FA-FRG-16), nur für Admins. */
     suggestedPriorityPosition: z.number().int().nullable(),
     version: z.number().int(),
   })

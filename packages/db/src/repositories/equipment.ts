@@ -231,6 +231,46 @@ export class EquipmentRepository extends TenantRepo {
       .execute();
   }
 
+  /**
+   * Aufwand-Kennzeichen betroffener Projekte als veraltet markieren (effort.md: Änderung an Rig-Settings,
+   * Standort, Mondprofil; AP-13e). Projekte des Rigs bzw. Wunsch-Rigs bzw. mit Zeilen im Mondprofil.
+   */
+  private async staleEffort(
+    trx: Tx,
+    scope:
+      { readonly rigId: string } | { readonly siteId: string } | { readonly moonProfileId: string },
+  ) {
+    const tenantId = this.tenantId;
+    await trx
+      .updateTable('project')
+      .set({ effortStale: true })
+      .where('tenantId', '=', tenantId)
+      .where('deletedAt', 'is', null)
+      .where('effortStale', '=', false)
+      .where((eb) => {
+        if ('moonProfileId' in scope)
+          return eb(
+            'id',
+            'in',
+            eb
+              .selectFrom('exposureLine')
+              .select('projectId')
+              .where('tenantId', '=', tenantId)
+              .where('moonProfileId', '=', scope.moonProfileId),
+          );
+        if ('rigId' in scope)
+          return eb.or([eb('rigId', '=', scope.rigId), eb('requestedRigId', '=', scope.rigId)]);
+        const rigsAtSite = () =>
+          eb
+            .selectFrom('rig')
+            .select('id')
+            .where('tenantId', '=', tenantId)
+            .where('siteId', '=', scope.siteId);
+        return eb.or([eb('rigId', 'in', rigsAtSite()), eb('requestedRigId', 'in', rigsAtSite())]);
+      })
+      .execute();
+  }
+
   private tx<T>(fn: (trx: Tx) => Promise<T>, guard: { table: string; id: string }[] = []) {
     return withTx(this.db, fn, {
       guard: guard.map((g) => ({ ...g, tenantId: this.tenantId })),
@@ -309,6 +349,7 @@ export class EquipmentRepository extends TenantRepo {
           .returningAll()
           .executeTakeFirstOrThrow();
         await this.bumpRigsUsing(trx, 'siteId', id, now);
+        await this.staleEffort(trx, { siteId: id });
         await this.log(trx, 'site', id, 'update', diffOf(before, input), now);
         return row;
       },
@@ -744,6 +785,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('id', '=', id)
           .returningAll()
           .executeTakeFirstOrThrow();
+        await this.staleEffort(trx, { moonProfileId: id });
         await this.log(trx, 'moon_profile', id, 'update', diffOf(before, input), now);
         return row;
       },
@@ -1188,6 +1230,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
+        await this.staleEffort(trx, { rigId: id });
         await this.log(trx, 'rig', id, 'update', diffOf(before, input), now);
         return (await this.rig(id, trx)) as RigRow;
       },
@@ -1222,6 +1265,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
+        await this.staleEffort(trx, { rigId: id });
         await this.log(trx, 'rig', id, 'update', diffOf(before, input), now);
         return (await this.rig(id, trx)) as RigRow;
       },
@@ -1284,6 +1328,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
+        await this.staleEffort(trx, { rigId: id });
         await this.log(
           trx,
           'rig',

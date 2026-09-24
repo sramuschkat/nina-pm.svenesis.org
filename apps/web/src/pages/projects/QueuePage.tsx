@@ -20,11 +20,13 @@ import {
 } from '../../api/client';
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { EffortChip } from '../../components/EffortChip';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useMoonProfileLabel, useNumber } from '../equipment/shared';
+import { EFFORT_FILTERS } from './list-model';
 import { ProjectsLayout } from './ProjectsLayout';
 import {
   NO_QUEUE_FILTERS,
@@ -95,8 +97,19 @@ export function QueuePage() {
             </label>
             <label>
               {t('projectList.filter.effort')}
-              <select className={styles.input} disabled title={t('projectEditor.effortHint')}>
-                <option>{t('projectList.effortLater')}</option>
+              <select
+                className={styles.input}
+                value={f.effort}
+                onChange={(e) => setF({ ...f, effort: e.target.value })}
+              >
+                <option value="">{t('projectList.all')}</option>
+                {EFFORT_FILTERS.map((k) => (
+                  <option key={k} value={k}>
+                    {k === 'done' || k === 'none'
+                      ? t(`effort.filter.${k}`)
+                      : t(`status.effort.${k}`)}
+                  </option>
+                ))}
               </select>
             </label>
             <span className={styles.muted} role="status">
@@ -237,9 +250,7 @@ function QueueTable({
                     : '–'}
                 </td>
                 <td>
-                  <span className={styles.effort} title={t('projectEditor.effortHint')}>
-                    {t('projectList.effortLater')}
-                  </span>
+                  <EffortChip effort={q.effort} size="sm" />
                 </td>
                 <td>
                   <PlanChips item={q} filters={filters} />
@@ -379,13 +390,18 @@ function DecisionPanel({
     enabled: rigId !== '',
   });
   const max = (approved.data ?? 0) + 1;
+  // Vorschlag nach Stimmen (FA-FRG-16) gilt für das Wunsch-Rig; der Admin übernimmt oder ändert ihn.
+  const suggested =
+    rigId === item.requestedRigId && item.suggestedPriorityPosition !== null
+      ? Math.min(item.suggestedPriorityPosition, max)
+      : null;
   const approve = useMutation({
     mutationFn: (accept: boolean) =>
       approvalApi.approve(
         item.id,
         {
           rigId,
-          priorityPosition: position ?? max,
+          priorityPosition: position ?? suggested ?? max,
           status,
           startDate: startDate || null,
           dueDate: dueDate || null,
@@ -464,7 +480,7 @@ function DecisionPanel({
             min={1}
             max={max}
             step={1}
-            value={position ?? max}
+            value={position ?? suggested ?? max}
             aria-describedby={`${ids.position}-hint`}
             onChange={(e) =>
               setPosition(
@@ -473,6 +489,7 @@ function DecisionPanel({
             }
           />
           <span id={`${ids.position}-hint`} className={styles.muted}>
+            {suggested !== null ? `${t('queue.positionSuggested', { position: suggested })} ` : ''}
             {t('queue.positionHint', { max })}
           </span>
         </div>

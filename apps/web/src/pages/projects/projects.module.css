@@ -124,16 +124,6 @@
   color: var(--npm-text);
   font-variant-numeric: tabular-nums;
 }
-.effort {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-1);
-  padding: 0 var(--npm-space-2);
-  border: 1px dashed var(--npm-border);
-  border-radius: var(--npm-radius);
-  font-size: var(--npm-font-small);
-  color: var(--npm-text-light);
-}
 .favorite[aria-pressed='true'] {
   color: var(--npm-warning);
 }
@@ -541,9 +531,6 @@ tr[data-dragging='true'] {
 .cardFacts dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
-}
-.cardTitle .effort {
-  font-weight: 400;
 }
 .tabIcon {
   display: inline-flex;

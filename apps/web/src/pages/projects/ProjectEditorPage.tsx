@@ -17,10 +17,17 @@ import {
   type ProjectStatus,
 } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
-import { api, approvalApi, projectsApi, type ProjectView, type RigView } from '../../api/client';
+import {
+  api,
+  approvalApi,
+  equipmentApi,
+  projectsApi,
+  type ProjectView,
+  type RigView,
+} from '../../api/client';
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
@@ -28,7 +35,9 @@ import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
+import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
+import { useLiveEffort, type LiveEffortInput } from '../../lib/use-live-effort';
 import {
   CheckField,
   EQUIPMENT_PATHS,
@@ -70,6 +79,9 @@ const isConflict = (e: unknown) =>
 const isRigConflict = (e: unknown) =>
   e instanceof ApiError &&
   (e.problem.code === 'approval.rig_conflict' || e.problem.code === 'rig.change_has_captures');
+
+/** Nacht-Tabelle für das Live-Kennzeichen: 180 Nächte Zeitraum + 30 Nächte Saisonpause + Reserve. */
+const EFFORT_NIGHTS = 215;
 
 export function ProjectEditorPage() {
   const { t } = useTranslation();
@@ -198,6 +210,38 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
 
   const rig = (rigs.data ?? []).find((r) => r.id === draft.rigId) ?? null;
   const site = (sites.data ?? []).find((s) => s.id === rig?.siteId) ?? null;
+  // Live-Aufwand (FA-PRJ-23): gespeicherte Zeilen + ungespeicherte Projektfelder, Nacht-Tabelle ab heute.
+  const nights = useQuery({
+    queryKey: ['site-nights', site?.id, EFFORT_NIGHTS],
+    queryFn: () => equipmentApi.nights(site?.id ?? '', EFFORT_NIGHTS),
+    enabled: site !== null,
+    staleTime: 60 * 60_000,
+  });
+  const liveInput = useMemo(() => {
+    if (!saved || !rig || !site || !nights.data || !moonProfiles.data) return null;
+    const body = draftBody(draft);
+    return {
+      project: {
+        ...saved,
+        rigId: body.rigId,
+        raDeg: body.raDeg,
+        decDeg: body.decDeg,
+        rotationDeg: body.rotationDeg,
+        startDate: body.startDate,
+        dueDate: body.dueDate,
+        conditions: body.conditions,
+      },
+      rig,
+      moonProfiles: moonProfiles.data,
+      site: {
+        latitudeDeg: site.latitudeDeg,
+        longitudeDeg: site.longitudeDeg,
+        elevationM: site.elevationM,
+      },
+      nights: nights.data,
+    } as LiveEffortInput;
+  }, [saved, rig, site, nights.data, moonProfiles.data, draft]);
+  const effort = useLiveEffort(liveInput, saved?.effort ?? null);
   const telescope = (telescopes.data ?? []).find((x) => x.id === rig?.telescopeId) ?? null;
   const camera = (cameras.data ?? []).find((x) => x.id === rig?.cameraId) ?? null;
   const rigOptions: RigOption[] = (rigs.data ?? []).map((r: RigView) => ({
@@ -325,9 +369,12 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
         <h1>{title}</h1>
         {saved ? <StatusBadge kind="approval" value={saved.approvalStatus} /> : null}
         {saved?.status ? <StatusBadge kind="project" value={saved.status} /> : null}
-        <span className={styles.effort} title={t('projectEditor.effortHint')}>
-          {t('projectEditor.effortPending')}
-        </span>
+        <EffortChip
+          effort={effort.effort}
+          state={effort.state}
+          live={effort.live}
+          stale={!effort.live && (saved?.effortStale ?? false)}
+        />
         {saved && canFavorite ? (
           <button
             type="button"

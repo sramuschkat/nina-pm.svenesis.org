@@ -58,6 +58,11 @@ export interface BuildPlanInputOptions {
    * der Plan enthält dann keine `autofocus_hint`-Einträge.
    */
   readonly autofocusAfterTimeMin?: number | null;
+  /**
+   * `given`: die übergebenen Projekte unabhängig von Freigabe, Status und Rig planen (Aufwand-Kennzeichen
+   * für Entwürfe und Einreichungen, AP-13e); nur Projekte ohne Koordinaten entfallen. Standard `plannable`.
+   */
+  readonly selection?: 'plannable' | 'given';
 }
 
 const ordinal = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -94,7 +99,11 @@ export function buildPlanInput(
   );
   const hasFilterWheel = rig.filterWheel.length > 0;
   const transits = new Map((options.transits ?? []).map((t) => [t.projectId, t]));
-  const planned = plannableProjects(rig.id, projects).sort((a, b) => ordinal(a.id, b.id));
+  const planned = (
+    options.selection === 'given'
+      ? projects.filter((p) => p.raDeg !== null && p.decDeg !== null)
+      : plannableProjects(rig.id, projects)
+  ).sort((a, b) => ordinal(a.id, b.id));
 
   const profiles = new Map<string, PlanMoonProfileSource>();
   const usedProfiles = new Set<string>();

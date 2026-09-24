@@ -39,7 +39,9 @@ import type { ApiEnv } from './lib/env';
 import { logger } from './lib/logger';
 import { problemResponse } from './lib/problem';
 import type { ApiServices } from './routes/services';
-import { runJob } from './worker/jobs';
+import { effortJobHandler } from './worker/effort';
+import { effortDbDeps } from './worker/effort-db';
+import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
@@ -71,6 +73,10 @@ async function database(): Promise<OpenDatabase['db']> {
 const db = await database();
 const now = () => new Date();
 const queue = new JobQueue(db);
+const jobs: JobRunnerDeps = {
+  queue: () => Promise.resolve(queue),
+  handlers: { ...JOB_HANDLERS, effort: effortJobHandler(effortDbDeps(() => Promise.resolve(db))) },
+};
 const services: ApiServices = {
   repositories: (ctx) => ({
     job: new JobRepository(db, ctx),
@@ -107,7 +113,7 @@ const services: ApiServices = {
   // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
   jobInvoker: {
     invoke: (jobId) => {
-      setImmediate(() => void runJob({ queue: () => Promise.resolve(queue) }, jobId));
+      setImmediate(() => void runJob(jobs, jobId));
       return Promise.resolve();
     },
   },

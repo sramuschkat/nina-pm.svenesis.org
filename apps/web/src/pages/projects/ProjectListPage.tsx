@@ -27,10 +27,12 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
+import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import {
+  EFFORT_FILTERS,
   NO_FILTERS,
   NO_RIG,
   filterOptions,
@@ -248,10 +250,15 @@ function ActiveView() {
           <select
             id={ids.effort}
             className={styles.input}
-            disabled
-            title={t('projectEditor.effortHint')}
+            value={filters.effort}
+            onChange={(e) => set('effort', e.target.value)}
           >
-            <option>{t('projectList.effortLater')}</option>
+            <option value="">{t('projectList.all')}</option>
+            {EFFORT_FILTERS.map((k) => (
+              <option key={k} value={k}>
+                {k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`)}
+              </option>
+            ))}
           </select>
         </label>
         <label className={styles.check}>
@@ -477,6 +484,7 @@ function ProjectTable({
                     {p.approvalStatus !== 'approved' ? (
                       <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
                     ) : null}
+                    <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
                   </span>
                 </td>
                 <td>{p.targetType ?? '–'}</td>
@@ -617,9 +625,7 @@ function ProjectCard({
             <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
           ) : null}
           {p.targetType ? <span className={styles.typeTag}>{p.targetType}</span> : null}
-          <span className={styles.effort} title={t('projectEditor.effortHint')}>
-            {t('projectEditor.effortPending')}
-          </span>
+          <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
         </h3>
         <div className={styles.tabs} role="tablist" aria-label={t('projectList.cardTabs')}>
           {(['info', 'altitude'] as const).map((key) => (

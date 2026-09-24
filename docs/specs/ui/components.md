@@ -1,7 +1,7 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
 Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25 und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
@@ -117,6 +117,16 @@ Der Baustein zeichnet ausschließlich, was die Engine schon gerechnet hat. **Er 
 | Eigenschaften | `kind: 'project' \| 'approval' \| 'session' \| 'transit' \| 'effort'` · `value: string` (Wert aus `contracts/enums.json`) · `size?: 'sm' \| 'md'` · `withTooltip?: boolean` |
 | Verhalten | Text **ausschließlich** über i18n-Schlüssel `status.<kind>.<value>`; Farbe über eine Zuordnungstabelle im Baustein (eine Stelle, nicht je Seite). Unbekannter Wert → neutrale Farbe und der rohe Wert, **kein** Absturz (ein neuer Enum-Wert darf die Oberfläche nie brechen) |
 | Grenzfall | `kind: 'effort'` mit `value: null` (kein Bedarf) → der Baustein rendert **nichts** (`effort.md`: kein Kennzeichen ohne Bedarf) |
+
+### 2.8a `EffortChip` (Aufwand-Kennzeichen, AP-13e)
+
+| | |
+|---|---|
+| Einsatz | S-30 Liste und Karten, S-31 Kopf (live), S-32, S-33 (FA-PRJ-23) |
+| Eigenschaften | `effort: EffortView \| null` · `stale?: boolean` · `state?: 'loading' \| 'empty' \| 'error' \| 'ready'` · `size?: 'sm' \| 'md'` · `live?: boolean` · `onRetry?: () => void` |
+| Verhalten | Text über `effort.*`: „1 Nacht“ (grün), „ca. n Nächte“ (blau), „nicht machbar (x %)“ (rot), „Transit · vollständig / teilweise (x %)“ (violett, Token `--npm-violet`), „fertig“ (`tag = null`); `stale` hängt „wird aktualisiert“ an. Tooltip (`title` und zugänglicher Name): Schätzungshinweis, benötigte Stunden, beste Nacht je Mondstufe, begrenzender Faktor, frühestes Ende, Zeitraum – Nächte als Doppeldatum. Fokussierbar mit Fokusring |
+| Zustände | `empty` = noch nicht berechnet („Schätzung folgt“ bzw. „wird aktualisiert“), `loading` (Skelett), `error` mit *Erneut versuchen*, `ready` |
+| Größen | Mindestbreite 0 (kürzt mit Auslassungszeichen), keine Umbrüche |
 
 ### 2.9 `CheckList` (Prüfliste ✓/✗)
 

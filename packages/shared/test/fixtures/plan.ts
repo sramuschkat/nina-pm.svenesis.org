@@ -172,6 +172,7 @@ const project = (n: number, over: Partial<Project>): Project => ({
   status: 'active',
   priority: 1,
   effortStale: false,
+  effort: null,
   favorite: false,
   version: 3,
   deletedAt: null,

@@ -10,17 +10,28 @@ import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
 import { logger } from '../lib/logger';
 import { dispatch } from '../worker/dispatch';
-import { runJob, type JobRunnerDeps } from '../worker/jobs';
+import { effortJobHandler, effortSiteTick } from '../worker/effort';
+import { effortDbDeps } from '../worker/effort-db';
+import { JOB_HANDLERS, runJob, type JobRunnerDeps } from '../worker/jobs';
 import { requiredEnv } from '../lib/params';
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
 
-const jobs: JobRunnerDeps = { queue: async () => (await lambdaDatabase()).jobQueue() };
+const effort = effortDbDeps(async () => (await lambdaDatabase()).db);
+const jobs: JobRunnerDeps = {
+  queue: async () => (await lambdaDatabase()).jobQueue(),
+  handlers: { ...JOB_HANDLERS, effort: effortJobHandler(effort) },
+};
 
 const maintenance = {
   cleanupInvitations: async () => {
     const deleted = await deleteExpiredInvitations((await lambdaDatabase()).db, new Date());
     logger.info('invitation_cleanup', { deleted });
     return deleted;
+  },
+  effortSiteNights: async () => {
+    const runs = await effortSiteTick(effort, jobs, new Date());
+    logger.info('effort_site_nights', { runs });
+    return runs;
   },
   expireSubmissions: async () => {
     const expired = await expireSubmissions((await lambdaDatabase()).db, new Date());
