@@ -179,8 +179,15 @@ export const suites: readonly Suite[] = [
       let retries = 0;
       let bStarted: () => void = () => undefined;
       const bReady = new Promise<void>((resolve) => (bStarted = resolve));
+      let aLocked: () => void = () => undefined;
+      const aReady = new Promise<void>((resolve) => (aLocked = resolve));
       const timeout = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
       try {
+        // Verbindungen vorab aufbauen: sonst entscheidet der Verbindungsaufbau, welche Transaktion zuerst
+        // läuft, und B kann fertig sein, bevor A die Wächterzeile hält (kein Konflikt – Test flackerte).
+        await Promise.all(
+          [a.db, b.db].map((db) => db.selectFrom('tenant').select('id').limit(1).execute()),
+        );
         // Zählerpfade schreiben die Wächterzeile immer (TK 6.6, DAT-2) – so entsteht der Konflikt in DSQL und PostgreSQL.
         const touch = (label: string) => async (trx: Transaction<Database>) => {
           await trx
@@ -192,19 +199,24 @@ export const suites: readonly Suite[] = [
         const txA = withTx(
           a.db,
           async (trx) => {
-            // A hält die Wächterzeile, bis B seine Transaktion begonnen hat (DSQL) bzw. höchstens 500 ms (PostgreSQL sperrt B).
-            await Promise.race([bReady, timeout(500)]);
+            // A hält die Wächterzeile und gibt B frei; A schreibt, sobald B begonnen hat (DSQL) bzw. nach
+            // höchstens 300 ms (PostgreSQL: B wartet auf die Sperre, sein Snapshot ist älter → 40001).
+            aLocked();
+            await Promise.race([bReady, timeout(300)]);
             await touch('A')(trx);
           },
           { guard: [{ table: 'tenant', id: guardId }], onRetry: () => (retries += 1) },
         );
-        const txB = withTx(
-          b.db,
-          async (trx) => {
-            bStarted();
-            await touch('B')(trx);
-          },
-          { guard: [{ table: 'tenant', id: guardId }], onRetry: () => (retries += 1) },
+        // B beginnt erst, wenn A die Wächterzeile hält – so ist der Konflikt garantiert.
+        const txB = aReady.then(() =>
+          withTx(
+            b.db,
+            async (trx) => {
+              bStarted();
+              await touch('B')(trx);
+            },
+            { guard: [{ table: 'tenant', id: guardId }], onRetry: () => (retries += 1) },
+          ),
         );
         const results = await Promise.allSettled([txA, txB]);
         for (const r of results) if (r.status === 'rejected') throw r.reason;
