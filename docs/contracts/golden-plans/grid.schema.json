@@ -1,0 +1,786 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^G[0-9]{2,3}[a-z]?$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "oracleDiff": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "productive",
+            "compat"
+          ]
+        },
+        "slotS": {
+          "type": "number",
+          "const": 300
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 288
+        },
+        "startAtS": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "moonAltDeg": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          }
+        },
+        "settings": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": [
+                "proportional",
+                "manual_priority"
+              ]
+            },
+            "sortChain": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "lowest_peak_altitude",
+                  "setting_soonest",
+                  "most_remaining",
+                  "constrained",
+                  "most_moon_limited",
+                  "mosaic_grouping",
+                  "card_order",
+                  "due_soonest"
+                ]
+              }
+            },
+            "bonusEnabled": {
+              "type": "boolean"
+            },
+            "overshootPct": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "mosaicPanelsIndependent": {
+              "type": "boolean"
+            },
+            "dither": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "every": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "enabled",
+                "every"
+              ],
+              "additionalProperties": false
+            },
+            "filterSwitch": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "every": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "tolerancePct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "enabled",
+                "every",
+                "tolerancePct"
+              ],
+              "additionalProperties": false
+            },
+            "overhead": {
+              "type": "object",
+              "properties": {
+                "slewCenterS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "filterChangeS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "ditherSettleS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "afEveryMin": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "afDurationS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "downloadS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "slewCenterS",
+                "filterChangeS",
+                "ditherSettleS",
+                "afEveryMin",
+                "afDurationS",
+                "downloadS"
+              ],
+              "additionalProperties": false
+            },
+            "flip": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "afterMin": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "maxAfterMin": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "pauseBeforeMin": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "durationS": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "enabled",
+                "afterMin",
+                "maxAfterMin",
+                "pauseBeforeMin",
+                "durationS"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "strategy",
+            "sortChain",
+            "bonusEnabled",
+            "overshootPct",
+            "mosaicPanelsIndependent",
+            "dither",
+            "filterSwitch",
+            "overhead",
+            "flip"
+          ],
+          "additionalProperties": false
+        },
+        "moonProfiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "distanceDeg": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "maxIllumPct": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "mustBeDown": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "distanceDeg",
+              "maxIllumPct",
+              "mustBeDown"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unitId": {
+                "type": "string",
+                "pattern": "^[^/]+(\\/p(0|[1-9][0-9]*))?$"
+              },
+              "projectId": {
+                "type": "string",
+                "pattern": "^[^/]+$"
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "minTimeOnTargetH": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 24
+              },
+              "dueDate": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "peakAltDeg": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "canImage": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "meridianAtS": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "transit": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "windowS": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "lineId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "lockedAtS": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "windowS",
+                      "lineId",
+                      "lockedAtS"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "panels": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "peakAltDeg": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "canImage": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "meridianAtS": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "filter": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                          },
+                          "exposureS": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "planned": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "accepted": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "moonProfile": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "safe": {
+                            "type": "array",
+                            "items": {
+                              "type": "array",
+                              "prefixItems": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              ],
+                              "items": false,
+                              "minItems": 2,
+                              "maxItems": 2
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "filter",
+                          "exposureS",
+                          "planned",
+                          "accepted",
+                          "enabled",
+                          "moonProfile",
+                          "safe"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "index",
+                    "lines"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "unitId",
+              "projectId",
+              "priority",
+              "minTimeOnTargetH",
+              "dueDate",
+              "peakAltDeg",
+              "canImage",
+              "meridianAtS",
+              "transit",
+              "panels"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tonight": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "pastBlocks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unitId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "fromS": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "toS": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "unitId",
+                      "fromS",
+                      "toS"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "exposedSecByUnit": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "lastAutofocusS": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "filterCycle": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "unitId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "lineId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "subsOnLine": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "unitId",
+                      "lineId",
+                      "subsOnLine"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "flipDoneByPanel": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                },
+                "currentUnitId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "pastBlocks",
+                "exposedSecByUnit",
+                "lastAutofocusS",
+                "filterCycle",
+                "flipDoneByPanel",
+                "currentUnitId"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "slotS",
+        "slots",
+        "startAtS",
+        "moonAltDeg",
+        "settings",
+        "moonProfiles",
+        "units",
+        "tonight"
+      ],
+      "additionalProperties": false
+    },
+    "expected": {
+      "type": "object",
+      "properties": {
+        "slotAssignment": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "atS": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "cmd": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "atS",
+              "cmd"
+            ],
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "atS": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unitId": {
+                "type": "string"
+              },
+              "lineId": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "unitId",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "requirements",
+    "explanation",
+    "approvedBy",
+    "oracleDiff",
+    "input",
+    "expected"
+  ],
+  "additionalProperties": false,
+  "title": "Svenesis NINA-PM – Soll-Plan / Grid (allocation.md §11.2)"
+}

@@ -1,0 +1,73 @@
+{
+  "mode": "compat",
+  "slotS": 300,
+  "slots": 24,
+  "startAtS": null,
+  "moonAltDeg": [
+    -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10,
+    -10, -10, -10, -10, -10
+  ],
+  "settings": {
+    "strategy": "proportional",
+    "sortChain": ["lowest_peak_altitude", "setting_soonest", "most_remaining", "constrained"],
+    "bonusEnabled": false,
+    "overshootPct": 0,
+    "mosaicPanelsIndependent": true,
+    "dither": {
+      "enabled": false,
+      "every": 3
+    },
+    "filterSwitch": {
+      "enabled": false,
+      "every": 10,
+      "tolerancePct": 50
+    },
+    "overhead": {
+      "slewCenterS": 0,
+      "filterChangeS": 0,
+      "ditherSettleS": 0,
+      "afEveryMin": 0,
+      "afDurationS": 0,
+      "downloadS": 0
+    },
+    "flip": {
+      "enabled": false,
+      "afterMin": 5,
+      "maxAfterMin": 15,
+      "pauseBeforeMin": 0,
+      "durationS": 240
+    }
+  },
+  "moonProfiles": [],
+  "units": [
+    {
+      "unitId": "A",
+      "projectId": "A",
+      "priority": 1,
+      "minTimeOnTargetH": 1.0,
+      "dueDate": null,
+      "peakAltDeg": 60,
+      "canImage": [[0, 23]],
+      "meridianAtS": null,
+      "transit": null,
+      "panels": [
+        {
+          "index": 0,
+          "lines": [
+            {
+              "id": "A-Ha",
+              "filter": "Ha",
+              "exposureS": 300,
+              "planned": 12,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": null,
+              "safe": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tonight": null
+}

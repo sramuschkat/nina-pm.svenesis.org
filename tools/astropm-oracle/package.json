@@ -1,0 +1,14 @@
+{
+  "name": "@nina-pm/astropm-oracle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vergleichsorakel: C#-Original des Astro-PM-NINA-Plugins gegen die TS-Engine (AP-13a, allocation.md §11.2)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/engine": "workspace:*",
+    "@nina-pm/shared": "workspace:*"
+  }
+}

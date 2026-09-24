@@ -25,7 +25,8 @@
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "test:a11y": "playwright test -c e2e/playwright.config.ts a11y.spec.ts",
     "pr:land": "tsx tools/deploy/src/pr-land.ts",
-    "changelog:collect": "tsx tools/deploy/src/changelog.ts"
+    "changelog:collect": "tsx tools/deploy/src/changelog.ts",
+    "oracle:run": "tsx tools/astropm-oracle/src/cli.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

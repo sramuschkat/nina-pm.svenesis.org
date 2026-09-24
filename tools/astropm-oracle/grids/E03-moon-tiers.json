@@ -1,0 +1,151 @@
+{
+  "mode": "compat",
+  "slotS": 300,
+  "slots": 72,
+  "startAtS": null,
+  "moonAltDeg": [
+    -20, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26,
+    28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 60, 60, 60, 60, 60, 60, 60,
+    60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60
+  ],
+  "settings": {
+    "strategy": "proportional",
+    "sortChain": ["lowest_peak_altitude", "setting_soonest", "most_remaining", "constrained"],
+    "bonusEnabled": false,
+    "overshootPct": 0,
+    "mosaicPanelsIndependent": true,
+    "dither": {
+      "enabled": false,
+      "every": 3
+    },
+    "filterSwitch": {
+      "enabled": true,
+      "every": 4,
+      "tolerancePct": 50
+    },
+    "overhead": {
+      "slewCenterS": 0,
+      "filterChangeS": 0,
+      "ditherSettleS": 0,
+      "afEveryMin": 0,
+      "afDurationS": 0,
+      "downloadS": 0
+    },
+    "flip": {
+      "enabled": false,
+      "afterMin": 5,
+      "maxAfterMin": 15,
+      "pauseBeforeMin": 0,
+      "durationS": 240
+    }
+  },
+  "moonProfiles": [
+    {
+      "id": "strict",
+      "distanceDeg": 90,
+      "maxIllumPct": 30,
+      "mustBeDown": false
+    },
+    {
+      "id": "relaxed",
+      "distanceDeg": 25,
+      "maxIllumPct": 80,
+      "mustBeDown": false
+    },
+    {
+      "id": "nomoon",
+      "distanceDeg": 180,
+      "maxIllumPct": 0,
+      "mustBeDown": true
+    }
+  ],
+  "units": [
+    {
+      "unitId": "A",
+      "projectId": "A",
+      "priority": 1,
+      "minTimeOnTargetH": 1.0,
+      "dueDate": null,
+      "peakAltDeg": 55,
+      "canImage": [[0, 71]],
+      "meridianAtS": null,
+      "transit": null,
+      "panels": [
+        {
+          "index": 0,
+          "lines": [
+            {
+              "id": "A-Ha",
+              "filter": "Ha",
+              "exposureS": 300,
+              "planned": 20,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": "relaxed",
+              "safe": [[10, 50]]
+            },
+            {
+              "id": "A-R",
+              "filter": "R",
+              "exposureS": 300,
+              "planned": 20,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": "nomoon",
+              "safe": []
+            },
+            {
+              "id": "A-L",
+              "filter": "L",
+              "exposureS": 120,
+              "planned": 40,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": null,
+              "safe": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unitId": "B",
+      "projectId": "B",
+      "priority": 1,
+      "minTimeOnTargetH": 1.0,
+      "dueDate": null,
+      "peakAltDeg": 70,
+      "canImage": [[0, 40]],
+      "meridianAtS": null,
+      "transit": null,
+      "panels": [
+        {
+          "index": 0,
+          "lines": [
+            {
+              "id": "B-OIII",
+              "filter": "OIII",
+              "exposureS": 600,
+              "planned": 10,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": "strict",
+              "safe": [[10, 20]]
+            },
+            {
+              "id": "B-G",
+              "filter": "G",
+              "exposureS": 180,
+              "planned": 20,
+              "accepted": 0,
+              "enabled": true,
+              "moonProfile": null,
+              "safe": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tonight": null
+}

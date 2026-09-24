@@ -12,3 +12,4 @@ export * from './tenant-settings';
 export * from './equipment';
 export * from './projects';
 export * from './approval';
+export * from './grid';

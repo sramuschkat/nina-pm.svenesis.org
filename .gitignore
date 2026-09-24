@@ -47,3 +47,7 @@ playwright-report/
 # Vitest-Berichte (lokale Messungen)
 .vitest/
 dist-e2e/
+
+# Vergleichsorakel: Originalquellen (nicht einchecken) und Läufe
+tools/astropm-oracle/upstream/
+tools/astropm-oracle/out/

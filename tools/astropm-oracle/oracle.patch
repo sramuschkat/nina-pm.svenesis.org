@@ -1,0 +1,39 @@
+--- a/Models/ProjectTarget.cs
++++ b/Models/ProjectTarget.cs
+@@ -159,6 +159,10 @@
+     }
+ 
+     public class ExposureSetData {
++        // ORACLE PATCH (3): Zeilen-ID für den Masken-Hook in IsExposureSetMoonSafe.
++        [JsonIgnore]
++        public string Id { get; set; } = "";
++
+         [JsonProperty("filter_name")]
+         public string FilterName { get; set; } = "Unknown";
+ 
+--- a/Models/ScheduleEngine.cs
++++ b/Models/ScheduleEngine.cs
+@@ -1389,7 +1389,9 @@
+                 bool bAdj = (b.Start > 0 && matrix.SlotAssignment[b.Start - 1] == ri)
+                          || (b.Start + b.Length < matrix.SlotAssignment.Length && matrix.SlotAssignment[b.Start + b.Length] == ri);
+                 if (aAdj != bAdj) return aAdj ? -1 : 1;
+-                return b.Length.CompareTo(a.Length);
++                // ORACLE PATCH (5): List.Sort ist instabil – Gleichstand nach früherem Start.
++                int lenCmp = b.Length.CompareTo(a.Length);
++                return lenCmp != 0 ? lenCmp : a.Start.CompareTo(b.Start);
+             });
+ 
+             foreach (var run in runs) {
+--- a/Models/SessionScheduler.cs
++++ b/Models/SessionScheduler.cs
+@@ -842,6 +842,10 @@
+             // Moon below horizon — always safe
+             if (slot.MoonAltDeg <= 0) return true;
+ 
++            // ORACLE PATCH (3): Sicherheit aus den Grid-Masken statt aus der Astronomie.
++            if (global::NinaPm.Oracle.OracleHooks.Masks.TryGetValue((es.Id, slot.UtcStart), out var oracleSafe))
++                return oracleSafe;
++
+             // Build constraints from the ES's profile, or fall back to project-level
+             ObservingConstraints c;
+             if (es.MoonAvoidanceProfile != null) {

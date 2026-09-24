@@ -4,6 +4,7 @@
  * (docs/rules/engine.md).
  */
 export * from './astro';
+export * from './plan';
 export * from './visibility';
 export { canonicalHash, canonicalInputJson, CanonicalError } from './canonical';
 export { sha256hex } from './hash/sha256';

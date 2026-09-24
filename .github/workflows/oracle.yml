@@ -1,0 +1,51 @@
+# Vergleichsorakel (AP-13a, TK 18, specs/engine/allocation.md §11.2): C#-Original des Astro-PM-NINA-
+# Plugins (gepinnter Commit, oracle.patch) gegen Grids. Beispiel-Grids + 500 Zufallsgrids, zwei Läufe
+# byte-genau gleich (Determinismus); ab AP-13b zusätzlich Vergleich mit der TS-Engine im
+# Kompatibilitätsmodus. Bericht und Orakel-Ausgaben als Artefakt `oracle-report`.
+name: oracle
+
+on:
+  pull_request:
+    paths:
+      - 'packages/engine/**'
+      - 'tools/astropm-oracle/**'
+      - 'docs/contracts/golden-plans/**'
+      - '.github/workflows/oracle.yml'
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pnpm install --frozen-lockfile
+      - name: Orakel rechnen (Beispiel-Grids + 500 Zufallsgrids, zwei Läufe)
+        run: pnpm oracle:run tools/astropm-oracle/grids --random 500 --seed 1 --repeat 2 --out oracle-out
+      - name: Bericht
+        if: always()
+        run: cat oracle-out/report.md >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Artefakt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-report
+          path: oracle-out/
+          if-no-files-found: warn

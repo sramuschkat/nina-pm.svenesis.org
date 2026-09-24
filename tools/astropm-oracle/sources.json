@@ -1,0 +1,31 @@
+{
+  "$comment": "Originalquellen des Astro-PM-NINA-Plugins (MIT) am gepinnten Commit; SHA-256 der unveränderten Dateien. Nicht einchecken – src/fetch.ts lädt sie nach upstream/ und wendet oracle.patch an.",
+  "repo": "Josh-Jones-76/AstroPM.NINA.Plugin",
+  "commit": "5dd621dea015634242259ca1220a428cf339446a",
+  "files": [
+    {
+      "path": "Models/ScheduleEngine.cs",
+      "sha256": "c0de8b234b3fdb7442df4d4d11e816b606cb89731a9369cdfc68588e3103b6dd"
+    },
+    {
+      "path": "Models/SessionScheduler.cs",
+      "sha256": "47869e002c208638847965284d07760cef4a8f790f0546fb9f2c519d28abca15"
+    },
+    {
+      "path": "Models/ProjectTarget.cs",
+      "sha256": "457c98f8313c0938fca187b3b08338715e4515e22932069e0099c45819053cb7"
+    },
+    {
+      "path": "Models/AstroCalculator.cs",
+      "sha256": "1bc985bf62e63b9f5c0dd409a35cb9204c840941f2e49c38ddcdecc1348f8d3a"
+    },
+    {
+      "path": "Models/ExoTransit.cs",
+      "sha256": "4812df0e87bec5612d7c2a146bc1ca412082ba1db445f7b8a6b7cb7a6200795a"
+    },
+    {
+      "path": "Instructions/TargetInstructionSet.cs",
+      "sha256": "cf8118e3e0b13ad1d657bf1b4e7cddba6fc8976cf6f67ad41d3851710c3d33a9"
+    }
+  ]
+}
