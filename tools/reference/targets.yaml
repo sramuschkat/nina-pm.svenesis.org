@@ -1,0 +1,22 @@
+# Ziele J2000 (TK 9.1): Deep-Sky, zirkumpolar und tief stehend.
+- id: ngc281
+  ra: 13.2458
+  dec: 56.6194
+- id: ic1805
+  ra: 38.1750
+  dec: 61.4500
+- id: ngc6946
+  ra: 308.7180
+  dec: 60.1539
+- id: m31
+  ra: 10.6847
+  dec: 41.2690
+- id: hat-p-17
+  ra: 324.536375
+  dec: 30.488722
+- id: m8
+  ra: 270.9042
+  dec: -24.3867
+- id: polaris
+  ra: 37.9546
+  dec: 89.2641

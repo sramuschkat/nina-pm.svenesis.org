@@ -1,0 +1,27 @@
+# Referenzstandorte (TK 9.1). Höhe wird bewusst nicht benutzt (AST-N13): Engine und Generator
+# rechnen am Ellipsoid ohne Kimmtiefe.
+- id: starfront
+  name: Starfront (TX)
+  lat: 31.5471
+  lon: -99.3823
+  tz: America/Chicago
+- id: hannover
+  name: VSW Hannover
+  lat: 52.3705
+  lon: 9.7332
+  tz: Europe/Berlin
+- id: st-andreasberg
+  name: St. Andreasberg
+  lat: 51.7118
+  lon: 10.5234
+  tz: Europe/Berlin
+- id: gaucin
+  name: Gaucín (ES)
+  lat: 36.5186
+  lon: -5.3159
+  tz: Europe/Madrid
+- id: la-silla
+  name: La Silla (CL)
+  lat: -29.2563
+  lon: -70.7377
+  tz: America/Santiago
