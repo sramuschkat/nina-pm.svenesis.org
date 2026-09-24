@@ -263,3 +263,13 @@ textarea.input {
 .section h3 {
   font-size: var(--npm-font-base);
 }
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  align-items: center;
+}
+.fieldset legend {
+  margin-right: var(--npm-space-3);
+  float: left;
+}

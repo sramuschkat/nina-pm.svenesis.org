@@ -289,6 +289,7 @@ export function webMemberRoutes(services: () => Promise<ApiServices>) {
           mfa: m.mfaEnabled,
           rightsDormant: m.role === 'admin' && !m.mfaEnabled,
           lastLoginAt: isoUtcOrNull(m.lastLoginAt),
+          objects: m.objects,
         })),
       },
       200,

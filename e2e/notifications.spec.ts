@@ -37,8 +37,13 @@ test('Owner ändert die Rolle von user1 → Glocke zählt → alle als gelesen',
     await expect(bell).toHaveText('1');
     await bell.click();
     const panel = user.getByRole('dialog', { name: 'Benachrichtigungen' });
-    await expect(panel.getByText('Deine Rolle wurde von User zu Admin geändert')).toBeVisible();
-    await expect(panel.locator('time')).toHaveText(/^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2} MES?Z$/);
+    // Neueste zuerst; frühere (gelesene) Einträge anderer Tests dürfen darunter stehen.
+    await expect(panel.getByRole('listitem').first()).toContainText(
+      'Deine Rolle wurde von User zu Admin geändert',
+    );
+    await expect(panel.locator('time').first()).toHaveText(
+      /^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2} MES?Z$/,
+    );
     const axe = await new AxeBuilder({ page: user }).analyze();
     expect(axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual(
       [],

@@ -58,6 +58,18 @@ for (const theme of ['light', 'dark'] as const) {
       await expectNoSerious(page, 'S-82');
     });
 
+    test('S-70 Mitglieder mit Detail, Einladung und Dialog (AP-07b)', async ({ page }) => {
+      await testLogin(page, 'owner');
+      await page.goto('/verwaltung/mitglieder');
+      await page.getByRole('button', { name: 'Anton Admin' }).click();
+      await expect(page.getByRole('button', { name: 'Admin-Rechte entziehen' })).toBeVisible();
+      await expectNoSerious(page, 'S-70');
+      await page.getByRole('button', { name: 'Entfernen' }).click();
+      await expect(page.getByRole('alertdialog')).toBeVisible();
+      await expectNoSerious(page, 'S-70 Entfernen');
+      await page.keyboard.press('Escape');
+    });
+
     test('Glocke geöffnet (AP-06b); Tastatur: Enter öffnet, Escape schließt', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');

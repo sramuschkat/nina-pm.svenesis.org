@@ -12,6 +12,8 @@ export type InvitationPreview = Schemas['InvitationPreview'];
 export type InvitationClaim = Schemas['InvitationClaimResponse'];
 export type NotificationList = Schemas['NotificationList'];
 export type TenantAdmin = Schemas['TenantAdminView'];
+export type Member = Schemas['MemberView'];
+export type Invitation = Schemas['InvitationView'];
 export type SystemMember = Schemas['SystemMemberView'];
 export type SuperUser = Schemas['SuperUserView'];
 export type SystemAuditEntry = Schemas['SystemAuditEntry'];
@@ -107,4 +109,37 @@ export const systemApi = {
     ),
   setBanner: (value: MaintenanceBanner) =>
     apiFetch<unknown>('/api/system/v1/settings/maintenanceBanner', json('PUT', { value })),
+};
+
+/** Mitglieder und Einladungen im Mandanten (S-70, TK 7.2). */
+export const memberApi = {
+  list: () => apiFetch<{ members: Member[] }>('/api/web/v1/members'),
+  patch: (id: string, body: { displayName?: string; status?: 'active' | 'disabled' }) =>
+    apiFetch<undefined>(`/api/web/v1/members/${id}`, json('PATCH', body)),
+  remove: (id: string) => apiFetch<undefined>(`/api/web/v1/members/${id}`, json('DELETE')),
+  setRole: (id: string, role: 'admin' | 'user', reason?: string) =>
+    apiFetch<undefined>(
+      `/api/web/v1/members/${id}/role`,
+      json('PUT', { role, ...(reason ? { reason } : {}) }),
+    ),
+  endSessions: (id: string) =>
+    apiFetch<undefined>(`/api/web/v1/members/${id}/sessions`, json('DELETE')),
+  invitations: () => apiFetch<{ invitations: Invitation[] }>('/api/web/v1/invitations'),
+  invite: (
+    role: 'user' | 'admin',
+    body: {
+      id: string;
+      discordUserId?: string;
+      validDays?: number;
+      maxUses?: number;
+      note?: string;
+    },
+  ) =>
+    apiFetch<InvitationCreated>(
+      role === 'admin' ? '/api/web/v1/invitations/admin' : '/api/web/v1/invitations',
+      json('POST', body),
+    ),
+  revokeInvitation: (id: string) =>
+    apiFetch<undefined>(`/api/web/v1/invitations/${id}`, json('DELETE')),
+  leave: () => apiFetch<undefined>('/api/web/v1/me/leave', json('POST')),
 };

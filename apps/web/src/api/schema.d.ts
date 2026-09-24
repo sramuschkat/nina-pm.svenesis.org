@@ -2991,6 +2991,11 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             lastLoginAt: string | null;
+            objects: {
+                draft: number;
+                submitted: number;
+                approved: number;
+            };
         };
         MemberPatch: {
             displayName?: string;

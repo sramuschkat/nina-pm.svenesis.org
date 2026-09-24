@@ -159,6 +159,12 @@ export const MemberView = z
     /** Owner/Admin ohne 2FA: Rechte ruhen (FA-BEN-04, FA-LOG-07). */
     rightsDormant: z.boolean(),
     lastLoginAt: UtcInstant.nullable(),
+    /** Eigene Objekte nach Freigabestatus (FA-BEN-04). */
+    objects: z.object({
+      draft: z.number().int(),
+      submitted: z.number().int(),
+      approved: z.number().int(),
+    }),
   })
   .meta({ id: 'MemberView' });
 
