@@ -33,6 +33,54 @@ export interface WalkSettings {
   readonly startAtS: number | null;
   /** Filterzyklus aus `tonight` je Einheit. */
   readonly initialCycle: ReadonlyMap<string, { readonly lineId: string; readonly subs: number }>;
+  /** Meridian-Flip des Rigs (flip-rotation.md §1). */
+  readonly flip: {
+    readonly enabled: boolean;
+    readonly afterMin: number;
+    readonly maxAfterMin: number;
+    readonly pauseBeforeMin: number;
+    readonly durationS: number;
+  };
+  /**
+   * Flip-Kandidaten je Einheit und Panel (s ab Slot 0, aufsteigend): obere Kulmination und – wenn die
+   * Höhe dort ≥ Mindesthöhe ist – untere Kulmination (NT-26).
+   */
+  readonly meridian: (unitId: string, panelIndex: number | null) => readonly number[];
+  /** Obere Kulmination (für Pierseite und Panelreihenfolge nach dem Flip), `null` = keine in der Nacht. */
+  readonly upperMeridian: (unitId: string, panelIndex: number | null) => number | null;
+  /** Erwartete Pierseite (allocation.md §2); `null` = unbekannt. */
+  readonly pierSide: (
+    unitId: string,
+    panelIndex: number | null,
+    t: number,
+  ) => 'west' | 'east' | null;
+  /** Bei Neuplanung schon erledigte Flips (`tonight.flipDoneByPanel`), Schlüssel Einheit. */
+  readonly flipDone: ReadonlySet<string>;
+}
+
+/** Meridian-Flip am Block (flip-rotation.md §2, TK 7.6); Zeiten in s ab Slot 0. */
+export interface WalkFlip {
+  readonly waitStartS: number | null;
+  readonly plannedS: number;
+  readonly durationS: number;
+  readonly inTransitWindow: boolean;
+  readonly planned: boolean;
+  readonly gapStartS: number | null;
+  readonly gapDurationS: number | null;
+}
+
+/** Flip im Transit (Diagnose `flip_in_transit`, transit.md §3). */
+export interface TransitFlip {
+  readonly row: number;
+  readonly unitId: string;
+  readonly gapStartS: number | null;
+  readonly gapDurationS: number | null;
+  /** Serienbeginn, wenn der Flip im Vorlauf liegt und die Serie später beginnt (L1). */
+  readonly delayedSeriesS: number | null;
+  /** Fensterbeginn der Serie (Bezug für die Verspätung). */
+  readonly windowStartS: number;
+  readonly framesWithoutFlip: number;
+  readonly framesPlanned: number;
 }
 
 export type WalkEntry =
@@ -69,6 +117,7 @@ export type WalkEntry =
   | { readonly cmd: 'dither'; readonly atS: number; readonly durationS: number }
   | { readonly cmd: 'autofocus_hint'; readonly atS: number; readonly durationS: number }
   | { readonly cmd: 'wait'; readonly atS: number; readonly durationS: number }
+  | { readonly cmd: 'meridian_flip'; readonly atS: number; readonly durationS: number }
   | { readonly cmd: 'end'; readonly atS: number };
 
 export interface WalkBlock {
@@ -81,12 +130,18 @@ export interface WalkBlock {
   startS: number;
   endS: number;
   readonly entries: WalkEntry[];
+  meridianFlip: WalkFlip | null;
+  /** Pierseite am Blockende (NT-27, NT-34). */
+  pierEnd: 'west' | 'east' | null;
 }
 
 export interface WalkResult {
   readonly blocks: readonly WalkBlock[];
   /** Zuteilung nach dem Ablauf (Ersatz am Blockanfang, Freigaben A-29). */
   readonly assignment: readonly number[];
+  /** Ausgegebene Belichtungen je Zeile (Diagnose, Warnungen). */
+  readonly emitted: ReadonlyMap<string, number>;
+  readonly transitFlips: readonly TransitFlip[];
 }
 
 interface Candidate {
@@ -111,17 +166,20 @@ interface PickOptions {
   readonly allowedPanel: number | null;
   /** Uhrzeit der Belichtung; die sichere Zeit zählt ab hier, nicht ab Slotbeginn (A-26). */
   readonly atS?: number;
+  /** Nach einem Flip im Block: Panels bevorzugen, deren Meridian schon überschritten ist (NT-27). */
+  readonly afterFlip?: boolean;
 }
 
 export function walk(m: Matrix, settings: WalkSettings): WalkResult {
   const assignment = m.assignment;
   const blocks: WalkBlock[] = [];
-  if (m.firstUsableSlot < 0) return { blocks, assignment };
+  const emitted = new Map<string, number>();
+  const transitFlips: TransitFlip[] = [];
+  if (m.firstUsableSlot < 0) return { blocks, assignment, emitted, transitFlips };
   const n = m.slots;
   const moonAlt = m.setup.moonAltDeg;
   const dl = settings.downloadS;
   const projects = new Map(m.setup.projects.map((p) => [p.projectId, p.panels]));
-  const emitted = new Map<string, number>();
   const cycle = new Map<number, { lineId: string; subs: number }>();
   const activePanel = new Map<number, number>();
   const panelTime = new Map<number, Map<number, number>>();
@@ -223,6 +281,14 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         pool = current.length > 0 ? current : candidates;
       }
     } else pool = candidates;
+    if (opts.afterFlip && multi && opts.atS !== undefined) {
+      const at = opts.atS;
+      const west = pool.filter((c) => {
+        const tm = settings.upperMeridian(row.profile.unitId, c.panelIndex);
+        return tm !== null && tm <= at;
+      });
+      if (west.length > 0) pool = west;
+    }
     if (moonDown) {
       const noMoon = pool.filter(
         (c) => c.lunar && row.profile.tiers[c.line.tier]?.requiresMoonDown === true,
@@ -301,6 +367,11 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
   let currentPanel: number | null = null;
   let ditherCount = 0;
   let ditherDue = false;
+  let flipped = false;
+  let pierEndLast: 'west' | 'east' | null = null;
+  const flipDone = new Set(settings.flipDone);
+  const flipKey = (unitId: string, panelIndex: number | null, tm: number) =>
+    `${unitId}|${String(panelIndex)}|${String(tm)}`;
 
   const runEndOf = (row: number, s: number) => {
     let e = s;
@@ -309,6 +380,10 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
   };
   const close = (atS: number) => {
     if (!block) return;
+    if (block.pierEnd === null && !flipped)
+      block.pierEnd = settings.pierSide(block.unitId, block.panelIndex, block.startS);
+    if (flipped) block.pierEnd = 'east';
+    pierEndLast = block.pierEnd;
     block.entries.push({ cmd: 'end', atS });
     block.endS = atS;
     const hasExposure = block.entries.some((e) => e.cmd === 'expose' || e.cmd === 'expose_series');
@@ -346,7 +421,10 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       startS: atS,
       endS: atS,
       entries: [],
+      meridianFlip: null,
+      pierEnd: null,
     };
+    flipped = false;
     currentFilter = null;
     ditherCount = 0;
     ditherDue = false;
@@ -357,6 +435,32 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       if (m.locked[fs]) break;
       assignment[fs] = -1;
     }
+  };
+  /** Slew-Dauer mit Pierseitenwechsel (NT-27): nur mit Flip und bekannter Pierseite davor. */
+  const slewDuration = (
+    unitId: string,
+    panelIndex: number | null,
+    atS: number,
+    prevPier: 'west' | 'east' | null,
+  ) => {
+    if (!settings.flip.enabled || prevPier === null) return settings.slewCenterS;
+    const next = settings.pierSide(unitId, panelIndex, atS);
+    return next !== null && next !== prevPier
+      ? settings.slewCenterS + settings.flip.durationS
+      : settings.slewCenterS;
+  };
+  /** Pierseite vor einem neuen Block: nur wenn ein Block unmittelbar vorausging (kein Parken). */
+  const precedingPier = (atS: number) =>
+    lastClosed !== null && atS - lastClosed.endS < 300 ? pierEndLast : null;
+  /** Längste Belichtung + Download des Kandidaten-Pools (flip-rotation.md §2, `D`). */
+  const longestExposure = (row: Row, allowed: number | null) => {
+    let longest = 0;
+    for (const panel of unitPanels(row)) {
+      if (allowed !== null && panel.index !== allowed) continue;
+      for (const l of panel.lines)
+        if (l.enabled && l.tier >= 0 && restOf(l) > 0) longest = Math.max(longest, l.exposureS);
+    }
+    return longest + dl;
   };
 
   for (let s = m.firstUsableSlot; s <= m.lastUsableSlot; s++) {
@@ -386,21 +490,114 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       const startSlot = Math.floor(tr.startS / SLOT_S);
       const startLocked = startSlot >= s && startSlot <= lastLocked;
       const seriesS = startLocked ? tr.startS : Math.max(tr.startS, firstWindow * SLOT_S);
-      const untilS = Math.min(tr.endS, (lastLocked + 1) * SLOT_S);
+      let untilS = Math.min(tr.endS, (lastLocked + 1) * SLOT_S);
+      // Slotmitte-Regel: der angeschnittene letzte Fenster-Slot ist nicht gesperrt (Mitte ≥ Fensterende),
+      // die Serie läuft trotzdem bis Fensterende (A-21, NIN5-5); der Folgeblock beginnt danach.
+      const after = lastLocked + 1;
+      if (
+        tr.endS > untilS &&
+        tr.endS - untilS <= SLOT_S / 2 &&
+        after < n &&
+        row.profile.canImage[after] === true
+      )
+        untilS = tr.endS;
       const leadAt = Math.max(t, seriesS - settings.slewCenterS - 60);
-      const b = open(row, row.profile.panelIndex, 'transit', leadAt);
+      const unitId = row.profile.unitId;
+      const panelIdx = row.profile.panelIndex;
+      const b = open(row, panelIdx, 'transit', leadAt);
       b.startS = seriesS;
       waitUntil(leadAt);
       b.entries.push({
         cmd: slewCmd,
         atS: leadAt,
-        durationS: settings.slewCenterS,
-        panelIndex: row.profile.panelIndex,
+        durationS: slewDuration(unitId, panelIdx, leadAt, precedingPier(leadAt)),
+        panelIndex: panelIdx,
       });
-      if (line && untilS > seriesS)
+      // Meridian im Transit (NT-25, L1, M8): Flip im Vorlauf als Eintrag, im Fenster als Lücke.
+      let series = seriesS;
+      const f = settings.flip;
+      const tm = settings
+        .meridian(unitId, panelIdx)
+        .find(
+          (x) =>
+            x < tr.endS &&
+            x + f.afterMin * 60 >= leadAt &&
+            !flipDone.has(flipKey(unitId, panelIdx, x)),
+        );
+      const cycleS = (line?.exposureS ?? 0) + dl;
+      let gapStart: number | null = null;
+      let gapDuration: number | null = null;
+      if (tm !== undefined) {
+        const flipAt = tm + f.afterMin * 60;
+        const inTransitWindow = tm >= tr.startS && tm < tr.endS;
+        const meta = (planned: boolean): WalkFlip => ({
+          waitStartS: null,
+          plannedS: flipAt,
+          durationS: f.durationS,
+          inTransitWindow,
+          planned,
+          gapStartS: gapStart,
+          gapDurationS: gapDuration,
+        });
+        if (f.enabled && flipAt >= leadAt && flipAt < seriesS) {
+          const flipEntry = Math.max(flipAt, leadAt + settings.slewCenterS);
+          b.entries.push({ cmd: 'meridian_flip', atS: flipEntry, durationS: f.durationS });
+          b.entries.push({
+            cmd: 'slew_center',
+            atS: flipEntry + f.durationS,
+            durationS: settings.slewCenterS,
+            panelIndex: panelIdx,
+          });
+          series = Math.max(seriesS, flipEntry + f.durationS + settings.slewCenterS);
+          flipped = true;
+          flipDone.add(flipKey(unitId, panelIdx, tm));
+          b.meridianFlip = meta(true);
+          if (series > seriesS)
+            transitFlips.push({
+              row: r,
+              unitId,
+              gapStartS: null,
+              gapDurationS: null,
+              delayedSeriesS: series,
+              windowStartS: seriesS,
+              framesWithoutFlip: cycleS > 0 ? Math.floor((untilS - seriesS) / cycleS) : 0,
+              framesPlanned: cycleS > 0 ? Math.floor((untilS - series) / cycleS) : 0,
+            });
+        } else if (f.enabled && flipAt >= seriesS && flipAt < untilS && cycleS > 0) {
+          const k =
+            f.pauseBeforeMin > 0
+              ? Math.max(
+                  0,
+                  Math.floor(
+                    (tm - f.pauseBeforeMin * 60 - (line?.exposureS ?? 0) - seriesS) / cycleS,
+                  ) + 1,
+                )
+              : Math.ceil((flipAt - seriesS) / cycleS);
+          gapStart = seriesS + k * cycleS;
+          gapDuration =
+            (f.pauseBeforeMin > 0 ? Math.max(0, flipAt - gapStart) : 0) +
+            f.durationS +
+            settings.slewCenterS;
+          b.meridianFlip = meta(false);
+          flipped = true;
+          flipDone.add(flipKey(unitId, panelIdx, tm));
+          transitFlips.push({
+            row: r,
+            unitId,
+            gapStartS: gapStart,
+            gapDurationS: gapDuration,
+            delayedSeriesS: null,
+            windowStartS: seriesS,
+            framesWithoutFlip: Math.floor((untilS - seriesS) / cycleS),
+            framesPlanned:
+              k + Math.max(0, Math.floor((untilS - (gapStart + gapDuration)) / cycleS)),
+          });
+        } else if (inTransitWindow) b.meridianFlip = meta(false);
+      }
+      if (line && untilS > series)
         b.entries.push({
           cmd: 'expose_series',
-          atS: seriesS,
+          atS: series,
           untilS,
           lineId: line.id,
           filter: line.filter,
@@ -490,16 +687,19 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
           }
         }
       }
-      // Blockbeginn: Slew/Zentrieren (A-18 auch nach Leerlauf auf derselben Einheit).
+      // Blockbeginn: Slew/Zentrieren (A-18 auch nach Leerlauf auf derselben Einheit), mit
+      // Pierseitenwechsel gegenüber dem unmittelbar vorigen Block um die Flip-Dauer länger (NT-27).
+      const prevPier = precedingPier(t);
       const b = open(row, row.profile.panelIndex, 'regular', t);
       waitUntil(t);
+      const slewS = slewDuration(row.profile.unitId, row.profile.panelIndex, t, prevPier);
       b.entries.push({
         cmd: slewCmd,
         atS: t,
-        durationS: settings.slewCenterS,
+        durationS: slewS,
         panelIndex: row.profile.panelIndex,
       });
-      t += settings.slewCenterS;
+      t += slewS;
       currentPanel = row.profile.panelIndex;
       if (multiPanel(row)) panelTime.set(r, new Map());
     }
@@ -538,6 +738,77 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
           ditherCount = 0;
         }
       }
+      // Meridian-Flip vor der Filterwahl (A-5, flip-rotation.md §2).
+      if (settings.flip.enabled && !flipped) {
+        const cur = block as WalkBlock;
+        const unitId = row.profile.unitId;
+        const panelIdx = cur.panelIndex ?? row.profile.panelIndex;
+        const tm = settings
+          .meridian(unitId, panelIdx)
+          .find(
+            (x) =>
+              x >= cur.startS &&
+              x < blockEnd &&
+              !flipDone.has(flipKey(unitId, panelIdx, x)) &&
+              !(settings.flipDone.has(unitId) && x === settings.upperMeridian(unitId, panelIdx)),
+          );
+        if (tm !== undefined) {
+          const f = settings.flip;
+          const flipAt = tm + f.afterMin * 60;
+          const limitEnd =
+            f.pauseBeforeMin > 0 ? tm - f.pauseBeforeMin * 60 : tm + f.maxAfterMin * 60;
+          const meta = (waitStartS: number | null, planned: boolean): WalkFlip => ({
+            waitStartS,
+            plannedS: flipAt,
+            durationS: f.durationS,
+            inTransitWindow: false,
+            planned,
+            gapStartS: null,
+            gapDurationS: null,
+          });
+          cur.meridianFlip ??= meta(null, false);
+          let waitStart: number | null = null;
+          const waitToEnd = () => {
+            // Flip passt nicht mehr: Block wartet bis zu seinem Ende (§2 „wait bis bE; stopp“).
+            if (blockEnd > t) cur.entries.push({ cmd: 'wait', atS: t, durationS: blockEnd - t });
+            cur.meridianFlip = meta(blockEnd > t ? t : null, false);
+            t = Math.max(t, blockEnd);
+            close(t);
+          };
+          if (t < flipAt && t + longestExposure(row, allowed) > limitEnd) {
+            if (flipAt + f.durationS > blockEnd) {
+              waitToEnd();
+              s = runEnd - 1;
+              break;
+            }
+            cur.entries.push({ cmd: 'wait', atS: t, durationS: flipAt - t });
+            waitStart = t;
+            t = flipAt;
+          }
+          if (t >= flipAt) {
+            if (t + f.durationS > blockEnd) {
+              waitToEnd();
+              s = runEnd - 1;
+              break;
+            }
+            cur.entries.push({ cmd: 'meridian_flip', atS: t, durationS: f.durationS });
+            t += f.durationS;
+            // Nach dem Flip immer `slew_center`, nie nachrotieren (NT-E4).
+            cur.entries.push({
+              cmd: 'slew_center',
+              atS: t,
+              durationS: settings.slewCenterS,
+              panelIndex: panelIdx,
+            });
+            t += settings.slewCenterS;
+            flipped = true;
+            flipDone.add(flipKey(unitId, panelIdx, tm));
+            cur.meridianFlip = meta(waitStart, true);
+            ditherCount = 0;
+            continue;
+          }
+        }
+      }
       if (settings.afEveryMin > 0 && t - lastAf >= settings.afEveryMin * 60) {
         (block as WalkBlock).entries.push({
           cmd: 'autofocus_hint',
@@ -553,6 +824,7 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         includeCompleted: false,
         allowedPanel: allowed,
         atS: t,
+        afterFlip: flipped,
       };
       let chosen = pick(row, cs, opts);
       if (!chosen && settings.bonusEnabled) {
@@ -602,16 +874,19 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       }
       const b = block as WalkBlock;
       if (multiPanel(row) && currentPanel !== null && chosen.panelIndex !== currentPanel) {
-        // Panelwechsel = neuer Block (§8.4).
+        // Panelwechsel = neuer Block (§8.4), Pierseitenwechsel verlängert den Slew (NT-27).
+        const wasFlipped: boolean = flipped;
         close(t);
         const nb = open(row, chosen.panelIndex, 'regular', t);
+        flipped = wasFlipped;
+        const panelSlew = slewDuration(row.profile.unitId, chosen.panelIndex, t, pierEndLast);
         nb.entries.push({
           cmd: slewCmd,
           atS: t,
-          durationS: settings.slewCenterS,
+          durationS: panelSlew,
           panelIndex: chosen.panelIndex,
         });
-        t += settings.slewCenterS;
+        t += panelSlew;
         panelTime.set(r, new Map());
         const limit = lastOfNight ? Number.POSITIVE_INFINITY : blockEnd;
         if (t + chosen.line.exposureS + dl > limit) continue;
@@ -682,5 +957,5 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     }
   }
   if (block) close(t);
-  return { blocks, assignment };
+  return { blocks, assignment, emitted, transitFlips };
 }

@@ -1,0 +1,412 @@
+{
+  "id": "G27",
+  "title": "Overheads (A-4)",
+  "requirements": [
+    "FA-SCH-10",
+    "FA-SCH-06"
+  ],
+  "explanation": "Ergebnis: 21 Belichtungen (A-Ha 12, A-OIII 9), 1 Slews. Alle Overheads aktiv: Slew 90 s, Autofokus alle 60 min (120 s; ohne `tonight.lastAutofocusUtc` gleich zu Beginn fällig), Filterwechsel 10 s, Download 3 s, Dither alle 2 Belichtungen (15 s), Filterwechsel alle 4 Belichtungen. Die Uhr läuft mit allen Overheads. Dither folgt nur, wenn im Block noch eine Belichtung folgt (ENG5-6), und setzt mit dem Filterwechsel neu an. Der zweite Autofokus kommt nach 60 min. Um 6903 s passt keine weitere Belichtung mehr.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 24 Belichtungen (A-Ha 12, A-OIII 12), 1 Slews. Original: Einträge ohne Zeit – die Uhr läuft nur um die Belichtungszeit, Dither und Filterwechsel kosten nichts, kein Autofokus.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 24,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": true,
+        "every": 2
+      },
+      "filterSwitch": {
+        "enabled": true,
+        "every": 4,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 90,
+        "filterChangeS": 10,
+        "ditherSettleS": 15,
+        "afEveryMin": 60,
+        "afDurationS": 120,
+        "downloadS": 3
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            23
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-Ha",
+                "filter": "Ha",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              },
+              {
+                "id": "A-OIII",
+                "filter": "OIII",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 90
+      },
+      {
+        "atS": 90,
+        "cmd": "autofocus_hint",
+        "durationS": 120
+      },
+      {
+        "atS": 210,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 10
+      },
+      {
+        "atS": 220,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 523,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 826,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 841,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1144,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1447,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 1462,
+        "cmd": "filter",
+        "filter": "OIII",
+        "durationS": 10
+      },
+      {
+        "atS": 1472,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1775,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2078,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 2093,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2396,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2699,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 2714,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 10
+      },
+      {
+        "atS": 2724,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3027,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3330,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 3345,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3648,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3951,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 3966,
+        "cmd": "autofocus_hint",
+        "durationS": 120
+      },
+      {
+        "atS": 4086,
+        "cmd": "filter",
+        "filter": "OIII",
+        "durationS": 10
+      },
+      {
+        "atS": 4096,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4399,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 4702,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 4717,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5020,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5323,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 5338,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 10
+      },
+      {
+        "atS": 5348,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5651,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 5954,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 5969,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6272,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6575,
+        "cmd": "dither",
+        "durationS": 15
+      },
+      {
+        "atS": 6590,
+        "cmd": "filter",
+        "filter": "OIII",
+        "durationS": 10
+      },
+      {
+        "atS": 6600,
+        "cmd": "expose",
+        "line": "A-OIII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 6903,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}

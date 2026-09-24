@@ -132,6 +132,12 @@ function overheadPerExposure(grid: GridInput, exposureS: number, sw: CompatSwitc
   return o.downloadS + dither + filter + af;
 }
 
+function countTrue(mask: readonly boolean[]): number {
+  let n = 0;
+  for (const x of mask) if (x) n++;
+  return n;
+}
+
 function longestRun(mask: readonly boolean[]): number {
   let longest = 0;
   let cur = 0;
@@ -259,7 +265,12 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       ? longest * SLOT_S < Math.min(minTimeSec, unitWork + fixSec)
       : (longest > 0 ? (longest * 5.0) / 60.0 : 0) < u.minTimeOnTargetH;
     if (tooShort) {
-      excluded.push({ unitId: u.unitId, reason: 'below_min_time' });
+      excluded.push({
+        unitId: u.unitId,
+        reason: 'below_min_time',
+        usableSlots: countTrue(canImage),
+        lines,
+      });
       continue;
     }
 
@@ -282,7 +293,12 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       const overlaps = !(to <= 0 || from >= n * SLOT_S);
       const hasWork = sw.transitUntilWindowEnd || workOf(projectLines_) > 0;
       if (!overlaps || !hasWork) {
-        excluded.push({ unitId: u.unitId, reason: 'no_transit_window' });
+        excluded.push({
+          unitId: u.unitId,
+          reason: 'no_transit_window',
+          usableSlots: countTrue(canImage),
+          lines,
+        });
         continue;
       }
       transit = {
@@ -297,7 +313,12 @@ export function setupFromGrid(grid: GridInput): NightSetup {
     // Transit-Einheiten belichten produktiv bis Fensterende unabhängig vom Bedarf (A-21).
     const keepTransit = sw.transitUntilWindowEnd && transit !== null;
     if (unitWork <= 0 && !keepTransit && (panelIdx !== null || sw.nightBoundsWithWork)) {
-      excluded.push({ unitId: u.unitId, reason: sw.nightBoundsWithWork ? 'no_need' : 'no_work' });
+      excluded.push({
+        unitId: u.unitId,
+        reason: sw.nightBoundsWithWork ? 'no_need' : 'no_work',
+        usableSlots: countTrue(canImage),
+        lines,
+      });
       continue;
     }
 

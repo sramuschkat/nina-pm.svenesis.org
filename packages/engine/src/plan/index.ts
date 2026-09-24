@@ -39,6 +39,7 @@ export {
   planGridCompat,
   type CompatPlanResult,
   type PaintResult,
+  type PlanGridOptions,
   type PlanGridResult,
 } from './run';
 export {
@@ -82,3 +83,11 @@ export type {
   PlanWarning,
   TwilightName,
 } from './plan-input';
+export {
+  validatePlan,
+  type DiagnosticReason,
+  type UnitDiagnostic,
+  type UnitWarning,
+  type WarningCode,
+} from './validate';
+export { goldenDiagnostics, goldenEntries, goldenWarnings, type GoldenEntry } from './golden';

@@ -11,7 +11,9 @@ import { ENGINE_VERSION } from '../version';
 import { buildEligibility, type EligibilityLine } from '../visibility/eligibility';
 import type { MoonProfile } from '../visibility/moon-safe';
 import { buildNightContext } from '../visibility/night-context';
+import { rotationWithinTolerance } from '../geometry/rotation';
 import type { Crossings } from '../astro/twilight';
+import { meridianTransitUtc, targetAt, type Target } from '../astro/target';
 import {
   DEFAULT_SORT_CHAIN,
   maskToRanges,
@@ -31,6 +33,7 @@ import type {
   PlanLine,
   PlanPanel,
   PlanProject,
+  PlanWarning,
   TwilightName,
 } from './plan-input';
 import { planGrid } from './run';
@@ -136,6 +139,10 @@ export function planNight(input: PlanInput): NightPlan {
 
   const units: GridUnit[] = [];
   const meta = new Map<string, UnitMeta>();
+  /** Ziel je Einheit und Panel (Panel-Koordinaten, A-19; `null` = Projektzentrum bzw. Einheitsziel). */
+  const targets = new Map<string, { target: Target; minAltDeg: number }>();
+  const targetKey = (unitId: string, panelIndex: number | null) =>
+    `${unitId}|${String(panelIndex)}`;
   const projects = [...input.projects].sort((a, b) => ordinal(a.id, b.id));
   for (const project of projects) {
     const panels = [...project.panels].sort((a, b) => a.index - b.index);
@@ -148,6 +155,19 @@ export function planNight(input: PlanInput): NightPlan {
         panel.lines.filter((l) => participates(project, panel, l)).map((l) => ({ panel, line: l })),
       );
       const coords = g.target && split ? g.target : project;
+      const asTarget = (c: { raDeg: number; decDeg: number }): Target => ({
+        raJ2000Deg: c.raDeg,
+        decJ2000Deg: c.decDeg,
+      });
+      targets.set(targetKey(g.unitId, null), {
+        target: asTarget(g.target ?? project),
+        minAltDeg: project.minAltitudeDeg,
+      });
+      for (const panel of g.panels)
+        targets.set(targetKey(g.unitId, panel.index), {
+          target: asTarget(panel),
+          minAltDeg: project.minAltitudeDeg,
+        });
       const eligibilityLines: EligibilityLine[] = lines.map(({ line }) => ({
         id: line.id,
         moonProfile: engineProfile(line.moonProfileId),
@@ -196,7 +216,16 @@ export function planNight(input: PlanInput): NightPlan {
         dueDate: project.dueDate,
         peakAltDeg: elig.peakAltDeg ?? 0,
         canImage: maskToRanges(elig.canImage),
-        meridianAtS: null,
+        meridianAtS: (() => {
+          const tm = meridianTransitUtc(
+            { raJ2000Deg: (g.target ?? project).raDeg, decJ2000Deg: (g.target ?? project).decDeg },
+            site,
+            w0,
+            wEnd,
+            'upper',
+          );
+          return tm === null ? null : rel(tm);
+        })(),
         transit,
         panels: gridPanels,
         twilightEndS: twilightEnd === null ? null : rel(twilightEnd),
@@ -274,7 +303,42 @@ export function planNight(input: PlanInput): NightPlan {
       : null,
     darknessEndS: darknessEnd === null ? null : rel(darknessEnd),
   };
-  const result = planGrid(grid, { rotator: input.rig.hasRotator });
+  // Meridian je Panel mit scheinbarer RA (flip-rotation.md §1.1, geschlossene Form WS-24); untere
+  // Kulmination als zweiter Kandidat, wenn die Höhe dort ≥ Mindesthöhe ist (NT-26).
+  const meridianCache = new Map<string, { upper: number | null; candidates: number[] }>();
+  const meridianInfo = (unitId: string, panelIndex: number | null) => {
+    const key = targetKey(unitId, panelIndex);
+    const cached = meridianCache.get(key);
+    if (cached) return cached;
+    const t = targets.get(key) ?? targets.get(targetKey(unitId, null));
+    let info: { upper: number | null; candidates: number[] } = { upper: null, candidates: [] };
+    if (t) {
+      const upper = meridianTransitUtc(t.target, site, w0, wEnd, 'upper');
+      const lower = meridianTransitUtc(t.target, site, w0, wEnd, 'lower');
+      const candidates = [
+        upper,
+        lower !== null && targetAt(t.target, lower, site).altDeg >= t.minAltDeg ? lower : null,
+      ]
+        .filter((x): x is number => x !== null)
+        .map(rel)
+        .sort((a, b) => a - b);
+      info = { upper: upper === null ? null : rel(upper), candidates };
+    }
+    meridianCache.set(key, info);
+    return info;
+  };
+  const result = planGrid(grid, {
+    rotator: input.rig.hasRotator,
+    meridian: (unitId, panelIndex) => meridianInfo(unitId, panelIndex).candidates,
+    upperMeridian: (unitId, panelIndex) => meridianInfo(unitId, panelIndex).upper,
+    pierSide: (unitId, panelIndex, t) => {
+      const target =
+        targets.get(targetKey(unitId, panelIndex)) ?? targets.get(targetKey(unitId, null));
+      if (!target) return null;
+      // Ziel östlich des Meridians (LHA < 0) → `west`, sonst `east` (allocation.md §2, NT-34).
+      return targetAt(target.target, w0 + t, site).hourAngleDeg < 0 ? 'west' : 'east';
+    },
+  });
 
   // Blöcke in Planformat.
   const lineById = new Map(
@@ -352,40 +416,73 @@ export function planNight(input: PlanInput): NightPlan {
         ? (panel?.rotationDeg ?? m.project.rotationDeg)
         : (input.rig.defaultRotationDeg ?? 0),
       rotationMode: rotator ? 'rotator' : 'fixed_camera',
-      meridianFlip: null,
+      meridianFlip: b.meridianFlip
+        ? {
+            waitStartUtc:
+              b.meridianFlip.waitStartS === null ? null : iso(b.meridianFlip.waitStartS),
+            plannedUtc: iso(b.meridianFlip.plannedS),
+            durationS: b.meridianFlip.durationS,
+            inTransitWindow: b.meridianFlip.inTransitWindow,
+            planned: b.meridianFlip.planned,
+            gapStartUtc: b.meridianFlip.gapStartS === null ? null : iso(b.meridianFlip.gapStartS),
+            gapDurationS: b.meridianFlip.gapDurationS,
+          }
+        : null,
       entries,
     };
   });
 
-  // Grundlegende Diagnose (vollständig in AP-13d, allocation.md §12).
-  for (const e of result.excluded) {
-    const m = meta.get(e.unitId);
+  // Diagnose und Warnungen (allocation.md §12): Einheiten → Projekt/Panel.
+  const panelOf = (m: UnitMeta) =>
+    m.panel && m.project.panels.length > 1 ? { panelId: m.panel.id } : {};
+  for (const d of result.diagnostics) {
+    const m = meta.get(d.unitId);
     if (!m) continue;
     const reason =
-      e.reason === 'no_need'
-        ? 'no_need'
-        : m.project.startDate !== null && input.night < m.project.startDate
-          ? 'start_date'
-          : m.visibility === 'never'
-            ? 'not_visible'
-            : e.reason === 'no_transit_window'
-              ? 'not_visible'
-              : 'below_min_time';
+      (d.reason === 'below_min_time' || d.reason === 'not_visible') &&
+      m.project.startDate !== null &&
+      input.night < m.project.startDate
+        ? 'start_date'
+        : d.reason === 'below_min_time' && m.visibility === 'never'
+          ? 'not_visible'
+          : d.reason;
     diagnostics.push({
       projectId: m.project.id,
-      ...(m.panel && m.project.panels.length > 1 ? { panelId: m.panel.id } : {}),
+      ...panelOf(m),
+      ...(d.lineId !== undefined ? { lineId: d.lineId } : {}),
       reason,
+      ...(d.message !== undefined ? { message: d.message } : {}),
     });
   }
-  for (const unitId of result.prefiltered) {
-    const m = meta.get(unitId);
-    if (!m || m.project.transit) continue;
-    diagnostics.push({
-      projectId: m.project.id,
-      ...(m.panel && m.project.panels.length > 1 ? { panelId: m.panel.id } : {}),
-      reason: 'prefiltered',
-    });
+  const warnings: PlanWarning[] = result.warnings.map((w) => ({
+    code: w.code,
+    level: w.level,
+    ...(w.unitId !== undefined ? { unitId: w.unitId } : {}),
+    ...(w.atS !== undefined ? { atUtc: iso(w.atS) } : {}),
+    ...(w.durationS !== undefined ? { durationS: w.durationS } : {}),
+    ...(w.message !== undefined ? { message: w.message } : {}),
+  }));
+  // Ohne Rotator: Panel-PA gegen den Kamerawinkel modulo 180° (geometry.md §2.2, NT-E4).
+  if (!input.rig.hasRotator && input.rig.defaultRotationDeg !== null) {
+    const planned = new Set(blocks.map((b) => `${b.projectId}|${String(b.panelId)}`));
+    for (const [unitId, m] of [...meta].sort(([a], [b]) => ordinal(a, b)))
+      for (const panel of m.project.panels) {
+        if (!planned.has(`${m.project.id}|${panel.id}`)) continue;
+        if (m.panel && m.panel.id !== panel.id) continue;
+        if (
+          !rotationWithinTolerance(
+            panel.rotationDeg,
+            input.rig.defaultRotationDeg,
+            input.rig.rotationToleranceDeg,
+          )
+        )
+          warnings.push({ code: 'panel_rotation_mismatch', level: 'warn', unitId });
+      }
   }
+  // Streifende Dämmerungsgrenze einer genutzten Grenze (night.md §2).
+  for (const limit of ['civil', 'nautical', 'astronomical'] as const)
+    if (used.has(limit) && times.twilight[limit].grazing)
+      warnings.push({ code: 'twilight_grazing', level: 'warn', message: limit });
 
   const plannedFrames: Record<string, Record<string, number>> = {};
   for (const b of blocks)
@@ -425,7 +522,7 @@ export function planNight(input: PlanInput): NightPlan {
     blocks,
     summary: { targets: Object.keys(plannedFrames).length, plannedFrames },
     diagnostics: sortedDiagnostics,
-    warnings: [],
+    warnings,
   };
   const { inputHash: _ih, ...hashed } = plan;
   void _ih;

@@ -71,6 +71,10 @@ export interface UnitProfile {
 export interface ExcludedUnit {
   readonly unitId: string;
   readonly reason: 'below_min_time' | 'no_transit_window' | 'no_work' | 'no_need';
+  /** Nutzbare Slots (`CanImage`) – 0 heißt „nie sichtbar“ (Diagnose `not_visible`). */
+  readonly usableSlots: number;
+  /** Zeilen der Einheit (zeilenweise Gründe für das Aufwand-Kennzeichen). */
+  readonly lines: readonly UnitLine[];
 }
 
 /** Vorbelegung vergangener Slots bei Neuplanung (§5.3, A-10/A-11). */

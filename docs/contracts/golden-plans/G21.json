@@ -1,0 +1,266 @@
+{
+  "id": "G21",
+  "title": "Zeitkritischer Schutz",
+  "requirements": [
+    "FA-SCH-07",
+    "FA-SCH-18"
+  ],
+  "explanation": "Ergebnis: 12 Belichtungen (A-Ha 6, A-SII 6), 1 Slews. Mond oben, Filterwechsel alle 2 Belichtungen. Ha (streng) ist nur bis Slot 5 sicher, SII (entspannt) die ganze Nacht. Nach 2 × Ha stünde der Wechsel zu SII an, aber das sichere Fenster von Ha schließt früher als das von SII und ein geliehener SII-Stapel würde Ha Arbeit kosten – der zeitkritische Schutz hält Ha, bis dessen 6 Aufnahmen belichtet sind. Danach SII.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 12 Belichtungen (A-Ha 6, A-SII 6), 1 Slews.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": true,
+        "every": 2,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "strict",
+        "distanceDeg": 90,
+        "maxIllumPct": 30,
+        "mustBeDown": false,
+        "widthDays": 8
+      },
+      {
+        "id": "relaxed",
+        "distanceDeg": 25,
+        "maxIllumPct": 80,
+        "mustBeDown": false,
+        "widthDays": 3
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-Ha",
+                "filter": "Ha",
+                "exposureS": 300,
+                "planned": 6,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "strict",
+                "safe": [
+                  [
+                    0,
+                    5
+                  ]
+                ]
+              },
+              {
+                "id": "A-SII",
+                "filter": "SII",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "relaxed",
+                "safe": [
+                  [
+                    0,
+                    11
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 600,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1200,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1500,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1800,
+        "cmd": "filter",
+        "filter": "SII",
+        "durationS": 0
+      },
+      {
+        "atS": 1800,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2100,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2400,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2700,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3000,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3300,
+        "cmd": "expose",
+        "line": "A-SII",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3600,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [],
+    "diagnostics": []
+  }
+}

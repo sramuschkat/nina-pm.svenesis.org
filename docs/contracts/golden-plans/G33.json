@@ -1,0 +1,183 @@
+{
+  "id": "G33",
+  "title": "Blockanfang ohne passende Arbeit: Freigabe statt Slew (A-17)",
+  "requirements": [
+    "FA-SCH-19"
+  ],
+  "explanation": "Ergebnis: 3 Belichtungen (A-Ha 3), 1 Slews. Wie G23, aber ohne zweites Ziel. In den Slots 0–1 kann A keine 900-s-Belichtung sicher beginnen, und es gibt keinen Ersatz. Die beiden Slots werden freigegeben statt eines sinnlosen Slews (FA-SCH-19); der Block beginnt in Slot 3 (900 s) mit drei Belichtungen. `idle_gap` meldet die freien 10 min am Anfang.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 4 Belichtungen (A-Ha 4), 1 Slews. Original: A belichtet ab 0 s, die erste Aufnahme läuft in den unsicheren Slot 2 (A-26).",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "strict",
+        "distanceDeg": 90,
+        "maxIllumPct": 30,
+        "mustBeDown": false,
+        "widthDays": 8
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 0.1,
+        "dueDate": null,
+        "peakAltDeg": 40,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-Ha",
+                "filter": "Ha",
+                "exposureS": 900,
+                "planned": 30,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "strict",
+                "safe": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    3,
+                    11
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      null,
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 900,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 0
+      },
+      {
+        "atS": 900,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 0
+      },
+      {
+        "atS": 900,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1800,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2700,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3600,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "idle_gap",
+        "atS": 0
+      }
+    ],
+    "diagnostics": []
+  }
+}

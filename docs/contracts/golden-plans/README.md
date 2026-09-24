@@ -1,6 +1,6 @@
 # Soll-Pläne (Golden Plans)
 
-Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle **G01–G18** aus **AP-13b** (vorläufig bis zur Abnahme H-13), Ablauf-Fälle folgen in **AP-13d** (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
+Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle **G01–G18** aus **AP-13b**, Ablauf-Fälle **G19–G33** aus **AP-13d** (beide vorläufig bis zur Abnahme H-13) (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
 
 ## Vorgehen
 1. **AP-13a:** `tools/astropm-oracle` bauen (allocation.md §11.2): C#-Quellen des Astro-PM-Plugins (MIT, Commit `5dd621d`) mit Minimal-Patch in einer .NET-8-Konsolen-App; CI-Job `oracle.yml` auf `ubuntu-latest`; Grid-Format (unten) und Adapter festlegen.

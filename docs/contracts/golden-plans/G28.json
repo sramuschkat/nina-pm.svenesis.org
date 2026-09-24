@@ -1,0 +1,249 @@
+{
+  "id": "G28",
+  "title": "Belichtung passt nicht bis Blockende (A-7)",
+  "requirements": [
+    "FA-SCH-15"
+  ],
+  "explanation": "Ergebnis: 7 Belichtungen (A-L 2, B-L 5), 2 Slews. A (600 s) hat die Slots 0–5, B folgt ab 1800 s; Slew 60 s. Nach zwei Belichtungen (60–1260 s) passt die dritte nicht mehr bis zum Blockende 1800 s. Sie beginnt nicht: harter Blockschluss, kein Überhang in den Block von B. Der Rest des Laufs (Slot 5) wird frei, A wartet bis 1800 s. `total_min` meldet, dass A damit unter seiner Mindestzeit bleibt.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 9 Belichtungen (A-L 3, B-L 6), 2 Slews. Original: ohne Slew-Zeit passen drei Belichtungen; ein Überhang in den Folgeblock wäre dort erlaubt.",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10,
+      -10
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 60,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            5
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-L",
+                "filter": "L",
+                "exposureS": 600,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 0.5,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            6,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 20,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B",
+      "B"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 60
+      },
+      {
+        "atS": 60,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 60,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 660,
+        "cmd": "expose",
+        "line": "A-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 1260,
+        "cmd": "wait",
+        "durationS": 540
+      },
+      {
+        "atS": 1800,
+        "cmd": "end"
+      },
+      {
+        "atS": 1800,
+        "cmd": "slew_center",
+        "unit": "B",
+        "panel": null,
+        "durationS": 60
+      },
+      {
+        "atS": 1860,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 1860,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2160,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2460,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2760,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3060,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3360,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "total_min",
+        "unitId": "A"
+      }
+    ],
+    "diagnostics": []
+  }
+}

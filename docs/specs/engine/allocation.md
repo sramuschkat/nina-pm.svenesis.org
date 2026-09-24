@@ -286,6 +286,16 @@ für s = FirstUsableSlot … LastUsableSlot:
      - Sie endet am Fensterende, spätestens aber mit dem letzten gesperrten Slot: Wo das Ziel unter die Mindesthöhe fällt, ist nichts gesperrt.
      - Überlappende Transits: Jeder Slot des Fensters zählt, auch ohne `CanImage`.
   8. **`planNight` nur produktiv:** Den Kompatibilitätsmodus gibt es nur für Grids und das Orakel; `mode: compat` ergibt `engine.input_invalid`.
+- **8.6 Auslegungen (AP-13d, Vorschlag – mit den Ablauf-Soll-Plänen abzunehmen, H-13):**
+  1. **Flip passt nicht:** Liegt `tM + afterMin + flipDurationS` hinter dem Blockende, steht ab der Belichtung, die über die Flip-Grenze liefe, ein `wait` bis zum Blockende; der Block endet ohne `meridian_flip`. `meridianFlip` wird mit `planned: false` ausgewiesen (`waitStartUtc` = Wartebeginn).
+  2. **Pierseite** eines Blocks = Vorzeichen des Stundenwinkels bei Blockbeginn (`LHA < 0` → `west`, sonst `east`); nach einem Flip gilt die andere Seite bis Blockende. Ein Folgeblock auf einer anderen Seite als der zuletzt belegten zählt `flipDurationS` zum ersten Slew (NT-27).
+  3. **Transit-Vorlauf** beginnt bei `max(t, Serienbeginn − slewCenterS − 60 s)`, gemessen am tatsächlichen Serienbeginn (Fensterbeginn oder erster gesperrter Fenster-Slot, §8.5 Nr. 7).
+  4. **Serienende bei angeschnittenem letzten Slot:** Die Slotmitte-Regel sperrt den letzten Fenster-Slot nicht, wenn seine Mitte hinter dem Fensterende liegt. Die Serie läuft trotzdem bis zum Fensterende, sofern das Ziel dort noch nutzbar ist (Rest ≤ ½ Slot, A-21); der Folgeblock beginnt danach.
+  5. **Lücke im Fenster (M8):** `gapStartUtc` ist der Beginn der ersten Serienbelichtung, die nicht mehr vor `tM + afterMin` endet (mit Pause vor Meridian: die über `tM − Pause` liefe). `gapDurationS` = Wartezeit bis zum Flip + `flipDurationS` + `slewCenterS`; Beispielnacht HAT-P-17 b: 04:33:57Z, 330 s, 305 statt 310 Aufnahmen.
+  6. **`tM` (WS-24):** überall die geschlossene Form (`astro/target.ts` `meridianTransitUtc`); die untere Kulmination ist Kandidat, wenn die Höhe dort ≥ Mindesthöhe (NT-26). Ein Test sichert, dass die Engine keine Newton-Iteration enthält.
+  7. **Beobachtungen, offen zur Entscheidung:**
+     - Nach einem A-17-Ersatz freigegebene Slots werden im selben Lauf nicht erneut angeboten (G23: A könnte schon ab 900 s beginnen).
+     - `idle_gap` zählt Slots aus der Maske; eine Belichtung länger als ein Slot, die nicht mehr passt, erzeugt so eine Warnung, obwohl nichts Erreichbares frei war.
 
 ## 9. Filter- und Panelwahl (`pick`)
 

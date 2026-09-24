@@ -1,0 +1,245 @@
+{
+  "id": "G23",
+  "title": "Blockanfang ohne passende Arbeit: Ersatz (A-17)",
+  "requirements": [
+    "FA-SCH-19"
+  ],
+  "explanation": "Ergebnis: 4 Belichtungen (B-L 2, A-Ha 2), 2 Slews. A (Ha, 900 s) ist bei Mond oben in den Slots 0–1 und ab Slot 3 sicher; die Zuteilung gibt A die Slots 0–1 und 4–11, B (Breitband, 2 Aufnahmen) die Slots 2–3. Am Blockanfang 0 passt keine 900-s-Belichtung von A: sie liefe in den unsicheren Slot 2. B kann in beiden Slots belichten und übernimmt 0–1 (Ersatz nur mit CanImage in allen übertragenen Slots, A-17). Danach ist B fertig, seine Slots 2–3 werden frei (A-29). A beginnt mit seinem eigenen Lauf in Slot 4 (1200 s). Um 3000 s passt keine 900-s-Belichtung mehr bis zum Blockende; die Slots 10–11 bleiben frei, `idle_gap` meldet sie, weil A dort laut Maske nutzbar ist.",
+  "approvedBy": null,
+  "oracleDiff": "Original (Kompatibilitätsmodus): 5 Belichtungen (A-Ha 4, B-L 1), 3 Slews. Original: A belichtet ab 0 s eine 900-s-Aufnahme, die in den unsicheren Slot 2 läuft (Masken nur zum Slotbeginn, A-26). B folgt um 900 s, A ab 1200 s mit drei Aufnahmen; die letzte ragt über das Nachtende (Kulanz des Originals).",
+  "input": {
+    "mode": "productive",
+    "slotS": 300,
+    "slots": 12,
+    "startAtS": null,
+    "moonAltDeg": [
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "settings": {
+      "strategy": "proportional",
+      "sortChain": [
+        "lowest_peak_altitude",
+        "setting_soonest",
+        "most_remaining",
+        "constrained"
+      ],
+      "bonusEnabled": false,
+      "overshootPct": 0,
+      "mosaicPanelsIndependent": true,
+      "dither": {
+        "enabled": false,
+        "every": 3
+      },
+      "filterSwitch": {
+        "enabled": false,
+        "every": 10,
+        "tolerancePct": 50
+      },
+      "overhead": {
+        "slewCenterS": 0,
+        "filterChangeS": 0,
+        "ditherSettleS": 0,
+        "afEveryMin": 0,
+        "afDurationS": 0,
+        "downloadS": 0
+      },
+      "flip": {
+        "enabled": false,
+        "afterMin": 5,
+        "maxAfterMin": 15,
+        "pauseBeforeMin": 0,
+        "durationS": 240
+      }
+    },
+    "moonProfiles": [
+      {
+        "id": "strict",
+        "distanceDeg": 90,
+        "maxIllumPct": 30,
+        "mustBeDown": false,
+        "widthDays": 8
+      }
+    ],
+    "units": [
+      {
+        "unitId": "A",
+        "projectId": "A",
+        "priority": 1,
+        "minTimeOnTargetH": 0.1,
+        "dueDate": null,
+        "peakAltDeg": 40,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "A-Ha",
+                "filter": "Ha",
+                "exposureS": 900,
+                "planned": 30,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": "strict",
+                "safe": [
+                  [
+                    0,
+                    1
+                  ],
+                  [
+                    3,
+                    11
+                  ]
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unitId": "B",
+        "projectId": "B",
+        "priority": 1,
+        "minTimeOnTargetH": 0.1,
+        "dueDate": null,
+        "peakAltDeg": 60,
+        "canImage": [
+          [
+            0,
+            11
+          ]
+        ],
+        "meridianAtS": null,
+        "transit": null,
+        "panels": [
+          {
+            "index": 0,
+            "lines": [
+              {
+                "id": "B-L",
+                "filter": "L",
+                "exposureS": 300,
+                "planned": 2,
+                "accepted": 0,
+                "enabled": true,
+                "moonProfile": null,
+                "safe": []
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "tonight": null
+  },
+  "expected": {
+    "slotAssignment": [
+      "A",
+      "A",
+      "B",
+      "B",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "entries": [
+      {
+        "atS": 0,
+        "cmd": "slew_center",
+        "unit": "B",
+        "panel": null,
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "filter",
+        "filter": "L",
+        "durationS": 0
+      },
+      {
+        "atS": 0,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 300,
+        "cmd": "expose",
+        "line": "B-L",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 600,
+        "cmd": "wait",
+        "durationS": 600
+      },
+      {
+        "atS": 1200,
+        "cmd": "end"
+      },
+      {
+        "atS": 1200,
+        "cmd": "slew_center",
+        "unit": "A",
+        "panel": null,
+        "durationS": 0
+      },
+      {
+        "atS": 1200,
+        "cmd": "filter",
+        "filter": "Ha",
+        "durationS": 0
+      },
+      {
+        "atS": 1200,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 2100,
+        "cmd": "expose",
+        "line": "A-Ha",
+        "bonus": false,
+        "lastOfNight": false
+      },
+      {
+        "atS": 3000,
+        "cmd": "end"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "idle_gap",
+        "atS": 3000
+      }
+    ],
+    "diagnostics": []
+  }
+}
