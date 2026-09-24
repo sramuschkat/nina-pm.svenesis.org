@@ -3429,6 +3429,13 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             lastLoginAt: string | null;
+            storageBytes: number | null;
+            storageFileCount: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            storageMeasuredAt: string | null;
             /**
              * Format: date-time
              * @example 2026-09-18T13:00:00Z

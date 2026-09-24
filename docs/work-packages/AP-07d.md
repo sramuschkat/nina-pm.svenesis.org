@@ -16,9 +16,9 @@ FA-SU-03, S-80, TK 13 (`daily`)
 - `CLAUDE.md`, `docs/rules/testing.md`; Abschnitt → Zeilen: `docs/concept/INDEX.md`
 
 ## Liefern
-- Migration (additiv): `tenant.storage_bytes bigint` und `tenant.storage_measured_at timestamptz`, beide nullable, ohne DEFAULT; `UPDATE` nur auf diese beiden Spalten für `app_job` (Spaltenrecht, `grants.ts`)
-- Aufgabe im Zeitplan `daily`: je Mandant die Objekte unter `tenant/<id>/` im Daten-Bucket auflisten, Größen summieren und die beiden Spalten schreiben; idempotent, ein Mandant je Transaktion
-- `TenantAdminView` um `storageBytes` und `storageMeasuredAt` erweitern; S-80 zeigt „Dateien: 12,4 MB (Stand …)“ bzw. „noch nicht gemessen“
+- Migration 0006 (additiv): eigene Tabelle `tenant_storage (tenant_id PK/FK, file_bytes, file_count, measured_at)` mit GRANTs nach TK 6.2 (`app_rw` alle, `app_job` SELECT/INSERT/UPDATE) – statt neuer Spalten an `tenant`, weil ein nachträgliches Spaltenrecht für `app_job` den GRANT-Lint je Migration bräche (Umsetzung AP-07d); die Tabelle steht in der Löschreihenfolge von FA-MAN-03
+- Aufgabe im Zeitplan `daily`: je Mandant die Objekte unter `tenant/<id>/` im Daten-Bucket auflisten, Größen summieren und je Mandant eine Zeile schreiben; idempotent, ein Mandant je Transaktion
+- `TenantAdminView` um `storageBytes`, `storageFileCount` und `storageMeasuredAt` erweitern; S-80 zeigt „Dateien: 12,4 MB (Stand …)“ bzw. „noch nicht gemessen“
 - Keine neuen IAM-Rechte, falls `dataBucket.grantReadWrite(worker, 'tenant/*')` das Auflisten schon abdeckt (`iam.md` §1: `s3:List*` auf den Bucket); sonst die Tabelle in `iam.md` im selben PR ergänzen
 
 ## Nicht im Umfang

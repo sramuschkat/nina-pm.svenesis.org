@@ -88,6 +88,10 @@ export const TenantAdminView = z
     ninaInstances: z.number().int(),
     ninaLastSeenAt: UtcInstant.nullable(),
     lastLoginAt: UtcInstant.nullable(),
+    /** Dateien unter `tenant/<id>/` (AP-07d); `null` = noch nicht gemessen. */
+    storageBytes: z.number().int().nullable(),
+    storageFileCount: z.number().int().nullable(),
+    storageMeasuredAt: UtcInstant.nullable(),
     createdAt: UtcInstant,
   })
   .meta({ id: 'TenantAdminView' });

@@ -10,7 +10,8 @@ import { systemApi, type InvitationCreated, type TenantAdmin } from '../../api/c
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
-import { SYSTEM_TIMEZONE } from '../../lib/time';
+import { formatBytes } from '../../lib/bytes';
+import { formatDateTime, SYSTEM_TIMEZONE } from '../../lib/time';
 import styles from '../admin/admin.module.css';
 import { DateTime, InvitationLinkBox, newId, problemCode, useConfirm } from '../admin/shared';
 import { SystemLayout } from './SystemLayout';
@@ -95,6 +96,9 @@ function TenantTable({
             </th>
             <th scope="col">{t('system.tenants.col.nina')}</th>
             <th scope="col">{t('system.tenants.col.lastLogin')}</th>
+            <th scope="col" className={styles.num}>
+              {t('system.tenants.col.storage')}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -129,11 +133,31 @@ function TenantTable({
               <td>
                 <DateTime at={x.lastLoginAt} zone={SYSTEM_TIMEZONE} />
               </td>
+              <td className={styles.num}>
+                <StorageValue tenant={x} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Dateien des Mandanten mit Messzeitpunkt (AP-07d, FA-SU-03). */
+function StorageValue({ tenant }: { tenant: TenantAdmin }) {
+  const { t, i18n } = useTranslation();
+  if (tenant.storageBytes === null || tenant.storageMeasuredAt === null)
+    return <span className={styles.muted}>{t('system.tenants.storageNone')}</span>;
+  return (
+    <span
+      title={t('system.tenants.storageHint', {
+        count: tenant.storageFileCount ?? 0,
+        at: formatDateTime(tenant.storageMeasuredAt, SYSTEM_TIMEZONE, i18n.language),
+      })}
+    >
+      {formatBytes(tenant.storageBytes, i18n.language)}
+    </span>
   );
 }
 
@@ -287,6 +311,16 @@ function TenantDetail({ tenant, onDeleted }: { tenant: TenantAdmin; onDeleted: (
       <p className={styles.muted}>
         {t('system.tenants.createdAt')} <DateTime at={tenant.createdAt} zone={SYSTEM_TIMEZONE} />
         {tenant.contact ? ` · ${tenant.contact}` : ''}
+      </p>
+      <p className={styles.muted}>
+        {t('system.tenants.col.storage')}: <StorageValue tenant={tenant} />
+        {tenant.storageMeasuredAt ? (
+          <>
+            {' '}
+            ({t('system.tenants.storageAt')}{' '}
+            <DateTime at={tenant.storageMeasuredAt} zone={SYSTEM_TIMEZONE} />)
+          </>
+        ) : null}
       </p>
 
       <div className={styles.section}>
