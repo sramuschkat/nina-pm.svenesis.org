@@ -39,3 +39,7 @@ apps/nina-plugin/refs/**
 
 # CDK-Ausgaben des lokalen Deploys
 infra/cdk-outputs.json
+
+# Playwright
+test-results/
+playwright-report/

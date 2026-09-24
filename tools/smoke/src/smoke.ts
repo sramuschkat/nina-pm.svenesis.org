@@ -1,8 +1,8 @@
 /**
  * Smoke-Prüfung nach jedem prod-Deploy (TK 17, 18). Stand AP-02b: Platzhalterseite, SPA-Rewrite,
  * HTTPS-Umleitung, Header-Politiken aller Behaviors (iam.md §10), `/api/health` über CloudFront und
- * Direktaufruf der execute-api-Adresse → 403 (SV-16). Folgepakete ergänzen die DB-Erreichbarkeit über
- * den Bootstrap (AP-17) und den Auth-Redirect.
+ * Direktaufruf der execute-api-Adresse → 403 (SV-16); seit AP-04a Test-Login → 404 und der
+ * Auth-Redirect zu Discord. Die DB-Erreichbarkeit über den Bootstrap folgt mit AP-17.
  */
 export interface SmokeResult {
   readonly name: string;
@@ -102,6 +102,34 @@ export async function runSmoke(
     if (typeof body.engineVersion !== 'string') problems.push('engineVersion fehlt');
     return [...problems, ...headerProblems('npm-api-static', res.headers)];
   });
+  await check('POST /api/auth/test-login → 404 (Test-Login nur lokal, TK 17)', async () => {
+    // Mit CSRF-Header, damit nicht die CSRF-Prüfung (403) eine vorhandene Route verdeckt.
+    const res = await fetchImpl(`${base}/api/auth/test-login`, {
+      method: 'POST',
+      headers: { 'X-NPM-Request': '1', 'content-type': 'application/json' },
+      body: '{"identityFixture":"owner"}',
+    });
+    return res.status === 404 ? [] : [`Status ${res.status}`];
+  });
+  await check(
+    'Anmeldung leitet zu Discord weiter (state, PKCE S256, __Host-npm_oauth)',
+    async () => {
+      const res = await fetchImpl(`${base}/api/auth/discord/start?next=/`, { redirect: 'manual' });
+      if (res.status !== 302) return [`Status ${res.status}`];
+      const location = new URL(res.headers.get('location') ?? 'about:blank');
+      const problems: string[] = [];
+      if (`${location.origin}${location.pathname}` !== 'https://discord.com/oauth2/authorize')
+        problems.push(`Ziel ${location.origin}${location.pathname}`);
+      if (location.searchParams.get('code_challenge_method') !== 'S256')
+        problems.push('ohne PKCE S256');
+      if (location.searchParams.get('redirect_uri') !== `${base}/api/auth/discord/callback`)
+        problems.push('redirect_uri weicht ab');
+      if (!location.searchParams.get('client_id')) problems.push('client_id fehlt');
+      if (!(res.headers.get('set-cookie') ?? '').includes('__Host-npm_oauth='))
+        problems.push('Cookie __Host-npm_oauth fehlt');
+      return problems;
+    },
+  );
   if (options.executeApiUrl) {
     const direct = options.executeApiUrl.replace(/\/$/, '');
     await check('Direktaufruf der execute-api-Adresse → 403', async () => {

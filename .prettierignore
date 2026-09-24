@@ -14,3 +14,5 @@ infra/cdk.context.json
 
 # Generiert (pnpm contracts:generate) – contracts.spec.ts vergleicht byte-genau
 **/src/generated/
+test-results/
+playwright-report/

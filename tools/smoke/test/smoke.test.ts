@@ -42,6 +42,16 @@ function fakeFetch(overrides: Record<string, Hit> = {}) {
         headers: API_HEADERS,
         body: '{"status":"ok","engineVersion":"0.0.0","build":"x"}',
       };
+    } else if (path === '/api/auth/discord/start') {
+      hit = {
+        status: 302,
+        headers: {
+          ...API_HEADERS,
+          location:
+            'https://discord.com/oauth2/authorize?client_id=1&state=s&code_challenge=c&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fnina-pm.svenesis.org%2Fapi%2Fauth%2Fdiscord%2Fcallback',
+          'set-cookie': '__Host-npm_oauth=x.y; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600',
+        },
+      };
     } else if (/^\/(api|catalog|downloads)\//.test(path)) {
       hit = { status: 404, headers: API_HEADERS };
     } else {
@@ -85,7 +95,22 @@ describe('runSmoke', () => {
   it('ist grün, wenn alles stimmt', async () => {
     const results = await runSmoke('https://nina-pm.svenesis.org', fakeFetch(), direct);
     expect(failed(results)).toEqual([]);
-    expect(results).toHaveLength(8);
+    expect(results).toHaveLength(10);
+  });
+
+  it('ist rot, wenn der Test-Login in prod antwortet oder der Discord-Redirect fehlt', async () => {
+    const results = await runSmoke(
+      'https://nina-pm.svenesis.org',
+      fakeFetch({
+        '/api/auth/test-login': { status: 200, headers: API_HEADERS },
+        '/api/auth/discord/start': { status: 404, headers: API_HEADERS },
+      }),
+      direct,
+    );
+    expect(failed(results)).toEqual([
+      'POST /api/auth/test-login → 404 (Test-Login nur lokal, TK 17)',
+      'Anmeldung leitet zu Discord weiter (state, PKCE S256, __Host-npm_oauth)',
+    ]);
   });
 
   it('ist rot, wenn / nicht 200 liefert oder HTTP nicht umleitet', async () => {

@@ -64,6 +64,11 @@ export class ApiStack extends Stack {
       environment: {
         BUILD_ID: props.buildId,
         ORIGIN_VERIFY_PARAM: config.ssm.originVerify,
+        // Anmeldung (TK 5.1–5.4): Namen der Parameter, Werte liest die Lambda zur Laufzeit aus SSM.
+        COOKIE_SECRET_PARAM: config.ssm.cookieSecret,
+        DISCORD_CLIENT_ID_PARAM: config.ssm.discordClientId,
+        DISCORD_CLIENT_SECRET_PARAM: config.ssm.discordClientSecret,
+        BOOTSTRAP_SUPER_USERS_PARAM: config.ssm.bootstrapSuperUsers,
         DSQL_ENDPOINT_PARAM: config.ssm.dsqlEndpoint,
         DSQL_DB_ROLE: 'app_rw',
         WORKER_FUNCTION_NAME: config.lambdas.worker.functionName,

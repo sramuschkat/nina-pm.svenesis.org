@@ -63,6 +63,45 @@ export interface SchemaMigrationTable {
   appliedAt: Timestamp;
 }
 
+export interface AuthSessionTable {
+  id: Generated<string>;
+  sessionHash: string;
+  identityId: string;
+  tenantId: string | null;
+  context: 'tenant' | 'system' | 'select';
+  userAgent: string | null;
+  ipTruncated: string | null;
+  createdAt: Timestamp;
+  lastSeenAt: Timestamp;
+  expiresAt: Timestamp;
+}
+
+export interface InvitationTable {
+  id: Generated<string>;
+  tenantId: string;
+  tokenHash: string;
+  role: 'owner' | 'admin' | 'user';
+  discordUserId: string | null;
+  note: string | null;
+  maxUses: Generated<number>;
+  usedCount: Generated<number>;
+  expiresAt: Timestamp;
+  createdByMember: string | null;
+  createdBySuper: string | null;
+  revokedAt: Timestamp | null;
+  createdAt: Timestamp;
+}
+
+export interface SystemAuditTable {
+  id: Generated<string>;
+  actor: 'super_user' | 'ops_cli';
+  superUserId: string | null;
+  tenantId: string | null;
+  action: string;
+  details: ColumnType<unknown, string | undefined, string>;
+  createdAt: Timestamp;
+}
+
 export type JobStatusValue = 'pending' | 'running' | 'done' | 'failed';
 
 /** Tabelle `job` (Migration 0005, TK 7.4). `input` ist jsonb und wird als JSON-Text geschrieben. */
@@ -91,4 +130,7 @@ export interface Database {
   appUser: AppUserTable;
   schemaMigration: SchemaMigrationTable;
   job: JobTable;
+  authSession: AuthSessionTable;
+  invitation: InvitationTable;
+  systemAudit: SystemAuditTable;
 }

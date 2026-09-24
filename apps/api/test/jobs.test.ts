@@ -7,7 +7,12 @@ import { dispatch } from '../src/worker/dispatch';
 import { pickupStaleJobs, runJob, type JobHandler, type JobRunnerDeps } from '../src/worker/jobs';
 import { tickTasks } from '../src/worker/tasks';
 import { MemoryJobs } from './support/memory-jobs';
-import { MEMBER, TENANT_A } from './support/personas';
+
+const TENANT_A = '0190c3f4-0000-7000-8000-00000000000a';
+const MEMBER = {
+  user: '0190c3f4-0000-7000-8000-0000000000a3',
+  admin: '0190c3f4-0000-7000-8000-0000000000a2',
+};
 
 function setup(handlers?: JobRunnerDeps['handlers']) {
   let now = new Date('2026-09-23T12:00:00Z');

@@ -1,34 +1,52 @@
-import { can, type Action, type AuthContext } from '@nina-pm/shared';
+import { can, type Action } from '@nina-pm/shared';
 import type { Context, MiddlewareHandler } from 'hono';
+import { ANONYMOUS, type SessionState } from '../auth/session';
 import type { ApiEnv } from './env';
 import { problemResponse } from './problem';
 
-/**
- * Sitzungsprüfung je Anfrage (TK 5.3). Bis AP-04a ein Stub: `resolveAuth` liefert immer `null`
- * (anonym); AP-04a ersetzt ihn durch die eine indizierte Abfrage über `__Host-npm_sid`.
- */
-export type ResolveAuth = (c: Context<ApiEnv>) => Promise<AuthContext | null>;
+/** Sitzungsprüfung je Anfrage (TK 5.3); im Test durch eine feste Sitzung ersetzbar. */
+export type ResolveSession = (c: Context<ApiEnv>) => Promise<SessionState>;
 
-export const anonymousOnly: ResolveAuth = () => Promise.resolve(null);
+export const anonymousOnly: ResolveSession = () => Promise.resolve(ANONYMOUS);
 
-export function session(resolveAuth: ResolveAuth): MiddlewareHandler<ApiEnv> {
+/** Stellt die Sitzungsprüfung als einmal ausgeführte Funktion bereit (kein DB-Zugriff ohne Bedarf). */
+export function session(resolve: ResolveSession): MiddlewareHandler<ApiEnv> {
   return async (c, next) => {
-    c.set('auth', await resolveAuth(c));
+    let pending: Promise<SessionState> | undefined;
+    c.set('auth', null);
+    c.set('session', () => (pending ??= resolve(c)));
     await next();
   };
 }
 
+export interface AuthorizeOptions {
+  /** Route ohne fachliche Aktion, aber nur mit gültiger Sitzung (z. B. `/auth/me`, jeder Kontext). */
+  readonly session?: 'required';
+}
+
 /**
- * Erzwingt `can()` auf Aktionsebene vor dem Handler (TK 5.5). Ohne Sitzung `401 auth.unauthenticated`,
- * sonst `403 permission.denied`. Objektregeln prüft der Use-Case mit dem geladenen Objekt erneut.
+ * Erzwingt `can()` auf Aktionsebene vor dem Handler (TK 5.5). Ohne Sitzung `401 auth.unauthenticated`;
+ * gesperrte Identität `403 auth.identity_blocked`; gesperrter Mandant `403 tenant.locked`; sonst
+ * `403 permission.denied`. Objektregeln prüft der Use-Case mit dem geladenen Objekt erneut.
  */
-export function authorize(action: Action): MiddlewareHandler<ApiEnv> {
+export function authorize(
+  action: Action,
+  options: AuthorizeOptions = {},
+): MiddlewareHandler<ApiEnv> {
   return async (c, next) => {
+    if (action === 'public' && options.session !== 'required') {
+      await next();
+      return undefined;
+    }
+    const state = await c.get('session')();
+    c.set('auth', state.auth);
+    const requestId = c.get('requestId');
+    if (state.denial === 'auth.identity_blocked')
+      return problemResponse('auth.identity_blocked', { requestId });
+    if (!state.auth) return problemResponse('auth.unauthenticated', { requestId });
     if (action !== 'public') {
-      const auth = c.get('auth');
-      const requestId = c.get('requestId');
-      if (!auth) return problemResponse('auth.unauthenticated', { requestId });
-      if (!can(auth, action)) return problemResponse('permission.denied', { requestId });
+      if (state.denial === 'tenant.locked') return problemResponse('tenant.locked', { requestId });
+      if (!can(state.auth, action)) return problemResponse('permission.denied', { requestId });
     }
     await next();
     return undefined;

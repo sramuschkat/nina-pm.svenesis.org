@@ -1,0 +1,142 @@
+/**
+ * Lokaler Node-Adapter (`pnpm dev:api`, Playwright-Stack; TK 17). **Nie im Lambda-Bundle** – die
+ * Lambda-Einstiege liegen in src/handlers/, und nur hier gibt es den Test-Login
+ * (`AUTH_TEST_MODE=true`, `POST /api/auth/test-login {identityFixture}`, Fixtures aus
+ * docs/seed/seed-demo.json). Datenbank: `DATABASE_URL` (PostgreSQL 16) oder ohne sie PGlite im
+ * Speicher mit Demo-Seed.
+ */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { serve } from '@hono/node-server';
+import {
+  AuthRepository,
+  JobQueue,
+  JobRepository,
+  openDatabase,
+  type OpenDatabase,
+} from '@nina-pm/db';
+import { seedCore, type SeedDemo } from '@nina-pm/db/seed';
+import { openPglite } from '@nina-pm/db/testing/pglite';
+import { safeNext } from '@nina-pm/shared';
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { createApp } from './app';
+import { parseIdList } from './auth/config';
+import { httpDiscordClient } from './auth/discord';
+import { establishSession } from './auth/login';
+import type { ApiEnv } from './lib/env';
+import { logger } from './lib/logger';
+import { problemResponse } from './lib/problem';
+import type { ApiServices } from './routes/services';
+import { runJob } from './worker/jobs';
+
+const PORT = Number(process.env.PORT ?? 8787);
+const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
+const LOCAL_ORIGIN_VERIFY = 'local-dev-origin-verify';
+
+const seed = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('../../../docs/seed/seed-demo.json', import.meta.url)),
+    'utf8',
+  ),
+) as SeedDemo;
+
+async function database(): Promise<OpenDatabase['db']> {
+  if (process.env.DATABASE_URL) {
+    return openDatabase({ kind: 'postgres', connectionString: process.env.DATABASE_URL }).db;
+  }
+  const pg = await openPglite();
+  await seedCore(pg.admin, seed);
+  logger.info('local_db', { kind: 'pglite', seeded: true });
+  return pg.db;
+}
+
+const db = await database();
+const now = () => new Date();
+const queue = new JobQueue(db);
+const services: ApiServices = {
+  repositories: (ctx) => ({ job: new JobRepository(db, ctx) }),
+  auth: new AuthRepository(db),
+  authConfig: {
+    cookieSecret: () =>
+      Promise.resolve(process.env.COOKIE_SECRET ?? 'local-dev-cookie-secret-not-for-prod'),
+    discordClientId: () => Promise.resolve(process.env.DISCORD_CLIENT_ID ?? 'local'),
+    discordClientSecret: () => Promise.resolve(process.env.DISCORD_CLIENT_SECRET ?? 'local'),
+    bootstrapSuperUsers: () =>
+      Promise.resolve(parseIdList(process.env.BOOTSTRAP_SUPER_USERS ?? '')),
+    redirectUri: `http://localhost:${PORT}/api/auth/discord/callback`,
+  },
+  discord: httpDiscordClient(),
+  downloads: {
+    presignGet: (key) =>
+      Promise.resolve({
+        url: `http://localhost:${PORT}/local-files/${key}`,
+        expiresAt: now().toISOString(),
+      }),
+  },
+  // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
+  jobInvoker: {
+    invoke: (jobId) => {
+      setImmediate(() => void runJob({ queue: () => Promise.resolve(queue) }, jobId));
+      return Promise.resolve();
+    },
+  },
+  now,
+};
+
+const app = createApp({
+  originVerifyValue: () => Promise.resolve(LOCAL_ORIGIN_VERIFY),
+  buildId: 'local',
+  services: () => Promise.resolve(services),
+});
+
+if (AUTH_TEST_MODE) {
+  const Body = z.object({
+    identityFixture: z.string().max(40),
+    next: z.string().max(2048).optional(),
+    mandant: z.string().max(64).optional(),
+  });
+  // Anmeldung ohne Discord mit einer Seed-Identität (TK 17) – durchläuft dieselbe Sitzungslogik.
+  app.post('/api/auth/test-login', async (c) => {
+    const parsed = Body.safeParse(await c.req.json().catch(() => ({})));
+    const fixture = parsed.success
+      ? seed.identities.find((i) => i.fixture === parsed.data.identityFixture)
+      : undefined;
+    if (!parsed.success || !fixture) return problemResponse('validation.failed');
+    const identity = await services.auth.upsertIdentity(
+      {
+        discordUserId: fixture.discordUserId,
+        username: fixture.discordName,
+        globalName: fixture.displayName,
+        avatarHash: null,
+        mfaEnabled: fixture.mfa,
+      },
+      now(),
+    );
+    const result = await establishSession(services.auth, c as never, {
+      identity,
+      tenantKey: parsed.data.mandant,
+      bootstrapIds: [],
+      next: safeNext(parsed.data.next),
+      now: now(),
+    });
+    c.header('set-cookie', result.setCookie);
+    return c.json({ location: result.location, context: result.context });
+  });
+}
+
+// Lokal gibt es kein CloudFront: den Origin-Verify-Header hier ergänzen.
+const local = new Hono<ApiEnv>();
+local.all('*', (c) => {
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('x-origin-verify', LOCAL_ORIGIN_VERIFY);
+  return app.fetch(new Request(c.req.raw, { headers }));
+});
+
+serve({ fetch: local.fetch, port: PORT }, () => {
+  logger.info('local_api', {
+    port: PORT,
+    authTestMode: AUTH_TEST_MODE,
+    database: process.env.DATABASE_URL ? 'postgres' : 'pglite',
+  });
+});
