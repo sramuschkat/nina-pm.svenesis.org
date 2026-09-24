@@ -4,9 +4,9 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 
 **Größen:** S ≈ 1 Sitzung · M ≈ 1–2 Sitzungen · L ≈ 2–4 Sitzungen (Claude Code, inkl. Tests).
 
-**Ablauf je Paket:** Brief lesen → nur die genannten Abschnitte laden (`../concept/INDEX.md`) → Verträge/Schemas zuerst → implementieren → automatisierte Abnahme → PR mit AP- und Anforderungs-IDs → menschliche Freigabe → CHANGELOG.
+**Ablauf je Paket:** Brief lesen → nur die genannten Abschnitte laden (`../concept/INDEX.md`) → Verträge/Schemas zuerst → implementieren → automatisierte Abnahme → PR mit AP- und Anforderungs-IDs (Basis `main`, Changelog-Eintrag als Datei in `../changelog.d/`) → Sven landet mit `pnpm pr:land` → menschliche Freigabe. „CHANGELOG ergänzt“ in den Briefen ist mit dem Eintrag in `docs/changelog.d/` erfüllt.
 
-**Status** pflegt Sven nach der Abnahme (☐ offen · ◐ in Arbeit · ☑ abgenommen + Datum). Claude Code nimmt das erste Paket, dessen Status ☐ ist und dessen Abhängigkeiten ☑ sind; es setzt höchstens ◐.
+**Status** pflegt Sven nach der Abnahme (☐ offen · ◐ in Arbeit · ☑ abgenommen + Datum). Claude Code nimmt das erste Paket, dessen Status ☐ ist und dessen Abhängigkeiten ☑ sind; es setzt höchstens ◐ und trägt ☑ nach Svens ausdrücklicher Abnahme im nächsten Paket-PR nach.
 
 ## R1
 
