@@ -22,9 +22,9 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-04b](AP-04b.md) | Mandanten, Einladungen, Owner-Invarianten | L | AP-04a | H-08, H-12a | ☑ |
 | [AP-06a](AP-06a.md) | Frontend-Shell, Gestaltung, Anmelde-Bildschirme | L | AP-04b | H-16 | ☑ |
 | [AP-06b](AP-06b.md) | Benachrichtigungen in der App und Startseite R1 | S | AP-06a | – | ☑ |
-| [AP-07a](AP-07a.md) | System-Administration (Super User) | M | AP-06a | – | ◐ |
-| [AP-07b](AP-07b.md) | Mitglieder, Einladungen, Admin-Rechte (Owner) | M | AP-07a | – | ◐ |
-| [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ◐ |
+| [AP-07a](AP-07a.md) | System-Administration (Super User) | M | AP-06a | – | ☑ |
+| [AP-07b](AP-07b.md) | Mitglieder, Einladungen, Admin-Rechte (Owner) | M | AP-07a | – | ☑ |
+| [AP-07c](AP-07c.md) | Mandanteneinstellungen, Owner-Übertragung, Protokolle | M | AP-07b | – | ☑ |
 | [AP-08a](AP-08a.md) | Engine-Grundlagen: Mathematik, kanonisches JSON, Hash | M | AP-01 | – | ☐ |
 | [AP-08b](AP-08b.md) | Engine: Zeit, Sonne, Mond, Koordinaten, Dämmerung (Port astro-core) | L | AP-08a | H-03 | ☐ |
 | [AP-09a](AP-09a.md) | Ausrüstung: API | L | AP-05, AP-04b, AP-08b | – | ☐ |
@@ -47,7 +47,8 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-14b](AP-14b.md) | NINA-API: Sessions, Lease, Offline, Ingest, Heartbeat | L | AP-14a | – | ☐ |
 | [AP-14c](AP-14c.md) | NINA-Instanzen S-42, Auslieferung S-41, Fake-Plugin | M | AP-14b, AP-13f | H-12b, H-24 | ☐ |
 | [AP-15](AP-15.md) | Sessions und Auswertung R1 | M | AP-14c | – | ☐ |
-| [AP-17](AP-17.md) | Härtung und Go-live | L | AP-15, AP-07c | H-17, H-18, H-20, H-23 | ☐ |
+| [AP-07d](AP-07d.md) | Speicherbedarf je Mandant (S-80, FA-SU-03) | S | AP-07a | – | ☐ |
+| [AP-17](AP-17.md) | Härtung und Go-live | L | AP-15, AP-07c, AP-07d | H-17, H-18, H-20, H-23 | ☐ |
 
 ## R2
 

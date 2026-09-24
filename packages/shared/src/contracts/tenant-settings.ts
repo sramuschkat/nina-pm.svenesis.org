@@ -34,7 +34,7 @@ const SETTING_SCHEMAS = {
   autoReactivateOnRemaining: z.boolean(),
   autoReadyToProcess: z.boolean(),
   adminSelfApproval: z.boolean(),
-  /** Tage bis zum Verfall einer offenen Einreichung; `null` = keine Frist (Vorschlag, Spec offen). */
+  /** Tage bis zum Verfall einer offenen Einreichung; `null` = keine Frist (Entscheidung Sven, 24.09.2026). */
   approvalDeadlineDays: z.number().int().min(1).max(365).nullable(),
 } as const satisfies Record<(typeof tenantSettingsKeys)[number], z.ZodType>;
 

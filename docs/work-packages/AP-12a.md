@@ -24,6 +24,7 @@ FA-FRG-01…16, FK 6.14
 - `GET /web/v1/queue` mit votes, submitterRank, planSummary; `effort` und `suggestedPriorityPosition` als `null` bis AP-13e
 - Freigabe-Verlauf mit Endstand der Stimmen, Stimmen/Rang nach Entscheidung geschlossen
 - `isDeliverable()` über Planungsbedarf (TK 6.3)
+- Mandanteneinstellung `approvalDeadlineDays` (Entscheidung Sven, 24.09.2026): Tage ab Einreichung, nach denen eine offene Einreichung verfällt; `null` = keine Frist. Verfall wie FA-FRG-09 (Freigabeereignis *verfallen*, Benachrichtigung `approval.expired`); den Zielstatus vor der Umsetzung mit Sven klären
 
 ## Nicht im Umfang
 - Änderungsanträge, Auswirkungsvorschau (R3)
