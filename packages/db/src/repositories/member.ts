@@ -5,7 +5,7 @@
  * `tenant.owner_member_id` zeigt immer auf ein aktives Mitglied mit `role='admin'`.
  */
 import { ProblemError, type NotificationKind, type ResourceMeta } from '@nina-pm/shared';
-import type { Kysely, Selectable, Transaction } from 'kysely';
+import { sql, type Kysely, type Selectable, type Transaction } from 'kysely';
 import { withTx, type WithTxOptions } from '../tx';
 import type { AppUserTable, Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
@@ -19,7 +19,15 @@ export interface MemberWithIdentity extends Member {
   readonly avatarHash: string | null;
   readonly mfaEnabled: boolean;
   readonly isOwner: boolean;
+  /** Eigene Objekte nach Freigabestatus (FA-BEN-04), ohne Papierkorb. */
+  readonly objects: { draft: number; submitted: number; approved: number };
 }
+
+/** Eigene Objekte eines Mitglieds (`m`) je Freigabestatus, ohne Papierkorb (FA-BEN-04). */
+const countObjects = (status: 'draft' | 'submitted' | 'approved') =>
+  sql<number>`(SELECT count(*)::int FROM project p
+    WHERE p.tenant_id = m.tenant_id AND p.created_by = m.id
+      AND p.approval_status = ${status} AND p.deleted_at IS NULL)`;
 
 /** Wird innerhalb der Transaktion nach den Invarianten aufgerufen; wirft `permission.denied`. */
 export type TargetCheck = (target: ResourceMeta & { targetRole: 'admin' | 'user' }) => void;
@@ -125,11 +133,24 @@ export class MemberRepository extends TenantRepo {
       .innerJoin('tenant as t', 't.id', 'm.tenantId')
       .selectAll('m')
       .select(['i.discordUsername', 'i.avatarHash', 'i.mfaEnabled', 't.ownerMemberId'])
+      .select([
+        countObjects('draft').as('objectsDraft'),
+        countObjects('submitted').as('objectsSubmitted'),
+        countObjects('approved').as('objectsApproved'),
+      ])
       .where('m.tenantId', '=', this.ctx.tenantId)
       .where('m.status', '!=', 'removed')
       .orderBy('m.displayName')
       .execute();
-    return rows.map(({ ownerMemberId, ...r }) => ({ ...r, isOwner: ownerMemberId === r.id }));
+    return rows.map(({ ownerMemberId, objectsDraft, objectsSubmitted, objectsApproved, ...r }) => ({
+      ...r,
+      isOwner: ownerMemberId === r.id,
+      objects: {
+        draft: Number(objectsDraft ?? 0),
+        submitted: Number(objectsSubmitted ?? 0),
+        approved: Number(objectsApproved ?? 0),
+      },
+    }));
   }
 
   async byId(memberId: string): Promise<(Member & { isOwner: boolean }) | undefined> {
@@ -304,11 +325,31 @@ export class MemberRepository extends TenantRepo {
       .where('identityId', '=', target.identityId)
       .where('tenantId', '=', this.ctx.tenantId)
       .execute();
+    // FA-BEN-11: Entwürfe und zurückgegebene Objekte weich löschen (wiederherstellbar in „Gelöscht“),
+    // Rangfolge entfällt, offene Änderungsanträge zurückziehen. Eingereichte und freigegebene Objekte
+    // bleiben (Vermerk „ehemaliges Mitglied“ ergibt sich aus dem Status des Erstellers).
+    const drafts = await sql`
+      UPDATE project SET deleted_at = ${now}, updated_at = ${now}, version = version + 1
+      WHERE tenant_id = ${this.ctx.tenantId} AND created_by = ${target.id}
+        AND approval_status IN ('draft', 'returned') AND deleted_at IS NULL`.execute(trx);
+    await sql`
+      UPDATE project SET submitter_rank = NULL, updated_at = ${now}
+      WHERE tenant_id = ${this.ctx.tenantId} AND created_by = ${target.id}
+        AND submitter_rank IS NOT NULL`.execute(trx);
+    const requests = await sql`
+      UPDATE change_request SET status = 'withdrawn', updated_at = ${now}, version = version + 1
+      WHERE tenant_id = ${this.ctx.tenantId} AND requested_by = ${target.id} AND status = 'open'`.execute(
+      trx,
+    );
     await this.log(
       trx,
       target.id,
       'delete',
-      { status: { from: target.status, to: 'removed' } },
+      {
+        status: { from: target.status, to: 'removed' },
+        draftsDeleted: Number(drafts.numAffectedRows ?? 0),
+        changeRequestsWithdrawn: Number(requests.numAffectedRows ?? 0),
+      },
       now,
     );
   }

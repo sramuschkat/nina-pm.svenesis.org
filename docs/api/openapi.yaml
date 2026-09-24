@@ -458,6 +458,19 @@ components:
             - "null"
           format: date-time
           example: 2026-09-18T13:00:00Z
+        objects:
+          type: object
+          properties:
+            draft:
+              type: integer
+            submitted:
+              type: integer
+            approved:
+              type: integer
+          required:
+            - draft
+            - submitted
+            - approved
       required:
         - id
         - displayName
@@ -468,6 +481,7 @@ components:
         - mfa
         - rightsDormant
         - lastLoginAt
+        - objects
     MemberPatch:
       type: object
       properties:

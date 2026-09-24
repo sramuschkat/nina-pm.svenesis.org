@@ -4,6 +4,17 @@
 
 ## [Unveröffentlicht]
 
+### AP-07b – Mitglieder, Einladungen, Admin-Rechte (Owner) (2026-09-24)
+
+Anforderungen: FA-BEN-01…11, S-70; TK 5.5, 7.2; E2, E4; SV-03.
+
+- S-70 Mitglieder & Einladungen unter *Administration*: Liste mit Owner-Kennzeichen, Hinweis „Rechte ruhen – 2FA fehlt“, Status, 2FA, letzter Anmeldung und eigenen Objekten (Entwurf · eingereicht · freigegeben, FA-BEN-04); Detail je Mitglied mit Anzeigename, *Zu Admin machen* mit optionalem Grund und *Admin-Rechte entziehen* (nur Owner), *Sitzungen beenden*, *Deaktivieren*/*Reaktivieren*, *Entfernen* – folgenreiche Aktionen über den `ConfirmDialog`. Die Sichtbarkeit entscheidet `can()` je Ziel (Admins verwalten nur User, niemand den Owner oder sich selbst); die API prüft erneut.
+- Einladen: *User einladen* (Admin/Owner, bis 50 Nutzungen) und *Admin einladen* (nur Owner, eine Nutzung), optional an eine Discord-ID gebunden, Link nur einmal sichtbar; offene Einladungen mit *Widerrufen* (Einladungen des Owners nur durch ihn).
+- *Mandant verlassen* im Benutzermenü (nicht für den Owner) mit `ConfirmDialog`.
+- FA-BEN-11 beim Entfernen und Verlassen: Entwürfe und zurückgegebene Objekte weich gelöscht (`deleted_at`, später in *Gelöscht* aus AP-11c wiederherstellbar), Rangfolge entfällt, offene Änderungsanträge zurückgezogen; Deaktivieren lässt Objekte unverändert. `MemberView` um `objects` erweitert.
+- Seiten mit fehlendem Recht zeigen bei ruhenden Rechten `auth.mfa_required` statt `permission.denied`.
+- Tests: API (Objektzählung, FA-BEN-11 für Entfernen und Verlassen, Deaktivieren), Playwright (Owner entzieht und vergibt Admin-Rechte – wirkt ab der nächsten Anfrage; *Sitzungen beenden* → `401 auth.unauthenticated`; Owner-Aktionen für Admins ausgeblendet und API 403; Admin ohne 2FA; Einladung erzeugen und widerrufen; *Mandant verlassen*; 768/2400 px), axe für S-70 in beiden Themes.
+
 ### AP-07a – System-Administration (Super User) (2026-09-24)
 
 Anforderungen: FA-SU-01…09, FA-MAN-01…03, FA-LOG-05, S-80, S-81, S-82 (Audit & Wartung); TK 5.4, 7.2; E3, E4; SV-11, SV-13.

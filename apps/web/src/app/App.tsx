@@ -13,6 +13,8 @@ import { ProblemMessage } from '../components/ProblemMessage';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { HomePage, NotFoundPage, PlaceholderPage, PrivacyPage, SourcesPage } from '../pages/other';
+import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
+import { MembersPage } from '../pages/admin/MembersPage';
 import { SuperUsersPage } from '../pages/system/SuperUsersPage';
 import { SystemAuditPage } from '../pages/system/SystemAuditPage';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
@@ -97,7 +99,10 @@ export function RequireContext({ children }: { children: ReactNode }) {
  */
 function RequireAction({ action }: { action: Action }) {
   const allowed = useCan(action);
-  return allowed ? <Outlet /> : <ProblemMessage code="permission.denied" />;
+  const { me } = useAuth();
+  if (allowed) return <Outlet />;
+  // Admin/Owner ohne 2FA: Rechte ruhen (SV-03) – den Grund nennen statt „kein Zugriff“.
+  return <ProblemMessage code={me?.mfaRequired ? 'auth.mfa_required' : 'permission.denied'} />;
 }
 
 // Nur im Test-Build: ohne VITE_GALLERY entfernt der Build den Import samt Chunk vollständig.
@@ -126,6 +131,14 @@ export function createRouter() {
             { index: true, element: <HomePage /> },
             { path: 'meine-objekte', element: <PlaceholderPage link="myObjects" /> },
             { path: 'projekte', element: <PlaceholderPage link="projects" /> },
+            {
+              path: 'verwaltung',
+              element: <RequireAction action="member.manage" />,
+              children: [
+                { index: true, element: <Navigate to={ADMIN_PATHS.members} replace /> },
+                { path: 'mitglieder', element: <MembersPage /> },
+              ],
+            },
             {
               path: 'system',
               element: <RequireAction action="system.manage" />,

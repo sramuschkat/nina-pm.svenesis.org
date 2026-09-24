@@ -9,8 +9,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
+import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
-import { api } from '../api/client';
+import { api, memberApi } from '../api/client';
 import { useAppearance } from '../app/theme';
 import { useAuth, useCan } from '../auth';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -60,6 +61,9 @@ function AppBar() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const [confirmAll, setConfirmAll] = useState<'closed' | 'open' | 'loading' | 'error'>('closed');
+  const [confirmLeave, setConfirmLeave] = useState<'closed' | 'open' | 'loading' | 'error'>(
+    'closed',
+  );
   if (!me) return null;
   const roleLabel =
     me.context === 'system'
@@ -140,6 +144,14 @@ function AppBar() {
             <DropdownMenu.Item className={styles.menuItem} disabled>
               {t('appBar.sessions')}
             </DropdownMenu.Item>
+            {me.context === 'tenant' && me.member && me.member.role !== 'owner' ? (
+              <DropdownMenu.Item
+                className={styles.menuItem}
+                onSelect={() => setConfirmLeave('open')}
+              >
+                {t('appBar.leave')}
+              </DropdownMenu.Item>
+            ) : null}
             <DropdownMenu.Separator className={styles.menuSeparator} />
             <DropdownMenu.Item
               className={styles.menuItem}
@@ -155,6 +167,28 @@ function AppBar() {
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+      <ConfirmDialog
+        open={confirmLeave !== 'closed'}
+        variant="danger"
+        title={t('appBar.leaveTitle', { name: me.tenant?.name ?? '' })}
+        consequence={t('appBar.leaveConsequence')}
+        confirmLabel={t('appBar.leave')}
+        state={
+          confirmLeave === 'loading' ? 'loading' : confirmLeave === 'error' ? 'error' : 'ready'
+        }
+        errorKey="errors.internal.error"
+        onCancel={() => setConfirmLeave('closed')}
+        onConfirm={async () => {
+          setConfirmLeave('loading');
+          try {
+            await memberApi.leave();
+            setConfirmLeave('closed');
+            await signedOut();
+          } catch {
+            setConfirmLeave('error');
+          }
+        }}
+      />
       <ConfirmDialog
         open={confirmAll !== 'closed'}
         title={t('appBar.logoutEverywhereTitle')}
@@ -200,7 +234,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     { key: 'nina', visible: !system },
     { key: 'weather', visible: !system },
     { key: 'evaluation', visible: !system },
-    { key: 'administration', visible: !system && canAdmin },
+    { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
     { key: 'system', visible: system, to: SYSTEM_PATHS.tenants },
   ];
   const Toggle = collapsed ? uiIcons.expand : uiIcons.collapse;
