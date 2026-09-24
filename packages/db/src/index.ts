@@ -122,3 +122,4 @@ export {
   type EffortSaveOutcome,
   type EffortSite,
 } from './repositories/effort';
+export { SimulationRepository, type SimulationSave } from './repositories/simulation';

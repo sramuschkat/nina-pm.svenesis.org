@@ -1,0 +1,222 @@
+/* S-40 Nacht-Simulator (FK 14.3): volle Breite, Schritte untereinander und einklappbar; Abstände und
+   Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den Ausrüstungsseiten. */
+.page {
+  composes: page from '../equipment/equipment.module.css';
+}
+.muted {
+  composes: muted from '../equipment/equipment.module.css';
+}
+.button {
+  composes: button from '../equipment/equipment.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../equipment/equipment.module.css';
+}
+.table {
+  composes: table from '../equipment/equipment.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../equipment/equipment.module.css';
+}
+.num {
+  composes: num from '../equipment/equipment.module.css';
+}
+.note {
+  composes: note from '../equipment/equipment.module.css';
+}
+.success {
+  composes: success from '../equipment/equipment.module.css';
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-3);
+}
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}
+.rigRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-4);
+}
+.rigSelect {
+  min-width: 280px;
+  flex: 0 1 420px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+}
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.step {
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  padding: var(--npm-space-3);
+  margin-top: var(--npm-space-3);
+}
+.step > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--npm-font-h3, 1.05rem);
+}
+.step > summary:focus-visible {
+  outline: 2px solid var(--npm-accent);
+  outline-offset: 2px;
+}
+.stepBody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-4);
+  margin-top: var(--npm-space-3);
+}
+.settings {
+  flex: 3 1 480px;
+  min-width: 0;
+}
+.nina {
+  flex: 1 1 220px;
+  border-left: 1px solid var(--npm-border);
+  padding-left: var(--npm-space-3);
+}
+.nina h3 {
+  margin-top: 0;
+}
+.dateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  margin-top: var(--npm-space-3);
+}
+.stats {
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--npm-space-3);
+  margin-top: var(--npm-space-3);
+}
+.card {
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  padding: var(--npm-space-3);
+  background: var(--npm-bg);
+  min-width: 0;
+}
+.card h3 {
+  margin-top: 0;
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  flex-wrap: wrap;
+}
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--npm-border);
+}
+.tag {
+  display: inline-block;
+  padding: 0 var(--npm-space-1);
+  border: 1px solid var(--npm-violet);
+  border-radius: var(--npm-radius);
+  color: var(--npm-violet);
+  font-size: var(--npm-font-label);
+  text-decoration: none;
+}
+.flag {
+  color: var(--npm-link);
+  font-weight: 600;
+  margin: var(--npm-space-1) 0;
+}
+.subhead {
+  margin: var(--npm-space-2) 0 var(--npm-space-1);
+  font-size: var(--npm-font-small);
+}
+.lines {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--npm-space-2);
+  display: grid;
+  gap: var(--npm-space-1);
+}
+.lines li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.plain {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--npm-space-1);
+}
+.slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--npm-space-1);
+  margin: var(--npm-space-3) 0;
+}
+.slider input {
+  width: 100%;
+}
+.slider input:focus-visible {
+  outline: 2px solid var(--npm-accent);
+  outline-offset: 2px;
+}
+.protocolHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  margin-top: var(--npm-space-3);
+}
+.protocolHead h3 {
+  margin: 0 var(--npm-space-3) 0 0;
+}
+.findings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--npm-space-4);
+  margin-top: var(--npm-space-4);
+}
+.warn {
+  color: var(--npm-warning);
+}
+.error {
+  color: var(--npm-danger);
+}
+.hash {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  overflow-wrap: anywhere;
+}
+.tableWrap:focus-visible {
+  outline: 2px solid var(--npm-accent);
+  outline-offset: 2px;
+}

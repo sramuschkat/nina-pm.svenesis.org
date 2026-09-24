@@ -25,6 +25,7 @@ import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
 import { getJobRoute, webJobRoutes } from './routes/web-jobs';
+import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
 
 export interface AppDeps {
   /** Erwarteter Wert des Headers X-Origin-Verify (SSM-Cache). */
@@ -52,6 +53,7 @@ export const ROUTES = [
   ...EQUIPMENT_ROUTES,
   ...PROJECT_ROUTES,
   ...APPROVAL_ROUTES,
+  ...SIMULATION_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -107,6 +109,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webEquipmentRoutes(services));
   app.route('/', webProjectRoutes(services));
   app.route('/', webApprovalRoutes(services));
+  app.route('/', webSimulationRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

@@ -27,6 +27,26 @@ export interface TwilightSpan {
   readonly allNight?: boolean;
 }
 
+/** Belegter Block (components.md §2.3 `TimelineBlock`): Balken unter dem Diagramm. */
+export interface TimelineBlock {
+  readonly id: string;
+  readonly fromUtc: number;
+  readonly toUtc: number;
+  readonly label: string;
+  readonly kind: 'regular' | 'transit' | 'flat' | 'idle';
+  /** Farbe des Ziels (CSS-Farbe oder `var(--npm-…)`). */
+  readonly color?: string;
+  readonly actual?: boolean;
+}
+
+/** Filterbalken über den Blöcken (FA-SIM-07): Belichtungszeit je Filter in Filterfarbe. */
+export interface FilterBar {
+  readonly fromUtc: number;
+  readonly toUtc: number;
+  readonly color: string;
+  readonly label: string;
+}
+
 export interface NightMarker {
   readonly atUtc: number;
   readonly kind: 'flip' | 'transit' | 'now' | 'custom';

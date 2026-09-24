@@ -50,6 +50,7 @@ import {
   Star,
   GripVertical,
   ThumbsUp,
+  Download,
 } from 'lucide-react';
 
 export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
@@ -96,6 +97,8 @@ export const actionIcons = {
   vote: ThumbsUp,
   back: ArrowLeft,
   external: ExternalLink,
+  /** Export als Datei (Planprotokoll CSV, S-40). */
+  export: Download,
 } as const;
 
 /** Rahmen und Status. */

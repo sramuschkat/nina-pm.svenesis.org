@@ -533,6 +533,28 @@ export interface JobTable {
   createdAt: Timestamp;
 }
 
+/**
+ * Tabelle `night_plan` (Migration 0005, TK 7.3/7.6): gespeicherte Nachtpläne; `summary` enthält alles
+ * außer den Blöcken (Hashes, Zeitmarken, Diagnose, Warnungen), `blocks` die Blöcke mit Einträgen.
+ */
+export interface NightPlanTable {
+  id: Generated<string>;
+  tenantId: string;
+  rigId: string;
+  night: DateKey;
+  origin: string;
+  sessionId: string | null;
+  revision: Generated<number>;
+  reason: Generated<string>;
+  engineVersion: string;
+  inputHash: string;
+  summary: Json;
+  blocks: Json;
+  logS3Key: string | null;
+  createdBy: string | null;
+  createdAt: Timestamp;
+}
+
 export interface Database {
   tenant: TenantTable;
   identity: IdentityTable;
@@ -565,4 +587,5 @@ export interface Database {
   queueVote: QueueVoteTable;
   captureNight: CaptureNightTable;
   userPreference: UserPreferenceTable;
+  nightPlan: NightPlanTable;
 }

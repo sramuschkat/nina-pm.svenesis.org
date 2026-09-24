@@ -7706,6 +7706,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/simulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nachtplan einer Simulation speichern
+         * @description Aktion: `simulation.run` · FA-SIM-01, FA-SIM-05, TK 7.2
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SimulationCreate"];
+                };
+            };
+            responses: {
+                /** @description Gespeichert */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimulationSaved"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -11086,6 +11165,272 @@ export interface components {
                  * @description UUID
                  */
                 id: string;
+            }[];
+        };
+        SimulationSaved: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        SimulationCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            plan: components["schemas"]["NightPlan"];
+        };
+        NightPlan: {
+            /** Format: uuid */
+            nightPlanId: string;
+            engineVersion: string;
+            inputHash: string;
+            outputHash: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startAtUtc: string | null;
+            nightWindow: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+            };
+            darkness: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                civilStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                civilEndUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nauticalStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nauticalEndUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                astronomicalStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                astronomicalEndUtc: string | null;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darknessEndUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            flatsNotBeforeUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            flatsNotAfterUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            sessionEndUtc: string;
+            blocks: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "regular" | "transit";
+                projectId: string;
+                panelId: string | null;
+                transitObservationId: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                twilightEndUtc: string | null;
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+                /** @enum {string} */
+                rotationMode: "rotator" | "fixed_camera";
+                meridianFlip: {
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    waitStartUtc: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    plannedUtc: string;
+                    durationS: number;
+                    inTransitWindow: boolean;
+                    planned: boolean;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    gapStartUtc: string | null;
+                    gapDurationS: number | null;
+                } | null;
+                entries: ({
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "slew_center" | "slew_center_rotate";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "filter";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                    filter: string;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                    bonus: boolean;
+                    lastOfNight: boolean;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose_series";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    untilUtc: string;
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "dither" | "autofocus_hint" | "wait" | "meridian_flip";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "end";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                })[];
+            }[];
+            summary: {
+                targets: number;
+                plannedFrames: {
+                    [key: string]: {
+                        [key: string]: number;
+                    };
+                };
+            };
+            diagnostics: {
+                projectId: string;
+                panelId?: string;
+                lineId?: string;
+                /** @enum {string} */
+                reason: "start_date" | "not_visible" | "below_min_time" | "moon_blocked" | "prefiltered" | "outranked" | "no_need" | "transit_conflict" | "flip_in_transit" | "filter_not_found" | "rotation_mismatch";
+                message?: string;
+            }[];
+            warnings: {
+                /** @enum {string} */
+                code: "idle_gap" | "la_unsafe" | "total_min" | "no_alloc" | "la_miss" | "filter_stuck" | "past_mismatch" | "panel_rotation_mismatch" | "twilight_grazing";
+                /** @enum {string} */
+                level: "warn" | "error";
+                unitId?: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc?: string;
+                durationS?: number;
+                message?: string;
             }[];
         };
         TenantAdminView: {

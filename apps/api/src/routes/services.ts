@@ -6,6 +6,7 @@ import type {
   EquipmentRepository,
   ApprovalRepository,
   ProjectRepository,
+  SimulationRepository,
   Job,
   MemberRepository,
   NotificationRepository,
@@ -34,6 +35,7 @@ export interface ApiRepositories {
   equipment(): EquipmentRepository;
   projects(): ProjectRepository;
   approvals(): ApprovalRepository;
+  simulations(): SimulationRepository;
   tenant(): TenantRepository;
 }
 

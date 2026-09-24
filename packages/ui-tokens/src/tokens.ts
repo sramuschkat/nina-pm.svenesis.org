@@ -146,7 +146,17 @@ export const CHART: Readonly<Record<string, string>> = {
   'chart-moonlit': '#e5484d',
   'chart-above': '#e67e22',
   'chart-dark': '#7a8799',
+  /** Ziele im Simulator (Höhenkurven und Blöcke, FA-SIM-07); danach wiederholt sich die Reihe. */
+  'chart-series-1': '#e8ecf2',
+  'chart-series-2': '#7fc8f8',
+  'chart-series-3': '#f6c85f',
+  'chart-series-4': '#b39ddb',
+  'chart-series-5': '#80cbc4',
+  'chart-series-6': '#f48fb1',
 };
+
+/** Anzahl der Zielfarben `chart-series-n` (AP-13f). */
+export const CHART_SERIES_COUNT = 6;
 
 /** Abstandsskala (UI-4): `--npm-space-n` = Basis × `--npm-space-scale`. */
 export const SPACE_PX = [4, 8, 12, 16, 24, 32, 48] as const;

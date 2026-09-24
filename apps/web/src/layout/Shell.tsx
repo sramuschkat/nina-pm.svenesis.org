@@ -236,7 +236,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     { key: 'planning', visible: !system },
     // Projektliste folgt mit AP-11c; bis dahin Platzhalter mit *Neues Projekt* und der Editor S-31.
     { key: 'projects', visible: !system, to: '/projekte' },
-    { key: 'nina', visible: !system },
+    { key: 'nina', visible: !system, to: '/nina/simulator' },
     { key: 'weather', visible: !system },
     { key: 'evaluation', visible: !system },
     { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
