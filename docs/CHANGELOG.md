@@ -4,6 +4,10 @@
 
 ## [Unveröffentlicht]
 
+### AP-06b abgenommen (2026-09-24)
+
+- Deploy durch Sven (`6f82f2f`, Smoke-Test 10/10); Glocke und Startseite R1 in prod geprüft.
+
 ### AP-06b – Benachrichtigungen in der App und Startseite R1 (2026-09-24)
 
 Anforderungen: FA-FRG-11, FA-BEN-06/08/09 (Hinweise), FK 11 R1, FK 14.3 (S-02 bis R3); TK 7.2.
