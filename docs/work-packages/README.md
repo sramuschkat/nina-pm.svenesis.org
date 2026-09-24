@@ -36,7 +36,7 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-11c](AP-11c.md) | Projektliste S-30 | S | AP-11b | – | ◐ |
 | [AP-12a](AP-12a.md) | Freigabe-Workflow: API, Stimmen, Rangfolge | L | AP-11a, AP-06b | – | ◐ |
 | [AP-12b](AP-12b.md) | Meine Objekte S-32 und Entwürfe S-34 | M | AP-12a, AP-11c | – | ◐ |
-| [AP-12c](AP-12c.md) | Warteschlange S-33 | M | AP-12b | – | ☐ |
+| [AP-12c](AP-12c.md) | Warteschlange S-33 | M | AP-12b | – | ◐ |
 | [AP-13a](AP-13a.md) | Engine: Vergleichsorakel, Grid-Format, CI | M | AP-10 | – | ☐ |
 | [AP-13b](AP-13b.md) | Engine: Zuteilung (`paint`) + Soll-Pläne Paint | L | AP-13a | H-13 | ☐ |
 | [AP-13c](AP-13c.md) | Engine: Ablauf (`walk`/`pick`), Blöcke, `planNight` | L | AP-13b | – | ☐ |

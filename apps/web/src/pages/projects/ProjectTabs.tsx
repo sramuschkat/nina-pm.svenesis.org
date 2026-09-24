@@ -248,6 +248,27 @@ function HistoryTab({ projectId }: { projectId: string }) {
     new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(
       Date.parse(iso),
     );
+  /** Freigabeereignis in Worten; bei Entscheidungen mit Endstand der Stimmen (FA-FRG-14). */
+  const approvalText = (h: { action: string; detail?: unknown }) => {
+    const known = [
+      'submitted',
+      'withdrawn',
+      'approved',
+      'returned',
+      'rejected',
+      'expired',
+      'edited_by_admin',
+    ];
+    const label = known.includes(h.action)
+      ? t(`projectEditor.history.action.${h.action}`)
+      : t('projectEditor.history.approval', { action: h.action });
+    const votes = (h.detail as { votes?: { count: number; names?: string[] } } | null)?.votes;
+    if (!votes) return label;
+    return `${label} · ${t('projectEditor.history.votes', {
+      count: votes.count,
+      names: (votes.names ?? []).join(', ') || '–',
+    })}`;
+  };
   if (history.isError)
     return (
       <ProblemMessage code={problemCode(history.error)} onRetry={() => void history.refetch()} />
@@ -273,7 +294,7 @@ function HistoryTab({ projectId }: { projectId: string }) {
               <td>{h.userName ?? '–'}</td>
               <td>
                 {h.kind === 'approval'
-                  ? t('projectEditor.history.approval', { action: h.action })
+                  ? approvalText(h)
                   : t('projectEditor.history.change', { entity: h.entity, action: h.action })}
               </td>
               <td>{h.comment ?? ''}</td>
