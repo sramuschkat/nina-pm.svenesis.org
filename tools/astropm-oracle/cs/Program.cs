@@ -13,7 +13,8 @@ namespace NinaPm.Oracle {
         public const string SourceCommit = "5dd621dea015634242259ca1220a428cf339446a";
 
         private static readonly JsonSerializerOptions ReadOptions = new() {
-            PropertyNameCaseInsensitive = true,
+            // camelCase, Groß-/Kleinschreibung beachten: `slotS` und `slots` sind verschiedene Felder.
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             ReadCommentHandling = JsonCommentHandling.Disallow,
         };
 
