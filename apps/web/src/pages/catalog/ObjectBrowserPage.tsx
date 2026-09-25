@@ -4,7 +4,7 @@
  * ins Bildfeld“ des Rigs; mit Rig zusätzlich Nacht (◀ ▶, *Heute Nacht*), Mindesthöhe und min. nutzbare
  * Stunden – die Nachtwerte (beste Zeit/Höhe, Mond, nutzbare Stunden) rechnet die API mit der Engine.
  * Umschalter Liste/Galerie, Aktionen *Projekt anlegen* und *Sternkarte* (folgt mit AP-21).
- * Der Reiter *Beste der Nacht* (FA-FRM-13, Svenesis-Bewertung) ist nicht Teil von AP-20.
+ * Der Reiter *Beste der Nacht* (FA-FRM-13, Svenesis-Bewertung) folgt mit AP-21.
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import {

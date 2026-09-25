@@ -76,9 +76,9 @@ Beide werden über die normalisierte `primary_id` gefunden; ein selbst erzeugtes
 6. **Komponenten** (`NGC 1234A`, `NGC 2237`-Teile) bleiben eigene Zeilen, gelten aber **nicht** als Bildkandidaten für die Galerie: Kandidat ist eine Zeile mit Typ außer `*`, `**`, `*Ass` und `MajAx` zwischen 3′ und 180′ und ohne Komponentenbuchstaben (Regel der Website, `verify-planner.js:385`; > 800 Kandidaten erwartet).
 7. **Doppelte `primary_id`** nach der Normalisierung: Import bricht ab (`UNIQUE`-Verletzung wäre sonst die Folge).
 
-### 3a. Festlegungen aus AP-20 (Vorschlag zur Abnahme durch Sven)
+### 3a. Festlegungen aus AP-20 (abgenommen, Sven 25.09.2026)
 
-Die echten Daten (v20260501) widersprechen §3 an einigen Stellen; ein Abbruch hätte den Import unmöglich gemacht. AP-20 setzt deshalb folgende Regeln um (Tests in `tools/catalog-import/test`, Warnungen im Importbericht):
+Die echten Daten (v20260501) widersprechen §3 an einigen Stellen; ein Abbruch hätte den Import unmöglich gemacht. Wo §3 und §3a sich widersprechen, gilt §3a. AP-20 setzt folgende Regeln um (Tests in `tools/catalog-import/test`, Warnungen im Importbericht):
 
 1. **Sharpless-Regionen ohne OpenNGC-Zeile** (265) werden aus dem Website-Auszug als eigene Zeilen übernommen: `source = sharpless:VII/20 (Sharpless 1959, Positionen SIMBAD, Website-Auszug)`, **ohne** Helligkeiten, Flächenhelligkeit und Sternbild. Typ (Kurzcode des Auszugs → OpenNGC-Code, z. B. `EN` → `HII`) und Größe kommen hier ausnahmsweise aus dem Auszug – für diese Zeilen gibt es keine OpenNGC-Werte (§1 bleibt für alle übrigen Zeilen unverändert). Nur so ist T-KAT-06 (Sh2-1…313 auffindbar) erfüllbar. T-KAT-08 prüft `source` bei diesen Zeilen auf `sharpless:` statt `openngc:`.
 2. **Bezeichnungskollisionen** (§3 Nr. 5, in OpenNGC 107-mal, v. a. `Identifiers` mit Komponenten): statt Abbruch deterministisch aufgelöst – die Bezeichnung bleibt an genau einer Zeile in der Reihenfolge eigene `primary_id` → kuratierter Auszug (`dso-catalog.js`) → Zeile ohne Komponentenbuchstaben → erste Zeile; je Kollision eine Importwarnung. Doppelte `primary_id` bricht weiterhin ab (§3 Nr. 7).
