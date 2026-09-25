@@ -2,6 +2,7 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { COOKIE_NAMES, isProblemError, toFieldErrors } from '@nina-pm/shared';
 import { resolveSessionState } from './auth/session';
 import { session, type ResolveSession } from './lib/auth';
+import { ninaSession } from './nina/auth';
 import { readCookie } from './lib/cookies';
 import { csrf } from './lib/csrf';
 import type { ApiEnv } from './lib/env';
@@ -26,6 +27,8 @@ import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
 import { getJobRoute, webJobRoutes } from './routes/web-jobs';
 import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
+import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
+import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
 
 export interface AppDeps {
   /** Erwarteter Wert des Headers X-Origin-Verify (SSM-Cache). */
@@ -54,8 +57,12 @@ export const ROUTES = [
   ...PROJECT_ROUTES,
   ...APPROVAL_ROUTES,
   ...SIMULATION_ROUTES,
+  ...NINA_INSTANCE_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
+
+/** NINA-API (`/api/nina/v1`, Bearer-Token statt Sitzung): eigener Rechte-Test (nina-rights.test.ts). */
+export const NINA_ROUTES = [...NINA_SYNC_ROUTES] as const;
 
 const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
 
@@ -96,6 +103,8 @@ export function createApp(deps: AppDeps) {
     ),
   );
 
+  app.use('/api/nina/v1/*', ninaSession(services));
+
   app.route('/', healthRoutes(deps.buildId));
   app.route('/', bannerRoutes(services));
   app.route('/', authRoutes(services));
@@ -110,6 +119,8 @@ export function createApp(deps: AppDeps) {
   app.route('/', webProjectRoutes(services));
   app.route('/', webApprovalRoutes(services));
   app.route('/', webSimulationRoutes(services));
+  app.route('/', webNinaInstanceRoutes(services));
+  app.route('/', ninaSyncRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

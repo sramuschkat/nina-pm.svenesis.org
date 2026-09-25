@@ -20,7 +20,7 @@ FA-SIM-01…08, S-40
 ## Liefern
 - S-40: Rig/Nacht wählen, Zielkarten, Plan-Grafik (Blöcke, Flip-Kennzeichen, Transit), Protokoll-Tabelle, Diagnose je Projekt (inkl. `lineId`), Plausibilitätswarnungen mit `level`, Rotations-Prüfliste, Entwürfe des Users nur lokal
 - **Datenladen für den Simulator** (`GET /web/v1/rigs/{id}` aus AP-09a, `GET /web/v1/projects?rig=` aus AP-11a, Mondprofile, **Nacht-Tabelle aus `GET /web/v1/sites/{id}/nights`** (AP-09a, NT-02) – Nacht-Schlüssel, `currentNight` und Offsets nie aus `Intl`, Anzeige mit `SiteTime` in Standortzeit mit Kürzel, NT-03) und Übergabe an **`buildPlanInput(rig, projects, moonProfiles, nights, options)`** aus AP-13c – keine eigene Abbildung (A5-2)
-- Web Worker + Comlink
+- Web Worker mit eigener typisierter RPC-Schicht (`apps/web/src/lib/worker-rpc.ts`, Form wie Comlink `expose`/`wrap`; Entscheidung Sven, 25.09.2026: keine zusätzliche Abhängigkeit)
 - `POST /web/v1/simulations` speichert Plan
 
 ## Nicht im Umfang

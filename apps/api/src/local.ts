@@ -13,6 +13,10 @@ import {
   EquipmentRepository,
   ApprovalRepository,
   SimulationRepository,
+  NinaInstanceRepository,
+  NinaRigRepository,
+  ninaTokenLookup,
+  ninaTouch,
   ProjectRepository,
   AuthRepository,
   JobQueue,
@@ -89,6 +93,8 @@ const services: ApiServices = {
     projects: () => new ProjectRepository(db, ctx),
     approvals: () => new ApprovalRepository(db, ctx),
     simulations: () => new SimulationRepository(db, ctx),
+    ninaInstances: () => new NinaInstanceRepository(db, ctx),
+    ninaRig: (rigId: string) => new NinaRigRepository(db, ctx, rigId),
     tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
@@ -113,6 +119,10 @@ const services: ApiServices = {
   tenantFiles: { deleteTenantFiles: () => Promise.resolve(0) },
   maintenanceBanner: () => readMaintenanceBanner(db),
   // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
+  nina: {
+    lookup: (hash) => ninaTokenLookup(db, hash),
+    touch: (p, at) => ninaTouch(db, p, at),
+  },
   jobInvoker: {
     invoke: (jobId) => {
       setImmediate(() => void runJob(jobs, jobId));

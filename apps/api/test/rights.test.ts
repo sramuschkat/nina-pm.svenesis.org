@@ -637,6 +637,19 @@ async function projectExamples(): Promise<Record<string, Example>> {
       createdBy: owner,
       approvalStatus: 'submitted',
     };
+    const instance = await stack.services
+      .repositories({ tenantId: world.tenantA, memberId: owner })
+      .ninaInstances()
+      .create(
+        {
+          id: crypto.randomUUID(),
+          rigId: common.rigId,
+          name: 'Rechte-PC',
+          tokenHash: 'e'.repeat(64),
+          tokenPrefix: 'npm_rech',
+        },
+        stack.clock.now(),
+      );
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
     return {
       [`POST ${P}/{id}/submit`]: {
@@ -678,6 +691,20 @@ async function projectExamples(): Promise<Record<string, Example>> {
         reset: () => submitted(S),
       },
       'GET /api/web/v1/queue': { url: '/api/web/v1/queue' },
+      'GET /api/web/v1/nina-instances': { url: '/api/web/v1/nina-instances' },
+      'POST /api/web/v1/nina-instances': {
+        url: '/api/web/v1/nina-instances',
+        method: 'POST',
+        okStatus: 201,
+        body: () => ({ id: crypto.randomUUID(), rigId: common.rigId, name: 'Beobachtungs-PC' }),
+        // Das Rig gehört zu Mandant A.
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/nina-instances/{id}/revoke': {
+        url: `/api/web/v1/nina-instances/${instance.id}/revoke`,
+        method: 'POST',
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'POST /api/web/v1/simulations': {
         url: '/api/web/v1/simulations',
         method: 'POST',

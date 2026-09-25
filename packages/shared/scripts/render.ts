@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { GoldenPlanSchema } from '../src/contracts/grid';
+import { nina } from '../src/contracts';
 import { NightPlanSchema, PlanInputSchema } from '../src/contracts/plan';
 
 export interface ErrorContract {
@@ -113,5 +114,42 @@ export function renderPlanSchemas(): { planInput: string; nightPlan: string } {
   return {
     planInput: render(PlanInputSchema, 'Svenesis NINA-PM – PlanInput (TK 8.2)'),
     nightPlan: render(NightPlanSchema, 'Svenesis NINA-PM – NightPlan (TK 7.6)'),
+  };
+}
+
+/** JSON-Schemas der NINA-API (AP-14a, TK 7.5): Dateiname → Inhalt in docs/contracts/nina/. */
+export function renderNinaSchemas(): Record<string, string> {
+  const render = (schema: z.ZodType, title: string) =>
+    `${JSON.stringify({ ...z.toJSONSchema(schema, { target: 'draft-2020-12', io: 'input' }), title }, null, 2)}\n`;
+  const t = (name: string) => `Svenesis NINA-PM – NINA-API ${name} (TK 7.6)`;
+  return {
+    'bootstrap.response.schema.json': render(nina.NinaBootstrap, t('GET /bootstrap')),
+    'targets.response.schema.json': render(nina.NinaTargets, t('GET /targets')),
+    'plan.request.schema.json': render(nina.NinaPlanRequest, t('POST /plan (Anfrage)')),
+    'plan.response.schema.json': render(nina.NinaPlanResponse, t('POST /plan (Antwort)')),
+    'session.create.request.schema.json': render(nina.NinaSessionCreate, t('POST /sessions')),
+    'session.create.response.schema.json': render(
+      nina.NinaSessionCreated,
+      t('POST /sessions (Antwort)'),
+    ),
+    'session.patch.request.schema.json': render(nina.NinaSessionPatch, t('PATCH /sessions/{id}')),
+    'session.patch.response.schema.json': render(
+      nina.NinaSessionPatched,
+      t('PATCH /sessions/{id} (Antwort)'),
+    ),
+    'captures.request.schema.json': render(
+      nina.NinaCaptureBatch,
+      t('POST /sessions/{id}/captures'),
+    ),
+    'captures.response.schema.json': render(
+      nina.NinaCaptureResults,
+      t('POST /sessions/{id}/captures (Antwort)'),
+    ),
+    'events.request.schema.json': render(nina.NinaEventBatch, t('POST /sessions/{id}/events')),
+    'heartbeat.request.schema.json': render(nina.NinaHeartbeat, t('POST /heartbeat')),
+    'heartbeat.response.schema.json': render(
+      nina.NinaHeartbeatResponse,
+      t('POST /heartbeat (Antwort)'),
+    ),
   };
 }

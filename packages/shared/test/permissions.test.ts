@@ -30,13 +30,18 @@ const superUser = ctx({
 });
 
 describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
-  it('kennt genau die 42 Aktionen aus enums.json', () => {
-    expect(ACTIONS).toHaveLength(42);
+  it('kennt genau die 43 Aktionen aus enums.json', () => {
+    expect(ACTIONS).toHaveLength(43);
+  });
+
+  it('nina.sync gilt nur mit Rig-Token, nie für eine Web-Sitzung (TK 5.6, SV-08)', () => {
+    expect(can(owner, 'nina.sync')).toBe(false);
+    expect(can(superUser, 'nina.sync')).toBe(false);
   });
 
   it('jede Mandanten-Aktion ist für den Owner mit 2FA erlaubt (keine fällt durch)', () => {
     for (const action of ACTIONS) {
-      if (action.startsWith('system.')) continue;
+      if (action.startsWith('system.') || action === 'nina.sync') continue;
       expect(can(owner, action), action).toBe(true);
     }
   });

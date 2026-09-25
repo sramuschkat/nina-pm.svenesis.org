@@ -1,0 +1,729 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/NinaBootstrap",
+  "$defs": {
+    "NinaBootstrap": {
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "const": "1"
+        },
+        "serverTimeUtc": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "example": "2026-09-18T13:00:00Z"
+        },
+        "server": {
+          "type": "object",
+          "properties": {
+            "engineVersion": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+            },
+            "minPluginVersion": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+            }
+          },
+          "required": [
+            "engineVersion",
+            "minPluginVersion"
+          ]
+        },
+        "instance": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ]
+        },
+        "tenant": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "timeZone": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "key",
+            "name",
+            "timeZone"
+          ]
+        },
+        "rig": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "settingsVersion": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "site": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "latDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "lonDeg": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "elevationM": {
+                  "type": "number"
+                },
+                "timeZone": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "name",
+                "latDeg",
+                "lonDeg",
+                "elevationM",
+                "timeZone"
+              ]
+            },
+            "telescope": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "apertureMm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "focalLengthMm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "reducerFactor": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "name",
+                "apertureMm",
+                "focalLengthMm",
+                "reducerFactor"
+              ]
+            },
+            "camera": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "pixelSizeUm": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "widthPx": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "heightPx": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "defaultGain": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "defaultOffset": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "readoutModes": {
+                  "maxItems": 64,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "name": {
+                        "type": "string",
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "name"
+                    ]
+                  }
+                },
+                "binning": {
+                  "maxItems": 16,
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "setpointC": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "toleranceC": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "name",
+                "pixelSizeUm",
+                "widthPx",
+                "heightPx",
+                "defaultGain",
+                "defaultOffset",
+                "readoutModes",
+                "binning",
+                "setpointC",
+                "toleranceC"
+              ]
+            },
+            "rotator": {
+              "type": "object",
+              "properties": {
+                "present": {
+                  "type": "boolean"
+                },
+                "defaultRotationDeg": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "exclusiveMaximum": 360
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "toleranceDeg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 90
+                },
+                "skipOnMismatch": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "present",
+                "defaultRotationDeg",
+                "toleranceDeg",
+                "skipOnMismatch"
+              ]
+            },
+            "filters": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shortName": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "color": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "ninaFilterName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "shortName",
+                  "name",
+                  "color",
+                  "position",
+                  "ninaFilterName"
+                ]
+              }
+            },
+            "scheduler": {
+              "type": "object",
+              "properties": {
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "proportional",
+                    "manual_priority"
+                  ]
+                },
+                "playback": {
+                  "type": "string",
+                  "enum": [
+                    "time_aware",
+                    "sequential"
+                  ]
+                },
+                "sortChain": {
+                  "maxItems": 16,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "lowest_peak_altitude",
+                      "setting_soonest",
+                      "most_remaining",
+                      "constrained",
+                      "most_moon_limited",
+                      "mosaic_grouping",
+                      "card_order",
+                      "due_soonest"
+                    ]
+                  }
+                },
+                "bonus": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "enabled"
+                  ]
+                },
+                "mosaicPanelsIndependent": {
+                  "type": "boolean"
+                },
+                "dither": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "every": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "every"
+                  ]
+                },
+                "filterSwitch": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "every": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "tolerancePct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "every",
+                    "tolerancePct"
+                  ]
+                },
+                "flats": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "panel",
+                        "sky"
+                      ]
+                    },
+                    "fullSet": {
+                      "type": "boolean"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "darkFlats": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "count": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "count"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "source",
+                    "fullSet",
+                    "count",
+                    "darkFlats"
+                  ]
+                },
+                "meridianFlip": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "afterMin": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "maxAfterMin": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "pauseBeforeMin": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "durationS": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "afterMin",
+                    "maxAfterMin",
+                    "pauseBeforeMin",
+                    "durationS"
+                  ]
+                },
+                "overhead": {
+                  "type": "object",
+                  "properties": {
+                    "slewCenterS": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "filterChangeS": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "ditherSettleS": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "afEveryMin": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "afDurationS": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "downloadS": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "slewCenterS",
+                    "filterChangeS",
+                    "ditherSettleS",
+                    "afEveryMin",
+                    "afDurationS",
+                    "downloadS"
+                  ]
+                },
+                "overshootPct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "strategy",
+                "playback",
+                "sortChain",
+                "bonus",
+                "mosaicPanelsIndependent",
+                "dither",
+                "filterSwitch",
+                "flats",
+                "meridianFlip",
+                "overhead",
+                "overshootPct"
+              ]
+            },
+            "leaseMinutes": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "settingsVersion",
+            "site",
+            "telescope",
+            "camera",
+            "rotator",
+            "filters",
+            "scheduler",
+            "leaseMinutes"
+          ]
+        },
+        "moonProfiles": {
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "UUID"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "separationDeg": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 180
+              },
+              "widthDays": {
+                "type": "number",
+                "minimum": 0
+              },
+              "relax": {
+                "type": "number",
+                "minimum": 0
+              },
+              "minAltDeg": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "maxAltDeg": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "maxIlluminationPct": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "moonMustBeDown": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "separationDeg",
+              "widthDays",
+              "relax",
+              "minAltDeg",
+              "maxAltDeg",
+              "maxIlluminationPct",
+              "moonMustBeDown"
+            ]
+          }
+        },
+        "tzdataVersion": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "nights": {
+          "minItems": 1,
+          "maxItems": 400,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "night": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                "example": "2026-09-18"
+              },
+              "noonStartUtc": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "noonEndUtc": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "nightWindowEndUtc": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "example": "2026-09-18T13:00:00Z"
+              }
+            },
+            "required": [
+              "night",
+              "noonStartUtc",
+              "noonEndUtc",
+              "nightWindowEndUtc"
+            ]
+          }
+        },
+        "timeZoneTransitions": {
+          "minItems": 1,
+          "maxItems": 1000,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "atUtc": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "utcOffsetMinutes": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "atUtc",
+              "utcOffsetMinutes"
+            ]
+          }
+        }
+      },
+      "required": [
+        "apiVersion",
+        "serverTimeUtc",
+        "server",
+        "instance",
+        "tenant",
+        "rig",
+        "moonProfiles",
+        "tzdataVersion",
+        "nights",
+        "timeZoneTransitions"
+      ]
+    }
+  },
+  "title": "Svenesis NINA-PM – NINA-API GET /bootstrap (TK 7.6)"
+}
