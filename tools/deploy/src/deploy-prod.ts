@@ -4,7 +4,7 @@
  * NUR Sven führt dieses Skript aus, lokal mit seinem Admin-Profil. Claude Code führt es nie aus,
  * und GitHub hat keinen AWS-Zugang. Ablauf im Grundzug (AP-02a):
  *   Vorbedingungen → cdk diff → Bestätigung → cdk deploy --all → Hinweise → Smoke-Test.
- * AP-14c: mit `TEST_RIG_TOKEN` (H-24) Smoke-Schritt DB-Erreichbarkeit und Fake-Plugin-Nacht im Test-Mandanten.
+ * AP-14c: `TEST_RIG_TOKEN` (H-24) ist Pflicht – Smoke-Schritt DB-Erreichbarkeit und Fake-Plugin-Nacht im Test-Mandanten.
  * AP-02b: Vorprüfung /nina-pm/origin-verify, Smoke mit /api/health und Direktaufruf der execute-api-Adresse.
  * AP-03: bei neuen Migrationen test:dsql grün für den Stand (H-22) und On-Demand-Backup vor dem Deploy.
  */
@@ -225,6 +225,13 @@ async function ensureGreenCi(sha: string): Promise<string> {
 async function main(): Promise<void> {
   step('Vorbedingungen');
   if (capture('git', ['status', '--porcelain']).out !== '') fail('Arbeitsbaum ist nicht sauber.');
+  // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
+  // Pflicht seit 25.09.2026: ohne Token kein Deploy (DB-Erreichbarkeit und Fake-Plugin-Nacht, SV-07).
+  const testRigToken = process.env.TEST_RIG_TOKEN?.trim() ?? '';
+  if (!testRigToken)
+    fail(
+      'TEST_RIG_TOKEN fehlt (H-24): Token der Test-Instanz als Umgebungsvariable setzen, nie in Dateien.',
+    );
   const sha = capture('git', ['rev-parse', 'HEAD']).out;
   const ciSource = await ensureGreenCi(sha);
   const account = capture('aws', [
@@ -353,11 +360,9 @@ async function main(): Promise<void> {
 
   step(`Smoke-Test https://${config.domainName}`);
   const executeApiUrl = outputs['NinaPm-Api']?.ApiEndpoint;
-  // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
-  const testRigToken = process.env.TEST_RIG_TOKEN?.trim() || undefined;
   const results = await runSmoke(`https://${config.domainName}`, fetch, {
     ...(executeApiUrl ? { executeApiUrl } : {}),
-    ...(testRigToken ? { testRigToken } : {}),
+    testRigToken,
   });
   for (const r of results)
     console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ` – ${r.detail}`}`);
@@ -368,21 +373,15 @@ async function main(): Promise<void> {
   }
 
   // AP-14c: Fake-Plugin-Nacht im Test-Mandanten mit TEST_RIG_TOKEN aus der lokalen Umgebung (H-24).
-  if (testRigToken) {
-    step('Fake-Plugin-Nacht im Test-Mandanten (TK 17)');
-    const night = await runFakeNight({
-      baseUrl: `https://${config.domainName}`,
-      token: testRigToken,
-    });
-    printReport(night);
-    if (!night.ok) {
-      fail(
-        'Fake-Plugin-Nacht rot. Rollback: vorherigen Tag auschecken und `pnpm deploy:prod` erneut ausführen (TK 18).',
-      );
-    }
-  } else {
-    console.log(
-      '\n! TEST_RIG_TOKEN fehlt (H-24): DB-Erreichbarkeit und Fake-Plugin-Nacht übersprungen.',
+  step('Fake-Plugin-Nacht im Test-Mandanten (TK 17)');
+  const night = await runFakeNight({
+    baseUrl: `https://${config.domainName}`,
+    token: testRigToken,
+  });
+  printReport(night);
+  if (!night.ok) {
+    fail(
+      'Fake-Plugin-Nacht rot. Rollback: vorherigen Tag auschecken und `pnpm deploy:prod` erneut ausführen (TK 18).',
     );
   }
 

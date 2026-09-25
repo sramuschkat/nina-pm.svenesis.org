@@ -72,6 +72,9 @@
 .section {
   composes: section from '../admin/admin.module.css';
 }
+.check {
+  composes: check from '../admin/admin.module.css';
+}
 .nowrap {
   composes: nowrap from '../admin/admin.module.css';
 }

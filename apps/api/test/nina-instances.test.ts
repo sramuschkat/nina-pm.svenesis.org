@@ -327,6 +327,34 @@ describe('NINA-Instanzen im Web (S-42, FA-ADM-02/06)', () => {
   });
 });
 
+describe('Instanz löschen (FA-ADM-02, nur ohne Verlauf)', () => {
+  it('ohne Session → 204 und weg; mit Session → 409 resource.in_use, Widerrufen bleibt', async () => {
+    const t = await setup();
+    const unused = await t.createInstance('Versehen');
+    await t.call(unused.token, '/bootstrap');
+    expect((await t.web(`/nina-instances/${unused.id}`, { method: 'DELETE' })).status).toBe(204);
+    expect((await t.web(`/nina-instances/${unused.id}/diagnostics`)).status).toBe(404);
+    expect((await t.call(unused.token, '/bootstrap')).status).toBe(401);
+
+    const used = await t.createInstance('Beobachtung');
+    await t.call(used.token, '/sessions', {
+      method: 'POST',
+      body: {
+        id: id(),
+        night: '2026-09-18',
+        nightPlanId: null,
+        startedAtUtc: '2026-09-18T14:00:00Z',
+        offline: false,
+      },
+    });
+    const denied = await t.web(`/nina-instances/${used.id}`, { method: 'DELETE' });
+    expect([denied.status, denied.body.code]).toEqual([409, 'resource.in_use']);
+    expect(denied.body.errors).toEqual([{ path: 'session', message: '1' }]);
+    expect((await t.web(`/nina-instances/${used.id}/diagnostics`)).status).toBe(200);
+    expect((await t.web(`/nina-instances/${id()}`, { method: 'DELETE' })).status).toBe(404);
+  });
+});
+
 describe('An NINA ausgeliefert (S-41, FA-NIN-22)', () => {
   it('dieselben Ziele wie targets, mit Fortschritt je Filter und bestätigtem NINA-Filter', async () => {
     const t = await setup();

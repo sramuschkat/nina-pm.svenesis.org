@@ -11,7 +11,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, NinaInstance, NinaRigDelivery } from '../../api/client';
-import { AuthProvider } from '../../auth';
+import { ApiError, AuthProvider } from '../../auth';
 import { DeliveryPage } from './DeliveryPage';
 import { InstancesPage } from './InstancesPage';
 import { NinaLayout } from './NinaLayout';
@@ -27,6 +27,7 @@ const state = vi.hoisted(() => ({
   create: vi.fn(),
   revoke: vi.fn(),
   release: vi.fn(),
+  remove: vi.fn(),
   setStatus: vi.fn(),
 }));
 
@@ -55,6 +56,7 @@ vi.mock('../../api/client', () => ({
     create: (...a: unknown[]) => state.create(...a) as Promise<unknown>,
     revoke: (...a: unknown[]) => state.revoke(...a) as Promise<unknown>,
     releaseLease: (...a: unknown[]) => state.release(...a) as Promise<unknown>,
+    remove: (...a: unknown[]) => state.remove(...a) as Promise<unknown>,
     diagnostics: (id: string) =>
       Promise.resolve({
         instance: state.instances.find((i) => (i as { id: string }).id === id),
@@ -197,7 +199,8 @@ beforeEach(() => {
     [ID(500)]: delivery(ID(500), { items: [item(1), item(2, { panelCount: 4, name: 'Mosaik' })] }),
     [ID(501)]: delivery(ID(501), { deliveryEnabled: false }),
   };
-  for (const fn of [state.create, state.revoke, state.release, state.setStatus]) fn.mockReset();
+  for (const fn of [state.create, state.revoke, state.release, state.remove, state.setStatus])
+    fn.mockReset();
 });
 
 describe('Übernahmestatus (FA-SIM-09)', () => {
@@ -287,6 +290,39 @@ describe('S-42 NINA-Instanzen & Tokens', () => {
     state.instances = [];
     renderAt('/nina/instanzen', <InstancesPage />);
     expect(await screen.findByText('Noch keine NINA-Instanz gekoppelt.')).toBeTruthy();
+  });
+});
+
+describe('S-42 Widerrufene ausblenden und Löschen (FA-ADM-02)', () => {
+  it('widerrufene Instanzen standardmäßig ausgeblendet, per Schalter sichtbar', async () => {
+    state.instances = [
+      instance(),
+      instance({ id: ID(12), name: 'Alter PC', status: 'revoked', lease: null }),
+    ];
+    renderAt('/nina/instanzen', <InstancesPage />);
+    await screen.findByRole('button', { name: 'Beobachtungs-PC' });
+    expect(screen.queryByRole('button', { name: 'Alter PC' })).toBeNull();
+    expect(screen.getByText('(1 ausgeblendet)')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/Widerrufene anzeigen/));
+    expect(await screen.findByRole('button', { name: 'Alter PC' })).toBeTruthy();
+  });
+
+  it('Löschen über den ConfirmDialog; 409 resource.in_use erscheint im Dialog', async () => {
+    state.remove.mockRejectedValueOnce(
+      new ApiError({ code: 'resource.in_use', status: 409, title: 'x' } as never),
+    );
+    state.remove.mockResolvedValueOnce(undefined);
+    renderAt('/nina/instanzen', <InstancesPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Beobachtungs-PC' }));
+    const detail = screen.getByRole('region', { name: 'Beobachtungs-PC' });
+    fireEvent.click(within(detail).getByRole('button', { name: 'Löschen' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(state.remove).toHaveBeenCalledWith(ID(10)));
+    expect(await within(dialog).findByText('Wird noch verwendet')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(state.remove).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
   });
 });
 

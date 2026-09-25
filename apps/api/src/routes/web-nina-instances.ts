@@ -1,7 +1,8 @@
 /**
  * NINA-Instanzen im Web (AP-14a; TK 5.6, 7.2; FA-SYN-01, SV-08): auflisten (`nina.instance.read`),
- * anlegen und widerrufen (`nina.instance.manage`). Das Token erscheint nur in der Antwort auf das
- * Anlegen; gespeichert werden SHA-256 und Präfix. Ein Widerruf wirkt ab der nächsten Plugin-Anfrage.
+ * anlegen, widerrufen und – nur ohne Sessions und Kommandos – löschen (`nina.instance.manage`). Das
+ * Token erscheint nur in der Antwort auf das Anlegen; gespeichert werden SHA-256 und Präfix. Ein
+ * Widerruf wirkt ab der nächsten Plugin-Anfrage.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { parseCallLog, type NinaInstanceOverview } from '@nina-pm/db';
@@ -151,10 +152,29 @@ export const ninaDiagnosticsRoute = defineRoute(
   },
 );
 
+export const deleteNinaInstanceRoute = defineRoute(
+  { action: 'nina.instance.manage', requirements: ['FA-ADM-02', 'TK 7.2'] },
+  {
+    method: 'delete',
+    path: `${BASE}/{id}`,
+    summary: 'Instanz ohne Verlauf endgültig löschen (sonst nur widerrufen)',
+    tags: ['nina-instances'],
+    request: { params: z.object({ id: Uuid }) },
+    responses: {
+      204: { description: 'Gelöscht' },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('Keine Berechtigung'),
+      404: problemContent('resource.not_found'),
+      409: problemContent('resource.in_use (Sessions oder Kommandos vorhanden)'),
+    },
+  },
+);
+
 export const NINA_INSTANCE_ROUTES = [
   listNinaInstancesRoute,
   createNinaInstanceRoute,
   revokeNinaInstanceRoute,
+  deleteNinaInstanceRoute,
   ninaDiagnosticsRoute,
 ] as const;
 
@@ -186,6 +206,12 @@ export function webNinaInstanceRoutes(services: () => Promise<ApiServices>) {
   app.openapi(revokeNinaInstanceRoute, async (c) => {
     const { repo: r } = await repo(c);
     return c.json(ninaInstanceView(await r.revoke(c.req.valid('param').id)), 200);
+  });
+
+  app.openapi(deleteNinaInstanceRoute, async (c) => {
+    const { repo: r } = await repo(c);
+    await r.remove(c.req.valid('param').id);
+    return c.body(null, 204);
   });
 
   app.openapi(ninaDiagnosticsRoute, async (c) => {

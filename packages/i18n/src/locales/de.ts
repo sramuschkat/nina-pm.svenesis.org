@@ -1687,6 +1687,14 @@ export const de = {
       copied: 'Kopiert',
       done: 'Fertig',
       selectHint: 'Instanz in der Tabelle wählen, um Diagnose und Aktionen zu sehen.',
+      showRevoked: 'Widerrufene anzeigen',
+      hidden: '({{count}} ausgeblendet)',
+      remove: 'Löschen',
+      removeHint:
+        'Löschen geht nur bei Instanzen ohne Sessions (z. B. versehentlich angelegt); sonst widerrufen – der Verlauf bleibt erhalten.',
+      removeTitle: '„{{name}}“ endgültig löschen?',
+      removeConsequence:
+        'Die Instanz und ihr Token verschwinden endgültig. Hat sie bereits Sessions, lehnt der Server das Löschen ab.',
       revoke: 'Widerrufen',
       revokeTitle: 'Token von „{{name}}“ widerrufen?',
       revokeConsequence:

@@ -712,6 +712,12 @@ async function projectExamples(): Promise<Record<string, Example>> {
         body: { exposureLineId: crypto.randomUUID() },
         okStatus: 404,
       },
+      // Unbekannte Instanz: nach der Rechteprüfung 404 (Löschen verändert sonst den Ausgangszustand).
+      'DELETE /api/web/v1/nina-instances/{id}': {
+        url: `/api/web/v1/nina-instances/${crypto.randomUUID()}`,
+        method: 'DELETE',
+        okStatus: 404,
+      },
       'GET /api/web/v1/nina-instances/{id}/diagnostics': {
         url: `/api/web/v1/nina-instances/${instance.id}/diagnostics`,
         expect: { 'fremder Mandant (Admin)': 404 },
