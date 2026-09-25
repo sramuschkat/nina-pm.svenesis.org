@@ -700,6 +700,18 @@ async function projectExamples(): Promise<Record<string, Example>> {
         // Das Rig gehört zu Mandant A.
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'POST /api/web/v1/rigs/{id}/lease/release': {
+        url: `/api/web/v1/rigs/${common.rigId}/lease/release`,
+        method: 'POST',
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      // Unbekannte Aufnahme: nach der Rechteprüfung 404 (das Objekt ist ein Pfadparameter).
+      'PATCH /api/web/v1/captures/{id}/assign': {
+        url: `/api/web/v1/captures/${crypto.randomUUID()}/assign`,
+        method: 'PATCH',
+        body: { exposureLineId: crypto.randomUUID() },
+        okStatus: 404,
+      },
       'POST /api/web/v1/nina-instances/{id}/revoke': {
         url: `/api/web/v1/nina-instances/${instance.id}/revoke`,
         method: 'POST',

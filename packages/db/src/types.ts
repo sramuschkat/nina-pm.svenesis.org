@@ -705,6 +705,19 @@ export interface FlatCombinationTable {
   darkFlatsTaken: Generated<number>;
 }
 
+/** Tabelle `transit_observation` (Migration 0004, FA-EXO-18/20); nur die im Ingest gelesenen Spalten. */
+export interface TransitObservationTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  status: Generated<string>;
+  windowStartUtc: Timestamp;
+  windowEndUtc: Timestamp;
+  lockedAt: Timestamp | null;
+  primaryObservationId: string | null;
+  acquiredCount: Generated<number>;
+}
+
 /** Tabelle `command` (Migration 0005, TK 7.6 `commands`). */
 export interface CommandTable {
   id: Generated<string>;
@@ -712,7 +725,7 @@ export interface CommandTable {
   ninaInstanceId: string;
   kind: string;
   createdBy: string;
-  createdAt: Generated<Timestamp>;
+  createdAt: Timestamp;
   acknowledgedAt: Timestamp | null;
 }
 
@@ -757,4 +770,5 @@ export interface Database {
   correction: CorrectionTable;
   flatCombination: FlatCombinationTable;
   command: CommandTable;
+  transitObservation: TransitObservationTable;
 }

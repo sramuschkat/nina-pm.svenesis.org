@@ -9,6 +9,8 @@ import type {
   SimulationRepository,
   NinaInstanceRepository,
   NinaRigRepository,
+  NinaSessionRepository,
+  NinaIngestRepository,
   NinaPrincipal,
   Job,
   MemberRepository,
@@ -41,6 +43,8 @@ export interface ApiRepositories {
   simulations(): SimulationRepository;
   ninaInstances(): NinaInstanceRepository;
   ninaRig(rigId: string): NinaRigRepository;
+  ninaSession(rigId: string, instanceId: string): NinaSessionRepository;
+  ninaIngest(rigId: string): NinaIngestRepository;
   tenant(): TenantRepository;
 }
 
@@ -59,6 +63,15 @@ export interface ApiServices {
   /** Aktiver Wartungshinweis für alle (FA-SU-08). */
   maintenanceBanner(): Promise<{ de: string; en: string } | null>;
   readonly jobInvoker: JobInvoker;
+  /** Presigned POST für Dateien, die das Plugin hochlädt (Planprotokoll, SEC-23). */
+  readonly uploads: {
+    planLog(
+      tenantId: string,
+      sessionId: string,
+    ): Promise<{ url: string; fields: Record<string, string> }>;
+  };
+  /** Datenbank für Mehrzeilen-Vorgänge außerhalb eines Repositories (Korrektur, Zuordnung, Lease). */
+  readonly db: import('@nina-pm/db').OpenDatabase['db'];
   /** Token-Suche der NINA-API über alle Mandanten (TK 5.6, kein Cache). */
   readonly nina: {
     lookup(tokenHash: string): Promise<NinaPrincipal | undefined>;

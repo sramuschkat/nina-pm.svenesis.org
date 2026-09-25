@@ -1,0 +1,281 @@
+/**
+ * Use-Cases Sessions, Meldungen und Heartbeat der NINA-API (AP-14b; TK 5.6, 6.6, 7.3, 7.6, 13;
+ * FA-SYN-04…07, FA-RIG-06, FA-NIN-04, NT-01, NT-09, NT-14, NT-22, NT-E1, M5, M6, M7).
+ * Mandant und Rig ausschließlich aus dem Token.
+ */
+import type { NinaPrincipal } from '@nina-pm/db';
+import {
+  currentNightRow,
+  nina,
+  ProblemError,
+  type NinaSettingsMismatchCode,
+} from '@nina-pm/shared';
+import { randomUUID } from 'node:crypto';
+import type { z } from 'zod';
+import { isoUtc } from '../lib/format';
+import { logger } from '../lib/logger';
+import { siteNights } from '../lib/night-table';
+import type { ApiServices } from '../routes/services';
+import { targets } from './sync';
+
+type SessionCreate = z.output<typeof nina.NinaSessionCreate>;
+type SessionPatch = z.output<typeof nina.NinaSessionPatch>;
+type Heartbeat = z.output<typeof nina.NinaHeartbeat>;
+
+const isoOrNull = (d: Date | null) => (d === null ? null : isoUtc(d));
+
+/** `night` nur `currentNight` des Standorts oder die folgende Nacht (NT-01). */
+async function checkNight(svc: ApiServices, p: NinaPrincipal, night: string) {
+  const eq = svc.repositories({ tenantId: p.tenantId }).equipment();
+  const rig = await eq.rig(p.rigId);
+  const site = rig ? await eq.site(rig.siteId) : undefined;
+  if (!rig || !site) throw new ProblemError('nina.token_invalid');
+  const now = svc.now();
+  const table = siteNights(site, now, undefined, 3);
+  const current = currentNightRow(table, isoUtc(now)).night;
+  const next = table.nights[table.nights.findIndex((n) => n.night === current) + 1]?.night;
+  if (night !== current && night !== next) throw new ProblemError('nina.night_invalid');
+  return rig;
+}
+
+export async function createSession(svc: ApiServices, p: NinaPrincipal, body: SessionCreate) {
+  await checkNight(svc, p, body.night);
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const r = await repos.ninaSession(p.rigId, p.instanceId).create(
+    {
+      id: body.id,
+      night: body.night,
+      nightPlanId: body.nightPlanId,
+      startedAt: new Date(body.startedAtUtc),
+      offline: body.offline,
+      offlinePlan: body.offlinePlan ?? null,
+    },
+    svc.now(),
+  );
+  // Offline angelegt und schon eine andere Session in der Nacht: beide gespeichert, Alarm rig.busy (AP-15).
+  if (r.created && body.offline) {
+    const others = await repos
+      .ninaSession(p.rigId, p.instanceId)
+      .otherSessionsInNight(body.id, body.night);
+    if (others > 0) logger.warn('alert_rig_busy', { rigId: p.rigId, sessionId: body.id });
+  }
+  const upload = await svc.uploads.planLog(p.tenantId, body.id);
+  return {
+    created: r.created,
+    body: {
+      sessionId: r.session.id,
+      lease: { untilUtc: isoOrNull(r.lease.untilUtc) },
+      planLogUploadUrl: upload.url,
+      planLogUploadFields: upload.fields,
+    },
+  };
+}
+
+/**
+ * Sessionende legt die Jobs an (TK 13, NIN5-7, NT-09): `session_close` und `session_report` erst bei
+ * `outbox_pending = 0` (sonst übernimmt `tick-5min` nach 6 h, AP-15); `session_report` frühestens bei
+ * `max(ended_at, darknessEndUtc ?? sessionEndUtc)` der letzten Planrevision.
+ */
+async function enqueueSessionJobs(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  sessionId: string,
+  endedAt: Date,
+) {
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const plan = await repos.ninaSession(p.rigId, p.instanceId).lastPlanSummary(sessionId);
+  const marks = [plan?.darknessEndUtc, plan?.sessionEndUtc]
+    .filter((x): x is string => !!x)
+    .map((x) => new Date(x));
+  const reportAt = new Date(Math.max(endedAt.getTime(), marks[0]?.getTime() ?? endedAt.getTime()));
+  await repos.job.enqueue({
+    kind: 'session_close',
+    input: { sessionId },
+    dedupeKey: `session_close:${sessionId}`,
+  });
+  await repos.job.enqueue({
+    kind: 'session_report',
+    input: { sessionId },
+    dedupeKey: `session_report:${sessionId}`,
+    runAfter: reportAt,
+  });
+}
+
+export async function patchSession(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  sessionId: string,
+  body: SessionPatch,
+) {
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const now = svc.now();
+  const r = await repos.ninaSession(p.rigId, p.instanceId).patch(
+    sessionId,
+    {
+      ...(body.status ? { status: body.status } : {}),
+      ...(body.endedAtUtc ? { endedAt: new Date(body.endedAtUtc) } : {}),
+      ...(body.outboxPending !== undefined ? { outboxPending: body.outboxPending } : {}),
+      ...(body.ninaConditions !== undefined ? { ninaConditions: body.ninaConditions } : {}),
+      ...(body.offline !== undefined ? { offline: body.offline } : {}),
+      ...(body.offlinePlan ? { offlinePlan: body.offlinePlan } : {}),
+    },
+    now,
+  );
+  const closed = r.session.status === 'completed' || r.session.status === 'aborted';
+  if (closed && (r.session.outboxPending ?? 0) === 0 && r.session.endedAt !== null)
+    await enqueueSessionJobs(svc, p, sessionId, new Date(r.session.endedAt));
+  return {
+    sessionId,
+    status: r.session.status as 'running' | 'completed' | 'aborted' | 'stale',
+    lease: { untilUtc: isoOrNull(r.lease.untilUtc), leaseLost: r.lease.leaseLost },
+    nightPlanId: r.nightPlanId,
+    reportStatus: r.session.reportStatus as 'none' | 'pending' | 'sent' | 'failed' | 'skipped',
+  };
+}
+
+export async function ingestCaptures(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  sessionId: string,
+  body: z.output<typeof nina.NinaCaptureBatch>,
+) {
+  const r = await svc
+    .repositories({ tenantId: p.tenantId })
+    .ninaIngest(p.rigId)
+    .ingestCaptures(sessionId, body.captures, svc.now(), () => randomUUID());
+  if (r.withoutLease) logger.warn('captures_without_lease', { sessionId, rigId: p.rigId });
+  return { results: r.results };
+}
+
+export async function ingestEvents(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  sessionId: string,
+  body: z.output<typeof nina.NinaEventBatch>,
+) {
+  return svc
+    .repositories({ tenantId: p.tenantId })
+    .ninaIngest(p.rigId)
+    .ingestEvents(sessionId, body.events, svc.now());
+}
+
+/**
+ * NINA-Einstellungen gegen Vorgaben und Rig-Werte (NT-22, execution.md §6): Codes aus
+ * `ninaSettingsMismatchCodes`; umbenannte Filter an bestätigten Plätzen gelten als unbestätigt (NT-E1).
+ */
+export function settingsMismatch(
+  hb: Heartbeat,
+  rig: {
+    hasRotator: boolean;
+    rotationToleranceDeg: number;
+    flipEnabled: boolean;
+    flipAfterMeridianMin: number;
+    flipMaxAfterMeridianMin: number;
+    flipPauseBeforeMeridianMin: number;
+    afEveryMin: number;
+    site: { latitudeDeg: number; longitudeDeg: number };
+    filterWheel: readonly {
+      position: number;
+      ninaFilterName: string | null;
+      ninaConfirmedAt: string | null;
+    }[];
+  },
+): { codes: NinaSettingsMismatchCode[]; changedPositions: number[] } {
+  const codes = new Set<NinaSettingsMismatchCode>();
+  const f = hb.meridianFlip;
+  if (f && rig.flipEnabled) {
+    if (!f.triggerPresent) codes.add('flip_trigger_missing');
+    const off = (a: number, b: number) => Math.abs(a - b) > 0.5;
+    if (
+      off(f.afterMin, rig.flipAfterMeridianMin) ||
+      off(f.maxAfterMin, rig.flipMaxAfterMeridianMin) ||
+      off(f.pauseBeforeMin, rig.flipPauseBeforeMeridianMin)
+    )
+      codes.add('flip_timing_mismatch');
+  }
+  if (f?.recenter) codes.add('recenter_after_flip_on');
+  if (rig.hasRotator && (!hb.rotator || !hb.rotator.connected)) codes.add('rotator_unavailable');
+  if (hb.rotator?.rangeType === 'QUARTER') codes.add('rotator_range_quarter');
+  if (hb.plateSolve && hb.plateSolve.rotationToleranceDeg > rig.rotationToleranceDeg)
+    codes.add('plate_solve_tolerance');
+  const m = hb.mount;
+  if (m) {
+    if (m.equatorialSystem === 'B1950' || m.equatorialSystem === 'J2050')
+      codes.add('mount_epoch_unsupported');
+    if (
+      Math.abs(m.siteLatDeg - rig.site.latitudeDeg) > 0.01 ||
+      Math.abs(m.siteLonDeg - rig.site.longitudeDeg) > 0.01 ||
+      Math.abs(m.siderealTimeDeltaS) > 60
+    )
+      codes.add('mount_site_mismatch');
+  }
+  const t = hb.sequenceTriggers;
+  if (t) {
+    if (t.dither.length > 0) codes.add('nina_dither_trigger_present');
+    if (t.autofocusAfterTimeMin === null) codes.add('af_time_trigger_missing');
+    else if (rig.afEveryMin > 0 && t.autofocusAfterTimeMin !== rig.afEveryMin)
+      codes.add('af_time_mismatch');
+  }
+  const changedPositions: number[] = [];
+  if (hb.filterWheel)
+    for (const slot of rig.filterWheel) {
+      if (slot.ninaConfirmedAt === null || slot.ninaFilterName === null) continue;
+      const reported = hb.filterWheel.find((w) => w.position === slot.position);
+      if (reported && reported.name !== slot.ninaFilterName) changedPositions.push(slot.position);
+    }
+  if (changedPositions.length > 0) codes.add('filter_wheel_changed');
+  return { codes: [...codes].sort(), changedPositions };
+}
+
+export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbeat) {
+  const now = svc.now();
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const eq = repos.equipment();
+  const rig = await eq.rig(p.rigId);
+  const site = rig ? await eq.site(rig.siteId) : undefined;
+  if (!rig || !site) throw new ProblemError('nina.token_invalid');
+  const sessions = repos.ninaSession(p.rigId, p.instanceId);
+  const lease = await sessions.heartbeat(
+    {
+      sessionId: hb.sessionId ?? null,
+      offline: hb.state === 'offline',
+      offlineUntil: hb.offlineUntil ? new Date(hb.offlineUntil) : null,
+    },
+    now,
+  );
+  const mismatch = settingsMismatch(hb, {
+    hasRotator: rig.hasRotator,
+    rotationToleranceDeg: rig.rotationToleranceDeg,
+    flipEnabled: rig.flipEnabled,
+    flipAfterMeridianMin: rig.flipAfterMeridianMin,
+    flipMaxAfterMeridianMin: rig.flipMaxAfterMeridianMin,
+    flipPauseBeforeMeridianMin: rig.flipPauseBeforeMeridianMin,
+    afEveryMin: rig.overhead.afEveryMin,
+    site,
+    filterWheel: rig.filterWheel,
+  });
+  if (mismatch.changedPositions.length > 0)
+    await eq.unconfirmFilterSlots(p.rigId, mismatch.changedPositions, now);
+  if (mismatch.codes.length > 0)
+    logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
+  await sessions.recordInstanceState(
+    {
+      pluginVersion: hb.pluginVersion,
+      engineVersion: hb.engineVersion,
+      profileLat: hb.profileLocation?.latDeg ?? null,
+      profileLon: hb.profileLocation?.lonDeg ?? null,
+      lastState: { ...hb, mismatchCodes: mismatch.codes, receivedAtUtc: isoUtc(now) },
+    },
+    now,
+  );
+  const commands = await sessions.commands(hb.ackedCommandIds ?? [], now);
+  const { etag } = await targets(svc, { ...p, lastState: hb });
+  const fresh = await eq.rig(p.rigId);
+  return {
+    serverTimeUtc: isoUtc(now),
+    lease: lease ? { untilUtc: isoOrNull(lease.untilUtc), leaseLost: lease.leaseLost } : null,
+    settingsVersion: fresh?.settingsVersion ?? rig.settingsVersion,
+    targetsEtag: etag,
+    commands: commands as { id: string; command: 'refresh_targets' | 'reset_plan' }[],
+  };
+}

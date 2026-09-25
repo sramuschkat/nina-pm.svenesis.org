@@ -47,6 +47,7 @@ export const ERRORS = {
   "session.unknown": { http: 409, i18nKey: "errors.session.unknown", titleDe: "Session unbekannt", titleEn: "Unknown session" },
   "session.closed": { http: 409, i18nKey: "errors.session.closed", titleDe: "Session bereits beendet", titleEn: "Session already closed" },
   "capture.batch_too_large": { http: 413, i18nKey: "errors.capture.batchTooLarge", titleDe: "Höchstens 500 Meldungen je Anfrage", titleEn: "At most 500 captures per request" },
+  "event.batch_too_large": { http: 413, i18nKey: "errors.event.batchTooLarge", titleDe: "Höchstens 200 Ereignisse je Anfrage", titleEn: "At most 200 events per request" },
   "plan.targets_etag_mismatch": { http: 409, i18nKey: "errors.plan.targetsEtagMismatch", titleDe: "Ziele haben sich geändert – neu abrufen", titleEn: "Targets have changed – fetch again" },
   "canonical.non_finite": { http: 500, i18nKey: "errors.canonical.nonFinite", titleDe: "Nicht-endliche Zahl in Planeingabe", titleEn: "Non-finite number in plan input" },
   "system.maintenance": { http: 503, i18nKey: "errors.system.maintenance", titleDe: "Wartung", titleEn: "Maintenance" },

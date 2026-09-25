@@ -13,7 +13,7 @@ import { createStack, type Stack } from './support/stack';
 let stack: Stack;
 let tokens: { valid: string; revoked: string; locked: string };
 let cookie: Record<string, string>;
-let examples: Record<string, { url: string; method?: string; body?: unknown }>;
+let examples: Record<string, { url: string; method?: string; body?: unknown; ok?: number }>;
 
 const routeKey = (r: { method: string; path: string }) =>
   `${r.method.toUpperCase()} ${r.path.replace(/\{(\w+)\}/g, '{$1}')}`;
@@ -73,6 +73,20 @@ beforeAll(async () => {
     [COOKIE_NAMES.session]: await stack.seed.session(a.identity.id, a.tenantId, 'tenant'),
   };
   expect(hashNinaToken(valid.token)).toMatch(/^[0-9a-f]{64}$/);
+  // Session von Rig A (gültiges Token) für die Routen mit {sessionId}.
+  const sessionId = crypto.randomUUID();
+  const created = await stack.request('/api/nina/v1/sessions', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${valid.token}` },
+    body: {
+      id: sessionId,
+      night: '2026-09-18',
+      nightPlanId: null,
+      startedAtUtc: '2026-09-18T13:00:00Z',
+      offline: false,
+    },
+  });
+  expect(created.status).toBe(201);
   examples = {
     'GET /api/nina/v1/bootstrap': { url: '/api/nina/v1/bootstrap' },
     'GET /api/nina/v1/targets': { url: '/api/nina/v1/targets' },
@@ -80,6 +94,74 @@ beforeAll(async () => {
       url: '/api/nina/v1/plan',
       method: 'POST',
       body: { night: '2026-09-18', reason: 'initial', pendingCaptures: [] },
+    },
+    'POST /api/nina/v1/sessions': {
+      url: '/api/nina/v1/sessions',
+      method: 'POST',
+      // Idempotent: dieselbe Session wie oben → 200.
+      body: {
+        id: sessionId,
+        night: '2026-09-18',
+        nightPlanId: null,
+        startedAtUtc: '2026-09-18T13:00:00Z',
+        offline: false,
+      },
+    },
+    'PATCH /api/nina/v1/sessions/{sessionId}': {
+      url: `/api/nina/v1/sessions/${sessionId}`,
+      method: 'PATCH',
+      body: { ninaConditions: {} },
+    },
+    'POST /api/nina/v1/sessions/{sessionId}/captures': {
+      url: `/api/nina/v1/sessions/${sessionId}/captures`,
+      method: 'POST',
+      body: {
+        captures: [
+          {
+            id: crypto.randomUUID(),
+            frameType: 'light',
+            capturedAtUtc: '2026-09-19T03:00:00Z',
+            exposureMidUtc: '2026-09-19T03:02:30Z',
+            night: '2026-09-18',
+            blockId: null,
+            projectId: null,
+            panelId: null,
+            exposureLineId: null,
+            assignment: 'unassigned',
+            filterShortName: 'Ha',
+            filterActual: 'Ha',
+            exposureS: 300,
+            gain: null,
+            offset: null,
+            binning: 1,
+            readoutMode: null,
+            readoutModeIndex: 0,
+            raDeg: 1,
+            decDeg: 1,
+            rotationDeg: 0,
+            pierSide: null,
+            rotatorMechDeg: 0,
+            bonus: false,
+            temperatureDeviation: false,
+            result: 'aborted',
+            nightPlanId: crypto.randomUUID(),
+          },
+        ],
+      },
+    },
+    'POST /api/nina/v1/sessions/{sessionId}/events': {
+      url: `/api/nina/v1/sessions/${sessionId}/events`,
+      method: 'POST',
+      body: {
+        events: [
+          { id: crypto.randomUUID(), occurredAtUtc: '2026-09-18T14:00:00Z', kind: 'warning' },
+        ],
+      },
+    },
+    'POST /api/nina/v1/heartbeat': {
+      url: '/api/nina/v1/heartbeat',
+      method: 'POST',
+      body: { state: 'idle', pluginVersion: '1.0.0', engineVersion: '0.6.0' },
     },
   };
 });

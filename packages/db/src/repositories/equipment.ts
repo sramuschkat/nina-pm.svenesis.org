@@ -1274,6 +1274,36 @@ export class EquipmentRepository extends TenantRepo {
   }
 
   /**
+   * Heartbeat meldet an bestätigten Plätzen einen anderen NINA-Namen (NT-E1, `filter_wheel_changed`):
+   * diese Plätze gelten als unbestätigt; die nächsten `targets` liefern dort `ninaFilterName = null`.
+   */
+  unconfirmFilterSlots(id: string, positions: readonly number[], now: Date): Promise<void> {
+    return this.tx(
+      async (trx) => {
+        const rig = await this.rig(id, trx);
+        if (!rig) throw notFound();
+        const wheel = rig.filterWheel.map((s) =>
+          positions.includes(s.position)
+            ? { ...s, ninaConfirmedAt: null, ninaConfirmedBy: null }
+            : s,
+        );
+        await trx
+          .updateTable('rig')
+          .set({
+            filterWheel: json(wheel),
+            settingsVersion: rig.settingsVersion + 1,
+            updatedAt: now,
+          })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', id)
+          .execute();
+        await this.staleEffort(trx, { rigId: id });
+      },
+      [{ table: 'rig', id }],
+    );
+  }
+
+  /**
    * Filterradbelegung bestätigen (FA-RIG-14, NT-E1): je Platz Web-Filter und NINA-Name; bestätigt am/von
    * wird gesetzt, unveränderte bestätigte Plätze behalten ihre Bestätigung. Erhöht `settings_version`.
    */

@@ -1,4 +1,5 @@
 /** Lambda `api`: Hono, alle Routen unter /api (TK 3.1, 7). */
+import { randomUUID } from 'node:crypto';
 import { LambdaClient } from '@aws-sdk/client-lambda';
 import { S3Client } from '@aws-sdk/client-s3';
 import { handle } from 'hono/aws-lambda';
@@ -7,14 +8,18 @@ import { parseIdList, PROD_REDIRECT_URI } from '../auth/config';
 import { httpDiscordClient } from '../auth/discord';
 import { s3DownloadSigner } from '../files/download';
 import { s3TenantFileStore } from '../files/tenant-files';
+import { createUploadTicket } from '../files/upload-ticket';
 import { lambdaJobInvoker } from '../jobs/enqueue';
 import { lambdaDatabase } from '../lib/database';
 import { lazy } from '../lib/lazy';
 import { requiredEnv, ssmSecret, ssmString } from '../lib/params';
 import { ninaTokenLookup, ninaTouch, readMaintenanceBanner } from '@nina-pm/db';
 import type { ApiServices } from '../routes/services';
+import { UPLOAD_LIMITS } from '@nina-pm/shared';
 
 const bootstrapSuperUsers = ssmString(requiredEnv('BOOTSTRAP_SUPER_USERS_PARAM'));
+
+const cookieSecret = ssmSecret(requiredEnv('COOKIE_SECRET_PARAM'));
 
 const services = lazy<ApiServices>(async () => {
   const db = await lambdaDatabase();
@@ -26,13 +31,34 @@ const services = lazy<ApiServices>(async () => {
       return { ...repos, tenant: () => repos.tenant };
     },
     tenantAdmin: (actor) => db.tenantAdmin(actor),
+    db: db.db,
+    uploads: {
+      // Planprotokoll als presigned POST mit content-length-range (SEC-23, TK 12).
+      planLog: async (tenantId, sessionId) => {
+        const t = await createUploadTicket(
+          {
+            s3,
+            bucket: requiredEnv('DATA_BUCKET'),
+            secret: cookieSecret,
+            now,
+            uuid: () => randomUUID(),
+          },
+          'plan_log',
+          tenantId,
+          sessionId,
+          UPLOAD_LIMITS.plan_log.sizeMax,
+          UPLOAD_LIMITS.plan_log.contentTypes,
+        );
+        return { url: t.url, fields: t.fields };
+      },
+    },
     nina: {
       lookup: (hash) => ninaTokenLookup(db.db, hash),
       touch: (p, at) => ninaTouch(db.db, p, at),
     },
     auth: db.auth(),
     authConfig: {
-      cookieSecret: ssmSecret(requiredEnv('COOKIE_SECRET_PARAM')),
+      cookieSecret,
       discordClientId: ssmString(requiredEnv('DISCORD_CLIENT_ID_PARAM')),
       discordClientSecret: ssmSecret(requiredEnv('DISCORD_CLIENT_SECRET_PARAM')),
       bootstrapSuperUsers: async () => parseIdList(await bootstrapSuperUsers()),
