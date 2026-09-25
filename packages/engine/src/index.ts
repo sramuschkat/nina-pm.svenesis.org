@@ -8,6 +8,7 @@ export * from './effort';
 export * from './geometry';
 export * from './plan';
 export * from './visibility';
+export * as sky from './sky';
 export { canonicalHash, canonicalInputJson, CanonicalError } from './canonical';
 export { sha256hex } from './hash/sha256';
 export * as math from './math';
