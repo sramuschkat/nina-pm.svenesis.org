@@ -1,0 +1,37 @@
+{
+  "at": "2026-09-25T09:18:08.154Z",
+  "commit": "039f721",
+  "rate": 100,
+  "seconds": 10,
+  "results": [
+    {
+      "target": "GET /api/auth/discord/start (CloudFront)",
+      "requests": 1000,
+      "byStatus": {
+        "302": 173,
+        "429": 827
+      },
+      "p50Ms": 16,
+      "p95Ms": 96
+    },
+    {
+      "target": "GET /api/health (execute-api direkt)",
+      "requests": 1000,
+      "byStatus": {
+        "403": 162,
+        "429": 838
+      },
+      "p50Ms": 17,
+      "p95Ms": 97
+    }
+  ],
+  "api": {
+    "maxConcurrentExecutions": 8,
+    "throttles": 0,
+    "reserved": 20
+  },
+  "verdict": {
+    "ok": true,
+    "findings": []
+  }
+}
