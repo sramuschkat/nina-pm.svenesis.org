@@ -669,6 +669,7 @@ async function projectExamples(): Promise<Record<string, Example>> {
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
     return {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
+      'GET /api/web/v1/dso': { url: '/api/web/v1/dso?q=M%2031' },
       'GET /api/web/v1/sessions/{id}': {
         url: `/api/web/v1/sessions/${sessionId}`,
         expect: { 'fremder Mandant (Admin)': 404 },
@@ -840,6 +841,13 @@ function systemExamples(): Record<string, Example> {
   let n = 0;
   return {
     'GET /api/system/v1/tenants': { url: '/api/system/v1/tenants' },
+    'GET /api/system/v1/catalogs': { url: '/api/system/v1/catalogs' },
+    // Offener Job wird wiederverwendet (Deduplizierung), der Invoker ist im Test ein No-op.
+    'POST /api/system/v1/catalogs/dso/refresh': {
+      url: '/api/system/v1/catalogs/dso/refresh',
+      method: 'POST',
+      okStatus: 202,
+    },
     'POST /api/system/v1/tenants': {
       url: '/api/system/v1/tenants',
       method: 'POST',

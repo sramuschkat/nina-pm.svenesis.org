@@ -10,6 +10,7 @@ import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
 import { emitDsqlRetries } from '../lib/metrics';
 import { logger } from '../lib/logger';
+import { catalogRefreshHandler } from '../worker/catalog';
 import { dispatch } from '../worker/dispatch';
 import { effortJobHandler, effortSiteTick } from '../worker/effort';
 import { effortDbDeps } from '../worker/effort-db';
@@ -64,6 +65,7 @@ const jobs: JobRunnerDeps = {
     session_close: sessionCloseHandler(sessionJobs),
     session_report: sessionReportHandler(sessionJobs),
     reconcile: reconcileJobHandler(sessionOps),
+    catalog_refresh: catalogRefreshHandler({ db: async () => (await lambdaDatabase()).db }),
   },
 };
 

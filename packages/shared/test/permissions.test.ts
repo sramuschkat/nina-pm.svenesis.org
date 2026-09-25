@@ -30,8 +30,8 @@ const superUser = ctx({
 });
 
 describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
-  it('kennt genau die 43 Aktionen aus enums.json', () => {
-    expect(ACTIONS).toHaveLength(43);
+  it('kennt genau die 44 Aktionen aus enums.json', () => {
+    expect(ACTIONS).toHaveLength(44);
   });
 
   it('nina.sync gilt nur mit Rig-Token, nie für eine Web-Sitzung (TK 5.6, SV-08)', () => {

@@ -1,0 +1,15 @@
+{
+  "version": "v20260501",
+  "fetchedAt": "2026-09-25",
+  "counts": {
+    "ngcCsv": 13969,
+    "addendumCsv": 64,
+    "rows": 13632,
+    "sharpless": 265,
+    "dup": 652,
+    "nonEx": 10,
+    "merged": 4
+  },
+  "warnings": 118,
+  "nonexistent": 10
+}

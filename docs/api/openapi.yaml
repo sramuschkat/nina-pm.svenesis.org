@@ -6771,6 +6771,241 @@ components:
       required:
         - reviewed
       additionalProperties: false
+    DsoList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DsoView"
+        total:
+          type: integer
+          minimum: 0
+      required:
+        - items
+        - total
+    DsoView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        primaryId:
+          type: string
+        displayName:
+          type: string
+        names:
+          type: array
+          items:
+            type: string
+        catalogs:
+          type: array
+          items:
+            type: string
+            enum:
+              - M
+              - NGC
+              - IC
+              - C
+              - Sh2
+              - LBN
+              - LDN
+              - B
+              - PGC
+              - UGC
+              - ESO
+              - Mel
+              - Cl
+        objectType:
+          type: string
+          enum:
+            - G
+            - GPair
+            - GTrpl
+            - GGroup
+            - OCl
+            - GCl
+            - Cl+N
+            - PN
+            - HII
+            - DrkN
+            - EmN
+            - Neb
+            - RfN
+            - SNR
+            - "*"
+            - "**"
+            - "*Ass"
+            - Nova
+            - Dup
+            - NonEx
+            - Other
+        group:
+          type: string
+          enum:
+            - galaxy
+            - open_cluster
+            - globular_cluster
+            - planetary_nebula
+            - emission_nebula
+            - reflection_nebula
+            - dark_nebula
+            - supernova_remnant
+            - multiple_star
+            - other
+        constellation:
+          type:
+            - string
+            - "null"
+        raDeg:
+          type: number
+        decDeg:
+          type: number
+        magV:
+          type:
+            - number
+            - "null"
+        magB:
+          type:
+            - number
+            - "null"
+        magBandUsed:
+          type:
+            - string
+            - "null"
+          enum:
+            - V
+            - B
+            - null
+        surfBrMagArcsec2:
+          type:
+            - number
+            - "null"
+        sizeMajorArcmin:
+          type:
+            - number
+            - "null"
+        sizeMinorArcmin:
+          type:
+            - number
+            - "null"
+        positionAngleDeg:
+          type:
+            - number
+            - "null"
+        source:
+          type: string
+      required:
+        - id
+        - primaryId
+        - displayName
+        - names
+        - catalogs
+        - objectType
+        - group
+        - constellation
+        - raDeg
+        - decDeg
+        - magV
+        - magB
+        - magBandUsed
+        - surfBrMagArcsec2
+        - sizeMajorArcmin
+        - sizeMinorArcmin
+        - positionAngleDeg
+        - source
+    CatalogStatus:
+      type: object
+      properties:
+        dso:
+          type: object
+          properties:
+            version:
+              type: string
+            fetchedAt:
+              type: string
+            ngcCsvRows:
+              type: integer
+            addendumCsvRows:
+              type: integer
+            expectedRows:
+              type: integer
+            sharplessRows:
+              type: integer
+            warnings:
+              type: integer
+            rows:
+              type: integer
+            lastImportAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            sources:
+              type: array
+              items:
+                type: string
+            lastJob:
+              type:
+                - object
+                - "null"
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                  description: UUID
+                status:
+                  type: string
+                  enum:
+                    - pending
+                    - running
+                    - done
+                    - failed
+                error:
+                  type:
+                    - string
+                    - "null"
+                createdAt:
+                  type: string
+                  format: date-time
+                  example: 2026-09-18T13:00:00Z
+                finishedAt:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                  example: 2026-09-18T13:00:00Z
+              required:
+                - id
+                - status
+                - error
+                - createdAt
+                - finishedAt
+          required:
+            - version
+            - fetchedAt
+            - ngcCsvRows
+            - addendumCsvRows
+            - expectedRows
+            - sharplessRows
+            - warnings
+            - rows
+            - lastImportAt
+            - sources
+            - lastJob
+      required:
+        - dso
+    JobAccepted:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - jobId
     NinaBootstrap:
       type: object
       properties:
@@ -16912,6 +17147,206 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/dso:
+    get:
+      summary: Objektkatalog durchsuchen und filtern
+      tags:
+        - catalog
+      description: "Aktion: `catalog.read` · FA-FRM-01, FA-FRM-15, S-21"
+      x-npm-action: catalog.read
+      x-npm-requirements:
+        - FA-FRM-01
+        - FA-FRM-15
+        - S-21
+      parameters:
+        - schema:
+            type: string
+            maxLength: 80
+          required: false
+          name: q
+          in: query
+        - schema:
+            type: string
+            enum:
+              - galaxy
+              - open_cluster
+              - globular_cluster
+              - planetary_nebula
+              - emission_nebula
+              - reflection_nebula
+              - dark_nebula
+              - supernova_remnant
+              - multiple_star
+              - other
+          required: false
+          name: group
+          in: query
+        - schema:
+            type: string
+            enum:
+              - M
+              - NGC
+              - IC
+              - C
+              - Sh2
+              - LBN
+              - LDN
+              - B
+              - PGC
+              - UGC
+              - ESO
+              - Mel
+              - Cl
+          required: false
+          name: catalog
+          in: query
+        - schema:
+            type: string
+            pattern: ^[A-Za-z]{3}$
+          required: false
+          name: constellation
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: magMax
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: surfBrMax
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: sizeMinArcmin
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: sizeMaxArcmin
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+          required: false
+          name: fitsFovArcmin
+          in: query
+        - schema:
+            type: string
+            enum:
+              - name
+              - mag
+              - size
+            default: name
+          required: false
+          name: sort
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type:
+              - integer
+              - "null"
+            minimum: 0
+            maximum: 20000
+            default: 0
+          required: false
+          name: offset
+          in: query
+      responses:
+        "200":
+          description: Treffer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DsoList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/catalogs:
+    get:
+      summary: Stand der Kataloge (Objektkatalog aus OpenNGC)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-FRM-01, S-82"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-FRM-01
+        - S-82
+      responses:
+        "200":
+          description: Stand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogStatus"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/system/v1/catalogs/dso/refresh:
+    post:
+      summary: Objektkatalog neu importieren (Job catalog_refresh)
+      tags:
+        - system
+      description: "Aktion: `system.manage` · FA-FRM-01, S-82, TK 13"
+      x-npm-action: system.manage
+      x-npm-requirements:
+        - FA-FRM-01
+        - S-82
+        - TK 13
+      responses:
+        "202":
+          description: Job angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
           content:
             application/problem+json:
               schema:

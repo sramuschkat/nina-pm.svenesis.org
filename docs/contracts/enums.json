@@ -14,6 +14,7 @@
   "select"
  ],
  "permissionActions": [
+  "catalog.read",
   "equipment.read",
   "equipment.write",
   "project.read",

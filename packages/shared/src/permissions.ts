@@ -39,6 +39,7 @@ const EDITABLE: readonly ApprovalStatus[] = ['draft', 'returned'];
 /** Aktionen, die jedes aktive Mitglied auf Aktionsebene darf (FK 6.14: ✔ bzw. L für User). */
 const MEMBER_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'equipment.read',
+  'catalog.read',
   'project.create',
   'queue.read',
   'simulation.run',

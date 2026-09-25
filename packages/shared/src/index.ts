@@ -12,3 +12,4 @@ export * from './plan-input';
 export * from './effort';
 export * from './priority';
 export * from './metrics';
+export * from './catalog';

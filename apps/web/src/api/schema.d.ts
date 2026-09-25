@@ -8652,6 +8652,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/dso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Objektkatalog durchsuchen und filtern
+         * @description Aktion: `catalog.read` · FA-FRM-01, FA-FRM-15, S-21
+         */
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                    group?: "galaxy" | "open_cluster" | "globular_cluster" | "planetary_nebula" | "emission_nebula" | "reflection_nebula" | "dark_nebula" | "supernova_remnant" | "multiple_star" | "other";
+                    catalog?: "M" | "NGC" | "IC" | "C" | "Sh2" | "LBN" | "LDN" | "B" | "PGC" | "UGC" | "ESO" | "Mel" | "Cl";
+                    constellation?: string;
+                    magMax?: number | null;
+                    surfBrMax?: number | null;
+                    sizeMinArcmin?: number | null;
+                    sizeMaxArcmin?: number | null;
+                    fitsFovArcmin?: number | null;
+                    sort?: "name" | "mag" | "size";
+                    limit?: number;
+                    offset?: number | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Treffer */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DsoList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/v1/catalogs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stand der Kataloge (Objektkatalog aus OpenNGC)
+         * @description Aktion: `system.manage` · FA-FRM-01, S-82
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stand */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CatalogStatus"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/system/v1/catalogs/dso/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Objektkatalog neu importieren (Job catalog_refresh)
+         * @description Aktion: `system.manage` · FA-FRM-01, S-82, TK 13
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Job angelegt */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobAccepted"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nina/v1/bootstrap": {
         parameters: {
             query?: never;
@@ -13410,6 +13594,82 @@ export interface components {
         };
         NightSessionReviewed: {
             reviewed: boolean;
+        };
+        DsoList: {
+            items: components["schemas"]["DsoView"][];
+            total: number;
+        };
+        DsoView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            primaryId: string;
+            displayName: string;
+            names: string[];
+            catalogs: ("M" | "NGC" | "IC" | "C" | "Sh2" | "LBN" | "LDN" | "B" | "PGC" | "UGC" | "ESO" | "Mel" | "Cl")[];
+            /** @enum {string} */
+            objectType: "G" | "GPair" | "GTrpl" | "GGroup" | "OCl" | "GCl" | "Cl+N" | "PN" | "HII" | "DrkN" | "EmN" | "Neb" | "RfN" | "SNR" | "*" | "**" | "*Ass" | "Nova" | "Dup" | "NonEx" | "Other";
+            /** @enum {string} */
+            group: "galaxy" | "open_cluster" | "globular_cluster" | "planetary_nebula" | "emission_nebula" | "reflection_nebula" | "dark_nebula" | "supernova_remnant" | "multiple_star" | "other";
+            constellation: string | null;
+            raDeg: number;
+            decDeg: number;
+            magV: number | null;
+            magB: number | null;
+            /** @enum {string|null} */
+            magBandUsed: "V" | "B" | null;
+            surfBrMagArcsec2: number | null;
+            sizeMajorArcmin: number | null;
+            sizeMinorArcmin: number | null;
+            positionAngleDeg: number | null;
+            source: string;
+        };
+        CatalogStatus: {
+            dso: {
+                version: string;
+                fetchedAt: string;
+                ngcCsvRows: number;
+                addendumCsvRows: number;
+                expectedRows: number;
+                sharplessRows: number;
+                warnings: number;
+                rows: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastImportAt: string | null;
+                sources: string[];
+                lastJob: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    /** @enum {string} */
+                    status: "pending" | "running" | "done" | "failed";
+                    error: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    createdAt: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    finishedAt: string | null;
+                } | null;
+            };
+        };
+        JobAccepted: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            jobId: string;
         };
         NinaBootstrap: {
             /** @enum {string} */

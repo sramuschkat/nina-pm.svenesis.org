@@ -17,4 +17,5 @@ export * from './plan';
 export * from './effort';
 export * from './simulation';
 export * from './sessions';
+export * from './catalog';
 export * as nina from './nina';

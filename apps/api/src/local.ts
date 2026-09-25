@@ -55,6 +55,7 @@ import {
   type SessionJobDeps,
 } from './worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
+import { catalogRefreshHandler } from './worker/catalog';
 import { reconcileJobHandler } from './worker/session-ops';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -99,6 +100,7 @@ const jobs: JobRunnerDeps = {
     session_close: sessionCloseHandler(localSessionJobs),
     session_report: sessionReportHandler(localSessionJobs),
     reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
+    catalog_refresh: catalogRefreshHandler({ db: () => Promise.resolve(db) }),
   },
 };
 const services: ApiServices = {

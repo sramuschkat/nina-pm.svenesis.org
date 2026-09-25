@@ -1,0 +1,19 @@
+{
+  "source": "OpenNGC by Mattia Verga, https://github.com/mattiaverga/OpenNGC",
+  "licence": "CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+  "version": "v20260501",
+  "published": "2026-05-01",
+  "fetchedAt": "2026-09-25",
+  "files": {
+    "NGC.csv": {
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/NGC.csv",
+      "sha256": "840fe0c9ee1332e551b2e722a0e92726cd7b157914a3d2177602832aadd3aa9e",
+      "rows": 13969
+    },
+    "addendum.csv": {
+      "url": "https://raw.githubusercontent.com/mattiaverga/OpenNGC/v20260501/database_files/addendum.csv",
+      "sha256": "1d8f0914e643ada325a5a94d88d8fefad6a4937a2f77cc34f21483af22b11983",
+      "rows": 64
+    }
+  }
+}
