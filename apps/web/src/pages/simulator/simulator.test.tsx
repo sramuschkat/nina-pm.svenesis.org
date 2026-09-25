@@ -84,6 +84,7 @@ vi.mock('../../api/client', async () => {
       patchLine: state.patchLine,
     },
     simulationApi: { save: state.save },
+    ninaApi: { instances: () => Promise.resolve({ items: [] }) },
   };
 });
 
@@ -150,8 +151,11 @@ describe('S-40 Nacht-Simulator', () => {
     expect(within(card as HTMLElement).getByText('Zeitfenster')).toBeInTheDocument();
     expect(screen.getAllByRole('row').length).toBeGreaterThan(3);
     expect(screen.getAllByText(/CDT/).length).toBeGreaterThan(0);
+    // Übernahmestatus (FA-SIM-09, AP-14c) rechts über Schritt 1.
+    expect(screen.getByText('Noch keine NINA-Instanz verbunden.')).toBeInTheDocument();
     await expectNoSeriousA11y();
-  });
+    // Worker-Rechnung (bis 5 s) plus axe: unter Volllast des Gesamtlaufs mehr als die 5 s Standard.
+  }, 20_000);
 
   it('Nachtwechsel lädt die Nacht-Tabelle ab der gewählten Nacht; Speichern schickt den Plan', async () => {
     renderPage();

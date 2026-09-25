@@ -34,6 +34,9 @@ import { ProjectListPage } from '../pages/projects/ProjectListPage';
 import { MyObjectsPage } from '../pages/projects/MyObjectsPage';
 import { DraftsPage } from '../pages/projects/DraftsPage';
 import { QueuePage } from '../pages/projects/QueuePage';
+import { DeliveryPage } from '../pages/nina/DeliveryPage';
+import { InstancesPage } from '../pages/nina/InstancesPage';
+import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { AppearanceProvider } from './theme';
 
@@ -152,7 +155,20 @@ export function createRouter() {
             { path: 'projekte/entwuerfe', element: <DraftsPage /> },
             { path: 'projekte/warteschlange', element: <QueuePage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
-            { path: 'nina/simulator', element: <SimulatorPage /> },
+            {
+              path: 'nina',
+              element: <NinaLayout />,
+              children: [
+                { index: true, element: <Navigate to={NINA_PATHS.simulator} replace /> },
+                { path: 'simulator', element: <SimulatorPage /> },
+                { path: 'ausgeliefert', element: <DeliveryPage /> },
+                {
+                  path: 'instanzen',
+                  element: <RequireAction action="nina.instance.manage" />,
+                  children: [{ index: true, element: <InstancesPage /> }],
+                },
+              ],
+            },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },
             {
               path: 'ausruestung',

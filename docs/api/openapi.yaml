@@ -5825,6 +5825,33 @@ components:
           type: string
           format: date-time
           example: 2026-09-18T13:00:00Z
+        rigName:
+          type: string
+          maxLength: 256
+        rigSettingsVersion:
+          type: integer
+          minimum: 0
+        siteTimeZone:
+          type: string
+          maxLength: 256
+        profileLocation:
+          type:
+            - object
+            - "null"
+          properties:
+            latDeg:
+              type: number
+            lonDeg:
+              type: number
+          required:
+            - latDeg
+            - lonDeg
+        profileSiteMismatch:
+          type: boolean
+        lastState:
+          $ref: "#/components/schemas/NinaInstanceState"
+        lease:
+          $ref: "#/components/schemas/RigLeaseView"
       required:
         - id
         - rigId
@@ -5837,6 +5864,102 @@ components:
         - settingsVersionFetched
         - settingsFetchedAt
         - createdAt
+        - rigName
+        - rigSettingsVersion
+        - siteTimeZone
+        - profileLocation
+        - profileSiteMismatch
+        - lastState
+        - lease
+    NinaInstanceState:
+      type:
+        - object
+        - "null"
+      properties:
+        state:
+          type: string
+          enum:
+            - running
+            - idle
+            - paused
+            - flats
+            - offline
+            - blocked
+        blockedReason:
+          type:
+            - string
+            - "null"
+          enum:
+            - lease_lost
+            - rig_busy
+            - token_invalid
+            - clock_skew
+            - plan_failed
+            - engine_incompatible
+            - tenant_locked
+            - null
+        sessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        receivedAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        mismatchCodes:
+          type: array
+          items:
+            type: string
+            enum:
+              - flip_trigger_missing
+              - flip_timing_mismatch
+              - recenter_after_flip_on
+              - rotator_unavailable
+              - rotator_range_quarter
+              - plate_solve_tolerance
+              - mount_epoch_unsupported
+              - mount_site_mismatch
+              - nina_dither_trigger_present
+              - af_time_trigger_missing
+              - af_time_mismatch
+              - filter_wheel_changed
+      required:
+        - state
+        - blockedReason
+        - sessionId
+        - receivedAtUtc
+        - mismatchCodes
+    RigLeaseView:
+      type:
+        - object
+        - "null"
+      properties:
+        activeSessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        untilUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        offlineUntilUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - activeSessionId
+        - untilUtc
+        - offlineUntilUtc
     NinaInstanceCreated:
       type: object
       properties:
@@ -5889,6 +6012,33 @@ components:
           type: string
           format: date-time
           example: 2026-09-18T13:00:00Z
+        rigName:
+          type: string
+          maxLength: 256
+        rigSettingsVersion:
+          type: integer
+          minimum: 0
+        siteTimeZone:
+          type: string
+          maxLength: 256
+        profileLocation:
+          type:
+            - object
+            - "null"
+          properties:
+            latDeg:
+              type: number
+            lonDeg:
+              type: number
+          required:
+            - latDeg
+            - lonDeg
+        profileSiteMismatch:
+          type: boolean
+        lastState:
+          $ref: "#/components/schemas/NinaInstanceState"
+        lease:
+          $ref: "#/components/schemas/RigLeaseView"
         token:
           type: string
           pattern: ^npm_[0-9A-Za-z]{43}$
@@ -5904,6 +6054,13 @@ components:
         - settingsVersionFetched
         - settingsFetchedAt
         - createdAt
+        - rigName
+        - rigSettingsVersion
+        - siteTimeZone
+        - profileLocation
+        - profileSiteMismatch
+        - lastState
+        - lease
         - token
     NinaInstanceCreate:
       type: object
@@ -5925,6 +6082,212 @@ components:
         - rigId
         - name
       additionalProperties: false
+    NinaInstanceDiagnostics:
+      type: object
+      properties:
+        instance:
+          $ref: "#/components/schemas/NinaInstanceView"
+        calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/NinaCallEntry"
+          maxItems: 20
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/NinaCallEntry"
+          maxItems: 20
+        heartbeat:
+          type:
+            - object
+            - "null"
+          additionalProperties: {}
+      required:
+        - instance
+        - calls
+        - errors
+        - heartbeat
+    NinaCallEntry:
+      type: object
+      properties:
+        atUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        method:
+          type: string
+          enum:
+            - GET
+            - POST
+            - PATCH
+            - PUT
+            - DELETE
+        route:
+          type: string
+          maxLength: 256
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        code:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        durationMs:
+          type: integer
+          minimum: 0
+      required:
+        - atUtc
+        - method
+        - route
+        - status
+        - code
+        - durationMs
+    NinaRigDelivery:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        rigName:
+          type: string
+          maxLength: 256
+        deliveryEnabled:
+          type: boolean
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        generatedAtUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        settingsVersion:
+          type: integer
+          minimum: 0
+        targetsEtag:
+          type: string
+          maxLength: 256
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NinaDeliveryItem"
+      required:
+        - rigId
+        - rigName
+        - deliveryEnabled
+        - night
+        - generatedAtUtc
+        - settingsVersion
+        - targetsEtag
+        - items
+    NinaDeliveryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          maxLength: 256
+        targetName:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        projectType:
+          type: string
+          enum:
+            - deep_sky
+            - exoplanet
+        status:
+          type: string
+          enum:
+            - planning
+            - active
+            - on_hold
+            - ready_to_process
+            - unfinished
+            - completed
+            - archived
+        priority:
+          type: integer
+        version:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        panelCount:
+          type: integer
+          minimum: 1
+        raDeg:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          exclusiveMaximum: 360
+        decDeg:
+          type:
+            - number
+            - "null"
+          minimum: -90
+          maximum: 90
+        rotationDeg:
+          type:
+            - number
+            - "null"
+          minimum: -360
+          maximum: 360
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filterId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              filterShortName:
+                type: string
+                maxLength: 256
+              ninaFilterName:
+                type:
+                  - string
+                  - "null"
+                maxLength: 256
+              planned:
+                type: integer
+                minimum: 0
+              accepted:
+                type: integer
+                minimum: 0
+            required:
+              - filterId
+              - filterShortName
+              - ninaFilterName
+              - planned
+              - accepted
+      required:
+        - id
+        - name
+        - targetName
+        - projectType
+        - status
+        - priority
+        - version
+        - updatedAt
+        - panelCount
+        - raDeg
+        - decDeg
+        - rotationDeg
+        - filters
     NinaBootstrap:
       type: object
       properties:
@@ -15584,6 +15947,50 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/nina-instances/{id}/diagnostics:
+    get:
+      summary: "Diagnose einer Instanz: letzte Aufrufe, Fehler, Versionen, letzter Heartbeat"
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.read` · FA-ADM-06, TK 7.2"
+      x-npm-action: nina.instance.read
+      x-npm-requirements:
+        - FA-ADM-06
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Diagnose
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaInstanceDiagnostics"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/rigs/{id}/lease/release:
     post:
       summary: Lease des Rigs freigeben (Übernahme durch einen Ersatzrechner)
@@ -15696,6 +16103,51 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: capture.assign_mismatch
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/delivery:
+    get:
+      summary: "An NINA ausgeliefert: Ziele, die das Plugin dieses Rigs jetzt erhält"
+      tags:
+        - nina-instances
+      description: "Aktion: `project.read` · FA-NIN-22, S-41, TK 7.2"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-NIN-22
+        - S-41
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Auslieferung
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaRigDelivery"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:

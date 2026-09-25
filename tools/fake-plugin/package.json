@@ -1,0 +1,16 @@
+{
+  "name": "@nina-pm/fake-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fake-Plugin: eine komplette NINA-Nacht gegen die Sync-API (TK 17, AP-14c)",
+  "exports": {
+    ".": "./src/night.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/shared": "workspace:*"
+  }
+}

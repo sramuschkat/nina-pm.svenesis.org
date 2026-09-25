@@ -368,3 +368,30 @@ export const approvalApi = {
     ),
   drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
 };
+
+export type NinaInstance = Schemas['NinaInstanceView'];
+export type NinaInstanceCreated = Schemas['NinaInstanceCreated'];
+export type NinaInstanceDiagnostics = Schemas['NinaInstanceDiagnostics'];
+export type NinaCallEntry = Schemas['NinaCallEntry'];
+export type NinaRigDelivery = Schemas['NinaRigDelivery'];
+export type NinaDeliveryItem = Schemas['NinaDeliveryItem'];
+
+/** NINA im Web (AP-14c): Instanzen & Tokens (S-42), Diagnose, Lease-Freigabe, Auslieferung (S-41). */
+export const ninaApi = {
+  instances: (rigId?: string) =>
+    apiFetch<{ items: NinaInstance[] }>(
+      `${V1}/nina-instances${rigId ? `?rigId=${encodeURIComponent(rigId)}` : ''}`,
+    ),
+  /** Token nur in dieser Antwort (SV-08); danach nur noch das Präfix. */
+  create: (body: { id: string; rigId: string; name: string }) =>
+    apiFetch<NinaInstanceCreated>(`${V1}/nina-instances`, json('POST', body)),
+  revoke: (id: string) => apiFetch<NinaInstance>(`${V1}/nina-instances/${id}/revoke`, json('POST')),
+  diagnostics: (id: string) =>
+    apiFetch<NinaInstanceDiagnostics>(`${V1}/nina-instances/${id}/diagnostics`),
+  releaseLease: (rigId: string) =>
+    apiFetch<{ releasedSessionId: string | null }>(
+      `${V1}/rigs/${rigId}/lease/release`,
+      json('POST'),
+    ),
+  delivery: (rigId: string) => apiFetch<NinaRigDelivery>(`${V1}/rigs/${rigId}/delivery`),
+};

@@ -25,6 +25,7 @@ import { NightChart } from '../../components/night-chart';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { SchedulerForm } from '../equipment/RigsPage';
+import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
 import { PROTOCOL_COLUMNS, cell, protocolCsv, protocolTsv, siteClock } from './protocol';
 import type { Check, SimulationRequest, SimulationResult, TargetCard } from './simulate';
@@ -241,8 +242,7 @@ export function SimulatorPage() {
             </div>
             <aside className={styles.nina} aria-label={t('simulator.nina')}>
               <h3>{t('simulator.nina')}</h3>
-              <p>{t('simulator.settingsVersion', { version: rig.settingsVersion })}</p>
-              <p className={styles.muted}>{t('simulator.ninaNone')}</p>
+              <UptakeStatus rigId={rig.id} settingsVersion={rig.settingsVersion} />
             </aside>
           </div>
         </details>

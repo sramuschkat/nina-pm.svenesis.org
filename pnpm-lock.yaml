@@ -254,6 +254,9 @@ importers:
       '@hono/node-server':
         specifier: 2.1.1
         version: 2.1.1(hono@4.13.8)
+      '@nina-pm/fake-plugin':
+        specifier: workspace:*
+        version: link:../../tools/fake-plugin
       '@types/aws-lambda':
         specifier: 8.10.163
         version: 8.10.163
@@ -459,6 +462,9 @@ importers:
       '@nina-pm/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@nina-pm/fake-plugin':
+        specifier: workspace:*
+        version: link:../fake-plugin
       '@nina-pm/infra':
         specifier: workspace:*
         version: link:../../infra
@@ -468,6 +474,12 @@ importers:
       '@nina-pm/spike-dsql':
         specifier: workspace:*
         version: link:../../spikes/dsql
+
+  tools/fake-plugin:
+    dependencies:
+      '@nina-pm/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
   tools/repo-check: {}
 

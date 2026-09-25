@@ -2,7 +2,8 @@
  * Smoke-Prüfung nach jedem prod-Deploy (TK 17, 18). Stand AP-02b: Platzhalterseite, SPA-Rewrite,
  * HTTPS-Umleitung, Header-Politiken aller Behaviors (iam.md §10), `/api/health` über CloudFront und
  * Direktaufruf der execute-api-Adresse → 403 (SV-16); seit AP-04a Test-Login → 404 und der
- * Auth-Redirect zu Discord. Die DB-Erreichbarkeit über den Bootstrap folgt mit AP-17.
+ * Auth-Redirect zu Discord. Seit AP-14c die **DB-Erreichbarkeit** über `GET /api/nina/v1/bootstrap` mit
+ * dem Test-Rig-Token (SV-07, H-24); das Token erscheint nie in einer Meldung.
  */
 export interface SmokeResult {
   readonly name: string;
@@ -56,7 +57,12 @@ export function headerProblems(kind: 'npm-html' | 'npm-api-static', headers: Hea
 export interface SmokeOptions {
   /** execute-api-Adresse der HTTP API (Ausgabe `ApiEndpoint` von NinaPm-Api). */
   readonly executeApiUrl?: string;
+  /** Sync-Token der Test-Instanz (`TEST_RIG_TOKEN`, H-24) für die DB-Erreichbarkeit. */
+  readonly testRigToken?: string;
 }
+
+export const DB_CHECK_NAME =
+  'DB-Erreichbarkeit: GET /api/nina/v1/bootstrap mit Test-Rig-Token → 200';
 
 export async function runSmoke(
   baseUrl: string,
@@ -141,6 +147,22 @@ export async function runSmoke(
       name: 'Direktaufruf der execute-api-Adresse → 403',
       ok: false,
       detail: 'execute-api-Adresse unbekannt',
+    });
+  }
+  if (options.testRigToken) {
+    const token = options.testRigToken;
+    await check(DB_CHECK_NAME, async () => {
+      const res = await fetchImpl(`${base}/api/nina/v1/bootstrap`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (res.status !== 200) {
+        const body = (await res.json().catch(() => ({}))) as { code?: unknown };
+        return [`Status ${res.status}${typeof body.code === 'string' ? ` (${body.code})` : ''}`];
+      }
+      const body = (await res.json()) as { apiVersion?: unknown; rig?: { id?: unknown } };
+      const problems = body.apiVersion === '1' ? [] : ['apiVersion fehlt'];
+      if (typeof body.rig?.id !== 'string') problems.push('Rig fehlt');
+      return [...problems, ...headerProblems('npm-api-static', res.headers)];
     });
   }
   await check('HTTP wird auf HTTPS umgeleitet', async () => {
