@@ -148,9 +148,11 @@ export function buildPlanInput(
       dueDate: p.dueDate,
       panels: [...p.panels]
         .sort((a, b) => a.panelIndex - b.panelIndex)
-        .map((panel) => ({
+        // Position statt Datenbankindex: nach Löschungen hat `panel_index` Lücken, die NINA-Nummer ist
+        // aber die Reihenfolge 1…n (geometry.md §2.1 NT-32, AP-22). Bei lückenlosen Indizes identisch.
+        .map((panel, position) => ({
           id: panel.id,
-          index: panel.panelIndex,
+          index: position,
           raDeg: panel.raDeg,
           decDeg: panel.decDeg,
           rotationDeg: panel.rotationDeg,
@@ -164,7 +166,8 @@ export function buildPlanInput(
               planned: l.plannedCount,
               accepted: l.counters.accepted,
               pending: options.pendingByLine?.[l.id] ?? 0,
-              enabled: l.enabled,
+              // Inaktive Panels (AP-22) planen nicht – ihre Zeilen zählen wie deaktivierte.
+              enabled: l.enabled && panel.enabled !== false,
               moonProfileId: lineProfile(l.moonMode, l.moonProfileId),
               gain: l.gain,
               offset: l.offsetAdu,

@@ -70,6 +70,7 @@ import {
 import { CatalogImage } from '../catalog/CatalogImage';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
+import { PanelList } from './PanelList';
 import { ProjectTabs } from './ProjectTabs';
 import { SubmitPanel } from './SubmitPanel';
 import styles from './projects.module.css';
@@ -123,6 +124,17 @@ export function ProjectEditorPage() {
   const raParam = coordParam('ra', 0, 359.999999);
   const decParam = coordParam('dec', -90, 90);
   const rotParam = coordParam('rot', 0, 359.99);
+  // Mosaik aus der Sternkarte (AP-22): entsteht nach dem ersten Speichern über die Engine.
+  const colsParam = coordParam('h', 1, 16);
+  const rowsParam = coordParam('v', 1, 16);
+  const pendingMosaic =
+    colsParam !== null && rowsParam !== null && colsParam * rowsParam > 1
+      ? {
+          cols: Math.round(colsParam),
+          rows: Math.round(rowsParam),
+          overlapPct: coordParam('ueberlappung', 0, 60) ?? 20,
+        }
+      : null;
   const picked = useQuery({
     queryKey: ['dso', 'pick', objekt],
     queryFn: () => catalogApi.search({ q: objekt ?? '', limit: 5 }),
@@ -170,6 +182,7 @@ export function ProjectEditorPage() {
   return (
     <Editor
       key={draftKey}
+      pendingMosaic={pendingMosaic}
       saved={isNew ? null : (project.data ?? null)}
       draft={draft.value}
       setDraft={(value) => setDraft({ for: draftKey, value })}
@@ -209,6 +222,8 @@ function catalogPick(o: DsoView, t: (key: string) => string): CatalogPick {
 
 interface EditorProps {
   saved: ProjectView | null;
+  /** Mosaik aus der Sternkarte, das nach dem Anlegen übernommen wird (AP-22). */
+  pendingMosaic?: { cols: number; rows: number; overlapPct: number } | null;
   draft: ProjectDraft;
   setDraft: (d: ProjectDraft) => void;
   onSaved: (view: ProjectView) => void;
@@ -217,7 +232,16 @@ interface EditorProps {
   onReset: () => Promise<unknown>;
 }
 
-function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }: EditorProps) {
+function Editor({
+  saved,
+  pendingMosaic = null,
+  draft,
+  setDraft,
+  onSaved,
+  onChange,
+  onReload,
+  onReset,
+}: EditorProps) {
   const { t } = useTranslation();
   const num = useNumber();
   const navigate = useNavigate();
@@ -239,6 +263,7 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
   const canUpdate = useCan('project.update', resource);
   const canDelete = useCan('project.delete', resource);
   const canStatus = useCan('project.status');
+  const canRigSettings = useCan('rig.settings.write');
   const canFavorite = useCan('me.favorites');
   const canSubmit = useCan('project.submit', resource);
   const canWithdraw = useCan('project.withdraw', resource);
@@ -317,7 +342,20 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
       if (!saved) {
         const result = validate(ProjectCreate, { id: newId(), ...draftBody(draft) });
         if (!result.ok) throw new FormErrors(result.errors);
-        return projectsApi.create(result.data as object & { id: string });
+        const created = await projectsApi.create(result.data as object & { id: string });
+        if (pendingMosaic && created.raDeg !== null && created.decDeg !== null && created.rigId)
+          return projectsApi.applyMosaic(
+            created.id,
+            {
+              raDeg: created.raDeg,
+              decDeg: created.decDeg,
+              rotationDeg: created.rotationDeg,
+              ...pendingMosaic,
+              copyPlan: true,
+            },
+            created.version,
+          );
+        return created;
       }
       const body = { ...changes, ...(acceptRigConflicts ? { acceptRigConflicts: true } : {}) };
       const result = validate(ProjectPatch, body);
@@ -674,6 +712,14 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
               <p>{fov}</p>
             </div>
           </div>
+          {pendingMosaic && !saved ? (
+            <p className={styles.muted} role="note">
+              {t('projectEditor.pendingMosaic', {
+                cols: pendingMosaic.cols,
+                rows: pendingMosaic.rows,
+              })}
+            </p>
+          ) : null}
           <div className={styles.skyMapRow}>
             <p className={styles.muted}>{t('projectEditor.coordinatesSearchLater')}</p>
             {draft.raDeg !== null && draft.decDeg !== null ? (
@@ -904,6 +950,17 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
       </form>
 
       <ProjectTabs projectId={saved?.id ?? null} resource={resource} draft={draft} site={site} />
+
+      {saved ? (
+        <PanelList
+          project={saved}
+          rig={rig}
+          canEdit={canEdit}
+          canRigSettings={canRigSettings}
+          onChange={onChange}
+          onReload={onReload}
+        />
+      ) : null}
 
       {saved ? (
         <ExposurePlan

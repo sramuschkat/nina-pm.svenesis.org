@@ -16,9 +16,11 @@ import {
   lineCounters,
   LineDuplicate,
   LinePatch,
+  MosaicApply,
   NoteCreate,
   NoteView,
   PanelCreate,
+  PanelOrder,
   PanelPatch,
   PriorityChange,
   ProblemError,
@@ -38,6 +40,8 @@ import {
 } from '@nina-pm/shared';
 import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
+import { mosaicPanels } from '@nina-pm/engine';
+import { imageScale } from '@nina-pm/shared';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
@@ -90,7 +94,10 @@ export function effortView(p: {
 
 export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
   const p = d.project;
-  const allLines = d.panels.flatMap((panel) => panel.lines);
+  // Zeilen inaktiver Panels (AP-22) zählen für Fortschritt und Soll wie deaktivierte Zeilen.
+  const allLines = d.panels.flatMap((panel) =>
+    panel.enabled === false ? panel.lines.map((l) => ({ ...l, enabled: false })) : panel.lines,
+  );
   const progress = projectProgress(allLines, d.overshootPct);
   const active = allLines.filter((l) => l.enabled);
   return {
@@ -141,6 +148,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
       plannedS: active.reduce((s, l) => s + l.plannedCount * l.exposureS, 0),
       integrationS: allLines.reduce((s, l) => s + l.integrationS, 0),
     },
+    mosaic: { cols: p.panelColumns, rows: p.panelRows, overlapPct: p.panelOverlapPct },
     panels: d.panels.map((panel) => ({
       id: panel.id,
       panelIndex: panel.panelIndex,
@@ -148,6 +156,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
       raDeg: panel.raDeg,
       decDeg: panel.decDeg,
       rotationDeg: panel.rotationDeg,
+      enabled: panel.enabled !== false,
       notes: panel.notes,
       lines: panel.lines.map((l) => ({
         id: l.id,
@@ -349,6 +358,33 @@ export const deletePanelRoute = defineRoute(
   },
 );
 
+export const reorderPanelsRoute = defineRoute(
+  { action: 'project.update', requirements: ['FA-PRJ-06'] },
+  {
+    method: 'put',
+    path: `${BASE}/projects/{id}/panels/order`,
+    summary: 'Panels umsortieren (Reihenfolge = NINA-Nummer)',
+    tags: ['projects'],
+    request: { params: idParam, headers: ifMatch, body: { ...json(PanelOrder), required: true } },
+    responses: { 200: { description: 'Umsortiert', ...json(ProjectView) }, ...errors },
+  },
+);
+
+export const applyMosaicRoute = defineRoute(
+  {
+    action: 'project.update',
+    requirements: ['FA-PRJ-06', 'FA-FRM-06', 'FA-FRM-12', 'NT-30', 'NT-32'],
+  },
+  {
+    method: 'post',
+    path: `${BASE}/projects/{id}/mosaic`,
+    summary: 'Mosaik aus der Sternkarte übernehmen (Panels über die Engine, geometry.md §2)',
+    tags: ['projects'],
+    request: { params: idParam, headers: ifMatch, body: { ...json(MosaicApply), required: true } },
+    responses: { 200: { description: 'Übernommen', ...json(ProjectView) }, ...errors },
+  },
+);
+
 export const addLineRoute = defineRoute(
   { action: 'project.update', requirements: ['FA-PRJ-05', 'FA-PRJ-20', 'FA-PRJ-22', 'NT-38'] },
   {
@@ -544,6 +580,8 @@ export const PROJECT_ROUTES = [
   addPanelRoute,
   patchPanelRoute,
   deletePanelRoute,
+  reorderPanelsRoute,
+  applyMosaicRoute,
   addLineRoute,
   patchLineRoute,
   deleteLineRoute,
@@ -710,6 +748,73 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     const result = await repo.deletePanel(id, panelId, svc.now());
     await effort(id);
     return c.json(result, 200);
+  });
+
+  app.openapi(reorderPanelsRoute, async (c) => {
+    const { repo, auth, svc, effort } = await ctx(c);
+    const { id } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.update');
+    const result = projectView(
+      await repo.reorderPanels(
+        id,
+        c.req.valid('json').panelIds,
+        svc.now(),
+        expectedVersion(c.req.valid('header')['if-match']),
+      ),
+    );
+    await effort(id);
+    return c.json(result, 200);
+  });
+
+  app.openapi(applyMosaicRoute, async (c) => {
+    const { repo, auth, svc, effort } = await ctx(c);
+    const { id } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.update');
+    const current = await repo.detail(id);
+    if (!current) throw new ProblemError('resource.not_found');
+    const body = c.req.valid('json');
+    const { tenant } = requireTenant(c);
+    const eq = svc.repositories(tenant).equipment();
+    const rigId = current.project.rigId ?? current.project.requestedRigId;
+    const rig = rigId ? await eq.rig(rigId) : undefined;
+    if (!rig)
+      throw new ProblemError('validation.failed', [
+        { path: 'rigId', message: 'Mosaik braucht ein Rig (Bildfeld)' },
+      ]);
+    const [telescope, camera] = await Promise.all([
+      eq.telescope(rig.telescopeId),
+      eq.camera(rig.cameraId),
+    ]);
+    if (!telescope || !camera)
+      throw new ProblemError('validation.failed', [
+        { path: 'rigId', message: 'Rig ohne Teleskop oder Kamera' },
+      ]);
+    const fov = imageScale({ ...telescope, ...camera });
+    // Ohne Rotator gilt der Kamerawinkel des Rigs für Raster und Panels (NT-30).
+    const paDeg = rig.hasRotator ? body.rotationDeg : (rig.defaultRotationDeg ?? 0);
+    const panels = mosaicPanels({
+      raDeg: body.raDeg,
+      decDeg: body.decDeg,
+      paDeg,
+      cols: body.cols,
+      rows: body.rows,
+      overlapPct: body.overlapPct,
+      fovWidthDeg: fov.fovWidthDeg,
+      fovHeightDeg: fov.fovHeightDeg,
+    });
+    const result = await repo.applyMosaic(
+      id,
+      {
+        ...body,
+        rotationDeg: paDeg,
+        panels: panels.map((p) => ({ n: p.n, raDeg: p.raDeg, decDeg: p.decDeg, paDeg: p.paDeg })),
+      },
+      svc.now(),
+      expectedVersion(c.req.valid('header')['if-match']),
+    );
+    await effort(id);
+    c.header('etag', `"${String(result.project.version)}"`);
+    return c.json(projectView(result), 200);
   });
 
   app.openapi(addLineRoute, async (c) => {

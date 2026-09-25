@@ -170,6 +170,7 @@ export function skyMapHref(target: {
   fov?: number;
   cols?: number;
   rows?: number;
+  overlap?: number;
   project?: string;
   object?: string;
 }): string {
@@ -184,6 +185,7 @@ export function skyMapHref(target: {
     rig: target.rig ?? null,
     cols: target.cols ?? 1,
     rows: target.rows ?? 1,
+    overlap: target.overlap ?? DEFAULT_STATE.overlap,
   };
   const extra: Record<string, string> = {};
   if (target.project) extra.projekt = target.project;

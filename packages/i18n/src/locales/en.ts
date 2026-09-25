@@ -822,6 +822,8 @@ export const en: Messages = {
     target: 'Target',
     conditions: 'Conditions',
     openSkyMap: 'Open in the sky map',
+    pendingMosaic:
+      'Mosaic {{cols}} × {{rows}} from the sky map: the panels are created on saving (rig and coordinates required).',
     coordinatesSearchLater:
       'Frame and rotation can be aligned in the sky map and applied from there.',
     preview: 'Preview',
@@ -907,6 +909,37 @@ export const en: Messages = {
       comment: 'Comment',
       approval: 'Approval: {{action}}',
       change: '{{entity}}: {{action}}',
+    },
+    panelList: {
+      title: 'Panels',
+      single: 'Single field',
+      mosaic: 'Mosaic {{cols}} × {{rows}} · {{overlap}} % overlap',
+      editInSkyMap: 'Edit mosaic in the sky map',
+      independent: 'Plan panels separately (setting of rig {{rig}})',
+      col: {
+        number: 'No.',
+        label: 'Label',
+        ra: 'RA (J2000)',
+        dec: 'Dec (J2000)',
+        rotation: 'Rotation (°)',
+        enabled: 'Active',
+        actions: 'Actions',
+      },
+      labelOf: 'Label of panel {{n}}',
+      raOf: 'RA of panel {{n}}',
+      decOf: 'Dec of panel {{n}}',
+      rotationOf: 'Rotation of panel {{n}} (°)',
+      enabledOf: 'Panel {{n}} active',
+      up: 'Move panel {{n}} up',
+      down: 'Move panel {{n}} down',
+      delete: 'Delete “{{label}}”',
+      add: 'Add panel',
+      deleteTitle: 'Delete panel “{{label}}”?',
+      deleteSoft:
+        'The panel has captures: it is hidden and no longer planned; captures, counters and history stay. It cannot be restored on its own.',
+      deleteHard:
+        'The panel has no captures and is deleted for good together with its exposure plan.',
+      deleteConfirm: 'Delete',
     },
     plan: {
       title: 'Exposure plan',
@@ -2071,7 +2104,10 @@ export const en: Messages = {
       'Panel centres and rotation after geometry.md §2; saving them as panels follows with AP-22.',
     newProject: 'New project',
     applyToProject: 'Apply to project',
-    applied: 'Coordinates and rotation applied to the project.',
+    applied: 'Mosaic, coordinates and rotation applied to the project.',
+    applyConfirmTitle: 'Apply the mosaic to “{{name}}”?',
+    applyConfirm:
+      '{{count}} panels are removed; {{soft}} of them have captures and are only hidden. The remaining panels get the new centres and keep their progress.',
     fullscreen: 'Full screen',
     exitFullscreen: 'Exit full screen',
     sidebarLabel: 'Map layers',

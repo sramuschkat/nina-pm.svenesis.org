@@ -272,6 +272,30 @@ export const projectsApi = {
     apiFetch<ProjectView>(`${V1}/projects/${id}/panels/${panelId}`, json('PATCH', body)),
   deletePanel: (id: string, panelId: string) =>
     apiFetch<{ soft: boolean }>(`${V1}/projects/${id}/panels/${panelId}`, json('DELETE')),
+  /** Panels umsortieren (FA-PRJ-06): alle aktiven Panels in neuer Reihenfolge (NINA-Nummer). */
+  reorderPanels: (id: string, panelIds: string[], version: number) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/panels/order`, {
+      ...json('PUT', { panelIds }),
+      ...ifMatch(version),
+    }),
+  /** Mosaik aus der Sternkarte übernehmen (AP-22): Panels rechnet der Server mit der Engine. */
+  applyMosaic: (
+    id: string,
+    body: {
+      raDeg: number;
+      decDeg: number;
+      rotationDeg: number;
+      cols: number;
+      rows: number;
+      overlapPct: number;
+      copyPlan: boolean;
+    },
+    version: number,
+  ) =>
+    apiFetch<ProjectView>(`${V1}/projects/${id}/mosaic`, {
+      ...json('POST', body),
+      ...ifMatch(version),
+    }),
   addLine: (id: string, body: object & { id: string; panelId: string }) =>
     apiFetch<ProjectView>(`${V1}/projects/${id}/lines`, json('POST', body)),
   patchLine: (id: string, lineId: string, body: object) =>

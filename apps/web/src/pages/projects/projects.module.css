@@ -701,3 +701,30 @@ tr[data-selected='true'] td {
 .skyMapRow p {
   margin: 0;
 }
+/* Panel-Liste (S-31, AP-22) */
+.panelList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.panelListHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.panelListHead h2 {
+  margin: 0;
+}
+.inactiveRow td {
+  color: var(--npm-text-light);
+}
+.numberInput {
+  composes: input;
+  width: 6rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}

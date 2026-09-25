@@ -387,7 +387,14 @@ export class ProjectRepository extends TenantRepo {
     trx: Tx,
     projectId: string,
     panelIndex: number,
-    p: { label: string; raDeg: number; decDeg: number; rotationDeg: number; notes: string },
+    p: {
+      label: string;
+      raDeg: number;
+      decDeg: number;
+      rotationDeg: number;
+      notes: string;
+      enabled?: boolean;
+    },
     id?: string,
   ) {
     await trx
@@ -673,6 +680,7 @@ export class ProjectRepository extends TenantRepo {
       decDeg: number;
       rotationDeg: number;
       notes: string;
+      enabled?: boolean;
     },
     now: Date,
   ): Promise<ProjectDetail> {
@@ -733,6 +741,7 @@ export class ProjectRepository extends TenantRepo {
       decDeg: number;
       rotationDeg: number;
       notes: string;
+      enabled: boolean;
     }>,
     now: Date,
   ): Promise<ProjectDetail> {
@@ -765,39 +774,7 @@ export class ProjectRepository extends TenantRepo {
         if (!p) throw notFound();
         await this.panel(trx, projectId, panelId);
         const info = await this.captureInfo(trx, projectId);
-        const lines = await trx
-          .selectFrom('exposureLine')
-          .select(['id', 'deletedAt'])
-          .where('tenantId', '=', this.tenantId)
-          .where('panelId', '=', panelId)
-          .execute();
-        const soft = lines.some((l) => (info.get(l.id)?.captures ?? 0) > 0);
-        if (soft) {
-          await trx
-            .updateTable('projectPanel')
-            .set({ deletedAt: now })
-            .where('tenantId', '=', this.tenantId)
-            .where('id', '=', panelId)
-            .execute();
-          await trx
-            .updateTable('exposureLine')
-            .set({ deletedAt: now, updatedAt: now })
-            .where('tenantId', '=', this.tenantId)
-            .where('panelId', '=', panelId)
-            .where('deletedAt', 'is', null)
-            .execute();
-        } else {
-          await trx
-            .deleteFrom('exposureLine')
-            .where('tenantId', '=', this.tenantId)
-            .where('panelId', '=', panelId)
-            .execute();
-          await trx
-            .deleteFrom('projectPanel')
-            .where('tenantId', '=', this.tenantId)
-            .where('id', '=', panelId)
-            .execute();
-        }
+        const soft = await this.removePanel(trx, panelId, info, now);
         await this.touch(trx, p, now);
         await this.log(
           trx,
@@ -807,6 +784,260 @@ export class ProjectRepository extends TenantRepo {
           now,
         );
         return { soft };
+      },
+      [{ table: 'project', id: projectId }],
+    );
+  }
+
+  /** Panel entfernen: mit Aufnahmen weich (samt Zeilen), sonst endgültig; liefert `soft`. */
+  private async removePanel(
+    trx: Tx,
+    panelId: string,
+    info: Awaited<ReturnType<ProjectRepository['captureInfo']>>,
+    now: Date,
+  ): Promise<boolean> {
+    const lines = await trx
+      .selectFrom('exposureLine')
+      .select(['id', 'deletedAt'])
+      .where('tenantId', '=', this.tenantId)
+      .where('panelId', '=', panelId)
+      .execute();
+    const soft = lines.some((l) => (info.get(l.id)?.captures ?? 0) > 0);
+    if (soft) {
+      await trx
+        .updateTable('projectPanel')
+        .set({ deletedAt: now })
+        .where('tenantId', '=', this.tenantId)
+        .where('id', '=', panelId)
+        .execute();
+      await trx
+        .updateTable('exposureLine')
+        .set({ deletedAt: now, updatedAt: now })
+        .where('tenantId', '=', this.tenantId)
+        .where('panelId', '=', panelId)
+        .where('deletedAt', 'is', null)
+        .execute();
+    } else {
+      await trx
+        .deleteFrom('exposureLine')
+        .where('tenantId', '=', this.tenantId)
+        .where('panelId', '=', panelId)
+        .execute();
+      await trx
+        .deleteFrom('projectPanel')
+        .where('tenantId', '=', this.tenantId)
+        .where('id', '=', panelId)
+        .execute();
+    }
+    return soft;
+  }
+
+  /**
+   * Panels umsortieren (FA-PRJ-06): `panelIds` = alle aktiven Panels in neuer Reihenfolge (NINA-Nummer
+   * 1…n). Die bisherigen Indizes werden neu verteilt – weich gelöschte Panels behalten ihren Index
+   * (`UNIQUE (project_id, panel_index)`); zweistufig über negative Zwischenwerte.
+   */
+  reorderPanels(
+    projectId: string,
+    panelIds: readonly string[],
+    now: Date,
+    expectedVersion?: number,
+  ): Promise<ProjectDetail> {
+    return this.tx(
+      async (trx) => {
+        const p = await this.row(projectId, trx);
+        if (!p) throw notFound();
+        if (expectedVersion !== undefined && expectedVersion !== p.version)
+          throw new ProblemError('resource.version_conflict');
+        const active = await this.panelsOf(trx, projectId);
+        const known = new Set(active.map((x) => x.id));
+        if (
+          panelIds.length !== active.length ||
+          new Set(panelIds).size !== panelIds.length ||
+          panelIds.some((id) => !known.has(id))
+        )
+          throw invalid([
+            { path: 'panelIds', message: 'alle aktiven Panels genau einmal angeben' },
+          ]);
+        const indexes = active.map((x) => x.panelIndex).sort((a, b) => a - b);
+        for (const [k, id] of panelIds.entries())
+          await trx
+            .updateTable('projectPanel')
+            .set({ panelIndex: -(k + 1) })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', id)
+            .execute();
+        for (const [k, id] of panelIds.entries())
+          await trx
+            .updateTable('projectPanel')
+            .set({ panelIndex: indexes[k] as number })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', id)
+            .execute();
+        await this.touch(trx, p, now);
+        await this.log(
+          trx,
+          projectId,
+          'update',
+          { target: 'panel', action: 'reorder', panelIds },
+          now,
+        );
+        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
+      },
+      [{ table: 'project', id: projectId }],
+    );
+  }
+
+  /**
+   * Mosaik übernehmen (AP-22, FA-FRM-06/12): `panels` sind die mit der Engine gerechneten Panels in
+   * NINA-Reihenfolge (geometry.md §2, NT-32). Bestehende aktive Panels werden der Reihe nach auf die neuen
+   * Zentren gesetzt und behalten Zeilen und Fortschritt (FA-PRJ-06); fehlende entstehen neu – mit
+   * `copyPlan` mit den Zeilen von Panel 1 (Zähler 0) –, überzählige werden entfernt (mit Aufnahmen weich).
+   */
+  applyMosaic(
+    projectId: string,
+    input: {
+      readonly raDeg: number;
+      readonly decDeg: number;
+      readonly rotationDeg: number;
+      readonly cols: number;
+      readonly rows: number;
+      readonly overlapPct: number;
+      readonly copyPlan: boolean;
+      readonly panels: readonly {
+        readonly n: number;
+        readonly raDeg: number;
+        readonly decDeg: number;
+        readonly paDeg: number;
+      }[];
+    },
+    now: Date,
+    expectedVersion?: number,
+  ): Promise<ProjectDetail & { removed: { soft: number; hard: number } }> {
+    return this.tx(
+      async (trx) => {
+        const p = await this.row(projectId, trx);
+        if (!p) throw notFound();
+        if (expectedVersion !== undefined && expectedVersion !== p.version)
+          throw new ProblemError('resource.version_conflict');
+        const active = await this.panelsOf(trx, projectId);
+        const grid = [...input.panels].sort((a, b) => a.n - b.n);
+        const single = grid.length === 1;
+        const label = (n: number, current?: string) =>
+          single ? (current ?? 'Main') : `Panel ${String(n)}`;
+        for (const [k, g] of grid.slice(0, active.length).entries()) {
+          const panel = active[k] as PanelRow;
+          await trx
+            .updateTable('projectPanel')
+            .set({
+              raDeg: g.raDeg,
+              decDeg: g.decDeg,
+              rotationDeg: g.paDeg,
+              label: label(g.n, panel.label),
+            })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', panel.id)
+            .execute();
+        }
+        if (grid.length > active.length) {
+          const max = await trx
+            .selectFrom('projectPanel')
+            .select((eb) => eb.fn.max('panelIndex').as('max'))
+            .where('tenantId', '=', this.tenantId)
+            .where('projectId', '=', projectId)
+            .executeTakeFirst();
+          let next = max?.max === null || max?.max === undefined ? 0 : Number(max.max) + 1;
+          const source = active[0];
+          const sourceLines =
+            input.copyPlan && source
+              ? await trx
+                  .selectFrom('exposureLine')
+                  .selectAll()
+                  .where('tenantId', '=', this.tenantId)
+                  .where('panelId', '=', source.id)
+                  .where('deletedAt', 'is', null)
+                  .orderBy('orderIndex')
+                  .execute()
+              : [];
+          for (const g of grid.slice(active.length)) {
+            const inserted = await trx
+              .insertInto('projectPanel')
+              .values({
+                tenantId: this.tenantId,
+                projectId,
+                panelIndex: next,
+                label: label(g.n),
+                raDeg: g.raDeg,
+                decDeg: g.decDeg,
+                rotationDeg: g.paDeg,
+                notes: '',
+                enabled: true,
+              })
+              .returning('id')
+              .executeTakeFirstOrThrow();
+            next += 1;
+            if (sourceLines.length > 0)
+              await trx
+                .insertInto('exposureLine')
+                .values(
+                  sourceLines.map((l) => ({
+                    tenantId: this.tenantId,
+                    projectId,
+                    panelId: inserted.id,
+                    filterId: l.filterId,
+                    filterShortName: l.filterShortName,
+                    exposureS: l.exposureS,
+                    plannedCount: l.plannedCount,
+                    gain: l.gain,
+                    offsetAdu: l.offsetAdu,
+                    binning: l.binning,
+                    readoutMode: l.readoutMode,
+                    moonMode: l.moonMode,
+                    moonProfileId: l.moonProfileId,
+                    enabled: l.enabled,
+                    orderIndex: l.orderIndex,
+                    notes: l.notes,
+                    createdAt: now,
+                    updatedAt: now,
+                  })),
+                )
+                .execute();
+          }
+        }
+        const removed = { soft: 0, hard: 0 };
+        if (active.length > grid.length) {
+          const info = await this.captureInfo(trx, projectId);
+          for (const panel of active.slice(grid.length)) {
+            if (await this.removePanel(trx, panel.id, info, now)) removed.soft += 1;
+            else removed.hard += 1;
+          }
+        }
+        await this.touch(trx, p, now, {
+          raDeg: input.raDeg,
+          decDeg: input.decDeg,
+          rotationDeg: input.rotationDeg,
+          panelColumns: input.cols,
+          panelRows: input.rows,
+          panelOverlapPct: input.overlapPct,
+        });
+        await this.log(
+          trx,
+          projectId,
+          'update',
+          {
+            target: 'mosaic',
+            cols: input.cols,
+            rows: input.rows,
+            overlapPct: input.overlapPct,
+            panels: grid.length,
+            removed,
+          },
+          now,
+        );
+        return {
+          ...(await this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow)),
+          removed,
+        };
       },
       [{ table: 'project', id: projectId }],
     );

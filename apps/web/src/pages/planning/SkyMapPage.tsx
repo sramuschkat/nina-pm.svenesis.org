@@ -21,6 +21,7 @@ import {
   type RigView,
 } from '../../api/client';
 import { useCan } from '../../auth';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
@@ -276,9 +277,9 @@ export function SkyMapPage() {
               paDeg: p.rotationDeg,
               fovWidthDeg: r?.derived.fovWidthDeg ?? 1,
               fovHeightDeg: r?.derived.fovHeightDeg ?? 1,
-              cols: 1,
-              rows: 1,
-              overlapPct: 0,
+              cols: p.mosaic.cols,
+              rows: p.mosaic.rows,
+              overlapPct: p.mosaic.overlapPct,
             },
           };
         }),
@@ -317,22 +318,45 @@ export function SkyMapPage() {
       ? { createdBy: project.data.createdBy, approvalStatus: project.data.approvalStatus }
       : undefined,
   );
+  // Raster des Projekts übernehmen, wenn die URL keins vorgibt (der Link aus dem Editor gibt es mit).
+  const projectId = project.data?.id;
+  useEffect(() => {
+    const m = project.data?.mosaic;
+    if (m && !params.has('h') && !params.has('v') && m.cols * m.rows > 1)
+      update({ cols: m.cols, rows: m.rows, overlap: m.overlapPct });
+    // Nur einmal je geladenem Projekt.
+  }, [projectId]);
   const apply = useMutation({
     mutationFn: () => {
       const p = project.data;
       if (!p) throw new Error('kein Projekt');
-      return projectsApi.patch(
+      // Mosaik samt Mitte und Rotation; die Panels rechnet der Server mit der Engine (AP-22).
+      return projectsApi.applyMosaic(
         p.id,
         {
           raDeg: Math.round(state.fra * 1e6) / 1e6,
           decDeg: Math.round(state.fdec * 1e6) / 1e6,
           rotationDeg: Math.round(((frame?.paDeg ?? 0) % 360) * 100) / 100,
+          cols: state.cols,
+          rows: state.rows,
+          overlapPct: state.overlap,
+          copyPlan: true,
         },
         p.version,
       );
     },
     onSuccess: (view) => client.setQueryData(['projects', view.id], view),
   });
+  // Fallen Panels weg, fragt die Karte vorher nach (mit Aufnahmen weich gelöscht, FA-PRJ-06).
+  const [confirmApply, setConfirmApply] = useState(false);
+  const removedPanels = (project.data?.panels ?? []).slice(state.cols * state.rows);
+  const removedWithCaptures = removedPanels.filter((p) =>
+    p.lines.some((l) => l.hasCaptures),
+  ).length;
+  const startApply = () => {
+    if (removedPanels.length > 0) setConfirmApply(true);
+    else apply.mutate();
+  };
   const pin = useMutation({
     mutationFn: () => {
       if (!rig) throw new Error('kein Rig');
@@ -356,6 +380,11 @@ export function SkyMapPage() {
     });
     if (rig) q.set('rig', rig.id);
     if (objectParam) q.set('objekt', objectParam);
+    if (state.cols * state.rows > 1) {
+      q.set('h', String(state.cols));
+      q.set('v', String(state.rows));
+      q.set('ueberlappung', String(state.overlap));
+    }
     return `/projekte/neu?${q.toString()}`;
   })();
 
@@ -665,7 +694,7 @@ export function SkyMapPage() {
                 type="button"
                 className={styles.button}
                 disabled={apply.isPending}
-                onClick={() => apply.mutate()}
+                onClick={startApply}
               >
                 <actionIcons.save size={ICON_SIZE.button} aria-hidden />
                 {t('skymap.applyToProject')}
@@ -873,6 +902,21 @@ export function SkyMapPage() {
           </section>
         </div>
 
+        <ConfirmDialog
+          open={confirmApply}
+          title={t('skymap.applyConfirmTitle', { name: project.data?.name ?? '' })}
+          consequence={t('skymap.applyConfirm', {
+            count: removedPanels.length,
+            soft: removedWithCaptures,
+          })}
+          confirmLabel={t('skymap.applyToProject')}
+          variant="danger"
+          onConfirm={() => {
+            setConfirmApply(false);
+            apply.mutate();
+          }}
+          onCancel={() => setConfirmApply(false)}
+        />
         <Sidebar
           state={state}
           update={update}

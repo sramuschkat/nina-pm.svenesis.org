@@ -388,6 +388,8 @@ export interface ProjectPanelTable {
   rotationDeg: Generated<number>;
   notes: Generated<string>;
   deletedAt: Timestamp | null;
+  /** Migration 0007: nachträglich, nullbar; NULL = aktiv (AP-22). */
+  enabled: Generated<boolean | null>;
 }
 
 export interface ExposureLineTable {

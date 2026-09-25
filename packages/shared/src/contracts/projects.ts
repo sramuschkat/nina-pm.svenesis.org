@@ -141,6 +141,8 @@ export const PanelInput = z
     decDeg: z.number().min(-90).max(90),
     rotationDeg: z.number().min(0).lt(360).default(0),
     notes: text(4000).default(''),
+    /** Inaktive Panels plant weder der Simulator noch NINA (AP-22); Fortschritt bleibt. */
+    enabled: z.boolean().default(true),
   })
   .strict();
 export const PanelCreate = PanelInput.extend({ id: Uuid }).meta({ id: 'PanelCreate' });
@@ -151,10 +153,38 @@ export const PanelPatch = z
     decDeg: z.number().min(-90).max(90),
     rotationDeg: z.number().min(0).lt(360),
     notes: text(4000),
+    enabled: z.boolean(),
   })
   .partial()
   .strict()
   .meta({ id: 'PanelPatch' });
+
+/** Panels umsortieren (FA-PRJ-06): alle aktiven Panel-IDs in der neuen Reihenfolge (= NINA-Nummer 1…n). */
+export const PanelOrder = z
+  .object({ panelIds: z.array(Uuid).min(1).max(256) })
+  .strict()
+  .meta({ id: 'PanelOrder' });
+
+/**
+ * Mosaik aus der Sternkarte übernehmen (AP-22, FA-FRM-06/12): Mitte, Rotation und Raster; die Panelzentren
+ * und -winkel rechnet der Server mit der Engine (`mosaicPanels`, geometry.md §2) aus dem Bildfeld des
+ * Projekt-Rigs – ohne Rotator mit dem Kamerawinkel (NT-30). Bestehende Panels behalten in NINA-Reihenfolge
+ * ihren Fortschritt; neue erhalten auf Wunsch den Belichtungsplan von Panel 1; überzählige werden gelöscht
+ * (mit Aufnahmen weich, FA-PRJ-06).
+ */
+export const MosaicApply = z
+  .object({
+    raDeg: z.number().min(0).lt(360),
+    decDeg: z.number().min(-90).max(90),
+    rotationDeg: z.number().min(0).lt(360),
+    cols: z.number().int().min(1).max(16),
+    rows: z.number().int().min(1).max(16),
+    overlapPct: z.number().min(0).max(60),
+    copyPlan: z.boolean().default(true),
+  })
+  .strict()
+  .meta({ id: 'MosaicApply' });
+export type MosaicApply = z.infer<typeof MosaicApply>;
 
 const lineShape = {
   filterId: Uuid,
@@ -303,6 +333,7 @@ export const PanelView = z
     decDeg: z.number(),
     rotationDeg: z.number(),
     notes: z.string(),
+    enabled: z.boolean(),
     lines: z.array(LineView),
   })
   .meta({ id: 'PanelView' });
@@ -351,6 +382,12 @@ export const ProjectView = z
     createdAt: UtcInstant,
     updatedAt: UtcInstant,
     progress: ProgressView,
+    /** Mosaik-Raster (aus der Sternkarte übernommen, AP-22); 1 × 1 bei Einzelfeld. */
+    mosaic: z.object({
+      cols: z.number().int(),
+      rows: z.number().int(),
+      overlapPct: z.number(),
+    }),
     panels: z.array(PanelView),
   })
   .meta({ id: 'ProjectView' });

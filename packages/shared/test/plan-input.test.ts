@@ -87,6 +87,44 @@ describe('buildPlanInput', () => {
     });
   });
 
+  it('inaktives Panel (AP-22): seine Zeilen kommen deaktiviert an, das Panel bleibt erhalten', () => {
+    const withInactive = projects.map((p) =>
+      p.id === NGC7000
+        ? { ...p, panels: p.panels.map((panel) => ({ ...panel, enabled: false })) }
+        : p,
+    );
+    const input = buildPlanInput(rig, withInactive, moonProfiles, nights, {
+      night: '2026-09-17',
+      site: STARFRONT,
+    });
+    const target = input.projects.find((p) => p.id === NGC7000);
+    expect(target?.panels).toHaveLength(1);
+    expect(target?.panels.flatMap((p) => p.lines.map((l) => l.enabled))).toEqual([false, false]);
+  });
+
+  it('Panel-Index = Position (NINA-Nummer − 1), auch wenn panel_index Lücken hat (NT-32)', () => {
+    const gaps = projects.map((p) =>
+      p.id === NGC7000
+        ? {
+            ...p,
+            panels: [
+              { ...(p.panels[0] as (typeof p.panels)[number]), panelIndex: 5 },
+              { ...(p.panels[0] as (typeof p.panels)[number]), id: 'zweites', panelIndex: 2 },
+            ],
+          }
+        : p,
+    );
+    const input = buildPlanInput(rig, gaps, moonProfiles, nights, {
+      night: '2026-09-17',
+      site: STARFRONT,
+    });
+    const target = input.projects.find((p) => p.id === NGC7000);
+    expect(target?.panels.map((p) => [p.id, p.index])).toEqual([
+      ['zweites', 0],
+      [target?.panels[1]?.id, 1],
+    ]);
+  });
+
   it('gleiche Daten in anderer Reihenfolge → identisches PlanInput', () => {
     const reversed = buildPlanInput(
       rig,
