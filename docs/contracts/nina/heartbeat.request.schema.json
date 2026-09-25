@@ -1,0 +1,449 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/NinaHeartbeat",
+  "$defs": {
+    "NinaHeartbeat": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "idle",
+            "paused",
+            "flats",
+            "offline",
+            "blocked"
+          ]
+        },
+        "blockedReason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": [
+                "lease_lost",
+                "rig_busy",
+                "token_invalid",
+                "clock_skew",
+                "plan_failed",
+                "engine_incompatible",
+                "tenant_locked"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessionId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blockId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pluginVersion": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+        },
+        "engineVersion": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+        },
+        "profileLocation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "latDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "lonDeg": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                }
+              },
+              "required": [
+                "latDeg",
+                "lonDeg"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cameraReadoutModes": {
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "index",
+              "name"
+            ]
+          }
+        },
+        "meridianFlip": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "triggerPresent": {
+                  "type": "boolean"
+                },
+                "useSideOfPier": {
+                  "type": "boolean"
+                },
+                "recenter": {
+                  "type": "boolean"
+                },
+                "autoFocusAfterFlip": {
+                  "type": "boolean"
+                },
+                "settleTimeS": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "pauseBeforeMin": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "afterMin": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "maxAfterMin": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "triggerPresent",
+                "useSideOfPier",
+                "recenter",
+                "autoFocusAfterFlip",
+                "settleTimeS",
+                "pauseBeforeMin",
+                "afterMin",
+                "maxAfterMin"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rotator": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "connected": {
+                  "type": "boolean"
+                },
+                "rangeType": {
+                  "type": "string",
+                  "enum": [
+                    "FULL",
+                    "HALF",
+                    "QUARTER"
+                  ]
+                },
+                "rangeStartMechanicalDeg": {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                "reverse": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "connected",
+                "rangeType",
+                "rangeStartMechanicalDeg",
+                "reverse"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plateSolve": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "rotationToleranceDeg": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "rotationToleranceDeg"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mount": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "equatorialSystem": {
+                  "type": "string",
+                  "enum": [
+                    "J2000",
+                    "JNOW",
+                    "B1950",
+                    "J2050"
+                  ]
+                },
+                "siteLatDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "siteLonDeg": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "siderealTimeDeltaS": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "equatorialSystem",
+                "siteLatDeg",
+                "siteLonDeg",
+                "siderealTimeDeltaS"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sequenceTriggers": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "autofocus": {
+                  "maxItems": 32,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "autofocusAfterTimeMin": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dither": {
+                  "maxItems": 32,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                }
+              },
+              "required": [
+                "autofocus",
+                "autofocusAfterTimeMin",
+                "dither"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "camera": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "temperatureC": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "setPointC": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "coolerOn": {
+                  "type": "boolean"
+                },
+                "coolerPowerPct": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "temperatureC",
+                "setPointC",
+                "coolerOn",
+                "coolerPowerPct"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lastMeasuredRotationDeg": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -360,
+              "maximum": 360
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filterWheel": {
+          "anyOf": [
+            {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "position": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "focusOffset": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "position",
+                  "name",
+                  "focusOffset"
+                ]
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outboxPending": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "deadLetters": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "settingsVersion": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "offlineUntil": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+              "example": "2026-09-18T13:00:00Z"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ackedCommandIds": {
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "UUID"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "pluginVersion",
+        "engineVersion"
+      ]
+    }
+  },
+  "title": "Svenesis NINA-PM – NINA-API POST /heartbeat (TK 7.6)"
+}

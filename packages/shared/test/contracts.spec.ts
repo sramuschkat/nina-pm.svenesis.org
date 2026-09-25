@@ -13,6 +13,7 @@ import {
   renderErrors,
   renderGridSchema,
   renderI18nErrors,
+  renderNinaSchemas,
   renderPlanSchemas,
 } from '../scripts/render';
 import * as enums from '../src/enums';
@@ -31,6 +32,8 @@ describe('Verträge (docs/contracts ↔ packages/shared, packages/i18n)', () => 
     const plan = renderPlanSchemas();
     expect(read('../../../docs/contracts/plan/plan-input.schema.json')).toBe(plan.planInput);
     expect(read('../../../docs/contracts/plan/night-plan.schema.json')).toBe(plan.nightPlan);
+    for (const [file, content] of Object.entries(renderNinaSchemas()))
+      expect(read(`../../../docs/contracts/nina/${file}`), file).toBe(content);
   });
 
   it('jeder Fehlercode hat i18n-Schlüssel errors.* mit DE- und EN-Text', () => {

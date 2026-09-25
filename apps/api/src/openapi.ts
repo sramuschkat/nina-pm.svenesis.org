@@ -7,6 +7,12 @@ import { createApp } from './app';
 
 export function openApiDocument() {
   const app = createApp({ originVerifyValue: () => Promise.resolve(''), buildId: 'openapi' });
+  // NINA-API: Sync-Token der Instanz als Bearer (TK 5.6, SV-08).
+  app.openAPIRegistry.registerComponent('securitySchemes', 'ninaToken', {
+    type: 'http',
+    scheme: 'bearer',
+    description: 'Sync-Token `npm_…` der NINA-Instanz (an genau ein Rig gebunden, widerrufbar).',
+  });
   return app.getOpenAPI31Document({
     openapi: '3.1.0',
     info: {

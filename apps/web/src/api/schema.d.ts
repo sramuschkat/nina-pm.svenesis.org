@@ -7785,6 +7785,429 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/nina-instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * NINA-Instanzen des Mandanten (optional je Rig)
+         * @description Aktion: `nina.instance.read` · FA-SYN-01, TK 5.6
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUID */
+                    rigId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Instanzen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["NinaInstanceView"][];
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * NINA-Instanz koppeln: Token einmalig erzeugen
+         * @description Aktion: `nina.instance.manage` · FA-SYN-01, TK 5.6, SV-08
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaInstanceCreate"];
+                };
+            };
+            responses: {
+                /** @description Angelegt, Token nur in dieser Antwort */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaInstanceCreated"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/nina-instances/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Token widerrufen (wirkt sofort)
+         * @description Aktion: `nina.instance.manage` · FA-SYN-01, TK 5.6, SV-08
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Widerrufen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaInstanceView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rig, Einstellungen, Mondprofile, Nacht-Tabelle ab der Mittagsnacht
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SIM-09, NT-02, NT-05, NT-E1, NT-E2, NT-40
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bootstrap */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaBootstrap"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Auslieferbare Projekte des Rigs (ETag ohne Zähler aus Meldungen)
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SYN-03, NT-E1, NT-19
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "if-none-match"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ziele */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaTargets"];
+                    };
+                };
+                /** @description Unverändert */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nachtplan vom Server (gleiche Engine und Eingaben wie der Simulator)
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SIM-05, FA-SYN-03, NT-01, NT-20, M4, M7
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaPlanRequest"];
+                };
+            };
+            responses: {
+                /** @description Nachtplan */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaPlanResponse"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description nina.night_invalid | engine.input_invalid | validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/system/v1/tenants": {
         parameters: {
             query?: never;
@@ -11432,6 +11855,867 @@ export interface components {
                 durationS?: number;
                 message?: string;
             }[];
+        };
+        NinaInstanceView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            name: string;
+            tokenPrefix: string;
+            /** @enum {string} */
+            status: "active" | "revoked";
+            pluginVersion: string | null;
+            engineVersion: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            lastSeenAt: string | null;
+            settingsVersionFetched: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            settingsFetchedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        NinaInstanceCreated: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            name: string;
+            tokenPrefix: string;
+            /** @enum {string} */
+            status: "active" | "revoked";
+            pluginVersion: string | null;
+            engineVersion: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            lastSeenAt: string | null;
+            settingsVersionFetched: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            settingsFetchedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            token: string;
+        };
+        NinaInstanceCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            name: string;
+        };
+        NinaBootstrap: {
+            /** @enum {string} */
+            apiVersion: "1";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            serverTimeUtc: string;
+            server: {
+                engineVersion: string;
+                minPluginVersion: string;
+            };
+            instance: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+            };
+            tenant: {
+                key: string;
+                name: string;
+                timeZone: string;
+            };
+            rig: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                settingsVersion: number;
+                site: {
+                    name: string;
+                    latDeg: number;
+                    lonDeg: number;
+                    elevationM: number;
+                    timeZone: string;
+                };
+                telescope: {
+                    name: string;
+                    apertureMm: number;
+                    focalLengthMm: number;
+                    reducerFactor: number;
+                };
+                camera: {
+                    name: string;
+                    pixelSizeUm: number;
+                    widthPx: number;
+                    heightPx: number;
+                    defaultGain: number | null;
+                    defaultOffset: number | null;
+                    readoutModes: {
+                        index: number;
+                        name: string;
+                    }[];
+                    binning: number[];
+                    setpointC: number | null;
+                    toleranceC: number;
+                };
+                rotator: {
+                    present: boolean;
+                    defaultRotationDeg: number | null;
+                    toleranceDeg: number;
+                    skipOnMismatch: boolean;
+                };
+                filters: {
+                    shortName: string;
+                    name: string;
+                    color: string;
+                    position: number;
+                    ninaFilterName: string | null;
+                }[];
+                scheduler: {
+                    /** @enum {string} */
+                    strategy: "proportional" | "manual_priority";
+                    /** @enum {string} */
+                    playback: "time_aware" | "sequential";
+                    sortChain: ("lowest_peak_altitude" | "setting_soonest" | "most_remaining" | "constrained" | "most_moon_limited" | "mosaic_grouping" | "card_order" | "due_soonest")[];
+                    bonus: {
+                        enabled: boolean;
+                    };
+                    mosaicPanelsIndependent: boolean;
+                    dither: {
+                        enabled: boolean;
+                        every: number;
+                    };
+                    filterSwitch: {
+                        enabled: boolean;
+                        every: number;
+                        tolerancePct: number;
+                    };
+                    flats: {
+                        enabled: boolean;
+                        /** @enum {string} */
+                        source: "panel" | "sky";
+                        fullSet: boolean;
+                        count: number;
+                        darkFlats: {
+                            enabled: boolean;
+                            count: number | null;
+                        };
+                    };
+                    meridianFlip: {
+                        enabled: boolean;
+                        afterMin: number;
+                        maxAfterMin: number;
+                        pauseBeforeMin: number;
+                        durationS: number;
+                    };
+                    overhead: {
+                        slewCenterS: number;
+                        filterChangeS: number;
+                        ditherSettleS: number;
+                        afEveryMin: number;
+                        afDurationS: number;
+                        downloadS: number;
+                    };
+                    overshootPct: number;
+                };
+                leaseMinutes: number;
+            };
+            moonProfiles: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                separationDeg: number;
+                widthDays: number;
+                relax: number;
+                minAltDeg: number;
+                maxAltDeg: number;
+                maxIlluminationPct: number;
+                moonMustBeDown: boolean;
+            }[];
+            tzdataVersion: string;
+            nights: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                noonStartUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                noonEndUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nightWindowEndUtc: string;
+            }[];
+            timeZoneTransitions: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+                utcOffsetMinutes: number;
+            }[];
+        };
+        NinaTargets: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAtUtc: string;
+            projects: ({
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                version: number;
+                name: string;
+                target: {
+                    name: string | null;
+                    objectType: string | null;
+                    catalogNames?: string;
+                };
+                /** @enum {string} */
+                status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+                priority: number;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                startDate?: string | null;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                dueDate?: string | null;
+                conditions: {
+                    minAltitudeDeg: number;
+                    minTimeOnTargetH: number;
+                    /** @enum {string} */
+                    twilight: "astronomical" | "nautical" | "civil";
+                    moonDefault?: {
+                        enabled: boolean;
+                        separationDeg?: number;
+                        widthDays?: number;
+                        relax?: number;
+                        minAltDeg?: number;
+                        maxAltDeg?: number;
+                        maxIlluminationPct?: number;
+                        moonMustBeDown?: boolean;
+                    };
+                };
+                /** @enum {string} */
+                type: "deep_sky";
+                mosaic?: {
+                    rows: number;
+                    columns: number;
+                    overlapPct: number;
+                } | null;
+                panels: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    index: number;
+                    label: string;
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                    lines: {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        id: string;
+                        filter: string;
+                        ninaFilterName: string | null;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                        moon: {
+                            /** @enum {string} */
+                            mode: "none";
+                        } | {
+                            /** @enum {string} */
+                            mode: "project_default";
+                        } | {
+                            /** @enum {string} */
+                            mode: "profile";
+                            /**
+                             * Format: uuid
+                             * @description UUID
+                             */
+                            profileId: string;
+                        };
+                        order: number;
+                        enabled: boolean;
+                        counts: {
+                            planned: number;
+                            acquired: number;
+                            rejected: number;
+                            accepted: number;
+                            remaining: number;
+                            planningNeed: number;
+                            bonus: number;
+                            bonusRejected: number;
+                        };
+                    }[];
+                }[];
+                exoplanet?: null;
+            } | {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                version: number;
+                name: string;
+                target: {
+                    name: string | null;
+                    objectType: string | null;
+                    catalogNames?: string;
+                };
+                /** @enum {string} */
+                status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+                priority: number;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                startDate?: string | null;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                dueDate?: string | null;
+                conditions: {
+                    minAltitudeDeg: number;
+                    minTimeOnTargetH: number;
+                    /** @enum {string} */
+                    twilight: "astronomical" | "nautical" | "civil";
+                    moonDefault?: {
+                        enabled: boolean;
+                        separationDeg?: number;
+                        widthDays?: number;
+                        relax?: number;
+                        minAltDeg?: number;
+                        maxAltDeg?: number;
+                        maxIlluminationPct?: number;
+                        moonMustBeDown?: boolean;
+                    };
+                };
+                /** @enum {string} */
+                type: "exoplanet";
+                panels: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    index: number;
+                    label: string;
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                    lines: {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        id: string;
+                        filter: string;
+                        ninaFilterName: string | null;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                        moon: {
+                            /** @enum {string} */
+                            mode: "none";
+                        } | {
+                            /** @enum {string} */
+                            mode: "project_default";
+                        } | {
+                            /** @enum {string} */
+                            mode: "profile";
+                            /**
+                             * Format: uuid
+                             * @description UUID
+                             */
+                            profileId: string;
+                        };
+                    }[];
+                }[];
+                exoplanet: {
+                    planet: string;
+                    ephemeris: {
+                        t0BjdTdb: number;
+                        t0SigmaD: number | null;
+                        periodD: number;
+                        periodSigmaD: number | null;
+                        durationH: number;
+                    };
+                    observation: {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        id: string;
+                        /** @enum {string} */
+                        status: "requested" | "locked" | "observed" | "missed" | "cancelled";
+                        epoch: number;
+                        /**
+                         * Format: date
+                         * @example 2026-09-18
+                         */
+                        night: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        ingressUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        midUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        egressUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        windowStartUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        windowEndUtc: string;
+                        allowAutofocus: boolean;
+                        allowRecenter: boolean;
+                        counts: {
+                            planned: number;
+                            acquired: number;
+                            rejected: number;
+                        };
+                    };
+                };
+            })[];
+            mosaicPanelsIndependent: boolean;
+        };
+        NinaPlanResponse: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string;
+            engineVersion: string;
+            inputHash: string;
+            outputHash?: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            revision: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startAtUtc: string | null;
+            nightWindow: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+            };
+            darkness: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                civilStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                civilEndUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nauticalStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                nauticalEndUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                astronomicalStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                astronomicalEndUtc: string | null;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darknessEndUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            flatsNotBeforeUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            flatsNotAfterUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            sessionEndUtc: string;
+            blocks: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /** @enum {string} */
+                kind: "regular" | "transit";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                panelId: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                transitObservationId?: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                twilightEndUtc: string | null;
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+                /** @enum {string} */
+                rotationMode: "rotator" | "fixed_camera";
+                meridianFlip: {
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    waitStartUtc: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    plannedUtc: string;
+                    durationS: number;
+                    inTransitWindow: boolean;
+                    planned: boolean;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    gapStartUtc: string | null;
+                    gapDurationS: number | null;
+                } | null;
+                entries: ({
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "slew_center" | "slew_center_rotate";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "filter";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                    filter: string;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                    readoutModeIndex: number | null;
+                    bonus: boolean;
+                    lastOfNight: boolean;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "expose_series";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    untilUtc: string;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    exposureLineId: string;
+                    filter: string;
+                    exposureS: number;
+                    gain: number | null;
+                    offset: number | null;
+                    binning: number;
+                    readoutMode: string | null;
+                    readoutModeIndex: number | null;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "dither" | "autofocus_hint" | "wait" | "meridian_flip";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                    durationS: number;
+                } | {
+                    seq: number;
+                    /** @enum {string} */
+                    cmd: "end";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                })[];
+            }[];
+            summary: {
+                targets: number;
+                plannedFrames: {
+                    [key: string]: {
+                        [key: string]: number;
+                    };
+                };
+            };
+            diagnostics: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                panelId?: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                lineId?: string;
+                /** @enum {string} */
+                reason: "start_date" | "not_visible" | "below_min_time" | "moon_blocked" | "prefiltered" | "outranked" | "no_need" | "transit_conflict" | "flip_in_transit" | "filter_not_found" | "rotation_mismatch";
+                message?: string;
+            }[];
+            warnings: {
+                /** @enum {string} */
+                code: "idle_gap" | "la_unsafe" | "total_min" | "no_alloc" | "la_miss" | "filter_stuck" | "past_mismatch" | "panel_rotation_mismatch" | "twilight_grazing";
+                /** @enum {string} */
+                level: "warn" | "error";
+                unitId?: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc?: string;
+                durationS?: number;
+                message?: string;
+            }[];
+        };
+        NinaPlanRequest: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /** @enum {string} */
+            reason: "initial" | "refresh" | "resume" | "reset";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startAtUtc?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId?: string | null;
+            /** @default [] */
+            pendingCaptures: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                exposureLineId: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                transitObservationId?: string | null;
+                captureIds: string[];
+            }[];
+            targetsEtag?: string | null;
+            tonight?: {
+                pastBlocks?: {
+                    unitId: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    fromUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    toUtc: string;
+                }[];
+                exposedSecByUnit?: {
+                    [key: string]: number;
+                };
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastAutofocusUtc?: string | null;
+                filterCycle?: {
+                    unitId: string;
+                    lineId: string;
+                    subsOnLine: number;
+                }[];
+                flipDoneByPanel?: {
+                    [key: string]: boolean;
+                };
+                currentUnitId?: string | null;
+            } | null;
         };
         TenantAdminView: {
             /**

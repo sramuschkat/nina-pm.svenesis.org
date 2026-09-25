@@ -7,6 +7,9 @@ import type {
   ApprovalRepository,
   ProjectRepository,
   SimulationRepository,
+  NinaInstanceRepository,
+  NinaRigRepository,
+  NinaPrincipal,
   Job,
   MemberRepository,
   NotificationRepository,
@@ -36,6 +39,8 @@ export interface ApiRepositories {
   projects(): ProjectRepository;
   approvals(): ApprovalRepository;
   simulations(): SimulationRepository;
+  ninaInstances(): NinaInstanceRepository;
+  ninaRig(rigId: string): NinaRigRepository;
   tenant(): TenantRepository;
 }
 
@@ -54,5 +59,10 @@ export interface ApiServices {
   /** Aktiver Wartungshinweis für alle (FA-SU-08). */
   maintenanceBanner(): Promise<{ de: string; en: string } | null>;
   readonly jobInvoker: JobInvoker;
+  /** Token-Suche der NINA-API über alle Mandanten (TK 5.6, kein Cache). */
+  readonly nina: {
+    lookup(tokenHash: string): Promise<NinaPrincipal | undefined>;
+    touch(p: NinaPrincipal, now: Date): Promise<void>;
+  };
   now(): Date;
 }

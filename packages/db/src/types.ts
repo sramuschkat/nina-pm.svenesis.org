@@ -555,6 +555,167 @@ export interface NightPlanTable {
   createdAt: Timestamp;
 }
 
+/** Tabelle `nina_instance` (Migration 0003, TK 5.6): Sync-Token nur als SHA-256 mit Präfix (SV-08). */
+export interface NinaInstanceTable {
+  id: string;
+  tenantId: string;
+  rigId: string;
+  name: string;
+  tokenHash: string;
+  tokenPrefix: string;
+  status: Generated<string>;
+  pluginVersion: string | null;
+  engineVersion: string | null;
+  profileLat: number | null;
+  profileLon: number | null;
+  lastState: Json | null;
+  lastCalls: Json | null;
+  lastSeenAt: Timestamp | null;
+  settingsVersionFetched: number | null;
+  settingsFetchedAt: Timestamp | null;
+  createdBy: string | null;
+  createdAt: Timestamp;
+}
+
+/** Tabelle `rig_lease` (Migration 0003, TK 5.6, FA-RIG-06). */
+export interface RigLeaseTable {
+  rigId: string;
+  tenantId: string;
+  activeSessionId: string | null;
+  leaseUntil: Timestamp | null;
+  offlineUntil: Timestamp | null;
+  releasedSessionId: string | null;
+  updatedAt: Timestamp;
+}
+
+/** Tabelle `session` (Migration 0005, TK 6.6, 7.6; NT-09, M6). */
+export interface SessionTable {
+  id: string;
+  tenantId: string;
+  rigId: string;
+  ninaInstanceId: string | null;
+  night: DateKey;
+  nightPlanId: string | null;
+  startedAt: Timestamp;
+  endedAt: Timestamp | null;
+  sessionEndUtc: Timestamp | null;
+  status: Generated<string>;
+  lastHeartbeatAt: Timestamp | null;
+  createdOffline: Generated<boolean>;
+  offlineSince: Timestamp | null;
+  ninaConditions: Json | null;
+  reviewed: Generated<boolean>;
+  reviewedBy: string | null;
+  kpis: Json | null;
+  forecastSnapshot: Json | null;
+  outboxPending: number | null;
+  reportStatus: Generated<string>;
+  reportDueAt: Timestamp | null;
+  reportSentAt: Timestamp | null;
+}
+
+/** Tabelle `session_event` (Migration 0005, TK 7.6); `id` vom Plugin (idempotent). */
+export interface SessionEventTable {
+  id: string;
+  tenantId: string;
+  sessionId: string;
+  occurredAt: Timestamp;
+  kind: string;
+  projectId: string | null;
+  panelId: string | null;
+  nightPlanId: string | null;
+  blockId: string | null;
+  durationS: number | null;
+  message: string | null;
+  data: Json;
+}
+
+/** Tabelle `capture` (Migration 0005, TK 6.6); `id` vom Plugin (idempotent, FA-SYN-04). */
+export interface CaptureTable {
+  id: string;
+  tenantId: string;
+  sessionId: string;
+  projectId: string | null;
+  panelId: string | null;
+  exposureLineId: string | null;
+  transitObservationId: string | null;
+  frameType: Generated<string>;
+  projectIds: Json | null;
+  assignment: Generated<string>;
+  night: DateKey;
+  capturedAt: Timestamp;
+  exposureMidUtc: Timestamp | null;
+  nightPlanId: string | null;
+  blockId: string | null;
+  filterShortName: string;
+  filterActual: string | null;
+  exposureS: number;
+  gain: number | null;
+  offsetAdu: number | null;
+  binning: number | null;
+  readoutMode: string | null;
+  raDeg: number | null;
+  decDeg: number | null;
+  rotationDeg: number | null;
+  pierSide: string | null;
+  rotatorMechDeg: Generated<number>;
+  result: string;
+  isBonus: Generated<boolean>;
+  temperatureDeviation: Generated<boolean>;
+  settingsDeviation: Generated<boolean>;
+  rejected: Generated<boolean>;
+  rejectReason: string | null;
+  fileName: string | null;
+  readoutModeIndex: Generated<number>;
+  metrics: Json | null;
+  receivedAt: Generated<Timestamp>;
+}
+
+/** Tabelle `correction` (Migration 0005, FA-AUS-06). */
+export interface CorrectionTable {
+  id: Generated<string>;
+  tenantId: string;
+  exposureLineId: string;
+  night: DateKey;
+  rejectedCount: number;
+  reason: string | null;
+  comment: string | null;
+  userId: string;
+  createdAt: Generated<Timestamp>;
+}
+
+/** Tabelle `flat_combination` (Migration 0005, TK 6.6, NIN5-8/9, DAT5-7/21). */
+export interface FlatCombinationTable {
+  tenantId: string;
+  sessionId: string;
+  filterShortName: string;
+  rotatorMechDegDg: Generated<number>;
+  medianDeg: number | null;
+  gain: number;
+  offsetAdu: number;
+  binning: number;
+  readoutModeIndex: Generated<number>;
+  readoutMode: Generated<string>;
+  status: Generated<string>;
+  projectIds: Json;
+  flatsPlanned: Generated<number>;
+  flatsTaken: Generated<number>;
+  flatExposureS: number | null;
+  darkFlatsPlanned: Generated<number>;
+  darkFlatsTaken: Generated<number>;
+}
+
+/** Tabelle `command` (Migration 0005, TK 7.6 `commands`). */
+export interface CommandTable {
+  id: Generated<string>;
+  tenantId: string;
+  ninaInstanceId: string;
+  kind: string;
+  createdBy: string;
+  createdAt: Generated<Timestamp>;
+  acknowledgedAt: Timestamp | null;
+}
+
 export interface Database {
   tenant: TenantTable;
   identity: IdentityTable;
@@ -588,4 +749,12 @@ export interface Database {
   captureNight: CaptureNightTable;
   userPreference: UserPreferenceTable;
   nightPlan: NightPlanTable;
+  ninaInstance: NinaInstanceTable;
+  rigLease: RigLeaseTable;
+  session: SessionTable;
+  sessionEvent: SessionEventTable;
+  capture: CaptureTable;
+  correction: CorrectionTable;
+  flatCombination: FlatCombinationTable;
+  command: CommandTable;
 }

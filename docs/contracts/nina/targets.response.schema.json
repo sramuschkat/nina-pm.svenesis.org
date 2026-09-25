@@ -1,0 +1,1043 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/NinaTargets",
+  "$defs": {
+    "NinaTargets": {
+      "type": "object",
+      "properties": {
+        "rigId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "UUID"
+        },
+        "generatedAtUtc": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+          "example": "2026-09-18T13:00:00Z"
+        },
+        "projects": {
+          "maxItems": 500,
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "UUID"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "objectType": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "catalogNames": {
+                        "type": "string",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "objectType"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "planning",
+                      "active",
+                      "on_hold",
+                      "ready_to_process",
+                      "unfinished",
+                      "completed",
+                      "archived"
+                    ]
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "startDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "example": "2026-09-18"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "example": "2026-09-18"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "conditions": {
+                    "type": "object",
+                    "properties": {
+                      "minAltitudeDeg": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "minTimeOnTargetH": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 24
+                      },
+                      "twilight": {
+                        "type": "string",
+                        "enum": [
+                          "astronomical",
+                          "nautical",
+                          "civil"
+                        ]
+                      },
+                      "moonDefault": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "separationDeg": {
+                            "type": "number"
+                          },
+                          "widthDays": {
+                            "type": "number"
+                          },
+                          "relax": {
+                            "type": "number"
+                          },
+                          "minAltDeg": {
+                            "type": "number"
+                          },
+                          "maxAltDeg": {
+                            "type": "number"
+                          },
+                          "maxIlluminationPct": {
+                            "type": "number"
+                          },
+                          "moonMustBeDown": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "enabled"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "minAltitudeDeg",
+                      "minTimeOnTargetH",
+                      "twilight"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "deep_sky"
+                  },
+                  "mosaic": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "rows": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "columns": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          },
+                          "overlapPct": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                          }
+                        },
+                        "required": [
+                          "rows",
+                          "columns",
+                          "overlapPct"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "panels": {
+                    "minItems": 1,
+                    "maxItems": 64,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "UUID"
+                        },
+                        "index": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "label": {
+                          "type": "string",
+                          "maxLength": 256
+                        },
+                        "raDeg": {
+                          "type": "number",
+                          "minimum": 0,
+                          "exclusiveMaximum": 360
+                        },
+                        "decDeg": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "rotationDeg": {
+                          "type": "number",
+                          "minimum": -360,
+                          "maximum": 360
+                        },
+                        "lines": {
+                          "maxItems": 100,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                "description": "UUID"
+                              },
+                              "filter": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "ninaFilterName": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 256
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "exposureS": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "gain": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "offset": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "binning": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "readoutMode": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 256
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "readoutModeIndex": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "moon": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "none"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "project_default"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "profile"
+                                      },
+                                      "profileId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                        "description": "UUID"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "profileId"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "order": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "counts": {
+                                "type": "object",
+                                "properties": {
+                                  "planned": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "acquired": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "rejected": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "accepted": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "remaining": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "planningNeed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "bonus": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "bonusRejected": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "planned",
+                                  "acquired",
+                                  "rejected",
+                                  "accepted",
+                                  "remaining",
+                                  "planningNeed",
+                                  "bonus",
+                                  "bonusRejected"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "filter",
+                              "ninaFilterName",
+                              "exposureS",
+                              "gain",
+                              "offset",
+                              "binning",
+                              "readoutMode",
+                              "readoutModeIndex",
+                              "moon",
+                              "order",
+                              "enabled",
+                              "counts"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "index",
+                        "label",
+                        "raDeg",
+                        "decDeg",
+                        "rotationDeg",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "exoplanet": {
+                    "type": "null"
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "name",
+                  "target",
+                  "status",
+                  "priority",
+                  "conditions",
+                  "type",
+                  "panels"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "UUID"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "target": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "objectType": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "catalogNames": {
+                        "type": "string",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "objectType"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "planning",
+                      "active",
+                      "on_hold",
+                      "ready_to_process",
+                      "unfinished",
+                      "completed",
+                      "archived"
+                    ]
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "startDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "example": "2026-09-18"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "dueDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                        "example": "2026-09-18"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "conditions": {
+                    "type": "object",
+                    "properties": {
+                      "minAltitudeDeg": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "minTimeOnTargetH": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 24
+                      },
+                      "twilight": {
+                        "type": "string",
+                        "enum": [
+                          "astronomical",
+                          "nautical",
+                          "civil"
+                        ]
+                      },
+                      "moonDefault": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "separationDeg": {
+                            "type": "number"
+                          },
+                          "widthDays": {
+                            "type": "number"
+                          },
+                          "relax": {
+                            "type": "number"
+                          },
+                          "minAltDeg": {
+                            "type": "number"
+                          },
+                          "maxAltDeg": {
+                            "type": "number"
+                          },
+                          "maxIlluminationPct": {
+                            "type": "number"
+                          },
+                          "moonMustBeDown": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "enabled"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "minAltitudeDeg",
+                      "minTimeOnTargetH",
+                      "twilight"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "const": "exoplanet"
+                  },
+                  "panels": {
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "UUID"
+                        },
+                        "index": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "label": {
+                          "type": "string",
+                          "maxLength": 256
+                        },
+                        "raDeg": {
+                          "type": "number",
+                          "minimum": 0,
+                          "exclusiveMaximum": 360
+                        },
+                        "decDeg": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "rotationDeg": {
+                          "type": "number",
+                          "minimum": -360,
+                          "maximum": 360
+                        },
+                        "lines": {
+                          "maxItems": 100,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                "description": "UUID"
+                              },
+                              "filter": {
+                                "type": "string",
+                                "maxLength": 256
+                              },
+                              "ninaFilterName": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 256
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "exposureS": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "gain": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "offset": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "binning": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "readoutMode": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 256
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "readoutModeIndex": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "moon": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "none"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "project_default"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode"
+                                    ]
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "mode": {
+                                        "type": "string",
+                                        "const": "profile"
+                                      },
+                                      "profileId": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                                        "description": "UUID"
+                                      }
+                                    },
+                                    "required": [
+                                      "mode",
+                                      "profileId"
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "filter",
+                              "ninaFilterName",
+                              "exposureS",
+                              "gain",
+                              "offset",
+                              "binning",
+                              "readoutMode",
+                              "readoutModeIndex",
+                              "moon"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "index",
+                        "label",
+                        "raDeg",
+                        "decDeg",
+                        "rotationDeg",
+                        "lines"
+                      ]
+                    }
+                  },
+                  "exoplanet": {
+                    "type": "object",
+                    "properties": {
+                      "planet": {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      "ephemeris": {
+                        "type": "object",
+                        "properties": {
+                          "t0BjdTdb": {
+                            "type": "number"
+                          },
+                          "t0SigmaD": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "periodD": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          },
+                          "periodSigmaD": {
+                            "anyOf": [
+                              {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "durationH": {
+                            "type": "number",
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "t0BjdTdb",
+                          "t0SigmaD",
+                          "periodD",
+                          "periodSigmaD",
+                          "durationH"
+                        ]
+                      },
+                      "observation": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "description": "UUID"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "requested",
+                              "locked",
+                              "observed",
+                              "missed",
+                              "cancelled"
+                            ]
+                          },
+                          "epoch": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "night": {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                            "example": "2026-09-18"
+                          },
+                          "ingressUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "midUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "egressUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "windowStartUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "windowEndUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "allowAutofocus": {
+                            "type": "boolean"
+                          },
+                          "allowRecenter": {
+                            "type": "boolean"
+                          },
+                          "counts": {
+                            "type": "object",
+                            "properties": {
+                              "planned": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "acquired": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "rejected": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "planned",
+                              "acquired",
+                              "rejected"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "status",
+                          "epoch",
+                          "night",
+                          "ingressUtc",
+                          "midUtc",
+                          "egressUtc",
+                          "windowStartUtc",
+                          "windowEndUtc",
+                          "allowAutofocus",
+                          "allowRecenter",
+                          "counts"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "planet",
+                      "ephemeris",
+                      "observation"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "name",
+                  "target",
+                  "status",
+                  "priority",
+                  "conditions",
+                  "type",
+                  "panels",
+                  "exoplanet"
+                ]
+              }
+            ]
+          }
+        },
+        "mosaicPanelsIndependent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "rigId",
+        "generatedAtUtc",
+        "projects",
+        "mosaicPanelsIndependent"
+      ]
+    }
+  },
+  "title": "Svenesis NINA-PM – NINA-API GET /targets (TK 7.6)"
+}

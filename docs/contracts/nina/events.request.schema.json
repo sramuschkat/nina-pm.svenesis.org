@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/NinaEventBatch",
+  "$defs": {
+    "NinaEventBatch": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "minItems": 1,
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                "description": "UUID"
+              },
+              "occurredAtUtc": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "plan_built",
+                  "plan_rebuilt",
+                  "block_start",
+                  "block_end",
+                  "block_skipped",
+                  "center_failed",
+                  "safety_pause",
+                  "safety_resume",
+                  "transit_start",
+                  "transit_end",
+                  "af",
+                  "flip",
+                  "flats_start",
+                  "flats_end",
+                  "rotation_mismatch",
+                  "lease_conflict",
+                  "lease_lost",
+                  "flip_settings_mismatch",
+                  "filter_not_found",
+                  "readout_mode_not_found",
+                  "trigger_suppressed",
+                  "offline_start",
+                  "offline_end",
+                  "warning",
+                  "error",
+                  "session_end",
+                  "lease_regained",
+                  "rotation_unknown",
+                  "flip_undetected",
+                  "skipped_timeaware",
+                  "past_mismatch"
+                ]
+              },
+              "code": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "nightPlanId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "UUID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "blockId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "UUID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "projectId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "UUID"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "durationS": {
+                "type": "number",
+                "minimum": 0
+              },
+              "data": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "occurredAtUtc",
+              "kind"
+            ]
+          }
+        }
+      },
+      "required": [
+        "events"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "title": "Svenesis NINA-PM – NINA-API POST /sessions/{id}/events (TK 7.6)"
+}

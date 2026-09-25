@@ -14,6 +14,7 @@ import { ProjectRepository } from './project';
 import { ApprovalRepository } from './approval';
 import { EffortRepository } from './effort';
 import { SimulationRepository } from './simulation';
+import { NinaInstanceRepository, NinaRigRepository } from './nina';
 import { NotificationRepository } from './notification';
 import { PreferenceRepository } from './preference';
 import { TenantAdminRepository, type SystemActor } from './tenant-admin';
@@ -33,6 +34,8 @@ export interface OpenDatabase {
     approvals: () => ApprovalRepository;
     effort: () => EffortRepository;
     simulations: () => SimulationRepository;
+    ninaInstances: () => NinaInstanceRepository;
+    ninaRig: (rigId: string) => NinaRigRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -59,6 +62,8 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       approvals: () => new ApprovalRepository(db, ctx),
       effort: () => new EffortRepository(db, ctx),
       simulations: () => new SimulationRepository(db, ctx),
+      ninaInstances: () => new NinaInstanceRepository(db, ctx),
+      ninaRig: (rigId) => new NinaRigRepository(db, ctx, rigId),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

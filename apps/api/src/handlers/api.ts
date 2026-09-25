@@ -11,7 +11,7 @@ import { lambdaJobInvoker } from '../jobs/enqueue';
 import { lambdaDatabase } from '../lib/database';
 import { lazy } from '../lib/lazy';
 import { requiredEnv, ssmSecret, ssmString } from '../lib/params';
-import { readMaintenanceBanner } from '@nina-pm/db';
+import { ninaTokenLookup, ninaTouch, readMaintenanceBanner } from '@nina-pm/db';
 import type { ApiServices } from '../routes/services';
 
 const bootstrapSuperUsers = ssmString(requiredEnv('BOOTSTRAP_SUPER_USERS_PARAM'));
@@ -26,6 +26,10 @@ const services = lazy<ApiServices>(async () => {
       return { ...repos, tenant: () => repos.tenant };
     },
     tenantAdmin: (actor) => db.tenantAdmin(actor),
+    nina: {
+      lookup: (hash) => ninaTokenLookup(db.db, hash),
+      touch: (p, at) => ninaTouch(db.db, p, at),
+    },
     auth: db.auth(),
     authConfig: {
       cookieSecret: ssmSecret(requiredEnv('COOKIE_SECRET_PARAM')),

@@ -16,3 +16,4 @@ export * from './grid';
 export * from './plan';
 export * from './effort';
 export * from './simulation';
+export * as nina from './nina';

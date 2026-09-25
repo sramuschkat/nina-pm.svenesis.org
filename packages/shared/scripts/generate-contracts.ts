@@ -5,6 +5,7 @@
  *   packages/i18n/src/generated/errors.ts   (errors.* DE/EN)
  *   docs/contracts/golden-plans/grid.schema.json (Grid-/Soll-Plan-Format, AP-13a)
  *   docs/contracts/plan/plan-input.schema.json, night-plan.schema.json (Planungsvertrag, AP-13c)
+ *   docs/contracts/nina/*.schema.json (NINA-API, AP-14a)
  * Aufruf: pnpm contracts:generate · Prüfung auf Aktualität: packages/shared/test/contracts.spec.ts
  */
 import { writeFileSync } from 'node:fs';
@@ -15,6 +16,7 @@ import {
   renderErrors,
   renderGridSchema,
   renderI18nErrors,
+  renderNinaSchemas,
   renderPlanSchemas,
 } from './render';
 
@@ -27,6 +29,8 @@ mkdirSync(at('../../../docs/contracts/plan'), { recursive: true });
 const plan = renderPlanSchemas();
 writeFileSync(at('../../../docs/contracts/plan/plan-input.schema.json'), plan.planInput);
 writeFileSync(at('../../../docs/contracts/plan/night-plan.schema.json'), plan.nightPlan);
+for (const [file, content] of Object.entries(renderNinaSchemas()))
+  writeFileSync(at(`../../../docs/contracts/nina/${file}`), content);
 console.log(
   'Verträge erzeugt: shared/errors.ts, shared/enums.ts, i18n/errors.ts, grid.schema.json',
 );

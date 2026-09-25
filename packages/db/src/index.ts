@@ -123,3 +123,12 @@ export {
   type EffortSite,
 } from './repositories/effort';
 export { SimulationRepository, type SimulationSave } from './repositories/simulation';
+export {
+  NINA_SEEN_INTERVAL_MS,
+  NinaInstanceRepository,
+  NinaRigRepository,
+  ninaTokenLookup,
+  ninaTouch,
+  type NinaInstanceRow,
+  type NinaPrincipal,
+} from './repositories/nina';

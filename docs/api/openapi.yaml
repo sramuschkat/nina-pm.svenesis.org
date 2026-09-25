@@ -6,6 +6,11 @@ info:
 servers:
   - url: https://nina-pm.svenesis.org
 components:
+  securitySchemes:
+    ninaToken:
+      type: http
+      scheme: bearer
+      description: Sync-Token `npm_…` der NINA-Instanz (an genau ein Rig gebunden, widerrufbar).
   schemas:
     PublicBanner:
       type: object
@@ -5766,6 +5771,2016 @@ components:
         - summary
         - diagnostics
         - warnings
+      additionalProperties: false
+    NinaInstanceView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          maxLength: 256
+        tokenPrefix:
+          type: string
+          maxLength: 256
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        pluginVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        engineVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        lastSeenAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        settingsVersionFetched:
+          type:
+            - integer
+            - "null"
+        settingsFetchedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - rigId
+        - name
+        - tokenPrefix
+        - status
+        - pluginVersion
+        - engineVersion
+        - lastSeenAt
+        - settingsVersionFetched
+        - settingsFetchedAt
+        - createdAt
+    NinaInstanceCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          maxLength: 256
+        tokenPrefix:
+          type: string
+          maxLength: 256
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        pluginVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        engineVersion:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        lastSeenAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        settingsVersionFetched:
+          type:
+            - integer
+            - "null"
+        settingsFetchedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        token:
+          type: string
+          pattern: ^npm_[0-9A-Za-z]{43}$
+      required:
+        - id
+        - rigId
+        - name
+        - tokenPrefix
+        - status
+        - pluginVersion
+        - engineVersion
+        - lastSeenAt
+        - settingsVersionFetched
+        - settingsFetchedAt
+        - createdAt
+        - token
+    NinaInstanceCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+      required:
+        - id
+        - rigId
+        - name
+      additionalProperties: false
+    NinaBootstrap:
+      type: object
+      properties:
+        apiVersion:
+          type: string
+          enum:
+            - "1"
+        serverTimeUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        server:
+          type: object
+          properties:
+            engineVersion:
+              type: string
+              maxLength: 64
+              pattern: ^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$
+            minPluginVersion:
+              type: string
+              maxLength: 64
+              pattern: ^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$
+          required:
+            - engineVersion
+            - minPluginVersion
+        instance:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+              maxLength: 256
+          required:
+            - id
+            - name
+        tenant:
+          type: object
+          properties:
+            key:
+              type: string
+              maxLength: 256
+            name:
+              type: string
+              maxLength: 256
+            timeZone:
+              type: string
+              maxLength: 256
+          required:
+            - key
+            - name
+            - timeZone
+        rig:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+              maxLength: 256
+            settingsVersion:
+              type: integer
+              minimum: 0
+            site:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 256
+                latDeg:
+                  type: number
+                  minimum: -90
+                  maximum: 90
+                lonDeg:
+                  type: number
+                  minimum: -180
+                  maximum: 180
+                elevationM:
+                  type: number
+                timeZone:
+                  type: string
+                  maxLength: 256
+              required:
+                - name
+                - latDeg
+                - lonDeg
+                - elevationM
+                - timeZone
+            telescope:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 256
+                apertureMm:
+                  type: number
+                  exclusiveMinimum: 0
+                focalLengthMm:
+                  type: number
+                  exclusiveMinimum: 0
+                reducerFactor:
+                  type: number
+                  exclusiveMinimum: 0
+              required:
+                - name
+                - apertureMm
+                - focalLengthMm
+                - reducerFactor
+            camera:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 256
+                pixelSizeUm:
+                  type: number
+                  exclusiveMinimum: 0
+                widthPx:
+                  type: integer
+                  exclusiveMinimum: 0
+                heightPx:
+                  type: integer
+                  exclusiveMinimum: 0
+                defaultGain:
+                  type:
+                    - integer
+                    - "null"
+                defaultOffset:
+                  type:
+                    - integer
+                    - "null"
+                readoutModes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      index:
+                        type: integer
+                        minimum: 0
+                      name:
+                        type: string
+                        maxLength: 256
+                    required:
+                      - index
+                      - name
+                  maxItems: 64
+                binning:
+                  type: array
+                  items:
+                    type: integer
+                    minimum: 1
+                  maxItems: 16
+                setpointC:
+                  type:
+                    - number
+                    - "null"
+                toleranceC:
+                  type: number
+                  minimum: 0
+              required:
+                - name
+                - pixelSizeUm
+                - widthPx
+                - heightPx
+                - defaultGain
+                - defaultOffset
+                - readoutModes
+                - binning
+                - setpointC
+                - toleranceC
+            rotator:
+              type: object
+              properties:
+                present:
+                  type: boolean
+                defaultRotationDeg:
+                  type:
+                    - number
+                    - "null"
+                  minimum: 0
+                  exclusiveMaximum: 360
+                toleranceDeg:
+                  type: number
+                  minimum: 0
+                  maximum: 90
+                skipOnMismatch:
+                  type: boolean
+              required:
+                - present
+                - defaultRotationDeg
+                - toleranceDeg
+                - skipOnMismatch
+            filters:
+              type: array
+              items:
+                type: object
+                properties:
+                  shortName:
+                    type: string
+                    maxLength: 256
+                  name:
+                    type: string
+                    maxLength: 256
+                  color:
+                    type: string
+                    maxLength: 256
+                  position:
+                    type: integer
+                    minimum: 0
+                  ninaFilterName:
+                    type:
+                      - string
+                      - "null"
+                    maxLength: 256
+                required:
+                  - shortName
+                  - name
+                  - color
+                  - position
+                  - ninaFilterName
+              maxItems: 64
+            scheduler:
+              type: object
+              properties:
+                strategy:
+                  type: string
+                  enum:
+                    - proportional
+                    - manual_priority
+                playback:
+                  type: string
+                  enum:
+                    - time_aware
+                    - sequential
+                sortChain:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - lowest_peak_altitude
+                      - setting_soonest
+                      - most_remaining
+                      - constrained
+                      - most_moon_limited
+                      - mosaic_grouping
+                      - card_order
+                      - due_soonest
+                  maxItems: 16
+                bonus:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                  required:
+                    - enabled
+                mosaicPanelsIndependent:
+                  type: boolean
+                dither:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    every:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - enabled
+                    - every
+                filterSwitch:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    every:
+                      type: integer
+                      minimum: 0
+                    tolerancePct:
+                      type: number
+                      minimum: 0
+                      maximum: 100
+                  required:
+                    - enabled
+                    - every
+                    - tolerancePct
+                flats:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    source:
+                      type: string
+                      enum:
+                        - panel
+                        - sky
+                    fullSet:
+                      type: boolean
+                    count:
+                      type: integer
+                      minimum: 0
+                    darkFlats:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        count:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                      required:
+                        - enabled
+                        - count
+                  required:
+                    - enabled
+                    - source
+                    - fullSet
+                    - count
+                    - darkFlats
+                meridianFlip:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    afterMin:
+                      type: number
+                      minimum: 0
+                    maxAfterMin:
+                      type: number
+                      minimum: 0
+                    pauseBeforeMin:
+                      type: number
+                      minimum: 0
+                    durationS:
+                      type: number
+                      minimum: 0
+                  required:
+                    - enabled
+                    - afterMin
+                    - maxAfterMin
+                    - pauseBeforeMin
+                    - durationS
+                overhead:
+                  type: object
+                  properties:
+                    slewCenterS:
+                      type: number
+                      minimum: 0
+                    filterChangeS:
+                      type: number
+                      minimum: 0
+                    ditherSettleS:
+                      type: number
+                      minimum: 0
+                    afEveryMin:
+                      type: number
+                      minimum: 0
+                    afDurationS:
+                      type: number
+                      minimum: 0
+                    downloadS:
+                      type: number
+                      minimum: 0
+                  required:
+                    - slewCenterS
+                    - filterChangeS
+                    - ditherSettleS
+                    - afEveryMin
+                    - afDurationS
+                    - downloadS
+                overshootPct:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+              required:
+                - strategy
+                - playback
+                - sortChain
+                - bonus
+                - mosaicPanelsIndependent
+                - dither
+                - filterSwitch
+                - flats
+                - meridianFlip
+                - overhead
+                - overshootPct
+            leaseMinutes:
+              type: integer
+              exclusiveMinimum: 0
+          required:
+            - id
+            - name
+            - settingsVersion
+            - site
+            - telescope
+            - camera
+            - rotator
+            - filters
+            - scheduler
+            - leaseMinutes
+        moonProfiles:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: UUID
+              name:
+                type: string
+                maxLength: 256
+              separationDeg:
+                type: number
+                minimum: 0
+                maximum: 180
+              widthDays:
+                type: number
+                minimum: 0
+              relax:
+                type: number
+                minimum: 0
+              minAltDeg:
+                type: number
+                minimum: -90
+                maximum: 90
+              maxAltDeg:
+                type: number
+                minimum: -90
+                maximum: 90
+              maxIlluminationPct:
+                type: number
+                minimum: 0
+                maximum: 100
+              moonMustBeDown:
+                type: boolean
+            required:
+              - id
+              - name
+              - separationDeg
+              - widthDays
+              - relax
+              - minAltDeg
+              - maxAltDeg
+              - maxIlluminationPct
+              - moonMustBeDown
+          maxItems: 200
+        tzdataVersion:
+          type: string
+          maxLength: 256
+        nights:
+          type: array
+          items:
+            type: object
+            properties:
+              night:
+                type: string
+                format: date
+                example: 2026-09-18
+              noonStartUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              noonEndUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              nightWindowEndUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - night
+              - noonStartUtc
+              - noonEndUtc
+              - nightWindowEndUtc
+          minItems: 1
+          maxItems: 400
+        timeZoneTransitions:
+          type: array
+          items:
+            type: object
+            properties:
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              utcOffsetMinutes:
+                type: integer
+            required:
+              - atUtc
+              - utcOffsetMinutes
+          minItems: 1
+          maxItems: 1000
+      required:
+        - apiVersion
+        - serverTimeUtc
+        - server
+        - instance
+        - tenant
+        - rig
+        - moonProfiles
+        - tzdataVersion
+        - nights
+        - timeZoneTransitions
+    NinaTargets:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        generatedAtUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        projects:
+          type: array
+          items:
+            oneOf:
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: UUID
+                  version:
+                    type: integer
+                    minimum: 1
+                  name:
+                    type: string
+                    maxLength: 256
+                  target:
+                    type: object
+                    properties:
+                      name:
+                        type:
+                          - string
+                          - "null"
+                        maxLength: 256
+                      objectType:
+                        type:
+                          - string
+                          - "null"
+                        maxLength: 256
+                      catalogNames:
+                        type: string
+                        maxLength: 2000
+                    required:
+                      - name
+                      - objectType
+                  status:
+                    type: string
+                    enum:
+                      - planning
+                      - active
+                      - on_hold
+                      - ready_to_process
+                      - unfinished
+                      - completed
+                      - archived
+                  priority:
+                    type: integer
+                  startDate:
+                    type:
+                      - string
+                      - "null"
+                    format: date
+                    example: 2026-09-18
+                  dueDate:
+                    type:
+                      - string
+                      - "null"
+                    format: date
+                    example: 2026-09-18
+                  conditions:
+                    type: object
+                    properties:
+                      minAltitudeDeg:
+                        type: number
+                        minimum: -90
+                        maximum: 90
+                      minTimeOnTargetH:
+                        type: number
+                        minimum: 0
+                        maximum: 24
+                      twilight:
+                        type: string
+                        enum:
+                          - astronomical
+                          - nautical
+                          - civil
+                      moonDefault:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                          separationDeg:
+                            type: number
+                          widthDays:
+                            type: number
+                          relax:
+                            type: number
+                          minAltDeg:
+                            type: number
+                          maxAltDeg:
+                            type: number
+                          maxIlluminationPct:
+                            type: number
+                          moonMustBeDown:
+                            type: boolean
+                        required:
+                          - enabled
+                    required:
+                      - minAltitudeDeg
+                      - minTimeOnTargetH
+                      - twilight
+                  type:
+                    type: string
+                    enum:
+                      - deep_sky
+                  mosaic:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      rows:
+                        type: integer
+                        minimum: 1
+                      columns:
+                        type: integer
+                        minimum: 1
+                      overlapPct:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                    required:
+                      - rows
+                      - columns
+                      - overlapPct
+                  panels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: UUID
+                        index:
+                          type: integer
+                          minimum: 0
+                        label:
+                          type: string
+                          maxLength: 256
+                        raDeg:
+                          type: number
+                          minimum: 0
+                          exclusiveMaximum: 360
+                        decDeg:
+                          type: number
+                          minimum: -90
+                          maximum: 90
+                        rotationDeg:
+                          type: number
+                          minimum: -360
+                          maximum: 360
+                        lines:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                                description: UUID
+                              filter:
+                                type: string
+                                maxLength: 256
+                              ninaFilterName:
+                                type:
+                                  - string
+                                  - "null"
+                                maxLength: 256
+                              exposureS:
+                                type: number
+                                exclusiveMinimum: 0
+                              gain:
+                                type:
+                                  - integer
+                                  - "null"
+                              offset:
+                                type:
+                                  - integer
+                                  - "null"
+                              binning:
+                                type: integer
+                                minimum: 1
+                              readoutMode:
+                                type:
+                                  - string
+                                  - "null"
+                                maxLength: 256
+                              readoutModeIndex:
+                                type:
+                                  - integer
+                                  - "null"
+                                minimum: 0
+                              moon:
+                                oneOf:
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - none
+                                    required:
+                                      - mode
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - project_default
+                                    required:
+                                      - mode
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - profile
+                                      profileId:
+                                        type: string
+                                        format: uuid
+                                        description: UUID
+                                    required:
+                                      - mode
+                                      - profileId
+                              order:
+                                type: integer
+                                minimum: 0
+                              enabled:
+                                type: boolean
+                              counts:
+                                type: object
+                                properties:
+                                  planned:
+                                    type: integer
+                                    minimum: 0
+                                  acquired:
+                                    type: integer
+                                    minimum: 0
+                                  rejected:
+                                    type: integer
+                                    minimum: 0
+                                  accepted:
+                                    type: integer
+                                    minimum: 0
+                                  remaining:
+                                    type: integer
+                                    minimum: 0
+                                  planningNeed:
+                                    type: integer
+                                    minimum: 0
+                                  bonus:
+                                    type: integer
+                                    minimum: 0
+                                  bonusRejected:
+                                    type: integer
+                                    minimum: 0
+                                required:
+                                  - planned
+                                  - acquired
+                                  - rejected
+                                  - accepted
+                                  - remaining
+                                  - planningNeed
+                                  - bonus
+                                  - bonusRejected
+                            required:
+                              - id
+                              - filter
+                              - ninaFilterName
+                              - exposureS
+                              - gain
+                              - offset
+                              - binning
+                              - readoutMode
+                              - readoutModeIndex
+                              - moon
+                              - order
+                              - enabled
+                              - counts
+                          maxItems: 100
+                      required:
+                        - id
+                        - index
+                        - label
+                        - raDeg
+                        - decDeg
+                        - rotationDeg
+                        - lines
+                    minItems: 1
+                    maxItems: 64
+                  exoplanet:
+                    type: "null"
+                required:
+                  - id
+                  - version
+                  - name
+                  - target
+                  - status
+                  - priority
+                  - conditions
+                  - type
+                  - panels
+              - type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: UUID
+                  version:
+                    type: integer
+                    minimum: 1
+                  name:
+                    type: string
+                    maxLength: 256
+                  target:
+                    type: object
+                    properties:
+                      name:
+                        type:
+                          - string
+                          - "null"
+                        maxLength: 256
+                      objectType:
+                        type:
+                          - string
+                          - "null"
+                        maxLength: 256
+                      catalogNames:
+                        type: string
+                        maxLength: 2000
+                    required:
+                      - name
+                      - objectType
+                  status:
+                    type: string
+                    enum:
+                      - planning
+                      - active
+                      - on_hold
+                      - ready_to_process
+                      - unfinished
+                      - completed
+                      - archived
+                  priority:
+                    type: integer
+                  startDate:
+                    type:
+                      - string
+                      - "null"
+                    format: date
+                    example: 2026-09-18
+                  dueDate:
+                    type:
+                      - string
+                      - "null"
+                    format: date
+                    example: 2026-09-18
+                  conditions:
+                    type: object
+                    properties:
+                      minAltitudeDeg:
+                        type: number
+                        minimum: -90
+                        maximum: 90
+                      minTimeOnTargetH:
+                        type: number
+                        minimum: 0
+                        maximum: 24
+                      twilight:
+                        type: string
+                        enum:
+                          - astronomical
+                          - nautical
+                          - civil
+                      moonDefault:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                          separationDeg:
+                            type: number
+                          widthDays:
+                            type: number
+                          relax:
+                            type: number
+                          minAltDeg:
+                            type: number
+                          maxAltDeg:
+                            type: number
+                          maxIlluminationPct:
+                            type: number
+                          moonMustBeDown:
+                            type: boolean
+                        required:
+                          - enabled
+                    required:
+                      - minAltitudeDeg
+                      - minTimeOnTargetH
+                      - twilight
+                  type:
+                    type: string
+                    enum:
+                      - exoplanet
+                  panels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: UUID
+                        index:
+                          type: integer
+                          minimum: 0
+                        label:
+                          type: string
+                          maxLength: 256
+                        raDeg:
+                          type: number
+                          minimum: 0
+                          exclusiveMaximum: 360
+                        decDeg:
+                          type: number
+                          minimum: -90
+                          maximum: 90
+                        rotationDeg:
+                          type: number
+                          minimum: -360
+                          maximum: 360
+                        lines:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                                description: UUID
+                              filter:
+                                type: string
+                                maxLength: 256
+                              ninaFilterName:
+                                type:
+                                  - string
+                                  - "null"
+                                maxLength: 256
+                              exposureS:
+                                type: number
+                                exclusiveMinimum: 0
+                              gain:
+                                type:
+                                  - integer
+                                  - "null"
+                              offset:
+                                type:
+                                  - integer
+                                  - "null"
+                              binning:
+                                type: integer
+                                minimum: 1
+                              readoutMode:
+                                type:
+                                  - string
+                                  - "null"
+                                maxLength: 256
+                              readoutModeIndex:
+                                type:
+                                  - integer
+                                  - "null"
+                                minimum: 0
+                              moon:
+                                oneOf:
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - none
+                                    required:
+                                      - mode
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - project_default
+                                    required:
+                                      - mode
+                                  - type: object
+                                    properties:
+                                      mode:
+                                        type: string
+                                        enum:
+                                          - profile
+                                      profileId:
+                                        type: string
+                                        format: uuid
+                                        description: UUID
+                                    required:
+                                      - mode
+                                      - profileId
+                            required:
+                              - id
+                              - filter
+                              - ninaFilterName
+                              - exposureS
+                              - gain
+                              - offset
+                              - binning
+                              - readoutMode
+                              - readoutModeIndex
+                              - moon
+                          maxItems: 100
+                      required:
+                        - id
+                        - index
+                        - label
+                        - raDeg
+                        - decDeg
+                        - rotationDeg
+                        - lines
+                    minItems: 1
+                    maxItems: 1
+                  exoplanet:
+                    type: object
+                    properties:
+                      planet:
+                        type: string
+                        maxLength: 256
+                      ephemeris:
+                        type: object
+                        properties:
+                          t0BjdTdb:
+                            type: number
+                          t0SigmaD:
+                            type:
+                              - number
+                              - "null"
+                            minimum: 0
+                          periodD:
+                            type: number
+                            exclusiveMinimum: 0
+                          periodSigmaD:
+                            type:
+                              - number
+                              - "null"
+                            minimum: 0
+                          durationH:
+                            type: number
+                            exclusiveMinimum: 0
+                        required:
+                          - t0BjdTdb
+                          - t0SigmaD
+                          - periodD
+                          - periodSigmaD
+                          - durationH
+                      observation:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                            description: UUID
+                          status:
+                            type: string
+                            enum:
+                              - requested
+                              - locked
+                              - observed
+                              - missed
+                              - cancelled
+                          epoch:
+                            type: integer
+                          night:
+                            type: string
+                            format: date
+                            example: 2026-09-18
+                          ingressUtc:
+                            type: string
+                            format: date-time
+                            example: 2026-09-18T13:00:00Z
+                          midUtc:
+                            type: string
+                            format: date-time
+                            example: 2026-09-18T13:00:00Z
+                          egressUtc:
+                            type: string
+                            format: date-time
+                            example: 2026-09-18T13:00:00Z
+                          windowStartUtc:
+                            type: string
+                            format: date-time
+                            example: 2026-09-18T13:00:00Z
+                          windowEndUtc:
+                            type: string
+                            format: date-time
+                            example: 2026-09-18T13:00:00Z
+                          allowAutofocus:
+                            type: boolean
+                          allowRecenter:
+                            type: boolean
+                          counts:
+                            type: object
+                            properties:
+                              planned:
+                                type: integer
+                                minimum: 0
+                              acquired:
+                                type: integer
+                                minimum: 0
+                              rejected:
+                                type: integer
+                                minimum: 0
+                            required:
+                              - planned
+                              - acquired
+                              - rejected
+                        required:
+                          - id
+                          - status
+                          - epoch
+                          - night
+                          - ingressUtc
+                          - midUtc
+                          - egressUtc
+                          - windowStartUtc
+                          - windowEndUtc
+                          - allowAutofocus
+                          - allowRecenter
+                          - counts
+                    required:
+                      - planet
+                      - ephemeris
+                      - observation
+                required:
+                  - id
+                  - version
+                  - name
+                  - target
+                  - status
+                  - priority
+                  - conditions
+                  - type
+                  - panels
+                  - exoplanet
+          maxItems: 500
+        mosaicPanelsIndependent:
+          type: boolean
+      required:
+        - rigId
+        - generatedAtUtc
+        - projects
+        - mosaicPanelsIndependent
+    NinaPlanResponse:
+      type: object
+      properties:
+        nightPlanId:
+          type: string
+          format: uuid
+          description: UUID
+        engineVersion:
+          type: string
+          maxLength: 64
+          pattern: ^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$
+        inputHash:
+          type: string
+          pattern: ^sha256:[0-9a-f]{1,64}$
+        outputHash:
+          type: string
+          pattern: ^sha256:[0-9a-f]{1,64}$
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        revision:
+          type: integer
+          minimum: 1
+        startAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nightWindow:
+          type: object
+          properties:
+            startUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            endUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - startUtc
+            - endUtc
+        darkness:
+          type: object
+          properties:
+            civilStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            civilEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            nauticalStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            nauticalEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            astronomicalStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            astronomicalEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - civilStartUtc
+            - civilEndUtc
+            - nauticalStartUtc
+            - nauticalEndUtc
+            - astronomicalStartUtc
+            - astronomicalEndUtc
+        darknessEndUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        flatsNotBeforeUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        flatsNotAfterUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sessionEndUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        blocks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: UUID
+              kind:
+                type: string
+                enum:
+                  - regular
+                  - transit
+              projectId:
+                type: string
+                format: uuid
+                description: UUID
+              panelId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              transitObservationId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              startUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              endUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              twilightEndUtc:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              raDeg:
+                type: number
+                minimum: 0
+                exclusiveMaximum: 360
+              decDeg:
+                type: number
+                minimum: -90
+                maximum: 90
+              rotationDeg:
+                type: number
+                minimum: -360
+                maximum: 360
+              rotationMode:
+                type: string
+                enum:
+                  - rotator
+                  - fixed_camera
+              meridianFlip:
+                type:
+                  - object
+                  - "null"
+                properties:
+                  waitStartUtc:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  plannedUtc:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  durationS:
+                    type: number
+                    minimum: 0
+                  inTransitWindow:
+                    type: boolean
+                  planned:
+                    type: boolean
+                  gapStartUtc:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  gapDurationS:
+                    type:
+                      - number
+                      - "null"
+                    minimum: 0
+                required:
+                  - waitStartUtc
+                  - plannedUtc
+                  - durationS
+                  - inTransitWindow
+                  - planned
+                  - gapStartUtc
+                  - gapDurationS
+                additionalProperties: false
+              entries:
+                type: array
+                items:
+                  oneOf:
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - slew_center
+                            - slew_center_rotate
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - filter
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                        filter:
+                          type: string
+                          maxLength: 256
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                        - filter
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - expose
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        exposureLineId:
+                          type: string
+                          format: uuid
+                          description: UUID
+                        filter:
+                          type: string
+                          maxLength: 256
+                        exposureS:
+                          type: number
+                          exclusiveMinimum: 0
+                        gain:
+                          type:
+                            - integer
+                            - "null"
+                        offset:
+                          type:
+                            - integer
+                            - "null"
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutMode:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                        readoutModeIndex:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        bonus:
+                          type: boolean
+                        lastOfNight:
+                          type: boolean
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - exposureLineId
+                        - filter
+                        - exposureS
+                        - gain
+                        - offset
+                        - binning
+                        - readoutMode
+                        - readoutModeIndex
+                        - bonus
+                        - lastOfNight
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - expose_series
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        untilUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        exposureLineId:
+                          type: string
+                          format: uuid
+                          description: UUID
+                        filter:
+                          type: string
+                          maxLength: 256
+                        exposureS:
+                          type: number
+                          exclusiveMinimum: 0
+                        gain:
+                          type:
+                            - integer
+                            - "null"
+                        offset:
+                          type:
+                            - integer
+                            - "null"
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutMode:
+                          type:
+                            - string
+                            - "null"
+                          maxLength: 256
+                        readoutModeIndex:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - untilUtc
+                        - exposureLineId
+                        - filter
+                        - exposureS
+                        - gain
+                        - offset
+                        - binning
+                        - readoutMode
+                        - readoutModeIndex
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - dither
+                            - autofocus_hint
+                            - wait
+                            - meridian_flip
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        durationS:
+                          type: number
+                          minimum: 0
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                        - durationS
+                    - type: object
+                      properties:
+                        seq:
+                          type: integer
+                          minimum: 1
+                        cmd:
+                          type: string
+                          enum:
+                            - end
+                        atUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                      required:
+                        - seq
+                        - cmd
+                        - atUtc
+                minItems: 1
+                maxItems: 2000
+            required:
+              - id
+              - kind
+              - projectId
+              - panelId
+              - startUtc
+              - endUtc
+              - twilightEndUtc
+              - raDeg
+              - decDeg
+              - rotationDeg
+              - rotationMode
+              - meridianFlip
+              - entries
+          maxItems: 200
+        summary:
+          type: object
+          properties:
+            targets:
+              type: integer
+              minimum: 0
+            plannedFrames:
+              type: object
+              additionalProperties:
+                type: object
+                additionalProperties:
+                  type: integer
+                  minimum: 0
+          required:
+            - targets
+            - plannedFrames
+        diagnostics:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+                description: UUID
+              panelId:
+                type: string
+                format: uuid
+                description: UUID
+              lineId:
+                type: string
+                format: uuid
+                description: UUID
+              reason:
+                type: string
+                enum:
+                  - start_date
+                  - not_visible
+                  - below_min_time
+                  - moon_blocked
+                  - prefiltered
+                  - outranked
+                  - no_need
+                  - transit_conflict
+                  - flip_in_transit
+                  - filter_not_found
+                  - rotation_mismatch
+              message:
+                type: string
+                maxLength: 2000
+            required:
+              - projectId
+              - reason
+        warnings:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                enum:
+                  - idle_gap
+                  - la_unsafe
+                  - total_min
+                  - no_alloc
+                  - la_miss
+                  - filter_stuck
+                  - past_mismatch
+                  - panel_rotation_mismatch
+                  - twilight_grazing
+              level:
+                type: string
+                enum:
+                  - warn
+                  - error
+              unitId:
+                type: string
+                maxLength: 256
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              durationS:
+                type: number
+                minimum: 0
+              message:
+                type: string
+                maxLength: 2000
+            required:
+              - code
+              - level
+      required:
+        - nightPlanId
+        - engineVersion
+        - inputHash
+        - night
+        - revision
+        - startAtUtc
+        - nightWindow
+        - darkness
+        - darknessEndUtc
+        - flatsNotBeforeUtc
+        - flatsNotAfterUtc
+        - sessionEndUtc
+        - blocks
+        - summary
+        - diagnostics
+        - warnings
+    NinaPlanRequest:
+      type: object
+      properties:
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        reason:
+          type: string
+          enum:
+            - initial
+            - refresh
+            - resume
+            - reset
+        startAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        pendingCaptures:
+          type: array
+          items:
+            type: object
+            properties:
+              exposureLineId:
+                type: string
+                format: uuid
+                description: UUID
+              transitObservationId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
+              captureIds:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                  description: UUID
+                maxItems: 500
+            required:
+              - exposureLineId
+              - captureIds
+            additionalProperties: false
+          maxItems: 500
+          default: []
+        targetsEtag:
+          type:
+            - string
+            - "null"
+          maxLength: 256
+        tonight:
+          type:
+            - object
+            - "null"
+          properties:
+            pastBlocks:
+              type: array
+              items:
+                type: object
+                properties:
+                  unitId:
+                    type: string
+                    minLength: 1
+                    maxLength: 80
+                  fromUtc:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  toUtc:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                required:
+                  - unitId
+                  - fromUtc
+                  - toUtc
+                additionalProperties: false
+            exposedSecByUnit:
+              type: object
+              additionalProperties:
+                type: number
+                minimum: 0
+            lastAutofocusUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            filterCycle:
+              type: array
+              items:
+                type: object
+                properties:
+                  unitId:
+                    type: string
+                    minLength: 1
+                    maxLength: 80
+                  lineId:
+                    type: string
+                    minLength: 1
+                    maxLength: 80
+                  subsOnLine:
+                    type: integer
+                    minimum: 0
+                required:
+                  - unitId
+                  - lineId
+                  - subsOnLine
+                additionalProperties: false
+            flipDoneByPanel:
+              type: object
+              additionalProperties:
+                type: boolean
+            currentUnitId:
+              type:
+                - string
+                - "null"
+              minLength: 1
+              maxLength: 80
+          additionalProperties: false
+      required:
+        - night
+        - reason
       additionalProperties: false
     TenantAdminView:
       type: object
@@ -11656,6 +13671,292 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/nina-instances:
+    get:
+      summary: NINA-Instanzen des Mandanten (optional je Rig)
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.read` · FA-SYN-01, TK 5.6"
+      x-npm-action: nina.instance.read
+      x-npm-requirements:
+        - FA-SYN-01
+        - TK 5.6
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+      responses:
+        "200":
+          description: Instanzen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NinaInstanceView"
+                required:
+                  - items
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      summary: "NINA-Instanz koppeln: Token einmalig erzeugen"
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.manage` · FA-SYN-01, TK 5.6, SV-08"
+      x-npm-action: nina.instance.manage
+      x-npm-requirements:
+        - FA-SYN-01
+        - TK 5.6
+        - SV-08
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinaInstanceCreate"
+      responses:
+        "201":
+          description: Angelegt, Token nur in dieser Antwort
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaInstanceCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/nina-instances/{id}/revoke:
+    post:
+      summary: Token widerrufen (wirkt sofort)
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.manage` · FA-SYN-01, TK 5.6, SV-08"
+      x-npm-action: nina.instance.manage
+      x-npm-requirements:
+        - FA-SYN-01
+        - TK 5.6
+        - SV-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Widerrufen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaInstanceView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/nina/v1/bootstrap:
+    get:
+      summary: Rig, Einstellungen, Mondprofile, Nacht-Tabelle ab der Mittagsnacht
+      tags:
+        - nina
+      description: "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SIM-09, NT-02, NT-05, NT-E1, NT-E2, NT-40"
+      security:
+        - ninaToken: []
+      x-npm-action: nina.sync
+      x-npm-requirements:
+        - FA-SYN-02
+        - FA-SIM-09
+        - NT-02
+        - NT-05
+        - NT-E1
+        - NT-E2
+        - NT-40
+      responses:
+        "200":
+          description: Bootstrap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaBootstrap"
+        "401":
+          description: nina.token_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: tenant.locked
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: engine.incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/nina/v1/targets:
+    get:
+      summary: Auslieferbare Projekte des Rigs (ETag ohne Zähler aus Meldungen)
+      tags:
+        - nina
+      description: "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SYN-03, NT-E1, NT-19"
+      security:
+        - ninaToken: []
+      x-npm-action: nina.sync
+      x-npm-requirements:
+        - FA-SYN-02
+        - FA-SYN-03
+        - NT-E1
+        - NT-19
+      parameters:
+        - schema:
+            type: string
+            maxLength: 256
+          required: false
+          name: if-none-match
+          in: header
+      responses:
+        "200":
+          description: Ziele
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaTargets"
+        "304":
+          description: Unverändert
+        "401":
+          description: nina.token_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: tenant.locked
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: engine.incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/nina/v1/plan:
+    post:
+      summary: Nachtplan vom Server (gleiche Engine und Eingaben wie der Simulator)
+      tags:
+        - nina
+      description: "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SIM-05, FA-SYN-03, NT-01, NT-20, M4, M7"
+      security:
+        - ninaToken: []
+      x-npm-action: nina.sync
+      x-npm-requirements:
+        - FA-SIM-05
+        - FA-SYN-03
+        - NT-01
+        - NT-20
+        - M4
+        - M7
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinaPlanRequest"
+      responses:
+        "200":
+          description: Nachtplan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaPlanResponse"
+        "401":
+          description: nina.token_invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: tenant.locked
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: engine.incompatible
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: nina.night_invalid | engine.input_invalid | validation.failed
           content:
             application/problem+json:
               schema:

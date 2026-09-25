@@ -55,6 +55,7 @@
   "me.preferences",
   "me.favorites",
   "job.read",
+  "nina.sync",
   "public"
  ],
  "approvalStatuses": [
