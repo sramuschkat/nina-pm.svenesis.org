@@ -155,6 +155,43 @@ export const CHART: Readonly<Record<string, string>> = {
   'chart-series-6': '#f48fb1',
 };
 
+/**
+ * Sternkarte S-20 (AP-21): Farben auf dem Himmelsgrund, themen-unabhängig wie das Nachtdiagramm – die Karte
+ * zeigt den Himmel. Projekt-Overlays nach Status (FA-FRM-10), Bildfeld des Rigs und Vergleichs-Rig.
+ */
+export const SKY: Readonly<Record<string, string>> = {
+  'sky-bg': 'rgb(6, 10, 20)',
+  'sky-ground': 'rgba(60, 40, 18, 0.45)',
+  'sky-milky-way': 'rgba(170, 190, 230, 0.07)',
+  'sky-grid-eq': 'rgba(120, 170, 230, 0.32)',
+  'sky-grid-altaz': 'rgba(120, 220, 160, 0.3)',
+  'sky-ecliptic': 'rgba(240, 200, 90, 0.55)',
+  'sky-galactic': 'rgba(210, 140, 230, 0.5)',
+  'sky-const-line': 'rgba(150, 175, 215, 0.45)',
+  'sky-const-label': 'rgba(175, 195, 225, 0.75)',
+  'sky-star': '#f4f6fb',
+  'sky-star-label': 'rgba(228, 233, 239, 0.85)',
+  'sky-dso': '#8fd3a8',
+  'sky-dso-label': 'rgba(170, 225, 190, 0.9)',
+  'sky-horizon': '#e67e22',
+  'sky-min-alt': '#e5484d',
+  'sky-meridian': 'rgba(240, 240, 240, 0.4)',
+  'sky-heatmap': 'rgba(229, 72, 77, 0.22)',
+  'sky-sun': '#f6c85f',
+  'sky-day': 'rgba(92, 142, 212, 0.55)',
+  'sky-moon': '#e8ecf2',
+  'sky-planet': '#f7b267',
+  'sky-frame': '#ff4fd8',
+  'sky-frame-compare': '#7fc8f8',
+  'sky-project-submitted': '#f6c85f',
+  'sky-project-planning': '#b39ddb',
+  'sky-project-active': '#2ecc71',
+  'sky-project-favorite': '#f48fb1',
+  'sky-project-unfinished': '#80cbc4',
+  'sky-project-completed': '#7a8799',
+  'sky-label': 'rgba(228, 233, 239, 0.9)',
+};
+
 /** Anzahl der Zielfarben `chart-series-n` (AP-13f). */
 export const CHART_SERIES_COUNT = 6;
 
@@ -204,6 +241,7 @@ export function renderTokensCss(): string {
     ':root[data-theme="light"] {',
     decl(BASE),
     decl(CHART),
+    decl(SKY),
     decl(COLORS.light),
     decl(DENSITY.normal),
     space,

@@ -21,7 +21,7 @@ import {
   type DsoView,
 } from '@nina-pm/shared';
 import type { NightEvaluator } from './night';
-import { filterHint, imagingCandidate, photoScore, WEBSITE_KIND } from './score';
+import { filterHint, imagingCandidate, photoScore, websiteKind } from './score';
 
 export type CatalogRow = DsoCatalogRow & { readonly id: string };
 
@@ -51,6 +51,7 @@ export function indexCatalog(rows: readonly CatalogRow[]): Indexed[] {
       candidate: imagingCandidate({
         primaryId: row.primaryId,
         group,
+        objectType: row.objectType,
         sizeMajorArcmin: row.sizeMajorArcmin,
         mag,
       }),
@@ -65,7 +66,7 @@ function scoreOf(
   night: NightEvaluator | undefined,
   fov: number | undefined,
 ): number | null {
-  const kind = WEBSITE_KIND[x.group];
+  const kind = websiteKind(x.row.objectType, x.group);
   if (!night || fov === undefined || kind === null || !x.candidate) return null;
   const w = night.weighted(x.row, kind);
   if (!w) return null;
@@ -96,7 +97,7 @@ export function toView(x: Indexed, night?: NightEvaluator, fov?: number): DsoVie
     sizeMinorArcmin: r.sizeMinorArcmin,
     positionAngleDeg: r.positionAngleDeg,
     source: r.source,
-    filterHint: filterHint(x.group),
+    filterHint: filterHint(x.group, r.objectType),
     night: night ? { ...night.metrics(r), score: scoreOf(x, night, fov) } : null,
   };
 }

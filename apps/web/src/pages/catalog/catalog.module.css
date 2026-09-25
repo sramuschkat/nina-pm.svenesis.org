@@ -171,6 +171,20 @@
   object-fit: cover;
   background: var(--npm-skeleton);
 }
+/* Reiter Alle Objekte / Beste der Nacht */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+}
+.tab,
+.tabActive {
+  composes: button from '../admin/admin.module.css';
+}
+.tabActive {
+  border-color: var(--npm-accent);
+  font-weight: 600;
+}
 /* Miniaturbild in der Liste (128-px-Katalogbild, verkleinert) */
 .listThumb,
 .listThumbEmpty {

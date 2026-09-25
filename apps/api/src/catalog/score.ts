@@ -36,9 +36,20 @@ export const MOON_SENS_RIG: Readonly<Record<string, number>> = {
   OC: 0.3,
 };
 
+/**
+ * Kurzcode für die Bewertung: wie die Anzeigegruppe, aber Haufen mit Nebel (`Cl+N`, z. B. M 42, IC 1805)
+ * zählen wie Emissionsnebel – fotografiert wird das Gas, durch Schmalbandfilter.
+ */
+export function websiteKind(objectType: string, group: DsoTypeGroup): string | null {
+  return objectType === 'Cl+N' ? 'EN' : WEBSITE_KIND[group];
+}
+
 /** Filterempfehlung (FA-FRM-13): Schmalband für Emissionsobjekte, sonst Breitband (LRGB). */
-export function filterHint(group: DsoTypeGroup): 'narrowband' | 'broadband' | null {
-  const k = WEBSITE_KIND[group];
+export function filterHint(
+  group: DsoTypeGroup,
+  objectType = '',
+): 'narrowband' | 'broadband' | null {
+  const k = websiteKind(objectType, group);
   if (k === null) return null;
   return k === 'EN' || k === 'SNR' || k === 'PN' ? 'narrowband' : 'broadband';
 }
@@ -50,10 +61,11 @@ export function filterHint(group: DsoTypeGroup): 'narrowband' | 'broadband' | nu
 export function imagingCandidate(o: {
   primaryId: string;
   group: DsoTypeGroup;
+  objectType?: string;
   sizeMajorArcmin: number | null;
   mag: number | null;
 }): boolean {
-  const k = WEBSITE_KIND[o.group];
+  const k = websiteKind(o.objectType ?? '', o.group);
   const s = o.sizeMajorArcmin;
   if (k === null || s === null || s < 3 || s > 180) return false;
   if (/^(NGC|IC) \d+ ?[A-Z]/.test(o.primaryId)) return false;

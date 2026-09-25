@@ -3,8 +3,8 @@
  * Katalog, Anzeigegruppe, Sternbild, Helligkeit (Band angezeigt), Flächenhelligkeit, Größe und „passt
  * ins Bildfeld“ des Rigs; mit Rig zusätzlich Nacht (◀ ▶, *Heute Nacht*), Mindesthöhe und min. nutzbare
  * Stunden – die Nachtwerte (beste Zeit/Höhe, Mond, nutzbare Stunden) rechnet die API mit der Engine.
- * Umschalter Liste/Galerie, Aktionen *Projekt anlegen* und *Sternkarte* (folgt mit AP-21).
- * Der Reiter *Beste der Nacht* (FA-FRM-13, Svenesis-Bewertung) folgt mit AP-21.
+ * Umschalter Liste/Galerie, Aktionen *Projekt anlegen* und *Sternkarte* (S-20, AP-21); Reiter
+ * *Alle Objekte* / *Beste der Nacht* (FA-FRM-13, Bewertung der Website, AP-21).
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import {
@@ -23,6 +23,8 @@ import { Link, useSearchParams } from 'react-router';
 import { catalogApi, equipmentApi, type DsoList, type DsoView } from '../../api/client';
 import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
+import { PlanningTabs } from '../planning/PlanningTabs';
+import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
@@ -113,6 +115,11 @@ export function ObjectBrowserPage() {
     return () => window.clearTimeout(id);
   });
 
+  // Beste der Nacht braucht Standort und Bildfeld des Rigs (FA-FRM-13).
+  const best =
+    filters.tab === 'best'
+      ? { hint: site && fov !== null ? t('catalog.bestHint') : t('catalog.bestNeedsRig') }
+      : null;
   const waitForNight = site !== null && night === null && !nights.isError;
   const search = searchFromFilters(filters, {
     siteId: site?.id ?? null,
@@ -131,12 +138,29 @@ export function ObjectBrowserPage() {
 
   return (
     <div className={styles.page}>
+      <PlanningTabs />
       <nav aria-label={t('catalog.crumbs')} className={styles.muted}>
         {t('catalog.crumbs')}
       </nav>
       <div className={styles.head}>
         <h1>{t('catalog.title')}</h1>
       </div>
+
+      <div role="tablist" aria-label={t('catalog.tabsLabel')} className={styles.tabs}>
+        {(['all', 'best'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={filters.tab === tab}
+            className={filters.tab === tab ? styles.tabActive : styles.tab}
+            onClick={() => update({ tab })}
+          >
+            {t(`catalog.tab.${tab}`)}
+          </button>
+        ))}
+      </div>
+      {best ? <p className={styles.muted}>{best.hint}</p> : null}
 
       <form
         className={styles.filters}
@@ -161,16 +185,31 @@ export function ObjectBrowserPage() {
             onChange={(e) => setText(e.target.value)}
           />
         </div>
-        <Select
-          id="catalog-group"
-          label={t('catalog.group')}
-          value={filters.group}
-          onChange={(v) => update({ group: v })}
-          options={[
-            ['', t('catalog.allGroups')],
-            ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
-          ]}
-        />
+        {filters.tab === 'best' ? (
+          <Select
+            id="catalog-family"
+            label={t('catalog.family')}
+            value={filters.family}
+            onChange={(v) => update({ family: v as BrowserFilters['family'] })}
+            options={[
+              ['', t('catalog.allFamilies')],
+              ...(['galaxies', 'nebulae', 'clusters'] as const).map(
+                (f) => [f, t(`catalog.families.${f}`)] as const,
+              ),
+            ]}
+          />
+        ) : (
+          <Select
+            id="catalog-group"
+            label={t('catalog.group')}
+            value={filters.group}
+            onChange={(v) => update({ group: v })}
+            options={[
+              ['', t('catalog.allGroups')],
+              ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
+            ]}
+          />
+        )}
         <Select
           id="catalog-catalog"
           label={t('catalog.catalog')}
@@ -293,15 +332,17 @@ export function ObjectBrowserPage() {
             ? t('catalog.fitsFovNoRig')
             : t('catalog.fitsFov', { fov: `${fmt(fov, 0)}′` })}
         </label>
-        <Select
-          id="catalog-sort"
-          label={t('catalog.sort')}
-          value={filters.sort}
-          onChange={(v) => update({ sort: v as BrowserFilters['sort'] })}
-          options={SORTS.filter((s) => site !== null || !NIGHT_SORTS.includes(s)).map(
-            (s) => [s, t(`catalog.sortBy.${s}`)] as const,
-          )}
-        />
+        {filters.tab === 'all' ? (
+          <Select
+            id="catalog-sort"
+            label={t('catalog.sort')}
+            value={filters.sort}
+            onChange={(v) => update({ sort: v as BrowserFilters['sort'] })}
+            options={SORTS.filter((s) => site !== null || !NIGHT_SORTS.includes(s)).map(
+              (s) => [s, t(`catalog.sortBy.${s}`)] as const,
+            )}
+          />
+        ) : null}
         <fieldset className={styles.viewToggle}>
           <legend className={styles.label}>{t('catalog.view')}</legend>
           {(['list', 'gallery'] as const).map((v) => (
@@ -351,6 +392,7 @@ export function ObjectBrowserPage() {
             minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
             timeZone={data.night?.timeZone ?? null}
             rigId={rigId}
+            rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
             canCreate={canCreate}
           />
         ) : (
@@ -360,6 +402,7 @@ export function ObjectBrowserPage() {
             minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
             timeZone={data.night?.timeZone ?? null}
             rigId={rigId}
+            rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
             canCreate={canCreate}
           />
         )}
@@ -519,6 +562,8 @@ interface RowProps {
   readonly minAlt: number;
   readonly timeZone: string | null;
   readonly rigId: string | null;
+  /** Bildfeld des Rigs (Grad) – Sichtfeld der Sternkarte. */
+  readonly rigFov: readonly [number, number] | null;
   readonly canCreate: boolean;
 }
 
@@ -558,6 +603,11 @@ function useCells({ minAlt, timeZone }: Pick<RowProps, 'minAlt' | 'timeZone'>) {
           : t('catalog.moonSep', { deg: o.night.moonSepDeg }),
     usable: (o: DsoView) =>
       o.night ? t('catalog.hours', { h: fmt(o.night.usableHours, 1) }) : '–',
+    score: (o: DsoView) =>
+      o.night?.score === null || o.night?.score === undefined
+        ? '–'
+        : t('catalog.scoreValue', { score: Math.round(o.night.score * 100) }),
+    filter: (o: DsoView) => (o.filterHint ? t(`catalog.filterHint.${o.filterHint}`) : '–'),
     group: (o: DsoView) => (
       <span title={t('catalog.typeCode', { code: o.objectType })}>
         {t(`catalog.groups.${o.group}`)}
@@ -566,7 +616,12 @@ function useCells({ minAlt, timeZone }: Pick<RowProps, 'minAlt' | 'timeZone'>) {
   };
 }
 
-function Actions({ o, rigId, canCreate }: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone'>) {
+function Actions({
+  o,
+  rigId,
+  rigFov,
+  canCreate,
+}: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone'>) {
   const { t } = useTranslation();
   return (
     <div className={styles.rowActions}>
@@ -575,15 +630,21 @@ function Actions({ o, rigId, canCreate }: { o: DsoView } & Omit<RowProps, 'minAl
           {t('catalog.createProject')}
         </Link>
       ) : null}
-      <button
-        type="button"
+      <Link
         className={styles.button}
-        disabled
-        title={t('catalog.skyMapLater')}
-        aria-label={`${t('catalog.skyMap')} – ${t('catalog.skyMapLater')}`}
+        to={skyMapHref({
+          ra: o.raDeg,
+          dec: o.decDeg,
+          rig: rigId,
+          object: o.primaryId,
+          fov: fovForFrame(
+            Math.max(rigFov?.[0] ?? 1, (o.sizeMajorArcmin ?? 0) / 60),
+            Math.max(rigFov?.[1] ?? 1, (o.sizeMajorArcmin ?? 0) / 60),
+          ),
+        })}
       >
         {t('catalog.skyMap')}
-      </button>
+      </Link>
     </div>
   );
 }
@@ -596,6 +657,7 @@ function ResultTable({
   const { t } = useTranslation();
   const cell = useCells(row);
   const night = items.some((o) => o.night !== null);
+  const scored = items.some((o) => o.night?.score !== null && o.night?.score !== undefined);
   return (
     <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby={labelledBy}>
       <table className={styles.table}>
@@ -619,6 +681,14 @@ function ResultTable({
             <th scope="col" className={`${styles.num} ${styles.hideNarrow}`}>
               {t('catalog.col.surfBr')}
             </th>
+            {scored ? (
+              <>
+                <th scope="col" className={styles.num}>
+                  {t('catalog.col.score')}
+                </th>
+                <th scope="col">{t('catalog.col.filter')}</th>
+              </>
+            ) : null}
             {night ? (
               <>
                 <th scope="col">{t('catalog.col.best')}</th>
@@ -670,6 +740,12 @@ function ResultTable({
                 <td className={`${styles.num} ${styles.nowrap}`}>{cell.size(o)}</td>
                 <td className={`${styles.num} ${styles.nowrap}`}>{cell.mag(o)}</td>
                 <td className={`${styles.num} ${styles.hideNarrow}`}>{cell.surfBr(o)}</td>
+                {scored ? (
+                  <>
+                    <td className={`${styles.num} ${styles.nowrap}`}>{cell.score(o)}</td>
+                    <td className={styles.nowrap}>{cell.filter(o)}</td>
+                  </>
+                ) : null}
                 {night ? (
                   <>
                     <td className={styles.nowrap}>{cell.best(o)}</td>
@@ -678,7 +754,7 @@ function ResultTable({
                   </>
                 ) : null}
                 <td>
-                  <Actions o={o} rigId={row.rigId} canCreate={row.canCreate} />
+                  <Actions o={o} rigId={row.rigId} rigFov={row.rigFov} canCreate={row.canCreate} />
                 </td>
               </tr>
             );
@@ -717,7 +793,7 @@ function Gallery({ items, ...row }: { items: DsoView[] } & RowProps) {
               </span>
             ) : null}
           </div>
-          <Actions o={o} rigId={row.rigId} canCreate={row.canCreate} />
+          <Actions o={o} rigId={row.rigId} rigFov={row.rigFov} canCreate={row.canCreate} />
         </li>
       ))}
     </ul>

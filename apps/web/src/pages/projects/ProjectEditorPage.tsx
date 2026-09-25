@@ -68,6 +68,7 @@ import {
   type ProjectDraft,
 } from './model';
 import { CatalogImage } from '../catalog/CatalogImage';
+import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { ProjectTabs } from './ProjectTabs';
 import { SubmitPanel } from './SubmitPanel';
@@ -113,6 +114,15 @@ export function ProjectEditorPage() {
   const [params] = useSearchParams();
   const objekt = isNew ? params.get('objekt') : null;
   const rigParam = isNew ? params.get('rig') : null;
+  // Aus der Sternkarte (S-20, FA-FRM-12): Bildfeldmitte und Rotation.
+  const coordParam = (key: string, min: number, max: number) => {
+    const v = isNew ? params.get(key) : null;
+    const n = v === null || v.trim() === '' ? NaN : Number(v);
+    return Number.isFinite(n) && n >= min && n <= max ? n : null;
+  };
+  const raParam = coordParam('ra', 0, 359.999999);
+  const decParam = coordParam('dec', -90, 90);
+  const rotParam = coordParam('rot', 0, 359.99);
   const picked = useQuery({
     queryKey: ['dso', 'pick', objekt],
     queryFn: () => catalogApi.search({ q: objekt ?? '', limit: 5 }),
@@ -122,7 +132,9 @@ export function ProjectEditorPage() {
 
   // Entwurf: einmal je Projekt aus der gespeicherten Fassung, neu aus der eigenen Vorbelegung.
   const [draft, setDraft] = useState<{ for: string; value: ProjectDraft } | null>(null);
-  const draftKey = id ?? `new:${objekt ?? ''}:${rigParam ?? ''}`;
+  const draftKey =
+    id ??
+    `new:${objekt ?? ''}:${rigParam ?? ''}:${String(raParam)}:${String(decParam)}:${String(rotParam)}`;
   if (draft?.for !== draftKey) {
     if (isNew && !prefs.isPending && (objekt === null || !picked.isPending)) {
       const defaults = prefs.data?.['project.defaultConditions'];
@@ -130,6 +142,9 @@ export function ProjectEditorPage() {
       if (rigParam) value = { ...value, rigId: rigParam };
       const o = picked.data?.items.find((i) => i.primaryId === objekt);
       if (o) value = applyCatalogPick(value, catalogPick(o, t));
+      if (raParam !== null && decParam !== null)
+        value = { ...value, raDeg: raParam, decDeg: decParam };
+      if (rotParam !== null) value = { ...value, rotationDeg: rotParam };
       setDraft({ for: draftKey, value });
     } else if (!isNew && project.data) {
       setDraft({ for: draftKey, value: toDraft(project.data) });
@@ -659,7 +674,25 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
               <p>{fov}</p>
             </div>
           </div>
-          <p className={styles.muted}>{t('projectEditor.coordinatesSearchLater')}</p>
+          <p className={styles.muted}>
+            {t('projectEditor.coordinatesSearchLater')}{' '}
+            {draft.raDeg !== null && draft.decDeg !== null ? (
+              <Link
+                to={skyMapHref({
+                  ra: draft.raDeg,
+                  dec: draft.decDeg,
+                  rot: draft.rotationDeg,
+                  rig: draft.rigId,
+                  ...(saved ? { project: saved.id } : {}),
+                  ...(rig
+                    ? { fov: fovForFrame(rig.derived.fovWidthDeg, rig.derived.fovHeightDeg) }
+                    : {}),
+                })}
+              >
+                {t('projectEditor.openSkyMap')}
+              </Link>
+            ) : null}
+          </p>
           <TextField
             label={t('projectEditor.field.catalogNames')}
             value={draft.catalogNames}

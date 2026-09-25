@@ -62,5 +62,8 @@ describe('Bewertung „Beste der Nacht“', () => {
     expect(filterHint('planetary_nebula')).toBe('narrowband');
     expect(filterHint('galaxy')).toBe('broadband');
     expect(filterHint('multiple_star')).toBeNull();
+    // Haufen mit Nebel (M 42, IC 1805) werden wie Emissionsnebel fotografiert.
+    expect(filterHint('open_cluster', 'Cl+N')).toBe('narrowband');
+    expect(filterHint('open_cluster', 'OCl')).toBe('broadband');
   });
 });

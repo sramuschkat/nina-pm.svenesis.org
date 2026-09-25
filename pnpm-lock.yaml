@@ -275,6 +275,9 @@ importers:
       '@js-temporal/polyfill':
         specifier: ^0.5.1
         version: 0.5.1
+      '@nina-pm/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@nina-pm/engine':
         specifier: workspace:*
         version: link:../../packages/engine

@@ -437,6 +437,8 @@ export type DsoView = Schemas['DsoView'];
 export type DsoList = Schemas['DsoList'];
 export type DsoNight = Schemas['DsoNight'];
 export type CatalogStatus = Schemas['CatalogStatus'];
+export type DsoMarker = Schemas['DsoMarker'];
+export type DsoRegion = Schemas['DsoRegion'];
 
 /** Filter des Objektbrowsers (S-21) bzw. der Katalogsuche im Editor – wie `DsoQuery`. */
 export interface DsoSearch {
@@ -454,7 +456,10 @@ export interface DsoSearch {
   minAltDeg?: number;
   twilight?: string;
   minUsableHours?: number;
-  sort?: 'name' | 'mag' | 'size' | 'usable' | 'altitude';
+  rigFovArcmin?: number;
+  candidates?: 'true';
+  family?: 'galaxies' | 'nebulae' | 'clusters';
+  sort?: 'name' | 'mag' | 'size' | 'usable' | 'altitude' | 'score';
   limit?: number;
   offset?: number;
 }
@@ -470,6 +475,9 @@ export function dsoSearchParams(s: DsoSearch): string {
 /** Objektkatalog (AP-20, S-21, Katalogsuche im Editor, S-82). */
 export const catalogApi = {
   search: (s: DsoSearch) => apiFetch<DsoList>(`${V1}/dso?${dsoSearchParams(s)}`),
+  /** Katalog-Overlay der Sternkarte (FA-FRM-09): Objekte im Umkreis, Dichte über `magMax`. */
+  region: (q: { ra: number; dec: number; radius: number; magMax: number; limit?: number }) =>
+    apiFetch<DsoRegion>(`${V1}/dso/region?${dsoSearchParams(q as unknown as DsoSearch)}`),
   status: () => apiFetch<CatalogStatus>('/api/system/v1/catalogs'),
   refresh: () => apiFetch<{ jobId: string }>('/api/system/v1/catalogs/dso/refresh', json('POST')),
 };
