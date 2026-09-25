@@ -20,7 +20,8 @@ const file = catalog as unknown as {
   counts: { rows: number };
   rows: DsoCatalogRow[];
 };
-const ctx = {} as Parameters<ReturnType<typeof catalogRefreshHandler>>[0];
+type Ctx = Parameters<ReturnType<typeof catalogRefreshHandler>>[0];
+const ctx = (now = new Date()): Ctx => ({ job: {} as Ctx['job'], now: () => now });
 
 let s: Stack;
 let tenantCookies: Record<string, string>;
@@ -48,7 +49,7 @@ beforeAll(async () => {
   const sven = await s.seed.identity({ mfaEnabled: true, username: 'sven' });
   await s.seed.superUser(sven.id);
   systemCookies = { [COOKIE_NAMES.session]: await s.seed.session(sven.id, null, 'system') };
-  await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(ctx);
+  await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(ctx());
 }, 120_000);
 afterAll(() => s.close());
 
@@ -60,10 +61,9 @@ describe('catalog_refresh (T-KAT-11)', () => {
 
   it('zweiter Lauf ändert außer updated_at keine Zeile, id bleibt', async () => {
     const before = await snapshot();
-    await catalogRefreshHandler({
-      db: () => Promise.resolve(s.pg.db),
-      now: () => new Date(Date.now() + 60_000),
-    })(ctx);
+    await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(
+      ctx(new Date(Date.now() + 60_000)),
+    );
     const after = await snapshot();
     const strip = (rows: Record<string, unknown>[]) =>
       rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'updated_at')));
@@ -85,7 +85,7 @@ describe('catalog_refresh (T-KAT-11)', () => {
       catalogRefreshHandler(
         { db: () => Promise.resolve(s.pg.db) },
         { version: 'x', counts: { rows: 2 }, rows },
-      )(ctx),
+      )(ctx()),
     ).rejects.toThrow(/Doppelte primary_id/);
     expect(await snapshot()).toEqual(before);
   });
@@ -95,7 +95,7 @@ describe('catalog_refresh (T-KAT-11)', () => {
       catalogRefreshHandler(
         { db: () => Promise.resolve(s.pg.db) },
         { version: 'x', counts: { rows: 3 }, rows: file.rows.slice(0, 2) },
-      )(ctx),
+      )(ctx()),
     ).rejects.toThrow(/unvollständig/);
   });
 });
@@ -250,6 +250,44 @@ describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
     );
     expect(warm).toBeLessThan(300);
   }, 60_000);
+});
+
+describe('Katalogobjekt am Projekt (Katalogsuche im Editor)', () => {
+  it('Projekt mit dsoObjectId; unbekanntes Objekt → 422', async () => {
+    const m31 = (
+      (await (
+        await s.request('/api/web/v1/dso?q=M%2031&limit=1', { cookies: tenantCookies })
+      ).json()) as DsoList
+    ).items[0];
+    const id = crypto.randomUUID();
+    const created = await s.request('/api/web/v1/projects', {
+      method: 'POST',
+      cookies: tenantCookies,
+      body: {
+        id,
+        name: 'M 31 – Andromeda Galaxy',
+        targetName: 'M 31',
+        dsoObjectId: m31?.id,
+        raDeg: m31?.raDeg,
+        decDeg: m31?.decDeg,
+      },
+    });
+    expect(created.status).toBe(201);
+    expect(((await created.json()) as { dsoObjectId: string }).dsoObjectId).toBe(m31?.id);
+    const patched = await s.request(`/api/web/v1/projects/${id}`, {
+      method: 'PATCH',
+      cookies: tenantCookies,
+      body: { dsoObjectId: null },
+    });
+    expect(patched.status).toBe(200);
+    expect(((await patched.json()) as { dsoObjectId: string | null }).dsoObjectId).toBeNull();
+    const unknown = await s.request('/api/web/v1/projects', {
+      method: 'POST',
+      cookies: tenantCookies,
+      body: { id: crypto.randomUUID(), name: 'X', dsoObjectId: crypto.randomUUID() },
+    });
+    expect(unknown.status).toBe(422);
+  });
 });
 
 describe('S-82 Kataloge', () => {

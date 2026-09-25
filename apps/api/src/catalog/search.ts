@@ -63,7 +63,12 @@ const byName = (a: Indexed, b: Indexed) =>
   designationRank(a.displayName) - designationRank(b.displayName) ||
   a.displayName.localeCompare(b.displayName, 'en', { numeric: true });
 
-export function searchDso(index: readonly Indexed[], q: DsoQuery, night?: NightEvaluator): DsoList {
+export function searchDso(
+  index: readonly Indexed[],
+  q: DsoQuery,
+  night?: NightEvaluator,
+  catalog: DsoList['catalog'] = { version: '', fetchedAt: '1970-01-01' },
+): DsoList {
   const needle = q.q ? squeezeDesignation(q.q) : '';
   const scored: { x: Indexed; score: number }[] = [];
   for (const x of index) {
@@ -127,6 +132,7 @@ export function searchDso(index: readonly Indexed[], q: DsoQuery, night?: NightE
     items: scored.slice(q.offset, q.offset + q.limit).map((s) => toView(s.x, night)),
     total: scored.length,
     night: night ? { ...night.meta } : null,
+    catalog,
   };
 }
 

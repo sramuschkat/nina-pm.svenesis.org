@@ -119,7 +119,13 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
         { path: 'siteId', message: 'Nachtfilter und -sortierung nur mit Standort' },
       ]);
     c.header('cache-control', 'private, max-age=60');
-    return c.json(searchDso(index, query, night), 200);
+    return c.json(
+      searchDso(index, query, night, {
+        version: catalogMeta.version,
+        fetchedAt: catalogMeta.fetchedAt,
+      }),
+      200,
+    );
   });
 
   app.openapi(catalogStatusRoute, async (c) => {

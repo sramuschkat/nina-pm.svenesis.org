@@ -6808,6 +6808,18 @@ components:
         total:
           type: integer
           minimum: 0
+        catalog:
+          type: object
+          properties:
+            version:
+              type: string
+            fetchedAt:
+              type: string
+              format: date
+              example: 2026-09-18
+          required:
+            - version
+            - fetchedAt
         night:
           type:
             - object
@@ -6844,6 +6856,7 @@ components:
       required:
         - items
         - total
+        - catalog
         - night
     DsoView:
       type: object

@@ -1,6 +1,7 @@
 /**
- * S-82 (Teil AP-07a): Wartungshinweis für alle Mandanten (FA-SU-08) und System-Audit (FA-SU-09, SV-11) –
- * neueste zuerst, Filter je Mandant, „Weitere laden“ über den Cursor. Kataloge folgen mit R2/R4.
+ * S-82: Kataloge (AP-20, `CatalogPanel`), Wartungshinweis für alle Mandanten (FA-SU-08) und System-Audit
+ * (FA-SU-09, SV-11) – neueste zuerst, Filter je Mandant, „Weitere laden“ über den Cursor.
+ * Exoplaneten-Kataloge folgen mit R4.
  */
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -12,12 +13,14 @@ import { SYSTEM_TIMEZONE } from '../../lib/time';
 import styles from '../admin/admin.module.css';
 import { AuditTable } from '../admin/AuditTable';
 import { problemCode } from '../admin/shared';
+import { CatalogPanel } from './CatalogPanel';
 import { SystemLayout } from './SystemLayout';
 
 export function SystemAuditPage() {
   const { t } = useTranslation();
   return (
     <SystemLayout title={t('system.audit.title')}>
+      <CatalogPanel />
       <MaintenanceBannerForm />
       <SystemAudit />
     </SystemLayout>

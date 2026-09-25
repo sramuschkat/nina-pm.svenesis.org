@@ -10,6 +10,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
+import { CATALOG_PATH } from '../pages/catalog/model';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
 import { api, memberApi } from '../api/client';
@@ -233,7 +234,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   const areas: NavArea[] = [
     { key: 'tonight', visible: !system },
     { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.rigs },
-    { key: 'planning', visible: !system },
+    { key: 'planning', visible: !system, to: CATALOG_PATH },
     // Projektliste folgt mit AP-11c; bis dahin Platzhalter mit *Neues Projekt* und der Editor S-31.
     { key: 'projects', visible: !system, to: '/projekte' },
     { key: 'nina', visible: !system, to: '/nina/simulator' },

@@ -13643,6 +13643,14 @@ export interface components {
         DsoList: {
             items: components["schemas"]["DsoView"][];
             total: number;
+            catalog: {
+                version: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                fetchedAt: string;
+            };
             night: {
                 /**
                  * Format: date

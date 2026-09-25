@@ -19,12 +19,14 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   api,
   approvalApi,
+  catalogApi,
   equipmentApi,
   projectsApi,
+  type DsoView,
   type ProjectView,
   type RigView,
 } from '../../api/client';
@@ -54,15 +56,18 @@ import {
 } from '../equipment/shared';
 import { ExposurePlan, Sums } from './ExposurePlan';
 import {
+  applyCatalogPick,
   changedFields,
   conditionsFromProfile,
   draftBody,
   emptyDraft,
   planSums,
   toDraft,
+  type CatalogPick,
   type Conditions,
   type ProjectDraft,
 } from './model';
+import { CatalogSearch } from '../catalog/CatalogSearch';
 import { ProjectTabs } from './ProjectTabs';
 import { SubmitPanel } from './SubmitPanel';
 import styles from './projects.module.css';
@@ -103,13 +108,28 @@ export function ProjectEditorPage() {
     staleTime: Infinity,
   });
 
+  // „Projekt anlegen“ im Objektbrowser (S-21): `?objekt=<primary_id>&rig=<id>` füllt die Zielfelder.
+  const [params] = useSearchParams();
+  const objekt = isNew ? params.get('objekt') : null;
+  const rigParam = isNew ? params.get('rig') : null;
+  const picked = useQuery({
+    queryKey: ['dso', 'pick', objekt],
+    queryFn: () => catalogApi.search({ q: objekt ?? '', limit: 5 }),
+    enabled: objekt !== null,
+    staleTime: 60_000,
+  });
+
   // Entwurf: einmal je Projekt aus der gespeicherten Fassung, neu aus der eigenen Vorbelegung.
   const [draft, setDraft] = useState<{ for: string; value: ProjectDraft } | null>(null);
-  const draftKey = id ?? 'new';
+  const draftKey = id ?? `new:${objekt ?? ''}:${rigParam ?? ''}`;
   if (draft?.for !== draftKey) {
-    if (isNew && !prefs.isPending) {
+    if (isNew && !prefs.isPending && (objekt === null || !picked.isPending)) {
       const defaults = prefs.data?.['project.defaultConditions'];
-      setDraft({ for: draftKey, value: emptyDraft({ ...DEFAULT_CONDITIONS, ...defaults }) });
+      let value = emptyDraft({ ...DEFAULT_CONDITIONS, ...defaults });
+      if (rigParam) value = { ...value, rigId: rigParam };
+      const o = picked.data?.items.find((i) => i.primaryId === objekt);
+      if (o) value = applyCatalogPick(value, catalogPick(o, t));
+      setDraft({ for: draftKey, value });
     } else if (!isNew && project.data) {
       setDraft({ for: draftKey, value: toDraft(project.data) });
     }
@@ -156,6 +176,19 @@ export function ProjectEditorPage() {
       }}
     />
   );
+}
+
+/** Katalogobjekt → Zielfelder (Typ als übersetzte Anzeigegruppe). */
+function catalogPick(o: DsoView, t: (key: string) => string): CatalogPick {
+  return {
+    id: o.id,
+    displayName: o.displayName,
+    names: o.names,
+    primaryId: o.primaryId,
+    raDeg: o.raDeg,
+    decDeg: o.decDeg,
+    typeLabel: t(`catalog.groups.${o.group}`),
+  };
 }
 
 interface EditorProps {
@@ -549,6 +582,12 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
           aria-labelledby={`${topTabsId}-target`}
           hidden={topTab !== 'target'}
         >
+          <CatalogSearch
+            disabled={disabled}
+            onPick={(o) => setDraft(applyCatalogPick(draft, catalogPick(o, t)))}
+            linkedName={draft.dsoObjectId ? draft.targetName || draft.name : null}
+            onUnlink={() => setDraft({ ...draft, dsoObjectId: null })}
+          />
           <div className={styles.grid}>
             <TextField
               label={t('projectEditor.field.name')}

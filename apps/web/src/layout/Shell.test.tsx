@@ -94,13 +94,17 @@ describe('Rechteanzeige in der Shell', () => {
     expect(nav()).not.toHaveTextContent('Administration');
   });
 
-  it('Projekte ist ein Link (S-31, AP-11b); nicht gebaute Bereiche bleiben deaktiviert', async () => {
+  it('Projekte und Planung sind Links (S-31, S-21); nicht gebaute Bereiche bleiben deaktiviert', async () => {
     await renderShell(member('user', 'user', false));
     expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
       'href',
       '/projekte',
     );
-    expect(within(nav()).queryByRole('link', { name: 'Planung' })).not.toBeInTheDocument();
+    expect(within(nav()).getByRole('link', { name: 'Planung' })).toHaveAttribute(
+      'href',
+      '/planung/objekte',
+    );
+    expect(within(nav()).queryByRole('link', { name: 'Wetter' })).not.toBeInTheDocument();
   });
 
   it('Owner ohne 2FA: wirkt als User (keine Administration) und sieht den Hinweis', async () => {

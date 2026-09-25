@@ -40,6 +40,7 @@ import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { SessionDetailPage } from '../pages/sessions/SessionDetailPage';
 import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
+import { CATALOG_PATH, ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -157,6 +158,14 @@ export function createRouter() {
             { path: 'projekte/entwuerfe', element: <DraftsPage /> },
             { path: 'projekte/warteschlange', element: <QueuePage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
+            {
+              path: 'planung',
+              element: <RequireAction action="catalog.read" />,
+              children: [
+                { index: true, element: <Navigate to={CATALOG_PATH} replace /> },
+                { path: 'objekte', element: <ObjectBrowserPage /> },
+              ],
+            },
             {
               path: 'nina',
               element: <NinaLayout />,

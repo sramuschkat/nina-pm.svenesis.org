@@ -55,7 +55,7 @@ import {
   type SessionJobDeps,
 } from './worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
-import { catalogRefreshHandler } from './worker/catalog';
+import { catalogRefreshHandler, importCatalog } from './worker/catalog';
 import { reconcileJobHandler } from './worker/session-ops';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -86,6 +86,11 @@ async function database(): Promise<OpenDatabase['db']> {
 }
 
 const db = await database();
+// Objektkatalog (AP-20): lokal beim Start importieren, solange `dso_object` leer ist (prod: Job über S-82).
+if (!(await db.selectFrom('dsoObject').select('id').limit(1).executeTakeFirst())) {
+  await importCatalog(db, new Date());
+  logger.info('local_catalog', { imported: true });
+}
 const now = () => new Date();
 const queue = new JobQueue(db);
 const localSessionJobs: SessionJobDeps = {

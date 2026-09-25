@@ -100,6 +100,8 @@ export const DsoList = z
   .object({
     items: z.array(DsoView),
     total: z.number().int().min(0),
+    /** Stand der Katalogdatei (Quellen-Hinweis, FA-ADM-07). */
+    catalog: z.object({ version: z.string(), fetchedAt: NightKey }),
     /** Gerechnete Nacht (nur mit `siteId`): Nachtfenster und Mond. */
     night: z
       .object({

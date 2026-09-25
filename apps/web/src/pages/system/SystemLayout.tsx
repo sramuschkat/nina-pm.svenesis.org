@@ -1,4 +1,4 @@
-/** System-Kontext (S-80…S-82): Reiter Mandanten, Super User, Audit & Wartung. */
+/** System-Kontext (S-80…S-82): Reiter Mandanten, Super User, Kataloge/Audit/Wartung. */
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from '../admin/admin.module.css';
