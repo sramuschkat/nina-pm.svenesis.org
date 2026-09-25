@@ -1,7 +1,7 @@
 /**
  * Zustand der Sternkarte S-20 in der URL (teilbare Links, Zurück-Taste): Blickrichtung und Sichtfeld,
  * Ausrichtung, Bildfeld (Mitte, Rotation, Mosaik), Rig und Vergleichs-Rig, Zeitpunkt, Himmelsfoto und
- * Ebenen. Ohne React; Tests in `skymap.test.ts`.
+ * Ebenen. Ohne React; getestet in der Testdatei neben diesem Modul.
  */
 import { SURVEY_IDS, type SurveyId } from './surveys';
 import { OVERLAYS, PROJECT_OVERLAYS, type Overlay, type ProjectOverlay } from './render';

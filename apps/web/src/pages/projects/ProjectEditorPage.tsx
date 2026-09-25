@@ -674,10 +674,11 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
               <p>{fov}</p>
             </div>
           </div>
-          <p className={styles.muted}>
-            {t('projectEditor.coordinatesSearchLater')}{' '}
+          <div className={styles.skyMapRow}>
+            <p className={styles.muted}>{t('projectEditor.coordinatesSearchLater')}</p>
             {draft.raDeg !== null && draft.decDeg !== null ? (
               <Link
+                className={styles.button}
                 to={skyMapHref({
                   ra: draft.raDeg,
                   dec: draft.decDeg,
@@ -692,7 +693,7 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
                 {t('projectEditor.openSkyMap')}
               </Link>
             ) : null}
-          </p>
+          </div>
           <TextField
             label={t('projectEditor.field.catalogNames')}
             value={draft.catalogNames}

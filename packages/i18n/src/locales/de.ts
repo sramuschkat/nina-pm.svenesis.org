@@ -826,7 +826,8 @@ export const de = {
     target: 'Ziel',
     conditions: 'Bedingungen',
     openSkyMap: 'In der Sternkarte öffnen',
-    coordinatesSearchLater: 'Bildfeld und Rotation lassen sich in der Sternkarte ausrichten und von dort übernehmen.',
+    coordinatesSearchLater:
+      'Bildfeld und Rotation lassen sich in der Sternkarte ausrichten und von dort übernehmen.',
     preview: 'Vorschau',
     previewLater: 'Das Vorschaubild aus Himmelsfotos folgt in einem späteren Ausbauschritt.',
     research: 'Recherche',
@@ -2068,11 +2069,13 @@ export const de = {
     rotationPin: 'Als Rig-Standard anheften',
     rotationPinned: 'Rotation als Rig-Standard gespeichert.',
     rotationLocked: 'Ohne Rotator gilt der Kamerawinkel des Rigs ({{deg}}°).',
-    rotationMismatch: 'Weicht vom Kamerawinkel des Rigs ({{deg}}°) ab – ohne Rotator nimmt NINA {{deg}}° auf.',
+    rotationMismatch:
+      'Weicht vom Kamerawinkel des Rigs ({{deg}}°) ab – ohne Rotator nimmt NINA {{deg}}° auf.',
     cols: 'Panels horizontal',
     rows: 'Panels vertikal',
     overlap: 'Überlappung (%)',
-    mosaicHint: 'Panelzentren und -rotation nach geometry.md §2; die Übernahme als Panels folgt mit AP-22.',
+    mosaicHint:
+      'Panelzentren und -rotation nach geometry.md §2; die Übernahme als Panels folgt mit AP-22.',
     newProject: 'Neues Projekt',
     applyToProject: 'Ins Projekt übernehmen',
     applied: 'Koordinaten und Rotation ins Projekt übernommen.',
@@ -2109,7 +2112,6 @@ export const de = {
       coords: 'Koordinaten',
       observer: 'Beobachter',
       solar: 'Sonnensystem',
-      view: 'Ansicht',
     },
     project: {
       submitted: 'Eingereicht',

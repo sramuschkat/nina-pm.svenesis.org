@@ -77,7 +77,8 @@ export const sourcesMarkdown: Readonly<Record<Language, string>> = {
 
 - **OpenNGC** von Mattia Verga – Objektkatalog, Version v20260501, abgerufen am 25.09.2026 ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)); ergänzt um Namen und Aliase aus dem Beobachtungsplaner von svenesis.org sowie Sharpless-Regionen (Sharpless 1959, VizieR VII/20, Positionen SIMBAD)
 - **Open-Meteo** – Wetterdaten ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); Modelle DWD ICON, DMI HARMONIE AROME, NOAA HRRR/NBM/GFS, CMC GEM, ECMWF IFS; Aerosol: Copernicus CAMS
-- **CDS / Aladin (Universität Straßburg)** – Himmelsbilder über HiPS und hips2fits
+- **CDS / Aladin (Universität Straßburg)** – Himmelsbilder über HiPS und hips2fits: DSS2 (STScI/Caltech/UK Schmidt), Pan-STARRS DR1 (PS1 Science Consortium), 2MASS (UMass/IPAC), NSNS – Northern Sky Narrowband Survey (simg.de)
+- **d3-celestial** von Olaf Frohn – Sterne (XHIP/Hipparcos), Sternbildlinien, -grenzen und -namen der Sternkarte ([BSD 3-Clause](https://opensource.org/license/bsd-3-clause)); Milchstraße nach dem Milky Way Outline Catalog von Jose R. Vieira
 - **ExoClock**, **NASA Exoplanet Archive**, **ExoFOP / TESS TOI** – Exoplaneten und Ephemeriden
 
 ## Software
@@ -92,7 +93,8 @@ export const sourcesMarkdown: Readonly<Record<Language, string>> = {
 
 - **OpenNGC** by Mattia Verga – object catalogue, version v20260501, fetched on 25 September 2026 ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)); extended with names and aliases from the svenesis.org observing planner and Sharpless regions (Sharpless 1959, VizieR VII/20, positions SIMBAD)
 - **Open-Meteo** – weather data ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)); models DWD ICON, DMI HARMONIE AROME, NOAA HRRR/NBM/GFS, CMC GEM, ECMWF IFS; aerosol: Copernicus CAMS
-- **CDS / Aladin (University of Strasbourg)** – sky images via HiPS and hips2fits
+- **CDS / Aladin (University of Strasbourg)** – sky images via HiPS and hips2fits: DSS2 (STScI/Caltech/UK Schmidt), Pan-STARRS DR1 (PS1 Science Consortium), 2MASS (UMass/IPAC), NSNS – Northern Sky Narrowband Survey (simg.de)
+- **d3-celestial** by Olaf Frohn – stars (XHIP/Hipparcos), constellation lines, boundaries and names of the sky map ([BSD 3-Clause](https://opensource.org/license/bsd-3-clause)); Milky Way after the Milky Way Outline Catalog by Jose R. Vieira
 - **ExoClock**, **NASA Exoplanet Archive**, **ExoFOP / TESS TOI** – exoplanets and ephemerides
 
 ## Software

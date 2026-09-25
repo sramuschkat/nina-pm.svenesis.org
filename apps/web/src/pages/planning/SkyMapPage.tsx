@@ -1114,19 +1114,18 @@ function Sidebar({
           {check('zenith', t('skymap.zenith'), !hasSite)}
           {check('heatmap', t('skymap.heatmap'), !hasSite)}
           <div className={styles.field}>
-            <label htmlFor="skymap-heat">{t('skymap.heatAlt')}</label>
+            <label htmlFor="skymap-heat">
+              {t('skymap.heatAlt')}: {state.heat}°
+            </label>
             <input
               id="skymap-heat"
-              type="number"
-              className={styles.numberInput}
+              type="range"
               min={0}
               max={90}
+              step={1}
               value={state.heat}
               disabled={!hasSite || !state.overlays.has('heatmap')}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v)) update({ heat: Math.min(90, Math.max(0, v)) });
-              }}
+              onChange={(e) => update({ heat: Number(e.target.value) })}
             />
           </div>
           {!hasSite ? <p className={styles.muted}>{t('skymap.needsSite')}</p> : null}

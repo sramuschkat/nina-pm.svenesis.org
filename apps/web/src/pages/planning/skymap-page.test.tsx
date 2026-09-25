@@ -1,0 +1,273 @@
+// @vitest-environment jsdom
+/**
+ * AP-21: S-20 Sternkarte – Werkzeugleiste (Rig, Ausrüstung, Bildfeld mit Rotation, Mosaik, Aktionen),
+ * Rotation ohne Rotator (gesperrt für User, Warnung bei Abweichung, Anheften nur mit `equipment.write`),
+ * *Neues Projekt* und *Ins Projekt übernehmen*, Reiter der Seitenleiste, Zeitsprünge in der URL; axe.
+ */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectNoSeriousA11y } from '../../../test/setup';
+import type { Me } from '../../api/client';
+import { AuthProvider } from '../../auth';
+import { SkyMapPage } from './SkyMapPage';
+
+const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+const state = vi.hoisted(() => ({
+  me: null as unknown,
+  rig: null as unknown,
+  project: null as unknown,
+  updateRig: vi.fn(),
+  patch: vi.fn(),
+}));
+
+vi.mock('../../api/client', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../api/client')>();
+  return {
+    dsoSearchParams: real.dsoSearchParams,
+    api: { me: () => Promise.resolve(state.me) },
+    equipmentApi: {
+      list: (kind: string) =>
+        Promise.resolve({
+          items:
+            kind === 'rigs'
+              ? [state.rig]
+              : kind === 'sites'
+                ? [
+                    {
+                      id: ID(600),
+                      name: 'Texas',
+                      latitudeDeg: 31.5,
+                      longitudeDeg: -99.4,
+                      timeZone: 'America/Chicago',
+                    },
+                  ]
+                : kind === 'telescopes'
+                  ? [
+                      {
+                        id: ID(601),
+                        name: 'Refraktor 80/480',
+                        focalLengthMm: 480,
+                        reducerFactor: 1,
+                      },
+                    ]
+                  : kind === 'cameras'
+                    ? [{ id: ID(602), name: 'Mono 26MP' }]
+                    : [],
+        }),
+      nights: () => Promise.reject(new Error('offline')),
+      updateRig: (...a: unknown[]) => state.updateRig(...a) as Promise<unknown>,
+    },
+    projectsApi: {
+      list: () => Promise.resolve({ items: [] }),
+      get: () => Promise.resolve(state.project),
+      patch: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
+    },
+    catalogApi: {
+      region: () => Promise.resolve({ items: [], total: 0 }),
+      search: () =>
+        Promise.resolve({
+          items: [],
+          total: 0,
+          night: null,
+          catalog: { version: 'v', fetchedAt: '2026-09-25' },
+        }),
+    },
+  };
+});
+
+const me = (role: 'owner' | 'user'): Me => ({
+  identity: {
+    id: ID(90),
+    discordUserId: '1',
+    username: 'u',
+    globalName: 'Uta',
+    avatarHash: null,
+    mfa: true,
+  },
+  context: 'tenant',
+  tenant: { id: ID(91), key: 'demo', name: 'Demo', timeZone: 'Europe/Berlin' },
+  member: {
+    id: ID(92),
+    displayName: 'Uta',
+    role,
+    effectiveRole: role === 'user' ? 'user' : 'admin',
+  },
+  isSuperUser: false,
+  mfaRequired: false,
+  memberships: [{ tenantKey: 'demo', tenantName: 'Demo', role }],
+});
+
+const rig = (over: Record<string, unknown> = {}) => ({
+  id: ID(500),
+  name: 'Rig A',
+  siteId: ID(600),
+  telescopeId: ID(601),
+  cameraId: ID(602),
+  showInPlanning: true,
+  ninaDeliveryEnabled: true,
+  defaultTemplateId: null,
+  defaultRotationDeg: 12,
+  hasRotator: false,
+  rotationToleranceDeg: 5,
+  skipOnRotationMismatch: false,
+  sessionReportDiscord: false,
+  notes: '',
+  settingsVersion: 3,
+  derived: { scaleArcsecPx: 1.62, fovWidthDeg: 2.8, fovHeightDeg: 1.9 },
+  ...over,
+});
+
+function Where() {
+  const l = useLocation();
+  return <output data-testid="where">{l.pathname + l.search}</output>;
+}
+
+const renderPage = (
+  path = '/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.82&fdec=-5.39&t=1797368400',
+) =>
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <AuthProvider>
+          <Routes>
+            <Route
+              path="/planung/sternkarte"
+              element={
+                <>
+                  <SkyMapPage />
+                  <Where />
+                </>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+const where = () =>
+  new URLSearchParams(screen.getByTestId('where').textContent?.split('?')[1] ?? '');
+
+beforeAll(() => {
+  HTMLCanvasElement.prototype.getContext = (() => null) as never;
+  globalThis.ResizeObserver ??= class {
+    observe = () => undefined;
+    unobserve = () => undefined;
+    disconnect = () => undefined;
+  } as unknown as typeof ResizeObserver;
+});
+
+beforeEach(() => {
+  state.me = me('user');
+  state.rig = rig();
+  state.project = null;
+  state.updateRig.mockReset();
+  state.patch.mockReset();
+});
+
+describe('S-20 Sternkarte', () => {
+  it('Werkzeugleiste mit Rig, Ausrüstung, Bildfeld, Mosaik und Aktionen; Karte als Bild', async () => {
+    renderPage();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sternkarte' }),
+    ).toBeInTheDocument();
+    for (const name of ['Suche & Position', 'Rig', 'Ausrüstung', 'Bildfeld', 'Mosaik', 'Aktionen'])
+      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument();
+    expect(await screen.findByText('Refraktor 80/480')).toBeInTheDocument();
+    expect(screen.getByText('2,8° × 1,9°')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Sternkarte mit Bildfeld des Rigs' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sternkarte' })).toHaveAttribute(
+      'href',
+      '/planung/sternkarte',
+    );
+    await expectNoSeriousA11y();
+  });
+
+  it('ohne Rotator: für User gesperrt auf den Kamerawinkel, kein Anheften', async () => {
+    renderPage();
+    const slider = await screen.findByRole('slider', { name: 'Rotation (°)' });
+    await waitFor(() => expect(slider).toBeDisabled());
+    expect(
+      screen.getByText('Ohne Rotator gilt der Kamerawinkel des Rigs (12,0°).'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Als Rig-Standard anheften' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('Admin: Abweichung vom Kamerawinkel wird gewarnt und lässt sich anheften', async () => {
+    state.me = me('owner');
+    state.updateRig.mockResolvedValue(rig({ defaultRotationDeg: 40 }));
+    renderPage('/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.82&fdec=-5.39&rot=40&t=1797368400');
+    expect(
+      await screen.findByText(/Weicht vom Kamerawinkel des Rigs \(12,0°\) ab/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Als Rig-Standard anheften' }));
+    await waitFor(() =>
+      expect(state.updateRig).toHaveBeenCalledWith(
+        ID(500),
+        expect.objectContaining({ defaultRotationDeg: 40, hasRotator: false, name: 'Rig A' }),
+        3,
+      ),
+    );
+  });
+
+  it('Neues Projekt übernimmt Koordinaten, Rotation und Rig (FA-FRM-12)', async () => {
+    state.rig = rig({ hasRotator: true });
+    renderPage('/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.5&fdec=-5.2&rot=33&t=1797368400');
+    const link = await screen.findByRole('link', { name: 'Neues Projekt' });
+    const q = new URLSearchParams(link.getAttribute('href')?.split('?')[1]);
+    expect(Object.fromEntries(q)).toEqual({ ra: '83.5', dec: '-5.2', rot: '33', rig: ID(500) });
+  });
+
+  it('Ins Projekt übernehmen patcht Koordinaten und Rotation mit If-Match', async () => {
+    state.rig = rig({ hasRotator: true });
+    state.project = { id: ID(10), createdBy: ID(92), approvalStatus: 'draft', version: 7 };
+    state.patch.mockResolvedValue({ id: ID(10), version: 8 });
+    renderPage(
+      `/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.5&fdec=-5.2&rot=33&projekt=${ID(10)}`,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Ins Projekt übernehmen' }));
+    await waitFor(() =>
+      expect(state.patch).toHaveBeenCalledWith(
+        ID(10),
+        { raDeg: 83.5, decDeg: -5.2, rotationDeg: 33 },
+        7,
+      ),
+    );
+    expect(
+      await screen.findByText('Koordinaten und Rotation ins Projekt übernommen.'),
+    ).toBeInTheDocument();
+  });
+
+  it('Seitenleiste: Reiter Himmelsfotos, Kataloge, Overlays; Foto-Wahl in der URL', async () => {
+    renderPage();
+    const aside = await screen.findByRole('complementary', { name: 'Kartenebenen' });
+    expect(within(aside).getByRole('radio', { name: 'DSS2 Farbe' })).toBeVisible();
+    expect(within(aside).queryByRole('checkbox', { name: 'Äquatorial' })).toBeNull();
+    fireEvent.click(within(aside).getByRole('tab', { name: 'Overlays' }));
+    expect(within(aside).getByRole('checkbox', { name: 'Äquatorial' })).toBeChecked();
+    fireEvent.click(within(aside).getByRole('tab', { name: 'Himmelsfotos' }));
+    fireEvent.click(
+      within(aside).getByRole('radio', { name: 'Pan-STARRS DR1 (nördlich von −30°)' }),
+    );
+    expect(where().get('foto')).toBe('panstarrs');
+    await expectNoSeriousA11y();
+  });
+
+  it('Zeitsteuerung: +1 h und Jetzt', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '+1 h' }));
+    expect(where().get('t')).toBe(String(1797368400 + 3600));
+    expect(screen.getByLabelText('Uhrzeit')).toHaveValue('16:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt' }));
+    expect(where().get('t')).toBeNull();
+  });
+});

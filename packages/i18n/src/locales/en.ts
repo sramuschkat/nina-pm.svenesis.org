@@ -822,7 +822,8 @@ export const en: Messages = {
     target: 'Target',
     conditions: 'Conditions',
     openSkyMap: 'Open in the sky map',
-    coordinatesSearchLater: 'Frame and rotation can be aligned in the sky map and applied from there.',
+    coordinatesSearchLater:
+      'Frame and rotation can be aligned in the sky map and applied from there.',
     preview: 'Preview',
     previewLater: 'The preview image from sky surveys follows in a later release.',
     research: 'Research',
@@ -2061,11 +2062,13 @@ export const en: Messages = {
     rotationPin: 'Pin as rig default',
     rotationPinned: 'Rotation saved as the rig default.',
     rotationLocked: 'Without a rotator the rig’s camera angle applies ({{deg}}°).',
-    rotationMismatch: 'Differs from the rig’s camera angle ({{deg}}°) – without a rotator NINA images at {{deg}}°.',
+    rotationMismatch:
+      'Differs from the rig’s camera angle ({{deg}}°) – without a rotator NINA images at {{deg}}°.',
     cols: 'Panels across',
     rows: 'Panels down',
     overlap: 'Overlap (%)',
-    mosaicHint: 'Panel centres and rotation after geometry.md §2; saving them as panels follows with AP-22.',
+    mosaicHint:
+      'Panel centres and rotation after geometry.md §2; saving them as panels follows with AP-22.',
     newProject: 'New project',
     applyToProject: 'Apply to project',
     applied: 'Coordinates and rotation applied to the project.',
@@ -2102,7 +2105,6 @@ export const en: Messages = {
       coords: 'Coordinates',
       observer: 'Observer',
       solar: 'Solar system',
-      view: 'View',
     },
     project: {
       submitted: 'Submitted',
