@@ -1946,6 +1946,7 @@ export const de = {
     nextPage: 'Nächste Seite',
     page: 'Seite {{page}} von {{pages}}',
     col: {
+      image: 'Bild',
       object: 'Objekt',
       aliases: 'Aliase',
       type: 'Typ',

@@ -1939,6 +1939,7 @@ export const en: Messages = {
     nextPage: 'Next page',
     page: 'Page {{page}} of {{pages}}',
     col: {
+      image: 'Image',
       object: 'Object',
       aliases: 'Aliases',
       type: 'Type',

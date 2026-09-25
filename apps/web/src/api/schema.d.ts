@@ -12122,6 +12122,7 @@ export interface components {
              * @description UUID
              */
             dsoObjectId: string | null;
+            dsoPrimaryId: string | null;
             catalogNames: string;
             raDeg: number | null;
             decDeg: number | null;
@@ -12296,6 +12297,7 @@ export interface components {
              * @description UUID
              */
             dsoObjectId: string | null;
+            dsoPrimaryId: string | null;
             catalogNames: string;
             descriptionMd: string;
             raDeg: number | null;

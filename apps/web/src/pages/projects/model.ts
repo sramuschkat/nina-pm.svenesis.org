@@ -152,6 +152,8 @@ export interface ProjectDraft {
   targetType: string;
   /** Aus der Katalogsuche übernommen (AP-20); frei eingegebene Ziele ohne. */
   dsoObjectId: string | null;
+  /** Nur Anzeige (Katalogbild), nicht Teil des Rumpfs. */
+  dsoPrimaryId: string | null;
   catalogNames: string;
   descriptionMd: string;
   raDeg: number | null;
@@ -170,6 +172,7 @@ export function emptyDraft(conditions: Conditions): ProjectDraft {
     targetName: '',
     targetType: '',
     dsoObjectId: null,
+    dsoPrimaryId: null,
     catalogNames: '',
     descriptionMd: '',
     raDeg: null,
@@ -188,6 +191,7 @@ export function toDraft(p: ProjectView): ProjectDraft {
     targetName: p.targetName ?? '',
     targetType: p.targetType ?? '',
     dsoObjectId: p.dsoObjectId,
+    dsoPrimaryId: p.dsoPrimaryId,
     catalogNames: p.catalogNames,
     descriptionMd: p.descriptionMd,
     raDeg: p.raDeg,
@@ -228,6 +232,7 @@ export function applyCatalogPick(d: ProjectDraft, o: CatalogPick): ProjectDraft 
     targetName: o.displayName,
     targetType: o.typeLabel,
     dsoObjectId: o.id,
+    dsoPrimaryId: o.primaryId,
     catalogNames: [...new Set(designations)].join(', ').slice(0, 500),
     raDeg: o.raDeg,
     decDeg: o.decDeg,

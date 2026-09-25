@@ -171,6 +171,17 @@
   object-fit: cover;
   background: var(--npm-skeleton);
 }
+/* Miniaturbild in der Liste (128-px-Katalogbild, verkleinert) */
+.listThumb,
+.listThumbEmpty {
+  display: block;
+  width: calc(3rem * var(--npm-font-scale, 1));
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-skeleton);
+}
 /* Katalogsuche im Editor */
 .picker {
   position: relative;

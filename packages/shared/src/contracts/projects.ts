@@ -326,6 +326,8 @@ export const ProjectView = z
     targetName: z.string().nullable(),
     targetType: z.string().nullable(),
     dsoObjectId: Uuid.nullable(),
+    /** `primary_id` des Katalogobjekts – Pfad des Katalogbilds (`catalogImagePaths`). */
+    dsoPrimaryId: z.string().nullable(),
     catalogNames: z.string(),
     descriptionMd: z.string(),
     raDeg: z.number().nullable(),

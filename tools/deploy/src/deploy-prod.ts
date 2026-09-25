@@ -169,7 +169,8 @@ function ciState(sha: string): string {
  * 1. grüner Lauf auf HEAD, oder
  * 2. grüner Lauf auf einem Commit mit **identischem Dateistand** (gleicher Git-Tree) – nach einem
  *    Merge-Commit eines aktuellen PR-Branches ist das der PR-Lauf; gleiche Dateien, gleiche Prüfungen, oder
- * 3. der Lauf auf HEAD läuft noch → warten (`gh run watch`), statt abzubrechen.
+ * 3. der Lauf auf HEAD läuft noch oder ist gerade angelegt (`queued`, `pending`, `requested`, `waiting`,
+ *    `in_progress`, z. B. direkt nach `pr:land`) → warten (`gh run watch`), statt abzubrechen.
  */
 async function ensureGreenCi(sha: string): Promise<string> {
   if (ciState(sha) === 'completed success') return 'Lauf auf diesem Commit';
@@ -193,11 +194,18 @@ async function ensureGreenCi(sha: string): Promise<string> {
     const t = capture('git', ['rev-parse', `${candidate}^{tree}`]);
     if (t.ok && t.out === tree) return `gleicher Stand wie ${candidate.slice(0, 7)}`;
   }
-  const state = ciState(sha);
+  // Direkt nach dem Merge legt GitHub den Lauf erst nach einigen Sekunden an.
+  let state = ciState(sha);
+  for (let i = 0; state === '' && i < 12; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    state = ciState(sha);
+  }
   if (
     state.startsWith('in_progress') ||
     state.startsWith('queued') ||
-    state.startsWith('waiting')
+    state.startsWith('waiting') ||
+    state.startsWith('pending') ||
+    state.startsWith('requested')
   ) {
     console.log(`  CI auf ${sha.slice(0, 7)} läuft noch – warte …`);
     const id = capture('gh', [

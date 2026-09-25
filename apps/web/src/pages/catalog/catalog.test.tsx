@@ -231,6 +231,7 @@ describe('Modell S-21', () => {
       targetName: 'M 31',
       targetType: 'Galaxie',
       dsoObjectId: ID(1),
+      dsoPrimaryId: 'NGC 224',
       catalogNames: 'NGC 224, PGC 2557, UGC 454',
       raDeg: 10.684791666666666,
       decDeg: 41.26905555555555,
@@ -252,6 +253,10 @@ describe('S-21 Objektbrowser', () => {
     expect(within(row).getByTitle('OpenNGC-Typ G')).toHaveTextContent('Galaxie');
     expect(within(row).getByTitle('Band V (OpenNGC)')).toHaveTextContent('3,4 V');
     expect(row).toHaveTextContent('177,8′ × 69,7′');
+    expect(within(row).getByRole('img', { name: 'Vorschaubild M 31' })).toHaveAttribute(
+      'src',
+      '/catalog/img/ngc/ngc224.jpg',
+    );
     expect(screen.getByText(/OpenNGC v20260501 \(CC BY-SA 4\.0\)/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1 Treffer' })).toBeInTheDocument();
     // Ohne Rig keine Nachtspalten und keine Nachtsortierung.

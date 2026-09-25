@@ -11,7 +11,6 @@ import {
   DSO_TYPE_GROUPS,
   IAU_CONSTELLATION_NAMES,
   IAU_CONSTELLATIONS,
-  catalogImagePaths,
   dsoCatalogPrefixes,
   formatNightKey,
   formatTzAbbr,
@@ -23,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { catalogApi, equipmentApi, type DsoList, type DsoView } from '../../api/client';
 import { useCan } from '../../auth';
+import { CatalogImage } from './CatalogImage';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
@@ -601,6 +601,9 @@ function ResultTable({
       <table className={styles.table}>
         <thead>
           <tr>
+            <th scope="col" className={styles.hideNarrow}>
+              {t('catalog.col.image')}
+            </th>
             <th scope="col">{t('catalog.col.object')}</th>
             <th scope="col" className={styles.hideNarrow}>
               {t('catalog.col.aliases')}
@@ -635,6 +638,15 @@ function ResultTable({
             const { designations, common } = aliasesOf(o);
             return (
               <tr key={o.id}>
+                <td className={styles.hideNarrow}>
+                  <CatalogImage
+                    primaryId={o.primaryId}
+                    name={o.displayName}
+                    size="small"
+                    className={styles.listThumb}
+                    fallback={<div className={styles.listThumbEmpty} aria-hidden />}
+                  />
+                </td>
                 <td>
                   <strong>{o.displayName}</strong>
                   {common[0] ? <span className={styles.common}>{common[0]}</span> : null}
@@ -677,25 +689,6 @@ function ResultTable({
   );
 }
 
-/** Katalogbild (H-11): 320 px, sonst 128 px, sonst ein leeres Feld – nie ein kaputtes Bild. */
-function Thumb({ o }: { o: DsoView }) {
-  const { t } = useTranslation();
-  const paths = catalogImagePaths(o.primaryId);
-  const [src, setSrc] = useState<string | null>(paths.large);
-  if (src === null) return <div className={styles.thumbEmpty} aria-hidden />;
-  return (
-    <img
-      className={styles.thumb}
-      src={src}
-      width={320}
-      height={320}
-      loading="lazy"
-      alt={t('catalog.imageAlt', { name: o.displayName })}
-      onError={() => setSrc(src === paths.large ? paths.small : null)}
-    />
-  );
-}
-
 function Gallery({ items, ...row }: { items: DsoView[] } & RowProps) {
   const cell = useCells(row);
   const { t } = useTranslation();
@@ -703,7 +696,13 @@ function Gallery({ items, ...row }: { items: DsoView[] } & RowProps) {
     <ul className={styles.gallery}>
       {items.map((o) => (
         <li key={o.id} className={styles.card}>
-          <Thumb o={o} />
+          <CatalogImage
+            primaryId={o.primaryId}
+            name={o.displayName}
+            size="large"
+            className={styles.thumb}
+            fallback={<div className={styles.thumbEmpty} aria-hidden />}
+          />
           <div className={styles.cardBody}>
             <strong>{o.displayName}</strong>
             {aliasesOf(o).common[0] ? (

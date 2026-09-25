@@ -50,6 +50,8 @@ export interface ProjectDetail {
   readonly panels: readonly (PanelRow & { lines: LineDetail[] })[];
   readonly favorite: boolean;
   readonly overshootPct: number;
+  /** `primary_id` des verknüpften Katalogobjekts (Katalogbild, AP-20); `null` ohne Verknüpfung. */
+  readonly dsoPrimaryId: string | null;
 }
 
 export interface ProjectMeta {
@@ -214,7 +216,7 @@ export class ProjectRepository extends TenantRepo {
   }
 
   private async detailOf(db: Tx | Kysely, project: ProjectRow): Promise<ProjectDetail> {
-    const [panels, lines, info, favorite, overshootPct] = await Promise.all([
+    const [panels, lines, info, favorite, overshootPct, dso] = await Promise.all([
       db
         .selectFrom('projectPanel')
         .selectAll()
@@ -243,11 +245,20 @@ export class ProjectRepository extends TenantRepo {
             .executeTakeFirst()
         : Promise.resolve(undefined),
       this.overshootPct(db, project),
+      // Katalog ist systemweit (ohne Mandanten), die Verknüpfung hängt am mandantengebundenen Projekt.
+      project.dsoObjectId
+        ? db
+            .selectFrom('dsoObject')
+            .select('primaryId')
+            .where('id', '=', project.dsoObjectId)
+            .executeTakeFirst()
+        : Promise.resolve(undefined),
     ]);
     return {
       project,
       favorite: favorite !== undefined,
       overshootPct,
+      dsoPrimaryId: dso?.primaryId ?? null,
       panels: panels.map((panel) => ({
         ...panel,
         lines: lines
