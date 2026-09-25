@@ -731,6 +731,20 @@ export interface CommandTable {
   acknowledgedAt: Timestamp | null;
 }
 
+/**
+ * Tabelle `weather_cache` (Migration 0001, specs/engine/weather.md §3.4, AP-23): systemweit, eine Zeile je
+ * gerundetem Ort und Modellsatz. `numeric`-Spalten kommen als Zeichenkette (`'52.370'`).
+ */
+export interface WeatherCacheTable {
+  id: Generated<string>;
+  latRound: ColumnType<string, string, string>;
+  lonRound: ColumnType<string, string, string>;
+  modelSet: string;
+  payload: Json;
+  fetchedAt: Timestamp;
+  expiresAt: Timestamp;
+}
+
 /** Tabelle `dso_object` (Migration 0001, specs/catalog/dso-import.md, AP-20): Objektkatalog, systemweit. */
 export interface DsoObjectTable {
   id: Generated<string>;
@@ -755,6 +769,7 @@ export interface DsoObjectTable {
 export interface Database {
   tenant: TenantTable;
   dsoObject: DsoObjectTable;
+  weatherCache: WeatherCacheTable;
   identity: IdentityTable;
   superUser: SuperUserTable;
   appUser: AppUserTable;

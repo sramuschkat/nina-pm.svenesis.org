@@ -8,6 +8,13 @@ import {
   ChartLine,
   Check,
   CircleHelp,
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudMoon,
+  CloudRain,
+  CloudSnow,
   CloudSun,
   Compass,
   Copy,
@@ -125,4 +132,21 @@ export const uiIcons = {
   next: ChevronRight,
   /** Griff zum Ziehen (Rangfolge S-32, Priorität S-30). */
   drag: GripVertical,
+} as const;
+
+/**
+ * Wettersymbole nach WMO-Code (AP-23, `WeatherChart`; Zuordnung wie `wxSymbol` in
+ * legacy/…/weather-core.js, dort als Emoji – hier Lucide, rules/ui.md). Nachts Mond statt Sonne.
+ */
+export const weatherIcons = {
+  clearDay: Sun,
+  clearNight: Moon,
+  partlyDay: CloudSun,
+  partlyNight: CloudMoon,
+  cloudy: Cloud,
+  fog: CloudFog,
+  drizzle: CloudDrizzle,
+  rain: CloudRain,
+  snow: CloudSnow,
+  thunder: CloudLightning,
 } as const;

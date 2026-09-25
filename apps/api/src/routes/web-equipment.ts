@@ -47,11 +47,14 @@ import {
   TelescopeInput,
   TelescopeView,
   Uuid,
+  WeatherView,
 } from '@nina-pm/shared';
+import { latestWeather } from '@nina-pm/db';
 import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
+import { weatherView } from '../weather/view';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
@@ -386,6 +389,22 @@ export const siteNightsRoute = defineRoute(
   },
 );
 
+export const siteWeatherRoute = defineRoute(
+  { action: 'project.read', requirements: ['FA-WET-01', 'FA-WET-04', 'FA-WET-07', 'S-50'] },
+  {
+    method: 'get',
+    path: `${BASE}/sites/{id}/weather`,
+    summary: 'Astro-Wetter des Standorts (7 Tage, stündlich; letzter Stand aus weather_cache)',
+    tags: ['equipment'],
+    request: { params: idParam },
+    responses: {
+      200: { description: 'Wettervorhersage', ...json(WeatherView) },
+      ...read,
+      404: problemContent('resource.not_found'),
+    },
+  },
+);
+
 const all = [
   siteRoutes,
   siteLinkRoutes,
@@ -403,6 +422,7 @@ export const EQUIPMENT_ROUTES = [
   getFilterWheelRoute,
   putFilterWheelRoute,
   siteNightsRoute,
+  siteWeatherRoute,
 ] as const;
 
 // ---- Handler --------------------------------------------------------------------------------------
@@ -598,6 +618,15 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     const { from, count } = c.req.valid('query');
     c.header('cache-control', 'no-store');
     return c.json(siteNights(site, svc.now(), from, count), 200);
+  });
+
+  app.openapi(siteWeatherRoute, async (c) => {
+    const { repo, svc } = await repoOf(c);
+    const site = await repo.site(c.req.valid('param').id);
+    if (!site) throw new ProblemError('resource.not_found');
+    const entry = await latestWeather(svc.db, site.latitudeDeg, site.longitudeDeg);
+    c.header('cache-control', 'no-store');
+    return c.json(weatherView(site, entry, svc.now()), 200);
   });
 
   return app;

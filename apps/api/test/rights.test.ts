@@ -337,6 +337,10 @@ async function equipmentExamples(): Promise<Record<string, Example>> {
       url: `/api/web/v1/sites/${site.id}/nights?from=2026-09-17&count=3`,
       resource: own,
     },
+    'GET /api/web/v1/sites/{id}/weather': {
+      url: `/api/web/v1/sites/${site.id}/weather`,
+      resource: own,
+    },
   };
 }
 

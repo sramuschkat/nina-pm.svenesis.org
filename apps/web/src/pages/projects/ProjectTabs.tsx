@@ -2,7 +2,8 @@
  * Mittlerer Bereich des Projekt-Editors S-31 (FK 14.3): Reiter *Diagramme* (Nachtdiagramm mit
  * Nachtwahl als Vorschau des Entwurfs – Koordinaten und Bedingungen live; Engine im Browser mit der
  * Nacht-Tabelle des Standorts, NT-02), *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
- * *Freigabe-Verlauf* (FA-BER-03). Saisondiagramm, Wetter, Sessions und Transit folgen mit ihren Paketen.
+ * *Freigabe-Verlauf* (FA-BER-03) und *Wetter* des Standorts (FA-WET-05, AP-23). Saisondiagramm, Sessions
+ * und Transit folgen mit ihren Paketen.
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,10 +17,11 @@ import { NightChart } from '../../components/night-chart';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../equipment/shared';
+import { SiteWeather } from '../weather/SiteWeather';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 
-type TabKey = 'charts' | 'notes' | 'history';
+type TabKey = 'charts' | 'weather' | 'notes' | 'history';
 
 export function ProjectTabs({
   projectId,
@@ -41,8 +43,8 @@ export function ProjectTabs({
   const [tab, setTab] = useState<TabKey>('charts');
   const canHistory = useCan('project.history.read', resource);
   const tabs: TabKey[] = projectId
-    ? ['charts', 'notes', ...(canHistory ? (['history'] as const) : [])]
-    : ['charts'];
+    ? ['charts', 'weather', 'notes', ...(canHistory ? (['history'] as const) : [])]
+    : ['charts', 'weather'];
   const baseId = useId();
   return (
     <section className={styles.middle} aria-label={t('projectEditor.tabs.label')}>
@@ -64,6 +66,13 @@ export function ProjectTabs({
       </div>
       <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-${tab}`}>
         {tab === 'charts' ? <ChartsTab draft={draft} site={site} /> : null}
+        {tab === 'weather' ? (
+          site ? (
+            <SiteWeather siteId={site.id} siteName={site.name} />
+          ) : (
+            <p className={styles.note}>{t('weatherPage.noRig')}</p>
+          )
+        ) : null}
         {tab === 'notes' && projectId ? (
           <NotesTab projectId={projectId} resource={resource} />
         ) : null}

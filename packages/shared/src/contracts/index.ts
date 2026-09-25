@@ -18,4 +18,5 @@ export * from './effort';
 export * from './simulation';
 export * from './sessions';
 export * from './catalog';
+export * from './weather';
 export * as nina from './nina';

@@ -3478,6 +3478,483 @@ components:
         - tzdataVersion
         - timeZoneTransitions
         - nights
+    WeatherView:
+      type: object
+      properties:
+        siteId:
+          type: string
+          format: uuid
+        latitudeDeg:
+          type: number
+        longitudeDeg:
+          type: number
+        timeZone:
+          type: string
+        status:
+          type: string
+          enum:
+            - ready
+            - pending
+        fetchedAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        expiresAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        modelSet:
+          type:
+            - string
+            - "null"
+        region:
+          type: string
+          enum:
+            - europe
+            - other
+        cmp3:
+          type: string
+          enum:
+            - gem
+            - nbm
+            - base
+        days:
+          type: number
+          enum:
+            - 7
+        hours:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeatherHourView"
+        nights:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeatherNightView"
+        nightWindows:
+          type: array
+          items:
+            type: object
+            properties:
+              night:
+                type: string
+                format: date
+              startUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              endUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - night
+              - startUtc
+              - endUtc
+        darkWindows:
+          type: array
+          items:
+            type: object
+            properties:
+              night:
+                type: string
+                format: date
+              startUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              endUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - night
+              - startUtc
+              - endUtc
+        tzdataVersion:
+          type: string
+        timeZoneTransitions:
+          type: array
+          items:
+            type: object
+            properties:
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              utcOffsetMinutes:
+                type: integer
+            required:
+              - atUtc
+              - utcOffsetMinutes
+      required:
+        - siteId
+        - latitudeDeg
+        - longitudeDeg
+        - timeZone
+        - status
+        - fetchedAtUtc
+        - expiresAtUtc
+        - modelSet
+        - region
+        - cmp3
+        - days
+        - hours
+        - nights
+        - nightWindows
+        - darkWindows
+        - tzdataVersion
+        - timeZoneTransitions
+    WeatherHourView:
+      type: object
+      properties:
+        tUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        cloudTotalPct:
+          type:
+            - number
+            - "null"
+        cloudLowPct:
+          type:
+            - number
+            - "null"
+        cloudMidPct:
+          type:
+            - number
+            - "null"
+        cloudHighPct:
+          type:
+            - number
+            - "null"
+        cloudEcmwfPct:
+          type:
+            - number
+            - "null"
+        cloudCmp3Pct:
+          type:
+            - number
+            - "null"
+        tempC:
+          type:
+            - number
+            - "null"
+        dewPointC:
+          type:
+            - number
+            - "null"
+        humidityPct:
+          type:
+            - number
+            - "null"
+        wind10Kmh:
+          type:
+            - number
+            - "null"
+        gust10Kmh:
+          type:
+            - number
+            - "null"
+        windDir10Deg:
+          type:
+            - number
+            - "null"
+        wind250Kmh:
+          type:
+            - number
+            - "null"
+        windDir250Deg:
+          type:
+            - number
+            - "null"
+        wind500Kmh:
+          type:
+            - number
+            - "null"
+        windDir500Deg:
+          type:
+            - number
+            - "null"
+        wind700Kmh:
+          type:
+            - number
+            - "null"
+        windDir700Deg:
+          type:
+            - number
+            - "null"
+        wind850Kmh:
+          type:
+            - number
+            - "null"
+        windDir850Deg:
+          type:
+            - number
+            - "null"
+        surfacePressureHPa:
+          type:
+            - number
+            - "null"
+        visibilityM:
+          type:
+            - number
+            - "null"
+        precipMm:
+          type:
+            - number
+            - "null"
+        precipProbPct:
+          type:
+            - number
+            - "null"
+        weatherCode:
+          type:
+            - integer
+            - "null"
+        aod:
+          type:
+            - number
+            - "null"
+        dustUgM3:
+          type:
+            - number
+            - "null"
+        pwvMm:
+          type:
+            - number
+            - "null"
+        jetKmh:
+          type:
+            - number
+            - "null"
+        shearKmh:
+          type:
+            - number
+            - "null"
+        moonAltDeg:
+          type:
+            - number
+            - "null"
+        sunAltDeg:
+          type: number
+        modelId:
+          anyOf:
+            - type: string
+              enum:
+                - d2
+                - eu
+                - global
+                - dini
+                - hrrr
+                - gem
+                - gfs
+            - type: string
+        cloudSrc:
+          type:
+            - string
+            - "null"
+          enum:
+            - dini
+            - gem
+            - null
+        nest:
+          type: boolean
+        aerosolMissing:
+          type: boolean
+        seeingIncomplete:
+          type: boolean
+        cloudScore:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        seeingScore:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        transparencyScore:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        overallScore:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+      required:
+        - tUtc
+        - cloudTotalPct
+        - cloudLowPct
+        - cloudMidPct
+        - cloudHighPct
+        - cloudEcmwfPct
+        - cloudCmp3Pct
+        - tempC
+        - dewPointC
+        - humidityPct
+        - wind10Kmh
+        - gust10Kmh
+        - windDir10Deg
+        - wind250Kmh
+        - windDir250Deg
+        - wind500Kmh
+        - windDir500Deg
+        - wind700Kmh
+        - windDir700Deg
+        - wind850Kmh
+        - windDir850Deg
+        - surfacePressureHPa
+        - visibilityM
+        - precipMm
+        - precipProbPct
+        - weatherCode
+        - aod
+        - dustUgM3
+        - pwvMm
+        - jetKmh
+        - shearKmh
+        - moonAltDeg
+        - sunAltDeg
+        - modelId
+        - cloudSrc
+        - nest
+        - aerosolMissing
+        - seeingIncomplete
+        - cloudScore
+        - seeingScore
+        - transparencyScore
+        - overallScore
+        - ratingIndex
+    WeatherNightView:
+      type: object
+      properties:
+        night:
+          type: string
+          format: date
+        darkFromUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        darkToUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nightMean:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+        coveredSec:
+          type: integer
+        darknessSec:
+          type: integer
+        coverage:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        moonlessSec:
+          type: integer
+        bestWindow:
+          $ref: "#/components/schemas/WeatherBestWindow"
+        aerosolMissing:
+          type: boolean
+        seeingIncomplete:
+          type: boolean
+        moonIllumPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        moonEvents:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - rise
+                  - set
+              atUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - type
+              - atUtc
+      required:
+        - night
+        - darkFromUtc
+        - darkToUtc
+        - nightMean
+        - ratingIndex
+        - coveredSec
+        - darknessSec
+        - coverage
+        - moonlessSec
+        - bestWindow
+        - aerosolMissing
+        - seeingIncomplete
+        - moonIllumPct
+        - moonEvents
+    WeatherBestWindow:
+      type:
+        - object
+        - "null"
+      properties:
+        fromUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        toUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sec:
+          type: integer
+        moonFreeSec:
+          type: integer
+        meanScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        fair:
+          type: boolean
+      required:
+        - fromUtc
+        - toUtc
+        - sec
+        - moonFreeSec
+        - meanScore
+        - fair
     ProjectListItem:
       type: object
       properties:
@@ -14731,6 +15208,52 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sites/{id}/weather:
+    get:
+      summary: Astro-Wetter des Standorts (7 Tage, stündlich; letzter Stand aus weather_cache)
+      tags:
+        - equipment
+      description: "Aktion: `project.read` · FA-WET-01, FA-WET-04, FA-WET-07, S-50"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-WET-01
+        - FA-WET-04
+        - FA-WET-07
+        - S-50
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Wettervorhersage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeatherView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:

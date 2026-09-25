@@ -187,3 +187,11 @@ export {
   type DsoCatalogRow,
   type DsoCatalogStatus,
 } from './repositories/dso';
+export {
+  latestWeather,
+  saveWeather,
+  weatherCoord,
+  weatherSites,
+  type WeatherCacheEntry,
+  type WeatherSite,
+} from './repositories/weather';

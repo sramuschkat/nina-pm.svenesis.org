@@ -1,0 +1,107 @@
+/* Wettervorhersage S-50 (FK 14.3): volle Breite ohne Obergrenze, Abstände über --npm-space-*, Farben über
+   Tokens; Tabellen, Felder und Knöpfe aus den Verwaltungsseiten. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.head {
+  composes: head from '../admin/admin.module.css';
+}
+.panel {
+  composes: panel from '../admin/admin.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../admin/admin.module.css';
+}
+.table {
+  composes: table from '../admin/admin.module.css';
+}
+.num {
+  composes: num from '../admin/admin.module.css';
+}
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+.field {
+  composes: field from '../admin/admin.module.css';
+}
+.input {
+  composes: input from '../admin/admin.module.css';
+}
+.button {
+  composes: button from '../admin/admin.module.css';
+}
+.nowrap {
+  composes: nowrap from '../admin/admin.module.css';
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-3);
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-4);
+  margin: 0;
+}
+.facts div {
+  display: flex;
+  flex-direction: column;
+}
+.facts dt {
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.unit {
+  display: inline-flex;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+}
+.unit button {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: none;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  cursor: pointer;
+}
+.unit button[aria-checked='true'] {
+  background: var(--npm-button);
+  color: var(--npm-on-button);
+}
+.unit button:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: -2px;
+}
+.selected {
+  background: var(--npm-note-bg);
+}
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--npm-link);
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: left;
+}
+.external {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.compact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.flagText {
+  font-size: var(--npm-font-small);
+  color: var(--npm-warning);
+}

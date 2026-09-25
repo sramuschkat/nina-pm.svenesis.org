@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { SKYMAP_PATH } from '../pages/planning/skymap/model';
+import { WEATHER_PATH } from '../pages/weather/model';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
 import { SYSTEM_PATHS } from '../pages/system/SystemLayout';
 import { api, memberApi } from '../api/client';
@@ -238,7 +239,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     // Projektliste folgt mit AP-11c; bis dahin Platzhalter mit *Neues Projekt* und der Editor S-31.
     { key: 'projects', visible: !system, to: '/projekte' },
     { key: 'nina', visible: !system, to: '/nina/simulator' },
-    { key: 'weather', visible: !system },
+    { key: 'weather', visible: !system, to: WEATHER_PATH },
     { key: 'evaluation', visible: !system, to: '/auswertung/sessions' },
     { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
     { key: 'system', visible: system, to: SYSTEM_PATHS.tenants },

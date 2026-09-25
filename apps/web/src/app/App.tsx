@@ -43,6 +43,7 @@ import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { SkyMapPage } from '../pages/planning/SkyMapPage';
 import { SKYMAP_PATH } from '../pages/planning/skymap/model';
+import { WeatherPage } from '../pages/weather/WeatherPage';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -168,6 +169,11 @@ export function createRouter() {
                 { path: 'sternkarte', element: <SkyMapPage /> },
                 { path: 'objekte', element: <ObjectBrowserPage /> },
               ],
+            },
+            {
+              path: 'wetter',
+              element: <RequireAction action="project.read" />,
+              children: [{ index: true, element: <WeatherPage /> }],
             },
             {
               path: 'nina',

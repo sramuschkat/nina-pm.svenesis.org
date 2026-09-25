@@ -32,6 +32,10 @@ import {
   type OpenDatabase,
   readMaintenanceBanner,
   TenantRepository,
+  latestWeather,
+  saveWeather,
+  siteNightRunDone,
+  weatherSites,
 } from '@nina-pm/db';
 import { seedCore, seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
 import { openPglite } from '@nina-pm/db/testing/pglite';
@@ -57,6 +61,9 @@ import {
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
 import { catalogRefreshHandler, importCatalog } from './worker/catalog';
 import { reconcileJobHandler } from './worker/session-ops';
+import { httpClient } from './lib/http-client';
+import { weatherJobHandler, weatherTick } from './weather/job';
+import { sampleOpenMeteo } from './weather/sample';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
@@ -106,8 +113,35 @@ const jobs: JobRunnerDeps = {
     session_report: sessionReportHandler(localSessionJobs),
     reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
     catalog_refresh: catalogRefreshHandler({ db: () => Promise.resolve(db) }),
+    // Astro-Wetter (AP-23): lokal mit Beispieldaten, echte Open-Meteo-Abrufe nur mit LOCAL_WEATHER=live.
+    weather: weatherJobHandler({
+      http:
+        process.env.LOCAL_WEATHER === 'live'
+          ? httpClient({ version: 'local' })
+          : sampleOpenMeteo(now),
+      latest: (lat, lon) => latestWeather(db, lat, lon),
+      save: (entry) => saveWeather(db, entry),
+      site: (tenantId, siteId) => new EquipmentRepository(db, { tenantId }).site(siteId),
+    }),
   },
 };
+// `tick-hourly` lokal: beim Start und dann stündlich das Wetter je Standort holen.
+const localWeatherTick = () =>
+  weatherTick(
+    {
+      sites: () => weatherSites(db),
+      enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
+      runDone: (tenantId, key) => siteNightRunDone(db, tenantId, key),
+    },
+    jobs,
+    now(),
+  ).catch((error: unknown) =>
+    logger.warn('local_weather_failed', {
+      error: error instanceof Error ? error.message : 'unbekannt',
+    }),
+  );
+void localWeatherTick();
+setInterval(() => void localWeatherTick(), 3_600_000).unref();
 const services: ApiServices = {
   repositories: (ctx) => ({
     job: new JobRepository(db, ctx),
