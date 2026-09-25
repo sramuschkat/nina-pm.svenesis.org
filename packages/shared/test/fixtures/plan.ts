@@ -145,6 +145,7 @@ const project = (n: number, over: Partial<Project>): Project => ({
   createdBy: ID(9),
   targetName: null,
   targetType: null,
+  dsoObjectId: null,
   catalogNames: '',
   descriptionMd: '',
   raDeg: 13.2046,

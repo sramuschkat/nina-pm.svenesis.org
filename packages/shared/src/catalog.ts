@@ -34,3 +34,16 @@ export function dsoDisplayName(primaryId: string, names: readonly string[]): str
 export function dsoTypeGroup(objectType: string): DsoTypeGroup {
   return ((dsoObjectTypeGroups as Record<string, string>)[objectType] ?? 'other') as DsoTypeGroup;
 }
+
+/**
+ * Dateiname der Katalogbilder aus der normalisierten `primary_id` (dso-import.md §2, T-KAT-12):
+ * Kleinbuchstaben, nur Buchstaben und Ziffern (`NGC 224` → `ngc224`, `Sh2-129` → `sh2129`).
+ */
+export const catalogImageKey = (primaryId: string) =>
+  primaryId.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+/** Kopierte Katalogbilder unter `catalog/img/…` (H-11): 128 px je Zeile, 320 px wo vorhanden. */
+export const catalogImagePaths = (primaryId: string) => ({
+  small: `/catalog/img/ngc/${catalogImageKey(primaryId)}.jpg`,
+  large: `/catalog/img/ngc-l/${catalogImageKey(primaryId)}.jpg`,
+});

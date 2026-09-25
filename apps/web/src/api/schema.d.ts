@@ -12117,6 +12117,11 @@ export interface components {
             createdBy: string;
             targetName: string | null;
             targetType: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            dsoObjectId: string | null;
             catalogNames: string;
             raDeg: number | null;
             decDeg: number | null;
@@ -12286,6 +12291,11 @@ export interface components {
             createdBy: string;
             targetName: string | null;
             targetType: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            dsoObjectId: string | null;
             catalogNames: string;
             descriptionMd: string;
             raDeg: number | null;
@@ -12451,6 +12461,12 @@ export interface components {
             targetName: string | null;
             /** @default null */
             targetType: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             * @default null
+             */
+            dsoObjectId: string | null;
             /** @default  */
             catalogNames: string;
             /** @default  */
@@ -12539,6 +12555,11 @@ export interface components {
             rigId?: string | null;
             targetName?: string | null;
             targetType?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            dsoObjectId?: string | null;
             catalogNames?: string;
             descriptionMd?: string;
             raDeg?: number | null;

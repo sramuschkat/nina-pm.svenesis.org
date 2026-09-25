@@ -375,6 +375,7 @@ async function projectExamples(): Promise<Record<string, Example>> {
     rigId: rig.id,
     targetName: 'NGC 281',
     targetType: null,
+    dsoObjectId: null,
     catalogNames: '',
     descriptionMd: '',
     raDeg: 13.2458,

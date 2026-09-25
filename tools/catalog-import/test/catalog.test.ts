@@ -2,7 +2,7 @@
  * Pflicht-Tests des Katalog-Imports (docs/specs/catalog/dso-import.md §4, T-KAT-01…10) gegen die
  * eingecheckten Quellen (OpenNGC v20260501 + Website-Auszug); dazu: die eingecheckte Ausgabe entspricht
  * dem Build (deterministisch). T-KAT-11 (Idempotenz in `dso_object`) prüft der Repository-Test,
- * T-KAT-12 (Bilder) gehört zu AP-25/H-11.
+ * T-KAT-12 (Bilder) in `images.test.ts` (Zuordnung) und AP-25 (eigene Vorschauen).
  */
 import { readFileSync } from 'node:fs';
 import { dsoObjectTypes } from '@nina-pm/shared';

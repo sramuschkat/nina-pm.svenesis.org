@@ -459,6 +459,9 @@ importers:
 
   tools/catalog-import:
     dependencies:
+      '@nina-pm/infra':
+        specifier: workspace:*
+        version: link:../../infra
       '@nina-pm/shared':
         specifier: workspace:*
         version: link:../../packages/shared

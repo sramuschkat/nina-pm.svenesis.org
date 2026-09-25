@@ -3510,6 +3510,12 @@ components:
           type:
             - string
             - "null"
+        dsoObjectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         catalogNames:
           type: string
         raDeg:
@@ -3688,6 +3694,7 @@ components:
         - createdBy
         - targetName
         - targetType
+        - dsoObjectId
         - catalogNames
         - raDeg
         - decDeg
@@ -3912,6 +3919,12 @@ components:
           type:
             - string
             - "null"
+        dsoObjectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         catalogNames:
           type: string
         descriptionMd:
@@ -4088,6 +4101,7 @@ components:
         - createdBy
         - targetName
         - targetType
+        - dsoObjectId
         - catalogNames
         - descriptionMd
         - raDeg
@@ -4282,6 +4296,13 @@ components:
             - "null"
           maxLength: 40
           default: null
+        dsoObjectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          default: null
+          description: UUID
         catalogNames:
           type: string
           maxLength: 500
@@ -4437,6 +4458,12 @@ components:
             - string
             - "null"
           maxLength: 40
+        dsoObjectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         catalogNames:
           type: string
           maxLength: 500
