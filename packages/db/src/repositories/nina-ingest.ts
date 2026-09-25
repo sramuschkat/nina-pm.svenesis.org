@@ -10,6 +10,7 @@
  */
 import { ProblemError } from '@nina-pm/shared';
 import type { Kysely, Transaction } from 'kysely';
+import { ProjectRepository } from './project';
 import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
@@ -599,7 +600,7 @@ export async function applyCorrection(
     comment: string | null;
   },
   now: Date,
-): Promise<{ rejectedCount: number }> {
+): Promise<{ rejectedCount: number; projectStatus: string | null }> {
   return withTx(db, async (trx) => {
     const line = await trx
       .selectFrom('exposureLine')
@@ -667,7 +668,12 @@ export async function applyCorrection(
       .where('tenantId', '=', input.tenantId)
       .where('id', '=', line.projectId)
       .execute();
-    return { rejectedCount: after };
+    // Verbleibend steigt → fertiges Projekt zurück nach *Aktiv* (FA-PRJ-12, AP-15).
+    const status = await new ProjectRepository(trx, {
+      tenantId: input.tenantId,
+      memberId: input.userId,
+    }).reactivateAfterCounts(trx, line.projectId, now);
+    return { rejectedCount: after, projectStatus: status };
   });
 }
 

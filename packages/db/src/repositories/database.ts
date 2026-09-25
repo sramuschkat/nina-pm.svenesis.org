@@ -1,4 +1,5 @@
 /** Einstieg für Handler: öffnet die Datenbank und liefert Repositories je Mandantenkontext. */
+import { SessionReviewRepository } from './session-review';
 import type { Kysely } from 'kysely';
 import { createDb, createPool, type DbConfig } from '../connection';
 import type { Database } from '../types';
@@ -40,6 +41,7 @@ export interface OpenDatabase {
     ninaRig: (rigId: string) => NinaRigRepository;
     ninaSession: (rigId: string, instanceId: string) => NinaSessionRepository;
     ninaIngest: (rigId: string) => NinaIngestRepository;
+    sessionReview: () => SessionReviewRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -70,6 +72,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       ninaRig: (rigId) => new NinaRigRepository(db, ctx, rigId),
       ninaSession: (rigId, instanceId) => new NinaSessionRepository(db, ctx, rigId, instanceId),
       ninaIngest: (rigId) => new NinaIngestRepository(db, ctx, rigId),
+      sessionReview: () => new SessionReviewRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

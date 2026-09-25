@@ -139,6 +139,24 @@ export {
   type NinaPrincipal,
 } from './repositories/nina';
 export {
+  CLOSE_AFTER_END_MS,
+  STALE_AFTER_SESSION_END_MS,
+  STALE_NO_HEARTBEAT_MS,
+  activeAdminIds,
+  alertSentSince,
+  markStaleSessions,
+  reconcileSite,
+  sessionsDueForClose,
+  type ReconcileResult,
+  type SessionToClose,
+  type StaleSession,
+} from './repositories/session-ops';
+export {
+  SessionReviewRepository,
+  type NightSessionFilter,
+  type NightSessionRow,
+} from './repositories/session-review';
+export {
   LATE_REPORT_MS,
   LEASE_MS,
   NinaSessionRepository,

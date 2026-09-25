@@ -12,6 +12,7 @@ import {
   NinaRigRepository,
   NinaSessionRepository,
   NinaIngestRepository,
+  SessionReviewRepository,
   ninaTokenLookup,
   ninaTouch,
   ProjectRepository,
@@ -85,6 +86,7 @@ export async function createStack() {
       ninaSession: (rigId: string, instanceId: string) =>
         new NinaSessionRepository(pg.db, ctx, rigId, instanceId),
       ninaIngest: (rigId: string) => new NinaIngestRepository(pg.db, ctx, rigId),
+      sessionReview: () => new SessionReviewRepository(pg.db, ctx),
       tenant: () => new TenantRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),

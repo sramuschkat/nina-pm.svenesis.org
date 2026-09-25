@@ -37,6 +37,8 @@ import { QueuePage } from '../pages/projects/QueuePage';
 import { DeliveryPage } from '../pages/nina/DeliveryPage';
 import { InstancesPage } from '../pages/nina/InstancesPage';
 import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
+import { SessionDetailPage } from '../pages/sessions/SessionDetailPage';
+import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { AppearanceProvider } from './theme';
 
@@ -167,6 +169,15 @@ export function createRouter() {
                   element: <RequireAction action="nina.instance.manage" />,
                   children: [{ index: true, element: <InstancesPage /> }],
                 },
+              ],
+            },
+            {
+              path: 'auswertung',
+              element: <RequireAction action="session.read" />,
+              children: [
+                { index: true, element: <Navigate to={SESSIONS_PATH} replace /> },
+                { path: 'sessions', element: <SessionsPage /> },
+                { path: 'sessions/:id', element: <SessionDetailPage /> },
               ],
             },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },

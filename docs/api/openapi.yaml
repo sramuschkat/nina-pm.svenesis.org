@@ -6288,6 +6288,489 @@ components:
         - decDeg
         - rotationDeg
         - filters
+    NightSessionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSession"
+      required:
+        - items
+    NightSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        rigName:
+          type: string
+        siteTimeZone:
+          type: string
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        status:
+          type: string
+          enum:
+            - running
+            - completed
+            - aborted
+            - stale
+        startedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        endedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        sessionEndUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        createdOffline:
+          type: boolean
+        reviewed:
+          type: boolean
+        ninaInstanceName:
+          type:
+            - string
+            - "null"
+        frames:
+          type: integer
+          minimum: 0
+        bonusFrames:
+          type: integer
+          minimum: 0
+        integrationS:
+          type: number
+          minimum: 0
+        unassigned:
+          type: integer
+          minimum: 0
+      required:
+        - id
+        - rigId
+        - rigName
+        - siteTimeZone
+        - night
+        - status
+        - startedAt
+        - endedAt
+        - sessionEndUtc
+        - createdOffline
+        - reviewed
+        - ninaInstanceName
+        - frames
+        - bonusFrames
+        - integrationS
+        - unassigned
+    NightSessionDetail:
+      type: object
+      properties:
+        session:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            rigId:
+              type: string
+              format: uuid
+              description: UUID
+            rigName:
+              type: string
+            siteTimeZone:
+              type: string
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+            status:
+              type: string
+              enum:
+                - running
+                - completed
+                - aborted
+                - stale
+            startedAt:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            endedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            sessionEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            createdOffline:
+              type: boolean
+            reviewed:
+              type: boolean
+            ninaInstanceName:
+              type:
+                - string
+                - "null"
+            frames:
+              type: integer
+              minimum: 0
+            bonusFrames:
+              type: integer
+              minimum: 0
+            integrationS:
+              type: number
+              minimum: 0
+            unassigned:
+              type: integer
+              minimum: 0
+            reviewedBy:
+              type:
+                - string
+                - "null"
+              format: uuid
+              description: UUID
+            planRevision:
+              type:
+                - integer
+                - "null"
+              minimum: 1
+            darknessEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - id
+            - rigId
+            - rigName
+            - siteTimeZone
+            - night
+            - status
+            - startedAt
+            - endedAt
+            - sessionEndUtc
+            - createdOffline
+            - reviewed
+            - ninaInstanceName
+            - frames
+            - bonusFrames
+            - integrationS
+            - unassigned
+            - reviewedBy
+            - planRevision
+            - darknessEndUtc
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionLineRow"
+        captures:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionCapture"
+          maxItems: 2000
+        capturesTruncated:
+          type: boolean
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionEvent"
+        flats:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionFlat"
+      required:
+        - session
+        - rows
+        - captures
+        - capturesTruncated
+        - events
+        - flats
+    NightSessionLineRow:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        projectCreatedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        exposureLineId:
+          type: string
+          format: uuid
+          description: UUID
+        filterShortName:
+          type: string
+        exposureS:
+          type: number
+          minimum: 0
+        planned:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+        acquired:
+          type: integer
+          minimum: 0
+        rejected:
+          type: integer
+          minimum: 0
+        rejectedIndividual:
+          type: integer
+          minimum: 0
+        rejectedCorrection:
+          type: integer
+          minimum: 0
+        accepted:
+          type: integer
+          minimum: 0
+        bonus:
+          type: integer
+          minimum: 0
+        integrationS:
+          type: number
+      required:
+        - projectId
+        - projectName
+        - projectCreatedBy
+        - exposureLineId
+        - filterShortName
+        - exposureS
+        - planned
+        - acquired
+        - rejected
+        - rejectedIndividual
+        - rejectedCorrection
+        - accepted
+        - bonus
+        - integrationS
+    NightSessionCapture:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        capturedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        frameType:
+          type: string
+          enum:
+            - light
+            - flat
+            - dark_flat
+        projectId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        projectName:
+          type:
+            - string
+            - "null"
+        exposureLineId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        assignment:
+          type: string
+          enum:
+            - assigned
+            - unassigned
+        filterShortName:
+          type: string
+        filterActual:
+          type:
+            - string
+            - "null"
+        exposureS:
+          type: number
+          minimum: 0
+        gain:
+          type:
+            - integer
+            - "null"
+        offset:
+          type:
+            - integer
+            - "null"
+        binning:
+          type:
+            - integer
+            - "null"
+        result:
+          type: string
+          enum:
+            - saved
+            - aborted
+            - failed
+        isBonus:
+          type: boolean
+        temperatureDeviation:
+          type: boolean
+        settingsDeviation:
+          type: boolean
+        rejected:
+          type: boolean
+        fileName:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - capturedAt
+        - frameType
+        - projectId
+        - projectName
+        - exposureLineId
+        - assignment
+        - filterShortName
+        - filterActual
+        - exposureS
+        - gain
+        - offset
+        - binning
+        - result
+        - isBonus
+        - temperatureDeviation
+        - settingsDeviation
+        - rejected
+        - fileName
+    NightSessionEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        occurredAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        kind:
+          type: string
+        message:
+          type:
+            - string
+            - "null"
+        durationS:
+          type:
+            - number
+            - "null"
+      required:
+        - id
+        - occurredAt
+        - kind
+        - message
+        - durationS
+    NightSessionFlat:
+      type: object
+      properties:
+        filterShortName:
+          type: string
+        rotatorMechDeg:
+          type: number
+        binning:
+          type: integer
+        status:
+          type: string
+        flatsPlanned:
+          type: integer
+          minimum: 0
+        flatsTaken:
+          type: integer
+          minimum: 0
+        darkFlatsPlanned:
+          type: integer
+          minimum: 0
+        darkFlatsTaken:
+          type: integer
+          minimum: 0
+        flatExposureS:
+          type:
+            - number
+            - "null"
+      required:
+        - filterShortName
+        - rotatorMechDeg
+        - binning
+        - status
+        - flatsPlanned
+        - flatsTaken
+        - darkFlatsPlanned
+        - darkFlatsTaken
+        - flatExposureS
+    NightSessionCorrection:
+      type: object
+      properties:
+        exposureLineId:
+          type: string
+          format: uuid
+          description: UUID
+        rejected:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        reason:
+          type:
+            - string
+            - "null"
+          enum:
+            - clouds
+            - wind
+            - focus
+            - satellite
+            - guiding
+            - other
+            - null
+          default: null
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 500
+          default: null
+      required:
+        - exposureLineId
+        - rejected
+      additionalProperties: false
+    NightSessionReviewed:
+      type: object
+      properties:
+        reviewed:
+          type: boolean
+      required:
+        - reviewed
+      additionalProperties: false
     NinaBootstrap:
       type: object
       properties:
@@ -16180,6 +16663,241 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NinaRigDelivery"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions:
+    get:
+      summary: Sessions je Rig und Nacht (neueste zuerst)
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-07, S-60"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-01
+        - FA-AUS-07
+        - S-60
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: unreviewed
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 100
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NightSessionList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/{id}:
+    get:
+      summary: "Session-Detail: Soll/Ist je Zeile, Aufnahmen, Ereignisse, Flats"
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-02, FA-AUS-03, S-61"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-01
+        - FA-AUS-02
+        - FA-AUS-03
+        - S-61
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NightSessionDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/{id}/corrections:
+    post:
+      summary: "Korrektur erfassen: Anzahl verworfen je Zeile und Nacht"
+      tags:
+        - sessions
+      description: "Aktion: `session.correct` · FA-AUS-06, FK 8.4, DAT-1"
+      x-npm-action: session.correct
+      x-npm-requirements:
+        - FA-AUS-06
+        - FK 8.4
+        - DAT-1
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NightSessionCorrection"
+      responses:
+        "200":
+          description: Verworfen in der Nacht nach der Regel max; neuer Projektstatus bei Rückkehr
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rejectedCount:
+                    type: integer
+                    minimum: 0
+                  projectStatus:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - rejectedCount
+                  - projectStatus
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: correction.conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/{id}/review:
+    put:
+      summary: Session als geprüft markieren bzw. zurücknehmen
+      tags:
+        - sessions
+      description: "Aktion: `session.review` · FA-AUS-07, S-61"
+      x-npm-action: session.review
+      x-npm-requirements:
+        - FA-AUS-07
+        - S-61
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NightSessionReviewed"
+      responses:
+        "204":
+          description: Gespeichert
         "401":
           description: Nicht angemeldet
           content:

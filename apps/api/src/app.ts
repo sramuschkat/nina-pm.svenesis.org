@@ -29,6 +29,7 @@ import { getJobRoute, webJobRoutes } from './routes/web-jobs';
 import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
+import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
 import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
 import { NINA_SESSION_ROUTES, ninaSessionRoutes } from './routes/nina/sessions';
 
@@ -61,6 +62,7 @@ export const ROUTES = [
   ...SIMULATION_ROUTES,
   ...NINA_INSTANCE_ROUTES,
   ...NINA_OPS_ROUTES,
+  ...SESSION_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -124,6 +126,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webSimulationRoutes(services));
   app.route('/', webNinaInstanceRoutes(services));
   app.route('/', webNinaOpsRoutes(services));
+  app.route('/', webSessionRoutes(services));
   app.route('/', ninaSyncRoutes(services));
   app.route('/', ninaSessionRoutes(services));
   app.route('/', systemRoutes(services));

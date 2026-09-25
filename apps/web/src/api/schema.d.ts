@@ -8354,6 +8354,304 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sessions je Rig und Nacht (neueste zuerst)
+         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-07, S-60
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUID */
+                    rigId?: string;
+                    unreviewed?: "true" | "false";
+                    from?: string;
+                    to?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sessions */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightSessionList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session-Detail: Soll/Ist je Zeile, Aufnahmen, Ereignisse, Flats
+         * @description Aktion: `session.read` · FA-AUS-01, FA-AUS-02, FA-AUS-03, S-61
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Detail */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NightSessionDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sessions/{id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Korrektur erfassen: Anzahl verworfen je Zeile und Nacht
+         * @description Aktion: `session.correct` · FA-AUS-06, FK 8.4, DAT-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NightSessionCorrection"];
+                };
+            };
+            responses: {
+                /** @description Verworfen in der Nacht nach der Regel max; neuer Projektstatus bei Rückkehr */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            rejectedCount: number;
+                            projectStatus: string | null;
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description correction.conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sessions/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Session als geprüft markieren bzw. zurücknehmen
+         * @description Aktion: `session.review` · FA-AUS-07, S-61
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NightSessionReviewed"];
+                };
+            };
+            responses: {
+                /** @description Gespeichert */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nina/v1/bootstrap": {
         parameters: {
             query?: never;
@@ -12893,6 +13191,225 @@ export interface components {
                 planned: number;
                 accepted: number;
             }[];
+        };
+        NightSessionList: {
+            items: components["schemas"]["NightSession"][];
+        };
+        NightSession: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            siteTimeZone: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /** @enum {string} */
+            status: "running" | "completed" | "aborted" | "stale";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startedAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            sessionEndUtc: string | null;
+            createdOffline: boolean;
+            reviewed: boolean;
+            ninaInstanceName: string | null;
+            frames: number;
+            bonusFrames: number;
+            integrationS: number;
+            unassigned: number;
+        };
+        NightSessionDetail: {
+            session: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                rigId: string;
+                rigName: string;
+                siteTimeZone: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /** @enum {string} */
+                status: "running" | "completed" | "aborted" | "stale";
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startedAt: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endedAt: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                sessionEndUtc: string | null;
+                createdOffline: boolean;
+                reviewed: boolean;
+                ninaInstanceName: string | null;
+                frames: number;
+                bonusFrames: number;
+                integrationS: number;
+                unassigned: number;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                reviewedBy: string | null;
+                planRevision: number | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                darknessEndUtc: string | null;
+            };
+            rows: components["schemas"]["NightSessionLineRow"][];
+            captures: components["schemas"]["NightSessionCapture"][];
+            capturesTruncated: boolean;
+            events: components["schemas"]["NightSessionEvent"][];
+            flats: components["schemas"]["NightSessionFlat"][];
+        };
+        NightSessionLineRow: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectCreatedBy: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            exposureLineId: string;
+            filterShortName: string;
+            exposureS: number;
+            planned: number | null;
+            acquired: number;
+            rejected: number;
+            rejectedIndividual: number;
+            rejectedCorrection: number;
+            accepted: number;
+            bonus: number;
+            integrationS: number;
+        };
+        NightSessionCapture: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            capturedAt: string;
+            /** @enum {string} */
+            frameType: "light" | "flat" | "dark_flat";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string | null;
+            projectName: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            exposureLineId: string | null;
+            /** @enum {string} */
+            assignment: "assigned" | "unassigned";
+            filterShortName: string;
+            filterActual: string | null;
+            exposureS: number;
+            gain: number | null;
+            offset: number | null;
+            binning: number | null;
+            /** @enum {string} */
+            result: "saved" | "aborted" | "failed";
+            isBonus: boolean;
+            temperatureDeviation: boolean;
+            settingsDeviation: boolean;
+            rejected: boolean;
+            fileName: string | null;
+        };
+        NightSessionEvent: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            occurredAt: string;
+            kind: string;
+            message: string | null;
+            durationS: number | null;
+        };
+        NightSessionFlat: {
+            filterShortName: string;
+            rotatorMechDeg: number;
+            binning: number;
+            status: string;
+            flatsPlanned: number;
+            flatsTaken: number;
+            darkFlatsPlanned: number;
+            darkFlatsTaken: number;
+            flatExposureS: number | null;
+        };
+        NightSessionCorrection: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            exposureLineId: string;
+            rejected: number;
+            /**
+             * @default null
+             * @enum {string|null}
+             */
+            reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
+            /** @default null */
+            comment: string | null;
+        };
+        NightSessionReviewed: {
+            reviewed: boolean;
         };
         NinaBootstrap: {
             /** @enum {string} */

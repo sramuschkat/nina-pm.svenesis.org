@@ -17,6 +17,7 @@ import {
   NinaRigRepository,
   NinaSessionRepository,
   NinaIngestRepository,
+  SessionReviewRepository,
   ninaTokenLookup,
   ninaTouch,
   ProjectRepository,
@@ -54,6 +55,7 @@ import {
   type SessionJobDeps,
 } from './worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
+import { reconcileJobHandler } from './worker/session-ops';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
@@ -96,6 +98,7 @@ const jobs: JobRunnerDeps = {
     effort: effortJobHandler(effortDbDeps(() => Promise.resolve(db))),
     session_close: sessionCloseHandler(localSessionJobs),
     session_report: sessionReportHandler(localSessionJobs),
+    reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
   },
 };
 const services: ApiServices = {
@@ -114,6 +117,7 @@ const services: ApiServices = {
     ninaSession: (rigId: string, instanceId: string) =>
       new NinaSessionRepository(db, ctx, rigId, instanceId),
     ninaIngest: (rigId: string) => new NinaIngestRepository(db, ctx, rigId),
+    sessionReview: () => new SessionReviewRepository(db, ctx),
     tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),

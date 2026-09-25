@@ -1,0 +1,116 @@
+/* Sessions S-60/S-61 (FK 14.3): volle Breite ohne Obergrenze, Abstände über --npm-space-*, Farben über
+   Tokens; Tabellen, Felder und Knöpfe aus den Verwaltungsseiten. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.head {
+  composes: head from '../admin/admin.module.css';
+}
+.panel {
+  composes: panel from '../admin/admin.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../admin/admin.module.css';
+}
+.table {
+  composes: table from '../admin/admin.module.css';
+}
+.num {
+  composes: num from '../admin/admin.module.css';
+}
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+.form {
+  composes: form from '../admin/admin.module.css';
+}
+.row {
+  composes: row from '../admin/admin.module.css';
+}
+.field {
+  composes: field from '../admin/admin.module.css';
+}
+.input {
+  composes: input from '../admin/admin.module.css';
+}
+.button {
+  composes: button from '../admin/admin.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../admin/admin.module.css';
+}
+.actions {
+  composes: actions from '../admin/admin.module.css';
+}
+.check {
+  composes: check from '../admin/admin.module.css';
+}
+.pill {
+  composes: pill from '../admin/admin.module.css';
+}
+.pillOk {
+  composes: pillOk from '../admin/admin.module.css';
+}
+.pillWarn {
+  composes: pillWarn from '../admin/admin.module.css';
+}
+.pillDanger {
+  composes: pillDanger from '../admin/admin.module.css';
+}
+.nowrap {
+  composes: nowrap from '../admin/admin.module.css';
+}
+.success {
+  composes: success from '../admin/admin.module.css';
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-3);
+}
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+  border-bottom: 1px solid var(--npm-border);
+}
+.tab {
+  padding: var(--npm-space-2) var(--npm-space-4);
+  min-height: var(--npm-row-h);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--npm-text);
+  cursor: pointer;
+}
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--npm-accent);
+  font-weight: 600;
+  color: var(--npm-link);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--npm-accent);
+  outline-offset: 2px;
+}
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+}
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--npm-link);
+  cursor: pointer;
+  text-decoration: underline;
+}

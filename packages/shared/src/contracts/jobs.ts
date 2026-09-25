@@ -60,6 +60,9 @@ export const dedupeKeys = {
   impact: (i: ImpactInput) => `impact:${i.queueItemId}`,
   effort: (projectId: string) => `effort:${projectId}`,
   effortSiteNight: (siteId: string, night: string) => `effort:${siteId}:${night}`,
+  reconcileSiteNight: (siteId: string, night: string) => `reconcile:${siteId}:${night}`,
+  sessionClose: (sessionId: string) => `session_close:${sessionId}`,
+  sessionReport: (sessionId: string) => `session_report:${sessionId}`,
 } as const;
 
 export const JobAccepted = z.object({ jobId: Uuid }).meta({ id: 'JobAccepted' });
