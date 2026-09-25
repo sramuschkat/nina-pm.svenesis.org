@@ -235,6 +235,18 @@ describe('GET /targets (NT-19, NT-E1)', () => {
     const l2 = ((changed.body.projects as Body[])[0]?.panels as { lines: Body[] }[])[0]?.lines[0];
     expect(l2?.ninaFilterName).toBe('H-alpha');
   });
+
+  it('If-None-Match schwach verglichen (RFC 9110): W/-Präfix von CloudFront, Liste, *; fremder ETag → 200', async () => {
+    const t = await setup();
+    const etag = (await t.ninaCall('/targets')).etag ?? '';
+    for (const header of [`W/${etag}`, `"t-0000", W/${etag}`, '*'])
+      expect((await t.ninaCall('/targets', { headers: { 'if-none-match': header } })).status).toBe(
+        304,
+      );
+    expect(
+      (await t.ninaCall('/targets', { headers: { 'if-none-match': 'W/"t-0000"' } })).status,
+    ).toBe(200);
+  });
 });
 
 describe('POST /plan (FA-SIM-05, NT-01, NT-20, M7)', () => {

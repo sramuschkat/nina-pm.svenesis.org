@@ -222,7 +222,10 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
     etag = r.etag ?? '';
     if (!etag) throw new StepFailed('ETag fehlt');
     const again = await call('/targets', { headers: { 'if-none-match': etag } });
-    if (again.status !== 304) throw new StepFailed(`If-None-Match: ${describe(again)} statt 304`);
+    if (again.status !== 304)
+      throw new StepFailed(
+        `If-None-Match ${etag}: ${describe(again)} statt 304 (ETag jetzt ${again.etag ?? '–'})`,
+      );
     return `${String((targets?.projects as unknown[] | undefined)?.length ?? 0)} Ziele`;
   });
   const line = firstLine(targets);
@@ -343,7 +346,10 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
 
   await step('ETag unverändert nach Aufnahmen (NT-19)', async () => {
     const r = await call('/targets', { headers: { 'if-none-match': etag } });
-    if (r.status !== 304) throw new StepFailed(`${describe(r)} statt 304`);
+    if (r.status !== 304)
+      throw new StepFailed(
+        `${describe(r)} statt 304 (ETag vorher ${etag}, jetzt ${r.etag ?? '–'})`,
+      );
     return undefined;
   });
 
