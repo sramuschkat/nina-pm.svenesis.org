@@ -1031,6 +1031,44 @@ export class ProjectRepository extends TenantRepo {
   }
 
   /**
+   * Nach einer Zähleränderung außerhalb des Editors (Korrektur, FA-AUS-06): steigt der Planungsbedarf
+   * eines fertigen Projekts wieder über 0, geht es zurück nach *Aktiv* (FA-PRJ-12,
+   * `autoReactivateOnRemaining`) – mit Protokolleintrag. Liefert den neuen Status oder `null`.
+   */
+  async reactivateAfterCounts(trx: Tx, projectId: string, now: Date): Promise<string | null> {
+    const p = await this.row(projectId, trx);
+    if (!p || p.approvalStatus !== 'approved') return null;
+    if (p.status !== 'ready_to_process' && p.status !== 'completed') return null;
+    const lines = await trx
+      .selectFrom('exposureLine')
+      .selectAll()
+      .where('tenantId', '=', this.tenantId)
+      .where('projectId', '=', p.id)
+      .where('deletedAt', 'is', null)
+      .execute();
+    const need = projectProgress(lines, await this.overshootPct(trx, p)).planningNeed;
+    const tenant = await trx
+      .selectFrom('tenant')
+      .select('settings')
+      .where('id', '=', this.tenantId)
+      .executeTakeFirst();
+    const next = autoReactivate(
+      p.status as ProjectStatus,
+      need,
+      effectiveTenantSettings(tenant?.settings).autoReactivateOnRemaining,
+    );
+    if (!next) return null;
+    await trx
+      .updateTable('project')
+      .set({ status: next, completedAt: null, version: p.version + 1, updatedAt: now })
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', p.id)
+      .execute();
+    await this.log(trx, p.id, 'status', { from: p.status, to: next, automatic: true }, now);
+    return next;
+  }
+
+  /**
    * Nach einer Zeilenänderung: Version/`effort_stale` und die automatische Rückkehr nach *Aktiv*, wenn
    * der Planungsbedarf eines fertigen Projekts wieder über 0 steigt (FA-PRJ-12, `autoReactivateOnRemaining`).
    */

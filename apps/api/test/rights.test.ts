@@ -650,8 +650,47 @@ async function projectExamples(): Promise<Record<string, Example>> {
         },
         stack.clock.now(),
       );
+    // Session am Rig von Mandant A mit freigegebenem Projekt eines Nicht-Persona-Users (AP-15).
+    const SP = await complete(submitter, 'Session-Projekt');
+    await admin().query(
+      "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = $2 WHERE id = $1",
+      [SP, common.rigId],
+    );
+    const spLine = (
+      (await admin().query('SELECT id FROM exposure_line WHERE project_id = $1', [SP])).rows[0] as {
+        id: string;
+      }
+    ).id;
+    const sessionId = crypto.randomUUID();
+    await admin().query(
+      "INSERT INTO session (id, tenant_id, rig_id, night, started_at, status) VALUES ($1, $2, $3, '2026-09-18', '2026-09-19T01:00:00Z', 'completed')",
+      [sessionId, world.tenantA, common.rigId],
+    );
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
     return {
+      'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
+      'GET /api/web/v1/sessions/{id}': {
+        url: `/api/web/v1/sessions/${sessionId}`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/sessions/{id}/corrections': {
+        url: `/api/web/v1/sessions/${sessionId}/corrections`,
+        method: 'POST',
+        body: { exposureLineId: spLine, rejected: 0 },
+        resource: {
+          tenantId: world.tenantA,
+          createdBy: submitter,
+          settings: { userCorrections: false },
+        },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PUT /api/web/v1/sessions/{id}/review': {
+        url: `/api/web/v1/sessions/${sessionId}/review`,
+        method: 'PUT',
+        body: { reviewed: false },
+        okStatus: 204,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       [`POST ${P}/{id}/submit`]: {
         url: `${P}/${OD}/submit`,
         method: 'POST',

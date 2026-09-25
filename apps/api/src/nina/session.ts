@@ -3,18 +3,22 @@
  * FA-SYN-04…07, FA-RIG-06, FA-NIN-04, NT-01, NT-09, NT-14, NT-22, NT-E1, M5, M6, M7).
  * Mandant und Rig ausschließlich aus dem Token.
  */
-import type { NinaPrincipal } from '@nina-pm/db';
+import { activeAdminIds, alertSentSince, type NinaPrincipal } from '@nina-pm/db';
 import {
   currentNightRow,
+  dedupeKeys,
+  formatNightKey,
   nina,
   ProblemError,
   type NinaSettingsMismatchCode,
+  type NotificationKind,
 } from '@nina-pm/shared';
 import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import { siteNights } from '../lib/night-table';
+import { createNotificationService } from '../notifications/service';
 import type { ApiServices } from '../routes/services';
 import { targets } from './sync';
 
@@ -38,26 +42,81 @@ async function checkNight(svc: ApiServices, p: NinaPrincipal, night: string) {
   return rig;
 }
 
+const HOUR_MS = 3_600_000;
+
+/**
+ * Betriebsalarm in der App an alle aktiven Admins (AP-15, TK 16.2): entprellt über `payload.key` im
+ * Zeitraum `debounceMs`; ein Fehler dabei ändert die Plugin-Antwort nie.
+ */
+async function alertAdmins(
+  svc: ApiServices,
+  tenantId: string,
+  kind: NotificationKind,
+  key: string,
+  subject: string,
+  debounceMs: number,
+  extra: Record<string, unknown> = {},
+) {
+  try {
+    const now = svc.now();
+    if (await alertSentSince(svc.db, tenantId, kind, key, new Date(now.getTime() - debounceMs)))
+      return;
+    await createNotificationService(svc.db).notify(
+      tenantId,
+      kind,
+      await activeAdminIds(svc.db, tenantId),
+      { subject, key, ...extra },
+      { now },
+    );
+  } catch (error) {
+    logger.warn('alert_failed', { kind, error: error instanceof Error ? error.message : '' });
+  }
+}
+
+async function rigName(svc: ApiServices, p: NinaPrincipal) {
+  return (await svc.repositories({ tenantId: p.tenantId }).equipment().rig(p.rigId))?.name ?? '';
+}
+
 export async function createSession(svc: ApiServices, p: NinaPrincipal, body: SessionCreate) {
   await checkNight(svc, p, body.night);
   const repos = svc.repositories({ tenantId: p.tenantId });
-  const r = await repos.ninaSession(p.rigId, p.instanceId).create(
-    {
-      id: body.id,
-      night: body.night,
-      nightPlanId: body.nightPlanId,
-      startedAt: new Date(body.startedAtUtc),
-      offline: body.offline,
-      offlinePlan: body.offlinePlan ?? null,
-    },
-    svc.now(),
-  );
-  // Offline angelegt und schon eine andere Session in der Nacht: beide gespeichert, Alarm rig.busy (AP-15).
+  const busyAlert = async () =>
+    alertAdmins(
+      svc,
+      p.tenantId,
+      'alert.rig_busy',
+      `${p.rigId}:${body.night}`,
+      `${await rigName(svc, p)} · ${formatNightKey(body.night)} · ${p.instanceName}`,
+      12 * HOUR_MS,
+      { rigId: p.rigId },
+    );
+  let r;
+  try {
+    r = await repos.ninaSession(p.rigId, p.instanceId).create(
+      {
+        id: body.id,
+        night: body.night,
+        nightPlanId: body.nightPlanId,
+        startedAt: new Date(body.startedAtUtc),
+        offline: body.offline,
+        offlinePlan: body.offlinePlan ?? null,
+      },
+      svc.now(),
+    );
+  } catch (error) {
+    // Zweite Instanz am belegten Rig (409 session.rig_busy): Betriebsalarm, dann die Ablehnung.
+    if (error instanceof ProblemError && error.code === 'session.rig_busy') await busyAlert();
+    throw error;
+  }
+  // Offline angelegt und schon eine andere Session in der Nacht: beide gespeichert, Alarm rig.busy.
   if (r.created && body.offline) {
     const others = await repos
       .ninaSession(p.rigId, p.instanceId)
       .otherSessionsInNight(body.id, body.night);
-    if (others > 0) logger.warn('alert_rig_busy', { rigId: p.rigId, sessionId: body.id });
+    if (others > 0) {
+      logger.warn('alert_rig_busy', { rigId: p.rigId, sessionId: body.id });
+      await busyAlert();
+    }
   }
   const upload = await svc.uploads.planLog(p.tenantId, body.id);
   return {
@@ -91,12 +150,12 @@ async function enqueueSessionJobs(
   await repos.job.enqueue({
     kind: 'session_close',
     input: { sessionId },
-    dedupeKey: `session_close:${sessionId}`,
+    dedupeKey: dedupeKeys.sessionClose(sessionId),
   });
   await repos.job.enqueue({
     kind: 'session_report',
     input: { sessionId },
-    dedupeKey: `session_report:${sessionId}`,
+    dedupeKey: dedupeKeys.sessionReport(sessionId),
     runAfter: reportAt,
   });
 }
@@ -256,8 +315,29 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
   });
   if (mismatch.changedPositions.length > 0)
     await eq.unconfirmFilterSlots(p.rigId, mismatch.changedPositions, now);
-  if (mismatch.codes.length > 0)
+  if (mismatch.codes.length > 0) {
     logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
+    // Mit Code-Liste; dieselbe Liste höchstens einmal je 24 h, eine geänderte sofort.
+    await alertAdmins(
+      svc,
+      p.tenantId,
+      'alert.nina_settings_mismatch',
+      `${p.instanceId}:${mismatch.codes.join(',')}`,
+      `${rig.name} · ${p.instanceName}: ${mismatch.codes.join(', ')}`,
+      24 * HOUR_MS,
+      { rigId: p.rigId, codes: mismatch.codes.join(',') },
+    );
+  }
+  if ((hb.deadLetters ?? 0) > 0)
+    await alertAdmins(
+      svc,
+      p.tenantId,
+      'alert.plugin_dead_letters',
+      `${p.instanceId}:dead_letters`,
+      `${rig.name} · ${p.instanceName}: ${String(hb.deadLetters)}`,
+      24 * HOUR_MS,
+      { rigId: p.rigId },
+    );
   await sessions.recordInstanceState(
     {
       pluginVersion: hb.pluginVersion,

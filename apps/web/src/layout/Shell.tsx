@@ -238,7 +238,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
     { key: 'projects', visible: !system, to: '/projekte' },
     { key: 'nina', visible: !system, to: '/nina/simulator' },
     { key: 'weather', visible: !system },
-    { key: 'evaluation', visible: !system },
+    { key: 'evaluation', visible: !system, to: '/auswertung/sessions' },
     { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
     { key: 'system', visible: system, to: SYSTEM_PATHS.tenants },
   ];

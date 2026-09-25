@@ -11,6 +11,7 @@ import type {
   NinaRigRepository,
   NinaSessionRepository,
   NinaIngestRepository,
+  SessionReviewRepository,
   NinaPrincipal,
   Job,
   MemberRepository,
@@ -45,6 +46,7 @@ export interface ApiRepositories {
   ninaRig(rigId: string): NinaRigRepository;
   ninaSession(rigId: string, instanceId: string): NinaSessionRepository;
   ninaIngest(rigId: string): NinaIngestRepository;
+  sessionReview(): SessionReviewRepository;
   tenant(): TenantRepository;
 }
 

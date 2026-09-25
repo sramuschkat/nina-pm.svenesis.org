@@ -397,3 +397,38 @@ export const ninaApi = {
     ),
   delivery: (rigId: string) => apiFetch<NinaRigDelivery>(`${V1}/rigs/${rigId}/delivery`),
 };
+
+export type NightSession = Schemas['NightSession'];
+export type NightSessionDetail = Schemas['NightSessionDetail'];
+export type NightSessionLineRow = Schemas['NightSessionLineRow'];
+export type NightSessionCapture = Schemas['NightSessionCapture'];
+
+/** Sessions und Auswertung R1 (AP-15, S-60/S-61): Liste, Detail, Korrektur, geprüft, Zuordnung. */
+export const sessionsApi = {
+  list: (query: { rigId?: string; unreviewed?: boolean } = {}) => {
+    const q = new URLSearchParams();
+    if (query.rigId) q.set('rigId', query.rigId);
+    if (query.unreviewed) q.set('unreviewed', 'true');
+    const s = q.toString();
+    return apiFetch<{ items: NightSession[] }>(`${V1}/sessions${s ? `?${s}` : ''}`);
+  },
+  get: (id: string) => apiFetch<NightSessionDetail>(`${V1}/sessions/${id}`),
+  correct: (
+    id: string,
+    body: {
+      exposureLineId: string;
+      rejected: number;
+      reason: string | null;
+      comment: string | null;
+    },
+  ) =>
+    apiFetch<{ rejectedCount: number; projectStatus: string | null }>(
+      `${V1}/sessions/${id}/corrections`,
+      json('POST', body),
+    ),
+  review: (id: string, reviewed: boolean) =>
+    apiFetch<undefined>(`${V1}/sessions/${id}/review`, json('PUT', { reviewed })),
+  /** Nicht zugeordnete Aufnahme einer Zeile zuordnen (FA-AUS-22, Admin). */
+  assign: (captureId: string, exposureLineId: string) =>
+    apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),
+};

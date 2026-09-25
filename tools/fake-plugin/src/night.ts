@@ -69,9 +69,13 @@ interface Line {
   readonly decDeg: number;
   readonly rotationDeg: number;
   readonly acquired: number;
+  readonly planningNeed: number;
 }
 
-/** Erste aktive Zeile eines ausgelieferten Deep-Sky-Projekts; `null`, wenn nichts ausgeliefert wird. */
+/**
+ * Aktive Zeile eines ausgelieferten Deep-Sky-Projekts mit dem größten Planungsbedarf (so bleibt sie nach
+ * den Aufnahmen der Nacht möglichst ausgeliefert); `null`, wenn nichts ausgeliefert wird.
+ */
 function firstLine(targets: Record<string, unknown> | null): Line | null {
   const projects = (targets?.projects ?? []) as {
     id: string;
@@ -92,16 +96,17 @@ function firstLine(targets: Record<string, unknown> | null): Line | null {
         binning: number;
         readoutMode: string | null;
         readoutModeIndex: number | null;
-        counts: { acquired: number };
+        counts: { acquired: number; planningNeed: number };
       }[];
     }[];
   }[];
+  let best: Line | null = null;
   for (const p of projects) {
     if (p.type !== 'deep_sky') continue;
     for (const panel of p.panels)
       for (const l of panel.lines)
-        if (l.enabled)
-          return {
+        if (l.enabled && (best === null || l.counts.planningNeed > best.planningNeed))
+          best = {
             projectId: p.id,
             panelId: panel.id,
             lineId: l.id,
@@ -117,9 +122,10 @@ function firstLine(targets: Record<string, unknown> | null): Line | null {
             decDeg: panel.decDeg,
             rotationDeg: panel.rotationDeg,
             acquired: l.counts.acquired,
+            planningNeed: l.counts.planningNeed,
           };
   }
-  return null;
+  return best;
 }
 
 function acquiredOf(targets: Record<string, unknown> | null, lineId: string): number | null {
@@ -318,7 +324,16 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
   let expected = 0;
   const countAccepted = (results: { status: string }[]) =>
     results.filter((r) => r.status === 'accepted').length;
-  const lights = line ? [1, 2, 3].map((i) => light(addSeconds(now, 60 * i))) : [];
+  // Die dritte Aufnahme weicht ab: Kühlung außer Toleranz und andere Belichtungszeit (NT-E2, NT-E3) –
+  // gespeichert und gezählt, im Session-Detail mit beiden Kennzeichen.
+  const lights = line
+    ? [1, 2, 3].map((i) =>
+        light(
+          addSeconds(now, 60 * i),
+          i === 3 ? { temperatureDeviation: true, exposureS: line.exposureS + 30 } : {},
+        ),
+      )
+    : [];
   await step('Aufnahmen, Duplikate, unzugeordnet', async () => {
     const unassigned = light(addSeconds(now, 240), {
       blockId: null,
@@ -465,9 +480,17 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
 
   // 9. Zähler: neu gezählt = angenommene Lights, Duplikate und Unzugeordnete nicht (FA-SYN-05).
   let counters: FakeNightReport['counters'] = null;
-  if (line) {
+  const r9 = line ? await call('/targets') : null;
+  const after = line && r9?.status === 200 ? acquiredOf(r9.body, line.lineId) : null;
+  if (line && after === null && r9?.status === 200 && line.planningNeed <= expected) {
+    // Die Nacht hat die Zeile fertig gemacht: sie wird nicht mehr ausgeliefert (FA-PRJ-12).
+    skip(
+      'Zähler',
+      `Zeile ${line.lineId} in dieser Nacht fertig geworden – Testprojekt mit größerem Soll anlegen`,
+    );
+  } else if (line) {
     await step('Zähler', async () => {
-      const r = expectStatus(await call('/targets'), 200);
+      const r = expectStatus(r9 as Reply, 200);
       const now2 = acquiredOf(r.body, line.lineId);
       if (now2 === null) throw new StepFailed('Zeile nicht mehr ausgeliefert');
       counters = { expected, actual: now2 - line.acquired };

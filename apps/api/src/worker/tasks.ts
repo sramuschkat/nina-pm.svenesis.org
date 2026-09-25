@@ -10,17 +10,27 @@ export interface MaintenanceDeps {
   readonly expireSubmissions?: () => Promise<number>;
   /** Aufwand-Kennzeichen je Standort und Nacht nach dem lokalen Mittag (AP-13e, NT-08, `tick-hourly`). */
   readonly effortSiteNights?: () => Promise<number>;
+  /** Verwaiste Sessions, Metrik `StaleRunningSessions`, fällige Session-Jobs (AP-15, `tick-5min`). */
+  readonly sessions?: () => Promise<unknown>;
+  /** Zähler-Abgleich je Standort und Nacht nach dem lokalen Mittag (AP-15, NT-08, `tick-hourly`). */
+  readonly reconcileSiteNights?: () => Promise<number>;
 }
 
 /**
  * Aufgaben je Zeitplan (TK 13). Stand AP-04b: `tick-5min` übernimmt liegengebliebene Jobs (7.4),
  * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
- * die Aufwand-Kennzeichen (AP-13e, NT-08).
+ * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
+ * verwaiste Sessions und legt fällige Session-Jobs an (AP-15).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
-    'tick-5min': [{ name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) }],
+    'tick-5min': [
+      { name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) },
+      ...(maintenance?.sessions
+        ? [{ name: 'sessions', run: async () => void (await maintenance.sessions?.()) }]
+        : []),
+    ],
     'tick-hourly': [
       ...(maintenance?.expireSubmissions
         ? [
@@ -35,6 +45,14 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
             {
               name: 'effort_site_nights',
               run: async () => void (await maintenance.effortSiteNights?.()),
+            },
+          ]
+        : []),
+      ...(maintenance?.reconcileSiteNights
+        ? [
+            {
+              name: 'reconcile_site_nights',
+              run: async () => void (await maintenance.reconcileSiteNights?.()),
             },
           ]
         : []),
