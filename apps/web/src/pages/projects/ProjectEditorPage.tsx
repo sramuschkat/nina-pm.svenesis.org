@@ -67,6 +67,7 @@ import {
   type Conditions,
   type ProjectDraft,
 } from './model';
+import { CatalogImage } from '../catalog/CatalogImage';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { ProjectTabs } from './ProjectTabs';
 import { SubmitPanel } from './SubmitPanel';
@@ -586,7 +587,7 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
             disabled={disabled}
             onPick={(o) => setDraft(applyCatalogPick(draft, catalogPick(o, t)))}
             linkedName={draft.dsoObjectId ? draft.targetName || draft.name : null}
-            onUnlink={() => setDraft({ ...draft, dsoObjectId: null })}
+            onUnlink={() => setDraft({ ...draft, dsoObjectId: null, dsoPrimaryId: null })}
           />
           <div className={styles.grid}>
             <TextField
@@ -827,7 +828,17 @@ function Editor({ saved, draft, setDraft, onSaved, onChange, onReload, onReset }
           aria-labelledby={`${topTabsId}-preview`}
           hidden={topTab !== 'preview'}
         >
-          <div className={styles.preview}>{t('projectEditor.previewLater')}</div>
+          {draft.dsoPrimaryId ? (
+            <CatalogImage
+              primaryId={draft.dsoPrimaryId}
+              name={draft.targetName || draft.name}
+              size="large"
+              className={styles.previewImage}
+              fallback={<div className={styles.preview}>{t('projectEditor.previewLater')}</div>}
+            />
+          ) : (
+            <div className={styles.preview}>{t('projectEditor.previewLater')}</div>
+          )}
           <dl className={styles.facts}>
             <dt>{t('projectEditor.facts.site')}</dt>
             <dd>{site?.name ?? '–'}</dd>

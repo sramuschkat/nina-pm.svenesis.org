@@ -102,6 +102,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
     targetName: p.targetName,
     targetType: p.targetType,
     dsoObjectId: p.dsoObjectId,
+    dsoPrimaryId: d.dsoPrimaryId,
     catalogNames: p.catalogNames,
     descriptionMd: p.descriptionMd,
     raDeg: p.raDeg,

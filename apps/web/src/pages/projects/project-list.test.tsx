@@ -224,6 +224,22 @@ describe('S-30 (Komponente)', () => {
     await waitFor(() => expect(state.remove).toHaveBeenCalledWith(ID(102)));
   });
 
+  it('Karte: Katalogbild bei verknüpftem Katalogobjekt, sonst Platzhalter (AP-20)', async () => {
+    state.items = [
+      item(1, { name: 'M 31 – Andromeda', targetName: 'M 31', dsoPrimaryId: 'NGC 224' }),
+      item(2, { name: 'Frei', dsoPrimaryId: null }),
+    ];
+    renderPage();
+    fireEvent.click(await screen.findByRole('radio', { name: 'Karten' }));
+    const img = await screen.findByRole('img', { name: 'Vorschaubild M 31' });
+    expect(img).toHaveAttribute('src', '/catalog/img/ngc-l/ngc224.jpg');
+    expect(screen.getAllByText('Vorschaubild folgt')).toHaveLength(1);
+    // 320 px fehlt → 128 px, fehlt auch das → Platzhalter.
+    fireEvent.error(img);
+    fireEvent.error(screen.getByRole('img', { name: 'Vorschaubild M 31' }));
+    expect(screen.getAllByText('Vorschaubild folgt')).toHaveLength(2);
+  });
+
   it('Priorität mit Pfeilen (nur Admin, freigegebene Projekte)', async () => {
     state.items = [
       item(1, { approvalStatus: 'approved', status: 'active', priority: 1, name: 'Erstes' }),

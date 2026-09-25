@@ -273,14 +273,18 @@ describe('Katalogobjekt am Projekt (Katalogsuche im Editor)', () => {
       },
     });
     expect(created.status).toBe(201);
-    expect(((await created.json()) as { dsoObjectId: string }).dsoObjectId).toBe(m31?.id);
+    expect(await created.json()).toMatchObject({ dsoObjectId: m31?.id, dsoPrimaryId: 'NGC 224' });
+    const listed = (await (
+      await s.request('/api/web/v1/projects', { cookies: tenantCookies })
+    ).json()) as { items: { id: string; dsoPrimaryId: string | null }[] };
+    expect(listed.items.find((p) => p.id === id)?.dsoPrimaryId).toBe('NGC 224');
     const patched = await s.request(`/api/web/v1/projects/${id}`, {
       method: 'PATCH',
       cookies: tenantCookies,
       body: { dsoObjectId: null },
     });
     expect(patched.status).toBe(200);
-    expect(((await patched.json()) as { dsoObjectId: string | null }).dsoObjectId).toBeNull();
+    expect(await patched.json()).toMatchObject({ dsoObjectId: null, dsoPrimaryId: null });
     const unknown = await s.request('/api/web/v1/projects', {
       method: 'POST',
       cookies: tenantCookies,

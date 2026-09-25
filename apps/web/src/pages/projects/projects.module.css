@@ -156,6 +156,16 @@
   font-size: var(--npm-font-small);
   text-align: center;
 }
+.previewImage {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--npm-radius);
+  background: var(--npm-skeleton);
+}
 .links {
   display: flex;
   flex-wrap: wrap;
@@ -500,6 +510,15 @@ tr[data-dragging='true'] {
   font-size: var(--npm-font-label);
   color: var(--npm-text-light);
   text-align: center;
+}
+.thumbImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-skeleton);
 }
 .cardTitle {
   display: flex;
