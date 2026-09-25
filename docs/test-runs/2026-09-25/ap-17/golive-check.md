@@ -1,9 +1,10 @@
 # Go-live-Prüfung (AP-17, automatisierbare Punkte)
 
-Lauf 2026-09-25T09:06:05.607Z, Commit e06fd54. Erzeugt von `pnpm golive:check` (nur lesend).
+Lauf 2026-09-25T09:15:56.805Z, Commit 039f721. Erzeugt von `pnpm golive:check` (nur lesend).
 
 | Punkt | Ergebnis | Detail |
 |---|---|---|
+| Website-Distribution E2L6Q80SD8XPT0 unverändert (Vergleich vorher/nachher) | ☑ | ok |
 | Alarme nach TK 16.2 vorhanden und an das SNS-Topic gebunden | ☑ | 9 Alarme |
 | Alarm-E-Mail-Abo bestätigt (H-09) | ☑ | ok |
 | AWS Backup: Plan nina-pm-dsql aktiv, letzter Lauf erfolgreich (SV-15) | ☑ | letzter Lauf 2026-09-25T05:00:00+02:00 |
