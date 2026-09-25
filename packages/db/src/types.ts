@@ -729,8 +729,30 @@ export interface CommandTable {
   acknowledgedAt: Timestamp | null;
 }
 
+/** Tabelle `dso_object` (Migration 0001, specs/catalog/dso-import.md, AP-20): Objektkatalog, systemweit. */
+export interface DsoObjectTable {
+  id: Generated<string>;
+  primaryId: string;
+  names: Json;
+  catalogs: Json;
+  objectType: string;
+  constellation: string | null;
+  raDeg: number;
+  decDeg: number;
+  magV: number | null;
+  magB: number | null;
+  magBandUsed: string | null;
+  surfBrMagArcsec2: number | null;
+  sizeMajorArcmin: number | null;
+  sizeMinorArcmin: number | null;
+  positionAngleDeg: number | null;
+  source: string;
+  updatedAt: Timestamp;
+}
+
 export interface Database {
   tenant: TenantTable;
+  dsoObject: DsoObjectTable;
   identity: IdentityTable;
   superUser: SuperUserTable;
   appUser: AppUserTable;

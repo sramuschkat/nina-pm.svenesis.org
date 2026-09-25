@@ -35,7 +35,7 @@ SOFTWARE.
 
 Quelle: https://github.com/mattiaverga/OpenNGC (Mattia Verga), `NGC.csv` und `addendum.csv`
 Lizenz: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/
-Verwendung: `packages/catalog-data/data/ngc.json` (abgeleitet aus OpenNGC, ergänzt um Sharpless-Regionen aus VizieR VII/20 mit SIMBAD-Positionen und Caldwell-Nummern aus der englischen Wikipedia, ebenfalls CC BY-SA 4.0; die Datei steht unter CC BY-SA 4.0). Ab AP-20 Quelle des Objektkatalogs `dso_object`; Version und Abrufdatum hält jeder Importlauf fest (`docs/specs/catalog/dso-import.md`).
+Verwendung: `packages/catalog-data/data/ngc.json` (abgeleitet aus OpenNGC, ergänzt um Sharpless-Regionen aus VizieR VII/20 mit SIMBAD-Positionen und Caldwell-Nummern aus der englischen Wikipedia, ebenfalls CC BY-SA 4.0; die Datei steht unter CC BY-SA 4.0). Seit AP-20 Quelle des Objektkatalogs `dso_object`: `packages/catalog-data/openngc/` mit `NGC.csv` und `addendum.csv` in Version v20260501 (abgerufen 25.09.2026, unverändert) und dem daraus abgeleiteten `dso-objects.json` (CC BY-SA 4.0); Version und Abrufdatum stehen je Zeile in `dso_object.source`, in `packages/catalog-data/LICENSES.md` und auf der Seite *Quellen* der Anwendung.
 
 ## d3-celestial
 

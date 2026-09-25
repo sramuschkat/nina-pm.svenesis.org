@@ -27,6 +27,7 @@
     "@aws-sdk/s3-presigned-post": "3.1137.0",
     "@aws-sdk/s3-request-presigner": "3.1137.0",
     "@hono/zod-openapi": "1.6.3",
+    "@nina-pm/catalog-data": "workspace:*",
     "@nina-pm/db": "workspace:*",
     "@nina-pm/engine": "workspace:*",
     "@nina-pm/i18n": "workspace:*",

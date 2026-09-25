@@ -314,6 +314,17 @@ export class ProjectRepository extends TenantRepo {
       throw invalid([{ path, message: 'Rig unbekannt' }]);
   }
 
+  /** Katalogobjekt muss existieren (sonst Fremdschlüsselfehler statt 422). */
+  private async checkDso(trx: Tx, dsoObjectId: string | null | undefined) {
+    if (!dsoObjectId) return;
+    const row = await trx
+      .selectFrom('dsoObject')
+      .select('id')
+      .where('id', '=', dsoObjectId)
+      .executeTakeFirst();
+    if (!row) throw invalid([{ path: 'dsoObjectId', message: 'Katalogobjekt unbekannt' }]);
+  }
+
   create(input: ProjectCreate, now: Date): Promise<ProjectDetail> {
     const memberId = this.ctx.memberId;
     if (!memberId) throw new ProblemError('permission.denied');
@@ -321,6 +332,7 @@ export class ProjectRepository extends TenantRepo {
       const existing = await this.row(input.id, trx, true);
       if (existing) return this.detailOf(trx, existing);
       await this.checkRig(trx, input.rigId);
+      await this.checkDso(trx, input.dsoObjectId);
       await trx
         .insertInto('project')
         .values({
@@ -331,6 +343,7 @@ export class ProjectRepository extends TenantRepo {
           requestedRigId: input.rigId,
           targetName: input.targetName,
           targetType: input.targetType,
+          dsoObjectId: input.dsoObjectId,
           catalogNames: input.catalogNames,
           descriptionMd: input.descriptionMd,
           raDeg: input.raDeg,
@@ -461,6 +474,7 @@ export class ProjectRepository extends TenantRepo {
         if (expectedVersion !== undefined && expectedVersion !== p.version)
           throw new ProblemError('resource.version_conflict');
         const { conditions, acceptRigConflicts, rigId, ...fields } = patch;
+        await this.checkDso(trx, fields.dsoObjectId);
         const set: Record<string, unknown> = { ...fields, ...(conditions ?? {}) };
         const diff: Record<string, { from: unknown; to: unknown }> = {};
         for (const [k, v] of Object.entries(set)) {

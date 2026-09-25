@@ -432,3 +432,44 @@ export const sessionsApi = {
   assign: (captureId: string, exposureLineId: string) =>
     apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),
 };
+
+export type DsoView = Schemas['DsoView'];
+export type DsoList = Schemas['DsoList'];
+export type DsoNight = Schemas['DsoNight'];
+export type CatalogStatus = Schemas['CatalogStatus'];
+
+/** Filter des Objektbrowsers (S-21) bzw. der Katalogsuche im Editor – wie `DsoQuery`. */
+export interface DsoSearch {
+  q?: string;
+  group?: string;
+  catalog?: string;
+  constellation?: string;
+  magMax?: number;
+  surfBrMax?: number;
+  sizeMinArcmin?: number;
+  sizeMaxArcmin?: number;
+  fitsFovArcmin?: number;
+  siteId?: string;
+  night?: string;
+  minAltDeg?: number;
+  twilight?: string;
+  minUsableHours?: number;
+  sort?: 'name' | 'mag' | 'size' | 'usable' | 'altitude';
+  limit?: number;
+  offset?: number;
+}
+
+export function dsoSearchParams(s: DsoSearch): string {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(s))
+    if (v !== undefined && v !== '' && !(typeof v === 'number' && Number.isNaN(v)))
+      p.set(k, String(v));
+  return p.toString();
+}
+
+/** Objektkatalog (AP-20, S-21, Katalogsuche im Editor, S-82). */
+export const catalogApi = {
+  search: (s: DsoSearch) => apiFetch<DsoList>(`${V1}/dso?${dsoSearchParams(s)}`),
+  status: () => apiFetch<CatalogStatus>('/api/system/v1/catalogs'),
+  refresh: () => apiFetch<{ jobId: string }>('/api/system/v1/catalogs/dso/refresh', json('POST')),
+};

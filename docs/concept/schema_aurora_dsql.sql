@@ -168,8 +168,8 @@ CREATE INDEX ASYNC ix_system_audit_tenant ON system_audit (tenant_id, created_at
 
 -- Globale Referenzdaten -------------------------------------------------
 
-CREATE TABLE dso_object (                          -- Objektkatalog aus OpenNGC: 13.957 Zeilen aus NGC.csv, dazu die Zeilen
-                                                   -- der verwendeten addendum.csv-Version (13.957 + n_addendum; Dup/NonEx
+CREATE TABLE dso_object (                          -- Objektkatalog aus OpenNGC v20260501: 13.969 Zeilen aus NGC.csv, dazu
+                                                   -- 64 Zeilen aus addendum.csv (13.969 + 64 -> 13.632 Zeilen; Dup/NonEx
                                                    -- werden nicht als eigene Zeile gefuehrt),
                                                    -- Feldabbildung und Importtests: specs/catalog/dso-import.md (WS-25/WS-27).
                                                    -- Der Website-Auszug (ngc.json, dso-catalog.js) liefert nur zusaetzliche

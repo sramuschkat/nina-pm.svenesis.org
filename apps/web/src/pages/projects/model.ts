@@ -3,7 +3,7 @@
  * FA-BPL-03), Summen je Panel und Projekt (FA-PRJ-21), gesperrte Felder bei Zeilen mit Aufnahmen
  * (NT-E3) und die Vorlagen-Regel (FA-BPL-01/05). Ohne DOM, ohne Abfragen – getestet in `projects.test.tsx`.
  */
-import { LINE_LOCKED_FIELDS } from '@nina-pm/shared';
+import { designationPrefix, LINE_LOCKED_FIELDS } from '@nina-pm/shared';
 import type {
   ExposureTemplateView,
   LineView,
@@ -150,6 +150,8 @@ export interface ProjectDraft {
   rigId: string | null;
   targetName: string;
   targetType: string;
+  /** Aus der Katalogsuche übernommen (AP-20); frei eingegebene Ziele ohne. */
+  dsoObjectId: string | null;
   catalogNames: string;
   descriptionMd: string;
   raDeg: number | null;
@@ -167,6 +169,7 @@ export function emptyDraft(conditions: Conditions): ProjectDraft {
     rigId: null,
     targetName: '',
     targetType: '',
+    dsoObjectId: null,
     catalogNames: '',
     descriptionMd: '',
     raDeg: null,
@@ -184,6 +187,7 @@ export function toDraft(p: ProjectView): ProjectDraft {
     rigId: p.rigId,
     targetName: p.targetName ?? '',
     targetType: p.targetType ?? '',
+    dsoObjectId: p.dsoObjectId,
     catalogNames: p.catalogNames,
     descriptionMd: p.descriptionMd,
     raDeg: p.raDeg,
@@ -197,6 +201,39 @@ export function toDraft(p: ProjectView): ProjectDraft {
 
 const orNull = (s: string) => (s.trim() === '' ? null : s.trim());
 
+/** Katalogobjekt → Zielfelder des Entwurfs (Katalogsuche im Editor, „Projekt anlegen“ in S-21). */
+export interface CatalogPick {
+  readonly id: string;
+  readonly displayName: string;
+  readonly names: readonly string[];
+  readonly primaryId: string;
+  readonly raDeg: number;
+  readonly decDeg: number;
+  /** Anzeigegruppe, bereits übersetzt. */
+  readonly typeLabel: string;
+}
+
+/** Erster Trivialname (ohne Katalogkürzel), z. B. „Andromeda Galaxy“. */
+export const commonName = (names: readonly string[]) =>
+  names.find((n) => designationPrefix(n) === null) ?? null;
+
+export function applyCatalogPick(d: ProjectDraft, o: CatalogPick): ProjectDraft {
+  const designations = [o.primaryId, ...o.names].filter(
+    (n) => designationPrefix(n) !== null && n !== o.displayName,
+  );
+  const common = commonName(o.names);
+  return {
+    ...d,
+    name: d.name.trim() === '' ? (common ? `${o.displayName} – ${common}` : o.displayName) : d.name,
+    targetName: o.displayName,
+    targetType: o.typeLabel,
+    dsoObjectId: o.id,
+    catalogNames: [...new Set(designations)].join(', ').slice(0, 500),
+    raDeg: o.raDeg,
+    decDeg: o.decDeg,
+  };
+}
+
 /** Entwurf → Felder der API (leere Texte/Daten als `null`, Rotation leer = 0). */
 export function draftBody(d: ProjectDraft) {
   return {
@@ -204,6 +241,7 @@ export function draftBody(d: ProjectDraft) {
     rigId: d.rigId,
     targetName: orNull(d.targetName),
     targetType: orNull(d.targetType),
+    dsoObjectId: d.dsoObjectId,
     catalogNames: d.catalogNames,
     descriptionMd: d.descriptionMd,
     raDeg: d.raDeg,

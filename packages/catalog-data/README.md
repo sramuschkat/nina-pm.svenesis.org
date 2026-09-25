@@ -4,8 +4,9 @@ Unveränderte Kopie der Katalog- und Sterndaten der Astro-Tools von www.svenesis
 
 - **Herkunft:** `legacy/astro-tools-2026-09-21/` (Website-Stand 21.09.2026, WS), Übernahme 23.09.2026 in AP-01 (H-03).
 - **Inhalt:** `data/` vollständig aus `astro-tools/data`, dazu `js/dso-catalog.js`.
-- **Schreibgeschützt:** nicht von Hand ändern. Die Dateien sind lokal mit `chmod a-w` gesperrt; im CI prüft `tools/repo-check`, dass jede Datei unverändert der Prüfsummenliste entspricht. Aktualisiert wird der Katalog nur über die portierten Generatoren (`tools/catalog`, AP-20) und mit neuer Prüfsummenliste.
-- **Nicht enthalten:** OpenNGC `NGC.csv` und `addendum.csv` (Quelle des Objektkatalogs, kommen mit AP-20 nach `docs/specs/catalog/dso-import.md`), `js/star-catalog.js` (Sterne bis 6 mag, bleibt bis AP-21 in der Vorlage) und die Katalogbilder (132 MB, H-11 nach S3).
+- **Schreibgeschützt:** nicht von Hand ändern. Die Dateien sind lokal mit `chmod a-w` gesperrt; im CI prüft `tools/repo-check`, dass jede Datei unverändert der Prüfsummenliste entspricht. Aktualisiert wird der Website-Auszug nur mit neuer Prüfsummenliste; der Ordner `openngc/` gehört nicht dazu (Prüfsummen in `openngc/VERSION.json`, Ausgabe deterministisch aus `pnpm catalog:build`, geprüft in `tools/catalog-import/test`).
+- **OpenNGC (AP-20):** `openngc/NGC.csv` und `openngc/addendum.csv` in Version `v20260501` (abgerufen 25.09.2026, Prüfsummen in `openngc/VERSION.json`), daraus erzeugt `pnpm catalog:build` den Objektkatalog `openngc/dso-objects.json` (13.969 + 64 Quellzeilen → 13.632 Zeilen), `catalog-meta.json` und `import-report.md` nach `docs/specs/catalog/dso-import.md`. Lizenzen in `LICENSES.md`. Neue OpenNGC-Version: Dateien und `VERSION.json` ersetzen, `pnpm catalog:build`, Zahlen in FK/TK/Spezifikation nachziehen (WS-27).
+- **Nicht enthalten:** `js/star-catalog.js` (Sterne bis 6 mag, bleibt bis AP-21 in der Vorlage) und die Katalogbilder (132 MB) – `pnpm catalog:upload` kopiert sie aus dem Website-Ordner nach S3 `catalog/img/…` (H-11).
 
 | Datei | Inhalt | Quelle und Lizenz (laut Dateikopf) |
 |---|---|---|

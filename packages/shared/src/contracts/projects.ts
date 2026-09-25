@@ -80,6 +80,8 @@ const projectFields = {
   rigId: Uuid.nullable().default(null),
   targetName: text(200).nullable().default(null),
   targetType: text(40).nullable().default(null),
+  /** Objekt im Katalog (AP-20, Katalogsuche im Editor); `null` bei frei eingegebenen Zielen. */
+  dsoObjectId: Uuid.nullable().default(null),
   catalogNames: text(500).default(''),
   descriptionMd: text(20000).default(''),
   /** J2000, Grad; `null` = noch nicht gesetzt (Entwurf). */
@@ -114,6 +116,7 @@ export const ProjectPatch = z
     rigId: Uuid.nullable().optional(),
     targetName: text(200).nullable().optional(),
     targetType: text(40).nullable().optional(),
+    dsoObjectId: Uuid.nullable().optional(),
     catalogNames: text(500).optional(),
     descriptionMd: text(20000).optional(),
     raDeg: z.number().min(0).lt(360).nullable().optional(),
@@ -322,6 +325,7 @@ export const ProjectView = z
     createdBy: Uuid,
     targetName: z.string().nullable(),
     targetType: z.string().nullable(),
+    dsoObjectId: Uuid.nullable(),
     catalogNames: z.string(),
     descriptionMd: z.string(),
     raDeg: z.number().nullable(),

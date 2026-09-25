@@ -30,7 +30,9 @@
     "fake-plugin": "tsx tools/fake-plugin/src/cli.ts",
     "golive:check": "tsx tools/deploy/src/golive-check.ts",
     "loadtest:prod": "tsx tools/deploy/src/loadtest.ts",
-    "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts"
+    "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts",
+    "catalog:build": "tsx tools/catalog-import/src/cli.ts",
+    "catalog:upload": "tsx tools/catalog-import/src/upload.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

@@ -48,13 +48,13 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-14c](AP-14c.md) | NINA-Instanzen S-42, Auslieferung S-41, Fake-Plugin | M | AP-14b, AP-13f | H-12b, H-24 | ☑ |
 | [AP-15](AP-15.md) | Sessions und Auswertung R1 | M | AP-14c | – | ☑ |
 | [AP-07d](AP-07d.md) | Speicherbedarf je Mandant (S-80, FA-SU-03) | S | AP-07a | – | ☑ |
-| [AP-17](AP-17.md) | Härtung und Go-live | L | AP-15, AP-07c, AP-07d | H-17, H-18, H-20, H-23 | ◐ |
+| [AP-17](AP-17.md) | Härtung und Go-live | L | AP-15, AP-07c, AP-07d | H-17, H-18, H-20, H-23 | ☑ |
 
 ## R2
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-20](AP-20.md) | Objektkatalog und Objektbrowser | M | AP-17 | H-11 | ☐ |
+| [AP-20](AP-20.md) | Objektkatalog und Objektbrowser | M | AP-17 | H-11 | ◐ |
 | [AP-21](AP-21.md) | Sternkarte S-20 | L | AP-20 | – | ☐ |
 | [AP-22](AP-22.md) | Mosaik-Panels im Editor (aus der Sternkarte) | M | AP-21 | – | ☐ |
 | [AP-23](AP-23.md) | Astro-Wetter | M | AP-17 | – | ☐ |

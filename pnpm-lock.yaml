@@ -232,6 +232,9 @@ importers:
       '@hono/zod-openapi':
         specifier: 1.6.3
         version: 1.6.3(hono@4.13.8)(zod@4.6.5)
+      '@nina-pm/catalog-data':
+        specifier: workspace:*
+        version: link:../../packages/catalog-data
       '@nina-pm/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -450,6 +453,15 @@ importers:
       '@nina-pm/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@nina-pm/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+
+  tools/catalog-import:
+    dependencies:
+      '@nina-pm/infra':
+        specifier: workspace:*
+        version: link:../../infra
       '@nina-pm/shared':
         specifier: workspace:*
         version: link:../../packages/shared

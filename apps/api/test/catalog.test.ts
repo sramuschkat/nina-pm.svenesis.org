@@ -1,0 +1,323 @@
+/**
+ * AP-20 (FA-FRM-01, FA-FRM-15, S-21, S-82; T-KAT-11; PGlite): Job `catalog_refresh` mit dem echten
+ * Katalog – zweiter Lauf ändert außer `updated_at` nichts, `id` bleibt, doppelte `primary_id` bricht ab;
+ * Suche über Bezeichnung, Alias und Trivialnamen, Filter und Sortierung; Stand und Neuimport in S-82.
+ */
+import catalog from '@nina-pm/catalog-data/openngc/dso-objects.json' with { type: 'json' };
+import type { DsoCatalogRow } from '@nina-pm/db';
+import { COOKIE_NAMES, type DsoList } from '@nina-pm/shared';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { clearNightCache } from '../src/catalog/night';
+import { cachedCatalog, clearCatalogCache, searchDso } from '../src/catalog/search';
+import { buildEligibility, buildNightContext } from '@nina-pm/engine';
+import { buildNightTable } from '../src/lib/night-table';
+import { SITE } from './support/equipment';
+import { catalogRefreshHandler } from '../src/worker/catalog';
+import { createStack, type Stack } from './support/stack';
+
+const file = catalog as unknown as {
+  version: string;
+  counts: { rows: number };
+  rows: DsoCatalogRow[];
+};
+type Ctx = Parameters<ReturnType<typeof catalogRefreshHandler>>[0];
+const ctx = (now = new Date()): Ctx => ({ job: {} as Ctx['job'], now: () => now });
+
+let s: Stack;
+let tenantCookies: Record<string, string>;
+let siteId: string;
+let systemCookies: Record<string, string>;
+
+const snapshot = async () =>
+  (await s.pg.admin.query('SELECT * FROM dso_object ORDER BY primary_id')).rows as Record<
+    string,
+    unknown
+  >[];
+
+beforeAll(async () => {
+  s = await createStack();
+  clearCatalogCache();
+  const tenantId = await s.seed.tenant('alpha');
+  const identity = await s.seed.identity({ mfaEnabled: true });
+  const member = await s.seed.member(identity.id, tenantId, 'admin');
+  tenantCookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, tenantId, 'tenant') };
+  siteId = crypto.randomUUID();
+  await s.services
+    .repositories({ tenantId, memberId: member })
+    .equipment()
+    .createSite(siteId, SITE, s.clock.now());
+  const sven = await s.seed.identity({ mfaEnabled: true, username: 'sven' });
+  await s.seed.superUser(sven.id);
+  systemCookies = { [COOKIE_NAMES.session]: await s.seed.session(sven.id, null, 'system') };
+  await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(ctx());
+}, 120_000);
+afterAll(() => s.close());
+
+describe('catalog_refresh (T-KAT-11)', () => {
+  it('schreibt jede Zeile der Katalogdatei genau einmal', async () => {
+    const count = await s.pg.admin.query('SELECT count(*)::int AS n FROM dso_object');
+    expect((count.rows[0] as { n: number }).n).toBe(file.counts.rows);
+  });
+
+  it('zweiter Lauf ändert außer updated_at keine Zeile, id bleibt', async () => {
+    const before = await snapshot();
+    await catalogRefreshHandler({ db: () => Promise.resolve(s.pg.db) })(
+      ctx(new Date(Date.now() + 60_000)),
+    );
+    const after = await snapshot();
+    const strip = (rows: Record<string, unknown>[]) =>
+      rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== 'updated_at')));
+    expect(strip(after)).toEqual(strip(before));
+    expect(
+      after.every(
+        (r, i) =>
+          new Date(r.updated_at as string).getTime() >
+          new Date(before[i]?.updated_at as string).getTime(),
+      ),
+    ).toBe(true);
+  }, 120_000);
+
+  it('bricht bei doppelter primary_id vor dem ersten Schreiben ab', async () => {
+    const [a, b] = file.rows as [DsoCatalogRow, DsoCatalogRow];
+    const rows = [a, { ...b, primaryId: a.primaryId }];
+    const before = await snapshot();
+    await expect(
+      catalogRefreshHandler(
+        { db: () => Promise.resolve(s.pg.db) },
+        { version: 'x', counts: { rows: 2 }, rows },
+      )(ctx()),
+    ).rejects.toThrow(/Doppelte primary_id/);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('bricht bei unvollständiger Datei ab', async () => {
+    await expect(
+      catalogRefreshHandler(
+        { db: () => Promise.resolve(s.pg.db) },
+        { version: 'x', counts: { rows: 3 }, rows: file.rows.slice(0, 2) },
+      )(ctx()),
+    ).rejects.toThrow(/unvollständig/);
+  });
+});
+
+describe('GET /api/web/v1/dso (FA-FRM-15, S-21)', () => {
+  const search = async (query: string) => {
+    const res = await s.request(`/api/web/v1/dso?${query}`, { cookies: tenantCookies });
+    expect(res.status, query).toBe(200);
+    return (await res.json()) as DsoList;
+  };
+
+  it('findet über Bezeichnung, Alias und Trivialnamen; Schlüssel bleibt die OpenNGC-Bezeichnung', async () => {
+    // §3 Nr. 4: primary_id `NGC 224`, Anzeigename `M 31`.
+    for (const q of ['M%2031', 'm31', 'NGC%20224', 'ngc224'])
+      expect((await search(`q=${q}`)).items[0], q).toMatchObject({
+        primaryId: 'NGC 224',
+        displayName: expect.stringMatching(/^M 31/) as unknown,
+        group: 'galaxy',
+        constellation: 'And',
+        magBandUsed: 'V',
+      });
+    expect((await search('q=Andromeda')).items.map((i) => i.primaryId)).toContain('NGC 224');
+    expect((await search('q=M%20102')).items[0]?.primaryId).toBe('NGC 5866');
+  });
+
+  it('filtert nach Gruppe, Katalog, Sternbild und Helligkeit und sortiert', async () => {
+    const r = await search('group=galaxy&catalog=M&constellation=Vir&magMax=10&sort=mag');
+    expect(r.total).toBeGreaterThan(0);
+    for (const i of r.items) {
+      expect(i.group).toBe('galaxy');
+      expect(i.catalogs).toContain('M');
+      expect(i.constellation).toBe('Vir');
+      expect(i.magV ?? i.magB ?? 99).toBeLessThanOrEqual(10);
+    }
+    const mags = r.items.map((i) => i.magV ?? i.magB ?? 99);
+    expect(mags).toEqual([...mags].sort((a, b) => a - b));
+  });
+
+  it('„passt ins Bildfeld“ lässt nur Objekte mit Großachse ≤ Bildfeld zu', async () => {
+    const r = await search('fitsFovArcmin=30&catalog=M&limit=100');
+    expect(r.items.length).toBeGreaterThan(0);
+    for (const i of r.items) expect(i.sizeMajorArcmin ?? 0).toBeLessThanOrEqual(30);
+    expect(r.items.map((i) => i.primaryId)).not.toContain('NGC 224');
+  });
+
+  it('blättert mit limit/offset und meldet die Gesamtzahl', async () => {
+    const a = await search('catalog=NGC&limit=20&offset=0&sort=name');
+    const b = await search('catalog=NGC&limit=20&offset=20&sort=name');
+    expect(a.total).toBe(b.total);
+    expect(a.items).toHaveLength(20);
+    expect(a.items.map((i) => i.id)).not.toContain(b.items[0]?.id);
+  });
+
+  it('lehnt ungültige Filter mit 422 ab', async () => {
+    const res = await s.request('/api/web/v1/dso?limit=1000', { cookies: tenantCookies });
+    expect(res.status).toBe(422);
+  });
+});
+
+describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
+  const search = async (query: string) => {
+    const res = await s.request(`/api/web/v1/dso?${query}`, { cookies: tenantCookies });
+    expect(res.status, query).toBe(200);
+    return (await res.json()) as DsoList;
+  };
+
+  it('rechnet beste Höhe/Zeit, Mond und nutzbare Stunden je Treffer', async () => {
+    // Standort SITE (31,5° N) im Herbst: M 31 hoch, M 42 geht erst spät auf.
+    const r = await search(`siteId=${siteId}&night=2026-10-20&q=M%2031`);
+    expect(r.night).toMatchObject({ night: '2026-10-20', timeZone: SITE.timeZone });
+    expect(r.night?.darkStartUtc).toMatch(/^2026-10-21T0/);
+    const m31 = r.items[0]?.night;
+    expect(m31?.visibility).toBe('normal');
+    expect(m31?.usableHours).toBeGreaterThan(5);
+    expect(m31?.peakAltDeg).toBeGreaterThan(75);
+    expect(m31?.peakUtc).toMatch(/^2026-10-21T/);
+  });
+
+  it('filtert nach Mindeststunden und sortiert nach nutzbaren Stunden', async () => {
+    const r = await search(
+      `siteId=${siteId}&night=2026-10-20&catalog=M&minUsableHours=4&sort=usable&limit=100`,
+    );
+    expect(r.total).toBeGreaterThan(10);
+    const hours = r.items.map((i) => i.night?.usableHours ?? 0);
+    for (const h of hours) expect(h).toBeGreaterThanOrEqual(4);
+    expect(hours).toEqual([...hours].sort((a, b) => b - a));
+    // Südlich von −60° geht am Standort nichts auf.
+    const south = await search(`siteId=${siteId}&night=2026-10-20&q=NGC%20104`);
+    expect(south.items[0]?.night).toMatchObject({ visibility: 'never', usableHours: 0 });
+  });
+
+  it('nutzbare Stunden und beste Höhe wie buildEligibility der Engine', async () => {
+    const r = await search(`siteId=${siteId}&night=2026-10-20&catalog=M&limit=100&minAltDeg=25`);
+    const table = buildNightTable(SITE, '2026-10-20', 1);
+    const ctx = buildNightContext({
+      site: { latDeg: SITE.latitudeDeg, lonDeg: SITE.longitudeDeg },
+      night: '2026-10-20',
+      timeZoneTransitions: table.timeZoneTransitions.map((z) => ({
+        atUtc: Date.parse(z.atUtc) / 1000,
+        utcOffsetMinutes: z.utcOffsetMinutes,
+      })),
+    });
+    for (const item of r.items) {
+      const e = buildEligibility(ctx, {
+        target: { raJ2000Deg: item.raDeg, decJ2000Deg: item.decDeg },
+        twilight: 'astronomical',
+        minAltDeg: 25,
+      });
+      expect(item.night?.usableHours, item.primaryId).toBe(
+        Math.round(((e.usableSlots * 300) / 3600) * 10) / 10,
+      );
+      expect(item.night?.visibility, item.primaryId).toBe(e.visibility);
+    }
+  });
+
+  it('Nachtfilter ohne Standort → 422, fremder Standort → 404', async () => {
+    const bad = await s.request('/api/web/v1/dso?minUsableHours=2', { cookies: tenantCookies });
+    expect(bad.status).toBe(422);
+    const foreign = await s.request(`/api/web/v1/dso?siteId=${crypto.randomUUID()}`, {
+      cookies: tenantCookies,
+    });
+    expect(foreign.status).toBe(404);
+  });
+
+  it('Suche < 300 ms, auch mit Nachtwerten über den ganzen Katalog (Cache kalt)', async () => {
+    await search('q=m31'); // lädt den Katalog in den Speicher der api
+    const index = await cachedCatalog(
+      () => Promise.reject(new Error('Cache erwartet')),
+      s.clock.now().getTime(),
+    );
+    const t0 = performance.now();
+    for (const q of ['m31', 'ngc', 'orion', 'sh2-1'])
+      searchDso(index, {
+        q,
+        sort: 'name',
+        limit: 50,
+        offset: 0,
+        minAltDeg: 30,
+        twilight: 'astronomical',
+      });
+    expect((performance.now() - t0) / 4).toBeLessThan(300);
+    clearNightCache();
+    const t1 = performance.now();
+    const r = await search(`siteId=${siteId}&night=2026-11-15&sort=usable&limit=20`);
+    const cold = performance.now() - t1;
+    expect(r.total).toBe(file.counts.rows);
+    const t2 = performance.now();
+    await search(`siteId=${siteId}&night=2026-11-15&sort=usable&limit=20&offset=20`);
+    const warm = performance.now() - t2;
+    console.info(
+      `Nachtwerte ganzer Katalog: kalt ${cold.toFixed(0)} ms, warm ${warm.toFixed(0)} ms`,
+    );
+    expect(warm).toBeLessThan(300);
+  }, 60_000);
+});
+
+describe('Katalogobjekt am Projekt (Katalogsuche im Editor)', () => {
+  it('Projekt mit dsoObjectId; unbekanntes Objekt → 422', async () => {
+    const m31 = (
+      (await (
+        await s.request('/api/web/v1/dso?q=M%2031&limit=1', { cookies: tenantCookies })
+      ).json()) as DsoList
+    ).items[0];
+    const id = crypto.randomUUID();
+    const created = await s.request('/api/web/v1/projects', {
+      method: 'POST',
+      cookies: tenantCookies,
+      body: {
+        id,
+        name: 'M 31 – Andromeda Galaxy',
+        targetName: 'M 31',
+        dsoObjectId: m31?.id,
+        raDeg: m31?.raDeg,
+        decDeg: m31?.decDeg,
+      },
+    });
+    expect(created.status).toBe(201);
+    expect(((await created.json()) as { dsoObjectId: string }).dsoObjectId).toBe(m31?.id);
+    const patched = await s.request(`/api/web/v1/projects/${id}`, {
+      method: 'PATCH',
+      cookies: tenantCookies,
+      body: { dsoObjectId: null },
+    });
+    expect(patched.status).toBe(200);
+    expect(((await patched.json()) as { dsoObjectId: string | null }).dsoObjectId).toBeNull();
+    const unknown = await s.request('/api/web/v1/projects', {
+      method: 'POST',
+      cookies: tenantCookies,
+      body: { id: crypto.randomUUID(), name: 'X', dsoObjectId: crypto.randomUUID() },
+    });
+    expect(unknown.status).toBe(422);
+  });
+});
+
+describe('S-82 Kataloge', () => {
+  it('meldet Version, Quellzeilen und Zeilen', async () => {
+    const res = await s.request('/api/system/v1/catalogs', { cookies: systemCookies });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      dso: { version: string; rows: number; expectedRows: number; ngcCsvRows: number };
+    };
+    expect(body.dso.version).toBe(file.version);
+    expect(body.dso.rows).toBe(body.dso.expectedRows);
+    expect(body.dso.ngcCsvRows).toBe(13969);
+  });
+
+  it('Neuimport legt genau einen offenen Job an (Deduplizierung)', async () => {
+    const first = await s.request('/api/system/v1/catalogs/dso/refresh', {
+      method: 'POST',
+      cookies: systemCookies,
+    });
+    const second = await s.request('/api/system/v1/catalogs/dso/refresh', {
+      method: 'POST',
+      cookies: systemCookies,
+    });
+    expect(first.status).toBe(202);
+    const a = (await first.json()) as { jobId: string };
+    const b = (await second.json()) as { jobId: string };
+    expect(b.jobId).toBe(a.jobId);
+    const status = (await (
+      await s.request('/api/system/v1/catalogs', { cookies: systemCookies })
+    ).json()) as { dso: { lastJob: { id: string; status: string } | null } };
+    expect(status.dso.lastJob).toMatchObject({ id: a.jobId, status: 'pending' });
+  });
+});

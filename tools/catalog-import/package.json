@@ -1,0 +1,17 @@
+{
+  "name": "@nina-pm/catalog-import",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Objektkatalog aus OpenNGC nach specs/catalog/dso-import.md (AP-20)",
+  "exports": {
+    ".": "./src/build.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/infra": "workspace:*",
+    "@nina-pm/shared": "workspace:*"
+  }
+}

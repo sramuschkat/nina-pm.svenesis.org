@@ -178,3 +178,12 @@ export {
   type EventInput,
   type IngestStatus,
 } from './repositories/nina-ingest';
+export {
+  DSO_BATCH_SIZE,
+  dsoCatalogStatus,
+  enqueueSystemJob,
+  readDsoCatalog,
+  upsertDsoCatalog,
+  type DsoCatalogRow,
+  type DsoCatalogStatus,
+} from './repositories/dso';
