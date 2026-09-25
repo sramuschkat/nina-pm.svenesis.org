@@ -4,6 +4,7 @@
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { nina } from '@nina-pm/shared';
+import { ifNoneMatchHits } from '../../lib/etag';
 import type { ApiEnv } from '../../lib/env';
 import { bootstrap, plan, targets } from '../../nina/sync';
 import { problemContent } from '../define';
@@ -37,7 +38,7 @@ export const targetsRoute = defineNinaRoute(
     path: `${NINA_BASE}/targets`,
     summary: 'Auslieferbare Projekte des Rigs (ETag ohne Zähler aus Meldungen)',
     tags: ['nina'],
-    request: { headers: z.object({ 'if-none-match': z.string().max(256).optional() }) },
+    request: { headers: z.object({ 'if-none-match': z.string().max(1024).optional() }) },
     responses: {
       200: { description: 'Ziele', ...json(nina.NinaTargets) },
       304: { description: 'Unverändert' },
@@ -82,7 +83,7 @@ export function ninaSyncRoutes(services: () => Promise<ApiServices>) {
     const { body, etag } = await targets(await services(), principal(c));
     c.header('etag', etag);
     c.header('cache-control', 'no-cache');
-    if (c.req.valid('header')['if-none-match'] === etag) return c.body(null, 304);
+    if (ifNoneMatchHits(c.req.valid('header')['if-none-match'], etag)) return c.body(null, 304);
     return c.json(body, 200);
   });
 

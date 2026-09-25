@@ -168,6 +168,30 @@ describe('Fake-Plugin-Nacht (TK 17)', () => {
     ]);
   });
 
+  it('hinter CloudFront: komprimierte Antwort mit schwachem ETag W/"…" → 304 und Nacht grün', async () => {
+    const t = await setup();
+    const inst = await t.createInstance('Fake');
+    const direct = fetchVia();
+    // CloudFront (`compress: true`) macht aus einem starken ETag einen schwachen.
+    const viaCloudFront = async (url: string, init?: RequestInit) => {
+      const res = await direct(url, init);
+      const etag = res.headers.get('etag');
+      if (!etag) return res;
+      const headers = new Headers(res.headers);
+      headers.set('etag', `W/${etag}`);
+      return new Response(res.status === 304 ? null : await res.text(), {
+        status: res.status,
+        headers,
+      });
+    };
+    const report = await runFakeNight({
+      baseUrl: 'http://localhost',
+      token: inst.token,
+      fetch: viaCloudFront,
+    });
+    expect(report.steps.filter((x) => x.status === 'failed')).toEqual([]);
+  });
+
   it('falsches Token → Bootstrap rot, keine weiteren Schritte', async () => {
     await setup();
     const report = await runFakeNight({

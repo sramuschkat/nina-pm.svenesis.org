@@ -16211,7 +16211,7 @@ paths:
       parameters:
         - schema:
             type: string
-            maxLength: 256
+            maxLength: 1024
           required: false
           name: if-none-match
           in: header
