@@ -70,9 +70,17 @@ async function main(): Promise<void> {
 
   for (const pr of prs) await land(pr);
 
-  // Lokalen main nachziehen (gh wechselt beim Löschen des Branches meist schon dorthin).
-  spawnSync('git', ['checkout', 'main'], { cwd: repoRoot, stdio: 'inherit' });
-  spawnSync('git', ['pull', '--ff-only'], { cwd: repoRoot, stdio: 'inherit' });
+  // Lokalen main nachziehen (gh wechselt beim Löschen des Branches meist schon dorthin). Scheitert das
+  // (z. B. eine liegengebliebene, nicht verfolgte Datei), wird nicht deployt – sonst liefe der alte Stand.
+  const checkout = spawnSync('git', ['checkout', 'main'], { cwd: repoRoot, stdio: 'inherit' });
+  if (checkout.status !== 0)
+    fail('git checkout main ist gescheitert – Arbeitsbaum prüfen, dann erneut.');
+  const pull = spawnSync('git', ['pull', '--ff-only'], { cwd: repoRoot, stdio: 'inherit' });
+  if (pull.status !== 0)
+    fail(
+      'git pull --ff-only ist gescheitert – main ist nicht aktuell, es wird nicht deployt. ' +
+        'Meldung oben lesen (z. B. nicht verfolgte Datei entfernen), dann `pnpm deploy:prod`.',
+    );
 
   if (!deploy) {
     console.log('\nFertig. Deploy bei Bedarf: pnpm deploy:prod');

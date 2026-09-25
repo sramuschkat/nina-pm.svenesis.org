@@ -239,7 +239,16 @@ async function main(): Promise<void> {
     fail(error instanceof Error ? error.message : String(error));
   }
   step('Vorbedingungen');
-  if (capture('git', ['status', '--porcelain']).out !== '') fail('Arbeitsbaum ist nicht sauber.');
+  const dirty = capture('git', ['status', '--porcelain']).out;
+  if (dirty !== '') fail(`Arbeitsbaum ist nicht sauber:\n${dirty}`);
+  // Nur den aktuellen main deployen – ein gescheitertes `git pull` hätte sonst den alten Stand ausgeliefert.
+  capture('git', ['fetch', '--quiet', 'origin', 'main']);
+  const head = capture('git', ['rev-parse', 'HEAD']).out;
+  const remote = capture('git', ['rev-parse', 'origin/main']).out;
+  if (remote && head !== remote)
+    fail(
+      `HEAD (${head.slice(0, 7)}) ist nicht origin/main (${remote.slice(0, 7)}) – erst \`git checkout main && git pull --ff-only\`.`,
+    );
   // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
   // Pflicht seit 25.09.2026: ohne Token kein Deploy (DB-Erreichbarkeit und Fake-Plugin-Nacht, SV-07).
   const testRigToken = process.env.TEST_RIG_TOKEN?.trim() ?? '';
