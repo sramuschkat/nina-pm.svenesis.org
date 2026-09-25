@@ -148,9 +148,11 @@ export function buildPlanInput(
       dueDate: p.dueDate,
       panels: [...p.panels]
         .sort((a, b) => a.panelIndex - b.panelIndex)
-        .map((panel) => ({
+        // Position statt Datenbankindex: nach Löschungen hat `panel_index` Lücken, die NINA-Nummer ist
+        // aber die Reihenfolge 1…n (geometry.md §2.1 NT-32, AP-22). Bei lückenlosen Indizes identisch.
+        .map((panel, position) => ({
           id: panel.id,
-          index: panel.panelIndex,
+          index: position,
           raDeg: panel.raDeg,
           decDeg: panel.decDeg,
           rotationDeg: panel.rotationDeg,

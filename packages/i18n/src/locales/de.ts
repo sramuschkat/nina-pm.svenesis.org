@@ -826,6 +826,8 @@ export const de = {
     target: 'Ziel',
     conditions: 'Bedingungen',
     openSkyMap: 'In der Sternkarte öffnen',
+    pendingMosaic:
+      'Mosaik {{cols}} × {{rows}} aus der Sternkarte: Die Panels entstehen beim Speichern (Rig und Koordinaten nötig).',
     coordinatesSearchLater:
       'Bildfeld und Rotation lassen sich in der Sternkarte ausrichten und von dort übernehmen.',
     preview: 'Vorschau',
@@ -911,6 +913,37 @@ export const de = {
       comment: 'Kommentar',
       approval: 'Freigabe: {{action}}',
       change: '{{entity}}: {{action}}',
+    },
+    panelList: {
+      title: 'Panels',
+      single: 'Einzelfeld',
+      mosaic: 'Mosaik {{cols}} × {{rows}} · {{overlap}} % Überlappung',
+      editInSkyMap: 'Mosaik in der Sternkarte bearbeiten',
+      independent: 'Panels getrennt planen (Einstellung des Rigs {{rig}})',
+      col: {
+        number: 'Nr.',
+        label: 'Bezeichnung',
+        ra: 'RA (J2000)',
+        dec: 'Dec (J2000)',
+        rotation: 'Rotation (°)',
+        enabled: 'Aktiv',
+        actions: 'Aktionen',
+      },
+      labelOf: 'Bezeichnung Panel {{n}}',
+      raOf: 'RA Panel {{n}}',
+      decOf: 'Dec Panel {{n}}',
+      rotationOf: 'Rotation Panel {{n}} (°)',
+      enabledOf: 'Panel {{n}} aktiv',
+      up: 'Panel {{n}} nach oben',
+      down: 'Panel {{n}} nach unten',
+      delete: '„{{label}}“ löschen',
+      add: 'Panel hinzufügen',
+      deleteTitle: 'Panel „{{label}}“ löschen?',
+      deleteSoft:
+        'Das Panel hat Aufnahmen: Es wird ausgeblendet und nicht mehr geplant; Aufnahmen, Zähler und Verlauf bleiben. Einzeln wiederherstellen lässt es sich nicht.',
+      deleteHard:
+        'Das Panel hat keine Aufnahmen und wird mit seinem Belichtungsplan endgültig gelöscht.',
+      deleteConfirm: 'Löschen',
     },
     plan: {
       title: 'Belichtungsplan',
@@ -2078,7 +2111,10 @@ export const de = {
       'Panelzentren und -rotation nach geometry.md §2; die Übernahme als Panels folgt mit AP-22.',
     newProject: 'Neues Projekt',
     applyToProject: 'Ins Projekt übernehmen',
-    applied: 'Koordinaten und Rotation ins Projekt übernommen.',
+    applied: 'Mosaik, Koordinaten und Rotation ins Projekt übernommen.',
+    applyConfirmTitle: 'Mosaik in „{{name}}“ übernehmen?',
+    applyConfirm:
+      '{{count}} Panels fallen weg; {{soft}} davon haben Aufnahmen und werden nur ausgeblendet. Die übrigen Panels erhalten die neuen Zentren und behalten ihren Fortschritt.',
     fullscreen: 'Vollbild',
     exitFullscreen: 'Vollbild beenden',
     sidebarLabel: 'Kartenebenen',

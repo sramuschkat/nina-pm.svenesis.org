@@ -5713,6 +5713,176 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/web/v1/projects/{id}/panels/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Panels umsortieren (Reihenfolge = NINA-Nummer)
+         * @description Aktion: `project.update` · FA-PRJ-06
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Projekts; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PanelOrder"];
+                };
+            };
+            responses: {
+                /** @description Umsortiert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/mosaic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mosaik aus der Sternkarte übernehmen (Panels über die Engine, geometry.md §2)
+         * @description Aktion: `project.update` · FA-PRJ-06, FA-FRM-06, FA-FRM-12, NT-30, NT-32
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Projekts; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MosaicApply"];
+                };
+            };
+            responses: {
+                /** @description Übernommen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/projects/{id}/lines": {
         parameters: {
             query?: never;
@@ -12282,6 +12452,11 @@ export interface components {
                 plannedS: number;
                 integrationS: number;
             };
+            mosaic: {
+                cols: number;
+                rows: number;
+                overlapPct: number;
+            };
             createdByName: string;
             panelCount: number;
             filters: components["schemas"]["FilterPlanSummary"][];
@@ -12458,6 +12633,11 @@ export interface components {
                 plannedS: number;
                 integrationS: number;
             };
+            mosaic: {
+                cols: number;
+                rows: number;
+                overlapPct: number;
+            };
             panels: components["schemas"]["PanelView"][];
         };
         PanelView: {
@@ -12472,6 +12652,7 @@ export interface components {
             decDeg: number;
             rotationDeg: number;
             notes: string;
+            enabled: boolean;
             lines: components["schemas"]["LineView"][];
         };
         LineView: {
@@ -12701,6 +12882,8 @@ export interface components {
             rotationDeg: number;
             /** @default  */
             notes: string;
+            /** @default true */
+            enabled: boolean;
             /**
              * Format: uuid
              * @description UUID
@@ -12713,6 +12896,20 @@ export interface components {
             decDeg?: number;
             rotationDeg?: number;
             notes?: string;
+            enabled?: boolean;
+        };
+        PanelOrder: {
+            panelIds: string[];
+        };
+        MosaicApply: {
+            raDeg: number;
+            decDeg: number;
+            rotationDeg: number;
+            cols: number;
+            rows: number;
+            overlapPct: number;
+            /** @default true */
+            copyPlan: boolean;
         };
         LineCreate: {
             /**

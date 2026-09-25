@@ -875,7 +875,13 @@ export class ProjectRepository extends TenantRepo {
             .where('id', '=', id)
             .execute();
         await this.touch(trx, p, now);
-        await this.log(trx, projectId, 'update', { target: 'panel', action: 'reorder', panelIds }, now);
+        await this.log(
+          trx,
+          projectId,
+          'update',
+          { target: 'panel', action: 'reorder', panelIds },
+          now,
+        );
         return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
       },
       [{ table: 'project', id: projectId }],
@@ -917,7 +923,8 @@ export class ProjectRepository extends TenantRepo {
         const active = await this.panelsOf(trx, projectId);
         const grid = [...input.panels].sort((a, b) => a.n - b.n);
         const single = grid.length === 1;
-        const label = (n: number, current?: string) => (single ? (current ?? 'Main') : `Panel ${String(n)}`);
+        const label = (n: number, current?: string) =>
+          single ? (current ?? 'Main') : `Panel ${String(n)}`;
         for (const [k, g] of grid.slice(0, active.length).entries()) {
           const panel = active[k] as PanelRow;
           await trx

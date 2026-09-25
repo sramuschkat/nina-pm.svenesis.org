@@ -63,7 +63,7 @@ vi.mock('../../api/client', async (importOriginal) => {
     projectsApi: {
       list: () => Promise.resolve({ items: [] }),
       get: () => Promise.resolve(state.project),
-      patch: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
+      applyMosaic: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
     },
     catalogApi: {
       region: () => Promise.resolve({ items: [], total: 0 }),
@@ -227,24 +227,64 @@ describe('S-20 Sternkarte', () => {
     expect(Object.fromEntries(q)).toEqual({ ra: '83.5', dec: '-5.2', rot: '33', rig: ID(500) });
   });
 
-  it('Ins Projekt übernehmen patcht Koordinaten und Rotation mit If-Match', async () => {
+  it('Ins Projekt übernehmen setzt das Mosaik mit If-Match (AP-22)', async () => {
     state.rig = rig({ hasRotator: true });
-    state.project = { id: ID(10), createdBy: ID(92), approvalStatus: 'draft', version: 7 };
-    state.patch.mockResolvedValue({ id: ID(10), version: 8 });
+    state.project = {
+      id: ID(10),
+      name: 'Orion',
+      createdBy: ID(92),
+      approvalStatus: 'draft',
+      version: 7,
+      mosaic: { cols: 1, rows: 1, overlapPct: 20 },
+      panels: [{ id: ID(11), lines: [] }],
+    };
+    state.patch.mockResolvedValue({ ...(state.project as object), version: 8 });
     renderPage(
-      `/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.5&fdec=-5.2&rot=33&projekt=${ID(10)}`,
+      `/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.5&fdec=-5.2&rot=33&h=2&v=2&ueberlappung=15&projekt=${ID(10)}`,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Ins Projekt übernehmen' }));
     await waitFor(() =>
       expect(state.patch).toHaveBeenCalledWith(
         ID(10),
-        { raDeg: 83.5, decDeg: -5.2, rotationDeg: 33 },
+        {
+          raDeg: 83.5,
+          decDeg: -5.2,
+          rotationDeg: 33,
+          cols: 2,
+          rows: 2,
+          overlapPct: 15,
+          copyPlan: true,
+        },
         7,
       ),
     );
     expect(
-      await screen.findByText('Koordinaten und Rotation ins Projekt übernommen.'),
+      await screen.findByText('Mosaik, Koordinaten und Rotation ins Projekt übernommen.'),
     ).toBeInTheDocument();
+  });
+
+  it('weniger Panels: Bestätigungsdialog nennt wegfallende Panels mit Aufnahmen', async () => {
+    state.rig = rig({ hasRotator: true });
+    state.project = {
+      id: ID(10),
+      name: 'Cygnus',
+      createdBy: ID(92),
+      approvalStatus: 'draft',
+      version: 7,
+      mosaic: { cols: 2, rows: 1, overlapPct: 20 },
+      panels: [
+        { id: ID(11), lines: [] },
+        { id: ID(12), lines: [{ hasCaptures: true }] },
+      ],
+    };
+    state.patch.mockResolvedValue({ id: ID(10), version: 8 });
+    renderPage(`/planung/sternkarte?ra=300&dec=40&fra=300&fdec=40&h=1&v=1&projekt=${ID(10)}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Ins Projekt übernehmen' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('1 Panels fallen weg; 1 davon haben Aufnahmen');
+    expect(state.patch).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ins Projekt übernehmen' }));
+    await waitFor(() => expect(state.patch).toHaveBeenCalledTimes(1));
   });
 
   it('Seitenleiste: Reiter Himmelsfotos, Kataloge, Overlays; Foto-Wahl in der URL', async () => {

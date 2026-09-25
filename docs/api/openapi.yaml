@@ -3682,6 +3682,19 @@ components:
             - percentDone
             - plannedS
             - integrationS
+        mosaic:
+          type: object
+          properties:
+            cols:
+              type: integer
+            rows:
+              type: integer
+            overlapPct:
+              type: number
+          required:
+            - cols
+            - rows
+            - overlapPct
         createdByName:
           type: string
         panelCount:
@@ -3721,6 +3734,7 @@ components:
         - createdAt
         - updatedAt
         - progress
+        - mosaic
         - createdByName
         - panelCount
         - filters
@@ -4098,6 +4112,19 @@ components:
             - percentDone
             - plannedS
             - integrationS
+        mosaic:
+          type: object
+          properties:
+            cols:
+              type: integer
+            rows:
+              type: integer
+            overlapPct:
+              type: number
+          required:
+            - cols
+            - rows
+            - overlapPct
         panels:
           type: array
           items:
@@ -4134,6 +4161,7 @@ components:
         - createdAt
         - updatedAt
         - progress
+        - mosaic
         - panels
     PanelView:
       type: object
@@ -4154,6 +4182,8 @@ components:
           type: number
         notes:
           type: string
+        enabled:
+          type: boolean
         lines:
           type: array
           items:
@@ -4166,6 +4196,7 @@ components:
         - decDeg
         - rotationDeg
         - notes
+        - enabled
         - lines
     LineView:
       type: object
@@ -4617,6 +4648,9 @@ components:
           type: string
           maxLength: 4000
           default: ""
+        enabled:
+          type: boolean
+          default: true
         id:
           type: string
           format: uuid
@@ -4648,6 +4682,60 @@ components:
         notes:
           type: string
           maxLength: 4000
+        enabled:
+          type: boolean
+      additionalProperties: false
+    PanelOrder:
+      type: object
+      properties:
+        panelIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            description: UUID
+          minItems: 1
+          maxItems: 256
+      required:
+        - panelIds
+      additionalProperties: false
+    MosaicApply:
+      type: object
+      properties:
+        raDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        decDeg:
+          type: number
+          minimum: -90
+          maximum: 90
+        rotationDeg:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 360
+        cols:
+          type: integer
+          minimum: 1
+          maximum: 16
+        rows:
+          type: integer
+          minimum: 1
+          maximum: 16
+        overlapPct:
+          type: number
+          minimum: 0
+          maximum: 60
+        copyPlan:
+          type: boolean
+          default: true
+      required:
+        - raDeg
+        - decDeg
+        - rotationDeg
+        - cols
+        - rows
+        - overlapPct
       additionalProperties: false
     LineCreate:
       type: object
@@ -15224,6 +15312,134 @@ paths:
                     type: boolean
                 required:
                   - soft
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/panels/order:
+    put:
+      summary: Panels umsortieren (Reihenfolge = NINA-Nummer)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-06"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-06
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PanelOrder"
+      responses:
+        "200":
+          description: Umsortiert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/mosaic:
+    post:
+      summary: Mosaik aus der Sternkarte übernehmen (Panels über die Engine, geometry.md §2)
+      tags:
+        - projects
+      description: "Aktion: `project.update` · FA-PRJ-06, FA-FRM-06, FA-FRM-12, NT-30, NT-32"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-PRJ-06
+        - FA-FRM-06
+        - FA-FRM-12
+        - NT-30
+        - NT-32
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Projekts; abweichend → 412"
+          required: false
+          description: "`version` des Projekts; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MosaicApply"
+      responses:
+        "200":
+          description: Übernommen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
         "401":
           description: Nicht angemeldet
           content:

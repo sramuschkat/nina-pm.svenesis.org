@@ -351,9 +351,10 @@ async function targetsData(svc: ApiServices, p: RigRef) {
               }
             : { enabled: false },
         },
-        panels: pv.panels.map((panel) => ({
+        // Position = NINA-Nummer − 1 (NT-32, AP-22); `pv.panels` ist nach `panel_index` sortiert.
+        panels: pv.panels.map((panel, position) => ({
           id: panel.id,
-          index: panel.panelIndex,
+          index: position,
           label: panel.label,
           raDeg: panel.raDeg,
           decDeg: panel.decDeg,
