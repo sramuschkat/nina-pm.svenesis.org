@@ -1,0 +1,26 @@
+# Nächtliche Prüfungen nach TK 18 (AP-17): Abhängigkeits-Audit – ein kritischer Befund macht den Lauf
+# rot (Go-live-Checkliste „Abhängigkeits-Audit ohne kritische Befunde“). Engine-Benchmarks folgen mit
+# ihrem Paket. Kein AWS-Zugang (E1).
+name: nightly
+
+on:
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Abhängigkeits-Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: pnpm audit (kritisch = rot)
+        run: pnpm audit --audit-level critical

@@ -17,6 +17,7 @@ import { config } from '@nina-pm/infra/config';
 import { printReport, runFakeNight } from '@nina-pm/fake-plugin';
 import { runSmoke } from '@nina-pm/smoke';
 import { loadMigrations, migrationsHash } from '@nina-pm/db/migrate';
+import { parseDeployArgs } from './deploy-args';
 import { findGreenProtocol } from './dsql/protocol';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
@@ -223,6 +224,12 @@ async function ensureGreenCi(sha: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  let args: { dsqlClusterId?: string };
+  try {
+    args = parseDeployArgs(process.argv.slice(2));
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
   step('Vorbedingungen');
   if (capture('git', ['status', '--porcelain']).out !== '') fail('Arbeitsbaum ist nicht sauber.');
   // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
@@ -307,6 +314,20 @@ async function main(): Promise<void> {
   step('Web-App bauen');
   runEnv('pnpm', ['--filter', '@nina-pm/web', 'build'], { BUILD_ID: sha, VITE_GALLERY: '' });
   const context = ['-c', `buildId=${sha}`, '-c', 'requireWebDist=true'];
+  if (args.dsqlClusterId) {
+    context.push('-c', `dsqlClusterId=${args.dsqlClusterId}`);
+    const stored = (
+      JSON.parse(readFileSync(`${repoRoot}infra/cdk.context.json`, 'utf8')) as Record<
+        string,
+        unknown
+      >
+    ).dsqlClusterId;
+    console.log(`\n! Import-Modus: Cluster ${args.dsqlClusterId} (Runbook restore.md).`);
+    if (stored !== args.dsqlClusterId)
+      console.log(
+        '! Danach per PR "dsqlClusterId" in infra/cdk.context.json eintragen – sonst legt der nächste Deploy ohne -c einen neuen, leeren Cluster an.',
+      );
+  }
   step('cdk diff – bitte vollständig lesen');
   // Vorlagen-Diff statt Changesets: gleiche Änderungsliste, ohne je Stack ein Changeset anzulegen.
   run('pnpm', ['cdk', 'diff', '--method=template', ...context]);

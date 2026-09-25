@@ -1,6 +1,7 @@
 /**
  * Datenschutz und Quellen (FA-WEB-04, TK 11.3) als Markdown je Sprache – Anzeige über `react-markdown`
- * ohne HTML. **Entwurf:** rechtliche Durchsicht vor dem Go-live (FA-WEB-04, OT-15).
+ * ohne HTML. Rechtliche Durchsicht H-17 freigegeben (Sven, 25.09.2026); danach ergänzt: Absatz
+ * „Öffentliche Vorschaubilder“ (SEC-28, AP-17).
  */
 import type { Language } from './index';
 
@@ -29,6 +30,10 @@ Für Wetter, Kataloge und Ephemeriden ruft der Server Daten ab bei Open-Meteo, C
 
 Himmelsausschnitte der Sternkarte lädt dein Browser direkt bei CDS (\`alasky.cds.unistra.fr\`); dabei wird deine IP-Adresse an CDS übertragen. Discord-Avatare lädt dein Browser von \`cdn.discordapp.com\`.
 
+## Öffentliche Vorschaubilder
+
+Vorschaubilder von Himmelsausschnitten (\`/catalog/thumbs/…\`) sind ohne Anmeldung abrufbar. Sie enthalten keine personenbezogenen Daten und keinen Bezug zu einem Mandanten; der Dateiname ergibt sich aus Koordinaten, Bildfeld, Rotation und Himmelsdurchmusterung. Wer genau diese Werte kennt, kann daran erkennen, dass irgendjemand diesen Ausschnitt geplant hat – dieses geringe Restrisiko ist bewusst hingenommen.
+
 ## Speicherdauer und Rechte
 
 Anmeldesitzungen enden spätestens nach 30 Tagen; ein Anmeldeprotokoll gibt es nicht. Mitgliedsdaten bleiben, bis du den Mandanten verlässt oder entfernt wirst. Du hast die Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sowie ein Beschwerderecht bei einer Aufsichtsbehörde.
@@ -56,6 +61,10 @@ For weather, catalogues and ephemerides the server fetches data from Open-Meteo,
 ## Sky images in the browser
 
 Sky cut-outs of the sky map are loaded by your browser directly from CDS (\`alasky.cds.unistra.fr\`), which transmits your IP address to CDS. Discord avatars are loaded from \`cdn.discordapp.com\`.
+
+## Public preview images
+
+Preview images of sky cut-outs (\`/catalog/thumbs/…\`) can be retrieved without signing in. They contain no personal data and no reference to a tenant; the file name is derived from coordinates, field of view, rotation and sky survey. Anyone who knows exactly these values can tell that someone planned this cut-out – this small residual risk is accepted deliberately.
 
 ## Retention and rights
 
