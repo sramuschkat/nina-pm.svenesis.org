@@ -10,6 +10,8 @@ import {
   SimulationRepository,
   NinaInstanceRepository,
   NinaRigRepository,
+  NinaSessionRepository,
+  NinaIngestRepository,
   ninaTokenLookup,
   ninaTouch,
   ProjectRepository,
@@ -80,6 +82,9 @@ export async function createStack() {
       simulations: () => new SimulationRepository(pg.db, ctx),
       ninaInstances: () => new NinaInstanceRepository(pg.db, ctx),
       ninaRig: (rigId: string) => new NinaRigRepository(pg.db, ctx, rigId),
+      ninaSession: (rigId: string, instanceId: string) =>
+        new NinaSessionRepository(pg.db, ctx, rigId, instanceId),
+      ninaIngest: (rigId: string) => new NinaIngestRepository(pg.db, ctx, rigId),
       tenant: () => new TenantRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
@@ -101,6 +106,14 @@ export async function createStack() {
     },
     tenantFiles,
     maintenanceBanner: () => readMaintenanceBanner(pg.db),
+    uploads: {
+      planLog: (tenantId, sessionId) =>
+        Promise.resolve({
+          url: 'http://localhost/plan-log',
+          fields: { key: `tenant/${tenantId}/plans/${sessionId}.json.gz` },
+        }),
+    },
+    db: pg.db,
     nina: {
       lookup: (hash) => ninaTokenLookup(pg.db, hash),
       touch: (p, at) => ninaTouch(pg.db, p, at),

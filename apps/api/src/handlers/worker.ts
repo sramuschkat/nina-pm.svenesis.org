@@ -12,14 +12,29 @@ import { logger } from '../lib/logger';
 import { dispatch } from '../worker/dispatch';
 import { effortJobHandler, effortSiteTick } from '../worker/effort';
 import { effortDbDeps } from '../worker/effort-db';
+import {
+  sessionCloseHandler,
+  sessionReportHandler,
+  type SessionJobDeps,
+} from '../worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from '../worker/jobs';
 import { requiredEnv } from '../lib/params';
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
 
 const effort = effortDbDeps(async () => (await lambdaDatabase()).db);
+const sessionJobs: SessionJobDeps = {
+  db: async () => (await lambdaDatabase()).db,
+  enqueue: async (tenantId, input) =>
+    (await lambdaDatabase()).repositories({ tenantId }).job.enqueue(input),
+};
 const jobs: JobRunnerDeps = {
   queue: async () => (await lambdaDatabase()).jobQueue(),
-  handlers: { ...JOB_HANDLERS, effort: effortJobHandler(effort) },
+  handlers: {
+    ...JOB_HANDLERS,
+    effort: effortJobHandler(effort),
+    session_close: sessionCloseHandler(sessionJobs),
+    session_report: sessionReportHandler(sessionJobs),
+  },
 };
 
 const maintenance = {

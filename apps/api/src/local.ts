@@ -15,6 +15,8 @@ import {
   SimulationRepository,
   NinaInstanceRepository,
   NinaRigRepository,
+  NinaSessionRepository,
+  NinaIngestRepository,
   ninaTokenLookup,
   ninaTouch,
   ProjectRepository,
@@ -46,6 +48,11 @@ import { problemResponse } from './lib/problem';
 import type { ApiServices } from './routes/services';
 import { effortJobHandler } from './worker/effort';
 import { effortDbDeps } from './worker/effort-db';
+import {
+  sessionCloseHandler,
+  sessionReportHandler,
+  type SessionJobDeps,
+} from './worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -78,9 +85,18 @@ async function database(): Promise<OpenDatabase['db']> {
 const db = await database();
 const now = () => new Date();
 const queue = new JobQueue(db);
+const localSessionJobs: SessionJobDeps = {
+  db: () => Promise.resolve(db),
+  enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
+};
 const jobs: JobRunnerDeps = {
   queue: () => Promise.resolve(queue),
-  handlers: { ...JOB_HANDLERS, effort: effortJobHandler(effortDbDeps(() => Promise.resolve(db))) },
+  handlers: {
+    ...JOB_HANDLERS,
+    effort: effortJobHandler(effortDbDeps(() => Promise.resolve(db))),
+    session_close: sessionCloseHandler(localSessionJobs),
+    session_report: sessionReportHandler(localSessionJobs),
+  },
 };
 const services: ApiServices = {
   repositories: (ctx) => ({
@@ -95,6 +111,9 @@ const services: ApiServices = {
     simulations: () => new SimulationRepository(db, ctx),
     ninaInstances: () => new NinaInstanceRepository(db, ctx),
     ninaRig: (rigId: string) => new NinaRigRepository(db, ctx, rigId),
+    ninaSession: (rigId: string, instanceId: string) =>
+      new NinaSessionRepository(db, ctx, rigId, instanceId),
+    ninaIngest: (rigId: string) => new NinaIngestRepository(db, ctx, rigId),
     tenant: () => new TenantRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
@@ -119,6 +138,14 @@ const services: ApiServices = {
   tenantFiles: { deleteTenantFiles: () => Promise.resolve(0) },
   maintenanceBanner: () => readMaintenanceBanner(db),
   // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
+  uploads: {
+    planLog: (tenantId, sessionId) =>
+      Promise.resolve({
+        url: 'http://localhost/plan-log',
+        fields: { key: `tenant/${tenantId}/plans/${sessionId}.json.gz` },
+      }),
+  },
+  db: db,
   nina: {
     lookup: (hash) => ninaTokenLookup(db, hash),
     touch: (p, at) => ninaTouch(db, p, at),

@@ -28,7 +28,9 @@ import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
 import { getJobRoute, webJobRoutes } from './routes/web-jobs';
 import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
+import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
 import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
+import { NINA_SESSION_ROUTES, ninaSessionRoutes } from './routes/nina/sessions';
 
 export interface AppDeps {
   /** Erwarteter Wert des Headers X-Origin-Verify (SSM-Cache). */
@@ -58,11 +60,12 @@ export const ROUTES = [
   ...APPROVAL_ROUTES,
   ...SIMULATION_ROUTES,
   ...NINA_INSTANCE_ROUTES,
+  ...NINA_OPS_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
 /** NINA-API (`/api/nina/v1`, Bearer-Token statt Sitzung): eigener Rechte-Test (nina-rights.test.ts). */
-export const NINA_ROUTES = [...NINA_SYNC_ROUTES] as const;
+export const NINA_ROUTES = [...NINA_SYNC_ROUTES, ...NINA_SESSION_ROUTES] as const;
 
 const noServices = () => Promise.reject(new Error('Dienste nicht konfiguriert'));
 
@@ -120,7 +123,9 @@ export function createApp(deps: AppDeps) {
   app.route('/', webApprovalRoutes(services));
   app.route('/', webSimulationRoutes(services));
   app.route('/', webNinaInstanceRoutes(services));
+  app.route('/', webNinaOpsRoutes(services));
   app.route('/', ninaSyncRoutes(services));
+  app.route('/', ninaSessionRoutes(services));
   app.route('/', systemRoutes(services));
 
   app.notFound((c) => problemResponse('resource.not_found', { requestId: c.get('requestId') }));

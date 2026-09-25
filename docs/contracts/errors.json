@@ -324,6 +324,13 @@
    "titleEn": "At most 500 captures per request"
   },
   {
+   "code": "event.batch_too_large",
+   "http": 413,
+   "i18nKey": "errors.event.batchTooLarge",
+   "titleDe": "Höchstens 200 Ereignisse je Anfrage",
+   "titleEn": "At most 200 events per request"
+  },
+  {
    "code": "plan.targets_etag_mismatch",
    "http": 409,
    "i18nKey": "errors.plan.targetsEtagMismatch",

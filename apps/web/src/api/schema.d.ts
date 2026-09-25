@@ -7979,6 +7979,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/rigs/{id}/lease/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lease des Rigs freigeben (Übernahme durch einen Ersatzrechner)
+         * @description Aktion: `nina.instance.manage` · FA-RIG-06, FA-NIN-04, TK 5.6, M5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Freigegeben */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: uuid
+                             * @description UUID
+                             */
+                            releasedSessionId: string | null;
+                        };
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/captures/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Nicht zugeordnete Aufnahme einer Belichtungszeile zuordnen
+         * @description Aktion: `session.review` · FA-AUS-04, DAT5-12, TK 6.6
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        exposureLineId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Zugeordnet */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description capture.assign_mismatch */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/nina/v1/bootstrap": {
         parameters: {
             query?: never;
@@ -8193,6 +8354,455 @@ export interface paths {
                 };
                 /** @description nina.night_invalid | engine.input_invalid | validation.failed */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Session anlegen (idempotent je Rig) mit Lease; offline ohne Lease
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-06, FA-RIG-06, NT-01, NT-09, NT-47, SEC-53
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaSessionCreate"];
+                };
+            };
+            responses: {
+                /** @description Bereits angelegt (idempotent) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaSessionCreated"];
+                    };
+                };
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaSessionCreated"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description session.rig_busy | engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description nina.night_invalid | validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Session beenden, fortsetzen oder Offline-Plan nachmelden
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-NIN-13, NT-11, NT-15, NT-47, M6, NIN5-7, NIN5-14, SEC-53
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaSessionPatch"];
+                };
+            };
+            responses: {
+                /** @description Session */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaSessionPatched"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description session.closed | session.rig_busy | engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/nina/v1/sessions/{sessionId}/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aufnahmemeldungen (≤ 500, idempotent) mit Status je Meldung
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-04, FA-SYN-05, FA-NIN-17, NT-10, NT-14, NT-E2, NT-E3, SEC-53
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaCaptureBatch"];
+                };
+            };
+            responses: {
+                /** @description Status je Meldung */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaCaptureResults"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description session.unknown | session.closed | engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description capture.batch_too_large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/sessions/{sessionId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ereignisse (≤ 200, idempotent)
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-06, SEC-52, SEC-53
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaEventBatch"];
+                };
+            };
+            responses: {
+                /** @description Angenommen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaEventResults"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description session.unknown | session.closed | engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description event.batch_too_large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/nina/v1/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Heartbeat: Zustand, NINA-Einstellungen, Lease verlängern bzw. zurückholen
+         * @description Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-07, FA-RIG-06, FA-NIN-04, NT-05, NT-17, NT-22, M5, M6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaHeartbeat"];
+                };
+            };
+            responses: {
+                /** @description Antwort */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaHeartbeatResponse"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description engine.incompatible */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9266,7 +9876,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
             requestId?: string;
             errors?: {
                 path: string;
@@ -12716,6 +13326,778 @@ export interface components {
                 };
                 currentUnitId?: string | null;
             } | null;
+        };
+        NinaSessionCreated: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            lease: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                untilUtc: string | null;
+            };
+            planLogUploadUrl: string;
+            planLogUploadFields?: {
+                [key: string]: string;
+            };
+        };
+        NinaSessionCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startedAtUtc: string;
+            /** @default false */
+            offline: boolean;
+            offlinePlan?: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId: string;
+                inputHash: string;
+                engineVersion: string;
+                blocks: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    /** @enum {string} */
+                    kind: "regular" | "transit";
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    projectId: string;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    panelId: string | null;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    transitObservationId?: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    startUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    endUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    twilightEndUtc: string | null;
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                    /** @enum {string} */
+                    rotationMode: "rotator" | "fixed_camera";
+                    meridianFlip: {
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        waitStartUtc: string | null;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        plannedUtc: string;
+                        durationS: number;
+                        inTransitWindow: boolean;
+                        planned: boolean;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        gapStartUtc: string | null;
+                        gapDurationS: number | null;
+                    } | null;
+                    entries?: ({
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "slew_center" | "slew_center_rotate";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "filter";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                        filter: string;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "expose";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        exposureLineId: string;
+                        filter: string;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                        bonus: boolean;
+                        lastOfNight: boolean;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "expose_series";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        untilUtc: string;
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        exposureLineId: string;
+                        filter: string;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "dither" | "autofocus_hint" | "wait" | "meridian_flip";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "end";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                    })[];
+                }[];
+            } | null;
+        };
+        NinaSessionPatched: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            /** @enum {string} */
+            status: "running" | "completed" | "aborted" | "stale";
+            lease: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                untilUtc: string | null;
+                leaseLost: boolean;
+            };
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            nightPlanId: string | null;
+            /** @enum {string} */
+            reportStatus: "none" | "pending" | "sent" | "failed" | "skipped";
+        };
+        NinaSessionPatch: {
+            /** @enum {string} */
+            status?: "running" | "completed" | "aborted";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endedAtUtc?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            resumedAtUtc?: string;
+            outboxPending?: number;
+            ninaConditions?: {
+                [key: string]: {
+                    avg?: number;
+                    min?: number;
+                    max?: number;
+                };
+            };
+            offline?: boolean;
+            offlinePlan?: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId: string;
+                inputHash: string;
+                engineVersion: string;
+                blocks: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    /** @enum {string} */
+                    kind: "regular" | "transit";
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    projectId: string;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    panelId: string | null;
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    transitObservationId?: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    startUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    endUtc: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    twilightEndUtc: string | null;
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                    /** @enum {string} */
+                    rotationMode: "rotator" | "fixed_camera";
+                    meridianFlip: {
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        waitStartUtc: string | null;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        plannedUtc: string;
+                        durationS: number;
+                        inTransitWindow: boolean;
+                        planned: boolean;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        gapStartUtc: string | null;
+                        gapDurationS: number | null;
+                    } | null;
+                    entries?: ({
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "slew_center" | "slew_center_rotate";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "filter";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                        filter: string;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "expose";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        exposureLineId: string;
+                        filter: string;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                        bonus: boolean;
+                        lastOfNight: boolean;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "expose_series";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        untilUtc: string;
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        exposureLineId: string;
+                        filter: string;
+                        exposureS: number;
+                        gain: number | null;
+                        offset: number | null;
+                        binning: number;
+                        readoutMode: string | null;
+                        readoutModeIndex: number | null;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "dither" | "autofocus_hint" | "wait" | "meridian_flip";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                        durationS: number;
+                    } | {
+                        seq: number;
+                        /** @enum {string} */
+                        cmd: "end";
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        atUtc: string;
+                    })[];
+                }[];
+            };
+        };
+        NinaCaptureResults: {
+            results: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /** @enum {string} */
+                status: "accepted" | "duplicate" | "archived" | "unassigned" | "rejected_invalid";
+            }[];
+        };
+        NinaCaptureBatch: {
+            captures: ({
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                capturedAtUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                exposureMidUtc: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId: string | null;
+                filterShortName: string;
+                filterActual: string;
+                exposureS: number;
+                gain: number | null;
+                offset: number | null;
+                binning: number;
+                readoutMode: string | null;
+                readoutModeIndex: number | null;
+                rotatorMechDeg: number;
+                temperatureDeviation: boolean;
+                /** @enum {string} */
+                result: "saved" | "aborted" | "failed";
+                fileName?: string;
+                metrics?: {
+                    hfr?: number;
+                    stars?: number;
+                    meanAdu?: number;
+                    sensorTempC?: number;
+                    setPointC?: number;
+                    guidingRmsArcsec?: number;
+                    altitudeDeg?: number;
+                    airmass?: number;
+                    focusPosition?: number;
+                };
+                /** @enum {string} */
+                frameType: "light";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                blockId: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                panelId: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                exposureLineId: string | null;
+                /** @enum {string} */
+                assignment?: "unassigned";
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                transitObservationId?: string | null;
+                raDeg: number;
+                decDeg: number;
+                rotationDeg: number;
+                /** @enum {string|null} */
+                pierSide: "east" | "west" | null;
+                bonus: boolean;
+            } | {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                capturedAtUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                exposureMidUtc: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId: string | null;
+                filterShortName: string;
+                filterActual: string;
+                exposureS: number;
+                gain: number | null;
+                offset: number | null;
+                binning: number;
+                readoutMode: string | null;
+                readoutModeIndex: number | null;
+                rotatorMechDeg: number;
+                temperatureDeviation: boolean;
+                /** @enum {string} */
+                result: "saved" | "aborted" | "failed";
+                fileName?: string;
+                metrics?: {
+                    hfr?: number;
+                    stars?: number;
+                    meanAdu?: number;
+                    sensorTempC?: number;
+                    setPointC?: number;
+                    guidingRmsArcsec?: number;
+                    altitudeDeg?: number;
+                    airmass?: number;
+                    focusPosition?: number;
+                };
+                projectIds: string[];
+                flatsPlanned?: number;
+                darkFlatsPlanned?: number;
+                /** @enum {string} */
+                frameType: "flat";
+            } | {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                capturedAtUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                exposureMidUtc: string;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId: string | null;
+                filterShortName: string;
+                filterActual: string;
+                exposureS: number;
+                gain: number | null;
+                offset: number | null;
+                binning: number;
+                readoutMode: string | null;
+                readoutModeIndex: number | null;
+                rotatorMechDeg: number;
+                temperatureDeviation: boolean;
+                /** @enum {string} */
+                result: "saved" | "aborted" | "failed";
+                fileName?: string;
+                metrics?: {
+                    hfr?: number;
+                    stars?: number;
+                    meanAdu?: number;
+                    sensorTempC?: number;
+                    setPointC?: number;
+                    guidingRmsArcsec?: number;
+                    altitudeDeg?: number;
+                    airmass?: number;
+                    focusPosition?: number;
+                };
+                projectIds: string[];
+                flatsPlanned?: number;
+                darkFlatsPlanned?: number;
+                /** @enum {string} */
+                frameType: "dark_flat";
+            })[];
+        };
+        NinaEventResults: {
+            accepted: number;
+            duplicate: number;
+        };
+        NinaEventBatch: {
+            events: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                occurredAtUtc: string;
+                /** @enum {string} */
+                kind: "plan_built" | "plan_rebuilt" | "block_start" | "block_end" | "block_skipped" | "center_failed" | "safety_pause" | "safety_resume" | "transit_start" | "transit_end" | "af" | "flip" | "flats_start" | "flats_end" | "rotation_mismatch" | "lease_conflict" | "lease_lost" | "flip_settings_mismatch" | "filter_not_found" | "readout_mode_not_found" | "trigger_suppressed" | "offline_start" | "offline_end" | "warning" | "error" | "session_end" | "lease_regained" | "rotation_unknown" | "flip_undetected" | "skipped_timeaware" | "past_mismatch";
+                code?: string | null;
+                message?: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                nightPlanId?: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                blockId?: string | null;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId?: string | null;
+                durationS?: number;
+                data?: {
+                    [key: string]: unknown;
+                } | null;
+            }[];
+        };
+        NinaHeartbeatResponse: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            serverTimeUtc: string;
+            lease: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                untilUtc: string | null;
+                leaseLost: boolean;
+            } | null;
+            settingsVersion: number;
+            targetsEtag: string;
+            commands: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                /** @enum {string} */
+                command: "refresh_targets" | "reset_plan";
+            }[];
+        };
+        NinaHeartbeat: {
+            /** @enum {string} */
+            state: "running" | "idle" | "paused" | "flats" | "offline" | "blocked";
+            /** @enum {string|null} */
+            blockedReason?: "lease_lost" | "rig_busy" | "token_invalid" | "clock_skew" | "plan_failed" | "engine_incompatible" | "tenant_locked" | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            blockId?: string | null;
+            pluginVersion: string;
+            engineVersion: string;
+            profileLocation?: {
+                latDeg: number;
+                lonDeg: number;
+            } | null;
+            cameraReadoutModes?: {
+                index: number;
+                name: string;
+            }[];
+            meridianFlip?: {
+                triggerPresent: boolean;
+                useSideOfPier: boolean;
+                recenter: boolean;
+                autoFocusAfterFlip: boolean;
+                settleTimeS: number;
+                pauseBeforeMin: number;
+                afterMin: number;
+                maxAfterMin: number;
+            } | null;
+            rotator?: {
+                connected: boolean;
+                /** @enum {string} */
+                rangeType: "FULL" | "HALF" | "QUARTER";
+                rangeStartMechanicalDeg: number;
+                reverse: boolean;
+            } | null;
+            plateSolve?: {
+                rotationToleranceDeg: number;
+            } | null;
+            mount?: {
+                /** @enum {string} */
+                equatorialSystem: "J2000" | "JNOW" | "B1950" | "J2050";
+                siteLatDeg: number;
+                siteLonDeg: number;
+                siderealTimeDeltaS: number;
+            } | null;
+            sequenceTriggers?: {
+                autofocus: string[];
+                autofocusAfterTimeMin: number | null;
+                dither: string[];
+            } | null;
+            camera?: {
+                temperatureC: number | null;
+                setPointC: number | null;
+                coolerOn: boolean;
+                coolerPowerPct: number | null;
+            } | null;
+            lastMeasuredRotationDeg?: number | null;
+            filterWheel?: {
+                position: number;
+                name: string;
+                focusOffset: number;
+            }[] | null;
+            outboxPending?: number;
+            deadLetters?: number;
+            settingsVersion?: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            offlineUntil?: string | null;
+            ackedCommandIds?: string[];
         };
         TenantAdminView: {
             /**
