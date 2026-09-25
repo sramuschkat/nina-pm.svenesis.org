@@ -111,6 +111,7 @@ const m31 = (over: Partial<DsoView> = {}): DsoView => ({
   sizeMinorArcmin: 69.66,
   positionAngleDeg: 35,
   source: 'openngc:NGC.csv v20260501 (abgerufen 2026-09-25)',
+  filterHint: 'broadband',
   night: null,
   ...over,
 });
@@ -294,6 +295,7 @@ describe('S-21 Objektbrowser', () => {
             peakAltDeg: 80.2,
             peakUtc: '2026-10-21T04:15:00Z',
             moonSepDeg: 95,
+            score: null,
           },
         }),
         m31({
@@ -307,6 +309,7 @@ describe('S-21 Objektbrowser', () => {
             peakAltDeg: null,
             peakUtc: null,
             moonSepDeg: null,
+            score: null,
           },
         }),
       ],
