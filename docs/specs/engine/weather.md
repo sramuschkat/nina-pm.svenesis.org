@@ -389,6 +389,8 @@ Struktur und Spalten bleiben (`payload jsonb`, **keine neuen Spalten**). `model_
 | `hours[]` – Scores | `cloudScore`, `seeingScore`, `transparencyScore`, `overallScore`, `ratingIndex` |
 | `nights[]` | je Eintrag aus `darkWindows` (§3.2) eine Zeile: `night` (Schlüssel aus `night.md` §1), `nightMean`, `coveredSec`, `darknessSec`, `coverage`, `bestWindow` (§3.3, oder `null`), `aerosolMissing`, `seeingIncomplete` – diese Zeile ist der Typ **`WeatherNight`** (TK 8.2, `specs/ui/components.md` §2.5) |
 
+**Anzeigefelder (AP-23, Ergänzung zur Abnahme):** Zusätzlich trägt der Kopf `region` (`europe | other`, Europa-Rechteck §1.3) und `cmp3` (`gem | nbm | base` – Quelle der dritten Wolkenzeile, `base` = Basismodell nach Ausfall, Vorlage `cmp3Base`), und `hours[]` trägt die beiden Vergleichszeilen `cloudEcmwfPct` (§1.3 „Wolken ECMWF“) und `cloudCmp3Pct` (§1.3 „Wolken `cmp3`“). Sie sind reine Anzeige für S-50 (FA-WET-01: zwei Vergleichsmodelle) und gehen in **keine** Bewertung ein.
+
 Die Scores werden **ungerundet** gespeichert (`double`, wie gerechnet), die Rohwerte unverändert, wie sie die API liefert. `q(x, 1e3)` kommt einheitlich erst **unmittelbar vor Vergleich, `outputHash` und Ausgabe** (§2, WS-08) – auch dann, wenn die Zahl aus dem `payload` gelesen wird; zwischenzeitliches Runden ist verboten, weil sonst zweimal gerundet würde und die Jint-Parität an der Rundungskante verloren geht.
 
 ## 4. Pflicht-Tests (WS-18)

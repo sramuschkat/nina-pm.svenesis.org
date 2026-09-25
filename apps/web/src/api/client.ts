@@ -188,6 +188,9 @@ export type ExposureTemplateView = Schemas['ExposureTemplateView'];
 export type RigView = Schemas['RigView'];
 export type FilterWheelView = Schemas['FilterWheelView'];
 export type SiteNightsView = Schemas['SiteNightsView'];
+export type WeatherView = Schemas['WeatherView'];
+export type WeatherHourView = Schemas['WeatherHourView'];
+export type WeatherNightView = Schemas['WeatherNightView'];
 
 /** Pfade der Stammdaten unter `/api/web/v1` (TK 7.2) mit Ansicht je Objektart. */
 export interface EquipmentKinds {
@@ -238,6 +241,8 @@ export const equipmentApi = {
     apiFetch<SiteNightsView>(
       `${V1}/sites/${siteId}/nights?count=${String(count)}${from ? `&from=${from}` : ''}`,
     ),
+  /** Astro-Wetter des Standorts (AP-23, S-50). */
+  weather: (siteId: string) => apiFetch<WeatherView>(`${V1}/sites/${siteId}/weather`),
 };
 
 export type ProjectView = Schemas['ProjectView'];

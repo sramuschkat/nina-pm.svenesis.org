@@ -192,6 +192,64 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-label': 'rgba(228, 233, 239, 0.9)',
 };
 
+/**
+ * Astro-Wetter `WeatherChart` (components.md §2.5, WS-17; Vorlage legacy/…/weather-core.js): Grafik auf
+ * eigenem dunklem Grund, themen-unabhängig wie Nachtdiagramm und Sternkarte. Reine Anzeige – keine dieser
+ * Farben verändert einen Score.
+ */
+export const WEATHER: Readonly<Record<string, string>> = {
+  'wx-bg': '#10151c',
+  'wx-label-bg': '#0b0f14',
+  'wx-grid': 'rgba(255, 255, 255, 0.06)',
+  'wx-grid-day': 'rgba(255, 255, 255, 0.18)',
+  'wx-text': '#9aa7b6',
+  'wx-text-bright': '#e4e9ef',
+  'wx-sun': '#d9c24a',
+  'wx-sun-fill': 'rgba(200, 170, 50, 0.45)',
+  'wx-moon': 'rgba(230, 232, 236, 0.85)',
+  'wx-temp': '#e3a33b',
+  'wx-dew': '#3fa9e6',
+  'wx-now': '#e5484d',
+  'wx-day-bar': '#1f6fd6',
+  'wx-no-data': '#262c34',
+  'wx-seam': 'rgba(228, 233, 239, 0.55)',
+  'wx-ink-light': '#ffffff',
+  'wx-ink-dark': '#1b2633',
+  'wx-dew-warn': 'rgba(224, 123, 43, 0.38)',
+  'wx-dew-danger': 'rgba(216, 67, 59, 0.6)',
+  'wx-dark': '#8fb3ff',
+};
+
+/** Teilbewertungs-Rampe: 0 = blasses Graublau, 1 = gesättigtes Blau (linear je Kanal, §2.5). */
+export const WEATHER_RAMP = {
+  bad: [198, 208, 220],
+  good: [30, 88, 190],
+} as const satisfies Readonly<Record<string, readonly [number, number, number]>>;
+
+/** Ampel der Gesamtnote: Stützstellen 0 / 0,45 / 0,65 / 0,85 / 1 – 0,25 bewusst ohne Stop (§2.5). */
+export const WEATHER_RATING_STOPS: readonly (readonly [
+  score: number,
+  rgb: readonly [number, number, number],
+])[] = [
+  [0, [216, 67, 59]],
+  [0.45, [224, 123, 43]],
+  [0.65, [217, 181, 43]],
+  [0.85, [63, 174, 76]],
+  [1, [63, 174, 76]],
+];
+
+/** Neutraler Grund, in den die Ampel bei Tageslicht eingeblendet wird. */
+export const WEATHER_NEUTRAL: readonly [number, number, number] = [31, 37, 46];
+
+/** Windstufen `wind10Kmh` (km/h, obere Grenze inklusiv); darüber die letzte Farbe. */
+export const WEATHER_WIND_STEPS: readonly (readonly [maxKmh: number, color: string])[] = [
+  [10, '#3fae4c'],
+  [20, '#8fbf2f'],
+  [30, '#d9b52b'],
+  [40, '#e07b2b'],
+];
+export const WEATHER_WIND_MAX = '#d8433b';
+
 /** Anzahl der Zielfarben `chart-series-n` (AP-13f). */
 export const CHART_SERIES_COUNT = 6;
 
@@ -242,6 +300,7 @@ export function renderTokensCss(): string {
     decl(BASE),
     decl(CHART),
     decl(SKY),
+    decl(WEATHER),
     decl(COLORS.light),
     decl(DENSITY.normal),
     space,

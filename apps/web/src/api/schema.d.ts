@@ -4966,6 +4966,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/sites/{id}/weather": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Astro-Wetter des Standorts (7 Tage, stündlich; letzter Stand aus weather_cache)
+         * @description Aktion: `project.read` · FA-WET-01, FA-WET-04, FA-WET-07, S-50
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Wettervorhersage */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["WeatherView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/projects": {
         parameters: {
             query?: never;
@@ -12341,6 +12410,170 @@ export interface components {
                 nightWindowEndUtc: string;
             }[];
         };
+        WeatherView: {
+            /** Format: uuid */
+            siteId: string;
+            latitudeDeg: number;
+            longitudeDeg: number;
+            timeZone: string;
+            /** @enum {string} */
+            status: "ready" | "pending";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fetchedAtUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            expiresAtUtc: string | null;
+            modelSet: string | null;
+            /** @enum {string} */
+            region: "europe" | "other";
+            /** @enum {string} */
+            cmp3: "gem" | "nbm" | "base";
+            /** @enum {number} */
+            days: 7;
+            hours: components["schemas"]["WeatherHourView"][];
+            nights: components["schemas"]["WeatherNightView"][];
+            nightWindows: {
+                /** Format: date */
+                night: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+            }[];
+            darkWindows: {
+                /** Format: date */
+                night: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+            }[];
+            tzdataVersion: string;
+            timeZoneTransitions: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+                utcOffsetMinutes: number;
+            }[];
+        };
+        WeatherHourView: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            tUtc: string;
+            cloudTotalPct: number | null;
+            cloudLowPct: number | null;
+            cloudMidPct: number | null;
+            cloudHighPct: number | null;
+            cloudEcmwfPct: number | null;
+            cloudCmp3Pct: number | null;
+            tempC: number | null;
+            dewPointC: number | null;
+            humidityPct: number | null;
+            wind10Kmh: number | null;
+            gust10Kmh: number | null;
+            windDir10Deg: number | null;
+            wind250Kmh: number | null;
+            windDir250Deg: number | null;
+            wind500Kmh: number | null;
+            windDir500Deg: number | null;
+            wind700Kmh: number | null;
+            windDir700Deg: number | null;
+            wind850Kmh: number | null;
+            windDir850Deg: number | null;
+            surfacePressureHPa: number | null;
+            visibilityM: number | null;
+            precipMm: number | null;
+            precipProbPct: number | null;
+            weatherCode: number | null;
+            aod: number | null;
+            dustUgM3: number | null;
+            pwvMm: number | null;
+            jetKmh: number | null;
+            shearKmh: number | null;
+            moonAltDeg: number | null;
+            sunAltDeg: number;
+            modelId: ("d2" | "eu" | "global" | "dini" | "hrrr" | "gem" | "gfs") | string;
+            /** @enum {string|null} */
+            cloudSrc: "dini" | "gem" | null;
+            nest: boolean;
+            aerosolMissing: boolean;
+            seeingIncomplete: boolean;
+            cloudScore: number | null;
+            seeingScore: number | null;
+            transparencyScore: number | null;
+            overallScore: number | null;
+            ratingIndex: number | null;
+        };
+        WeatherNightView: {
+            /** Format: date */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darkFromUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darkToUtc: string | null;
+            nightMean: number | null;
+            ratingIndex: number | null;
+            coveredSec: number;
+            darknessSec: number;
+            coverage: number | null;
+            moonlessSec: number;
+            bestWindow: components["schemas"]["WeatherBestWindow"];
+            aerosolMissing: boolean;
+            seeingIncomplete: boolean;
+            moonIllumPct: number;
+            moonEvents: {
+                /** @enum {string} */
+                type: "rise" | "set";
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                atUtc: string;
+            }[];
+        };
+        WeatherBestWindow: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fromUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            toUtc: string;
+            sec: number;
+            moonFreeSec: number;
+            meanScore: number;
+            fair: boolean;
+        } | null;
         ProjectListItem: {
             /**
              * Format: uuid

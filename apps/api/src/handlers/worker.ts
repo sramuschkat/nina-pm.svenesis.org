@@ -2,10 +2,17 @@
 import { S3Client } from '@aws-sdk/client-s3';
 import {
   deleteExpiredInvitations,
+  EquipmentRepository,
   expireSubmissions,
+  JobRepository,
+  latestWeather,
   recordTenantStorage,
+  saveWeather,
+  siteNightRunDone,
   tenantIdsForStorage,
+  weatherSites,
 } from '@nina-pm/db';
+import { ENGINE_VERSION } from '@nina-pm/engine';
 import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
 import { emitDsqlRetries } from '../lib/metrics';
@@ -29,6 +36,8 @@ import {
   type SessionOpsDeps,
 } from '../worker/session-ops';
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
+import { httpClient } from '../lib/http-client';
+import { weatherJobHandler, weatherTick, type WeatherJobDeps } from '../weather/job';
 
 // Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
 emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-worker');
@@ -57,6 +66,13 @@ const sessionJobs: SessionJobDeps = {
   enqueue: async (tenantId, input) =>
     (await lambdaDatabase()).repositories({ tenantId }).job.enqueue(input),
 };
+const weather: WeatherJobDeps = {
+  http: httpClient({ version: ENGINE_VERSION }),
+  latest: async (lat, lon) => latestWeather((await lambdaDatabase()).db, lat, lon),
+  save: async (entry) => saveWeather((await lambdaDatabase()).db, entry),
+  site: async (tenantId, siteId) =>
+    new EquipmentRepository((await lambdaDatabase()).db, { tenantId }).site(siteId),
+};
 const jobs: JobRunnerDeps = {
   queue: async () => (await lambdaDatabase()).jobQueue(),
   handlers: {
@@ -66,6 +82,7 @@ const jobs: JobRunnerDeps = {
     session_report: sessionReportHandler(sessionJobs),
     reconcile: reconcileJobHandler(sessionOps),
     catalog_refresh: catalogRefreshHandler({ db: async () => (await lambdaDatabase()).db }),
+    weather: weatherJobHandler(weather),
   },
 };
 
@@ -79,6 +96,20 @@ const maintenance = {
     const r = await sessionTick(sessionOps, new Date());
     if (r.stale > 0 || r.closing > 0) logger.info('sessions_tick', r);
     return r;
+  },
+  weather: async () => {
+    const db = (await lambdaDatabase()).db;
+    const runs = await weatherTick(
+      {
+        sites: () => weatherSites(db),
+        enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
+        runDone: (tenantId, key) => siteNightRunDone(db, tenantId, key),
+      },
+      jobs,
+      new Date(),
+    );
+    logger.info('weather_sites', { runs });
+    return runs;
   },
   reconcileSiteNights: async () => {
     const runs = await reconcileSiteTick(effort, jobs, new Date());

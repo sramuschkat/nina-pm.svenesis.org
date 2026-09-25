@@ -12,6 +12,7 @@ import { useCan } from '../../auth';
 import { CoordinateInput } from '../../components/CoordinateInput';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { SiteWeather } from '../weather/SiteWeather';
 import styles from './equipment.module.css';
 import {
   CheckField,
@@ -363,7 +364,9 @@ export function SitesPage() {
               {t('equipment.sites.weatherSafety')}
             </a>
           ) : null}
-          <p className={styles.muted}>{t('equipment.sites.weatherLater')}</p>
+          {editor.selected ? (
+            <SiteWeather siteId={editor.selected.id} siteName={editor.selected.name} compact />
+          ) : null}
         </aside>
       </div>
       <DeleteDialog dialog={editor.del.dialog} />
