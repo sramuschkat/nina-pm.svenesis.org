@@ -24,6 +24,7 @@ import {
 } from '@nina-pm/engine';
 import type { DsoNight } from '@nina-pm/shared';
 import { isoUtc } from '../lib/format';
+import { sampleWeight } from './score';
 import type { CatalogRow } from './search';
 
 export interface NightMeta {
@@ -36,7 +37,12 @@ export interface NightMeta {
 
 export interface NightEvaluator {
   readonly meta: NightMeta;
-  metrics(row: CatalogRow): DsoNight;
+  metrics(row: CatalogRow): Omit<DsoNight, 'score'>;
+  /**
+   * Zielvorschläge (FA-FRM-13): mit Höhe und Mond gewichtete Stunden im Dunkeln (5-min-Slots, Höhe zu
+   * Slotbeginn) und die Dauer der Dunkelheit; `null` ohne Dunkelheit an der gewählten Grenze.
+   */
+  weighted(row: CatalogRow, kind: string): { weightedHours: number; darkHours: number } | null;
 }
 
 export interface NightEvaluatorInput {
@@ -70,21 +76,58 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
       crossings.kind === 'normal' && crossings.endUtc !== null ? iso(crossings.endUtc) : null,
     moonIllumPct: mid ? Math.round(mid.illumPct) : null,
   };
-  const memo = new Map<string, DsoNight>();
+  const memo = new Map<string, Omit<DsoNight, 'score'>>();
+  const weightedMemo = new Map<string, { weightedHours: number; darkHours: number } | null>();
   // Wie buildEligibility: Sonne und Mindesthöhe auf 1e-6 quantisiert verglichen.
   const sunOk = ctx.sunAltDeg.map((a) => q(a, 1e6) < q(sunLimit, 1e6));
   const lst = ctx.boundaryUtc.map((t) => localApparentSiderealDeg(t, ctx.site.lonDeg));
   const minAlt = q(input.minAltDeg, 1e6);
   const S = ctx.slotCount;
 
-  const compute = (row: CatalogRow): DsoNight => {
-    const place = targetApparent({ raJ2000Deg: row.raDeg, decJ2000Deg: row.decDeg }, ctx.jdeMid);
+  // Mond je Slotgrenze als Einheitsvektor (scheinbar, topozentrisch) – Abstand ohne weitere Trigonometrie.
+  const moonVec = ctx.moon.map((m) => (m.altDeg > 0 ? unit(m.raDeg, m.decDeg) : null));
+  const darkSlots: number[] = [];
+  for (let s = 0; s < S; s += 1) if (sunOk[s] && sunOk[s + 1]) darkSlots.push(s);
+  const darkHours = (darkSlots.length * 300) / 3600;
+
+  const placeOf = (row: CatalogRow) =>
+    targetApparent({ raJ2000Deg: row.raDeg, decJ2000Deg: row.decDeg }, ctx.jdeMid);
+  const altitudesOf = (place: { raDeg: number; decDeg: number }) =>
+    lst.map((l) =>
+      apparentAltitudeDeg(altAz(norm180(l - place.raDeg), place.decDeg, ctx.site.latDeg).altDeg),
+    );
+
+  const computeWeighted = (row: CatalogRow, kind: string) => {
+    if (darkSlots.length === 0) return null;
+    const place = placeOf(row);
+    const alt = altitudesOf(place);
+    const p = unit(place.raDeg, place.decDeg);
+    let sum = 0;
+    for (const s of darkSlots) {
+      const m = moonVec[s];
+      const sample = ctx.moon[s];
+      const moon =
+        m && sample
+          ? {
+              up: true,
+              illumFraction: sample.illumPct / 100,
+              sepDeg:
+                (Math.acos(Math.max(-1, Math.min(1, m[0] * p[0] + m[1] * p[1] + m[2] * p[2]))) *
+                  180) /
+                Math.PI,
+            }
+          : null;
+      sum += sampleWeight(alt[s] as number, moon, kind);
+    }
+    return { weightedHours: (sum * 300) / 3600, darkHours };
+  };
+
+  const compute = (row: CatalogRow): Omit<DsoNight, 'score'> => {
+    const place = placeOf(row);
     const visibility = culminationVisibility(ctx.site.latDeg, place.decDeg, input.minAltDeg);
     if (visibility === 'never')
       return { visibility, usableHours: 0, peakAltDeg: null, peakUtc: null, moonSepDeg: null };
-    const alt = lst.map((l) =>
-      apparentAltitudeDeg(altAz(norm180(l - place.raDeg), place.decDeg, ctx.site.latDeg).altDeg),
-    );
+    const alt = altitudesOf(place);
     const ok = alt.map((a, k) => sunOk[k] === true && q(a, 1e6) >= minAlt);
     let usableSlots = 0;
     for (let s = 0; s < S; s += 1) if (ok[s] && ok[s + 1]) usableSlots += 1;
@@ -118,8 +161,19 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
       }
       return m;
     },
+    weighted(row, kind) {
+      const key = `${row.primaryId}:${kind}`;
+      if (!weightedMemo.has(key)) weightedMemo.set(key, computeWeighted(row, kind));
+      return weightedMemo.get(key) ?? null;
+    },
   };
 }
+
+const unit = (raDeg: number, decDeg: number): [number, number, number] => {
+  const ra = (raDeg * Math.PI) / 180;
+  const dec = (decDeg * Math.PI) / 180;
+  return [Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec)];
+};
 
 /** Die letzten Auswertungen (Standort × Nacht × Mindesthöhe × Dämmerung) bleiben im Speicher. */
 const MAX_EVALUATORS = 8;

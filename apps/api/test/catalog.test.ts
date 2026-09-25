@@ -211,6 +211,35 @@ describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
     }
   });
 
+  it('Beste der Nacht: nur Kandidaten, absteigend bewertet, mit Filterempfehlung (FA-FRM-13)', async () => {
+    const r = await search(
+      `siteId=${siteId}&night=2026-10-20&sort=score&rigFovArcmin=100&candidates=true&limit=50`,
+    );
+    expect(r.total).toBeGreaterThan(50);
+    const scores = r.items.map((i) => i.night?.score ?? -1);
+    for (const x of scores) expect(x).toBeGreaterThan(0);
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+    for (const i of r.items) {
+      expect(i.filterHint).not.toBeNull();
+      expect(i.night?.peakAltDeg ?? 0).toBeGreaterThanOrEqual(20);
+    }
+    const nebulae = await search(
+      `siteId=${siteId}&night=2026-10-20&sort=score&rigFovArcmin=100&candidates=true&family=nebulae&limit=20`,
+    );
+    for (const i of nebulae.items)
+      expect([
+        'planetary_nebula',
+        'emission_nebula',
+        'reflection_nebula',
+        'dark_nebula',
+        'supernova_remnant',
+      ]).toContain(i.group);
+    const noFov = await s.request(`/api/web/v1/dso?siteId=${siteId}&sort=score`, {
+      cookies: tenantCookies,
+    });
+    expect(noFov.status).toBe(422);
+  });
+
   it('Nachtfilter ohne Standort → 422, fremder Standort → 404', async () => {
     const bad = await s.request('/api/web/v1/dso?minUsableHours=2', { cookies: tenantCookies });
     expect(bad.status).toBe(422);
@@ -291,6 +320,35 @@ describe('Katalogobjekt am Projekt (Katalogsuche im Editor)', () => {
       body: { id: crypto.randomUUID(), name: 'X', dsoObjectId: crypto.randomUUID() },
     });
     expect(unknown.status).toBe(422);
+  });
+});
+
+describe('GET /api/web/v1/dso/region (FA-FRM-09)', () => {
+  it('Objekte im Umkreis, hellste zuerst, Dichte über magMax', async () => {
+    const res = await s.request('/api/web/v1/dso/region?ra=10.68&dec=41.27&radius=3&magMax=11', {
+      cookies: tenantCookies,
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { primaryId: string; mag: number | null }[];
+      total: number;
+    };
+    expect(body.items[0]?.primaryId).toBe('NGC 224');
+    expect(body.items.map((i) => i.primaryId)).toEqual(
+      expect.arrayContaining(['NGC 221', 'NGC 205']),
+    );
+    const mags = body.items.map((i) => i.mag ?? 12);
+    expect(mags).toEqual([...mags].sort((a, b) => a - b));
+    const sparse = (await (
+      await s.request('/api/web/v1/dso/region?ra=10.68&dec=41.27&radius=3&magMax=6', {
+        cookies: tenantCookies,
+      })
+    ).json()) as { total: number };
+    expect(sparse.total).toBeLessThan(body.total);
+    const bad = await s.request('/api/web/v1/dso/region?ra=400&dec=0&radius=1', {
+      cookies: tenantCookies,
+    });
+    expect(bad.status).toBe(422);
   });
 });
 

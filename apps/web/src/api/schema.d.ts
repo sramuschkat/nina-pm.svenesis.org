@@ -8681,7 +8681,10 @@ export interface paths {
                     minAltDeg?: number | null;
                     twilight?: "astronomical" | "nautical" | "civil";
                     minUsableHours?: number | null;
-                    sort?: "name" | "mag" | "size" | "usable" | "altitude";
+                    rigFovArcmin?: number;
+                    candidates?: "true" | "false";
+                    family?: "galaxies" | "nebulae" | "clusters";
+                    sort?: "name" | "mag" | "size" | "usable" | "altitude" | "score";
                     limit?: number;
                     offset?: number | null;
                 };
@@ -8720,6 +8723,78 @@ export interface paths {
                 };
                 /** @description Standort nicht gefunden */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/dso/region": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Katalog-Overlay der Sternkarte: Objekte in einem Himmelsausschnitt
+         * @description Aktion: `catalog.read` · FA-FRM-09, S-20
+         */
+        get: {
+            parameters: {
+                query: {
+                    ra?: number | null;
+                    dec?: number | null;
+                    radius: number;
+                    magMax?: number | null;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Objekte im Ausschnitt */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DsoRegion"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13699,6 +13774,8 @@ export interface components {
             sizeMinorArcmin: number | null;
             positionAngleDeg: number | null;
             source: string;
+            /** @enum {string|null} */
+            filterHint: "narrowband" | "broadband" | null;
             night: components["schemas"]["DsoNight"];
         };
         DsoNight: {
@@ -13712,7 +13789,29 @@ export interface components {
              */
             peakUtc: string | null;
             moonSepDeg: number | null;
+            score: number | null;
         } | null;
+        DsoRegion: {
+            items: components["schemas"]["DsoMarker"][];
+            total: number;
+        };
+        DsoMarker: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            primaryId: string;
+            displayName: string;
+            /** @enum {string} */
+            group: "galaxy" | "open_cluster" | "globular_cluster" | "planetary_nebula" | "emission_nebula" | "reflection_nebula" | "dark_nebula" | "supernova_remnant" | "multiple_star" | "other";
+            raDeg: number;
+            decDeg: number;
+            mag: number | null;
+            sizeMajorArcmin: number | null;
+            sizeMinorArcmin: number | null;
+            positionAngleDeg: number | null;
+        };
         CatalogStatus: {
             dso: {
                 version: string;
