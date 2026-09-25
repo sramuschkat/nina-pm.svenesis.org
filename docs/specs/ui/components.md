@@ -167,6 +167,7 @@ Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederhe
 | Favorit · Zurück · vorige/nächste Nacht · externer Link (Projekt-Editor, AP-11b) | `star` · `arrow-left` · `chevron-left`/`chevron-right` · `external-link` |
 | Ziehen (Rangfolge S-32, Priorität S-30, AP-12b) | `grip-vertical` |
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
+| Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 

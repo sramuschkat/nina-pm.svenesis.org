@@ -124,11 +124,17 @@ export {
 } from './repositories/effort';
 export { SimulationRepository, type SimulationSave } from './repositories/simulation';
 export {
+  NINA_CALL_LOG_SIZE,
   NINA_SEEN_INTERVAL_MS,
   NinaInstanceRepository,
   NinaRigRepository,
+  ninaRecordCall,
   ninaTokenLookup,
   ninaTouch,
+  parseCallLog,
+  type NinaCallLog,
+  type NinaCallRecord,
+  type NinaInstanceOverview,
   type NinaInstanceRow,
   type NinaPrincipal,
 } from './repositories/nina';

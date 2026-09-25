@@ -19,6 +19,7 @@ import {
   PanelLeftOpen,
   Play,
   PlugZap,
+  RefreshCw,
   Save,
   Send,
   Settings,
@@ -99,6 +100,8 @@ export const actionIcons = {
   external: ExternalLink,
   /** Export als Datei (Planprotokoll CSV, S-40). */
   export: Download,
+  /** Aktualisieren (S-41). */
+  refresh: RefreshCw,
 } as const;
 
 /** Rahmen und Status. */

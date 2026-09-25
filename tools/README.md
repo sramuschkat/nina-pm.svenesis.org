@@ -6,6 +6,7 @@ Hilfswerkzeuge nach TK 3.1.
 - `deploy/` – `pnpm deploy:prod`, lokaler prod-Deploy **nur durch Sven** mit Admin-Profil (AP-02a, H-06). Claude Code führt es nie aus.
 - `deploy/src/test-dsql.ts` – `pnpm test:dsql` gegen einen kurzlebigen DSQL-Cluster **nur durch Sven** (H-22): Migrationen und Datenbank-Suites (AP-03, Protokoll `docs/test-runs/<datum>/ap-03/`); mit `--spike` die Prüfpunkte aus `spikes/dsql/` (AP-S1).
 - `astropm-oracle/` – Vergleichsorakel: C#-Original des Astro-PM-NINA-Plugins gegen Grids, `pnpm oracle:run`, CI `oracle.yml` (AP-13a).
-- `smoke/` – Smoke-Prüfung nach jedem Deploy: Platzhalterseite, SPA-Rewrite, HTTPS-Umleitung, Header-Politiken (AP-02a; Folgepakete erweitern).
+- `smoke/` – Smoke-Prüfung nach jedem Deploy: Platzhalterseite, SPA-Rewrite, HTTPS-Umleitung, Header-Politiken (AP-02a; Folgepakete erweitern); mit `TEST_RIG_TOKEN` die DB-Erreichbarkeit über den Bootstrap (AP-14c, SV-07).
+- `fake-plugin/` – eine komplette NINA-Nacht gegen `/api/nina/v1` (Bootstrap, ETag, Session, Plan, Aufnahmen mit Duplikaten und unzugeordnet, Neuplanung mit `tonight`, Ereignisse, Lease verloren per Hook, Offline-Nachmeldung, Zählerprüfung): `pnpm fake-plugin [--base-url <url>]` mit `TEST_RIG_TOKEN` aus der Umgebung; lokal als Test in `apps/api/test/nina-instances.test.ts`, nach jedem prod-Deploy im Test-Mandanten (AP-14c, H-24).
 
-Weitere Werkzeuge (`reference/`, `nina-test-server/`, `catalog-import/`, `catalog/`, `fake-plugin/`, `test-run-check/`, `fetch-nina-refs.ps1`, `discord-mock/`, `astropm-import/`) entstehen mit ihren Arbeitspaketen.
+Weitere Werkzeuge (`reference/`, `nina-test-server/`, `catalog-import/`, `catalog/`, `test-run-check/`, `fetch-nina-refs.ps1`, `discord-mock/`, `astropm-import/`) entstehen mit ihren Arbeitspaketen.

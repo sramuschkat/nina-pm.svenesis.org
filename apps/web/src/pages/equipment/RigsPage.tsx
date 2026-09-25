@@ -2,7 +2,7 @@
  * S-10 Rigs (FA-RIG-01…14, FA-SCH-01…10/17; FK 14.3): Kopf mit Rig-Auswahl, Name, Notizen und
  * Schaltern, darunter drei Spalten Standort / Teleskop / Kamera mit Kennwerten, abgeleitete Kennzahlen,
  * Scheduler-Einstellungen (Sortierkette per Ziehen, Flip, Flats, Overheads) und die Filterradbelegung
- * mit Zuordnung zu NINA. Gespeichert wird mit `If-Match` (`settingsVersion`, 412 bei parallelem
+ * mit Zuordnung zu NINA; zugeordnete NINA-Instanzen mit Übernahmestatus (AP-14c, FA-SIM-09). Gespeichert wird mit `If-Match` (`settingsVersion`, 412 bei parallelem
  * Speichern). Übernahmestatus in NINA und zugeordnete Instanzen folgen mit AP-14.
  */
 import {
@@ -44,6 +44,7 @@ import {
   validate,
   type FieldErrors,
 } from './shared';
+import { UptakeStatus } from '../nina/UptakeStatus';
 import { FilterWheelSection } from './FilterWheelSection';
 import { SortChainEditor } from './SortChainEditor';
 
@@ -475,6 +476,12 @@ export function RigsPage() {
               ) : (
                 <FilterWheelSection rig={selected} canWrite={canSettings} />
               )}
+              <section className={styles.form} aria-labelledby="rig-nina-title">
+                <div className={styles.formTitle}>
+                  <h2 id="rig-nina-title">{t('nina.uptake.title')}</h2>
+                </div>
+                <UptakeStatus rigId={selected.id} settingsVersion={selected.settingsVersion} />
+              </section>
             </>
           ) : null}
         </>

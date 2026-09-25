@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@hono/node-server": "2.1.1",
+    "@nina-pm/fake-plugin": "workspace:*",
     "@types/aws-lambda": "8.10.163",
     "tsup": "^8.5.1",
     "yaml": "2.9.1"

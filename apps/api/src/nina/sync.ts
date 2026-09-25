@@ -31,11 +31,12 @@ import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
-import { projectView } from '../routes/web-projects';
+import { filterPlanSummary, projectView } from '../routes/web-projects';
 import type { ApiServices } from '../routes/services';
 
 type Bootstrap = z.output<typeof nina.NinaBootstrap>;
 type Targets = z.output<typeof nina.NinaTargets>;
+type NinaRigDelivery = z.output<typeof nina.NinaRigDelivery>;
 type PlanRequest = z.output<typeof nina.NinaPlanRequest>;
 type PlanResponse = z.output<typeof nina.NinaPlanResponse>;
 
@@ -47,7 +48,9 @@ const SORT_KEYS = new Set<string>(sortChainKeys);
 
 const iso = (d: Date) => isoUtc(d);
 
-async function rigData(svc: ApiServices, p: NinaPrincipal) {
+type RigRef = Pick<NinaPrincipal, 'tenantId' | 'rigId'>;
+
+async function rigData(svc: ApiServices, p: RigRef) {
   const repos = svc.repositories({ tenantId: p.tenantId });
   const eq = repos.equipment();
   const rig = await eq.rig(p.rigId);
@@ -183,7 +186,7 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
 /** Auslieferbare Projekte des Rigs für eine Nacht (`isDeliverable`, TK 6.3). */
 async function deliverable(
   svc: ApiServices,
-  p: NinaPrincipal,
+  p: RigRef,
   rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
   night: string,
 ): Promise<ProjectDetail[]> {
@@ -239,8 +242,55 @@ function targetsEtag(
 
 export async function targets(
   svc: ApiServices,
-  p: NinaPrincipal,
+  p: RigRef,
 ): Promise<{ body: Targets; etag: string }> {
+  const { body, etag } = await targetsData(svc, p);
+  return { body, etag };
+}
+
+/**
+ * „An NINA ausgeliefert“ (S-41, FA-NIN-22): dieselbe Liste wie `targets` für das Rig, je Ziel mit Stand und
+ * Fortschritt je Filter. Nur Deep-Sky, solange Exoplaneten nicht ausgeliefert werden (R4).
+ */
+export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDelivery> {
+  const d = await targetsData(svc, p);
+  const confirmed = d.confirmed;
+  return {
+    rigId: p.rigId,
+    rigName: d.rig.name,
+    deliveryEnabled: d.rig.ninaDeliveryEnabled,
+    night: d.night,
+    generatedAtUtc: d.body.generatedAtUtc,
+    settingsVersion: d.rig.settingsVersion,
+    targetsEtag: d.etag,
+    items: d.details.map((x) => {
+      const pv = projectView(x);
+      return {
+        id: pv.id,
+        name: pv.name,
+        targetName: pv.targetName,
+        projectType: x.project.projectType as 'deep_sky' | 'exoplanet',
+        status: pv.status ?? 'active',
+        priority: pv.priority,
+        version: pv.version,
+        updatedAt: pv.updatedAt,
+        panelCount: Math.max(1, pv.panels.length),
+        raDeg: pv.raDeg ?? pv.panels[0]?.raDeg ?? null,
+        decDeg: pv.decDeg ?? pv.panels[0]?.decDeg ?? null,
+        rotationDeg: pv.rotationDeg ?? pv.panels[0]?.rotationDeg ?? null,
+        filters: filterPlanSummary(x).map((f) => ({
+          filterId: f.filterId,
+          filterShortName: f.filterShortName,
+          ninaFilterName: f.filterId === null ? null : (confirmed.get(f.filterId) ?? null),
+          planned: f.planned,
+          accepted: f.accepted,
+        })),
+      };
+    }),
+  };
+}
+
+async function targetsData(svc: ApiServices, p: RigRef) {
   const now = svc.now();
   const d = await rigData(svc, p);
   const view = rigView(d.rig, d.telescope, d.camera);
@@ -354,6 +404,10 @@ export async function targets(
   return {
     body,
     etag: targetsEtag(d.rig.settingsVersion, d.rig.filterWheel, deepSky, rejected),
+    details: deepSky,
+    confirmed,
+    night,
+    rig: d.rig,
   };
 }
 

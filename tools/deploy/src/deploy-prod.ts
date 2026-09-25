@@ -4,7 +4,7 @@
  * NUR Sven führt dieses Skript aus, lokal mit seinem Admin-Profil. Claude Code führt es nie aus,
  * und GitHub hat keinen AWS-Zugang. Ablauf im Grundzug (AP-02a):
  *   Vorbedingungen → cdk diff → Bestätigung → cdk deploy --all → Hinweise → Smoke-Test.
- * Folgepakete ergänzen: Fake-Plugin-Nacht (AP-14c).
+ * AP-14c: mit `TEST_RIG_TOKEN` (H-24) Smoke-Schritt DB-Erreichbarkeit und Fake-Plugin-Nacht im Test-Mandanten.
  * AP-02b: Vorprüfung /nina-pm/origin-verify, Smoke mit /api/health und Direktaufruf der execute-api-Adresse.
  * AP-03: bei neuen Migrationen test:dsql grün für den Stand (H-22) und On-Demand-Backup vor dem Deploy.
  */
@@ -14,6 +14,7 @@ import { stdin, stdout } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { config } from '@nina-pm/infra/config';
+import { printReport, runFakeNight } from '@nina-pm/fake-plugin';
 import { runSmoke } from '@nina-pm/smoke';
 import { loadMigrations, migrationsHash } from '@nina-pm/db/migrate';
 import { findGreenProtocol } from './dsql/protocol';
@@ -352,11 +353,12 @@ async function main(): Promise<void> {
 
   step(`Smoke-Test https://${config.domainName}`);
   const executeApiUrl = outputs['NinaPm-Api']?.ApiEndpoint;
-  const results = await runSmoke(
-    `https://${config.domainName}`,
-    fetch,
-    executeApiUrl ? { executeApiUrl } : {},
-  );
+  // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
+  const testRigToken = process.env.TEST_RIG_TOKEN?.trim() || undefined;
+  const results = await runSmoke(`https://${config.domainName}`, fetch, {
+    ...(executeApiUrl ? { executeApiUrl } : {}),
+    ...(testRigToken ? { testRigToken } : {}),
+  });
   for (const r of results)
     console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ` – ${r.detail}`}`);
   if (results.some((r) => !r.ok)) {
@@ -366,6 +368,23 @@ async function main(): Promise<void> {
   }
 
   // AP-14c: Fake-Plugin-Nacht im Test-Mandanten mit TEST_RIG_TOKEN aus der lokalen Umgebung (H-24).
+  if (testRigToken) {
+    step('Fake-Plugin-Nacht im Test-Mandanten (TK 17)');
+    const night = await runFakeNight({
+      baseUrl: `https://${config.domainName}`,
+      token: testRigToken,
+    });
+    printReport(night);
+    if (!night.ok) {
+      fail(
+        'Fake-Plugin-Nacht rot. Rollback: vorherigen Tag auschecken und `pnpm deploy:prod` erneut ausführen (TK 18).',
+      );
+    }
+  } else {
+    console.log(
+      '\n! TEST_RIG_TOKEN fehlt (H-24): DB-Erreichbarkeit und Fake-Plugin-Nacht übersprungen.',
+    );
+  }
 
   console.log('\n✓ Deploy abgeschlossen.');
 }

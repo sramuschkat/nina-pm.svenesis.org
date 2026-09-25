@@ -7979,6 +7979,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/nina-instances/{id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diagnose einer Instanz: letzte Aufrufe, Fehler, Versionen, letzter Heartbeat
+         * @description Aktion: `nina.instance.read` · FA-ADM-06, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Diagnose */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaInstanceDiagnostics"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/rigs/{id}/lease/release": {
         parameters: {
             query?: never;
@@ -8138,6 +8207,75 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/web/v1/rigs/{id}/delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * An NINA ausgeliefert: Ziele, die das Plugin dieses Rigs jetzt erhält
+         * @description Aktion: `project.read` · FA-NIN-22, S-41, TK 7.2
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Auslieferung */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaRigDelivery"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/nina/v1/bootstrap": {
@@ -12499,7 +12637,51 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             createdAt: string;
+            rigName: string;
+            rigSettingsVersion: number;
+            siteTimeZone: string;
+            profileLocation: {
+                latDeg: number;
+                lonDeg: number;
+            } | null;
+            profileSiteMismatch: boolean;
+            lastState: components["schemas"]["NinaInstanceState"];
+            lease: components["schemas"]["RigLeaseView"];
         };
+        NinaInstanceState: {
+            /** @enum {string} */
+            state: "running" | "idle" | "paused" | "flats" | "offline" | "blocked";
+            /** @enum {string|null} */
+            blockedReason: "lease_lost" | "rig_busy" | "token_invalid" | "clock_skew" | "plan_failed" | "engine_incompatible" | "tenant_locked" | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            receivedAtUtc: string | null;
+            mismatchCodes: ("flip_trigger_missing" | "flip_timing_mismatch" | "recenter_after_flip_on" | "rotator_unavailable" | "rotator_range_quarter" | "plate_solve_tolerance" | "mount_epoch_unsupported" | "mount_site_mismatch" | "nina_dither_trigger_present" | "af_time_trigger_missing" | "af_time_mismatch" | "filter_wheel_changed")[];
+        } | null;
+        RigLeaseView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            activeSessionId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            untilUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            offlineUntilUtc: string | null;
+        } | null;
         NinaInstanceCreated: {
             /**
              * Format: uuid
@@ -12533,6 +12715,16 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             createdAt: string;
+            rigName: string;
+            rigSettingsVersion: number;
+            siteTimeZone: string;
+            profileLocation: {
+                latDeg: number;
+                lonDeg: number;
+            } | null;
+            profileSiteMismatch: boolean;
+            lastState: components["schemas"]["NinaInstanceState"];
+            lease: components["schemas"]["RigLeaseView"];
             token: string;
         };
         NinaInstanceCreate: {
@@ -12547,6 +12739,84 @@ export interface components {
              */
             rigId: string;
             name: string;
+        };
+        NinaInstanceDiagnostics: {
+            instance: components["schemas"]["NinaInstanceView"];
+            calls: components["schemas"]["NinaCallEntry"][];
+            errors: components["schemas"]["NinaCallEntry"][];
+            heartbeat: {
+                [key: string]: unknown;
+            } | null;
+        };
+        NinaCallEntry: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+            /** @enum {string} */
+            method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+            route: string;
+            status: number;
+            code: string | null;
+            durationMs: number;
+        };
+        NinaRigDelivery: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            deliveryEnabled: boolean;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAtUtc: string;
+            settingsVersion: number;
+            targetsEtag: string;
+            items: components["schemas"]["NinaDeliveryItem"][];
+        };
+        NinaDeliveryItem: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            targetName: string | null;
+            /** @enum {string} */
+            projectType: "deep_sky" | "exoplanet";
+            /** @enum {string} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+            priority: number;
+            version: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+            panelCount: number;
+            raDeg: number | null;
+            decDeg: number | null;
+            rotationDeg: number | null;
+            filters: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                filterId: string | null;
+                filterShortName: string;
+                ninaFilterName: string | null;
+                planned: number;
+                accepted: number;
+            }[];
         };
         NinaBootstrap: {
             /** @enum {string} */

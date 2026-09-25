@@ -712,6 +712,14 @@ async function projectExamples(): Promise<Record<string, Example>> {
         body: { exposureLineId: crypto.randomUUID() },
         okStatus: 404,
       },
+      'GET /api/web/v1/nina-instances/{id}/diagnostics': {
+        url: `/api/web/v1/nina-instances/${instance.id}/diagnostics`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'GET /api/web/v1/rigs/{id}/delivery': {
+        url: `/api/web/v1/rigs/${common.rigId}/delivery`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'POST /api/web/v1/nina-instances/{id}/revoke': {
         url: `/api/web/v1/nina-instances/${instance.id}/revoke`,
         method: 'POST',

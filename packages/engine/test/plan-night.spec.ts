@@ -203,6 +203,25 @@ describe('Plan (TK 7.6)', () => {
     expect(plan.outputHash).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 
+  it('Neuplanung mit startAtUtc vor dem Nachtfenster ≡ Erstplan (§5.3); danach kein Absturz', () => {
+    const target = project({ lines: 2 });
+    const first = planNight(input([target]));
+    const tonight = {
+      pastBlocks: [],
+      exposedSecByUnit: {},
+      lastAutofocusUtc: null,
+      filterCycle: [],
+      flipDoneByPanel: {},
+      currentUnitId: null,
+    };
+    const early = planNight(input([target], { startAtUtc: '2026-09-17T14:05:00Z', tonight }));
+    const strip = (p: typeof first) =>
+      p.blocks.map((b) => Object.fromEntries(Object.entries(b).filter(([k]) => k !== 'id')));
+    expect(strip(early)).toEqual(strip(first));
+    const late = planNight(input([target], { startAtUtc: '2026-09-18T14:00:00Z', tonight }));
+    expect(late.blocks).toEqual([]);
+  });
+
   it('Filterrad: Zeile ohne ninaFilterName nimmt nicht teil → filter_not_found mit lineId (NT-E1)', () => {
     const p = project({ ninaFilterName: null });
     const lineId = p.panels[0]?.lines[0]?.id ?? '';

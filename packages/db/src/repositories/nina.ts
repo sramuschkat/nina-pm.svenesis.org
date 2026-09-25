@@ -13,6 +13,81 @@ import { TenantRepo, type TenantContext } from './base';
 
 export type NinaInstanceRow = Selectable<NinaInstanceTable>;
 
+/** Instanz mit Rig, Standort und Lease für S-42 und den Übernahmestatus (FA-SIM-09, FA-ADM-02). */
+export interface NinaInstanceOverview extends NinaInstanceRow {
+  readonly rigName: string;
+  readonly rigSettingsVersion: number;
+  readonly siteLatDeg: number;
+  readonly siteLonDeg: number;
+  readonly siteTimeZone: string;
+  readonly leaseActiveSessionId: string | null;
+  readonly leaseUntil: Date | null;
+  readonly leaseOfflineUntil: Date | null;
+  readonly leasePresent: boolean;
+}
+
+/** Eintrag im Ringpuffer `last_calls` (FA-ADM-06); Aufbau wie `nina.NinaCallEntry`. */
+export interface NinaCallRecord {
+  readonly atUtc: string;
+  readonly method: string;
+  readonly route: string;
+  readonly status: number;
+  readonly code: string | null;
+  readonly durationMs: number;
+}
+
+export interface NinaCallLog {
+  readonly calls: NinaCallRecord[];
+  readonly errors: NinaCallRecord[];
+}
+
+/** Je Liste höchstens so viele Einträge (neueste zuerst). */
+export const NINA_CALL_LOG_SIZE = 20;
+
+export function parseCallLog(raw: unknown): NinaCallLog {
+  const v = (typeof raw === 'string' ? JSON.parse(raw) : raw) as Partial<NinaCallLog> | null;
+  return {
+    calls: Array.isArray(v?.calls) ? v.calls : [],
+    errors: Array.isArray(v?.errors) ? v.errors : [],
+  };
+}
+
+/**
+ * Aufruf im Ringpuffer vermerken (FA-ADM-06): erfolgreiche Heartbeats nicht (sie zeigen `last_seen_at`
+ * und `last_state`), Antworten ≥ 400 zusätzlich in `errors`. Lesen und Schreiben in einer Transaktion
+ * mit `FOR UPDATE` (OCC-Retry über `withTx`).
+ */
+export async function ninaRecordCall(
+  db: Kysely<Database>,
+  p: { readonly instanceId: string; readonly tenantId: string },
+  entry: NinaCallRecord,
+  options: { readonly heartbeat: boolean },
+): Promise<void> {
+  const isError = entry.status >= 400;
+  if (options.heartbeat && !isError) return;
+  await withTx(db, async (trx) => {
+    const row = await trx
+      .selectFrom('ninaInstance')
+      .select('lastCalls')
+      .where('id', '=', p.instanceId)
+      .where('tenantId', '=', p.tenantId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!row) return;
+    const log = parseCallLog(row.lastCalls);
+    const next: NinaCallLog = {
+      calls: options.heartbeat ? log.calls : [entry, ...log.calls].slice(0, NINA_CALL_LOG_SIZE),
+      errors: isError ? [entry, ...log.errors].slice(0, NINA_CALL_LOG_SIZE) : log.errors,
+    };
+    await trx
+      .updateTable('ninaInstance')
+      .set({ lastCalls: JSON.stringify(next) })
+      .where('id', '=', p.instanceId)
+      .where('tenantId', '=', p.tenantId)
+      .execute();
+  });
+}
+
 export interface NinaPrincipal {
   readonly instanceId: string;
   readonly instanceName: string;
@@ -75,29 +150,74 @@ export async function ninaTouch(
 }
 
 export class NinaInstanceRepository extends TenantRepo {
-  list(rigId?: string): Promise<NinaInstanceRow[]> {
-    let q = this.db
-      .selectFrom('ninaInstance')
-      .selectAll()
-      .where('tenantId', '=', this.ctx.tenantId);
-    if (rigId) q = q.where('rigId', '=', rigId);
-    return q.orderBy('createdAt').orderBy('id').execute();
+  private overviewQuery() {
+    return this.db
+      .selectFrom('ninaInstance as n')
+      .innerJoin('rig as r', (j) =>
+        j.onRef('r.id', '=', 'n.rigId').onRef('r.tenantId', '=', 'n.tenantId'),
+      )
+      .innerJoin('site as s', (j) =>
+        j.onRef('s.id', '=', 'r.siteId').onRef('s.tenantId', '=', 'r.tenantId'),
+      )
+      .leftJoin('rigLease as l', (j) =>
+        j.onRef('l.rigId', '=', 'r.id').onRef('l.tenantId', '=', 'r.tenantId'),
+      )
+      .selectAll('n')
+      .select([
+        'r.name as rigName',
+        'r.settingsVersion as rigSettingsVersion',
+        's.latitudeDeg as siteLatDeg',
+        's.longitudeDeg as siteLonDeg',
+        's.timeZone as siteTimeZone',
+        'l.activeSessionId as leaseActiveSessionId',
+        'l.leaseUntil as leaseUntil',
+        'l.offlineUntil as leaseOfflineUntil',
+        'l.rigId as leaseRigId',
+      ])
+      .where('n.tenantId', '=', this.ctx.tenantId);
   }
 
-  byId(id: string): Promise<NinaInstanceRow | undefined> {
-    return this.db
-      .selectFrom('ninaInstance')
-      .selectAll()
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+  private static overview(
+    row: NinaInstanceRow & {
+      rigName: string;
+      rigSettingsVersion: number;
+      siteLatDeg: number;
+      siteLonDeg: number;
+      siteTimeZone: string;
+      leaseActiveSessionId: string | null;
+      leaseUntil: Date | string | null;
+      leaseOfflineUntil: Date | string | null;
+      leaseRigId: string | null;
+    },
+  ): NinaInstanceOverview {
+    const { leaseRigId, ...rest } = row;
+    const date = (v: Date | string | null) => (v === null ? null : new Date(v));
+    return {
+      ...rest,
+      rigSettingsVersion: Number(row.rigSettingsVersion),
+      leaseUntil: date(row.leaseUntil),
+      leaseOfflineUntil: date(row.leaseOfflineUntil),
+      leasePresent: leaseRigId !== null,
+    };
+  }
+
+  async list(rigId?: string): Promise<NinaInstanceOverview[]> {
+    let q = this.overviewQuery();
+    if (rigId) q = q.where('n.rigId', '=', rigId);
+    const rows = await q.orderBy('n.createdAt').orderBy('n.id').execute();
+    return rows.map((r) => NinaInstanceRepository.overview(r));
+  }
+
+  async byId(id: string): Promise<NinaInstanceOverview | undefined> {
+    const row = await this.overviewQuery().where('n.id', '=', id).executeTakeFirst();
+    return row ? NinaInstanceRepository.overview(row) : undefined;
   }
 
   /** Anlegen mit Client-UUID; das Rig muss im Mandanten existieren (sonst 404). */
   async create(
     input: { id: string; rigId: string; name: string; tokenHash: string; tokenPrefix: string },
     now: Date,
-  ): Promise<NinaInstanceRow> {
+  ): Promise<NinaInstanceOverview> {
     const rig = await this.db
       .selectFrom('rig')
       .select('id')
@@ -112,7 +232,7 @@ export class NinaInstanceRepository extends TenantRepo {
       .executeTakeFirst();
     if (existing)
       throw new ProblemError('validation.failed', [{ path: 'id', message: 'vergeben' }]);
-    return this.db
+    await this.db
       .insertInto('ninaInstance')
       .values({
         id: input.id,
@@ -124,21 +244,20 @@ export class NinaInstanceRepository extends TenantRepo {
         createdBy: this.ctx.memberId ?? null,
         createdAt: now,
       })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      .execute();
+    return (await this.byId(input.id)) as NinaInstanceOverview;
   }
 
   /** Widerruf wirkt sofort: die nächste Plugin-Anfrage findet `status = revoked` (401). */
-  async revoke(id: string): Promise<NinaInstanceRow> {
-    const row = await this.db
+  async revoke(id: string): Promise<NinaInstanceOverview> {
+    const done = await this.db
       .updateTable('ninaInstance')
       .set({ status: 'revoked' })
       .where('tenantId', '=', this.ctx.tenantId)
       .where('id', '=', id)
-      .returningAll()
       .executeTakeFirst();
-    if (!row) throw new ProblemError('resource.not_found');
-    return row;
+    if (Number(done.numUpdatedRows) === 0) throw new ProblemError('resource.not_found');
+    return (await this.byId(id)) as NinaInstanceOverview;
   }
 }
 

@@ -1,0 +1,189 @@
+/* NINA-Bereich (S-40…S-42): volle Breite ohne Obergrenze, Abstände über --npm-space-*, Farben über Tokens.
+   Tabellen, Felder und Knöpfe aus den Verwaltungsseiten. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.head {
+  composes: head from '../admin/admin.module.css';
+}
+.panel {
+  composes: panel from '../admin/admin.module.css';
+}
+.tableWrap {
+  composes: tableWrap from '../admin/admin.module.css';
+}
+.table {
+  composes: table from '../admin/admin.module.css';
+}
+.num {
+  composes: num from '../admin/admin.module.css';
+}
+.rowButton {
+  composes: rowButton from '../admin/admin.module.css';
+}
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+.form {
+  composes: form from '../admin/admin.module.css';
+}
+.row {
+  composes: row from '../admin/admin.module.css';
+}
+.field {
+  composes: field from '../admin/admin.module.css';
+}
+.input {
+  composes: input from '../admin/admin.module.css';
+}
+.label {
+  composes: label from '../admin/admin.module.css';
+}
+.button {
+  composes: button from '../admin/admin.module.css';
+}
+.buttonDanger {
+  composes: buttonDanger from '../admin/admin.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../admin/admin.module.css';
+}
+.actions {
+  composes: actions from '../admin/admin.module.css';
+}
+.pill {
+  composes: pill from '../admin/admin.module.css';
+}
+.pillOk {
+  composes: pillOk from '../admin/admin.module.css';
+}
+.pillWarn {
+  composes: pillWarn from '../admin/admin.module.css';
+}
+.pillDanger {
+  composes: pillDanger from '../admin/admin.module.css';
+}
+.linkBox {
+  composes: linkBox from '../admin/admin.module.css';
+}
+.code {
+  composes: code from '../admin/admin.module.css';
+}
+.section {
+  composes: section from '../admin/admin.module.css';
+}
+.nowrap {
+  composes: nowrap from '../admin/admin.module.css';
+}
+.rigCell {
+  min-width: 12rem;
+}
+.profile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--npm-space-1);
+}
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 3fr);
+  gap: var(--npm-space-5);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.info {
+  background: var(--npm-note-bg);
+  border-radius: var(--npm-radius);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  margin: 0;
+}
+.uptake {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.uptake li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-2);
+  align-items: baseline;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-3);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--npm-space-4);
+}
+.card {
+  composes: panel from '../admin/admin.module.css';
+  gap: var(--npm-space-2);
+}
+.card h3 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.cardHead h3 {
+  margin-right: auto;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.filters {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--npm-space-1) var(--npm-space-3);
+  align-items: center;
+  margin: 0;
+}
+.filterRow {
+  display: contents;
+}
+.filters dt {
+  font-weight: 600;
+}
+.filters dd {
+  margin: 0;
+  min-width: 0;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+.group h2 {
+  font-size: var(--npm-font-h3);
+  margin: 0;
+}
+.pre {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  font-family: var(--npm-font-mono, monospace);
+  font-size: var(--npm-font-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

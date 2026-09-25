@@ -261,7 +261,9 @@ export function planNight(input: PlanInput): NightPlan {
     mode: input.mode,
     slotS: SLOT_S,
     slots: n,
-    startAtS: input.startAtUtc === null ? null : rel(unixFromIso(input.startAtUtc)),
+    // §5.3: nur Slots mit Beginn < startAtUtc sind vergangen; ein Start vor dem Nachtfenster (Neuplanung
+    // am Nachmittag) lässt keinen vergangenen Slot übrig und ist gleichbedeutend mit dem Fensterbeginn.
+    startAtS: input.startAtUtc === null ? null : Math.max(0, rel(unixFromIso(input.startAtUtc))),
     moonAltDeg,
     settings: {
       strategy: sched.strategy,

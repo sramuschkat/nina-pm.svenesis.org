@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { headerProblems, runSmoke } from '../src/smoke';
+import { DB_CHECK_NAME, headerProblems, runSmoke } from '../src/smoke';
 
 const HTML_HEADERS = {
   'content-type': 'text/html',
@@ -149,5 +149,37 @@ describe('runSmoke', () => {
   it('ist rot, wenn die execute-api-Adresse fehlt', async () => {
     const results = await runSmoke('https://nina-pm.svenesis.org', fakeFetch());
     expect(failed(results)).toEqual(['Direktaufruf der execute-api-Adresse → 403']);
+  });
+});
+
+describe('DB-Erreichbarkeit mit Test-Rig-Token (SV-07, AP-14c)', () => {
+  const token = `npm_${'t'.repeat(43)}`;
+  const bootstrap = (status: number, body: string): Hit => ({ status, headers: API_HEADERS, body });
+
+  it('grün mit 200 und Bootstrap-Inhalt; ohne Token entfällt die Prüfung', async () => {
+    const ok = await runSmoke(
+      'https://nina-pm.svenesis.org',
+      fakeFetch({
+        '/api/nina/v1/bootstrap': bootstrap(200, '{"apiVersion":"1","rig":{"id":"r"}}'),
+      }),
+      { ...direct, testRigToken: token },
+    );
+    expect(failed(ok)).toEqual([]);
+    expect(ok.map((r) => r.name)).toContain(DB_CHECK_NAME);
+    const without = await runSmoke('https://nina-pm.svenesis.org', fakeFetch(), direct);
+    expect(without.map((r) => r.name)).not.toContain(DB_CHECK_NAME);
+  });
+
+  it('rot bei 401 mit Problem-Code; das Token steht in keiner Meldung', async () => {
+    const results = await runSmoke(
+      'https://nina-pm.svenesis.org',
+      fakeFetch({
+        '/api/nina/v1/bootstrap': bootstrap(401, '{"code":"nina.token_invalid"}'),
+      }),
+      { ...direct, testRigToken: token },
+    );
+    const db = results.find((r) => r.name === DB_CHECK_NAME);
+    expect(db).toMatchObject({ ok: false, detail: 'Status 401 (nina.token_invalid)' });
+    expect(JSON.stringify(results)).not.toContain(token);
   });
 });

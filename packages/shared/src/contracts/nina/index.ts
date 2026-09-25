@@ -2,6 +2,7 @@
 export * from './bootstrap';
 export * from './captures';
 export * from './common';
+export * from './delivery';
 export * from './events';
 export * from './heartbeat';
 export * from './instances';

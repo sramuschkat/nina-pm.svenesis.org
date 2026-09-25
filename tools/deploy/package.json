@@ -11,6 +11,7 @@
     "@aws-sdk/client-dsql": "3.1137.0",
     "@aws-sdk/client-sts": "3.1137.0",
     "@nina-pm/db": "workspace:*",
+    "@nina-pm/fake-plugin": "workspace:*",
     "@nina-pm/infra": "workspace:*",
     "@nina-pm/smoke": "workspace:*",
     "@nina-pm/spike-dsql": "workspace:*"

@@ -269,7 +269,7 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     now,
   );
   const commands = await sessions.commands(hb.ackedCommandIds ?? [], now);
-  const { etag } = await targets(svc, { ...p, lastState: hb });
+  const { etag } = await targets(svc, p);
   const fresh = await eq.rig(p.rigId);
   return {
     serverTimeUtc: isoUtc(now),
