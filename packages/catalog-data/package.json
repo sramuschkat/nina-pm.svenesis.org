@@ -7,11 +7,14 @@
     "data",
     "js",
     "openngc",
+    "sky",
     "README.md",
     "LICENSES.md"
   ],
   "exports": {
     "./openngc/dso-objects.json": "./openngc/dso-objects.json",
-    "./openngc/catalog-meta.json": "./openngc/catalog-meta.json"
+    "./openngc/catalog-meta.json": "./openngc/catalog-meta.json",
+    "./sky/sky.json": "./sky/sky.json",
+    "./data/stars-8.bin": "./data/stars-8.bin"
   }
 }

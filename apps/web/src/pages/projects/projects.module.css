@@ -690,3 +690,14 @@ tr[data-selected='true'] td {
   font-weight: 600;
   font-size: var(--npm-font-small);
 }
+
+/* Hinweis und Link zur Sternkarte (S-31 → S-20, AP-21) */
+.skyMapRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.skyMapRow p {
+  margin: 0;
+}

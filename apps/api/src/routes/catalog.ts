@@ -7,9 +7,17 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { dsoCatalogStatus, enqueueSystemJob, readDsoCatalog } from '@nina-pm/db';
 import meta from '@nina-pm/catalog-data/openngc/catalog-meta.json' with { type: 'json' };
-import { CatalogStatus, DsoList, DsoQuery, JobAccepted, ProblemError } from '@nina-pm/shared';
+import {
+  CatalogStatus,
+  DsoList,
+  DsoQuery,
+  DsoRegion,
+  DsoRegionQuery,
+  JobAccepted,
+  ProblemError,
+} from '@nina-pm/shared';
 import { cachedNightEvaluator, nightEvaluator, type NightEvaluator } from '../catalog/night';
-import { cachedCatalog, searchDso } from '../catalog/search';
+import { cachedCatalog, searchDso, searchRegion } from '../catalog/search';
 import { requireTenant } from './tenant';
 import { buildNightTable, siteNights } from '../lib/night-table';
 import type { ApiEnv } from '../lib/env';
@@ -42,6 +50,22 @@ export const dsoSearchRoute = defineRoute(
   },
 );
 
+export const dsoRegionRoute = defineRoute(
+  { action: 'catalog.read', requirements: ['FA-FRM-09', 'S-20'] },
+  {
+    method: 'get',
+    path: '/api/web/v1/dso/region',
+    summary: 'Katalog-Overlay der Sternkarte: Objekte in einem Himmelsausschnitt',
+    tags: ['catalog'],
+    request: { query: DsoRegionQuery },
+    responses: {
+      200: { description: 'Objekte im Ausschnitt', ...json(DsoRegion) },
+      ...denied,
+      422: problemContent('Ungültige Anfrage'),
+    },
+  },
+);
+
 export const catalogStatusRoute = defineRoute(
   { action: 'system.manage', requirements: ['FA-FRM-01', 'S-82'] },
   {
@@ -64,7 +88,12 @@ export const catalogRefreshRoute = defineRoute(
   },
 );
 
-export const CATALOG_ROUTES = [dsoSearchRoute, catalogStatusRoute, catalogRefreshRoute] as const;
+export const CATALOG_ROUTES = [
+  dsoSearchRoute,
+  dsoRegionRoute,
+  catalogStatusRoute,
+  catalogRefreshRoute,
+] as const;
 
 interface Meta {
   version: string;
@@ -113,10 +142,15 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
     } else if (
       query.minUsableHours !== undefined ||
       query.sort === 'usable' ||
-      query.sort === 'altitude'
+      query.sort === 'altitude' ||
+      query.sort === 'score'
     )
       throw new ProblemError('validation.failed', [
         { path: 'siteId', message: 'Nachtfilter und -sortierung nur mit Standort' },
+      ]);
+    if (query.sort === 'score' && query.rigFovArcmin === undefined)
+      throw new ProblemError('validation.failed', [
+        { path: 'rigFovArcmin', message: 'Bewertung „Beste der Nacht“ nur mit Rig-Bildfeld' },
       ]);
     c.header('cache-control', 'private, max-age=60');
     return c.json(
@@ -126,6 +160,13 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
       }),
       200,
     );
+  });
+
+  app.openapi(dsoRegionRoute, async (c) => {
+    const svc = await services();
+    const index = await cachedCatalog(() => readDsoCatalog(svc.db), svc.now().getTime());
+    c.header('cache-control', 'private, max-age=300');
+    return c.json(searchRegion(index, c.req.valid('query')), 200);
   });
 
   app.openapi(catalogStatusRoute, async (c) => {

@@ -40,7 +40,7 @@ Verwendung: `packages/catalog-data/data/ngc.json` (abgeleitet aus OpenNGC, ergä
 ## d3-celestial
 
 Quelle: https://github.com/ofrohn/d3-celestial (Olaf Frohn)
-Verwendung: Sterndaten `packages/catalog-data/data/stars-8.bin` (erzeugt aus den Datendateien von d3-celestial, XHIP/Hipparcos); ab AP-21 Basis der Sternkarte.
+Verwendung: Sterndaten `packages/catalog-data/data/stars-8.bin` und `packages/catalog-data/js/star-catalog.js` (erzeugt aus den Datendateien von d3-celestial, XHIP/Hipparcos; unveränderte Kopien der Website-Vorlage), daraus `packages/catalog-data/sky/sky.json` (`pnpm catalog:build`) – Sterne, Sternbildlinien, -grenzen, -namen und Milchstraße der Sternkarte S-20 (AP-21).
 
 ```
 Copyright (c) 2015, Olaf Frohn

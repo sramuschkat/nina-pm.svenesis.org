@@ -10,6 +10,8 @@ export const catalogData = fileURLToPath(
 export const OUTPUT_JSON = `${catalogData}openngc/dso-objects.json`;
 export const OUTPUT_REPORT = `${catalogData}openngc/import-report.md`;
 export const OUTPUT_META = `${catalogData}openngc/catalog-meta.json`;
+export const STAR_CATALOG_JS = `${catalogData}js/star-catalog.js`;
+export const OUTPUT_SKY = `${catalogData}sky/sky.json`;
 
 interface VersionFile {
   version: string;

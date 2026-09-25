@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
+    "@nina-pm/catalog-data": "workspace:*",
     "@nina-pm/engine": "workspace:*",
     "@nina-pm/i18n": "workspace:*",
     "@nina-pm/shared": "workspace:*",

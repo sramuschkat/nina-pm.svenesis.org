@@ -21,6 +21,20 @@ export const DSO_TYPE_GROUPS = [
 ] as const;
 export type DsoTypeGroup = (typeof DSO_TYPE_GROUPS)[number];
 
+/** Grobe Familien der Zielvorschläge (FA-FRM-13: Galaxien, Nebel, Sternhaufen). */
+export const DSO_FAMILIES = {
+  galaxies: ['galaxy'],
+  nebulae: [
+    'planetary_nebula',
+    'emission_nebula',
+    'reflection_nebula',
+    'dark_nebula',
+    'supernova_remnant',
+  ],
+  clusters: ['open_cluster', 'globular_cluster'],
+} as const satisfies Record<string, readonly DsoTypeGroup[]>;
+export type DsoFamily = keyof typeof DSO_FAMILIES;
+
 const optNumber = z.coerce.number().finite().optional();
 
 export const DsoQuery = z.object({
@@ -49,7 +63,12 @@ export const DsoQuery = z.object({
   twilight: z.enum(twilight).default('astronomical'),
   /** Mindestens so viele nutzbare Stunden (dunkel und über `minAltDeg`); nur mit `siteId`. */
   minUsableHours: z.coerce.number().min(0).max(24).optional(),
-  sort: z.enum(['name', 'mag', 'size', 'usable', 'altitude']).default('name'),
+  /** Kleinere Kante des Rig-Bildfelds (′) für die Bewertung „Beste der Nacht“ (FA-FRM-13). */
+  rigFovArcmin: z.coerce.number().positive().max(1200).optional(),
+  /** Nur Bildkandidaten der Website-Regel (Größe 3′–3°, Helligkeitsgrenzen je Art, keine Komponenten). */
+  candidates: z.enum(['true', 'false']).optional(),
+  family: z.enum(['galaxies', 'nebulae', 'clusters']).optional(),
+  sort: z.enum(['name', 'mag', 'size', 'usable', 'altitude', 'score']).default('name'),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).max(20000).default(0),
 });
@@ -65,6 +84,8 @@ export const DsoNight = z
     peakUtc: UtcInstant.nullable(),
     /** Abstand zum Mond zur besten Zeit, Grad; `null` ohne Mond über dem Horizont. */
     moonSepDeg: z.number().nullable(),
+    /** Bewertung „Beste der Nacht“ 0–1 (FA-FRM-13); nur mit `rigFovArcmin` und für Bildkandidaten. */
+    score: z.number().nullable(),
   })
   .meta({ id: 'DsoNight' });
 export type DsoNight = z.infer<typeof DsoNight>;
@@ -90,6 +111,8 @@ export const DsoView = z
     sizeMinorArcmin: z.number().nullable(),
     positionAngleDeg: z.number().nullable(),
     source: z.string(),
+    /** Filterempfehlung (FA-FRM-13): Schmalband für Emissionsobjekte, sonst Breitband; `null` für Sterne. */
+    filterHint: z.enum(['narrowband', 'broadband']).nullable(),
     /** Nur mit `siteId` in der Anfrage. */
     night: DsoNight.nullable(),
   })
@@ -143,3 +166,36 @@ export const CatalogStatus = z
   })
   .meta({ id: 'CatalogStatus' });
 export type CatalogStatus = z.infer<typeof CatalogStatus>;
+
+/** Himmelsausschnitt für das Katalog-Overlay der Sternkarte (FA-FRM-09, S-20). */
+export const DsoRegionQuery = z.object({
+  ra: z.coerce.number().min(0).lt(360),
+  dec: z.coerce.number().min(-90).max(90),
+  /** Radius des Ausschnitts (Grad). */
+  radius: z.coerce.number().positive().max(90),
+  /** Dichteregler: höchste Helligkeit (V, sonst B); Objekte ohne Helligkeit zählen als 12 mag. */
+  magMax: z.coerce.number().min(-2).max(25).default(12),
+  limit: z.coerce.number().int().min(1).max(3000).default(1500),
+});
+export type DsoRegionQuery = z.infer<typeof DsoRegionQuery>;
+
+export const DsoMarker = z
+  .object({
+    id: Uuid,
+    primaryId: z.string(),
+    displayName: z.string(),
+    group: z.enum(DSO_TYPE_GROUPS),
+    raDeg: z.number(),
+    decDeg: z.number(),
+    mag: z.number().nullable(),
+    sizeMajorArcmin: z.number().nullable(),
+    sizeMinorArcmin: z.number().nullable(),
+    positionAngleDeg: z.number().nullable(),
+  })
+  .meta({ id: 'DsoMarker' });
+export type DsoMarker = z.infer<typeof DsoMarker>;
+
+export const DsoRegion = z
+  .object({ items: z.array(DsoMarker), total: z.number().int().min(0) })
+  .meta({ id: 'DsoRegion' });
+export type DsoRegion = z.infer<typeof DsoRegion>;

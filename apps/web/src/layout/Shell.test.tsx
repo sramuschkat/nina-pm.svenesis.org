@@ -94,7 +94,7 @@ describe('Rechteanzeige in der Shell', () => {
     expect(nav()).not.toHaveTextContent('Administration');
   });
 
-  it('Projekte und Planung sind Links (S-31, S-21); nicht gebaute Bereiche bleiben deaktiviert', async () => {
+  it('Projekte und Planung sind Links (S-31, S-20); nicht gebaute Bereiche bleiben deaktiviert', async () => {
     await renderShell(member('user', 'user', false));
     expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
       'href',
@@ -102,7 +102,7 @@ describe('Rechteanzeige in der Shell', () => {
     );
     expect(within(nav()).getByRole('link', { name: 'Planung' })).toHaveAttribute(
       'href',
-      '/planung/objekte',
+      '/planung/sternkarte',
     );
     expect(within(nav()).queryByRole('link', { name: 'Wetter' })).not.toBeInTheDocument();
   });

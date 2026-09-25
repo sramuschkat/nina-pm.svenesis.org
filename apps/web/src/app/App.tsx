@@ -40,7 +40,9 @@ import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { SessionDetailPage } from '../pages/sessions/SessionDetailPage';
 import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
-import { CATALOG_PATH, ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
+import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
+import { SkyMapPage } from '../pages/planning/SkyMapPage';
+import { SKYMAP_PATH } from '../pages/planning/skymap/model';
 import { AppearanceProvider } from './theme';
 
 export function createQueryClient() {
@@ -162,7 +164,8 @@ export function createRouter() {
               path: 'planung',
               element: <RequireAction action="catalog.read" />,
               children: [
-                { index: true, element: <Navigate to={CATALOG_PATH} replace /> },
+                { index: true, element: <Navigate to={SKYMAP_PATH} replace /> },
+                { path: 'sternkarte', element: <SkyMapPage /> },
                 { path: 'objekte', element: <ObjectBrowserPage /> },
               ],
             },

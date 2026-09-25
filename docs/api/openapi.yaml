@@ -6980,6 +6980,14 @@ components:
             - "null"
         source:
           type: string
+        filterHint:
+          type:
+            - string
+            - "null"
+          enum:
+            - narrowband
+            - broadband
+            - null
         night:
           $ref: "#/components/schemas/DsoNight"
       required:
@@ -7001,6 +7009,7 @@ components:
         - sizeMinorArcmin
         - positionAngleDeg
         - source
+        - filterHint
         - night
     DsoNight:
       type:
@@ -7029,12 +7038,85 @@ components:
           type:
             - number
             - "null"
+        score:
+          type:
+            - number
+            - "null"
       required:
         - visibility
         - usableHours
         - peakAltDeg
         - peakUtc
         - moonSepDeg
+        - score
+    DsoRegion:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DsoMarker"
+        total:
+          type: integer
+          minimum: 0
+      required:
+        - items
+        - total
+    DsoMarker:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        primaryId:
+          type: string
+        displayName:
+          type: string
+        group:
+          type: string
+          enum:
+            - galaxy
+            - open_cluster
+            - globular_cluster
+            - planetary_nebula
+            - emission_nebula
+            - reflection_nebula
+            - dark_nebula
+            - supernova_remnant
+            - multiple_star
+            - other
+        raDeg:
+          type: number
+        decDeg:
+          type: number
+        mag:
+          type:
+            - number
+            - "null"
+        sizeMajorArcmin:
+          type:
+            - number
+            - "null"
+        sizeMinorArcmin:
+          type:
+            - number
+            - "null"
+        positionAngleDeg:
+          type:
+            - number
+            - "null"
+      required:
+        - id
+        - primaryId
+        - displayName
+        - group
+        - raDeg
+        - decDeg
+        - mag
+        - sizeMajorArcmin
+        - sizeMinorArcmin
+        - positionAngleDeg
     CatalogStatus:
       type: object
       properties:
@@ -17410,6 +17492,30 @@ paths:
           name: minUsableHours
           in: query
         - schema:
+            type: number
+            exclusiveMinimum: 0
+            maximum: 1200
+          required: false
+          name: rigFovArcmin
+          in: query
+        - schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+          required: false
+          name: candidates
+          in: query
+        - schema:
+            type: string
+            enum:
+              - galaxies
+              - nebulae
+              - clusters
+          required: false
+          name: family
+          in: query
+        - schema:
             type: string
             enum:
               - name
@@ -17417,6 +17523,7 @@ paths:
               - size
               - usable
               - altitude
+              - score
             default: name
           required: false
           name: sort
@@ -17460,6 +17567,85 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: Standort nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/dso/region:
+    get:
+      summary: "Katalog-Overlay der Sternkarte: Objekte in einem Himmelsausschnitt"
+      tags:
+        - catalog
+      description: "Aktion: `catalog.read` · FA-FRM-09, S-20"
+      x-npm-action: catalog.read
+      x-npm-requirements:
+        - FA-FRM-09
+        - S-20
+      parameters:
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: 0
+            exclusiveMaximum: 360
+          required: false
+          name: ra
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: -90
+            maximum: 90
+          required: false
+          name: dec
+          in: query
+        - schema:
+            type: number
+            exclusiveMinimum: 0
+            maximum: 90
+          required: true
+          name: radius
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: -2
+            maximum: 25
+            default: 12
+          required: false
+          name: magMax
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 3000
+            default: 1500
+          required: false
+          name: limit
+          in: query
+      responses:
+        "200":
+          description: Objekte im Ausschnitt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DsoRegion"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
           content:
             application/problem+json:
               schema:

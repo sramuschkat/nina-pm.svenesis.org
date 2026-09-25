@@ -14,6 +14,9 @@ export const NIGHT_SORTS: readonly Sort[] = ['usable', 'altitude'];
 
 /** Zustand der Filterleiste; Zahlen als Text wie im Eingabefeld (leer = kein Filter). */
 export interface BrowserFilters {
+  /** Reiter *Alle Objekte* bzw. *Beste der Nacht* (FA-FRM-13). */
+  tab: 'all' | 'best';
+  family: '' | 'galaxies' | 'nebulae' | 'clusters';
   q: string;
   group: string;
   catalog: string;
@@ -33,6 +36,8 @@ export interface BrowserFilters {
 }
 
 const KEYS: Record<keyof BrowserFilters, string> = {
+  tab: 'reiter',
+  family: 'familie',
   q: 'q',
   group: 'typ',
   catalog: 'katalog',
@@ -58,7 +63,10 @@ export function filtersFromParams(p: URLSearchParams): BrowserFilters {
   const sort = get('sort') as Sort;
   const group = get('group');
   const catalog = get('catalog');
+  const family = get('family');
   return {
+    tab: get('tab') === 'beste' ? 'best' : 'all',
+    family: family === 'galaxies' || family === 'nebulae' || family === 'clusters' ? family : '',
     q: get('q'),
     group: (DSO_TYPE_GROUPS as readonly string[]).includes(group) ? group : '',
     catalog: (dsoCatalogPrefixes as readonly string[]).includes(catalog) ? catalog : '',
@@ -84,6 +92,8 @@ export function paramsFromFilters(f: BrowserFilters): URLSearchParams {
   const set = (k: keyof BrowserFilters, v: string) => {
     if (v !== '') p.set(KEYS[k], v);
   };
+  if (f.tab === 'best') p.set(KEYS.tab, 'beste');
+  set('family', f.family);
   set('q', f.q.trim());
   set('group', f.group);
   set('catalog', f.catalog);
@@ -117,6 +127,13 @@ export function searchFromFilters(
   const withNight = ctx.siteId !== null;
   const sort = !withNight && NIGHT_SORTS.includes(f.sort) ? 'name' : f.sort;
   const s: DsoSearch = { sort, limit: PAGE_SIZE, offset: (f.page - 1) * PAGE_SIZE };
+  // Beste der Nacht: Bewertung der Website mit dem Bildfeld des Rigs, nur Bildkandidaten.
+  if (f.tab === 'best' && withNight && ctx.fovArcmin !== null) {
+    s.sort = 'score';
+    s.candidates = 'true';
+    s.rigFovArcmin = Math.round(ctx.fovArcmin * 10) / 10;
+    if (f.family) s.family = f.family;
+  }
   if (f.q.trim()) s.q = f.q.trim();
   if (f.group) s.group = f.group;
   if (f.catalog) s.catalog = f.catalog;

@@ -111,6 +111,7 @@ const m31 = (over: Partial<DsoView> = {}): DsoView => ({
   sizeMinorArcmin: 69.66,
   positionAngleDeg: 35,
   source: 'openngc:NGC.csv v20260501 (abgerufen 2026-09-25)',
+  filterHint: 'broadband',
   night: null,
   ...over,
 });
@@ -214,6 +215,19 @@ describe('Modell S-21', () => {
     });
   });
 
+  it('Beste der Nacht: Bewertung mit Rig-Bildfeld, nur Kandidaten, Familie (FA-FRM-13)', () => {
+    const f = filtersFromParams(new URLSearchParams('reiter=beste&familie=nebulae&sort=mag'));
+    expect(f).toMatchObject({ tab: 'best', family: 'nebulae' });
+    expect(paramsFromFilters(f).get('reiter')).toBe('beste');
+    expect(
+      searchFromFilters(f, { siteId: ID(600), night: '2026-10-20', fovArcmin: 114.04 }),
+    ).toMatchObject({ sort: 'score', candidates: 'true', rigFovArcmin: 114, family: 'nebulae' });
+    // Ohne Rig keine Bewertung – die Anfrage bleibt die normale Liste.
+    expect(searchFromFilters(f, { siteId: null, night: null, fovArcmin: null })).not.toHaveProperty(
+      'rigFovArcmin',
+    );
+  });
+
   it('Aliase ohne Anzeigenamen, Trivialnamen getrennt', () => {
     expect(aliasesOf(m31())).toEqual({
       designations: ['NGC 224', 'PGC 2557', 'UGC 454'],
@@ -294,6 +308,7 @@ describe('S-21 Objektbrowser', () => {
             peakAltDeg: 80.2,
             peakUtc: '2026-10-21T04:15:00Z',
             moonSepDeg: 95,
+            score: null,
           },
         }),
         m31({
@@ -307,6 +322,7 @@ describe('S-21 Objektbrowser', () => {
             peakAltDeg: null,
             peakUtc: null,
             moonSepDeg: null,
+            score: null,
           },
         }),
       ],
@@ -340,6 +356,49 @@ describe('S-21 Objektbrowser', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nächste Nacht' }));
     await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ night: '2026-10-21' }));
     await expectNoSeriousA11y();
+  });
+
+  it('Reiter Beste der Nacht: Bewertung und Filterempfehlung je Zeile', async () => {
+    state.rigs = [rig];
+    state.result = list([
+      m31({
+        filterHint: 'broadband',
+        night: {
+          visibility: 'normal',
+          usableHours: 7.5,
+          peakAltDeg: 80.2,
+          peakUtc: '2026-10-21T04:15:00Z',
+          moonSepDeg: 95,
+          score: 0.84,
+        },
+      }),
+    ]);
+    renderPage('/planung/objekte?reiter=beste');
+    const row = (await screen.findByText('M 31')).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('84 %');
+    expect(row).toHaveTextContent('Breitband (LRGB)');
+    expect(screen.getByRole('tab', { name: 'Beste der Nacht' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByLabelText('Familie')).toBeInTheDocument();
+    expect(state.searches.at(-1)).toMatchObject({ sort: 'score', candidates: 'true' });
+    await expectNoSeriousA11y();
+  });
+
+  it('Sternkarte öffnet die Karte mit Objekt, Rig und passendem Sichtfeld', async () => {
+    state.rigs = [rig];
+    renderPage();
+    await screen.findByText('M 31');
+    const href =
+      screen
+        .getAllByRole('link', { name: 'Sternkarte' })
+        .map((l) => l.getAttribute('href') ?? '')
+        .find((h) => h.includes('objekt=')) ?? '';
+    expect(href).toMatch(/^\/planung\/sternkarte\?/);
+    const q = new URLSearchParams(href.split('?')[1]);
+    expect(q.get('objekt')).toBe('NGC 224');
+    expect(q.get('rig')).toBe(ID(500));
   });
 
   it('Projekt anlegen führt in den Editor mit Objekt und Rig', async () => {
