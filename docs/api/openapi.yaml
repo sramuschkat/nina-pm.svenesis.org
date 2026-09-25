@@ -15947,6 +15947,52 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/nina-instances/{id}:
+    delete:
+      summary: Instanz ohne Verlauf endgültig löschen (sonst nur widerrufen)
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.manage` · FA-ADM-02, TK 7.2"
+      x-npm-action: nina.instance.manage
+      x-npm-requirements:
+        - FA-ADM-02
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (Sessions oder Kommandos vorhanden)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/nina-instances/{id}/diagnostics:
     get:
       summary: "Diagnose einer Instanz: letzte Aufrufe, Fehler, Versionen, letzter Heartbeat"

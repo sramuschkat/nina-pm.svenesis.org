@@ -33,7 +33,10 @@ export function InstancesPage() {
     queryFn: async () => (await ninaApi.instances()).items,
   });
   const [selected, setSelected] = useState<string | null>(null);
-  const items = list.data ?? [];
+  const [showRevoked, setShowRevoked] = useState(false);
+  const all = list.data ?? [];
+  const hidden = showRevoked ? 0 : all.filter((i) => i.status === 'revoked').length;
+  const items = showRevoked ? all : all.filter((i) => i.status !== 'revoked');
   const current = items.find((i) => i.id === selected);
   return (
     <div className={styles.page}>
@@ -43,7 +46,20 @@ export function InstancesPage() {
       <p className={styles.info}>{t('nina.instances.intro')}</p>
       <CreatePanel />
       <section className={styles.panel} aria-labelledby="nina-instance-list">
-        <h2 id="nina-instance-list">{t('nina.instances.list')}</h2>
+        <div className={styles.head}>
+          <h2 id="nina-instance-list">{t('nina.instances.list')}</h2>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={showRevoked}
+              onChange={(e) => setShowRevoked(e.target.checked)}
+            />
+            {t('nina.instances.showRevoked')}
+            {hidden > 0 ? (
+              <span className={styles.muted}>{t('nina.instances.hidden', { count: hidden })}</span>
+            ) : null}
+          </label>
+        </div>
         {list.isPending ? (
           <p role="status">{t('common.loading')}</p>
         ) : list.isError ? (
@@ -55,7 +71,7 @@ export function InstancesPage() {
         )}
       </section>
       {current ? (
-        <InstanceDetail key={current.id} instance={current} />
+        <InstanceDetail key={current.id} instance={current} onRemoved={() => setSelected(null)} />
       ) : items.length > 0 ? (
         <p className={styles.muted}>{t('nina.instances.selectHint')}</p>
       ) : null}
@@ -274,7 +290,13 @@ function CreatePanel() {
   );
 }
 
-function InstanceDetail({ instance }: { instance: NinaInstance }) {
+function InstanceDetail({
+  instance,
+  onRemoved,
+}: {
+  instance: NinaInstance;
+  onRemoved: () => void;
+}) {
   const { t, i18n } = useTranslation();
   const client = useQueryClient();
   const canManage = useCan('nina.instance.manage');
@@ -285,6 +307,11 @@ function InstanceDetail({ instance }: { instance: NinaInstance }) {
   const refresh = () => client.invalidateQueries({ queryKey: ['nina-instances'] });
   const revoke = useConfirm(async () => {
     await ninaApi.revoke(instance.id);
+    await refresh();
+  });
+  const remove = useConfirm(async () => {
+    await ninaApi.remove(instance.id);
+    onRemoved();
     await refresh();
   });
   const release = useConfirm(async () => {
@@ -352,8 +379,13 @@ function InstanceDetail({ instance }: { instance: NinaInstance }) {
                   {t('nina.instances.revoke')}
                 </button>
               ) : null}
+              <button type="button" className={styles.buttonDanger} onClick={remove.open}>
+                <Delete size={ICON_SIZE.button} aria-hidden />
+                {t('nina.instances.remove')}
+              </button>
             </div>
           ) : null}
+          {canManage ? <p className={styles.muted}>{t('nina.instances.removeHint')}</p> : null}
         </div>
 
         <div className={styles.section}>
@@ -395,6 +427,13 @@ function InstanceDetail({ instance }: { instance: NinaInstance }) {
         title={t('nina.instances.revokeTitle', { name: instance.name })}
         consequence={t('nina.instances.revokeConsequence')}
         confirmLabel={t('nina.instances.revoke')}
+      />
+      <ConfirmDialog
+        {...remove.dialog}
+        variant="danger"
+        title={t('nina.instances.removeTitle', { name: instance.name })}
+        consequence={t('nina.instances.removeConsequence')}
+        confirmLabel={t('nina.instances.remove')}
       />
       <ConfirmDialog
         {...release.dialog}

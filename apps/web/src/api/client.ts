@@ -386,6 +386,8 @@ export const ninaApi = {
   create: (body: { id: string; rigId: string; name: string }) =>
     apiFetch<NinaInstanceCreated>(`${V1}/nina-instances`, json('POST', body)),
   revoke: (id: string) => apiFetch<NinaInstance>(`${V1}/nina-instances/${id}/revoke`, json('POST')),
+  /** Nur ohne Sessions und Kommandos, sonst `409 resource.in_use` (FA-ADM-02). */
+  remove: (id: string) => apiFetch<undefined>(`${V1}/nina-instances/${id}`, json('DELETE')),
   diagnostics: (id: string) =>
     apiFetch<NinaInstanceDiagnostics>(`${V1}/nina-instances/${id}/diagnostics`),
   releaseLease: (rigId: string) =>

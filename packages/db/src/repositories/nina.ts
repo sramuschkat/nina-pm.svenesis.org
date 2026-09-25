@@ -259,6 +259,56 @@ export class NinaInstanceRepository extends TenantRepo {
     if (Number(done.numUpdatedRows) === 0) throw new ProblemError('resource.not_found');
     return (await this.byId(id)) as NinaInstanceOverview;
   }
+
+  /**
+   * Endgültig löschen nur ohne Verlauf (FA-ADM-02, Entscheidung 25.09.2026): keine Session und kein
+   * Kommando verweist auf die Instanz – sonst `409 resource.in_use` mit den Verwendern, dann bleibt
+   * *Widerrufen*. Eine gleichzeitig angelegte Session scheitert am Fremdschlüssel (23503) → ebenfalls 409.
+   */
+  async remove(id: string): Promise<void> {
+    const tenantId = this.ctx.tenantId;
+    try {
+      await withTx(this.db, async (trx) => {
+        const row = await trx
+          .selectFrom('ninaInstance')
+          .select('id')
+          .where('tenantId', '=', tenantId)
+          .where('id', '=', id)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!row) throw new ProblemError('resource.not_found');
+        const count = async (table: 'session' | 'command') =>
+          Number(
+            (
+              await trx
+                .selectFrom(table)
+                .select((eb) => eb.fn.countAll<number>().as('n'))
+                .where('tenantId', '=', tenantId)
+                .where('ninaInstanceId', '=', id)
+                .executeTakeFirstOrThrow()
+            ).n,
+          );
+        const users = [
+          { path: 'session', n: await count('session') },
+          { path: 'command', n: await count('command') },
+        ].filter((u) => u.n > 0);
+        if (users.length > 0)
+          throw new ProblemError(
+            'resource.in_use',
+            users.map((u) => ({ path: u.path, message: String(u.n) })),
+          );
+        await trx
+          .deleteFrom('ninaInstance')
+          .where('tenantId', '=', tenantId)
+          .where('id', '=', id)
+          .execute();
+      });
+    } catch (error) {
+      if ((error as { code?: unknown } | null)?.code === '23503')
+        throw new ProblemError('resource.in_use', [{ path: 'session', message: 'neu' }]);
+      throw error;
+    }
+  }
 }
 
 /** Plugin-Sicht auf das Rig des Tokens (Mandant und Rig aus dem Token, TK 5.6). */

@@ -1679,6 +1679,14 @@ export const en: Messages = {
       copied: 'Copied',
       done: 'Done',
       selectHint: 'Select an instance in the table to see diagnostics and actions.',
+      showRevoked: 'Show revoked',
+      hidden: '({{count}} hidden)',
+      remove: 'Delete',
+      removeHint:
+        'Only instances without sessions (e.g. created by mistake) can be deleted; otherwise revoke – the history is kept.',
+      removeTitle: 'Delete “{{name}}” permanently?',
+      removeConsequence:
+        'The instance and its token are removed permanently. If it already has sessions, the server rejects the deletion.',
       revoke: 'Revoke',
       revokeTitle: 'Revoke the token of “{{name}}”?',
       revokeConsequence:
