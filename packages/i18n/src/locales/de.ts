@@ -1919,7 +1919,6 @@ export const de = {
     sizeMax: 'Größe bis',
     rig: 'Rig',
     noRig: 'Ohne Rig – keine Nachtwerte',
-    night: 'Nacht',
     nightValue: 'Nacht {{night}}',
     tonight: 'Heute Nacht',
     prevNight: 'Vorige Nacht',
@@ -1992,7 +1991,6 @@ export const de = {
       empty: 'Kein Objekt gefunden.',
       linked: 'Verknüpft mit {{name}} aus dem Objektkatalog.',
       unlink: 'Verknüpfung lösen',
-      loadingPick: 'Objekt wird geladen …',
     },
     status: {
       title: 'Kataloge',

@@ -1912,7 +1912,6 @@ export const en: Messages = {
     sizeMax: 'Size up to',
     rig: 'Rig',
     noRig: 'No rig – no night values',
-    night: 'Night',
     nightValue: 'Night {{night}}',
     tonight: 'Tonight',
     prevNight: 'Previous night',
@@ -1985,7 +1984,6 @@ export const en: Messages = {
       empty: 'No object found.',
       linked: 'Linked to {{name}} from the object catalogue.',
       unlink: 'Remove link',
-      loadingPick: 'Loading object …',
     },
     status: {
       title: 'Catalogues',
