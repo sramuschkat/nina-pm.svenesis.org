@@ -4,8 +4,8 @@
  * Stand des Katalogs für S-82.
  */
 import { z } from 'zod';
-import { dsoCatalogPrefixes, dsoObjectTypes } from '../generated/enums';
-import { UtcInstant, Uuid } from './common';
+import { dsoCatalogPrefixes, dsoObjectTypes, twilight } from '../generated/enums';
+import { NightKey, UtcInstant, Uuid } from './common';
 
 export const DSO_TYPE_GROUPS = [
   'galaxy',
@@ -39,11 +39,35 @@ export const DsoQuery = z.object({
   sizeMaxArcmin: optNumber,
   /** „Passt ins Bildfeld“: Großachse ≤ dieser Wert (Bildfeld des Rigs in Bogenminuten). */
   fitsFovArcmin: optNumber,
-  sort: z.enum(['name', 'mag', 'size']).default('name'),
+  /**
+   * Nacht am Standort (FA-FRM-15, S-21): mit `siteId` rechnet die API je Treffer beste Zeit/Höhe,
+   * Mondabstand und nutzbare Stunden (Engine, Slots wie der Scheduler); ohne `night` die laufende Nacht.
+   */
+  siteId: Uuid.optional(),
+  night: NightKey.optional(),
+  minAltDeg: z.coerce.number().min(0).max(90).default(30),
+  twilight: z.enum(twilight).default('astronomical'),
+  /** Mindestens so viele nutzbare Stunden (dunkel und über `minAltDeg`); nur mit `siteId`. */
+  minUsableHours: z.coerce.number().min(0).max(24).optional(),
+  sort: z.enum(['name', 'mag', 'size', 'usable', 'altitude']).default('name'),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).max(20000).default(0),
 });
 export type DsoQuery = z.infer<typeof DsoQuery>;
+
+export const DsoNight = z
+  .object({
+    visibility: z.enum(['never', 'circumpolar', 'normal']),
+    /** Nutzbare Stunden: dunkel (Dämmerungsgrenze) und über der Mindesthöhe, 5-min-Slots. */
+    usableHours: z.number(),
+    /** Größte scheinbare Höhe im Nachtfenster, solange es dunkel ist (ohne Dunkelheit: im Fenster). */
+    peakAltDeg: z.number().nullable(),
+    peakUtc: UtcInstant.nullable(),
+    /** Abstand zum Mond zur besten Zeit, Grad; `null` ohne Mond über dem Horizont. */
+    moonSepDeg: z.number().nullable(),
+  })
+  .meta({ id: 'DsoNight' });
+export type DsoNight = z.infer<typeof DsoNight>;
 
 export const DsoView = z
   .object({
@@ -66,12 +90,27 @@ export const DsoView = z
     sizeMinorArcmin: z.number().nullable(),
     positionAngleDeg: z.number().nullable(),
     source: z.string(),
+    /** Nur mit `siteId` in der Anfrage. */
+    night: DsoNight.nullable(),
   })
   .meta({ id: 'DsoView' });
 export type DsoView = z.infer<typeof DsoView>;
 
 export const DsoList = z
-  .object({ items: z.array(DsoView), total: z.number().int().min(0) })
+  .object({
+    items: z.array(DsoView),
+    total: z.number().int().min(0),
+    /** Gerechnete Nacht (nur mit `siteId`): Nachtfenster und Mond. */
+    night: z
+      .object({
+        night: NightKey,
+        timeZone: z.string(),
+        darkStartUtc: UtcInstant.nullable(),
+        darkEndUtc: UtcInstant.nullable(),
+        moonIllumPct: z.number().nullable(),
+      })
+      .nullable(),
+  })
   .meta({ id: 'DsoList' });
 export type DsoList = z.infer<typeof DsoList>;
 

@@ -8675,7 +8675,13 @@ export interface paths {
                     sizeMinArcmin?: number | null;
                     sizeMaxArcmin?: number | null;
                     fitsFovArcmin?: number | null;
-                    sort?: "name" | "mag" | "size";
+                    /** @description UUID */
+                    siteId?: string;
+                    night?: string;
+                    minAltDeg?: number | null;
+                    twilight?: "astronomical" | "nautical" | "civil";
+                    minUsableHours?: number | null;
+                    sort?: "name" | "mag" | "size" | "usable" | "altitude";
                     limit?: number;
                     offset?: number | null;
                 };
@@ -8705,6 +8711,24 @@ export interface paths {
                 };
                 /** @description Keine Berechtigung */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Standort nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13598,6 +13622,25 @@ export interface components {
         DsoList: {
             items: components["schemas"]["DsoView"][];
             total: number;
+            night: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                timeZone: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                darkStartUtc: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                darkEndUtc: string | null;
+                moonIllumPct: number | null;
+            } | null;
         };
         DsoView: {
             /**
@@ -13625,7 +13668,20 @@ export interface components {
             sizeMinorArcmin: number | null;
             positionAngleDeg: number | null;
             source: string;
+            night: components["schemas"]["DsoNight"];
         };
+        DsoNight: {
+            /** @enum {string} */
+            visibility: "never" | "circumpolar" | "normal";
+            usableHours: number;
+            peakAltDeg: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            peakUtc: string | null;
+            moonSepDeg: number | null;
+        } | null;
         CatalogStatus: {
             dso: {
                 version: string;

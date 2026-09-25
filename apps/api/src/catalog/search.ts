@@ -1,7 +1,8 @@
 /**
  * Suche im Objektkatalog (AP-20; FA-FRM-01, FA-FRM-15): im Speicher über alle Zeilen – Bezeichnungen und
  * Aliase ohne Leerzeichen und Groß-/Kleinschreibung (exakt vor Präfix vor Teilstring), Filter nach
- * Anzeigegruppe, Katalog, Sternbild, Helligkeit (V, sonst B), Flächenhelligkeit, Größe und Bildfeld.
+ * Anzeigegruppe, Katalog, Sternbild, Helligkeit (V, sonst B), Flächenhelligkeit, Größe und Bildfeld;
+ * mit Nachtauswertung (`night.ts`) zusätzlich nach nutzbaren Stunden und bester Höhe.
  */
 import type { DsoCatalogRow } from '@nina-pm/db';
 import {
@@ -9,9 +10,11 @@ import {
   dsoDisplayName,
   dsoTypeGroup,
   squeezeDesignation,
+  type DsoList,
   type DsoQuery,
   type DsoView,
 } from '@nina-pm/shared';
+import type { NightEvaluator } from './night';
 
 export type CatalogRow = DsoCatalogRow & { readonly id: string };
 
@@ -31,7 +34,7 @@ export function indexCatalog(rows: readonly CatalogRow[]): Indexed[] {
   }));
 }
 
-export function toView(x: Indexed): DsoView {
+export function toView(x: Indexed, night?: NightEvaluator): DsoView {
   const r = x.row;
   return {
     id: r.id,
@@ -52,6 +55,7 @@ export function toView(x: Indexed): DsoView {
     sizeMinorArcmin: r.sizeMinorArcmin,
     positionAngleDeg: r.positionAngleDeg,
     source: r.source,
+    night: night ? night.metrics(r) : null,
   };
 }
 
@@ -59,10 +63,7 @@ const byName = (a: Indexed, b: Indexed) =>
   designationRank(a.displayName) - designationRank(b.displayName) ||
   a.displayName.localeCompare(b.displayName, 'en', { numeric: true });
 
-export function searchDso(
-  index: readonly Indexed[],
-  q: DsoQuery,
-): { items: DsoView[]; total: number } {
+export function searchDso(index: readonly Indexed[], q: DsoQuery, night?: NightEvaluator): DsoList {
   const needle = q.q ? squeezeDesignation(q.q) : '';
   const scored: { x: Indexed; score: number }[] = [];
   for (const x of index) {
@@ -99,6 +100,9 @@ export function searchDso(
       else if (x.keys.some((k) => k.includes(needle))) score = 1;
       else continue;
     }
+    // Nachtfilter zuletzt – er rechnet die Engine je verbliebenem Objekt.
+    if (night && q.minUsableHours !== undefined && night.metrics(r).usableHours < q.minUsableHours)
+      continue;
     scored.push({ x, score });
   }
   scored.sort((a, b) => {
@@ -106,11 +110,23 @@ export function searchDso(
     if (q.sort === 'mag') return (a.x.mag ?? 99) - (b.x.mag ?? 99) || byName(a.x, b.x);
     if (q.sort === 'size')
       return (b.x.row.sizeMajorArcmin ?? -1) - (a.x.row.sizeMajorArcmin ?? -1) || byName(a.x, b.x);
+    if (night && q.sort === 'usable')
+      return (
+        night.metrics(b.x.row).usableHours - night.metrics(a.x.row).usableHours ||
+        (night.metrics(b.x.row).peakAltDeg ?? -90) - (night.metrics(a.x.row).peakAltDeg ?? -90) ||
+        byName(a.x, b.x)
+      );
+    if (night && q.sort === 'altitude')
+      return (
+        (night.metrics(b.x.row).peakAltDeg ?? -90) - (night.metrics(a.x.row).peakAltDeg ?? -90) ||
+        byName(a.x, b.x)
+      );
     return byName(a.x, b.x);
   });
   return {
-    items: scored.slice(q.offset, q.offset + q.limit).map((s) => toView(s.x)),
+    items: scored.slice(q.offset, q.offset + q.limit).map((s) => toView(s.x, night)),
     total: scored.length,
+    night: night ? { ...night.meta } : null,
   };
 }
 

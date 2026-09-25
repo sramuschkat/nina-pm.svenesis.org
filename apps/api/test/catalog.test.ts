@@ -7,7 +7,11 @@ import catalog from '@nina-pm/catalog-data/openngc/dso-objects.json' with { type
 import type { DsoCatalogRow } from '@nina-pm/db';
 import { COOKIE_NAMES, type DsoList } from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { clearCatalogCache } from '../src/catalog/search';
+import { clearNightCache } from '../src/catalog/night';
+import { cachedCatalog, clearCatalogCache, searchDso } from '../src/catalog/search';
+import { buildEligibility, buildNightContext } from '@nina-pm/engine';
+import { buildNightTable } from '../src/lib/night-table';
+import { SITE } from './support/equipment';
 import { catalogRefreshHandler } from '../src/worker/catalog';
 import { createStack, type Stack } from './support/stack';
 
@@ -20,6 +24,7 @@ const ctx = {} as Parameters<ReturnType<typeof catalogRefreshHandler>>[0];
 
 let s: Stack;
 let tenantCookies: Record<string, string>;
+let siteId: string;
 let systemCookies: Record<string, string>;
 
 const snapshot = async () =>
@@ -33,8 +38,13 @@ beforeAll(async () => {
   clearCatalogCache();
   const tenantId = await s.seed.tenant('alpha');
   const identity = await s.seed.identity({ mfaEnabled: true });
-  await s.seed.member(identity.id, tenantId, 'user');
+  const member = await s.seed.member(identity.id, tenantId, 'admin');
   tenantCookies = { [COOKIE_NAMES.session]: await s.seed.session(identity.id, tenantId, 'tenant') };
+  siteId = crypto.randomUUID();
+  await s.services
+    .repositories({ tenantId, memberId: member })
+    .equipment()
+    .createSite(siteId, SITE, s.clock.now());
   const sven = await s.seed.identity({ mfaEnabled: true, username: 'sven' });
   await s.seed.superUser(sven.id);
   systemCookies = { [COOKIE_NAMES.session]: await s.seed.session(sven.id, null, 'system') };
@@ -143,6 +153,103 @@ describe('GET /api/web/v1/dso (FA-FRM-15, S-21)', () => {
     const res = await s.request('/api/web/v1/dso?limit=1000', { cookies: tenantCookies });
     expect(res.status).toBe(422);
   });
+});
+
+describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
+  const search = async (query: string) => {
+    const res = await s.request(`/api/web/v1/dso?${query}`, { cookies: tenantCookies });
+    expect(res.status, query).toBe(200);
+    return (await res.json()) as DsoList;
+  };
+
+  it('rechnet beste Höhe/Zeit, Mond und nutzbare Stunden je Treffer', async () => {
+    // Standort SITE (31,5° N) im Herbst: M 31 hoch, M 42 geht erst spät auf.
+    const r = await search(`siteId=${siteId}&night=2026-10-20&q=M%2031`);
+    expect(r.night).toMatchObject({ night: '2026-10-20', timeZone: SITE.timeZone });
+    expect(r.night?.darkStartUtc).toMatch(/^2026-10-21T0/);
+    const m31 = r.items[0]?.night;
+    expect(m31?.visibility).toBe('normal');
+    expect(m31?.usableHours).toBeGreaterThan(5);
+    expect(m31?.peakAltDeg).toBeGreaterThan(75);
+    expect(m31?.peakUtc).toMatch(/^2026-10-21T/);
+  });
+
+  it('filtert nach Mindeststunden und sortiert nach nutzbaren Stunden', async () => {
+    const r = await search(
+      `siteId=${siteId}&night=2026-10-20&catalog=M&minUsableHours=4&sort=usable&limit=100`,
+    );
+    expect(r.total).toBeGreaterThan(10);
+    const hours = r.items.map((i) => i.night?.usableHours ?? 0);
+    for (const h of hours) expect(h).toBeGreaterThanOrEqual(4);
+    expect(hours).toEqual([...hours].sort((a, b) => b - a));
+    // Südlich von −60° geht am Standort nichts auf.
+    const south = await search(`siteId=${siteId}&night=2026-10-20&q=NGC%20104`);
+    expect(south.items[0]?.night).toMatchObject({ visibility: 'never', usableHours: 0 });
+  });
+
+  it('nutzbare Stunden und beste Höhe wie buildEligibility der Engine', async () => {
+    const r = await search(`siteId=${siteId}&night=2026-10-20&catalog=M&limit=100&minAltDeg=25`);
+    const table = buildNightTable(SITE, '2026-10-20', 1);
+    const ctx = buildNightContext({
+      site: { latDeg: SITE.latitudeDeg, lonDeg: SITE.longitudeDeg },
+      night: '2026-10-20',
+      timeZoneTransitions: table.timeZoneTransitions.map((z) => ({
+        atUtc: Date.parse(z.atUtc) / 1000,
+        utcOffsetMinutes: z.utcOffsetMinutes,
+      })),
+    });
+    for (const item of r.items) {
+      const e = buildEligibility(ctx, {
+        target: { raJ2000Deg: item.raDeg, decJ2000Deg: item.decDeg },
+        twilight: 'astronomical',
+        minAltDeg: 25,
+      });
+      expect(item.night?.usableHours, item.primaryId).toBe(
+        Math.round(((e.usableSlots * 300) / 3600) * 10) / 10,
+      );
+      expect(item.night?.visibility, item.primaryId).toBe(e.visibility);
+    }
+  });
+
+  it('Nachtfilter ohne Standort → 422, fremder Standort → 404', async () => {
+    const bad = await s.request('/api/web/v1/dso?minUsableHours=2', { cookies: tenantCookies });
+    expect(bad.status).toBe(422);
+    const foreign = await s.request(`/api/web/v1/dso?siteId=${crypto.randomUUID()}`, {
+      cookies: tenantCookies,
+    });
+    expect(foreign.status).toBe(404);
+  });
+
+  it('Suche < 300 ms, auch mit Nachtwerten über den ganzen Katalog (Cache kalt)', async () => {
+    await search('q=m31'); // lädt den Katalog in den Speicher der api
+    const index = await cachedCatalog(
+      () => Promise.reject(new Error('Cache erwartet')),
+      s.clock.now().getTime(),
+    );
+    const t0 = performance.now();
+    for (const q of ['m31', 'ngc', 'orion', 'sh2-1'])
+      searchDso(index, {
+        q,
+        sort: 'name',
+        limit: 50,
+        offset: 0,
+        minAltDeg: 30,
+        twilight: 'astronomical',
+      });
+    expect((performance.now() - t0) / 4).toBeLessThan(300);
+    clearNightCache();
+    const t1 = performance.now();
+    const r = await search(`siteId=${siteId}&night=2026-11-15&sort=usable&limit=20`);
+    const cold = performance.now() - t1;
+    expect(r.total).toBe(file.counts.rows);
+    const t2 = performance.now();
+    await search(`siteId=${siteId}&night=2026-11-15&sort=usable&limit=20&offset=20`);
+    const warm = performance.now() - t2;
+    console.info(
+      `Nachtwerte ganzer Katalog: kalt ${cold.toFixed(0)} ms, warm ${warm.toFixed(0)} ms`,
+    );
+    expect(warm).toBeLessThan(300);
+  }, 60_000);
 });
 
 describe('S-82 Kataloge', () => {

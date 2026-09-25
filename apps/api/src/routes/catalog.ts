@@ -8,7 +8,10 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { dsoCatalogStatus, enqueueSystemJob, readDsoCatalog } from '@nina-pm/db';
 import meta from '@nina-pm/catalog-data/openngc/catalog-meta.json' with { type: 'json' };
 import { CatalogStatus, DsoList, DsoQuery, JobAccepted, ProblemError } from '@nina-pm/shared';
+import { cachedNightEvaluator, nightEvaluator, type NightEvaluator } from '../catalog/night';
 import { cachedCatalog, searchDso } from '../catalog/search';
+import { requireTenant } from './tenant';
+import { buildNightTable, siteNights } from '../lib/night-table';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
@@ -30,7 +33,12 @@ export const dsoSearchRoute = defineRoute(
     summary: 'Objektkatalog durchsuchen und filtern',
     tags: ['catalog'],
     request: { query: DsoQuery },
-    responses: { 200: { description: 'Treffer', ...json(DsoList) }, ...denied },
+    responses: {
+      200: { description: 'Treffer', ...json(DsoList) },
+      ...denied,
+      404: problemContent('Standort nicht gefunden'),
+      422: problemContent('Ungültige Anfrage'),
+    },
   },
 );
 
@@ -71,9 +79,47 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
 
   app.openapi(dsoSearchRoute, async (c) => {
     const svc = await services();
+    const query = c.req.valid('query');
     const index = await cachedCatalog(() => readDsoCatalog(svc.db), svc.now().getTime());
+    let night: NightEvaluator | undefined;
+    if (query.siteId) {
+      const { tenant } = requireTenant(c);
+      const site = await svc.repositories(tenant).equipment().site(query.siteId);
+      if (!site) throw new ProblemError('resource.not_found');
+      const key = query.night ?? siteNights(site, svc.now(), undefined, 2).currentNight;
+      const table = buildNightTable(site, key, 1);
+      night = cachedNightEvaluator(
+        [
+          site.id,
+          site.latitudeDeg,
+          site.longitudeDeg,
+          site.timeZone,
+          key,
+          query.minAltDeg,
+          query.twilight,
+        ].join('|'),
+        () =>
+          nightEvaluator({
+            site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg, timeZone: site.timeZone },
+            night: key,
+            timeZoneTransitions: table.timeZoneTransitions.map((z) => ({
+              atUtc: Date.parse(z.atUtc) / 1000,
+              utcOffsetMinutes: z.utcOffsetMinutes,
+            })),
+            minAltDeg: query.minAltDeg,
+            twilight: query.twilight,
+          }),
+      );
+    } else if (
+      query.minUsableHours !== undefined ||
+      query.sort === 'usable' ||
+      query.sort === 'altitude'
+    )
+      throw new ProblemError('validation.failed', [
+        { path: 'siteId', message: 'Nachtfilter und -sortierung nur mit Standort' },
+      ]);
     c.header('cache-control', 'private, max-age=60');
-    return c.json(searchDso(index, c.req.valid('query')), 200);
+    return c.json(searchDso(index, query, night), 200);
   });
 
   app.openapi(catalogStatusRoute, async (c) => {

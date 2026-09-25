@@ -6781,9 +6781,43 @@ components:
         total:
           type: integer
           minimum: 0
+        night:
+          type:
+            - object
+            - "null"
+          properties:
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+            timeZone:
+              type: string
+            darkStartUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            darkEndUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            moonIllumPct:
+              type:
+                - number
+                - "null"
+          required:
+            - night
+            - timeZone
+            - darkStartUtc
+            - darkEndUtc
+            - moonIllumPct
       required:
         - items
         - total
+        - night
     DsoView:
       type: object
       properties:
@@ -6896,6 +6930,8 @@ components:
             - "null"
         source:
           type: string
+        night:
+          $ref: "#/components/schemas/DsoNight"
       required:
         - id
         - primaryId
@@ -6915,6 +6951,40 @@ components:
         - sizeMinorArcmin
         - positionAngleDeg
         - source
+        - night
+    DsoNight:
+      type:
+        - object
+        - "null"
+      properties:
+        visibility:
+          type: string
+          enum:
+            - never
+            - circumpolar
+            - normal
+        usableHours:
+          type: number
+        peakAltDeg:
+          type:
+            - number
+            - "null"
+        peakUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        moonSepDeg:
+          type:
+            - number
+            - "null"
+      required:
+        - visibility
+        - usableHours
+        - peakAltDeg
+        - peakUtc
+        - moonSepDeg
     CatalogStatus:
       type: object
       properties:
@@ -17247,10 +17317,56 @@ paths:
           in: query
         - schema:
             type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: siteId
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: night
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: 0
+            maximum: 90
+            default: 30
+          required: false
+          name: minAltDeg
+          in: query
+        - schema:
+            type: string
+            enum:
+              - astronomical
+              - nautical
+              - civil
+            default: astronomical
+          required: false
+          name: twilight
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: 0
+            maximum: 24
+          required: false
+          name: minUsableHours
+          in: query
+        - schema:
+            type: string
             enum:
               - name
               - mag
               - size
+              - usable
+              - altitude
             default: name
           required: false
           name: sort
@@ -17288,6 +17404,18 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Standort nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
           content:
             application/problem+json:
               schema:
