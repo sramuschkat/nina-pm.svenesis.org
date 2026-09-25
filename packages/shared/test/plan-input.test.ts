@@ -87,6 +87,21 @@ describe('buildPlanInput', () => {
     });
   });
 
+  it('inaktives Panel (AP-22): seine Zeilen kommen deaktiviert an, das Panel bleibt erhalten', () => {
+    const withInactive = projects.map((p) =>
+      p.id === NGC7000
+        ? { ...p, panels: p.panels.map((panel) => ({ ...panel, enabled: false })) }
+        : p,
+    );
+    const input = buildPlanInput(rig, withInactive, moonProfiles, nights, {
+      night: '2026-09-17',
+      site: STARFRONT,
+    });
+    const target = input.projects.find((p) => p.id === NGC7000);
+    expect(target?.panels).toHaveLength(1);
+    expect(target?.panels.flatMap((p) => p.lines.map((l) => l.enabled))).toEqual([false, false]);
+  });
+
   it('gleiche Daten in anderer Reihenfolge → identisches PlanInput', () => {
     const reversed = buildPlanInput(
       rig,

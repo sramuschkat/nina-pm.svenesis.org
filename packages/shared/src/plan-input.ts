@@ -164,7 +164,8 @@ export function buildPlanInput(
               planned: l.plannedCount,
               accepted: l.counters.accepted,
               pending: options.pendingByLine?.[l.id] ?? 0,
-              enabled: l.enabled,
+              // Inaktive Panels (AP-22) planen nicht – ihre Zeilen zählen wie deaktivierte.
+              enabled: l.enabled && panel.enabled !== false,
               moonProfileId: lineProfile(l.moonMode, l.moonProfileId),
               gain: l.gain,
               offset: l.offsetAdu,

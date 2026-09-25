@@ -148,6 +148,7 @@ const project = (n: number, over: Partial<Project>): Project => ({
   dsoObjectId: null,
   dsoPrimaryId: null,
   catalogNames: '',
+  mosaic: { cols: 1, rows: 1, overlapPct: 20 },
   descriptionMd: '',
   raDeg: 13.2046,
   decDeg: 56.6297,
@@ -210,6 +211,7 @@ export const projects: Project[] = [
         decDeg: 44.53,
         rotationDeg: 0,
         notes: '',
+        enabled: true,
         lines: [
           line(211, ID(201), FILTER_OIII, 'OIII', { moonMode: 'profile', moonProfileId: STRICT }),
           line(212, ID(201), FILTER_L, 'L', { orderIndex: 1, moonMode: 'project_default' }),
@@ -227,6 +229,7 @@ export const projects: Project[] = [
         decDeg: 56.6297,
         rotationDeg: 90,
         notes: '',
+        enabled: true,
         lines: [line(111, ID(101), FILTER_HA, 'Ha', { counters: counters(40, 23) })],
       },
     ],

@@ -497,6 +497,21 @@ async function projectExamples(): Promise<Record<string, Example>> {
       body: { label: 'Main' },
       resource: draftRes,
     },
+    // Unvollständige Liste: nach der Rechteprüfung 422 (die Panels ändern sich durch andere Beispiele).
+    [`PUT ${P}/{id}/panels/order`]: {
+      url: `${P}/${D}/panels/order`,
+      method: 'PUT',
+      body: { panelIds: [crypto.randomUUID()] },
+      resource: draftRes,
+      okStatus: 422,
+    },
+    // 1 × 1 behält Panel 1 (vom PATCH-Beispiel benutzt) und entfernt nur hinzugefügte Panels.
+    [`POST ${P}/{id}/mosaic`]: {
+      url: `${P}/${D}/mosaic`,
+      method: 'POST',
+      body: { raDeg: 13.2458, decDeg: 56.6194, rotationDeg: 0, cols: 1, rows: 1, overlapPct: 20 },
+      resource: draftRes,
+    },
     [`DELETE ${P}/{id}/panels/{panelId}`]: {
       url: `${P}/${D}/panels/${crypto.randomUUID()}`,
       method: 'DELETE',

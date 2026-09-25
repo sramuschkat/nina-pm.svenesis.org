@@ -213,7 +213,11 @@ async function deliverable(
           startDate: d.project.startDate,
           projectType: d.project.projectType as 'deep_sky' | 'exoplanet',
           lines: d.panels.flatMap((panel) =>
-            panel.lines.map((l) => ({ ...l, deleted: l.deletedAt !== null })),
+            panel.lines.map((l) => ({
+              ...l,
+              enabled: l.enabled && panel.enabled !== false,
+              deleted: l.deletedAt !== null,
+            })),
           ),
           overshootPct: d.overshootPct,
         },
@@ -369,7 +373,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
             return {
               id: l.id,
               order: l.orderIndex,
-              enabled: l.enabled,
+              enabled: l.enabled && panel.enabled,
               filter: l.filterShortName,
               ninaFilterName: l.filterId === null ? null : (confirmed.get(l.filterId) ?? null),
               exposureS: l.exposureS,
