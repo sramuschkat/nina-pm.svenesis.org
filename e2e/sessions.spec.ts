@@ -92,7 +92,7 @@ async function nightOnOwnRig(admin: Page, user: Page, baseURL: string) {
   const token = ((await instance.json()) as { token: string }).token;
   const report = await runFakeNight({ baseUrl: baseURL, token });
   expect(report.steps.filter((s) => s.status === 'failed')).toEqual([]);
-  return { rigId, rigName };
+  return { rigId, rigName, projectId, projectName: `E2E-Session-Projekt ${stamp}` };
 }
 
 test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen sichtbar', async ({
@@ -122,6 +122,51 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await expect(flagged).toContainText('Einstellungen abweichend');
   await expect(flagged).toContainText('330 s');
   await expectNoSerious(admin, 'S-61 Aufnahmen');
+
+  // AF-06: Frames korrigieren (Regel max, Untergrenze = einzeln verworfen).
+  await admin.getByRole('tab', { name: 'Soll/Ist' }).click();
+  await admin.getByRole('button', { name: 'Korrektur', exact: true }).click();
+  await admin.getByLabel('Verworfen').fill('1');
+  await admin.getByLabel('Grund').selectOption('clouds');
+  await admin.getByRole('button', { name: 'Korrektur speichern' }).click();
+  await expect(admin.getByText('Korrektur gespeichert.')).toBeVisible();
+  const row = admin.getByRole('region', { name: 'Soll/Ist' }).getByRole('row').nth(1);
+  // Spalten: Projekt, Filter, Soll, Ist, Verworfen, Akzeptiert, …
+  await expect(row.getByRole('cell').nth(4)).toHaveText('1');
+  await expect(row.getByRole('cell').nth(5)).toHaveText('3');
+});
+
+test('AF-08: Projekt abschließen – verschwindet aus „An NINA ausgeliefert“, bleibt in der Projektliste', async ({
+  browser,
+  baseURL,
+}) => {
+  const admin = await (await browser.newContext()).newPage();
+  await testLogin(admin, 'owner');
+  const user = await (await browser.newContext()).newPage();
+  await testLogin(user, 'user1');
+  const { rigId, projectId, projectName } = await nightOnOwnRig(admin, user, baseURL ?? '');
+
+  await admin.goto('/nina/ausgeliefert');
+  await admin.getByLabel('Rig', { exact: true }).selectOption(rigId);
+  await expect(admin.getByRole('article', { name: projectName })).toBeVisible();
+
+  // Aktiv → Bereit zur Bearbeitung → Abgeschlossen (projectStatusTransitions).
+  for (const status of ['ready_to_process', 'completed'])
+    expect(
+      (
+        await admin.request.put(`/api/web/v1/projects/${projectId}/status`, {
+          headers: csrf,
+          data: { status },
+        })
+      ).status(),
+    ).toBe(200);
+  await admin.getByRole('button', { name: 'Aktualisieren' }).click();
+  await expect(admin.getByRole('article', { name: projectName })).toHaveCount(0);
+  await expect(admin.getByText('NINA erhält derzeit keine Ziele.')).toBeVisible();
+
+  const listed = await admin.request.get(`/api/web/v1/projects?rigId=${rigId}`);
+  const items = ((await listed.json()) as { items: { id: string; status: string }[] }).items;
+  expect(items.find((p) => p.id === projectId)?.status).toBe('completed');
 });
 
 for (const theme of ['light', 'dark'] as const) {

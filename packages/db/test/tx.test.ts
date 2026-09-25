@@ -2,6 +2,7 @@ import type { Kysely } from 'kysely';
 import { describe, expect, it, vi } from 'vitest';
 import {
   isOccConflict,
+  observeTxRetries,
   orderGuards,
   RowCounterPlugin,
   RowLimitExceededError,
@@ -46,6 +47,27 @@ describe('withTx', () => {
     );
     expect(fn).toHaveBeenCalledTimes(4);
     expect(onRetry).toHaveBeenCalledTimes(3);
+  });
+
+  it('meldet jede Wiederholung dem prozessweiten Beobachter (Metrik DsqlRetries); dessen Fehler stören nicht', async () => {
+    const { db } = fakeDb();
+    const seen: number[] = [];
+    observeTxRetries((attempt) => {
+      seen.push(attempt);
+      throw new Error('Beobachter kaputt');
+    });
+    let calls = 0;
+    const result = await withTx(
+      db,
+      () => {
+        calls += 1;
+        return calls < 3 ? Promise.reject(occ()) : Promise.resolve('ok');
+      },
+      { sleep: () => Promise.resolve() },
+    );
+    observeTxRetries(undefined);
+    expect(result).toBe('ok');
+    expect(seen).toEqual([1, 2]);
   });
 
   it('wiederholt andere Fehler nicht', async () => {

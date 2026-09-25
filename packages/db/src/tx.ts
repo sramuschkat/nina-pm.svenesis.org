@@ -71,6 +71,17 @@ export interface WithTxOptions {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Prozessweiter Beobachter für OCC-Wiederholungen (TK 16.1/16.2): `api` und `worker` schreiben daraus
+ * die Metrik `DsqlRetries` (Alarm > 20 in 5 min). Ein Fehler im Beobachter bricht nie die Transaktion.
+ */
+let retryObserver: ((attempt: number, error: unknown) => void) | undefined;
+export function observeTxRetries(
+  fn: ((attempt: number, error: unknown) => void) | undefined,
+): void {
+  retryObserver = fn;
+}
+
 /** Wächter in fester Reihenfolge: Tabelle, dann ID (ordinal), damit parallele Läufe nicht verklemmen. */
 export function orderGuards(guard: readonly GuardRow[]): GuardRow[] {
   return [...guard].sort((a, b) =>
@@ -104,6 +115,11 @@ export async function withTx<DB, T>(
     } catch (error) {
       if (!isOccConflict(error) || attempt >= delays.length) throw error;
       options.onRetry?.(attempt + 1, error);
+      try {
+        retryObserver?.(attempt + 1, error);
+      } catch {
+        // Beobachtung ist best effort.
+      }
       await sleep((delays[attempt] ?? 0) + jitter());
     }
   }

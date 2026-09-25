@@ -8,6 +8,7 @@ import {
 } from '@nina-pm/db';
 import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
+import { emitDsqlRetries } from '../lib/metrics';
 import { logger } from '../lib/logger';
 import { dispatch } from '../worker/dispatch';
 import { effortJobHandler, effortSiteTick } from '../worker/effort';
@@ -27,6 +28,9 @@ import {
   type SessionOpsDeps,
 } from '../worker/session-ops';
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
+
+// Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
+emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-worker');
 
 const effort = effortDbDeps(async () => (await lambdaDatabase()).db);
 const sessionOps: SessionOpsDeps = {

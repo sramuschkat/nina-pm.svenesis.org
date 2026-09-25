@@ -11,11 +11,15 @@ import { s3TenantFileStore } from '../files/tenant-files';
 import { createUploadTicket } from '../files/upload-ticket';
 import { lambdaJobInvoker } from '../jobs/enqueue';
 import { lambdaDatabase } from '../lib/database';
+import { emitDsqlRetries } from '../lib/metrics';
 import { lazy } from '../lib/lazy';
 import { requiredEnv, ssmSecret, ssmString } from '../lib/params';
 import { ninaTokenLookup, ninaTouch, readMaintenanceBanner } from '@nina-pm/db';
 import type { ApiServices } from '../routes/services';
 import { UPLOAD_LIMITS } from '@nina-pm/shared';
+
+// Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
+emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-api');
 
 const bootstrapSuperUsers = ssmString(requiredEnv('BOOTSTRAP_SUPER_USERS_PARAM'));
 

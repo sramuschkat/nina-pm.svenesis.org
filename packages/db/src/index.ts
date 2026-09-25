@@ -94,6 +94,7 @@ export {
   RowCounterPlugin,
   RowLimitExceededError,
   TX_ROW_LIMIT,
+  observeTxRetries,
   withTx,
   type GuardRow,
   type WithTxOptions,

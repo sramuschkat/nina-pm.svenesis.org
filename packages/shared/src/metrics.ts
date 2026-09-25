@@ -8,6 +8,8 @@ export const METRIC_NAMESPACE = 'NinaPm';
 export const APP_METRICS = {
   /** Laufende Sessions ohne Heartbeat > 10 min bei `offline_since IS NULL` (Pflichtalarm > 0). */
   staleRunningSessions: 'StaleRunningSessions',
+  /** OCC-Wiederholungen in `withTx` (Alarm > 20 in 5 min über `api` und `worker`). */
+  dsqlRetries: 'DsqlRetries',
 } as const;
 
 export interface EmfMetric {

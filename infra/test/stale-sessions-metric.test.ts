@@ -71,3 +71,38 @@ describe('StaleRunningSessions (CC-16)', () => {
     expect(fires(metric(3, 'nina-pm-api'), a)).toBe(false);
   });
 });
+
+describe('DsqlRetries (TK 16.2)', () => {
+  it('der Alarm summiert genau die Metrik, die api und worker je Wiederholung schreiben', () => {
+    const found = resources(ops, 'AWS::CloudWatch::Alarm').find(
+      ([, a]) => a.Properties.AlarmName === 'nina-pm-dsql-retries',
+    );
+    const props = found?.[1].Properties as {
+      Threshold: number;
+      Metrics: {
+        MetricStat?: {
+          Metric: {
+            Namespace: string;
+            MetricName: string;
+            Dimensions: { Name: string; Value: string }[];
+          };
+        };
+      }[];
+    };
+    const stats = props.Metrics.filter((m) => m.MetricStat).map((m) => m.MetricStat?.Metric);
+    expect(props.Threshold).toBe(20);
+    for (const service of [config.lambdas.api.functionName, config.lambdas.worker.functionName]) {
+      const line = JSON.parse(
+        emfLine(service, 0, [{ name: APP_METRICS.dsqlRetries, value: 1 }]),
+      ) as {
+        _aws: { CloudWatchMetrics: { Namespace: string; Metrics: { Name: string }[] }[] };
+        service: string;
+      };
+      expect(stats).toContainEqual({
+        Namespace: line._aws.CloudWatchMetrics[0]?.Namespace,
+        MetricName: line._aws.CloudWatchMetrics[0]?.Metrics[0]?.Name,
+        Dimensions: [{ Name: 'service', Value: line.service }],
+      });
+    }
+  });
+});
