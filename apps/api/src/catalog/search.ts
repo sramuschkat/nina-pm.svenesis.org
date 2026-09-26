@@ -28,6 +28,8 @@ export type CatalogRow = DsoCatalogRow & { readonly id: string };
 interface Indexed {
   readonly row: CatalogRow;
   readonly displayName: string;
+  /** Rang des Anzeigenamens (Messier vor NGC …), einmal beim Indizieren berechnet. */
+  readonly nameRank: number;
   readonly keys: readonly string[];
   readonly mag: number | null;
   readonly group: DsoTypeGroup;
@@ -42,9 +44,11 @@ export function indexCatalog(rows: readonly CatalogRow[]): Indexed[] {
     const mag = row.magV ?? row.magB;
     const ra = (row.raDeg * Math.PI) / 180;
     const dec = (row.decDeg * Math.PI) / 180;
+    const displayName = dsoDisplayName(row.primaryId, row.names);
     return {
       row,
-      displayName: dsoDisplayName(row.primaryId, row.names),
+      displayName,
+      nameRank: designationRank(displayName),
       keys: [row.primaryId, ...row.names].map(squeezeDesignation),
       mag,
       group,
@@ -102,9 +106,13 @@ export function toView(x: Indexed, night?: NightEvaluator, fov?: number): DsoVie
   };
 }
 
+/**
+ * Ein Collator für alle Vergleiche: `localeCompare` mit Optionen baut ihn je Aufruf neu – bei „ngc“
+ * (rund 8.000 Treffer, ~100.000 Vergleiche) war das der größte Teil der Suchzeit.
+ */
+const NAME_COLLATOR = new Intl.Collator('en', { numeric: true });
 const byName = (a: Indexed, b: Indexed) =>
-  designationRank(a.displayName) - designationRank(b.displayName) ||
-  a.displayName.localeCompare(b.displayName, 'en', { numeric: true });
+  a.nameRank - b.nameRank || NAME_COLLATOR.compare(a.displayName, b.displayName);
 
 export function searchDso(
   index: readonly Indexed[],
