@@ -1,5 +1,6 @@
-/* S-40 Nacht-Simulator (FK 14.3, AP-26b, Stilsystem AP-26d): volle Breite, Ergebnis zuerst,
-   Einstellungen einklappbar, Ergebnis auf Reitern; Einstellungen, Nachtwahl und Ergebnis als Karten.
+/* S-40 Nacht-Simulator (FK 14.3, AP-26b, Stilsystem AP-26d, AP-26g): volle Breite, Ergebnis zuerst,
+   Einstellungen einklappbar, Ergebnis auf einer Seite (Zielkarten, Nachtplan, Planprotokoll, Prüfungen) als
+   Karten untereinander.
    Abstände und Farben nur über Tokens; Felder, Knöpfe und Tabellen aus den Grundklassen. */
 .page {
   composes: page from '../equipment/equipment.module.css';
@@ -31,7 +32,7 @@
 /* Karte: einzige Fläche der Seite (Stilsystem AP-26d). */
 .summary,
 .dateRow,
-.results {
+.block {
   background: var(--npm-white);
   border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius-card);
@@ -115,18 +116,25 @@
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--npm-space-3);
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: var(--npm-space-2);
 }
-/* Zielkarte innerhalb der Ergebnis-Karte: getönte Fläche statt zweiter Umrandung. */
+/* Zielkarte kompakt (AP-26g): getönte Fläche, kleine Schrift, Kennwerte zweispaltig; gewählt mit Rand in
+   Zielfarbe. */
 .card {
+  border: 2px solid transparent;
   border-radius: var(--npm-radius-card);
-  padding: var(--npm-space-3) var(--npm-space-4);
+  padding: var(--npm-space-2) var(--npm-space-3);
   background: var(--npm-surface-sub);
   min-width: 0;
+  font-size: var(--npm-font-small);
+}
+.card[data-selected='true'] {
+  border-color: var(--card-color, var(--npm-accent));
 }
 .card h3 {
-  margin-top: 0;
+  margin: 0 0 var(--npm-space-1);
+  font-size: var(--npm-font-base, 14px);
 }
 .cardTitle {
   display: flex;
@@ -134,11 +142,46 @@
   gap: var(--npm-space-2);
   flex-wrap: wrap;
 }
+.cardPick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cardPick:hover {
+  text-decoration: underline;
+}
+.cardPick:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.card .facts {
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0 var(--npm-space-3);
+}
+.card .facts dd {
+  white-space: nowrap;
+}
+.card .facts dt {
+  color: var(--npm-text-light);
+}
+.card ul {
+  gap: 0;
+}
+.card ul li {
+  min-height: 0;
+}
 .swatch {
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   border: 1px solid var(--npm-border);
 }
 .tag {
@@ -156,21 +199,28 @@
   margin: var(--npm-space-1) 0;
 }
 .subhead {
-  margin: var(--npm-space-2) 0 var(--npm-space-1);
-  font-size: var(--npm-font-small);
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .lines {
   list-style: none;
   padding: 0;
-  margin: 0 0 var(--npm-space-2);
+  margin: 0 0 var(--npm-space-1);
   display: grid;
-  gap: var(--npm-space-1);
+  gap: 2px;
 }
 .lines li {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--npm-space-2);
+}
+.lines li > :last-child {
+  margin-left: auto;
 }
 .plain {
   list-style: none;
@@ -192,11 +242,65 @@
   outline: 2px solid var(--npm-accent);
   outline-offset: 2px;
 }
-.results {
-  overflow: clip;
-}
-.tabPanel {
+/* Abschnitt des Ergebnisses (AP-26g): Karte mit Titelzeile, Werkzeuge rechts. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
   padding: var(--npm-space-3) var(--npm-space-4);
+}
+.blockHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}
+.blockTitle {
+  flex-grow: 1;
+  margin: 0;
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+}
+.blockTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+/* Planprotokoll extrem kompakt (Wunsch Sven 26.09.2026): Festbreitenschrift, 12 px, Zeilen 22 px, Höhe
+   begrenzt mit stehendem Kopf – die einzige Liste der Seite mit eigenem Rollbalken (Hunderte Zeilen). */
+.logBox {
+  max-height: min(28rem, 60vh);
+  overflow: auto;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+}
+.logBox .log table {
+  font-family: var(--npm-font-mono);
+  font-size: 12px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.logBox .log th,
+.logBox .log td {
+  height: 22px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.logBox .log thead svg {
+  width: 12px;
+  height: 12px;
+}
+.logBox .log thead th {
+  height: 24px;
+  font-family: var(--npm-font);
+  font-size: 11px;
+}
+.logBox .log button {
+  min-height: 20px;
+}
+.logBox .log tbody tr:hover td {
+  background: var(--npm-selected-bg);
 }
 .badge,
 .badgeError {
@@ -227,9 +331,8 @@
 }
 .hash {
   margin: 0;
-  padding: var(--npm-space-2) var(--npm-space-4);
+  padding-top: var(--npm-space-2);
   border-top: 1px solid var(--npm-border);
-  background: var(--npm-surface-sub);
   color: var(--npm-text-light);
   font-size: var(--npm-font-label);
   overflow-wrap: anywhere;

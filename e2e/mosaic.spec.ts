@@ -118,7 +118,6 @@ test('Mosaik 2×2 aus der Sternkarte → vier Panels, Panel-Liste, Simulator mit
   await page.goto(`/nina/simulator?rig=${s.rigId}&nacht=${NIGHT}`);
   await expect(page.getByText(/^Plan-Hash sha256:/)).toBeVisible({ timeout: 30_000 });
   // Protokoll liegt auf einem eigenen Reiter (AP-26b).
-  await page.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
   // Blöcke je Panel: das Planprotokoll nennt je Belichtung die Panel-Nummer (= NINA-Nummer).
   const rows = page.getByRole('row').filter({ hasText: 'Belichtung' }).filter({ hasText: s.name });
   await expect(rows.first()).toBeVisible();

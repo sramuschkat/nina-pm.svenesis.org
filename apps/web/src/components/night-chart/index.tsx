@@ -103,6 +103,11 @@ export interface NightChartProps {
   onCursorChange?: (atUtc: number) => void;
   /** `night` (Standard) oder `plan` – Plangrafik des Simulators. */
   variant?: 'night' | 'plan';
+  /**
+   * Plangrafik: hervorgehobene Blöcke (gewähltes Ziel, AP-26g). Ohne Angabe ist der Block unter der
+   * Uhrzeit hervorgehoben.
+   */
+  highlightBlockIds?: readonly string[];
   /** Stundenstreifen unter dem Diagramm (FA-SIC-01); Standard an. */
   bands?: boolean;
   /** Ausschnitt eine Stunde vor Sonnenuntergang bis eine Stunde nach Sonnenaufgang; Standard an. */
@@ -366,7 +371,9 @@ export function NightChart(props: NightChartProps) {
       for (const b of blocks) {
         const x0 = x(b.fromUtc);
         const w = Math.max(1, x(b.toUtc) - x0);
-        const on = cursor !== null && cursor >= b.fromUtc && cursor < b.toUtc;
+        const on = props.highlightBlockIds
+          ? props.highlightBlockIds.includes(b.id)
+          : cursor !== null && cursor >= b.fromUtc && cursor < b.toUtc;
         ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
         ctx.strokeStyle = ctx.fillStyle;
         ctx.globalAlpha = on ? 0.42 : 0.2;
@@ -668,6 +675,7 @@ export function NightChart(props: NightChartProps) {
     secondaryTimeZone,
     best,
     plan,
+    props.highlightBlockIds,
     t,
     appearance,
   ]);

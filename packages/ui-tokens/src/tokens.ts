@@ -98,6 +98,8 @@ export const BASE: Readonly<Record<string, string>> = {
   'max-width': '1100px',
   transition: '0.25s ease',
   font: '-apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  /** Festbreitenschrift für Protokolle (Planprotokoll des Simulators, AP-26g). */
+  'font-mono': 'ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace',
   'focus-ring': '2px solid var(--npm-accent)',
   'header-h': '64px',
 };

@@ -131,8 +131,6 @@ beforeEach(() => {
   state.patchLine.mockClear();
 });
 
-const openTab = (name: RegExp | string) => fireEvent.click(screen.getByRole('tab', { name }));
-
 const nodeHash = () =>
   planNight(
     buildPlanInput(rig, projects, moonProfiles, nights, {
@@ -147,18 +145,33 @@ describe('S-40 Nacht-Simulator', () => {
     const hash = await screen.findByText(/^Plan-Hash sha256:/, {}, { timeout: 5000 });
     expect(hash.textContent).toBe(`Plan-Hash ${nodeHash()}`);
     expect(screen.getByRole('heading', { level: 1, name: 'Nacht-Simulator' })).toBeInTheDocument();
-    // Ergebnis zuerst: Nachtplan-Reiter aktiv, Zeiten in Standortzeit.
-    expect(screen.getByRole('tab', { name: /^Nachtplan \(Standortzeit CDT\)/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    openTab('Zielkarten');
+    // Ergebnis auf einer Seite (AP-26g): Zielkarten, Nachtplan, Planprotokoll, Prüfungen – keine Reiter.
+    expect(screen.queryByRole('tablist', { name: 'Ergebnis' })).toBeNull();
+    const order = [
+      'Zielkarten',
+      /^Nachtplan \(Standortzeit CDT\)/,
+      'Planprotokoll',
+      /^Prüfungen/,
+    ].map((name) => screen.getByRole('heading', { level: 2, name }));
+    for (let i = 1; i < order.length; i += 1)
+      expect(
+        (order[i - 1] as HTMLElement).compareDocumentPosition(order[i] as HTMLElement) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     const card = screen
       .getAllByRole('article')
       .find((a) => a.getAttribute('aria-label') !== 'Nicht zugeteilt');
     expect(card).toBeDefined();
     expect(within(card as HTMLElement).getByText('Zeitfenster')).toBeInTheDocument();
-    openTab('Planprotokoll');
+    // Kartentitel wählt das Ziel (Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben).
+    const pick = within(card as HTMLElement).getByRole('button', { pressed: false });
+    fireEvent.click(pick);
+    expect(pick).toHaveAttribute('aria-pressed', 'true');
+    expect(card).toHaveAttribute('data-selected', 'true');
+    fireEvent.click(pick);
+    expect(pick).toHaveAttribute('aria-pressed', 'false');
+    // Planprotokoll kompakt in eigener, begrenzter Liste.
+    expect(screen.getByRole('table', { name: 'Planprotokoll' })).toBeInTheDocument();
     expect(screen.getAllByRole('row').length).toBeGreaterThan(3);
     expect(screen.getAllByText(/CDT/).length).toBeGreaterThan(0);
     await expectNoSeriousA11y();
@@ -189,14 +202,12 @@ describe('S-40 Nacht-Simulator', () => {
   it('Admin schaltet Zeilen an/aus; User sieht keinen Schalter', async () => {
     const { unmount } = renderPage('owner');
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
-    openTab('Zielkarten');
     const toggle = screen.getAllByRole('checkbox', { name: /aktiv$/ })[0] as HTMLInputElement;
     fireEvent.click(toggle);
     await waitFor(() => expect(state.patchLine).toHaveBeenCalledOnce());
     unmount();
     renderPage('user');
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
-    openTab('Zielkarten');
     expect(screen.getAllByRole('article').length).toBeGreaterThan(0);
     expect(screen.queryAllByRole('checkbox', { name: /aktiv$/ })).toHaveLength(0);
   });
@@ -204,8 +215,7 @@ describe('S-40 Nacht-Simulator', () => {
   it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Belichtung“ sortiert das Protokoll', async () => {
     renderPage();
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
-    openTab('Planprotokoll');
-    // Kopieren und CSV stehen in der Reiterleiste, solange das Protokoll offen ist.
+    // Kopieren und CSV stehen im Kopf des Planprotokolls.
     expect(screen.getByRole('button', { name: 'Kopieren' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'CSV' })).toBeInTheDocument();
     const table = screen.getByRole('table', { name: 'Planprotokoll' });
@@ -273,6 +283,6 @@ describe('S-40 Nacht-Simulator', () => {
     const toggle = await screen.findByRole('button', { name: 'Einstellungen' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/Kein Rig gewählt/)).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Planprotokoll' })).toBeNull();
   });
 });
