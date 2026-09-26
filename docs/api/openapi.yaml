@@ -5015,6 +5015,12 @@ components:
           description: UUID
         enabled:
           type: boolean
+        disabledForNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
         orderIndex:
           type: integer
         notes:
@@ -5069,6 +5075,7 @@ components:
         - moonMode
         - moonProfileId
         - enabled
+        - disabledForNight
         - orderIndex
         - notes
         - hasCaptures
@@ -7061,6 +7068,10 @@ components:
             - "null"
           format: date-time
           example: 2026-09-18T13:00:00Z
+        currentNight:
+          type: string
+          format: date
+          example: 2026-09-18
         nights:
           type: array
           items:
@@ -7097,6 +7108,7 @@ components:
         - rigName
         - siteTimeZone
         - computedAt
+        - currentNight
         - nights
         - clearQuota
         - projects
@@ -7239,6 +7251,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ForecastAction"
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightLine"
       required:
         - projectId
         - name
@@ -7252,6 +7268,7 @@ components:
         - candidates
         - seasonWarning
         - suggestions
+        - lines
     ForecastFilterNeed:
       type: object
       properties:
@@ -7345,6 +7362,25 @@ components:
       required:
         - kind
         - oneClick
+    TonightLine:
+      type: object
+      properties:
+        lineId:
+          type: string
+          format: uuid
+          description: UUID
+        filter:
+          type: string
+        frames:
+          type: integer
+          minimum: 0
+        disabledTonight:
+          type: boolean
+      required:
+        - lineId
+        - filter
+        - frames
+        - disabledTonight
     ForecastResume:
       type: object
       properties:
@@ -7700,6 +7736,279 @@ components:
       required:
         - behind
         - ahead
+    TonightView:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        rigs:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightRig"
+      required:
+        - generatedAt
+        - rigs
+    TonightRig:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        rigName:
+          type: string
+        siteId:
+          type: string
+          format: uuid
+          description: UUID
+        siteName:
+          type: string
+        siteTimeZone:
+          type: string
+        weatherSafetyUrl:
+          type:
+            - string
+            - "null"
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        nightWindow:
+          type:
+            - object
+            - "null"
+          properties:
+            startUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            endUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - startUtc
+            - endUtc
+        dark:
+          type:
+            - object
+            - "null"
+          properties:
+            fromUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            toUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - fromUtc
+            - toUtc
+        darkHours:
+          type: number
+          minimum: 0
+        moon:
+          type: object
+          properties:
+            illumPct:
+              type: number
+              minimum: 0
+              maximum: 100
+            events:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - rise
+                      - set
+                  atUtc:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                required:
+                  - type
+                  - atUtc
+          required:
+            - illumPct
+            - events
+        weather:
+          $ref: "#/components/schemas/TonightWeather"
+        forecast:
+          type: object
+          properties:
+            computedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            covered:
+              type: boolean
+          required:
+            - computedAt
+            - covered
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightProject"
+        idleProjects:
+          type: integer
+          minimum: 0
+        instances:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightInstance"
+      required:
+        - rigId
+        - rigName
+        - siteId
+        - siteName
+        - siteTimeZone
+        - weatherSafetyUrl
+        - night
+        - nightWindow
+        - dark
+        - darkHours
+        - moon
+        - weather
+        - forecast
+        - projects
+        - idleProjects
+        - instances
+    TonightWeather:
+      type:
+        - object
+        - "null"
+      properties:
+        nightMean:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+        coverage:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        bestWindow:
+          $ref: "#/components/schemas/WeatherBestWindow"
+        aerosolMissing:
+          type: boolean
+        hours:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightWeatherHour"
+      required:
+        - nightMean
+        - ratingIndex
+        - coverage
+        - bestWindow
+        - aerosolMissing
+        - hours
+    TonightWeatherHour:
+      type: object
+      properties:
+        tUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        overallScore:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+        sunAltDeg:
+          type:
+            - number
+            - "null"
+      required:
+        - tUtc
+        - overallScore
+        - ratingIndex
+        - sunAltDeg
+    TonightProject:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        priority:
+          type:
+            - integer
+            - "null"
+        frames:
+          type: integer
+          minimum: 0
+        hours:
+          type: number
+          minimum: 0
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightLine"
+      required:
+        - projectId
+        - name
+        - priority
+        - frames
+        - hours
+        - lines
+    TonightInstance:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        lastSeenAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        state:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - name
+        - lastSeenAt
+        - state
+    LineTonightInput:
+      type: object
+      properties:
+        disabled:
+          type: boolean
+      required:
+        - disabled
+      additionalProperties: false
     NinaInstanceView:
       type: object
       properties:
@@ -20122,6 +20431,120 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/tonight:
+    get:
+      summary: "Heute Nacht: aktuelle Nacht je Rig mit Wetter, Plan und NINA"
+      tags:
+        - reports
+      description: "Aktion: `project.read` · FA-FOL-06, S-02, NT-01"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-FOL-06
+        - S-02
+        - NT-01
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+      responses:
+        "200":
+          description: Heute Nacht
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TonightView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/lines/{lineId}/tonight:
+    put:
+      summary: Zeile nur für die kommende Nacht ab- bzw. wieder einschalten
+      tags:
+        - projects
+      description: "Aktion: `project.status` · FA-FOL-05"
+      x-npm-action: project.status
+      x-npm-requirements:
+        - FA-FOL-05
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: lineId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LineTonightInput"
+      responses:
+        "200":
+          description: Geändert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:

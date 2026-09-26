@@ -102,6 +102,35 @@ describe('buildPlanInput', () => {
     expect(target?.panels.flatMap((p) => p.lines.map((l) => l.enabled))).toEqual([false, false]);
   });
 
+  it('Zeile nur für diese Nacht aus (FA-FOL-05): deaktiviert in der Nacht, in der nächsten wieder aktiv', () => {
+    const first = projects.find((p) => p.id === NGC7000)?.panels[0]?.lines[0]?.id;
+    const off = projects.map((p) =>
+      p.id === NGC7000
+        ? {
+            ...p,
+            panels: p.panels.map((panel) => ({
+              ...panel,
+              lines: panel.lines.map((l) =>
+                l.id === first ? { ...l, disabledForNight: '2026-09-17' } : l,
+              ),
+            })),
+          }
+        : p,
+    );
+    const enabled = (night: string) =>
+      buildPlanInput(rig, off, moonProfiles, nights, { night, site: STARFRONT })
+        .projects.find((p) => p.id === NGC7000)
+        ?.panels.flatMap((p) => p.lines.map((l) => [l.id === first, l.enabled]));
+    expect(enabled('2026-09-17')).toEqual([
+      [true, false],
+      [false, true],
+    ]);
+    expect(enabled('2026-09-18')).toEqual([
+      [true, true],
+      [false, true],
+    ]);
+  });
+
   it('Panel-Index = Position (NINA-Nummer − 1), auch wenn panel_index Lücken hat (NT-32)', () => {
     const gaps = projects.map((p) =>
       p.id === NGC7000

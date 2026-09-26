@@ -122,6 +122,7 @@ const line = (
   filterShortName: short,
   exposureS: 300,
   plannedCount: 40,
+  disabledForNight: null,
   gain: 100,
   offsetAdu: 20,
   binning: 1,

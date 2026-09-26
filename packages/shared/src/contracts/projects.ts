@@ -316,6 +316,8 @@ export const LineView = z
     moonMode: z.enum(moonModes),
     moonProfileId: Uuid.nullable(),
     enabled: z.boolean(),
+    /** Nur für diese Nacht abgeschaltet (FA-FOL-05); gilt nur, solange sie die aktuelle Nacht ist. */
+    disabledForNight: NightKey.nullable(),
     orderIndex: z.number().int(),
     notes: z.string(),
     /** Aufnahmen vorhanden → gesperrte Felder (NT-E3). */

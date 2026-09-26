@@ -374,7 +374,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
             return {
               id: l.id,
               order: l.orderIndex,
-              enabled: l.enabled && panel.enabled,
+              enabled: l.enabled && panel.enabled && l.disabledForNight !== night,
               filter: l.filterShortName,
               ninaFilterName: l.filterId === null ? null : (confirmed.get(l.filterId) ?? null),
               exposureS: l.exposureS,

@@ -1,0 +1,115 @@
+/* S-02 „Heute Nacht“ (AP-35): Karten je Rig in voller Breite, Bausteine der Startseite. */
+.page {
+  composes: page from '../home/home.module.css';
+}
+.muted {
+  composes: muted from '../home/home.module.css';
+}
+.card {
+  composes: card from '../home/home.module.css';
+}
+.cardHead {
+  composes: cardHead from '../home/home.module.css';
+  flex-wrap: wrap;
+}
+.cardTitle {
+  composes: cardTitle from '../home/home.module.css';
+  flex: 0 1 auto;
+}
+.cardBody {
+  composes: cardBody from '../home/home.module.css';
+}
+.more {
+  composes: more from '../home/home.module.css';
+  margin-inline-start: auto;
+}
+.band {
+  composes: band from '../home/home.module.css';
+}
+.bandCell {
+  composes: bandCell from '../home/home.module.css';
+}
+.bandScale {
+  composes: bandScale from '../home/home.module.css';
+}
+.list {
+  composes: list from '../home/home.module.css';
+  gap: var(--npm-space-2);
+}
+.button {
+  composes: button from '../sessions/sessions.module.css';
+}
+.note {
+  composes: note from '../equipment/equipment.module.css';
+}
+
+.rigs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (min-width: 1600px) {
+  .rigs {
+    grid-template-columns: repeat(auto-fill, minmax(44rem, 1fr));
+  }
+}
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--npm-space-4);
+  align-items: start;
+  margin-top: var(--npm-space-4);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--npm-space-2) var(--npm-space-4);
+  margin: 0;
+}
+.facts dt {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.subTitle {
+  margin: 0;
+  font-size: var(--npm-font-base);
+  font-weight: 600;
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}
+.line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.line[data-off] .lineFrames {
+  text-decoration: line-through;
+  color: var(--npm-text-light);
+}
+.lineFrames {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.offBadge {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  white-space: nowrap;
+}
+.lineButton {
+  composes: button from '../sessions/sessions.module.css';
+  padding: 0 var(--npm-space-2);
+  font-size: var(--npm-font-label);
+}

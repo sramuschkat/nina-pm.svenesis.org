@@ -2,9 +2,11 @@
  * Lokaler Node-Adapter (`pnpm dev:api`, Playwright-Stack; TK 17). **Nie im Lambda-Bundle** – die
  * Lambda-Einstiege liegen in src/handlers/, und nur hier gibt es den Test-Login
  * (`AUTH_TEST_MODE=true`, `POST /api/auth/test-login {identityFixture}`, Fixtures aus
- * docs/seed/seed-demo.json). Datenbank: `DATABASE_URL` (PostgreSQL 16) oder ohne sie PGlite im
+ * docs/seed/seed-demo.json). Ebenfalls nur mit `AUTH_TEST_MODE`: die **Testuhr je Anfrage** über das Cookie
+ * `npm_test_now` (ISO-Zeitpunkt; E2E „Heute Nacht“, AP-35). Datenbank: `DATABASE_URL` (PostgreSQL 16) oder ohne sie PGlite im
  * Speicher mit Demo-Seed.
  */
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
@@ -108,7 +110,11 @@ if (!(await db.selectFrom('dsoObject').select('id').limit(1).executeTakeFirst())
   await importCatalog(db, new Date());
   logger.info('local_catalog', { imported: true });
 }
-const now = () => new Date();
+// Testuhr je Anfrage (nur AUTH_TEST_MODE, Cookie `npm_test_now`): E2E prüfen „Heute Nacht“ zu festen Zeiten,
+// ohne die Uhr anderer Anfragen zu verstellen.
+const testNow = new AsyncLocalStorage<Date>();
+const TEST_NOW_COOKIE = 'npm_test_now';
+const now = () => testNow.getStore() ?? new Date();
 const queue = new JobQueue(db);
 const localSessionJobs: SessionJobDeps = {
   db: () => Promise.resolve(db),
@@ -330,7 +336,10 @@ local.get('/catalog/thumbs/:file', (c) => {
 local.all('*', (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('x-origin-verify', LOCAL_ORIGIN_VERIFY);
-  return app.fetch(new Request(c.req.raw, { headers }));
+  const forward = () => app.fetch(new Request(c.req.raw, { headers }));
+  const fixed = AUTH_TEST_MODE ? readCookie(c.req.header('cookie'), TEST_NOW_COOKIE) : undefined;
+  const at = fixed ? new Date(decodeURIComponent(fixed)) : null;
+  return at && !Number.isNaN(at.getTime()) ? testNow.run(at, forward) : forward();
 });
 
 serve({ fetch: local.fetch, port: PORT }, () => {
