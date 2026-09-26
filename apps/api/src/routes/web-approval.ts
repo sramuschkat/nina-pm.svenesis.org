@@ -251,6 +251,13 @@ function queueItem(
     submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
     expiresAt: e.expiresAt ? e.expiresAt.toISOString() : null,
     requestedRigId: p.requestedRigId ?? p.rigId,
+    target: p.raDeg !== null && p.decDeg !== null ? { raDeg: p.raDeg, decDeg: p.decDeg } : null,
+    conditions: {
+      minAltitudeDeg: p.minAltitudeDeg,
+      minTimeOnTargetH: p.minTimeOnTargetH,
+      twilight: p.twilight as 'astronomical' | 'nautical' | 'civil',
+    },
+    startDate: p.startDate,
     requestPeriodFrom: p.requestPeriodFrom,
     requestPeriodTo: p.requestPeriodTo,
     requestComment: p.requestComment,

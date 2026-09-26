@@ -5638,6 +5638,41 @@ components:
             - "null"
           format: uuid
           description: UUID
+        target:
+          type:
+            - object
+            - "null"
+          properties:
+            raDeg:
+              type: number
+            decDeg:
+              type: number
+          required:
+            - raDeg
+            - decDeg
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+            minTimeOnTargetH:
+              type: number
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+          required:
+            - minAltitudeDeg
+            - minTimeOnTargetH
+            - twilight
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
         requestPeriodFrom:
           type:
             - string
@@ -5753,6 +5788,9 @@ components:
         - submittedAt
         - expiresAt
         - requestedRigId
+        - target
+        - conditions
+        - startDate
         - requestPeriodFrom
         - requestPeriodTo
         - requestComment

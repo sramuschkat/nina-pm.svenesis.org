@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 import { EffortView } from './effort';
-import { moonModes } from '../generated/enums';
+import { moonModes, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
 const comment = z.string().trim().max(4000);
@@ -118,6 +118,15 @@ export const QueueItem = z
     /** Verfall nach `approvalDeadlineDays` ab Einreichung; `null` = keine Frist (FA-FRG-04 „Frist“). */
     expiresAt: UtcInstant.nullable(),
     requestedRigId: Uuid.nullable(),
+    /** Ziel J2000 (Panel 1 bzw. Projektkoordinaten); `null` ohne Koordinaten – für die Sichtbarkeit (AP-24). */
+    target: z.object({ raDeg: z.number(), decDeg: z.number() }).nullable(),
+    /** Bedingungen der Sichtbarkeit „4 Wochen“ (S-33, AP-24): Mindesthöhe, Mindestzeit, Dämmerung. */
+    conditions: z.object({
+      minAltitudeDeg: z.number(),
+      minTimeOnTargetH: z.number(),
+      twilight: z.enum(twilight),
+    }),
+    startDate: NightKey.nullable(),
     requestPeriodFrom: NightKey.nullable(),
     requestPeriodTo: NightKey.nullable(),
     requestComment: z.string().nullable(),

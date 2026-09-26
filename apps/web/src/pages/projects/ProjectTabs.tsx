@@ -1,9 +1,9 @@
 /**
  * Mittlerer Bereich des Projekt-Editors S-31 (FK 14.3): Reiter *Diagramme* (Nachtdiagramm mit
- * Nachtwahl als Vorschau des Entwurfs – Koordinaten und Bedingungen live; Engine im Browser mit der
+ * Nachtwahl und Saisondiagramm (AP-24) als Vorschau des Entwurfs – Koordinaten und Bedingungen live; Engine im Browser mit der
  * Nacht-Tabelle des Standorts, NT-02), *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
- * *Freigabe-Verlauf* (FA-BER-03) und *Wetter* des Standorts (FA-WET-05, AP-23). Saisondiagramm, Sessions
- * und Transit folgen mit ihren Paketen.
+ * *Freigabe-Verlauf* (FA-BER-03) und *Wetter* des Standorts (FA-WET-05, AP-23). Sessions und Transit folgen
+ * mit ihren Paketen.
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../equipment/shared';
 import { SiteWeather } from '../weather/SiteWeather';
+import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 
@@ -162,7 +163,16 @@ function ChartsTab({ draft, site }: { draft: ProjectDraft; site: SiteView | null
           onRetry={() => void nights.refetch()}
         />
       )}
-      <p className={styles.muted}>{t('projectEditor.charts.seasonLater')}</p>
+      <SeasonPanel
+        site={site}
+        target={{ raDeg, decDeg }}
+        conditions={{
+          minAltitudeDeg: draft.conditions.minAltitudeDeg,
+          minTimeOnTargetH: draft.conditions.minTimeOnTargetH,
+          twilight: draft.conditions.twilight,
+        }}
+        startDate={draft.startDate || null}
+      />
     </div>
   );
 }
