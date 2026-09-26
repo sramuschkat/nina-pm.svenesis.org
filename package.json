@@ -9,7 +9,7 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present run typecheck",
-    "lint": "eslint . --max-warnings 0 && prettier --check . && pnpm db:lint",
+    "lint": "eslint . --max-warnings 0 --cache --cache-strategy content --cache-location node_modules/.cache/eslint/ && prettier --check . --cache --cache-strategy content --cache-location node_modules/.cache/prettier/cache.json && pnpm db:lint",
     "format": "prettier --write . && eslint . --fix",
     "test": "vitest run",
     "cdk": "pnpm --filter @nina-pm/infra exec cdk",
