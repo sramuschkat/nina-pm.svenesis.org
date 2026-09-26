@@ -804,6 +804,8 @@ tr[data-dragging='true'] {
   gap: var(--npm-space-2);
 }
 .skyCanvas {
+  /* Bezug für die absolut gesetzte Zeichenfläche der Sternkarte (`.canvasWrap`), sonst überdeckt sie die Seite. */
+  position: relative;
   height: 13rem;
   max-width: 36rem;
   border-radius: var(--npm-radius);

@@ -112,11 +112,15 @@ export function SkyMapPage() {
   const state = useMemo(() => stateFromParams(params), [params]);
   const projectParam = params.get('projekt');
   const objectParam = params.get('objekt');
+  // Aus der aktuellen Adresse ableiten, nicht aus dem Zustand des letzten Renderns: zwei schnelle
+  // Änderungen (z. B. Mosaik horizontal, dann vertikal) überschreiben sich sonst gegenseitig.
   const update = (patch: Partial<SkyMapState>) => {
     const extra: Record<string, string> = {};
     if (projectParam) extra.projekt = projectParam;
     if (objectParam) extra.objekt = objectParam;
-    setParams(paramsFromState({ ...state, ...patch }, extra), { replace: true });
+    setParams((prev) => paramsFromState({ ...stateFromParams(prev), ...patch }, extra), {
+      replace: true,
+    });
   };
   const num = useNumber();
   const ids = { map: useId() };
