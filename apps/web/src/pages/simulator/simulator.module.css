@@ -363,3 +363,41 @@
   outline: 2px solid var(--npm-accent);
   outline-offset: 2px;
 }
+/* Mehrnacht-Simulation (AP-32a, FA-SIM-04): Steuerzeile, Streifen je Nacht. */
+.multiControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.nightStrip {
+  display: flex;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+.nightCell {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-width: 3.5rem;
+  font-size: var(--npm-font-small);
+  text-align: center;
+}
+.nightTrack {
+  display: flex;
+  align-items: flex-end;
+  width: 1.5rem;
+  height: 4.5rem;
+  background: var(--npm-surface-sub);
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+}
+.nightFill {
+  width: 100%;
+  background: var(--npm-accent);
+}

@@ -592,6 +592,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/jobs/{id}/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ergebnis eines Simulations-Jobs abrufen
+         * @description Aktion: `job.read` · TK 7.4, FA-SIM-04, FA-FRG-05
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ergebnis */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobResult"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description job.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/jobs/{id}": {
         parameters: {
             query?: never;
@@ -7809,6 +7878,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/queue/{kind}/{id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Auswirkungsvorschau berechnen (Job impact, 14 Nächte mit und ohne das Objekt)
+         * @description Aktion: `queue.decide` · FA-FRG-05, TK 7.4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    kind: "project" | "change-request";
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Job angelegt bzw. schon offen */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobAccepted"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description approval.not_allowed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description auth.rate_limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/me/submission-ranking": {
         parameters: {
             query?: never;
@@ -7939,6 +8105,94 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/simulations/multi": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mehrnacht-Simulation als Job starten
+         * @description Aktion: `simulation.run` · FA-SIM-04, TK 7.4, SV-06
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MultiSimInput"];
+                };
+            };
+            responses: {
+                /** @description Job angelegt bzw. schon offen */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobAccepted"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description auth.rate_limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -11475,6 +11729,141 @@ export interface components {
              */
             lastSeenAt: string;
         };
+        JobResult: components["schemas"]["MultiSimResult"] | components["schemas"]["ImpactResult"];
+        MultiSimResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "multi_sim";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            siteTimeZone: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            nightFrom: string;
+            nightCount: number;
+            weather: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            computedAt: string;
+            nights: components["schemas"]["MultiSimNight"][];
+            projects: components["schemas"]["MultiSimProject"][];
+        };
+        MultiSimNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            darkHours: number | null;
+            weight: number;
+            ratingIndex: number | null;
+            hasForecast: boolean;
+            exposureHours: number;
+            projects: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                frames: number;
+                hours: number;
+            }[];
+        };
+        MultiSimProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            approvalStatus: string;
+            needFrames: number;
+            simulatedFrames: number;
+            hours: number;
+            nightsUsed: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            completesNight: string | null;
+            sharePct: number;
+            filters: {
+                filter: string;
+                need: number;
+                simulated: number;
+            }[];
+        };
+        ImpactResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "impact";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            queueItemId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            nightFrom: string;
+            nightCount: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            computedAt: string;
+            target: components["schemas"]["MultiSimProject"] & (Record<string, never> | null);
+            shifts: components["schemas"]["ImpactShift"][];
+            hoursWithout: number;
+            hoursWith: number;
+        };
+        ImpactShift: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            hoursWithout: number;
+            hoursWith: number;
+            framesWithout: number;
+            framesWith: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            completesWithout: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            completesWith: string | null;
+        };
         JobView: {
             /**
              * Format: uuid
@@ -13918,6 +14307,13 @@ export interface components {
             mine: boolean;
             mineChangedSince: boolean;
         };
+        JobAccepted: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            jobId: string;
+        };
         SubmissionRanking: {
             items: {
                 /** @enum {string} */
@@ -13928,6 +14324,23 @@ export interface components {
                  */
                 id: string;
             }[];
+        };
+        MultiSimInput: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            nightFrom: string;
+            nights: number;
+            /** @default false */
+            includeOwnDrafts: boolean;
+            /** @default false */
+            weather: boolean;
         };
         SimulationSaved: {
             /**
@@ -14961,13 +15374,6 @@ export interface components {
                     finishedAt: string | null;
                 } | null;
             };
-        };
-        JobAccepted: {
-            /**
-             * Format: uuid
-             * @description UUID
-             */
-            jobId: string;
         };
         NinaBootstrap: {
             /** @enum {string} */

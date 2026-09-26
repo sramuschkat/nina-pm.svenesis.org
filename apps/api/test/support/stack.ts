@@ -32,6 +32,7 @@ import { createApp } from '../../src/app';
 import { PROD_REDIRECT_URI } from '../../src/auth/config';
 import { randomToken, sha256Hex } from '../../src/auth/crypto';
 import type { ApiServices } from '../../src/routes/services';
+import { memoryJobResultStore } from '../../src/files/job-results';
 import { FakeDiscord } from './fake-discord';
 import type { DiscordProfile } from '@nina-pm/db';
 
@@ -71,6 +72,7 @@ export async function createStack() {
       return Promise.resolve(0);
     },
   };
+  const jobResults = memoryJobResultStore();
   const services: ApiServices = {
     repositories: (ctx) => ({
       job: new JobRepository(pg.db, ctx),
@@ -123,6 +125,7 @@ export async function createStack() {
       touch: (p, at) => ninaTouch(pg.db, p, at),
     },
     jobInvoker: { invoke: () => Promise.resolve() },
+    jobResults,
     now: () => now,
   };
   const app = createApp({
@@ -260,6 +263,7 @@ export async function createStack() {
     app,
     pg,
     services,
+    jobResults,
     discord,
     request,
     deletedFiles,

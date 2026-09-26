@@ -1,7 +1,11 @@
-/** `GET /api/web/v1/jobs/{id}` (TK 7.4): Status, Fortschritt, Ergebnis vorhanden. */
+/**
+ * `GET /api/web/v1/jobs/{id}` (TK 7.4): Status, Fortschritt, Ergebnis vorhanden.
+ * `GET /api/web/v1/jobs/{id}/result` (AP-32a): Ergebnis von `multi_sim`/`impact` aus S3 – der Server liest
+ * (Recht `tenant/*` der `api`), der Browser braucht kein CORS am Daten-Bucket.
+ */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { parseJobError, type Job } from '@nina-pm/db';
-import { can, JobView, ProblemError, Uuid, type JobKind } from '@nina-pm/shared';
+import { can, JobResult, JobView, ProblemError, Uuid, type JobKind } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
@@ -41,6 +45,23 @@ export const getJobRoute = defineRoute(
   },
 );
 
+export const getJobResultRoute = defineRoute(
+  { action: 'job.read', requirements: ['TK 7.4', 'FA-SIM-04', 'FA-FRG-05'] },
+  {
+    method: 'get',
+    path: '/api/web/v1/jobs/{id}/result',
+    summary: 'Ergebnis eines Simulations-Jobs abrufen',
+    tags: ['jobs'],
+    request: { params: z.object({ id: Uuid }) },
+    responses: {
+      200: { description: 'Ergebnis', content: { 'application/json': { schema: JobResult } } },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('Keine Berechtigung'),
+      404: problemContent('job.not_found'),
+    },
+  },
+);
+
 /** Lädt einen Job des Sitzungsmandanten und prüft `can` mit dem Objekt (Ersteller). */
 export async function loadReadableJob(
   services: ApiServices,
@@ -57,7 +78,22 @@ export async function loadReadableJob(
 }
 
 export function webJobRoutes(services: () => Promise<ApiServices>) {
-  return new OpenAPIHono<ApiEnv>().openapi(getJobRoute, async (c) => {
+  const app = new OpenAPIHono<ApiEnv>();
+  app.openapi(getJobResultRoute, async (c) => {
+    const svc = await services();
+    const job = await loadReadableJob(svc, c, c.req.valid('param').id);
+    if (
+      job.status !== 'done' ||
+      job.resultS3Key === null ||
+      (job.kind !== 'multi_sim' && job.kind !== 'impact')
+    )
+      throw new ProblemError('job.not_found');
+    const raw = await svc.jobResults.get(job.resultS3Key);
+    if (raw === null) throw new ProblemError('job.not_found');
+    c.header('cache-control', 'private, max-age=300');
+    return c.json(JobResult.parse(raw), 200);
+  });
+  return app.openapi(getJobRoute, async (c) => {
     const job = await loadReadableJob(await services(), c, c.req.valid('param').id);
     c.header('cache-control', 'no-store');
     return c.json(toJobView(job), 200);

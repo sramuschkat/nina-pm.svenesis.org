@@ -958,3 +958,20 @@ tr[data-dragging='true'] {
 .pillDanger {
   composes: pillDanger from '../admin/admin.module.css';
 }
+/* Auswirkungsvorschau in der Warteschlange (AP-32a, FA-FRG-05). */
+.impact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  min-width: 0;
+}
+.impact h3 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.impact p {
+  margin: 0;
+}

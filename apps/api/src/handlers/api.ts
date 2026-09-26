@@ -7,6 +7,7 @@ import { createApp } from '../app';
 import { parseIdList, PROD_REDIRECT_URI } from '../auth/config';
 import { httpDiscordClient } from '../auth/discord';
 import { s3DownloadSigner } from '../files/download';
+import { s3JobResultStore } from '../files/job-results';
 import { s3TenantFileStore } from '../files/tenant-files';
 import { createUploadTicket } from '../files/upload-ticket';
 import { lambdaJobInvoker } from '../jobs/enqueue';
@@ -71,6 +72,7 @@ const services = lazy<ApiServices>(async () => {
     discord: httpDiscordClient(),
     downloads: s3DownloadSigner(s3, requiredEnv('DATA_BUCKET'), now),
     tenantFiles: s3TenantFileStore(s3, requiredEnv('DATA_BUCKET')),
+    jobResults: s3JobResultStore(s3, requiredEnv('DATA_BUCKET')),
     maintenanceBanner: () => readMaintenanceBanner(db.db),
     jobInvoker: lambdaJobInvoker(new LambdaClient({}), requiredEnv('WORKER_FUNCTION_NAME')),
     now,

@@ -7,7 +7,7 @@
  * sortierbar. Admins entscheiden im Detailbereich:
  * *Freigeben* (Rig, Position je Rig, Status, Termine, Kommentar), *Zurückgeben*, *Ablehnen*
  * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
- * folgt mit R3.
+ * im Entscheidungsbereich als Job `impact` (AP-32a, `ImpactPanel`).
  */
 import type { SeasonBar } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -44,6 +44,7 @@ import {
   type QueueSortKey,
 } from './queue-model';
 import { ProjectThumb } from './ProjectImage';
+import { ImpactPanel } from './ImpactPanel';
 import styles from './projects.module.css';
 
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -563,7 +564,7 @@ function DecisionPanel({
         ) : null}
       </dl>
       {own ? <p className={styles.note}>{t('queue.ownObject')}</p> : null}
-      <p className={styles.muted}>{t('queue.impactLater')}</p>
+      <ImpactPanel projectId={item.id} />
       <div className={styles.grid}>
         <div className={styles.field}>
           <label htmlFor={ids.rig}>{t('projectEditor.rig')}</label>

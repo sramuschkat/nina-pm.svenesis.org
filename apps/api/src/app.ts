@@ -25,7 +25,7 @@ import { NOTIFICATION_ROUTES, webNotificationRoutes } from './routes/web-notific
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
 import type { ApiServices } from './routes/services';
 import { downloadUrlRoute, webFileRoutes } from './routes/web-files';
-import { getJobRoute, webJobRoutes } from './routes/web-jobs';
+import { getJobResultRoute, getJobRoute, webJobRoutes } from './routes/web-jobs';
 import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
@@ -52,6 +52,7 @@ export const ROUTES = [
   bannerRoute,
   ...AUTH_ROUTES,
   getJobRoute,
+  getJobResultRoute,
   downloadUrlRoute,
   ...MEMBER_ROUTES,
   ...ME_ROUTES,

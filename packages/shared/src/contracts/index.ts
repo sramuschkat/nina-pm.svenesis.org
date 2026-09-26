@@ -2,6 +2,7 @@ export * from './auth';
 export * from './common';
 export * from './files';
 export * from './jobs';
+export * from './multi-sim';
 export * from './nights';
 export * from './upload-json';
 export * from './tenants';

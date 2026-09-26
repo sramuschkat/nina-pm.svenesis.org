@@ -112,6 +112,12 @@ beforeAll(async () => {
       okStatus: 404,
     },
     'GET /api/web/v1/jobs/{id}': { url: `/api/web/v1/jobs/${jobId}`, resource: ownJob },
+    // Kein fertiges Simulationsergebnis → 404 für alle, die den Job lesen dürfen (AP-32a).
+    'GET /api/web/v1/jobs/{id}/result': {
+      url: `/api/web/v1/jobs/${jobId}/result`,
+      resource: ownJob,
+      okStatus: 404,
+    },
     'GET /api/web/v1/files/download-url': {
       url: `/api/web/v1/files/download-url?purpose=job_result&id=${jobId}`,
       resource: ownJob,
@@ -884,6 +890,19 @@ async function projectExamples(): Promise<Record<string, Example>> {
             warnings: [],
           },
         },
+      },
+      'POST /api/web/v1/simulations/multi': {
+        url: '/api/web/v1/simulations/multi',
+        method: 'POST',
+        okStatus: 202,
+        expect: { 'fremder Mandant (Admin)': 404 },
+        body: { rigId: common.rigId, nightFrom: '2026-09-18', nights: 2 },
+      },
+      'POST /api/web/v1/queue/{kind}/{id}/impact': {
+        url: `/api/web/v1/queue/project/${S}/impact`,
+        method: 'POST',
+        resource: sRes,
+        okStatus: 202,
       },
       'PUT /api/web/v1/queue/{kind}/{id}/vote': {
         url: `/api/web/v1/queue/project/${S}/vote`,
