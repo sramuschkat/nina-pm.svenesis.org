@@ -6,6 +6,7 @@
  */
 import { z } from 'zod';
 import { NightKey, UtcInstant, Uuid } from './common';
+import { TonightLine } from './tonight';
 import { WeatherBestWindow } from './weather';
 
 /** Wetter einer Kandidatennacht (aus `weather_cache`, FA-FOL-03, WS-E2). */
@@ -100,6 +101,8 @@ export const ForecastProject = z
       })
       .nullable(),
     suggestions: z.array(ForecastAction),
+    /** Aktive Zeilen mit „nur für die kommende Nacht aus“ (FA-FOL-05); Frames der aktuellen Nacht. */
+    lines: z.array(TonightLine),
   })
   .meta({ id: 'ForecastProject' });
 
@@ -129,6 +132,8 @@ export const ForecastView = z
     siteTimeZone: z.string(),
     /** Zeitpunkt der gespeicherten Prognose; `null` = noch nicht berechnet. */
     computedAt: UtcInstant.nullable(),
+    /** Aktuelle Nacht des Standorts (NT-01) – Bezug für „nur für die kommende Nacht“. */
+    currentNight: NightKey,
     nights: z.array(ForecastNight),
     /** Klarnacht-Quote des Standorts (FA-AUS-17) jenseits der Vorhersage. */
     clearQuota: z.object({

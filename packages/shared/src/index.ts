@@ -20,4 +20,5 @@ export * from './session-kpis';
 export * from './multi-sim';
 export * from './change-requests';
 export * from './forecast';
+export * from './tonight';
 export * from './project-report';

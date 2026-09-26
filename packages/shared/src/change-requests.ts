@@ -128,6 +128,7 @@ export function applyChangeRequest(
         offsetAdu: a.offsetAdu,
         binning: a.binning,
         readoutMode: a.readoutMode,
+        disabledForNight: null,
         moonMode: a.moonMode,
         moonProfileId: a.moonProfileId,
         enabled: a.enabled,

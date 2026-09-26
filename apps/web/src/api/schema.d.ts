@@ -9034,6 +9034,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/tonight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Heute Nacht: aktuelle Nacht je Rig mit Wetter, Plan und NINA
+         * @description Aktion: `project.read` · FA-FOL-06, S-02, NT-01
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description UUID */
+                    rigId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Heute Nacht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TonightView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/lines/{lineId}/tonight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Zeile nur für die kommende Nacht ab- bzw. wieder einschalten
+         * @description Aktion: `project.status` · FA-FOL-05
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    lineId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LineTonightInput"];
+                };
+            };
+            responses: {
+                /** @description Geändert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/nina-instances": {
         parameters: {
             query?: never;
@@ -14528,6 +14690,11 @@ export interface components {
              */
             moonProfileId: string | null;
             enabled: boolean;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            disabledForNight: string | null;
             orderIndex: number;
             notes: string;
             hasCaptures: boolean;
@@ -15510,6 +15677,11 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             computedAt: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            currentNight: string;
             nights: components["schemas"]["ForecastNight"][];
             clearQuota: {
                 rate: number;
@@ -15567,6 +15739,7 @@ export interface components {
                 seasonEnd: string | null;
             } | null;
             suggestions: components["schemas"]["ForecastAction"][];
+            lines: components["schemas"]["TonightLine"][];
         };
         ForecastFilterNeed: {
             filter: string;
@@ -15602,6 +15775,16 @@ export interface components {
             /** @enum {string} */
             kind: "raise_priority" | "pause" | "reduce_frames" | "other_rig" | "next_year";
             oneClick: boolean;
+        };
+        TonightLine: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            lineId: string;
+            filter: string;
+            frames: number;
+            disabledTonight: boolean;
         };
         ForecastResume: {
             /**
@@ -15736,6 +15919,131 @@ export interface components {
                 percentDone: number;
             }[];
         } | null;
+        TonightView: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAt: string;
+            rigs: components["schemas"]["TonightRig"][];
+        };
+        TonightRig: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            siteName: string;
+            siteTimeZone: string;
+            weatherSafetyUrl: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            nightWindow: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                startUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                endUtc: string;
+            } | null;
+            dark: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                fromUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                toUtc: string;
+            } | null;
+            darkHours: number;
+            moon: {
+                illumPct: number;
+                events: {
+                    /** @enum {string} */
+                    type: "rise" | "set";
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    atUtc: string;
+                }[];
+            };
+            weather: components["schemas"]["TonightWeather"];
+            forecast: {
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                computedAt: string | null;
+                covered: boolean;
+            };
+            projects: components["schemas"]["TonightProject"][];
+            idleProjects: number;
+            instances: components["schemas"]["TonightInstance"][];
+        };
+        TonightWeather: {
+            nightMean: number | null;
+            ratingIndex: number | null;
+            coverage: number | null;
+            bestWindow: components["schemas"]["WeatherBestWindow"];
+            aerosolMissing: boolean;
+            hours: components["schemas"]["TonightWeatherHour"][];
+        } | null;
+        TonightWeatherHour: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            tUtc: string;
+            overallScore: number | null;
+            ratingIndex: number | null;
+            sunAltDeg: number | null;
+        };
+        TonightProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            priority: number | null;
+            frames: number;
+            hours: number;
+            lines: components["schemas"]["TonightLine"][];
+        };
+        TonightInstance: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            name: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            lastSeenAt: string | null;
+            state: string | null;
+        };
+        LineTonightInput: {
+            disabled: boolean;
+        };
         NinaInstanceView: {
             /**
              * Format: uuid

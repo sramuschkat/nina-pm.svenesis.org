@@ -30,6 +30,7 @@ import { getJobResultRoute, getJobRoute, webJobRoutes } from './routes/web-jobs'
 import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations';
 import { FORECAST_ROUTES, webForecastRoutes } from './routes/web-forecast';
 import { REPORT_ROUTES, webReportRoutes } from './routes/web-reports';
+import { TONIGHT_ROUTES, webTonightRoutes } from './routes/web-tonight';
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
 import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
@@ -69,6 +70,7 @@ export const ROUTES = [
   ...SIMULATION_ROUTES,
   ...FORECAST_ROUTES,
   ...REPORT_ROUTES,
+  ...TONIGHT_ROUTES,
   ...NINA_INSTANCE_ROUTES,
   ...NINA_OPS_ROUTES,
   ...SESSION_ROUTES,
@@ -138,6 +140,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webSimulationRoutes(services));
   app.route('/', webForecastRoutes(services));
   app.route('/', webReportRoutes(services));
+  app.route('/', webTonightRoutes(services));
   app.route('/', webNinaInstanceRoutes(services));
   app.route('/', webNinaOpsRoutes(services));
   app.route('/', webSessionRoutes(services));

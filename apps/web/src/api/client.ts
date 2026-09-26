@@ -440,6 +440,24 @@ export const forecastApi = {
     apiFetch<{ jobId: string }>(`${V1}/forecast/run`, json('POST', { rigId })),
 };
 
+export type TonightView = Schemas['TonightView'];
+export type TonightRig = Schemas['TonightRig'];
+export type TonightLine = Schemas['TonightLine'];
+
+/**
+ * „Heute Nacht“ S-02 (AP-35): aktuelle Nacht je Rig (Server, NT-01) und Zeile nur für die kommende Nacht
+ * ab- bzw. wieder einschalten (FA-FOL-05, Admin).
+ */
+export const tonightApi = {
+  get: (rigId?: string) =>
+    apiFetch<TonightView>(`${V1}/tonight${rigId ? `?rigId=${encodeURIComponent(rigId)}` : ''}`),
+  setLine: (projectId: string, lineId: string, disabled: boolean) =>
+    apiFetch<ProjectView>(
+      `${V1}/projects/${projectId}/lines/${lineId}/tonight`,
+      json('PUT', { disabled }),
+    ),
+};
+
 export type ChangeRequestView = Schemas['ChangeRequestView'];
 export type ChangeRequestDiffEntry = Schemas['ChangeRequestDiffEntry'];
 export type ChangeRequestProposal = Schemas['ChangeRequestProposal'];

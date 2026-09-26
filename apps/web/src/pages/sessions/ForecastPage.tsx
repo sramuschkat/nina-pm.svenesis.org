@@ -28,6 +28,7 @@ import { formatDateTime } from '../../lib/time';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { useQueueVisibility, VisibilityBars } from '../projects/VisibilityWeeks';
+import { TonightLines } from '../tonight/TonightLines';
 import styles from './sessions.module.css';
 import { EvaluationTabs } from './SessionsPage';
 
@@ -220,6 +221,7 @@ function ForecastBody({
       />
       <CandidateMatrix view={view} />
       {warned.length > 0 ? <Suggestions projects={warned} onChanged={onChanged} /> : null}
+      <TonightSection view={view} onChanged={onChanged} />
       {view.resume.length > 0 ? <Resume view={view} rigId={rigId} onChanged={onChanged} /> : null}
     </div>
   );
@@ -320,6 +322,41 @@ function NightWeatherCell({ night, tz }: { night: ForecastView['nights'][number]
         <span className={styles.flagText}>{t('forecast.flag.incomplete')}</span>
       ) : null}
     </span>
+  );
+}
+
+/**
+ * Zeilen nur für die kommende Nacht ab- bzw. wieder einschalten (FA-FOL-05, Admin) – Nacht ist die aktuelle
+ * Nacht des Standorts; danach neue Prognose.
+ */
+function TonightSection({ view, onChanged }: { view: ForecastView; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const canAct = useCan('project.status');
+  const filters = useEquipmentList('filters');
+  const colorOf = (short: string) =>
+    (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
+  const projects = view.projects.filter((p) => p.lines.length > 0);
+  if (!canAct || projects.length === 0) return null;
+  return (
+    <>
+      <h2 className={styles.forecastTitle}>{t('forecast.tonightLines')}</h2>
+      <p className={styles.muted}>
+        {t('forecast.tonightLinesHint', { night: formatNightKey(view.currentNight) })}
+      </p>
+      <ul className={styles.plainList}>
+        {projects.map((p) => (
+          <li key={p.projectId} className={styles.suggestion}>
+            <strong>{p.name}</strong>
+            <TonightLines
+              projectId={p.projectId}
+              lines={p.lines}
+              colorOf={colorOf}
+              onChanged={onChanged}
+            />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   run: vi.fn(),
   priority: vi.fn(),
   setStatus: vi.fn(),
+  setLine: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -42,6 +43,9 @@ vi.mock('../../api/client', () => ({
   projectsApi: {
     priority: (...a: unknown[]) => state.priority(...a) as Promise<unknown>,
     setStatus: (...a: unknown[]) => state.setStatus(...a) as Promise<unknown>,
+  },
+  tonightApi: {
+    setLine: (...a: unknown[]) => state.setLine(...a) as Promise<unknown>,
   },
   jobsApi: {
     get: (id: string) => Promise.resolve({ id, status: 'running', hasResult: false }),
@@ -84,6 +88,7 @@ const view = (): ForecastView => ({
   rigName: 'Rig A',
   siteTimeZone: 'America/Chicago',
   computedAt: '2026-09-26T18:00:00Z',
+  currentNight: '2026-09-26',
   nights: [
     night('2026-09-26', {
       nightMean: 0.8,
@@ -147,6 +152,7 @@ const view = (): ForecastView => ({
         { kind: 'raise_priority', oneClick: true },
         { kind: 'reduce_frames', oneClick: false },
       ],
+      lines: [{ lineId: ID(11), filter: 'Ha', frames: 10, disabledTonight: false }],
     },
   ],
   resume: [],
@@ -168,7 +174,7 @@ const wrap = () =>
 beforeEach(() => {
   state.me = me('owner');
   state.view = view();
-  for (const f of [state.run, state.priority, state.setStatus]) f.mockReset();
+  for (const f of [state.run, state.priority, state.setStatus, state.setLine]) f.mockReset();
 });
 
 describe('S-62 Folgeplanung', () => {
@@ -202,12 +208,27 @@ describe('S-62 Folgeplanung', () => {
     expect(screen.getByText('Frames reduzieren')).toBeTruthy();
   });
 
+  it('Admin: Zeile nur für die kommende Nacht aus (FA-FOL-05), danach neue Prognose', async () => {
+    state.setLine.mockResolvedValue({});
+    state.run.mockResolvedValue({ jobId: ID(97) });
+    wrap();
+    expect(
+      await screen.findByText(/für die Nacht 26\.\/27\.09\. ab- oder wieder einschalten/),
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ha (10 Frames) nur heute Nacht ausschalten' }),
+    );
+    await waitFor(() => expect(state.setLine).toHaveBeenCalledWith(ID(10), ID(11), true));
+    await waitFor(() => expect(state.run).toHaveBeenCalledWith(ID(1)));
+  });
+
   it('User sieht Vorschläge nur als Hinweis; noch keine Prognose → Hinweis', async () => {
     state.me = me('user');
     state.view = { ...view(), computedAt: null, nights: [], projects: [] };
     wrap();
     expect(await screen.findByText(/liegt noch keine Prognose vor/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Priorität erhöhen' })).toBeNull();
+    expect(screen.queryByText('Nur für die kommende Nacht')).toBeNull();
     state.run.mockResolvedValue({ jobId: ID(98) });
     fireEvent.click(screen.getByRole('button', { name: 'Prognose neu berechnen' }));
     await waitFor(() => expect(state.run).toHaveBeenCalledWith(ID(1)));

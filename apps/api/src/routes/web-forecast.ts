@@ -136,6 +136,7 @@ export function webForecastRoutes(services: () => Promise<ApiServices>) {
       rig: { id: ctx.rig.id, name: ctx.rig.name },
       siteTimeZone: ctx.site.timeZone,
       computedAt: stored.computedAt ? isoUtc(stored.computedAt) : null,
+      currentNight: table.currentNight,
       projects: ctx.projects.filter((p) => p.rigId === rigId),
       stored: stored.nights.filter((n) => n.night >= table.currentNight),
       weather,

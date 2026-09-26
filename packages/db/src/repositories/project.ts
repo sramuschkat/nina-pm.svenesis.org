@@ -1210,6 +1210,42 @@ export class ProjectRepository extends TenantRepo {
     return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
   }
 
+  /**
+   * Zeile nur für eine Nacht ab- bzw. wieder einschalten (FA-FOL-05): `disabled_for_night` = Nacht-Schlüssel
+   * oder `null`. Gilt nur, solange diese Nacht die aktuelle ist – ab dem nächsten lokalen Mittag plant die Zeile
+   * wieder mit, ohne dass jemand zurücksetzt. Keine Sperre durch Aufnahmen (wie *aktiv*).
+   */
+  setLineDisabledForNight(
+    projectId: string,
+    lineId: string,
+    night: string | null,
+    now: Date,
+  ): Promise<ProjectDetail> {
+    return this.tx(
+      async (trx) => {
+        const p = await this.row(projectId, trx);
+        if (!p) throw notFound();
+        await this.lineRow(trx, projectId, lineId);
+        await trx
+          .updateTable('exposureLine')
+          .set({ disabledForNight: night, updatedAt: now })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', lineId)
+          .execute();
+        await this.afterLineChange(trx, p, now);
+        await this.log(
+          trx,
+          projectId,
+          'update',
+          { target: 'line', lineId, disabledForNight: night },
+          now,
+        );
+        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
+      },
+      [{ table: 'project', id: projectId }],
+    );
+  }
+
   /** Zeile mit Aufnahmen weich, ohne Aufnahmen endgültig (FA-PRJ-07, E4). */
   deleteLine(projectId: string, lineId: string, now: Date): Promise<{ soft: boolean }> {
     return this.tx(

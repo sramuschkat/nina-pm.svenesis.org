@@ -174,6 +174,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
         moonMode: l.moonMode as 'profile' | 'project_default' | 'none',
         moonProfileId: l.moonProfileId,
         enabled: l.enabled,
+        disabledForNight: l.disabledForNight,
         orderIndex: l.orderIndex,
         notes: l.notes,
         hasCaptures: l.hasCaptures,

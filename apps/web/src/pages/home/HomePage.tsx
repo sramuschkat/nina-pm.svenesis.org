@@ -38,6 +38,7 @@ import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
 import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
+import { TONIGHT_PATH } from '../tonight/TonightPage';
 import { WEATHER_PATH, weatherHref } from '../weather/model';
 import { useNow, useSiteWeather, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
@@ -462,6 +463,9 @@ function WeatherCard() {
             ))}
           </ul>
         )}
+        <Link to={TONIGHT_PATH} className={styles.more}>
+          {t('tonight.homeLink')}
+        </Link>
       </div>
     </Card>
   );

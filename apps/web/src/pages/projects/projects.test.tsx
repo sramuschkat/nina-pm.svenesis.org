@@ -105,6 +105,7 @@ const line = (n: number, filter: string, over: Partial<LineView> = {}): LineView
   moonMode: 'project_default',
   moonProfileId: null,
   enabled: true,
+  disabledForNight: null,
   orderIndex: n,
   notes: '',
   hasCaptures: false,

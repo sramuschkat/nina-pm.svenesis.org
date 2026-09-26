@@ -99,7 +99,7 @@ describe('Rechteanzeige in der Shell', () => {
     expect(nav()).not.toHaveTextContent('Administration');
   });
 
-  it('Projekte, Planung und Wetter sind Links (S-31, S-20, S-50); nicht gebaute Bereiche bleiben deaktiviert', async () => {
+  it('Heute Nacht, Projekte, Planung und Wetter sind Links (S-02, S-31, S-20, S-50)', async () => {
     await renderShell(member('user', 'user', false));
     expect(within(nav()).getByRole('link', { name: 'Projekte' })).toHaveAttribute(
       'href',
@@ -110,7 +110,10 @@ describe('Rechteanzeige in der Shell', () => {
       '/planung/sternkarte',
     );
     expect(within(nav()).getByRole('link', { name: 'Wetter' })).toHaveAttribute('href', '/wetter');
-    expect(within(nav()).queryByRole('link', { name: 'Heute Nacht' })).not.toBeInTheDocument();
+    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(
+      'href',
+      '/heute-nacht',
+    );
   });
 
   it('Owner ohne 2FA: wirkt als User (keine Administration) und sieht den Hinweis', async () => {

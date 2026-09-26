@@ -16,6 +16,7 @@ import type { z } from 'zod';
 import type { ForecastView as ForecastViewSchema } from './contracts/forecast';
 import type { ProjectView } from './contracts/projects';
 import { weatherWeight } from './multi-sim';
+import { tonightLines } from './tonight';
 
 type Project = z.infer<typeof ProjectView>;
 type View = z.infer<typeof ForecastViewSchema>;
@@ -39,6 +40,8 @@ export interface ForecastInput {
   readonly rig: { readonly id: string; readonly name: string };
   readonly siteTimeZone: string;
   readonly computedAt: string | null;
+  /** Aktuelle Nacht des Standorts (NT-01): Bezug für „nur für die kommende Nacht“ (FA-FOL-05). */
+  readonly currentNight: string;
   /** Projekte des Rigs (freigegeben); aktive werden prognostiziert, unfertige/pausierte zur Wiederaufnahme. */
   readonly projects: readonly Project[];
   readonly stored: readonly StoredForecastNight[];
@@ -228,6 +231,11 @@ export function forecastView(input: ForecastInput): View {
       candidates,
       seasonWarning,
       suggestions,
+      lines: tonightLines(
+        p,
+        input.currentNight,
+        input.stored.find((n) => n.night === input.currentNight)?.lineFrames,
+      ),
     };
   });
 
@@ -255,6 +263,7 @@ export function forecastView(input: ForecastInput): View {
     rigName: input.rig.name,
     siteTimeZone: input.siteTimeZone,
     computedAt: input.computedAt,
+    currentNight: input.currentNight,
     nights,
     clearQuota: quota,
     projects: projects.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name)),

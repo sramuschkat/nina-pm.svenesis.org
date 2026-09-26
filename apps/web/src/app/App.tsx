@@ -13,6 +13,7 @@ import { ProblemMessage } from '../components/ProblemMessage';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { HomePage } from '../pages/home/HomePage';
+import { TonightPage } from '../pages/tonight/TonightPage';
 import { NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
@@ -158,6 +159,7 @@ export function createRouter() {
           element: <Root />,
           children: [
             { index: true, element: <HomePage /> },
+            { path: 'heute-nacht', element: <TonightPage /> },
             { path: 'meine-objekte', element: <Navigate to="/projekte/meine-objekte" replace /> },
             { path: 'projekte', element: <ProjectListPage /> },
             { path: 'projekte/neu', element: <ProjectEditorPage /> },
