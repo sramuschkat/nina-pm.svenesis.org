@@ -743,36 +743,19 @@ const skyMapLink = (o: DsoView, rigId: string | null, rigFov: RowProps['rigFov']
   });
 
 /**
- * Zeilenaktionen der Tabelle (Stilsystem AP-26d): *Saison* und *Sternkarte* als Symbolknöpfe, dazu
- * *Projekt* – eine Zeilenhöhe statt drei gestapelter Knöpfe. Die Namen nennen das Objekt.
+ * Zeilenaktionen der Tabelle (Stilsystem AP-26d): *Sternkarte* als Symbolknopf, dazu *Projekt*. Das
+ * Saisondiagramm steht seit AP-26j als Reiter neben dem Höhendiagramm in der aufgeklappten Zeile.
  */
 function RowActions({
   o,
   rigId,
   rigFov,
   canCreate,
-  season,
-}: { o: DsoView; season?: { open: boolean; toggle: () => void } } & Omit<
-  RowProps,
-  'minAlt' | 'timeZone' | 'site'
->) {
+}: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone' | 'site'>) {
   const { t } = useTranslation();
-  const seasonLabel = t('catalog.seasonFor', { name: o.displayName });
   const mapLabel = t('catalog.skyMapFor', { name: o.displayName });
   return (
     <div className={styles.rowActions}>
-      {season ? (
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={seasonLabel}
-          title={seasonLabel}
-          aria-expanded={season.open}
-          onClick={season.toggle}
-        >
-          <uiIcons.season size={ICON_SIZE.table} aria-hidden />
-        </button>
-      ) : null}
       <Link
         className={styles.iconButton}
         to={skyMapLink(o, rigId, rigFov)}
@@ -849,8 +832,6 @@ function ResultTable({
   const cell = useCells(row);
   const night = items.some((o) => o.night !== null);
   const scored = items.some((o) => o.night?.score !== null && o.night?.score !== undefined);
-  const [seasonOf, setSeasonOf] = useState<string | null>(null);
-  const seasonObject = items.find((o) => o.id === seasonOf) ?? null;
   // In „Beste der Nacht“ ist nur die Bewertung sortierbar; sonst alles, was der Server sortieren kann.
   const sortable = (id: string) =>
     best
@@ -986,20 +967,7 @@ function ResultTable({
       header: t('catalog.col.actions'),
       headerHidden: true,
       cell: (o) => (
-        <RowActions
-          o={o}
-          rigId={row.rigId}
-          rigFov={row.rigFov}
-          canCreate={row.canCreate}
-          {...(row.site
-            ? {
-                season: {
-                  open: seasonOf === o.id,
-                  toggle: () => setSeasonOf(seasonOf === o.id ? null : o.id),
-                },
-              }
-            : {})}
-        />
+        <RowActions o={o} rigId={row.rigId} rigFov={row.rigFov} canCreate={row.canCreate} />
       ),
     },
   ];
@@ -1034,16 +1002,6 @@ function ResultTable({
           }
         />
       </div>
-      {row.site && seasonObject ? (
-        <div className={styles.state}>
-          <SeasonPanel
-            site={row.site}
-            title={t('catalog.seasonOf', { name: seasonObject.displayName })}
-            target={{ raDeg: seasonObject.raDeg, decDeg: seasonObject.decDeg }}
-            conditions={{ minAltitudeDeg: row.minAlt, ...BROWSER_SEASON }}
-          />
-        </div>
-      ) : null}
     </>
   );
 }
@@ -1092,19 +1050,44 @@ function ObjectNight({
       transitLabel: '',
     }).props;
   }, [nights.data, site, night, o, minAlt]);
+  // Höhen- und Saisondiagramm als Reiter nebeneinander (AP-26j, Wunsch Sven 26.09.2026).
+  const [tab, setTab] = useState<'altitude' | 'season'>('altitude');
   return (
     <div className={styles.objectNight}>
-      {chart ? (
-        <NightChart {...chart} bands={false} facts height={220} />
-      ) : (
-        <NightChart
-          window={null}
-          timeZone={site.timeZone}
-          state={nights.isError ? 'error' : 'loading'}
-          onRetry={() => void nights.refetch()}
-        />
-      )}
-      <span className={styles.muted}>{t('catalog.nightOf', { name: o.displayName })}</span>
+      <Tabs<'altitude' | 'season'>
+        label={t('catalog.chartsOf', { name: o.displayName })}
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'altitude', label: t('nightChart.tabs.altitude') },
+          { key: 'season', label: t('nightChart.tabs.season') },
+        ]}
+        panelClassName={styles.objectNightPanel}
+        panels={{
+          altitude: (
+            <>
+              {chart ? (
+                <NightChart {...chart} bands={false} facts height={220} />
+              ) : (
+                <NightChart
+                  window={null}
+                  timeZone={site.timeZone}
+                  state={nights.isError ? 'error' : 'loading'}
+                  onRetry={() => void nights.refetch()}
+                />
+              )}
+              <span className={styles.muted}>{t('catalog.nightOf', { name: o.displayName })}</span>
+            </>
+          ),
+          season: (
+            <SeasonPanel
+              site={site}
+              target={{ raDeg: o.raDeg, decDeg: o.decDeg }}
+              conditions={{ minAltitudeDeg: minAlt, ...BROWSER_SEASON }}
+            />
+          ),
+        }}
+      />
     </div>
   );
 }

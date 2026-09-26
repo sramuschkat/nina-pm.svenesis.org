@@ -3,13 +3,14 @@
  * Hauptaktion *Neues Projekt* rechts, darunter die Reiter Projektliste (S-30) · Meine Objekte (S-32) ·
  * Warteschlange (S-33, alle Mitglieder) · Entwürfe (S-34, nur Admin).
  */
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { useCan } from '../../auth';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
 import { SectionTabs } from '../admin/shared';
+import { useUniformWidth } from '../../lib/use-uniform-width';
 import styles from './projects.module.css';
 
 export const PROJECT_AREA = {
@@ -67,36 +68,11 @@ export function ProjectsLayout({
 const CHIP_SELECTOR = `.${styles.filterPlan} > li > :first-child, .${styles.planChips} > li > :first-child`;
 
 /**
- * Alle Filtermarken der Seite so breit wie die breiteste (Wunsch Sven 26.09.2026): gemessen nach dem
- * Zeichnen und bei jeder Änderung der Liste (Laden, Filtern, Sortieren), als CSS-Variable `--plan-chip-w`.
- * `display: contents` – die Hülle ändert das Layout nicht.
+ * Alle Filtermarken der Seite so breit wie die breiteste (Wunsch Sven 26.09.2026), als CSS-Variable
+ * `--plan-chip-w` (`useUniformWidth`). `display: contents` – die Hülle ändert das Layout nicht.
  */
 function UniformChips({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    let frame = 0;
-    const measure = () => {
-      frame = 0;
-      el.style.removeProperty('--plan-chip-w');
-      let max = 0;
-      el.querySelectorAll<HTMLElement>(CHIP_SELECTOR).forEach((c) => {
-        max = Math.max(max, c.getBoundingClientRect().width);
-      });
-      if (max > 0) el.style.setProperty('--plan-chip-w', `${String(Math.ceil(max))}px`);
-    };
-    measure();
-    if (typeof MutationObserver === 'undefined') return undefined;
-    const mo = new MutationObserver(() => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    });
-    mo.observe(el, { childList: true, subtree: true });
-    return () => {
-      mo.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, []);
+  const ref = useUniformWidth(CHIP_SELECTOR, '--plan-chip-w');
   return (
     <div ref={ref} className={styles.chipScope}>
       {children}

@@ -35,6 +35,7 @@ import { problemCode } from '../admin/shared';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { researchLinks } from '../projects/ProjectEditorPage';
+import { SeasonPanel } from '../projects/SeasonPanel';
 import { PlanningTabs } from './PlanningTabs';
 import {
   FOV_MAX,
@@ -296,6 +297,7 @@ export function SkyMapPage() {
   // ---- Auswahl ---------------------------------------------------------------------------------
   const [selected, setSelected] = useState<Selected>(null);
   const [sideTab, setSideTab] = useState<SideTab>('field');
+  const [chartTab, setChartTab] = useState<'altitude' | 'season'>('altitude');
   /** Seitenbereich einklappbar (AP-26i): zugeklappt nimmt er keine Breite, die Karte wird breiter. */
   const [sideOpen, setSideOpen] = useState(() => readLocal(SIDE_OPEN_KEY) !== 'false');
   useEffect(() => writeLocal(SIDE_OPEN_KEY, String(sideOpen)), [sideOpen]);
@@ -749,28 +751,64 @@ export function SkyMapPage() {
           </div>
           <div className={styles.belowChart}>
             {site ? (
-              <Section title={`${t('skymap.time.timeline')} · ${formatNightKey(nightKey)}`}>
-                {chart ? (
-                  <NightChart
-                    {...chart}
-                    bands={false}
-                    crop={false}
-                    height={180}
-                    cursorUtc={time}
-                    onCursorChange={(at) => {
-                      setPlaying(false);
-                      update({ t: at });
-                    }}
-                  />
-                ) : (
-                  <NightChart
-                    window={null}
-                    timeZone={zone}
-                    state={nights.isError ? 'error' : 'loading'}
-                    onRetry={() => void nights.refetch()}
-                  />
-                )}
-              </Section>
+              // Höhen- und Saisondiagramm des aktuellen Objekts als Reiter (AP-26j): das gewählte Objekt,
+              // sonst die Mitte des Bildfelds.
+              <Tabs<'altitude' | 'season'>
+                label={t('skymap.chartsLabel')}
+                value={chartTab}
+                onChange={setChartTab}
+                tabs={[
+                  { key: 'altitude', label: t('nightChart.tabs.altitude') },
+                  { key: 'season', label: t('nightChart.tabs.season') },
+                ]}
+                toolbar={
+                  <span className={styles.muted}>
+                    {chartTab === 'altitude'
+                      ? `${t('skymap.time.timeline')} · ${formatNightKey(nightKey)}`
+                      : selected?.kind === 'dso'
+                        ? selected.item.displayName
+                        : t('skymap.side.frameCenter')}
+                  </span>
+                }
+                panelClassName={styles.chartPanel}
+                panels={{
+                  altitude: chart ? (
+                    <NightChart
+                      {...chart}
+                      bands={false}
+                      crop={false}
+                      height={180}
+                      cursorUtc={time}
+                      onCursorChange={(at) => {
+                        setPlaying(false);
+                        update({ t: at });
+                      }}
+                    />
+                  ) : (
+                    <NightChart
+                      window={null}
+                      timeZone={zone}
+                      state={nights.isError ? 'error' : 'loading'}
+                      onRetry={() => void nights.refetch()}
+                    />
+                  ),
+                  season: (
+                    <SeasonPanel
+                      site={site}
+                      target={
+                        selected?.kind === 'dso'
+                          ? { raDeg: selected.item.raDeg, decDeg: selected.item.decDeg }
+                          : { raDeg: state.fra, decDeg: state.fdec }
+                      }
+                      conditions={{
+                        minAltitudeDeg: DEFAULT_MIN_ALT,
+                        minTimeOnTargetH: 1,
+                        twilight: 'astronomical',
+                      }}
+                    />
+                  ),
+                }}
+              />
             ) : null}
           </div>
         </section>

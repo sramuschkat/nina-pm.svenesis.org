@@ -136,7 +136,8 @@
 }
 .main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
+  /* Seitenbereich immer rechts neben der Karte (AP-26j), auch in schmalen Fenstern. */
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
   gap: var(--npm-space-3);
   align-items: start;
 }
@@ -149,11 +150,7 @@
   background: var(--npm-bg);
   overflow: auto;
 }
-@media (max-width: 1279px) {
-  .main {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 .map {
   position: relative;
   height: max(560px, calc(100dvh - 17rem));
@@ -357,4 +354,7 @@
 .belowChart > .section {
   padding-top: 0;
   border-top: 0;
+}
+.chartPanel {
+  padding-top: var(--npm-space-2);
 }

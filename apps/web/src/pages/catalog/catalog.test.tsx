@@ -467,7 +467,7 @@ describe('S-21 Objektbrowser', () => {
     );
   });
 
-  it('Kopf und Zeilenaktionen (AP-26d): ein h1 ohne Brotkrumen, Reiter darunter; Saison und Sternkarte als Symbolknöpfe mit Objektnamen', async () => {
+  it('Kopf und Zeilenaktionen (AP-26d/26j): ein h1 ohne Brotkrumen, Reiter darunter; Sternkarte als Symbolknopf, Saison als Reiter in der Zeile', async () => {
     state.rigs = [rig];
     renderPage();
     const row = (await screen.findByText('M 31')).closest('tr') as HTMLElement;
@@ -478,19 +478,26 @@ describe('S-21 Objektbrowser', () => {
     // Rig und Nacht in der Kontextleiste, nicht im Reiterinhalt.
     const context = screen.getByRole('region', { name: 'Rig und Nacht' });
     expect(within(context).getByRole('button', { name: 'Heute Nacht' })).toBeInTheDocument();
-    // Eine Zeile: zwei Symbolknöpfe (nur zugänglicher Name) und *Projekt*.
-    const season = within(row).getByRole('button', { name: 'Saison von M 31' });
-    expect(season).toHaveAttribute('aria-expanded', 'false');
-    expect(season).toHaveTextContent('');
+    // Eine Zeile: Sternkarte als Symbolknopf (nur zugänglicher Name) und *Projekt*; das Saisondiagramm
+    // steht seit AP-26j als Reiter neben dem Höhendiagramm in der aufgeklappten Zeile.
+    expect(within(row).queryByRole('button', { name: 'Saison von M 31' })).toBeNull();
     const map = within(row).getByRole('link', { name: 'M 31 in der Sternkarte' });
     expect(map).toHaveTextContent('');
     expect(map.getAttribute('href')).toMatch(/^\/planung\/sternkarte\?/);
     expect(within(row).getByRole('link', { name: 'Projekt anlegen für M 31' })).toHaveTextContent(
       'Projekt',
     );
-    fireEvent.click(season);
-    expect(season).toHaveAttribute('aria-expanded', 'true');
-    expect(await screen.findByText('Saisondiagramm: M 31')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu M 31' }));
+    const charts = await screen.findByRole('tablist', { name: 'Diagramme zu M 31' });
+    expect(within(charts).getByRole('tab', { name: 'Höhendiagramm' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    fireEvent.click(within(charts).getByRole('tab', { name: 'Saisondiagramm' }));
+    expect(within(charts).getByRole('tab', { name: 'Saisondiagramm' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await expectNoSeriousA11y();
   });
 

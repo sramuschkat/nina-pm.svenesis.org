@@ -810,6 +810,10 @@ export const en: Messages = {
     endCurrentConsequence: 'You are signed out on this device immediately.',
   },
   nightChart: {
+    tabs: {
+      altitude: 'Altitude chart',
+      season: 'Season chart',
+    },
     label: 'Night chart, times in site time ({{zone}})',
     empty: 'No night with darkness or no target above the horizon.',
     error: 'The night chart cannot be drawn.',
@@ -2049,6 +2053,7 @@ export const en: Messages = {
     },
   },
   catalog: {
+    chartsOf: 'Charts for {{name}}',
     nightOf:
       'Altitude of {{name}} in the selected night at the rig site; if your time zone differs, your time is shown below the site time.',
     context: 'Rig and night',
@@ -2130,8 +2135,6 @@ export const en: Messages = {
     nightInfo: 'Dark {{from}}–{{to}} · Moon {{pct}} % illuminated',
     noDarkness: 'It does not get dark enough this night (limit {{twilight}}).',
     createProject: 'Create project',
-    seasonFor: 'Season of {{name}}',
-    seasonOf: 'Season chart: {{name}}',
     skyMap: 'Sky map',
     skyMapFor: '{{name}} in the sky map',
     createProjectFor: 'Create project for {{name}}',
@@ -2188,6 +2191,7 @@ export const en: Messages = {
     },
   },
   skymap: {
+    chartsLabel: 'Altitude and season chart',
     newProjectWith: 'New project with {{name}}',
     sideLabel: 'Field, mosaic and layers',
     side: {
