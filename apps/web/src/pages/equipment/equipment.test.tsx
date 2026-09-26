@@ -12,7 +12,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { CamerasPage, readoutMismatch } from './CamerasPage';
-import { filterPassband } from './FiltersPage';
+import { FiltersPage, filterPassband } from './FiltersPage';
 import { labelRows, readableOn, spectrumRange, spectrumRgb } from './FilterSpectrum';
 import { contrastRatio } from '../../components/FilterChip';
 import { MoonProfilesPage, requiredSeparation } from './MoonProfilesPage';
@@ -196,6 +196,57 @@ describe('S-13 Kameras', () => {
     expect(await screen.findAllByText('Ungültiger Wert')).not.toHaveLength(0);
     expect(screen.getByLabelText('Breite (px)')).toHaveAttribute('aria-invalid', 'true');
     expect(state.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('S-14 Filtersammlung: Sortierung per Spaltenkopf (AP-26a)', () => {
+  const filter = (n: number, shortName: string, fullName: string, bandwidthNm: number | null) => ({
+    id: ID(30 + n),
+    shortName,
+    fullName,
+    brand: '',
+    filterType: 'narrowband',
+    telescopeId: null,
+    size: null,
+    shape: null,
+    mountType: null,
+    bandwidthNm,
+    centerWavelengthNm: null,
+    photometricBand: 'none',
+    transmissionPct: null,
+    thicknessMm: null,
+    colorHex: '#CCCCCC',
+    defaultOnNewProject: false,
+    defaultExposureS: null,
+    defaultMoonProfileId: null,
+    notes: '',
+    createdAt: AT,
+    updatedAt: AT,
+  });
+
+  it('Klick auf „Bandbreite“ sortiert auf- und absteigend, leere Werte zuletzt', async () => {
+    state.lists = {
+      ...state.lists,
+      filters: [
+        filter(1, 'OIII', 'Sauerstoff', 7),
+        filter(2, 'Ha', 'Wasserstoff', 3),
+        filter(3, 'L', 'Luminanz', null),
+      ],
+    };
+    wrap(<FiltersPage />);
+    const table = await screen.findByRole('table', { name: 'Filtersammlung' });
+    const head = within(table).getByRole('columnheader', { name: /Bandbreite/ });
+    const order = () =>
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((r) => within(r).getAllByRole('cell')[1]?.textContent);
+    expect(order()).toEqual(['Sauerstoff', 'Wasserstoff', 'Luminanz']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Wasserstoff', 'Sauerstoff', 'Luminanz']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Sauerstoff', 'Wasserstoff', 'Luminanz']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
   });
 });
 

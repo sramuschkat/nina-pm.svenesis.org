@@ -61,7 +61,7 @@ for (const theme of ['light', 'dark'] as const) {
     test('S-70 Mitglieder mit Detail, Einladung und Dialog (AP-07b)', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/verwaltung/mitglieder');
-      await page.getByRole('button', { name: 'Anton Admin' }).click();
+      await page.getByRole('button', { name: 'Anton Admin', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Admin-Rechte entziehen' })).toBeVisible();
       await expectNoSerious(page, 'S-70');
       await page.getByRole('button', { name: 'Entfernen' }).click();

@@ -213,6 +213,24 @@ describe('S-60 Sessions', () => {
     await expectNoSeriousA11y();
   });
 
+  it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Nacht“ sortiert auf- und absteigend', async () => {
+    state.list = [
+      session({ id: ID(1), night: '2026-09-17' }),
+      session({ id: ID(2), night: '2026-09-15' }),
+      session({ id: ID(3), night: '2026-09-16' }),
+    ];
+    renderAt('/auswertung/sessions');
+    await screen.findByRole('link', { name: '17./18.09.' });
+    const head = screen.getByRole('columnheader', { name: /Nacht/ });
+    const order = () => screen.getAllByRole('link').map((l) => l.textContent);
+    expect(order()).toEqual(['17./18.09.', '15./16.09.', '16./17.09.']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['15./16.09.', '16./17.09.', '17./18.09.']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['17./18.09.', '16./17.09.', '15./16.09.']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
+  });
+
   it('leere Liste zeigt den Hinweis', async () => {
     state.list = [];
     renderAt('/auswertung/sessions');
@@ -225,7 +243,7 @@ describe('S-61 Session-Detail', () => {
     state.correct.mockResolvedValue({ rejectedCount: 2, projectStatus: 'active' });
     renderAt(`/auswertung/sessions/${ID(1)}`);
     expect(await screen.findByRole('heading', { name: '17./18.09. · Rig A' })).toBeTruthy();
-    const table = screen.getByRole('region', { name: 'Soll/Ist' });
+    const table = screen.getByRole('table', { name: 'Soll/Ist' });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
     expect(
       within(row)
@@ -258,14 +276,14 @@ describe('S-61 Session-Detail', () => {
     renderAt(`/auswertung/sessions/${ID(1)}`);
     await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
     fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
-    const captures = screen.getByRole('region', { name: 'Aufnahmen' });
+    const captures = screen.getByRole('table', { name: 'Aufnahmen' });
     const flagged = within(captures).getByRole('row', { name: /330 s/ });
     expect(within(flagged).getByText('Temperaturabweichung')).toBeTruthy();
     expect(within(flagged).getByText('Einstellungen abweichend')).toBeTruthy();
     expect(within(flagged).getByText('21:34 CDT')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'deviations' } });
     expect(
-      within(screen.getByRole('region', { name: 'Aufnahmen' })).getAllByRole('row'),
+      within(screen.getByRole('table', { name: 'Aufnahmen' })).getAllByRole('row'),
     ).toHaveLength(2);
     fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'unassigned' } });
     fireEvent.change(screen.getByLabelText(/Zeile für 21:40/), { target: { value: ID(20) } });

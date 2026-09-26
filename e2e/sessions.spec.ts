@@ -6,7 +6,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { runFakeNight } from '../tools/fake-plugin/src/night';
-import { csrf, testLogin } from './support';
+import { WIDE, csrf, testLogin } from './support';
 
 const json = async <T>(page: Page, url: string): Promise<T> => {
   const res = await page.request.get(url);
@@ -99,7 +99,7 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   browser,
   baseURL,
 }) => {
-  const admin = await (await browser.newContext()).newPage();
+  const admin = await (await browser.newContext({ viewport: WIDE })).newPage();
   await testLogin(admin, 'owner');
   const user = await (await browser.newContext()).newPage();
   await testLogin(user, 'user1');
@@ -117,7 +117,7 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await expect(admin.getByText('1 Aufnahmen ohne Zuordnung')).toBeVisible();
   await admin.getByRole('tab', { name: 'Aufnahmen' }).click();
   await admin.getByLabel('Anzeigen').selectOption('deviations');
-  const flagged = admin.getByRole('region', { name: 'Aufnahmen' }).getByRole('row').nth(1);
+  const flagged = admin.getByRole('table', { name: 'Aufnahmen' }).getByRole('row').nth(1);
   await expect(flagged).toContainText('Temperaturabweichung');
   await expect(flagged).toContainText('Einstellungen abweichend');
   await expect(flagged).toContainText('330 s');
@@ -130,7 +130,7 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await admin.getByLabel('Grund').selectOption('clouds');
   await admin.getByRole('button', { name: 'Korrektur speichern' }).click();
   await expect(admin.getByText('Korrektur gespeichert.')).toBeVisible();
-  const row = admin.getByRole('region', { name: 'Soll/Ist' }).getByRole('row').nth(1);
+  const row = admin.getByRole('table', { name: 'Soll/Ist' }).getByRole('row').nth(1);
   // Spalten: Projekt, Filter, Soll, Ist, Verworfen, Akzeptiert, …
   await expect(row.getByRole('cell').nth(4)).toHaveText('1');
   await expect(row.getByRole('cell').nth(5)).toHaveText('3');
@@ -140,7 +140,7 @@ test('AF-08: Projekt abschließen – verschwindet aus „An NINA ausgeliefert�
   browser,
   baseURL,
 }) => {
-  const admin = await (await browser.newContext()).newPage();
+  const admin = await (await browser.newContext({ viewport: WIDE })).newPage();
   await testLogin(admin, 'owner');
   const user = await (await browser.newContext()).newPage();
   await testLogin(user, 'user1');

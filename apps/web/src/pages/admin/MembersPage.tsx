@@ -17,6 +17,7 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import styles from './admin.module.css';
@@ -100,61 +101,93 @@ function MemberTable({
 }) {
   const { t } = useTranslation();
   const { zone } = useMemberRights();
+  const columns: DataColumn<Member>[] = [
+    {
+      id: 'name',
+      header: t('admin.members.col.name'),
+      sortValue: (m) => m.displayName,
+      cell: (m) => (
+        <button type="button" className={styles.rowButton} onClick={() => onSelect(m.id)}>
+          {m.displayName}
+        </button>
+      ),
+    },
+    {
+      id: 'discord',
+      header: t('admin.members.col.discord'),
+      sortValue: (m) => m.discordUsername,
+      priority: 3,
+      cell: (m) => `@${m.discordUsername}`,
+    },
+    {
+      id: 'role',
+      header: t('admin.members.col.role'),
+      sortValue: (m) => t(`appBar.role.${m.role}`),
+      cell: (m) => (
+        <>
+          <RolePill role={m.role} />
+          {m.rightsDormant ? (
+            <>
+              {' '}
+              <span className={styles.pillWarn}>{t('admin.members.rightsDormant')}</span>
+            </>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'status',
+      header: t('admin.members.col.status'),
+      sortValue: (m) => t(`admin.members.status.${m.status}`),
+      priority: 2,
+      cell: (m) => (
+        <span className={m.status === 'active' ? styles.pillOk : styles.pill}>
+          {t(`admin.members.status.${m.status}`)}
+        </span>
+      ),
+    },
+    {
+      id: 'mfa',
+      header: t('admin.members.col.mfa'),
+      sortValue: (m) => m.mfa,
+      priority: 3,
+      cell: (m) => (m.mfa ? t('admin.mfaOn') : t('admin.mfaOff')),
+    },
+    {
+      id: 'lastLogin',
+      header: t('admin.members.col.lastLogin'),
+      sortValue: (m) => m.lastLoginAt,
+      priority: 2,
+      nowrap: true,
+      cell: (m) => <DateTime at={m.lastLoginAt} zone={zone} />,
+    },
+    {
+      id: 'objects',
+      header: t('admin.members.col.objects'),
+      // Summe aller Objekte des Mitglieds; der Hinweis zur Aufteilung steht am Wert.
+      sortValue: (m) => m.objects.draft + m.objects.submitted + m.objects.approved,
+      priority: 4,
+      nowrap: true,
+      cell: (m) => (
+        <span title={t('admin.members.objectsHint')}>
+          {t('admin.members.objectsValue', {
+            draft: m.objects.draft,
+            submitted: m.objects.submitted,
+            approved: m.objects.approved,
+          })}
+        </span>
+      ),
+    },
+  ];
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('admin.members.col.name')}</th>
-            <th scope="col">{t('admin.members.col.discord')}</th>
-            <th scope="col">{t('admin.members.col.role')}</th>
-            <th scope="col">{t('admin.members.col.status')}</th>
-            <th scope="col">{t('admin.members.col.mfa')}</th>
-            <th scope="col">{t('admin.members.col.lastLogin')}</th>
-            <th scope="col" title={t('admin.members.objectsHint')}>
-              {t('admin.members.col.objects')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.map((m) => (
-            <tr key={m.id} aria-selected={m.id === selected}>
-              <td>
-                <button type="button" className={styles.rowButton} onClick={() => onSelect(m.id)}>
-                  {m.displayName}
-                </button>
-              </td>
-              <td>@{m.discordUsername}</td>
-              <td>
-                <RolePill role={m.role} />
-                {m.rightsDormant ? (
-                  <>
-                    {' '}
-                    <span className={styles.pillWarn}>{t('admin.members.rightsDormant')}</span>
-                  </>
-                ) : null}
-              </td>
-              <td>
-                <span className={m.status === 'active' ? styles.pillOk : styles.pill}>
-                  {t(`admin.members.status.${m.status}`)}
-                </span>
-              </td>
-              <td>{m.mfa ? t('admin.mfaOn') : t('admin.mfaOff')}</td>
-              <td>
-                <DateTime at={m.lastLoginAt} zone={zone} />
-              </td>
-              <td>
-                {t('admin.members.objectsValue', {
-                  draft: m.objects.draft,
-                  submitted: m.objects.submitted,
-                  approved: m.objects.approved,
-                })}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={members}
+      rowKey={(m) => m.id}
+      rowLabel={(m) => m.displayName}
+      label={t('admin.members.list')}
+      rowProps={(m) => ({ 'aria-selected': m.id === selected })}
+    />
   );
 }
 
@@ -489,68 +522,98 @@ function InvitationList() {
       ) : open.length === 0 ? (
         <p className={styles.muted}>{t('admin.invite.none')}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('admin.invite.role')}</th>
-                <th scope="col">{t('admin.invite.boundTo')}</th>
-                <th scope="col">{t('admin.invite.uses')}</th>
-                <th scope="col">{t('admin.invite.expires')}</th>
-                <th scope="col">{t('admin.invite.note')}</th>
-                <th scope="col">
-                  <span className={styles.muted}>{t('system.superUsers.col.actions')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {open.map((i) => (
-                <InvitationRow key={i.id} invitation={i} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <InvitationTable invitations={open} />
       )}
     </section>
   );
 }
 
-function InvitationRow({ invitation }: { invitation: Invitation }) {
+function InvitationTable({ invitations }: { invitations: readonly Invitation[] }) {
+  const { t } = useTranslation();
+  const { zone } = useMemberRights();
+  const columns: DataColumn<Invitation>[] = [
+    {
+      id: 'role',
+      header: t('admin.invite.role'),
+      sortValue: (i) => t(`appBar.role.${i.role}`),
+      cell: (i) => t(`appBar.role.${i.role}`),
+    },
+    {
+      id: 'boundTo',
+      header: t('admin.invite.boundTo'),
+      sortValue: (i) => i.discordUserId,
+      priority: 3,
+      className: styles.code,
+      cell: (i) => i.discordUserId ?? '–',
+    },
+    {
+      id: 'uses',
+      header: t('admin.invite.uses'),
+      sortValue: (i) => i.usedCount,
+      priority: 2,
+      nowrap: true,
+      cell: (i) => `${String(i.usedCount)}/${String(i.maxUses)}`,
+    },
+    {
+      id: 'expires',
+      header: t('admin.invite.expires'),
+      sortValue: (i) => i.expiresAt,
+      nowrap: true,
+      cell: (i) => <DateTime at={i.expiresAt} zone={zone} />,
+    },
+    {
+      id: 'note',
+      header: t('admin.invite.note'),
+      sortValue: (i) => i.note,
+      priority: 4,
+      className: styles.details,
+      cell: (i) => i.note ?? '',
+    },
+    {
+      id: 'actions',
+      header: t('system.superUsers.col.actions'),
+      headerHidden: true,
+      nowrap: true,
+      cell: (i) => <RevokeInvitation invitation={i} />,
+    },
+  ];
+  return (
+    <DataTable
+      columns={columns}
+      rows={invitations}
+      rowKey={(i) => i.id}
+      rowLabel={(i) => i.discordUserId ?? t(`appBar.role.${i.role}`)}
+      label={t('admin.invite.open')}
+    />
+  );
+}
+
+/** Einladung widerrufen (nur Owner bei Admin-Einladungen) mit `ConfirmDialog`. */
+function RevokeInvitation({ invitation }: { invitation: Invitation }) {
   const { t } = useTranslation();
   const client = useQueryClient();
-  const { isOwner, zone } = useMemberRights();
+  const { isOwner } = useMemberRights();
   const revoke = useConfirm(async () => {
     await memberApi.revokeInvitation(invitation.id);
     await client.invalidateQueries({ queryKey: INVITATIONS_KEY });
   });
   return (
-    <tr>
-      <td>{t(`appBar.role.${invitation.role}`)}</td>
-      <td className={styles.code}>{invitation.discordUserId ?? '–'}</td>
-      <td>
-        {invitation.usedCount}/{invitation.maxUses}
-      </td>
-      <td>
-        <DateTime at={invitation.expiresAt} zone={zone} />
-      </td>
-      <td className={styles.details}>{invitation.note ?? ''}</td>
-      <td>
-        {!invitation.ownerOnly || isOwner ? (
-          <button type="button" className={styles.buttonDanger} onClick={revoke.open}>
-            {t('admin.invite.revoke')}
-          </button>
-        ) : (
-          <span className={styles.muted}>{t('admin.invite.ownerOnly')}</span>
-        )}
-        <ConfirmDialog
-          {...revoke.dialog}
-          variant="danger"
-          title={t('admin.invite.revokeTitle')}
-          consequence={t('admin.invite.revokeConsequence')}
-          confirmLabel={t('admin.invite.revoke')}
-        />
-      </td>
-    </tr>
+    <>
+      {!invitation.ownerOnly || isOwner ? (
+        <button type="button" className={styles.buttonDanger} onClick={revoke.open}>
+          {t('admin.invite.revoke')}
+        </button>
+      ) : (
+        <span className={styles.muted}>{t('admin.invite.ownerOnly')}</span>
+      )}
+      <ConfirmDialog
+        {...revoke.dialog}
+        variant="danger"
+        title={t('admin.invite.revokeTitle')}
+        consequence={t('admin.invite.revokeConsequence')}
+        confirmLabel={t('admin.invite.revoke')}
+      />
+    </>
   );
 }
 

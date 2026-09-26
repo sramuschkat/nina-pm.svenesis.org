@@ -5,8 +5,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { approvalApi } from '../../api/client';
+import { approvalApi, type ProjectListItem } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatDateTime } from '../../lib/time';
@@ -24,6 +25,35 @@ export function DraftsPage() {
     enabled: canAdmin,
   });
   const zone = me?.tenant?.timeZone ?? 'UTC';
+  const columns: DataColumn<ProjectListItem>[] = [
+    {
+      id: 'name',
+      header: t('projectList.col.name'),
+      sortValue: (p) => p.name,
+      cell: (p) => <Link to={`/projekte/${p.id}`}>{p.name}</Link>,
+    },
+    {
+      id: 'status',
+      header: t('projectList.col.status'),
+      sortValue: (p) => p.approvalStatus,
+      priority: 2,
+      cell: (p) => <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />,
+    },
+    {
+      id: 'creator',
+      header: t('projectList.col.creator'),
+      sortValue: (p) => p.createdByName,
+      priority: 2,
+      cell: (p) => p.createdByName,
+    },
+    {
+      id: 'updatedAt',
+      header: t('drafts.updatedAt'),
+      sortValue: (p) => p.updatedAt,
+      nowrap: true,
+      cell: (p) => formatDateTime(p.updatedAt, zone, i18n.language),
+    },
+  ];
   return (
     <ProjectsLayout title={t('drafts.title')}>
       {!canAdmin ? (
@@ -37,32 +67,13 @@ export function DraftsPage() {
       ) : (
         <>
           <p className={styles.note}>{t('drafts.hint')}</p>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th scope="col">{t('projectList.col.name')}</th>
-                  <th scope="col">{t('projectList.col.status')}</th>
-                  <th scope="col">{t('projectList.col.creator')}</th>
-                  <th scope="col">{t('drafts.updatedAt')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {drafts.data.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <Link to={`/projekte/${p.id}`}>{p.name}</Link>
-                    </td>
-                    <td>
-                      <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
-                    </td>
-                    <td>{p.createdByName}</td>
-                    <td>{formatDateTime(p.updatedAt, zone, i18n.language)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            rows={drafts.data}
+            rowKey={(p) => p.id}
+            rowLabel={(p) => p.name}
+            label={t('drafts.title')}
+          />
         </>
       )}
     </ProjectsLayout>

@@ -50,6 +50,7 @@ import {
   Plus,
   MapPin,
   ArrowUp,
+  ArrowUpDown,
   ArrowDown,
   ArrowLeft,
   ChevronLeft,
@@ -132,6 +133,11 @@ export const uiIcons = {
   next: ChevronRight,
   /** Griff zum Ziehen (Rangfolge S-32, Priorität S-30). */
   drag: GripVertical,
+  /** Sortierbarer Spaltenkopf ohne aktive Sortierung (DataTable, AP-26a). */
+  sortable: ArrowUpDown,
+  /** Detailzeile auf-/zuklappen (DataTable, AP-26a). */
+  detailClosed: ChevronRight,
+  detailOpen: ChevronDown,
 } as const;
 
 /**

@@ -1065,6 +1065,7 @@ export const de = {
       progress: 'Fortschritt',
       plan: 'Plan je Filter',
       creator: 'Ersteller',
+      effort: 'Aufwand',
       actions: 'Aktionen',
       deletedAt: 'Gelöscht am',
     },
@@ -1313,6 +1314,7 @@ export const de = {
       filterAt: 'Web-Filter an Platz {{position}}',
       ninaNameAt: 'NINA-Filtername an Platz {{position}}',
       confirm: 'Bestätigen',
+      confirmAt: 'Platz {{position}} bestätigen',
       confirmAll: 'Alle Vorschläge bestätigen',
       confirmAllTitle: '{{count}} Vorschläge bestätigen?',
       confirmAllConsequence:
@@ -2418,6 +2420,12 @@ export const de = {
       peak: 'höchste Höhe',
       enough: 'Mindestzeit',
     },
+  },
+  dataTable: {
+    empty: 'Keine Einträge.',
+    details: 'Details',
+    detailsOf: 'Weitere Angaben zu {{row}}',
+    sortBy: 'Nach {{column}} sortieren',
   },
   time: {
     siteTimeHint: 'Standortzeit ({{zone}})',

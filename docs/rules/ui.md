@@ -22,6 +22,7 @@ Quelle: TK 11; FK Kap. 7 (Bildschirme S-xx).
 - Einzelnacht-Simulation und Live-Aufwand im Web Worker mit derselben Engine.
 - Fehler aus Problem Details über `errors.*`-i18n-Schlüssel anzeigen.
 - Jede Seite: Lade-, Leer-, Fehlerzustand; Formulare mit zod-Schemas aus `packages/shared`.
+- **Datentabellen nur mit `DataTable`** (components.md §2.11, AP-26a): sortierbar per Spaltenkopf, jede Spalte mit Priorität; bei Platzmangel Spalten ausblenden statt horizontal scrollen (kein `overflow-x: auto`-Wrapper um Tabellen). Bearbeitbare Tabellen mit NINA-Reihenfolge sortieren nicht.
 - Wiederverwendbare Bausteine **nur** nach `specs/ui/components.md` (Eigenschaften, Zustände, Mindestgrößen, Grenzfälle); Bausteine importieren kein `useCan`, kein `fetch`, kein Repository.
 - Komponenten-Tests (Testing Library) für Formulare und Rechteanzeige; E2E für Kernabläufe.
 - Druckansicht statt serverseitiger PDF-Erzeugung.

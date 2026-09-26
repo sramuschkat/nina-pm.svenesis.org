@@ -326,6 +326,30 @@ describe('S-42 Widerrufene ausblenden und Löschen (FA-ADM-02)', () => {
   });
 });
 
+describe('Sortierung per Spaltenkopf (AP-26a)', () => {
+  it('Klick auf „Name“ sortiert die Instanzen auf- und absteigend', async () => {
+    state.instances = [
+      instance(),
+      instance({ id: ID(12), name: 'Alpha-PC' }),
+      instance({ id: ID(13), name: 'Zeta-PC' }),
+    ];
+    renderAt('/nina/instanzen', <InstancesPage />);
+    await screen.findByRole('button', { name: 'Beobachtungs-PC' });
+    const table = screen.getByRole('table', { name: 'Instanzen' });
+    const head = within(table).getByRole('columnheader', { name: /Name/ });
+    const order = () =>
+      within(table)
+        .getAllByRole('button', { name: /-PC$/ })
+        .map((b) => b.textContent);
+    expect(order()).toEqual(['Beobachtungs-PC', 'Alpha-PC', 'Zeta-PC']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Alpha-PC', 'Beobachtungs-PC', 'Zeta-PC']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Zeta-PC', 'Beobachtungs-PC', 'Alpha-PC']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
+  });
+});
+
 describe('S-41 An NINA ausgeliefert', () => {
   it('Karten mit Einzelfeld/Mosaik, RA/Dec, Rotation, Rig, Fortschritt je Filter; Hinweis ausgeschaltet; axe', async () => {
     renderAt('/nina/ausgeliefert', <DeliveryPage />);

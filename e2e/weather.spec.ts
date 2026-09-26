@@ -19,7 +19,7 @@ test('S-50: Grafik, Nächte, Nachtdetail; axe', async ({ page }) => {
   await expect(page.getByText(/Modelle icon-d2\+harmonie\+icon\+ecmwf\+gem\+cams/)).toBeVisible();
   const nights = page.getByRole('region', { name: 'Nächte' }).last();
   await expect(nights.getByRole('row')).not.toHaveCount(1);
-  const second = nights.getByRole('button').nth(1);
+  const second = nights.getByRole('button', { name: /^Nacht .* im Detail zeigen$/ }).nth(1);
   const label = (await second.textContent()) ?? '';
   await second.click();
   await expect(page.getByRole('heading', { name: new RegExp(`Nacht im Detail`) })).toBeVisible();

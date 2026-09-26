@@ -275,12 +275,18 @@ describe('S-21 Objektbrowser', () => {
     expect(screen.getByRole('heading', { name: '1 Treffer' })).toBeInTheDocument();
     // Ohne Rig keine Nachtspalten und keine Nachtsortierung.
     expect(screen.queryByRole('columnheader', { name: 'Nutzbar' })).not.toBeInTheDocument();
-    expect(
-      within(screen.getByLabelText('Sortierung')).queryByRole('option', {
-        name: 'Nutzbare Stunden',
-      }),
-    ).not.toBeInTheDocument();
+    // Sortierung über die Spaltenköpfe (AP-26a), die Auswahlliste gibt es nur noch in der Galerie.
+    expect(screen.queryByLabelText('Sortierung')).not.toBeInTheDocument();
+    const mag = screen.getByRole('columnheader', { name: /Helligkeit/ });
+    expect(mag).toHaveAttribute('aria-sort', 'none');
     await expectNoSeriousA11y();
+    fireEvent.click(within(mag).getByRole('button'));
+    await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ sort: 'mag' }));
+    expect(state.searches.at(-1)).not.toHaveProperty('dir');
+    fireEvent.click(
+      within(screen.getByRole('columnheader', { name: /Helligkeit/ })).getByRole('button'),
+    );
+    await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ sort: 'mag', dir: 'desc' }));
   });
 
   it('Filter gehen in die URL und in die Anfrage; Suche nach kurzer Pause', async () => {

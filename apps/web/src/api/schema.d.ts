@@ -8924,6 +8924,7 @@ export interface paths {
                     candidates?: "true" | "false";
                     family?: "galaxies" | "nebulae" | "clusters";
                     sort?: "name" | "mag" | "size" | "usable" | "altitude" | "score";
+                    dir?: "asc" | "desc";
                     limit?: number;
                     offset?: number | null;
                 };

@@ -31,6 +31,7 @@ import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
@@ -43,10 +44,12 @@ import {
   DEFAULT_MIN_ALT,
   filtersFromParams,
   fovArcmin,
+  NATURAL_DIR,
   NIGHT_SORTS,
   pageCount,
   paramsFromFilters,
   searchFromFilters,
+  type Sort,
   SORTS,
   type BrowserFilters,
 } from './model';
@@ -339,12 +342,12 @@ export function ObjectBrowserPage() {
             ? t('catalog.fitsFovNoRig')
             : t('catalog.fitsFov', { fov: `${fmt(fov, 0)}′` })}
         </label>
-        {filters.tab === 'all' ? (
+        {filters.tab === 'all' && filters.view === 'gallery' ? (
           <Select
             id="catalog-sort"
             label={t('catalog.sort')}
             value={filters.sort}
-            onChange={(v) => update({ sort: v as BrowserFilters['sort'] })}
+            onChange={(v) => update({ sort: v as BrowserFilters['sort'], dir: '' })}
             options={SORTS.filter((s) => site !== null || !NIGHT_SORTS.includes(s)).map(
               (s) => [s, t(`catalog.sortBy.${s}`)] as const,
             )}
@@ -412,6 +415,23 @@ export function ObjectBrowserPage() {
             rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
             canCreate={canCreate}
             site={site}
+            best={filters.tab === 'best'}
+            sort={
+              filters.tab === 'best'
+                ? { by: 'score', dir: filters.dir || NATURAL_DIR.score }
+                : filters.sort === 'name' && !filters.dir
+                  ? null
+                  : { by: filters.sort, dir: filters.dir || NATURAL_DIR[filters.sort] }
+            }
+            onSort={(next) =>
+              filters.tab === 'best'
+                ? update({ dir: next && next.dir !== NATURAL_DIR.score ? next.dir : '' })
+                : update(
+                    next && next.by !== 'score'
+                      ? { sort: next.by, dir: next.dir === NATURAL_DIR[next.by] ? '' : next.dir }
+                      : { sort: 'name', dir: '' },
+                  )
+            }
           />
         )}
         {data ? (
@@ -676,134 +696,203 @@ function Actions({
   );
 }
 
+/** Spalte → serverseitige Sortierung (AP-26a: Spaltenkopf statt Auswahlliste). */
+const COLUMN_SORT: Readonly<Record<string, Sort | 'score'>> = {
+  object: 'name',
+  mag: 'mag',
+  size: 'size',
+  best: 'altitude',
+  usable: 'usable',
+  score: 'score',
+};
+
 function ResultTable({
   items,
   labelledBy,
+  sort,
+  onSort,
+  best,
   ...row
-}: { items: DsoView[]; labelledBy: string } & RowProps) {
+}: {
+  items: DsoView[];
+  labelledBy: string;
+  /** Aktuelle Sortierung des Servers (`null` = Standard nach Name). */
+  sort: { by: Sort | 'score'; dir: 'asc' | 'desc' } | null;
+  onSort: (next: { by: Sort | 'score'; dir: 'asc' | 'desc' } | null) => void;
+  /** Reiter *Beste der Nacht*: sortiert immer nach der Bewertung. */
+  best: boolean;
+} & RowProps) {
   const { t } = useTranslation();
   const cell = useCells(row);
   const night = items.some((o) => o.night !== null);
   const scored = items.some((o) => o.night?.score !== null && o.night?.score !== undefined);
   const [seasonOf, setSeasonOf] = useState<string | null>(null);
   const seasonObject = items.find((o) => o.id === seasonOf) ?? null;
+  // In „Beste der Nacht“ ist nur die Bewertung sortierbar; sonst alles, was der Server sortieren kann.
+  const sortable = (id: string) =>
+    best
+      ? id === 'score'
+      : id in COLUMN_SORT && id !== 'score' && (night || !['best', 'usable'].includes(id));
+  const base: DataColumn<DsoView>[] = [
+    {
+      id: 'image',
+      header: t('catalog.col.image'),
+      headerHidden: true,
+      priority: 4,
+      cell: (o) => (
+        <CatalogImage
+          primaryId={o.primaryId}
+          name={o.displayName}
+          size="small"
+          className={styles.listThumb}
+          fallback={<div className={styles.listThumbEmpty} aria-hidden />}
+        />
+      ),
+    },
+    {
+      id: 'object',
+      header: t('catalog.col.object'),
+      nowrap: true,
+      cell: (o) => {
+        const { common } = aliasesOf(o);
+        return (
+          <>
+            <strong>{o.displayName}</strong>
+            {common[0] ? <span className={styles.common}>{common[0]}</span> : null}
+          </>
+        );
+      },
+    },
+    {
+      id: 'aliases',
+      header: t('catalog.col.aliases'),
+      priority: 5,
+      cell: (o) => {
+        const { designations } = aliasesOf(o);
+        return (
+          <span title={designations.join(', ')}>
+            {designations.slice(0, 3).join(', ')}
+            {designations.length > 3 ? ' …' : ''}
+          </span>
+        );
+      },
+    },
+    { id: 'type', header: t('catalog.col.type'), priority: 2, cell: (o) => cell.group(o) },
+    {
+      id: 'constellation',
+      header: t('catalog.col.constellation'),
+      priority: 3,
+      cell: (o) => (
+        <span
+          title={
+            o.constellation
+              ? IAU_CONSTELLATION_NAMES[o.constellation as keyof typeof IAU_CONSTELLATION_NAMES]
+              : undefined
+          }
+        >
+          {o.constellation ?? '–'}
+        </span>
+      ),
+    },
+    {
+      id: 'size',
+      header: t('catalog.col.size'),
+      align: 'end',
+      nowrap: true,
+      priority: 2,
+      cell: (o) => cell.size(o),
+    },
+    {
+      id: 'mag',
+      header: t('catalog.col.mag'),
+      align: 'end',
+      nowrap: true,
+      cell: (o) => cell.mag(o),
+    },
+    {
+      id: 'surfBr',
+      header: t('catalog.col.surfBr'),
+      align: 'end',
+      priority: 4,
+      cell: (o) => cell.surfBr(o),
+    },
+    ...(scored
+      ? ([
+          {
+            id: 'score',
+            header: t('catalog.col.score'),
+            align: 'end',
+            nowrap: true,
+            cell: (o) => cell.score(o),
+          },
+          {
+            id: 'filter',
+            header: t('catalog.col.filter'),
+            nowrap: true,
+            priority: 3,
+            cell: (o) => cell.filter(o),
+          },
+        ] satisfies DataColumn<DsoView>[])
+      : []),
+    ...(night
+      ? ([
+          { id: 'best', header: t('catalog.col.best'), nowrap: true, cell: (o) => cell.best(o) },
+          {
+            id: 'moon',
+            header: t('catalog.col.moon'),
+            nowrap: true,
+            priority: 3,
+            cell: (o) => cell.moon(o),
+          },
+          {
+            id: 'usable',
+            header: t('catalog.col.usable'),
+            align: 'end',
+            nowrap: true,
+            cell: (o) => cell.usable(o),
+          },
+        ] satisfies DataColumn<DsoView>[])
+      : []),
+    {
+      id: 'actions',
+      header: t('catalog.col.actions'),
+      headerHidden: true,
+      cell: (o) => (
+        <Actions
+          o={o}
+          rigId={row.rigId}
+          rigFov={row.rigFov}
+          canCreate={row.canCreate}
+          {...(row.site
+            ? {
+                season: {
+                  open: seasonOf === o.id,
+                  toggle: () => setSeasonOf(seasonOf === o.id ? null : o.id),
+                },
+              }
+            : {})}
+        />
+      ),
+    },
+  ];
+  const columns = base.map((c) => ({ ...c, sortable: sortable(c.id) }));
+  const columnOf = (by: Sort | 'score') =>
+    Object.entries(COLUMN_SORT).find(([, s]) => s === by)?.[0] ?? 'object';
   return (
     <>
-      <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby={labelledBy}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th scope="col" className={styles.hideNarrow}>
-                {t('catalog.col.image')}
-              </th>
-              <th scope="col">{t('catalog.col.object')}</th>
-              <th scope="col" className={styles.hideNarrow}>
-                {t('catalog.col.aliases')}
-              </th>
-              <th scope="col">{t('catalog.col.type')}</th>
-              <th scope="col">{t('catalog.col.constellation')}</th>
-              <th scope="col" className={styles.num}>
-                {t('catalog.col.size')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('catalog.col.mag')}
-              </th>
-              <th scope="col" className={`${styles.num} ${styles.hideNarrow}`}>
-                {t('catalog.col.surfBr')}
-              </th>
-              {scored ? (
-                <>
-                  <th scope="col" className={styles.num}>
-                    {t('catalog.col.score')}
-                  </th>
-                  <th scope="col">{t('catalog.col.filter')}</th>
-                </>
-              ) : null}
-              {night ? (
-                <>
-                  <th scope="col">{t('catalog.col.best')}</th>
-                  <th scope="col" className={styles.hideNarrow}>
-                    {t('catalog.col.moon')}
-                  </th>
-                  <th scope="col" className={styles.num}>
-                    {t('catalog.col.usable')}
-                  </th>
-                </>
-              ) : null}
-              <th scope="col">{t('catalog.col.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((o) => {
-              const { designations, common } = aliasesOf(o);
-              return (
-                <tr key={o.id}>
-                  <td className={styles.hideNarrow}>
-                    <CatalogImage
-                      primaryId={o.primaryId}
-                      name={o.displayName}
-                      size="small"
-                      className={styles.listThumb}
-                      fallback={<div className={styles.listThumbEmpty} aria-hidden />}
-                    />
-                  </td>
-                  <td>
-                    <strong>{o.displayName}</strong>
-                    {common[0] ? <span className={styles.common}>{common[0]}</span> : null}
-                  </td>
-                  <td className={styles.hideNarrow} title={designations.join(', ')}>
-                    {designations.slice(0, 3).join(', ')}
-                    {designations.length > 3 ? ' …' : ''}
-                  </td>
-                  <td>{cell.group(o)}</td>
-                  <td
-                    title={
-                      o.constellation
-                        ? IAU_CONSTELLATION_NAMES[
-                            o.constellation as keyof typeof IAU_CONSTELLATION_NAMES
-                          ]
-                        : undefined
-                    }
-                  >
-                    {o.constellation ?? '–'}
-                  </td>
-                  <td className={`${styles.num} ${styles.nowrap}`}>{cell.size(o)}</td>
-                  <td className={`${styles.num} ${styles.nowrap}`}>{cell.mag(o)}</td>
-                  <td className={`${styles.num} ${styles.hideNarrow}`}>{cell.surfBr(o)}</td>
-                  {scored ? (
-                    <>
-                      <td className={`${styles.num} ${styles.nowrap}`}>{cell.score(o)}</td>
-                      <td className={styles.nowrap}>{cell.filter(o)}</td>
-                    </>
-                  ) : null}
-                  {night ? (
-                    <>
-                      <td className={styles.nowrap}>{cell.best(o)}</td>
-                      <td className={`${styles.hideNarrow} ${styles.nowrap}`}>{cell.moon(o)}</td>
-                      <td className={`${styles.num} ${styles.nowrap}`}>{cell.usable(o)}</td>
-                    </>
-                  ) : null}
-                  <td>
-                    <Actions
-                      o={o}
-                      rigId={row.rigId}
-                      rigFov={row.rigFov}
-                      canCreate={row.canCreate}
-                      {...(row.site
-                        ? {
-                            season: {
-                              open: seasonOf === o.id,
-                              toggle: () => setSeasonOf(seasonOf === o.id ? null : o.id),
-                            },
-                          }
-                        : {})}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div role="region" aria-labelledby={labelledBy}>
+        <DataTable
+          columns={columns}
+          rows={items}
+          rowKey={(o) => o.id}
+          rowLabel={(o) => o.displayName}
+          label={t('catalog.title')}
+          serverSorted
+          sort={sort ? { id: columnOf(sort.by), dir: sort.dir } : null}
+          onSortChange={(next) =>
+            onSort(next ? { by: COLUMN_SORT[next.id] ?? 'name', dir: next.dir } : null)
+          }
+        />
       </div>
       {row.site && seasonObject ? (
         <SeasonPanel

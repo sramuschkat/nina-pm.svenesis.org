@@ -1061,6 +1061,7 @@ export const en: Messages = {
       progress: 'Progress',
       plan: 'Plan per filter',
       creator: 'Creator',
+      effort: 'Effort',
       actions: 'Actions',
       deletedAt: 'Deleted at',
     },
@@ -1308,6 +1309,7 @@ export const en: Messages = {
       filterAt: 'Web filter at slot {{position}}',
       ninaNameAt: 'NINA filter name at slot {{position}}',
       confirm: 'Confirm',
+      confirmAt: 'Confirm slot {{position}}',
       confirmAll: 'Confirm all suggestions',
       confirmAllTitle: 'Confirm {{count}} suggestions?',
       confirmAllConsequence:
@@ -2408,6 +2410,12 @@ export const en: Messages = {
       peak: 'highest altitude',
       enough: 'Minimum time',
     },
+  },
+  dataTable: {
+    empty: 'No entries.',
+    details: 'Details',
+    detailsOf: 'More details for {{row}}',
+    sortBy: 'Sort by {{column}}',
   },
   time: {
     siteTimeHint: 'Site time ({{zone}})',

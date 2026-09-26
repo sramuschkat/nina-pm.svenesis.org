@@ -21,6 +21,7 @@ import {
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn, type SortState } from '../../components/DataTable';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
@@ -299,47 +300,50 @@ function ActiveView() {
       ) : shown.length === 0 ? (
         <p className={styles.note}>{t('projectList.noMatch')}</p>
       ) : (
-        groups.map((g) => (
-          <section key={g.rigId} className={styles.group} aria-label={rigLabel(g.rigId)}>
-            <div className={styles.groupHead}>
-              <h2>{rigLabel(g.rigId)}</h2>
-              <span className={styles.muted}>
-                {g.counts
-                  .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
-                  .join(' · ')}
-              </span>
-            </div>
-            {view === 'list' ? (
-              <ProjectTable
-                items={g.items}
-                filters={filtersList.data ?? []}
-                onFavorite={(id, on) => favorite.mutate({ id, on })}
-                onDelete={setRemove}
-                onMove={(id, delta) => {
-                  const position = movedPosition(g.items, id, delta);
-                  if (position !== null) priority.mutate({ id, position });
-                }}
-                onDropAt={(id, position) => priority.mutate({ id, position })}
-              />
-            ) : (
-              <div className={view === 'cards' ? styles.cards : styles.detailCards}>
-                {g.items.map((p) => (
-                  <ProjectCard
-                    key={p.id}
-                    project={p}
-                    filters={filtersList.data ?? []}
-                    rig={(rigs.data ?? []).find((r) => r.id === p.rigId) ?? null}
-                    sites={sites.data ?? []}
-                    rigLine={p.rigId ? rigLabel(p.rigId) : t('projectList.noRig')}
-                    initialTab={view === 'detail' ? 'altitude' : 'info'}
-                    onFavorite={(on) => favorite.mutate({ id: p.id, on })}
-                    onDelete={() => setRemove(p)}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))
+        <>
+          {view === 'list' ? (
+            <ProjectTable
+              groups={groups}
+              groupLabel={(rigId) => rigLabel(rigId)}
+              filters={filtersList.data ?? []}
+              onFavorite={(id, on) => favorite.mutate({ id, on })}
+              onDelete={setRemove}
+              onMove={(groupItems, id, delta) => {
+                const position = movedPosition(groupItems, id, delta);
+                if (position !== null) priority.mutate({ id, position });
+              }}
+              onDropAt={(id, position) => priority.mutate({ id, position })}
+            />
+          ) : (
+            groups.map((g) => (
+              <section key={g.rigId} className={styles.group} aria-label={rigLabel(g.rigId)}>
+                <div className={styles.groupHead}>
+                  <h2>{rigLabel(g.rigId)}</h2>
+                  <span className={styles.muted}>
+                    {g.counts
+                      .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
+                      .join(' · ')}
+                  </span>
+                </div>
+                <div className={view === 'cards' ? styles.cards : styles.detailCards}>
+                  {g.items.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      filters={filtersList.data ?? []}
+                      rig={(rigs.data ?? []).find((r) => r.id === p.rigId) ?? null}
+                      sites={sites.data ?? []}
+                      rigLine={p.rigId ? rigLabel(p.rigId) : t('projectList.noRig')}
+                      initialTab={view === 'detail' ? 'altitude' : 'info'}
+                      onFavorite={(on) => favorite.mutate({ id: p.id, on })}
+                      onDelete={() => setRemove(p)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+        </>
       )}
       <ConfirmDialog
         open={remove !== null}
@@ -389,136 +393,213 @@ export function FilterPlan({
   );
 }
 
+/**
+ * Projektliste als **eine** Tabelle, je Rig eine Zwischenüberschrift (AP-26a): Spalten fluchten,
+ * sortierbar per Spaltenkopf (innerhalb der Rig-Gruppe), bei wenig Platz Spalten ausblenden. Priorität
+ * per Pfeil bzw. Ziehen nur in der Standard-Reihenfolge (ohne aktive Sortierung).
+ */
 function ProjectTable({
-  items,
+  groups,
+  groupLabel,
   filters,
   onFavorite,
   onDelete,
   onMove,
   onDropAt,
 }: {
-  items: readonly ProjectListItem[];
+  groups: ReturnType<typeof groupByRig>;
+  groupLabel: (rigId: string) => string;
   filters: readonly FilterView[];
   onFavorite: (id: string, on: boolean) => void;
   onDelete: (p: ProjectListItem) => void;
-  onMove: (id: string, delta: number) => void;
+  onMove: (groupItems: readonly ProjectListItem[], id: string, delta: number) => void;
   onDropAt: (id: string, position: number) => void;
 }) {
   const { t } = useTranslation();
   const canAdmin = useCan('project.status');
   const canFavorite = useCan('me.favorites');
   const [dragId, setDragId] = useState<string | null>(null);
-  const approved = items.filter((p) => p.approvalStatus === 'approved');
+  const [sort, setSort] = useState<SortState | null>(null);
+  const groupOf = (p: ProjectListItem) => p.rigId ?? NO_RIG;
+  const byGroup = new Map(groups.map((g) => [g.rigId, g]));
+  const itemsOf = (p: ProjectListItem) => byGroup.get(groupOf(p))?.items ?? [];
+  const approvedOf = (p: ProjectListItem) =>
+    itemsOf(p).filter((x) => x.approvalStatus === 'approved');
+  // Priorität lässt sich nur in der Standard-Reihenfolge ändern.
+  const reorder = canAdmin && sort === null;
   const onDrop = (e: DragEvent, target: ProjectListItem) => {
     e.preventDefault();
+    const approved = approvedOf(target);
     const index = approved.findIndex((p) => p.id === target.id);
-    if (dragId && index >= 0 && dragId !== target.id) onDropAt(dragId, index + 1);
+    const sameGroup = approved.some((p) => p.id === dragId);
+    if (dragId && sameGroup && index >= 0 && dragId !== target.id) onDropAt(dragId, index + 1);
     setDragId(null);
   };
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            {canAdmin ? <th scope="col">{t('projectList.col.priority')}</th> : null}
-            <th scope="col">{t('projectList.col.name')}</th>
-            <th scope="col">{t('projectList.col.status')}</th>
-            <th scope="col">{t('projectList.col.type')}</th>
-            <th scope="col">{t('projectList.col.coordinates')}</th>
-            <th scope="col">{t('projectList.col.progress')}</th>
-            <th scope="col">{t('projectList.col.plan')}</th>
-            <th scope="col">{t('projectList.col.creator')}</th>
-            <th scope="col">{t('projectList.col.actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((p) => {
-            const isApproved = p.approvalStatus === 'approved';
-            const index = approved.findIndex((x) => x.id === p.id);
-            return (
-              <tr
-                key={p.id}
-                draggable={canAdmin && isApproved}
-                data-dragging={dragId === p.id}
-                onDragStart={() => setDragId(p.id)}
-                onDragEnd={() => setDragId(null)}
-                onDragOver={(e) => (canAdmin && isApproved ? e.preventDefault() : undefined)}
-                onDrop={(e) => onDrop(e, p)}
+  const priorityColumn: DataColumn<ProjectListItem> = {
+    id: 'priority',
+    header: t('projectList.col.priority'),
+    nowrap: true,
+    cell: (p) => {
+      if (p.approvalStatus !== 'approved') return '–';
+      const approved = approvedOf(p);
+      const index = approved.findIndex((x) => x.id === p.id);
+      return (
+        <span className={styles.priorityCell}>
+          <span className={styles.dragHandle} aria-hidden>
+            {index + 1}
+          </span>
+          {reorder ? (
+            <>
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={t('projectList.up', { name: p.name })}
+                disabled={index === 0}
+                onClick={() => onMove(itemsOf(p), p.id, -1)}
               >
-                {canAdmin ? (
-                  <td className={styles.priorityCell}>
-                    {isApproved ? (
-                      <>
-                        <span className={styles.dragHandle} aria-hidden>
-                          {index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={t('projectList.up', { name: p.name })}
-                          disabled={index === 0}
-                          onClick={() => onMove(p.id, -1)}
-                        >
-                          <uiIcons.up size={ICON_SIZE.table} aria-hidden />
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={t('projectList.down', { name: p.name })}
-                          disabled={index === approved.length - 1}
-                          onClick={() => onMove(p.id, 1)}
-                        >
-                          <uiIcons.down size={ICON_SIZE.table} aria-hidden />
-                        </button>
-                      </>
-                    ) : (
-                      '–'
-                    )}
-                  </td>
-                ) : null}
-                <td>
-                  <Link to={`/projekte/${p.id}`}>{p.name}</Link>
-                </td>
-                <td>
-                  <span className={styles.badges}>
-                    {p.status ? <StatusBadge kind="project" value={p.status} size="sm" /> : null}
-                    {p.approvalStatus !== 'approved' ? (
-                      <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
-                    ) : null}
-                    <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
-                  </span>
-                </td>
-                <td>{p.targetType ?? '–'}</td>
-                <td className={styles.coords}>{coords(p)}</td>
-                <td>
-                  <ProgressBar
-                    acquired={Math.round((p.progress.percentDone / 100) * 1000)}
-                    planned={1000}
-                    size="sm"
-                    showLabel={false}
-                  />
-                  <span
-                    className={styles.muted}
-                  >{`${String(Math.round(p.progress.percentDone))} %`}</span>
-                </td>
-                <td>
-                  <FilterPlan project={p} filters={filters} />
-                </td>
-                <td>{p.createdByName}</td>
-                <td>
-                  <RowActions
-                    project={p}
-                    canFavorite={canFavorite}
-                    onFavorite={onFavorite}
-                    onDelete={onDelete}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                <uiIcons.up size={ICON_SIZE.table} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={t('projectList.down', { name: p.name })}
+                disabled={index === approved.length - 1}
+                onClick={() => onMove(itemsOf(p), p.id, 1)}
+              >
+                <uiIcons.down size={ICON_SIZE.table} aria-hidden />
+              </button>
+            </>
+          ) : null}
+        </span>
+      );
+    },
+  };
+  const columns: DataColumn<ProjectListItem>[] = [
+    ...(canAdmin ? [priorityColumn] : []),
+    {
+      id: 'name',
+      header: t('projectList.col.name'),
+      sortValue: (p) => p.name,
+      nowrap: true,
+      cell: (p) => <Link to={`/projekte/${p.id}`}>{p.name}</Link>,
+    },
+    {
+      id: 'status',
+      header: t('projectList.col.status'),
+      sortValue: (p) => `${p.approvalStatus}:${p.status ?? ''}`,
+      cell: (p) => (
+        <span className={styles.badgesInline}>
+          {p.status ? <StatusBadge kind="project" value={p.status} size="sm" /> : null}
+          {p.approvalStatus !== 'approved' ? (
+            <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      id: 'effort',
+      header: t('projectList.col.effort'),
+      sortValue: (p) => p.effort?.nights ?? null,
+      priority: 2,
+      nowrap: true,
+      cell: (p) => <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />,
+    },
+    {
+      id: 'progress',
+      header: t('projectList.col.progress'),
+      sortValue: (p) => p.progress.percentDone,
+      priority: 2,
+      nowrap: true,
+      cell: (p) => (
+        <span className={styles.progressCell}>
+          <ProgressBar
+            acquired={Math.round((p.progress.percentDone / 100) * 1000)}
+            planned={1000}
+            size="sm"
+            showLabel={false}
+          />
+          <span className={styles.muted}>{`${String(Math.round(p.progress.percentDone))} %`}</span>
+        </span>
+      ),
+    },
+    {
+      id: 'plan',
+      header: t('projectList.col.plan'),
+      priority: 3,
+      cell: (p) => <FilterPlan project={p} filters={filters} />,
+    },
+    {
+      id: 'creator',
+      header: t('projectList.col.creator'),
+      sortValue: (p) => p.createdByName,
+      priority: 3,
+      nowrap: true,
+      cell: (p) => p.createdByName,
+    },
+    {
+      id: 'coordinates',
+      header: t('projectList.col.coordinates'),
+      sortValue: (p) => p.raDeg,
+      priority: 4,
+      nowrap: true,
+      className: styles.coords,
+      cell: (p) => coords(p),
+    },
+    {
+      id: 'type',
+      header: t('projectList.col.type'),
+      sortValue: (p) => p.targetType,
+      priority: 5,
+      cell: (p) => p.targetType ?? '–',
+    },
+    {
+      id: 'actions',
+      header: t('projectList.col.actions'),
+      headerHidden: true,
+      cell: (p) => (
+        <RowActions
+          project={p}
+          canFavorite={canFavorite}
+          onFavorite={onFavorite}
+          onDelete={onDelete}
+        />
+      ),
+    },
+  ];
+  return (
+    <DataTable
+      columns={columns}
+      rows={groups.flatMap((g) => g.items)}
+      rowKey={(p) => p.id}
+      rowLabel={(p) => p.name}
+      label={t('projectList.title')}
+      sort={sort}
+      onSortChange={setSort}
+      groups={{
+        key: groupOf,
+        header: (key) => (
+          <span className={styles.groupHeadInline}>
+            <strong>{groupLabel(key)}</strong>
+            <span className={styles.muted}>
+              {(byGroup.get(key)?.counts ?? [])
+                .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
+                .join(' · ')}
+            </span>
+          </span>
+        ),
+      }}
+      rowProps={(p) => {
+        const draggable = reorder && p.approvalStatus === 'approved';
+        return {
+          draggable,
+          'data-dragging': dragId === p.id,
+          onDragStart: () => setDragId(p.id),
+          onDragEnd: () => setDragId(null),
+          onDragOver: (e) => (draggable ? e.preventDefault() : undefined),
+          onDrop: (e) => onDrop(e, p),
+        };
+      }}
+    />
   );
 }
 
@@ -774,40 +855,60 @@ function DeletedView() {
       {deleted.data.length === 0 ? (
         <p className={styles.muted}>{t('projectList.deletedEmpty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('projectList.col.name')}</th>
-                <th scope="col">{t('projectList.col.deletedAt')}</th>
-                <th scope="col">{t('projectEditor.rig')}</th>
-                <th scope="col">{t('projectList.col.creator')}</th>
-                <th scope="col">{t('projectList.col.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deleted.data.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.deletedAt ? when(p.deletedAt) : '–'}</td>
-                  <td>{(rigs.data ?? []).find((r) => r.id === p.rigId)?.name ?? '–'}</td>
-                  <td>{p.createdByName}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.button}
-                      disabled={restore.isPending}
-                      onClick={() => restore.mutate(p.id)}
-                    >
-                      <actionIcons.restore size={ICON_SIZE.button} aria-hidden />
-                      {t('projectList.restore')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={[
+            {
+              id: 'name',
+              header: t('projectList.col.name'),
+              sortValue: (p) => p.name,
+              nowrap: true,
+              cell: (p) => p.name,
+            },
+            {
+              id: 'deletedAt',
+              header: t('projectList.col.deletedAt'),
+              sortValue: (p) => p.deletedAt,
+              nowrap: true,
+              priority: 2,
+              cell: (p) => (p.deletedAt ? when(p.deletedAt) : '–'),
+            },
+            {
+              id: 'rig',
+              header: t('projectEditor.rig'),
+              sortValue: (p) => (rigs.data ?? []).find((r) => r.id === p.rigId)?.name ?? null,
+              priority: 3,
+              cell: (p) => (rigs.data ?? []).find((r) => r.id === p.rigId)?.name ?? '–',
+            },
+            {
+              id: 'creator',
+              header: t('projectList.col.creator'),
+              sortValue: (p) => p.createdByName,
+              priority: 3,
+              cell: (p) => p.createdByName,
+            },
+            {
+              id: 'actions',
+              header: t('projectList.col.actions'),
+              headerHidden: true,
+              cell: (p) => (
+                <button
+                  type="button"
+                  className={styles.button}
+                  disabled={restore.isPending}
+                  onClick={() => restore.mutate(p.id)}
+                >
+                  <actionIcons.restore size={ICON_SIZE.button} aria-hidden />
+                  {t('projectList.restore')}
+                </button>
+              ),
+            },
+          ]}
+          rows={deleted.data}
+          rowKey={(p) => p.id}
+          rowLabel={(p) => p.name}
+          label={t('projectList.tab.deleted')}
+          defaultSort={{ id: 'deletedAt', dir: 'desc' }}
+        />
       )}
     </>
   );

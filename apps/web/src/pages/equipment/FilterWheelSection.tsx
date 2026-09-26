@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { equipmentApi, type FilterWheelView, type RigView } from '../../api/client';
 import { ApiError, useAuth } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
@@ -126,6 +127,128 @@ export function FilterWheelSection({ rig, canWrite }: { rig: RigView; canWrite: 
   const setRow = (position: number, patch: Partial<Row>) =>
     setRows((rs) => (rs ?? []).map((r) => (r.position === position ? { ...r, ...patch } : r)));
   const errorCode = put.error instanceof ApiError ? put.error.problem.code : null;
+  const rowOf = (slot: Slot) => rows.find((r) => r.position === slot.position);
+  // Plätze in NINA-Reihenfolge, daher nicht sortierbar; bei Platzmangel Spalten ausblenden (AP-26a).
+  const columns: DataColumn<Slot>[] = [
+    { id: 'position', header: t('rigs.wheel.col.position'), cell: (slot) => slot.position },
+    {
+      id: 'filter',
+      header: t('rigs.wheel.col.filter'),
+      cell: (slot) => {
+        const row = rowOf(slot);
+        const filter = filterOf(row?.filterId ?? null);
+        return (
+          <span className={styles.inline}>
+            {filter ? <FilterChip shortName={filter.shortName} color={filter.colorHex} /> : null}
+            <select
+              className={styles.input}
+              aria-label={t('rigs.wheel.filterAt', { position: String(slot.position) })}
+              value={row?.filterId ?? ''}
+              disabled={!canWrite}
+              onChange={(e) =>
+                setRow(slot.position, { filterId: e.target.value === '' ? null : e.target.value })
+              }
+            >
+              <option value="">–</option>
+              {(filters.data ?? []).map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.shortName}
+                </option>
+              ))}
+            </select>
+          </span>
+        );
+      },
+    },
+    {
+      id: 'bandwidth',
+      header: t('rigs.wheel.col.bandwidth'),
+      priority: 3,
+      nowrap: true,
+      cell: (slot) => {
+        const filter = filterOf(rowOf(slot)?.filterId ?? null);
+        return filter?.bandwidthNm ? `${String(filter.bandwidthNm)} nm` : '';
+      },
+    },
+    {
+      id: 'reported',
+      header: t('rigs.wheel.col.reported'),
+      priority: 2,
+      cell: (slot) => slot.reportedName ?? '–',
+    },
+    {
+      id: 'ninaName',
+      header: t('rigs.wheel.col.ninaName'),
+      cell: (slot) => {
+        const row = rowOf(slot);
+        const names = [
+          ...new Set([...reportedNames, ...(row?.ninaFilterName ? [row.ninaFilterName] : [])]),
+        ];
+        return (
+          <select
+            className={styles.input}
+            aria-label={t('rigs.wheel.ninaNameAt', { position: String(slot.position) })}
+            value={row?.ninaFilterName ?? ''}
+            disabled={!canWrite}
+            onChange={(e) =>
+              setRow(slot.position, {
+                ninaFilterName: e.target.value === '' ? null : e.target.value,
+              })
+            }
+          >
+            <option value="">{t('rigs.wheel.notAssigned')}</option>
+            {names.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
+    {
+      id: 'status',
+      header: t('rigs.wheel.col.status'),
+      cell: (slot) => {
+        const status = slotStatus(slot);
+        return (
+          <>
+            <span className={STATUS_CLASS[status]}>{t(`rigs.wheel.status.${status}`)}</span>
+            {status === 'confirmed' && slot.ninaConfirmedAt ? (
+              <span className={styles.muted}>
+                {' '}
+                {formatDateTime(slot.ninaConfirmedAt, zone, i18n.language)}
+              </span>
+            ) : null}
+          </>
+        );
+      },
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: t('equipment.actions'),
+            headerHidden: true,
+            cell: (slot: Slot) => {
+              const row = rowOf(slot);
+              return (
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  aria-label={t('rigs.wheel.confirmAt', { position: String(slot.position) })}
+                  title={t('rigs.wheel.confirm')}
+                  disabled={!row || (!row.filterId && !row.ninaFilterName) || put.isPending}
+                  onClick={() => put.mutate(new Set([slot.position]))}
+                >
+                  <Confirm size={ICON_SIZE.table} aria-hidden />
+                </button>
+              );
+            },
+          },
+        ]
+      : []),
+  ];
   return (
     <section className={styles.form} aria-labelledby="wheel-title">
       <div className={styles.formTitle}>
@@ -174,111 +297,13 @@ export function FilterWheelSection({ rig, canWrite }: { rig: RigView; canWrite: 
       {rows.length === 0 ? (
         <p className={styles.muted}>{t('rigs.wheel.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t('rigs.wheel.col.position')}</th>
-                <th>{t('rigs.wheel.col.filter')}</th>
-                <th>{t('rigs.wheel.col.bandwidth')}</th>
-                <th>{t('rigs.wheel.col.reported')}</th>
-                <th>{t('rigs.wheel.col.ninaName')}</th>
-                <th>{t('rigs.wheel.col.status')}</th>
-                {canWrite ? <th aria-label={t('equipment.actions')} /> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {view.slots.map((slot) => {
-                const row = rows.find((r) => r.position === slot.position);
-                const status = slotStatus(slot);
-                const filter = filterOf(row?.filterId ?? null);
-                const n = String(slot.position);
-                const names = [
-                  ...new Set([
-                    ...reportedNames,
-                    ...(row?.ninaFilterName ? [row.ninaFilterName] : []),
-                  ]),
-                ];
-                return (
-                  <tr key={slot.position}>
-                    <td>{slot.position}</td>
-                    <td>
-                      <span className={styles.inline}>
-                        {filter ? (
-                          <FilterChip shortName={filter.shortName} color={filter.colorHex} />
-                        ) : null}
-                        <select
-                          className={styles.input}
-                          aria-label={t('rigs.wheel.filterAt', { position: n })}
-                          value={row?.filterId ?? ''}
-                          disabled={!canWrite}
-                          onChange={(e) =>
-                            setRow(slot.position, {
-                              filterId: e.target.value === '' ? null : e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">–</option>
-                          {(filters.data ?? []).map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.shortName}
-                            </option>
-                          ))}
-                        </select>
-                      </span>
-                    </td>
-                    <td>{filter?.bandwidthNm ? `${String(filter.bandwidthNm)} nm` : ''}</td>
-                    <td>{slot.reportedName ?? '–'}</td>
-                    <td>
-                      <select
-                        className={styles.input}
-                        aria-label={t('rigs.wheel.ninaNameAt', { position: n })}
-                        value={row?.ninaFilterName ?? ''}
-                        disabled={!canWrite}
-                        onChange={(e) =>
-                          setRow(slot.position, {
-                            ninaFilterName: e.target.value === '' ? null : e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">{t('rigs.wheel.notAssigned')}</option>
-                        {names.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <span className={STATUS_CLASS[status]}>
-                        {t(`rigs.wheel.status.${status}`)}
-                      </span>
-                      {status === 'confirmed' && slot.ninaConfirmedAt ? (
-                        <span className={styles.muted}>
-                          {' '}
-                          {formatDateTime(slot.ninaConfirmedAt, zone, i18n.language)}
-                        </span>
-                      ) : null}
-                    </td>
-                    {canWrite ? (
-                      <td>
-                        <button
-                          type="button"
-                          className={styles.button}
-                          disabled={!row || (!row.filterId && !row.ninaFilterName) || put.isPending}
-                          onClick={() => put.mutate(new Set([slot.position]))}
-                        >
-                          <Confirm size={ICON_SIZE.table} aria-hidden />
-                          {t('rigs.wheel.confirm')}
-                        </button>
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={view.slots}
+          rowKey={(slot) => String(slot.position)}
+          rowLabel={(slot) => String(slot.position)}
+          label={t('rigs.wheel.title')}
+        />
       )}
       {canWrite ? (
         <div className={styles.actions}>

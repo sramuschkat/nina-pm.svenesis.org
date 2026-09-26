@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { sessionsApi, type NightSession } from '../../api/client';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -90,73 +91,98 @@ export function SessionsPage() {
         ) : items.length === 0 ? (
           <p className={styles.muted}>{t('sessions.empty')}</p>
         ) : (
-          <div
-            className={styles.tableWrap}
-            tabIndex={0}
-            role="region"
-            aria-labelledby="sessions-list"
-          >
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th scope="col">{t('sessions.col.night')}</th>
-                  <th scope="col">{t('sessions.col.rig')}</th>
-                  <th scope="col">{t('sessions.col.status')}</th>
-                  <th scope="col">{t('sessions.col.time')}</th>
-                  <th scope="col" className={styles.num}>
-                    {t('sessions.col.frames')}
-                  </th>
-                  <th scope="col" className={styles.num}>
-                    {t('sessions.col.integration')}
-                  </th>
-                  <th scope="col" className={styles.num}>
-                    {t('sessions.col.unassigned')}
-                  </th>
-                  <th scope="col">{t('sessions.col.reviewed')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((s) => (
-                  <tr key={s.id}>
-                    <td className={styles.nowrap}>
-                      <Link to={`${SESSIONS_PATH}/${s.id}`}>{formatNightKey(s.night)}</Link>
-                      {s.createdOffline ? (
-                        <>
-                          {' '}
-                          <span className={styles.pill}>{t('sessions.offline')}</span>
-                        </>
-                      ) : null}
-                    </td>
-                    <td>{s.rigName}</td>
-                    <td>
-                      <StatusBadge kind="session" value={s.status} />
-                    </td>
-                    <td>
-                      <SessionTime session={s} />
-                    </td>
-                    <td className={styles.num}>{s.frames}</td>
-                    <td className={styles.num}>
-                      {t('sessions.hours', { h: hours(s.integrationS) })}
-                    </td>
-                    <td className={styles.num}>
-                      {s.unassigned > 0 ? (
-                        <span className={styles.pillWarn}>{s.unassigned}</span>
-                      ) : (
-                        0
-                      )}
-                    </td>
-                    <td>
-                      <span className={s.reviewed ? styles.pillOk : styles.pillWarn}>
-                        {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SessionTable items={items} />
         )}
       </section>
     </div>
+  );
+}
+
+/** Sessionliste (AP-26a): sortierbar per Spaltenkopf, Nebenspalten weichen bei wenig Platz. */
+function SessionTable({ items }: { items: readonly NightSession[] }) {
+  const { t } = useTranslation();
+  const columns: DataColumn<NightSession>[] = [
+    {
+      id: 'night',
+      header: t('sessions.col.night'),
+      sortValue: (s) => s.night,
+      nowrap: true,
+      cell: (s) => (
+        <>
+          <Link to={`${SESSIONS_PATH}/${s.id}`}>{formatNightKey(s.night)}</Link>
+          {s.createdOffline ? (
+            <>
+              {' '}
+              <span className={styles.pill}>{t('sessions.offline')}</span>
+            </>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'rig',
+      header: t('sessions.col.rig'),
+      sortValue: (s) => s.rigName,
+      priority: 2,
+      cell: (s) => s.rigName,
+    },
+    {
+      id: 'status',
+      header: t('sessions.col.status'),
+      sortValue: (s) => s.status,
+      cell: (s) => <StatusBadge kind="session" value={s.status} />,
+    },
+    {
+      id: 'time',
+      header: t('sessions.col.time'),
+      sortValue: (s) => s.startedAt,
+      priority: 3,
+      cell: (s) => <SessionTime session={s} />,
+    },
+    {
+      id: 'frames',
+      header: t('sessions.col.frames'),
+      sortValue: (s) => s.frames,
+      priority: 2,
+      align: 'end',
+      cell: (s) => s.frames,
+    },
+    {
+      id: 'integration',
+      header: t('sessions.col.integration'),
+      sortValue: (s) => s.integrationS,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (s) => t('sessions.hours', { h: hours(s.integrationS) }),
+    },
+    {
+      id: 'unassigned',
+      header: t('sessions.col.unassigned'),
+      sortValue: (s) => s.unassigned,
+      priority: 3,
+      align: 'end',
+      cell: (s) => (s.unassigned > 0 ? <span className={styles.pillWarn}>{s.unassigned}</span> : 0),
+    },
+    {
+      id: 'reviewed',
+      header: t('sessions.col.reviewed'),
+      sortValue: (s) => s.reviewed,
+      priority: 2,
+      cell: (s) => (
+        <span className={s.reviewed ? styles.pillOk : styles.pillWarn}>
+          {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
+        </span>
+      ),
+    },
+  ];
+  return (
+    <DataTable
+      columns={columns}
+      rows={items}
+      rowKey={(s) => s.id}
+      rowLabel={(s) => `${formatNightKey(s.night)} · ${s.rigName}`}
+      label={t('sessions.title')}
+    />
   );
 }

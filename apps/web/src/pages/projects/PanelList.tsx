@@ -11,6 +11,7 @@ import { Link } from 'react-router';
 import { equipmentApi, projectsApi, type ProjectView, type RigView } from '../../api/client';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { problemCode } from '../admin/shared';
@@ -98,6 +99,138 @@ export function PanelList({
   const Down = uiIcons.down;
   const Delete = actionIcons.delete;
   const { cols, rows, overlapPct } = project.mosaic;
+  const position = (p: Panel) => panels.findIndex((x) => x.id === p.id);
+  // Reihenfolge = NINA-Nummer (NT-32): nicht sortierbar; bei wenig Platz Koordinaten und Rotation in die Detailzeile.
+  const columns: DataColumn<Panel>[] = [
+    {
+      id: 'number',
+      header: t('projectEditor.panelList.col.number'),
+      align: 'end',
+      cell: (p) => position(p) + 1,
+    },
+    {
+      id: 'label',
+      header: t('projectEditor.panelList.col.label'),
+      cell: (p) => (
+        <input
+          className={styles.input}
+          defaultValue={p.label}
+          maxLength={60}
+          aria-label={t('projectEditor.panelList.labelOf', { n: position(p) + 1 })}
+          disabled={!canEdit}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v && v !== p.label) void patch(p, { label: v });
+          }}
+        />
+      ),
+    },
+    {
+      id: 'ra',
+      header: t('projectEditor.panelList.col.ra'),
+      priority: 2,
+      cell: (p) => (
+        <CoordinateInput
+          kind="ra"
+          label={t('projectEditor.panelList.raOf', { n: position(p) + 1 })}
+          valueDeg={p.raDeg}
+          disabled={!canEdit}
+          onChange={(v) => v !== null && v !== p.raDeg && void patch(p, { raDeg: v })}
+        />
+      ),
+    },
+    {
+      id: 'dec',
+      header: t('projectEditor.panelList.col.dec'),
+      priority: 2,
+      cell: (p) => (
+        <CoordinateInput
+          kind="dec"
+          label={t('projectEditor.panelList.decOf', { n: position(p) + 1 })}
+          valueDeg={p.decDeg}
+          disabled={!canEdit}
+          onChange={(v) => v !== null && v !== p.decDeg && void patch(p, { decDeg: v })}
+        />
+      ),
+    },
+    {
+      id: 'rotation',
+      header: t('projectEditor.panelList.col.rotation'),
+      priority: 3,
+      cell: (p) => (
+        <input
+          className={styles.numberInput}
+          type="number"
+          min={0}
+          max={359.99}
+          step={0.01}
+          defaultValue={Math.round(p.rotationDeg * 100) / 100}
+          aria-label={t('projectEditor.panelList.rotationOf', { n: position(p) + 1 })}
+          disabled={!canEdit}
+          onBlur={(e) => {
+            const v = Number(e.target.value);
+            if (Number.isFinite(v) && v >= 0 && v < 360 && Math.abs(v - p.rotationDeg) > 1e-6)
+              void patch(p, { rotationDeg: v });
+          }}
+        />
+      ),
+    },
+    {
+      id: 'enabled',
+      header: t('projectEditor.panelList.col.enabled'),
+      cell: (p) => (
+        <input
+          type="checkbox"
+          checked={p.enabled}
+          disabled={!canEdit}
+          aria-label={t('projectEditor.panelList.enabledOf', { n: position(p) + 1 })}
+          onChange={() => void patch(p, { enabled: !p.enabled })}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      header: t('projectEditor.panelList.col.actions'),
+      headerHidden: true,
+      cell: (p) => {
+        const i = position(p);
+        return (
+          <div className={styles.rowActions}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={t('projectEditor.panelList.up', { n: i + 1 })}
+              title={t('projectEditor.panelList.up', { n: i + 1 })}
+              disabled={!canEdit || i === 0}
+              onClick={() => move(i, i - 1)}
+            >
+              <Up size={ICON_SIZE.table} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={t('projectEditor.panelList.down', { n: i + 1 })}
+              title={t('projectEditor.panelList.down', { n: i + 1 })}
+              disabled={!canEdit || i === panels.length - 1}
+              onClick={() => move(i, i + 1)}
+            >
+              <Down size={ICON_SIZE.table} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={t('projectEditor.panelList.delete', { label: p.label })}
+              title={t('projectEditor.panelList.delete', { label: p.label })}
+              disabled={!canEdit || panels.length <= 1}
+              onClick={() => setRemove(p)}
+            >
+              <Delete size={ICON_SIZE.table} aria-hidden />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <section className={styles.panelList} aria-labelledby={titleId}>
@@ -148,126 +281,14 @@ export function PanelList({
       {panels.length === 0 ? (
         <p className={styles.muted}>{t('projectEditor.plan.needsCoordinates')}</p>
       ) : (
-        <div className={styles.tableWrap} role="region" aria-labelledby={titleId} tabIndex={0}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col" className={styles.num}>
-                  {t('projectEditor.panelList.col.number')}
-                </th>
-                <th scope="col">{t('projectEditor.panelList.col.label')}</th>
-                <th scope="col">{t('projectEditor.panelList.col.ra')}</th>
-                <th scope="col">{t('projectEditor.panelList.col.dec')}</th>
-                <th scope="col">{t('projectEditor.panelList.col.rotation')}</th>
-                <th scope="col">{t('projectEditor.panelList.col.enabled')}</th>
-                <th scope="col">{t('projectEditor.panelList.col.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {panels.map((p, i) => (
-                <tr key={p.id} className={p.enabled ? undefined : styles.inactiveRow}>
-                  <td className={styles.num}>{i + 1}</td>
-                  <td>
-                    <input
-                      className={styles.input}
-                      defaultValue={p.label}
-                      maxLength={60}
-                      aria-label={t('projectEditor.panelList.labelOf', { n: i + 1 })}
-                      disabled={!canEdit}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
-                        if (v && v !== p.label) void patch(p, { label: v });
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <CoordinateInput
-                      kind="ra"
-                      label={t('projectEditor.panelList.raOf', { n: i + 1 })}
-                      valueDeg={p.raDeg}
-                      disabled={!canEdit}
-                      onChange={(v) => v !== null && v !== p.raDeg && void patch(p, { raDeg: v })}
-                    />
-                  </td>
-                  <td>
-                    <CoordinateInput
-                      kind="dec"
-                      label={t('projectEditor.panelList.decOf', { n: i + 1 })}
-                      valueDeg={p.decDeg}
-                      disabled={!canEdit}
-                      onChange={(v) => v !== null && v !== p.decDeg && void patch(p, { decDeg: v })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className={styles.numberInput}
-                      type="number"
-                      min={0}
-                      max={359.99}
-                      step={0.01}
-                      defaultValue={Math.round(p.rotationDeg * 100) / 100}
-                      aria-label={t('projectEditor.panelList.rotationOf', { n: i + 1 })}
-                      disabled={!canEdit}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value);
-                        if (
-                          Number.isFinite(v) &&
-                          v >= 0 &&
-                          v < 360 &&
-                          Math.abs(v - p.rotationDeg) > 1e-6
-                        )
-                          void patch(p, { rotationDeg: v });
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={p.enabled}
-                      disabled={!canEdit}
-                      aria-label={t('projectEditor.panelList.enabledOf', { n: i + 1 })}
-                      onChange={() => void patch(p, { enabled: !p.enabled })}
-                    />
-                  </td>
-                  <td>
-                    <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label={t('projectEditor.panelList.up', { n: i + 1 })}
-                        title={t('projectEditor.panelList.up', { n: i + 1 })}
-                        disabled={!canEdit || i === 0}
-                        onClick={() => move(i, i - 1)}
-                      >
-                        <Up size={ICON_SIZE.table} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label={t('projectEditor.panelList.down', { n: i + 1 })}
-                        title={t('projectEditor.panelList.down', { n: i + 1 })}
-                        disabled={!canEdit || i === panels.length - 1}
-                        onClick={() => move(i, i + 1)}
-                      >
-                        <Down size={ICON_SIZE.table} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label={t('projectEditor.panelList.delete', { label: p.label })}
-                        title={t('projectEditor.panelList.delete', { label: p.label })}
-                        disabled={!canEdit || panels.length <= 1}
-                        onClick={() => setRemove(p)}
-                      >
-                        <Delete size={ICON_SIZE.table} aria-hidden />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={panels}
+          rowKey={(p) => p.id}
+          rowLabel={(p) => p.label}
+          label={t('projectEditor.panelList.title')}
+          rowProps={(p) => (p.enabled ? {} : { className: styles.inactiveRow })}
+        />
       )}
       {canEdit && panels.length > 0 ? (
         <div className={styles.actions}>

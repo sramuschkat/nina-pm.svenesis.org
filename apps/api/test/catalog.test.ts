@@ -132,6 +132,14 @@ describe('GET /api/web/v1/dso (FA-FRM-15, S-21)', () => {
     }
     const mags = r.items.map((i) => i.magV ?? i.magB ?? 99);
     expect(mags).toEqual([...mags].sort((a, b) => a - b));
+    // Richtung per Spaltenkopf (AP-26a): absteigend, Name absteigend
+    const desc = await search(
+      'group=galaxy&catalog=M&constellation=Vir&magMax=10&sort=mag&dir=desc',
+    );
+    const dmags = desc.items.map((i) => i.magV ?? i.magB ?? 99);
+    expect(dmags).toEqual([...dmags].sort((a, b) => b - a));
+    const names = (await search('catalog=M&limit=100&dir=desc')).items.map((i) => i.primaryId);
+    expect(names[0]).not.toBe((await search('catalog=M&limit=100')).items[0]?.primaryId);
   });
 
   it('„passt ins Bildfeld“ lässt nur Objekte mit Großachse ≤ Bildfeld zu', async () => {

@@ -30,42 +30,24 @@ export function filterQueue(items: readonly QueueItem[], f: QueueFilters): Queue
 
 export type QueueSortKey =
   'deadline' | 'name' | 'creator' | 'rank' | 'votes' | 'submitted' | 'hours';
-export interface QueueSort {
-  readonly key: QueueSortKey;
-  readonly dir: 'asc' | 'desc';
-}
-
-const value = (q: QueueItem, key: QueueSortKey): string | number => {
+/** Sortierwert je Spalte der Warteschlange (DataTable, AP-26a); leere Werte sortiert der Baustein zuletzt. */
+export function queueSortValue(q: QueueItem, key: QueueSortKey): string | number | null {
   switch (key) {
     case 'deadline':
-      return q.expiresAt ?? '9999';
+      return q.expiresAt;
     case 'name':
-      return q.name.toLocaleLowerCase();
+      return q.name;
     case 'creator':
-      return q.createdByName.toLocaleLowerCase();
+      return q.createdByName;
     case 'rank':
-      return q.submitterRank?.rank ?? Number.MAX_SAFE_INTEGER;
+      return q.submitterRank?.rank ?? null;
     case 'votes':
       return q.votes.count;
     case 'submitted':
-      return q.submittedAt ?? '';
+      return q.submittedAt;
     case 'hours':
       return q.estimatedHours;
   }
-};
-
-/** Stabil sortieren; ohne Sortierung bleibt die Reihenfolge der API. */
-export function sortQueue(items: readonly QueueItem[], sort: QueueSort | null): QueueItem[] {
-  if (!sort) return [...items];
-  const sign = sort.dir === 'asc' ? 1 : -1;
-  return items
-    .map((q, i) => ({ q, i }))
-    .sort((a, b) => {
-      const x = value(a.q, sort.key);
-      const y = value(b.q, sort.key);
-      return (x < y ? -1 : x > y ? 1 : 0) * sign || a.i - b.i;
-    })
-    .map((e) => e.q);
 }
 
 /** Kalenderdatum `YYYY-MM-DD` eines Zeitpunkts in der Zone (Anzeige-Vergleich, kein Datumsrechnen). */

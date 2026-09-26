@@ -8,6 +8,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { systemApi, type InvitationCreated, type TenantAdmin } from '../../api/client';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { formatBytes } from '../../lib/bytes';
@@ -76,71 +77,109 @@ function TenantTable({
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const columns: DataColumn<TenantAdmin>[] = [
+    {
+      id: 'key',
+      header: t('system.tenants.col.key'),
+      sortValue: (x) => x.tenantKey,
+      nowrap: true,
+      cell: (x) => (
+        <button type="button" className={styles.rowButton} onClick={() => onSelect(x.id)}>
+          {x.tenantKey}
+        </button>
+      ),
+    },
+    {
+      id: 'name',
+      header: t('system.tenants.col.name'),
+      sortValue: (x) => x.displayName,
+      cell: (x) => x.displayName,
+    },
+    {
+      id: 'status',
+      header: t('system.tenants.col.status'),
+      sortValue: (x) => t(`system.tenants.status.${x.status}`),
+      cell: (x) => <StatusPill status={x.status} />,
+    },
+    {
+      id: 'owner',
+      header: t('system.tenants.col.owner'),
+      // Ohne Owner (Einladung offen) zuletzt.
+      sortValue: (x) => x.ownerDisplayName,
+      priority: 2,
+      cell: (x) =>
+        x.ownerDisplayName ?? (
+          <span className={styles.pillWarn}>{t('system.tenants.ownerPending')}</span>
+        ),
+    },
+    {
+      id: 'admins',
+      header: t('system.tenants.col.admins'),
+      sortValue: (x) => x.admins,
+      priority: 3,
+      align: 'end',
+      cell: (x) => x.admins,
+    },
+    {
+      id: 'users',
+      header: t('system.tenants.col.users'),
+      sortValue: (x) => x.users,
+      priority: 3,
+      align: 'end',
+      cell: (x) => x.users,
+    },
+    {
+      id: 'rigs',
+      header: t('system.tenants.col.rigs'),
+      sortValue: (x) => x.rigs,
+      priority: 4,
+      align: 'end',
+      cell: (x) => x.rigs,
+    },
+    {
+      id: 'nina',
+      header: t('system.tenants.col.nina'),
+      sortValue: (x) => x.ninaInstances,
+      priority: 4,
+      cell: (x) => (
+        <>
+          {x.ninaInstances}
+          {x.ninaLastSeenAt ? (
+            <>
+              {' · '}
+              <DateTime at={x.ninaLastSeenAt} zone={SYSTEM_TIMEZONE} />
+            </>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'lastLogin',
+      header: t('system.tenants.col.lastLogin'),
+      sortValue: (x) => x.lastLoginAt,
+      priority: 2,
+      nowrap: true,
+      cell: (x) => <DateTime at={x.lastLoginAt} zone={SYSTEM_TIMEZONE} />,
+    },
+    {
+      id: 'storage',
+      header: t('system.tenants.col.storage'),
+      sortValue: (x) => x.storageBytes,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (x) => <StorageValue tenant={x} />,
+    },
+  ];
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('system.tenants.col.key')}</th>
-            <th scope="col">{t('system.tenants.col.name')}</th>
-            <th scope="col">{t('system.tenants.col.status')}</th>
-            <th scope="col">{t('system.tenants.col.owner')}</th>
-            <th scope="col" className={styles.num}>
-              {t('system.tenants.col.admins')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('system.tenants.col.users')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('system.tenants.col.rigs')}
-            </th>
-            <th scope="col">{t('system.tenants.col.nina')}</th>
-            <th scope="col">{t('system.tenants.col.lastLogin')}</th>
-            <th scope="col" className={styles.num}>
-              {t('system.tenants.col.storage')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {tenants.map((x) => (
-            <tr key={x.id} aria-selected={x.id === selected}>
-              <td>
-                <button type="button" className={styles.rowButton} onClick={() => onSelect(x.id)}>
-                  {x.tenantKey}
-                </button>
-              </td>
-              <td>{x.displayName}</td>
-              <td>
-                <StatusPill status={x.status} />
-              </td>
-              <td>
-                {x.ownerDisplayName ?? (
-                  <span className={styles.pillWarn}>{t('system.tenants.ownerPending')}</span>
-                )}
-              </td>
-              <td className={styles.num}>{x.admins}</td>
-              <td className={styles.num}>{x.users}</td>
-              <td className={styles.num}>{x.rigs}</td>
-              <td>
-                {x.ninaInstances}
-                {x.ninaLastSeenAt ? (
-                  <>
-                    {' · '}
-                    <DateTime at={x.ninaLastSeenAt} zone={SYSTEM_TIMEZONE} />
-                  </>
-                ) : null}
-              </td>
-              <td>
-                <DateTime at={x.lastLoginAt} zone={SYSTEM_TIMEZONE} />
-              </td>
-              <td className={styles.num}>
-                <StorageValue tenant={x} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={tenants}
+      rowKey={(x) => x.id}
+      rowLabel={(x) => x.tenantKey}
+      label={t('system.tenants.list')}
+      rowProps={(x) => ({ 'aria-selected': x.id === selected })}
+    />
   );
 }
 

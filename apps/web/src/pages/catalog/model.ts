@@ -11,6 +11,15 @@ export const SORTS = ['name', 'mag', 'size', 'usable', 'altitude'] as const;
 export type Sort = (typeof SORTS)[number];
 /** Sortierungen, die Nachtwerte brauchen (nur mit Rig). */
 export const NIGHT_SORTS: readonly Sort[] = ['usable', 'altitude'];
+/** Natürliche Richtung je Sortierung (wie der Server, `search.ts`). */
+export const NATURAL_DIR: Readonly<Record<Sort | 'score', 'asc' | 'desc'>> = {
+  name: 'asc',
+  mag: 'asc',
+  size: 'desc',
+  usable: 'desc',
+  altitude: 'desc',
+  score: 'desc',
+};
 
 /** Zustand der Filterleiste; Zahlen als Text wie im Eingabefeld (leer = kein Filter). */
 export interface BrowserFilters {
@@ -31,6 +40,8 @@ export interface BrowserFilters {
   minHours: string;
   fits: boolean;
   sort: Sort;
+  /** Richtung per Spaltenkopf (AP-26a); leer = natürliche Richtung der Sortierung. */
+  dir: '' | 'asc' | 'desc';
   view: 'list' | 'gallery';
   page: number;
 }
@@ -52,6 +63,7 @@ const KEYS: Record<keyof BrowserFilters, string> = {
   minHours: 'stunden',
   fits: 'bildfeld',
   sort: 'sort',
+  dir: 'richtung',
   view: 'ansicht',
   page: 'seite',
 };
@@ -81,6 +93,7 @@ export function filtersFromParams(p: URLSearchParams): BrowserFilters {
     minHours: get('minHours'),
     fits: get('fits') === '1',
     sort: SORTS.includes(sort) ? sort : 'name',
+    dir: get('dir') === 'asc' || get('dir') === 'desc' ? (get('dir') as 'asc' | 'desc') : '',
     view: get('view') === 'galerie' ? 'gallery' : 'list',
     page: Math.max(1, Number.parseInt(get('page') || '1', 10) || 1),
   };
@@ -108,6 +121,7 @@ export function paramsFromFilters(f: BrowserFilters): URLSearchParams {
   set('minHours', f.minHours);
   if (f.fits) p.set(KEYS.fits, '1');
   if (f.sort !== 'name') p.set(KEYS.sort, f.sort);
+  set('dir', f.dir);
   if (f.view === 'gallery') p.set(KEYS.view, 'galerie');
   if (f.page > 1) p.set(KEYS.page, String(f.page));
   return p;
@@ -127,6 +141,7 @@ export function searchFromFilters(
   const withNight = ctx.siteId !== null;
   const sort = !withNight && NIGHT_SORTS.includes(f.sort) ? 'name' : f.sort;
   const s: DsoSearch = { sort, limit: PAGE_SIZE, offset: (f.page - 1) * PAGE_SIZE };
+  if (f.dir) s.dir = f.dir;
   // Beste der Nacht: Bewertung der Website mit dem Bildfeld des Rigs, nur Bildkandidaten.
   if (f.tab === 'best' && withNight && ctx.fovArcmin !== null) {
     s.sort = 'score';

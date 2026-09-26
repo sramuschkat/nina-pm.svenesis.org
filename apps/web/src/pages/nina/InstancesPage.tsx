@@ -6,7 +6,7 @@
  * Aufrufen, Fehlern und dem letzten Heartbeat. Die API prüft die Rechte erneut.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ninaApi,
@@ -16,6 +16,7 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { formatDateTime } from '../../lib/time';
@@ -131,60 +132,85 @@ function InstanceTable({
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const stateLabel = (i: NinaInstance) =>
+    i.lastState ? t(`nina.state.${i.lastState.state}`) : null;
+  const columns: DataColumn<NinaInstance>[] = [
+    {
+      id: 'name',
+      header: t('nina.instances.col.name'),
+      sortValue: (i) => i.name,
+      cell: (i) => (
+        <button type="button" className={styles.rowButton} onClick={() => onSelect(i.id)}>
+          {i.name}
+        </button>
+      ),
+    },
+    {
+      id: 'rig',
+      header: t('nina.instances.col.rig'),
+      sortValue: (i) => i.rigName,
+      priority: 2,
+      className: styles.rigCell,
+      cell: (i) => i.rigName,
+    },
+    {
+      id: 'prefix',
+      header: t('nina.instances.col.prefix'),
+      sortValue: (i) => i.tokenPrefix,
+      priority: 4,
+      cell: (i) => <code>{i.tokenPrefix}…</code>,
+    },
+    {
+      id: 'status',
+      header: t('nina.instances.col.status'),
+      sortValue: (i) => t(`nina.instances.status.${i.status}`),
+      cell: (i) => (
+        <span className={i.status === 'active' ? styles.pillOk : styles.pill}>
+          {t(`nina.instances.status.${i.status}`)}
+        </span>
+      ),
+    },
+    {
+      id: 'versions',
+      header: t('nina.instances.col.versions'),
+      sortValue: (i) => i.pluginVersion,
+      priority: 4,
+      nowrap: true,
+      cell: (i) => `${i.pluginVersion ?? '–'} / ${i.engineVersion ?? '–'}`,
+    },
+    {
+      id: 'profile',
+      header: t('nina.instances.col.profile'),
+      // Abweichende Profile zuerst, ohne Profil zuletzt.
+      sortValue: (i) => (i.profileLocation ? (i.profileSiteMismatch ? 0 : 1) : null),
+      priority: 3,
+      cell: (i) => <Profile i={i} />,
+    },
+    {
+      id: 'lastSeen',
+      header: t('nina.instances.col.lastSeen'),
+      sortValue: (i) => i.lastSeenAt,
+      priority: 2,
+      nowrap: true,
+      cell: (i) => <DateTime at={i.lastSeenAt} zone={i.siteTimeZone} />,
+    },
+    {
+      id: 'lastState',
+      header: t('nina.instances.col.lastState'),
+      sortValue: stateLabel,
+      priority: 3,
+      cell: (i) => <StatePill i={i} />,
+    },
+  ];
   return (
-    <div
-      className={styles.tableWrap}
-      tabIndex={0}
-      role="region"
-      aria-labelledby="nina-instance-list"
-    >
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('nina.instances.col.name')}</th>
-            <th scope="col">{t('nina.instances.col.rig')}</th>
-            <th scope="col">{t('nina.instances.col.prefix')}</th>
-            <th scope="col">{t('nina.instances.col.status')}</th>
-            <th scope="col">{t('nina.instances.col.versions')}</th>
-            <th scope="col">{t('nina.instances.col.profile')}</th>
-            <th scope="col">{t('nina.instances.col.lastSeen')}</th>
-            <th scope="col">{t('nina.instances.col.lastState')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((i) => (
-            <tr key={i.id} aria-selected={i.id === selected}>
-              <td>
-                <button type="button" className={styles.rowButton} onClick={() => onSelect(i.id)}>
-                  {i.name}
-                </button>
-              </td>
-              <td className={styles.rigCell}>{i.rigName}</td>
-              <td>
-                <code>{i.tokenPrefix}…</code>
-              </td>
-              <td>
-                <span className={i.status === 'active' ? styles.pillOk : styles.pill}>
-                  {t(`nina.instances.status.${i.status}`)}
-                </span>
-              </td>
-              <td className={styles.nowrap}>
-                {i.pluginVersion ?? '–'} / {i.engineVersion ?? '–'}
-              </td>
-              <td>
-                <Profile i={i} />
-              </td>
-              <td className={styles.nowrap}>
-                <DateTime at={i.lastSeenAt} zone={i.siteTimeZone} />
-              </td>
-              <td>
-                <StatePill i={i} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={items}
+      rowKey={(i) => i.id}
+      rowLabel={(i) => i.name}
+      label={t('nina.instances.list')}
+      rowProps={(i) => ({ 'aria-selected': i.id === selected })}
+    />
   );
 }
 
@@ -446,6 +472,12 @@ function InstanceDetail({
   );
 }
 
+/** Zeile der Diagnose mit stabilem Schlüssel (Zeitpunkt und Position in der Liste). */
+interface KeyedCall {
+  readonly key: string;
+  readonly call: NinaCallEntry;
+}
+
 function CallTable({
   id,
   title,
@@ -458,48 +490,65 @@ function CallTable({
   zone: string;
 }) {
   const { t } = useTranslation();
+  const keyed = useMemo<KeyedCall[]>(
+    () => rows.map((call, n) => ({ key: `${call.atUtc}-${String(n)}`, call })),
+    [rows],
+  );
+  const columns: DataColumn<KeyedCall>[] = [
+    {
+      id: 'at',
+      header: t('nina.instances.callCol.at'),
+      sortValue: ({ call }) => call.atUtc,
+      nowrap: true,
+      cell: ({ call }) => <DateTime at={call.atUtc} zone={zone} />,
+    },
+    {
+      id: 'call',
+      header: t('nina.instances.callCol.call'),
+      sortValue: ({ call }) => `${call.method} ${call.route}`,
+      cell: ({ call }) => (
+        <code>
+          {call.method} {call.route}
+        </code>
+      ),
+    },
+    {
+      id: 'status',
+      header: t('nina.instances.callCol.status'),
+      sortValue: ({ call }) => call.status,
+      align: 'end',
+      cell: ({ call }) => call.status,
+    },
+    {
+      id: 'code',
+      header: t('nina.instances.callCol.code'),
+      sortValue: ({ call }) => call.code,
+      priority: 2,
+      cell: ({ call }) => call.code ?? '–',
+    },
+    {
+      id: 'duration',
+      header: t('nina.instances.callCol.duration'),
+      sortValue: ({ call }) => call.durationMs,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: ({ call }) => t('nina.instances.durationMs', { ms: call.durationMs }),
+    },
+  ];
   return (
     <>
       <h4 id={id}>{title}</h4>
       {rows.length === 0 ? (
         <p className={styles.muted}>{t('nina.instances.noCalls')}</p>
       ) : (
-        <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby={id}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('nina.instances.callCol.at')}</th>
-                <th scope="col">{t('nina.instances.callCol.call')}</th>
-                <th scope="col" className={styles.num}>
-                  {t('nina.instances.callCol.status')}
-                </th>
-                <th scope="col">{t('nina.instances.callCol.code')}</th>
-                <th scope="col" className={styles.num}>
-                  {t('nina.instances.callCol.duration')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, n) => (
-                <tr key={`${r.atUtc}-${String(n)}`}>
-                  <td className={styles.nowrap}>
-                    <DateTime at={r.atUtc} zone={zone} />
-                  </td>
-                  <td>
-                    <code>
-                      {r.method} {r.route}
-                    </code>
-                  </td>
-                  <td className={styles.num}>{r.status}</td>
-                  <td>{r.code ?? '–'}</td>
-                  <td className={styles.num}>
-                    {t('nina.instances.durationMs', { ms: r.durationMs })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={keyed}
+          rowKey={(r) => r.key}
+          rowLabel={(r) => `${r.call.method} ${r.call.route}`}
+          label={title}
+        />
       )}
     </>
   );

@@ -10,6 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CameraView } from '../../api/client';
 import { useCan } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import styles from './equipment.module.css';
 import {
@@ -133,6 +134,8 @@ export function readoutMismatch(
   return missing.length + unknown.length > 0 ? { missing, unknown } : null;
 }
 
+type BinnedRow = ReturnType<typeof cameraDerived>['binned'][number];
+
 export function CamerasPage() {
   const { t } = useTranslation();
   const canWrite = useCan('equipment.write');
@@ -169,6 +172,41 @@ export function CamerasPage() {
       supportedBinning: [...d.supportedBinning].sort((a, b) => a - b),
     });
   };
+  // Werte je Binning-Stufe (AP-26a): Binning bleibt immer sichtbar, die übrigen weichen im schmalen Seitenfeld.
+  const binningColumns: DataColumn<BinnedRow>[] = [
+    {
+      id: 'binning',
+      header: t('equipment.cameras.field.binning'),
+      sortValue: (b) => b.binning,
+      nowrap: true,
+      cell: (b) => `${String(b.binning)}×${String(b.binning)}`,
+    },
+    {
+      id: 'resolution',
+      header: t('equipment.cameras.derived.resolution'),
+      sortValue: (b) => b.widthPx * b.heightPx,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (b) => `${String(b.widthPx)} × ${String(b.heightPx)}`,
+    },
+    {
+      id: 'pixelSize',
+      header: 'µm',
+      sortValue: (b) => b.pixelSizeUm,
+      priority: 3,
+      align: 'end',
+      cell: (b) => num(b.pixelSizeUm, 2),
+    },
+    {
+      id: 'megapixels',
+      header: 'MP',
+      sortValue: (b) => b.megapixels,
+      priority: 2,
+      align: 'end',
+      cell: (b) => num(b.megapixels, 2),
+    },
+  ];
   const Add = actionIcons.add;
   const Delete = actionIcons.delete;
   const Warn = actionIcons.warning;
@@ -634,31 +672,14 @@ export function CamerasPage() {
                     <dt>{t('equipment.cameras.derived.maxAdu')}</dt>
                     <dd>{num(derived.maxAdu, 0)}</dd>
                   </dl>
-                  <table className={styles.table}>
-                    <caption className={styles.muted}>{t('equipment.cameras.perBinning')}</caption>
-                    <thead>
-                      <tr>
-                        <th>{t('equipment.cameras.field.binning')}</th>
-                        <th className={styles.num}>{t('equipment.cameras.derived.resolution')}</th>
-                        <th className={styles.num}>µm</th>
-                        <th className={styles.num}>MP</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {derived.binned.map((b) => (
-                        <tr key={b.binning}>
-                          <td>
-                            {b.binning}×{b.binning}
-                          </td>
-                          <td className={styles.num}>
-                            {b.widthPx} × {b.heightPx}
-                          </td>
-                          <td className={styles.num}>{num(b.pixelSizeUm, 2)}</td>
-                          <td className={styles.num}>{num(b.megapixels, 2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <p className={styles.muted}>{t('equipment.cameras.perBinning')}</p>
+                  <DataTable
+                    columns={binningColumns}
+                    rows={derived.binned}
+                    rowKey={(b) => String(b.binning)}
+                    rowLabel={(b) => `${String(b.binning)}×${String(b.binning)}`}
+                    label={t('equipment.cameras.perBinning')}
+                  />
                 </>
               ) : (
                 <p className={styles.muted}>{t('equipment.cameras.derivedMissing')}</p>

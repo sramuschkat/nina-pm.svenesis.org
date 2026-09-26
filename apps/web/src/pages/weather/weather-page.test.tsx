@@ -181,7 +181,7 @@ describe('Wettervorhersage S-50', () => {
     ).toBeInTheDocument();
     expect(state.weather).toHaveBeenCalledWith(ID(1));
     expect(screen.getByText('America/Chicago')).toBeInTheDocument();
-    const nights = screen.getAllByRole('region', { name: 'Nächte' }).at(-1) as HTMLElement;
+    const nights = screen.getByRole('table', { name: 'Nächte' });
     const row = within(nights).getAllByRole('row')[1] as HTMLElement;
     expect(row).toHaveTextContent('Mittel 56 %');
     expect(row).toHaveTextContent('21 %');
@@ -214,6 +214,32 @@ describe('Wettervorhersage S-50', () => {
     });
     fireEvent.click(button);
     expect(screen.getByRole('region', { name: /Nacht im Detail/ })).toBeInTheDocument();
+  });
+
+  it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Bewertung“ sortiert auf- und absteigend', async () => {
+    const base = view(ID(1));
+    const first = base.nights[0] as (typeof base.nights)[number];
+    state.weather.mockResolvedValue({
+      ...base,
+      nights: [
+        { ...first, night: '2026-09-24', nightMean: 0.5 },
+        { ...first, night: '2026-09-25', nightMean: 0.2 },
+        { ...first, night: '2026-09-26', nightMean: 0.8 },
+      ],
+    });
+    renderPage();
+    const table = await screen.findByRole('table', { name: 'Nächte' });
+    const head = within(table).getByRole('columnheader', { name: /Bewertung/ });
+    const order = () =>
+      within(table)
+        .getAllByRole('button', { name: /im Detail zeigen/ })
+        .map((b) => b.textContent);
+    expect(order()).toEqual(['24./25.09.', '25./26.09.', '26./27.09.']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['25./26.09.', '24./25.09.', '26./27.09.']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['26./27.09.', '24./25.09.', '25./26.09.']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
   });
 
   it('noch kein Abruf: Hinweis statt Grafik', async () => {

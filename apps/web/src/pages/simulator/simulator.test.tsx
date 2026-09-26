@@ -186,6 +186,31 @@ describe('S-40 Nacht-Simulator', () => {
     expect(screen.queryAllByRole('checkbox', { name: /aktiv$/ })).toHaveLength(0);
   });
 
+  it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Belichtung“ sortiert das Protokoll', async () => {
+    renderPage();
+    await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
+    const table = screen.getByRole('table', { name: 'Planprotokoll' });
+    const heads = within(table).getAllByRole('columnheader');
+    const col = heads.findIndex((h) => /Belichtung/.test(h.textContent ?? ''));
+    const head = heads[col] as HTMLElement;
+    const values = () =>
+      within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((r) => within(r).getAllByRole('cell')[col]?.textContent ?? '');
+    const seconds = (v: string[]) => v.filter(Boolean).map((x) => Number.parseFloat(x));
+    const before = values();
+    fireEvent.click(within(head).getByRole('button'));
+    const asc = values();
+    expect(asc).not.toEqual(before);
+    expect(seconds(asc)).toEqual([...seconds(asc)].sort((a, b) => a - b));
+    // Leere Werte (Befehle ohne Belichtung) stehen immer hinten.
+    expect(asc.slice(asc.findIndex((v) => v === '')).every((v) => v === '')).toBe(true);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(seconds(values())).toEqual([...seconds(asc)].sort((a, b) => b - a));
+    expect(head).toHaveAttribute('aria-sort', 'descending');
+  }, 20_000);
+
   it('Zeitschieber beantwortet „Was macht das Rig um …?“ in Standortzeit', async () => {
     renderPage();
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });

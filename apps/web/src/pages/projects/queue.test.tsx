@@ -12,7 +12,14 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, QueueItem } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { QueuePage } from './QueuePage';
-import { NO_QUEUE_FILTERS, filterQueue, nightKeyIn, periodExpired, sortQueue } from './queue-model';
+import { sortRows } from '../../components/DataTable';
+import {
+  NO_QUEUE_FILTERS,
+  filterQueue,
+  nightKeyIn,
+  periodExpired,
+  queueSortValue,
+} from './queue-model';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -164,12 +171,11 @@ describe('Modell', () => {
     const b = item(2, { name: 'Andromeda', estimatedHours: 10 });
     expect(filterQueue([a, b], { ...NO_QUEUE_FILTERS, withoutMyVote: true })).toEqual([b]);
     expect(filterQueue([a, b], { ...NO_QUEUE_FILTERS, changedSinceMyVote: true })).toEqual([a]);
-    expect(sortQueue([a, b], { key: 'name', dir: 'asc' }).map((q) => q.name)).toEqual([
-      'Andromeda',
-      'Objekt 1',
-    ]);
-    expect(sortQueue([a, b], { key: 'hours', dir: 'desc' })[0]).toBe(b);
-    expect(sortQueue([a, b], null)).toEqual([a, b]);
+    const by = (key: Parameters<typeof queueSortValue>[1], dir: 'asc' | 'desc') =>
+      sortRows([a, b], (q) => queueSortValue(q, key), dir, 'de');
+    expect(by('name', 'asc').map((q) => q.name)).toEqual(['Andromeda', 'Objekt 1']);
+    expect(by('hours', 'desc')[0]).toBe(b);
+    expect(queueSortValue(item(3, { submitterRank: null }), 'rank')).toBeNull();
     expect(periodExpired({ requestPeriodTo: '2026-09-20' }, '2026-09-24')).toBe(true);
     expect(periodExpired({ requestPeriodTo: null }, '2026-09-24')).toBe(false);
     // 23:30 UTC am 24.09. ist in Berlin schon der 25.09.
@@ -277,5 +283,29 @@ describe('Sichtbarkeit 4 Wochen (AP-24)', () => {
     const row = screen.getByRole('link', { name: 'Ohne Ziel' }).closest('tr') as HTMLElement;
     expect(within(row).queryByRole('img', { name: /Sichtbarkeit/ })).not.toBeInTheDocument();
     await expectNoSeriousA11y();
+  });
+});
+
+describe('Sortierung per Spaltenkopf (AP-26a)', () => {
+  it('Klick auf „Objekt“ sortiert auf- und absteigend', async () => {
+    state.me = me('user');
+    state.queue = [
+      item(1, { name: 'M 31' }),
+      item(2, { name: 'IC 1396' }),
+      item(3, { name: 'M 101' }),
+    ];
+    renderPage();
+    const head = await screen.findByRole('columnheader', { name: /Objekt/ });
+    const order = () =>
+      screen
+        .getAllByRole('link')
+        .filter((l) => /^(M|IC) /.test(l.textContent ?? ''))
+        .map((l) => l.textContent);
+    expect(order()).toEqual(['M 31', 'IC 1396', 'M 101']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['IC 1396', 'M 31', 'M 101']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['M 101', 'M 31', 'IC 1396']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
   });
 });
