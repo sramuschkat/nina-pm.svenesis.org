@@ -298,9 +298,36 @@ describe('S-21 Objektbrowser', () => {
     await waitFor(() =>
       expect(state.searches.at(-1)).toMatchObject({ q: 'andromeda', group: 'galaxy' }),
     );
+    // Übrige Filter unter „Weitere Filter“ (FilterBar, AP-26c).
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Filter' }));
     fireEvent.change(screen.getByLabelText(/Helligkeit bis/), { target: { value: '8' } });
     fireEvent.blur(screen.getByLabelText(/Helligkeit bis/));
     await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ magMax: 8 }));
+  });
+
+  it('Weitere Filter: Chip je aktivem Filter, × entfernt ihn aus URL und Anfrage; Zurücksetzen', async () => {
+    renderPage('/planung/objekte?sternbild=And&mag=8&ansicht=galerie');
+    await screen.findByText('M 31');
+    const more = screen.getByRole('button', { name: 'Weitere Filter' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    const chips = screen.getByRole('list', { name: 'Aktive Filter' });
+    expect(chips).toHaveTextContent('Sternbild: Andromeda (And)');
+    expect(chips).toHaveTextContent('Helligkeit bis: 8 mag');
+    await expectNoSeriousA11y();
+    fireEvent.click(screen.getByRole('button', { name: 'Filter Helligkeit bis: 8 mag entfernen' }));
+    await waitFor(() => expect(screen.getByTestId('where')).not.toHaveTextContent('mag='));
+    await waitFor(() => expect(state.searches.at(-1)).not.toHaveProperty('magMax'));
+    expect(screen.getByTestId('where')).toHaveTextContent('sternbild=And');
+    // Neuer Filter im Bereich → neuer Chip; „Alle zurücksetzen“ behält Ansicht und Reiter.
+    fireEvent.click(more);
+    fireEvent.change(screen.getByLabelText(/Größe ab/), { target: { value: '10' } });
+    fireEvent.blur(screen.getByLabelText(/Größe ab/));
+    expect(await screen.findByText('Größe ab: 10′')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Alle zurücksetzen' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('list', { name: 'Aktive Filter' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('where')).toHaveTextContent('/planung/objekte?ansicht=galerie');
   });
 
   it('mit Rig: Nacht, Nachtwerte in Standortzeit, Mond, nutzbare Stunden, Bildfeld', async () => {
@@ -357,6 +384,8 @@ describe('S-21 Objektbrowser', () => {
       night: '2026-10-20',
       minAltDeg: 30,
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Filter' }));
+    expect(screen.getByLabelText(/Mindesthöhe/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Passt ins Bildfeld \(102′\)/));
     await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ fitsFovArcmin: 102 }));
     fireEvent.click(screen.getByRole('button', { name: 'Nächste Nacht' }));

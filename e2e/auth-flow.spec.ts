@@ -32,7 +32,7 @@ test('Test-Login (Owner) → Startseite im Mandanten, Rolle im Benutzermenü, Ma
 }) => {
   await testLogin(page, 'owner');
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' })).toBeVisible();
+  await expect(page.getByText(/^Demo-Sternfreunde · /)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Benutzermenü' })).toContainText('(Owner)');
   // Administration nur für Admins (useCan member.manage).
   await expect(
@@ -43,7 +43,7 @@ test('Test-Login (Owner) → Startseite im Mandanten, Rolle im Benutzermenü, Ma
 test('User sieht keine Administration', async ({ page }) => {
   await testLogin(page, 'user1');
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' })).toBeVisible();
+  await expect(page.getByText(/^Demo-Sternfreunde · /)).toBeVisible();
   await expect(
     page.getByRole('navigation', { name: 'Hauptnavigation' }).getByText('Administration'),
   ).toHaveCount(0);
@@ -57,7 +57,7 @@ test('Abmelden in einem Tab wirkt im zweiten mit der nächsten Anfrage (TK 17)',
   const b = await context.newPage();
   await a.goto('/');
   await b.goto('/');
-  await expect(b.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' })).toBeVisible();
+  await expect(b.getByText(/^Demo-Sternfreunde · /)).toBeVisible();
   await a.getByRole('button', { name: 'Benutzermenü' }).click();
   await a.getByRole('menuitem', { name: 'Abmelden', exact: true }).click();
   await expect(a.getByRole('link', { name: 'Mit Discord anmelden' })).toBeVisible();
@@ -75,7 +75,7 @@ test('Überall abmelden nur über den ConfirmDialog; Abbrechen hat den Fokus', a
   await expect(dialog.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' })).toBeVisible();
+  await expect(page.getByText(/^Demo-Sternfreunde · /)).toBeVisible();
   await page.getByRole('button', { name: 'Benutzermenü' }).click();
   await page.getByRole('menuitem', { name: 'Überall abmelden' }).click();
   await page.getByRole('button', { name: 'Sitzungen beenden' }).click();

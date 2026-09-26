@@ -55,7 +55,7 @@ test('Super User legt Mandant an → Owner-Einladung → Owner-Login (Test-Login
   ).toBe(true);
   await testLogin(owner, 'outsider');
   await owner.goto('/');
-  await expect(owner.getByRole('heading', { name: 'Mandant „E2E Sternwarte“' })).toBeVisible();
+  await expect(owner.getByText(/^E2E Sternwarte · /)).toBeVisible();
   await expect(owner.getByRole('button', { name: 'Benutzermenü' })).toContainText('(Owner)');
 
   await sys.reload();

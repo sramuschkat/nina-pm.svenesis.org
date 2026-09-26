@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * S-30 Projektliste (AP-11c): Filter, Gruppen je Rig mit Zählern, Priorität (Position unter den
- * freigegebenen Projekten), Rechte (Ansicht „Gelöscht“ nur Admin), Löschen über `ConfirmDialog`,
- * Wiederherstellen ohne Dialog, axe.
+ * S-30 Projektliste (AP-11c): Filter (Filterleiste mit Chips, AP-26c), Gruppen je Rig mit Zählern,
+ * Priorität (Position unter den freigegebenen Projekten), Rechte (Papierkorb nur Admin), Löschen über
+ * `ConfirmDialog`, Wiederherstellen ohne Dialog, axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -233,7 +233,11 @@ describe('S-30 (Komponente)', () => {
     expect(screen.queryByRole('button', { name: /nach oben/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
-    expect(screen.getByRole('tab', { name: 'Gelöscht' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Papierkorb' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
     fireEvent.change(screen.getByLabelText('Ersteller'), { target: { value: ID(9) } });
     expect(screen.queryByRole('link', { name: 'NGC 281' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'M 31' })).toBeInTheDocument();
@@ -273,11 +277,45 @@ describe('S-30 (Komponente)', () => {
     expect(screen.getByRole('button', { name: '„Erstes“ nach oben' })).toBeDisabled();
   });
 
-  it('Gelöscht: Löschzeitpunkt mit Kürzel, Wiederherstellen ohne Dialog', async () => {
+  it('Chips: Filter setzen ergibt Chip, × entfernt ihn; Suche in Name und Katalognamen', async () => {
+    state.items = [
+      item(1, { name: 'NGC 281', createdBy: ID(9), createdByName: 'Zoe' }),
+      item(2, { name: 'Andromeda', catalogNames: 'M 31, NGC 224', targetType: 'Nebel' }),
+    ];
+    renderPage();
+    await screen.findByRole('link', { name: 'NGC 281' });
+    expect(screen.getByRole('status')).toHaveTextContent('2 von 2 Projekten');
+    const more = screen.getByRole('button', { name: 'Filter' });
+    fireEvent.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.change(screen.getByLabelText('Objekttyp'), { target: { value: 'Nebel' } });
+    fireEvent.change(screen.getByLabelText('Rig'), { target: { value: 'rig-a' } });
+    const chips = screen.getByRole('list', { name: 'Aktive Filter' });
+    expect(chips).toHaveTextContent('Objekttyp: Nebel');
+    expect(chips).toHaveTextContent('Rig: Rig A');
+    expect(screen.queryByRole('link', { name: 'NGC 281' })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('1 von 2 Projekten');
+    // Bereich zu: die Chips bleiben, × setzt den Filter zurück.
+    fireEvent.click(more);
+    expect(screen.queryByLabelText('Objekttyp')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Filter Objekttyp: Nebel entfernen' }));
+    expect(screen.getByRole('link', { name: 'NGC 281' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Aktive Filter' })).not.toHaveTextContent('Objekttyp');
+    fireEvent.click(screen.getByRole('button', { name: 'Filter Rig: Rig A entfernen' }));
+    expect(screen.queryByRole('list', { name: 'Aktive Filter' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Suche' }), {
+      target: { value: 'ngc 224' },
+    });
+    expect(screen.getByRole('link', { name: 'Andromeda' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'NGC 281' })).not.toBeInTheDocument();
+    await expectNoSeriousA11y();
+  });
+
+  it('Papierkorb: Löschzeitpunkt mit Kürzel, Wiederherstellen ohne Dialog', async () => {
     state.deleted = [item(5, { name: 'Weg', deletedAt: '2026-09-20T18:30:00Z' })];
     state.restore.mockResolvedValue({});
     renderPage();
-    fireEvent.click(await screen.findByRole('tab', { name: 'Gelöscht' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Papierkorb' }));
     const row = (await screen.findByText('Weg')).closest('tr') as HTMLElement;
     expect(row).toHaveTextContent(/20:30 MESZ/);
     fireEvent.click(within(row).getByRole('button', { name: 'Wiederherstellen' }));
@@ -285,31 +323,35 @@ describe('S-30 (Komponente)', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
-  it('Reiter per Tastatur: Pfeil rechts wechselt zu „Gelöscht“, Pos1 zurück (Tabs, AP-26b)', async () => {
+  it('Papierkorb-Umschalter: aria-pressed, Fokus bleibt, zurück zur Liste mit Filtern', async () => {
+    state.items = [item(1, { name: 'Aktiv' })];
     state.deleted = [item(5, { name: 'Weg', deletedAt: '2026-09-20T18:30:00Z' })];
     renderPage();
-    const active = await screen.findByRole('tab', { name: 'Projekte' });
-    expect(active).toHaveAttribute('aria-selected', 'true');
-    expect(active).toHaveAttribute('tabindex', '0');
-    active.focus();
-    fireEvent.keyDown(active, { key: 'ArrowRight' });
-    const deleted = screen.getByRole('tab', { name: 'Gelöscht' });
-    expect(deleted).toHaveAttribute('aria-selected', 'true');
-    expect(deleted).toHaveFocus();
-    expect(active).toHaveAttribute('tabindex', '-1');
-    const panel = screen.getByRole('tabpanel', { name: 'Gelöscht' });
-    expect(await within(panel).findByText('Weg')).toBeInTheDocument();
-    fireEvent.keyDown(deleted, { key: 'Home' });
-    expect(screen.getByRole('tab', { name: 'Projekte' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: 'Projekte' })).toBeInTheDocument();
+    await screen.findByRole('link', { name: 'Aktiv' });
+    const trash = screen.getByRole('button', { name: 'Papierkorb' });
+    trash.focus();
+    fireEvent.click(trash);
+    expect(trash).toHaveAttribute('aria-pressed', 'true');
+    expect(trash).toHaveFocus();
+    expect(await screen.findByText('Weg')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Papierkorb' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Aktiv' })).not.toBeInTheDocument();
+    // Im Papierkorb keine Suche, keine Filter, keine Ansichten.
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Filter' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Darstellung' })).not.toBeInTheDocument();
+    await expectNoSeriousA11y();
+    fireEvent.click(trash);
+    expect(trash).toHaveAttribute('aria-pressed', 'false');
+    expect(await screen.findByRole('link', { name: 'Aktiv' })).toBeInTheDocument();
   });
 
-  it('User: keine Ansicht „Gelöscht“, keine Prioritätsspalte, Freigabestatus-Kennzeichen', async () => {
+  it('User: kein Papierkorb, keine Prioritätsspalte, Freigabestatus-Kennzeichen', async () => {
     state.me = me('user');
     state.items = [item(1, { approvalStatus: 'submitted', name: 'Mein Objekt' })];
     renderPage();
     expect(await screen.findByRole('link', { name: 'Mein Objekt' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Gelöscht' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Papierkorb' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Priorität' })).not.toBeInTheDocument();
     expect(screen.getAllByText('Eingereicht').length).toBeGreaterThan(0);
   });

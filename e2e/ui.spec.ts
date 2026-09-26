@@ -106,7 +106,7 @@ for (const width of [768, 1280, 2400]) {
     await page.setViewportSize({ width, height: 900 });
     await testLogin(page, 'owner');
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
     await noHorizontalScroll(page);
     const { main, nav } = await page.evaluate(() => ({
       main: document.getElementById('main')?.getBoundingClientRect().width ?? 0,

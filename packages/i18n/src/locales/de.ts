@@ -73,9 +73,35 @@ export const de = {
   home: {
     title: 'Willkommen bei NINA-PM',
     intro: 'Plane deine Astrofotografie-Projekte im Team – NINA führt sie automatisch aus.',
-    tenantTitle: 'Mandant „{{name}}“',
-    tenantIntro:
-      'Die Fachbereiche (Ausrüstung, Projekte, Planung) folgen mit den nächsten Ausbauschritten.',
+    overview: 'Übersicht',
+    subtitle: '{{tenant}} · {{date}}',
+    queue: {
+      title: 'Warteschlange',
+      summary: '{{open}} offen · {{missing}} ohne deine Stimme',
+      by: 'von {{name}}',
+      empty: 'Keine offenen Einreichungen.',
+      more: 'Zur Warteschlange',
+    },
+    weather: {
+      title: 'Wetter heute',
+      band: 'Stündliche Bewertung der Nacht {{night}} in {{site}}',
+      window: 'Bestes Fenster {{from}}–{{to}} {{zone}} · {{h}} h',
+      noWindow: 'Kein zusammenhängendes Fenster von mindestens 30 min.',
+      noNight: 'Für die kommende Nacht liegt keine Vorhersage vor.',
+      empty: 'Noch kein Standort angelegt.',
+      more: 'Zum Wetter',
+    },
+    projects: {
+      title: 'Aktive Projekte',
+      hours: '{{done}} / {{planned}} h',
+      empty: 'Keine aktiven Projekte.',
+      more: 'Zur Projektliste',
+    },
+    sessions: {
+      title: 'Letzte Sessions',
+      empty: 'Noch keine Sessions.',
+      more: 'Alle Sessions',
+    },
     systemTitle: 'System-Kontext',
     systemIntro:
       'Die Verwaltung von Mandanten und Super Usern folgt mit dem nächsten Ausbauschritt.',
@@ -352,16 +378,6 @@ export const de = {
     hash: 'Plan-Hash {{hash}}',
     empty: 'Keine aktiven, freigegebenen Projekte an diesem Rig.',
     running: 'Simulation läuft …',
-  },
-  startLinks: {
-    myObjects: {
-      title: 'Meine Objekte',
-      hint: 'Deine Projekte und Einreichungen mit Freigabestatus',
-    },
-    projects: {
-      title: 'Projektliste',
-      hint: 'Alle Projekte des Mandanten mit Status und Fortschritt',
-    },
   },
   notifications: {
     bellUnread: 'Benachrichtigungen, {{count}} ungelesen',
@@ -1050,11 +1066,9 @@ export const de = {
   },
   projectList: {
     title: 'Projekte',
-    views: 'Ansichten der Projektliste',
-    tab: {
-      active: 'Projekte',
-      deleted: 'Gelöscht',
-    },
+    trash: 'Papierkorb',
+    search: 'Suche',
+    searchPlaceholder: 'Name, Ziel oder Katalognummer',
     filters: 'Filter',
     all: 'alle',
     filter: {
@@ -1165,6 +1179,7 @@ export const de = {
     hint: 'Alle eingereichten Objekte. Jedes Mitglied hat eine Stimme je Objekt (nicht für eigene); Stimmen und Rang ordnen die Warteschlange, entscheiden aber nichts – das tun die Admins.',
     empty: 'Die Warteschlange ist leer.',
     count: '{{n}} von {{total}} Einreichungen',
+    searchPlaceholder: 'Objekt, Ziel oder Einreicher',
     filter: {
       withoutMyVote: 'nur ohne meine Stimme',
       changed: 'geändert seit meiner Stimme',
@@ -2031,7 +2046,7 @@ export const de = {
     results: '{{count}} Treffer',
     loadingNight: 'Nachtwerte werden gerechnet …',
     empty: 'Keine Objekte für diese Filter.',
-    reset: 'Filter zurücksetzen',
+    moreFilters: 'Weitere Filter',
     prevPage: 'Vorige Seite',
     nextPage: 'Nächste Seite',
     page: 'Seite {{page}} von {{pages}}',
@@ -2459,6 +2474,13 @@ export const de = {
       peak: 'höchste Höhe',
       enough: 'Mindestzeit',
     },
+  },
+  filterBar: {
+    more: 'Filter',
+    chips: 'Aktive Filter',
+    chip: '{{label}}: {{value}}',
+    remove: 'Filter {{label}} entfernen',
+    reset: 'Alle zurücksetzen',
   },
   dataTable: {
     empty: 'Keine Einträge.',

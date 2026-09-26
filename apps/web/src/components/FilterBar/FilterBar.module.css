@@ -1,0 +1,165 @@
+/* Filterleiste (components.md §2.13): eine Zeile, bricht bei wenig Platz um (nie horizontal scrollen),
+   Chips als Pillen, aufklappbarer Bereich als Raster; Farben und Abstände aus Tokens. */
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.search {
+  flex: 1 1 14rem;
+  min-width: 10rem;
+  max-width: 28rem;
+}
+.input {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-bg);
+  color: var(--npm-text);
+  font-size: var(--npm-font-field);
+  width: 100%;
+}
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  max-width: 20rem;
+  min-width: 0;
+  padding-left: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: 999px;
+  background: var(--npm-note-bg);
+  color: var(--npm-text);
+  font-size: var(--npm-font-small);
+}
+.chipText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--npm-space-1);
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.chipRemove:hover {
+  color: var(--npm-danger);
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.toggle:hover {
+  border-color: var(--npm-accent);
+}
+.toggle[aria-expanded='true'],
+.toggle[aria-pressed='true'] {
+  border-color: var(--npm-accent);
+  background: var(--npm-note-bg);
+  color: var(--npm-link);
+}
+.chipRemove:focus-visible,
+.toggle:focus-visible,
+.input:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.count {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+.panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  align-items: end;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  min-width: 0;
+}
+.panelActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.field label {
+  font-weight: 600;
+  font-size: var(--npm-font-small);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
+  font-size: var(--npm-font-small);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

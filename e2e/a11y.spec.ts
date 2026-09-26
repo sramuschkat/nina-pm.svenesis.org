@@ -143,9 +143,7 @@ for (const theme of ['light', 'dark'] as const) {
     test('Shell im Mandanten, Benutzermenü, ConfirmDialog, Mandantenauswahl', async ({ page }) => {
       await testLogin(page, 'owner');
       await page.goto('/');
-      await expect(
-        page.getByRole('heading', { name: 'Mandant „Demo-Sternfreunde“' }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
       await expectNoSerious(page, 'shell');
       await page.getByRole('button', { name: 'Benutzermenü' }).click();
       await expectNoSerious(page, 'menu');

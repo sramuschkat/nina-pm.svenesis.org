@@ -262,6 +262,44 @@ describe('S-33 (Komponente)', () => {
   });
 });
 
+describe('Filterleiste (AP-26c)', () => {
+  it('Filter setzen ergibt Chip, × entfernt ihn; Suche nach Objekt und Einreicher; axe', async () => {
+    state.me = me('user');
+    state.queue = [
+      item(1, {
+        name: 'M 31',
+        votes: { count: 1, voters: [], mine: true, mineChangedSince: true },
+      }),
+      item(2, { name: 'IC 1396', createdByName: 'Ben' }),
+    ];
+    renderPage();
+    await screen.findByRole('link', { name: 'M 31' });
+    expect(screen.getByRole('status')).toHaveTextContent('2 von 2 Einreichungen');
+    const more = screen.getByRole('button', { name: 'Filter' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('nur ohne meine Stimme')).not.toBeInTheDocument();
+    fireEvent.click(more);
+    fireEvent.click(screen.getByLabelText('nur ohne meine Stimme'));
+    expect(screen.queryByRole('link', { name: 'M 31' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Aufwand'), { target: { value: 'none' } });
+    const chips = screen.getByRole('list', { name: 'Aktive Filter' });
+    expect(chips).toHaveTextContent('nur ohne meine Stimme');
+    expect(chips).toHaveTextContent('Aufwand:');
+    await expectNoSeriousA11y();
+    fireEvent.click(more);
+    fireEvent.click(screen.getByRole('button', { name: 'Filter nur ohne meine Stimme entfernen' }));
+    expect(screen.getByRole('link', { name: 'M 31' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Filter Aufwand: .* entfernen$/ }));
+    expect(screen.queryByRole('list', { name: 'Aktive Filter' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Suche' }), {
+      target: { value: 'ben' },
+    });
+    expect(screen.getByRole('link', { name: 'IC 1396' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'M 31' })).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('1 von 2 Einreichungen');
+  });
+});
+
 describe('Sichtbarkeit 4 Wochen (AP-24)', () => {
   it('vier Mini-Balken je Eintrag am Standort des Wunsch-Rigs; ohne Koordinaten „–“', async () => {
     state.me = me('user');

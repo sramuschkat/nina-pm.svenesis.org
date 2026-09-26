@@ -190,15 +190,6 @@
   color: var(--npm-text-light);
 }
 
-.planHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-3);
-}
-.planHead .templates {
-  margin-left: auto;
-}
 .templates,
 .quick {
   display: flex;
@@ -285,36 +276,6 @@
 }
 
 /* ---- S-30 Projektliste ---- */
-.filterBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--npm-space-3);
-  margin: 0;
-  padding: var(--npm-space-3);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
-  background: var(--npm-white);
-}
-.filterBar legend {
-  padding: 0 var(--npm-space-1);
-  font-weight: 600;
-  font-size: var(--npm-font-small);
-}
-.filterBar label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-  font-size: var(--npm-font-small);
-  font-weight: 600;
-  min-width: 140px;
-}
-.filterBar label.check {
-  flex-direction: row;
-  align-items: center;
-  min-width: 0;
-  font-weight: 400;
-}
 .segmented {
   display: inline-flex;
   border: 1px solid var(--npm-border);

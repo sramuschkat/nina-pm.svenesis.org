@@ -140,18 +140,80 @@
 }
 
 /* ---------- App-Leiste ---------- */
+/* Eine Kopfleiste der Arbeitsseiten (AP-26c, Variante A): Website-Farben, 52 px, klebt oben. */
 .appBar {
   display: flex;
   align-items: center;
   gap: var(--npm-space-3);
-  min-height: calc(var(--npm-row-h) + var(--npm-space-3));
-  padding: 0 var(--npm-space-5);
-  background: var(--npm-white);
-  border-bottom: 1px solid var(--npm-border);
+  min-height: 52px;
+  padding: 0 var(--npm-space-4);
+  background: var(--npm-primary);
+  color: var(--npm-on-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.appBarLogo {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 .appBarName {
   font-weight: 700;
-  color: var(--npm-text);
+  color: var(--npm-on-primary);
+  white-space: nowrap;
+}
+.appBarName:hover {
+  color: var(--npm-on-primary);
+}
+.appBar .tenant {
+  padding-left: var(--npm-space-3);
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--npm-on-primary-muted);
+}
+.appBar .switch {
+  color: var(--npm-on-primary-muted);
+}
+.appBar .iconButton {
+  color: var(--npm-on-primary);
+}
+.appBar .iconButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.appBar .userButton {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--npm-on-primary);
+}
+.appBar .userRole {
+  color: var(--npm-on-primary-muted);
+}
+.siteMenuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--npm-radius);
+  background: transparent;
+  color: var(--npm-on-primary-muted);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.siteMenuButton:hover,
+.siteMenuButton[data-state='open'] {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--npm-on-primary);
+}
+.appBar :focus-visible {
+  outline: 2px solid var(--npm-on-primary);
+  outline-offset: 2px;
+}
+.menu a.menuItem {
+  display: block;
+  text-decoration: none;
 }
 .tenant {
   display: inline-flex;
@@ -331,6 +393,30 @@
 .sideNavCollapsed {
   width: calc(var(--npm-row-h) + var(--npm-space-4));
 }
+/* Schmales Fenster (< 1024 px), aufgeklappt: über dem Inhalt; der Platz der Symbolleiste bleibt frei. */
+.work {
+  position: relative;
+}
+.sideNavOverlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  width: 220px;
+  box-shadow: var(--npm-shadow);
+}
+.work:has(.sideNavOverlay)::before {
+  content: '';
+  flex-shrink: 0;
+  width: calc(var(--npm-row-h) + var(--npm-space-4));
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(11, 22, 33, 0.45);
+}
 .sideNavCollapsed .navLabel {
   display: none;
 }
@@ -432,7 +518,14 @@
 }
 
 @media (max-width: 1279px) {
-  .sideNav {
+  .sideNav:not(.sideNavCollapsed):not(.sideNavOverlay) {
     width: 180px;
+  }
+}
+/* Unter 1024 px: Mandantenname und Benutzername weichen, damit die Kopfleiste nicht umbricht. */
+@media (max-width: 1023px) {
+  .appBar .userName,
+  .appBar .userRole {
+    display: none;
   }
 }

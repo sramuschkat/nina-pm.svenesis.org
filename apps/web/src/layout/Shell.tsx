@@ -1,12 +1,15 @@
 /**
- * Rahmen der Arbeitsseiten (FK 14.1, TK 11.3): Svenesis-Kopf, App-Leiste, einklappbare linke Navigation,
- * Arbeitsbereich **ohne Breitenobergrenze**, App-Fußleiste mit Dichte-Schalter, Svenesis-Fuß.
+ * Rahmen der Arbeitsseiten (FK 14.1, TK 11.3, AP-26c): **eine** Kopfleiste (Logo, NINA-PM, Mandant,
+ * Menü *Svenesis.org* mit den Website-Links, Glocke, Theme, Benutzer, DE/EN), einklappbare linke
+ * Navigation – unter 1024 px nur Symbole, per Knopf als Überlagerung aufklappbar –, Arbeitsbereich
+ * **ohne Breitenobergrenze**, App-Fußleiste mit Dichte-Schalter, Svenesis-Fuß. Textseiten behalten den
+ * Website-Kopf (`TextLayout`).
  */
 import { ENGINE_VERSION } from '@nina-pm/engine';
 import { DENSITIES, type Density } from '@nina-pm/ui-tokens';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
@@ -19,21 +22,57 @@ import { useAppearance } from '../app/theme';
 import { useAuth, useCan } from '../auth';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { actionIcons, areaIcons, ICON_SIZE, uiIcons } from '../components/icons';
-import { SvenesisFooter, SvenesisHeader } from './Frame';
+import { LogoMark, SvenesisFooter } from './Frame';
 import { MaintenanceBanner } from './MaintenanceBanner';
 import { NotificationBell } from './NotificationBell';
+import { siteHref, SITE_NAV, WEBSITE } from './site-nav';
 import styles from './layout.module.css';
 
+/** Unter dieser Breite ist die Navigation eingeklappt und öffnet als Überlagerung (AP-26c). */
+const NARROW = '(max-width: 1023px)';
+
+function useNarrow(): boolean {
+  const query =
+    typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(NARROW) : null;
+  const [narrow, setNarrow] = useState(query?.matches ?? false);
+  useEffect(() => {
+    if (!query) return undefined;
+    const onChange = () => setNarrow(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, [query]);
+  return narrow;
+}
+
 export function Shell({ children }: { children: ReactNode }) {
+  const narrow = useNarrow();
   const [collapsed, setCollapsed] = useState(false);
+  const [overlay, setOverlay] = useState(false);
+  const location = useLocation();
+  // Seitenwechsel oder breites Fenster schließen die Überlagerung, ebenso `Esc`.
+  useEffect(() => setOverlay(false), [location.pathname, narrow]);
+  useEffect(() => {
+    if (!overlay) return undefined;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setOverlay(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [overlay]);
   return (
     <>
-      <SvenesisHeader />
       <AppBar />
       <MaintenanceBanner />
       <MfaBanner />
       <div className={styles.work}>
-        <SideNav collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+        <SideNav
+          collapsed={narrow ? !overlay : collapsed}
+          overlay={narrow && overlay}
+          onToggle={() => (narrow ? setOverlay((o) => !o) : setCollapsed((c) => !c))}
+        />
+        {narrow && overlay ? (
+          <div className={styles.scrim} aria-hidden="true" onClick={() => setOverlay(false)} />
+        ) : null}
         <main className={styles.workMain} id="main">
           {children}
         </main>
@@ -58,7 +97,7 @@ function MfaBanner() {
 }
 
 function AppBar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { me, refresh } = useAuth();
   const { theme, setTheme } = useAppearance();
   const navigate = useNavigate();
@@ -85,8 +124,18 @@ function AppBar() {
     await navigate('/');
   };
   return (
-    <div className={styles.appBar}>
-      <span className={styles.appBarName}>{t('common.appName')}</span>
+    <header className={styles.appBar}>
+      <a
+        href={`${WEBSITE}/index_${i18n.language === 'en' ? 'en' : 'de'}.html`}
+        className={styles.appBarLogo}
+        aria-label={t('header.websiteLink')}
+        title={t('header.websiteLink')}
+      >
+        <LogoMark size={24} />
+      </a>
+      <Link to="/" className={styles.appBarName}>
+        {t('common.appName')}
+      </Link>
       <span className={styles.tenant}>
         {me.context === 'system' ? t('appBar.system') : (me.tenant?.name ?? '')}
         {canSwitch ? (
@@ -101,6 +150,7 @@ function AppBar() {
         ) : null}
       </span>
       <span className={styles.spacer} />
+      <SiteMenu />
       {/* Benachrichtigungen gibt es nur im Mandanten (Empfänger ist ein Mitglied). */}
       {me.context === 'tenant' && me.tenant ? (
         <NotificationBell tenantTimeZone={me.tenant.timeZone} />
@@ -214,6 +264,50 @@ function AppBar() {
           }
         }}
       />
+      <LangSwitch />
+    </header>
+  );
+}
+
+/** Website-Links (TK 11.3) als Menü *Svenesis.org* – eine Kopfleiste statt zwei (AP-26c). */
+function SiteMenu() {
+  const { t, i18n } = useTranslation();
+  const Chevron = uiIcons.menu;
+  return (
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger className={styles.siteMenuButton}>
+        Svenesis.org
+        <Chevron size={ICON_SIZE.table} aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className={styles.menu} align="end" sideOffset={6}>
+          {SITE_NAV.map((l) => (
+            <DropdownMenu.Item key={l.path} className={styles.menuItem} asChild>
+              <a href={siteHref(l.path, i18n.language)}>{t(l.labelKey)}</a>
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
+function LangSwitch() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  return (
+    <div className={styles.langSwitch} role="group" aria-label={t('header.language')}>
+      {(['de', 'en'] as const).map((l) => (
+        <button
+          key={l}
+          type="button"
+          aria-pressed={lang === l}
+          className={lang === l ? styles.langActive : undefined}
+          onClick={() => void i18n.changeLanguage(l)}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 }
@@ -226,7 +320,16 @@ interface NavArea {
 }
 
 /** Navigation nach FK 14.2; Fachbereiche folgen mit ihren Paketen (bis dahin deaktiviert mit Hinweis). */
-function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+function SideNav({
+  collapsed,
+  overlay,
+  onToggle,
+}: {
+  collapsed: boolean;
+  /** Schmales Fenster, aufgeklappt: liegt über dem Inhalt; `Esc`, Klick daneben oder Seitenwechsel schließen. */
+  overlay: boolean;
+  onToggle: () => void;
+}) {
   const { t } = useTranslation();
   const { me } = useAuth();
   const location = useLocation();
@@ -248,7 +351,13 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   const section = (to: string) => `/${to.split('/')[1] ?? ''}`;
   return (
     <nav
-      className={`${styles.sideNav} ${collapsed ? styles.sideNavCollapsed : ''}`}
+      className={[
+        styles.sideNav,
+        collapsed ? styles.sideNavCollapsed : '',
+        overlay ? styles.sideNavOverlay : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       aria-label={t('nav.label')}
     >
       <button
