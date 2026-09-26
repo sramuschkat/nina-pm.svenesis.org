@@ -504,6 +504,16 @@
   "correction",
   "import"
  ],
+ "sessionLogSources": [
+  "forecast",
+  "nina",
+  "manual",
+  "auto"
+ ],
+ "siteNightStatSources": [
+  "session",
+  "manual"
+ ],
  "sortChainDefault": [
   "lowest_peak_altitude",
   "setting_soonest",

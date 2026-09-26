@@ -222,7 +222,10 @@ describe('S-60 Sessions', () => {
     renderAt('/auswertung/sessions');
     await screen.findByRole('link', { name: '17./18.09.' });
     const head = screen.getByRole('columnheader', { name: /Nacht/ });
-    const order = () => screen.getAllByRole('link').map((l) => l.textContent);
+    const order = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('link')
+        .map((l) => l.textContent);
     expect(order()).toEqual(['17./18.09.', '15./16.09.', '16./17.09.']);
     fireEvent.click(within(head).getByRole('button'));
     expect(order()).toEqual(['15./16.09.', '16./17.09.', '17./18.09.']);

@@ -158,6 +158,14 @@ export {
   type NightSessionRow,
 } from './repositories/session-review';
 export {
+  SessionLogRepository,
+  saveForecastSnapshot,
+  sessionLogVersion,
+  upsertSiteNightStatForSession,
+  type ClearNightRawSession,
+  type SessionLogContext,
+} from './repositories/session-log';
+export {
   LATE_REPORT_MS,
   LEASE_MS,
   NinaSessionRepository,

@@ -106,3 +106,102 @@
   cursor: pointer;
   text-decoration: underline;
 }
+/* Reiter Protokoll (AP-30, S-61): Felder im Raster, Kennzeichen der Quelle neben der Beschriftung. */
+.logGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--npm-space-3) var(--npm-space-4);
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.logField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.logWide {
+  grid-column: 1 / -1;
+}
+.logLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-weight: 600;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.logInputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.logInputRow > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.logInputRow > span:last-child {
+  flex: none;
+}
+.logValue {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+/* Klarnacht-Statistik (AP-30, S-64): Monatsbalken und Kennzahlen. */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.statValue {
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.monthBars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  overflow-x: auto;
+  min-height: 9rem;
+}
+.monthBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-width: 3rem;
+  font-size: var(--npm-font-small);
+}
+.monthTrack {
+  display: flex;
+  align-items: flex-end;
+  width: 1.5rem;
+  height: 6rem;
+  background: var(--npm-surface-sub);
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+}
+.monthFill {
+  width: 100%;
+  background: var(--npm-success);
+}

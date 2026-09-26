@@ -30,6 +30,7 @@ import { SIMULATION_ROUTES, webSimulationRoutes } from './routes/web-simulations
 import { NINA_INSTANCE_ROUTES, webNinaInstanceRoutes } from './routes/web-nina-instances';
 import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
 import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
+import { SESSION_LOG_ROUTES, webSessionLogRoutes } from './routes/web-session-log';
 import { CATALOG_ROUTES, catalogRoutes } from './routes/catalog';
 import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
 import { NINA_SESSION_ROUTES, ninaSessionRoutes } from './routes/nina/sessions';
@@ -64,6 +65,7 @@ export const ROUTES = [
   ...NINA_INSTANCE_ROUTES,
   ...NINA_OPS_ROUTES,
   ...SESSION_ROUTES,
+  ...SESSION_LOG_ROUTES,
   ...CATALOG_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
@@ -129,6 +131,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webNinaInstanceRoutes(services));
   app.route('/', webNinaOpsRoutes(services));
   app.route('/', webSessionRoutes(services));
+  app.route('/', webSessionLogRoutes(services));
   app.route('/', catalogRoutes(services));
   app.route('/', ninaSyncRoutes(services));
   app.route('/', ninaSessionRoutes(services));

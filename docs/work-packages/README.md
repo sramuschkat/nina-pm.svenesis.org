@@ -77,13 +77,13 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 | [AP-26h](AP-26h.md) | Vorschaubilder in Listen, Filterplan fluchtend, Simulator: Protokoll folgt der Uhrzeit | S | AP-26g | – | ☑ |
 | [AP-26i](AP-26i.md) | Objektbrowser „Beste der Nacht“ zuerst, Filtermarken gleich breit, Sternkarte einklappbar, Scheduler nur im Simulator | M | AP-26h | – | ☑ |
 | [AP-26j](AP-26j.md) | Saisondiagramm als Reiter neben dem Höhendiagramm, Sternkarten-Seitenbereich immer rechts, Filtermarken der Zielkarten gleich breit | S | AP-26i | – | ☑ |
-| [AP-26k](AP-26k.md) | Filtermarken überall gleich breit, Sternkarten-Seitenbereich wirklich rechts | XS | AP-26j | – | ◐ |
+| [AP-26k](AP-26k.md) | Filtermarken überall gleich breit, Sternkarten-Seitenbereich wirklich rechts | XS | AP-26j | – | ☑ |
 
 ## R3
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-30](AP-30.md) | Sitzungsprotokoll und Klarnacht-Statistik | M | AP-15 | – | ☐ |
+| [AP-30](AP-30.md) | Sitzungsprotokoll und Klarnacht-Statistik | M | AP-15 | – | ◐ |
 | [AP-31](AP-31.md) | Session-KPIs, Abweichungsgründe, Aufnahmen verwerfen | M | AP-30 | – | ☐ |
 | [AP-32](AP-32.md) | Mehrnacht-Simulation, Auswirkungsvorschau, Änderungsanträge | L | AP-31 | – | ☐ |
 | [AP-33](AP-33.md) | Folgeplanung S-62 und Prognose | M | AP-32 | – | ☐ |

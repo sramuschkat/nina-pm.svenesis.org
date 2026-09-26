@@ -429,6 +429,13 @@
    "titleEn": "Correction overlaps individually rejected captures"
   },
   {
+   "code": "site_night.has_session",
+   "http": 409,
+   "i18nKey": "errors.siteNight.hasSession",
+   "titleDe": "Für diese Nacht gibt es eine Session – sie bestimmt die Statistik",
+   "titleEn": "This night has a session – it determines the statistics"
+  },
+  {
    "code": "capture.assign_mismatch",
    "http": 409,
    "i18nKey": "errors.capture.assignMismatch",

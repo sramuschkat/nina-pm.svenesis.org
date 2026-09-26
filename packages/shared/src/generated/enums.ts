@@ -209,6 +209,12 @@ export type CloudSource = (typeof cloudSources)[number];
 export const correctionSources = ["nina","correction","import"] as const;
 export type CorrectionSource = (typeof correctionSources)[number];
 
+export const sessionLogSources = ["forecast","nina","manual","auto"] as const;
+export type SessionLogSource = (typeof sessionLogSources)[number];
+
+export const siteNightStatSources = ["session","manual"] as const;
+export type SiteNightStatSource = (typeof siteNightStatSources)[number];
+
 export const sortChainDefault = ["lowest_peak_altitude","setting_soonest","most_remaining","constrained"] as const;
 export type SortChainDefaultValue = (typeof sortChainDefault)[number];
 

@@ -7,6 +7,7 @@
 import {
   can,
   COOKIE_NAMES,
+  EMPTY_SESSION_LOG,
   ProjectConditions,
   type Action,
   type ResourceMeta,
@@ -686,6 +687,12 @@ async function projectExamples(): Promise<Record<string, Example>> {
       "INSERT INTO session (id, tenant_id, rig_id, night, started_at, status) VALUES ($1, $2, $3, '2026-09-18', '2026-09-19T01:00:00Z', 'completed')",
       [sessionId, world.tenantA, common.rigId],
     );
+    const siteId = (
+      (await admin().query('SELECT site_id FROM rig WHERE id = $1', [common.rigId])).rows[0] as {
+        site_id: string;
+      }
+    ).site_id;
+    const clearNight = `/api/web/v1/sites/${siteId}/clear-nights/2026-09-10`;
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
     return {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
@@ -704,6 +711,33 @@ async function projectExamples(): Promise<Record<string, Example>> {
           createdBy: submitter,
           settings: { userCorrections: false },
         },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'GET /api/web/v1/sessions/{id}/log': {
+        url: `/api/web/v1/sessions/${sessionId}/log`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PUT /api/web/v1/sessions/{id}/log': {
+        url: `/api/web/v1/sessions/${sessionId}/log`,
+        method: 'PUT',
+        body: { ...EMPTY_SESSION_LOG, sqm: 21.2 },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'GET /api/web/v1/sites/{id}/clear-nights': {
+        url: `/api/web/v1/sites/${siteId}/clear-nights?from=2026-09-01&to=2026-09-23`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PUT /api/web/v1/sites/{id}/clear-nights/{night}': {
+        url: clearNight,
+        method: 'PUT',
+        body: { usable: false },
+        okStatus: 204,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'DELETE /api/web/v1/sites/{id}/clear-nights/{night}': {
+        url: clearNight,
+        method: 'DELETE',
+        okStatus: 204,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
       'PUT /api/web/v1/sessions/{id}/review': {
