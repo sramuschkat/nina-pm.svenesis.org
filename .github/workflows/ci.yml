@@ -8,8 +8,9 @@
 # Tempo (26.09.2026, Entscheidung Sven): `test` läuft in 2, die E2E-Suite in 4 Shards auf je eigenem Runner
 # (eigene Datenbank bzw. eigener lokaler Stack je Shard). Sammel-Jobs unter den bisherigen Namen `test` und
 # `e2e + a11y (Playwright, lokaler Stack)` sind nur grün, wenn alle Shards grün (oder übersprungen) sind –
-# Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig. Vitest nutzt im CI beide Kerne (vitest.config.ts),
-# Playwright verteilt beim Sharden einzelne Tests (`fullyParallel`), E2E läuft in 4 Shards.
+# Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig. Playwright verteilt beim Sharden einzelne Tests
+# (`fullyParallel`), E2E läuft in 4 Shards. Zwei Vitest-Worker brachten auf dem 2-vCPU-Runner nichts (gemessen
+# 172/157 s statt 173 s) und ließen zeitkritische Tests ins Timeout laufen – deshalb bleibt es bei einem.
 # Minuten (Entscheidung Sven): Nach `pnpm pr:land` hat derselbe Stand gerade im PR bestanden – auf `main`
 # laufen deshalb nur lint · typecheck, build und gitleaks; Tests und E2E auf `main` prüft jede Nacht nightly.yml.
 name: ci
