@@ -1,20 +1,36 @@
 /**
- * Nachtdiagramm (FA-SIC-01, FK 6.5; Vertrag der Nacht-Zeitleiste components.md §2.3, AP-10):
- * Canvas mit Dämmerungsbändern, Mondhöhe, Höhenkurven je Ziel, Mindesthöhe und Marken; Zeitachse in
- * Standortzeit mit Kürzel (optional zweite Zone). Rendert ohne eigene Datenabfrage, kennt keine Rechte.
+ * Nachtdiagramm (FA-SIC-01, FK 6.5; Vertrag der Nacht-Zeitleiste components.md §2.3, AP-10, Stil AP-26e):
+ * Canvas im Stil des Höhendiagramms aus dem Beobachtungsplaner – dunkler Rahmen, Himmel nach Sonnenhöhe,
+ * astronomisch dunkel grün, Mond als rote Fläche nach Beleuchtung, Meridian violett, Uhrzeit rot, beste
+ * Zeit als Punkt; Zeitachse in Standortzeit mit Kürzel und darunter die Zeit des Geräts, wenn sie abweicht.
+ * `variant="plan"` ist die Plangrafik des Simulators (FA-SIM-07): Blöcke als Flächen im Diagramm,
+ * Filterleiste darüber, ziehbare Uhrzeit. Rendert ohne eigene Datenabfrage, kennt keine Rechte.
  * Tastatur: fokussierbar, ←/→ tastet in 5-min-Schritten ab (Wert per `aria-live`); Textalternative als
  * `<details>`-Tabelle mit denselben Werten.
  */
-import { formatTzAbbr } from '@nina-pm/shared';
+import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { SKY_STOPS } from '@nina-pm/ui-tokens';
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   aboveSpan,
+  bestTime,
   clock,
+  cropWindow,
+  filterBarLabel,
   hourBands,
   hourTicks,
   iso,
+  luminance,
+  moonAlpha,
   peak,
   skyColor,
   sunAltFromTwilight,
@@ -50,39 +66,54 @@ export interface NightChartProps {
     nautical: TwilightSpan;
     astronomical: TwilightSpan;
   };
-  /** Sonnenhöhe im Fenster (Himmelsfarbe); ohne sie wird der Himmel aus `twilight` gestuft. */
+  /** Sonnenhöhe im Fenster (Himmelsfarbe, Ausschnitt); ohne sie wird der Himmel aus `twilight` gestuft. */
   sun?: readonly AltPoint[];
   /**
-   * Höhenkurven je Ziel; die erste ist das Hauptziel der Stundenstreifen. `color` ist eine CSS-Farbe
-   * oder ein Token `var(--npm-…)`.
+   * Höhenkurven je Ziel; die erste ist das Hauptziel der Stundenstreifen und der besten Zeit. `color` ist
+   * eine CSS-Farbe oder ein Token `var(--npm-…)`.
    */
   series?: readonly AltitudeSeries[];
   moon?: { points: readonly AltPoint[]; illuminationPct: number };
   /** Nutzbare Zeit des Hauptziels aus der Engine (Streifen „Empfohlene Belichtungszeit“). */
   recommended?: readonly Interval[];
   markers?: readonly NightMarker[];
-  /** Belegte Blöcke als Balken unter dem Diagramm (Simulator, Session-Soll/Ist). */
+  /** Belegte Blöcke: in der Plangrafik als Flächen im Diagramm, sonst als Balken darunter. */
   blocks?: readonly TimelineBlock[];
-  /** Filterbalken über den Blöcken in Filterfarben (FA-SIM-07). */
+  /** Filterbalken in Filterfarben (FA-SIM-07); in der Plangrafik als beschriftete Leiste über dem Diagramm. */
   filterBars?: readonly FilterBar[];
-  /** Gestrichelte Linie der Mindesthöhe. */
+  /** Gestrichelte Linie der Mindesthöhe (ohne sie 30°). */
   minAltDeg?: number;
   /** IANA-Zone des Standorts (Beschriftung, NT-03). */
   timeZone: string;
-  /** Zweite, gedämpfte Beschriftungszeile (z. B. Mandantenzeit). */
-  secondaryTimeZone?: string;
-  /** Höhe der Zeichenfläche in px; Standard ist die Diagrammhöhe der Dichtestufe (`--npm-chart-h`). */
+  /**
+   * Zweite, gedämpfte Beschriftungszeile. Standard: die Zeitzone des Geräts, nur wenn sie von der
+   * Standortzeit abweicht; `null` schaltet sie ab.
+   */
+  secondaryTimeZone?: string | null;
+  /** Höhe in px ohne Streifen und Zusatzzeilen; Standard aus der Dichtestufe (`--npm-chart-h` + 60 px). */
   height?: number;
   state?: 'loading' | 'error' | 'ready';
   /** `errors.*`-Schlüssel im Fehlerzustand. */
   errorKey?: string;
   onRetry?: () => void;
+  /** Zeitpunkt gewählt (Enter, Klick ins Diagramm). */
   onSelect?: (atUtc: number) => void;
+  /** Gesteuerte Uhrzeit (rote Linie mit Kasten); Klick und Ziehen melden sie über `onCursorChange`. */
+  cursorUtc?: number | null;
+  onCursorChange?: (atUtc: number) => void;
+  /** `night` (Standard) oder `plan` – Plangrafik des Simulators. */
+  variant?: 'night' | 'plan';
+  /** Stundenstreifen unter dem Diagramm (FA-SIC-01); Standard an. */
+  bands?: boolean;
+  /** Ausschnitt eine Stunde vor Sonnenuntergang bis eine Stunde nach Sonnenaufgang; Standard an. */
+  crop?: boolean;
+  /** Kennwerte neben dem Diagramm (Höhe zur Uhrzeit, höchste Höhe, Mond, Zeit über Mindesthöhe). */
+  facts?: boolean;
   /**
-   * Lage der Legende: `side` (Standard) rechts neben dem Diagramm, bei schmalem Container darunter;
-   * `top` als kompakte, umbrechende Zeile über dem Diagramm (Projekt-Editor, AP-26d).
+   * Lage der Legende: `top` (Standard) als kompakte, umbrechende Zeile über dem Diagramm, `side` rechts
+   * daneben (bei schmalem Container darunter), `none` ohne Legende.
    */
-  legend?: 'side' | 'top';
+  legend?: 'top' | 'side' | 'none';
 }
 
 const MAX_SERIES = 12;
@@ -91,10 +122,14 @@ const STEP = 300;
 /** Stundenstreifen: Höhe je Zeile und Abstand (px). */
 const BAND_ROW = 6;
 const BAND_GAP = 3;
-/** Filter- und Blockzeile unter den Stundenstreifen (px). */
+/** Filter- und Blockzeile unter dem Diagramm (Nachtdiagramm, px). */
 const FILTER_ROW = 5;
 const BLOCK_ROW = 12;
-const PAD = { left: 34, right: 40, top: 18, axis: 32 };
+/** Filterleiste über dem Diagramm (Plangrafik, px). */
+const PLAN_FILTER = 18;
+/** Ränder wie im Beobachtungsplaner; rechts Platz für das Zonenkürzel. */
+const PAD = { left: 34, right: 40, top: 10 };
+const AXIS_ROW = 14;
 
 /** CSS-Variable am Element (Tokens aus `@nina-pm/ui-tokens`, keine festen Farben). */
 function token(el: Element, name: string): string {
@@ -115,10 +150,21 @@ const BAND_TOKEN: Record<BandKey, string> = {
   dark: 'chart-dark',
 };
 
+/** Zeitzone des Geräts (zweite Achsenzeile); in Umgebungen ohne `Intl`-Zonen keine. */
+function deviceTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+const hm = (at: number, zone: string) => formatZonedTime(iso(at), zone);
+
 export function NightChart(props: NightChartProps) {
   const { t, i18n } = useTranslation();
   const {
-    window: win,
+    window: rawWin,
     series = [],
     moon,
     sun,
@@ -128,13 +174,17 @@ export function NightChart(props: NightChartProps) {
     filterBars = [],
     minAltDeg,
     timeZone,
-    secondaryTimeZone,
     twilight,
   } = props;
+  const plan = props.variant === 'plan';
+  const showBands = props.bands !== false && !plan;
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
-  const [cursor, setCursor] = useState<number | null>(null);
+  const [ownCursor, setOwnCursor] = useState<number | null>(null);
+  const controlled = props.cursorUtc !== undefined;
+  const cursor = controlled ? (props.cursorUtc ?? null) : ownCursor;
+  const dragging = useRef(false);
   /** Ausgeblendete Ebenen der Legende: `series:<id>`, `moon`, `minAlt`, Streifen-Schlüssel. */
   const [off, setOff] = useState<ReadonlySet<string>>(() => new Set());
   /** Neu zeichnen, wenn Theme oder Dichte wechseln (Tokens am `<html>`, das Canvas liest sie beim Zeichnen). */
@@ -143,6 +193,23 @@ export function NightChart(props: NightChartProps) {
   const shown = series.slice(0, MAX_SERIES);
   const hidden = series.length - shown.length;
   const primary = shown[0];
+
+  // Ausschnitt: eine Stunde vor Sonnenuntergang bis eine Stunde nach Sonnenaufgang (volle Standortstunden).
+  const win = useMemo(() => {
+    if (!rawWin) return null;
+    if (props.crop === false) return rawWin;
+    const c = cropWindow({ fromUtc: rawWin.startUtc, toUtc: rawWin.endUtc }, sun, timeZone);
+    return { startUtc: c.fromUtc, endUtc: c.toUtc };
+  }, [rawWin, sun, timeZone, props.crop]);
+
+  const secondaryTimeZone = useMemo(() => {
+    const zone =
+      props.secondaryTimeZone === null ? undefined : (props.secondaryTimeZone ?? deviceTimeZone());
+    if (!zone || !win) return undefined;
+    // Nur zeigen, wenn die Zone im Fenster eine andere Uhrzeit hat (sonst wäre die Zeile doppelt).
+    const differs = [win.startUtc, win.endUtc].some((at) => hm(at, zone) !== hm(at, timeZone));
+    return differs ? zone : undefined;
+  }, [props.secondaryTimeZone, win, timeZone]);
 
   const bands: Band[] = useMemo(
     () =>
@@ -159,12 +226,23 @@ export function NightChart(props: NightChartProps) {
         : [],
     [win, sun, twilight, primary, moon, minAltDeg, recommended],
   );
+  const drawnBands = showBands ? bands : [];
+  const best = useMemo(
+    () =>
+      win && primary
+        ? bestTime(primary.points, twilight, { fromUtc: win.startUtc, toUtc: win.endUtc })
+        : null,
+    [win, primary, twilight],
+  );
   const blockRowsH =
-    blocks.length === 0
+    plan || blocks.length === 0
       ? 0
       : (filterBars.length > 0 ? FILTER_ROW + BAND_GAP : 0) + BLOCK_ROW + BAND_GAP * 2;
   const bandsH =
-    (bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP) + BAND_GAP) + blockRowsH;
+    (drawnBands.length === 0 ? 0 : drawnBands.length * (BAND_ROW + BAND_GAP) + BAND_GAP) +
+    blockRowsH;
+  const topH = plan && filterBars.length > 0 ? PAD.top + PLAN_FILTER : PAD.top;
+  const extraH = bandsH + (secondaryTimeZone ? AXIS_ROW : 0) + (topH - PAD.top);
 
   // Die Zeichenfläche gibt es erst im Zustand „bereit“ – beim Wechsel aus Laden/Fehler/leer neu messen.
   const drawable =
@@ -198,30 +276,65 @@ export function NightChart(props: NightChartProps) {
     () => (win && secondaryTimeZone ? hourTicks(win.startUtc, win.endUtc, secondaryTimeZone) : []),
     [win, secondaryTimeZone],
   );
+  /** Uhrzeit als Kastenbeschriftung: „03:40 (10:40)“ mit der zweiten Zone in Klammern. */
+  const both = (at: number) =>
+    secondaryTimeZone
+      ? `${hm(at, timeZone)} (${hm(at, secondaryTimeZone)})`
+      : `${hm(at, timeZone)}`;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext?.('2d');
     if (!canvas || !ctx || !win || width === 0) return;
     const dpr = window.devicePixelRatio || 1;
-    const height = canvas.clientHeight || (props.height ?? 180) + bandsH;
+    const height = canvas.clientHeight || (props.height ?? 240) + extraH;
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    const axisH = secondaryTimeZone ? PAD.axis + 12 : PAD.axis - 4;
+    const c = (name: string) => token(canvas, name);
+    const axisH = AXIS_ROW + 8 + (secondaryTimeZone ? AXIS_ROW : 0);
     const plotW = width - PAD.left - PAD.right;
-    const plotH = Math.max(40, height - PAD.top - bandsH - axisH);
-    const plotB = PAD.top + plotH;
+    const plotT = topH;
+    const plotH = Math.max(40, height - plotT - bandsH - axisH);
+    const plotB = plotT + plotH;
     const span = win.endUtc - win.startUtc;
     const x = (u: number) => PAD.left + ((u - win.startUtc) / span) * plotW;
-    const y = (alt: number) => PAD.top + (1 - Math.max(0, Math.min(90, alt)) / 90) * plotH;
-    const c = (name: string) => token(canvas, name);
+    const y = (alt: number) => plotT + (1 - Math.max(0, Math.min(90, alt)) / 90) * plotH;
     const winI = { fromUtc: win.startUtc, toUtc: win.endUtc };
-    const font = (px: number, weight = '') =>
-      `${weight}${String(px)}px ${c('font') === '#888' ? 'system-ui, sans-serif' : c('font')}`;
+    const fontFamily = c('font') === '#888' ? 'system-ui, sans-serif' : c('font');
+    const font = (px: number, weight = '') => `${weight}${String(px)}px ${fontFamily}`;
+    const vline = (at: number, color: string, dash: number[] = [], lw = 1) => {
+      const xx = Math.round(x(at)) + 0.5;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(xx, plotT);
+      ctx.lineTo(xx, plotB);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1;
+    };
+    /** Beschriftungskasten an einer senkrechten Linie; rechts daneben, am rechten Rand links davon. */
+    const labelBox = (at: number, row: number, text: string, bg: string, fg: string) => {
+      ctx.font = font(11, '600 ');
+      const w = ctx.measureText(text).width + 8;
+      const xx = x(at);
+      const left = xx + 2 + w <= PAD.left + plotW ? xx + 2 : xx - 1 - w;
+      const top = plotT + 4 + row * 20;
+      ctx.fillStyle = bg;
+      ctx.fillRect(left, top, w, 16);
+      ctx.fillStyle = fg;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, left + 4, top + 8.5);
+    };
 
-    // Himmel nach Sonnenhöhe (components.md §2.3), themen-unabhängig.
+    // Rahmen (themen-unabhängig dunkel, Entscheidung Sven 26.09.2026)
+    ctx.fillStyle = c('chart-frame');
+    ctx.fillRect(0, 0, width, height);
+    // Himmel nach Sonnenhöhe; astronomisch dunkel grün (Nachtdiagramm) bzw. dunkel (Plangrafik).
     for (let a = win.startUtc; a < win.endUtc; a += STEP) {
       const mid = a + STEP / 2;
       const alt = sun
@@ -229,53 +342,15 @@ export function NightChart(props: NightChartProps) {
         : twilight
           ? sunAltFromTwilight(twilight, mid, winI)
           : -90;
-      ctx.fillStyle = skyColor(alt, SKY_STOPS);
+      ctx.fillStyle = !plan && alt <= -18 ? c('chart-sky-dark') : skyColor(alt, SKY_STOPS);
       const x0 = Math.floor(x(a));
-      ctx.fillRect(x0, PAD.top, Math.ceil(x(Math.min(win.endUtc, a + STEP))) - x0, plotH);
-    }
-    // Raster: 0/30/60/90° und volle Stunden
-    ctx.strokeStyle = c('chart-grid');
-    ctx.lineWidth = 1;
-    ctx.fillStyle = c('text-light');
-    ctx.font = font(11);
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    for (const alt of [0, 30, 60, 90]) {
-      const yy = Math.round(y(alt)) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(PAD.left, yy);
-      ctx.lineTo(PAD.left + plotW, yy);
-      ctx.stroke();
-      ctx.fillText(`${String(alt)}°`, PAD.left - 4, yy);
-    }
-    for (const tick of ticks) {
-      const xx = Math.round(x(tick.atUtc)) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(xx, PAD.top);
-      ctx.lineTo(xx, plotB);
-      ctx.stroke();
-    }
-    // Dämmerungswechsel: Linie und Kürzel am Fuß
-    if (twilight) {
-      ctx.font = font(10);
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'bottom';
-      for (const cr of twilightCrossings(twilight, winI)) {
-        const xx = Math.round(x(cr.atUtc)) + 0.5;
-        ctx.strokeStyle = c('chart-grid');
-        ctx.beginPath();
-        ctx.moveTo(xx, PAD.top);
-        ctx.lineTo(xx, plotB);
-        ctx.stroke();
-        ctx.fillStyle = c('chart-label');
-        ctx.fillText(t(`nightChart.twilightShort.${cr.kind}`), xx + 3, plotB - 2);
-      }
+      ctx.fillRect(x0, plotT, Math.ceil(x(Math.min(win.endUtc, a + STEP))) - x0, plotH);
     }
     ctx.save();
     ctx.beginPath();
-    ctx.rect(PAD.left, PAD.top, plotW, plotH);
+    ctx.rect(PAD.left, plotT, plotW, plotH);
     ctx.clip();
-    // Mond: Fläche und Linie
+    // Mond als rote Fläche, Deckkraft nach Beleuchtung
     if (moon && !off.has('moon') && moon.points.length > 1) {
       const pts = moon.points;
       ctx.beginPath();
@@ -283,13 +358,85 @@ export function NightChart(props: NightChartProps) {
       for (const p of pts) ctx.lineTo(x(p.atUtc), y(p.altDeg));
       ctx.lineTo(x((pts[pts.length - 1] as AltPoint).atUtc), plotB);
       ctx.closePath();
-      ctx.fillStyle = c('chart-moon-fill');
+      ctx.fillStyle = `rgba(229, 72, 77, ${moonAlpha(moon.illuminationPct).toFixed(3)})`;
       ctx.fill();
     }
-    const line = (points: readonly AltPoint[], color: string, widthPx: number, dash?: number[]) => {
+    // Plangrafik: Blöcke als Flächen in Zielfarbe, der Block unter der Uhrzeit hervorgehoben
+    if (plan) {
+      for (const b of blocks) {
+        const x0 = x(b.fromUtc);
+        const w = Math.max(1, x(b.toUtc) - x0);
+        const on = cursor !== null && cursor >= b.fromUtc && cursor < b.toUtc;
+        ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.globalAlpha = on ? 0.42 : 0.2;
+        ctx.fillRect(x0, plotT, w, plotH);
+        ctx.globalAlpha = on ? 1 : 0.6;
+        ctx.lineWidth = on ? 2 : 1;
+        ctx.strokeRect(x0 + 0.5, plotT + 0.5, w - 1, plotH - 1);
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 1;
+        if (w > 40) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(x0, plotT, w, plotH);
+          ctx.clip();
+          ctx.font = font(12, '600 ');
+          ctx.fillStyle = c('chart-curve');
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(b.label, x0 + 5, plotT + 5);
+          ctx.restore();
+        }
+      }
+    }
+    ctx.restore();
+    // Raster: 60° und alle n Stunden fein, Mindesthöhe (sonst 30°) gestrichelt
+    const pxPerHour = (plotW * 3600) / span;
+    const every = [1, 2, 3, 4, 6].find((n) => n * pxPerHour >= 90) ?? 6;
+    ctx.strokeStyle = c('chart-grid');
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, Math.round(y(60)) + 0.5);
+    ctx.lineTo(PAD.left + plotW, Math.round(y(60)) + 0.5);
+    ctx.stroke();
+    for (const tick of ticks)
+      if (Number(tick.label) % every === 0) vline(tick.atUtc, c('chart-grid'));
+    if (!off.has('minAlt')) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.setLineDash([3, 3]);
+      const yy = Math.round(y(minAltDeg ?? 30)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, yy);
+      ctx.lineTo(PAD.left + plotW, yy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // Dämmerung: Grenzen der astronomischen Dunkelheit gepunktet grün, Kürzel bzw. Wort am Fuß
+    if (twilight) {
+      const midNight = (win.startUtc + win.endUtc) / 2;
+      for (const cr of twilightCrossings(twilight, winI)) {
+        if (cr.kind === 'astronomical' && !plan) vline(cr.atUtc, c('chart-dark-edge'), [2, 3]);
+        else if (plan) vline(cr.atUtc, c('chart-grid'));
+        ctx.font = plan ? font(11) : font(11, '600 ');
+        ctx.fillStyle = c('chart-label');
+        ctx.textBaseline = 'bottom';
+        // Plangrafik: abends rechts der Linie, morgens links davon – die Wörter überlappen nicht.
+        const evening = cr.atUtc < midNight;
+        ctx.textAlign = plan ? (evening ? 'left' : 'right') : 'center';
+        ctx.fillText(
+          t(plan ? `nightChart.twilightWord.${cr.kind}` : `nightChart.twilightShort.${cr.kind}`),
+          x(cr.atUtc) + (plan ? (evening ? 4 : -4) : 0),
+          plotB - 4,
+        );
+      }
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PAD.left, plotT, plotW, plotH);
+    ctx.clip();
+    const line = (points: readonly AltPoint[], color: string, widthPx: number) => {
       ctx.strokeStyle = color;
       ctx.lineWidth = widthPx;
-      ctx.setLineDash(dash ?? []);
       ctx.beginPath();
       let started = false;
       for (const p of points) {
@@ -302,72 +449,129 @@ export function NightChart(props: NightChartProps) {
         started = true;
       }
       ctx.stroke();
-      ctx.setLineDash([]);
       ctx.lineWidth = 1;
     };
-    if (moon && !off.has('moon')) line(moon.points, c('chart-moon'), 1.5);
-    // Mindesthöhe gestrichelt
-    if (minAltDeg !== undefined && !off.has('minAlt')) {
-      ctx.setLineDash([5, 4]);
-      ctx.strokeStyle = c('chart-min-alt');
-      ctx.beginPath();
-      ctx.moveTo(PAD.left, Math.round(y(minAltDeg)) + 0.5);
-      ctx.lineTo(PAD.left + plotW, Math.round(y(minAltDeg)) + 0.5);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
     for (const s of shown)
-      if (!off.has(`series:${s.id}`)) line(s.points, resolveColor(canvas, s.color), 2);
+      if (!off.has(`series:${s.id}`))
+        line(
+          s.points,
+          shown.length === 1 && !plan ? c('chart-curve') : resolveColor(canvas, s.color),
+          2,
+        );
+    // Beste Zeit des Hauptziels als Punkt
+    if (best && !plan && primary && !off.has(`series:${primary.id}`)) {
+      ctx.fillStyle = c('chart-best');
+      ctx.beginPath();
+      ctx.arc(x(best.atUtc), y(best.altDeg), 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
-    // Mond-Beleuchtung oben rechts im Diagramm (Text, kein Symbolzeichen – rules/ui.md)
+    // Mond: Beleuchtung oben rechts (Nachtdiagramm) bzw. „Mond“ am höchsten Punkt (Plangrafik); Text, kein
+    // Symbolzeichen (rules/ui.md)
     if (moon && !off.has('moon')) {
       ctx.font = font(11, '600 ');
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = c('chart-label');
-      ctx.fillText(
-        t('nightChart.moonBadge', { pct: moon.illuminationPct.toFixed(0) }),
-        PAD.left + plotW - 6,
-        PAD.top + 5,
-      );
+      if (plan) {
+        const top = peak(
+          moon.points.filter((p) => p.atUtc >= win.startUtc && p.atUtc <= win.endUtc),
+        );
+        if (top && top.altDeg > 5) {
+          ctx.fillStyle = c('chart-now');
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(t('nightChart.moon'), x(top.atUtc), y(top.altDeg) - 3);
+        }
+      } else {
+        ctx.fillStyle = c('chart-moon-label');
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText(
+          t('nightChart.moonBadge', { pct: moon.illuminationPct.toFixed(0) }),
+          PAD.left + plotW - 6,
+          plotT + 5,
+        );
+      }
     }
-    // Marken: Linie im Diagramm, Beschriftung darüber
-    ctx.font = font(11);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
+    // Marken: Meridian violett gestrichelt mit Kasten, Uhrzeit rot mit Kasten, sonstige blau
+    let row = 1;
     for (const m of markers) {
       if (m.atUtc < win.startUtc || m.atUtc > win.endUtc) continue;
-      const xx = Math.round(x(m.atUtc)) + 0.5;
-      ctx.strokeStyle = m.kind === 'now' ? c('chart-min-alt') : c('chart-marker');
-      ctx.beginPath();
-      ctx.moveTo(xx, PAD.top);
-      ctx.lineTo(xx, plotB);
-      ctx.stroke();
-      ctx.fillStyle = c('text');
-      ctx.fillText(m.label, xx, PAD.top - 3);
+      if (m.kind === 'now') {
+        vline(m.atUtc, c('chart-now'), [], 1.5);
+        labelBox(
+          m.atUtc,
+          0,
+          t('nightChart.nowAt', { time: both(m.atUtc) }),
+          c('chart-now'),
+          '#ffffff',
+        );
+      } else if (m.kind === 'transit' || m.kind === 'flip') {
+        vline(m.atUtc, c('chart-meridian'), [5, 3], 1.5);
+        labelBox(
+          m.atUtc,
+          row,
+          t(m.kind === 'flip' ? 'nightChart.flipAt' : 'nightChart.transitAt', {
+            time: hm(m.atUtc, timeZone),
+          }),
+          c('chart-meridian'),
+          c('chart-frame'),
+        );
+        row = row === 1 ? 2 : 1;
+      } else {
+        vline(m.atUtc, c('chart-marker'));
+        if (m.label) labelBox(m.atUtc, row, m.label, c('chart-marker'), c('chart-frame'));
+      }
     }
-    if (cursor !== null) {
-      ctx.strokeStyle = c('chart-label');
-      ctx.setLineDash([2, 3]);
-      ctx.beginPath();
-      ctx.moveTo(x(cursor), PAD.top);
-      ctx.lineTo(x(cursor), plotB);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    // Uhrzeit: gesteuert (Simulator, Sternkarte) als rote Linie mit Kasten, per Tastatur gestrichelt
+    if (cursor !== null && cursor >= win.startUtc && cursor <= win.endUtc) {
+      if (controlled) {
+        vline(cursor, c('chart-now'), [], 2);
+        labelBox(
+          cursor,
+          0,
+          t('nightChart.nowAt', { time: both(cursor) }),
+          c('chart-now'),
+          '#ffffff',
+        );
+      } else vline(cursor, c('chart-label'), [2, 3]);
+    }
+    // Plangrafik: Filterleiste über dem Diagramm („R ×10“), Textfarbe nach Helligkeit des Filters
+    if (plan && filterBars.length > 0) {
+      const top = PAD.top - 4;
+      for (const f of filterBars) {
+        const x0 = x(f.fromUtc);
+        const w = Math.max(1, x(f.toUtc) - x0);
+        const color = resolveColor(canvas, f.color);
+        ctx.fillStyle = color;
+        ctx.fillRect(x0, top, w, PLAN_FILTER);
+        ctx.fillStyle = c('chart-frame');
+        ctx.fillRect(x0 + w - 1, top, 1, PLAN_FILTER);
+        const text = filterBarLabel(f);
+        ctx.font = font(11, '600 ');
+        if (ctx.measureText(text).width + 6 <= w) {
+          const lum = luminance(color);
+          ctx.fillStyle = lum !== null && lum > 0.45 ? c('chart-frame') : '#ffffff';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, x0 + 3, top + PLAN_FILTER / 2 + 0.5);
+        }
+      }
     }
     // Stundenstreifen unter dem Diagramm
-    bands.forEach((band, row) => {
-      const top = plotB + BAND_GAP + row * (BAND_ROW + BAND_GAP);
-      ctx.fillStyle = c('border');
+    drawnBands.forEach((band, i) => {
+      const top = plotB + BAND_GAP + i * (BAND_ROW + BAND_GAP);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.fillRect(PAD.left, top, plotW, BAND_ROW);
       if (off.has(band.key)) return;
       ctx.fillStyle = c(BAND_TOKEN[band.key]);
       for (const iv of band.intervals)
         ctx.fillRect(x(iv.fromUtc), top, Math.max(1, x(iv.toUtc) - x(iv.fromUtc)), BAND_ROW);
     });
-    // Filterbalken und Blöcke (FA-SIM-07) unter den Stundenstreifen
-    if (blocks.length > 0) {
-      let top = plotB + (bands.length === 0 ? 0 : bands.length * (BAND_ROW + BAND_GAP)) + BAND_GAP;
+    // Nachtdiagramm: Filterbalken und Blöcke (Session-Soll/Ist) unter den Stundenstreifen
+    if (!plan && blocks.length > 0) {
+      let top =
+        plotB +
+        (drawnBands.length === 0 ? 0 : drawnBands.length * (BAND_ROW + BAND_GAP)) +
+        BAND_GAP;
       if (filterBars.length > 0) {
         for (const f of filterBars) {
           ctx.fillStyle = resolveColor(canvas, f.color);
@@ -385,13 +589,13 @@ export function NightChart(props: NightChartProps) {
         ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
         ctx.fillRect(x0, top, w, h);
         if (b.kind === 'transit') {
-          ctx.strokeStyle = c('violet');
+          ctx.strokeStyle = c('chart-meridian');
           ctx.lineWidth = 2;
           ctx.strokeRect(x0 + 1, top + 1, Math.max(1, w - 2), h - 2);
           ctx.lineWidth = 1;
         }
         if (w > 60) {
-          ctx.fillStyle = c('text');
+          ctx.fillStyle = c('chart-frame');
           ctx.save();
           ctx.beginPath();
           ctx.rect(x0, top, w, h);
@@ -401,11 +605,19 @@ export function NightChart(props: NightChartProps) {
         }
       }
     }
-    // Zeitachse in Standortzeit; Beschriftung nur alle n Stunden, damit sie nicht kollidiert
-    const pxPerHour = (plotW * 3600) / span;
-    const every = width < 480 ? 3 : ([1, 2, 3, 4, 6].find((n) => n * pxPerHour >= 56) ?? 6);
-    const axisY = plotB + bandsH + 4;
+    // Höhenachse 0/30/60/90°
     ctx.font = font(11);
+    ctx.fillStyle = c('chart-axis');
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (const alt of [0, 30, 60, 90])
+      ctx.fillText(
+        `${String(alt)}°`,
+        PAD.left - 5,
+        Math.min(Math.max(y(alt), plotT + 6), plotB - 6),
+      );
+    // Zeitachse: Standortzeit, darunter gedämpft die zweite Zone; Kürzel am Ende jeder Zeile (NT-03)
+    const axisY = plotB + bandsH + 5;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     const drawTicks = (list: typeof ticks, color: string, yy: number) => {
@@ -417,19 +629,18 @@ export function NightChart(props: NightChartProps) {
         ctx.fillText(`${tick.label}:00`, xx, yy);
       });
     };
-    drawTicks(ticks, c('text'), axisY);
-    drawTicks(secondaryTicks, c('text-light'), axisY + 15);
-    // Zonenkürzel am Achsenende je Zeile (NT-03)
+    drawTicks(ticks, c('chart-axis-strong'), axisY);
+    drawTicks(secondaryTicks, c('chart-axis'), axisY + AXIS_ROW);
     ctx.textAlign = 'left';
     ctx.font = font(11, '600 ');
-    ctx.fillStyle = c('text');
+    ctx.fillStyle = c('chart-axis-strong');
     ctx.fillText(formatTzAbbr(iso(win.endUtc), timeZone), PAD.left + plotW + 6, axisY);
     if (secondaryTimeZone) {
-      ctx.fillStyle = c('text-light');
+      ctx.fillStyle = c('chart-axis');
       ctx.fillText(
         formatTzAbbr(iso(win.endUtc), secondaryTimeZone),
         PAD.left + plotW + 6,
-        axisY + 15,
+        axisY + AXIS_ROW,
       );
     }
   }, [
@@ -438,19 +649,25 @@ export function NightChart(props: NightChartProps) {
     twilight,
     sun,
     shown,
+    primary,
     moon,
     markers,
     minAltDeg,
     ticks,
     secondaryTicks,
     cursor,
+    controlled,
     props.height,
-    bands,
+    drawnBands,
     bandsH,
+    extraH,
+    topH,
     blocks,
     filterBars,
     off,
     secondaryTimeZone,
+    best,
+    plan,
     t,
     appearance,
   ]);
@@ -468,7 +685,7 @@ export function NightChart(props: NightChartProps) {
         ) : null}
       </div>
     );
-  if (series.length === 0)
+  if (series.length === 0 && blocks.length === 0)
     return (
       <div className={styles.message} role="status">
         <p>{t('nightChart.empty')}</p>
@@ -486,6 +703,12 @@ export function NightChart(props: NightChartProps) {
     if (m !== null) parts.push(`${t('nightChart.moon')} ${m.toFixed(0)}°`);
     return `${clock(at, timeZone)} – ${parts.join(', ')}`;
   };
+  const moveCursor = (at: number) => {
+    const next = Math.max(win.startUtc, Math.min(win.endUtc, Math.round(at / STEP) * STEP));
+    if (props.onCursorChange) props.onCursorChange(next);
+    if (!controlled) setOwnCursor(next);
+    return next;
+  };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') return;
     e.preventDefault();
@@ -494,8 +717,30 @@ export function NightChart(props: NightChartProps) {
       props.onSelect?.(base);
       return;
     }
-    const next = base + (e.key === 'ArrowRight' ? STEP : -STEP);
-    setCursor(Math.max(win.startUtc, Math.min(win.endUtc, next)));
+    moveCursor(base + (e.key === 'ArrowRight' ? STEP : -STEP));
+  };
+  const interactive = Boolean(props.onCursorChange ?? props.onSelect);
+  /** Zeitpunkt unter dem Zeiger (Breite aus der Messung, damit es auch ohne Layout-Engine rechnet). */
+  const atPointer = (e: PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const plotW = Math.max(1, width - PAD.left - PAD.right);
+    const f = (e.clientX - rect.left - PAD.left) / plotW;
+    return win.startUtc + Math.max(0, Math.min(1, f)) * (win.endUtc - win.startUtc);
+  };
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!interactive) return;
+    dragging.current = true;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    moveCursor(atPointer(e));
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (dragging.current && props.onCursorChange) moveCursor(atPointer(e));
+  };
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    const at = moveCursor(atPointer(e));
+    props.onSelect?.(at);
   };
   const tz = (at: number) => clock(at, timeZone).split(' ').slice(1).join(' ');
 
@@ -514,80 +759,159 @@ export function NightChart(props: NightChartProps) {
       }).format(sec / 3600),
     });
   const bandLabel = (key: BandKey) => t(`nightChart.band.${key}`, { deg: minAltDeg ?? 0 });
-  const canvasH = props.height ?? null;
-  const legendOnTop = props.legend === 'top';
-  const legendBox = (
-    <fieldset className={legendOnTop ? styles.legendTop : styles.legend}>
-      <legend className={legendOnTop ? 'visually-hidden' : styles.legendTitle}>
-        {t('nightChart.legend')}
-      </legend>
-      {shown.map((s) => (
-        <label key={s.id} className={styles.legendItem}>
-          <input
-            type="checkbox"
-            checked={!off.has(`series:${s.id}`)}
-            onChange={() => toggle(`series:${s.id}`)}
-          />
-          <span className={styles.swatchLine} style={{ color: s.color }} />
-          <span>{s.label}</span>
-        </label>
-      ))}
-      {moon ? (
-        <label className={styles.legendItem}>
-          <input type="checkbox" checked={!off.has('moon')} onChange={() => toggle('moon')} />
-          <span className={styles.swatchMoon} />
-          <span>{t('nightChart.moonLegend', { pct: moon.illuminationPct.toFixed(0) })}</span>
-        </label>
-      ) : null}
-      {minAltDeg !== undefined ? (
-        <label className={styles.legendItem}>
-          <input type="checkbox" checked={!off.has('minAlt')} onChange={() => toggle('minAlt')} />
-          <span className={styles.swatchDashed} />
-          <span>{t('nightChart.minAlt', { deg: minAltDeg })}</span>
-        </label>
-      ) : null}
-      {bands.map((b) => (
-        <label key={b.key} className={styles.legendItem}>
-          <input type="checkbox" checked={!off.has(b.key)} onChange={() => toggle(b.key)} />
-          <span className={`${styles.swatchBox} ${styles[`band_${b.key}`] ?? ''}`} />
-          <span>{bandLabel(b.key)}</span>
-          <span className={styles.legendHours}>{hours(b.totalSec)}</span>
-        </label>
-      ))}
-      {hidden > 0 ? (
-        <span className={styles.legendMore}>{t('nightChart.more', { count: hidden })}</span>
-      ) : null}
-    </fieldset>
-  );
+  const legendAt = props.legend ?? 'top';
+  const legendOnTop = legendAt === 'top';
+  const hasMeridian = markers.some((m) => m.kind === 'transit' || m.kind === 'flip');
+  const hasNow = controlled || markers.some((m) => m.kind === 'now');
+  const legendBox =
+    legendAt === 'none' ? null : (
+      <fieldset className={legendOnTop ? styles.legendTop : styles.legend}>
+        <legend className={legendOnTop ? 'visually-hidden' : styles.legendTitle}>
+          {t('nightChart.legend')}
+        </legend>
+        {shown.map((s) => (
+          <label key={s.id} className={styles.legendItem}>
+            <input
+              type="checkbox"
+              checked={!off.has(`series:${s.id}`)}
+              onChange={() => toggle(`series:${s.id}`)}
+            />
+            <span className={styles.swatchLine} style={{ color: s.color }} />
+            <span>{s.label}</span>
+          </label>
+        ))}
+        {moon ? (
+          <label className={styles.legendItem}>
+            <input type="checkbox" checked={!off.has('moon')} onChange={() => toggle('moon')} />
+            <span
+              className={styles.swatchMoon}
+              style={{
+                background: `rgba(229, 72, 77, ${moonAlpha(moon.illuminationPct).toFixed(3)})`,
+              }}
+            />
+            <span>{t('nightChart.moonLegend', { pct: moon.illuminationPct.toFixed(0) })}</span>
+          </label>
+        ) : null}
+        {minAltDeg !== undefined ? (
+          <label className={styles.legendItem}>
+            <input type="checkbox" checked={!off.has('minAlt')} onChange={() => toggle('minAlt')} />
+            <span className={styles.swatchDashed} />
+            <span>{t('nightChart.minAlt', { deg: minAltDeg })}</span>
+          </label>
+        ) : null}
+        {!plan && drawnBands.length === 0 && (sun ?? twilight) ? (
+          <span className={styles.legendKey}>
+            <span className={`${styles.swatchBox} ${styles.keyDark}`} />
+            {t('nightChart.key.dark')}
+          </span>
+        ) : null}
+        {hasMeridian ? (
+          <span className={styles.legendKey}>
+            <span className={styles.keyMeridian} />
+            {t('nightChart.key.meridian')}
+          </span>
+        ) : null}
+        {hasNow ? (
+          <span className={styles.legendKey}>
+            <span className={styles.keyNow} />
+            {t('nightChart.key.now')}
+          </span>
+        ) : null}
+        {best && !plan ? (
+          <span className={styles.legendKey}>
+            <span className={styles.keyBest} />
+            {t('nightChart.key.best')}
+          </span>
+        ) : null}
+        {drawnBands.map((b) => (
+          <label key={b.key} className={styles.legendItem}>
+            <input type="checkbox" checked={!off.has(b.key)} onChange={() => toggle(b.key)} />
+            <span className={`${styles.swatchBox} ${styles[`band_${b.key}`] ?? ''}`} />
+            <span>{bandLabel(b.key)}</span>
+            <span className={styles.legendHours}>{hours(b.totalSec)}</span>
+          </label>
+        ))}
+        {hidden > 0 ? (
+          <span className={styles.legendMore}>{t('nightChart.more', { count: hidden })}</span>
+        ) : null}
+      </fieldset>
+    );
+
+  // Kennwerte neben dem Diagramm (Objektbrowser): Höhe zur Uhrzeit, höchster Stand, Mond, Zeit über Mindesthöhe
+  const nowAt = cursor ?? markers.find((m) => m.kind === 'now')?.atUtc ?? null;
+  const nowAlt = nowAt !== null && primary ? valueAt(primary.points, nowAt) : null;
+  const aboveBand = bands.find((b) => b.key === 'above');
+  const factsBox =
+    props.facts && primary ? (
+      <dl className={styles.facts}>
+        {nowAlt !== null && nowAt !== null ? (
+          <div>
+            <dt>{t('nightChart.facts.altAt', { time: hm(nowAt, timeZone) })}</dt>
+            <dd>{nowAlt.toFixed(0)}°</dd>
+          </div>
+        ) : null}
+        <div>
+          <dt>{t('nightChart.facts.best')}</dt>
+          <dd>
+            {best
+              ? t('nightChart.facts.bestValue', {
+                  deg: best.altDeg.toFixed(0),
+                  time: hm(best.atUtc, timeZone),
+                })
+              : '–'}
+          </dd>
+        </div>
+        {moon ? (
+          <div>
+            <dt>{t('nightChart.moon')}</dt>
+            <dd className={styles.factMoon}>
+              {t('nightChart.facts.moonValue', { pct: moon.illuminationPct.toFixed(0) })}
+            </dd>
+          </div>
+        ) : null}
+        {aboveBand ? (
+          <div>
+            <dt>{t('nightChart.facts.above', { deg: minAltDeg ?? 0 })}</dt>
+            <dd>{hours(aboveBand.totalSec)}</dd>
+          </div>
+        ) : null}
+      </dl>
+    ) : null;
 
   return (
     <figure className={styles.figure}>
-      <div className={legendOnTop ? styles.bodyTop : styles.body}>
+      <div className={legendAt === 'side' ? styles.body : styles.bodyTop}>
         {legendOnTop ? legendBox : null}
         <div className={styles.chartCol}>
-          <div
-            ref={wrapRef}
-            className={styles.canvasWrap}
-            tabIndex={0}
-            role="img"
-            aria-label={t('nightChart.label', { zone: tz(win.startUtc) })}
-            aria-describedby={liveId}
-            onKeyDown={onKey}
-            style={{
-              height:
-                canvasH === null
-                  ? `calc(max(120px, var(--npm-chart-h)) + ${String(bandsH)}px)`
-                  : canvasH + bandsH,
-            }}
-          >
-            <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
-            <span className="visually-hidden">{tz(win.endUtc)}</span>
+          <div className={styles.frame}>
+            <div
+              ref={wrapRef}
+              className={`${styles.canvasWrap} ${interactive ? styles.interactive : ''}`}
+              tabIndex={0}
+              role="img"
+              aria-label={t('nightChart.label', { zone: tz(win.startUtc) })}
+              aria-describedby={liveId}
+              onKeyDown={onKey}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              style={{
+                height:
+                  props.height === undefined
+                    ? `calc(max(200px, var(--npm-chart-h) + 60px) + ${String(extraH)}px)`
+                    : props.height + extraH,
+              }}
+            >
+              <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
+              <span className="visually-hidden">{tz(win.endUtc)}</span>
+            </div>
+            {factsBox}
           </div>
           <p id={liveId} className={styles.live} aria-live="polite">
             {cursor === null ? t('nightChart.keyboardHint') : describe(cursor)}
           </p>
         </div>
-        {legendOnTop ? null : legendBox}
+        {legendAt === 'side' ? legendBox : null}
       </div>
       <details className={styles.details}>
         <summary>{t('nightChart.table')}</summary>
@@ -666,7 +990,10 @@ export function NightChart(props: NightChartProps) {
             ))}
             {markers.map((m) => (
               <tr key={`${m.kind}:${String(m.atUtc)}`}>
-                <th scope="row">{m.label}</th>
+                <th scope="row">
+                  {m.label ||
+                    t(m.kind === 'flip' ? 'nightChart.key.flip' : 'nightChart.key.meridian')}
+                </th>
                 <td>{clock(m.atUtc, timeZone)}</td>
               </tr>
             ))}

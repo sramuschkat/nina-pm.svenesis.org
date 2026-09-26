@@ -5,7 +5,7 @@
  * Der Zustand steht in der URL (`skymap/model.ts`). Ohne Rotator zeigt das Bildfeld den Kamerawinkel des
  * Rigs und warnt bei Abweichung (FA-FRM-05, NT-30). Die Übernahme des Mosaiks als Panels folgt mit AP-22.
  */
-import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import { formatNightKey, formatTzAbbr } from '@nina-pm/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -877,16 +877,11 @@ export function SkyMapPage() {
                 {chart ? (
                   <NightChart
                     {...chart}
-                    markers={[
-                      ...(chart.markers ?? []),
-                      {
-                        atUtc: time,
-                        kind: 'now',
-                        label: formatZonedTime(new Date(time * 1000), zone),
-                      },
-                    ]}
-                    height={160}
-                    onSelect={(at) => {
+                    bands={false}
+                    crop={false}
+                    height={180}
+                    cursorUtc={time}
+                    onCursorChange={(at) => {
                       setPlaying(false);
                       update({ t: at });
                     }}

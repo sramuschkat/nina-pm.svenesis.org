@@ -485,12 +485,10 @@ export function SimulatorPage() {
                 <>
                   <NightChart
                     {...result.chart}
-                    markers={[
-                      ...(result.chart.markers ?? []),
-                      ...(cursor !== null
-                        ? [{ atUtc: cursor, kind: 'now' as const, label: hm(iso(cursor), tz) }]
-                        : []),
-                    ]}
+                    variant="plan"
+                    cursorUtc={cursor}
+                    onCursorChange={setCursor}
+                    height={300}
                     state="ready"
                   />
                   <TimeSlider

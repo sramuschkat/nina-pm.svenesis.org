@@ -206,16 +206,29 @@ export function simulate(req: SimulationRequest): SimulationResult {
     kind: b.kind,
     color: color.get(b.projectId) ?? colorOf(0),
   }));
-  const filterBars: { fromUtc: number; toUtc: number; color: string; label: string }[] = [];
+  // Filterleiste der Plangrafik mit Anzahl („R ×10“, AP-26e); eine Serie zählt ihre vollen Belichtungen.
+  const filterBars: {
+    fromUtc: number;
+    toUtc: number;
+    color: string;
+    label: string;
+    count: number;
+  }[] = [];
   for (const b of plan.blocks)
     for (const e of b.entries) {
       if (e.cmd !== 'expose' && e.cmd !== 'expose_series') continue;
       const from = unixFromIso(e.atUtc);
       const to = e.cmd === 'expose_series' ? unixFromIso(e.untilUtc) : from + e.exposureS;
+      const n =
+        e.cmd === 'expose_series'
+          ? Math.max(1, Math.floor((to - from) / Math.max(1, e.exposureS)))
+          : 1;
       const last = filterBars[filterBars.length - 1];
       const fc = req.filterColors[e.filter] ?? 'var(--npm-chart-marker)';
-      if (last && last.label === e.filter && from - last.toUtc <= 120) last.toUtc = to;
-      else filterBars.push({ fromUtc: from, toUtc: to, color: fc, label: e.filter });
+      if (last && last.label === e.filter && from - last.toUtc <= 120) {
+        last.toUtc = to;
+        last.count += n;
+      } else filterBars.push({ fromUtc: from, toUtc: to, color: fc, label: e.filter, count: n });
     }
   const markers = plan.blocks
     .filter((b) => b.meridianFlip !== null)

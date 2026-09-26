@@ -880,7 +880,7 @@ function AltitudeCurve({ project: p, site }: { project: ProjectListItem; site: S
   if (p.raDeg === null || p.decDeg === null)
     return <p className={styles.muted}>{t('projectEditor.charts.needsCoordinates')}</p>;
   return chart ? (
-    <NightChart {...chart} height={140} />
+    <NightChart {...chart} height={160} bands={false} />
   ) : (
     <NightChart
       window={null}

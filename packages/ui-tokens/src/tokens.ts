@@ -105,19 +105,20 @@ export const BASE: Readonly<Record<string, string>> = {
 /**
  * Himmelsfarben des Nachtdiagramms nach Sonnenhöhe (components.md §2.3 „Hintergrund nach Sonnenhöhe
  * abgestuft“). Bewusst **themen-unabhängig**: das Diagramm zeigt den Himmel, in beiden Themes gleich
- * (Entscheidung 24.09.2026). Stützstellen absteigend, dazwischen linear je Kanal; über der ersten gilt
- * deren Farbe, unter der letzten die letzte. Vorbild: `chartSky` in legacy/…/observing-planner.js.
+ * (Entscheidung 24.09.2026). Werte seit AP-26e exakt `CHART_SKY` des Beobachtungsplaners; unter −18° zeichnet
+ * das Nachtdiagramm `chart-sky-dark` (grün, astronomisch dunkel), die Plangrafik die letzte Stufe.
+ * Stützstellen absteigend, dazwischen linear je Kanal; über der ersten gilt deren Farbe, unter der letzten die
+ * letzte. Vorbild: `chartSky` in legacy/…/observing-planner.js.
  */
 export const SKY_STOPS: readonly (readonly [
   sunAltDeg: number,
   rgb: readonly [number, number, number],
 ])[] = [
   [6, [166, 140, 69]],
-  [0, [176, 138, 74]],
-  [-3, [96, 110, 140]],
-  [-6, [62, 104, 150]],
-  [-12, [26, 50, 86]],
-  [-18, [9, 14, 24]],
+  [0, [93, 128, 168]],
+  [-6, [62, 92, 130]],
+  [-12, [31, 51, 80]],
+  [-18, [14, 24, 36]],
 ];
 
 /**
@@ -150,7 +151,18 @@ export const SPECTRUM_STOPS: readonly (readonly [
 
 /** Übrige Farben des Nachtdiagramms auf dem Himmelsgrund (themen-unabhängig, Kontrast gegen `SKY_STOPS`). */
 export const CHART: Readonly<Record<string, string>> = {
-  'chart-sky-night': 'rgb(9, 14, 24)',
+  'chart-sky-night': 'rgb(14, 24, 36)',
+  /** Rahmen, Achsen und Kennzeichen im Stil des Beobachtungsplaners (AP-26e, `COL` in observing-planner.js). */
+  'chart-frame': '#10151c',
+  'chart-axis': '#9aa7b6',
+  'chart-axis-strong': '#c3ccd6',
+  'chart-sky-dark': '#0b3a2a',
+  'chart-dark-edge': 'rgba(143, 209, 158, 0.75)',
+  'chart-now': '#e5484d',
+  'chart-meridian': '#c9a3ff',
+  'chart-best': '#8fb3ff',
+  'chart-moon-label': '#f5c26b',
+  'chart-curve': '#eef2f6',
   'chart-grid': 'rgba(255, 255, 255, 0.16)',
   'chart-label': 'rgba(228, 233, 239, 0.8)',
   'chart-target': '#e8ecf2',

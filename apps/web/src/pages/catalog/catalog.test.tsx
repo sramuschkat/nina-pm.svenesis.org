@@ -48,10 +48,25 @@ vi.mock('../../api/client', async (importOriginal) => {
             kind === 'rigs'
               ? state.rigs
               : kind === 'sites'
-                ? [{ id: ID(600), name: 'Texas', timeZone: 'America/Chicago' }]
+                ? [
+                    {
+                      id: ID(600),
+                      name: 'Texas',
+                      timeZone: 'America/Chicago',
+                      latitudeDeg: 31.5471,
+                      longitudeDeg: -99.3823,
+                    },
+                  ]
                 : [],
         }),
-      nights: () => Promise.resolve({ currentNight: '2026-10-20' }),
+      nights: () =>
+        Promise.resolve({
+          currentNight: '2026-10-20',
+          timeZoneTransitions: [
+            { atUtc: '2026-03-08T08:00:00Z', utcOffsetMinutes: -300 },
+            { atUtc: '2026-11-01T07:00:00Z', utcOffsetMinutes: -360 },
+          ],
+        }),
     },
     catalogApi: {
       search: (s: DsoSearch) => {
@@ -469,6 +484,22 @@ describe('S-21 Objektbrowser', () => {
     fireEvent.click(season);
     expect(season).toHaveAttribute('aria-expanded', 'true');
     expect(await screen.findByText('Saisondiagramm: M 31')).toBeInTheDocument();
+    await expectNoSeriousA11y();
+  });
+
+  it('aufgeklappte Zeile zeigt das Nachtdiagramm des Objekts am Rig-Standort (AP-26e)', async () => {
+    state.rigs = [rig];
+    renderPage();
+    await screen.findByText('M 31');
+    const toggle = await screen.findByRole('button', { name: 'Weitere Angaben zu M 31' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      await screen.findByRole('img', { name: /Nachtdiagramm, Zeiten in Standortzeit \(C[DS]T\)/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Höhe von M 31 in der gewählten Nacht/)).toBeInTheDocument();
+    expect(screen.getByText('Höchster Stand')).toBeInTheDocument();
     await expectNoSeriousA11y();
   });
 

@@ -154,6 +154,25 @@ describe('DataTable', () => {
     expect(detail).toHaveTextContent('Notizgroß');
   });
 
+  it('renderDetail: Detailzeile immer aufklappbar, eigener Inhalt (AP-26e)', () => {
+    render(
+      <DataTable
+        columns={COLUMNS}
+        rows={ROWS}
+        rowKey={(r) => r.id}
+        label="Objekte"
+        rowLabel={(r) => r.name}
+        renderDetail={(r) => <p>Diagramm {r.name}</p>}
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: 'Weitere Angaben zu M 101' });
+    expect(screen.queryByText('Diagramm M 101')).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.getByText('Diagramm M 101')).toBeInTheDocument();
+    // ohne ausgeblendete Spalten keine leere Liste
+    expect(screen.queryByRole('term')).not.toBeInTheDocument();
+  });
+
   it('Tastatur: Spaltenkopf und Detailzeile mit Tab und Enter/Leertaste', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(450);
     vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (

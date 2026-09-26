@@ -337,3 +337,11 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
+/* Aufgeklappte Zeile: Nachtdiagramm des Objekts (AP-26e). */
+.objectNight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-2) 0 var(--npm-space-2) 36px;
+  white-space: normal;
+}

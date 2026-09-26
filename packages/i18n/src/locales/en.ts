@@ -834,6 +834,28 @@ export const en: Messages = {
       above: 'Above {{deg}}°',
       dark: 'Astronomically dark',
     },
+    twilightWord: {
+      civil: 'Civil',
+      nautical: 'Naut.',
+      astronomical: 'Astro.',
+    },
+    nowAt: 'Time {{time}}',
+    flipAt: 'Meridian flip {{time}}',
+    transitAt: 'Meridian {{time}}',
+    key: {
+      dark: 'Night (astronomically dark)',
+      meridian: 'Meridian',
+      flip: 'Meridian flip',
+      now: 'Time',
+      best: 'Best time',
+    },
+    facts: {
+      altAt: 'Altitude at {{time}}',
+      best: 'Highest point',
+      bestValue: '{{deg}}° at {{time}}',
+      moonValue: '{{pct}} % illuminated',
+      above: 'Above {{deg}}° at night',
+    },
     twilightShort: {
       civil: 'C',
       nautical: 'N',
@@ -2020,6 +2042,8 @@ export const en: Messages = {
     },
   },
   catalog: {
+    nightOf:
+      'Altitude of {{name}} in the selected night at the rig site; if your time zone differs, your time is shown below the site time.',
     context: 'Rig and night',
     tabsLabel: 'Object browser views',
     tab: { all: 'All objects', best: 'Best of the night' },
