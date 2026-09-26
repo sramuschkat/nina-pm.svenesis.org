@@ -5,14 +5,15 @@
 # Tempo (24.09.2026): Die Prüfungen laufen als parallele Jobs statt nacheinander; Playwright-Browser
 # kommen aus dem Cache; reine Doku-Änderungen (Arbeitspakete, Changelog, Betrieb, Specs) überspringen
 # Tests, Build und E2E. Übersprungene Jobs gelten für GitHub als erfolgreich.
-# Tempo (26.09.2026, Entscheidung Sven): `test` läuft in 2, die E2E-Suite in 4 Shards auf je eigenem Runner
+# Tempo (26.09.2026, Entscheidung Sven): `test` und die E2E-Suite laufen in Shards auf je eigenem Runner
 # (eigene Datenbank bzw. eigener lokaler Stack je Shard). Sammel-Jobs unter den bisherigen Namen `test` und
 # `e2e + a11y (Playwright, lokaler Stack)` sind nur grün, wenn alle Shards grün (oder übersprungen) sind –
 # Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig. Playwright verteilt beim Sharden einzelne Tests
-# (`fullyParallel`), E2E läuft in 4 Shards. Zwei Vitest-Worker brachten auf dem 2-vCPU-Runner nichts (gemessen
-# 172/157 s statt 173 s) und ließen zeitkritische Tests ins Timeout laufen – deshalb bleibt es bei einem.
-# Minuten (Entscheidung Sven): Nach `pnpm pr:land` hat derselbe Stand gerade im PR bestanden – auf `main`
-# laufen deshalb nur lint · typecheck, build und gitleaks; Tests und E2E auf `main` prüft jede Nacht nightly.yml.
+# (`fullyParallel`).
+# Öffentliches Repo (seit 26.09.2026): Standard-Runner mit 4 vCPU und ohne Minutenbegrenzung. Deshalb
+# `test` in 3 und E2E in 6 Shards (13 gleichzeitige Jobs, Grenze 20), Vitest mit 3 Workern (vitest.config.ts),
+# Typecheck inkrementell und Lint/Prettier mit Cache (aus dem letzten Lauf auf `main`), und Tests samt E2E
+# wieder auch auf `main` – ein Fehler durch zwei einzeln grüne PRs fällt so sofort auf.
 name: ci
 
 on:
@@ -70,19 +71,32 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Nach der Installation wiederherstellen (sonst legt pnpm node_modules neu an). Schlüssel je Commit,
+      # Rückfall auf den letzten Stand – PRs lesen die Caches von `main`.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache/eslint
+            node_modules/.cache/prettier
+            **/*.tsbuildinfo
+            !**/node_modules/**/*.tsbuildinfo
+          key: static-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            static-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            static-${{ runner.os }}-
       - run: pnpm lint
       - run: pnpm typecheck
 
   test-shard:
-    name: test (${{ matrix.shard }}/2)
+    name: test (${{ matrix.shard }}/3)
     needs: changes
-    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     # PostgreSQL 16 als DSQL-Ersatz für Migrationen, Rechte- und Repository-Tests (TK 17, 18).
     # Repeatable Read setzt jede Verbindung selbst (Service-Container kennen kein `command`).
     services:
@@ -109,7 +123,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test --shard=${{ matrix.shard }}/2
+      - run: pnpm test --shard=${{ matrix.shard }}/3
 
   test:
     name: test
@@ -144,15 +158,15 @@ jobs:
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e-shard:
-    name: e2e (${{ matrix.shard }}/4)
+    name: e2e (${{ matrix.shard }}/6)
     needs: changes
-    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
     # und PGlite (TK 17); kein AWS, kein Docker. Enthält `pnpm test:a11y` (a11y.spec.ts, TK 18).
     steps:
@@ -177,7 +191,7 @@ jobs:
       - name: Systembibliotheken für Chromium (mit Cache)
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: pnpm exec playwright install-deps chromium
-      - run: pnpm e2e --shard=${{ matrix.shard }}/4
+      - run: pnpm e2e --shard=${{ matrix.shard }}/6
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

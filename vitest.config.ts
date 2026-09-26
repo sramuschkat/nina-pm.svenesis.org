@@ -14,5 +14,8 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     // Powertools-Logger in Tests stumm schalten.
     env: { POWERTOOLS_LOG_LEVEL: 'SILENT' },
+    // CI (öffentliches Repo, Runner mit 4 vCPU): 3 Worker, ein Kern bleibt für PostgreSQL. Ohne Angabe nähme
+    // Vitest „Kerne − 1“ – ausdrücklich, damit ein anderer Runner-Typ die Zahl nicht still ändert.
+    ...(process.env.CI ? { maxWorkers: 3 } : {}),
   },
 });
