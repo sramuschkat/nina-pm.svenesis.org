@@ -1,0 +1,96 @@
+/* Reiter (components.md §2.12): Unterstrich in Akzentfarbe, Farben und Abstände aus Tokens. */
+.horizontal {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.vertical {
+  display: flex;
+  gap: var(--npm-space-4);
+  min-height: 0;
+  min-width: 0;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  gap: 0 var(--npm-space-3);
+  min-width: 0;
+}
+.horizontal > .bar {
+  border-bottom: 1px solid var(--npm-border);
+  padding: 0 var(--npm-space-2);
+  flex-shrink: 0;
+}
+.list {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.vertical .list {
+  flex-direction: column;
+  width: 11rem;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--npm-text-light);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--npm-text);
+}
+.tab[aria-selected='true'] {
+  color: var(--npm-text);
+  border-bottom-color: var(--npm-accent);
+  font-weight: 600;
+}
+.vertical .tab {
+  border-bottom: none;
+  margin: 0;
+  border-radius: var(--npm-radius);
+  text-align: left;
+}
+.vertical .tab[aria-selected='true'] {
+  background: var(--npm-note-bg);
+  color: var(--npm-link);
+}
+.tab:focus-visible,
+.panel:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: -2px;
+}
+.toolbar {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding-bottom: var(--npm-space-1);
+  min-width: 0;
+}
+.panel {
+  min-width: 0;
+  min-height: 0;
+  flex-grow: 1;
+}
+.vertical .panel {
+  flex-grow: 1;
+}

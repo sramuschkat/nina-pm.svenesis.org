@@ -325,6 +325,112 @@ describe('Rechte und Löschsperre', () => {
   });
 });
 
+describe('Listen-/Detail-Muster (AP-26b)', () => {
+  const second = { ...telescope, id: ID(13), name: 'RC 8', apertureMm: 203, focalLengthMm: 1624 };
+
+  it('Auswahl links zeigt das Detail rechts (aria-current), Suche filtert die Liste', async () => {
+    state.lists = { ...state.lists, telescopes: [telescope, second] };
+    wrap(<TelescopesPage />);
+    expect(await screen.findByRole('heading', { level: 2, name: 'GT81' })).toBeInTheDocument();
+    const list = screen.getByRole('region', { name: 'Teleskope' });
+    const first = within(list).getByRole('button', { name: /^GT81/ });
+    expect(first).toHaveAttribute('aria-current', 'true');
+    fireEvent.click(within(list).getByRole('button', { name: /^RC 8/ }));
+    expect(screen.getByRole('heading', { level: 2, name: 'RC 8' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Öffnung (mm)')).toHaveValue(203);
+    expect(within(list).getByRole('button', { name: /^RC 8/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(first).not.toHaveAttribute('aria-current');
+    fireEvent.change(within(list).getByRole('searchbox', { name: 'Teleskope durchsuchen' }), {
+      target: { value: 'rc' },
+    });
+    expect(within(list).queryByRole('button', { name: /^GT81/ })).not.toBeInTheDocument();
+    expect(within(list).getByRole('button', { name: /^RC 8/ })).toBeInTheDocument();
+  });
+
+  it('ohne Auswahl Leerzustand; *Neu* rechts im Seitenkopf öffnet das leere Formular', async () => {
+    state.lists = { ...state.lists, telescopes: [] };
+    wrap(<TelescopesPage />);
+    expect(
+      await screen.findByText('Wähle links einen Eintrag oder lege einen neuen an.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Öffnung (mm)')).not.toBeInTheDocument();
+    const head = screen.getByRole('heading', { level: 1, name: 'Teleskope' }).parentElement;
+    fireEvent.click(within(head as HTMLElement).getByRole('button', { name: 'Neu' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Neues Teleskop' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Öffnung (mm)')).toHaveValue(null);
+    expect(screen.queryByText('Wähle links einen Eintrag oder lege einen neuen an.')).toBeNull();
+    await expectNoSeriousA11y();
+  });
+
+  it('nach dem Löschen wieder Leerzustand', async () => {
+    state.remove.mockResolvedValue(undefined);
+    wrap(<TelescopesPage />);
+    await screen.findByRole('heading', { level: 2, name: 'GT81' });
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    expect(
+      await screen.findByText('Wähle links einen Eintrag oder lege einen neuen an.'),
+    ).toBeInTheDocument();
+  });
+
+  it('User ohne Auswahl: Leerzustand ohne Aufforderung zum Anlegen', async () => {
+    state.me = me('user');
+    state.lists = { ...state.lists, cameras: [] };
+    wrap(<CamerasPage />);
+    expect(await screen.findByText('Wähle links einen Eintrag.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Neu' })).not.toBeInTheDocument();
+  });
+
+  it('Filter: Kurzname in der Sammlung wählt den Filter rechts; Vorlagen ohne Auswahl leer', async () => {
+    const ha = {
+      id: ID(40),
+      shortName: 'Ha',
+      fullName: 'Wasserstoff',
+      brand: '',
+      filterType: 'narrowband',
+      telescopeId: null,
+      size: null,
+      shape: null,
+      mountType: null,
+      bandwidthNm: 3,
+      centerWavelengthNm: 656.3,
+      photometricBand: 'none',
+      transmissionPct: null,
+      thicknessMm: null,
+      colorHex: '#CC0000',
+      defaultOnNewProject: false,
+      defaultExposureS: null,
+      defaultMoonProfileId: null,
+      notes: '',
+      createdAt: AT,
+      updatedAt: AT,
+    };
+    const oiii = { ...ha, id: ID(41), shortName: 'OIII', fullName: 'Sauerstoff' };
+    state.lists = { ...state.lists, filters: [ha, oiii] };
+    wrap(<FiltersPage />);
+    const table = await screen.findByRole('table', { name: 'Filtersammlung' });
+    expect(screen.getByRole('heading', { level: 2, name: 'Ha' })).toBeInTheDocument();
+    fireEvent.click(within(table).getByRole('button', { name: /OIII/ }));
+    expect(screen.getByRole('heading', { level: 2, name: 'OIII' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Langname')).toHaveValue('Sauerstoff');
+    expect(within(table).getByRole('button', { name: /OIII/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    const templates = screen.getByRole('region', { name: 'Belichtungsplan-Vorlagen' });
+    expect(within(templates).getByText('Noch keine Vorlage angelegt.')).toBeInTheDocument();
+    expect(
+      within(templates).getByText('Wähle links einen Eintrag oder lege einen neuen an.'),
+    ).toBeInTheDocument();
+    fireEvent.click(within(templates).getByRole('button', { name: 'Neue Vorlage' }));
+    expect(within(templates).getByRole('form', { name: 'Vorlage bearbeiten' })).toBeInTheDocument();
+  });
+});
+
 describe('Hilfsfunktionen', () => {
   it('Länge falsch signiert: Starfront mit +99° in America/Chicago', () => {
     expect(longitudeSuspicious(-99.38, 'America/Chicago')).toBe(false);

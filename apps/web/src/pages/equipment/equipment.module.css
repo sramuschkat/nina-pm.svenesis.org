@@ -74,31 +74,59 @@
   font-size: var(--npm-font-small);
 }
 
-/* Auswahl | Formular | Berechnet – ab 1280 px drei Spalten, darunter gestapelt (768 px ohne Scrollen). */
-.layout {
+/*
+ * Listen-/Detail-Muster (AP-26b): links Liste, rechts Detail – ab 1024 px nebeneinander, darunter
+ * untereinander mit kompakter Liste (768 px ohne horizontales Scrollen). Berechnete Werte (`aside`)
+ * stehen ab 1440 px neben dem Formular, sonst darunter.
+ */
+.listDetail {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) minmax(0, 3fr) minmax(260px, 1.5fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
   gap: var(--npm-space-5);
   align-items: start;
 }
-.layoutTwo {
+.listDetailWide {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+.listColumn,
+.detailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+  min-width: 0;
+}
+.detailSplit {
   display: grid;
-  grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
   gap: var(--npm-space-5);
   align-items: start;
 }
-@media (max-width: 1279px) {
-  .layout {
-    grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
-  }
-  .layout > :nth-child(3) {
-    grid-column: 1 / -1;
-  }
+.emptyDetail {
+  composes: panel;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--npm-row-h) * 6);
+  color: var(--npm-text-light);
+  text-align: center;
 }
-@media (max-width: 900px) {
-  .layout,
-  .layoutTwo {
+.emptyDetail p {
+  margin: 0;
+}
+@media (max-width: 1439px) {
+  .detailSplit {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1023px) {
+  .listDetail,
+  .listDetailWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Kompakte Liste über dem Detail: höchstens acht Zeilen, der Rest scrollt senkrecht. */
+  .listColumn .pickList {
+    max-height: calc(var(--npm-row-h) * 8);
+    overflow-y: auto;
+    padding: 2px;
   }
 }
 .stack {
@@ -118,7 +146,8 @@
   justify-content: space-between;
   gap: var(--npm-space-2);
 }
-.pickHead h2 {
+.pickHead h2,
+.pickHead h3 {
   font-size: var(--npm-font-h3);
 }
 .pickList {

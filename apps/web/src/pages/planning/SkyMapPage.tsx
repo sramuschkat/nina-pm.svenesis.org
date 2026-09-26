@@ -53,6 +53,7 @@ import { SkyCanvas } from './skymap/SkyCanvas';
 import { fromZoned, nightKeyAt, sceneAt, zonedParts } from './skymap/scene';
 import { loadBrightSky, loadFaintStars, type BrightSky, type StarField } from './skymap/sky-data';
 import { SURVEY_IDS, type SurveyId } from './skymap/surveys';
+import { Tabs } from '../../components/Tabs';
 import styles from './skymap/skymap.module.css';
 
 const FRAME_COLORS = {
@@ -1022,7 +1023,6 @@ function Sidebar({
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<'photos' | 'catalogs' | 'overlays'>('photos');
-  const tabIds = { base: useId() };
   const check = (key: Overlay, label: string, disabled = false) => (
     <label className={styles.check} key={key}>
       <input
@@ -1036,174 +1036,161 @@ function Sidebar({
   );
   return (
     <aside className={styles.sidebar} aria-label={t('skymap.sidebarLabel')}>
-      <div role="tablist" className={styles.tabs} aria-label={t('skymap.sidebarLabel')}>
-        {(['photos', 'catalogs', 'overlays'] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            id={`${tabIds.base}-${k}`}
-            aria-selected={tab === k}
-            aria-controls={`${tabIds.base}-${k}-panel`}
-            className={tab === k ? styles.tabActive : styles.tab}
-            onClick={() => setTab(k)}
-          >
-            {t(`skymap.sidebar.${k}`)}
-          </button>
-        ))}
-      </div>
-      <div
-        role="tabpanel"
-        id={`${tabIds.base}-photos-panel`}
-        aria-labelledby={`${tabIds.base}-photos`}
-        hidden={tab !== 'photos'}
-        className={styles.panel}
-      >
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.sidebar.photos')}</legend>
-          {(['none', ...SURVEY_IDS] as const).map((s) => (
-            <label className={styles.check} key={s}>
-              <input
-                type="radio"
-                name="skymap-survey"
-                checked={state.survey === s}
-                onChange={() => update({ survey: s as SurveyId | 'none' })}
-              />
-              {t(`skymap.survey.${s}`)}
-            </label>
-          ))}
-        </fieldset>
-        <div className={styles.field}>
-          <label htmlFor="skymap-alpha">{t('skymap.photoAlpha')}</label>
-          <input
-            id="skymap-alpha"
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.05}
-            value={state.alpha}
-            onChange={(e) => update({ alpha: Number(e.target.value) })}
-          />
-        </div>
-        {photoStatus.pending > 0 ? (
-          <p className={styles.muted} role="status">
-            {t('skymap.photoLoading', { count: photoStatus.pending })}
-          </p>
-        ) : null}
-        <p className={styles.muted}>{t('skymap.surveyNote')}</p>
-      </div>
-      <div
-        role="tabpanel"
-        id={`${tabIds.base}-catalogs-panel`}
-        aria-labelledby={`${tabIds.base}-catalogs`}
-        hidden={tab !== 'catalogs'}
-        className={styles.panel}
-      >
-        {check('dso', t('skymap.dso'))}
-        {check('dsoSizes', t('skymap.dsoSizes'))}
-        <div className={styles.field}>
-          <label htmlFor="skymap-density">{t('skymap.density', { mag: state.density })}</label>
-          <input
-            id="skymap-density"
-            type="range"
-            min={4}
-            max={16}
-            step={0.5}
-            value={state.density}
-            onChange={(e) => update({ density: Number(e.target.value) })}
-          />
-        </div>
-        {state.overlays.has('dso') ? (
-          <p className={styles.muted}>{t('skymap.dsoCount', dsoCount)}</p>
-        ) : null}
-        {check('starNames', t('skymap.starNames'))}
-        {check('milkyWay', t('skymap.milkyWay'))}
-        {check('constLines', t('skymap.constLines'))}
-        {check('constBounds', t('skymap.constBounds'))}
-        {check('constLabels', t('skymap.constLabels'))}
-      </div>
-      <div
-        role="tabpanel"
-        id={`${tabIds.base}-overlays-panel`}
-        aria-labelledby={`${tabIds.base}-overlays`}
-        hidden={tab !== 'overlays'}
-        className={styles.panel}
-      >
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.group.projects')}</legend>
-          {PROJECT_OVERLAYS.map((p) => (
-            <label className={styles.check} key={p}>
-              <input
-                type="checkbox"
-                checked={state.projects.has(p)}
-                onChange={() => update({ projects: toggle(state.projects, p) })}
-              />
-              <span className={styles.swatch} data-category={p} aria-hidden />
-              {t(`skymap.project.${p}`)}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.group.coords')}</legend>
-          {check('eqGrid', t('skymap.eqGrid'))}
-          {check('altAzGrid', t('skymap.altAzGrid'), !hasSite)}
-          {check('ecliptic', t('skymap.ecliptic'))}
-          {check('galactic', t('skymap.galactic'))}
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.group.observer')}</legend>
-          {check('horizon', t('skymap.horizon'), !hasSite)}
-          {check('minAlt', t('skymap.minAlt', { deg: DEFAULT_MIN_ALT }), !hasSite)}
-          {check('meridian', t('skymap.meridian'), !hasSite)}
-          {check('zenith', t('skymap.zenith'), !hasSite)}
-          {check('heatmap', t('skymap.heatmap'), !hasSite)}
-          <div className={styles.field}>
-            <label htmlFor="skymap-heat">
-              {t('skymap.heatAlt')}: {state.heat}°
-            </label>
-            <input
-              id="skymap-heat"
-              type="range"
-              min={0}
-              max={90}
-              step={1}
-              value={state.heat}
-              disabled={!hasSite || !state.overlays.has('heatmap')}
-              onChange={(e) => update({ heat: Number(e.target.value) })}
-            />
-          </div>
-          {!hasSite ? <p className={styles.muted}>{t('skymap.needsSite')}</p> : null}
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.group.solar')}</legend>
-          {check('sun', t('skymap.sun'), !hasSite)}
-          {check('daySky', t('skymap.daySky'), !hasSite)}
-          {check('moon', t('skymap.moon'), !hasSite)}
-          {check('planets', t('skymap.planets'), !hasSite)}
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('skymap.orientation')}</legend>
-          <label className={styles.check}>
-            <input
-              type="radio"
-              name="skymap-orient"
-              checked={state.orient === 'north'}
-              onChange={() => update({ orient: 'north' })}
-            />
-            {t('skymap.orientNorth')}
-          </label>
-          <label className={styles.check}>
-            <input
-              type="radio"
-              name="skymap-orient"
-              checked={state.orient === 'horizon'}
-              disabled={!hasSite}
-              onChange={() => update({ orient: 'horizon' })}
-            />
-            {t('skymap.orientHorizon')}
-          </label>
-        </fieldset>
-      </div>
+      <Tabs
+        label={t('skymap.sidebarLabel')}
+        tabs={(['photos', 'catalogs', 'overlays'] as const).map((k) => ({
+          key: k,
+          label: t(`skymap.sidebar.${k}`),
+        }))}
+        value={tab}
+        onChange={setTab}
+        keepMounted
+        panelClassName={styles.panel}
+        panels={{
+          photos: (
+            <>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.sidebar.photos')}</legend>
+                {(['none', ...SURVEY_IDS] as const).map((s) => (
+                  <label className={styles.check} key={s}>
+                    <input
+                      type="radio"
+                      name="skymap-survey"
+                      checked={state.survey === s}
+                      onChange={() => update({ survey: s as SurveyId | 'none' })}
+                    />
+                    {t(`skymap.survey.${s}`)}
+                  </label>
+                ))}
+              </fieldset>
+              <div className={styles.field}>
+                <label htmlFor="skymap-alpha">{t('skymap.photoAlpha')}</label>
+                <input
+                  id="skymap-alpha"
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={state.alpha}
+                  onChange={(e) => update({ alpha: Number(e.target.value) })}
+                />
+              </div>
+              {photoStatus.pending > 0 ? (
+                <p className={styles.muted} role="status">
+                  {t('skymap.photoLoading', { count: photoStatus.pending })}
+                </p>
+              ) : null}
+              <p className={styles.muted}>{t('skymap.surveyNote')}</p>
+            </>
+          ),
+          catalogs: (
+            <>
+              {check('dso', t('skymap.dso'))}
+              {check('dsoSizes', t('skymap.dsoSizes'))}
+              <div className={styles.field}>
+                <label htmlFor="skymap-density">
+                  {t('skymap.density', { mag: state.density })}
+                </label>
+                <input
+                  id="skymap-density"
+                  type="range"
+                  min={4}
+                  max={16}
+                  step={0.5}
+                  value={state.density}
+                  onChange={(e) => update({ density: Number(e.target.value) })}
+                />
+              </div>
+              {state.overlays.has('dso') ? (
+                <p className={styles.muted}>{t('skymap.dsoCount', dsoCount)}</p>
+              ) : null}
+              {check('starNames', t('skymap.starNames'))}
+              {check('milkyWay', t('skymap.milkyWay'))}
+              {check('constLines', t('skymap.constLines'))}
+              {check('constBounds', t('skymap.constBounds'))}
+              {check('constLabels', t('skymap.constLabels'))}
+            </>
+          ),
+          overlays: (
+            <>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.group.projects')}</legend>
+                {PROJECT_OVERLAYS.map((p) => (
+                  <label className={styles.check} key={p}>
+                    <input
+                      type="checkbox"
+                      checked={state.projects.has(p)}
+                      onChange={() => update({ projects: toggle(state.projects, p) })}
+                    />
+                    <span className={styles.swatch} data-category={p} aria-hidden />
+                    {t(`skymap.project.${p}`)}
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.group.coords')}</legend>
+                {check('eqGrid', t('skymap.eqGrid'))}
+                {check('altAzGrid', t('skymap.altAzGrid'), !hasSite)}
+                {check('ecliptic', t('skymap.ecliptic'))}
+                {check('galactic', t('skymap.galactic'))}
+              </fieldset>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.group.observer')}</legend>
+                {check('horizon', t('skymap.horizon'), !hasSite)}
+                {check('minAlt', t('skymap.minAlt', { deg: DEFAULT_MIN_ALT }), !hasSite)}
+                {check('meridian', t('skymap.meridian'), !hasSite)}
+                {check('zenith', t('skymap.zenith'), !hasSite)}
+                {check('heatmap', t('skymap.heatmap'), !hasSite)}
+                <div className={styles.field}>
+                  <label htmlFor="skymap-heat">
+                    {t('skymap.heatAlt')}: {state.heat}°
+                  </label>
+                  <input
+                    id="skymap-heat"
+                    type="range"
+                    min={0}
+                    max={90}
+                    step={1}
+                    value={state.heat}
+                    disabled={!hasSite || !state.overlays.has('heatmap')}
+                    onChange={(e) => update({ heat: Number(e.target.value) })}
+                  />
+                </div>
+                {!hasSite ? <p className={styles.muted}>{t('skymap.needsSite')}</p> : null}
+              </fieldset>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.group.solar')}</legend>
+                {check('sun', t('skymap.sun'), !hasSite)}
+                {check('daySky', t('skymap.daySky'), !hasSite)}
+                {check('moon', t('skymap.moon'), !hasSite)}
+                {check('planets', t('skymap.planets'), !hasSite)}
+              </fieldset>
+              <fieldset className={styles.group}>
+                <legend>{t('skymap.orientation')}</legend>
+                <label className={styles.check}>
+                  <input
+                    type="radio"
+                    name="skymap-orient"
+                    checked={state.orient === 'north'}
+                    onChange={() => update({ orient: 'north' })}
+                  />
+                  {t('skymap.orientNorth')}
+                </label>
+                <label className={styles.check}>
+                  <input
+                    type="radio"
+                    name="skymap-orient"
+                    checked={state.orient === 'horizon'}
+                    disabled={!hasSite}
+                    onChange={() => update({ orient: 'horizon' })}
+                  />
+                  {t('skymap.orientHorizon')}
+                </label>
+              </fieldset>
+            </>
+          ),
+        }}
+      />
     </aside>
   );
 }

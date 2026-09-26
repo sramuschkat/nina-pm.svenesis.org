@@ -10,7 +10,16 @@ export const ADMIN_PATHS = {
   log: '/verwaltung/protokoll',
 } as const;
 
-export function AdminLayout({ title, children }: { title: string; children: ReactNode }) {
+export function AdminLayout({
+  title,
+  actions,
+  children,
+}: {
+  title: string;
+  /** Knöpfe rechts neben der Überschrift (z. B. Dialoge öffnen, AP-26b). */
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
   const { t } = useTranslation();
   return (
     <div className={styles.page}>
@@ -24,6 +33,7 @@ export function AdminLayout({ title, children }: { title: string; children: Reac
       />
       <div className={styles.head}>
         <h1>{title}</h1>
+        {actions ? <div className={styles.actions}>{actions}</div> : null}
       </div>
       {children}
     </div>

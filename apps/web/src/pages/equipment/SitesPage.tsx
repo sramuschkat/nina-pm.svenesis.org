@@ -1,8 +1,8 @@
 /**
- * S-11 Standorte (FA-STO-01…06; FK 14.3): links Auswahl, Mitte Formular (Breite/Länge dezimal **und**
- * °′″, Höhe m/ft synchron), Remote-Verbindungen als Linkliste ohne Passwörter, rechts Kennwerte mit
- * Kartenlink und Plausibilitätsprüfung der Länge gegen die Zeitzone. Karte und 7-Tage-Astro-Wetter folgen
- * mit AP-23 (Wetter).
+ * S-11 Standorte (FA-STO-01…06; FK 14.3): Listen-/Detail-Muster (AP-26b) – links Auswahl, rechts Formular
+ * (Breite/Länge dezimal **und** °′″, Höhe m/ft synchron), Remote-Verbindungen als Linkliste ohne
+ * Passwörter und Kennwerte mit Kartenlink, Plausibilitätsprüfung der Länge gegen die Zeitzone und
+ * 7-Tage-Astro-Wetter (AP-23).
  */
 import { observatoryTypes, SiteInput, SiteLinkInput } from '@nina-pm/shared';
 import { useMemo, useState, type FormEvent } from 'react';
@@ -20,6 +20,8 @@ import {
   DeleteDialog,
   EquipmentLayout,
   FormActions,
+  ListDetail,
+  NewButton,
   NumberField,
   PickList,
   SelectField,
@@ -147,229 +149,241 @@ export function SitesPage() {
   };
   const Map = actionIcons.map;
   return (
-    <EquipmentLayout title={t('equipment.sites.title')}>
-      <div className={styles.layout}>
-        <PickList
-          label={t('equipment.sites.list')}
-          items={editor.items}
-          selectedId={editor.selectedId}
-          onSelect={editor.select}
-          onNew={canWrite ? () => editor.startNew() : undefined}
-          state={editor.list.isError ? 'error' : editor.list.isPending ? 'loading' : 'ready'}
-          onRetry={() => void editor.list.refetch()}
-          emptyText={t('equipment.sites.empty')}
-          render={(s: SiteView) => (
-            <>
-              <span>{s.name}</span>
-              <span className={styles.pickMeta}>{s.timeZone}</span>
-            </>
-          )}
-        />
-        <div className={styles.stack}>
-          <form className={styles.form} onSubmit={submit} aria-labelledby="site-form-title">
-            <div className={styles.formTitle}>
-              <h2 id="site-form-title">
-                {editor.selected ? editor.selected.name : t('equipment.sites.new')}
-              </h2>
+    <EquipmentLayout
+      title={t('equipment.sites.title')}
+      actions={canWrite ? <NewButton onClick={() => editor.startNew()} /> : null}
+    >
+      <ListDetail
+        state={editor.listState}
+        list={
+          <PickList
+            label={t('equipment.sites.list')}
+            items={editor.items}
+            selectedId={editor.selectedId}
+            onSelect={editor.select}
+            state={editor.listState}
+            onRetry={() => void editor.list.refetch()}
+            emptyText={t('equipment.sites.empty')}
+            searchText={(s: SiteView) => `${s.name} ${s.pierName ?? ''} ${s.timeZone}`}
+            render={(s: SiteView) => (
+              <>
+                <span>{s.name}</span>
+                <span className={styles.pickMeta}>{s.timeZone}</span>
+              </>
+            )}
+          />
+        }
+        detail={
+          editor.hasDetail ? (
+            <div className={styles.stack}>
+              <form className={styles.form} onSubmit={submit} aria-labelledby="site-form-title">
+                <div className={styles.formTitle}>
+                  <h2 id="site-form-title">
+                    {editor.selected ? editor.selected.name : t('equipment.sites.new')}
+                  </h2>
+                </div>
+                {editor.del.usage ? (
+                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                ) : null}
+                <div className={styles.grid}>
+                  <TextField
+                    label={t('equipment.field.name')}
+                    value={d.name}
+                    onChange={(v) => editor.set('name', v)}
+                    error={fieldError('name')}
+                    disabled={disabled}
+                  />
+                  <TextField
+                    label={t('equipment.sites.field.pierName')}
+                    value={d.pierName ?? ''}
+                    onChange={(v) => editor.set('pierName', v)}
+                    disabled={disabled}
+                  />
+                  <SelectField
+                    label={t('equipment.sites.field.observatoryType')}
+                    value={d.observatoryType}
+                    onChange={(v) => editor.set('observatoryType', v)}
+                    options={observatoryTypes.map((o) => ({
+                      value: o,
+                      label: t(`equipment.observatoryType.${o}`),
+                    }))}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className={styles.section}>
+                  <h3>{t('equipment.sites.position')}</h3>
+                  <div className={styles.grid}>
+                    <div className={styles.field}>
+                      <CoordinateInput
+                        kind="lat"
+                        label={t('equipment.sites.field.latitude')}
+                        valueDeg={d.latitudeDeg}
+                        onChange={(v) => editor.set('latitudeDeg', v)}
+                        format={coordFormat}
+                        onFormatChange={setCoordFormat}
+                        disabled={disabled}
+                        required
+                      />
+                      <span className={styles.muted} data-testid="lat-other">
+                        {d.latitudeDeg === null
+                          ? ''
+                          : formatCoordinate(
+                              'lat',
+                              d.latitudeDeg,
+                              coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
+                            )}
+                      </span>
+                      {fieldError('latitudeDeg') ? (
+                        <span className={styles.fieldError}>{fieldError('latitudeDeg')}</span>
+                      ) : null}
+                    </div>
+                    <div className={styles.field}>
+                      <CoordinateInput
+                        kind="lon"
+                        label={t('equipment.sites.field.longitude')}
+                        valueDeg={d.longitudeDeg}
+                        onChange={(v) => editor.set('longitudeDeg', v)}
+                        format={coordFormat}
+                        onFormatChange={setCoordFormat}
+                        disabled={disabled}
+                        required
+                      />
+                      <span className={styles.muted}>
+                        {d.longitudeDeg === null
+                          ? ''
+                          : formatCoordinate(
+                              'lon',
+                              d.longitudeDeg,
+                              coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
+                            )}
+                      </span>
+                      {fieldError('longitudeDeg') ? (
+                        <span className={styles.fieldError}>{fieldError('longitudeDeg')}</span>
+                      ) : null}
+                    </div>
+                    <NumberField
+                      label={t('equipment.sites.field.elevation')}
+                      unit="m"
+                      value={d.elevationM}
+                      onChange={(v) => editor.set('elevationM', v)}
+                      error={fieldError('elevationM')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.sites.field.elevation')}
+                      unit="ft"
+                      value={d.elevationM === null ? null : Math.round(d.elevationM * FEET_PER_M)}
+                      onChange={(v) =>
+                        editor.set(
+                          'elevationM',
+                          v === null ? null : Math.round((v / FEET_PER_M) * 10) / 10,
+                        )
+                      }
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.sites.field.bortle')}
+                      value={d.bortleClass}
+                      min={1}
+                      max={9}
+                      onChange={(v) => editor.set('bortleClass', v)}
+                      error={fieldError('bortleClass')}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.sites.field.timeZone')}
+                      value={d.timeZone}
+                      list="site-tz-list"
+                      onChange={(v) => editor.set('timeZone', v.trim())}
+                      error={
+                        fieldError('timeZone') ??
+                        (zones.includes(d.timeZone) ? undefined : t('equipment.sites.tzUnknown'))
+                      }
+                      hint={t('equipment.sites.tzHint')}
+                      disabled={disabled}
+                    />
+                    <datalist id="site-tz-list">
+                      {zones.map((z) => (
+                        <option key={z} value={z} />
+                      ))}
+                    </datalist>
+                  </div>
+                  {suspicious ? (
+                    <p className={styles.warning} role="status">
+                      {t('equipment.sites.longitudeSuspicious')}
+                    </p>
+                  ) : null}
+                </div>
+                <div className={styles.section}>
+                  <div className={styles.grid}>
+                    <TextField
+                      label={t('equipment.sites.field.weatherSafetyUrl')}
+                      type="url"
+                      maxLength={500}
+                      value={d.weatherSafetyUrl ?? ''}
+                      onChange={(v) => editor.set('weatherSafetyUrl', v)}
+                      error={fieldError('weatherSafetyUrl')}
+                      disabled={disabled}
+                      wide
+                    />
+                    <TextField
+                      label={t('equipment.field.notes')}
+                      value={d.notes}
+                      maxLength={4000}
+                      multiline
+                      onChange={(v) => editor.set('notes', v)}
+                      disabled={disabled}
+                      wide
+                    />
+                  </div>
+                </div>
+                <FormActions
+                  canWrite={canWrite}
+                  saving={editor.save.isPending}
+                  saved={editor.saved}
+                  error={editor.save.error}
+                  onDelete={editor.onDelete((s) => s.name)}
+                />
+              </form>
+              {editor.selected ? <SiteLinks site={editor.selected} canWrite={canWrite} /> : null}
             </div>
-            {editor.del.usage ? (
-              <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+          ) : null
+        }
+        aside={
+          <aside className={styles.derived} aria-labelledby="site-derived">
+            <h2 id="site-derived">{t('equipment.sites.overview')}</h2>
+            <dl>
+              <dt>{t('equipment.sites.field.latitude')}</dt>
+              <dd>{num(d.latitudeDeg, 4)}°</dd>
+              <dt>{t('equipment.sites.field.longitude')}</dt>
+              <dd>{num(d.longitudeDeg, 4)}°</dd>
+              <dt>{t('equipment.sites.field.elevation')}</dt>
+              <dd>{d.elevationM === null ? '–' : `${num(d.elevationM, 0)} m`}</dd>
+              <dt>{t('equipment.sites.field.timeZone')}</dt>
+              <dd>{d.timeZone}</dd>
+            </dl>
+            {d.latitudeDeg !== null && d.longitudeDeg !== null ? (
+              <a
+                className={styles.button}
+                href={`https://www.openstreetmap.org/?mlat=${String(d.latitudeDeg)}&mlon=${String(d.longitudeDeg)}#map=12/${String(d.latitudeDeg)}/${String(d.longitudeDeg)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Map size={ICON_SIZE.table} aria-hidden />
+                {t('equipment.sites.openMap')}
+              </a>
             ) : null}
-            <div className={styles.grid}>
-              <TextField
-                label={t('equipment.field.name')}
-                value={d.name}
-                onChange={(v) => editor.set('name', v)}
-                error={fieldError('name')}
-                disabled={disabled}
-              />
-              <TextField
-                label={t('equipment.sites.field.pierName')}
-                value={d.pierName ?? ''}
-                onChange={(v) => editor.set('pierName', v)}
-                disabled={disabled}
-              />
-              <SelectField
-                label={t('equipment.sites.field.observatoryType')}
-                value={d.observatoryType}
-                onChange={(v) => editor.set('observatoryType', v)}
-                options={observatoryTypes.map((o) => ({
-                  value: o,
-                  label: t(`equipment.observatoryType.${o}`),
-                }))}
-                disabled={disabled}
-              />
-            </div>
-            <div className={styles.section}>
-              <h3>{t('equipment.sites.position')}</h3>
-              <div className={styles.grid}>
-                <div className={styles.field}>
-                  <CoordinateInput
-                    kind="lat"
-                    label={t('equipment.sites.field.latitude')}
-                    valueDeg={d.latitudeDeg}
-                    onChange={(v) => editor.set('latitudeDeg', v)}
-                    format={coordFormat}
-                    onFormatChange={setCoordFormat}
-                    disabled={disabled}
-                    required
-                  />
-                  <span className={styles.muted} data-testid="lat-other">
-                    {d.latitudeDeg === null
-                      ? ''
-                      : formatCoordinate(
-                          'lat',
-                          d.latitudeDeg,
-                          coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
-                        )}
-                  </span>
-                  {fieldError('latitudeDeg') ? (
-                    <span className={styles.fieldError}>{fieldError('latitudeDeg')}</span>
-                  ) : null}
-                </div>
-                <div className={styles.field}>
-                  <CoordinateInput
-                    kind="lon"
-                    label={t('equipment.sites.field.longitude')}
-                    valueDeg={d.longitudeDeg}
-                    onChange={(v) => editor.set('longitudeDeg', v)}
-                    format={coordFormat}
-                    onFormatChange={setCoordFormat}
-                    disabled={disabled}
-                    required
-                  />
-                  <span className={styles.muted}>
-                    {d.longitudeDeg === null
-                      ? ''
-                      : formatCoordinate(
-                          'lon',
-                          d.longitudeDeg,
-                          coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
-                        )}
-                  </span>
-                  {fieldError('longitudeDeg') ? (
-                    <span className={styles.fieldError}>{fieldError('longitudeDeg')}</span>
-                  ) : null}
-                </div>
-                <NumberField
-                  label={t('equipment.sites.field.elevation')}
-                  unit="m"
-                  value={d.elevationM}
-                  onChange={(v) => editor.set('elevationM', v)}
-                  error={fieldError('elevationM')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.sites.field.elevation')}
-                  unit="ft"
-                  value={d.elevationM === null ? null : Math.round(d.elevationM * FEET_PER_M)}
-                  onChange={(v) =>
-                    editor.set(
-                      'elevationM',
-                      v === null ? null : Math.round((v / FEET_PER_M) * 10) / 10,
-                    )
-                  }
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.sites.field.bortle')}
-                  value={d.bortleClass}
-                  min={1}
-                  max={9}
-                  onChange={(v) => editor.set('bortleClass', v)}
-                  error={fieldError('bortleClass')}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.sites.field.timeZone')}
-                  value={d.timeZone}
-                  list="site-tz-list"
-                  onChange={(v) => editor.set('timeZone', v.trim())}
-                  error={
-                    fieldError('timeZone') ??
-                    (zones.includes(d.timeZone) ? undefined : t('equipment.sites.tzUnknown'))
-                  }
-                  hint={t('equipment.sites.tzHint')}
-                  disabled={disabled}
-                />
-                <datalist id="site-tz-list">
-                  {zones.map((z) => (
-                    <option key={z} value={z} />
-                  ))}
-                </datalist>
-              </div>
-              {suspicious ? (
-                <p className={styles.warning} role="status">
-                  {t('equipment.sites.longitudeSuspicious')}
-                </p>
-              ) : null}
-            </div>
-            <div className={styles.section}>
-              <div className={styles.grid}>
-                <TextField
-                  label={t('equipment.sites.field.weatherSafetyUrl')}
-                  type="url"
-                  maxLength={500}
-                  value={d.weatherSafetyUrl ?? ''}
-                  onChange={(v) => editor.set('weatherSafetyUrl', v)}
-                  error={fieldError('weatherSafetyUrl')}
-                  disabled={disabled}
-                  wide
-                />
-                <TextField
-                  label={t('equipment.field.notes')}
-                  value={d.notes}
-                  maxLength={4000}
-                  multiline
-                  onChange={(v) => editor.set('notes', v)}
-                  disabled={disabled}
-                  wide
-                />
-              </div>
-            </div>
-            <FormActions
-              canWrite={canWrite}
-              saving={editor.save.isPending}
-              saved={editor.saved}
-              error={editor.save.error}
-              onDelete={editor.onDelete((s) => s.name)}
-            />
-          </form>
-          {editor.selected ? <SiteLinks site={editor.selected} canWrite={canWrite} /> : null}
-        </div>
-        <aside className={styles.derived} aria-labelledby="site-derived">
-          <h2 id="site-derived">{t('equipment.sites.overview')}</h2>
-          <dl>
-            <dt>{t('equipment.sites.field.latitude')}</dt>
-            <dd>{num(d.latitudeDeg, 4)}°</dd>
-            <dt>{t('equipment.sites.field.longitude')}</dt>
-            <dd>{num(d.longitudeDeg, 4)}°</dd>
-            <dt>{t('equipment.sites.field.elevation')}</dt>
-            <dd>{d.elevationM === null ? '–' : `${num(d.elevationM, 0)} m`}</dd>
-            <dt>{t('equipment.sites.field.timeZone')}</dt>
-            <dd>{d.timeZone}</dd>
-          </dl>
-          {d.latitudeDeg !== null && d.longitudeDeg !== null ? (
-            <a
-              className={styles.button}
-              href={`https://www.openstreetmap.org/?mlat=${String(d.latitudeDeg)}&mlon=${String(d.longitudeDeg)}#map=12/${String(d.latitudeDeg)}/${String(d.longitudeDeg)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Map size={ICON_SIZE.table} aria-hidden />
-              {t('equipment.sites.openMap')}
-            </a>
-          ) : null}
-          {d.weatherSafetyUrl ? (
-            <a href={d.weatherSafetyUrl} target="_blank" rel="noopener noreferrer">
-              {t('equipment.sites.weatherSafety')}
-            </a>
-          ) : null}
-          {editor.selected ? (
-            <SiteWeather siteId={editor.selected.id} siteName={editor.selected.name} compact />
-          ) : null}
-        </aside>
-      </div>
+            {d.weatherSafetyUrl ? (
+              <a href={d.weatherSafetyUrl} target="_blank" rel="noopener noreferrer">
+                {t('equipment.sites.weatherSafety')}
+              </a>
+            ) : null}
+            {editor.selected ? (
+              <SiteWeather siteId={editor.selected.id} siteName={editor.selected.name} compact />
+            ) : null}
+          </aside>
+        }
+      />
       <DeleteDialog dialog={editor.del.dialog} />
     </EquipmentLayout>
   );

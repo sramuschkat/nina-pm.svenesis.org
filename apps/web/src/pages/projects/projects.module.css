@@ -1,5 +1,5 @@
-/* Projekt-Editor S-31 (FK 14.3): volle Breite; oben drei Spalten ab 1280 px, darunter gestapelt;
-   Abstände und Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den Ausrüstungsseiten. */
+/* Projektseiten und Projekt-Editor S-31 (FK 14.3, AP-26b): volle Breite; Abstände und Farben nur über
+   Tokens. Felder, Knöpfe und Tabellen aus den Ausrüstungsseiten. */
 .page {
   composes: page from '../equipment/equipment.module.css';
 }
@@ -33,18 +33,6 @@
 .num {
   composes: num from '../equipment/equipment.module.css';
 }
-.tabs {
-  composes: tabs from '../equipment/equipment.module.css';
-}
-.tab {
-  composes: tab from '../equipment/equipment.module.css';
-}
-/* Reiter als Schaltflächen (role=tab): aktiver Reiter wie die Navigations-Reiter hervorgehoben. */
-.tab[aria-selected='true'] {
-  border-bottom-color: var(--npm-accent);
-  font-weight: 600;
-  color: var(--npm-link);
-}
 .note {
   composes: note from '../equipment/equipment.module.css';
 }
@@ -69,16 +57,16 @@
 .field {
   composes: field from '../equipment/equipment.module.css';
 }
-.rig {
-  flex: 1 1 320px;
-  min-width: 260px;
-  max-width: 480px;
-}
 .stack {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-3);
   min-width: 0;
+}
+/* Inhalt der Reiter in Projektliste, Projektkarte und Meine Objekte (Tabs, AP-26b) */
+.tabPanel {
+  composes: stack;
+  padding-top: var(--npm-space-3);
 }
 
 /* Brotkrumen und Kopf */
@@ -112,18 +100,6 @@
   gap: var(--npm-space-2);
   margin-left: auto;
 }
-.headFacts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-4);
-  margin: 0;
-  font-size: var(--npm-font-small);
-  color: var(--npm-text-light);
-}
-.headFacts strong {
-  color: var(--npm-text);
-  font-variant-numeric: tabular-nums;
-}
 .favorite[aria-pressed='true'] {
   color: var(--npm-warning);
 }
@@ -132,18 +108,6 @@
   color: var(--npm-warning);
 }
 
-.column {
-  composes: panel;
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
-.column h2,
-.plan h2 {
-  margin: 0;
-  font-size: var(--npm-font-h3);
-}
 .preview {
   display: flex;
   align-items: center;
@@ -187,17 +151,6 @@
   font-size: var(--npm-font-small);
 }
 
-/* Oberer Bereich als Reiter: Zielinformationen | Bedingungen | Vorschau (Entscheidung 24.09.2026) */
-.topTabs {
-  composes: panel;
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
-.topTabs > section[hidden] {
-  display: none;
-}
 .tabError {
   margin-left: var(--npm-space-2);
   padding: 0 var(--npm-space-1);
@@ -208,14 +161,6 @@
   font-weight: 600;
 }
 
-/* Mittlerer Bereich: Reiter */
-.middle {
-  composes: panel;
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
 .nightNav {
   display: flex;
   align-items: center;
@@ -223,6 +168,7 @@
 }
 .nightNav strong {
   min-width: 7em;
+  white-space: nowrap;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -244,14 +190,6 @@
   color: var(--npm-text-light);
 }
 
-/* Unterer Bereich: Belichtungsplan */
-.plan {
-  composes: panel;
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
 .planHead {
   display: flex;
   flex-wrap: wrap;
@@ -551,11 +489,6 @@ tr[data-dragging='true'] {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.tabIcon {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-1);
-}
 
 /* ---- S-32 Meine Objekte, S-34 Entwürfe ---- */
 .objectCard {
@@ -773,4 +706,160 @@ tr[data-selected='true'] td {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--npm-space-1) var(--npm-space-3);
+}
+
+/* Projekt-Editor in drei Bereichen (AP-26b): Kopf, darunter oben / Mitte / unten je mit eigenen
+   Reitern. Oberer und mittlerer Bereich haben eine Höchsthöhe mit eigener Scrollfläche, damit Kopf und
+   alle drei Reiterleisten bei 1280 × 800 ohne Scrollen sichtbar sind. */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.editorHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.crumbRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-1) var(--npm-space-4);
+}
+.headProgress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
+.headProgress > :first-child {
+  width: 8rem;
+}
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-4);
+}
+.titleMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.titleMain h1 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+  overflow-wrap: anywhere;
+}
+.titleRow .headActions {
+  align-items: center;
+}
+.headRig {
+  width: 15rem;
+  max-width: 100%;
+}
+.area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+}
+.areaTop {
+  max-height: clamp(10rem, 24vh, 28rem);
+  overflow: auto;
+  padding: var(--npm-space-3);
+}
+.areaMiddle {
+  max-height: clamp(12rem, 30vh, 32rem);
+  overflow: auto;
+  padding: var(--npm-space-2) var(--npm-space-3);
+}
+.areaNote {
+  margin: 0;
+  padding: var(--npm-space-3);
+  color: var(--npm-text-light);
+}
+.targetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--npm-space-3);
+  align-items: start;
+}
+.span2 {
+  grid-column: span 2;
+}
+.fovValue {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+  font-variant-numeric: tabular-nums;
+}
+.previewRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--npm-space-4);
+}
+.previewRow .previewImage {
+  width: 12rem;
+  flex-shrink: 0;
+}
+.skyLocation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.skyCanvas {
+  height: 13rem;
+  max-width: 36rem;
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+}
+.planBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3) 0;
+}
+.planTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--npm-space-2) var(--npm-space-4);
+}
+.planBody .sums {
+  margin: 0 calc(-1 * var(--npm-space-3));
+  padding: var(--npm-space-2) var(--npm-space-3);
+  color: var(--npm-text-light);
+}
+.planBody .sums strong {
+  color: var(--npm-text);
+}
+.panelList {
+  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
+}
+@media (max-width: 1023px) {
+  .span2 {
+    grid-column: 1 / -1;
+  }
+}
+.headMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  margin-left: auto;
+}
+.headMeta .input {
+  width: 9rem;
 }

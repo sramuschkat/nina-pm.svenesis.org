@@ -1,5 +1,6 @@
-/* S-40 Nacht-Simulator (FK 14.3): volle Breite, Schritte untereinander und einklappbar; Abstände und
-   Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den Ausrüstungsseiten. */
+/* S-40 Nacht-Simulator (FK 14.3, AP-26b): volle Breite, Ergebnis zuerst, Einstellungen einklappbar,
+   Ergebnis auf Reitern; Abstände und Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den
+   Ausrüstungsseiten. */
 .page {
   composes: page from '../equipment/equipment.module.css';
 }
@@ -59,27 +60,36 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.step {
+.summary {
   border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius);
   background: var(--npm-white);
-  padding: var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-3);
   margin-top: var(--npm-space-3);
 }
-.step > summary {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: var(--npm-font-h3, 1.05rem);
+.summaryBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
 }
-.step > summary:focus-visible {
-  outline: 2px solid var(--npm-accent);
-  outline-offset: 2px;
+.summaryText {
+  color: var(--npm-text-light);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.settingsPanel {
+  display: grid;
+  gap: var(--npm-space-3);
+  margin-top: var(--npm-space-3);
+}
+.settingsPanel[hidden] {
+  display: none;
 }
 .stepBody {
   display: flex;
   flex-wrap: wrap;
   gap: var(--npm-space-4);
-  margin-top: var(--npm-space-3);
 }
 .settings {
   flex: 3 1 480px;
@@ -113,7 +123,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--npm-space-3);
-  margin-top: var(--npm-space-3);
 }
 .card {
   border: 1px solid var(--npm-border);
@@ -189,21 +198,33 @@
   outline: 2px solid var(--npm-accent);
   outline-offset: 2px;
 }
-.protocolHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-2);
+.results {
   margin-top: var(--npm-space-3);
+  min-width: 0;
 }
-.protocolHead h3 {
-  margin: 0 var(--npm-space-3) 0 0;
+.tabPanel {
+  padding-top: var(--npm-space-3);
+}
+.badge,
+.badgeError {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--npm-space-1);
+  border-radius: var(--npm-radius);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--npm-warning);
+  background: var(--npm-warning-bg);
+}
+.badgeError {
+  color: var(--npm-danger);
+  background: var(--npm-danger-bg);
 }
 .findings {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--npm-space-4);
-  margin-top: var(--npm-space-4);
 }
 .warn {
   color: var(--npm-warning);

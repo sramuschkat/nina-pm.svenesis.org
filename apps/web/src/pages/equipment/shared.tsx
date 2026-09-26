@@ -1,7 +1,7 @@
 /**
  * Gemeinsame Teile der Ausrüstungsseiten S-10…S-15 (AP-09b): Reiter, Stammdaten-Abfragen, Formularfelder
- * mit zod-Prüfung aus `packages/shared`, auswählbare Liste und die Löschsperre mit Verwenderliste
- * (FA-RIG-13, `409 resource.in_use`).
+ * mit zod-Prüfung aus `packages/shared`, das Listen-/Detail-Muster (AP-26b: links Liste, rechts Detail)
+ * und die Löschsperre mit Verwenderliste (FA-RIG-13, `409 resource.in_use`).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -327,9 +327,66 @@ export function CheckField({
 
 // ---- Liste und Formularrahmen ---------------------------------------------------------------------
 
+/** Hauptaktion *Neu* rechts im Seitenkopf bzw. Abschnittskopf (Titel links, Hauptaktion rechts). */
+export function NewButton({ onClick, label }: { onClick: () => void; label?: string }) {
+  const { t } = useTranslation();
+  const Add = actionIcons.add;
+  return (
+    <button type="button" className={styles.buttonPrimary} onClick={onClick}>
+      <Add size={ICON_SIZE.button} aria-hidden />
+      {label ?? t('equipment.new')}
+    </button>
+  );
+}
+
+/**
+ * Listen-/Detail-Muster aller Ausrüstungsarten (AP-26b): links die Liste (`PickList` oder eine Tabelle),
+ * rechts das gewählte Objekt. Ab 1024 px nebeneinander, darunter untereinander mit kompakter Liste (nie
+ * horizontal scrollen). `detail = null` (nichts gewählt, nichts neu) zeigt rechts den Leerzustand.
+ * `aside` (berechnete Werte, Diagramm) steht neben dem Formular, wenn Platz ist, sonst darunter.
+ * `wideList` gibt der Liste mehr Breite, wenn sie eine Tabelle ist. Solange die Liste lädt oder fehlt
+ * (`state`), bleibt die Detailspalte leer – kein aufblitzender Leerzustand.
+ */
+export function ListDetail({
+  list,
+  detail,
+  aside,
+  wideList,
+  state = 'ready',
+}: {
+  list: ReactNode;
+  detail: ReactNode | null;
+  aside?: ReactNode;
+  wideList?: boolean;
+  state?: 'loading' | 'error' | 'ready';
+}) {
+  const { t } = useTranslation();
+  const canWrite = useCan('equipment.write');
+  return (
+    <div className={`${styles.listDetail} ${wideList ? styles.listDetailWide : ''}`}>
+      <div className={styles.listColumn}>{list}</div>
+      <div className={styles.detailColumn}>
+        {state !== 'ready' ? null : detail === null ? (
+          <div className={styles.emptyDetail}>
+            <p>{canWrite ? t('equipment.emptyDetail') : t('equipment.emptyDetailReadOnly')}</p>
+          </div>
+        ) : aside ? (
+          <div className={styles.detailSplit}>
+            {detail}
+            {aside}
+          </div>
+        ) : (
+          detail
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Auswahlliste links (FK 14.3 „Auswahl +/-“): eine Zeile je Objekt als Knopf, die gewählte Zeile
- * markiert; *Neu* nur mit Schreibrecht.
+ * markiert (`aria-current`). Mit `searchText` steht darüber ein Suchfeld. *Neu* steht im Listenmuster
+ * (AP-26b) rechts im Seitenkopf; `onNew` zeigt den Knopf zusätzlich im Listenkopf (nur mit Schreibrecht).
  */
 export function PickList<T extends { id: string }>({
   label,
@@ -341,6 +398,9 @@ export function PickList<T extends { id: string }>({
   state,
   onRetry,
   emptyText,
+  searchText,
+  toolbar,
+  headingLevel = 2,
 }: {
   label: string;
   items: readonly T[];
@@ -351,13 +411,26 @@ export function PickList<T extends { id: string }>({
   state: 'loading' | 'error' | 'ready';
   onRetry?: () => void;
   emptyText: string;
+  /** Durchsuchbarer Text je Objekt; ohne Angabe kein Suchfeld. */
+  searchText?: (item: T) => string;
+  /** Filterfelder über der Liste (z. B. Teleskop/Kamera der Vorlagen). */
+  toolbar?: ReactNode;
+  /** Überschriftenebene des Listentitels (3 in einem Abschnitt mit eigener h2). */
+  headingLevel?: 2 | 3;
 }) {
   const { t } = useTranslation();
+  const [query, setQuery] = useState('');
   const Add = actionIcons.add;
+  const Heading = headingLevel === 3 ? 'h3' : 'h2';
+  const needle = query.trim().toLocaleLowerCase();
+  const shown =
+    searchText && needle !== ''
+      ? items.filter((item) => searchText(item).toLocaleLowerCase().includes(needle))
+      : items;
   return (
     <section className={styles.pick} aria-label={label}>
       <div className={styles.pickHead}>
-        <h2>{label}</h2>
+        <Heading>{label}</Heading>
         {onNew ? (
           <button type="button" className={styles.button} onClick={onNew}>
             <Add size={ICON_SIZE.table} aria-hidden />
@@ -365,15 +438,28 @@ export function PickList<T extends { id: string }>({
           </button>
         ) : null}
       </div>
+      {toolbar}
+      {searchText && state === 'ready' && items.length > 0 ? (
+        <input
+          type="search"
+          className={styles.input}
+          value={query}
+          placeholder={t('equipment.search')}
+          aria-label={t('equipment.searchIn', { list: label })}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      ) : null}
       {state === 'loading' ? (
         <p role="status">{t('common.loading')}</p>
       ) : state === 'error' ? (
         <ProblemMessage code="internal.error" onRetry={onRetry} />
       ) : items.length === 0 ? (
         <p className={styles.muted}>{emptyText}</p>
+      ) : shown.length === 0 ? (
+        <p className={styles.muted}>{t('equipment.noMatches')}</p>
       ) : (
         <ul className={styles.pickList}>
-          {items.map((item) => (
+          {shown.map((item) => (
             <li key={item.id}>
               <button
                 type="button"
@@ -599,6 +685,8 @@ export function useEditor<K extends EquipmentKind, D extends object>({
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [saved, setSaved] = useState(false);
   const [picked, setPicked] = useState(false);
+  /** Neues Objekt in Arbeit (`selectedId = null`); weder gewählt noch neu → Leerzustand (AP-26b). */
+  const [creating, setCreating] = useState(false);
   const items = (list.data ?? []) as Item<K>[];
   // Erstes Objekt vorwählen, sobald die Liste da ist.
   if (!picked && list.data) {
@@ -619,6 +707,7 @@ export function useEditor<K extends EquipmentKind, D extends object>({
     (id) => remove.mutateAsync(id),
     () => {
       setSelectedId(null);
+      setCreating(false);
       setDraft(empty());
       reset();
     },
@@ -628,6 +717,12 @@ export function useEditor<K extends EquipmentKind, D extends object>({
     items,
     selected,
     selectedId,
+    creating,
+    /** Rechts steht ein Formular: ein Objekt ist gewählt oder ein neues in Arbeit. */
+    hasDetail: selectedId !== null || creating,
+    /** Status der Liste für `PickList`. */
+    listState: (list.isError ? 'error' : list.isPending ? 'loading' : 'ready') as
+      'loading' | 'error' | 'ready',
     draft,
     set: <F extends keyof D>(field: F, value: D[F]) => {
       setSaved(false);
@@ -641,12 +736,14 @@ export function useEditor<K extends EquipmentKind, D extends object>({
       const item = items.find((i) => i.id === id);
       if (!item) return;
       setSelectedId(id);
+      setCreating(false);
       setDraft(toDraft(item));
       reset();
       del.clearUsage();
     },
     startNew: (from?: D) => {
       setSelectedId(null);
+      setCreating(true);
       setDraft(from ?? empty());
       reset();
       del.clearUsage();
@@ -666,6 +763,7 @@ export function useEditor<K extends EquipmentKind, D extends object>({
         .catch(() => null)) as Item<K> | null;
       if (view) {
         setSelectedId(view.id);
+        setCreating(false);
         setDraft(toDraft(view));
         setSaved(true);
       }

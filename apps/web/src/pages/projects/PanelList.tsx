@@ -235,7 +235,10 @@ export function PanelList({
   return (
     <section className={styles.panelList} aria-labelledby={titleId}>
       <div className={styles.panelListHead}>
-        <h2 id={titleId}>{t('projectEditor.panelList.title')}</h2>
+        {/* Der Reiter *Panels* trägt die Überschrift sichtbar (AP-26b). */}
+        <h2 id={titleId} className="visually-hidden">
+          {t('projectEditor.panelList.title')}
+        </h2>
         <span className={styles.muted}>
           {cols * rows > 1
             ? t('projectEditor.panelList.mosaic', { cols, rows, overlap: num(overlapPct, 0) })

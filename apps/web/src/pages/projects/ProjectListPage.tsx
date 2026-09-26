@@ -30,6 +30,7 @@ import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage'
 import { ProgressBar } from '../../components/ProgressBar';
 import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
+import { Tabs } from '../../components/Tabs';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import {
@@ -55,40 +56,32 @@ export function ProjectListPage() {
   const { t } = useTranslation();
   const canAdmin = useCan('project.status');
   const [tab, setTab] = useState<'active' | 'deleted'>('active');
-  const baseId = useId();
   return (
     <ProjectsLayout title={t('projectList.title')}>
       {canAdmin ? (
-        <div className={styles.tabs} role="tablist" aria-label={t('projectList.views')}>
-          {(['active', 'deleted'] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${baseId}-${key}`}
-              aria-selected={tab === key}
-              aria-controls={`${baseId}-panel`}
-              className={styles.tab}
-              onClick={() => setTab(key)}
-            >
-              <span className={styles.tabIcon}>
+        <Tabs
+          label={t('projectList.views')}
+          tabs={(['active', 'deleted'] as const).map((key) => ({
+            key,
+            label: (
+              <>
                 {key === 'deleted' ? (
                   <actionIcons.deleted size={ICON_SIZE.table} aria-hidden />
                 ) : null}
                 {t(`projectList.tab.${key}`)}
-              </span>
-            </button>
-          ))}
+              </>
+            ),
+          }))}
+          value={tab}
+          onChange={setTab}
+          panelClassName={styles.tabPanel}
+          panels={{ active: <ActiveView />, deleted: <DeletedView /> }}
+        />
+      ) : (
+        <div className={styles.stack}>
+          <ActiveView />
         </div>
-      ) : null}
-      <div
-        role={canAdmin ? 'tabpanel' : undefined}
-        id={`${baseId}-panel`}
-        aria-labelledby={canAdmin ? `${baseId}-${tab}` : undefined}
-        className={styles.stack}
-      >
-        {tab === 'deleted' && canAdmin ? <DeletedView /> : <ActiveView />}
-      </div>
+      )}
     </ProjectsLayout>
   );
 }
@@ -715,44 +708,37 @@ function ProjectCard({
           {p.targetType ? <span className={styles.typeTag}>{p.targetType}</span> : null}
           <EffortChip effort={p.effort} stale={p.effortStale} size="sm" />
         </h3>
-        <div className={styles.tabs} role="tablist" aria-label={t('projectList.cardTabs')}>
-          {(['info', 'altitude'] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${baseId}-${key}`}
-              aria-selected={tab === key}
-              aria-controls={`${baseId}-panel`}
-              className={styles.tab}
-              onClick={() => setTab(key)}
-            >
-              {t(`projectList.cardTab.${key}`)}
-            </button>
-          ))}
-        </div>
-        <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-${tab}`}>
-          {tab === 'info' ? (
-            <dl className={styles.cardFacts}>
-              <dt>{t('projectList.col.coordinates')}</dt>
-              <dd>{coords(p)}</dd>
-              <dt>{t('projectEditor.field.rotation')}</dt>
-              <dd>{`${num(p.rotationDeg, 1)}°`}</dd>
-              <dt>{t('projectEditor.field.catalogNames')}</dt>
-              <dd>{p.catalogNames || p.targetName || '–'}</dd>
-              <dt>{t('projectEditor.rig')}</dt>
-              <dd>{rigLine}</dd>
-              {p.panelCount > 1 ? (
-                <>
-                  <dt>{t('projectEditor.plan.panels')}</dt>
-                  <dd>{p.panelCount}</dd>
-                </>
-              ) : null}
-            </dl>
-          ) : (
-            <AltitudeCurve project={p} site={site} />
-          )}
-        </div>
+        <Tabs
+          label={t('projectList.cardTabs')}
+          tabs={(['info', 'altitude'] as const).map((key) => ({
+            key,
+            label: t(`projectList.cardTab.${key}`),
+          }))}
+          value={tab}
+          onChange={setTab}
+          panelClassName={styles.tabPanel}
+          panels={{
+            info: (
+              <dl className={styles.cardFacts}>
+                <dt>{t('projectList.col.coordinates')}</dt>
+                <dd>{coords(p)}</dd>
+                <dt>{t('projectEditor.field.rotation')}</dt>
+                <dd>{`${num(p.rotationDeg, 1)}°`}</dd>
+                <dt>{t('projectEditor.field.catalogNames')}</dt>
+                <dd>{p.catalogNames || p.targetName || '–'}</dd>
+                <dt>{t('projectEditor.rig')}</dt>
+                <dd>{rigLine}</dd>
+                {p.panelCount > 1 ? (
+                  <>
+                    <dt>{t('projectEditor.plan.panels')}</dt>
+                    <dd>{p.panelCount}</dd>
+                  </>
+                ) : null}
+              </dl>
+            ),
+            altitude: <AltitudeCurve project={p} site={site} />,
+          }}
+        />
         <ProgressBar
           acquired={Math.round((p.progress.percentDone / 100) * 1000)}
           planned={1000}

@@ -2,6 +2,7 @@
 /**
  * S-40 Nacht-Simulator (AP-13f): Daten aus der API → Plan im (hier Inline-)Worker, Zielkarten,
  * Protokoll, Hash = Node-Lauf, Nachtwechsel über die Nacht-Tabelle, Speichern, Rechte je Rolle; axe.
+ * AP-26b: Ergebnis zuerst auf Reitern, Einstellungen einklappbar.
  */
 import { planNight, type PlanInput } from '@nina-pm/engine';
 import { buildPlanInput } from '@nina-pm/shared';
@@ -130,6 +131,8 @@ beforeEach(() => {
   state.patchLine.mockClear();
 });
 
+const openTab = (name: RegExp | string) => fireEvent.click(screen.getByRole('tab', { name }));
+
 const nodeHash = () =>
   planNight(
     buildPlanInput(rig, projects, moonProfiles, nights, {
@@ -144,15 +147,24 @@ describe('S-40 Nacht-Simulator', () => {
     const hash = await screen.findByText(/^Plan-Hash sha256:/, {}, { timeout: 5000 });
     expect(hash.textContent).toBe(`Plan-Hash ${nodeHash()}`);
     expect(screen.getByRole('heading', { level: 1, name: 'Nacht-Simulator' })).toBeInTheDocument();
+    // Ergebnis zuerst: Nachtplan-Reiter aktiv, Zeiten in Standortzeit.
+    expect(screen.getByRole('tab', { name: /^Nachtplan \(Standortzeit CDT\)/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    openTab('Zielkarten');
     const card = screen
       .getAllByRole('article')
       .find((a) => a.getAttribute('aria-label') !== 'Nicht zugeteilt');
     expect(card).toBeDefined();
     expect(within(card as HTMLElement).getByText('Zeitfenster')).toBeInTheDocument();
+    openTab('Planprotokoll');
     expect(screen.getAllByRole('row').length).toBeGreaterThan(3);
     expect(screen.getAllByText(/CDT/).length).toBeGreaterThan(0);
-    // Übernahmestatus (FA-SIM-09, AP-14c) rechts über Schritt 1.
-    expect(screen.getByText('Noch keine NINA-Instanz verbunden.')).toBeInTheDocument();
+    await expectNoSeriousA11y();
+    // Übernahmestatus (FA-SIM-09, AP-14c) neben den Scheduler-Einstellungen.
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen' }));
+    expect(screen.getByText('Noch keine NINA-Instanz verbunden.')).toBeVisible();
     await expectNoSeriousA11y();
     // Worker-Rechnung (bis 5 s) plus axe: unter Volllast des Gesamtlaufs mehr als die 5 s Standard.
   }, 20_000);
@@ -177,18 +189,25 @@ describe('S-40 Nacht-Simulator', () => {
   it('Admin schaltet Zeilen an/aus; User sieht keinen Schalter', async () => {
     const { unmount } = renderPage('owner');
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
+    openTab('Zielkarten');
     const toggle = screen.getAllByRole('checkbox', { name: /aktiv$/ })[0] as HTMLInputElement;
     fireEvent.click(toggle);
     await waitFor(() => expect(state.patchLine).toHaveBeenCalledOnce());
     unmount();
     renderPage('user');
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
+    openTab('Zielkarten');
+    expect(screen.getAllByRole('article').length).toBeGreaterThan(0);
     expect(screen.queryAllByRole('checkbox', { name: /aktiv$/ })).toHaveLength(0);
   });
 
   it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Belichtung“ sortiert das Protokoll', async () => {
     renderPage();
     await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
+    openTab('Planprotokoll');
+    // Kopieren und CSV stehen in der Reiterleiste, solange das Protokoll offen ist.
+    expect(screen.getByRole('button', { name: 'Kopieren' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CSV' })).toBeInTheDocument();
     const table = screen.getByRole('table', { name: 'Planprotokoll' });
     const heads = within(table).getAllByRole('columnheader');
     const col = heads.findIndex((h) => /Belichtung/.test(h.textContent ?? ''));
@@ -219,5 +238,41 @@ describe('S-40 Nacht-Simulator', () => {
       target: { value: String(Date.parse('2026-09-18T08:00:00Z') / 1000) },
     });
     expect(screen.getByText(/Was macht das Rig um 03:00 CDT\?/)).toBeInTheDocument();
+  });
+
+  it('Ergebnis zuerst (AP-26b): mit Rig und Nacht zugeklappt, Schalter klappt die Einstellungen auf', async () => {
+    renderPage('owner', `/nina/simulator?rig=${rig.id}&nacht=2026-09-17`);
+    await screen.findByText(/^Plan-Hash/, {}, { timeout: 5000 });
+    expect(state.nightsFrom).toContain('2026-09-17');
+    expect(screen.getByRole('slider')).toBeVisible();
+    const toggle = screen.getByRole('button', { name: 'Einstellungen' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const panel = document.getElementById(toggle.getAttribute('aria-controls') ?? '');
+    expect(panel).not.toBeNull();
+    expect(panel).not.toBeVisible();
+    expect(screen.queryByRole('combobox', { name: 'Rig' })).toBeNull();
+    // Kurzfassung: Rig, Standort, Strategie auch zugeklappt lesbar.
+    const summary = screen.getByRole('region', { name: 'Einstellungen' });
+    expect(summary).toHaveTextContent('Starfront');
+    expect(summary).toHaveTextContent(/Strategie: /);
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(panel).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: /Entwürfen/ })).toBeVisible();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Entwürfen/ }));
+    expect(summary).toHaveTextContent('mit meinen Entwürfen');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(panel).not.toBeVisible();
+  }, 20_000);
+
+  it('ohne gültiges Rig sind die Einstellungen aufgeklappt, es gibt kein Ergebnis', async () => {
+    renderPage('owner', '/nina/simulator?rig=unbekannt');
+    const toggle = await screen.findByRole('button', { name: 'Einstellungen' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/Kein Rig gewählt/)).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).toBeNull();
   });
 });

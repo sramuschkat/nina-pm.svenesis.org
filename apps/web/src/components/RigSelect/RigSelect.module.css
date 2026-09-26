@@ -13,6 +13,13 @@
   cursor: pointer;
   text-align: left;
 }
+/* Gewählter Name einzeilig, bei wenig Platz mit „…“ (die Liste zeigt den vollen Namen). */
+.trigger > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .content {
   background: var(--npm-white);
   border: 1px solid var(--npm-border);

@@ -1,0 +1,25 @@
+/* S-10 Rigs: Reiter (AP-26b). Farben und Abstände nur aus Tokens. */
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  padding-top: var(--npm-space-3);
+}
+.tabPanel[hidden] {
+  display: none;
+}
+.tabError {
+  margin-left: var(--npm-space-1);
+  padding: 0 var(--npm-space-1);
+  border-radius: var(--npm-radius);
+  background: var(--npm-danger-bg);
+  color: var(--npm-danger);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}

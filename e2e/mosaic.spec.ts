@@ -99,6 +99,10 @@ test('Mosaik 2×2 aus der Sternkarte → vier Panels, Panel-Liste, Simulator mit
   for (const p of project.panels) expect(p.lines.map((l) => l.plannedCount)).toEqual([40]);
 
   await page.goto(`/projekte/${s.projectId}`);
+  // Unterer Bereich: je Panel ein Reiter, dazu der Reiter *Panels* mit der Liste (AP-26b).
+  for (const n of [1, 2, 3, 4])
+    await expect(page.getByRole('tab', { name: `Panel ${String(n)}`, exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Panels', exact: true }).click();
   const list = page.getByRole('region', { name: 'Panels' });
   await expect(list.getByRole('row')).toHaveCount(5);
   await expect(page.getByText('Mosaik 2 × 2 · 20 % Überlappung')).toBeVisible();
@@ -112,6 +116,8 @@ test('Mosaik 2×2 aus der Sternkarte → vier Panels, Panel-Liste, Simulator mit
   await page.setViewportSize(WIDE);
   await page.goto(`/nina/simulator?rig=${s.rigId}&nacht=${NIGHT}`);
   await expect(page.getByText(/^Plan-Hash sha256:/)).toBeVisible({ timeout: 30_000 });
+  // Protokoll liegt auf einem eigenen Reiter (AP-26b).
+  await page.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
   // Blöcke je Panel: das Planprotokoll nennt je Belichtung die Panel-Nummer (= NINA-Nummer).
   const rows = page.getByRole('row').filter({ hasText: 'Belichtung' }).filter({ hasText: s.name });
   await expect(rows.first()).toBeVisible();

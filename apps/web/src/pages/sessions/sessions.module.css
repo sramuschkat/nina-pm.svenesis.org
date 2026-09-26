@@ -77,29 +77,10 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-1);
-  border-bottom: 1px solid var(--npm-border);
-}
-.tab {
-  padding: var(--npm-space-2) var(--npm-space-4);
-  min-height: var(--npm-row-h);
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--npm-text);
-  cursor: pointer;
-}
-.tab[aria-selected='true'] {
-  border-bottom-color: var(--npm-accent);
-  font-weight: 600;
-  color: var(--npm-link);
-}
-.tab:focus-visible {
-  outline: 2px solid var(--npm-accent);
-  outline-offset: 2px;
+/* Inhalt der Reiter Soll/Ist, Aufnahmen, Ereignisse, Flats (Tabs, AP-26b) */
+.tabPanel {
+  composes: panel;
+  margin-top: var(--npm-space-3);
 }
 .flags {
   display: flex;
