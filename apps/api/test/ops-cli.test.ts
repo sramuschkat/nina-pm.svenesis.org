@@ -70,6 +70,7 @@ describe('ops-cli', () => {
       'seed',
       'list-failed-jobs',
       'export-setup',
+      'demo-evaluation',
     ]);
   });
 
