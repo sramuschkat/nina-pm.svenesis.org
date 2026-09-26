@@ -43,6 +43,7 @@ import {
   type QueueFilters,
   type QueueSortKey,
 } from './queue-model';
+import { ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
 
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -240,6 +241,16 @@ function QueueTable({
   const sortBy = (key: QueueSortKey) => (q: QueueItem) => queueSortValue(q, key);
   // Priorität: 1 bleibt immer, höhere Zahlen werden bei wenig Platz zuerst ausgeblendet (AP-26a).
   const columns: DataColumn<QueueItem>[] = [
+    {
+      id: 'image',
+      header: t('catalog.col.image'),
+      headerHidden: true,
+      // Immer sichtbar (Wunsch Sven 26.09.2026), die Spalte ist nur 40 px breit.
+      priority: 1,
+      cell: (q) => (
+        <ProjectThumb thumbnailUrl={q.thumbnailUrl} primaryId={q.dsoPrimaryId} name={q.name} />
+      ),
+    },
     {
       id: 'name',
       header: t('queue.col.object'),

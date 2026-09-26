@@ -5614,6 +5614,14 @@ components:
           type:
             - string
             - "null"
+        dsoPrimaryId:
+          type:
+            - string
+            - "null"
+        thumbnailUrl:
+          type:
+            - string
+            - "null"
         createdBy:
           type: string
           format: uuid
@@ -5783,6 +5791,8 @@ components:
         - projectType
         - targetName
         - targetType
+        - dsoPrimaryId
+        - thumbnailUrl
         - createdBy
         - createdByName
         - submittedAt

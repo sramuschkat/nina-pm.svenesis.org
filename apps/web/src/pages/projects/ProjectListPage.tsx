@@ -47,7 +47,7 @@ import {
 } from './list-model';
 import { engineMoonProfile } from './model';
 import { ProjectsLayout } from './ProjectsLayout';
-import { ProjectImage } from './ProjectImage';
+import { ProjectImage, ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
 
 type View = 'list' | 'cards' | 'detail';
@@ -545,6 +545,16 @@ function ProjectTable({
   };
   const columns: DataColumn<ProjectListItem>[] = [
     ...(canAdmin ? [priorityColumn] : []),
+    {
+      id: 'image',
+      header: t('catalog.col.image'),
+      headerHidden: true,
+      // Immer sichtbar (Wunsch Sven 26.09.2026), die Spalte ist nur 40 px breit.
+      priority: 1,
+      cell: (p) => (
+        <ProjectThumb thumbnailUrl={p.thumbnailUrl} primaryId={p.dsoPrimaryId} name={p.name} />
+      ),
+    },
     {
       id: 'name',
       header: t('projectList.col.name'),

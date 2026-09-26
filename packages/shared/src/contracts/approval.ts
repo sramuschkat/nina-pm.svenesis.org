@@ -112,6 +112,9 @@ export const QueueItem = z
     projectType: z.enum(['deep_sky', 'exoplanet']),
     targetName: z.string().nullable(),
     targetType: z.string().nullable(),
+    /** Katalogobjekt und Bild des Bildfelds – Vorschaubild in der Warteschlange (AP-26h). */
+    dsoPrimaryId: z.string().nullable(),
+    thumbnailUrl: z.string().nullable(),
     createdBy: Uuid,
     createdByName: z.string(),
     submittedAt: UtcInstant.nullable(),

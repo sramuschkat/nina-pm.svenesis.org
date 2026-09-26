@@ -13,6 +13,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { formatDateTime } from '../../lib/time';
 import { problemCode } from '../equipment/shared';
 import { ProjectsLayout } from './ProjectsLayout';
+import { ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
 
 export function DraftsPage() {
@@ -26,6 +27,16 @@ export function DraftsPage() {
   });
   const zone = me?.tenant?.timeZone ?? 'UTC';
   const columns: DataColumn<ProjectListItem>[] = [
+    {
+      id: 'image',
+      header: t('catalog.col.image'),
+      headerHidden: true,
+      // Immer sichtbar (Wunsch Sven 26.09.2026), die Spalte ist nur 40 px breit.
+      priority: 1,
+      cell: (p) => (
+        <ProjectThumb thumbnailUrl={p.thumbnailUrl} primaryId={p.dsoPrimaryId} name={p.name} />
+      ),
+    },
     {
       id: 'name',
       header: t('projectList.col.name'),

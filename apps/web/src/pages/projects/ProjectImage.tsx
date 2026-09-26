@@ -5,7 +5,9 @@
  */
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ThumbPreview } from '../../components/ThumbPreview';
 import { CatalogImage } from '../catalog/CatalogImage';
+import thumbStyles from './thumb.module.css';
 
 export function ProjectImage(props: {
   readonly thumbnailUrl: string | null | undefined;
@@ -49,4 +51,22 @@ function Inner({
       />
     );
   return <>{fallback}</>;
+}
+
+/**
+ * Kleines Vorschaubild eines Projekts in Listen (AP-26h, Wunsch Sven 26.09.2026): 40 px, beim Überfahren das
+ * große Bild (`ThumbPreview`). Ohne Bild ein leeres Feld gleicher Größe, damit die Spalte fluchtet.
+ */
+export function ProjectThumb(props: {
+  readonly thumbnailUrl: string | null | undefined;
+  readonly primaryId: string | null;
+  readonly name: string;
+}) {
+  const empty = <span className={thumbStyles.empty} aria-hidden />;
+  if (!props.thumbnailUrl && !props.primaryId) return empty;
+  return (
+    <ThumbPreview preview={() => <ProjectImage {...props} fallback={null} />}>
+      <ProjectImage {...props} className={thumbStyles.small} fallback={empty} />
+    </ThumbPreview>
+  );
 }

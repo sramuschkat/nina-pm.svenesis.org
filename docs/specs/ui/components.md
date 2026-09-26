@@ -223,6 +223,17 @@ Seltene oder folgenreiche Aktionen, z. B. *Löschen* im Seitenkopf oder Zeilenak
 | Textalternative | Knopf mit `aria-label`, Einträge als `menuitem`; Gefahr trägt der Text, die Farbe nur zusätzlich |
 | Grenzfall | ein einziger Eintrag · alle Einträge deaktiviert · Menü am rechten Fensterrand (öffnet nach links) |
 
+### 2.16 `ThumbPreview` (Vorschaubild mit großer Fassung, AP-26h)
+
+Kleines Vorschaubild in Listen und Tabellen (Projektliste, Meine Objekte, Warteschlange, Entwürfe, Objektbrowser). Wunsch Sven vom 26.09.2026.
+
+| | |
+|---|---|
+| Eigenschaften | `children` (das kleine Bild, 40 px in Projektlisten, 48 px im Objektbrowser) · `preview: () => ReactNode` (das große Bild, 320 px; wird erst beim Überfahren erzeugt und geladen) |
+| Verhalten | Beim Überfahren mit der Maus erscheint die große Fassung rechts neben dem kleinen Bild. Reicht der Platz rechts nicht, erscheint sie links davon; senkrecht steht sie mittig und bleibt im Fenster. Sie liegt als Portal mit fester Position über der Seite, damit `DataTable` (`overflow-x: clip`) sie nicht abschneidet; `pointer-events: none`. Verlassen entfernt sie |
+| Zugänglichkeit | Nur Zusatz fürs Auge: die große Fassung ist `aria-hidden`, der Alternativtext steht am kleinen Bild, die Zeile bleibt der Link. Kein zusätzlicher Tab-Halt |
+| Größen | Projektlisten: Spalte mit Priorität 1 (nie ausblenden), ohne Bild ein Platzhalter gleicher Größe |
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |

@@ -43,6 +43,7 @@ import { ICON_SIZE, actionIcons, areaIcons, uiIcons } from '../../components/ico
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { Tabs } from '../../components/Tabs';
+import { ThumbPreview } from '../../components/ThumbPreview';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList, useNumber } from '../equipment/shared';
@@ -861,14 +862,19 @@ function ResultTable({
       header: t('catalog.col.image'),
       headerHidden: true,
       priority: 4,
+      // Beim Überfahren das große Bild (AP-26h).
       cell: (o) => (
-        <CatalogImage
-          primaryId={o.primaryId}
-          name={o.displayName}
-          size="small"
-          className={styles.listThumb}
-          fallback={<div className={styles.listThumbEmpty} aria-hidden />}
-        />
+        <ThumbPreview
+          preview={() => <CatalogImage primaryId={o.primaryId} name={o.displayName} size="large" />}
+        >
+          <CatalogImage
+            primaryId={o.primaryId}
+            name={o.displayName}
+            size="small"
+            className={styles.listThumb}
+            fallback={<div className={styles.listThumbEmpty} aria-hidden />}
+          />
+        </ThumbPreview>
       ),
     },
     {
