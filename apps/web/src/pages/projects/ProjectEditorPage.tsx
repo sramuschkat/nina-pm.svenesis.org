@@ -837,7 +837,7 @@ function Editor({
         </div>
         <div className={styles.titleRow}>
           <div className={styles.titleMain}>
-            <h1>{title}</h1>
+            <h1 title={title}>{title}</h1>
             {saved ? <StatusBadge kind="approval" value={saved.approvalStatus} size="sm" /> : null}
             {saved?.status ? <StatusBadge kind="project" value={saved.status} size="sm" /> : null}
             <EffortChip
