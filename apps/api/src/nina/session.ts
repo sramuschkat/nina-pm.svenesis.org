@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
+import { captureForecastSnapshot } from '../sessions/log';
 import { siteNights } from '../lib/night-table';
 import { createNotificationService } from '../notifications/service';
 import type { ApiServices } from '../routes/services';
@@ -118,6 +119,8 @@ export async function createSession(svc: ApiServices, p: NinaPrincipal, body: Se
       await busyAlert();
     }
   }
+  // Wetter-Schnappschuss zum Sessionbeginn für Protokoll und Treffsicherheit (AP-30, FA-AUS-15/16).
+  if (r.created) await captureForecastSnapshot(svc, p.tenantId, p.rigId, r.session.id, body.night);
   const upload = await svc.uploads.planLog(p.tenantId, body.id);
   return {
     created: r.created,

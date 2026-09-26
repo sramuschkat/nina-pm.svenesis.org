@@ -8891,6 +8891,376 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/sessions/{id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sitzungsprotokoll bzw. Vorbelegung (Vorhersage, NINA) mit Quelle je Feld
+         * @description Aktion: `session.read` · FA-AUS-14, FA-AUS-15, S-61
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Protokoll */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SessionLogView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Sitzungsprotokoll speichern
+         * @description Aktion: `sessionlog.write` · FA-AUS-14, FA-AUS-15, S-61
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `ETag` des Protokolls (`"0"` = noch keins); abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SessionLogValues"];
+                };
+            };
+            responses: {
+                /** @description Gespeichert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SessionLogView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sites/{id}/clear-nights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Klarnacht-Statistik je Standort: Monate, Nächte, Treffsicherheit der Vorhersage
+         * @description Aktion: `session.read` · FA-AUS-16, FA-AUS-17, S-64
+         */
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                };
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Statistik */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ClearNightView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/sites/{id}/clear-nights/{night}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen
+         * @description Aktion: `sessionlog.write` · FA-AUS-17, S-64
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    night: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ClearNightMark"];
+                };
+            };
+            responses: {
+                /** @description Erfasst */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description site_night.has_session */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Manuelle Erfassung einer Nacht zurücknehmen
+         * @description Aktion: `sessionlog.write` · FA-AUS-17, S-64
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    night: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Zurückgenommen */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/dso": {
         parameters: {
             query?: never;
@@ -10911,7 +11281,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
             requestId?: string;
             errors?: {
                 path: string;
@@ -14166,6 +14536,144 @@ export interface components {
         };
         NightSessionReviewed: {
             reviewed: boolean;
+        };
+        SessionLogView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            version: string;
+            saved: boolean;
+            values: components["schemas"]["SessionLogValues"];
+            sources: {
+                /** @enum {string|null} */
+                startTime?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                endTime?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                seeingArcsec?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                transparencyPct?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                sqm?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                temperatureC?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                humidityPct?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                windKmh?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                cloudsNote?: "forecast" | "nina" | "manual" | "auto" | null;
+                /** @enum {string|null} */
+                moonIlluminationPct?: "forecast" | "nina" | "manual" | "auto" | null;
+            };
+            forecast: {
+                transparencyPct: number | null;
+                temperatureC: number | null;
+                humidityPct: number | null;
+                windKmh: number | null;
+                cloudPct: number | null;
+                ratingIndex: number | null;
+                nightMean: number | null;
+                seeingScore: number | null;
+            } | null;
+            nina: {
+                sqm: components["schemas"]["SessionLogStat"];
+                temperatureC: components["schemas"]["SessionLogStat"];
+                humidityPct: components["schemas"]["SessionLogStat"];
+                windKmh: components["schemas"]["SessionLogStat"];
+                seeingArcsec: components["schemas"]["SessionLogStat"];
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string | null;
+            updatedByName: string | null;
+        };
+        SessionLogValues: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startTime: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endTime: string | null;
+            seeingArcsec: number | null;
+            transparencyPct: number | null;
+            sqm: number | null;
+            temperatureC: number | null;
+            humidityPct: number | null;
+            windKmh: number | null;
+            cloudsNote: string | null;
+            moonIlluminationPct: number | null;
+            weatherNotes: string;
+            notesMd: string;
+        };
+        SessionLogStat: {
+            avg: number | null;
+            min: number | null;
+            max: number | null;
+        } | null;
+        ClearNightView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            siteId: string;
+            siteName: string;
+            timeZone: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            from: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            to: string;
+            months: components["schemas"]["ClearNightMonth"][];
+            nights: components["schemas"]["ClearNightNight"][];
+            accuracy: {
+                compared: number;
+                hits: number;
+                hitPct: number | null;
+            };
+        };
+        ClearNightMonth: {
+            month: string;
+            recorded: number;
+            usable: number;
+            usablePct: number | null;
+            meanUsableHours: number | null;
+        };
+        ClearNightNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /** @enum {string|null} */
+            source: "session" | "manual" | null;
+            usable: boolean | null;
+            usableHours: number | null;
+            sessionIds: string[];
+            forecastRatingIndex: number | null;
+            forecastNightMean: number | null;
+            seeingArcsec: number | null;
+            sqm: number | null;
+            transparencyPct: number | null;
+            forecastTransparencyPct: number | null;
+            rejectedPct: number | null;
+        };
+        ClearNightMark: {
+            /** @enum {boolean} */
+            usable: false;
         };
         DsoList: {
             items: components["schemas"]["DsoView"][];

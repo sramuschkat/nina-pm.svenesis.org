@@ -2,7 +2,8 @@
  * S-60 Sessions (FK 14.3; FA-AUS-01, FA-AUS-07; AP-15): Liste je Rig und Nacht mit Status, Beginn–Ende
  * in Standortzeit mit Kürzel, Frames, Integration, Aufnahmen ohne Zuordnung und geprüft ja/nein; Filter
  * Rig und „nur ungeprüfte“. Effizienz und Wetterbewertung folgen mit den KPIs (R3) bzw. dem Wetter (R2).
- * Seitengerüst `PageHeader`, Filterzeile und Tabelle in **einer** Karte (Stilsystem AP-26d).
+ * Seitengerüst `PageHeader` mit den Bereichsreitern Sessions | Klarnacht-Statistik (AP-30), Filterzeile
+ * und Tabelle in **einer** Karte (Stilsystem AP-26d).
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -15,11 +16,25 @@ import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
-import { problemCode } from '../admin/shared';
+import { problemCode, SectionTabs } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import styles from './sessions.module.css';
 
 export const SESSIONS_PATH = '/auswertung/sessions';
+
+/** Bereichsreiter der Auswertung für `PageHeader.nav`: Sessions (S-60) und Klarnacht-Statistik (S-64). */
+export function EvaluationTabs() {
+  const { t } = useTranslation();
+  return (
+    <SectionTabs
+      label={t('sessions.tabsLabel')}
+      tabs={[
+        { to: SESSIONS_PATH, label: t('sessions.title') },
+        { to: '/auswertung/klarnacht', label: t('clearNights.title') },
+      ]}
+    />
+  );
+}
 export const hours = (s: number) => (s / 3600).toFixed(1);
 
 export function SessionTime({ session }: { session: NightSession }) {
@@ -50,7 +65,7 @@ export function SessionsPage() {
   const items = list.data ?? [];
   return (
     <div className={styles.page}>
-      <PageHeader title={t('sessions.title')} />
+      <PageHeader title={t('sessions.title')} nav={<EvaluationTabs />} />
       <section className={styles.listCard} aria-label={t('sessions.title')}>
         <div className={`${styles.toolbar} ${styles.listBar}`}>
           <div className={styles.field}>

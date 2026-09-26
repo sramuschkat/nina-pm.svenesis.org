@@ -593,6 +593,37 @@ export interface RigLeaseTable {
 }
 
 /** Tabelle `session` (Migration 0005, TK 6.6, 7.6; NT-09, M6). */
+/** Sitzungsprotokoll je Session (FA-AUS-14/15, AP-30). */
+export interface SessionLogTable {
+  sessionId: string;
+  tenantId: string;
+  startTime: Timestamp | null;
+  endTime: Timestamp | null;
+  seeingArcsec: number | null;
+  transparencyPct: number | null;
+  sqm: number | null;
+  temperatureC: number | null;
+  humidityPct: number | null;
+  windKmh: number | null;
+  cloudsNote: string | null;
+  weatherNotes: Generated<string>;
+  notesMd: Generated<string>;
+  moonIlluminationPct: number | null;
+  valueSources: Json;
+  updatedBy: string | null;
+  updatedAt: Timestamp;
+}
+
+/** Klarnacht-Statistik je Standort und Nacht (FA-AUS-17, AP-30). */
+export interface SiteNightStatTable {
+  tenantId: string;
+  siteId: string;
+  night: DateKey;
+  usable: boolean;
+  usableHours: number | null;
+  source: 'session' | 'manual';
+}
+
 export interface SessionTable {
   id: string;
   tenantId: string;
@@ -806,6 +837,8 @@ export interface Database {
   ninaInstance: NinaInstanceTable;
   rigLease: RigLeaseTable;
   session: SessionTable;
+  sessionLog: SessionLogTable;
+  siteNightStat: SiteNightStatTable;
   sessionEvent: SessionEventTable;
   capture: CaptureTable;
   correction: CorrectionTable;

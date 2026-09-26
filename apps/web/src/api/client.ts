@@ -462,6 +462,32 @@ export const sessionsApi = {
     apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),
 };
 
+export type SessionLogView = Schemas['SessionLogView'];
+export type SessionLogValues = Schemas['SessionLogValues'];
+export type ClearNightView = Schemas['ClearNightView'];
+export type ClearNightNight = Schemas['ClearNightNight'];
+
+/** Sitzungsprotokoll und Klarnacht-Statistik (AP-30; S-61 *Protokoll*, S-64). */
+export const sessionLogApi = {
+  get: (sessionId: string) => apiFetch<SessionLogView>(`${V1}/sessions/${sessionId}/log`),
+  /** Speichern mit `If-Match: "<version>"` (412 `resource.version_conflict`). */
+  save: (sessionId: string, values: SessionLogValues, version: string) =>
+    apiFetch<SessionLogView>(`${V1}/sessions/${sessionId}/log`, {
+      ...json('PUT', values),
+      headers: { 'If-Match': `"${version}"` },
+    }),
+  clearNights: (siteId: string, from: string, to: string) =>
+    apiFetch<ClearNightView>(
+      `${V1}/sites/${siteId}/clear-nights?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    ),
+  /** Nacht ohne Session als „bewölkt/nicht genutzt“ erfassen bzw. zurücknehmen (FA-AUS-17, Admin). */
+  markUnused: (siteId: string, night: string, on: boolean) =>
+    apiFetch<undefined>(
+      `${V1}/sites/${siteId}/clear-nights/${night}`,
+      on ? json('PUT', { usable: false }) : json('DELETE'),
+    ),
+};
+
 export type DsoView = Schemas['DsoView'];
 export type DsoList = Schemas['DsoList'];
 export type DsoNight = Schemas['DsoNight'];

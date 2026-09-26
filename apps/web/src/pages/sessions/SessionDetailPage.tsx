@@ -4,8 +4,8 @@
  * Standortzeit mit Kürzel, Frames und Integration; Aktionen *Korrektur erfassen* und *Als geprüft
  * markieren* (Admin, Hauptaktion rechts); Reiter in einer Karte. Reiter Soll/Ist je Zeile (Soll aus der
  * ersten Planrevision), Aufnahmen (Kennzeichen *Temperaturabweichung* und *Einstellungen abweichend*
- * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats. Plangrafik, Protokoll, Kennzahlen und
- * Transits folgen mit ihren Paketen (R2/R3/R4).
+ * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats, Protokoll (AP-30, `SessionLogPanel`).
+ * Plangrafik, Kennzahlen und Transits folgen mit ihren Paketen (R2/R3/R4).
  */
 import { formatNightKey, rejectReasons } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,11 +26,12 @@ import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { problemCode } from '../admin/shared';
+import { SessionLogPanel } from './SessionLogPanel';
 import styles from './sessions.module.css';
 import { SESSIONS_PATH, SessionTime, hours } from './SessionsPage';
 
-type Tab = 'plan' | 'captures' | 'events' | 'flats';
-const TABS: readonly Tab[] = ['plan', 'captures', 'events', 'flats'];
+type Tab = 'plan' | 'captures' | 'events' | 'flats' | 'log';
+const TABS: readonly Tab[] = ['plan', 'captures', 'events', 'log', 'flats'];
 
 export function SessionDetailPage() {
   const { t } = useTranslation();
@@ -166,6 +167,7 @@ export function SessionDetailPage() {
             ),
             events: <Events detail={d} />,
             flats: <Flats detail={d} />,
+            log: <SessionLogPanel sessionId={id} siteTimeZone={s.siteTimeZone} />,
           }}
         />
       </section>
