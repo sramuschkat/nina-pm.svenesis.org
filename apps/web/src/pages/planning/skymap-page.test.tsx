@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   project: null as unknown,
   updateRig: vi.fn(),
   patch: vi.fn(),
+  searchItems: [] as unknown[],
 }));
 
 vi.mock('../../api/client', async (importOriginal) => {
@@ -69,7 +70,7 @@ vi.mock('../../api/client', async (importOriginal) => {
       region: () => Promise.resolve({ items: [], total: 0 }),
       search: () =>
         Promise.resolve({
-          items: [],
+          items: state.searchItems,
           total: 0,
           night: null,
           catalog: { version: 'v', fetchedAt: '2026-09-25' },
@@ -235,6 +236,47 @@ describe('S-20 Sternkarte', () => {
     const link = await screen.findByRole('link', { name: 'Neues Projekt' });
     const q = new URLSearchParams(link.getAttribute('href')?.split('?')[1]);
     expect(Object.fromEntries(q)).toEqual({ ra: '83.5', dec: '-5.2', rot: '33', rig: ID(500) });
+  });
+
+  it('Neues Projekt übernimmt das in der Katalogsuche gewählte Objekt (Katalogverknüpfung)', async () => {
+    state.rig = rig({ hasRotator: true });
+    state.searchItems = [
+      {
+        id: ID(700),
+        primaryId: 'NGC 1976',
+        displayName: 'M 42',
+        names: ['M 42', 'Orion Nebula'],
+        catalogs: ['NGC', 'M'],
+        objectType: 'Cl+N',
+        group: 'emission_nebula',
+        constellation: 'Ori',
+        raDeg: 83.82,
+        decDeg: -5.39,
+        magV: 4,
+        magB: null,
+        magBandUsed: 'V',
+        surfBrMagArcsec2: null,
+        sizeMajorArcmin: 85,
+        sizeMinorArcmin: 60,
+        positionAngleDeg: null,
+        source: 'openngc',
+        filterHint: 'narrowband',
+        night: null,
+      },
+    ];
+    renderPage('/planung/sternkarte?ra=10&dec=40&fra=10&fdec=40&t=1797368400');
+    const box = await screen.findByRole('combobox', { name: 'Katalogsuche' });
+    fireEvent.focus(box);
+    fireEvent.change(box, { target: { value: 'm42' } });
+    await screen.findByRole('option', { name: /M 42/ });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    const link = await screen.findByRole('link', { name: 'Neues Projekt' });
+    await waitFor(() =>
+      expect(new URLSearchParams(link.getAttribute('href')?.split('?')[1]).get('objekt')).toBe(
+        'NGC 1976',
+      ),
+    );
+    state.searchItems = [];
   });
 
   it('Ins Projekt übernehmen setzt das Mosaik mit If-Match (AP-22)', async () => {
