@@ -290,3 +290,73 @@
   align-items: center;
   gap: var(--npm-space-2);
 }
+/* Projektbericht S-63 (AP-34): aufklappbare Abschnitte, Verlauf, Druckansicht. */
+.reportSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) 0;
+  border-bottom: 1px solid var(--npm-border);
+}
+.reportSection > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.reportHeading {
+  display: inline;
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.reportFacts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+}
+.reportFacts dt {
+  color: var(--npm-text-light);
+}
+.reportFacts dd {
+  margin: 0;
+}
+.reportChart {
+  margin: 0;
+  min-width: 0;
+}
+.reportPlot {
+  position: relative;
+}
+.reportChart svg {
+  display: block;
+  width: 100%;
+  height: 10rem;
+  background: var(--npm-surface-sub);
+  border-radius: var(--npm-radius);
+}
+.reportPlot > .reportAxis {
+  position: absolute;
+  top: var(--npm-space-1);
+  right: var(--npm-space-2);
+}
+.reportAxisX {
+  display: flex;
+  justify-content: space-between;
+}
+.reportCum {
+  stroke: var(--npm-text);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.reportAxis,
+.reportAxisX {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+@media print {
+  .noPrint {
+    display: none !important;
+  }
+}
+.note {
+  composes: note from '../equipment/equipment.module.css';
+}

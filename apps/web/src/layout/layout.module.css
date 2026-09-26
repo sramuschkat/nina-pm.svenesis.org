@@ -557,3 +557,11 @@
     display: none;
   }
 }
+
+/* Druckansicht (Projektbericht S-63, AP-34): nur der Seiteninhalt. */
+@media print {
+  .appBar,
+  .sideNav {
+    display: none !important;
+  }
+}

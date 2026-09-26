@@ -14,6 +14,7 @@ export * from './system';
 export * from './tenant-settings';
 export * from './equipment';
 export * from './projects';
+export * from './reports';
 export * from './approval';
 export * from './grid';
 export * from './plan';

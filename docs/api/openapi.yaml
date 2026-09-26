@@ -7395,6 +7395,311 @@ components:
         - needFrames
         - target
         - conditions
+    ProjectReport:
+      type: object
+      properties:
+        from:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        to:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        generatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        totals:
+          type: object
+          properties:
+            projects:
+              type: integer
+              minimum: 0
+            periodAccepted:
+              type: integer
+              minimum: 0
+            periodIntegrationS:
+              type: number
+          required:
+            - projects
+            - periodAccepted
+            - periodIntegrationS
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportProject"
+      required:
+        - from
+        - to
+        - generatedAt
+        - totals
+        - projects
+    ReportProject:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        projectType:
+          type: string
+          enum:
+            - deep_sky
+            - exoplanet
+        targetName:
+          type:
+            - string
+            - "null"
+        rigId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        rigName:
+          type:
+            - string
+            - "null"
+        approvalStatus:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - approved
+            - returned
+            - rejected
+        status:
+          type:
+            - string
+            - "null"
+          enum:
+            - planning
+            - active
+            - on_hold
+            - ready_to_process
+            - unfinished
+            - completed
+            - archived
+            - null
+        percentDone:
+          type: number
+          minimum: 0
+          maximum: 100
+        filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportFilterTotal"
+        periodAccepted:
+          type: integer
+          minimum: 0
+        periodIntegrationS:
+          type: number
+        nights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportNight"
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSession"
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+            minTimeOnTargetH:
+              type: number
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+            moonAvoidanceEnabled:
+              type: boolean
+            moonSeparationDeg:
+              type: number
+          required:
+            - minAltitudeDeg
+            - minTimeOnTargetH
+            - twilight
+            - moonAvoidanceEnabled
+            - moonSeparationDeg
+        channelBalance:
+          $ref: "#/components/schemas/ChannelBalanceHint"
+      required:
+        - projectId
+        - name
+        - projectType
+        - targetName
+        - rigId
+        - rigName
+        - approvalStatus
+        - status
+        - percentDone
+        - filters
+        - periodAccepted
+        - periodIntegrationS
+        - nights
+        - sessions
+        - conditions
+        - channelBalance
+    ReportFilterTotal:
+      type: object
+      properties:
+        filter:
+          type: string
+        planned:
+          type: integer
+          minimum: 0
+        accepted:
+          type: integer
+          minimum: 0
+        remaining:
+          type: integer
+          minimum: 0
+        integrationS:
+          type: number
+          minimum: 0
+        percentDone:
+          type: number
+          minimum: 0
+          maximum: 100
+      required:
+        - filter
+        - planned
+        - accepted
+        - remaining
+        - integrationS
+        - percentDone
+    ReportNight:
+      type: object
+      properties:
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              acquired:
+                type: integer
+                minimum: 0
+              rejected:
+                type: integer
+                minimum: 0
+              accepted:
+                type: integer
+                minimum: 0
+              integrationS:
+                type: number
+              cumulativeS:
+                type: number
+            required:
+              - filter
+              - acquired
+              - rejected
+              - accepted
+              - integrationS
+              - cumulativeS
+      required:
+        - night
+        - filters
+    ReportSession:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: UUID
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        rigName:
+          type: string
+        status:
+          type: string
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              frames:
+                type: integer
+                minimum: 0
+            required:
+              - filter
+              - frames
+        frames:
+          type: integer
+          minimum: 0
+        rejectedPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 100
+        weatherRatingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+      required:
+        - sessionId
+        - night
+        - rigName
+        - status
+        - filters
+        - frames
+        - rejectedPct
+        - weatherRatingIndex
+    ChannelBalanceHint:
+      type:
+        - object
+        - "null"
+      properties:
+        behind:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              percentDone:
+                type: number
+            required:
+              - filter
+              - percentDone
+        ahead:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              percentDone:
+                type: number
+            required:
+              - filter
+              - percentDone
+      required:
+        - behind
+        - ahead
     NinaInstanceView:
       type: object
       properties:
@@ -19735,6 +20040,88 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/reports/projects:
+    get:
+      summary: "Projektbericht: Zeitraum, Status, Rig, Typ"
+      tags:
+        - reports
+      description: "Aktion: `project.read` · FA-AUS-18, FA-AUS-10, FA-AUS-11, FA-AUS-13, S-63"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-AUS-18
+        - FA-AUS-10
+        - FA-AUS-11
+        - FA-AUS-13
+        - S-63
+      parameters:
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: string
+            enum:
+              - planning
+              - active
+              - on_hold
+              - ready_to_process
+              - unfinished
+              - completed
+              - archived
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - deep_sky
+              - exoplanet
+          required: false
+          name: type
+          in: query
+      responses:
+        "200":
+          description: Bericht
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectReport"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
           content:
             application/problem+json:
               schema:

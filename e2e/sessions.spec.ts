@@ -1,7 +1,7 @@
 /**
  * AP-15: S-60/S-61 gegen den lokalen Stack – eine Fake-Plugin-Nacht auf einem eigenen Rig erscheint
  * vollständig in S-61, eine Aufnahme mit beiden Kennzeichen (Temperatur, Einstellungen) ist sichtbar;
- * axe hell/dunkel, 768/2400 px ohne horizontales Scrollen.
+ * axe hell/dunkel, 768/2400 px ohne horizontales Scrollen. AP-34: Projektbericht S-63 nach der Nacht.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -205,3 +205,43 @@ for (const width of [768, 2400]) {
     }
   });
 }
+
+test('S-63: Projektbericht nach einer Fake-Plugin-Nacht – Abschnitt, axe hell/dunkel, 768/2400 px', async ({
+  browser,
+  baseURL,
+}) => {
+  const admin = await (await browser.newContext({ viewport: WIDE })).newPage();
+  await testLogin(admin, 'owner');
+  const user = await (await browser.newContext()).newPage();
+  await testLogin(user, 'user1');
+  const { rigId, projectName } = await nightOnOwnRig(admin, user, baseURL ?? '');
+
+  await admin.goto('/auswertung/projektbericht');
+  await expect(admin.getByRole('heading', { level: 1, name: 'Projektbericht' })).toBeVisible();
+  await admin.getByLabel('Rig', { exact: true }).selectOption(rigId);
+  const overview = admin.getByRole('table', { name: 'Übersicht' });
+  await expect(overview.getByRole('row').filter({ hasText: projectName })).toHaveCount(1);
+  await admin.getByRole('heading', { level: 2, name: new RegExp(projectName) }).click();
+  await expect(admin.getByRole('table', { name: `Filter von ${projectName}` })).toBeVisible();
+  const sessions = admin.getByRole('table', { name: `Sessions von ${projectName}` });
+  await expect(sessions.getByRole('row')).not.toHaveCount(1);
+  await expect(admin.getByRole('img', { name: /Nächte mit Aufnahmen, kumuliert/ })).toBeVisible();
+  await expectNoSerious(admin, 'S-63 light');
+  const download = admin.waitForEvent('download');
+  await admin.getByRole('button', { name: 'CSV exportieren' }).click();
+  expect((await download).suggestedFilename()).toMatch(/^projektbericht-.*\.csv$/);
+
+  for (const width of [768, 2400]) {
+    await admin.setViewportSize({ width, height: 900 });
+    const overflow = await admin.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `S-63 @ ${String(width)}`).toBeLessThanOrEqual(0);
+  }
+
+  await admin.evaluate(() => window.localStorage.setItem('npm.theme', 'dark'));
+  await admin.reload();
+  await expect(admin.getByRole('heading', { level: 1, name: 'Projektbericht' })).toBeVisible();
+  await expect(admin.getByRole('table', { name: 'Übersicht' })).toBeVisible();
+  await expectNoSerious(admin, 'S-63 dark');
+});

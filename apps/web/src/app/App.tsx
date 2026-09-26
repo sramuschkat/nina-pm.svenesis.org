@@ -40,6 +40,7 @@ import { InstancesPage } from '../pages/nina/InstancesPage';
 import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { ClearNightsPage } from '../pages/sessions/ClearNightsPage';
 import { ForecastPage } from '../pages/sessions/ForecastPage';
+import { ProjectReportPage } from '../pages/sessions/ProjectReportPage';
 import { SessionDetailPage } from '../pages/sessions/SessionDetailPage';
 import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
@@ -200,6 +201,7 @@ export function createRouter() {
                 { path: 'sessions', element: <SessionsPage /> },
                 { path: 'sessions/:id', element: <SessionDetailPage /> },
                 { path: 'folgeplanung', element: <ForecastPage /> },
+                { path: 'projektbericht', element: <ProjectReportPage /> },
                 { path: 'klarnacht', element: <ClearNightsPage /> },
               ],
             },
