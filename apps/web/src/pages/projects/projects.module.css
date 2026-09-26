@@ -763,8 +763,9 @@ tr[data-dragging='true'] {
   overflow: auto;
   padding: var(--npm-space-3) var(--npm-space-4);
 }
-/* Diagramme in natürlicher Höhe (AP-26e): das Nachtdiagramm wird nicht mehr in einem Rollbereich beschnitten. */
 .areaMiddle {
+  max-height: clamp(12rem, 29vh, 32rem);
+  overflow: auto;
   padding: var(--npm-space-2) var(--npm-space-4);
 }
 .areaNote {
