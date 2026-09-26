@@ -126,13 +126,15 @@ test('AP-26b: Liste links, Detail rechts; Auswahl markiert; unter 1024 px untere
   await expect(list.locator('[aria-current="true"]')).toHaveCount(0);
   // 768 px: Liste über dem Detail.
   await page.setViewportSize({ width: 768, height: 900 });
-  const narrowList = await list.boundingBox();
-  const narrowDetail = await page
-    .getByRole('heading', { level: 2, name: 'Neues Teleskop' })
-    .boundingBox();
-  expect(narrowDetail?.y ?? 0).toBeGreaterThan(
-    (narrowList?.y ?? 0) + (narrowList?.height ?? 0) - 1,
-  );
+  // Nach dem Größenwechsel warten, bis das Layout umgebrochen ist (sonst misst der Test den Zwischenstand).
+  const newHeading = page.getByRole('heading', { level: 2, name: 'Neues Teleskop' });
+  await expect
+    .poll(async () => {
+      const l = await list.boundingBox();
+      const d = await newHeading.boundingBox();
+      return (d?.y ?? 0) - ((l?.y ?? 0) + (l?.height ?? 0));
+    })
+    .toBeGreaterThan(-1);
 });
 
 for (const width of [768, 2400]) {

@@ -48,7 +48,9 @@ const M31 = { raDeg: 10.68, decDeg: 41.27 };
 const ORION = { raDeg: 83.82, decDeg: -5.39 };
 const POLARIS = { raDeg: 37.95, decDeg: 89.26 };
 
-describe('seasonChartData (FA-SIC-02)', () => {
+// Ein Jahr Nächte je Test (Sonne, Mond, Ziel je 5 min): lokal rund 1 s, auf ausgelasteten CI-Runnern bis
+// fünfmal langsamer – eigenes Zeitlimit statt der 5 s Standard.
+describe('seasonChartData (FA-SIC-02)', { timeout: 20_000 }, () => {
   it('Balken je Nacht (1 Monat) bzw. je Woche; heute; Mondanteil 0–100', () => {
     const m = seasonChartData(input('2026-09-26', M31), '1m');
     expect(m.months).toHaveLength(30);
