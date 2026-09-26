@@ -6,6 +6,7 @@
  * *Zurückgegeben* (Entscheidung Sven, 24.09.2026, wie FA-FRG-09).
  */
 import { z } from 'zod';
+import { ChangeRequestInfo } from './change-requests';
 import { EffortView } from './effort';
 import { moonModes, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
@@ -144,7 +145,10 @@ export const QueueItem = z
     effort: EffortView.nullable(),
     /** Vorschlag der Einfügeposition in die Rig-Priorität (FA-FRG-16), nur für Admins. */
     suggestedPriorityPosition: z.number().int().nullable(),
+    /** Bei `kind = project` die Projektversion, bei `change-request` die Version des Antrags. */
     version: z.number().int(),
+    /** Nur bei Änderungsanträgen (AP-32b): Vorschlag, Gegenüberstellung, Projektversion. */
+    changeRequest: ChangeRequestInfo.nullable(),
   })
   .meta({ id: 'QueueItem' });
 export type QueueItem = z.infer<typeof QueueItem>;

@@ -20,6 +20,7 @@ import { TENANT_ROUTES, webTenantRoutes } from './routes/web-tenant';
 import { EQUIPMENT_ROUTES, webEquipmentRoutes } from './routes/web-equipment';
 import { PROJECT_ROUTES, webProjectRoutes } from './routes/web-projects';
 import { APPROVAL_ROUTES, webApprovalRoutes } from './routes/web-approval';
+import { CHANGE_REQUEST_ROUTES, webChangeRequestRoutes } from './routes/web-change-requests';
 import { ME_ROUTES, webMeRoutes } from './routes/web-me';
 import { NOTIFICATION_ROUTES, webNotificationRoutes } from './routes/web-notifications';
 import { MEMBER_ROUTES, webMemberRoutes } from './routes/web-members';
@@ -62,6 +63,7 @@ export const ROUTES = [
   ...EQUIPMENT_ROUTES,
   ...PROJECT_ROUTES,
   ...APPROVAL_ROUTES,
+  ...CHANGE_REQUEST_ROUTES,
   ...SIMULATION_ROUTES,
   ...NINA_INSTANCE_ROUTES,
   ...NINA_OPS_ROUTES,
@@ -128,6 +130,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webEquipmentRoutes(services));
   app.route('/', webProjectRoutes(services));
   app.route('/', webApprovalRoutes(services));
+  app.route('/', webChangeRequestRoutes(services));
   app.route('/', webSimulationRoutes(services));
   app.route('/', webNinaInstanceRoutes(services));
   app.route('/', webNinaOpsRoutes(services));

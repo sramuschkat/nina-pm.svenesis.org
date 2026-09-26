@@ -4,6 +4,7 @@
  * in `simulateNights` (shared, rein); das Ergebnis geht als JSON nach S3 `tenant/<tid>/jobs/<jobId>.json`.
  */
 import {
+  applyChangeRequest,
   ImpactInput,
   impactComparison,
   MAX_MULTI_SIM_NIGHTS,
@@ -18,6 +19,7 @@ import {
   type ProjectView,
   type RigView,
   type SiteNightsView,
+  type StoredChangeRequestProposal,
 } from '@nina-pm/shared';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
@@ -46,6 +48,11 @@ export interface RigContext {
 export interface MultiSimDeps {
   loadRig(tenantId: string, rigId: string): Promise<RigContext | null>;
   loadProject(tenantId: string, projectId: string): Promise<Project | null>;
+  /** Offener Änderungsantrag mit aktueller Projektfassung (AP-32b); `null`, wenn keiner. */
+  loadChangeRequest(
+    tenantId: string,
+    id: string,
+  ): Promise<{ project: Project; proposal: StoredChangeRequestProposal } | null>;
   /** Nacht-Tabelle des Standorts ab `from` (bzw. um jetzt) mit `count` Nächten. */
   nights(site: SimSite, now: Date, from: string | undefined, count: number): Nights;
   /** Nachtbewertung aus dem Wetter-Cache des Standorts (leer ohne Vorhersage). */
@@ -105,7 +112,9 @@ export function impactJobHandler(deps: MultiSimDeps): JobHandler {
   return async ({ job, now }) => {
     if (!job.tenantId) throw new Error('impact ohne Mandant');
     const input = ImpactInput.parse(job.input);
-    const target = await deps.loadProject(job.tenantId, input.queueItemId);
+    // Änderungsantrag (AP-32b): aktuelle Fassung gegen „mit Antrag“; sonst eingereichtes Objekt.
+    const request = await deps.loadChangeRequest(job.tenantId, input.queueItemId);
+    const target = request?.project ?? (await deps.loadProject(job.tenantId, input.queueItemId));
     if (!target) throw new ProblemError('resource.not_found');
     // In der Sicht ist `rigId` bis zur Freigabe das Wunsch-Rig (`projectView`).
     const rigId = target.rigId;
@@ -128,8 +137,11 @@ export function impactJobHandler(deps: MultiSimDeps): JobHandler {
     };
     // Das Objekt wie nach der Freigabe: auf dem Wunsch-Rig, am Ende der Priorität (FA-FRG-06).
     const lowest = Math.max(0, ...others.map((p) => p.priority)) + 1;
-    const asApproved: Project = { ...target, rigId, priority: lowest };
-    const without = simulateNights({ ...base, projects: others });
+    const asApproved: Project = request
+      ? applyChangeRequest(target, request.proposal)
+      : { ...target, rigId, priority: lowest };
+    const current = request && plannable(rigId, target) ? [target] : [];
+    const without = simulateNights({ ...base, projects: [...others, ...current] });
     const withTarget = simulateNights({ ...base, projects: [...others, asApproved] });
     const result: ImpactResult = {
       kind: 'impact',

@@ -210,3 +210,8 @@ export {
   thumbnailKeyInUse,
   type ThumbnailCandidate,
 } from './repositories/thumbnail';
+export {
+  ChangeRequestRepository,
+  type ChangeRequestRecord,
+  type ChangeRequestRow,
+} from './repositories/change-request';

@@ -76,6 +76,7 @@ import {
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { PanelList } from './PanelList';
+import { ChangeRequestsTab } from './ChangeRequestsTab';
 import { ChartArea, HistoryTab, NotesTab } from './ProjectTabs';
 import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
@@ -768,6 +769,9 @@ function Editor({
     { key: 'sky', label: t('projectEditor.tabs.sky') },
     { key: 'description', label: t('projectEditor.field.description') },
     ...(saved ? [{ key: 'notes' as const, label: t('projectEditor.tabs.notes') }] : []),
+    ...(saved?.approvalStatus === 'approved'
+      ? [{ key: 'changes' as const, label: t('projectEditor.tabs.changes') }]
+      : []),
     ...(saved && canHistory
       ? [{ key: 'history' as const, label: t('projectEditor.tabs.history') }]
       : []),
@@ -794,6 +798,9 @@ function Editor({
         ),
         description: descriptionPanel,
         ...(saved ? { notes: <NotesTab projectId={saved.id} resource={resource} /> } : {}),
+        ...(saved?.approvalStatus === 'approved'
+          ? { changes: <ChangeRequestsTab project={saved} canEdit={canEdit} /> }
+          : {}),
         ...(saved && canHistory ? { history: <HistoryTab projectId={saved.id} /> } : {}),
       }}
     />
@@ -928,7 +935,11 @@ function Editor({
       />
       {!canEdit ? (
         <p className={styles.note} role="note">
-          {me?.mfaRequired ? t('errors.auth.mfaRequired') : t('projectEditor.readOnly')}
+          {me?.mfaRequired
+            ? t('errors.auth.mfaRequired')
+            : saved?.approvalStatus === 'approved' && saved.createdBy === me?.member?.id
+              ? t('projectEditor.readOnlyRequest')
+              : t('projectEditor.readOnly')}
         </p>
       ) : null}
       {isConflict(save.error) ? (
@@ -1138,7 +1149,7 @@ function ProjectProgress({ sums }: { sums: ReturnType<typeof planSums> }) {
 }
 
 /** Unterreiter von *Bild & Notizen*. */
-type ImageTab = 'preview' | 'sky' | 'description' | 'notes' | 'history';
+type ImageTab = 'preview' | 'sky' | 'description' | 'notes' | 'changes' | 'history';
 
 /** Fehler der Client-Prüfung (zod) als Feldpfade. */
 class FormErrors extends Error {

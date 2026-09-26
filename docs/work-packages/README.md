@@ -85,8 +85,8 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 |---|---|---|---|---|---|
 | [AP-30](AP-30.md) | Sitzungsprotokoll und Klarnacht-Statistik | M | AP-15 | – | ☑ |
 | [AP-31](AP-31.md) | Session-KPIs, Abweichungsgründe, Aufnahmen verwerfen | M | AP-30 | – | ☑ |
-| [AP-32a](AP-32a.md) | Mehrnacht-Simulation und Auswirkungsvorschau als Jobs (Teil 1 von [AP-32](AP-32.md)) | M | AP-31 | – | ◐ |
-| [AP-32b](AP-32b.md) | Änderungsanträge mit Konflikt-Diff (Teil 2 von [AP-32](AP-32.md)) | M | AP-32a | – | ☐ |
+| [AP-32a](AP-32a.md) | Mehrnacht-Simulation und Auswirkungsvorschau als Jobs (Teil 1 von [AP-32](AP-32.md)) | M | AP-31 | – | ☑ |
+| [AP-32b](AP-32b.md) | Änderungsanträge mit Konflikt-Diff (Teil 2 von [AP-32](AP-32.md)) | M | AP-32a | – | ◐ |
 | [AP-33](AP-33.md) | Folgeplanung S-62 und Prognose | M | AP-32b | – | ☐ |
 | [AP-34](AP-34.md) | Projektbericht S-63 | S | AP-31 | – | ☐ |
 | [AP-35](AP-35.md) | „Heute Nacht“ S-02 | S | AP-33 | – | ☐ |

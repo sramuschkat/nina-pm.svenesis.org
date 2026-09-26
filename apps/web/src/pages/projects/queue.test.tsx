@@ -189,7 +189,7 @@ describe('S-33 (Komponente)', () => {
     state.vote.mockResolvedValue({});
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: 'Für „Objekt 1“ stimmen' }));
-    await waitFor(() => expect(state.vote).toHaveBeenCalledWith(ID(101), true));
+    await waitFor(() => expect(state.vote).toHaveBeenCalledWith(ID(101), true, 'project'));
     expect(
       screen.getByRole('button', { name: 'Eigenes Objekt „Meins“ – keine Stimme möglich' }),
     ).toBeDisabled();
@@ -274,7 +274,7 @@ describe('Filterleiste (AP-26c)', () => {
     ];
     renderPage();
     await screen.findByRole('link', { name: 'M 31' });
-    expect(screen.getByRole('status')).toHaveTextContent('2 von 2 Einreichungen');
+    expect(screen.getByRole('status')).toHaveTextContent('2 von 2 Einträgen');
     const more = screen.getByRole('button', { name: 'Filter' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('nur ohne meine Stimme')).not.toBeInTheDocument();
@@ -296,7 +296,7 @@ describe('Filterleiste (AP-26c)', () => {
     });
     expect(screen.getByRole('link', { name: 'IC 1396' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'M 31' })).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('1 von 2 Einreichungen');
+    expect(screen.getByRole('status')).toHaveTextContent('1 von 2 Einträgen');
   });
 });
 

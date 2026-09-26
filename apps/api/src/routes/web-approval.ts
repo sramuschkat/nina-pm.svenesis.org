@@ -8,10 +8,12 @@
  * (`202 {jobId}`, dedupliziert je Gegenstand, höchstens 3 offene Jobs je Mitglied).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import type { QueueEntry } from '@nina-pm/db';
+import type { ChangeRequestRecord, ProjectDetail, QueueEntry } from '@nina-pm/db';
 import {
+  applyChangeRequest,
   ApproveInput,
   can,
+  changeRequestDiff,
   dedupeKeys,
   JobAccepted,
   DecisionComment,
@@ -233,7 +235,7 @@ export const impactRoute = defineRoute(
     responses: {
       202: { description: 'Job angelegt bzw. schon offen', ...json(JobAccepted) },
       ...errors,
-      409: problemContent('approval.not_allowed'),
+      409: problemContent('approval.not_allowed / change_request.not_open'),
       429: problemContent('auth.rate_limited'),
     },
   },
@@ -307,12 +309,78 @@ function queueItem(
     effort: effortView(p),
     suggestedPriorityPosition,
     version: p.version,
+    changeRequest: null,
+  };
+}
+
+/**
+ * Änderungsantrag als Eintrag der Warteschlange (AP-32b, FA-FRG-04): Projektangaben mit dem Plan „mit
+ * Antrag“ (Plan-Chips, Zeitbedarf), Stimmen und Rang des Antrags, Version des Antrags.
+ */
+function changeRequestItem(
+  r: ChangeRequestRecord,
+  detail: ProjectDetail,
+  votes: z.output<typeof QueueItem>['votes'],
+  rank: { rank: number; of: number } | null,
+): z.output<typeof QueueItem> {
+  const current = projectView(detail);
+  const proposed = applyChangeRequest(current, r.proposal);
+  const active = proposed.panels.flatMap((panel) => panel.lines).filter((l) => l.enabled);
+  const base = queueItem(
+    {
+      detail,
+      createdByName: r.requestedByName,
+      submittedAt: new Date(r.row.createdAt),
+      expiresAt: null,
+      votes,
+      rank,
+    },
+    null,
+  );
+  return {
+    ...base,
+    kind: 'change-request',
+    id: r.row.id,
+    createdBy: r.row.requestedBy,
+    createdByName: r.requestedByName,
+    requestComment: r.comment,
+    contentChangedAt: isoUtcOrNull(r.row.contentChangedAt),
+    startDate: proposed.startDate,
+    conditions: {
+      minAltitudeDeg: proposed.conditions.minAltitudeDeg,
+      minTimeOnTargetH: proposed.conditions.minTimeOnTargetH,
+      twilight: proposed.conditions.twilight,
+    },
+    planSummary: active.map((l) => ({
+      filterId: l.filterId,
+      filterShortName: l.filterShortName,
+      count: l.plannedCount,
+      exposureS: l.exposureS,
+      gain: l.gain,
+      offset: l.offsetAdu,
+      binning: l.binning,
+      readoutMode: l.readoutMode,
+      moonMode: l.moonMode,
+      moonProfileId: l.moonProfileId,
+    })),
+    estimatedHours: active.reduce((s, l) => s + l.plannedCount * l.exposureS, 0) / 3600,
+    effort: null,
+    version: r.row.version,
+    changeRequest: {
+      status: r.row.status,
+      proposal: r.proposal,
+      comment: r.comment,
+      baseVersion: r.row.baseVersion,
+      projectVersion: current.version,
+      projectChangedSince: current.version !== r.row.baseVersion,
+      diff: changeRequestDiff(current, r.proposal),
+    },
   };
 }
 
 // ---- Handler --------------------------------------------------------------------------------------
 
-function expectedVersion(header: string | undefined): number | undefined {
+export function expectedVersion(header: string | undefined): number | undefined {
   if (header === undefined) return undefined;
   const m = /^(?:W\/)?"?(\d+)"?$/.exec(header.trim());
   if (!m) throw new ProblemError('resource.version_conflict');
@@ -437,60 +505,103 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
           }),
         )
       : new Map<string, { projectId: string; votes: number }[]>();
-    c.header('cache-control', 'no-store');
-    return c.json(
-      {
-        items: entries.map((e) => {
-          const rig = e.detail.project.requestedRigId ?? e.detail.project.rigId;
-          return queueItem(
-            e,
-            admin && rig ? suggestPriorityPosition(e.votes.count, peers.get(rig) ?? []) : null,
-          );
-        }),
-      },
-      200,
+    // Offene Änderungsanträge (AP-32b) in derselben Warteschlange.
+    const requests = x.svc.repositories(requireTenant(c).tenant).changeRequests();
+    const open = await requests.open();
+    const [crVotes, crRanks, crDetails] = await Promise.all([
+      requests.voteSummaries(open),
+      requests.ranks(open),
+      Promise.all(open.map((r) => x.projects.detail(r.row.projectId))),
+    ]);
+    const items = [
+      ...entries.map((e) => {
+        const rig = e.detail.project.requestedRigId ?? e.detail.project.rigId;
+        return queueItem(
+          e,
+          admin && rig ? suggestPriorityPosition(e.votes.count, peers.get(rig) ?? []) : null,
+        );
+      }),
+      ...open.flatMap((r, i) => {
+        const d = crDetails[i];
+        return d
+          ? [
+              changeRequestItem(
+                r,
+                d,
+                crVotes[i] as z.output<typeof QueueItem>['votes'],
+                crRanks[i] ?? null,
+              ),
+            ]
+          : [];
+      }),
+    ].sort(
+      (a, b) =>
+        b.votes.count - a.votes.count ||
+        (a.submitterRank?.rank ?? 999) - (b.submitterRank?.rank ?? 999) ||
+        (a.submittedAt ?? '').localeCompare(b.submittedAt ?? ''),
     );
+    c.header('cache-control', 'no-store');
+    return c.json({ items }, 200);
   });
 
   const voteSubject = async (x: Awaited<ReturnType<typeof ctx>>, kind: string, id: string) => {
-    // Änderungsanträge folgen mit R3; bis dahin existiert kein solcher Gegenstand.
-    if (kind !== 'project') throw new ProblemError('resource.not_found');
+    // Änderungsanträge (AP-32b): Regeln (eigener Antrag, offen) im Repository.
+    if (kind === 'change-request') return;
     await authorized(x, x.auth, id, 'queue.vote');
   };
+  const requestsOf = (c: Context<ApiEnv>, x: Awaited<ReturnType<typeof ctx>>) =>
+    x.svc.repositories(requireTenant(c).tenant).changeRequests();
 
   app.openapi(voteRoute, async (c) => {
     const x = await ctx(c);
     const { kind, id } = c.req.valid('param');
     await voteSubject(x, kind, id);
-    return c.json(await x.approvals.vote(id, true, x.svc.now()), 200);
+    const now = x.svc.now();
+    return c.json(
+      kind === 'change-request'
+        ? await requestsOf(c, x).vote(id, true, now)
+        : await x.approvals.vote(id, true, now),
+      200,
+    );
   });
 
   app.openapi(unvoteRoute, async (c) => {
     const x = await ctx(c);
     const { kind, id } = c.req.valid('param');
     await voteSubject(x, kind, id);
-    return c.json(await x.approvals.vote(id, false, x.svc.now()), 200);
+    const now = x.svc.now();
+    return c.json(
+      kind === 'change-request'
+        ? await requestsOf(c, x).vote(id, false, now)
+        : await x.approvals.vote(id, false, now),
+      200,
+    );
   });
 
   app.openapi(acknowledgeRoute, async (c) => {
     const x = await ctx(c);
     const { kind, id } = c.req.valid('param');
     await voteSubject(x, kind, id);
-    await x.approvals.acknowledge(id, x.svc.now());
+    if (kind === 'change-request') await requestsOf(c, x).acknowledge(id, x.svc.now());
+    else await x.approvals.acknowledge(id, x.svc.now());
     return c.body(null, 204);
   });
 
   app.openapi(impactRoute, async (c) => {
     const x = await ctx(c);
     const { kind, id } = c.req.valid('param');
-    // Änderungsanträge folgen mit AP-32b.
-    if (kind !== 'project') throw new ProblemError('resource.not_found');
-    const meta = await x.projects.meta(id);
-    if (!meta) throw new ProblemError('resource.not_found');
-    if (meta.approvalStatus !== 'submitted')
-      throw new ProblemError('approval.not_allowed', [
-        { path: 'approvalStatus', message: `${meta.approvalStatus} → impact` },
-      ]);
+    if (kind === 'change-request') {
+      // Änderungsantrag (AP-32b): nur offen; Vorschau „mit Antrag“ gegen die aktuelle Fassung.
+      const r = await requestsOf(c, x).byId(id);
+      if (r.row.status !== 'open') throw new ProblemError('change_request.not_open');
+    } else {
+      const meta = await x.projects.meta(id);
+      if (!meta) throw new ProblemError('resource.not_found');
+      if (meta.approvalStatus !== 'submitted')
+        throw new ProblemError('approval.not_allowed', [
+          { path: 'approvalStatus', message: `${meta.approvalStatus} → impact` },
+        ]);
+    }
     const { tenant } = requireTenant(c);
     const input = { queueItemId: id };
     const r = await enqueueJob(x.svc.repositories(tenant).job, x.svc.jobInvoker, {

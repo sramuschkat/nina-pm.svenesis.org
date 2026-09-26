@@ -384,7 +384,9 @@ export function HistoryTab({ projectId }: { projectId: string }) {
   const what = (h: HistoryEntry) =>
     h.kind === 'approval'
       ? approvalText(h)
-      : t('projectEditor.history.change', { entity: h.entity, action: h.action });
+      : h.kind === 'change_request'
+        ? t(`projectEditor.history.changeRequest.${h.action}`, { defaultValue: h.action })
+        : t('projectEditor.history.change', { entity: h.entity, action: h.action });
   const columns: DataColumn<HistoryRow>[] = [
     {
       id: 'when',

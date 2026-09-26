@@ -405,16 +405,54 @@ export const approvalApi = {
       ...ifMatch(version),
     }),
   queue: () => apiFetch<{ items: QueueItem[] }>(`${V1}/queue`),
-  vote: (id: string, on: boolean) =>
-    apiFetch<QueueVotes>(`${V1}/queue/project/${id}/vote`, json(on ? 'PUT' : 'DELETE')),
+  /** Stimme für ein eingereichtes Objekt bzw. einen offenen Änderungsantrag (AP-32b). */
+  vote: (id: string, on: boolean, kind: 'project' | 'change-request' = 'project') =>
+    apiFetch<QueueVotes>(`${V1}/queue/${kind}/${id}/vote`, json(on ? 'PUT' : 'DELETE')),
   acknowledge: (id: string) =>
     apiFetch<undefined>(`${V1}/queue/project/${id}/vote/acknowledge`, json('POST')),
-  ranking: (ids: readonly string[]) =>
-    apiFetch<undefined>(
-      `${V1}/me/submission-ranking`,
-      json('PUT', { items: ids.map((id) => ({ kind: 'project', id })) }),
-    ),
+  /** Rangfolge der eigenen Einreichungen und offenen Änderungsanträge (FA-FRG-15, AP-32b). */
+  ranking: (items: readonly { kind: 'project' | 'change-request'; id: string }[]) =>
+    apiFetch<undefined>(`${V1}/me/submission-ranking`, json('PUT', { items })),
   drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
+};
+
+export type ChangeRequestView = Schemas['ChangeRequestView'];
+export type ChangeRequestDiffEntry = Schemas['ChangeRequestDiffEntry'];
+export type ChangeRequestProposal = Schemas['ChangeRequestProposal'];
+
+/** Änderungsanträge (AP-32b, FA-FRG-08): eigene Version (`If-Match`), Entscheidung mit Projektversion. */
+export const changeRequestsApi = {
+  list: (projectId: string) =>
+    apiFetch<{ items: ChangeRequestView[] }>(`${V1}/projects/${projectId}/change-requests`),
+  get: (id: string) => apiFetch<ChangeRequestView>(`${V1}/change-requests/${id}`),
+  create: (
+    projectId: string,
+    body: { id: string; proposal: ChangeRequestProposal; comment: string | null },
+  ) =>
+    apiFetch<ChangeRequestView>(`${V1}/projects/${projectId}/change-requests`, json('POST', body)),
+  update: (
+    id: string,
+    body: { proposal: ChangeRequestProposal; comment: string | null },
+    version: number,
+  ) =>
+    apiFetch<ChangeRequestView>(`${V1}/change-requests/${id}`, {
+      ...json('PATCH', body),
+      ...ifMatch(version),
+    }),
+  withdraw: (id: string, version: number) =>
+    apiFetch<ChangeRequestView>(`${V1}/change-requests/${id}/withdraw`, {
+      ...json('POST'),
+      ...ifMatch(version),
+    }),
+  decide: (
+    id: string,
+    body: { decision: 'approved' | 'rejected'; comment: string | null; projectVersion: number },
+    version: number,
+  ) =>
+    apiFetch<ChangeRequestView>(`${V1}/change-requests/${id}/decide`, {
+      ...json('POST', body),
+      ...ifMatch(version),
+    }),
 };
 
 export type NinaInstance = Schemas['NinaInstanceView'];

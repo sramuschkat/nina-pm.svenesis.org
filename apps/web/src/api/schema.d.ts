@@ -7940,7 +7940,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description approval.not_allowed */
+                /** @description approval.not_allowed / change_request.not_open */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8105,6 +8105,526 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/change-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Änderungsanträge eines Projekts
+         * @description Aktion: `project.read` · FA-FRG-08, FA-FRG-12
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Anträge */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Änderungsantrag für ein freigegebenes Projekt stellen
+         * @description Aktion: `changeRequest.create` · FA-FRG-08
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestInput"];
+                };
+            };
+            responses: {
+                /** @description Gestellt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description approval.not_allowed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/change-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Änderungsantrag mit Gegenüberstellung
+         * @description Aktion: `queue.read` · FA-FRG-08
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Antrag */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Offenen Änderungsantrag bearbeiten
+         * @description Aktion: `changeRequest.update` · FA-FRG-08, FA-FRG-14
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Antrags; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestUpdate"];
+                };
+            };
+            responses: {
+                /** @description Gespeichert */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description change_request.not_open */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/web/v1/change-requests/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Änderungsantrag zurückziehen (Antragsteller)
+         * @description Aktion: `changeRequest.update` · FA-FRG-08
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Antrags; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Zurückgezogen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description change_request.not_open */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/change-requests/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Änderungsantrag annehmen oder ablehnen
+         * @description Aktion: `queue.decide` · FA-FRG-08, FA-FRG-10
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description `version` des Antrags; abweichend → 412 */
+                    "if-match"?: string;
+                };
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestDecision"];
+                };
+            };
+            responses: {
+                /** @description Entschieden */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangeRequestView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description change_request.conflict / change_request.not_open / approval.own_object */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.version_conflict */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -14116,7 +14636,7 @@ export interface components {
         };
         HistoryEntry: {
             /** @enum {string} */
-            kind: "approval" | "change";
+            kind: "approval" | "change" | "change_request";
             action: string;
             /**
              * Format: uuid
@@ -14292,6 +14812,7 @@ export interface components {
             effort: components["schemas"]["EffortView"];
             suggestedPriorityPosition: number | null;
             version: number;
+            changeRequest: components["schemas"]["ChangeRequestInfo"];
         };
         QueueVotes: {
             count: number;
@@ -14306,6 +14827,28 @@ export interface components {
             }[];
             mine: boolean;
             mineChangedSince: boolean;
+        };
+        ChangeRequestInfo: {
+            /** @enum {string} */
+            status: "open" | "approved" | "rejected" | "withdrawn";
+            proposal?: unknown;
+            comment: string | null;
+            baseVersion: number;
+            projectVersion: number;
+            projectChangedSince: boolean;
+            diff: components["schemas"]["ChangeRequestDiffEntry"][];
+        } | null;
+        ChangeRequestDiffEntry: {
+            field: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            lineId: string | null;
+            lineLabel: string | null;
+            current?: unknown;
+            proposed?: unknown;
+            unchanged: boolean;
         };
         JobAccepted: {
             /**
@@ -14324,6 +14867,116 @@ export interface components {
                  */
                 id: string;
             }[];
+        };
+        ChangeRequestView: {
+            /** @enum {string} */
+            status: "open" | "approved" | "rejected" | "withdrawn";
+            proposal?: unknown;
+            comment: string | null;
+            baseVersion: number;
+            projectVersion: number;
+            projectChangedSince: boolean;
+            diff: components["schemas"]["ChangeRequestDiffEntry"][];
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            requestedBy: string;
+            requestedByName: string;
+            version: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            updatedAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            decidedAt: string | null;
+            decidedByName: string | null;
+            decisionComment: string | null;
+        };
+        ChangeRequestInput: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id?: string;
+            proposal: components["schemas"]["ChangeRequestProposal"];
+            /** @default null */
+            comment: string | null;
+        };
+        ChangeRequestProposal: {
+            descriptionMd?: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            startDate?: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            dueDate?: string | null;
+            conditions?: {
+                minAltitudeDeg?: number;
+                minTimeOnTargetH?: number;
+                /** @enum {string} */
+                twilight?: "astronomical" | "nautical" | "civil";
+                moonAvoidanceEnabled?: boolean;
+                moonMustBeDown?: boolean;
+                moonSeparationDeg?: number;
+                moonWidthDays?: number;
+                moonRelaxScale?: number;
+                moonMinAltDeg?: number;
+                moonMaxAltDeg?: number;
+                moonMaxIlluminationPct?: number;
+            };
+            /** @default [] */
+            lines: components["schemas"]["ChangeRequestLineChange"][];
+            /** @default [] */
+            newLines: components["schemas"]["LineCreate"][];
+        };
+        ChangeRequestLineChange: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            lineId: string;
+            plannedCount?: number;
+            enabled?: boolean;
+        };
+        ChangeRequestList: {
+            items: components["schemas"]["ChangeRequestView"][];
+        };
+        ChangeRequestUpdate: {
+            proposal: components["schemas"]["ChangeRequestProposal"];
+            /** @default null */
+            comment: string | null;
+        };
+        ChangeRequestDecision: {
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            /** @default null */
+            comment: string | null;
+            projectVersion: number;
         };
         MultiSimInput: {
             /**

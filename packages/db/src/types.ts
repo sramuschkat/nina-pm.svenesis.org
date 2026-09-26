@@ -443,6 +443,27 @@ export interface ApprovalEventTable {
   createdAt: Timestamp;
 }
 
+/** Tabelle `change_request` (Migration 0004, FA-FRG-08; AP-32b): Änderungsantrag nach Freigabe. */
+export interface ChangeRequestTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  requestedBy: string;
+  /** `{ proposal, comment }` – Vorschlag (Zeilen, Bedingungen, Zeitraum, Beschreibung) und Begründung. */
+  proposal: Json;
+  contentChangedAt: Timestamp | null;
+  submitterRank: number | null;
+  finalVotes: Json | null;
+  baseVersion: number;
+  version: Generated<number>;
+  updatedAt: Timestamp;
+  status: Generated<'open' | 'approved' | 'rejected' | 'withdrawn'>;
+  decidedBy: string | null;
+  decisionComment: string | null;
+  createdAt: Timestamp;
+  decidedAt: Timestamp | null;
+}
+
 export interface QueueVoteTable {
   tenantId: string;
   subjectKind: string;
@@ -831,6 +852,7 @@ export interface Database {
   projectNote: ProjectNoteTable;
   approvalEvent: ApprovalEventTable;
   queueVote: QueueVoteTable;
+  changeRequest: ChangeRequestTable;
   captureNight: CaptureNightTable;
   userPreference: UserPreferenceTable;
   nightPlan: NightPlanTable;

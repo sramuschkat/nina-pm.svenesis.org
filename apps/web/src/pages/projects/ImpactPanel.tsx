@@ -1,6 +1,7 @@
 /**
  * S-33 Auswirkungsvorschau (FK 14.3; FA-FRG-05; AP-32a): im Entscheidungsbereich eines eingereichten
- * Objekts (Admin) – Job `impact` mit 14 Nächten am Wunsch-Rig mit und ohne das Objekt. Zeigt den Anteil des
+ * Objekts (Admin) – Job `impact` mit 14 Nächten am Wunsch-Rig mit und ohne das Objekt; bei einem
+ * Änderungsantrag (AP-32b) die aktuelle Fassung gegen die Fassung mit Antrag. Zeigt den Anteil des
  * Objekts und je anderem Projekt Stunden, Frames und Fertigstellung ohne → mit.
  */
 import { formatNightKey } from '@nina-pm/shared';
@@ -16,12 +17,18 @@ import styles from './projects.module.css';
 
 type Shift = ImpactResult['shifts'][number];
 
-export function ImpactPanel({ projectId }: { projectId: string }) {
+export function ImpactPanel({
+  id,
+  kind = 'project',
+}: {
+  id: string;
+  kind?: 'project' | 'change-request';
+}) {
   const { t, i18n } = useTranslation();
   const titleId = useId();
   const [jobId, setJobId] = useState<string | null>(null);
   const start = useMutation({
-    mutationFn: () => approvalApi.impact('project', projectId),
+    mutationFn: () => approvalApi.impact(kind, id),
     onSuccess: (r) => setJobId(r.jobId),
   });
   const { result, running, failed, errorCode } = useJob<ImpactResult>(jobId);
@@ -63,7 +70,9 @@ export function ImpactPanel({ projectId }: { projectId: string }) {
   return (
     <section className={styles.impact} aria-labelledby={titleId}>
       <h3 id={titleId}>{t('impact.title')}</h3>
-      <p className={styles.muted}>{t('impact.hint')}</p>
+      <p className={styles.muted}>
+        {kind === 'change-request' ? t('impact.hintRequest') : t('impact.hint')}
+      </p>
       <div>
         <button
           type="button"

@@ -486,68 +486,74 @@ export class ProjectRepository extends TenantRepo {
     expectedVersion?: number,
   ): Promise<ProjectDetail> {
     return this.tx(
-      async (trx) => {
-        const p = await this.row(id, trx);
-        if (!p) throw notFound();
-        if (expectedVersion !== undefined && expectedVersion !== p.version)
-          throw new ProblemError('resource.version_conflict');
-        const { conditions, acceptRigConflicts, rigId, ...fields } = patch;
-        await this.checkDso(trx, fields.dsoObjectId);
-        const set: Record<string, unknown> = { ...fields, ...(conditions ?? {}) };
-        const diff: Record<string, { from: unknown; to: unknown }> = {};
-        for (const [k, v] of Object.entries(set)) {
-          const from = (p as Record<string, unknown>)[k];
-          if (json(from) !== json(v)) diff[k] = { from: from ?? null, to: v };
-        }
-        if (rigId !== undefined && rigId !== projectRigId(p)) {
-          await this.checkRig(trx, rigId);
-          if (p.approvalStatus === 'approved') {
-            if (rigId === null)
-              throw invalid([{ path: 'rigId', message: 'Pflicht für freigegebene Projekte' }]);
-            const check = await this.rigCheckIn(trx, p, rigId);
-            if (!acceptRigConflicts) {
-              if (check.hasCaptures && check.opticsChanged)
-                throw new ProblemError('rig.change_has_captures', toErrors(check.conflicts));
-              const blocking = check.conflicts.filter((c) => c.code !== 'fov_changed');
-              if (blocking.length > 0)
-                throw new ProblemError('approval.rig_conflict', toErrors(blocking));
-            }
-            set.rigId = rigId;
-          } else set.requestedRigId = rigId;
-          diff.rigId = { from: projectRigId(p), to: rigId };
-        }
-        if (Object.keys(set).length === 0) return this.detailOf(trx, p);
-        await this.touch(trx, p, now, set);
-        // Einzelfeld: Panel 0 folgt den Projektkoordinaten; ohne Panel entsteht es mit den Koordinaten.
-        const ra = (set.raDeg as number | null | undefined) ?? p.raDeg;
-        const dec = (set.decDeg as number | null | undefined) ?? p.decDeg;
-        const rot = (set.rotationDeg as number | undefined) ?? p.rotationDeg;
-        const panels = await this.panelsOf(trx, id);
-        if (ra !== null && dec !== null) {
-          if (panels.length === 0)
-            await this.insertPanel(trx, id, 0, {
-              label: 'Main',
-              raDeg: ra,
-              decDeg: dec,
-              rotationDeg: rot,
-              notes: '',
-            });
-          else if (
-            panels.length === 1 &&
-            ('raDeg' in set || 'decDeg' in set || 'rotationDeg' in set)
-          )
-            await trx
-              .updateTable('projectPanel')
-              .set({ raDeg: ra, decDeg: dec, rotationDeg: rot })
-              .where('tenantId', '=', this.tenantId)
-              .where('id', '=', (panels[0] as PanelRow).id)
-              .execute();
-        }
-        await this.log(trx, id, 'update', diff, now);
-        return this.detailOf(trx, (await this.row(id, trx)) as ProjectRow);
-      },
+      (trx) => this.patchIn(trx, id, patch, now, expectedVersion),
       [{ table: 'project', id }],
     );
+  }
+
+  /** `patch` innerhalb einer bestehenden Transaktion (Änderungsantrag annehmen, AP-32b). */
+  async patchIn(
+    trx: Tx,
+    id: string,
+    patch: ProjectPatch,
+    now: Date,
+    expectedVersion?: number,
+  ): Promise<ProjectDetail> {
+    const p = await this.row(id, trx);
+    if (!p) throw notFound();
+    if (expectedVersion !== undefined && expectedVersion !== p.version)
+      throw new ProblemError('resource.version_conflict');
+    const { conditions, acceptRigConflicts, rigId, ...fields } = patch;
+    await this.checkDso(trx, fields.dsoObjectId);
+    const set: Record<string, unknown> = { ...fields, ...(conditions ?? {}) };
+    const diff: Record<string, { from: unknown; to: unknown }> = {};
+    for (const [k, v] of Object.entries(set)) {
+      const from = (p as Record<string, unknown>)[k];
+      if (json(from) !== json(v)) diff[k] = { from: from ?? null, to: v };
+    }
+    if (rigId !== undefined && rigId !== projectRigId(p)) {
+      await this.checkRig(trx, rigId);
+      if (p.approvalStatus === 'approved') {
+        if (rigId === null)
+          throw invalid([{ path: 'rigId', message: 'Pflicht für freigegebene Projekte' }]);
+        const check = await this.rigCheckIn(trx, p, rigId);
+        if (!acceptRigConflicts) {
+          if (check.hasCaptures && check.opticsChanged)
+            throw new ProblemError('rig.change_has_captures', toErrors(check.conflicts));
+          const blocking = check.conflicts.filter((c) => c.code !== 'fov_changed');
+          if (blocking.length > 0)
+            throw new ProblemError('approval.rig_conflict', toErrors(blocking));
+        }
+        set.rigId = rigId;
+      } else set.requestedRigId = rigId;
+      diff.rigId = { from: projectRigId(p), to: rigId };
+    }
+    if (Object.keys(set).length === 0) return this.detailOf(trx, p);
+    await this.touch(trx, p, now, set);
+    // Einzelfeld: Panel 0 folgt den Projektkoordinaten; ohne Panel entsteht es mit den Koordinaten.
+    const ra = (set.raDeg as number | null | undefined) ?? p.raDeg;
+    const dec = (set.decDeg as number | null | undefined) ?? p.decDeg;
+    const rot = (set.rotationDeg as number | undefined) ?? p.rotationDeg;
+    const panels = await this.panelsOf(trx, id);
+    if (ra !== null && dec !== null) {
+      if (panels.length === 0)
+        await this.insertPanel(trx, id, 0, {
+          label: 'Main',
+          raDeg: ra,
+          decDeg: dec,
+          rotationDeg: rot,
+          notes: '',
+        });
+      else if (panels.length === 1 && ('raDeg' in set || 'decDeg' in set || 'rotationDeg' in set))
+        await trx
+          .updateTable('projectPanel')
+          .set({ raDeg: ra, decDeg: dec, rotationDeg: rot })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', (panels[0] as PanelRow).id)
+          .execute();
+    }
+    await this.log(trx, id, 'update', diff, now);
+    return this.detailOf(trx, (await this.row(id, trx)) as ProjectRow);
   }
 
   private panelsOf(trx: Tx, projectId: string) {
@@ -1084,58 +1090,62 @@ export class ProjectRepository extends TenantRepo {
 
   addLine(projectId: string, input: LineCreate, now: Date): Promise<ProjectDetail> {
     return this.tx(
-      async (trx) => {
-        const p = await this.row(projectId, trx);
-        if (!p) throw notFound();
-        const exists = await trx
-          .selectFrom('exposureLine')
-          .select('id')
-          .where('tenantId', '=', this.tenantId)
-          .where('id', '=', input.id)
-          .executeTakeFirst();
-        if (!exists) {
-          await this.panel(trx, projectId, input.panelId);
-          const { errors, filterShortName, camera } = await this.lineDefaults(
-            trx,
-            p,
-            input.filterId,
-          );
-          await this.checkMoonProfile(trx, input.moonProfileId, errors);
-          if (camera && !camera.supportedBinning.includes(input.binning))
-            errors.push({ path: 'binning', message: 'von der Kamera nicht unterstützt' });
-          if (errors.length > 0) throw invalid(errors);
-          const count = await trx
-            .selectFrom('exposureLine')
-            .select((eb) => eb.fn.countAll<string>().as('n'))
-            .where('tenantId', '=', this.tenantId)
-            .where('panelId', '=', input.panelId)
-            .executeTakeFirst();
-          await trx
-            .insertInto('exposureLine')
-            .values({
-              ...input,
-              tenantId: this.tenantId,
-              projectId,
-              filterShortName: filterShortName ?? '',
-              readoutMode: input.readoutMode ?? camera?.defaultReadoutMode ?? 'Default',
-              orderIndex: Number(count?.n ?? 0),
-              createdAt: now,
-              updatedAt: now,
-            })
-            .execute();
-          await this.afterLineChange(trx, p, now);
-          await this.log(
-            trx,
-            projectId,
-            'update',
-            { target: 'line', lineId: input.id, action: 'create', filter: filterShortName },
-            now,
-          );
-        }
-        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
-      },
+      (trx) => this.addLineIn(trx, projectId, input, now),
       [{ table: 'project', id: projectId }],
     );
+  }
+
+  /** `addLine` innerhalb einer bestehenden Transaktion (Änderungsantrag annehmen, AP-32b). */
+  async addLineIn(
+    trx: Tx,
+    projectId: string,
+    input: LineCreate,
+    now: Date,
+  ): Promise<ProjectDetail> {
+    const p = await this.row(projectId, trx);
+    if (!p) throw notFound();
+    const exists = await trx
+      .selectFrom('exposureLine')
+      .select('id')
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', input.id)
+      .executeTakeFirst();
+    if (!exists) {
+      await this.panel(trx, projectId, input.panelId);
+      const { errors, filterShortName, camera } = await this.lineDefaults(trx, p, input.filterId);
+      await this.checkMoonProfile(trx, input.moonProfileId, errors);
+      if (camera && !camera.supportedBinning.includes(input.binning))
+        errors.push({ path: 'binning', message: 'von der Kamera nicht unterstützt' });
+      if (errors.length > 0) throw invalid(errors);
+      const count = await trx
+        .selectFrom('exposureLine')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('tenantId', '=', this.tenantId)
+        .where('panelId', '=', input.panelId)
+        .executeTakeFirst();
+      await trx
+        .insertInto('exposureLine')
+        .values({
+          ...input,
+          tenantId: this.tenantId,
+          projectId,
+          filterShortName: filterShortName ?? '',
+          readoutMode: input.readoutMode ?? camera?.defaultReadoutMode ?? 'Default',
+          orderIndex: Number(count?.n ?? 0),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .execute();
+      await this.afterLineChange(trx, p, now);
+      await this.log(
+        trx,
+        projectId,
+        'update',
+        { target: 'line', lineId: input.id, action: 'create', filter: filterShortName },
+        now,
+      );
+    }
+    return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
   }
 
   /**
@@ -1149,50 +1159,55 @@ export class ProjectRepository extends TenantRepo {
     now: Date,
   ): Promise<ProjectDetail> {
     return this.tx(
-      async (trx) => {
-        const p = await this.row(projectId, trx);
-        if (!p) throw notFound();
-        const line = await this.lineRow(trx, projectId, lineId);
-        const info = await this.captureInfo(trx, projectId);
-        const hasCaptures = (info.get(lineId)?.captures ?? 0) > 0;
-        const changed = LINE_LOCKED_FIELDS.filter(
-          (k) =>
-            patch[k] !== undefined && json(patch[k]) !== json((line as Record<string, unknown>)[k]),
-        );
-        if (hasCaptures && changed.length > 0)
-          throw new ProblemError(
-            'line.locked_by_captures',
-            changed.map((path) => ({ path, message: 'Zeile hat Aufnahmen – Zeile duplizieren' })),
-          );
-        const { errors, filterShortName, camera } = await this.lineDefaults(trx, p, patch.filterId);
-        await this.checkMoonProfile(trx, patch.moonProfileId, errors);
-        if (
-          patch.binning !== undefined &&
-          camera &&
-          !camera.supportedBinning.includes(patch.binning)
-        )
-          errors.push({ path: 'binning', message: 'von der Kamera nicht unterstützt' });
-        const moonMode = patch.moonMode ?? line.moonMode;
-        const moonProfileId =
-          patch.moonProfileId === undefined ? line.moonProfileId : patch.moonProfileId;
-        if (moonMode === 'profile' && moonProfileId === null)
-          errors.push({ path: 'moonProfileId', message: 'Mondprofil fehlt' });
-        if (errors.length > 0) throw invalid(errors);
-        const set: Record<string, unknown> = { ...patch, updatedAt: now };
-        if (filterShortName !== undefined) set.filterShortName = filterShortName;
-        if (patch.readoutMode === null) set.readoutMode = camera?.defaultReadoutMode ?? 'Default';
-        await trx
-          .updateTable('exposureLine')
-          .set(set)
-          .where('tenantId', '=', this.tenantId)
-          .where('id', '=', lineId)
-          .execute();
-        await this.afterLineChange(trx, p, now);
-        await this.log(trx, projectId, 'update', { target: 'line', lineId, ...patch }, now);
-        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
-      },
+      (trx) => this.patchLineIn(trx, projectId, lineId, patch, now),
       [{ table: 'project', id: projectId }],
     );
+  }
+
+  /** `patchLine` innerhalb einer bestehenden Transaktion (Änderungsantrag annehmen, AP-32b). */
+  async patchLineIn(
+    trx: Tx,
+    projectId: string,
+    lineId: string,
+    patch: LinePatch,
+    now: Date,
+  ): Promise<ProjectDetail> {
+    const p = await this.row(projectId, trx);
+    if (!p) throw notFound();
+    const line = await this.lineRow(trx, projectId, lineId);
+    const info = await this.captureInfo(trx, projectId);
+    const hasCaptures = (info.get(lineId)?.captures ?? 0) > 0;
+    const changed = LINE_LOCKED_FIELDS.filter(
+      (k) =>
+        patch[k] !== undefined && json(patch[k]) !== json((line as Record<string, unknown>)[k]),
+    );
+    if (hasCaptures && changed.length > 0)
+      throw new ProblemError(
+        'line.locked_by_captures',
+        changed.map((path) => ({ path, message: 'Zeile hat Aufnahmen – Zeile duplizieren' })),
+      );
+    const { errors, filterShortName, camera } = await this.lineDefaults(trx, p, patch.filterId);
+    await this.checkMoonProfile(trx, patch.moonProfileId, errors);
+    if (patch.binning !== undefined && camera && !camera.supportedBinning.includes(patch.binning))
+      errors.push({ path: 'binning', message: 'von der Kamera nicht unterstützt' });
+    const moonMode = patch.moonMode ?? line.moonMode;
+    const moonProfileId =
+      patch.moonProfileId === undefined ? line.moonProfileId : patch.moonProfileId;
+    if (moonMode === 'profile' && moonProfileId === null)
+      errors.push({ path: 'moonProfileId', message: 'Mondprofil fehlt' });
+    if (errors.length > 0) throw invalid(errors);
+    const set: Record<string, unknown> = { ...patch, updatedAt: now };
+    if (filterShortName !== undefined) set.filterShortName = filterShortName;
+    if (patch.readoutMode === null) set.readoutMode = camera?.defaultReadoutMode ?? 'Default';
+    await trx
+      .updateTable('exposureLine')
+      .set(set)
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', lineId)
+      .execute();
+    await this.afterLineChange(trx, p, now);
+    await this.log(trx, projectId, 'update', { target: 'line', lineId, ...patch }, now);
+    return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
   }
 
   /** Zeile mit Aufnahmen weich, ohne Aufnahmen endgültig (FA-PRJ-07, E4). */
@@ -1570,7 +1585,7 @@ export class ProjectRepository extends TenantRepo {
 
   /** Freigabe- und Änderungsverlauf (FA-PRJ-17, FA-BER-03), neueste zuerst. */
   async history(projectId: string) {
-    const [approvals, changes] = await Promise.all([
+    const [approvals, changes, requests] = await Promise.all([
       this.db
         .selectFrom('approvalEvent as e')
         .leftJoin('appUser as u', 'u.id', 'e.userId')
@@ -1586,7 +1601,59 @@ export class ProjectRepository extends TenantRepo {
         .where('c.entity', '=', 'project')
         .where('c.entityId', '=', projectId)
         .execute(),
+      this.db
+        .selectFrom('changeRequest as r')
+        .leftJoin('appUser as a', 'a.id', 'r.requestedBy')
+        .leftJoin('appUser as d', 'd.id', 'r.decidedBy')
+        .select([
+          'r.id',
+          'r.status',
+          'r.requestedBy',
+          'r.decidedBy',
+          'r.proposal',
+          'r.decisionComment',
+          'r.createdAt',
+          'r.decidedAt',
+          'r.updatedAt',
+          'r.finalVotes',
+          'a.displayName as requestedByName',
+          'd.displayName as decidedByName',
+        ])
+        .where('r.tenantId', '=', this.tenantId)
+        .where('r.projectId', '=', projectId)
+        .execute(),
     ]);
+    // Änderungsanträge (AP-32b): gestellt und – falls entschieden bzw. zurückgezogen – der Ausgang.
+    const requestEntries = requests.flatMap((r) => {
+      const stored = (typeof r.proposal === 'string' ? JSON.parse(r.proposal) : r.proposal) as {
+        comment?: string | null;
+      } | null;
+      const created = {
+        kind: 'change_request' as const,
+        action: 'created',
+        userId: r.requestedBy,
+        userName: r.requestedByName,
+        entity: 'change_request',
+        detail: { changeRequestId: r.id },
+        comment: stored?.comment ?? null,
+        createdAt: r.createdAt,
+      };
+      if (r.status === 'open') return [created];
+      const byRequester = r.status === 'withdrawn';
+      return [
+        created,
+        {
+          kind: 'change_request' as const,
+          action: r.status,
+          userId: byRequester ? r.requestedBy : r.decidedBy,
+          userName: byRequester ? r.requestedByName : r.decidedByName,
+          entity: 'change_request',
+          detail: { changeRequestId: r.id, votes: r.finalVotes },
+          comment: byRequester ? null : r.decisionComment,
+          createdAt: r.decidedAt ?? r.updatedAt,
+        },
+      ];
+    });
     return [
       ...approvals.map((a) => ({
         kind: 'approval' as const,
@@ -1608,6 +1675,7 @@ export class ProjectRepository extends TenantRepo {
         comment: null,
         createdAt: c.createdAt,
       })),
+      ...requestEntries,
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 

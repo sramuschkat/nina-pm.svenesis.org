@@ -72,7 +72,7 @@ export const ProjectConditions = z
 export const ConditionsValue = z.object(conditionShape).strict();
 
 /** Teiländerung der Bedingungen – **ohne** Standardwerte, sonst setzte ein Patch alle übrigen zurück. */
-const ConditionsPatch = z.object(conditionShape).partial().strict();
+export const ConditionsPatch = z.object(conditionShape).partial().strict();
 
 const projectFields = {
   name: z.string().trim().min(1).max(200),
@@ -437,7 +437,8 @@ export const NoteView = z
 
 export const HistoryEntry = z
   .object({
-    kind: z.enum(['approval', 'change']),
+    /** `change_request`: Antrag gestellt bzw. entschieden (AP-32b, FA-FRG-12). */
+    kind: z.enum(['approval', 'change', 'change_request']),
     action: z.string(),
     userId: Uuid.nullable(),
     userName: z.string().nullable(),

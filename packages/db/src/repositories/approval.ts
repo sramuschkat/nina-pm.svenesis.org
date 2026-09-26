@@ -20,7 +20,7 @@ import {
   type SubmissionRanking,
   type SubmitInput,
 } from '@nina-pm/shared';
-import { sql, type Kysely, type Transaction } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
@@ -72,26 +72,66 @@ async function voteSnapshot(db: Kysely<Database> | Tx, tenantId: string, project
   };
 }
 
-/** Rang 1…n der eingereichten Projekte eines Einreichers in bisheriger Reihenfolge (FA-FRG-15). */
-async function renumberRanks(db: Tx, tenantId: string, createdBy: string) {
-  const rows = await db
+/**
+ * Rang 1…n der offenen Gegenstände eines Einreichers in bisheriger Reihenfolge (FA-FRG-15): eingereichte
+ * Projekte und offene Änderungsanträge (AP-32b) teilen sich eine Rangfolge.
+ */
+export async function renumberRanks(db: Tx, tenantId: string, createdBy: string) {
+  const projects = await db
     .selectFrom('project')
-    .select(['id', 'submitterRank'])
+    .select(['id', 'submitterRank', 'createdAt'])
     .where('tenantId', '=', tenantId)
     .where('createdBy', '=', createdBy)
     .where('approvalStatus', '=', 'submitted')
     .where('deletedAt', 'is', null)
-    .orderBy(sql`submitter_rank NULLS LAST`)
-    .orderBy('createdAt')
     .execute();
-  for (const [i, r] of rows.entries())
+  const requests = await db
+    .selectFrom('changeRequest')
+    .select(['id', 'submitterRank', 'createdAt'])
+    .where('tenantId', '=', tenantId)
+    .where('requestedBy', '=', createdBy)
+    .where('status', '=', 'open')
+    .execute();
+  const all = [
+    ...projects.map((r) => ({ ...r, table: 'project' as const })),
+    ...requests.map((r) => ({ ...r, table: 'changeRequest' as const })),
+  ].sort(
+    (a, b) =>
+      (a.submitterRank ?? Number.MAX_SAFE_INTEGER) - (b.submitterRank ?? Number.MAX_SAFE_INTEGER) ||
+      new Date(a.createdAt as unknown as string).getTime() -
+        new Date(b.createdAt as unknown as string).getTime() ||
+      (a.id < b.id ? -1 : 1),
+  );
+  for (const [i, r] of all.entries())
     if (r.submitterRank !== i + 1)
       await db
-        .updateTable('project')
+        .updateTable(r.table)
         .set({ submitterRank: i + 1 })
         .where('tenantId', '=', tenantId)
         .where('id', '=', r.id)
         .execute();
+}
+
+/** Nächster freier Rang eines Einreichers (Ende der gemeinsamen Rangfolge). */
+export async function nextSubmitterRank(db: Tx, tenantId: string, createdBy: string) {
+  const [p, c] = await Promise.all([
+    db
+      .selectFrom('project')
+      .select((eb) => eb.fn.max('submitterRank').as('max'))
+      .where('tenantId', '=', tenantId)
+      .where('createdBy', '=', createdBy)
+      .where('approvalStatus', '=', 'submitted')
+      .where('deletedAt', 'is', null)
+      .executeTakeFirst(),
+    db
+      .selectFrom('changeRequest')
+      .select((eb) => eb.fn.max('submitterRank').as('max'))
+      .where('tenantId', '=', tenantId)
+      .where('requestedBy', '=', createdBy)
+      .where('status', '=', 'open')
+      .executeTakeFirst(),
+  ]);
+  return Math.max(Number(p?.max ?? 0), Number(c?.max ?? 0)) + 1;
 }
 
 export class ApprovalRepository extends TenantRepo {
@@ -271,15 +311,7 @@ export class ApprovalRepository extends TenantRepo {
       await this.requireComplete(trx, p, rigId);
       const resubmitted =
         p.approvalStatus === 'returned' || (await this.voterIds(trx, id)).length > 0;
-      const last = await trx
-        .selectFrom('project')
-        .select((eb) => eb.fn.max('submitterRank').as('max'))
-        .where('tenantId', '=', this.tenantId)
-        .where('createdBy', '=', p.createdBy)
-        .where('approvalStatus', '=', 'submitted')
-        .where('deletedAt', 'is', null)
-        .executeTakeFirst();
-      const rank = Number(last?.max ?? 0) + 1;
+      const rank = await nextSubmitterRank(trx, this.tenantId, p.createdBy);
       const wish = {
         requestedRigId: rigId,
         requestPeriodFrom:
@@ -578,17 +610,35 @@ export class ApprovalRepository extends TenantRepo {
         .where('approvalStatus', '=', 'submitted')
         .where('deletedAt', 'is', null)
         .execute();
-      const expected = new Set(open.map((o) => `project:${o.id}`));
+      const requests = await trx
+        .selectFrom('changeRequest')
+        .select('id')
+        .where('tenantId', '=', this.tenantId)
+        .where('requestedBy', '=', me)
+        .where('status', '=', 'open')
+        .execute();
+      const expected = new Set([
+        ...open.map((o) => `project:${o.id}`),
+        ...requests.map((r) => `change-request:${r.id}`),
+      ]);
       const given = ranking.items.map((i) => `${i.kind}:${i.id}`);
       if (given.length !== expected.size || given.some((g) => !expected.has(g)))
         throw new ProblemError('ranking.incomplete');
       for (const [i, item] of ranking.items.entries())
-        await trx
-          .updateTable('project')
-          .set({ submitterRank: i + 1, updatedAt: now })
-          .where('tenantId', '=', this.tenantId)
-          .where('id', '=', item.id)
-          .execute();
+        if (item.kind === 'project')
+          await trx
+            .updateTable('project')
+            .set({ submitterRank: i + 1, updatedAt: now })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', item.id)
+            .execute();
+        else
+          await trx
+            .updateTable('changeRequest')
+            .set({ submitterRank: i + 1 })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', item.id)
+            .execute();
     });
   }
 
@@ -630,6 +680,13 @@ export class ApprovalRepository extends TenantRepo {
         .groupBy('createdBy')
         .execute(),
     ]);
+    const openRequests = await this.db
+      .selectFrom('changeRequest')
+      .select(['requestedBy', (eb) => eb.fn.countAll<string>().as('n')])
+      .where('tenantId', '=', this.tenantId)
+      .where('status', '=', 'open')
+      .groupBy('requestedBy')
+      .execute();
     const projects = this.projects();
     const tenant = await this.db
       .selectFrom('tenant')
@@ -640,7 +697,9 @@ export class ApprovalRepository extends TenantRepo {
     const entries = await Promise.all(
       rows.map(async (p, i): Promise<QueueEntry> => {
         const at = events.find((e) => e.projectId === p.id)?.at;
-        const of = Number(ranks.find((r) => r.createdBy === p.createdBy)?.n ?? 0);
+        const of =
+          Number(ranks.find((r) => r.createdBy === p.createdBy)?.n ?? 0) +
+          Number(openRequests.find((r) => r.requestedBy === p.createdBy)?.n ?? 0);
         return {
           detail: (await projects.detail(p.id)) as ProjectDetail,
           createdByName: names.find((n) => n.id === p.createdBy)?.displayName ?? '',
