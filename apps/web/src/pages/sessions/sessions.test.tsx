@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   correct: vi.fn(),
   review: vi.fn(),
   assign: vi.fn(),
+  reject: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -40,6 +41,7 @@ vi.mock('../../api/client', () => ({
     correct: (...a: unknown[]) => state.correct(...a) as Promise<unknown>,
     review: (...a: unknown[]) => state.review(...a) as Promise<unknown>,
     assign: (...a: unknown[]) => state.assign(...a) as Promise<unknown>,
+    reject: (...a: unknown[]) => state.reject(...a) as Promise<unknown>,
   },
 }));
 
@@ -107,6 +109,7 @@ const detail = (): NightSessionDetail => ({
       rejectedCorrection: 0,
       accepted: 15,
       bonus: 0,
+      bonusRejected: 0,
       integrationS: 4500,
     },
   ],
@@ -130,6 +133,7 @@ const detail = (): NightSessionDetail => ({
       temperatureDeviation: true,
       settingsDeviation: true,
       rejected: false,
+      rejectReason: null,
       fileName: 'a.fits',
     },
     {
@@ -151,6 +155,7 @@ const detail = (): NightSessionDetail => ({
       temperatureDeviation: false,
       settingsDeviation: false,
       rejected: false,
+      rejectReason: null,
       fileName: 'b.fits',
     },
   ],
@@ -170,6 +175,30 @@ const detail = (): NightSessionDetail => ({
       darkFlatsTaken: 9,
       flatExposureS: 2.4,
     },
+  ],
+  kpis: {
+    darkFromUtc: '2026-09-18T01:30:00Z',
+    darkToUtc: '2026-09-18T09:30:00Z',
+    runtimeS: 25_500,
+    usableDarkS: 25_140,
+    exposureS: 4800,
+    efficiencyPct: 19.1,
+    overhead: { autofocusS: 240, flipS: 180, otherS: 20_280, pct: 81.2 },
+    safetyPauseS: 0,
+    blockChanges: 3,
+    filterChanges: 5,
+    plan: {
+      plannedFrames: 17,
+      plannedExposureS: 5100,
+      acquiredFrames: 16,
+      acquiredExposureS: 4830,
+      framesPct: 94.1,
+      timePct: 94.7,
+    },
+  },
+  reasons: [
+    { reason: 'meridian_flip', count: 1, durationS: 180 },
+    { reason: 'center_failed', count: 2, durationS: null },
   ],
 });
 
@@ -197,7 +226,7 @@ beforeEach(() => {
   ];
   state.detail = detail();
   state.listCalls = [];
-  for (const fn of [state.correct, state.review, state.assign]) fn.mockReset();
+  for (const fn of [state.correct, state.review, state.assign, state.reject]) fn.mockReset();
 });
 
 describe('S-60 Sessions', () => {
@@ -252,7 +281,7 @@ describe('S-61 Session-Detail', () => {
       within(row)
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['NGC 281', 'Ha', '17', '16', '1', '15', '1.3 h', '0', 'Korrektur']);
+    ).toEqual(['NGC 281', 'Ha', '17', '16', '1', '15', '1.3 h', '0', '0', 'Korrektur']);
     fireEvent.click(within(row).getByRole('button', { name: 'Korrektur' }));
     const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
     expect(input.min).toBe('1');
@@ -299,6 +328,81 @@ describe('S-61 Session-Detail', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Flats' }));
     expect(screen.getByText('9/10')).toBeTruthy();
     expect(screen.getByText('270.4°')).toBeTruthy();
+  });
+
+  it('Aufnahme verwerfen mit Grund und zurücknehmen; nur verworfene; CSV (AP-31, FA-AUS-20); axe', async () => {
+    state.reject.mockResolvedValue({
+      captureId: ID(30),
+      rejected: true,
+      rejectedCount: 1,
+      bonusRejectedCount: 0,
+      projectStatus: null,
+    });
+    const created: string[] = [];
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      created.push(this.download);
+    });
+    renderAt(`/auswertung/sessions/${ID(1)}`);
+    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
+    const table = screen.getByRole('table', { name: 'Aufnahmen' });
+    // Nicht zugeordnete Aufnahme: kein Verwerfen.
+    const row = within(table).getByRole('row', { name: /330 s/ });
+    fireEvent.click(within(row).getByRole('button', { name: 'Verwerfen' }));
+    expect(within(table).getAllByRole('button', { name: 'Verwerfen' })).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Grund'), { target: { value: 'clouds' } });
+    await expectNoSeriousA11y();
+    // Stand nach dem Neuladen: verworfen mit Grund, Zurücknehmen direkt.
+    const d = detail();
+    d.captures[0] = {
+      ...d.captures[0],
+      rejected: true,
+      rejectReason: 'clouds',
+    } as (typeof d.captures)[number];
+    state.detail = d;
+    const form = screen.getByRole('form', { name: 'Aufnahme verwerfen' });
+    fireEvent.click(within(form).getByRole('button', { name: 'Verwerfen' }));
+    await waitFor(() => expect(state.reject).toHaveBeenCalledWith(ID(30), true, 'clouds'));
+    fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'rejected' } });
+    await screen.findByText('verworfen · Wolken');
+    const only = screen.getByRole('table', { name: 'Aufnahmen' });
+    expect(within(only).getAllByRole('row')).toHaveLength(2);
+    fireEvent.click(within(only).getByRole('button', { name: 'Zurücknehmen' }));
+    await waitFor(() => expect(state.reject).toHaveBeenCalledWith(ID(30), false, null));
+    fireEvent.click(screen.getByRole('button', { name: 'CSV exportieren' }));
+    expect(created).toEqual(['session-2026-09-17-Rig_A.csv']);
+    click.mockRestore();
+  });
+
+  it('Reiter Kennzahlen: Effizienz, Overhead, Plan-Treue, Gründe (AP-31); axe', async () => {
+    renderAt(`/auswertung/sessions/${ID(1)}`);
+    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
+    expect(screen.getAllByRole('tab').map((x) => x.textContent)).toEqual([
+      'Soll/Ist',
+      'Ereignisse',
+      'Aufnahmen',
+      'Protokoll',
+      'Kennzahlen',
+      'Flats',
+    ]);
+    fireEvent.click(screen.getByRole('tab', { name: 'Kennzahlen' }));
+    expect(screen.getByText('19,1 %')).toBeTruthy();
+    expect(screen.getByText('1 h 20 min Belichtung / 6 h 59 min nutzbare Dunkelzeit')).toBeTruthy();
+    expect(screen.getByText('Autofokus 4 min · Flip 3 min · sonstiger 5 h 38 min')).toBeTruthy();
+    expect(screen.getByText('94,1 %')).toBeTruthy();
+    expect(screen.getByText('16 von 17 geplanten Frames (erster Plan)')).toBeTruthy();
+    const reasons = screen.getByRole('table', { name: 'Abweichungsgründe' });
+    expect(within(reasons).getByRole('row', { name: /Meridian-Flip/ }).textContent).toContain(
+      '3 min',
+    );
+    expect(
+      within(reasons).getByRole('row', { name: /Zentrieren fehlgeschlagen/ }).textContent,
+    ).toContain('2');
+    await expectNoSeriousA11y();
   });
 
   it('Admin markiert als geprüft; User sieht weder Prüfen noch Zuordnen, Korrektur nur fürs eigene Projekt', async () => {

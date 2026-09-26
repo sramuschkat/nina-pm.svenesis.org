@@ -687,6 +687,18 @@ async function projectExamples(): Promise<Record<string, Example>> {
       "INSERT INTO session (id, tenant_id, rig_id, night, started_at, status) VALUES ($1, $2, $3, '2026-09-18', '2026-09-19T01:00:00Z', 'completed')",
       [sessionId, world.tenantA, common.rigId],
     );
+    // Gespeichertes Light der Zeile (AP-31): Verwerfen setzt der Reset zurück.
+    const spPanel = (
+      (await admin().query('SELECT panel_id FROM exposure_line WHERE id = $1', [spLine]))
+        .rows[0] as { panel_id: string }
+    ).panel_id;
+    const captureId = crypto.randomUUID();
+    await admin().query(
+      `INSERT INTO capture (id, tenant_id, session_id, project_id, panel_id, exposure_line_id, night,
+         captured_at, filter_short_name, exposure_s, result, file_name)
+       VALUES ($1, $2, $3, $4, $5, $6, '2026-09-18', '2026-09-19T02:00:00Z', 'Ha', 300, 'saved', 'a.fits')`,
+      [captureId, world.tenantA, sessionId, SP, spPanel, spLine],
+    );
     const siteId = (
       (await admin().query('SELECT site_id FROM rig WHERE id = $1', [common.rigId])).rows[0] as {
         site_id: string;
@@ -738,6 +750,17 @@ async function projectExamples(): Promise<Record<string, Example>> {
         url: clearNight,
         method: 'DELETE',
         okStatus: 204,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PATCH /api/web/v1/captures/{id}': {
+        url: `/api/web/v1/captures/${captureId}`,
+        method: 'PATCH',
+        body: { rejected: false },
+        resource: {
+          tenantId: world.tenantA,
+          createdBy: submitter,
+          settings: { userCorrections: false },
+        },
         expect: { 'fremder Mandant (Admin)': 404 },
       },
       'PUT /api/web/v1/sessions/{id}/review': {

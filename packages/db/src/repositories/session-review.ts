@@ -4,7 +4,7 @@
  * Session, Ist aus `capture_night`), Aufnahmen mit Kennzeichen, Ereignisse, Flats; *Als geprüft
  * markieren*; Ziel einer Korrektur prüfen (Zeile eines Projekts am Rig der Session).
  */
-import { ProblemError } from '@nina-pm/shared';
+import { ProblemError, sessionKpis, type KpiPlanEntry, type RejectReason } from '@nina-pm/shared';
 import { sql } from 'kysely';
 import { TenantRepo } from './base';
 
@@ -42,6 +42,10 @@ export interface NightSessionFilter {
 
 interface PlanSummary {
   readonly darknessEndUtc?: string | null;
+  readonly darkness?: {
+    readonly astronomicalStartUtc?: string | null;
+    readonly astronomicalEndUtc?: string | null;
+  };
   readonly summary?: { plannedFrames?: Record<string, Record<string, number>> };
 }
 
@@ -162,7 +166,7 @@ export class SessionReviewRepository extends TenantRepo {
     const t = this.ctx.tenantId;
     const plans = await this.db
       .selectFrom('nightPlan')
-      .select(['revision', 'summary'])
+      .select(['revision', 'summary', 'blocks'])
       .where('tenantId', '=', t)
       .where('sessionId', '=', id)
       .orderBy('revision')
@@ -242,6 +246,7 @@ export class SessionReviewRepository extends TenantRepo {
           rejectedCorrection: num(n?.rejectedCorrection),
           accepted: Math.max(0, acquired - rejected),
           bonus: num(n?.bonusCount),
+          bonusRejected: num(n?.bonusRejectedCount),
           integrationS: num(n?.integrationS),
         };
       });
@@ -270,6 +275,7 @@ export class SessionReviewRepository extends TenantRepo {
         'c.temperatureDeviation',
         'c.settingsDeviation',
         'c.rejected',
+        'c.rejectReason',
         'c.fileName',
       ])
       .where('c.tenantId', '=', t)
@@ -295,6 +301,64 @@ export class SessionReviewRepository extends TenantRepo {
       .orderBy('filterShortName')
       .orderBy('rotatorMechDegDg')
       .execute();
+    // Kennzahlen und Gründe (AP-31): alle Lights der Session, erster Plan als Soll.
+    const lights = await this.db
+      .selectFrom('capture')
+      .select([
+        'capturedAt',
+        'exposureS',
+        'result',
+        'isBonus',
+        'assignment',
+        'filterShortName',
+        'blockId',
+      ])
+      .where('tenantId', '=', t)
+      .where('sessionId', '=', id)
+      .where('frameType', '=', 'light')
+      .execute();
+    const firstBlocks = plans[0]
+      ? parseJson<
+          { entries?: { cmd: string; atUtc: string; untilUtc?: string; exposureS?: number }[] }[]
+        >(plans[0].blocks)
+      : null;
+    const planEntries: KpiPlanEntry[] | null = firstBlocks
+      ? firstBlocks.flatMap((b) =>
+          (b.entries ?? [])
+            .filter((e) => (e.cmd === 'expose' || e.cmd === 'expose_series') && e.exposureS)
+            .map((e) => ({
+              cmd: e.cmd as 'expose' | 'expose_series',
+              atUtc: e.atUtc,
+              untilUtc: e.untilUtc,
+              exposureS: Number(e.exposureS),
+            })),
+        )
+      : null;
+    const { kpis, reasons } = sessionKpis({
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      darkness: first
+        ? {
+            fromUtc: first.darkness?.astronomicalStartUtc ?? null,
+            toUtc: first.darkness?.astronomicalEndUtc ?? null,
+          }
+        : null,
+      planEntries,
+      lights: lights.map((l) => ({
+        capturedAt: iso(l.capturedAt) as string,
+        exposureS: num(l.exposureS),
+        result: l.result,
+        isBonus: Boolean(l.isBonus),
+        assigned: l.assignment === 'assigned',
+        filter: l.filterShortName,
+        blockId: l.blockId,
+      })),
+      events: events.map((e) => ({
+        kind: e.kind,
+        occurredAt: iso(e.occurredAt) as string,
+        durationS: e.durationS === null ? null : num(e.durationS),
+      })),
+    });
     return {
       session: {
         ...session,
@@ -321,6 +385,7 @@ export class SessionReviewRepository extends TenantRepo {
         temperatureDeviation: Boolean(c.temperatureDeviation),
         settingsDeviation: Boolean(c.settingsDeviation),
         rejected: Boolean(c.rejected),
+        rejectReason: c.rejectReason as RejectReason | null,
         fileName: c.fileName,
       })),
       capturesTruncated: captureRows.length > captureLimit,
@@ -342,6 +407,8 @@ export class SessionReviewRepository extends TenantRepo {
         darkFlatsTaken: num(f.darkFlatsTaken),
         flatExposureS: f.flatExposureS === null ? null : num(f.flatExposureS),
       })),
+      kpis,
+      reasons,
     };
   }
 
@@ -360,6 +427,23 @@ export class SessionReviewRepository extends TenantRepo {
    * Ziel einer Korrektur: die Zeile gehört zu einem Projekt am Rig der Session (sonst
    * `422 validation.failed`); liefert Nacht, Projekt und dessen Eigentümer für die Rechteprüfung.
    */
+  /** Projekt einer Aufnahme für die Rechteprüfung beim Verwerfen (FA-AUS-20); `404`, wenn fremd. */
+  async rejectTarget(
+    captureId: string,
+  ): Promise<{ projectId: string | null; projectCreatedBy: string | null }> {
+    const row = await this.db
+      .selectFrom('capture as c')
+      .leftJoin('project as p', (j) =>
+        j.onRef('p.id', '=', 'c.projectId').onRef('p.tenantId', '=', 'c.tenantId'),
+      )
+      .select(['c.projectId', 'p.createdBy'])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('c.id', '=', captureId)
+      .executeTakeFirst();
+    if (!row) throw new ProblemError('resource.not_found');
+    return { projectId: row.projectId, projectCreatedBy: row.createdBy ?? null };
+  }
+
   async correctionTarget(
     sessionId: string,
     exposureLineId: string,

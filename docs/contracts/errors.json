@@ -436,6 +436,13 @@
    "titleEn": "This night has a session – it determines the statistics"
   },
   {
+   "code": "capture.not_rejectable",
+   "http": 409,
+   "i18nKey": "errors.capture.notRejectable",
+   "titleDe": "Nur gespeicherte, zugeordnete Lights lassen sich verwerfen",
+   "titleEn": "Only saved, assigned lights can be rejected"
+  },
+  {
    "code": "capture.assign_mismatch",
    "http": 409,
    "i18nKey": "errors.capture.assignMismatch",

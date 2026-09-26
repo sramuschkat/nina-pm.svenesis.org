@@ -180,6 +180,7 @@ export {
 export {
   applyCorrection,
   assignCapture,
+  rejectCapture,
   NinaIngestRepository,
   tenthDegrees,
   type CaptureInput,

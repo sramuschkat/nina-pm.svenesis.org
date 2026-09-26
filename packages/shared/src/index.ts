@@ -16,3 +16,4 @@ export * from './catalog';
 export * from './season';
 export * from './thumbnail';
 export * from './session-log';
+export * from './session-kpis';

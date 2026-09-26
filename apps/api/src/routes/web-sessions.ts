@@ -6,12 +6,17 @@
  *   Nacht = max(Korrektur, einzeln verworfene) – darunter `409 correction.conflict`; Verbleibend steigt,
  *   ein fertiges Projekt geht zurück nach *Aktiv* (FA-PRJ-12).
  * - `PUT /web/v1/sessions/{id}/review` (`session.review`): *Als geprüft markieren* (FA-AUS-07).
+ * - `PATCH /web/v1/captures/{id}` (`session.correct`, Objekt = Projekt der Aufnahme wie bei der Korrektur):
+ *   einzelne Aufnahme verwerfen bzw. zurücknehmen (AP-31, FA-AUS-20); Regel max ohne Doppelabzug.
+ * Das Detail trägt Kennzahlen und Abweichungsgründe (AP-31, FA-AUS-04/05/09).
  * Nicht zugeordnete Aufnahmen ordnet `PATCH /web/v1/captures/{id}/assign` zu (AP-14b).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { applyCorrection } from '@nina-pm/db';
+import { applyCorrection, rejectCapture } from '@nina-pm/db';
 import {
   can,
+  CaptureReject,
+  CaptureRejectResult,
   NIGHT_SESSION_CAPTURE_LIMIT,
   NightSessionCorrection,
   NightSessionDetail,
@@ -111,11 +116,33 @@ export const sessionReviewRoute = defineRoute(
   },
 );
 
+export const captureRejectRoute = defineRoute(
+  { action: 'session.correct', requirements: ['FA-AUS-20', 'FA-AUS-06', 'FK 8.4'] },
+  {
+    method: 'patch',
+    path: '/api/web/v1/captures/{id}',
+    summary: 'Einzelne Aufnahme verwerfen bzw. zurücknehmen',
+    tags: ['sessions'],
+    request: {
+      params: z.object({ id: Uuid }),
+      body: { ...json(CaptureReject), required: true },
+    },
+    responses: {
+      200: { description: 'Zähler der Zeile in der Nacht', ...json(CaptureRejectResult) },
+      ...denied,
+      404: problemContent('resource.not_found'),
+      409: problemContent('capture.not_rejectable'),
+      422: problemContent('validation.failed'),
+    },
+  },
+);
+
 export const SESSION_ROUTES = [
   listSessionsRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
   sessionReviewRoute,
+  captureRejectRoute,
 ] as const;
 
 export function webSessionRoutes(services: () => Promise<ApiServices>) {
@@ -175,6 +202,36 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
         rejected: body.rejected,
         reason: body.reason,
         comment: body.comment,
+      },
+      svc.now(),
+    );
+    return c.json(r, 200);
+  });
+
+  app.openapi(captureRejectRoute, async (c) => {
+    const svc = await services();
+    const { auth, tenant } = requireTenant(c);
+    const body = c.req.valid('json');
+    const id = c.req.valid('param').id;
+    const repos = svc.repositories(tenant);
+    const target = await repos.sessionReview().rejectTarget(id);
+    const settings = (await repos.tenant().settings()).settings;
+    if (
+      !can(auth, 'session.correct', {
+        tenantId: tenant.tenantId,
+        ...(target.projectCreatedBy ? { createdBy: target.projectCreatedBy } : {}),
+        settings: { userCorrections: settings.userCorrections },
+      })
+    )
+      throw new ProblemError('permission.denied');
+    const r = await rejectCapture(
+      svc.db,
+      {
+        tenantId: tenant.tenantId,
+        userId: tenant.memberId as string,
+        captureId: id,
+        rejected: body.rejected,
+        reason: body.reason,
       },
       svc.now(),
     );
