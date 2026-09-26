@@ -1,7 +1,8 @@
 /**
  * AP-09c: S-10 Rigs gegen den lokalen Stack (Seed aus seed-demo.json): Rig anlegen und
  * Scheduler-Einstellungen speichern, 412 bei parallelem Speichern, Filterradbelegung mit Vorschlag
- * bestätigen, User nur lesend, 768/2400 px.
+ * bestätigen, User nur lesend, 768/2400 px. Seit AP-26b: Rig-Liste links, Detail rechts mit Reitern
+ * (Allgemein, Ausrüstung, Scheduler, Filterrad, NINA), *Neu* im Seitenkopf.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { csrf, testLogin } from './support';
@@ -21,20 +22,34 @@ async function rigId(page: Page, prefix: string): Promise<string> {
   return rig.id;
 }
 
+/** Reiter der Rig-Seite wählen (AP-26b). */
+async function showTab(page: Page, name: string) {
+  const tab = page
+    .getByRole('tablist', { name: 'Rig-Bereiche' })
+    .getByRole('tab', { name, exact: true });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
+
 async function openRig(page: Page, name: RegExp) {
   await page.goto('/ausruestung/rigs');
   await expect(page.getByRole('heading', { level: 1, name: 'Rigs' })).toBeVisible();
-  const select = page.getByLabel('Rig', { exact: true });
-  const option = select.locator('option').filter({ hasText: name });
-  await select.selectOption({ label: (await option.first().textContent()) ?? '' });
+  const item = page
+    .getByRole('region', { name: 'Rigs', exact: true })
+    .getByRole('button', { name })
+    .first();
+  await item.click();
+  await expect(item).toHaveAttribute('aria-current', 'true');
 }
 
 test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page }) => {
   await testLogin(page, 'owner');
   await page.goto('/ausruestung/rigs');
-  await page.getByRole('button', { name: 'Neu' }).click();
+  await page.getByRole('button', { name: 'Neu', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Neues Rig' })).toBeVisible();
   const name = `E2E-Rig ${String(Date.now())}`;
   await page.getByLabel('Name', { exact: true }).fill(name);
+  await showTab(page, 'Ausrüstung');
   await page
     .getByRole('combobox', { name: 'Teleskop', exact: true })
     .selectOption({ label: 'RASA 8' });
@@ -44,9 +59,15 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await page.getByRole('button', { name: 'Speichern' }).first().click();
   await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
   await expect(page.getByText('Einstellungsversion 1')).toBeVisible();
+  // Das neue Rig steht in der Liste und ist gewählt.
+  await expect(
+    page.getByRole('region', { name: 'Rigs', exact: true }).getByRole('button', { name }),
+  ).toHaveAttribute('aria-current', 'true');
   // Farbkamera: kein Filterrad-Bereich.
+  await showTab(page, 'Filterrad');
   await expect(page.getByText('Farbkamera ohne Filterrad')).toBeVisible();
 
+  await showTab(page, 'Scheduler');
   const scheduler = page.getByRole('form', { name: 'Scheduler-Einstellungen' });
   await scheduler.getByLabel('Dither alle N Belichtungen').fill('3');
   await scheduler.getByLabel('Autofokus alle (min)').fill('0');
@@ -85,6 +106,8 @@ test('S-10: paralleles Speichern → 412 mit „Neu laden“, danach speicherbar
   const b = await pageAs(browser, 'admin');
   await openRig(a, /^Rig B/);
   await openRig(b, /^Rig B/);
+  await showTab(a, 'Scheduler');
+  await showTab(b, 'Scheduler');
   const formA = a.getByRole('form', { name: 'Scheduler-Einstellungen' });
   const formB = b.getByRole('form', { name: 'Scheduler-Einstellungen' });
   await formA.getByLabel('Überschuss (%)').fill('12');
@@ -121,6 +144,7 @@ test('FA-RIG-14: Filterradbelegung mit Vorschlägen bestätigen; User nur lesend
   expect(report.status()).toBe(200);
 
   await openRig(owner, /^Rig A/);
+  await showTab(owner, 'Filterrad');
   const wheel = owner.getByRole('region', { name: 'Filterradbelegung – Zuordnung zu NINA' });
   await expect(wheel.getByLabel('NINA-Filtername an Platz 5')).toHaveValue('Ha 3nm');
   await expect(wheel.getByText('Vorschlag – nicht bestätigt')).toHaveCount(7);
@@ -132,6 +156,7 @@ test('FA-RIG-14: Filterradbelegung mit Vorschlägen bestätigen; User nur lesend
 
   const user = await pageAs(browser, 'user1');
   await openRig(user, /^Rig A/);
+  await showTab(user, 'Filterrad');
   const userWheel = user.getByRole('region', { name: 'Filterradbelegung – Zuordnung zu NINA' });
   await expect(userWheel.getByLabel('NINA-Filtername an Platz 5')).toBeDisabled();
   await expect(userWheel.getByRole('button', { name: 'Bestätigen' })).toHaveCount(0);
@@ -148,12 +173,16 @@ for (const width of [768, 2400]) {
     await page.setViewportSize({ width, height: 900 });
     await testLogin(page, 'owner');
     await openRig(page, /^Rig A/);
+    await showTab(page, 'Filterrad');
     await expect(
       page.getByRole('region', { name: 'Filterradbelegung – Zuordnung zu NINA' }),
     ).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(0);
+    for (const tab of ['Allgemein', 'Ausrüstung', 'Scheduler', 'Filterrad', 'NINA']) {
+      await showTab(page, tab);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, tab).toBeLessThanOrEqual(0);
+    }
   });
 }

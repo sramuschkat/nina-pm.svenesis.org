@@ -2,6 +2,8 @@
  * AP-13f: S-40 Nacht-Simulator gegen den lokalen Stack. Browserzone Europe/Berlin (Konfiguration),
  * Standort America/Chicago: Nacht 17./18.09.2026 zeigt Blockzeiten in CDT, der Plan-Hash des Browsers
  * (Web Worker) ist gleich dem Node-Lauf mit der Server-Tabelle (NT-46). Dazu axe hell/dunkel, 768/2400 px.
+ * AP-26b: Ergebnis zuerst auf Reitern (Nachtplan, Planprotokoll, Zielkarten, Prüfungen), Einstellungen
+ * über den Schalter *Einstellungen* einklappbar (bei Rig und Nacht in der URL zugeklappt).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -130,11 +132,21 @@ test('S-40: Plan für die Seed-Daten, Blockzeiten in CDT, Hash = Node-Lauf', asy
   await expect(admin.getByRole('heading', { level: 1, name: 'Nacht-Simulator' })).toBeVisible();
   const hash = admin.getByText(/^Plan-Hash sha256:/);
   await expect(hash).toBeVisible({ timeout: 20_000 });
+  // Ergebnis zuerst, Einstellungen zugeklappt.
+  await expect(admin.getByRole('button', { name: 'Einstellungen', exact: true })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(admin.getByRole('tab', { name: /Nachtplan \(Standortzeit CDT\)/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await admin.getByRole('tab', { name: 'Zielkarten', exact: true }).click();
   const card = admin.getByRole('article', { name: s.name });
   await expect(card).toBeVisible();
   // Browser in Europe/Berlin, Standort in Chicago: Zeiten in Standortzeit mit Kürzel CDT.
   await expect(card).toContainText(/\d\d:\d\d CDT – \d\d:\d\d CDT/);
-  await expect(admin.getByText(/Schritt 3 – Plan \(Standortzeit CDT\)/)).toBeVisible();
+  await admin.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
   await expect(admin.getByRole('cell', { name: /CDT$/ }).first()).toBeVisible();
   expect(await hash.textContent()).toBe(`Plan-Hash ${await nodeHash(admin, s)}`);
 
@@ -159,6 +171,19 @@ for (const theme of ['light', 'dark'] as const) {
     );
     expect(
       serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+    ).toEqual([]);
+    // Aufgeklappte Einstellungen und Protokoll dürfen ebenfalls nicht waagerecht scrollen.
+    await admin.getByRole('button', { name: 'Einstellungen', exact: true }).click();
+    await expect(admin.getByRole('button', { name: 'Einstellungen', exact: true })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await admin.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
+    const expanded = await new AxeBuilder({ page: admin }).analyze();
+    expect(
+      expanded.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map((v) => v.id),
     ).toEqual([]);
     for (const width of [768, 2400]) {
       await admin.setViewportSize({ width, height: 900 });

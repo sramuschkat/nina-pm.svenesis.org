@@ -1,9 +1,12 @@
 /**
- * S-10 Rigs (FA-RIG-01…14, FA-SCH-01…10/17; FK 14.3): Kopf mit Rig-Auswahl, Name, Notizen und
- * Schaltern, darunter drei Spalten Standort / Teleskop / Kamera mit Kennwerten, abgeleitete Kennzahlen,
- * Scheduler-Einstellungen (Sortierkette per Ziehen, Flip, Flats, Overheads) und die Filterradbelegung
- * mit Zuordnung zu NINA; zugeordnete NINA-Instanzen mit Übernahmestatus (AP-14c, FA-SIM-09). Gespeichert wird mit `If-Match` (`settingsVersion`, 412 bei parallelem
- * Speichern). Übernahmestatus in NINA und zugeordnete Instanzen folgen mit AP-14.
+ * S-10 Rigs (FA-RIG-01…14, FA-SCH-01…10/17; FK 14.3): Listen-/Detail-Muster (AP-26b) – links die
+ * durchsuchbare Rig-Liste, rechts das gewählte Rig mit Reitern *Allgemein* (Name, Notizen, Schalter, Standort) · *Ausrüstung* (Teleskop, Kamera, Rotation,
+ * abgeleitete Kennzahlen) · *Scheduler* (Sortierkette per Ziehen, Flip, Flats, Overheads) ·
+ * *Filterrad* (Belegung mit Zuordnung zu NINA) · *NINA* (zugeordnete Instanzen mit Übernahmestatus,
+ * AP-14c, FA-SIM-09). Allgemein und Ausrüstung speichern gemeinsam den ganzen Rig-Entwurf; verdeckte
+ * Reiter bleiben im DOM (`keepMounted`), ein Feldfehler in einem verdeckten Reiter holt ihn nach vorn.
+ * *Neu* steht rechts im Seitenkopf. Gespeichert wird mit `If-Match` (`settingsVersion`, 412 bei
+ * parallelem Speichern).
  */
 import {
   flatsSources,
@@ -15,14 +18,14 @@ import {
   telescopeDerived,
 } from '@nina-pm/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { equipmentApi, type RigView } from '../../api/client';
 import { ApiError, useCan } from '../../auth';
-import { ICON_SIZE, actionIcons } from '../../components/icons';
-import { ProblemMessage } from '../../components/ProblemMessage';
+import { Tabs } from '../../components/Tabs';
 import styles from './equipment.module.css';
+import css from './rigs.module.css';
 import {
   CheckField,
   DeleteDialog,
@@ -30,7 +33,10 @@ import {
   EquipmentLayout,
   equipmentKey,
   FormActions,
+  ListDetail,
+  NewButton,
   NumberField,
+  PickList,
   problemCode,
   SelectField,
   serverFieldErrors,
@@ -65,6 +71,25 @@ interface RigDraft {
 }
 
 type Scheduler = RigView['scheduler'];
+
+/** Reiter der Rig-Seite (AP-26b). */
+export type RigTab = 'general' | 'equipment' | 'scheduler' | 'filterWheel' | 'nina';
+const RIG_TABS: readonly RigTab[] = ['general', 'equipment', 'scheduler', 'filterWheel', 'nina'];
+
+/** Felder des Rig-Entwurfs auf dem Reiter *Ausrüstung*; alle übrigen liegen auf *Allgemein*. */
+const EQUIPMENT_FIELDS: ReadonlySet<string> = new Set<keyof RigDraft>([
+  'telescopeId',
+  'cameraId',
+  'defaultTemplateId',
+  'hasRotator',
+  'skipOnRotationMismatch',
+  'defaultRotationDeg',
+  'rotationToleranceDeg',
+]);
+
+/** Reiter eines Feldpfads (Client- oder Serverfehler) im Rig-Formular. */
+export const rigTabOf = (path: string): RigTab =>
+  EQUIPMENT_FIELDS.has(path.split('.')[0] ?? '') ? 'equipment' : 'general';
 
 const rigDraft = (r: RigView): RigDraft => ({
   name: r.name,
@@ -118,7 +143,11 @@ export function RigsPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saved, setSaved] = useState(false);
   const [picked, setPicked] = useState(false);
-  const fieldError = useFieldError({ ...serverFieldErrors(save.error), ...errors });
+  /** Neues Rig in Arbeit (`selectedId = null`); weder gewählt noch neu → Leerzustand. */
+  const [creating, setCreating] = useState(false);
+  /** *Neu* vor dem Laden der Stammdaten: Standort/Teleskop/Kamera vorbelegen, sobald sie da sind. */
+  const [needsDefaults, setNeedsDefaults] = useState(false);
+  const [tab, setTab] = useState<RigTab>('general');
   const num = useNumber();
   const items = rigs.data ?? [];
   if (!picked && rigs.data) {
@@ -134,22 +163,31 @@ export function RigsPage() {
     const rig = items.find((r) => r.id === id);
     if (!rig) return;
     setSelectedId(id);
+    setCreating(false);
     setDraft(rigDraft(rig));
     setErrors({});
     setSaved(false);
     save.reset();
+    saveRig.reset();
     del.clearUsage();
   };
   const del = useDeleteWithUsage(
     (id) => remove.mutateAsync(id),
     () => {
       setSelectedId(null);
+      setCreating(false);
       setDraft(emptyRig());
     },
   );
   const set = <K extends keyof RigDraft>(key: K, value: RigDraft[K]) => {
     setSaved(false);
     setDraft((d) => ({ ...d, [key]: value }));
+  };
+  /** Fehler in einem verdeckten Reiter: dorthin wechseln, damit das Feld sichtbar ist. */
+  const reveal = (found: FieldErrors) => {
+    const tabs = Object.keys(found).map(rigTabOf);
+    const first = tabs[0];
+    if (first && !tabs.includes(tab)) setTab(first);
   };
   const saveRig = useMutation({
     mutationFn: (body: object) =>
@@ -160,14 +198,23 @@ export function RigsPage() {
       await client.invalidateQueries({ queryKey: equipmentKey('rigs') });
       const rig = view as RigView;
       setSelectedId(rig.id);
+      setCreating(false);
       setDraft(rigDraft(rig));
       setSaved(true);
     },
+    onError: (e) => reveal(serverFieldErrors(e)),
   });
+  const allErrors: FieldErrors = { ...serverFieldErrors(saveRig.error), ...errors };
+  const fieldError = useFieldError(allErrors);
+  const tabsWithErrors = new Set(Object.keys(allErrors).map(rigTabOf));
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const result = validate(RigInput, draft);
-    if (!result.ok) return setErrors(result.errors);
+    if (!result.ok) {
+      setErrors(result.errors);
+      reveal(result.errors);
+      return;
+    }
     setErrors({});
     saveRig.mutate(result.data);
   };
@@ -184,308 +231,370 @@ export function RigsPage() {
   const scale = telescope && camera ? imageScale({ ...telescope, ...camera }) : null;
   const tel = telescope ? telescopeDerived(telescope) : null;
   const disabled = !canWrite;
-  const Add = actionIcons.add;
   const pending = rigs.isPending || sites.isPending || telescopes.isPending || cameras.isPending;
+  const listState = rigs.isError ? 'error' : pending ? 'loading' : 'ready';
+  if (needsDefaults && sites.data && telescopes.data && cameras.data) {
+    setNeedsDefaults(false);
+    const defaults = {
+      siteId: sites.data[0]?.id ?? '',
+      telescopeId: telescopes.data[0]?.id ?? '',
+      cameraId: cameras.data[0]?.id ?? '',
+    };
+    setDraft((d) => ({
+      ...d,
+      siteId: d.siteId || defaults.siteId,
+      telescopeId: d.telescopeId || defaults.telescopeId,
+      cameraId: d.cameraId || defaults.cameraId,
+    }));
+  }
+  const startNew = () => {
+    setSelectedId(null);
+    setCreating(true);
+    setDraft(emptyRig());
+    setNeedsDefaults(true);
+    setErrors({});
+    setSaved(false);
+    save.reset();
+    saveRig.reset();
+    del.clearUsage();
+    setTab('general');
+  };
+
+  /** Allgemein und Ausrüstung: je ein Formular, beide speichern den ganzen Entwurf. */
+  const rigForm = (children: ReactNode) => (
+    <form className={styles.form} onSubmit={submit} aria-labelledby="rig-form-title" noValidate>
+      {children}
+      <FormActions
+        canWrite={canWrite}
+        saving={saveRig.isPending}
+        saved={saved}
+        error={isConflict(saveRig.error) ? null : saveRig.error}
+        onDelete={selected ? () => del.ask(selected.id, selected.name) : undefined}
+      />
+    </form>
+  );
+  const saveFirst = (
+    <p className={styles.note} role="note">
+      {t('rigs.tabs.saveFirst')}
+    </p>
+  );
+
+  const general = rigForm(
+    <>
+      <div className={styles.grid}>
+        <TextField
+          label={t('equipment.field.name')}
+          value={draft.name}
+          onChange={(v) => set('name', v)}
+          error={fieldError('name')}
+          disabled={disabled}
+        />
+        <TextField
+          label={t('equipment.field.notes')}
+          value={draft.notes}
+          maxLength={4000}
+          onChange={(v) => set('notes', v)}
+          error={fieldError('notes')}
+          disabled={disabled}
+        />
+      </div>
+      <div className={styles.inline}>
+        <CheckField
+          label={t('rigs.field.showInPlanning')}
+          checked={draft.showInPlanning}
+          onChange={(v) => set('showInPlanning', v)}
+          disabled={disabled}
+        />
+        <CheckField
+          label={t('rigs.field.ninaDeliveryEnabled')}
+          checked={draft.ninaDeliveryEnabled}
+          onChange={(v) => set('ninaDeliveryEnabled', v)}
+          disabled={disabled}
+        />
+        <CheckField
+          label={t('rigs.field.sessionReportDiscord')}
+          checked={draft.sessionReportDiscord}
+          onChange={(v) => set('sessionReportDiscord', v)}
+          disabled={disabled}
+        />
+      </div>
+      <section className={styles.section} aria-labelledby="rig-site">
+        <h3 id="rig-site">{t('rigs.site')}</h3>
+        <SelectField
+          label={t('rigs.site')}
+          value={draft.siteId}
+          onChange={(v) => set('siteId', v)}
+          options={[
+            { value: '', label: '–' },
+            ...(sites.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+          ]}
+          error={fieldError('siteId')}
+          disabled={disabled}
+        />
+        <Link to={EQUIPMENT_PATHS.sites}>{t('rigs.edit')}</Link>
+        {site ? (
+          <dl className={styles.facts}>
+            <dt>{t('equipment.sites.field.latitude')}</dt>
+            <dd>{num(site.latitudeDeg, 4)}°</dd>
+            <dt>{t('equipment.sites.field.longitude')}</dt>
+            <dd>{num(site.longitudeDeg, 4)}°</dd>
+            <dt>{t('equipment.sites.field.elevation')}</dt>
+            <dd>{num(site.elevationM, 0)} m</dd>
+            <dt>{t('equipment.sites.field.bortle')}</dt>
+            <dd>{site.bortleClass ?? '–'}</dd>
+            <dt>{t('equipment.sites.field.timeZone')}</dt>
+            <dd>{site.timeZone}</dd>
+            <dt>{t('equipment.sites.field.observatoryType')}</dt>
+            <dd>{t(`equipment.observatoryType.${site.observatoryType}`)}</dd>
+          </dl>
+        ) : null}
+      </section>
+    </>,
+  );
+
+  const equipment = rigForm(
+    <>
+      <div className={styles.columns}>
+        <section className={styles.section} aria-labelledby="rig-telescope">
+          <h3 id="rig-telescope">{t('rigs.telescope')}</h3>
+          <SelectField
+            label={t('rigs.telescope')}
+            value={draft.telescopeId}
+            onChange={(v) => set('telescopeId', v)}
+            options={[
+              { value: '', label: '–' },
+              ...(telescopes.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+            ]}
+            error={fieldError('telescopeId')}
+            disabled={disabled}
+          />
+          <Link to={EQUIPMENT_PATHS.telescopes}>{t('rigs.edit')}</Link>
+          {telescope && tel ? (
+            <dl className={styles.facts}>
+              <dt>{t('equipment.telescopes.field.aperture')}</dt>
+              <dd>{num(telescope.apertureMm, 0)} mm</dd>
+              <dt>{t('equipment.telescopes.field.focalLength')}</dt>
+              <dd>{num(telescope.focalLengthMm, 0)} mm</dd>
+              <dt>{t('equipment.telescopes.derived.fRatioNative')}</dt>
+              <dd>f/{num(tel.fRatioNative, 2)}</dd>
+              <dt>{t('equipment.telescopes.field.reducer')}</dt>
+              <dd>{num(telescope.reducerFactor, 2)}</dd>
+              <dt>{t('equipment.telescopes.derived.effFocal')}</dt>
+              <dd>
+                {num(tel.effFocalMm, 0)} mm · f/{num(tel.fRatioEffective, 2)}
+              </dd>
+              <dt>{t('equipment.telescopes.field.opticalDesign')}</dt>
+              <dd>{t(`equipment.opticalDesign.${telescope.opticalDesign}`)}</dd>
+            </dl>
+          ) : null}
+          <SelectField
+            label={t('rigs.field.defaultTemplate')}
+            value={draft.defaultTemplateId ?? ''}
+            onChange={(v) => set('defaultTemplateId', v === '' ? null : v)}
+            options={[
+              { value: '', label: t('equipment.none') },
+              ...(templates.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+            ]}
+            error={fieldError('defaultTemplateId')}
+            disabled={disabled}
+          />
+          <Link to={EQUIPMENT_PATHS.filters}>{t('rigs.editFilters')}</Link>
+        </section>
+        <section className={styles.section} aria-labelledby="rig-camera">
+          <h3 id="rig-camera">{t('rigs.camera')}</h3>
+          <SelectField
+            label={t('rigs.camera')}
+            value={draft.cameraId}
+            onChange={(v) => set('cameraId', v)}
+            options={[
+              { value: '', label: '–' },
+              ...(cameras.data ?? []).map((s) => ({ value: s.id, label: s.name })),
+            ]}
+            error={fieldError('cameraId')}
+            disabled={disabled}
+          />
+          <Link to={EQUIPMENT_PATHS.cameras}>{t('rigs.edit')}</Link>
+          {camera ? (
+            <dl className={styles.facts}>
+              <dt>{t('equipment.cameras.derived.resolution')}</dt>
+              <dd>
+                {camera.widthPx} × {camera.heightPx}
+              </dd>
+              <dt>{t('equipment.cameras.field.pixelSize')}</dt>
+              <dd>{num(camera.pixelSizeUm, 2)} µm</dd>
+              <dt>{t('equipment.cameras.derived.sensorSize')}</dt>
+              <dd>
+                {num((camera.widthPx * camera.pixelSizeUm) / 1000, 1)} ×{' '}
+                {num((camera.heightPx * camera.pixelSizeUm) / 1000, 1)} mm
+              </dd>
+              <dt>{t('rigs.cameraType')}</dt>
+              <dd>{camera.isColor ? t('equipment.cameras.osc') : t('equipment.cameras.mono')}</dd>
+              <dt>{t('equipment.cameras.field.readNoise')}</dt>
+              <dd>{camera.readNoiseE === null ? '–' : `${num(camera.readNoiseE, 1)} e⁻`}</dd>
+              <dt>{t('equipment.cameras.field.fullWell')}</dt>
+              <dd>{camera.fullWellE === null ? '–' : `${num(camera.fullWellE, 0)} e⁻`}</dd>
+              <dt>{t('equipment.cameras.field.bitDepth')}</dt>
+              <dd>{camera.bitDepth} bit</dd>
+            </dl>
+          ) : null}
+        </section>
+        <section className={styles.section} aria-labelledby="rig-rotation">
+          <h3 id="rig-rotation">{t('rigs.rotation')}</h3>
+          <CheckField
+            label={t('rigs.field.hasRotator')}
+            checked={draft.hasRotator}
+            onChange={(v) => set('hasRotator', v)}
+            disabled={disabled}
+          />
+          <CheckField
+            label={t('rigs.field.skipOnRotationMismatch')}
+            checked={draft.skipOnRotationMismatch}
+            onChange={(v) => set('skipOnRotationMismatch', v)}
+            disabled={disabled}
+          />
+          <NumberField
+            label={draft.hasRotator ? t('rigs.field.defaultRotation') : t('rigs.field.cameraAngle')}
+            unit="°"
+            value={draft.defaultRotationDeg}
+            onChange={(v) => set('defaultRotationDeg', v)}
+            error={fieldError('defaultRotationDeg')}
+            hint={draft.hasRotator ? undefined : t('rigs.cameraAngleHint')}
+            disabled={disabled}
+          />
+          <NumberField
+            label={t('rigs.field.rotationTolerance')}
+            unit="°"
+            value={draft.rotationToleranceDeg}
+            onChange={(v) => set('rotationToleranceDeg', v)}
+            error={fieldError('rotationToleranceDeg')}
+            disabled={disabled}
+          />
+        </section>
+      </div>
+      {scale ? (
+        <section className={styles.section} aria-labelledby="rig-derived">
+          <h3 id="rig-derived">{t('rigs.derived')}</h3>
+          <dl className={styles.facts}>
+            <dt>{t('rigs.scale')}</dt>
+            <dd>{num(scale.scaleArcsecPx, 2)}″/px</dd>
+            <dt>{t('rigs.fov')}</dt>
+            <dd>
+              {num(scale.fovWidthDeg, 2)}° × {num(scale.fovHeightDeg, 2)}° (
+              {num(scale.fovWidthDeg * 60, 0)}′ × {num(scale.fovHeightDeg * 60, 0)}′)
+            </dd>
+            <dt>{t('rigs.fovDiagonal')}</dt>
+            <dd>{num(scale.fovDiagonalDeg, 2)}°</dd>
+            <dt>{t('rigs.sampling')}</dt>
+            <dd>{t('rigs.samplingValue', { value: num(2 / scale.scaleArcsecPx, 1) })}</dd>
+          </dl>
+        </section>
+      ) : null}
+    </>,
+  );
+
+  const label: Record<RigTab, string> = {
+    general: t('rigs.tabs.general'),
+    equipment: t('rigs.tabs.equipment'),
+    scheduler: t('rigs.tabs.scheduler'),
+    filterWheel: t('rigs.tabs.filterWheel'),
+    nina: t('rigs.tabs.nina'),
+  };
 
   return (
-    <EquipmentLayout title={t('rigs.title')}>
-      {rigs.isError ? (
-        <ProblemMessage code={problemCode(rigs.error)} onRetry={() => void rigs.refetch()} />
-      ) : pending ? (
-        <p role="status">{t('common.loading')}</p>
-      ) : (
-        <>
-          <div className={styles.inline}>
-            {items.length > 0 ? (
-              <SelectField
-                label={t('rigs.select')}
-                value={selectedId ?? ''}
-                onChange={(v) => (v ? select(v) : undefined)}
-                options={[
-                  ...(selectedId === null ? [{ value: '', label: t('rigs.new') }] : []),
-                  ...items.map((r) => ({ value: r.id, label: r.name })),
-                ]}
-              />
-            ) : (
-              <p className={styles.muted}>{t('rigs.empty')}</p>
+    <EquipmentLayout
+      title={t('rigs.title')}
+      actions={canWrite ? <NewButton onClick={startNew} /> : null}
+    >
+      <ListDetail
+        state={listState}
+        list={
+          <PickList
+            label={t('rigs.list')}
+            items={items}
+            selectedId={selectedId}
+            onSelect={select}
+            state={listState}
+            onRetry={() => void rigs.refetch()}
+            searchText={(r: RigView) => r.name}
+            emptyText={t('rigs.empty')}
+            render={(r: RigView) => (
+              <>
+                <span>{r.name}</span>
+                <span className={styles.pickMeta}>{num(r.derived.scaleArcsecPx, 2)}″/px</span>
+              </>
             )}
-            {canWrite ? (
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => {
-                  setSelectedId(null);
-                  setDraft({
-                    ...emptyRig(),
-                    siteId: sites.data?.[0]?.id ?? '',
-                    telescopeId: telescopes.data?.[0]?.id ?? '',
-                    cameraId: cameras.data?.[0]?.id ?? '',
-                  });
-                  setErrors({});
-                  saveRig.reset();
-                }}
-              >
-                <Add size={ICON_SIZE.table} aria-hidden />
-                {t('equipment.new')}
-              </button>
-            ) : null}
-          </div>
-          <form className={styles.form} onSubmit={submit} aria-labelledby="rig-form-title">
-            <div className={styles.formTitle}>
-              <h2 id="rig-form-title">{selected ? selected.name : t('rigs.new')}</h2>
-              {selected ? (
-                <span className={styles.muted}>
-                  {t('rigs.version', { version: selected.settingsVersion })}
-                </span>
-              ) : null}
-            </div>
-            {del.usage ? <UsageNotice usage={del.usage} onClose={del.clearUsage} /> : null}
-            {isConflict(saveRig.error) ? (
-              <div className={styles.warning} role="alert">
-                <p>{t('common.conflict')}</p>
-                <button type="button" className={styles.button} onClick={() => void reload()}>
-                  {t('rigs.reload')}
-                </button>
-              </div>
-            ) : null}
-            <div className={styles.grid}>
-              <TextField
-                label={t('equipment.field.name')}
-                value={draft.name}
-                onChange={(v) => set('name', v)}
-                error={fieldError('name')}
-                disabled={disabled}
-              />
-              <TextField
-                label={t('equipment.field.notes')}
-                value={draft.notes}
-                maxLength={4000}
-                onChange={(v) => set('notes', v)}
-                disabled={disabled}
-              />
-            </div>
-            <div className={styles.inline}>
-              <CheckField
-                label={t('rigs.field.showInPlanning')}
-                checked={draft.showInPlanning}
-                onChange={(v) => set('showInPlanning', v)}
-                disabled={disabled}
-              />
-              <CheckField
-                label={t('rigs.field.ninaDeliveryEnabled')}
-                checked={draft.ninaDeliveryEnabled}
-                onChange={(v) => set('ninaDeliveryEnabled', v)}
-                disabled={disabled}
-              />
-              <CheckField
-                label={t('rigs.field.sessionReportDiscord')}
-                checked={draft.sessionReportDiscord}
-                onChange={(v) => set('sessionReportDiscord', v)}
-                disabled={disabled}
-              />
-            </div>
-            <div className={styles.section}>
-              <h3>{t('rigs.rotation')}</h3>
-              <div className={styles.inline}>
-                <CheckField
-                  label={t('rigs.field.hasRotator')}
-                  checked={draft.hasRotator}
-                  onChange={(v) => set('hasRotator', v)}
-                  disabled={disabled}
-                />
-                <CheckField
-                  label={t('rigs.field.skipOnRotationMismatch')}
-                  checked={draft.skipOnRotationMismatch}
-                  onChange={(v) => set('skipOnRotationMismatch', v)}
-                  disabled={disabled}
-                />
-              </div>
-              <div className={styles.grid}>
-                <NumberField
-                  label={
-                    draft.hasRotator ? t('rigs.field.defaultRotation') : t('rigs.field.cameraAngle')
-                  }
-                  unit="°"
-                  value={draft.defaultRotationDeg}
-                  onChange={(v) => set('defaultRotationDeg', v)}
-                  error={fieldError('defaultRotationDeg')}
-                  hint={draft.hasRotator ? undefined : t('rigs.cameraAngleHint')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('rigs.field.rotationTolerance')}
-                  unit="°"
-                  value={draft.rotationToleranceDeg}
-                  onChange={(v) => set('rotationToleranceDeg', v)}
-                  error={fieldError('rotationToleranceDeg')}
-                  disabled={disabled}
-                />
-              </div>
-            </div>
-            <div className={styles.columns}>
-              <section className={styles.section} aria-labelledby="rig-site">
-                <h3 id="rig-site">{t('rigs.site')}</h3>
-                <SelectField
-                  label={t('rigs.site')}
-                  value={draft.siteId}
-                  onChange={(v) => set('siteId', v)}
-                  options={[
-                    { value: '', label: '–' },
-                    ...(sites.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-                  ]}
-                  error={fieldError('siteId')}
-                  disabled={disabled}
-                />
-                <Link to={EQUIPMENT_PATHS.sites}>{t('rigs.edit')}</Link>
-                {site ? (
-                  <dl className={styles.facts}>
-                    <dt>{t('equipment.sites.field.latitude')}</dt>
-                    <dd>{num(site.latitudeDeg, 4)}°</dd>
-                    <dt>{t('equipment.sites.field.longitude')}</dt>
-                    <dd>{num(site.longitudeDeg, 4)}°</dd>
-                    <dt>{t('equipment.sites.field.elevation')}</dt>
-                    <dd>{num(site.elevationM, 0)} m</dd>
-                    <dt>{t('equipment.sites.field.bortle')}</dt>
-                    <dd>{site.bortleClass ?? '–'}</dd>
-                    <dt>{t('equipment.sites.field.timeZone')}</dt>
-                    <dd>{site.timeZone}</dd>
-                    <dt>{t('equipment.sites.field.observatoryType')}</dt>
-                    <dd>{t(`equipment.observatoryType.${site.observatoryType}`)}</dd>
-                  </dl>
+          />
+        }
+        detail={
+          selected || creating ? (
+            <section className={css.detail} aria-labelledby="rig-form-title">
+              <div className={styles.formTitle}>
+                <h2 id="rig-form-title">{selected ? selected.name : t('rigs.new')}</h2>
+                {selected ? (
+                  <span className={styles.muted}>
+                    {t('rigs.version', { version: selected.settingsVersion })}
+                  </span>
                 ) : null}
-              </section>
-              <section className={styles.section} aria-labelledby="rig-telescope">
-                <h3 id="rig-telescope">{t('rigs.telescope')}</h3>
-                <SelectField
-                  label={t('rigs.telescope')}
-                  value={draft.telescopeId}
-                  onChange={(v) => set('telescopeId', v)}
-                  options={[
-                    { value: '', label: '–' },
-                    ...(telescopes.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-                  ]}
-                  error={fieldError('telescopeId')}
-                  disabled={disabled}
-                />
-                <Link to={EQUIPMENT_PATHS.telescopes}>{t('rigs.edit')}</Link>
-                {telescope && tel ? (
-                  <dl className={styles.facts}>
-                    <dt>{t('equipment.telescopes.field.aperture')}</dt>
-                    <dd>{num(telescope.apertureMm, 0)} mm</dd>
-                    <dt>{t('equipment.telescopes.field.focalLength')}</dt>
-                    <dd>{num(telescope.focalLengthMm, 0)} mm</dd>
-                    <dt>{t('equipment.telescopes.derived.fRatioNative')}</dt>
-                    <dd>f/{num(tel.fRatioNative, 2)}</dd>
-                    <dt>{t('equipment.telescopes.field.reducer')}</dt>
-                    <dd>{num(telescope.reducerFactor, 2)}</dd>
-                    <dt>{t('equipment.telescopes.derived.effFocal')}</dt>
-                    <dd>
-                      {num(tel.effFocalMm, 0)} mm · f/{num(tel.fRatioEffective, 2)}
-                    </dd>
-                    <dt>{t('equipment.telescopes.field.opticalDesign')}</dt>
-                    <dd>{t(`equipment.opticalDesign.${telescope.opticalDesign}`)}</dd>
-                  </dl>
-                ) : null}
-                <SelectField
-                  label={t('rigs.field.defaultTemplate')}
-                  value={draft.defaultTemplateId ?? ''}
-                  onChange={(v) => set('defaultTemplateId', v === '' ? null : v)}
-                  options={[
-                    { value: '', label: t('equipment.none') },
-                    ...(templates.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-                  ]}
-                  disabled={disabled}
-                />
-                <Link to={EQUIPMENT_PATHS.filters}>{t('rigs.editFilters')}</Link>
-              </section>
-              <section className={styles.section} aria-labelledby="rig-camera">
-                <h3 id="rig-camera">{t('rigs.camera')}</h3>
-                <SelectField
-                  label={t('rigs.camera')}
-                  value={draft.cameraId}
-                  onChange={(v) => set('cameraId', v)}
-                  options={[
-                    { value: '', label: '–' },
-                    ...(cameras.data ?? []).map((s) => ({ value: s.id, label: s.name })),
-                  ]}
-                  error={fieldError('cameraId')}
-                  disabled={disabled}
-                />
-                <Link to={EQUIPMENT_PATHS.cameras}>{t('rigs.edit')}</Link>
-                {camera ? (
-                  <dl className={styles.facts}>
-                    <dt>{t('equipment.cameras.derived.resolution')}</dt>
-                    <dd>
-                      {camera.widthPx} × {camera.heightPx}
-                    </dd>
-                    <dt>{t('equipment.cameras.field.pixelSize')}</dt>
-                    <dd>{num(camera.pixelSizeUm, 2)} µm</dd>
-                    <dt>{t('equipment.cameras.derived.sensorSize')}</dt>
-                    <dd>
-                      {num((camera.widthPx * camera.pixelSizeUm) / 1000, 1)} ×{' '}
-                      {num((camera.heightPx * camera.pixelSizeUm) / 1000, 1)} mm
-                    </dd>
-                    <dt>{t('rigs.cameraType')}</dt>
-                    <dd>
-                      {camera.isColor ? t('equipment.cameras.osc') : t('equipment.cameras.mono')}
-                    </dd>
-                    <dt>{t('equipment.cameras.field.readNoise')}</dt>
-                    <dd>{camera.readNoiseE === null ? '–' : `${num(camera.readNoiseE, 1)} e⁻`}</dd>
-                    <dt>{t('equipment.cameras.field.fullWell')}</dt>
-                    <dd>{camera.fullWellE === null ? '–' : `${num(camera.fullWellE, 0)} e⁻`}</dd>
-                    <dt>{t('equipment.cameras.field.bitDepth')}</dt>
-                    <dd>{camera.bitDepth} bit</dd>
-                  </dl>
-                ) : null}
-              </section>
-            </div>
-            {scale ? (
-              <div className={styles.section}>
-                <h3>{t('rigs.derived')}</h3>
-                <dl className={styles.facts}>
-                  <dt>{t('rigs.scale')}</dt>
-                  <dd>{num(scale.scaleArcsecPx, 2)}″/px</dd>
-                  <dt>{t('rigs.fov')}</dt>
-                  <dd>
-                    {num(scale.fovWidthDeg, 2)}° × {num(scale.fovHeightDeg, 2)}° (
-                    {num(scale.fovWidthDeg * 60, 0)}′ × {num(scale.fovHeightDeg * 60, 0)}′)
-                  </dd>
-                  <dt>{t('rigs.fovDiagonal')}</dt>
-                  <dd>{num(scale.fovDiagonalDeg, 2)}°</dd>
-                  <dt>{t('rigs.sampling')}</dt>
-                  <dd>{t('rigs.samplingValue', { value: num(2 / scale.scaleArcsecPx, 1) })}</dd>
-                </dl>
               </div>
-            ) : null}
-            <p className={styles.muted}>{t('rigs.instancesLater')}</p>
-            <FormActions
-              canWrite={canWrite}
-              saving={saveRig.isPending}
-              saved={saved}
-              error={isConflict(saveRig.error) ? null : saveRig.error}
-              onDelete={selected ? () => del.ask(selected.id, selected.name) : undefined}
-            />
-          </form>
-          {selected ? (
-            <>
-              <SchedulerForm rig={selected} canWrite={canSettings} />
-              {camera?.isColor ? (
-                <p className={styles.note} role="note">
-                  {t('rigs.wheel.osc')}
-                </p>
-              ) : (
-                <FilterWheelSection rig={selected} canWrite={canSettings} />
-              )}
-              <section className={styles.form} aria-labelledby="rig-nina-title">
-                <div className={styles.formTitle}>
-                  <h2 id="rig-nina-title">{t('nina.uptake.title')}</h2>
+              {del.usage ? <UsageNotice usage={del.usage} onClose={del.clearUsage} /> : null}
+              {isConflict(saveRig.error) ? (
+                <div className={styles.warning} role="alert">
+                  <p>{t('common.conflict')}</p>
+                  <button type="button" className={styles.button} onClick={() => void reload()}>
+                    {t('rigs.reload')}
+                  </button>
                 </div>
-                <UptakeStatus rigId={selected.id} settingsVersion={selected.settingsVersion} />
-              </section>
-            </>
-          ) : null}
-        </>
-      )}
+              ) : null}
+              <Tabs
+                label={t('rigs.tabs.label')}
+                value={tab}
+                onChange={setTab}
+                keepMounted
+                panelClassName={css.tabPanel}
+                tabs={RIG_TABS.map((key) => ({
+                  key,
+                  label: label[key],
+                  ...(tabsWithErrors.has(key)
+                    ? { badge: <span className={css.tabError}>{t('rigs.tabs.hasErrors')}</span> }
+                    : {}),
+                }))}
+                panels={{
+                  general,
+                  equipment,
+                  scheduler: selected ? (
+                    <SchedulerForm rig={selected} canWrite={canSettings} />
+                  ) : (
+                    saveFirst
+                  ),
+                  filterWheel: !selected ? (
+                    saveFirst
+                  ) : camera?.isColor ? (
+                    <p className={styles.note} role="note">
+                      {t('rigs.wheel.osc')}
+                    </p>
+                  ) : (
+                    <FilterWheelSection rig={selected} canWrite={canSettings} />
+                  ),
+                  nina: selected ? (
+                    <section className={styles.form} aria-labelledby="rig-nina-title">
+                      <div className={styles.formTitle}>
+                        <h2 id="rig-nina-title">{t('nina.uptake.title')}</h2>
+                      </div>
+                      <UptakeStatus
+                        rigId={selected.id}
+                        settingsVersion={selected.settingsVersion}
+                      />
+                      <p className={styles.muted}>{t('rigs.instancesLater')}</p>
+                    </section>
+                  ) : (
+                    saveFirst
+                  ),
+                }}
+              />
+            </section>
+          ) : null
+        }
+      />
       <DeleteDialog dialog={del.dialog} />
     </EquipmentLayout>
   );

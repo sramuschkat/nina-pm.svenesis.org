@@ -1,0 +1,41 @@
+/* S-70 (AP-26b): Reiterinhalt und Formular-Dialoge (Einladen, Owner übertragen); Farben und Abstände aus Tokens. */
+.tabPanel {
+  padding-top: var(--npm-space-4);
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 33, 0.55);
+}
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Ausnahme von der Breitenregel: Dialoge 360–520 px (components.md §2.10). */
+  width: min(520px, calc(100vw - var(--npm-space-6)));
+  min-width: min(360px, calc(100vw - var(--npm-space-6)));
+  max-height: calc(100vh - var(--npm-space-6));
+  overflow-y: auto;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
+.dialogTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-h2);
+}
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--npm-space-2);
+  margin-top: var(--npm-space-2);
+}

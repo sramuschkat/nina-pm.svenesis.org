@@ -1,12 +1,16 @@
 /**
- * S-70 Mitglieder & Einladungen (FA-BEN-01…11, FK 14.3): Liste mit Owner-Kennzeichen und Hinweis
- * „Rechte ruhen – 2FA fehlt“; User einladen (Admin/Owner), Admin einladen (nur Owner); *Zu Admin machen*
- * mit Grund und *Admin-Rechte entziehen* nur für den Owner; Sitzungen beenden, deaktivieren, entfernen –
- * folgenreiche Aktionen über den `ConfirmDialog` (E4). Die Rechte entscheidet `can()`; die API prüft erneut.
+ * S-70 Mitglieder & Einladungen (FA-BEN-01…11, FK 14.3, AP-26b): Die Mitgliederliste steht im Mittelpunkt –
+ * Reiter *Mitglieder* (Liste mit Owner-Kennzeichen und Hinweis „Rechte ruhen – 2FA fehlt“, daneben bzw.
+ * darunter das gewählte Mitglied) und *Offene Einladungen* (mit Anzahl). *Einladen* (User: Admin/Owner,
+ * Admin: nur Owner) und *Owner übertragen* (nur Owner) öffnen Dialoge aus dem Seitenkopf. *Zu Admin
+ * machen* mit Grund und *Admin-Rechte entziehen* nur für den Owner; Sitzungen beenden, deaktivieren,
+ * entfernen – folgenreiche Aktionen über den `ConfirmDialog` (E4). Die Rechte entscheidet `can()`; die API
+ * prüft erneut.
  */
 import { can } from '@nina-pm/shared';
+import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   memberApi,
@@ -20,13 +24,17 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
+import { Tabs } from '../../components/Tabs';
 import styles from './admin.module.css';
 import { AdminLayout } from './AdminLayout';
+import local from './members.module.css';
 import { DateTime, InvitationLinkBox, newId, problemCode, useConfirm } from './shared';
 
 const MEMBERS_KEY = ['members'] as const;
 const INVITATIONS_KEY = ['invitations'] as const;
 const DISCORD_ID_PATTERN = /^\d{5,25}$/;
+
+type MembersTab = 'members' | 'invitations';
 
 /** Rechte des angemeldeten Mitglieds gegenüber einem Ziel (dieselbe Funktion wie die API, TK 5.5). */
 function useMemberRights() {
@@ -42,42 +50,307 @@ function useMemberRights() {
   return { isOwner, canAct, zone: me?.tenant?.timeZone ?? 'Europe/Berlin' };
 }
 
+/** Offene Einladungen: nicht widerrufen, nicht abgelaufen, nicht aufgebraucht (`null` = noch nicht geladen). */
+function useOpenInvitations() {
+  const query = useQuery({ queryKey: INVITATIONS_KEY, queryFn: () => memberApi.invitations() });
+  const nowMs = Date.now();
+  const open = query.data
+    ? query.data.invitations.filter(
+        (i) => i.revokedAt === null && Date.parse(i.expiresAt) > nowMs && i.usedCount < i.maxUses,
+      )
+    : null;
+  return { query, open };
+}
+
 export function MembersPage() {
   const { t } = useTranslation();
   const members = useQuery({ queryKey: MEMBERS_KEY, queryFn: () => memberApi.list() });
+  const invitations = useOpenInvitations();
+  const [tab, setTab] = useState<MembersTab>('members');
   const [selected, setSelected] = useState<string | null>(null);
   const list = members.data?.members ?? [];
   const current = list.find((m) => m.id === selected);
   return (
-    <AdminLayout title={t('admin.members.title')}>
-      <InvitePanel />
-      <div className={styles.split}>
-        <section className={styles.panel} aria-labelledby="member-list">
-          <h2 id="member-list">{t('admin.members.list')}</h2>
-          {members.isPending ? (
-            <p role="status">{t('common.loading')}</p>
-          ) : members.isError ? (
-            <ProblemMessage
-              code={problemCode(members.error)}
-              onRetry={() => void members.refetch()}
-            />
-          ) : list.length === 0 ? (
-            <p className={styles.muted}>{t('admin.members.empty')}</p>
-          ) : (
-            <MemberTable members={list} selected={selected} onSelect={setSelected} />
-          )}
-        </section>
-        {current ? (
-          <MemberDetail key={current.id} member={current} onRemoved={() => setSelected(null)} />
-        ) : (
-          <section className={styles.panel}>
-            <p className={styles.muted}>{t('admin.members.selectHint')}</p>
-          </section>
-        )}
-      </div>
-      <InvitationList />
-      <OwnerTransfer members={list} />
+    <AdminLayout
+      title={t('admin.members.title')}
+      actions={
+        <>
+          <InviteDialog />
+          <OwnerTransferDialog members={list} />
+        </>
+      }
+    >
+      <Tabs<MembersTab>
+        label={t('admin.members.title')}
+        tabs={[
+          { key: 'members', label: t('admin.members.list') },
+          {
+            key: 'invitations',
+            label: invitations.open
+              ? t('admin.invite.openCount', { n: invitations.open.length })
+              : t('admin.invite.open'),
+          },
+        ]}
+        value={tab}
+        onChange={setTab}
+        panelClassName={local.tabPanel}
+        panels={{
+          members: (
+            <div className={styles.split}>
+              <div className={styles.panel}>
+                {members.isPending ? (
+                  <p role="status">{t('common.loading')}</p>
+                ) : members.isError ? (
+                  <ProblemMessage
+                    code={problemCode(members.error)}
+                    onRetry={() => void members.refetch()}
+                  />
+                ) : list.length === 0 ? (
+                  <p className={styles.muted}>{t('admin.members.empty')}</p>
+                ) : (
+                  <MemberTable members={list} selected={selected} onSelect={setSelected} />
+                )}
+              </div>
+              {current ? (
+                <MemberDetail
+                  key={current.id}
+                  member={current}
+                  onRemoved={() => setSelected(null)}
+                />
+              ) : (
+                <section className={styles.panel}>
+                  <p className={styles.muted}>{t('admin.members.selectHint')}</p>
+                </section>
+              )}
+            </div>
+          ),
+          invitations: <InvitationList invitations={invitations} />,
+        }}
+      />
     </AdminLayout>
+  );
+}
+
+/**
+ * Formular-Dialog (Radix `AlertDialog` wie der `ConfirmDialog`, hier mit Rolle `dialog`): Fokus beim Öffnen
+ * auf das erste Feld, `Esc` schließt, Klick außerhalb schließt nicht (keine Eingaben verlieren), danach
+ * kehrt der Fokus zum auslösenden Knopf zurück.
+ */
+function FormDialog({
+  open,
+  onOpenChange,
+  trigger,
+  title,
+  description,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  trigger: ReactNode;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  return (
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className={local.overlay} />
+        <AlertDialog.Content
+          ref={contentRef}
+          role="dialog"
+          className={local.dialog}
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            contentRef.current
+              ?.querySelector<HTMLElement>('input, select, textarea, button')
+              ?.focus();
+          }}
+        >
+          <AlertDialog.Title className={local.dialogTitle}>{title}</AlertDialog.Title>
+          <AlertDialog.Description className={styles.muted}>{description}</AlertDialog.Description>
+          {children}
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
+  );
+}
+
+/** Knopf *Einladen* im Seitenkopf mit Dialog (FA-BEN-01, SEC-50). */
+function InviteDialog() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const Invite = actionIcons.invite;
+  return (
+    <FormDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={t('admin.invite.title')}
+      description={t('admin.invite.hint')}
+      trigger={
+        <button type="button" className={styles.buttonPrimary}>
+          <Invite size={ICON_SIZE.button} aria-hidden />
+          {t('admin.invite.title')}
+        </button>
+      }
+    >
+      <InviteForm />
+    </FormDialog>
+  );
+}
+
+/**
+ * User einladen (Admin/Owner) bzw. Admin einladen (nur Owner, eine Nutzung) – FA-BEN-01, SEC-50. Lebt nur,
+ * solange der Dialog offen ist; der Einladungslink bleibt bis zum Schließen sichtbar.
+ */
+function InviteForm() {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const { isOwner, zone } = useMemberRights();
+  const [role, setRole] = useState<'user' | 'admin'>('user');
+  const [discordUserId, setDiscordUserId] = useState('');
+  const [validDays, setValidDays] = useState(7);
+  const [maxUses, setMaxUses] = useState(1);
+  const [note, setNote] = useState('');
+  const [link, setLink] = useState<InvitationCreated | null>(null);
+  const invite = useMutation({
+    mutationFn: () =>
+      memberApi.invite(role, {
+        id: newId(),
+        validDays,
+        ...(role === 'user' ? { maxUses } : {}),
+        ...(discordUserId ? { discordUserId } : {}),
+        ...(note.trim() ? { note: note.trim() } : {}),
+      }),
+    onSuccess: (inv) => {
+      setLink(inv);
+      setDiscordUserId('');
+      setNote('');
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: INVITATIONS_KEY }),
+  });
+  const idInvalid = discordUserId !== '' && !DISCORD_ID_PATTERN.test(discordUserId);
+  const Invite = actionIcons.invite;
+  return (
+    <form
+      className={styles.form}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!idInvalid) invite.mutate();
+      }}
+    >
+      {isOwner ? (
+        <fieldset className={`${styles.row} ${styles.fieldset}`}>
+          <legend className={styles.label}>{t('admin.invite.role')}</legend>
+          <label className={styles.check}>
+            <input
+              type="radio"
+              name="invite-role"
+              checked={role === 'user'}
+              onChange={() => setRole('user')}
+            />
+            {t('appBar.role.user')}
+          </label>
+          <label className={styles.check}>
+            <input
+              type="radio"
+              name="invite-role"
+              checked={role === 'admin'}
+              onChange={() => {
+                setRole('admin');
+                setMaxUses(1);
+              }}
+            />
+            {t('appBar.role.admin')}
+          </label>
+        </fieldset>
+      ) : null}
+      <div className={styles.row}>
+        <div className={styles.field}>
+          <label htmlFor="invite-discord">{t('admin.bindDiscordId')}</label>
+          <input
+            id="invite-discord"
+            className={styles.input}
+            value={discordUserId}
+            inputMode="numeric"
+            aria-invalid={idInvalid}
+            onChange={(e) => setDiscordUserId(e.target.value.trim())}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="invite-days">{t('admin.invite.validDays')}</label>
+          <input
+            id="invite-days"
+            type="number"
+            min={1}
+            max={30}
+            className={styles.input}
+            value={validDays}
+            onChange={(e) => setValidDays(Math.min(30, Math.max(1, Number(e.target.value) || 1)))}
+          />
+        </div>
+        {role === 'user' ? (
+          <div className={styles.field}>
+            <label htmlFor="invite-uses">{t('admin.invite.maxUses')}</label>
+            <input
+              id="invite-uses"
+              type="number"
+              min={1}
+              max={50}
+              className={styles.input}
+              value={maxUses}
+              onChange={(e) => setMaxUses(Math.min(50, Math.max(1, Number(e.target.value) || 1)))}
+            />
+          </div>
+        ) : null}
+        <div className={styles.field}>
+          <label htmlFor="invite-note">{t('admin.invite.note')}</label>
+          <input
+            id="invite-note"
+            className={styles.input}
+            value={note}
+            maxLength={500}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+      </div>
+      {invite.isError ? <ProblemMessage code={problemCode(invite.error)} /> : null}
+      {link ? <InvitationLinkBox link={link.link} expiresAt={link.expiresAt} zone={zone} /> : null}
+      <div className={local.dialogActions}>
+        <AlertDialog.Cancel asChild>
+          <button type="button" className={styles.button}>
+            {link ? t('admin.invite.close') : t('common.cancel')}
+          </button>
+        </AlertDialog.Cancel>
+        <button
+          type="submit"
+          className={styles.buttonPrimary}
+          disabled={invite.isPending || idInvalid}
+        >
+          <Invite size={ICON_SIZE.button} aria-hidden />
+          {role === 'admin' ? t('admin.invite.submitAdmin') : t('admin.invite.submitUser')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function InvitationList({ invitations }: { invitations: ReturnType<typeof useOpenInvitations> }) {
+  const { t } = useTranslation();
+  const { query, open } = invitations;
+  return (
+    <div className={styles.panel}>
+      {query.isPending ? (
+        <p role="status">{t('common.loading')}</p>
+      ) : query.isError ? (
+        <ProblemMessage code={problemCode(query.error)} onRetry={() => void query.refetch()} />
+      ) : !open || open.length === 0 ? (
+        <p className={styles.muted}>{t('admin.invite.none')}</p>
+      ) : (
+        <InvitationTable invitations={open} />
+      )}
+    </div>
   );
 }
 
@@ -368,166 +641,6 @@ function MemberDetail({ member, onRemoved }: { member: Member; onRemoved: () => 
   );
 }
 
-/** User einladen (Admin/Owner) bzw. Admin einladen (nur Owner, eine Nutzung) – FA-BEN-01, SEC-50. */
-function InvitePanel() {
-  const { t } = useTranslation();
-  const client = useQueryClient();
-  const { isOwner, zone } = useMemberRights();
-  const [role, setRole] = useState<'user' | 'admin'>('user');
-  const [discordUserId, setDiscordUserId] = useState('');
-  const [validDays, setValidDays] = useState(7);
-  const [maxUses, setMaxUses] = useState(1);
-  const [note, setNote] = useState('');
-  const [link, setLink] = useState<InvitationCreated | null>(null);
-  const invite = useMutation({
-    mutationFn: () =>
-      memberApi.invite(role, {
-        id: newId(),
-        validDays,
-        ...(role === 'user' ? { maxUses } : {}),
-        ...(discordUserId ? { discordUserId } : {}),
-        ...(note.trim() ? { note: note.trim() } : {}),
-      }),
-    onSuccess: (inv) => {
-      setLink(inv);
-      setDiscordUserId('');
-      setNote('');
-    },
-    onSettled: () => client.invalidateQueries({ queryKey: INVITATIONS_KEY }),
-  });
-  const idInvalid = discordUserId !== '' && !DISCORD_ID_PATTERN.test(discordUserId);
-  const Invite = actionIcons.invite;
-  return (
-    <section className={styles.panel} aria-labelledby="invite">
-      <h2 id="invite">{t('admin.invite.title')}</h2>
-      <form
-        className={styles.form}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!idInvalid) invite.mutate();
-        }}
-      >
-        {isOwner ? (
-          <fieldset className={`${styles.row} ${styles.fieldset}`}>
-            <legend className={styles.label}>{t('admin.invite.role')}</legend>
-            <label className={styles.check}>
-              <input
-                type="radio"
-                name="invite-role"
-                checked={role === 'user'}
-                onChange={() => setRole('user')}
-              />
-              {t('appBar.role.user')}
-            </label>
-            <label className={styles.check}>
-              <input
-                type="radio"
-                name="invite-role"
-                checked={role === 'admin'}
-                onChange={() => {
-                  setRole('admin');
-                  setMaxUses(1);
-                }}
-              />
-              {t('appBar.role.admin')}
-            </label>
-          </fieldset>
-        ) : null}
-        <div className={styles.row}>
-          <div className={styles.field}>
-            <label htmlFor="invite-discord">{t('admin.bindDiscordId')}</label>
-            <input
-              id="invite-discord"
-              className={styles.input}
-              value={discordUserId}
-              inputMode="numeric"
-              aria-invalid={idInvalid}
-              onChange={(e) => setDiscordUserId(e.target.value.trim())}
-            />
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="invite-days">{t('admin.invite.validDays')}</label>
-            <input
-              id="invite-days"
-              type="number"
-              min={1}
-              max={30}
-              className={styles.input}
-              value={validDays}
-              onChange={(e) => setValidDays(Math.min(30, Math.max(1, Number(e.target.value) || 1)))}
-            />
-          </div>
-          {role === 'user' ? (
-            <div className={styles.field}>
-              <label htmlFor="invite-uses">{t('admin.invite.maxUses')}</label>
-              <input
-                id="invite-uses"
-                type="number"
-                min={1}
-                max={50}
-                className={styles.input}
-                value={maxUses}
-                onChange={(e) => setMaxUses(Math.min(50, Math.max(1, Number(e.target.value) || 1)))}
-              />
-            </div>
-          ) : null}
-          <div className={styles.field}>
-            <label htmlFor="invite-note">{t('admin.invite.note')}</label>
-            <input
-              id="invite-note"
-              className={styles.input}
-              value={note}
-              maxLength={500}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className={styles.actions}>
-          <button
-            type="submit"
-            className={styles.buttonPrimary}
-            disabled={invite.isPending || idInvalid}
-          >
-            <Invite size={ICON_SIZE.button} aria-hidden />
-            {role === 'admin' ? t('admin.invite.submitAdmin') : t('admin.invite.submitUser')}
-          </button>
-        </div>
-      </form>
-      {invite.isError ? <ProblemMessage code={problemCode(invite.error)} /> : null}
-      {link ? <InvitationLinkBox link={link.link} expiresAt={link.expiresAt} zone={zone} /> : null}
-    </section>
-  );
-}
-
-function InvitationList() {
-  const { t } = useTranslation();
-  const invitations = useQuery({
-    queryKey: INVITATIONS_KEY,
-    queryFn: () => memberApi.invitations(),
-  });
-  const nowMs = Date.now();
-  const open = (invitations.data?.invitations ?? []).filter(
-    (i) => i.revokedAt === null && Date.parse(i.expiresAt) > nowMs && i.usedCount < i.maxUses,
-  );
-  return (
-    <section className={styles.panel} aria-labelledby="invitations">
-      <h2 id="invitations">{t('admin.invite.open')}</h2>
-      {invitations.isPending ? (
-        <p role="status">{t('common.loading')}</p>
-      ) : invitations.isError ? (
-        <ProblemMessage
-          code={problemCode(invitations.error)}
-          onRetry={() => void invitations.refetch()}
-        />
-      ) : open.length === 0 ? (
-        <p className={styles.muted}>{t('admin.invite.none')}</p>
-      ) : (
-        <InvitationTable invitations={open} />
-      )}
-    </section>
-  );
-}
-
 function InvitationTable({ invitations }: { invitations: readonly Invitation[] }) {
   const { t } = useTranslation();
   const { zone } = useMemberRights();
@@ -618,13 +731,15 @@ function RevokeInvitation({ invitation }: { invitation: Invitation }) {
 }
 
 /**
- * *Owner übertragen* (FA-BEN-09, E2) – nur für den Owner sichtbar: an einen aktiven Admin, sofort, mit
- * `ConfirmDialog` („Du bleibst Admin“). Danach gelten die neuen Rechte ab der nächsten Anfrage.
+ * *Owner übertragen* (FA-BEN-09, E2) – Knopf und Dialog nur für den Owner: an einen aktiven Admin, sofort,
+ * mit `ConfirmDialog` („Du bleibst Admin“) über dem Dialog. Danach gelten die neuen Rechte ab der nächsten
+ * Anfrage.
  */
-function OwnerTransfer({ members }: { members: readonly Member[] }) {
+function OwnerTransferDialog({ members }: { members: readonly Member[] }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const { context, refresh } = useAuth();
+  const [open, setOpen] = useState(false);
   const [target, setTarget] = useState('');
   const allowed = can(context, 'tenant.owner.transfer');
   const admins = members.filter((m) => m.role === 'admin' && m.status === 'active');
@@ -632,54 +747,82 @@ function OwnerTransfer({ members }: { members: readonly Member[] }) {
   const transfer = useConfirm(async () => {
     await tenantApi.transferOwner(target);
     setTarget('');
+    setOpen(false);
     await refresh();
     await client.invalidateQueries({ queryKey: MEMBERS_KEY });
   });
   if (!allowed) return null;
   const Crown = actionIcons.transferOwner;
+  const cancel = (
+    <AlertDialog.Cancel asChild>
+      <button type="button" className={styles.button}>
+        {t('common.cancel')}
+      </button>
+    </AlertDialog.Cancel>
+  );
   return (
-    <section className={styles.panel} aria-labelledby="owner-transfer">
-      <h2 id="owner-transfer">{t('admin.owner.title')}</h2>
-      <p className={styles.muted}>{t('admin.owner.hint')}</p>
-      {admins.length === 0 ? (
-        <p className={styles.muted}>{t('admin.owner.noAdmins')}</p>
-      ) : (
-        <form
-          className={styles.row}
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (target) transfer.open();
-          }}
-        >
-          <div className={styles.field}>
-            <label htmlFor="owner-target">{t('admin.owner.target')}</label>
-            <select
-              id="owner-target"
-              className={styles.input}
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-            >
-              <option value="">{t('system.tenants.reassignChoose')}</option>
-              {admins.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                  {m.rightsDormant ? ` (${t('admin.members.rightsDormant')})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className={styles.button} disabled={!target}>
+    <>
+      <FormDialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setTarget('');
+        }}
+        title={t('admin.owner.title')}
+        description={t('admin.owner.hint')}
+        trigger={
+          <button type="button" className={styles.button}>
             <Crown size={ICON_SIZE.button} aria-hidden />
-            {t('admin.owner.submit')}
+            {t('admin.owner.title')}
           </button>
-        </form>
-      )}
+        }
+      >
+        {admins.length === 0 ? (
+          <>
+            <p className={styles.muted}>{t('admin.owner.noAdmins')}</p>
+            <div className={local.dialogActions}>{cancel}</div>
+          </>
+        ) : (
+          <form
+            className={styles.form}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (target) transfer.open();
+            }}
+          >
+            <div className={styles.field}>
+              <label htmlFor="owner-target">{t('admin.owner.target')}</label>
+              <select
+                id="owner-target"
+                className={styles.input}
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+              >
+                <option value="">{t('system.tenants.reassignChoose')}</option>
+                {admins.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName}
+                    {m.rightsDormant ? ` (${t('admin.members.rightsDormant')})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={local.dialogActions}>
+              {cancel}
+              <button type="submit" className={styles.buttonPrimary} disabled={!target}>
+                <Crown size={ICON_SIZE.button} aria-hidden />
+                {t('admin.owner.submit')}
+              </button>
+            </div>
+          </form>
+        )}
+      </FormDialog>
       <ConfirmDialog
         {...transfer.dialog}
         title={t('admin.owner.confirmTitle', { name })}
         consequence={t('admin.owner.confirmConsequence')}
         confirmLabel={t('admin.owner.submit')}
       />
-    </section>
+    </>
   );
 }

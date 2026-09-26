@@ -27,17 +27,21 @@ test('Owner überträgt nach ConfirmDialog an einen Admin → sofort Owner, alte
   const admin = await pageAs(browser, 'admin');
   const olivia = await memberId(owner, 'Olivia Owner');
   await owner.goto('/verwaltung/mitglieder');
-  await owner.getByLabel('Neuer Owner').selectOption({ label: 'Anton Admin' });
+  // AP-26b: Owner übertragen als Dialog aus dem Seitenkopf, Bestätigung weiterhin per ConfirmDialog.
   await owner.getByRole('button', { name: 'Owner übertragen' }).click();
+  const form = owner.getByRole('dialog', { name: 'Owner übertragen' });
+  await form.getByLabel('Neuer Owner').selectOption({ label: 'Anton Admin' });
+  await form.getByRole('button', { name: 'Owner übertragen' }).click();
   const dialog = owner.getByRole('alertdialog', {
     name: 'Owner-Rolle an „Anton Admin“ übertragen?',
   });
   await expect(dialog).toContainText('Du bleibst Admin.');
   await dialog.getByRole('button', { name: 'Owner übertragen' }).click();
   await expect(dialog).toHaveCount(0);
+  await expect(form).toHaveCount(0);
   try {
     await expect(owner.getByRole('button', { name: 'Benutzermenü' })).toContainText('(Admin)');
-    await expect(owner.getByRole('heading', { name: 'Owner übertragen' })).toHaveCount(0);
+    await expect(owner.getByRole('button', { name: 'Owner übertragen' })).toHaveCount(0);
     await admin.goto('/');
     await expect(admin.getByRole('button', { name: 'Benutzermenü' })).toContainText('(Owner)');
   } finally {
@@ -54,8 +58,9 @@ test('„Owner übertragen“ ist für Admins nicht sichtbar; die API lehnt mit 
 }) => {
   const admin = await pageAs(browser, 'admin');
   await admin.goto('/verwaltung/mitglieder');
-  await expect(admin.getByRole('heading', { name: 'Mitglieder', exact: true })).toBeVisible();
-  await expect(admin.getByRole('heading', { name: 'Owner übertragen' })).toHaveCount(0);
+  await expect(admin.getByRole('tab', { name: 'Mitglieder', exact: true })).toBeVisible();
+  await expect(admin.getByRole('button', { name: 'Einladen', exact: true })).toBeVisible();
+  await expect(admin.getByRole('button', { name: 'Owner übertragen' })).toHaveCount(0);
   const self = await memberId(admin, 'Anton Admin');
   const res = await admin.request.post('/api/web/v1/tenant/owner-transfer', {
     data: { memberId: self },

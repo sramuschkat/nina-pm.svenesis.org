@@ -68,6 +68,16 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('alertdialog')).toBeVisible();
       await expectNoSerious(page, 'S-70 Entfernen');
       await page.keyboard.press('Escape');
+      await expect(page.getByRole('alertdialog')).toHaveCount(0);
+      // AP-26b: Reiter „Offene Einladungen (n)“ und Einladen als Dialog.
+      await page.getByRole('tab', { name: /^Offene Einladungen/ }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
+      await expectNoSerious(page, 'S-70 Offene Einladungen');
+      await page.getByRole('button', { name: 'Einladen', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Einladen' })).toBeVisible();
+      await expectNoSerious(page, 'S-70 Einladen');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', { name: 'Einladen' })).toHaveCount(0);
     });
 
     test('S-71…S-73 Einstellungen, Protokoll, Sitzungen (AP-07c)', async ({ page }) => {

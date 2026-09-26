@@ -1,7 +1,10 @@
 /**
- * S-40 Nacht-Simulator (AP-13f; FK 6.7, 14.3; FA-SIM-01…08): Rig und Nacht wählen, Schritt 1
- * Einstellungen (Admin bearbeitbar), Schritt 2 Zielkarten, Schritt 3 Plangrafik und Protokoll mit
- * Kopieren/CSV. Daten: Rig, Projekte, Mondprofile und Nacht-Tabelle des Servers (NT-02) → `buildPlanInput`
+ * S-40 Nacht-Simulator (AP-13f; FK 6.7, 14.3; FA-SIM-01…08): Ergebnis zuerst (AP-26b). Oben eine
+ * Kurzfassung der Einstellungen (Rig, Standort, Teleskop, Strategie, Wiedergabe) mit Schalter
+ * *Einstellungen*, der Rigwahl, Entwürfe und Scheduler-Einstellungen (Admin bearbeitbar) auf- und
+ * zuklappt – zugeklappt, sobald Rig und Nacht feststehen. Darunter Nachtwahl und das Ergebnis auf
+ * Reitern: Nachtplan (Grafik, Zeitschieber), Planprotokoll (Kopieren/CSV), Zielkarten, Prüfungen.
+ * Daten: Rig, Projekte, Mondprofile und Nacht-Tabelle des Servers (NT-02) → `buildPlanInput`
  * → `planNight` im Web Worker. Entwürfe des Users nur lokal; Speichern als `night_plan`.
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
@@ -25,6 +28,7 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
+import { Tabs } from '../../components/Tabs';
 import { SchedulerForm } from '../equipment/RigsPage';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
@@ -47,6 +51,7 @@ import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
 
 const EDITABLE_OWN = new Set(['draft', 'submitted', 'returned']);
+type ResultTab = 'plan' | 'protocol' | 'targets' | 'findings';
 const hm = (atUtc: string, tz: string) =>
   `${formatZonedTime(atUtc, tz)} ${formatTzAbbr(atUtc, tz)}`;
 const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -109,7 +114,10 @@ export function SimulatorPage() {
   const [withDrafts, setWithDrafts] = useState(false);
   const [cursor, setCursor] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const ids = { drafts: useId(), slider: useId() };
+  /** `null` = Voreinstellung: aufgeklappt, solange Rig oder Nacht fehlen (AP-26b). */
+  const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
+  const [tab, setTab] = useState<ResultTab>('plan');
+  const ids = { drafts: useId(), slider: useId(), settings: useId() };
 
   const rigList = rigs.data ?? [];
   const rigId =
@@ -223,6 +231,23 @@ export function SimulatorPage() {
   const tz = site?.timeZone ?? 'UTC';
   const result = sim.data ?? null;
   const nowIso = new Date().toISOString();
+  // Voreinstellung (AP-26b): aufgeklappt, solange Rig, Standort oder Nacht fehlen – dann gibt es kein
+  // Ergebnis und die Einstellungen sind der Einstieg; sonst zugeklappt, das Ergebnis steht oben.
+  // Während Standorte und Nacht-Tabelle laden, bleibt es zu – sonst springt die Seite beim Laden.
+  const settled = !sites.isPending && !current.isLoading;
+  const expanded = settingsOpen ?? (rig === null || (settled && (site === null || night === null)));
+  const summary = rig
+    ? [
+        rig.name,
+        site?.name,
+        telescope?.name,
+        `${t('rigs.scheduler.strategy')}: ${t(`rigs.strategy.${rig.scheduler.strategy}`)}`,
+        `${t('rigs.scheduler.playback')}: ${t(`rigs.playback.${rig.scheduler.playback}`)}`,
+        withDrafts ? t('simulator.withDraftsShort') : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : t('simulator.noRigChosen');
 
   if (rigs.isPending) return <p role="status">{t('common.loading')}</p>;
   if (rigList.length === 0)
@@ -270,38 +295,64 @@ export function SimulatorPage() {
       ) : null}
       {save.error ? <ProblemMessage code={problemCode(save.error)} /> : null}
 
-      <div className={styles.rigRow}>
-        <div className={styles.rigSelect}>
-          <RigSelect
-            rigs={rigOptions}
-            value={rigId}
-            onChange={(id) => go({ rig: id })}
-            label={t('simulator.rig')}
-          />
+      <section className={styles.summary} aria-label={t('simulator.settings')}>
+        <div className={styles.summaryBar}>
+          <button
+            type="button"
+            className={styles.button}
+            aria-expanded={expanded}
+            aria-controls={ids.settings}
+            onClick={() => setSettingsOpen(!expanded)}
+          >
+            {expanded ? (
+              <uiIcons.detailOpen size={ICON_SIZE.button} aria-hidden />
+            ) : (
+              <uiIcons.detailClosed size={ICON_SIZE.button} aria-hidden />
+            )}
+            {t('simulator.settings')}
+          </button>
+          <span className={styles.summaryText}>{summary}</span>
         </div>
-        <dl className={styles.facts}>
-          <dt>{t('simulator.site')}</dt>
-          <dd>{site?.name ?? '–'}</dd>
-          <dt>{t('simulator.telescope')}</dt>
-          <dd>{telescope?.name ?? '–'}</dd>
-        </dl>
-      </div>
-
-      {rig ? (
-        <details className={styles.step} open>
-          <summary>{t('simulator.stepSettings')}</summary>
-          <div className={styles.stepBody}>
-            <div className={styles.settings}>
-              <p className={styles.note}>{t('simulator.howItWorks')}</p>
-              <SchedulerForm rig={rig} canWrite={canSettings} />
+        <div id={ids.settings} className={styles.settingsPanel} hidden={!expanded}>
+          <div className={styles.rigRow}>
+            <div className={styles.rigSelect}>
+              <RigSelect
+                rigs={rigOptions}
+                value={rigId}
+                onChange={(id) => go({ rig: id })}
+                label={t('simulator.rig')}
+              />
             </div>
-            <aside className={styles.nina} aria-label={t('simulator.nina')}>
-              <h3>{t('simulator.nina')}</h3>
-              <UptakeStatus rigId={rig.id} settingsVersion={rig.settingsVersion} />
-            </aside>
+            <dl className={styles.facts}>
+              <dt>{t('simulator.site')}</dt>
+              <dd>{site?.name ?? '–'}</dd>
+              <dt>{t('simulator.telescope')}</dt>
+              <dd>{telescope?.name ?? '–'}</dd>
+            </dl>
+            <label className={styles.check} htmlFor={ids.drafts}>
+              <input
+                id={ids.drafts}
+                type="checkbox"
+                checked={withDrafts}
+                onChange={(e) => setWithDrafts(e.target.checked)}
+              />
+              {t('simulator.withDrafts')}
+            </label>
           </div>
-        </details>
-      ) : null}
+          {rig ? (
+            <div className={styles.stepBody}>
+              <div className={styles.settings}>
+                <p className={styles.note}>{t('simulator.howItWorks')}</p>
+                <SchedulerForm rig={rig} canWrite={canSettings} />
+              </div>
+              <aside className={styles.nina} aria-label={t('simulator.nina')}>
+                <h3>{t('simulator.nina')}</h3>
+                <UptakeStatus rigId={rig.id} settingsVersion={rig.settingsVersion} />
+              </aside>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       <div className={styles.dateRow}>
         <button
@@ -345,15 +396,6 @@ export function SimulatorPage() {
             </>
           ) : null}
         </span>
-        <label className={styles.check} htmlFor={ids.drafts}>
-          <input
-            id={ids.drafts}
-            type="checkbox"
-            checked={withDrafts}
-            onChange={(e) => setWithDrafts(e.target.checked)}
-          />
-          {t('simulator.withDrafts')}
-        </label>
       </div>
 
       {sim.isError ? (
@@ -363,115 +405,158 @@ export function SimulatorPage() {
       ) : null}
 
       {result ? (
-        <>
-          <details className={styles.step} open>
-            <summary>{t('simulator.stepTargets')}</summary>
-            {result.cards.length === 0 && result.unallocated.length === 0 ? (
-              <p className={styles.note}>{t('simulator.empty')}</p>
-            ) : (
-              <div className={styles.cards}>
-                {result.cards.map((c) => (
-                  <TargetCardView
-                    key={c.projectId}
-                    card={c}
-                    tz={tz}
-                    hasRotator={rig?.hasRotator ?? false}
-                    canToggle={canToggle}
-                    onToggle={(lineId, enabled) =>
-                      toggle.mutate({ projectId: c.projectId, lineId, enabled })
+        <div className={styles.results}>
+          <Tabs<ResultTab>
+            label={t('simulator.result')}
+            value={tab}
+            onChange={setTab}
+            panelClassName={styles.tabPanel}
+            tabs={[
+              {
+                key: 'plan',
+                label: t('simulator.tab.plan', {
+                  zone: formatTzAbbr(result.plan.nightWindow.startUtc, tz),
+                }),
+              },
+              { key: 'protocol', label: t('simulator.protocol') },
+              { key: 'targets', label: t('simulator.tab.targets') },
+              {
+                key: 'findings',
+                label: t('simulator.tab.findings'),
+                badge:
+                  result.plan.warnings.length > 0 ? (
+                    <>
+                      {' '}
+                      <span
+                        className={
+                          result.plan.warnings.some((w) => w.level === 'error')
+                            ? styles.badgeError
+                            : styles.badge
+                        }
+                      >
+                        {result.plan.warnings.length}
+                      </span>
+                    </>
+                  ) : undefined,
+              },
+            ]}
+            toolbar={
+              tab === 'protocol' ? (
+                <>
+                  {copied ? (
+                    <span className={styles.muted} role="status">
+                      {t('simulator.copied')}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() =>
+                      void navigator.clipboard
+                        ?.writeText(protocolTsv(result.protocol, t, tz))
+                        .then(() => setCopied(true))
                     }
+                  >
+                    <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
+                    {t('simulator.copy')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() =>
+                      downloadCsv(protocolCsv(result.protocol, t, tz), night ?? 'plan')
+                    }
+                  >
+                    <actionIcons.export size={ICON_SIZE.button} aria-hidden />
+                    {t('simulator.csv')}
+                  </button>
+                </>
+              ) : null
+            }
+            panels={{
+              plan: (
+                <>
+                  <NightChart
+                    {...result.chart}
+                    markers={[
+                      ...(result.chart.markers ?? []),
+                      ...(cursor !== null
+                        ? [{ atUtc: cursor, kind: 'now' as const, label: hm(iso(cursor), tz) }]
+                        : []),
+                    ]}
+                    state="ready"
                   />
-                ))}
-                {result.unallocated.length > 0 ? (
-                  <article className={styles.card} aria-label={t('simulator.unallocated')}>
-                    <h3>{t('simulator.unallocated')}</h3>
-                    <ul className={styles.plain}>
-                      {result.unallocated.map((u) => (
-                        <li key={u.projectId}>
-                          <strong>{u.name}</strong>{' '}
-                          <span className={styles.muted}>
-                            {u.reasons.length === 0
-                              ? t('simulator.noReason')
-                              : [
-                                  ...new Set(
-                                    u.reasons.map((r) =>
-                                      t(`effort.reason.${r.reason}`, { defaultValue: r.reason }),
-                                    ),
-                                  ),
-                                ].join(', ')}
-                          </span>
-                        </li>
+                  <TimeSlider
+                    id={ids.slider}
+                    result={result}
+                    tz={tz}
+                    value={cursor}
+                    onChange={setCursor}
+                  />
+                </>
+              ),
+              protocol: (
+                <DataTable
+                  columns={protocolColumns(t, tz)}
+                  rows={result.protocol}
+                  rowKey={(r) => r.key}
+                  rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
+                  label={t('simulator.protocol')}
+                />
+              ),
+              targets: (
+                <>
+                  {result.cards.length === 0 && result.unallocated.length === 0 ? (
+                    <p className={styles.note}>{t('simulator.empty')}</p>
+                  ) : (
+                    <div className={styles.cards}>
+                      {result.cards.map((c) => (
+                        <TargetCardView
+                          key={c.projectId}
+                          card={c}
+                          tz={tz}
+                          hasRotator={rig?.hasRotator ?? false}
+                          canToggle={canToggle}
+                          onToggle={(lineId, enabled) =>
+                            toggle.mutate({ projectId: c.projectId, lineId, enabled })
+                          }
+                        />
                       ))}
-                    </ul>
-                  </article>
-                ) : null}
-              </div>
-            )}
-            {toggle.error ? <ProblemMessage code={problemCode(toggle.error)} /> : null}
-          </details>
-
-          <details className={styles.step} open>
-            <summary>
-              {t('simulator.stepPlan', {
-                zone: formatTzAbbr(result.plan.nightWindow.startUtc, tz),
-              })}
-            </summary>
-            <NightChart
-              {...result.chart}
-              markers={[
-                ...(result.chart.markers ?? []),
-                ...(cursor !== null
-                  ? [{ atUtc: cursor, kind: 'now' as const, label: hm(iso(cursor), tz) }]
-                  : []),
-              ]}
-              state="ready"
-            />
-            <TimeSlider
-              id={ids.slider}
-              result={result}
-              tz={tz}
-              value={cursor}
-              onChange={setCursor}
-            />
-            <div className={styles.protocolHead}>
-              <h3>{t('simulator.protocol')}</h3>
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() =>
-                  void navigator.clipboard
-                    ?.writeText(protocolTsv(result.protocol, t, tz))
-                    .then(() => setCopied(true))
-                }
-              >
-                <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
-                {t('simulator.copy')}
-              </button>
-              <button
-                type="button"
-                className={styles.button}
-                onClick={() => downloadCsv(protocolCsv(result.protocol, t, tz), night ?? 'plan')}
-              >
-                <actionIcons.export size={ICON_SIZE.button} aria-hidden />
-                {t('simulator.csv')}
-              </button>
-              {copied ? (
-                <span className={styles.muted} role="status">
-                  {t('simulator.copied')}
-                </span>
-              ) : null}
-            </div>
-            <DataTable
-              columns={protocolColumns(t, tz)}
-              rows={result.protocol}
-              rowKey={(r) => r.key}
-              rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
-              label={t('simulator.protocol')}
-            />
-            <Findings result={result} tz={tz} />
-            <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
-          </details>
-        </>
+                      {result.unallocated.length > 0 ? (
+                        <article className={styles.card} aria-label={t('simulator.unallocated')}>
+                          <h3>{t('simulator.unallocated')}</h3>
+                          <ul className={styles.plain}>
+                            {result.unallocated.map((u) => (
+                              <li key={u.projectId}>
+                                <strong>{u.name}</strong>{' '}
+                                <span className={styles.muted}>
+                                  {u.reasons.length === 0
+                                    ? t('simulator.noReason')
+                                    : [
+                                        ...new Set(
+                                          u.reasons.map((r) =>
+                                            t(`effort.reason.${r.reason}`, {
+                                              defaultValue: r.reason,
+                                            }),
+                                          ),
+                                        ),
+                                      ].join(', ')}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </article>
+                      ) : null}
+                    </div>
+                  )}
+                  {toggle.error ? <ProblemMessage code={problemCode(toggle.error)} /> : null}
+                </>
+              ),
+              findings: <Findings result={result} tz={tz} />,
+            }}
+          />
+          <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
+        </div>
       ) : null}
     </div>
   );

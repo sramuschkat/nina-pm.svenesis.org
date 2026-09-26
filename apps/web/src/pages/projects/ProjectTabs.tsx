@@ -1,12 +1,12 @@
 /**
- * Mittlerer Bereich des Projekt-Editors S-31 (FK 14.3): Reiter *Diagramme* (Nachtdiagramm mit
- * Nachtwahl und Saisondiagramm (AP-24) als Vorschau des Entwurfs – Koordinaten und Bedingungen live; Engine im Browser mit der
- * Nacht-Tabelle des Standorts, NT-02), *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
- * *Freigabe-Verlauf* (FA-BER-03) und *Wetter* des Standorts (FA-WET-05, AP-23). Sessions und Transit folgen
- * mit ihren Paketen.
+ * Mittlerer Bereich des Projekt-Editors S-31 (FK 14.3, AP-26b): Reiter *Nachtdiagramm* (mit Nachtwahl
+ * in der Reiterleiste, Standortzeit), *Saisondiagramm* (AP-24) und *Wetter* des Standorts (FA-WET-05,
+ * AP-23) – Vorschau des Entwurfs, Koordinaten und Bedingungen live; Engine im Browser mit der
+ * Nacht-Tabelle des Standorts (NT-02). Dazu *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
+ * *Freigabe-Verlauf* (FA-BER-03), die der Editor unter *Bild & Notizen* zeigt.
  */
 import { formatNightKey } from '@nina-pm/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useId, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
@@ -16,6 +16,7 @@ import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
 import { NightChart } from '../../components/night-chart';
 import { ProblemMessage } from '../../components/ProblemMessage';
+import { Tabs } from '../../components/Tabs';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../equipment/shared';
 import { SiteWeather } from '../weather/SiteWeather';
@@ -23,7 +24,7 @@ import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 
-type TabKey = 'charts' | 'weather' | 'notes' | 'history';
+type ChartTab = 'night' | 'season' | 'weather';
 
 /** Zeile des Freigabe-Verlaufs mit stabilem Schlüssel. */
 interface HistoryRow {
@@ -31,69 +32,9 @@ interface HistoryRow {
   key: string;
 }
 
-export function ProjectTabs({
-  projectId,
-  resource,
-  draft,
-  site,
-}: {
-  projectId: string | null;
-  resource:
-    | {
-        createdBy: string;
-        approvalStatus: 'draft' | 'submitted' | 'approved' | 'returned' | 'rejected';
-      }
-    | undefined;
-  draft: ProjectDraft;
-  site: SiteView | null;
-}) {
+export function ChartArea({ draft, site }: { draft: ProjectDraft; site: SiteView | null }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<TabKey>('charts');
-  const canHistory = useCan('project.history.read', resource);
-  const tabs: TabKey[] = projectId
-    ? ['charts', 'weather', 'notes', ...(canHistory ? (['history'] as const) : [])]
-    : ['charts', 'weather'];
-  const baseId = useId();
-  return (
-    <section className={styles.middle} aria-label={t('projectEditor.tabs.label')}>
-      <div className={styles.tabs} role="tablist" aria-label={t('projectEditor.tabs.label')}>
-        {tabs.map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            id={`${baseId}-${key}`}
-            aria-selected={tab === key}
-            aria-controls={`${baseId}-panel`}
-            className={styles.tab}
-            onClick={() => setTab(key)}
-          >
-            {t(`projectEditor.tabs.${key}`)}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-${tab}`}>
-        {tab === 'charts' ? <ChartsTab draft={draft} site={site} /> : null}
-        {tab === 'weather' ? (
-          site ? (
-            <SiteWeather siteId={site.id} siteName={site.name} />
-          ) : (
-            <p className={styles.note}>{t('weatherPage.noRig')}</p>
-          )
-        ) : null}
-        {tab === 'notes' && projectId ? (
-          <NotesTab projectId={projectId} resource={resource} />
-        ) : null}
-        {tab === 'history' && projectId ? <HistoryTab projectId={projectId} /> : null}
-      </div>
-    </section>
-  );
-}
-
-// ---- Diagramme ------------------------------------------------------------------------------------
-
-function ChartsTab({ draft, site }: { draft: ProjectDraft; site: SiteView | null }) {
-  const { t } = useTranslation();
+  const [tab, setTab] = useState<ChartTab>('night');
   const nights = useQuery({
     queryKey: ['site-nights', site?.id],
     queryFn: () => equipmentApi.nights(site?.id ?? '', 60),
@@ -103,11 +44,105 @@ function ChartsTab({ draft, site }: { draft: ProjectDraft; site: SiteView | null
   const [offset, setOffset] = useState(0);
   const list = nights.data?.nights ?? [];
   const night = list[Math.min(offset, Math.max(0, list.length - 1))]?.night ?? null;
+  const { raDeg, decDeg } = draft;
+  const ready = site !== null && raDeg !== null && decDeg !== null;
+  const needs = !site ? (
+    <p className={styles.note}>{t('projectEditor.charts.needsRig')}</p>
+  ) : (
+    <p className={styles.note}>{t('projectEditor.charts.needsCoordinates')}</p>
+  );
   const Prev = uiIcons.previous;
   const Next = uiIcons.next;
+  const nightNav =
+    tab === 'night' && ready ? (
+      <div className={styles.nightNav}>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={t('projectEditor.charts.previous')}
+          disabled={offset === 0}
+          onClick={() => setOffset((o) => Math.max(0, o - 1))}
+        >
+          <Prev size={ICON_SIZE.table} aria-hidden />
+        </button>
+        <strong aria-live="polite">
+          {night ? t('projectEditor.charts.night', { night: formatNightKey(night) }) : '–'}
+        </strong>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={t('projectEditor.charts.next')}
+          disabled={offset >= list.length - 1}
+          onClick={() => setOffset((o) => Math.min(list.length - 1, o + 1))}
+        >
+          <Next size={ICON_SIZE.table} aria-hidden />
+        </button>
+        <span className={styles.muted}>
+          {t('projectEditor.charts.siteTime', { site: site.name })}
+        </span>
+      </div>
+    ) : null;
+  return (
+    <section className={styles.area} aria-label={t('projectEditor.areas.charts')}>
+      <Tabs<ChartTab>
+        label={t('projectEditor.areas.charts')}
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'night', label: t('projectEditor.tabs.night') },
+          { key: 'season', label: t('projectEditor.tabs.season') },
+          { key: 'weather', label: t('projectEditor.tabs.weather') },
+        ]}
+        toolbar={nightNav}
+        panelClassName={styles.areaMiddle}
+        panels={{
+          night: ready ? (
+            <NightTab draft={draft} site={site} night={night} nights={nights} />
+          ) : (
+            needs
+          ),
+          season: ready ? (
+            <SeasonPanel
+              site={site}
+              target={{ raDeg, decDeg }}
+              conditions={{
+                minAltitudeDeg: draft.conditions.minAltitudeDeg,
+                minTimeOnTargetH: draft.conditions.minTimeOnTargetH,
+                twilight: draft.conditions.twilight,
+              }}
+              startDate={draft.startDate || null}
+            />
+          ) : (
+            needs
+          ),
+          weather: site ? (
+            <SiteWeather siteId={site.id} siteName={site.name} />
+          ) : (
+            <p className={styles.note}>{t('weatherPage.noRig')}</p>
+          ),
+        }}
+      />
+    </section>
+  );
+}
+
+// ---- Nachtdiagramm --------------------------------------------------------------------------------
+
+function NightTab({
+  draft,
+  site,
+  night,
+  nights,
+}: {
+  draft: ProjectDraft;
+  site: SiteView;
+  night: string | null;
+  nights: UseQueryResult<Awaited<ReturnType<typeof equipmentApi.nights>>>;
+}) {
+  const { t } = useTranslation();
   const { raDeg, decDeg } = draft;
   const chart = useMemo(() => {
-    if (!site || !night || !nights.data || raDeg === null || decDeg === null) return null;
+    if (!night || !nights.data || raDeg === null || decDeg === null) return null;
     return nightChartFromEngine({
       site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
       night,
@@ -130,63 +165,21 @@ function ChartsTab({ draft, site }: { draft: ProjectDraft; site: SiteView | null
       moonProfile: engineMoonProfile(draft.conditions),
     }).props;
   }, [site, night, nights.data, raDeg, decDeg, draft.targetName, draft.name, draft.conditions, t]);
-
-  if (!site) return <p className={styles.note}>{t('projectEditor.charts.needsRig')}</p>;
-  if (raDeg === null || decDeg === null)
-    return <p className={styles.note}>{t('projectEditor.charts.needsCoordinates')}</p>;
-  return (
-    <div className={styles.stack}>
-      <div className={styles.nightNav}>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={t('projectEditor.charts.previous')}
-          disabled={offset === 0}
-          onClick={() => setOffset((o) => Math.max(0, o - 1))}
-        >
-          <Prev size={ICON_SIZE.button} aria-hidden />
-        </button>
-        <strong aria-live="polite">
-          {night ? t('projectEditor.charts.night', { night: formatNightKey(night) }) : '–'}
-        </strong>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={t('projectEditor.charts.next')}
-          disabled={offset >= list.length - 1}
-          onClick={() => setOffset((o) => Math.min(list.length - 1, o + 1))}
-        >
-          <Next size={ICON_SIZE.button} aria-hidden />
-        </button>
-        <span className={styles.muted}>{site.name}</span>
-      </div>
-      {chart ? (
-        <NightChart {...chart} />
-      ) : (
-        <NightChart
-          window={null}
-          timeZone={site.timeZone}
-          state={nights.isError ? 'error' : 'loading'}
-          onRetry={() => void nights.refetch()}
-        />
-      )}
-      <SeasonPanel
-        site={site}
-        target={{ raDeg, decDeg }}
-        conditions={{
-          minAltitudeDeg: draft.conditions.minAltitudeDeg,
-          minTimeOnTargetH: draft.conditions.minTimeOnTargetH,
-          twilight: draft.conditions.twilight,
-        }}
-        startDate={draft.startDate || null}
-      />
-    </div>
+  return chart ? (
+    <NightChart {...chart} />
+  ) : (
+    <NightChart
+      window={null}
+      timeZone={site.timeZone}
+      state={nights.isError ? 'error' : 'loading'}
+      onRetry={() => void nights.refetch()}
+    />
   );
 }
 
 // ---- Notizen --------------------------------------------------------------------------------------
 
-function NotesTab({
+export function NotesTab({
   projectId,
   resource,
 }: {
@@ -264,7 +257,7 @@ function NotesTab({
 
 // ---- Freigabe-Verlauf -----------------------------------------------------------------------------
 
-function HistoryTab({ projectId }: { projectId: string }) {
+export function HistoryTab({ projectId }: { projectId: string }) {
   const { t, i18n } = useTranslation();
   const history = useQuery({
     queryKey: ['project-history', projectId],

@@ -6,11 +6,12 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, ProjectListItem } from '../../api/client';
-import { AuthProvider } from '../../auth';
+import { AuthProvider, useAuth } from '../../auth';
 import {
   NO_FILTERS,
   NO_RIG,
@@ -141,6 +142,12 @@ const item = (n: number, over: Partial<ProjectListItem> = {}): ProjectListItem =
     ...over,
   }) as ProjectListItem;
 
+/** Wie `RequireContext` in der App: die Seite erst mit geladener Sitzung zeichnen (Rechte stehen fest). */
+function AfterAuth({ children }: { children: ReactNode }) {
+  const { me } = useAuth();
+  return me === undefined ? null : children;
+}
+
 function renderPage() {
   return render(
     <QueryClientProvider
@@ -148,7 +155,9 @@ function renderPage() {
     >
       <MemoryRouter>
         <AuthProvider>
-          <ProjectListPage />
+          <AfterAuth>
+            <ProjectListPage />
+          </AfterAuth>
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -274,6 +283,25 @@ describe('S-30 (Komponente)', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Wiederherstellen' }));
     await waitFor(() => expect(state.restore).toHaveBeenCalledWith(ID(105)));
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('Reiter per Tastatur: Pfeil rechts wechselt zu „Gelöscht“, Pos1 zurück (Tabs, AP-26b)', async () => {
+    state.deleted = [item(5, { name: 'Weg', deletedAt: '2026-09-20T18:30:00Z' })];
+    renderPage();
+    const active = await screen.findByRole('tab', { name: 'Projekte' });
+    expect(active).toHaveAttribute('aria-selected', 'true');
+    expect(active).toHaveAttribute('tabindex', '0');
+    active.focus();
+    fireEvent.keyDown(active, { key: 'ArrowRight' });
+    const deleted = screen.getByRole('tab', { name: 'Gelöscht' });
+    expect(deleted).toHaveAttribute('aria-selected', 'true');
+    expect(deleted).toHaveFocus();
+    expect(active).toHaveAttribute('tabindex', '-1');
+    const panel = screen.getByRole('tabpanel', { name: 'Gelöscht' });
+    expect(await within(panel).findByText('Weg')).toBeInTheDocument();
+    fireEvent.keyDown(deleted, { key: 'Home' });
+    expect(screen.getByRole('tab', { name: 'Projekte' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Projekte' })).toBeInTheDocument();
   });
 
   it('User: keine Ansicht „Gelöscht“, keine Prioritätsspalte, Freigabestatus-Kennzeichen', async () => {

@@ -1,7 +1,7 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
-Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a, AP-26b und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a** · `Tabs` → **AP-26b**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
@@ -170,6 +170,19 @@ Jede Datentabelle der Oberfläche (Entscheidung Sven, 26.09.2026). Ausgenommen s
 | Größen | Mindestbreite = Summe der Spalten mit Priorität 1; volle Containerbreite; stehender Kopf (`position: sticky`); Zeilenhöhe `--npm-row-h`; Zahlen rechtsbündig (`align: 'end'`) |
 | Textalternative | Die Tabelle selbst: `aria-label` = `label`, `aria-sort` an sortierbaren Köpfen (`none`/`ascending`/`descending`), Gruppenköpfe als `<th scope="colgroup">`, Detailzeile als `<dl>` |
 | Grenzfall | alle Werte einer Spalte leer · gleiche Werte (stabile Reihenfolge) · so schmal, dass nur Priorität 1 bleibt · Gruppe nach Filterung leer (entfällt) · gesteuerte Sortierung auf eine nicht mehr vorhandene Spalte (unsortiert) |
+
+### 2.12 `Tabs` (Reiter, AP-26b)
+
+Jede Reiterleiste innerhalb einer Seite (Bereiche des Projekt-Editors, Rig-Bereiche, Simulator-Ergebnis, Mitglieder/Einladungen, Kamera, Filter). Ausgenommen sind die Bereichsnavigation zwischen Seiten (`SectionTabs`, Links statt Reiter).
+
+| | |
+|---|---|
+| Eigenschaften | `tabs: {key, label, badge?, title?}[]` · `value` · `onChange(key)` · `label: string` (zugänglicher Name der Leiste) · `panels: Record<key, ReactNode>` · `keepMounted?` (verdeckte Reiter bleiben mit `hidden` im DOM – Pflicht, wenn Formularfelder über Reiter verteilt sind) · `toolbar?` (Werkzeuge rechts in der Leiste, z. B. Nachtwahl, *Kopieren*) · `orientation?: 'horizontal' \| 'vertical'` (senkrecht für Unterreiter) · `panelClassName?` (z. B. Höchsthöhe mit eigener Scrollfläche) |
+| Zustände | `ready`; Lade-, Leer- und Fehlerzustand liefert der Inhalt des Reiters. Ein Reiter mit Fehlern trägt ein Kennzeichen (`badge`, Text, nicht nur Farbe); beim Speichern mit Fehlern in einem verdeckten Reiter wechselt die Seite dorthin |
+| Tastatur | WAI-ARIA *Tabs* mit automatischer Aktivierung: nur der aktive Reiter ist per `Tab` erreichbar (`tabindex` wandert mit), `←`/`→` (senkrecht `↑`/`↓`) wechseln und aktivieren, `Pos1`/`Ende` springen; danach folgen die Werkzeuge, dann der Inhalt (`tabpanel`, fokussierbar) |
+| Größen | Leiste so breit wie der Container; passen die Reiter nicht, scrollt nur die Leiste waagerecht, nie die Seite. Senkrechte Leiste 11rem breit |
+| Textalternative | `role="tablist"` mit `aria-label`, `aria-orientation`; Reiter `role="tab"` mit `aria-selected`, `aria-controls`; Inhalt `role="tabpanel"` mit `aria-labelledby` |
+| Grenzfall | Reiter verschwindet (Panel gelöscht, Recht fehlt) → die Seite fällt auf den ersten Reiter zurück · `keepMounted` mit Fehlern in einem verdeckten Feld · ein einziger Reiter (Leiste bleibt, damit die Bereichsbezeichnung sichtbar ist) |
 
 ## 3. Symbole je Bereich (Lucide)
 

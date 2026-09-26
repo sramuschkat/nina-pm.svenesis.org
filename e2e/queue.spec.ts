@@ -77,6 +77,7 @@ test('S-33: User stimmt ab, Admin gibt frei, Verlauf zeigt die Stimmen', async (
   await expect(admin.getByRole('row').filter({ hasText: name })).toHaveCount(0);
 
   await admin.goto(`/projekte/${id}`);
+  await admin.getByRole('tab', { name: 'Bild & Notizen' }).click();
   await admin.getByRole('tab', { name: 'Freigabe-Verlauf' }).click();
   const approved = admin.getByRole('row').filter({ hasText: 'Freigegeben · Stimmen: 1' });
   await expect(approved).toContainText('Passt gut in den Herbst');

@@ -58,8 +58,8 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-21](AP-21.md) | Sternkarte S-20 | L | AP-20 | – | ☑ |
 | [AP-22](AP-22.md) | Mosaik-Panels im Editor (aus der Sternkarte) | M | AP-21 | – | ☑ |
 | [AP-23](AP-23.md) | Astro-Wetter | M | AP-17 | – | ☑ |
-| [AP-24](AP-24.md) | Saisondiagramm und Wochen-Sichtbarkeit | S | AP-10 | – | ◐ |
-| [AP-25](AP-25.md) | Vorschaubilder | S | AP-20 | – | ◐ |
+| [AP-24](AP-24.md) | Saisondiagramm und Wochen-Sichtbarkeit | S | AP-10 | – | ☑ |
+| [AP-25](AP-25.md) | Vorschaubilder | S | AP-20 | – | ☑ |
 
 ## UI-Überarbeitung (vor R3)
 
@@ -67,8 +67,8 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-26a](AP-26a.md) | Tabellen: sortierbar, Spalten ausblenden statt scrollen | M | AP-25 | – | ◐ |
-| [AP-26b](AP-26b.md) | Seitenaufbau: Reiter statt Scrollen, Projekt-Editor in drei Bereichen | M | AP-26a | – | ☐ |
+| [AP-26a](AP-26a.md) | Tabellen: sortierbar, Spalten ausblenden statt scrollen | M | AP-25 | – | ☑ |
+| [AP-26b](AP-26b.md) | Seitenaufbau: Reiter statt Scrollen, Projekt-Editor in drei Bereichen | M | AP-26a | – | ◐ |
 | [AP-26c](AP-26c.md) | Rahmen: Kopf, Filterleisten, Seitenleiste, Startseite | S | AP-26b | – | ☐ |
 
 ## R3

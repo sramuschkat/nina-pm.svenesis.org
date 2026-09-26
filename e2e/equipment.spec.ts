@@ -1,7 +1,8 @@
 /**
  * AP-09b: Stammdaten-Bildschirme S-11…S-15 gegen den lokalen Stack (Seed aus seed-demo.json):
  * Kamera und Mondprofil anlegen, Löschen in Verwendung zeigt die Verwender, User liest nur,
- * 768/2400 px ohne horizontales Scrollen.
+ * 768/2400 px ohne horizontales Scrollen. AP-26b: Listen-/Detail-Muster (links Liste, rechts Detail,
+ * *Neu* rechts im Seitenkopf; unter 1024 px untereinander).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { testLogin } from './support';
@@ -22,7 +23,8 @@ test('S-13: Admin legt eine Kamera an; berechnete Werte erscheinen', async ({ pa
   await testLogin(page, 'owner');
   await page.goto('/ausruestung/kameras');
   await heading(page, 'Kameras');
-  await page.getByRole('button', { name: 'Neu' }).click();
+  await page.getByRole('button', { name: 'Neu', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Neue Kamera' })).toBeVisible();
   const name = `E2E-Kamera ${String(Date.now())}`;
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Breite (px)').fill('6248');
@@ -74,7 +76,7 @@ test('User sieht die Stammdaten nur lesend; die API lehnt Schreiben ab', async (
   await page.goto('/ausruestung/teleskope');
   await heading(page, 'Teleskope');
   await expect(page.getByRole('note')).toContainText('Nur lesend');
-  await expect(page.getByRole('button', { name: 'Neu' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Neu', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Speichern' })).toHaveCount(0);
   await expect(page.getByLabel('Öffnung (mm)')).toBeDisabled();
   const res = await page.request.post('/api/web/v1/telescopes', {
@@ -88,6 +90,41 @@ test('User sieht die Stammdaten nur lesend; die API lehnt Schreiben ab', async (
     headers: { 'X-NPM-Request': '1' },
   });
   expect(res.status()).toBe(403);
+});
+
+test('AP-26b: Liste links, Detail rechts; Auswahl markiert; unter 1024 px untereinander', async ({
+  page,
+}) => {
+  await testLogin(page, 'owner');
+  await page.goto('/ausruestung/teleskope');
+  await heading(page, 'Teleskope');
+  const list = page.getByRole('region', { name: 'Teleskope' });
+  const item = list.getByRole('button', { name: /^RASA 8/ });
+  await item.click();
+  await expect(item).toHaveAttribute('aria-current', 'true');
+  const detail = page.getByRole('heading', { level: 2, name: 'RASA 8' });
+  await expect(detail).toBeVisible();
+  // 1280 px: Detail rechts neben der Liste.
+  const listBox = await list.boundingBox();
+  const detailBox = await detail.boundingBox();
+  expect(detailBox?.x ?? 0).toBeGreaterThan((listBox?.x ?? 0) + (listBox?.width ?? 0) - 1);
+  // Suche in der Liste.
+  await list.getByRole('searchbox', { name: 'Teleskope durchsuchen' }).fill('rasa');
+  await expect(list.getByRole('button', { name: /^Refraktor 80\/480/ })).toHaveCount(0);
+  await list.getByRole('searchbox', { name: 'Teleskope durchsuchen' }).fill('');
+  // *Neu* rechts im Seitenkopf öffnet das leere Formular; keine Zeile ist mehr markiert.
+  await page.getByRole('button', { name: 'Neu', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Neues Teleskop' })).toBeVisible();
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(0);
+  // 768 px: Liste über dem Detail.
+  await page.setViewportSize({ width: 768, height: 900 });
+  const narrowList = await list.boundingBox();
+  const narrowDetail = await page
+    .getByRole('heading', { level: 2, name: 'Neues Teleskop' })
+    .boundingBox();
+  expect(narrowDetail?.y ?? 0).toBeGreaterThan(
+    (narrowList?.y ?? 0) + (narrowList?.height ?? 0) - 1,
+  );
 });
 
 for (const width of [768, 2400]) {

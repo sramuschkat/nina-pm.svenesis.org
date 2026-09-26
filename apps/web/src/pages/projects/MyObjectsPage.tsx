@@ -16,6 +16,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
 import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
+import { Tabs } from '../../components/Tabs';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import { FilterPlan } from './ProjectListPage';
@@ -61,36 +62,24 @@ export function MyObjectsPage() {
       ) : mine.isPending ? (
         <p role="status">{t('common.loading')}</p>
       ) : (
-        <>
-          <div className={styles.tabs} role="tablist" aria-label={t('myObjects.tabs')}>
-            {approvalStatuses.map((s) => (
-              <button
-                key={s}
-                type="button"
-                role="tab"
-                id={`mine-tab-${s}`}
-                aria-selected={active === s}
-                aria-controls="mine-panel"
-                className={styles.tab}
-                onClick={() => setTab(s)}
-              >
-                {`${t(`status.approval.${s}`)} (${String(counts[s])})`}
-              </button>
-            ))}
-          </div>
-          <div
-            role="tabpanel"
-            id="mine-panel"
-            aria-labelledby={`mine-tab-${active}`}
-            className={styles.stack}
-          >
-            {active === 'submitted' ? (
-              <RankedList entries={own} projects={items} loading={queue.isPending} />
-            ) : (
-              <ObjectCards items={items.filter((p) => p.approvalStatus === active)} />
-            )}
-          </div>
-        </>
+        <Tabs
+          label={t('myObjects.tabs')}
+          tabs={approvalStatuses.map((s) => ({
+            key: s,
+            label: `${t(`status.approval.${s}`)} (${String(counts[s])})`,
+          }))}
+          value={active}
+          onChange={setTab}
+          panelClassName={styles.tabPanel}
+          panels={{
+            [active]:
+              active === 'submitted' ? (
+                <RankedList entries={own} projects={items} loading={queue.isPending} />
+              ) : (
+                <ObjectCards items={items.filter((p) => p.approvalStatus === active)} />
+              ),
+          }}
+        />
       )}
     </ProjectsLayout>
   );

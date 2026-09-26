@@ -1,8 +1,9 @@
 /**
- * S-31 Projekt-Editor (FK 14.3, FA-PRJ-01…23, AP-11b): Kopf mit Status, Rig, Aufwand (Platzhalter
- * bis AP-13e), Favorit, Speichern/Duplizieren/Löschen; oben drei Spalten Zielinformationen ·
- * Bedingungen · Vorschau mit Ausrüstung und Recherche-Links; Reiter mit Nachtdiagramm-Vorschau,
- * Notizen und Verlauf; unten der Belichtungsplan. Das Projekt wird mit `If-Match` gespeichert (412 bei
+ * S-31 Projekt-Editor (FK 14.3, FA-PRJ-01…23, AP-11b; Aufteilung AP-26b nach Svens Vorlage): Kopf mit
+ * Brotkrumen und Projektfortschritt, Titel mit Status, Aufwand und Favorit, rechts Rig, Projektstatus,
+ * Speichern/Freigabe/Duplizieren/Löschen. Darunter drei Bereiche mit eigenen Reitern: oben *Ziel* ·
+ * *Bedingungen* · *Bild & Notizen* (Vorschaubild, Himmelslage, Beschreibung, Notizen, Freigabe-Verlauf),
+ * Mitte *Nachtdiagramm* · *Saisondiagramm* · *Wetter*, unten je Panel der Belichtungsplan und *Panels*. Das Projekt wird mit `If-Match` gespeichert (412 bei
  * parallelem Speichern), nur geänderte Felder. Neue Projekte sind Entwürfe und dürfen unvollständig
  * sein (FA-PRJ-01); Zeilen setzen Koordinaten voraus (erst dann gibt es das Hauptpanel).
  * Einreichen, Freigabe und Änderungsanträge folgen mit AP-12a, Mosaik und Sternkarte mit R2.
@@ -33,12 +34,14 @@ import {
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
-import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { ICON_SIZE, actionIcons, areaIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { EffortChip } from '../../components/EffortChip';
+import { ProgressBar } from '../../components/ProgressBar';
 import { StatusBadge } from '../../components/StatusBadge';
+import { Tabs } from '../../components/Tabs';
 import { useLiveEffort, type LiveEffortInput } from '../../lib/use-live-effort';
 import {
   CheckField,
@@ -54,7 +57,7 @@ import {
   validate,
   type FieldErrors,
 } from '../equipment/shared';
-import { ExposurePlan, Sums } from './ExposurePlan';
+import { ExposurePlan } from './ExposurePlan';
 import {
   applyCatalogPick,
   changedFields,
@@ -70,7 +73,8 @@ import {
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { PanelList } from './PanelList';
-import { ProjectTabs } from './ProjectTabs';
+import { ChartArea, HistoryTab, NotesTab } from './ProjectTabs';
+import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
 import { ProjectImage } from './ProjectImage';
 import styles from './projects.module.css';
@@ -278,7 +282,8 @@ function Editor({
 
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
   const [topTab, setTopTab] = useState<TopTab>('target');
-  const topTabsId = useId();
+  const [imageTab, setImageTab] = useState<ImageTab>('preview');
+  const canHistory = useCan('project.history.read', resource);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [defaultSaved, setDefaultSaved] = useState(false);
 
@@ -370,6 +375,7 @@ function Editor({
       // Fehler in einem verdeckten Reiter: dorthin wechseln, damit das Feld sichtbar ist.
       const first = Object.keys(found)[0];
       if (first) setTopTab(tabOf(first));
+      if (first === 'descriptionMd') setImageTab('description');
     },
   });
   const submit = (e: FormEvent) => {
@@ -424,141 +430,499 @@ function Editor({
   const title = draft.name.trim() || saved?.name || t('projectEditor.newTitle');
   const Save = actionIcons.save;
   const Star = actionIcons.favorite;
-  const Back = actionIcons.back;
   const moonLabel = useMoonProfileLabel();
   const fov = rig
     ? `${num(rig.derived.fovWidthDeg, 2)}° × ${num(rig.derived.fovHeightDeg, 2)}°`
     : '–';
   const research = draft.targetName.trim() || draft.name.trim();
 
-  return (
-    <div className={styles.page}>
-      <nav aria-label={t('projectEditor.crumbs')}>
-        <ol className={styles.crumbs}>
-          <li>
-            <Link to="/projekte">{t('projectEditor.list')}</Link>
-          </li>
-          {saved ? (
-            <li>
-              {saved.status
-                ? t(`status.project.${saved.status}`)
-                : t(`status.approval.${saved.approvalStatus}`)}
-            </li>
-          ) : null}
-          <li aria-current="page">{title}</li>
-        </ol>
-      </nav>
-      <div className={styles.head}>
-        <Link to="/projekte" className={styles.button}>
-          <Back size={ICON_SIZE.button} aria-hidden />
-          {t('common.back')}
-        </Link>
-        <h1>{title}</h1>
-        {saved ? <StatusBadge kind="approval" value={saved.approvalStatus} /> : null}
-        {saved?.status ? <StatusBadge kind="project" value={saved.status} /> : null}
-        <EffortChip
-          effort={effort.effort}
-          state={effort.state}
-          live={effort.live}
-          stale={!effort.live && (saved?.effortStale ?? false)}
+  const statusLabel = saved
+    ? saved.status
+      ? t(`status.project.${saved.status}`)
+      : t(`status.approval.${saved.approvalStatus}`)
+    : null;
+  const sums = saved ? planSums(allLines) : null;
+  const fovDeg = rig
+    ? { widthDeg: rig.derived.fovWidthDeg, heightDeg: rig.derived.fovHeightDeg }
+    : null;
+  const skyHref =
+    draft.raDeg !== null && draft.decDeg !== null
+      ? skyMapHref({
+          ra: draft.raDeg,
+          dec: draft.decDeg,
+          rot: draft.rotationDeg,
+          rig: draft.rigId,
+          ...(saved ? { project: saved.id } : {}),
+          ...(rig ? { fov: fovForFrame(rig.derived.fovWidthDeg, rig.derived.fovHeightDeg) } : {}),
+        })
+      : null;
+
+  const targetPanel = (
+    <div className={styles.targetGrid}>
+      <div className={styles.span2}>
+        <CatalogSearch
+          disabled={disabled}
+          onPick={(o) => setDraft(applyCatalogPick(draft, catalogPick(o, t)))}
+          linkedName={draft.dsoObjectId ? draft.targetName || draft.name : null}
+          onUnlink={() => setDraft({ ...draft, dsoObjectId: null, dsoPrimaryId: null })}
         />
-        {saved && canFavorite ? (
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.favorite}`}
-            aria-pressed={saved.favorite}
-            aria-label={t('projectEditor.favorite')}
-            title={t('projectEditor.favorite')}
-            onClick={() => favorite.mutate(!saved.favorite)}
-          >
-            <Star
-              size={ICON_SIZE.button}
-              aria-hidden
-              fill={saved.favorite ? 'currentColor' : 'none'}
+      </div>
+      <TextField
+        label={t('projectEditor.field.name')}
+        value={draft.name}
+        maxLength={200}
+        onChange={(v) => set('name', v)}
+        error={fieldError('name')}
+        disabled={disabled}
+      />
+      <TextField
+        label={t('projectEditor.field.targetName')}
+        value={draft.targetName}
+        maxLength={200}
+        onChange={(v) => set('targetName', v)}
+        error={fieldError('targetName')}
+        disabled={disabled}
+      />
+      <TextField
+        label={t('projectEditor.field.targetType')}
+        value={draft.targetType}
+        maxLength={40}
+        onChange={(v) => set('targetType', v)}
+        error={fieldError('targetType')}
+        disabled={disabled}
+      />
+      <TextField
+        label={t('projectEditor.field.catalogNames')}
+        value={draft.catalogNames}
+        maxLength={500}
+        onChange={(v) => set('catalogNames', v)}
+        disabled={disabled}
+      />
+      <CoordinateInput
+        kind="ra"
+        label={t('projectEditor.field.ra')}
+        valueDeg={draft.raDeg}
+        onChange={(v) => set('raDeg', v)}
+        disabled={disabled}
+      />
+      <CoordinateInput
+        kind="dec"
+        label={t('projectEditor.field.dec')}
+        valueDeg={draft.decDeg}
+        onChange={(v) => set('decDeg', v)}
+        disabled={disabled}
+      />
+      <NumberField
+        label={t('projectEditor.field.rotation')}
+        unit="°"
+        value={draft.rotationDeg}
+        min={0}
+        max={359.9}
+        onChange={(v) => set('rotationDeg', v)}
+        error={fieldError('rotationDeg')}
+        disabled={disabled}
+      />
+      <div className={styles.field}>
+        <span className={styles.muted}>{t('projectEditor.field.fov')}</span>
+        <span className={styles.fovValue}>
+          {fov}
+          {rig ? ` · ${num(rig.derived.scaleArcsecPx, 2)}″/px` : ''}
+        </span>
+      </div>
+      <DateField
+        label={t('projectEditor.field.startDate')}
+        value={draft.startDate}
+        onChange={(v) => set('startDate', v)}
+        hint={t('projectEditor.field.nightKeyHint')}
+        error={fieldError('startDate')}
+        disabled={disabled}
+      />
+      <DateField
+        label={t('projectEditor.field.dueDate')}
+        value={draft.dueDate}
+        onChange={(v) => set('dueDate', v)}
+        error={fieldError('dueDate')}
+        disabled={disabled}
+      />
+      <div className={`${styles.span2} ${styles.skyMapRow}`}>
+        {skyHref ? (
+          <Link className={styles.button} to={skyHref}>
+            <areaIcons.planning size={ICON_SIZE.table} aria-hidden />
+            {t('projectEditor.openSkyMap')}
+          </Link>
+        ) : null}
+        <span className={styles.muted}>
+          {pendingMosaic && !saved
+            ? t('projectEditor.pendingMosaic', {
+                cols: pendingMosaic.cols,
+                rows: pendingMosaic.rows,
+              })
+            : t('projectEditor.coordinatesSearchLater')}
+        </span>
+      </div>
+    </div>
+  );
+
+  const conditionsPanel = (
+    <div className={styles.stack}>
+      <div className={styles.grid}>
+        <NumberField
+          label={t('projectEditor.cond.minAltitude')}
+          unit="°"
+          value={draft.conditions.minAltitudeDeg}
+          min={0}
+          max={90}
+          onChange={(v) => setCond('minAltitudeDeg', v ?? 0)}
+          error={fieldError('conditions.minAltitudeDeg')}
+          disabled={disabled}
+        />
+        <NumberField
+          label={t('projectEditor.cond.minTime')}
+          unit="h"
+          value={draft.conditions.minTimeOnTargetH}
+          min={0}
+          max={24}
+          onChange={(v) => setCond('minTimeOnTargetH', v ?? 0)}
+          error={fieldError('conditions.minTimeOnTargetH')}
+          disabled={disabled}
+        />
+        <SelectField
+          label={t('projectEditor.cond.twilight')}
+          value={draft.conditions.twilight}
+          options={twilightLimits.map((k) => ({
+            value: k,
+            label: t(`nightChart.twilight.${k}`),
+          }))}
+          onChange={(v) => setCond('twilight', v)}
+          disabled={disabled}
+        />
+      </div>
+      <CheckField
+        label={t('projectEditor.cond.moonEnabled')}
+        checked={draft.conditions.moonAvoidanceEnabled}
+        onChange={(v) => setCond('moonAvoidanceEnabled', v)}
+        disabled={disabled}
+      />
+      <p className={styles.muted}>{t('projectEditor.cond.moonHint')}</p>
+      {draft.conditions.moonAvoidanceEnabled ? (
+        <>
+          <div className={styles.grid}>
+            <SelectField
+              label={t('projectEditor.cond.moonFromProfile')}
+              value=""
+              options={[
+                { value: '', label: t('projectEditor.cond.moonFromProfileChoose') },
+                ...(moonProfiles.data ?? []).map((p) => ({
+                  value: p.id,
+                  label: moonLabel(p.name),
+                })),
+              ]}
+              onChange={(pid) => {
+                const p = (moonProfiles.data ?? []).find((x) => x.id === pid);
+                if (p)
+                  setDraft({ ...draft, conditions: conditionsFromProfile(draft.conditions, p) });
+              }}
+              disabled={disabled}
             />
-          </button>
-        ) : null}
-        <div className={styles.headActions}>
-          {dirty && saved ? (
-            <span className={styles.dirty}>{t('projectEditor.unsaved')}</span>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="submit"
-              form={formId}
-              className={styles.buttonPrimary}
-              disabled={save.isPending || !dirty}
-            >
-              <Save size={ICON_SIZE.button} aria-hidden />
-              {t('projectEditor.save')}
-            </button>
-          ) : null}
-          {saved &&
-          canSubmit &&
-          (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned') ? (
-            <button
-              type="button"
-              className={styles.button}
-              disabled={dirty}
-              title={dirty ? t('approvalFlow.saveFirst') : undefined}
-              onClick={() => setSubmitting(true)}
-            >
-              <actionIcons.submit size={ICON_SIZE.button} aria-hidden />
-              {t('approvalFlow.submit')}
-            </button>
-          ) : null}
-          {saved && canWithdraw && saved.approvalStatus === 'submitted' ? (
-            <button
-              type="button"
-              className={styles.button}
-              disabled={withdraw.isPending}
-              onClick={() => withdraw.mutate()}
-            >
-              <actionIcons.return size={ICON_SIZE.button} aria-hidden />
-              {t('approvalFlow.withdraw')}
-            </button>
-          ) : null}
-          {saved && canCreate ? (
-            <button type="button" className={styles.button} onClick={() => duplicate.mutate()}>
-              <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
-              {t('projectEditor.duplicate')}
-            </button>
-          ) : null}
-          {saved && canDelete ? (
-            <button
-              type="button"
-              className={styles.buttonDanger}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <actionIcons.delete size={ICON_SIZE.button} aria-hidden />
-              {t('projectEditor.delete')}
-            </button>
-          ) : null}
-        </div>
-      </div>
-      <div className={styles.head}>
-        <div className={styles.rig}>
-          <RigSelect
-            rigs={rigOptions}
-            value={draft.rigId}
-            onChange={(v) => set('rigId', v)}
+          </div>
+          <CheckField
+            label={t('projectEditor.cond.moonMustBeDown')}
+            checked={draft.conditions.moonMustBeDown}
+            onChange={(v) => setCond('moonMustBeDown', v)}
             disabled={disabled}
-            label={t('projectEditor.rig')}
-            onEmptyAction={() => void navigate(EQUIPMENT_PATHS.rigs)}
           />
-        </div>
-        {statusOptions.length > 0 && canStatus ? (
-          <SelectField
-            label={t('projectEditor.status')}
-            value={saved?.status ?? 'planning'}
-            options={statusOptions.map((s) => ({ value: s, label: t(`status.project.${s}`) }))}
-            onChange={(v) => status.mutate(v)}
-          />
+          <div className={styles.grid}>
+            <NumberField
+              label={t('projectEditor.cond.moonSeparation')}
+              unit="°"
+              value={draft.conditions.moonSeparationDeg}
+              onChange={(v) => setCond('moonSeparationDeg', v ?? 0)}
+              error={fieldError('conditions.moonSeparationDeg')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('projectEditor.cond.moonWidth')}
+              unit="d"
+              value={draft.conditions.moonWidthDays}
+              onChange={(v) => setCond('moonWidthDays', v ?? 0)}
+              error={fieldError('conditions.moonWidthDays')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('projectEditor.cond.moonRelax')}
+              value={draft.conditions.moonRelaxScale}
+              onChange={(v) => setCond('moonRelaxScale', v ?? 0)}
+              error={fieldError('conditions.moonRelaxScale')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('projectEditor.cond.moonMinAlt')}
+              unit="°"
+              value={draft.conditions.moonMinAltDeg}
+              onChange={(v) => setCond('moonMinAltDeg', v ?? 0)}
+              error={fieldError('conditions.moonMinAltDeg')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('projectEditor.cond.moonMaxAlt')}
+              unit="°"
+              value={draft.conditions.moonMaxAltDeg}
+              onChange={(v) => setCond('moonMaxAltDeg', v ?? 0)}
+              error={fieldError('conditions.moonMaxAltDeg')}
+              disabled={disabled}
+            />
+            <NumberField
+              label={t('projectEditor.cond.moonIllumination')}
+              unit="%"
+              value={draft.conditions.moonMaxIlluminationPct}
+              onChange={(v) => setCond('moonMaxIlluminationPct', v ?? 0)}
+              error={fieldError('conditions.moonMaxIlluminationPct')}
+              disabled={disabled}
+            />
+          </div>
+        </>
+      ) : null}
+      <div>
+        <button type="button" className={styles.button} onClick={() => setDefault.mutate()}>
+          {t('projectEditor.cond.setDefault')}
+        </button>{' '}
+        {defaultSaved ? (
+          <span className={styles.success} role="status">
+            {t('projectEditor.cond.defaultSaved')}
+          </span>
         ) : null}
-        {saved ? (
-          <Sums sums={planSums(allLines)} label={t('projectEditor.plan.sumsProject')} />
-        ) : null}
+        {setDefault.error ? <ProblemMessage code={problemCode(setDefault.error)} /> : null}
       </div>
+    </div>
+  );
+
+  const previewPanel = (
+    <div className={styles.previewRow}>
+      <ProjectImage
+        thumbnailUrl={saved?.thumbnailUrl}
+        primaryId={draft.dsoPrimaryId}
+        name={draft.targetName || draft.name}
+        className={styles.previewImage}
+        fallback={<div className={styles.preview}>{t('projectEditor.previewLater')}</div>}
+      />
+      <dl className={styles.facts}>
+        <dt>{t('projectEditor.facts.site')}</dt>
+        <dd>{site?.name ?? '–'}</dd>
+        <dt>{t('projectEditor.facts.telescope')}</dt>
+        <dd>{telescope?.name ?? '–'}</dd>
+        <dt>{t('projectEditor.facts.camera')}</dt>
+        <dd>{camera?.name ?? '–'}</dd>
+        <dt>{t('projectEditor.facts.scale')}</dt>
+        <dd>{rig ? `${num(rig.derived.scaleArcsecPx, 2)}″/px` : '–'}</dd>
+        <dt>{t('projectEditor.facts.fov')}</dt>
+        <dd>{fov}</dd>
+        {research ? (
+          <>
+            <dt>{t('projectEditor.research')}</dt>
+            <dd>
+              <ul className={styles.links}>
+                {researchLinks(research).map((l) => (
+                  <li key={l.name}>
+                    <a href={l.href} target="_blank" rel="noopener noreferrer">
+                      {l.name}
+                      <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </>
+        ) : null}
+      </dl>
+    </div>
+  );
+
+  const descriptionPanel = (
+    <div className={styles.stack}>
+      <TextField
+        label={t('projectEditor.field.description')}
+        value={draft.descriptionMd}
+        maxLength={20000}
+        multiline
+        onChange={(v) => set('descriptionMd', v)}
+        hint={t('projectEditor.field.markdownHint')}
+        disabled={disabled}
+      />
+      {draft.descriptionMd.trim() ? (
+        <details>
+          <summary>{t('projectEditor.field.descriptionPreview')}</summary>
+          <div className={styles.markdownPreview}>
+            <Markdown>{draft.descriptionMd}</Markdown>
+          </div>
+        </details>
+      ) : null}
+    </div>
+  );
+
+  const imageTabs: { key: ImageTab; label: string }[] = [
+    { key: 'preview', label: t('projectEditor.tabs.preview') },
+    { key: 'sky', label: t('projectEditor.tabs.sky') },
+    { key: 'description', label: t('projectEditor.field.description') },
+    ...(saved ? [{ key: 'notes' as const, label: t('projectEditor.tabs.notes') }] : []),
+    ...(saved && canHistory
+      ? [{ key: 'history' as const, label: t('projectEditor.tabs.history') }]
+      : []),
+  ];
+  const imagePanel = (
+    <Tabs<ImageTab>
+      orientation="vertical"
+      keepMounted
+      label={t('projectEditor.tabs.imageNotes')}
+      value={imageTab}
+      onChange={setImageTab}
+      tabs={imageTabs}
+      panels={{
+        preview: previewPanel,
+        sky: (
+          <SkyLocation
+            raDeg={draft.raDeg}
+            decDeg={draft.decDeg}
+            rotationDeg={draft.rotationDeg ?? 0}
+            fov={fovDeg}
+            name={draft.targetName || draft.name || t('projectEditor.target')}
+          />
+        ),
+        description: descriptionPanel,
+        ...(saved ? { notes: <NotesTab projectId={saved.id} resource={resource} /> } : {}),
+        ...(saved && canHistory ? { history: <HistoryTab projectId={saved.id} /> } : {}),
+      }}
+    />
+  );
+
+  return (
+    <div className={styles.editor}>
+      <header className={styles.editorHead}>
+        <div className={styles.crumbRow}>
+          <nav aria-label={t('projectEditor.crumbs')}>
+            <ol className={styles.crumbs}>
+              <li>
+                <Link to="/projekte">{t('projectEditor.list')}</Link>
+              </li>
+              {statusLabel ? <li>{statusLabel}</li> : null}
+              <li aria-current="page">{title}</li>
+            </ol>
+          </nav>
+          <div className={styles.headMeta}>
+            {sums ? <ProjectProgress sums={sums} /> : null}
+            <div className={styles.headRig}>
+              <RigSelect
+                rigs={rigOptions}
+                value={draft.rigId}
+                onChange={(v) => set('rigId', v)}
+                disabled={disabled}
+                label={t('projectEditor.rig')}
+                onEmptyAction={() => void navigate(EQUIPMENT_PATHS.rigs)}
+              />
+            </div>
+            {statusOptions.length > 0 && canStatus ? (
+              <select
+                className={styles.input}
+                aria-label={t('projectEditor.status')}
+                value={saved?.status ?? 'planning'}
+                onChange={(e) => status.mutate(e.target.value as ProjectStatus)}
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`status.project.${s}`)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        </div>
+        <div className={styles.titleRow}>
+          <div className={styles.titleMain}>
+            <h1 title={title}>{title}</h1>
+            {saved ? <StatusBadge kind="approval" value={saved.approvalStatus} size="sm" /> : null}
+            {saved?.status ? <StatusBadge kind="project" value={saved.status} size="sm" /> : null}
+            <EffortChip
+              effort={effort.effort}
+              state={effort.state}
+              live={effort.live}
+              stale={!effort.live && (saved?.effortStale ?? false)}
+              size="sm"
+            />
+            {saved && canFavorite ? (
+              <button
+                type="button"
+                className={`${styles.iconButton} ${styles.favorite}`}
+                aria-pressed={saved.favorite}
+                aria-label={t('projectEditor.favorite')}
+                title={t('projectEditor.favorite')}
+                onClick={() => favorite.mutate(!saved.favorite)}
+              >
+                <Star
+                  size={ICON_SIZE.button}
+                  aria-hidden
+                  fill={saved.favorite ? 'currentColor' : 'none'}
+                />
+              </button>
+            ) : null}
+            {dirty && saved ? (
+              <span className={styles.dirty}>{t('projectEditor.unsaved')}</span>
+            ) : null}
+          </div>
+          <div className={styles.headActions}>
+            {canEdit ? (
+              <button
+                type="submit"
+                form={formId}
+                className={styles.buttonPrimary}
+                disabled={save.isPending || !dirty}
+              >
+                <Save size={ICON_SIZE.button} aria-hidden />
+                {t('projectEditor.save')}
+              </button>
+            ) : null}
+            {saved &&
+            canSubmit &&
+            (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned') ? (
+              <button
+                type="button"
+                className={styles.button}
+                disabled={dirty}
+                title={dirty ? t('approvalFlow.saveFirst') : undefined}
+                onClick={() => setSubmitting(true)}
+              >
+                <actionIcons.submit size={ICON_SIZE.button} aria-hidden />
+                {t('approvalFlow.submit')}
+              </button>
+            ) : null}
+            {saved && canWithdraw && saved.approvalStatus === 'submitted' ? (
+              <button
+                type="button"
+                className={styles.button}
+                disabled={withdraw.isPending}
+                onClick={() => withdraw.mutate()}
+              >
+                <actionIcons.return size={ICON_SIZE.button} aria-hidden />
+                {t('approvalFlow.withdraw')}
+              </button>
+            ) : null}
+            {saved && canCreate ? (
+              <button type="button" className={styles.button} onClick={() => duplicate.mutate()}>
+                <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
+                {t('projectEditor.duplicate')}
+              </button>
+            ) : null}
+            {saved && canDelete ? (
+              <button
+                type="button"
+                className={styles.buttonDanger}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <actionIcons.delete size={ICON_SIZE.button} aria-hidden />
+                {t('projectEditor.delete')}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </header>
       {!canEdit ? (
         <p className={styles.note} role="note">
           {me?.mfaRequired ? t('errors.auth.mfaRequired') : t('projectEditor.readOnly')}
@@ -609,354 +973,33 @@ function Editor({
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
       )}
 
-      <form id={formId} className={styles.topTabs} onSubmit={submit} noValidate>
-        <div className={styles.tabs} role="tablist" aria-label={t('projectEditor.topTabs')}>
-          {TOP_TABS.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${topTabsId}-${key}`}
-              aria-selected={topTab === key}
-              aria-controls={`${topTabsId}-${key}-panel`}
-              className={styles.tab}
-              onClick={() => setTopTab(key)}
-            >
-              {t(TOP_TAB_LABEL[key])}
-              {tabsWithErrors.has(key) ? (
-                <span className={styles.tabError}>{t('projectEditor.tabHasErrors')}</span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        <section
-          className={styles.stack}
-          role="tabpanel"
-          id={`${topTabsId}-target-panel`}
-          aria-labelledby={`${topTabsId}-target`}
-          hidden={topTab !== 'target'}
-        >
-          <CatalogSearch
-            disabled={disabled}
-            onPick={(o) => setDraft(applyCatalogPick(draft, catalogPick(o, t)))}
-            linkedName={draft.dsoObjectId ? draft.targetName || draft.name : null}
-            onUnlink={() => setDraft({ ...draft, dsoObjectId: null, dsoPrimaryId: null })}
-          />
-          <div className={styles.grid}>
-            <TextField
-              label={t('projectEditor.field.name')}
-              value={draft.name}
-              maxLength={200}
-              onChange={(v) => set('name', v)}
-              error={fieldError('name')}
-              disabled={disabled}
-              wide
-            />
-            <TextField
-              label={t('projectEditor.field.targetName')}
-              value={draft.targetName}
-              maxLength={200}
-              onChange={(v) => set('targetName', v)}
-              error={fieldError('targetName')}
-              disabled={disabled}
-            />
-            <TextField
-              label={t('projectEditor.field.targetType')}
-              value={draft.targetType}
-              maxLength={40}
-              onChange={(v) => set('targetType', v)}
-              error={fieldError('targetType')}
-              disabled={disabled}
-            />
-            <DateField
-              label={t('projectEditor.field.startDate')}
-              value={draft.startDate}
-              onChange={(v) => set('startDate', v)}
-              hint={t('projectEditor.field.nightKeyHint')}
-              error={fieldError('startDate')}
-              disabled={disabled}
-            />
-            <DateField
-              label={t('projectEditor.field.dueDate')}
-              value={draft.dueDate}
-              onChange={(v) => set('dueDate', v)}
-              error={fieldError('dueDate')}
-              disabled={disabled}
-            />
-            <CoordinateInput
-              kind="ra"
-              label={t('projectEditor.field.ra')}
-              valueDeg={draft.raDeg}
-              onChange={(v) => set('raDeg', v)}
-              disabled={disabled}
-            />
-            <CoordinateInput
-              kind="dec"
-              label={t('projectEditor.field.dec')}
-              valueDeg={draft.decDeg}
-              onChange={(v) => set('decDeg', v)}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('projectEditor.field.rotation')}
-              unit="°"
-              value={draft.rotationDeg}
-              min={0}
-              max={359.9}
-              onChange={(v) => set('rotationDeg', v)}
-              error={fieldError('rotationDeg')}
-              disabled={disabled}
-            />
-            <div>
-              <span className={styles.muted}>{t('projectEditor.field.fov')}</span>
-              <p>{fov}</p>
-            </div>
-          </div>
-          {pendingMosaic && !saved ? (
-            <p className={styles.muted} role="note">
-              {t('projectEditor.pendingMosaic', {
-                cols: pendingMosaic.cols,
-                rows: pendingMosaic.rows,
-              })}
-            </p>
-          ) : null}
-          <div className={styles.skyMapRow}>
-            <p className={styles.muted}>{t('projectEditor.coordinatesSearchLater')}</p>
-            {draft.raDeg !== null && draft.decDeg !== null ? (
-              <Link
-                className={styles.button}
-                to={skyMapHref({
-                  ra: draft.raDeg,
-                  dec: draft.decDeg,
-                  rot: draft.rotationDeg,
-                  rig: draft.rigId,
-                  ...(saved ? { project: saved.id } : {}),
-                  ...(rig
-                    ? { fov: fovForFrame(rig.derived.fovWidthDeg, rig.derived.fovHeightDeg) }
-                    : {}),
-                })}
-              >
-                {t('projectEditor.openSkyMap')}
-              </Link>
-            ) : null}
-          </div>
-          <TextField
-            label={t('projectEditor.field.catalogNames')}
-            value={draft.catalogNames}
-            maxLength={500}
-            onChange={(v) => set('catalogNames', v)}
-            disabled={disabled}
-          />
-          <TextField
-            label={t('projectEditor.field.description')}
-            value={draft.descriptionMd}
-            maxLength={20000}
-            multiline
-            onChange={(v) => set('descriptionMd', v)}
-            hint={t('projectEditor.field.markdownHint')}
-            disabled={disabled}
-          />
-          {draft.descriptionMd.trim() ? (
-            <details>
-              <summary>{t('projectEditor.field.descriptionPreview')}</summary>
-              <div className={styles.markdownPreview}>
-                <Markdown>{draft.descriptionMd}</Markdown>
-              </div>
-            </details>
-          ) : null}
-        </section>
-
-        <section
-          className={styles.stack}
-          role="tabpanel"
-          id={`${topTabsId}-conditions-panel`}
-          aria-labelledby={`${topTabsId}-conditions`}
-          hidden={topTab !== 'conditions'}
-        >
-          <div className={styles.grid}>
-            <NumberField
-              label={t('projectEditor.cond.minAltitude')}
-              unit="°"
-              value={draft.conditions.minAltitudeDeg}
-              min={0}
-              max={90}
-              onChange={(v) => setCond('minAltitudeDeg', v ?? 0)}
-              error={fieldError('conditions.minAltitudeDeg')}
-              disabled={disabled}
-            />
-            <NumberField
-              label={t('projectEditor.cond.minTime')}
-              unit="h"
-              value={draft.conditions.minTimeOnTargetH}
-              min={0}
-              max={24}
-              onChange={(v) => setCond('minTimeOnTargetH', v ?? 0)}
-              error={fieldError('conditions.minTimeOnTargetH')}
-              disabled={disabled}
-            />
-            <SelectField
-              label={t('projectEditor.cond.twilight')}
-              value={draft.conditions.twilight}
-              options={twilightLimits.map((k) => ({
-                value: k,
-                label: t(`nightChart.twilight.${k}`),
-              }))}
-              onChange={(v) => setCond('twilight', v)}
-              disabled={disabled}
-            />
-          </div>
-          <CheckField
-            label={t('projectEditor.cond.moonEnabled')}
-            checked={draft.conditions.moonAvoidanceEnabled}
-            onChange={(v) => setCond('moonAvoidanceEnabled', v)}
-            disabled={disabled}
-          />
-          <p className={styles.muted}>{t('projectEditor.cond.moonHint')}</p>
-          {draft.conditions.moonAvoidanceEnabled ? (
-            <>
-              <SelectField
-                label={t('projectEditor.cond.moonFromProfile')}
-                value=""
-                options={[
-                  { value: '', label: t('projectEditor.cond.moonFromProfileChoose') },
-                  ...(moonProfiles.data ?? []).map((p) => ({
-                    value: p.id,
-                    label: moonLabel(p.name),
-                  })),
-                ]}
-                onChange={(pid) => {
-                  const p = (moonProfiles.data ?? []).find((x) => x.id === pid);
-                  if (p)
-                    setDraft({ ...draft, conditions: conditionsFromProfile(draft.conditions, p) });
-                }}
-                disabled={disabled}
-              />
-              <CheckField
-                label={t('projectEditor.cond.moonMustBeDown')}
-                checked={draft.conditions.moonMustBeDown}
-                onChange={(v) => setCond('moonMustBeDown', v)}
-                disabled={disabled}
-              />
-              <div className={styles.grid}>
-                <NumberField
-                  label={t('projectEditor.cond.moonSeparation')}
-                  unit="°"
-                  value={draft.conditions.moonSeparationDeg}
-                  onChange={(v) => setCond('moonSeparationDeg', v ?? 0)}
-                  error={fieldError('conditions.moonSeparationDeg')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('projectEditor.cond.moonWidth')}
-                  unit="d"
-                  value={draft.conditions.moonWidthDays}
-                  onChange={(v) => setCond('moonWidthDays', v ?? 0)}
-                  error={fieldError('conditions.moonWidthDays')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('projectEditor.cond.moonRelax')}
-                  value={draft.conditions.moonRelaxScale}
-                  onChange={(v) => setCond('moonRelaxScale', v ?? 0)}
-                  error={fieldError('conditions.moonRelaxScale')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('projectEditor.cond.moonMinAlt')}
-                  unit="°"
-                  value={draft.conditions.moonMinAltDeg}
-                  onChange={(v) => setCond('moonMinAltDeg', v ?? 0)}
-                  error={fieldError('conditions.moonMinAltDeg')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('projectEditor.cond.moonMaxAlt')}
-                  unit="°"
-                  value={draft.conditions.moonMaxAltDeg}
-                  onChange={(v) => setCond('moonMaxAltDeg', v ?? 0)}
-                  error={fieldError('conditions.moonMaxAltDeg')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('projectEditor.cond.moonIllumination')}
-                  unit="%"
-                  value={draft.conditions.moonMaxIlluminationPct}
-                  onChange={(v) => setCond('moonMaxIlluminationPct', v ?? 0)}
-                  error={fieldError('conditions.moonMaxIlluminationPct')}
-                  disabled={disabled}
-                />
-              </div>
-            </>
-          ) : null}
-          <div>
-            <button type="button" className={styles.button} onClick={() => setDefault.mutate()}>
-              {t('projectEditor.cond.setDefault')}
-            </button>{' '}
-            {defaultSaved ? (
-              <span className={styles.success} role="status">
-                {t('projectEditor.cond.defaultSaved')}
-              </span>
-            ) : null}
-            {setDefault.error ? <ProblemMessage code={problemCode(setDefault.error)} /> : null}
-          </div>
-        </section>
-
-        <section
-          className={styles.stack}
-          role="tabpanel"
-          id={`${topTabsId}-preview-panel`}
-          aria-labelledby={`${topTabsId}-preview`}
-          hidden={topTab !== 'preview'}
-        >
-          <ProjectImage
-            thumbnailUrl={saved?.thumbnailUrl}
-            primaryId={draft.dsoPrimaryId}
-            name={draft.targetName || draft.name}
-            className={styles.previewImage}
-            fallback={<div className={styles.preview}>{t('projectEditor.previewLater')}</div>}
-          />
-          <dl className={styles.facts}>
-            <dt>{t('projectEditor.facts.site')}</dt>
-            <dd>{site?.name ?? '–'}</dd>
-            <dt>{t('projectEditor.facts.telescope')}</dt>
-            <dd>{telescope?.name ?? '–'}</dd>
-            <dt>{t('projectEditor.facts.camera')}</dt>
-            <dd>{camera?.name ?? '–'}</dd>
-            <dt>{t('projectEditor.facts.scale')}</dt>
-            <dd>{rig ? `${num(rig.derived.scaleArcsecPx, 2)}″/px` : '–'}</dd>
-            <dt>{t('projectEditor.facts.fov')}</dt>
-            <dd>{fov}</dd>
-          </dl>
-          {research ? (
-            <>
-              <span className={styles.muted}>{t('projectEditor.research')}</span>
-              <ul className={styles.links}>
-                {researchLinks(research).map((l) => (
-                  <li key={l.name}>
-                    <a href={l.href} target="_blank" rel="noopener noreferrer">
-                      {l.name}
-                      <actionIcons.external size={ICON_SIZE.table} aria-hidden />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-        </section>
+      <form
+        id={formId}
+        className={styles.area}
+        onSubmit={submit}
+        noValidate
+        aria-label={t('projectEditor.areas.top')}
+      >
+        <Tabs<TopTab>
+          keepMounted
+          label={t('projectEditor.topTabs')}
+          value={topTab}
+          onChange={setTopTab}
+          panelClassName={styles.areaTop}
+          tabs={TOP_TABS.map((key) => ({
+            key,
+            label: t(TOP_TAB_LABEL[key]),
+            ...(tabsWithErrors.has(key)
+              ? {
+                  badge: <span className={styles.tabError}>{t('projectEditor.tabHasErrors')}</span>,
+                }
+              : {}),
+          }))}
+          panels={{ target: targetPanel, conditions: conditionsPanel, image: imagePanel }}
+        />
       </form>
 
-      <ProjectTabs projectId={saved?.id ?? null} resource={resource} draft={draft} site={site} />
-
-      {saved ? (
-        <PanelList
-          project={saved}
-          rig={rig}
-          canEdit={canEdit}
-          canRigSettings={canRigSettings}
-          onChange={onChange}
-          onReload={onReload}
-        />
-      ) : null}
+      <ChartArea draft={draft} site={site} />
 
       {saved ? (
         <ExposurePlan
@@ -970,11 +1013,20 @@ function Editor({
           onChange={onChange}
           onReload={onReload}
           rigPath={EQUIPMENT_PATHS.rigs}
+          panelsTab={
+            <PanelList
+              project={saved}
+              rig={rig}
+              canEdit={canEdit}
+              canRigSettings={canRigSettings}
+              onChange={onChange}
+              onReload={onReload}
+            />
+          }
         />
       ) : (
-        <section className={styles.plan} aria-labelledby="plan-title">
-          <h2 id="plan-title">{t('projectEditor.plan.title')}</h2>
-          <p className={styles.note}>{t('projectEditor.plan.saveFirst')}</p>
+        <section className={styles.area} aria-label={t('projectEditor.plan.title')}>
+          <p className={styles.areaNote}>{t('projectEditor.plan.saveFirst')}</p>
         </section>
       )}
 
@@ -993,16 +1045,42 @@ function Editor({
   );
 }
 
-/** Reiter des oberen Bereichs (Entscheidung Sven 24.09.2026 statt drei Spalten nebeneinander). */
-const TOP_TABS = ['target', 'conditions', 'preview'] as const;
+/** Fortschritt des ganzen Projekts im Kopf: Balken, aufgenommene und geplante Stunden (FA-PRJ-21). */
+function ProjectProgress({ sums }: { sums: ReturnType<typeof planSums> }) {
+  const { t } = useTranslation();
+  const num = useNumber();
+  return (
+    <span className={styles.headProgress} aria-label={t('projectEditor.plan.sumsProject')}>
+      <ProgressBar
+        acquired={sums.acceptedFrames}
+        planned={Math.max(1, sums.plannedFrames)}
+        size="sm"
+        showLabel={false}
+      />
+      <span>
+        {t('projectEditor.progress', {
+          done: num(sums.acceptedS / 3600, 1),
+          total: num(sums.plannedS / 3600, 1),
+          pct: num(sums.percent, 0),
+        })}
+      </span>
+    </span>
+  );
+}
+
+/** Reiter des oberen Bereichs (AP-26b, Aufteilung nach Svens Vorlage). */
+const TOP_TABS = ['target', 'conditions', 'image'] as const;
 type TopTab = (typeof TOP_TABS)[number];
 const TOP_TAB_LABEL: Record<TopTab, string> = {
-  target: 'projectEditor.targetInfo',
+  target: 'projectEditor.target',
   conditions: 'projectEditor.conditions',
-  preview: 'projectEditor.preview',
+  image: 'projectEditor.tabs.imageNotes',
 };
-/** Reiter eines Feldpfads: Bedingungen unter `conditions.*`, alles andere Zielinformationen. */
-const tabOf = (path: string): TopTab => (path.startsWith('conditions.') ? 'conditions' : 'target');
+/** Unterreiter von *Bild & Notizen*. */
+type ImageTab = 'preview' | 'sky' | 'description' | 'notes' | 'history';
+/** Reiter eines Feldpfads: Bedingungen unter `conditions.*`, die Beschreibung unter *Bild & Notizen*. */
+const tabOf = (path: string): TopTab =>
+  path.startsWith('conditions.') ? 'conditions' : path === 'descriptionMd' ? 'image' : 'target';
 
 /** Fehler der Client-Prüfung (zod) als Feldpfade. */
 class FormErrors extends Error {

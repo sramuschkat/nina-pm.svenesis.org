@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * S-10 (AP-09c): Sortierkette (Ziehen und Tastatur), Scheduler-Validierung (`afEveryMin = 0` = aus,
- * Flip), 412 beim Speichern, Filterrad-Status und Bestätigungs-Nutzlast.
+ * Flip), 412 beim Speichern, Filterrad-Status und Bestätigungs-Nutzlast; Reiter der Rig-Seite
+ * (AP-26b): Tastatur, Sichtbarkeit, Speichern über Reiter hinweg, Fehler im verdeckten Reiter.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -12,17 +13,25 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { FilterWheelView, Me, RigView } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
-import { SchedulerForm } from './RigsPage';
+import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
 import { moveItem, SortChainEditor } from './SortChainEditor';
 
-const state = vi.hoisted(() => ({ me: null as unknown, scheduler: vi.fn() }));
+const state = vi.hoisted(() => ({
+  me: null as unknown,
+  lists: {} as Record<string, unknown[]>,
+  scheduler: vi.fn(),
+  updateRig: vi.fn(),
+}));
 
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
   equipmentApi: {
-    list: () => Promise.resolve({ items: [] }),
+    list: (kind: string) => Promise.resolve({ items: state.lists[kind] ?? [] }),
     schedulerSettings: (...args: unknown[]) => state.scheduler(...args) as Promise<unknown>,
+    updateRig: (...args: unknown[]) => state.updateRig(...args) as Promise<unknown>,
+    filterWheel: () => Promise.resolve({ settingsVersion: 4, reported: null, slots: [] }),
   },
+  ninaApi: { instances: () => Promise.resolve({ items: [] }) },
 }));
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -86,7 +95,9 @@ const rig = { id: ID(30), settingsVersion: 4, scheduler } as RigView;
 
 function wrap(children: ReactNode) {
   return render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <MemoryRouter>
         <AuthProvider>{children}</AuthProvider>
       </MemoryRouter>
@@ -96,7 +107,9 @@ function wrap(children: ReactNode) {
 
 beforeEach(() => {
   state.me = me('owner');
+  state.lists = {};
   state.scheduler.mockReset();
+  state.updateRig.mockReset();
 });
 
 function Chain({ initial }: { initial: string[] }) {
@@ -248,6 +261,191 @@ describe('Filterradbelegung (FA-RIG-14)', () => {
       { position: 2, filterId: ID(42), ninaFilterName: 'Ha 3nm' },
       { position: 3, filterId: ID(43), ninaFilterName: null },
       { position: 4, filterId: ID(44), ninaFilterName: null },
+    ]);
+  });
+});
+
+describe('Rig-Seite: Reiter (AP-26b)', () => {
+  const AT = '2026-09-24T10:00:00Z';
+  const site = {
+    id: ID(12),
+    name: 'Garten',
+    pierName: null,
+    observatoryType: 'open_air',
+    latitudeDeg: 50.1,
+    longitudeDeg: 8.7,
+    elevationM: 120,
+    bortleClass: 5,
+    timeZone: 'Europe/Berlin',
+    weatherSafetyUrl: null,
+    notes: '',
+    createdAt: AT,
+    updatedAt: AT,
+  };
+  const telescope = {
+    id: ID(10),
+    name: 'GT81',
+    opticalDesign: 'apochromatic_refractor',
+    apertureMm: 81,
+    focalLengthMm: 478,
+    reducerFactor: 0.8,
+  };
+  const camera = {
+    id: ID(11),
+    name: 'Ares-M Pro',
+    widthPx: 3008,
+    heightPx: 3008,
+    pixelSizeUm: 3.76,
+    bitDepth: 14,
+    isColor: false,
+    readNoiseE: 1,
+    fullWellE: 50000,
+  };
+  const full: RigView = {
+    ...rig,
+    name: 'Rig A',
+    siteId: site.id,
+    telescopeId: telescope.id,
+    cameraId: camera.id,
+    showInPlanning: true,
+    ninaDeliveryEnabled: true,
+    defaultTemplateId: null,
+    defaultRotationDeg: null,
+    hasRotator: false,
+    rotationToleranceDeg: 5,
+    skipOnRotationMismatch: false,
+    sessionReportDiscord: false,
+    notes: '',
+    filterWheel: [],
+    derived: { effFocalMm: 382, scaleArcsecPx: 2.03, fovWidthDeg: 1.7, fovHeightDeg: 1.7 },
+    createdAt: AT,
+    updatedAt: AT,
+  };
+
+  beforeEach(() => {
+    state.lists = { rigs: [full], sites: [site], telescopes: [telescope], cameras: [camera] };
+  });
+
+  const tab = (name: RegExp) => screen.getByRole('tab', { name });
+
+  it('Tastatur und Sichtbarkeit: Filterrad-Reiter zeigt die Belegung, Pfeiltasten und Ende', async () => {
+    wrap(<RigsPage />);
+    await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    expect(screen.getByRole('tablist', { name: 'Rig-Bereiche' })).toBeInTheDocument();
+    expect(tab(/^Allgemein/)).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Name')).toBeVisible();
+    // Verdeckte Reiter bleiben im DOM, sind aber nicht sichtbar.
+    expect(screen.getByLabelText('Rotationstoleranz (°)')).not.toBeVisible();
+    expect(
+      screen.queryByRole('region', { name: 'Filterradbelegung – Zuordnung zu NINA' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(tab(/^Filterrad/));
+    expect(tab(/^Filterrad/)).toHaveAttribute('aria-selected', 'true');
+    expect(
+      await screen.findByRole('region', { name: 'Filterradbelegung – Zuordnung zu NINA' }),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Name')).not.toBeVisible();
+
+    fireEvent.keyDown(tab(/^Filterrad/), { key: 'ArrowLeft' });
+    expect(tab(/^Scheduler/)).toHaveAttribute('aria-selected', 'true');
+    expect(tab(/^Scheduler/)).toHaveFocus();
+    expect(screen.getByRole('form', { name: 'Scheduler-Einstellungen' })).toBeVisible();
+    fireEvent.keyDown(tab(/^Scheduler/), { key: 'End' });
+    expect(tab(/^NINA/)).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Übernahmestatus in NINA' }),
+    ).toBeVisible();
+    await expectNoSeriousA11y();
+  });
+
+  it('Speichern aus einem Reiter sendet auch die Felder der übrigen', async () => {
+    state.updateRig.mockResolvedValue({ ...full, name: 'Rig Z', settingsVersion: 5 });
+    wrap(<RigsPage />);
+    await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rig Z' } });
+    fireEvent.click(tab(/^Ausrüstung/));
+    fireEvent.change(screen.getByLabelText('Rotationstoleranz (°)'), { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(state.updateRig).toHaveBeenCalledTimes(1));
+    const [id, body, version] = state.updateRig.mock.calls[0] as [string, RigView, number];
+    expect([id, version, body.name, body.rotationToleranceDeg]).toEqual([full.id, 4, 'Rig Z', 8]);
+  });
+
+  it('Fehler in einem verdeckten Reiter: dorthin wechseln, Reiter markiert, kein Aufruf', async () => {
+    wrap(<RigsPage />);
+    await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: '' } });
+    fireEvent.click(tab(/^Ausrüstung/));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(tab(/^Allgemein/)).toHaveAttribute('aria-selected', 'true');
+    expect(tab(/^Allgemein/)).toHaveTextContent('Fehler');
+    expect(tab(/^Ausrüstung/)).not.toHaveTextContent('Fehler');
+    expect(screen.getByLabelText('Name')).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rig A' } });
+    fireEvent.click(tab(/^Ausrüstung/));
+    fireEvent.change(screen.getByLabelText('Rotationstoleranz (°)'), { target: { value: '100' } });
+    fireEvent.click(tab(/^Allgemein/));
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    expect(tab(/^Ausrüstung/)).toHaveAttribute('aria-selected', 'true');
+    expect(tab(/^Ausrüstung/)).toHaveTextContent('Fehler');
+    expect(tab(/^Allgemein/)).not.toHaveTextContent('Fehler');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(state.updateRig).not.toHaveBeenCalled();
+  });
+
+  it('Liste links: Auswahl mit aria-current, Suche, Neu im Seitenkopf', async () => {
+    const long = { ...full, id: ID(31), name: 'Rig B mit einem sehr langen Namen am Gartenpier' };
+    state.lists.rigs = [full, long];
+    wrap(<RigsPage />);
+    await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    const list = screen.getByRole('region', { name: 'Rigs' });
+    const item = (name: RegExp) => within(list).getByRole('button', { name });
+    expect(item(/^Rig A/)).toHaveAttribute('aria-current', 'true');
+    fireEvent.click(item(/^Rig B/));
+    expect(screen.getByRole('heading', { level: 2, name: long.name })).toBeInTheDocument();
+    expect(item(/^Rig B/)).toHaveAttribute('aria-current', 'true');
+    expect(item(/^Rig A/)).not.toHaveAttribute('aria-current');
+
+    fireEvent.change(within(list).getByLabelText('Rigs durchsuchen'), {
+      target: { value: 'garten' },
+    });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Neu' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Neues Rig' })).toBeInTheDocument();
+    expect(tab(/^Allgemein/)).toHaveAttribute('aria-selected', 'true');
+    expect(within(list).queryByRole('button', { current: true })).not.toBeInTheDocument();
+    fireEvent.click(tab(/^Scheduler/));
+    expect(
+      within(screen.getByRole('tabpanel', { name: 'Scheduler' })).getByText(
+        'Verfügbar, sobald das Rig gespeichert ist.',
+      ),
+    ).toBeVisible();
+    await expectNoSeriousA11y();
+  });
+
+  it('ohne Rigs: Leerzustand rechts, Neu öffnet das Formular', async () => {
+    state.lists.rigs = [];
+    wrap(<RigsPage />);
+    expect(await screen.findByText('Noch kein Rig angelegt.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Wähle links einen Eintrag oder lege einen neuen an.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Neu' }));
+    expect(screen.getByRole('tablist', { name: 'Rig-Bereiche' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('');
+  });
+
+  it('rigTabOf: Ausrüstungsfelder auf „Ausrüstung“, übrige auf „Allgemein“', () => {
+    expect(['name', 'siteId', 'notes', 'cameraId', 'rotationToleranceDeg'].map(rigTabOf)).toEqual([
+      'general',
+      'general',
+      'general',
+      'equipment',
+      'equipment',
     ]);
   });
 });

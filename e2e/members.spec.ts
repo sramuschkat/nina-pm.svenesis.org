@@ -1,7 +1,8 @@
 /**
  * S-70 Mitglieder & Einladungen (AP-07b, FA-BEN-01…11): Owner ernennt/entzieht Admin-Rechte (wirkt ab der
  * nächsten Anfrage), Sitzungen beenden → 401, Owner-Aktionen für Admins ausgeblendet (API 403), Admin ohne
- * 2FA sieht nur User-Aktionen und `auth.mfa_required`, Einladung erzeugen und widerrufen.
+ * 2FA sieht nur User-Aktionen und `auth.mfa_required`, Einladung erzeugen und widerrufen. AP-26b: Einladen
+ * als Dialog aus dem Seitenkopf, offene Einladungen im Reiter „Offene Einladungen (n)“.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { csrf, testLogin } from './support';
@@ -77,9 +78,14 @@ test('Sitzungen beenden → das Mitglied erhält bei der nächsten Anfrage 401',
 test('Admin sieht keine Owner-Aktionen; die API lehnt trotzdem ab (403)', async ({ browser }) => {
   const admin = await pageAs(browser, 'admin');
   await admin.goto('/verwaltung/mitglieder');
-  await expect(admin.getByRole('heading', { name: 'Einladen' })).toBeVisible();
-  await expect(admin.getByRole('radio', { name: 'Admin' })).toHaveCount(0);
-  await expect(admin.getByRole('button', { name: 'User einladen' })).toBeVisible();
+  await admin.getByRole('button', { name: 'Einladen', exact: true }).click();
+  const invite = admin.getByRole('dialog', { name: 'Einladen' });
+  await expect(invite.getByRole('button', { name: 'User einladen' })).toBeVisible();
+  await expect(invite.getByRole('radio', { name: 'Admin' })).toHaveCount(0);
+  await admin.keyboard.press('Escape');
+  await expect(invite).toHaveCount(0);
+  await expect(admin.getByRole('button', { name: 'Einladen', exact: true })).toBeFocused();
+  await expect(admin.getByRole('button', { name: 'Owner übertragen' })).toHaveCount(0);
   await admin.getByRole('button', { name: 'Olivia Owner', exact: true }).click();
   await expect(admin.getByText('Der Owner ist geschützt')).toBeVisible();
   await admin.getByRole('button', { name: 'Uta User', exact: true }).click();
@@ -130,9 +136,14 @@ test('Einladung erzeugen, in der Liste sehen und widerrufen (ConfirmDialog)', as
   const owner = await pageAs(browser, 'owner');
   await owner.goto('/verwaltung/mitglieder');
   const note = `E2E ${Date.now().toString(36)}`;
-  await owner.getByLabel('Notiz').fill(note);
-  await owner.getByRole('button', { name: 'User einladen' }).click();
-  await expect(owner.getByTestId('invitation-link')).toContainText('/einladung#');
+  await owner.getByRole('button', { name: 'Einladen', exact: true }).click();
+  const invite = owner.getByRole('dialog', { name: 'Einladen' });
+  await invite.getByLabel('Notiz').fill(note);
+  await invite.getByRole('button', { name: 'User einladen' }).click();
+  await expect(invite.getByTestId('invitation-link')).toContainText('/einladung#');
+  await invite.getByRole('button', { name: 'Schließen' }).click();
+  await expect(invite).toHaveCount(0);
+  await owner.getByRole('tab', { name: /^Offene Einladungen \(\d+\)$/ }).click();
   const row = owner.getByRole('row', { name: new RegExp(note) });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'Widerrufen' }).click();

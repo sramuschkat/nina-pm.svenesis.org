@@ -380,6 +380,47 @@ describe('Belichtungsplan (Komponente)', () => {
     });
   });
 
+  it('Reiter je Panel und Reiter *Panels* (AP-26b): Wechsel per Pfeiltaste, Summen je Panel', async () => {
+    const base = project([line(1, 'Ha', { counters: counters(60, 22, 2) })]);
+    const second = {
+      ...base.panels[0],
+      id: ID(51),
+      panelIndex: 1,
+      label: 'Panel 2',
+      lines: [line(3, 'OIII', { counters: counters(30, 0) })],
+    } as ProjectView['panels'][number];
+    wrap(
+      <ExposurePlan
+        project={{ ...base, panels: [...base.panels, second] }}
+        canEdit
+        rig={rig}
+        camera={camera}
+        filters={filters}
+        moonProfiles={[]}
+        templates={[]}
+        onChange={vi.fn()}
+        onReload={() => Promise.resolve()}
+        rigPath="/ausruestung/rigs"
+        panelsTab={<p>Liste der Panels</p>}
+      />,
+    );
+    const tabs = within(screen.getByRole('tablist', { name: 'Belichtungsplan' })).getAllByRole(
+      'tab',
+    );
+    expect(tabs.map((t) => t.textContent)).toEqual(['Main', 'Panel 2', 'Panels']);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Summen des Panels')).toHaveTextContent('Geplant 60 Frames');
+    tabs[0]?.focus();
+    fireEvent.keyDown(tabs[0] as HTMLElement, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Panel 2' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Summen des Panels')).toHaveTextContent('Geplant 30 Frames');
+    expect(screen.getByLabelText('Geplante Aufnahmen der Zeile OIII')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Panels' }));
+    expect(screen.getByText('Liste der Panels')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Schnelleingabe' })).not.toBeInTheDocument();
+    await expectNoSeriousA11y();
+  });
+
   it('Summenzeile: Filter · GEPLANT · AKTUELL · Gesamtfortschritt', () => {
     plan(
       project([

@@ -1,12 +1,12 @@
 /**
- * Belichtungsplan im Projekt-Editor S-31 (FA-PRJ-05/07/10/20/21/22, FA-BPL-04/05, NT-E3): Reiter je
- * Panel, Schnelleingabe (Filter, Belichtung, Anzahl **oder** Stunden), Vorlage anwenden (nur ohne
+ * Belichtungsplan im Projekt-Editor S-31 (FA-PRJ-05/07/10/20/21/22, FA-BPL-04/05, NT-E3): unterer
+ * Bereich mit einem Reiter je Panel und dem Reiter *Panels* (AP-26b); je Panel Schnelleingabe (Filter, Belichtung, Anzahl **oder** Stunden), Vorlage anwenden (nur ohne
  * Aufnahmen), Tabelle mit Zählern und Inline-Änderung, Summenzeile. Zeilen mit Aufnahmen: Filter,
  * Belichtung, Gain, Offset, Binning, Auslesemodus gesperrt; *Zeile duplizieren* legt eine neue Zeile
  * mit Zählern ab 0 an. Jede Änderung geht sofort an die API, die Antwort ist das ganze Projekt.
  */
 import { useMutation } from '@tanstack/react-query';
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useId, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Link } from 'react-router';
@@ -26,6 +26,7 @@ import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
+import { Tabs } from '../../components/Tabs';
 import { newId, problemCode, useMoonProfileLabel, useNumber } from '../equipment/shared';
 import {
   filterUnassigned,
@@ -54,11 +55,13 @@ export interface ExposurePlanProps {
   rigPath: string;
 }
 
-export function ExposurePlan(props: ExposurePlanProps) {
+/** Schlüssel des Reiters *Panels* (Liste, Reihenfolge, Mosaik) neben den Reitern je Panel. */
+const PANELS_TAB = 'panels';
+
+export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode }) {
   const { t } = useTranslation();
   const { project, canEdit } = props;
-  const [panelIndex, setPanelIndex] = useState(0);
-  const panel = project.panels[panelIndex] ?? project.panels[0];
+  const [tab, setTab] = useState<string>(project.panels[0]?.id ?? PANELS_TAB);
   const allLines = project.panels.flatMap((p) => p.lines);
 
   const mutation = useMutation({
@@ -71,51 +74,60 @@ export function ExposurePlan(props: ExposurePlanProps) {
   const run = (fn: () => Promise<ProjectView | { soft: boolean } | undefined>) =>
     mutation.mutateAsync(fn).catch(() => undefined);
 
-  if (!panel)
+  if (project.panels.length === 0)
     return (
-      <section className={styles.plan} aria-labelledby="plan-title">
-        <h2 id="plan-title">{t('projectEditor.plan.title')}</h2>
-        <p className={styles.note}>{t('projectEditor.plan.needsCoordinates')}</p>
+      <section className={styles.area} aria-label={t('projectEditor.plan.title')}>
+        <p className={styles.areaNote}>{t('projectEditor.plan.needsCoordinates')}</p>
       </section>
     );
-
-  return (
-    <section className={styles.plan} aria-labelledby="plan-title">
-      <div className={styles.planHead}>
-        <h2 id="plan-title">{t('projectEditor.plan.title')}</h2>
-        {project.panels.length > 1 ? (
-          <div className={styles.tabs} role="tablist" aria-label={t('projectEditor.plan.panels')}>
-            {project.panels.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={p.id === panel.id}
-                className={styles.tab}
-                onClick={() => setPanelIndex(i)}
-              >
-                {p.label}
-              </button>
-            ))}
+  // Gelöschtes Panel: auf das erste zurückfallen.
+  const active =
+    tab === PANELS_TAB && props.panelsTab
+      ? PANELS_TAB
+      : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
+  const panelBody = (panelId: string) => {
+    const panel = project.panels.find((p) => p.id === panelId);
+    if (!panel) return null;
+    return (
+      <div className={styles.planBody}>
+        {canEdit ? (
+          <div className={styles.planTools}>
+            <QuickEntry {...props} panelId={panel.id} run={run} />
+            <TemplatePicker
+              {...props}
+              panelId={panel.id}
+              allowed={templateAllowed(allLines)}
+              hasLines={panel.lines.length > 0}
+              run={run}
+            />
           </div>
         ) : null}
-        {canEdit ? (
-          <TemplatePicker
-            {...props}
-            panelId={panel.id}
-            allowed={templateAllowed(allLines)}
-            hasLines={panel.lines.length > 0}
-            run={run}
-          />
+        {mutation.error ? <ProblemMessage code={problemCode(mutation.error)} /> : null}
+        {panel.lines.some((l) => l.hasCaptures) ? (
+          <p className={styles.note}>{t('projectEditor.plan.lockedHint')}</p>
         ) : null}
+        <LineTable {...props} lines={panel.lines} run={run} />
+        <Sums sums={planSums(panel.lines)} label={t('projectEditor.plan.sumsPanel')} />
       </div>
-      {canEdit ? <QuickEntry {...props} panelId={panel.id} run={run} /> : null}
-      {mutation.error ? <ProblemMessage code={problemCode(mutation.error)} /> : null}
-      {panel.lines.some((l) => l.hasCaptures) ? (
-        <p className={styles.note}>{t('projectEditor.plan.lockedHint')}</p>
-      ) : null}
-      <LineTable {...props} lines={panel.lines} run={run} />
-      <Sums sums={planSums(panel.lines)} label={t('projectEditor.plan.sumsPanel')} />
+    );
+  };
+  return (
+    <section className={styles.area} aria-label={t('projectEditor.plan.title')}>
+      <Tabs<string>
+        label={t('projectEditor.plan.title')}
+        value={active}
+        onChange={setTab}
+        tabs={[
+          ...project.panels.map((p) => ({ key: p.id, label: p.label })),
+          ...(props.panelsTab
+            ? [{ key: PANELS_TAB, label: t('projectEditor.panelList.title') }]
+            : []),
+        ]}
+        panels={Object.fromEntries([
+          ...project.panels.map((p) => [p.id, panelBody(p.id)]),
+          [PANELS_TAB, props.panelsTab ?? null],
+        ])}
+      />
     </section>
   );
 }

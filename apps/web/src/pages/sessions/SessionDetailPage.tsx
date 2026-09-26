@@ -22,6 +22,7 @@ import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
+import { Tabs } from '../../components/Tabs';
 import { problemCode } from '../admin/shared';
 import styles from './sessions.module.css';
 import { SessionTime, hours } from './SessionsPage';
@@ -123,54 +124,43 @@ export function SessionDetailPage() {
         </p>
       ) : null}
 
-      <div className={styles.tabs} role="tablist" aria-label={t('sessions.detail.tabs')}>
-        {TABS.map((k) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            id={`session-tab-${k}`}
-            aria-selected={tab === k}
-            aria-controls={`session-panel-${k}`}
-            className={styles.tab}
-            onClick={() => setTab(k)}
-          >
-            {t(`sessions.detail.tab.${k}`)}
-          </button>
-        ))}
-      </div>
-      <section
-        className={styles.panel}
-        role="tabpanel"
-        id={`session-panel-${tab}`}
-        aria-labelledby={`session-tab-${tab}`}
-      >
-        {tab === 'plan' ? (
-          <>
-            {correctLine ? (
-              <CorrectionForm
-                key={correctLine}
-                sessionId={id}
+      <Tabs
+        label={t('sessions.detail.tabs')}
+        tabs={TABS.map((k) => ({ key: k, label: t(`sessions.detail.tab.${k}`) }))}
+        value={tab}
+        onChange={setTab}
+        panelClassName={styles.tabPanel}
+        panels={{
+          plan: (
+            <>
+              {correctLine ? (
+                <CorrectionForm
+                  key={correctLine}
+                  sessionId={id}
+                  rows={d.rows}
+                  initialLine={correctLine}
+                  onDone={() => setCorrectLine(null)}
+                />
+              ) : null}
+              <PlanTable
                 rows={d.rows}
-                initialLine={correctLine}
-                onDone={() => setCorrectLine(null)}
+                hasPlan={s.planRevision !== null}
+                onCorrect={setCorrectLine}
               />
-            ) : null}
-            <PlanTable rows={d.rows} hasPlan={s.planRevision !== null} onCorrect={setCorrectLine} />
-          </>
-        ) : tab === 'captures' ? (
-          <Captures
-            detail={d}
-            filter={captureFilter}
-            onFilter={setCaptureFilter}
-            onChanged={refresh}
-          />
-        ) : tab === 'events' ? (
-          <Events detail={d} />
-        ) : (
-          <Flats detail={d} />
-        )}
-      </section>
+            </>
+          ),
+          captures: (
+            <Captures
+              detail={d}
+              filter={captureFilter}
+              onFilter={setCaptureFilter}
+              onChanged={refresh}
+            />
+          ),
+          events: <Events detail={d} />,
+          flats: <Flats detail={d} />,
+        }}
+      />
     </div>
   );
 }
