@@ -215,3 +215,9 @@ export {
   type ChangeRequestRecord,
   type ChangeRequestRow,
 } from './repositories/change-request';
+export {
+  clearNightCounts,
+  forecastNights,
+  replaceForecast,
+  type ForecastNightRow,
+} from './repositories/forecast';

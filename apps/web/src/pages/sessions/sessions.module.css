@@ -215,3 +215,78 @@
   margin: var(--npm-space-2) 0 0;
   font-size: var(--npm-font-h3);
 }
+/* Folgeplanung S-62 (AP-33): Abschnitte, Kandidatennächte-Matrix mit Ampel, Vorschläge. */
+.forecastBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4) var(--npm-space-4);
+  min-width: 0;
+}
+.forecastTitle {
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-h3);
+}
+.matrixWrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--npm-font-small);
+}
+.matrix th,
+.matrix td {
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-bottom: 1px solid var(--npm-border);
+  text-align: start;
+  vertical-align: top;
+}
+.matrix thead th {
+  font-weight: 600;
+  min-width: 6.5rem;
+}
+.matrixNight {
+  display: block;
+}
+.matrixWeather {
+  display: flex;
+  flex-direction: column;
+  font-weight: 400;
+  color: var(--npm-text-light);
+}
+.matrixCell {
+  white-space: nowrap;
+}
+.lightDot {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-inline-end: var(--npm-space-1);
+  border-radius: 50%;
+  background: var(--npm-danger);
+}
+.lightDot[data-light='green'] {
+  background: var(--npm-success);
+}
+.lightDot[data-light='yellow'] {
+  background: var(--npm-warning);
+}
+.flagText {
+  color: var(--npm-warning);
+}
+.plainList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}

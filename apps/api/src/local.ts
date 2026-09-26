@@ -59,7 +59,8 @@ import { effortJobHandler } from './worker/effort';
 import { effortDbDeps } from './worker/effort-db';
 import { memoryJobResultStore } from './files/job-results';
 import { impactJobHandler, multiSimJobHandler } from './worker/multi-sim';
-import { multiSimDbDeps } from './worker/multi-sim-db';
+import { forecastDbDeps, multiSimDbDeps } from './worker/multi-sim-db';
+import { forecastJobHandler } from './worker/forecast';
 import {
   sessionCloseHandler,
   sessionReportHandler,
@@ -150,6 +151,7 @@ const jobs: JobRunnerDeps = {
     thumbnail: localThumbnailHandler,
     multi_sim: multiSimJobHandler(localMultiSim),
     impact: impactJobHandler(localMultiSim),
+    forecast: forecastJobHandler(forecastDbDeps(() => Promise.resolve(db))),
     // Astro-Wetter (AP-23): lokal mit Beispieldaten, echte Open-Meteo-Abrufe nur mit LOCAL_WEATHER=live.
     weather: weatherJobHandler({
       http:

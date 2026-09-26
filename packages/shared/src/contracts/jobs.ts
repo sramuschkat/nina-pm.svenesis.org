@@ -55,6 +55,13 @@ export const EffortJobInput = z.union([
 ]);
 export type EffortJobInput = z.infer<typeof EffortJobInput>;
 
+/** Job `forecast` (AP-33): Mehrnacht-Prognose aller Rigs eines Standorts; `night` beim Zeitplanlauf. */
+export const ForecastJobInput = z
+  .object({ siteId: Uuid, night: NightKey.optional() })
+  .strict()
+  .meta({ id: 'ForecastJobInput' });
+export type ForecastJobInput = z.infer<typeof ForecastJobInput>;
+
 /** `dedupe_key` ist für `multi_sim` und `impact` Pflicht (TK 7.4, SEC-51). */
 export const dedupeKeys = {
   multiSim: (i: Pick<MultiSimInput, 'rigId' | 'nightFrom'>) =>
@@ -63,6 +70,9 @@ export const dedupeKeys = {
   effort: (projectId: string) => `effort:${projectId}`,
   effortSiteNight: (siteId: string, night: string) => `effort:${siteId}:${night}`,
   reconcileSiteNight: (siteId: string, night: string) => `reconcile:${siteId}:${night}`,
+  /** Mehrnacht-Prognose je Standort einmal je Nacht (TK 13, AP-33) bzw. auf Anforderung. */
+  forecastSiteNight: (siteId: string, night: string) => `forecast:${siteId}:${night}`,
+  forecastSiteManual: (siteId: string) => `forecast:${siteId}:manual`,
   /** Stündlicher Wetterlauf je Standort (TK 13); `hour` = `YYYY-MM-DDTHH` in UTC. */
   weatherSiteHour: (siteId: string, hour: string) => `weather:${siteId}:${hour}`,
   /** Vorschaubild des Projekt-Bildfelds (AP-25). */

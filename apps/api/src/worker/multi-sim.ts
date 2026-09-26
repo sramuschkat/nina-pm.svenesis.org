@@ -100,7 +100,8 @@ export function multiSimJobHandler(deps: MultiSimDeps): JobHandler {
       nightCount: input.nights,
       weather: input.weather,
       computedAt: isoUtc(at),
-      ...sim,
+      nights: sim.nights,
+      projects: sim.projects,
     };
     const key = await deps.putResult(job.tenantId, job.id, result);
     logger.info('multi_sim', { jobId: job.id, nights: input.nights, projects: projects.length });

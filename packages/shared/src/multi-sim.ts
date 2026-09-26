@@ -95,9 +95,20 @@ function planUsage(plan: NightPlan) {
   return { frames, hours, exposureS };
 }
 
+/** Frames je Zeile und belegte Stunden je Projekt einer simulierten Nacht (ungewichtet, Job `forecast`). */
+export interface SimNightDetail {
+  readonly night: string;
+  readonly darkHours: number | null;
+  readonly lineFrames: Readonly<Record<string, number>>;
+  readonly projectHours: Readonly<Record<string, number>>;
+  readonly engineVersion: string;
+  readonly inputHash: string;
+}
+
 export function simulateNights(input: SimulateNightsInput): {
   nights: SimNight[];
   projects: SimProject[];
+  detail: SimNightDetail[];
 } {
   const run = input.planNight ?? planNight;
   const candidates = input.projects.filter(
@@ -114,6 +125,7 @@ export function simulateNights(input: SimulateNightsInput): {
     perProject.set(p.id, { hours: 0, frames: 0, nightsUsed: 0, completesNight: null });
 
   const nights: SimNight[] = [];
+  const detail: SimNightDetail[] = [];
   const start = daysFromKey(input.nightFrom);
   for (let i = 0; i < input.count; i += 1) {
     const night = keyFromDays(start + i);
@@ -171,12 +183,21 @@ export function simulateNights(input: SimulateNightsInput): {
     const darkFrom = plan.darkness.astronomicalStartUtc;
     const darkTo = plan.darkness.astronomicalEndUtc;
     const exposureHours = round2((usage.exposureS * weight) / 3600);
+    const darkHours =
+      darkFrom && darkTo
+        ? round2(Math.max(0, Date.parse(darkTo) - Date.parse(darkFrom)) / 3_600_000)
+        : null;
+    detail.push({
+      night,
+      darkHours,
+      lineFrames: Object.fromEntries(usage.frames),
+      projectHours: Object.fromEntries([...usage.hours].map(([id, h]) => [id, round2(h)])),
+      engineVersion: plan.engineVersion,
+      inputHash: plan.inputHash,
+    });
     nights.push({
       night,
-      darkHours:
-        darkFrom && darkTo
-          ? round2(Math.max(0, Date.parse(darkTo) - Date.parse(darkFrom)) / 3_600_000)
-          : null,
+      darkHours,
       weight,
       ratingIndex: w?.ratingIndex ?? null,
       hasForecast: w !== undefined && w.nightMean !== null,
@@ -220,7 +241,7 @@ export function simulateNights(input: SimulateNightsInput): {
       };
     })
     .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name));
-  return { nights, projects };
+  return { nights, projects, detail };
 }
 
 /**
