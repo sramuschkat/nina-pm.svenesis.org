@@ -27,7 +27,7 @@ Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-
 | Zweck | Filter als Farbmarke mit Kurznamen (Projektkarte, Editor, Simulator, Protokoll, Filterliste) |
 | Eigenschaften | `shortName: string` · `color: string` (Hex aus `filter.color`) · `size?: 'sm' \| 'md'` (16/20 px Höhe) · `selected?: boolean` · `disabled?: boolean` · `onToggle?: () => void` · `title?: string` |
 | Zustände | nur `ready`; ohne `onToggle` ist es ein `<span>`, mit `onToggle` ein `<button aria-pressed>` |
-| Größen | Mindestbreite 32 px; Kurznamen über 4 Zeichen werden auf 4 gekürzt und der volle Name steht im `title` |
+| Größen | **Alle Marken gleich breit** (AP-26k, Wunsch Sven 26.09.2026): Mindestbreite `3,3em + 2 × space-2 + Rand` – Platz für vier breite Großbuchstaben (`sm` 53 px, `md` 60 px bei normaler Dichte); nur ein ungewöhnlich breites Kürzel wird breiter. Kurznamen über 4 Zeichen werden auf 4 gekürzt und der volle Name steht im `title` |
 | Grenzfall | Kontrast: liegt die Helligkeit der Filterfarbe über 60 %, wird die Schrift dunkel gesetzt, sonst hell – Kontrast ≥ 4,5:1 ist Testfall |
 
 ### 2.2 `ProgressBar`

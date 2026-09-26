@@ -145,6 +145,21 @@
 .main[data-side='closed'] {
   grid-template-columns: minmax(0, 1fr) auto;
 }
+/* Feste Plätze (AP-26k): Karte links oben, Seitenbereich rechts daneben, Objekt und Nacht darunter über
+   die volle Breite – unabhängig von der Reihenfolge im Dokument (die automatische Platzierung hatte den
+   Seitenbereich hinter den Objektbereich in eine eigene Zeile geschoben). */
+.main > .map {
+  grid-column: 1;
+  grid-row: 1;
+}
+.main > .side {
+  grid-column: 2;
+  grid-row: 1;
+}
+.main > .below {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
 .main:fullscreen {
   padding: var(--npm-space-3);
   background: var(--npm-bg);
