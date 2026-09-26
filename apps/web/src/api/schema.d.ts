@@ -8961,6 +8961,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/reports/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Projektbericht: Zeitraum, Status, Rig, Typ
+         * @description Aktion: `project.read` · FA-AUS-18, FA-AUS-10, FA-AUS-11, FA-AUS-13, S-63
+         */
+        get: {
+            parameters: {
+                query?: {
+                    from?: string;
+                    to?: string;
+                    status?: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
+                    /** @description UUID */
+                    rigId?: string;
+                    type?: "deep_sky" | "exoplanet";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bericht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectReport"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/nina-instances": {
         parameters: {
             query?: never;
@@ -15550,6 +15623,119 @@ export interface components {
                 twilight: "astronomical" | "nautical" | "civil";
             };
         };
+        ProjectReport: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            from: string | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            to: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAt: string;
+            totals: {
+                projects: number;
+                periodAccepted: number;
+                periodIntegrationS: number;
+            };
+            projects: components["schemas"]["ReportProject"][];
+        };
+        ReportProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            /** @enum {string} */
+            projectType: "deep_sky" | "exoplanet";
+            targetName: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string | null;
+            rigName: string | null;
+            /** @enum {string} */
+            approvalStatus: "draft" | "submitted" | "approved" | "returned" | "rejected";
+            /** @enum {string|null} */
+            status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived" | null;
+            percentDone: number;
+            filters: components["schemas"]["ReportFilterTotal"][];
+            periodAccepted: number;
+            periodIntegrationS: number;
+            nights: components["schemas"]["ReportNight"][];
+            sessions: components["schemas"]["ReportSession"][];
+            conditions: {
+                minAltitudeDeg: number;
+                minTimeOnTargetH: number;
+                /** @enum {string} */
+                twilight: "astronomical" | "nautical" | "civil";
+                moonAvoidanceEnabled: boolean;
+                moonSeparationDeg: number;
+            };
+            channelBalance: components["schemas"]["ChannelBalanceHint"];
+        };
+        ReportFilterTotal: {
+            filter: string;
+            planned: number;
+            accepted: number;
+            remaining: number;
+            integrationS: number;
+            percentDone: number;
+        };
+        ReportNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            filters: {
+                filter: string;
+                acquired: number;
+                rejected: number;
+                accepted: number;
+                integrationS: number;
+                cumulativeS: number;
+            }[];
+        };
+        ReportSession: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            rigName: string;
+            status: string;
+            filters: {
+                filter: string;
+                frames: number;
+            }[];
+            frames: number;
+            rejectedPct: number | null;
+            weatherRatingIndex: number | null;
+        };
+        ChannelBalanceHint: {
+            behind: {
+                filter: string;
+                percentDone: number;
+            }[];
+            ahead: {
+                filter: string;
+                percentDone: number;
+            }[];
+        } | null;
         NinaInstanceView: {
             /**
              * Format: uuid

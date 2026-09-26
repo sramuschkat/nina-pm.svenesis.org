@@ -416,6 +416,19 @@ export const approvalApi = {
   drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
 };
 
+export type ProjectReport = Schemas['ProjectReport'];
+export type ReportProject = Schemas['ReportProject'];
+
+/** Projektbericht S-63 (AP-34): Zeitraum (Nacht-Schlüssel), Status, Rig, Typ. */
+export const reportsApi = {
+  projects: (q: { from?: string; to?: string; status?: string; rigId?: string; type?: string }) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(q)) if (v) p.set(k, v);
+    const s = p.toString();
+    return apiFetch<ProjectReport>(`${V1}/reports/projects${s ? `?${s}` : ''}`);
+  },
+};
+
 export type ForecastView = Schemas['ForecastView'];
 export type ForecastProject = Schemas['ForecastProject'];
 

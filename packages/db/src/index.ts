@@ -221,3 +221,4 @@ export {
   replaceForecast,
   type ForecastNightRow,
 } from './repositories/forecast';
+export { projectReportRows, type ReportRows } from './repositories/report';
