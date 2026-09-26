@@ -85,9 +85,12 @@ function pick<S extends z.ZodObject>(schema: S, row: object): z.output<S> {
   return out as z.output<S>;
 }
 
-const cameraView = (row: CameraRow) => pick(CameraView, row);
+export const cameraView = (row: CameraRow) => pick(CameraView, row);
 export const moonProfileView = (row: MoonProfileRow) => pick(MoonProfileView, row);
-const telescopeView = (row: TelescopeRow) => pick(TelescopeView, row);
+export const telescopeView = (row: TelescopeRow) => pick(TelescopeView, row);
+/** Standort und Filter wie in den Listen (auch für den Betriebsexport `ops-cli export-setup`). */
+export const siteView = (row: object) => pick(SiteView, row);
+export const filterView = (row: object) => pick(FilterView, row);
 
 function templateView(row: TemplateRow): z.output<typeof ExposureTemplateView> {
   return {

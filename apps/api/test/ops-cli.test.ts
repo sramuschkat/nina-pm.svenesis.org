@@ -33,6 +33,7 @@ beforeEach(async () => {
     failureQueueUrl: queueUrl,
     admin: () => Promise.resolve(new TenantAdminRepository(pg.db, { kind: 'ops_cli' })),
     equipment: (tenantId) => Promise.resolve(new EquipmentRepository(pg.db, { tenantId })),
+    database: () => Promise.resolve(pg.db),
     appOrigin: 'https://nina-pm.svenesis.org',
     now: () => new Date('2026-09-24T12:00:00Z'),
   };
@@ -68,6 +69,7 @@ describe('ops-cli', () => {
       'revoke-sessions',
       'seed',
       'list-failed-jobs',
+      'export-setup',
     ]);
   });
 
@@ -253,5 +255,59 @@ describe('ops-cli', () => {
     expect(rows.map((r) => r.action)).toEqual(
       expect.arrayContaining(['tenant.create', 'invitation.create']),
     );
+  });
+
+  it('export-setup: nur Test-Mandant, nur lesen – Ausrüstung, Rigs, Projekte, Mengen; ohne Tokens', async () => {
+    expect(await run({ command: 'export-setup', tenant: 'demo' })).toMatchObject({
+      ok: false,
+      output: { error: 'export.tenant_not_allowed' },
+    });
+    expect(await run({ command: 'export-setup', tenant: 'test' })).toMatchObject({
+      output: { error: 'tenant.not_found' },
+    });
+    await run({ command: 'create-tenant', key: 'test', name: 'Test' });
+    await run({ command: 'seed', tenant: 'test' });
+    const tenantId = (
+      (await pg.admin.query("SELECT id FROM tenant WHERE tenant_key = 'test'")).rows[0] as {
+        id: string;
+      }
+    ).id;
+    const rigId = (
+      (
+        await pg.admin.query('SELECT id FROM rig WHERE tenant_id = $1 ORDER BY name LIMIT 1', [
+          tenantId,
+        ])
+      ).rows[0] as { id: string }
+    ).id;
+    await pg.admin.query(
+      "INSERT INTO session (id, tenant_id, rig_id, night, started_at, status) VALUES ($1, $2, $3, '2026-09-20', '2026-09-20T20:00:00Z', 'completed')",
+      [crypto.randomUUID(), tenantId, rigId],
+    );
+    const res = await run({ command: 'export-setup', tenant: 'test' });
+    expect(res.ok).toBe(true);
+    const out = res.output as Record<string, unknown>;
+    expect(out).toMatchObject({
+      version: 1,
+      tenant: { key: 'test' },
+      evaluation: {
+        rows: { session: 1, capture: 0 },
+        sessionNights: { from: '2026-09-20', to: '2026-09-20' },
+        sessionsByRig: { [rigId]: 1 },
+      },
+    });
+    expect((out.sites as unknown[]).length).toBe(1);
+    expect((out.filters as { shortName: string }[]).map((f) => f.shortName)).toContain('Ha');
+    expect((out.rigs as { filterWheel: unknown[] }[]).some((r) => r.filterWheel.length === 7)).toBe(
+      true,
+    );
+    expect(JSON.stringify(out)).not.toMatch(/token|webhook/i);
+    // Nur lesen: nichts geändert außer dem System-Audit.
+    expect(
+      Number(
+        ((await pg.admin.query('SELECT count(*)::int AS n FROM session')).rows[0] as { n: number })
+          .n,
+      ),
+    ).toBe(1);
+    expect((await audit()).map((r) => r.action)).toContain('ops.export-setup');
   });
 });
