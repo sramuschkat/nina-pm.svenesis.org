@@ -222,3 +222,4 @@ export {
   type ForecastNightRow,
 } from './repositories/forecast';
 export { projectReportRows, type ReportRows } from './repositories/report';
+export { evaluationCounts, type EvaluationCounts } from './repositories/setup-export';

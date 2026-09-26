@@ -6,7 +6,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
-import type { EquipmentRepository, TenantAdminRepository } from '@nina-pm/db';
+import type { EquipmentRepository, OpenDatabase, TenantAdminRepository } from '@nina-pm/db';
 import { seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
 import {
   DiscordUserId,
@@ -19,6 +19,7 @@ import {
 import { z } from 'zod';
 import seedDemo from '../../../../docs/seed/seed-demo.json' with { type: 'json' };
 import { invitationLink, isoUtc } from '../lib/format';
+import { EXPORT_TENANT_KEY, runExportSetup } from './export-setup';
 
 export interface SqsLike {
   send(command: ReceiveMessageCommand): Promise<{
@@ -33,6 +34,8 @@ export interface OpsDeps {
   readonly admin: () => Promise<TenantAdminRepository>;
   /** Ausrüstung eines Mandanten (Seed, AP-09a); DB-Rolle app_rw. */
   readonly equipment: (tenantId: string) => Promise<EquipmentRepository>;
+  /** Datenbank (app_rw, nur lesend genutzt) für `export-setup`. */
+  readonly database: () => Promise<OpenDatabase['db']>;
   /** Basis-URL für Einladungslinks, z. B. https://nina-pm.svenesis.org. */
   readonly appOrigin: string;
   readonly now?: () => Date;
@@ -61,6 +64,8 @@ const HELP = {
   seed: '{"command":"seed","tenant":"test"} – Demo-Daten: Built-in-Mondprofile und Ausrüstung aus seed-demo.json (idempotent; Projekte folgen mit AP-12a).',
   'list-failed-jobs':
     'Zeigt bis zu 10 Nachrichten aus nina-pm-worker-failures, ohne sie zu löschen.',
+  'export-setup':
+    '{"command":"export-setup","tenant":"test"} – nur lesen: Aufbau des Test-Mandanten (Ausrüstung, Rigs, Projekte, Mengen der Auswertungsdaten) als JSON; lokal über `pnpm demo:export`.',
 } as const;
 
 type Command = keyof typeof HELP;
@@ -82,6 +87,7 @@ const Args = {
   'block-identity': z.object({ discordId: DiscordUserId, unblock: z.boolean().default(false) }),
   'revoke-sessions': z.object({ identity: z.union([DiscordUserId, Uuid]) }),
   seed: z.object({ tenant: TenantKey }),
+  'export-setup': z.object({ tenant: z.literal(EXPORT_TENANT_KEY) }),
 };
 
 /** Argumente ohne Werte, die nicht ins Protokoll gehören (hier keine Geheimnisse, aber keine Links). */
@@ -166,6 +172,14 @@ async function execute(
       const a = Args[command].parse(event);
       const ref = /^\d+$/.test(a.identity) ? { discordUserId: a.identity } : { id: a.identity };
       return { revoked: await (await deps.admin()).revokeSessions(ref, now) };
+    }
+    case 'export-setup': {
+      if (event.tenant !== EXPORT_TENANT_KEY)
+        return { error: 'export.tenant_not_allowed', hint: 'nur "tenant":"test"' };
+      Args[command].parse(event);
+      const tenant = await (await deps.admin()).tenantByKey(EXPORT_TENANT_KEY);
+      if (!tenant) return { error: 'tenant.not_found' };
+      return runExportSetup(await deps.database(), tenant, now);
     }
     case 'seed': {
       const a = Args[command].parse(event);
