@@ -14,5 +14,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     // Powertools-Logger in Tests stumm schalten.
     env: { POWERTOOLS_LOG_LEVEL: 'SILENT' },
+    // CI (private Repos: Runner mit 2 vCPU): beide Kerne nutzen – Standard wäre „Kerne − 1“ = ein Worker.
+    ...(process.env.CI ? { maxWorkers: 2 } : {}),
   },
 });

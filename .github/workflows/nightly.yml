@@ -1,6 +1,8 @@
 # Nächtliche Prüfungen nach TK 18 (AP-17): Abhängigkeits-Audit – ein kritischer Befund macht den Lauf
 # rot (Go-live-Checkliste „Abhängigkeits-Audit ohne kritische Befunde“). Engine-Benchmarks folgen mit
 # ihrem Paket. Kein AWS-Zugang (E1).
+# Seit 26.09.2026 zusätzlich Tests und E2E auf `main`: Pushes auf `main` prüfen nur noch lint, typecheck und
+# build (ci.yml) – hier fällt auf, wenn zwei einzeln grüne PRs zusammen nicht passen.
 name: nightly
 
 on:
@@ -24,3 +26,58 @@ jobs:
           node-version-file: .nvmrc
       - name: pnpm audit (kritisch = rot)
         run: pnpm audit --audit-level critical
+
+  main-tests:
+    name: Tests und E2E auf main
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ninapm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ninapm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - id: pw
+        name: Playwright-Version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Chromium installieren (nur ohne Cache)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Systembibliotheken für Chromium (mit Cache)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - run: pnpm e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-nightly
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
