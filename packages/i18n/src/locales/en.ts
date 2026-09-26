@@ -306,6 +306,7 @@ export const en: Messages = {
     unallocated: 'Not allocated',
     noReason: 'no diagnostic reason',
     card: {
+      pick: 'Select target – highlight its blocks in the night plan',
       window: 'Time window',
       hours: 'Allocated',
       altitude: 'Altitude',
@@ -330,7 +331,6 @@ export const en: Messages = {
       rotationFixed: 'matches the camera angle',
       rotationWarn: 'mismatch without rotator',
     },
-    result: 'Result',
     tab: {
       plan: 'Night plan (site time {{zone}})',
       targets: 'Target cards',

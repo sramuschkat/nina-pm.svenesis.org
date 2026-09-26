@@ -2,8 +2,9 @@
  * S-40 Nacht-Simulator (AP-13f; FK 6.7, 14.3; FA-SIM-01…08): Ergebnis zuerst (AP-26b). Oben eine
  * Kurzfassung der Einstellungen (Rig, Standort, Teleskop, Strategie, Wiedergabe) mit Schalter
  * *Einstellungen*, der Rigwahl, Entwürfe und Scheduler-Einstellungen (Admin bearbeitbar) auf- und
- * zuklappt – zugeklappt, sobald Rig und Nacht feststehen. Darunter Nachtwahl und das Ergebnis auf
- * Reitern: Nachtplan (Grafik, Zeitschieber), Planprotokoll (Kopieren/CSV), Zielkarten, Prüfungen.
+ * zuklappt – zugeklappt, sobald Rig und Nacht feststehen. Darunter Nachtwahl und das Ergebnis auf einer
+ * Seite (AP-26g): Zielkarten, Nachtplan (Grafik, Zeitschieber), Planprotokoll (kompakt, Kopieren/CSV),
+ * Prüfungen.
  * Daten: Rig, Projekte, Mondprofile und Nacht-Tabelle des Servers (NT-02) → `buildPlanInput`
  * → `planNight` im Web Worker. Entwürfe des Users nur lokal; Speichern als `night_plan`.
  * Seitengerüst `PageHeader` mit den NINA-Bereichsreitern, *Simulieren* als Hauptaktion rechts;
@@ -12,7 +13,7 @@
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import { formatTzAbbr, formatZonedTime, formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import {
@@ -31,7 +32,6 @@ import { NightChart } from '../../components/night-chart';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
-import { Tabs } from '../../components/Tabs';
 import { SchedulerForm } from '../equipment/RigsPage';
 import { NinaTabs } from '../nina/NinaLayout';
 import { UptakeStatus } from '../nina/UptakeStatus';
@@ -55,7 +55,6 @@ import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
 
 const EDITABLE_OWN = new Set(['draft', 'submitted', 'returned']);
-type ResultTab = 'plan' | 'protocol' | 'targets' | 'findings';
 const hm = (atUtc: string, tz: string) =>
   `${formatZonedTime(atUtc, tz)} ${formatTzAbbr(atUtc, tz)}`;
 const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -120,7 +119,8 @@ export function SimulatorPage() {
   const [copied, setCopied] = useState(false);
   /** `null` = Voreinstellung: aufgeklappt, solange Rig oder Nacht fehlen (AP-26b). */
   const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<ResultTab>('plan');
+  /** Gewähltes Ziel (Kartentitel): Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben (AP-26g). */
+  const [picked, setPicked] = useState<string | null>(null);
   const ids = { drafts: useId(), slider: useId(), settings: useId() };
 
   const rigList = rigs.data ?? [];
@@ -234,6 +234,13 @@ export function SimulatorPage() {
 
   const tz = site?.timeZone ?? 'UTC';
   const result = sim.data ?? null;
+  const highlighted = useMemo(
+    () =>
+      result && picked
+        ? result.plan.blocks.filter((b) => b.projectId === picked).map((b) => b.id)
+        : undefined,
+    [result, picked],
+  );
   const nowIso = new Date().toISOString();
   // Voreinstellung (AP-26b): aufgeklappt, solange Rig, Standort oder Nacht fehlen – dann gibt es kein
   // Ergebnis und die Einstellungen sind der Einstieg; sonst zugeklappt, das Ergebnis steht oben.
@@ -386,23 +393,6 @@ export function SimulatorPage() {
         <button type="button" className={styles.button} onClick={() => go({ nacht: null })}>
           {t('simulator.tonight')}
         </button>
-        <span className={styles.stats}>
-          {t('simulator.stats.siteTime', { time: hm(nowIso, tz) })}
-          {result ? (
-            <>
-              {' · '}
-              {t('simulator.stats.dark', {
-                hours: result.header.darkHours.toLocaleString(i18n.language),
-              })}
-              {' · '}
-              {t('simulator.stats.targets', { n: result.header.targets })}
-              {' · '}
-              {t('simulator.stats.frames', { n: result.header.frames })}
-              {' · '}
-              {t('simulator.stats.moon', { pct: result.header.moonIllumPct })}
-            </>
-          ) : null}
-        </span>
       </div>
 
       {sim.isError ? (
@@ -412,156 +402,171 @@ export function SimulatorPage() {
       ) : null}
 
       {result ? (
-        <div className={styles.results}>
-          <Tabs<ResultTab>
-            label={t('simulator.result')}
-            value={tab}
-            onChange={setTab}
-            panelClassName={styles.tabPanel}
-            tabs={[
-              {
-                key: 'plan',
-                label: t('simulator.tab.plan', {
-                  zone: formatTzAbbr(result.plan.nightWindow.startUtc, tz),
-                }),
-              },
-              { key: 'protocol', label: t('simulator.protocol') },
-              { key: 'targets', label: t('simulator.tab.targets') },
-              {
-                key: 'findings',
-                label: t('simulator.tab.findings'),
-                badge:
-                  result.plan.warnings.length > 0 ? (
-                    <>
-                      {' '}
-                      <span
-                        className={
-                          result.plan.warnings.some((w) => w.level === 'error')
-                            ? styles.badgeError
-                            : styles.badge
-                        }
-                      >
-                        {result.plan.warnings.length}
-                      </span>
-                    </>
-                  ) : undefined,
-              },
-            ]}
-            toolbar={
-              tab === 'protocol' ? (
-                <>
-                  {copied ? (
-                    <span className={styles.muted} role="status">
-                      {t('simulator.copied')}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() =>
-                      void navigator.clipboard
-                        ?.writeText(protocolTsv(result.protocol, t, tz))
-                        .then(() => setCopied(true))
-                    }
-                  >
-                    <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
-                    {t('simulator.copy')}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() =>
-                      downloadCsv(protocolCsv(result.protocol, t, tz), night ?? 'plan')
-                    }
-                  >
-                    <actionIcons.export size={ICON_SIZE.button} aria-hidden />
-                    {t('simulator.csv')}
-                  </button>
-                </>
-              ) : null
-            }
-            panels={{
-              plan: (
-                <>
-                  <NightChart
-                    {...result.chart}
-                    variant="plan"
-                    cursorUtc={cursor}
-                    onCursorChange={setCursor}
-                    height={300}
-                    state="ready"
-                  />
-                  <TimeSlider
-                    id={ids.slider}
-                    result={result}
+        <>
+          {/* Ergebnis auf einer Seite (AP-26g, Vorlage Sven 26.09.2026): Zielkarten, Nachtplan, Planprotokoll,
+              Prüfungen – untereinander statt auf Reitern. */}
+          <section className={styles.block} aria-labelledby={`${ids.settings}-targets`}>
+            <h2 id={`${ids.settings}-targets`} className={styles.blockTitle}>
+              {t('simulator.tab.targets')}
+            </h2>
+            {result.cards.length === 0 && result.unallocated.length === 0 ? (
+              <p className={styles.note}>{t('simulator.empty')}</p>
+            ) : (
+              <div className={styles.cards}>
+                {result.cards.map((c) => (
+                  <TargetCardView
+                    key={c.projectId}
+                    card={c}
+                    selected={picked === c.projectId}
+                    onSelect={() => setPicked(picked === c.projectId ? null : c.projectId)}
                     tz={tz}
-                    value={cursor}
-                    onChange={setCursor}
+                    hasRotator={rig?.hasRotator ?? false}
+                    canToggle={canToggle}
+                    onToggle={(lineId, enabled) =>
+                      toggle.mutate({ projectId: c.projectId, lineId, enabled })
+                    }
                   />
-                </>
-              ),
-              protocol: (
-                <DataTable
-                  columns={protocolColumns(t, tz)}
-                  rows={result.protocol}
-                  rowKey={(r) => r.key}
-                  rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
-                  label={t('simulator.protocol')}
-                />
-              ),
-              targets: (
-                <>
-                  {result.cards.length === 0 && result.unallocated.length === 0 ? (
-                    <p className={styles.note}>{t('simulator.empty')}</p>
-                  ) : (
-                    <div className={styles.cards}>
-                      {result.cards.map((c) => (
-                        <TargetCardView
-                          key={c.projectId}
-                          card={c}
-                          tz={tz}
-                          hasRotator={rig?.hasRotator ?? false}
-                          canToggle={canToggle}
-                          onToggle={(lineId, enabled) =>
-                            toggle.mutate({ projectId: c.projectId, lineId, enabled })
-                          }
-                        />
+                ))}
+                {result.unallocated.length > 0 ? (
+                  <article className={styles.card} aria-label={t('simulator.unallocated')}>
+                    <h3>{t('simulator.unallocated')}</h3>
+                    <ul className={styles.plain}>
+                      {result.unallocated.map((u) => (
+                        <li key={u.projectId}>
+                          <strong>{u.name}</strong>{' '}
+                          <span className={styles.muted}>
+                            {u.reasons.length === 0
+                              ? t('simulator.noReason')
+                              : [
+                                  ...new Set(
+                                    u.reasons.map((r) =>
+                                      t(`effort.reason.${r.reason}`, {
+                                        defaultValue: r.reason,
+                                      }),
+                                    ),
+                                  ),
+                                ].join(', ')}
+                          </span>
+                        </li>
                       ))}
-                      {result.unallocated.length > 0 ? (
-                        <article className={styles.card} aria-label={t('simulator.unallocated')}>
-                          <h3>{t('simulator.unallocated')}</h3>
-                          <ul className={styles.plain}>
-                            {result.unallocated.map((u) => (
-                              <li key={u.projectId}>
-                                <strong>{u.name}</strong>{' '}
-                                <span className={styles.muted}>
-                                  {u.reasons.length === 0
-                                    ? t('simulator.noReason')
-                                    : [
-                                        ...new Set(
-                                          u.reasons.map((r) =>
-                                            t(`effort.reason.${r.reason}`, {
-                                              defaultValue: r.reason,
-                                            }),
-                                          ),
-                                        ),
-                                      ].join(', ')}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </article>
-                      ) : null}
-                    </div>
-                  )}
-                  {toggle.error ? <ProblemMessage code={problemCode(toggle.error)} /> : null}
+                    </ul>
+                  </article>
+                ) : null}
+              </div>
+            )}
+            {toggle.error ? <ProblemMessage code={problemCode(toggle.error)} /> : null}
+          </section>
+
+          <section className={styles.block} aria-labelledby={`${ids.settings}-plan`}>
+            <div className={styles.blockHead}>
+              <h2 id={`${ids.settings}-plan`} className={styles.blockTitle}>
+                {t('simulator.tab.plan', {
+                  zone: formatTzAbbr(result.plan.nightWindow.startUtc, tz),
+                })}
+              </h2>
+              <span className={styles.stats}>
+                {t('simulator.stats.siteTime', { time: hm(nowIso, tz) })}
+                {result ? (
+                  <>
+                    {' · '}
+                    {t('simulator.stats.dark', {
+                      hours: result.header.darkHours.toLocaleString(i18n.language),
+                    })}
+                    {' · '}
+                    {t('simulator.stats.targets', { n: result.header.targets })}
+                    {' · '}
+                    {t('simulator.stats.frames', { n: result.header.frames })}
+                    {' · '}
+                    {t('simulator.stats.moon', { pct: result.header.moonIllumPct })}
+                  </>
+                ) : null}
+              </span>
+            </div>
+            <NightChart
+              {...result.chart}
+              variant="plan"
+              cursorUtc={cursor}
+              onCursorChange={setCursor}
+              highlightBlockIds={highlighted}
+              height={300}
+              state="ready"
+            />
+            <TimeSlider
+              id={ids.slider}
+              result={result}
+              tz={tz}
+              value={cursor}
+              onChange={setCursor}
+            />
+          </section>
+
+          <section className={styles.block} aria-labelledby={`${ids.settings}-log`}>
+            <div className={styles.blockHead}>
+              <h2 id={`${ids.settings}-log`} className={styles.blockTitle}>
+                {t('simulator.protocol')}
+              </h2>
+              <div className={styles.blockTools}>
+                {copied ? (
+                  <span className={styles.muted} role="status">
+                    {t('simulator.copied')}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() =>
+                    void navigator.clipboard
+                      ?.writeText(protocolTsv(result.protocol, t, tz))
+                      .then(() => setCopied(true))
+                  }
+                >
+                  <actionIcons.duplicate size={ICON_SIZE.button} aria-hidden />
+                  {t('simulator.copy')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => downloadCsv(protocolCsv(result.protocol, t, tz), night ?? 'plan')}
+                >
+                  <actionIcons.export size={ICON_SIZE.button} aria-hidden />
+                  {t('simulator.csv')}
+                </button>
+              </div>
+            </div>
+            <div className={styles.logBox}>
+              <DataTable
+                className={styles.log}
+                columns={protocolColumns(t, tz)}
+                rows={result.protocol}
+                rowKey={(r) => r.key}
+                rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
+                label={t('simulator.protocol')}
+              />
+            </div>
+          </section>
+
+          <section className={styles.block} aria-labelledby={`${ids.settings}-findings`}>
+            <h2 id={`${ids.settings}-findings`} className={styles.blockTitle}>
+              {t('simulator.tab.findings')}
+              {result.plan.warnings.length > 0 ? (
+                <>
+                  {' '}
+                  <span
+                    className={
+                      result.plan.warnings.some((w) => w.level === 'error')
+                        ? styles.badgeError
+                        : styles.badge
+                    }
+                  >
+                    {result.plan.warnings.length}
+                  </span>
                 </>
-              ),
-              findings: <Findings result={result} tz={tz} />,
-            }}
-          />
-          <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
-        </div>
+              ) : null}
+            </h2>
+            <Findings result={result} tz={tz} />
+            <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
+          </section>
+        </>
       ) : null}
     </div>
   );
@@ -584,8 +589,12 @@ function TargetCardView({
   hasRotator,
   canToggle,
   onToggle,
+  selected,
+  onSelect,
 }: {
   card: TargetCard;
+  selected: boolean;
+  onSelect: () => void;
   tz: string;
   hasRotator: boolean;
   canToggle: boolean;
@@ -621,10 +630,23 @@ function TargetCardView({
     },
   ];
   return (
-    <article className={styles.card} aria-label={card.name}>
+    <article
+      className={styles.card}
+      aria-label={card.name}
+      data-selected={selected ? 'true' : undefined}
+      style={{ '--card-color': card.color } as CSSProperties}
+    >
       <h3 className={styles.cardTitle}>
-        <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
-        {card.name}
+        <button
+          type="button"
+          className={styles.cardPick}
+          aria-pressed={selected}
+          title={t('simulator.card.pick')}
+          onClick={onSelect}
+        >
+          <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
+          {card.name}
+        </button>
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
       </h3>
       <dl className={styles.facts}>

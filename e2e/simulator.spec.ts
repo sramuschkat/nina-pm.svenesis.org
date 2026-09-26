@@ -2,7 +2,7 @@
  * AP-13f: S-40 Nacht-Simulator gegen den lokalen Stack. Browserzone Europe/Berlin (Konfiguration),
  * Standort America/Chicago: Nacht 17./18.09.2026 zeigt Blockzeiten in CDT, der Plan-Hash des Browsers
  * (Web Worker) ist gleich dem Node-Lauf mit der Server-Tabelle (NT-46). Dazu axe hell/dunkel, 768/2400 px.
- * AP-26b: Ergebnis zuerst auf Reitern (Nachtplan, Planprotokoll, Zielkarten, Prüfungen), Einstellungen
+ * AP-26b/26g: Ergebnis zuerst auf einer Seite (Zielkarten, Nachtplan, Planprotokoll, Prüfungen), Einstellungen
  * über den Schalter *Einstellungen* einklappbar (bei Rig und Nacht in der URL zugeklappt).
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -137,16 +137,14 @@ test('S-40: Plan für die Seed-Daten, Blockzeiten in CDT, Hash = Node-Lauf', asy
     'aria-expanded',
     'false',
   );
-  await expect(admin.getByRole('tab', { name: /Nachtplan \(Standortzeit CDT\)/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await admin.getByRole('tab', { name: 'Zielkarten', exact: true }).click();
+  // Ergebnis auf einer Seite (AP-26g): Zielkarten, Nachtplan, Planprotokoll untereinander.
+  await expect(
+    admin.getByRole('heading', { level: 2, name: /Nachtplan \(Standortzeit CDT\)/ }),
+  ).toBeVisible();
   const card = admin.getByRole('article', { name: s.name });
   await expect(card).toBeVisible();
   // Browser in Europe/Berlin, Standort in Chicago: Zeiten in Standortzeit mit Kürzel CDT.
   await expect(card).toContainText(/\d\d:\d\d CDT – \d\d:\d\d CDT/);
-  await admin.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
   await expect(admin.getByRole('cell', { name: /CDT$/ }).first()).toBeVisible();
   expect(await hash.textContent()).toBe(`Plan-Hash ${await nodeHash(admin, s)}`);
 
@@ -178,7 +176,6 @@ for (const theme of ['light', 'dark'] as const) {
       'aria-expanded',
       'true',
     );
-    await admin.getByRole('tab', { name: 'Planprotokoll', exact: true }).click();
     const expanded = await new AxeBuilder({ page: admin }).analyze();
     expect(
       expanded.violations

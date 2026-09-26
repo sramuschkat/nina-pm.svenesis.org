@@ -306,6 +306,7 @@ export const de = {
     unallocated: 'Nicht zugeteilt',
     noReason: 'ohne Diagnosegrund',
     card: {
+      pick: 'Ziel wählen – seine Blöcke im Nachtplan hervorheben',
       window: 'Zeitfenster',
       hours: 'Zugeteilt',
       altitude: 'Höhe',
@@ -330,7 +331,6 @@ export const de = {
       rotationFixed: 'passt zum Kamerawinkel',
       rotationWarn: 'Abweichung ohne Rotator',
     },
-    result: 'Ergebnis',
     tab: {
       plan: 'Nachtplan (Standortzeit {{zone}})',
       targets: 'Zielkarten',
