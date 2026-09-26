@@ -56,7 +56,9 @@ test('S-30: Löschen → Papierkorb → Wiederherstellen; User sieht den Papierk
   const name = `E2E-Papierkorb ${String(Date.now())}`;
   await createProject(page, name, 'Galaxie');
   await page.goto('/projekte');
-  await page.getByRole('button', { name: `„${name}“ löschen` }).click();
+  // Löschen im Zeilenmenü ⋯ (AP-26d).
+  await page.getByRole('button', { name: `Weitere Aktionen zu ${name}` }).click();
+  await page.getByRole('menuitem', { name: 'Löschen' }).click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog).toContainText('Papierkorb');
   await dialog.getByRole('button', { name: 'Löschen' }).click();

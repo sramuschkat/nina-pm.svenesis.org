@@ -1,18 +1,26 @@
 // @vitest-environment jsdom
 /**
- * Startseite als Übersicht (AP-26c): Kopf mit Mandant und Datum in Mandantenzeit, *Neues Projekt* nur mit
- * Recht; Karten Warteschlange (offen, ohne meine Stimme, Stimme wie S-33, eigenes gesperrt), Wetter heute
- * (Farbband der kommenden Nacht, bestes Fenster in Standortzeit), Aktive Projekte je Rig, Letzte Sessions;
- * Leer- und Fehlerzustände; System-Kontext unverändert; axe.
+ * Startseite als Übersicht (AP-26c, AP-26d): Kopf mit Mandant und Datum in Mandantenzeit, *Neues Projekt*
+ * nur mit Recht; Kennzahlen (aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht);
+ * Karten Warteschlange (Stimme wie S-33, eigenes gesperrt), Wetter heute Nacht (Farbband der kommenden
+ * Nacht, bestes Fenster in Standortzeit), Aktive Projekte je Rig als Tabelle, Letzte Sessions; Leer- und
+ * Fehlerzustände; System-Kontext unverändert; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
-import type { Me, NightSession, ProjectListItem, QueueItem, WeatherView } from '../../api/client';
+import type {
+  Me,
+  NightSession,
+  ProjectListItem,
+  QueueItem,
+  SiteView,
+  WeatherView,
+} from '../../api/client';
 import { AuthProvider } from '../../auth';
-import { HomePage, tonight } from './HomePage';
+import { HomePage, monthIntegration, nextGoodNight, tonight } from './HomePage';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const ME = ID(3);
@@ -150,7 +158,7 @@ const SITE = {
   latitudeDeg: 31.5471,
   longitudeDeg: -99.3823,
   timeZone: 'America/Chicago',
-};
+} as unknown as SiteView;
 
 const hour = (tUtc: string, score: number | null, sunAltDeg: number) => ({
   tUtc,
@@ -250,6 +258,44 @@ describe('Modell', () => {
     expect(tonight(weatherView(), Date.UTC(2026, 8, 26))?.window.night).toBe('2026-09-24');
     expect(tonight({ ...weatherView(), nightWindows: [] }, Date.UTC(2026, 8, 24))).toBeNull();
   });
+
+  it('monthIntegration: Summe und Nächte mit Aufnahmen im Monat', () => {
+    const sessions = [
+      session(1, { night: '2026-09-01', integrationS: 3_600 }),
+      session(2, { night: '2026-09-01', integrationS: 1_800 }),
+      session(3, { night: '2026-09-05', integrationS: 0 }),
+      session(4, { night: '2026-08-31', integrationS: 7_200 }),
+    ];
+    expect(monthIntegration(sessions, '2026-09')).toEqual({ seconds: 5_400, nights: 1 });
+    expect(monthIntegration([], '2026-09')).toEqual({ seconds: 0, nights: 0 });
+  });
+
+  it('nextGoodNight: erste Nacht mit Dunkelheit und mindestens „Gut“, früheste über alle Standorte', () => {
+    const now = Date.UTC(2026, 8, 24, 20, 0);
+    const view = weatherView();
+    const [night] = view.nights;
+    if (!night) throw new Error('Testdaten');
+    const poor = { ...night, night: '2026-09-24', ratingIndex: 2 };
+    const later = { ...night, night: '2026-09-26', ratingIndex: 4 };
+    const other = { ...SITE, id: ID(601), name: 'Remote' };
+    expect(nextGoodNight([{ site: SITE, view }], now)?.night.night).toBe('2026-09-24');
+    const best = nextGoodNight(
+      [
+        { site: SITE, view: { ...view, nights: [poor, later] } },
+        { site: other, view: { ...view, nights: [{ ...night, night: '2026-09-25' }] } },
+      ],
+      now,
+    );
+    expect(best?.site.name).toBe('Remote');
+    expect(best?.night.night).toBe('2026-09-25');
+    expect(
+      nextGoodNight(
+        [{ site: SITE, view: { ...view, nights: [{ ...night, darkFromUtc: null }] } }],
+        now,
+      ),
+    ).toBeNull();
+    expect(nextGoodNight([{ site: SITE, view: undefined }], now)).toBeNull();
+  });
 });
 
 describe('Startseite (Mandant)', () => {
@@ -276,9 +322,27 @@ describe('Startseite (Mandant)', () => {
       '/projekte/neu',
     );
 
+    // Kennzahlen: aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht
+    const kpis = screen.getByRole('list', { name: 'Kennzahlen' });
+    const tile = (label: string) =>
+      within(kpis)
+        .getAllByRole('listitem')
+        .find((li) => li.textContent?.startsWith(label));
+    await waitFor(() =>
+      expect(tile('Aktive Projekte')).toHaveTextContent('Aktive Projekte2auf 2 Rigs'),
+    );
+    await waitFor(() =>
+      expect(tile('Warteschlange')).toHaveTextContent('Warteschlange3 offen1 ohne deine Stimme'),
+    );
+    await waitFor(() =>
+      expect(tile('Integration September')).toHaveTextContent('12,0 h6 Nächte mit Aufnahmen'),
+    );
+    await waitFor(() =>
+      expect(tile('Nächste gute Nacht')).toHaveTextContent('24./25.09.Starfront · Gut 78 %'),
+    );
+
     // Warteschlange
     const queue = await card('Warteschlange');
-    expect(await within(queue).findByText('3 offen · 1 ohne deine Stimme')).toBeInTheDocument();
     expect(within(queue).getByRole('link', { name: 'Objekt 1' })).toHaveAttribute(
       'href',
       `/projekte/${ID(101)}`,
@@ -298,8 +362,8 @@ describe('Startseite (Mandant)', () => {
       '/projekte/warteschlange',
     );
 
-    // Wetter heute: Farbband der Nacht 24./25.09. in Standortzeit
-    const weather = await card('Wetter heute');
+    // Wetter heute Nacht: Farbband der Nacht 24./25.09. in Standortzeit
+    const weather = await card('Wetter heute Nacht');
     expect(
       await within(weather).findByRole('img', {
         name: 'Stündliche Bewertung der Nacht 24./25.09. in Starfront',
@@ -318,10 +382,13 @@ describe('Startseite (Mandant)', () => {
       '/wetter',
     );
 
-    // Aktive Projekte je Rig
+    // Aktive Projekte je Rig: eine Tabelle, Rig als Gruppenzeile
     const projects = await card('Aktive Projekte');
-    expect(await within(projects).findByRole('heading', { name: 'Rig A' })).toBeInTheDocument();
-    expect(within(projects).getByRole('heading', { name: 'Rig B' })).toBeInTheDocument();
+    expect(
+      await within(projects).findByRole('columnheader', { name: 'Rig A' }),
+    ).toBeInTheDocument();
+    expect(within(projects).getByRole('columnheader', { name: 'Rig B' })).toBeInTheDocument();
+    expect(within(projects).getAllByRole('table')).toHaveLength(1);
     expect(within(projects).getByRole('link', { name: 'Projekt 1' })).toHaveAttribute(
       'href',
       `/projekte/${ID(201)}`,
@@ -356,7 +423,7 @@ describe('Startseite (Mandant)', () => {
       await within(await card('Warteschlange')).findByText('Keine offenen Einreichungen.'),
     ).toBeInTheDocument();
     expect(
-      await within(await card('Wetter heute')).findByText('Noch kein Standort angelegt.'),
+      await within(await card('Wetter heute Nacht')).findByText('Noch kein Standort angelegt.'),
     ).toBeInTheDocument();
     expect(
       await within(await card('Aktive Projekte')).findByText('Keine aktiven Projekte.'),
@@ -364,6 +431,11 @@ describe('Startseite (Mandant)', () => {
     expect(
       await within(await card('Letzte Sessions')).findByText('Noch keine Sessions.'),
     ).toBeInTheDocument();
+    // Kennzahlen ohne Daten: Nullwerte, keine gute Nacht in Sicht.
+    const kpis = screen.getByRole('list', { name: 'Kennzahlen' });
+    await waitFor(() => expect(kpis).toHaveTextContent('kein Projekt in Arbeit'));
+    await waitFor(() => expect(kpis).toHaveTextContent('Nächste gute Nachtkeine in Sicht'));
+    expect(kpis).toHaveTextContent('0,0 h0 Nächte mit Aufnahmen');
     await expectNoSeriousA11y();
   });
 
@@ -376,7 +448,7 @@ describe('Startseite (Mandant)', () => {
     expect(await within(queue).findByRole('alert')).toBeInTheDocument();
     expect(within(queue).getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
     expect(
-      await within(await card('Wetter heute')).findByText(/noch keine Vorhersage vor/),
+      await within(await card('Wetter heute Nacht')).findByText(/noch keine Vorhersage vor/),
     ).toBeInTheDocument();
   });
 
@@ -388,6 +460,11 @@ describe('Startseite (Mandant)', () => {
     expect(screen.queryByRole('region', { name: 'Warteschlange' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Letzte Sessions' })).toBeNull();
     expect(screen.getByRole('region', { name: 'Aktive Projekte' })).toBeInTheDocument();
+    // Kennzahlen nur mit dem Recht der Zielseite.
+    const kpis = screen.getByRole('list', { name: 'Kennzahlen' });
+    expect(within(kpis).getAllByRole('listitem')).toHaveLength(2);
+    expect(kpis).not.toHaveTextContent('Warteschlange');
+    expect(kpis).not.toHaveTextContent('Integration');
   });
 });
 

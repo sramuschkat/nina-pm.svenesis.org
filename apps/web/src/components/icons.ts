@@ -5,6 +5,7 @@
 import {
   ArchiveRestore,
   Bell,
+  CalendarRange,
   ChartLine,
   Check,
   CircleHelp,
@@ -138,6 +139,8 @@ export const uiIcons = {
   /** Detailzeile auf-/zuklappen (DataTable, AP-26a). */
   detailClosed: ChevronRight,
   detailOpen: ChevronDown,
+  /** Saisondiagramm eines Objekts (Objektbrowser, AP-26d). */
+  season: CalendarRange,
   /** Aktiven Filter entfernen (Chip in der FilterBar, AP-26c). */
   remove: X,
 } as const;

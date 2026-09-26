@@ -1,8 +1,9 @@
-/* Verwaltungsseiten (S-70…S-73, S-80…S-82): volle Breite, Abstände über --npm-space-*, Farben über Tokens. */
+/* Grundklassen aller Arbeitsseiten (Stilsystem AP-26d; Ausrüstung und Projekte komponieren sie): volle
+   Breite, Karten als einzige Fläche, Steuerhöhe --npm-row-h, Abstände über --npm-space-*, Farben über Tokens. */
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-5);
+  gap: var(--npm-space-4);
   min-width: 0;
 }
 .head {
@@ -22,34 +23,41 @@
   border-bottom: 1px solid var(--npm-border);
 }
 .tab {
-  padding: var(--npm-space-2) var(--npm-space-4);
-  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  min-height: calc(var(--npm-row-h) + 4px);
   display: inline-flex;
   align-items: center;
-  color: var(--npm-text);
-  border-bottom: 3px solid transparent;
+  color: var(--npm-text-light);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
 .tab:hover {
   text-decoration: none;
-  color: var(--npm-link);
+  color: var(--npm-text);
 }
 .tab[aria-current='page'] {
   border-bottom-color: var(--npm-accent);
   font-weight: 600;
-  color: var(--npm-link);
+  color: var(--npm-text);
 }
+/* Karte: einzige Fläche der Arbeitsseiten. Das Layout (Abstand, Richtung, Innenabstand) steht in
+   `:where()` ohne Spezifität, damit Seiten, die `panel` komponieren, es unabhängig von der
+   Ladereihenfolge der Stylesheets überschreiben können (AP-26d). */
 .panel {
   background: var(--npm-white);
-  border-radius: var(--npm-radius);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
   box-shadow: var(--npm-shadow);
-  padding: var(--npm-space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-4);
   min-width: 0;
 }
+:where(.panel) {
+  padding: var(--npm-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+}
 .panel h2 {
-  font-size: var(--npm-font-h3);
+  font-size: var(--npm-font-h2);
 }
 .split {
   display: grid;
@@ -73,20 +81,23 @@
 .table th,
 .table td {
   text-align: left;
-  padding: 0 var(--npm-space-2);
-  height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  height: calc(var(--npm-row-h) + 12px);
   border-top: 1px solid var(--npm-border);
   vertical-align: middle;
 }
 .table th {
+  height: calc(var(--npm-row-h) + 4px);
   font-weight: 600;
   color: var(--npm-text-light);
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-label);
+  background: var(--npm-surface-sub);
   border-top: none;
+  border-bottom: 1px solid var(--npm-border);
   white-space: nowrap;
 }
 .table tr[aria-selected='true'] td {
-  background: var(--npm-note-bg);
+  background: var(--npm-selected-bg);
 }
 .num {
   text-align: right !important;
@@ -132,17 +143,22 @@
 .field label,
 .label {
   font-weight: 600;
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
 }
 .input {
   min-height: var(--npm-row-h);
-  padding: 0 var(--npm-space-2);
-  border: 1px solid var(--npm-border);
-  border-radius: calc(var(--npm-radius) / 2);
-  background: var(--npm-bg);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
   color: var(--npm-text);
   font-size: var(--npm-font-field);
   width: 100%;
+}
+.input:disabled {
+  background: var(--npm-surface-sub);
+  color: var(--npm-text-light);
 }
 textarea.input {
   padding: var(--npm-space-2);
@@ -160,35 +176,44 @@ textarea.input {
   flex-wrap: wrap;
   gap: var(--npm-space-2);
 }
+/* Knöpfe: primär (Hauptaktion, rechts), sekundär, Gefahr nur als Text (Stilsystem AP-26d). */
 .button,
 .buttonPrimary,
 .buttonDanger {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--npm-space-2);
   min-height: var(--npm-row-h);
-  padding: 0 var(--npm-space-4);
+  padding: 0 var(--npm-space-3);
   border-radius: var(--npm-radius);
-  border: 1px solid var(--npm-border);
+  border: 1px solid var(--npm-border-strong);
   background: var(--npm-white);
   color: var(--npm-text);
-  font-weight: 600;
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
 }
 .button:hover:not(:disabled) {
-  border-color: var(--npm-accent);
+  background: var(--npm-neutral-bg);
+  text-decoration: none;
 }
 .buttonPrimary {
   background: var(--npm-button);
   border-color: var(--npm-button);
   color: var(--npm-on-button);
+  font-weight: 600;
 }
 .buttonPrimary:hover:not(:disabled) {
   background: var(--npm-button-hover);
+  border-color: var(--npm-button-hover);
+  color: var(--npm-on-button);
+  text-decoration: none;
 }
 .buttonDanger {
   color: var(--npm-danger);
-  border-color: var(--npm-danger);
+  border-color: transparent;
+  background: transparent;
 }
 .buttonDanger:hover:not(:disabled) {
   background: var(--npm-danger-bg);
@@ -199,32 +224,33 @@ textarea.input {
   opacity: 0.6;
   cursor: default;
 }
+/* Weiche Kennzeichen: getönte Fläche statt Rahmen (Stilsystem AP-26d). */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
-  padding: 2px var(--npm-space-2);
+  min-height: 22px;
+  padding: 0 var(--npm-space-2);
   border-radius: 999px;
   font-size: var(--npm-font-label);
   font-weight: 600;
-  border: 1px solid var(--npm-border);
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text-light);
   white-space: nowrap;
 }
 .pillOk {
   composes: pill;
   color: var(--npm-success);
-  border-color: var(--npm-success);
+  background: var(--npm-success-bg);
 }
 .pillWarn {
   composes: pill;
   color: var(--npm-warning);
-  border-color: var(--npm-warning);
   background: var(--npm-warning-bg);
 }
 .pillDanger {
   composes: pill;
   color: var(--npm-danger);
-  border-color: var(--npm-danger);
   background: var(--npm-danger-bg);
 }
 .linkBox {

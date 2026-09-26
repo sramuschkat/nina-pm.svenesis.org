@@ -426,10 +426,7 @@ describe('S-21 Objektbrowser', () => {
     renderPage();
     await screen.findByText('M 31');
     const href =
-      screen
-        .getAllByRole('link', { name: 'Sternkarte' })
-        .map((l) => l.getAttribute('href') ?? '')
-        .find((h) => h.includes('objekt=')) ?? '';
+      screen.getByRole('link', { name: 'M 31 in der Sternkarte' }).getAttribute('href') ?? '';
     expect(href).toMatch(/^\/planung\/sternkarte\?/);
     const q = new URLSearchParams(href.split('?')[1]);
     expect(q.get('objekt')).toBe('NGC 224');
@@ -439,13 +436,40 @@ describe('S-21 Objektbrowser', () => {
   it('Projekt anlegen führt in den Editor mit Objekt und Rig', async () => {
     state.rigs = [rig];
     renderPage();
-    const link = await screen.findByRole('link', { name: 'Projekt anlegen' });
+    const link = await screen.findByRole('link', { name: 'Projekt anlegen für M 31' });
     fireEvent.click(link);
     await waitFor(() =>
       expect(screen.getByTestId('where')).toHaveTextContent(
         `/projekte/neu?objekt=NGC+224&rig=${ID(500)}`,
       ),
     );
+  });
+
+  it('Kopf und Zeilenaktionen (AP-26d): ein h1 ohne Brotkrumen, Reiter darunter; Saison und Sternkarte als Symbolknöpfe mit Objektnamen', async () => {
+    state.rigs = [rig];
+    renderPage();
+    const row = (await screen.findByText('M 31')).closest('tr') as HTMLElement;
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Objektbrowser' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: /Brotkrumen|›/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Planungsbereiche' })).toBeInTheDocument();
+    // Rig und Nacht in der Kontextleiste, nicht im Reiterinhalt.
+    const context = screen.getByRole('region', { name: 'Rig und Nacht' });
+    expect(within(context).getByRole('button', { name: 'Heute Nacht' })).toBeInTheDocument();
+    // Eine Zeile: zwei Symbolknöpfe (nur zugänglicher Name) und *Projekt*.
+    const season = within(row).getByRole('button', { name: 'Saison von M 31' });
+    expect(season).toHaveAttribute('aria-expanded', 'false');
+    expect(season).toHaveTextContent('');
+    const map = within(row).getByRole('link', { name: 'M 31 in der Sternkarte' });
+    expect(map).toHaveTextContent('');
+    expect(map.getAttribute('href')).toMatch(/^\/planung\/sternkarte\?/);
+    expect(within(row).getByRole('link', { name: 'Projekt anlegen für M 31' })).toHaveTextContent(
+      'Projekt',
+    );
+    fireEvent.click(season);
+    expect(season).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByText('Saisondiagramm: M 31')).toBeInTheDocument();
+    await expectNoSeriousA11y();
   });
 
   it('Galerie: 320 px, bei Fehler 128 px, sonst leeres Feld', async () => {

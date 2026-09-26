@@ -17,9 +17,3 @@
   font-size: var(--npm-font-label);
   font-weight: 600;
 }
-.detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}

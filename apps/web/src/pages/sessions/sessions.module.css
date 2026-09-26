@@ -3,12 +3,6 @@
 .page {
   composes: page from '../admin/admin.module.css';
 }
-.head {
-  composes: head from '../admin/admin.module.css';
-}
-.panel {
-  composes: panel from '../admin/admin.module.css';
-}
 .tableWrap {
   composes: tableWrap from '../admin/admin.module.css';
 }
@@ -69,18 +63,35 @@
   align-items: flex-end;
   gap: var(--npm-space-3);
 }
-.summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-2) var(--npm-space-3);
-  margin: 0;
-  font-variant-numeric: tabular-nums;
+/* Reiter Soll/Ist, Aufnahmen, Ereignisse, Flats (Tabs, AP-26b) in einer Karte (Stilsystem AP-26d). */
+.tabCard,
+.listCard {
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+  min-width: 0;
+  overflow: clip;
 }
-/* Inhalt der Reiter Soll/Ist, Aufnahmen, Ereignisse, Flats (Tabs, AP-26b) */
 .tabPanel {
-  composes: panel;
-  margin-top: var(--npm-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-4);
+  min-width: 0;
+}
+/* Sessionliste: Filterzeile oben mit Trennlinie, Tabelle bis an den Kartenrand. */
+.listBar {
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.listNote {
+  margin: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+.rigSelect {
+  width: auto;
+  min-width: 14rem;
 }
 .flags {
   display: flex;

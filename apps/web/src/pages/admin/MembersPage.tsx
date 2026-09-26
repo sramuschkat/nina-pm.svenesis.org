@@ -75,8 +75,8 @@ export function MembersPage() {
       title={t('admin.members.title')}
       actions={
         <>
-          <InviteDialog />
           <OwnerTransferDialog members={list} />
+          <InviteDialog />
         </>
       }
     >

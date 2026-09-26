@@ -18,18 +18,20 @@ import styles from './equipment.module.css';
 import {
   CheckField,
   DeleteDialog,
+  DetailHead,
   EquipmentLayout,
-  FormActions,
   ListDetail,
   NewButton,
   NumberField,
   PickList,
+  SaveError,
   SelectField,
   TextField,
   UsageNotice,
   useEditor,
   useFieldError,
   useNumber,
+  useRigUsage,
 } from './shared';
 
 interface GainModeDraft {
@@ -139,6 +141,10 @@ export function readoutMismatch(
 }
 
 type BinnedRow = ReturnType<typeof cameraDerived>['binned'][number];
+interface GainRow {
+  g: GainModeDraft;
+  i: number;
+}
 
 export function CamerasPage() {
   const { t } = useTranslation();
@@ -151,6 +157,7 @@ export function CamerasPage() {
   });
   const fieldError = useFieldError(editor.errors);
   const num = useNumber();
+  const usage = useRigUsage('cameraId', editor.selectedId);
   const [tab, setTab] = useState<'derived' | 'sensor'>('derived');
   const d = editor.draft;
   const disabled = !canWrite;
@@ -213,6 +220,92 @@ export function CamerasPage() {
   ];
   const Add = actionIcons.add;
   const Delete = actionIcons.delete;
+  // Gain-Modi als Listen-Editor in der Datentabelle (AP-26d): Name und Gain bleiben immer sichtbar.
+  const updateGain = (i: number, patch: Partial<GainModeDraft>) =>
+    editor.set(
+      'gainModes',
+      d.gainModes.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+    );
+  const gainCell =
+    (key: 'gain' | 'readNoiseE' | 'fullWellE' | 'ePerAdu', label: string) =>
+    ({ g, i }: GainRow) => (
+      <input
+        className={styles.input}
+        type="number"
+        step="any"
+        aria-label={`${label} ${String(i + 1)}`}
+        value={g[key] ?? ''}
+        disabled={disabled}
+        aria-invalid={editor.errors[['gainModes', i, key].join('.')] ? true : undefined}
+        onChange={(e) =>
+          updateGain(i, { [key]: e.target.value === '' ? null : Number(e.target.value) })
+        }
+      />
+    );
+  const gainColumns: DataColumn<GainRow>[] = [
+    {
+      id: 'name',
+      header: t('equipment.field.name'),
+      cell: ({ g, i }) => (
+        <input
+          className={styles.input}
+          aria-label={`${t('equipment.field.name')} ${String(i + 1)}`}
+          value={g.name}
+          maxLength={60}
+          disabled={disabled}
+          aria-invalid={editor.errors[['gainModes', i, 'name'].join('.')] ? true : undefined}
+          onChange={(e) => updateGain(i, { name: e.target.value })}
+        />
+      ),
+    },
+    {
+      id: 'gain',
+      header: t('equipment.cameras.field.gain'),
+      cell: gainCell('gain', t('equipment.cameras.field.gain')),
+    },
+    {
+      id: 'readNoise',
+      header: t('equipment.cameras.field.readNoise'),
+      priority: 2,
+      cell: gainCell('readNoiseE', t('equipment.cameras.field.readNoise')),
+    },
+    {
+      id: 'fullWell',
+      header: t('equipment.cameras.field.fullWell'),
+      priority: 3,
+      cell: gainCell('fullWellE', t('equipment.cameras.field.fullWell')),
+    },
+    {
+      id: 'ePerAdu',
+      header: t('equipment.cameras.field.ePerAdu'),
+      priority: 3,
+      cell: gainCell('ePerAdu', t('equipment.cameras.field.ePerAdu')),
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: t('equipment.actions'),
+            headerHidden: true,
+            cell: ({ i }: GainRow) => (
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={t('equipment.removeRow', { n: i + 1 })}
+                onClick={() =>
+                  editor.set(
+                    'gainModes',
+                    d.gainModes.filter((_, j) => j !== i),
+                  )
+                }
+              >
+                <Delete size={ICON_SIZE.table} aria-hidden />
+              </button>
+            ),
+          },
+        ]
+      : []),
+  ];
   const Warn = actionIcons.warning;
   const toggleBinning = (b: number, on: boolean) =>
     editor.set(
@@ -240,7 +333,12 @@ export function CamerasPage() {
               <>
                 <span>{c.name}</span>
                 <span className={styles.pickMeta}>
-                  {c.isColor ? t('equipment.cameras.osc') : t('equipment.cameras.mono')}
+                  {[
+                    c.isColor ? t('equipment.cameras.osc') : t('equipment.cameras.mono'),
+                    c.sensorName,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </>
             )}
@@ -248,405 +346,335 @@ export function CamerasPage() {
         }
         detail={
           editor.hasDetail ? (
-            <form className={styles.form} onSubmit={submit} aria-labelledby="camera-form-title">
-              <div className={styles.formTitle}>
-                <h2 id="camera-form-title">
-                  {editor.selected ? editor.selected.name : t('equipment.cameras.new')}
-                </h2>
-              </div>
-              {editor.del.usage ? (
-                <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
-              ) : null}
-              {mismatch ? (
-                <div className={styles.warning} role="status">
-                  <p className={styles.usageTitle}>
-                    <Warn size={ICON_SIZE.button} aria-hidden />
-                    {t('equipment.cameras.ninaMismatch')}
-                  </p>
-                  {mismatch.missing.length > 0 ? (
-                    <p>
-                      {t('equipment.cameras.ninaMissing', { modes: mismatch.missing.join(', ') })}
-                    </p>
-                  ) : null}
-                  {mismatch.unknown.length > 0 ? (
-                    <p>
-                      {t('equipment.cameras.ninaUnknown', { modes: mismatch.unknown.join(', ') })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className={styles.grid}>
-                <TextField
-                  label={t('equipment.field.name')}
-                  value={d.name}
-                  onChange={(v) => editor.set('name', v)}
-                  error={fieldError('name')}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.field.brand')}
-                  value={d.brand}
-                  onChange={(v) => editor.set('brand', v)}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.field.model')}
-                  value={d.model}
-                  onChange={(v) => editor.set('model', v)}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.cameras.field.sensorName')}
-                  value={d.sensorName}
-                  onChange={(v) => editor.set('sensorName', v)}
-                  disabled={disabled}
-                />
-              </div>
-              <div className={styles.section}>
-                <h3>{t('equipment.cameras.sensor')}</h3>
-                <div className={styles.grid}>
-                  <NumberField
-                    label={t('equipment.cameras.field.widthPx')}
-                    unit="px"
-                    step={1}
-                    value={d.widthPx}
-                    onChange={(v) => editor.set('widthPx', v)}
-                    error={fieldError('widthPx')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.heightPx')}
-                    unit="px"
-                    step={1}
-                    value={d.heightPx}
-                    onChange={(v) => editor.set('heightPx', v)}
-                    error={fieldError('heightPx')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.pixelSize')}
-                    unit="µm"
-                    value={d.pixelSizeUm}
-                    onChange={(v) => editor.set('pixelSizeUm', v)}
-                    error={fieldError('pixelSizeUm')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.bitDepth')}
-                    unit="bit"
-                    step={1}
-                    value={d.bitDepth}
-                    onChange={(v) => editor.set('bitDepth', v)}
-                    error={fieldError('bitDepth')}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className={styles.inline}>
-                  <CheckField
-                    label={t('equipment.cameras.field.isColor')}
-                    checked={d.isColor}
-                    onChange={(v) => editor.set('isColor', v)}
-                    disabled={disabled}
-                  />
-                  <CheckField
-                    label={t('equipment.cameras.field.isCooled')}
-                    checked={d.isCooled}
-                    onChange={(v) => editor.set('isCooled', v)}
-                    disabled={disabled}
-                  />
-                </div>
-                <fieldset className={styles.inline}>
-                  <legend className={styles.muted}>{t('equipment.cameras.field.binning')}</legend>
-                  {BINNINGS.map((b) => (
-                    <CheckField
-                      key={b}
-                      label={`${String(b)}×${String(b)}`}
-                      checked={d.supportedBinning.includes(b)}
-                      onChange={(on) => toggleBinning(b, on)}
-                      disabled={disabled}
-                    />
-                  ))}
-                  {fieldError('supportedBinning') ? (
-                    <span className={styles.fieldError}>{fieldError('supportedBinning')}</span>
-                  ) : null}
-                </fieldset>
-              </div>
-              {d.isCooled ? (
-                <div className={styles.section}>
-                  <h3>{t('equipment.cameras.cooling')}</h3>
-                  <div className={styles.grid}>
-                    <NumberField
-                      label={t('equipment.cameras.field.coolingSetpoint')}
-                      unit="°C"
-                      value={d.coolingSetpointC}
-                      onChange={(v) => editor.set('coolingSetpointC', v)}
-                      error={fieldError('coolingSetpointC')}
-                      hint={t('equipment.cameras.coolingHint')}
-                      disabled={disabled}
-                    />
-                    <NumberField
-                      label={t('equipment.cameras.field.coolingTolerance')}
-                      unit="K"
-                      value={d.coolingToleranceC}
-                      onChange={(v) => editor.set('coolingToleranceC', v)}
-                      error={fieldError('coolingToleranceC')}
-                      disabled={disabled}
-                    />
-                  </div>
-                </div>
-              ) : null}
-              <div className={styles.section}>
-                <h3>{t('equipment.cameras.operatingPoint')}</h3>
-                <div className={styles.grid}>
-                  <NumberField
-                    label={t('equipment.cameras.field.defaultGain')}
-                    step={1}
-                    value={d.defaultGain}
-                    onChange={(v) => editor.set('defaultGain', v)}
-                    error={fieldError('defaultGain')}
-                    hint={t('equipment.ninaDefaultHint')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.defaultOffset')}
-                    step={1}
-                    value={d.defaultOffset}
-                    onChange={(v) => editor.set('defaultOffset', v)}
-                    error={fieldError('defaultOffset')}
-                    hint={t('equipment.ninaDefaultHint')}
-                    disabled={disabled}
-                  />
-                  <SelectField
-                    label={t('equipment.cameras.field.defaultBinning')}
-                    value={String(d.defaultBinning)}
-                    onChange={(v) => editor.set('defaultBinning', Number(v))}
-                    options={[...d.supportedBinning]
-                      .sort((a, b) => a - b)
-                      .map((b) => ({ value: String(b), label: `${String(b)}×${String(b)}` }))}
-                    error={fieldError('defaultBinning')}
-                    disabled={disabled}
-                  />
-                  <SelectField
-                    label={t('equipment.cameras.field.defaultReadoutMode')}
-                    value={d.defaultReadoutMode}
-                    onChange={(v) => editor.set('defaultReadoutMode', v)}
-                    options={d.readoutModes.filter(Boolean).map((m) => ({ value: m, label: m }))}
-                    error={fieldError('defaultReadoutMode')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.ePerAdu')}
-                    unit="e⁻/ADU"
-                    value={d.gainEPerAdu}
-                    onChange={(v) => editor.set('gainEPerAdu', v)}
-                    error={fieldError('gainEPerAdu')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.readNoise')}
-                    unit="e⁻"
-                    value={d.readNoiseE}
-                    onChange={(v) => editor.set('readNoiseE', v)}
-                    error={fieldError('readNoiseE')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.fullWell')}
-                    unit="e⁻"
-                    value={d.fullWellE}
-                    onChange={(v) => editor.set('fullWellE', v)}
-                    error={fieldError('fullWellE')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.qe')}
-                    unit="%"
-                    value={d.quantumEfficiencyPct}
-                    onChange={(v) => editor.set('quantumEfficiencyPct', v)}
-                    error={fieldError('quantumEfficiencyPct')}
-                    disabled={disabled}
-                  />
-                  <NumberField
-                    label={t('equipment.cameras.field.darkCurrent')}
-                    unit="e⁻/s"
-                    value={d.darkCurrentES20c}
-                    onChange={(v) => editor.set('darkCurrentES20c', v)}
-                    error={fieldError('darkCurrentES20c')}
-                    disabled={disabled}
-                  />
-                </div>
-              </div>
-              <div className={`${styles.section} ${styles.listEditor}`}>
-                <h3>{t('equipment.cameras.gainModes')}</h3>
-                {d.gainModes.length === 0 ? (
-                  <p className={styles.muted}>{t('equipment.cameras.gainModesEmpty')}</p>
-                ) : (
-                  <div className={styles.tableWrap}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>{t('equipment.field.name')}</th>
-                          <th>{t('equipment.cameras.field.gain')}</th>
-                          <th>{t('equipment.cameras.field.readNoise')}</th>
-                          <th>{t('equipment.cameras.field.fullWell')}</th>
-                          <th>{t('equipment.cameras.field.ePerAdu')}</th>
-                          {canWrite ? <th aria-label={t('equipment.actions')} /> : null}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {d.gainModes.map((g, i) => {
-                          const update = (patch: Partial<GainModeDraft>) =>
-                            editor.set(
-                              'gainModes',
-                              d.gainModes.map((x, j) => (j === i ? { ...x, ...patch } : x)),
-                            );
-                          const cell = (
-                            key: 'gain' | 'readNoiseE' | 'fullWellE' | 'ePerAdu',
-                            label: string,
-                          ) => (
-                            <td>
-                              <input
-                                className={styles.input}
-                                type="number"
-                                step="any"
-                                aria-label={`${label} ${String(i + 1)}`}
-                                value={g[key] ?? ''}
-                                disabled={disabled}
-                                aria-invalid={
-                                  editor.errors[['gainModes', i, key].join('.')] ? true : undefined
-                                }
-                                onChange={(e) =>
-                                  update({
-                                    [key]: e.target.value === '' ? null : Number(e.target.value),
-                                  })
-                                }
-                              />
-                            </td>
-                          );
-                          return (
-                            <tr key={i}>
-                              <td>
-                                <input
-                                  className={styles.input}
-                                  aria-label={`${t('equipment.field.name')} ${String(i + 1)}`}
-                                  value={g.name}
-                                  maxLength={60}
-                                  disabled={disabled}
-                                  aria-invalid={
-                                    editor.errors[['gainModes', i, 'name'].join('.')]
-                                      ? true
-                                      : undefined
-                                  }
-                                  onChange={(e) => update({ name: e.target.value })}
-                                />
-                              </td>
-                              {cell('gain', t('equipment.cameras.field.gain'))}
-                              {cell('readNoiseE', t('equipment.cameras.field.readNoise'))}
-                              {cell('fullWellE', t('equipment.cameras.field.fullWell'))}
-                              {cell('ePerAdu', t('equipment.cameras.field.ePerAdu'))}
-                              {canWrite ? (
-                                <td>
-                                  <button
-                                    type="button"
-                                    className={styles.iconButton}
-                                    aria-label={t('equipment.removeRow', { n: i + 1 })}
-                                    onClick={() =>
-                                      editor.set(
-                                        'gainModes',
-                                        d.gainModes.filter((_, j) => j !== i),
-                                      )
-                                    }
-                                  >
-                                    <Delete size={ICON_SIZE.table} aria-hidden />
-                                  </button>
-                                </td>
-                              ) : null}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {canWrite ? (
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() =>
-                      editor.set('gainModes', [
-                        ...d.gainModes,
-                        { name: '', gain: null, readNoiseE: null, fullWellE: null, ePerAdu: null },
-                      ])
-                    }
-                  >
-                    <Add size={ICON_SIZE.table} aria-hidden />
-                    {t('equipment.cameras.addGainMode')}
-                  </button>
-                ) : null}
-              </div>
-              <div className={`${styles.section} ${styles.listEditor}`}>
-                <h3>{t('equipment.cameras.readoutModes')}</h3>
-                <p className={styles.muted}>{t('equipment.cameras.readoutHint')}</p>
-                <ul className={styles.pickList}>
-                  {d.readoutModes.map((m, i) => (
-                    <li key={i} className={styles.inline}>
-                      <input
-                        className={styles.input}
-                        aria-label={`${t('equipment.cameras.readoutMode')} ${String(i + 1)}`}
-                        value={m}
-                        maxLength={60}
-                        disabled={disabled}
-                        onChange={(e) =>
-                          editor.set(
-                            'readoutModes',
-                            d.readoutModes.map((x, j) => (j === i ? e.target.value : x)),
-                          )
-                        }
-                      />
-                      {canWrite && d.readoutModes.length > 1 ? (
-                        <button
-                          type="button"
-                          className={styles.iconButton}
-                          aria-label={t('equipment.removeRow', { n: i + 1 })}
-                          onClick={() =>
-                            editor.set(
-                              'readoutModes',
-                              d.readoutModes.filter((_, j) => j !== i),
-                            )
-                          }
-                        >
-                          <Delete size={ICON_SIZE.table} aria-hidden />
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-                {canWrite ? (
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() => editor.set('readoutModes', [...d.readoutModes, ''])}
-                  >
-                    <Add size={ICON_SIZE.table} aria-hidden />
-                    {t('equipment.cameras.addReadoutMode')}
-                  </button>
-                ) : null}
-              </div>
-              <TextField
-                label={t('equipment.field.notes')}
-                value={d.notes}
-                maxLength={4000}
-                multiline
-                onChange={(v) => editor.set('notes', v)}
-                disabled={disabled}
-              />
-              <FormActions
+            <form className={styles.card} onSubmit={submit} aria-labelledby="camera-form-title">
+              <DetailHead
+                titleId="camera-form-title"
+                title={editor.selected ? editor.selected.name : t('equipment.cameras.new')}
+                meta={usage}
                 canWrite={canWrite}
                 saving={editor.save.isPending}
                 saved={editor.saved}
-                error={editor.save.error}
                 onDelete={editor.onDelete((s) => s.name)}
               />
+              <div className={styles.cardBody}>
+                <SaveError error={editor.save.error} />
+                {editor.del.usage ? (
+                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                ) : null}
+                {mismatch ? (
+                  <div className={styles.warning} role="status">
+                    <p className={styles.usageTitle}>
+                      <Warn size={ICON_SIZE.button} aria-hidden />
+                      {t('equipment.cameras.ninaMismatch')}
+                    </p>
+                    {mismatch.missing.length > 0 ? (
+                      <p>
+                        {t('equipment.cameras.ninaMissing', { modes: mismatch.missing.join(', ') })}
+                      </p>
+                    ) : null}
+                    {mismatch.unknown.length > 0 ? (
+                      <p>
+                        {t('equipment.cameras.ninaUnknown', { modes: mismatch.unknown.join(', ') })}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <section className={styles.section} aria-labelledby="camera-general">
+                  <h3 id="camera-general">{t('equipment.section.general')}</h3>
+                  <div className={styles.grid}>
+                    <TextField
+                      label={t('equipment.field.name')}
+                      value={d.name}
+                      onChange={(v) => editor.set('name', v)}
+                      error={fieldError('name')}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.field.brand')}
+                      value={d.brand}
+                      onChange={(v) => editor.set('brand', v)}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.field.model')}
+                      value={d.model}
+                      onChange={(v) => editor.set('model', v)}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.cameras.field.sensorName')}
+                      value={d.sensorName}
+                      onChange={(v) => editor.set('sensorName', v)}
+                      disabled={disabled}
+                    />
+                  </div>
+                </section>
+                <section className={styles.section} aria-labelledby="camera-sensor">
+                  <h3 id="camera-sensor">{t('equipment.cameras.sensor')}</h3>
+                  <div className={styles.grid}>
+                    <NumberField
+                      label={t('equipment.cameras.field.widthPx')}
+                      unit="px"
+                      step={1}
+                      value={d.widthPx}
+                      onChange={(v) => editor.set('widthPx', v)}
+                      error={fieldError('widthPx')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.heightPx')}
+                      unit="px"
+                      step={1}
+                      value={d.heightPx}
+                      onChange={(v) => editor.set('heightPx', v)}
+                      error={fieldError('heightPx')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.pixelSize')}
+                      unit="µm"
+                      value={d.pixelSizeUm}
+                      onChange={(v) => editor.set('pixelSizeUm', v)}
+                      error={fieldError('pixelSizeUm')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.bitDepth')}
+                      unit="bit"
+                      step={1}
+                      value={d.bitDepth}
+                      onChange={(v) => editor.set('bitDepth', v)}
+                      error={fieldError('bitDepth')}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <div className={styles.inline}>
+                    <CheckField
+                      label={t('equipment.cameras.field.isColor')}
+                      checked={d.isColor}
+                      onChange={(v) => editor.set('isColor', v)}
+                      disabled={disabled}
+                    />
+                    <CheckField
+                      label={t('equipment.cameras.field.isCooled')}
+                      checked={d.isCooled}
+                      onChange={(v) => editor.set('isCooled', v)}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <fieldset className={styles.inline}>
+                    <legend className={styles.muted}>{t('equipment.cameras.field.binning')}</legend>
+                    {BINNINGS.map((b) => (
+                      <CheckField
+                        key={b}
+                        label={`${String(b)}×${String(b)}`}
+                        checked={d.supportedBinning.includes(b)}
+                        onChange={(on) => toggleBinning(b, on)}
+                        disabled={disabled}
+                      />
+                    ))}
+                    {fieldError('supportedBinning') ? (
+                      <span className={styles.fieldError}>{fieldError('supportedBinning')}</span>
+                    ) : null}
+                  </fieldset>
+                </section>
+                {d.isCooled ? (
+                  <div className={styles.section}>
+                    <h3>{t('equipment.cameras.cooling')}</h3>
+                    <div className={styles.grid}>
+                      <NumberField
+                        label={t('equipment.cameras.field.coolingSetpoint')}
+                        unit="°C"
+                        value={d.coolingSetpointC}
+                        onChange={(v) => editor.set('coolingSetpointC', v)}
+                        error={fieldError('coolingSetpointC')}
+                        hint={t('equipment.cameras.coolingHint')}
+                        disabled={disabled}
+                      />
+                      <NumberField
+                        label={t('equipment.cameras.field.coolingTolerance')}
+                        unit="K"
+                        value={d.coolingToleranceC}
+                        onChange={(v) => editor.set('coolingToleranceC', v)}
+                        error={fieldError('coolingToleranceC')}
+                        disabled={disabled}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <div className={styles.section}>
+                  <h3>{t('equipment.cameras.operatingPoint')}</h3>
+                  <div className={styles.grid}>
+                    <NumberField
+                      label={t('equipment.cameras.field.defaultGain')}
+                      step={1}
+                      value={d.defaultGain}
+                      onChange={(v) => editor.set('defaultGain', v)}
+                      error={fieldError('defaultGain')}
+                      hint={t('equipment.ninaDefaultHint')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.defaultOffset')}
+                      step={1}
+                      value={d.defaultOffset}
+                      onChange={(v) => editor.set('defaultOffset', v)}
+                      error={fieldError('defaultOffset')}
+                      hint={t('equipment.ninaDefaultHint')}
+                      disabled={disabled}
+                    />
+                    <SelectField
+                      label={t('equipment.cameras.field.defaultBinning')}
+                      value={String(d.defaultBinning)}
+                      onChange={(v) => editor.set('defaultBinning', Number(v))}
+                      options={[...d.supportedBinning]
+                        .sort((a, b) => a - b)
+                        .map((b) => ({ value: String(b), label: `${String(b)}×${String(b)}` }))}
+                      error={fieldError('defaultBinning')}
+                      disabled={disabled}
+                    />
+                    <SelectField
+                      label={t('equipment.cameras.field.defaultReadoutMode')}
+                      value={d.defaultReadoutMode}
+                      onChange={(v) => editor.set('defaultReadoutMode', v)}
+                      options={d.readoutModes.filter(Boolean).map((m) => ({ value: m, label: m }))}
+                      error={fieldError('defaultReadoutMode')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.ePerAdu')}
+                      unit="e⁻/ADU"
+                      value={d.gainEPerAdu}
+                      onChange={(v) => editor.set('gainEPerAdu', v)}
+                      error={fieldError('gainEPerAdu')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.readNoise')}
+                      unit="e⁻"
+                      value={d.readNoiseE}
+                      onChange={(v) => editor.set('readNoiseE', v)}
+                      error={fieldError('readNoiseE')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.fullWell')}
+                      unit="e⁻"
+                      value={d.fullWellE}
+                      onChange={(v) => editor.set('fullWellE', v)}
+                      error={fieldError('fullWellE')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.qe')}
+                      unit="%"
+                      value={d.quantumEfficiencyPct}
+                      onChange={(v) => editor.set('quantumEfficiencyPct', v)}
+                      error={fieldError('quantumEfficiencyPct')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.cameras.field.darkCurrent')}
+                      unit="e⁻/s"
+                      value={d.darkCurrentES20c}
+                      onChange={(v) => editor.set('darkCurrentES20c', v)}
+                      error={fieldError('darkCurrentES20c')}
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+                <div className={`${styles.section} ${styles.listEditor}`}>
+                  <h3>{t('equipment.cameras.gainModes')}</h3>
+                  {d.gainModes.length === 0 ? (
+                    <p className={styles.muted}>{t('equipment.cameras.gainModesEmpty')}</p>
+                  ) : (
+                    <DataTable
+                      columns={gainColumns}
+                      rows={d.gainModes.map((g, i) => ({ g, i }))}
+                      rowKey={(r) => String(r.i)}
+                      rowLabel={(r) => r.g.name || String(r.i + 1)}
+                      label={t('equipment.cameras.gainModes')}
+                    />
+                  )}
+                  {canWrite ? (
+                    <button
+                      type="button"
+                      className={styles.button}
+                      onClick={() =>
+                        editor.set('gainModes', [
+                          ...d.gainModes,
+                          {
+                            name: '',
+                            gain: null,
+                            readNoiseE: null,
+                            fullWellE: null,
+                            ePerAdu: null,
+                          },
+                        ])
+                      }
+                    >
+                      <Add size={ICON_SIZE.table} aria-hidden />
+                      {t('equipment.cameras.addGainMode')}
+                    </button>
+                  ) : null}
+                </div>
+                <div className={`${styles.section} ${styles.listEditor}`}>
+                  <h3>{t('equipment.cameras.readoutModes')}</h3>
+                  <p className={styles.muted}>{t('equipment.cameras.readoutHint')}</p>
+                  <ul className={styles.pickList}>
+                    {d.readoutModes.map((m, i) => (
+                      <li key={i} className={styles.inline}>
+                        <input
+                          className={styles.input}
+                          aria-label={`${t('equipment.cameras.readoutMode')} ${String(i + 1)}`}
+                          value={m}
+                          maxLength={60}
+                          disabled={disabled}
+                          onChange={(e) =>
+                            editor.set(
+                              'readoutModes',
+                              d.readoutModes.map((x, j) => (j === i ? e.target.value : x)),
+                            )
+                          }
+                        />
+                        {canWrite && d.readoutModes.length > 1 ? (
+                          <button
+                            type="button"
+                            className={styles.iconButton}
+                            aria-label={t('equipment.removeRow', { n: i + 1 })}
+                            onClick={() =>
+                              editor.set(
+                                'readoutModes',
+                                d.readoutModes.filter((_, j) => j !== i),
+                              )
+                            }
+                          >
+                            <Delete size={ICON_SIZE.table} aria-hidden />
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {canWrite ? (
+                    <button
+                      type="button"
+                      className={styles.button}
+                      onClick={() => editor.set('readoutModes', [...d.readoutModes, ''])}
+                    >
+                      <Add size={ICON_SIZE.table} aria-hidden />
+                      {t('equipment.cameras.addReadoutMode')}
+                    </button>
+                  ) : null}
+                </div>
+                <TextField
+                  label={t('equipment.field.notes')}
+                  value={d.notes}
+                  maxLength={4000}
+                  multiline
+                  onChange={(v) => editor.set('notes', v)}
+                  disabled={disabled}
+                />
+              </div>
             </form>
           ) : null
         }
@@ -663,7 +691,7 @@ export function CamerasPage() {
               panels={{
                 derived: derived ? (
                   <>
-                    <dl>
+                    <dl className={styles.kv}>
                       <dt>{t('equipment.cameras.derived.sensorSize')}</dt>
                       <dd>
                         {num(derived.sensorWidthMm, 2)} × {num(derived.sensorHeightMm, 2)} mm

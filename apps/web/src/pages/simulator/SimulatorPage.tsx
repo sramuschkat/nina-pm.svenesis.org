@@ -6,6 +6,8 @@
  * Reitern: Nachtplan (Grafik, Zeitschieber), Planprotokoll (Kopieren/CSV), Zielkarten, Prüfungen.
  * Daten: Rig, Projekte, Mondprofile und Nacht-Tabelle des Servers (NT-02) → `buildPlanInput`
  * → `planNight` im Web Worker. Entwürfe des Users nur lokal; Speichern als `night_plan`.
+ * Seitengerüst `PageHeader` mit den NINA-Bereichsreitern, *Simulieren* als Hauptaktion rechts;
+ * Einstellungen, Nachtwahl und Ergebnis als Karten (Stilsystem AP-26d).
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import { formatTzAbbr, formatZonedTime, formatNightKey } from '@nina-pm/shared';
@@ -26,10 +28,12 @@ import { DataTable, type DataColumn, type SortValue } from '../../components/Dat
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { Tabs } from '../../components/Tabs';
 import { SchedulerForm } from '../equipment/RigsPage';
+import { NinaTabs } from '../nina/NinaLayout';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
 import {
@@ -249,45 +253,48 @@ export function SimulatorPage() {
         .join(' · ')
     : t('simulator.noRigChosen');
 
-  if (rigs.isPending) return <p role="status">{t('common.loading')}</p>;
-  if (rigList.length === 0)
+  if (rigs.isPending || rigList.length === 0)
     return (
       <div className={styles.page}>
-        <h1>{t('simulator.title')}</h1>
-        <p className={styles.note}>{t('simulator.noRig')}</p>
+        <PageHeader title={t('simulator.title')} nav={<NinaTabs />} />
+        {rigs.isPending ? (
+          <p role="status">{t('common.loading')}</p>
+        ) : (
+          <p className={styles.note}>{t('simulator.noRig')}</p>
+        )}
       </div>
     );
 
   return (
     <div className={styles.page}>
-      <nav aria-label={t('simulator.crumbs')} className={styles.muted}>
-        {t('simulator.crumbs')}
-      </nav>
-      <div className={styles.head}>
-        <h1>{t('simulator.title')}</h1>
-        <div className={styles.headActions}>
-          <button
-            type="button"
-            className={styles.buttonPrimary}
-            onClick={() => void sim.refetch()}
-            disabled={request === null || sim.isFetching}
-          >
-            <actionIcons.simulate size={ICON_SIZE.button} aria-hidden />
-            {t('simulator.simulate')}
-          </button>
-          {canSave && result ? (
+      <PageHeader
+        title={t('simulator.title')}
+        nav={<NinaTabs />}
+        actions={
+          <>
+            {canSave && result ? (
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => save.mutate(result)}
+                disabled={save.isPending}
+              >
+                <actionIcons.save size={ICON_SIZE.button} aria-hidden />
+                {t('simulator.save')}
+              </button>
+            ) : null}
             <button
               type="button"
-              className={styles.button}
-              onClick={() => save.mutate(result)}
-              disabled={save.isPending}
+              className={styles.buttonPrimary}
+              onClick={() => void sim.refetch()}
+              disabled={request === null || sim.isFetching}
             >
-              <actionIcons.save size={ICON_SIZE.button} aria-hidden />
-              {t('simulator.save')}
+              <actionIcons.simulate size={ICON_SIZE.button} aria-hidden />
+              {t('simulator.simulate')}
             </button>
-          ) : null}
-        </div>
-      </div>
+          </>
+        }
+      />
       {save.isSuccess ? (
         <p className={styles.success} role="status">
           {t('simulator.saved')}

@@ -1,12 +1,14 @@
 /**
  * Belichtungsplan im Projekt-Editor S-31 (FA-PRJ-05/07/10/20/21/22, FA-BPL-04/05, NT-E3): unterer
- * Bereich mit einem Reiter je Panel und dem Reiter *Panels* (AP-26b); je Panel Schnelleingabe (Filter, Belichtung, Anzahl **oder** Stunden), Vorlage anwenden (nur ohne
- * Aufnahmen), Tabelle mit Zählern und Inline-Änderung, Summenzeile. Zeilen mit Aufnahmen: Filter,
+ * Bereich mit einem Reiter je Panel und dem Reiter *Panels* (AP-26b); je Panel Schnelleingabe (Filter,
+ * Belichtung, Anzahl **oder** Stunden), Vorlage anwenden (nur ohne Aufnahmen; aufklappbar über *Vorlage*
+ * in der Reiterleiste), Tabelle mit Zählern und Inline-Änderung, Zeilenaktionen im ⋯-Menü, Summen als
+ * Fußleiste der Karte (Stilsystem AP-26d). Zeilen mit Aufnahmen: Filter,
  * Belichtung, Gain, Offset, Binning, Auslesemodus gesperrt; *Zeile duplizieren* legt eine neue Zeile
  * mit Zählern ab 0 an. Jede Änderung geht sofort an die API, die Antwort ist das ganze Projekt.
  */
 import { useMutation } from '@tanstack/react-query';
-import { useId, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { Link } from 'react-router';
@@ -20,10 +22,11 @@ import {
   type ProjectView,
   type RigView,
 } from '../../api/client';
+import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
-import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Tabs } from '../../components/Tabs';
@@ -63,6 +66,9 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
   const { project, canEdit } = props;
   const [tab, setTab] = useState<string>(project.panels[0]?.id ?? PANELS_TAB);
   const allLines = project.panels.flatMap((p) => p.lines);
+  // *Vorlage* in der Reiterleiste klappt die Vorlagenzeile auf; ohne Zeilen ist sie gleich offen.
+  const [templateOpen, setTemplateOpen] = useState(allLines.length === 0);
+  const templateId = useId();
 
   const mutation = useMutation({
     mutationFn: (run: () => Promise<ProjectView | { soft: boolean } | undefined>) => run(),
@@ -92,19 +98,28 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
       <div className={styles.planBody}>
         {canEdit ? (
           <div className={styles.planTools}>
+            {templateOpen ? (
+              <TemplatePicker
+                {...props}
+                id={templateId}
+                panelId={panel.id}
+                allowed={templateAllowed(allLines)}
+                hasLines={panel.lines.length > 0}
+                run={run}
+              />
+            ) : null}
             <QuickEntry {...props} panelId={panel.id} run={run} />
-            <TemplatePicker
-              {...props}
-              panelId={panel.id}
-              allowed={templateAllowed(allLines)}
-              hasLines={panel.lines.length > 0}
-              run={run}
-            />
           </div>
         ) : null}
-        {mutation.error ? <ProblemMessage code={problemCode(mutation.error)} /> : null}
+        {mutation.error ? (
+          <div className={styles.planNote}>
+            <ProblemMessage code={problemCode(mutation.error)} />
+          </div>
+        ) : null}
         {panel.lines.some((l) => l.hasCaptures) ? (
-          <p className={styles.note}>{t('projectEditor.plan.lockedHint')}</p>
+          <p className={`${styles.note} ${styles.planNote}`}>
+            {t('projectEditor.plan.lockedHint')}
+          </p>
         ) : null}
         <LineTable {...props} lines={panel.lines} run={run} />
         <Sums sums={planSums(panel.lines)} label={t('projectEditor.plan.sumsPanel')} />
@@ -123,6 +138,20 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
             ? [{ key: PANELS_TAB, label: t('projectEditor.panelList.title') }]
             : []),
         ]}
+        toolbar={
+          canEdit && active !== PANELS_TAB ? (
+            <button
+              type="button"
+              className={styles.button}
+              aria-expanded={templateOpen}
+              aria-controls={templateOpen ? templateId : undefined}
+              onClick={() => setTemplateOpen((o) => !o)}
+            >
+              {t('projectEditor.plan.template')}
+              <uiIcons.menu size={ICON_SIZE.table} aria-hidden />
+            </button>
+          ) : null
+        }
         panels={Object.fromEntries([
           ...project.panels.map((p) => [p.id, panelBody(p.id)]),
           [PANELS_TAB, props.panelsTab ?? null],
@@ -140,11 +169,18 @@ function TemplatePicker({
   project,
   rig,
   templates,
+  id: groupId,
   panelId,
   allowed,
   hasLines,
   run,
-}: ExposurePlanProps & { panelId: string; allowed: boolean; hasLines: boolean; run: Run }) {
+}: ExposurePlanProps & {
+  id: string;
+  panelId: string;
+  allowed: boolean;
+  hasLines: boolean;
+  run: Run;
+}) {
   const { t } = useTranslation();
   const id = useId();
   const options = templatesFor(templates, rig);
@@ -160,7 +196,7 @@ function TemplatePicker({
       }),
     ).then(() => setConfirm(false));
   return (
-    <div className={styles.templates}>
+    <div id={groupId} className={styles.templates}>
       <label htmlFor={id}>
         {t('projectEditor.plan.template')}
         <select
@@ -330,6 +366,20 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
   const [duplicate, setDuplicate] = useState<LineView | null>(null);
   const [deactivate, setDeactivate] = useState(true);
   const [remove, setRemove] = useState<LineView | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  /** Nach *Abbrechen* zurück auf das ⋯-Menü der Zeile (der Menüeintrag ist dann geschlossen). */
+  const cancelRemove = () => {
+    const label = remove
+      ? t('projectEditor.plan.moreFor', { filter: remove.filterShortName })
+      : null;
+    setRemove(null);
+    setTimeout(() => {
+      const trigger = [...(tableRef.current?.querySelectorAll('button') ?? [])].find(
+        (b) => b.getAttribute('aria-label') === label,
+      );
+      trigger?.focus();
+    }, 0);
+  };
   const num = useNumber();
   const moonLabel = useMoonProfileLabel();
   const lineColumns = columnsFor(
@@ -344,18 +394,21 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
       onDelete: setRemove,
     },
   );
-  if (lines.length === 0) return <p className={styles.muted}>{t('projectEditor.plan.empty')}</p>;
+  if (lines.length === 0)
+    return <p className={`${styles.muted} ${styles.planEmpty}`}>{t('projectEditor.plan.empty')}</p>;
   return (
     <>
-      <DataTable
-        columns={lineColumns}
-        rows={lines}
-        rowKey={(l) => l.id}
-        rowLabel={(l) => l.filterShortName}
-        label={t('projectEditor.plan.title')}
-        rowProps={(l) => ({ 'data-enabled': l.enabled })}
-        className={styles.lineTable}
-      />
+      <div ref={tableRef}>
+        <DataTable
+          columns={lineColumns}
+          rows={lines}
+          rowKey={(l) => l.id}
+          rowLabel={(l) => l.filterShortName}
+          label={t('projectEditor.plan.title')}
+          rowProps={(l) => ({ 'data-enabled': l.enabled })}
+          className={styles.lineTable}
+        />
+      </div>
       {duplicate ? (
         <div
           className={styles.duplicateBox}
@@ -408,7 +461,7 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
             ? run(() => projectsApi.deleteLine(project.id, remove.id)).then(() => setRemove(null))
             : undefined
         }
-        onCancel={() => setRemove(null)}
+        onCancel={cancelRemove}
       />
     </>
   );
@@ -711,28 +764,28 @@ function columnsFor(
       id: 'actions',
       header: t('projectEditor.plan.col.actions'),
       headerHidden: true,
+      align: 'end',
       cell: (line) =>
         canEdit ? (
-          <span className={styles.rowActions}>
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label={t('projectEditor.plan.duplicateFor', { filter: line.filterShortName })}
-              title={t('projectEditor.plan.duplicate')}
-              onClick={() => actions.onDuplicate(line)}
-            >
-              <actionIcons.duplicate size={ICON_SIZE.table} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label={t('projectEditor.plan.deleteFor', { filter: line.filterShortName })}
-              title={t('projectEditor.delete')}
-              onClick={() => actions.onDelete(line)}
-            >
-              <actionIcons.delete size={ICON_SIZE.table} aria-hidden />
-            </button>
-          </span>
+          <ActionMenu
+            size="sm"
+            label={t('projectEditor.plan.moreFor', { filter: line.filterShortName })}
+            items={[
+              {
+                key: 'duplicate',
+                label: t('projectEditor.plan.duplicate'),
+                icon: <actionIcons.duplicate size={ICON_SIZE.table} aria-hidden />,
+                onSelect: () => actions.onDuplicate(line),
+              },
+              {
+                key: 'delete',
+                label: t('projectEditor.delete'),
+                icon: <actionIcons.delete size={ICON_SIZE.table} aria-hidden />,
+                danger: true,
+                onSelect: () => actions.onDelete(line),
+              },
+            ]}
+          />
         ) : null,
     },
   ];
@@ -782,7 +835,10 @@ function NumberCell({
   );
 }
 
-/** Fußzeile: Filter · GEPLANT Frames/Stunden · AKTUELL Frames/Stunden · Gesamtfortschritt (FA-PRJ-21). */
+/**
+ * Summen als Fußleiste der Plan-Karte (FA-PRJ-21, Stilsystem AP-26d): Filter · Geplant Frames/Stunden ·
+ * Aktuell Frames/Stunden · Gesamtfortschritt; Beschriftung gedämpft, Werte kräftig.
+ */
 export function Sums({ sums, label }: { sums: PlanSums; label: string }) {
   const { t } = useTranslation();
   const num = useNumber();
@@ -790,18 +846,22 @@ export function Sums({ sums, label }: { sums: PlanSums; label: string }) {
     <p className={styles.sums} aria-label={label}>
       <span>{t('projectEditor.plan.sumFilters', { n: sums.filters })}</span>
       <span>
-        <strong>{t('projectEditor.plan.sumPlanned')}</strong>{' '}
-        {t('projectEditor.plan.sumFrames', {
-          n: sums.plannedFrames,
-          h: num(sums.plannedS / 3600, 1),
-        })}
+        {t('projectEditor.plan.sumPlanned')}{' '}
+        <strong>
+          {t('projectEditor.plan.sumFrames', {
+            n: sums.plannedFrames,
+            h: num(sums.plannedS / 3600, 1),
+          })}
+        </strong>
       </span>
       <span>
-        <strong>{t('projectEditor.plan.sumCurrent')}</strong>{' '}
-        {t('projectEditor.plan.sumFrames', {
-          n: sums.acceptedFrames,
-          h: num(sums.acceptedS / 3600, 1),
-        })}
+        {t('projectEditor.plan.sumCurrent')}{' '}
+        <strong>
+          {t('projectEditor.plan.sumFrames', {
+            n: sums.acceptedFrames,
+            h: num(sums.acceptedS / 3600, 1),
+          })}
+        </strong>
       </span>
       <span>{t('projectEditor.plan.sumProgress', { pct: num(sums.percent, 0) })}</span>
     </p>

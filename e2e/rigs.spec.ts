@@ -2,7 +2,8 @@
  * AP-09c: S-10 Rigs gegen den lokalen Stack (Seed aus seed-demo.json): Rig anlegen und
  * Scheduler-Einstellungen speichern, 412 bei parallelem Speichern, Filterradbelegung mit Vorschlag
  * bestätigen, User nur lesend, 768/2400 px. Seit AP-26b: Rig-Liste links, Detail rechts mit Reitern
- * (Allgemein, Ausrüstung, Scheduler, Filterrad, NINA), *Neu* im Seitenkopf.
+ * (Allgemein, Ausrüstung, Scheduler, Filterrad, NINA), *Neu* im Seitenkopf. Seit AP-26d stehen
+ * *Löschen* und *Speichern* im Kopf der Rig-Karte; *Speichern* sendet das Formular des aktiven Reiters.
  */
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { csrf, testLogin } from './support';
@@ -56,7 +57,7 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await page
     .getByRole('combobox', { name: 'Kamera', exact: true })
     .selectOption({ label: 'OSC 26MP' });
-  await page.getByRole('button', { name: 'Speichern' }).first().click();
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
   await expect(page.getByText('Einstellungsversion 1')).toBeVisible();
   // Das neue Rig steht in der Liste und ist gewählt.
@@ -76,7 +77,7 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await expect(scheduler.getByLabel('Flat-Quelle')).toBeDisabled();
   await scheduler.getByLabel('Automatische Flats am Ende der Session').check();
   await scheduler.getByLabel('Flat-Quelle').selectOption({ label: 'Himmel' });
-  await scheduler.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(scheduler.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
   await expect(page.getByText('Einstellungsversion 2')).toBeVisible();
 
@@ -111,17 +112,17 @@ test('S-10: paralleles Speichern → 412 mit „Neu laden“, danach speicherbar
   const formA = a.getByRole('form', { name: 'Scheduler-Einstellungen' });
   const formB = b.getByRole('form', { name: 'Scheduler-Einstellungen' });
   await formA.getByLabel('Überschuss (%)').fill('12');
-  await formA.getByRole('button', { name: 'Speichern' }).click();
+  await a.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(formA.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
 
   await formB.getByLabel('Überschuss (%)').fill('20');
-  await formB.getByRole('button', { name: 'Speichern' }).click();
+  await b.getByRole('button', { name: 'Speichern', exact: true }).click();
   const conflict = formB.getByRole('alert');
   await expect(conflict).toContainText('Jemand anderes hat den Datensatz inzwischen geändert');
   await conflict.getByRole('button', { name: 'Neu laden' }).click();
   await expect(formB.getByLabel('Überschuss (%)')).toHaveValue('12');
   await formB.getByLabel('Überschuss (%)').fill('20');
-  await formB.getByRole('button', { name: 'Speichern' }).click();
+  await b.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(formB.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
 });
 

@@ -26,14 +26,15 @@ describe('ui-tokens (TK 11.3)', () => {
     expect(Object.keys(COLORS.dark).sort()).toEqual(Object.keys(COLORS.light).sort());
   });
 
-  it('Werte der Website im hellen Theme (Farben aus style.css)', () => {
+  it('Werte der Website im hellen Theme (Farben aus style.css; Fläche/Linie nach Stilsystem AP-26d)', () => {
     expect(COLORS.light).toMatchObject({
       primary: '#1a2a3a',
       'primary-light': '#2c3e50',
       accent: '#3498db',
-      bg: '#f8f9fa',
       white: '#ffffff',
-      border: '#e0e0e0',
+      // AP-26d: bewusst leicht kühler als die Website (#f8f9fa / #e0e0e0).
+      bg: '#f3f5f8',
+      border: '#e3e7ec',
     });
   });
 
@@ -51,6 +52,15 @@ describe('ui-tokens (TK 11.3)', () => {
       ['danger', 'white'],
       ['success', 'white'],
       ['warning', 'white'],
+      // AP-26d: weiche Kennzeichen (Text auf getönter Fläche), Auswahl und Tabellenkopf.
+      ['success', 'success-bg'],
+      ['warning', 'warning-bg'],
+      ['danger', 'danger-bg'],
+      ['info', 'info-bg'],
+      ['text-light', 'neutral-bg'],
+      ['link', 'selected-bg'],
+      ['text', 'surface-sub'],
+      ['text-light', 'surface-sub'],
     ];
     for (const [fg, bg] of pairs) {
       expect(contrast(c[fg] ?? '', c[bg] ?? ''), `${fg} auf ${bg}`).toBeGreaterThanOrEqual(4.5);

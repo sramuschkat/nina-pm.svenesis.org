@@ -220,6 +220,41 @@ describe('Legende mit Ebenen und Stundenstreifen (Entscheidung 24.09.2026)', () 
     );
     await expectNoSeriousA11y();
   });
+
+  it('legend="top": Legende als Zeile vor dem Diagramm, weiter als benannte Gruppe bedienbar; axe', async () => {
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        twilight={twilight}
+        series={[series('ngc281', 'NGC 281')]}
+        minAltDeg={30}
+        timeZone="America/Chicago"
+        legend="top"
+      />,
+    );
+    const legend = screen.getByRole('group', { name: 'Legende' });
+    const chart = screen.getByRole('img', { name: /Standortzeit/ });
+    // Legende steht im Dokument vor dem Diagramm (Lesereihenfolge = Anzeige).
+    expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const target = within(legend).getByRole('checkbox', { name: 'NGC 281' });
+    fireEvent.click(target);
+    expect(target).not.toBeChecked();
+    expect(within(legend).getByRole('checkbox', { name: /Astronomisch dunkel/ })).toBeChecked();
+    await expectNoSeriousA11y();
+  });
+
+  it('Standard ohne `legend`: Legende steht hinter dem Diagramm (rechts)', () => {
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('ngc281', 'NGC 281')]}
+        timeZone="America/Chicago"
+      />,
+    );
+    const legend = screen.getByRole('group', { name: 'Legende' });
+    const chart = screen.getByRole('img', { name: /Standortzeit/ });
+    expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
 });
 
 describe('Himmel und Stundenstreifen (model)', () => {

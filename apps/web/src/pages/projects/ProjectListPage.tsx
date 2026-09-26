@@ -20,6 +20,7 @@ import {
   type SiteView,
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
+import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn, type SortState } from '../../components/DataTable';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
@@ -215,9 +216,10 @@ export function ProjectListPage() {
   );
   return (
     <ProjectsLayout title={t('projectList.title')}>
-      <div className={styles.stack}>
+      <div className={styles.listCard}>
         <FilterBar
           label={t('projectList.filters')}
+          className={styles.listBar}
           {...(showTrash
             ? {}
             : {
@@ -304,37 +306,58 @@ function ActiveView({
   );
 
   if (list.isError)
-    return <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />;
-  if (list.isPending) return <p role="status">{t('common.loading')}</p>;
+    return (
+      <div className={styles.listBody}>
+        <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
+      </div>
+    );
+  if (list.isPending)
+    return (
+      <div className={styles.listBody}>
+        <p role="status">{t('common.loading')}</p>
+      </div>
+    );
 
-  const rigLabel = (rigId: string) => {
+  const rigName = (rigId: string) => {
     if (rigId === NO_RIG) return t('projectList.noRig');
+    return (rigs.data ?? []).find((r) => r.id === rigId)?.name ?? t('projectList.unknownRig');
+  };
+  /** Standort, Teleskop und Kamera des Rigs (gedämpft neben dem Namen). */
+  const rigMeta = (rigId: string) => {
     const rig = (rigs.data ?? []).find((r) => r.id === rigId);
-    if (!rig) return t('projectList.unknownRig');
+    if (!rig) return '';
     const site = (sites.data ?? []).find((s) => s.id === rig.siteId)?.name;
     const tel = (telescopes.data ?? []).find((s) => s.id === rig.telescopeId)?.name;
     const cam = (cameras.data ?? []).find((s) => s.id === rig.cameraId)?.name;
-    return [rig.name, site, tel, cam].filter(Boolean).join(' · ');
+    return [site, tel, cam].filter(Boolean).join(' · ');
   };
+  const rigLabel = (rigId: string) => [rigName(rigId), rigMeta(rigId)].filter(Boolean).join(' · ');
+  const errors = [favorite.error, priority.error].filter((e) => e !== null);
 
   return (
     <>
-      {canAdmin && view === 'list' && shown.length > 0 ? (
-        <p className={styles.muted}>{t('projectList.priorityHint')}</p>
+      {errors.length > 0 ? (
+        <div className={styles.listBody}>
+          {errors.map((e, i) => (
+            <ProblemMessage key={i} code={problemCode(e)} />
+          ))}
+        </div>
       ) : null}
-      {[favorite.error, priority.error].map((e, i) =>
-        e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
-      )}
       {items.length === 0 ? (
-        <p className={styles.note}>{t('projectList.empty')}</p>
+        <div className={styles.listBody}>
+          <p className={styles.note}>{t('projectList.empty')}</p>
+        </div>
       ) : shown.length === 0 ? (
-        <p className={styles.note}>{t('projectList.noMatch')}</p>
+        <div className={styles.listBody}>
+          <p className={styles.note}>{t('projectList.noMatch')}</p>
+        </div>
       ) : (
         <>
           {view === 'list' ? (
             <ProjectTable
               groups={groups}
-              groupLabel={(rigId) => rigLabel(rigId)}
+              groupName={rigName}
+              groupMeta={rigMeta}
               filters={filtersList.data ?? []}
               onFavorite={(id, on) => favorite.mutate({ id, on })}
               onDelete={setRemove}
@@ -345,36 +368,42 @@ function ActiveView({
               onDropAt={(id, position) => priority.mutate({ id, position })}
             />
           ) : (
-            groups.map((g) => (
-              <section key={g.rigId} className={styles.group} aria-label={rigLabel(g.rigId)}>
-                <div className={styles.groupHead}>
-                  <h2>{rigLabel(g.rigId)}</h2>
-                  <span className={styles.muted}>
-                    {g.counts
-                      .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
-                      .join(' · ')}
-                  </span>
-                </div>
-                <div className={view === 'cards' ? styles.cards : styles.detailCards}>
-                  {g.items.map((p) => (
-                    <ProjectCard
-                      key={p.id}
-                      project={p}
-                      filters={filtersList.data ?? []}
-                      rig={(rigs.data ?? []).find((r) => r.id === p.rigId) ?? null}
-                      sites={sites.data ?? []}
-                      rigLine={p.rigId ? rigLabel(p.rigId) : t('projectList.noRig')}
-                      initialTab={view === 'detail' ? 'altitude' : 'info'}
-                      onFavorite={(on) => favorite.mutate({ id: p.id, on })}
-                      onDelete={() => setRemove(p)}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))
+            <div className={styles.listBody}>
+              {groups.map((g) => (
+                <section key={g.rigId} className={styles.group} aria-label={rigLabel(g.rigId)}>
+                  <div className={styles.groupHead}>
+                    <h2>{rigName(g.rigId)}</h2>
+                    <span className={styles.muted}>{rigMeta(g.rigId)}</span>
+                    <span className={styles.groupCounts}>
+                      {g.counts
+                        .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                  <div className={view === 'cards' ? styles.cards : styles.detailCards}>
+                    {g.items.map((p) => (
+                      <ProjectCard
+                        key={p.id}
+                        project={p}
+                        filters={filtersList.data ?? []}
+                        rig={(rigs.data ?? []).find((r) => r.id === p.rigId) ?? null}
+                        sites={sites.data ?? []}
+                        rigLine={p.rigId ? rigLabel(p.rigId) : t('projectList.noRig')}
+                        initialTab={view === 'detail' ? 'altitude' : 'info'}
+                        onFavorite={(on) => favorite.mutate({ id: p.id, on })}
+                        onDelete={() => setRemove(p)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           )}
         </>
       )}
+      {canAdmin && view === 'list' && shown.length > 0 ? (
+        <p className={styles.listFoot}>{t('projectList.priorityHint')}</p>
+      ) : null}
       <ConfirmDialog
         open={remove !== null}
         title={t('projectEditor.deleteTitle', { name: remove?.name ?? '' })}
@@ -385,8 +414,16 @@ function ActiveView({
         {...(del.error ? { errorKey: problemI18nKey(problemCode(del.error)) } : {})}
         onConfirm={() => (remove ? del.mutateAsync(remove.id).catch(() => undefined) : undefined)}
         onCancel={() => {
+          const name = remove?.name ?? '';
           setRemove(null);
           del.reset();
+          // Fokus zurück auf das ⋯-Menü der Zeile (der Dialog wurde aus dem Menü geöffnet).
+          setTimeout(() => {
+            const label = t('projectList.moreFor', { name });
+            [...document.querySelectorAll<HTMLButtonElement>('button[aria-label]')]
+              .find((b) => b.getAttribute('aria-label') === label)
+              ?.focus();
+          }, 0);
         }}
       />
     </>
@@ -430,7 +467,8 @@ export function FilterPlan({
  */
 function ProjectTable({
   groups,
-  groupLabel,
+  groupName,
+  groupMeta,
   filters,
   onFavorite,
   onDelete,
@@ -438,7 +476,8 @@ function ProjectTable({
   onDropAt,
 }: {
   groups: ReturnType<typeof groupByRig>;
-  groupLabel: (rigId: string) => string;
+  groupName: (rigId: string) => string;
+  groupMeta: (rigId: string) => string;
   filters: readonly FilterView[];
   onFavorite: (id: string, on: boolean) => void;
   onDelete: (p: ProjectListItem) => void;
@@ -609,8 +648,9 @@ function ProjectTable({
         key: groupOf,
         header: (key) => (
           <span className={styles.groupHeadInline}>
-            <strong>{groupLabel(key)}</strong>
-            <span className={styles.muted}>
+            <strong>{groupName(key)}</strong>
+            {groupMeta(key) ? <span className={styles.groupMeta}>{groupMeta(key)}</span> : null}
+            <span className={styles.groupCounts}>
               {(byGroup.get(key)?.counts ?? [])
                 .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
                 .join(' · ')}
@@ -672,16 +712,23 @@ function RowActions({
           />
         </button>
       ) : null}
-      {canDelete ? (
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={t('projectList.deleteFor', { name: project.name })}
-          onClick={() => onDelete(project)}
-        >
-          <actionIcons.delete size={ICON_SIZE.table} aria-hidden />
-        </button>
-      ) : null}
+      <ActionMenu
+        label={t('projectList.moreFor', { name: project.name })}
+        size="sm"
+        items={
+          canDelete
+            ? [
+                {
+                  key: 'delete',
+                  label: t('projectEditor.delete'),
+                  icon: <actionIcons.delete size={ICON_SIZE.table} aria-hidden />,
+                  danger: true,
+                  onSelect: () => onDelete(project),
+                },
+              ]
+            : []
+        }
+      />
     </span>
   );
 }
@@ -868,16 +915,26 @@ function DeletedView() {
     }).format(Date.parse(iso))} ${formatTzAbbr(iso, zone)}`;
   if (deleted.isError)
     return (
-      <ProblemMessage code={problemCode(deleted.error)} onRetry={() => void deleted.refetch()} />
+      <div className={styles.listBody}>
+        <ProblemMessage code={problemCode(deleted.error)} onRetry={() => void deleted.refetch()} />
+      </div>
     );
-  if (deleted.isPending) return <p role="status">{t('common.loading')}</p>;
+  if (deleted.isPending)
+    return (
+      <div className={styles.listBody}>
+        <p role="status">{t('common.loading')}</p>
+      </div>
+    );
   return (
     <>
-      <p className={styles.note}>{t('projectList.deletedHint')}</p>
-      {restore.error ? <ProblemMessage code={problemCode(restore.error)} /> : null}
-      {deleted.data.length === 0 ? (
-        <p className={styles.muted}>{t('projectList.deletedEmpty')}</p>
-      ) : (
+      <div className={styles.listBody}>
+        <p className={styles.note}>{t('projectList.deletedHint')}</p>
+        {restore.error ? <ProblemMessage code={problemCode(restore.error)} /> : null}
+        {deleted.data.length === 0 ? (
+          <p className={styles.muted}>{t('projectList.deletedEmpty')}</p>
+        ) : null}
+      </div>
+      {deleted.data.length === 0 ? null : (
         <DataTable
           columns={[
             {

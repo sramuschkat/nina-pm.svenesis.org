@@ -22,9 +22,6 @@
 .success {
   composes: success from '../../admin/admin.module.css';
 }
-.title {
-  margin: 0;
-}
 .srOnly {
   position: absolute;
   width: 1px;
@@ -50,10 +47,11 @@
   flex-direction: column;
   gap: var(--npm-space-2);
   min-width: 0;
-  padding: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
   border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
 .sectionTitle {
   margin: 0;
@@ -138,7 +136,7 @@
 .map {
   position: relative;
   height: clamp(420px, 66vh, 1100px);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   overflow: hidden;
   background: var(--npm-sky-bg);
 }
@@ -180,6 +178,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-2);
+  min-width: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
 .timeRow {
   display: flex;
@@ -205,10 +209,11 @@
   flex-direction: column;
   gap: var(--npm-space-2);
   min-width: 0;
-  padding: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
   border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
 /* Inhalt der Seitenleisten-Reiter (Tabs, AP-26b) */
 .panel {

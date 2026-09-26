@@ -18,10 +18,12 @@ import { useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { formatDateTime } from '../../lib/time';
 import { DateTime, newId, problemCode, useConfirm } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
+import { NinaTabs } from './NinaLayout';
 import styles from './nina.module.css';
 import { ninaInstancesKey, uptakeText } from './UptakeStatus';
 
@@ -41,9 +43,7 @@ export function InstancesPage() {
   const current = items.find((i) => i.id === selected);
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1>{t('nina.instances.title')}</h1>
-      </div>
+      <PageHeader title={t('nina.instances.title')} nav={<NinaTabs />} />
       <p className={styles.info}>{t('nina.instances.intro')}</p>
       <CreatePanel />
       <section className={styles.panel} aria-labelledby="nina-instance-list">

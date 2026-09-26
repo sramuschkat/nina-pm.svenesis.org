@@ -1,7 +1,8 @@
 /**
  * S-61 Session-Detail (FK 14.3; FA-AUS-01…03, FA-AUS-06, FA-AUS-07, FA-AUS-22; NT-03, NT-E2, NT-E3;
- * AP-15): Kopf mit Status, Beginn–Ende in Standortzeit mit Kürzel, Frames und Integration; Aktionen
- * *Korrektur erfassen* und *Als geprüft markieren* (Admin). Reiter Soll/Ist je Zeile (Soll aus der
+ * AP-15): Seitenkopf (`PageHeader` mit Brotkrumen, Stilsystem AP-26d) mit Status, Beginn–Ende in
+ * Standortzeit mit Kürzel, Frames und Integration; Aktionen *Korrektur erfassen* und *Als geprüft
+ * markieren* (Admin, Hauptaktion rechts); Reiter in einer Karte. Reiter Soll/Ist je Zeile (Soll aus der
  * ersten Planrevision), Aufnahmen (Kennzeichen *Temperaturabweichung* und *Einstellungen abweichend*
  * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats. Plangrafik, Protokoll, Kennzahlen und
  * Transits folgen mit ihren Paketen (R2/R3/R4).
@@ -19,13 +20,14 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { problemCode } from '../admin/shared';
 import styles from './sessions.module.css';
-import { SessionTime, hours } from './SessionsPage';
+import { SESSIONS_PATH, SessionTime, hours } from './SessionsPage';
 
 type Tab = 'plan' | 'captures' | 'events' | 'flats';
 const TABS: readonly Tab[] = ['plan', 'captures', 'events', 'flats'];
@@ -59,53 +61,57 @@ export function SessionDetailPage() {
   const unassigned = d.captures.filter((c) => c.assignment === 'unassigned');
   return (
     <div className={styles.page}>
-      <nav aria-label={t('sessions.crumbs')} className={styles.muted}>
-        {t('sessions.detail.crumbs', { night, rig: s.rigName })}
-      </nav>
-      <div className={styles.head}>
-        <h1>{t('sessions.detail.title', { night, rig: s.rigName })}</h1>
-        <div className={styles.actions}>
-          {d.rows.length > 0 ? (
-            <button
-              type="button"
-              className={styles.button}
-              onClick={() => {
-                setTab('plan');
-                setCorrectLine(d.rows[0]?.exposureLineId ?? null);
-              }}
-            >
-              {t('sessions.detail.correct')}
-            </button>
-          ) : null}
-          {canReview ? (
-            <button
-              type="button"
-              className={s.reviewed ? styles.button : styles.buttonPrimary}
-              disabled={review.isPending}
-              onClick={() => review.mutate(!s.reviewed)}
-            >
-              {s.reviewed ? t('sessions.detail.unmarkReviewed') : t('sessions.detail.markReviewed')}
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        crumbs={[{ label: t('nav.evaluation') }, { label: t('sessions.title'), to: SESSIONS_PATH }]}
+        title={t('sessions.detail.title', { night, rig: s.rigName })}
+        meta={
+          <>
+            <StatusBadge kind="session" value={s.status} size="sm" />
+            <SessionTime session={s} />
+            <span>
+              {t('sessions.detail.summary', { frames: s.frames, hours: hours(s.integrationS) })}
+            </span>
+            {s.ninaInstanceName ? (
+              <span>{t('sessions.detail.instance', { name: s.ninaInstanceName })}</span>
+            ) : null}
+            {s.createdOffline ? <span className={styles.pill}>{t('sessions.offline')}</span> : null}
+            <span className={s.reviewed ? styles.pillOk : styles.pillWarn}>
+              {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
+            </span>
+          </>
+        }
+        actions={
+          d.rows.length > 0 || canReview ? (
+            <>
+              {d.rows.length > 0 ? (
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => {
+                    setTab('plan');
+                    setCorrectLine(d.rows[0]?.exposureLineId ?? null);
+                  }}
+                >
+                  {t('sessions.detail.correct')}
+                </button>
+              ) : null}
+              {canReview ? (
+                <button
+                  type="button"
+                  className={s.reviewed ? styles.button : styles.buttonPrimary}
+                  disabled={review.isPending}
+                  onClick={() => review.mutate(!s.reviewed)}
+                >
+                  {s.reviewed
+                    ? t('sessions.detail.unmarkReviewed')
+                    : t('sessions.detail.markReviewed')}
+                </button>
+              ) : null}
+            </>
+          ) : null
+        }
+      />
       {review.error ? <ProblemMessage code={problemCode(review.error)} /> : null}
-      <p className={styles.summary}>
-        <StatusBadge kind="session" value={s.status} />
-        <SessionTime session={s} />
-        <span>
-          {t('sessions.detail.summary', { frames: s.frames, hours: hours(s.integrationS) })}
-        </span>
-        {s.ninaInstanceName ? (
-          <span className={styles.muted}>
-            {t('sessions.detail.instance', { name: s.ninaInstanceName })}
-          </span>
-        ) : null}
-        {s.createdOffline ? <span className={styles.pill}>{t('sessions.offline')}</span> : null}
-        <span className={s.reviewed ? styles.pillOk : styles.pillWarn}>
-          {s.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
-        </span>
-      </p>
       {unassigned.length > 0 ? (
         <p>
           <span className={styles.pillWarn}>
@@ -124,43 +130,45 @@ export function SessionDetailPage() {
         </p>
       ) : null}
 
-      <Tabs
-        label={t('sessions.detail.tabs')}
-        tabs={TABS.map((k) => ({ key: k, label: t(`sessions.detail.tab.${k}`) }))}
-        value={tab}
-        onChange={setTab}
-        panelClassName={styles.tabPanel}
-        panels={{
-          plan: (
-            <>
-              {correctLine ? (
-                <CorrectionForm
-                  key={correctLine}
-                  sessionId={id}
+      <section className={styles.tabCard} aria-label={t('sessions.detail.tabs')}>
+        <Tabs
+          label={t('sessions.detail.tabs')}
+          tabs={TABS.map((k) => ({ key: k, label: t(`sessions.detail.tab.${k}`) }))}
+          value={tab}
+          onChange={setTab}
+          panelClassName={styles.tabPanel}
+          panels={{
+            plan: (
+              <>
+                {correctLine ? (
+                  <CorrectionForm
+                    key={correctLine}
+                    sessionId={id}
+                    rows={d.rows}
+                    initialLine={correctLine}
+                    onDone={() => setCorrectLine(null)}
+                  />
+                ) : null}
+                <PlanTable
                   rows={d.rows}
-                  initialLine={correctLine}
-                  onDone={() => setCorrectLine(null)}
+                  hasPlan={s.planRevision !== null}
+                  onCorrect={setCorrectLine}
                 />
-              ) : null}
-              <PlanTable
-                rows={d.rows}
-                hasPlan={s.planRevision !== null}
-                onCorrect={setCorrectLine}
+              </>
+            ),
+            captures: (
+              <Captures
+                detail={d}
+                filter={captureFilter}
+                onFilter={setCaptureFilter}
+                onChanged={refresh}
               />
-            </>
-          ),
-          captures: (
-            <Captures
-              detail={d}
-              filter={captureFilter}
-              onFilter={setCaptureFilter}
-              onChanged={refresh}
-            />
-          ),
-          events: <Events detail={d} />,
-          flats: <Flats detail={d} />,
-        }}
-      />
+            ),
+            events: <Events detail={d} />,
+            flats: <Flats detail={d} />,
+          }}
+        />
+      </section>
     </div>
   );
 }

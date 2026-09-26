@@ -1,0 +1,74 @@
+/* Seitengerüst (components.md §2.14): Titel 24 px oben links, Aktionen rechts, Reiter darunter. */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.crumbs li + li::before {
+  content: '›';
+  margin-right: var(--npm-space-2);
+}
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  min-width: 0;
+}
+.titles {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.title {
+  margin: 0;
+  font-size: var(--npm-font-h1);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: 22px;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--npm-space-2);
+  flex-shrink: 0;
+}
+.nav {
+  margin-top: var(--npm-space-2);
+}
+/* Schmal: Aktionen unter den Titel, damit nichts seitlich überläuft. */
+@media (max-width: 1023px) {
+  .row {
+    flex-wrap: wrap;
+  }
+  .actions {
+    flex-shrink: 1;
+    justify-content: flex-start;
+  }
+}

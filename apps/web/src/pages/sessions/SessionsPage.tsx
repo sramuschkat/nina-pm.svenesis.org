@@ -2,6 +2,7 @@
  * S-60 Sessions (FK 14.3; FA-AUS-01, FA-AUS-07; AP-15): Liste je Rig und Nacht mit Status, Beginn–Ende
  * in Standortzeit mit Kürzel, Frames, Integration, Aufnahmen ohne Zuordnung und geprüft ja/nein; Filter
  * Rig und „nur ungeprüfte“. Effizienz und Wetterbewertung folgen mit den KPIs (R3) bzw. dem Wetter (R2).
+ * Seitengerüst `PageHeader`, Filterzeile und Tabelle in **einer** Karte (Stilsystem AP-26d).
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { sessionsApi, type NightSession } from '../../api/client';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -48,48 +50,44 @@ export function SessionsPage() {
   const items = list.data ?? [];
   return (
     <div className={styles.page}>
-      <nav aria-label={t('sessions.crumbs')} className={styles.muted}>
-        {t('sessions.crumbs')}
-      </nav>
-      <div className={styles.head}>
-        <h1>{t('sessions.title')}</h1>
-      </div>
-      <div className={styles.toolbar}>
-        <div className={styles.field}>
-          <label htmlFor="sessions-rig">{t('sessions.rig')}</label>
-          <select
-            id="sessions-rig"
-            className={styles.input}
-            value={rigId}
-            onChange={(e) => setRigId(e.target.value)}
-          >
-            <option value="">{t('sessions.allRigs')}</option>
-            {(rigs.data ?? []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+      <PageHeader title={t('sessions.title')} />
+      <section className={styles.listCard} aria-label={t('sessions.title')}>
+        <div className={`${styles.toolbar} ${styles.listBar}`}>
+          <div className={styles.field}>
+            <label htmlFor="sessions-rig">{t('sessions.rig')}</label>
+            <select
+              id="sessions-rig"
+              className={`${styles.input} ${styles.rigSelect}`}
+              value={rigId}
+              onChange={(e) => setRigId(e.target.value)}
+            >
+              <option value="">{t('sessions.allRigs')}</option>
+              {(rigs.data ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={unreviewed}
+              onChange={(e) => setUnreviewed(e.target.checked)}
+            />
+            {t('sessions.onlyUnreviewed')}
+          </label>
         </div>
-        <label className={styles.check}>
-          <input
-            type="checkbox"
-            checked={unreviewed}
-            onChange={(e) => setUnreviewed(e.target.checked)}
-          />
-          {t('sessions.onlyUnreviewed')}
-        </label>
-      </div>
-      <section className={styles.panel} aria-labelledby="sessions-list">
-        <h2 id="sessions-list" className={styles.muted}>
-          {t('sessions.title')}
-        </h2>
         {list.isPending ? (
-          <p role="status">{t('common.loading')}</p>
+          <p role="status" className={styles.listNote}>
+            {t('common.loading')}
+          </p>
         ) : list.isError ? (
-          <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
+          <div className={styles.listNote}>
+            <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
+          </div>
         ) : items.length === 0 ? (
-          <p className={styles.muted}>{t('sessions.empty')}</p>
+          <p className={`${styles.muted} ${styles.listNote}`}>{t('sessions.empty')}</p>
         ) : (
           <SessionTable items={items} />
         )}

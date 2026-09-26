@@ -1,9 +1,7 @@
-/* Ausrüstung S-10…S-15: volle Breite, Spalten nur über das Raster; Abstände/Farben nur über Tokens. */
+/* Ausrüstung S-10…S-15 (Stilsystem AP-26d): volle Breite, Karten als Fläche, Spalten nur über das Raster;
+   Abstände, Farben und Schriftgrößen nur über Tokens. */
 .page {
   composes: page from '../admin/admin.module.css';
-}
-.head {
-  composes: head from '../admin/admin.module.css';
 }
 .panel {
   composes: panel from '../admin/admin.module.css';
@@ -53,18 +51,6 @@
 .pill {
   composes: pill from '../admin/admin.module.css';
 }
-.tabs {
-  composes: tabs from '../admin/admin.module.css';
-}
-.tab {
-  composes: tab from '../admin/admin.module.css';
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  cursor: pointer;
-  font: inherit;
-}
 
 .readOnly {
   margin: 0;
@@ -75,14 +61,14 @@
 }
 
 /*
- * Listen-/Detail-Muster (AP-26b): links Liste, rechts Detail – ab 1024 px nebeneinander, darunter
- * untereinander mit kompakter Liste (768 px ohne horizontales Scrollen). Berechnete Werte (`aside`)
- * stehen ab 1440 px neben dem Formular, sonst darunter.
+ * Listen-/Detail-Muster (AP-26b, Stilsystem AP-26d): links die Listenkarte (feste Breite), rechts die
+ * Detailkarte – ab 1024 px nebeneinander, darunter untereinander mit kompakter Liste (768 px ohne
+ * horizontales Scrollen). Zusatzkarten (`aside`) stehen ab 1440 px neben dem Detail, sonst darunter.
  */
 .listDetail {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
-  gap: var(--npm-space-5);
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: var(--npm-space-4);
   align-items: start;
 }
 .listDetailWide {
@@ -92,13 +78,13 @@
 .detailColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-5);
+  gap: var(--npm-space-4);
   min-width: 0;
 }
 .detailSplit {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: var(--npm-space-5);
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--npm-space-4);
   align-items: start;
 }
 .emptyDetail {
@@ -122,9 +108,9 @@
   .listDetailWide {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* Kompakte Liste über dem Detail: höchstens acht Zeilen, der Rest scrollt senkrecht. */
+  /* Kompakte Liste über dem Detail: begrenzte Höhe, der Rest scrollt senkrecht. */
   .listColumn .pickList {
-    max-height: calc(var(--npm-row-h) * 8);
+    max-height: calc(var(--npm-row-h) * 10);
     overflow-y: auto;
     padding: 2px;
   }
@@ -132,23 +118,14 @@
 .stack {
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-5);
+  gap: var(--npm-space-4);
   min-width: 0;
 }
 
 .pick {
   composes: panel;
+  padding: var(--npm-space-3);
   gap: var(--npm-space-2);
-}
-.pickHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--npm-space-2);
-}
-.pickHead h2,
-.pickHead h3 {
-  font-size: var(--npm-font-h3);
 }
 .pickList {
   list-style: none;
@@ -156,68 +133,164 @@
   padding: 0;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
-.pickItem {
+/* Zeile der Auswahlliste: Name, darunter eine gedämpfte Metazeile; gewählt = gefüllte Fläche, kein Streifen. */
+.pickRow {
   display: flex;
-  align-items: center;
-  gap: var(--npm-space-2);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   width: 100%;
   min-height: var(--npm-row-h);
-  padding: 0 var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3);
   background: none;
   border: none;
-  border-radius: calc(var(--npm-radius) / 2);
+  border-radius: var(--npm-radius);
   color: var(--npm-text);
   text-align: left;
   cursor: pointer;
   font: inherit;
 }
+.pickRow:hover {
+  background: var(--npm-neutral-bg);
+}
+.pickRow[aria-current='true'] {
+  background: var(--npm-selected-bg);
+}
+.pickRow > span:first-child {
+  min-width: 0;
+  max-width: 100%;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pickRow[aria-current='true'] > span:first-child {
+  color: var(--npm-link);
+}
+.pickMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  max-width: 100%;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  overflow-wrap: anywhere;
+}
+/* Knopf in einer Tabellenzelle, der ein Objekt wählt (Filtersammlung, Remote-Verbindungen). */
+.pickItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  background: none;
+  border: none;
+  border-radius: var(--npm-radius);
+  color: var(--npm-link);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
 .pickItem:hover {
-  background: var(--npm-note-bg);
+  background: var(--npm-neutral-bg);
 }
 .pickItem[aria-current='true'] {
-  background: var(--npm-note-bg);
-  box-shadow: inset 3px 0 0 var(--npm-accent);
-  font-weight: 600;
+  background: var(--npm-selected-bg);
 }
-.pickItem > span:first-child {
+
+/* Detailkarte (Stilsystem AP-26d): Kopf mit Titel, Nebeninfo und Aktionen, darunter der Rumpf. */
+.card {
+  composes: panel;
+  padding: 0;
+  gap: 0;
+}
+.form {
+  composes: card;
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.cardTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}
+.cardTitle h2,
+.cardTitle h3 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.pickMeta {
-  margin-left: auto;
+.cardMeta {
   color: var(--npm-text-light);
   font-size: var(--npm-font-small);
-  white-space: nowrap;
 }
-
-.form {
-  composes: panel;
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--npm-space-2);
+  margin-left: auto;
 }
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+  padding: var(--npm-space-4);
+  min-width: 0;
+}
+.cardBody > button,
+.section > button,
+.flat > button {
+  align-self: flex-start;
+}
+/* Titelzeile einer Karte ohne Formular (Übersicht, Remote-Verbindungen) bzw. eines Abschnitts. */
 .formTitle {
   display: flex;
   align-items: center;
-  gap: var(--npm-space-2);
+  gap: var(--npm-space-2) var(--npm-space-3);
   flex-wrap: wrap;
 }
-.formTitle h2 {
+.formTitle h2,
+.formTitle h3 {
+  margin: 0 auto 0 0;
+  font-size: var(--npm-font-h2);
+}
+/* Inhalt ohne eigene Fläche, z. B. ein Unterformular in einem Reiter der Rig-Karte. */
+.flat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  min-width: 0;
+}
+.flatTitle {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}
+.flatTitle h3 {
+  margin: 0;
   font-size: var(--npm-font-h3);
-  margin-right: auto;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--npm-space-3);
+  gap: var(--npm-space-3) var(--npm-space-4);
 }
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-  min-width: 0;
-}
-.field label {
-  font-weight: 600;
-  font-size: var(--npm-font-small);
+  composes: field from '../admin/admin.module.css';
 }
 .fieldWide {
   grid-column: 1 / -1;
@@ -226,15 +299,51 @@
   color: var(--npm-danger);
   font-size: var(--npm-font-small);
 }
+/* Feld mit Einheit rechts daneben. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.control > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.unit {
+  flex: none;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+/* Abschnitt mit kleinem Titel (Allgemein, Optik, Berechnete Werte …); Abstand statt Trennlinie. */
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-3);
-  padding-top: var(--npm-space-3);
-  border-top: 1px solid var(--npm-border);
+  min-width: 0;
 }
-.section h3 {
-  font-size: var(--npm-font-base);
+.section h3,
+.section h4 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+  font-weight: 600;
+}
+/* Berechnete Werte als Schlüssel-Wert-Liste: feste Beschriftungsspalte, Werte direkt daneben. */
+.kv {
+  display: grid;
+  grid-template-columns: minmax(0, 10rem) minmax(0, 1fr);
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  font-size: var(--npm-font-small);
+}
+.kv dt {
+  color: var(--npm-text-light);
+}
+.kv dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 .formFoot {
   display: flex;
@@ -258,19 +367,9 @@ fieldset.inline {
 .derived {
   composes: panel;
 }
-.derived dl {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--npm-space-1) var(--npm-space-3);
+.derived h2 {
   margin: 0;
-}
-.derived dt {
-  color: var(--npm-text-light);
-}
-.derived dd {
-  margin: 0;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  font-size: var(--npm-font-h2);
 }
 
 .usage {
@@ -351,16 +450,16 @@ fieldset.inline {
 }
 .spectrumTick {
   fill: var(--npm-text-light);
-  font-size: 14px;
+  font-size: var(--npm-font-base);
 }
 .spectrumTitle {
   fill: var(--npm-text-light);
-  font-size: 14px;
+  font-size: var(--npm-font-base);
   font-style: italic;
   font-weight: 600;
 }
 .spectrumLabel {
-  font-size: 14px;
+  font-size: var(--npm-font-base);
   font-weight: 600;
   /* Hof in der Grundfarbe: Führungslinien anderer Filter laufen unter der Schrift durch. */
   paint-order: stroke;
@@ -435,16 +534,12 @@ fieldset.inline {
   font: inherit;
   text-decoration: underline;
 }
+/* Spalten der Rig-Reiter: so viele, wie bei mindestens 300 px Breite in die Karte passen. */
 .columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: var(--npm-space-5);
   align-items: start;
-}
-@media (max-width: 1100px) {
-  .columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 .statusOk {
   composes: pillOk;
@@ -460,7 +555,8 @@ fieldset.inline {
 }
 .label {
   font-weight: 600;
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
 }
 .facts {
   display: grid;

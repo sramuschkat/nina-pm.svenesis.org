@@ -351,6 +351,24 @@
   color: var(--npm-muted);
   cursor: default;
 }
+.menuLabel {
+  padding: var(--npm-space-1) var(--npm-space-3);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text-light);
+}
+.menuItem[role='menuitemradio'] {
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--npm-space-3) + 20px);
+  position: relative;
+}
+.menuIndicator {
+  position: absolute;
+  left: var(--npm-space-3);
+  display: inline-flex;
+  color: var(--npm-link);
+}
 .menuSeparator {
   height: 1px;
   background: var(--npm-border);
@@ -377,10 +395,10 @@
 .workMain {
   flex: 1;
   min-width: 0;
-  padding: var(--npm-space-5);
+  padding: var(--npm-space-5) var(--npm-space-6) var(--npm-space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-5);
+  gap: var(--npm-space-4);
 }
 
 .sideNav {
@@ -388,7 +406,54 @@
   width: 220px;
   background: var(--npm-white);
   border-right: 1px solid var(--npm-border);
-  padding: var(--npm-space-2);
+  padding: var(--npm-space-1) var(--npm-space-2) var(--npm-space-3);
+  display: flex;
+  flex-direction: column;
+  /* Klebt unter der Kopfleiste, damit Rechtliches und Einklappen sichtbar bleiben. */
+  position: sticky;
+  top: 52px;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+}
+.navGroup {
+  display: flex;
+  flex-direction: column;
+}
+.navGroupLabel {
+  padding: var(--npm-space-3) var(--npm-space-2) var(--npm-space-1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--npm-muted);
+  white-space: nowrap;
+}
+.sideNavCollapsed .navGroupLabel {
+  visibility: hidden;
+  height: var(--npm-space-3);
+  padding: 0;
+}
+.navFoot {
+  margin-top: auto;
+  padding-top: var(--npm-space-2);
+  border-top: 1px solid var(--npm-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.navLegal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--npm-space-2);
+  font-size: var(--npm-font-label);
+  color: var(--npm-muted);
+}
+.navLegal a {
+  color: var(--npm-muted);
+}
+.sideNavCollapsed .navLegal {
+  display: none;
 }
 .sideNavCollapsed {
   width: calc(var(--npm-row-h) + var(--npm-space-4));
@@ -427,37 +492,43 @@
   gap: var(--npm-space-1);
 }
 .navToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--npm-row-h);
-  height: var(--npm-row-h);
-  margin-bottom: var(--npm-space-2);
-  border: none;
-  background: transparent;
-  color: var(--npm-text-light);
-  cursor: pointer;
-  border-radius: var(--npm-radius);
-}
-.navItem {
   display: flex;
   align-items: center;
   gap: var(--npm-space-3);
   min-height: var(--npm-row-h);
   padding: 0 var(--npm-space-2);
-  color: var(--npm-text);
-  border-radius: calc(var(--npm-radius) / 2);
+  border: none;
+  background: transparent;
+  color: var(--npm-text-light);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+  border-radius: var(--npm-radius);
+  white-space: nowrap;
+}
+.navToggle:hover {
+  background: var(--npm-neutral-bg);
+}
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-3);
+  min-height: calc(var(--npm-row-h) + 2px);
+  padding: 0 var(--npm-space-2);
+  color: var(--npm-text-light);
+  border-radius: 8px;
   white-space: nowrap;
 }
 .navItem:hover {
-  background: var(--npm-note-bg);
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
   text-decoration: none;
 }
+/* Aktiver Eintrag als gefüllte Fläche (AP-26d). */
 .navItem[aria-current='page'] {
-  background: var(--npm-note-bg);
+  background: var(--npm-selected-bg);
   color: var(--npm-link);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--npm-accent);
 }
 .navItemDisabled {
   display: flex;
@@ -472,49 +543,6 @@
 .navLabel {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* ---------- App-Fußleiste ---------- */
-.appFooter {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--npm-space-3);
-  padding: var(--npm-space-2) var(--npm-space-5);
-  background: var(--npm-white);
-  border-top: 1px solid var(--npm-border);
-  font-size: var(--npm-font-small);
-  color: var(--npm-text-light);
-}
-.density {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-1);
-}
-.densityLabel {
-  margin-right: var(--npm-space-1);
-}
-.density button {
-  border: 1px solid var(--npm-border);
-  background: transparent;
-  color: var(--npm-text);
-  padding: 0 var(--npm-space-2);
-  min-height: calc(var(--npm-row-h) * 0.8);
-  border-radius: var(--npm-radius);
-  cursor: pointer;
-}
-.density .densityActive {
-  background: var(--npm-button);
-  border-color: var(--npm-button);
-  color: var(--npm-on-button);
-}
-.version {
-  font-variant-numeric: tabular-nums;
-}
-.help {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-1);
 }
 
 @media (max-width: 1279px) {

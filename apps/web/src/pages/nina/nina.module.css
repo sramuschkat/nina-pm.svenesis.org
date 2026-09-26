@@ -99,8 +99,8 @@
   }
 }
 .info {
-  background: var(--npm-note-bg);
-  border-radius: var(--npm-radius);
+  background: var(--npm-info-bg);
+  border-radius: var(--npm-radius-card);
   padding: var(--npm-space-3) var(--npm-space-4);
   margin: 0;
 }
@@ -118,11 +118,17 @@
   gap: var(--npm-space-1) var(--npm-space-2);
   align-items: baseline;
 }
-.toolbar {
-  display: flex;
+/* Filter, Gruppieren und Sortieren als eigene Karte über den Zielen (Stilsystem AP-26d). */
+.toolbarCard {
+  composes: panel from '../admin/admin.module.css';
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+.toolbarCard > .field {
+  flex: 1 1 10rem;
 }
 .cards {
   display: grid;
@@ -135,7 +141,7 @@
 }
 .card h3 {
   margin: 0;
-  font-size: var(--npm-font-h3);
+  font-size: var(--npm-font-h2);
 }
 .cardHead {
   display: flex;

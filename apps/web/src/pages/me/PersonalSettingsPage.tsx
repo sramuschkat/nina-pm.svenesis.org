@@ -14,6 +14,7 @@ import { useAuth } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SYSTEM_TIMEZONE } from '../../lib/time';
 import styles from '../admin/admin.module.css';
@@ -26,9 +27,7 @@ export function PersonalSettingsPage() {
   const { t } = useTranslation();
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1>{t('me.title')}</h1>
-      </div>
+      <PageHeader title={t('me.title')} />
       <Preferences />
       <Sessions />
     </div>

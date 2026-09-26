@@ -1,6 +1,6 @@
-/* S-40 Nacht-Simulator (FK 14.3, AP-26b): volle Breite, Ergebnis zuerst, Einstellungen einklappbar,
-   Ergebnis auf Reitern; Abstände und Farben nur über Tokens. Felder, Knöpfe und Tabellen aus den
-   Ausrüstungsseiten. */
+/* S-40 Nacht-Simulator (FK 14.3, AP-26b, Stilsystem AP-26d): volle Breite, Ergebnis zuerst,
+   Einstellungen einklappbar, Ergebnis auf Reitern; Einstellungen, Nachtwahl und Ergebnis als Karten.
+   Abstände und Farben nur über Tokens; Felder, Knöpfe und Tabellen aus den Grundklassen. */
 .page {
   composes: page from '../equipment/equipment.module.css';
 }
@@ -28,17 +28,15 @@
 .success {
   composes: success from '../equipment/equipment.module.css';
 }
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--npm-space-3);
-}
-.headActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-2);
+/* Karte: einzige Fläche der Seite (Stilsystem AP-26d). */
+.summary,
+.dateRow,
+.results {
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+  min-width: 0;
 }
 .rigRow {
   display: flex;
@@ -61,11 +59,7 @@
   font-variant-numeric: tabular-nums;
 }
 .summary {
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
-  background: var(--npm-white);
-  padding: var(--npm-space-2) var(--npm-space-3);
-  margin-top: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
 }
 .summaryBar {
   display: flex;
@@ -108,7 +102,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--npm-space-2) var(--npm-space-3);
-  margin-top: var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-4);
 }
 .stats {
   color: var(--npm-text-light);
@@ -124,11 +118,11 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--npm-space-3);
 }
+/* Zielkarte innerhalb der Ergebnis-Karte: getönte Fläche statt zweiter Umrandung. */
 .card {
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
-  padding: var(--npm-space-3);
-  background: var(--npm-bg);
+  border-radius: var(--npm-radius-card);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  background: var(--npm-surface-sub);
   min-width: 0;
 }
 .card h3 {
@@ -199,11 +193,10 @@
   outline-offset: 2px;
 }
 .results {
-  margin-top: var(--npm-space-3);
-  min-width: 0;
+  overflow: clip;
 }
 .tabPanel {
-  padding-top: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
 }
 .badge,
 .badgeError {
@@ -233,6 +226,10 @@
   color: var(--npm-danger);
 }
 .hash {
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-top: 1px solid var(--npm-border);
+  background: var(--npm-surface-sub);
   color: var(--npm-text-light);
   font-size: var(--npm-font-label);
   overflow-wrap: anywhere;

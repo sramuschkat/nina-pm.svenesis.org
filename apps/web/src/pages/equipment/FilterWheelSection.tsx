@@ -250,9 +250,9 @@ export function FilterWheelSection({ rig, canWrite }: { rig: RigView; canWrite: 
       : []),
   ];
   return (
-    <section className={styles.form} aria-labelledby="wheel-title">
-      <div className={styles.formTitle}>
-        <h2 id="wheel-title">{t('rigs.wheel.title')}</h2>
+    <section className={styles.flat} aria-labelledby="wheel-title">
+      <div className={styles.flatTitle}>
+        <h3 id="wheel-title">{t('rigs.wheel.title')}</h3>
         {view.reported?.reportedAt ? (
           <span className={styles.muted}>
             {t('rigs.wheel.reportedAt', {

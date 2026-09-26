@@ -1,6 +1,10 @@
-/** Administration im Mandanten (S-70…S-72): Reiter, sichtbar für Admins und den Owner. */
+/**
+ * Administration im Mandanten (S-70…S-72): Seitengerüst `PageHeader` (Stilsystem AP-26d) mit Titel,
+ * Aktionen rechts und den Bereichsreitern darunter; sichtbar für Admins und den Owner.
+ */
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PageHeader } from '../../components/PageHeader';
 import styles from './admin.module.css';
 import { SectionTabs } from './shared';
 
@@ -23,18 +27,20 @@ export function AdminLayout({
   const { t } = useTranslation();
   return (
     <div className={styles.page}>
-      <SectionTabs
-        label={t('admin.tabsLabel')}
-        tabs={[
-          { to: ADMIN_PATHS.members, label: t('admin.members.tab') },
-          { to: ADMIN_PATHS.settings, label: t('admin.settings.tab') },
-          { to: ADMIN_PATHS.log, label: t('admin.log.tab') },
-        ]}
+      <PageHeader
+        title={title}
+        actions={actions}
+        nav={
+          <SectionTabs
+            label={t('admin.tabsLabel')}
+            tabs={[
+              { to: ADMIN_PATHS.members, label: t('admin.members.tab') },
+              { to: ADMIN_PATHS.settings, label: t('admin.settings.tab') },
+              { to: ADMIN_PATHS.log, label: t('admin.log.tab') },
+            ]}
+          />
+        }
       />
-      <div className={styles.head}>
-        <h1>{title}</h1>
-        {actions ? <div className={styles.actions}>{actions}</div> : null}
-      </div>
       {children}
     </div>
   );

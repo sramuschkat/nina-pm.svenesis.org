@@ -16,11 +16,12 @@ import styles from './equipment.module.css';
 import {
   CheckField,
   DeleteDialog,
+  DetailHead,
   EquipmentLayout,
-  FormActions,
   ListDetail,
   NewButton,
   NumberField,
+  SaveError,
   SelectField,
   TextField,
   UsageNotice,
@@ -155,178 +156,199 @@ export function FiltersPage() {
         }
         detail={
           editor.hasDetail ? (
-            <form className={styles.form} onSubmit={submit} aria-labelledby="filter-form-title">
-              <div className={styles.formTitle}>
-                <h2 id="filter-form-title">
-                  {editor.selected ? editor.selected.shortName : t('equipment.filters.new')}
-                </h2>
-              </div>
-              {editor.del.usage ? (
-                <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
-              ) : null}
-              <div className={styles.grid}>
-                <TextField
-                  label={t('equipment.filters.field.shortName')}
-                  value={d.shortName}
-                  maxLength={20}
-                  onChange={(v) => editor.set('shortName', v)}
-                  error={fieldError('shortName')}
-                  hint={t('equipment.filters.shortNameHint')}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.filters.field.fullName')}
-                  value={d.fullName}
-                  onChange={(v) => editor.set('fullName', v)}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.field.brand')}
-                  value={d.brand}
-                  onChange={(v) => editor.set('brand', v)}
-                  disabled={disabled}
-                />
-                <SelectField
-                  label={t('equipment.filters.field.type')}
-                  value={d.filterType}
-                  onChange={(v) => editor.set('filterType', v)}
-                  options={filterTypes.map((f) => ({
-                    value: f,
-                    label: t(`equipment.filterType.${f}`),
-                  }))}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.filters.field.bandwidth')}
-                  unit="nm"
-                  value={d.bandwidthNm}
-                  onChange={(v) => editor.set('bandwidthNm', v)}
-                  error={fieldError('bandwidthNm')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.filters.field.center')}
-                  unit="nm"
-                  value={d.centerWavelengthNm}
-                  onChange={(v) => editor.set('centerWavelengthNm', v)}
-                  error={fieldError('centerWavelengthNm')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.filters.field.transmission')}
-                  unit="%"
-                  value={d.transmissionPct}
-                  onChange={(v) => editor.set('transmissionPct', v)}
-                  error={fieldError('transmissionPct')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.filters.field.thickness')}
-                  unit="mm"
-                  value={d.thicknessMm}
-                  onChange={(v) => editor.set('thicknessMm', v)}
-                  error={fieldError('thicknessMm')}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.filters.field.size')}
-                  value={d.size ?? ''}
-                  maxLength={40}
-                  onChange={(v) => editor.set('size', v)}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.filters.field.shape')}
-                  value={d.shape ?? ''}
-                  maxLength={40}
-                  onChange={(v) => editor.set('shape', v)}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.filters.field.mount')}
-                  value={d.mountType ?? ''}
-                  maxLength={40}
-                  onChange={(v) => editor.set('mountType', v)}
-                  disabled={disabled}
-                />
-                <div className={styles.field}>
-                  <label htmlFor="filter-color">{t('equipment.filters.field.color')}</label>
-                  <div className={styles.inline}>
-                    <input
-                      id="filter-color"
-                      type="color"
-                      value={/^#[0-9a-f]{6}$/i.test(d.colorHex) ? d.colorHex : '#cccccc'}
-                      disabled={disabled}
-                      onChange={(e) => editor.set('colorHex', e.target.value.toUpperCase())}
-                    />
-                    <FilterChip shortName={d.shortName || '?'} color={d.colorHex} />
-                  </div>
-                </div>
-                <SelectField
-                  label={t('equipment.filters.field.photometricBand')}
-                  value={d.photometricBand}
-                  onChange={(v) => editor.set('photometricBand', v)}
-                  options={photometricBands.map((b) => ({
-                    value: b,
-                    label: b === 'none' ? t('equipment.filters.bandNone') : b,
-                  }))}
-                  hint={t('equipment.filters.bandHint')}
-                  disabled={disabled}
-                />
-                <SelectField
-                  label={t('equipment.filters.field.telescope')}
-                  value={d.telescopeId ?? ''}
-                  onChange={(v) => editor.set('telescopeId', v === '' ? null : v)}
-                  options={[
-                    { value: '', label: t('equipment.none') },
-                    ...(telescopes.data ?? []).map((tel) => ({ value: tel.id, label: tel.name })),
-                  ]}
-                  hint={t('equipment.filters.telescopeHint')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.filters.field.defaultExposure')}
-                  unit="s"
-                  value={d.defaultExposureS}
-                  onChange={(v) => editor.set('defaultExposureS', v)}
-                  error={fieldError('defaultExposureS')}
-                  disabled={disabled}
-                />
-                <SelectField
-                  label={t('equipment.filters.field.defaultMoonProfile')}
-                  value={d.defaultMoonProfileId ?? ''}
-                  onChange={(v) => editor.set('defaultMoonProfileId', v === '' ? null : v)}
-                  options={[
-                    { value: '', label: t('equipment.none') },
-                    ...(moonProfiles.data ?? []).map((m) => ({
-                      value: m.id,
-                      label: profileName(m.name),
-                    })),
-                  ]}
-                  disabled={disabled}
-                />
-              </div>
-              <CheckField
-                label={t('equipment.filters.field.defaultOnNewProject')}
-                checked={d.defaultOnNewProject}
-                onChange={(v) => editor.set('defaultOnNewProject', v)}
-                disabled={disabled}
-              />
-              <TextField
-                label={t('equipment.field.notes')}
-                value={d.notes}
-                maxLength={4000}
-                multiline
-                onChange={(v) => editor.set('notes', v)}
-                disabled={disabled}
-              />
-              <FormActions
+            <form className={styles.card} onSubmit={submit} aria-labelledby="filter-form-title">
+              <DetailHead
+                titleId="filter-form-title"
+                title={editor.selected ? editor.selected.shortName : t('equipment.filters.new')}
+                meta={editor.selected?.fullName || undefined}
                 canWrite={canWrite}
                 saving={editor.save.isPending}
                 saved={editor.saved}
-                error={editor.save.error}
                 onDelete={editor.onDelete((s) => s.shortName)}
               />
+              <div className={styles.cardBody}>
+                <SaveError error={editor.save.error} />
+                {editor.del.usage ? (
+                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                ) : null}
+                <section className={styles.section} aria-labelledby="filter-general">
+                  <h3 id="filter-general">{t('equipment.section.general')}</h3>
+                  <div className={styles.grid}>
+                    <TextField
+                      label={t('equipment.filters.field.shortName')}
+                      value={d.shortName}
+                      maxLength={20}
+                      onChange={(v) => editor.set('shortName', v)}
+                      error={fieldError('shortName')}
+                      hint={t('equipment.filters.shortNameHint')}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.filters.field.fullName')}
+                      value={d.fullName}
+                      onChange={(v) => editor.set('fullName', v)}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.field.brand')}
+                      value={d.brand}
+                      onChange={(v) => editor.set('brand', v)}
+                      disabled={disabled}
+                    />
+                    <SelectField
+                      label={t('equipment.filters.field.type')}
+                      value={d.filterType}
+                      onChange={(v) => editor.set('filterType', v)}
+                      options={filterTypes.map((f) => ({
+                        value: f,
+                        label: t(`equipment.filterType.${f}`),
+                      }))}
+                      disabled={disabled}
+                    />
+                    <div className={styles.field}>
+                      <label htmlFor="filter-color">{t('equipment.filters.field.color')}</label>
+                      <div className={styles.inline}>
+                        <input
+                          id="filter-color"
+                          type="color"
+                          value={/^#[0-9a-f]{6}$/i.test(d.colorHex) ? d.colorHex : '#cccccc'}
+                          disabled={disabled}
+                          onChange={(e) => editor.set('colorHex', e.target.value.toUpperCase())}
+                        />
+                        <FilterChip shortName={d.shortName || '?'} color={d.colorHex} />
+                      </div>
+                    </div>
+                    <SelectField
+                      label={t('equipment.filters.field.photometricBand')}
+                      value={d.photometricBand}
+                      onChange={(v) => editor.set('photometricBand', v)}
+                      options={photometricBands.map((b) => ({
+                        value: b,
+                        label: b === 'none' ? t('equipment.filters.bandNone') : b,
+                      }))}
+                      hint={t('equipment.filters.bandHint')}
+                      disabled={disabled}
+                    />
+                  </div>
+                </section>
+                <section className={styles.section} aria-labelledby="filter-optics">
+                  <h3 id="filter-optics">{t('equipment.section.optics')}</h3>
+                  <div className={styles.grid}>
+                    <NumberField
+                      label={t('equipment.filters.field.bandwidth')}
+                      unit="nm"
+                      value={d.bandwidthNm}
+                      onChange={(v) => editor.set('bandwidthNm', v)}
+                      error={fieldError('bandwidthNm')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.filters.field.center')}
+                      unit="nm"
+                      value={d.centerWavelengthNm}
+                      onChange={(v) => editor.set('centerWavelengthNm', v)}
+                      error={fieldError('centerWavelengthNm')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.filters.field.transmission')}
+                      unit="%"
+                      value={d.transmissionPct}
+                      onChange={(v) => editor.set('transmissionPct', v)}
+                      error={fieldError('transmissionPct')}
+                      disabled={disabled}
+                    />
+                  </div>
+                </section>
+                <section className={styles.section} aria-labelledby="filter-mechanics">
+                  <h3 id="filter-mechanics">{t('equipment.section.mechanics')}</h3>
+                  <div className={styles.grid}>
+                    <NumberField
+                      label={t('equipment.filters.field.thickness')}
+                      unit="mm"
+                      value={d.thicknessMm}
+                      onChange={(v) => editor.set('thicknessMm', v)}
+                      error={fieldError('thicknessMm')}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.filters.field.size')}
+                      value={d.size ?? ''}
+                      maxLength={40}
+                      onChange={(v) => editor.set('size', v)}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.filters.field.shape')}
+                      value={d.shape ?? ''}
+                      maxLength={40}
+                      onChange={(v) => editor.set('shape', v)}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.filters.field.mount')}
+                      value={d.mountType ?? ''}
+                      maxLength={40}
+                      onChange={(v) => editor.set('mountType', v)}
+                      disabled={disabled}
+                    />
+                  </div>
+                </section>
+                <section className={styles.section} aria-labelledby="filter-planning">
+                  <h3 id="filter-planning">{t('equipment.filters.planning')}</h3>
+                  <div className={styles.grid}>
+                    <SelectField
+                      label={t('equipment.filters.field.telescope')}
+                      value={d.telescopeId ?? ''}
+                      onChange={(v) => editor.set('telescopeId', v === '' ? null : v)}
+                      options={[
+                        { value: '', label: t('equipment.none') },
+                        ...(telescopes.data ?? []).map((tel) => ({
+                          value: tel.id,
+                          label: tel.name,
+                        })),
+                      ]}
+                      hint={t('equipment.filters.telescopeHint')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.filters.field.defaultExposure')}
+                      unit="s"
+                      value={d.defaultExposureS}
+                      onChange={(v) => editor.set('defaultExposureS', v)}
+                      error={fieldError('defaultExposureS')}
+                      disabled={disabled}
+                    />
+                    <SelectField
+                      label={t('equipment.filters.field.defaultMoonProfile')}
+                      value={d.defaultMoonProfileId ?? ''}
+                      onChange={(v) => editor.set('defaultMoonProfileId', v === '' ? null : v)}
+                      options={[
+                        { value: '', label: t('equipment.none') },
+                        ...(moonProfiles.data ?? []).map((m) => ({
+                          value: m.id,
+                          label: profileName(m.name),
+                        })),
+                      ]}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <CheckField
+                    label={t('equipment.filters.field.defaultOnNewProject')}
+                    checked={d.defaultOnNewProject}
+                    onChange={(v) => editor.set('defaultOnNewProject', v)}
+                    disabled={disabled}
+                  />
+                </section>
+                <TextField
+                  label={t('equipment.field.notes')}
+                  value={d.notes}
+                  maxLength={4000}
+                  multiline
+                  onChange={(v) => editor.set('notes', v)}
+                  disabled={disabled}
+                />
+              </div>
             </form>
           ) : null
         }

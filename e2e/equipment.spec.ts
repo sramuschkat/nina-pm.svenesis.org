@@ -2,7 +2,8 @@
  * AP-09b: Stammdaten-Bildschirme S-11…S-15 gegen den lokalen Stack (Seed aus seed-demo.json):
  * Kamera und Mondprofil anlegen, Löschen in Verwendung zeigt die Verwender, User liest nur,
  * 768/2400 px ohne horizontales Scrollen. AP-26b: Listen-/Detail-Muster (links Liste, rechts Detail,
- * *Neu* rechts im Seitenkopf; unter 1024 px untereinander).
+ * *Neu* rechts im Seitenkopf; unter 1024 px untereinander). AP-26d: *Löschen* und *Speichern* im Kopf
+ * der Detailkarte, auf Höhe des Titels.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { testLogin } from './support';
@@ -108,6 +109,13 @@ test('AP-26b: Liste links, Detail rechts; Auswahl markiert; unter 1024 px untere
   const listBox = await list.boundingBox();
   const detailBox = await detail.boundingBox();
   expect(detailBox?.x ?? 0).toBeGreaterThan((listBox?.x ?? 0) + (listBox?.width ?? 0) - 1);
+  // Kartenkopf: Speichern und Löschen auf Höhe des Titels, über dem ersten Feld.
+  for (const action of ['Speichern', 'Löschen']) {
+    const box = await page.getByRole('button', { name: action, exact: true }).boundingBox();
+    expect(Math.abs((box?.y ?? 0) - (detailBox?.y ?? 0)), action).toBeLessThan(24);
+  }
+  const nameBox = await page.getByLabel('Name', { exact: true }).boundingBox();
+  expect(nameBox?.y ?? 0).toBeGreaterThan(detailBox?.y ?? 0);
   // Suche in der Liste.
   await list.getByRole('searchbox', { name: 'Teleskope durchsuchen' }).fill('rasa');
   await expect(list.getByRole('button', { name: /^Refraktor 80\/480/ })).toHaveCount(0);

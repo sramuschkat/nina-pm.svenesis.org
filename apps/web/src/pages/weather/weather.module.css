@@ -3,9 +3,6 @@
 .page {
   composes: page from '../admin/admin.module.css';
 }
-.head {
-  composes: head from '../admin/admin.module.css';
-}
 .panel {
   composes: panel from '../admin/admin.module.css';
 }
@@ -33,6 +30,16 @@
 .nowrap {
   composes: nowrap from '../admin/admin.module.css';
 }
+/* Kontextkarte: Standort/Rig, Einheit und Ortsangaben über der Grafik (Stilsystem AP-26d). */
+.context {
+  composes: panel from '../admin/admin.module.css';
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--npm-space-3) var(--npm-space-5);
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -59,7 +66,7 @@
 }
 .unit {
   display: inline-flex;
-  border: 1px solid var(--npm-border);
+  border: 1px solid var(--npm-border-strong);
   border-radius: var(--npm-radius);
   overflow: hidden;
 }
@@ -80,7 +87,7 @@
   outline-offset: -2px;
 }
 .selected {
-  background: var(--npm-note-bg);
+  background: var(--npm-selected-bg);
 }
 .linkButton {
   background: none;

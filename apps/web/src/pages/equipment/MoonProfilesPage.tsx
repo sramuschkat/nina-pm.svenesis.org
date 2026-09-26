@@ -14,12 +14,13 @@ import styles from './equipment.module.css';
 import {
   CheckField,
   DeleteDialog,
+  DetailHead,
   EquipmentLayout,
-  FormActions,
   ListDetail,
   NewButton,
   NumberField,
   PickList,
+  SaveError,
   TextField,
   UsageNotice,
   useEditor,
@@ -158,8 +159,9 @@ export function MoonProfilesPage() {
               <>
                 <span>{label(m.name)}</span>
                 {m.isBuiltIn ? (
-                  <span className={styles.pickMeta} title={t('equipment.moonProfiles.builtIn')}>
-                    <Lock size={ICON_SIZE.table} aria-label={t('equipment.moonProfiles.builtIn')} />
+                  <span className={styles.pickMeta}>
+                    <Lock size={ICON_SIZE.table} aria-hidden />
+                    {t('equipment.moonProfiles.builtIn')}
                   </span>
                 ) : null}
               </>
@@ -168,119 +170,131 @@ export function MoonProfilesPage() {
         }
         detail={
           editor.hasDetail ? (
-            <form className={styles.form} onSubmit={submit} aria-labelledby="moon-form-title">
-              <div className={styles.formTitle}>
-                <h2 id="moon-form-title">
-                  {editor.selected ? label(editor.selected.name) : t('equipment.moonProfiles.new')}
-                </h2>
-                {canWrite && editor.selected ? (
-                  <button
-                    type="button"
-                    className={styles.button}
-                    onClick={() =>
-                      editor.startNew({
-                        ...d,
-                        name: t('equipment.moonProfiles.cloneName', { name: label(d.name) }),
-                      })
-                    }
-                  >
-                    <Clone size={ICON_SIZE.table} aria-hidden />
-                    {t('equipment.moonProfiles.clone')}
-                  </button>
-                ) : null}
-              </div>
-              {builtIn ? (
-                <p className={styles.note} role="note">
-                  {t('equipment.moonProfiles.builtInHint')}
-                </p>
-              ) : null}
-              {editor.del.usage ? (
-                <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
-              ) : null}
-              <div className={styles.grid}>
-                <TextField
-                  label={t('equipment.field.name')}
-                  value={builtIn ? label(d.name) : d.name}
-                  onChange={(v) => editor.set('name', v)}
-                  error={fieldError('name')}
-                  disabled={disabled}
-                />
-                <TextField
-                  label={t('equipment.moonProfiles.field.description')}
-                  value={d.description}
-                  maxLength={1000}
-                  onChange={(v) => editor.set('description', v)}
-                  disabled={disabled}
-                  wide
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.separation')}
-                  unit="°"
-                  value={d.separationDeg}
-                  onChange={(v) => editor.set('separationDeg', v)}
-                  error={fieldError('separationDeg')}
-                  hint={t('equipment.moonProfiles.hint.separation')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.width')}
-                  unit={t('equipment.moonProfiles.days')}
-                  value={d.widthDays}
-                  onChange={(v) => editor.set('widthDays', v)}
-                  error={fieldError('widthDays')}
-                  hint={t('equipment.moonProfiles.hint.width')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.relax')}
-                  unit="°/°"
-                  value={d.relaxScale}
-                  onChange={(v) => editor.set('relaxScale', v)}
-                  error={fieldError('relaxScale')}
-                  hint={t('equipment.moonProfiles.hint.relax')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.minAlt')}
-                  unit="°"
-                  value={d.moonMinAltDeg}
-                  onChange={(v) => editor.set('moonMinAltDeg', v)}
-                  error={fieldError('moonMinAltDeg') ?? minMaxError}
-                  hint={t('equipment.moonProfiles.hint.minAlt')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.maxAlt')}
-                  unit="°"
-                  value={d.moonMaxAltDeg}
-                  onChange={(v) => editor.set('moonMaxAltDeg', v)}
-                  error={fieldError('moonMaxAltDeg')}
-                  hint={t('equipment.moonProfiles.hint.maxAlt')}
-                  disabled={disabled}
-                />
-                <NumberField
-                  label={t('equipment.moonProfiles.field.maxIllumination')}
-                  unit="%"
-                  value={d.maxIlluminationPct}
-                  onChange={(v) => editor.set('maxIlluminationPct', v)}
-                  error={fieldError('maxIlluminationPct')}
-                  hint={t('equipment.moonProfiles.hint.maxIllumination')}
-                  disabled={disabled}
-                />
-              </div>
-              <CheckField
-                label={t('equipment.moonProfiles.field.mustBeDown')}
-                checked={d.moonMustBeDown}
-                onChange={(v) => editor.set('moonMustBeDown', v)}
-                disabled={disabled}
-              />
-              <FormActions
-                canWrite={canWrite && !builtIn}
+            <form className={styles.card} onSubmit={submit} aria-labelledby="moon-form-title">
+              <DetailHead
+                titleId="moon-form-title"
+                title={
+                  editor.selected ? label(editor.selected.name) : t('equipment.moonProfiles.new')
+                }
+                canWrite={canWrite}
+                canSave={canWrite && !builtIn}
                 saving={editor.save.isPending}
                 saved={editor.saved}
-                error={editor.save.error}
                 onDelete={builtIn ? undefined : editor.onDelete((s) => s.name)}
+                tools={
+                  canWrite && editor.selected ? (
+                    <button
+                      type="button"
+                      className={styles.button}
+                      onClick={() =>
+                        editor.startNew({
+                          ...d,
+                          name: t('equipment.moonProfiles.cloneName', { name: label(d.name) }),
+                        })
+                      }
+                    >
+                      <Clone size={ICON_SIZE.button} aria-hidden />
+                      {t('equipment.moonProfiles.clone')}
+                    </button>
+                  ) : null
+                }
               />
+              <div className={styles.cardBody}>
+                <SaveError error={editor.save.error} />
+                {builtIn ? (
+                  <p className={styles.note} role="note">
+                    {t('equipment.moonProfiles.builtInHint')}
+                  </p>
+                ) : null}
+                {editor.del.usage ? (
+                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                ) : null}
+                <section className={styles.section} aria-labelledby="moon-general">
+                  <h3 id="moon-general">{t('equipment.section.general')}</h3>
+                  <div className={styles.grid}>
+                    <TextField
+                      label={t('equipment.field.name')}
+                      value={builtIn ? label(d.name) : d.name}
+                      onChange={(v) => editor.set('name', v)}
+                      error={fieldError('name')}
+                      disabled={disabled}
+                    />
+                    <TextField
+                      label={t('equipment.moonProfiles.field.description')}
+                      value={d.description}
+                      maxLength={1000}
+                      onChange={(v) => editor.set('description', v)}
+                      disabled={disabled}
+                      wide
+                    />
+                  </div>
+                </section>
+                <section className={styles.section} aria-labelledby="moon-params">
+                  <h3 id="moon-params">{t('equipment.moonProfiles.params')}</h3>
+                  <div className={styles.grid}>
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.separation')}
+                      unit="°"
+                      value={d.separationDeg}
+                      onChange={(v) => editor.set('separationDeg', v)}
+                      error={fieldError('separationDeg')}
+                      hint={t('equipment.moonProfiles.hint.separation')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.width')}
+                      unit={t('equipment.moonProfiles.days')}
+                      value={d.widthDays}
+                      onChange={(v) => editor.set('widthDays', v)}
+                      error={fieldError('widthDays')}
+                      hint={t('equipment.moonProfiles.hint.width')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.relax')}
+                      unit="°/°"
+                      value={d.relaxScale}
+                      onChange={(v) => editor.set('relaxScale', v)}
+                      error={fieldError('relaxScale')}
+                      hint={t('equipment.moonProfiles.hint.relax')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.minAlt')}
+                      unit="°"
+                      value={d.moonMinAltDeg}
+                      onChange={(v) => editor.set('moonMinAltDeg', v)}
+                      error={fieldError('moonMinAltDeg') ?? minMaxError}
+                      hint={t('equipment.moonProfiles.hint.minAlt')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.maxAlt')}
+                      unit="°"
+                      value={d.moonMaxAltDeg}
+                      onChange={(v) => editor.set('moonMaxAltDeg', v)}
+                      error={fieldError('moonMaxAltDeg')}
+                      hint={t('equipment.moonProfiles.hint.maxAlt')}
+                      disabled={disabled}
+                    />
+                    <NumberField
+                      label={t('equipment.moonProfiles.field.maxIllumination')}
+                      unit="%"
+                      value={d.maxIlluminationPct}
+                      onChange={(v) => editor.set('maxIlluminationPct', v)}
+                      error={fieldError('maxIlluminationPct')}
+                      hint={t('equipment.moonProfiles.hint.maxIllumination')}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <CheckField
+                    label={t('equipment.moonProfiles.field.mustBeDown')}
+                    checked={d.moonMustBeDown}
+                    onChange={(v) => editor.set('moonMustBeDown', v)}
+                    disabled={disabled}
+                  />
+                </section>
+              </div>
             </form>
           ) : null
         }

@@ -19,12 +19,14 @@ import { useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useConfirm } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
+import { NinaTabs } from './NinaLayout';
 import styles from './nina.module.css';
 
 type Group = 'none' | 'rig' | 'status';
@@ -124,20 +126,23 @@ export function DeliveryPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1>{t('nina.delivery.title')}</h1>
-        <button
-          type="button"
-          className={styles.button}
-          onClick={() => void refresh()}
-          disabled={deliveries.some((d) => d.isFetching)}
-        >
-          <RefreshIcon size={ICON_SIZE.button} aria-hidden />
-          {t('nina.delivery.refresh')}
-        </button>
-      </div>
+      <PageHeader
+        title={t('nina.delivery.title')}
+        nav={<NinaTabs />}
+        actions={
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => void refresh()}
+            disabled={deliveries.some((d) => d.isFetching)}
+          >
+            <RefreshIcon size={ICON_SIZE.button} aria-hidden />
+            {t('nina.delivery.refresh')}
+          </button>
+        }
+      />
       <p className={styles.info}>{t('nina.delivery.info')}</p>
-      <div className={styles.toolbar}>
+      <div className={styles.toolbarCard}>
         {select(
           'delivery-site',
           t('nina.delivery.filterSite'),

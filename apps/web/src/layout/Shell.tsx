@@ -22,11 +22,17 @@ import { useAppearance } from '../app/theme';
 import { useAuth, useCan } from '../auth';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { actionIcons, areaIcons, ICON_SIZE, uiIcons } from '../components/icons';
-import { LogoMark, SvenesisFooter } from './Frame';
+import { LogoMark } from './Frame';
 import { MaintenanceBanner } from './MaintenanceBanner';
 import { NotificationBell } from './NotificationBell';
-import { siteHref, SITE_NAV, WEBSITE } from './site-nav';
+import { CONTACT_PATH, siteHref, SITE_NAV, WEBSITE } from './site-nav';
 import styles from './layout.module.css';
+
+const DENSITY_LABEL: Record<Density, string> = {
+  compact: 'footer.densityCompact',
+  normal: 'footer.densityNormal',
+  wide: 'footer.densityWide',
+};
 
 /** Unter dieser Breite ist die Navigation eingeklappt und öffnet als Überlagerung (AP-26c). */
 const NARROW = '(max-width: 1023px)';
@@ -77,8 +83,6 @@ export function Shell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-      <AppFooter />
-      <SvenesisFooter />
     </>
   );
 }
@@ -99,7 +103,7 @@ function MfaBanner() {
 function AppBar() {
   const { t, i18n } = useTranslation();
   const { me, refresh } = useAuth();
-  const { theme, setTheme } = useAppearance();
+  const { theme, setTheme, density, setDensity } = useAppearance();
   const navigate = useNavigate();
   const client = useQueryClient();
   const [confirmAll, setConfirmAll] = useState<'closed' | 'open' | 'loading' | 'error'>('closed');
@@ -208,6 +212,24 @@ function AppBar() {
                 {t('appBar.leave')}
               </DropdownMenu.Item>
             ) : null}
+            <DropdownMenu.Separator className={styles.menuSeparator} />
+            {/* Dichte (TK 11.3) im Benutzermenü statt eigener Fußleiste (AP-26d). */}
+            <DropdownMenu.Label className={styles.menuLabel}>
+              {t('footer.density')}
+            </DropdownMenu.Label>
+            <DropdownMenu.RadioGroup
+              value={density}
+              onValueChange={(v) => setDensity(v as Density)}
+            >
+              {DENSITIES.map((d) => (
+                <DropdownMenu.RadioItem key={d} value={d} className={styles.menuItem}>
+                  <DropdownMenu.ItemIndicator className={styles.menuIndicator}>
+                    <uiIcons.ok size={ICON_SIZE.table} aria-hidden />
+                  </DropdownMenu.ItemIndicator>
+                  {t(DENSITY_LABEL[d])}
+                </DropdownMenu.RadioItem>
+              ))}
+            </DropdownMenu.RadioGroup>
             <DropdownMenu.Separator className={styles.menuSeparator} />
             <DropdownMenu.Item
               className={styles.menuItem}
@@ -335,17 +357,32 @@ function SideNav({
   const location = useLocation();
   const canAdmin = useCan('member.manage');
   const system = me?.context === 'system';
-  const areas: NavArea[] = [
-    { key: 'tonight', visible: !system },
-    { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.rigs },
-    { key: 'planning', visible: !system, to: SKYMAP_PATH },
-    // Projektliste folgt mit AP-11c; bis dahin Platzhalter mit *Neues Projekt* und der Editor S-31.
-    { key: 'projects', visible: !system, to: '/projekte' },
-    { key: 'nina', visible: !system, to: '/nina/simulator' },
-    { key: 'weather', visible: !system, to: WEATHER_PATH },
-    { key: 'evaluation', visible: !system, to: '/auswertung/sessions' },
-    { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
-    { key: 'system', visible: system, to: SYSTEM_PATHS.tenants },
+  // Gruppen der Navigation (Stilsystem AP-26d): Planen · Betrieb · Einrichten; System allein.
+  const groups: { key: string; areas: NavArea[] }[] = [
+    {
+      key: 'plan',
+      areas: [
+        { key: 'tonight', visible: !system },
+        { key: 'planning', visible: !system, to: SKYMAP_PATH },
+        { key: 'projects', visible: !system, to: '/projekte' },
+      ],
+    },
+    {
+      key: 'operate',
+      areas: [
+        { key: 'nina', visible: !system, to: '/nina/simulator' },
+        { key: 'weather', visible: !system, to: WEATHER_PATH },
+        { key: 'evaluation', visible: !system, to: '/auswertung/sessions' },
+      ],
+    },
+    {
+      key: 'setup',
+      areas: [
+        { key: 'equipment', visible: !system, to: EQUIPMENT_PATHS.rigs },
+        { key: 'administration', visible: !system && canAdmin, to: ADMIN_PATHS.members },
+      ],
+    },
+    { key: 'system', areas: [{ key: 'system', visible: system, to: SYSTEM_PATHS.tenants }] },
   ];
   const Toggle = collapsed ? uiIcons.expand : uiIcons.collapse;
   const section = (to: string) => `/${to.split('/')[1] ?? ''}`;
@@ -360,84 +397,82 @@ function SideNav({
         .join(' ')}
       aria-label={t('nav.label')}
     >
-      <button
-        type="button"
-        className={styles.navToggle}
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        aria-label={collapsed ? t('nav.expand') : t('nav.collapse')}
-      >
-        <Toggle size={ICON_SIZE.button} aria-hidden />
-      </button>
-      <ul>
-        {areas
-          .filter((a) => a.visible)
-          .map((a) => {
-            const Icon = areaIcons[a.key];
-            return (
-              <li key={a.key}>
-                {a.to ? (
-                  <Link
-                    to={a.to}
-                    className={styles.navItem}
-                    title={t(`nav.${a.key}`)}
-                    aria-current={location.pathname.startsWith(section(a.to)) ? 'page' : undefined}
-                  >
-                    <Icon size={ICON_SIZE.nav} aria-hidden />
-                    <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
-                  </Link>
-                ) : (
-                  <span
-                    className={styles.navItemDisabled}
-                    aria-disabled="true"
-                    title={`${t(`nav.${a.key}`)} – ${t('common.comingSoon')}`}
-                  >
-                    <Icon size={ICON_SIZE.nav} aria-hidden />
-                    <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
-                  </span>
-                )}
-              </li>
-            );
-          })}
-      </ul>
+      {groups.map((g) => {
+        const visible = g.areas.filter((a) => a.visible);
+        if (visible.length === 0) return null;
+        const headingId = `nav-group-${g.key}`;
+        return (
+          <div key={g.key} className={styles.navGroup}>
+            {g.key !== 'system' ? (
+              <span id={headingId} className={styles.navGroupLabel}>
+                {t(`nav.group.${g.key}`)}
+              </span>
+            ) : null}
+            <ul aria-labelledby={g.key !== 'system' ? headingId : undefined}>
+              {visible.map((a) => {
+                const Icon = areaIcons[a.key];
+                return (
+                  <li key={a.key}>
+                    {a.to ? (
+                      <Link
+                        to={a.to}
+                        className={styles.navItem}
+                        title={t(`nav.${a.key}`)}
+                        aria-current={
+                          location.pathname.startsWith(section(a.to)) ? 'page' : undefined
+                        }
+                      >
+                        <Icon size={ICON_SIZE.nav} aria-hidden />
+                        <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
+                      </Link>
+                    ) : (
+                      <span
+                        className={styles.navItemDisabled}
+                        aria-disabled="true"
+                        title={`${t(`nav.${a.key}`)} – ${t('common.comingSoon')}`}
+                      >
+                        <Icon size={ICON_SIZE.nav} aria-hidden />
+                        <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+      <div className={styles.navFoot}>
+        <button
+          type="button"
+          className={styles.navToggle}
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t('nav.expand') : t('nav.collapse')}
+          title={collapsed ? t('nav.expand') : t('nav.collapse')}
+        >
+          <Toggle size={ICON_SIZE.button} aria-hidden />
+          <span className={styles.navLabel}>{t('nav.collapseShort')}</span>
+        </button>
+        <NavFootLinks />
+      </div>
     </nav>
   );
 }
 
-function AppFooter() {
-  const { t } = useTranslation();
-  const { density, setDensity } = useAppearance();
-  const labels: Record<Density, string> = {
-    compact: t('footer.densityCompact'),
-    normal: t('footer.densityNormal'),
-    wide: t('footer.densityWide'),
-  };
-  const Help = uiIcons.help;
+/** Rechtliches und Version unten in der Seitenleiste statt zweier Fußleisten (AP-26d). */
+function NavFootLinks() {
+  const { t, i18n } = useTranslation();
   return (
-    <div className={styles.appFooter}>
-      <div className={styles.density} role="radiogroup" aria-label={t('footer.density')}>
-        <span className={styles.densityLabel}>{t('footer.density')}</span>
-        {DENSITIES.map((d) => (
-          <button
-            key={d}
-            type="button"
-            role="radio"
-            aria-checked={density === d}
-            className={density === d ? styles.densityActive : undefined}
-            onClick={() => setDensity(d)}
-          >
-            {labels[d]}
-          </button>
-        ))}
-      </div>
-      <span className={styles.spacer} />
-      <span className={styles.version}>
-        {t('footer.version', { app: __BUILD_ID__.slice(0, 7), engine: ENGINE_VERSION })}
+    <div className={styles.navLegal}>
+      <span>
+        <a href={siteHref(CONTACT_PATH, i18n.language)}>{t('nav.imprint')}</a>
+        {' · '}
+        <Link to="/datenschutz">{t('nav.privacy')}</Link>
+        {' · '}
+        <Link to="/quellen">{t('nav.sources')}</Link>
       </span>
-      <span className={styles.help} title={t('common.comingSoon')}>
-        <Help size={ICON_SIZE.table} aria-hidden />
-        {t('footer.help')}
-      </span>
+      <span>{t('footer.version', { app: __BUILD_ID__.slice(0, 7), engine: ENGINE_VERSION })}</span>
     </div>
   );
 }

@@ -78,6 +78,11 @@ export interface NightChartProps {
   errorKey?: string;
   onRetry?: () => void;
   onSelect?: (atUtc: number) => void;
+  /**
+   * Lage der Legende: `side` (Standard) rechts neben dem Diagramm, bei schmalem Container darunter;
+   * `top` als kompakte, umbrechende Zeile über dem Diagramm (Projekt-Editor, AP-26d).
+   */
+  legend?: 'side' | 'top';
 }
 
 const MAX_SERIES = 12;
@@ -510,10 +515,55 @@ export function NightChart(props: NightChartProps) {
     });
   const bandLabel = (key: BandKey) => t(`nightChart.band.${key}`, { deg: minAltDeg ?? 0 });
   const canvasH = props.height ?? null;
+  const legendOnTop = props.legend === 'top';
+  const legendBox = (
+    <fieldset className={legendOnTop ? styles.legendTop : styles.legend}>
+      <legend className={legendOnTop ? 'visually-hidden' : styles.legendTitle}>
+        {t('nightChart.legend')}
+      </legend>
+      {shown.map((s) => (
+        <label key={s.id} className={styles.legendItem}>
+          <input
+            type="checkbox"
+            checked={!off.has(`series:${s.id}`)}
+            onChange={() => toggle(`series:${s.id}`)}
+          />
+          <span className={styles.swatchLine} style={{ color: s.color }} />
+          <span>{s.label}</span>
+        </label>
+      ))}
+      {moon ? (
+        <label className={styles.legendItem}>
+          <input type="checkbox" checked={!off.has('moon')} onChange={() => toggle('moon')} />
+          <span className={styles.swatchMoon} />
+          <span>{t('nightChart.moonLegend', { pct: moon.illuminationPct.toFixed(0) })}</span>
+        </label>
+      ) : null}
+      {minAltDeg !== undefined ? (
+        <label className={styles.legendItem}>
+          <input type="checkbox" checked={!off.has('minAlt')} onChange={() => toggle('minAlt')} />
+          <span className={styles.swatchDashed} />
+          <span>{t('nightChart.minAlt', { deg: minAltDeg })}</span>
+        </label>
+      ) : null}
+      {bands.map((b) => (
+        <label key={b.key} className={styles.legendItem}>
+          <input type="checkbox" checked={!off.has(b.key)} onChange={() => toggle(b.key)} />
+          <span className={`${styles.swatchBox} ${styles[`band_${b.key}`] ?? ''}`} />
+          <span>{bandLabel(b.key)}</span>
+          <span className={styles.legendHours}>{hours(b.totalSec)}</span>
+        </label>
+      ))}
+      {hidden > 0 ? (
+        <span className={styles.legendMore}>{t('nightChart.more', { count: hidden })}</span>
+      ) : null}
+    </fieldset>
+  );
 
   return (
     <figure className={styles.figure}>
-      <div className={styles.body}>
+      <div className={legendOnTop ? styles.bodyTop : styles.body}>
+        {legendOnTop ? legendBox : null}
         <div className={styles.chartCol}>
           <div
             ref={wrapRef}
@@ -537,49 +587,7 @@ export function NightChart(props: NightChartProps) {
             {cursor === null ? t('nightChart.keyboardHint') : describe(cursor)}
           </p>
         </div>
-        <fieldset className={styles.legend}>
-          <legend className={styles.legendTitle}>{t('nightChart.legend')}</legend>
-          {shown.map((s) => (
-            <label key={s.id} className={styles.legendItem}>
-              <input
-                type="checkbox"
-                checked={!off.has(`series:${s.id}`)}
-                onChange={() => toggle(`series:${s.id}`)}
-              />
-              <span className={styles.swatchLine} style={{ color: s.color }} />
-              <span>{s.label}</span>
-            </label>
-          ))}
-          {moon ? (
-            <label className={styles.legendItem}>
-              <input type="checkbox" checked={!off.has('moon')} onChange={() => toggle('moon')} />
-              <span className={styles.swatchMoon} />
-              <span>{t('nightChart.moonLegend', { pct: moon.illuminationPct.toFixed(0) })}</span>
-            </label>
-          ) : null}
-          {minAltDeg !== undefined ? (
-            <label className={styles.legendItem}>
-              <input
-                type="checkbox"
-                checked={!off.has('minAlt')}
-                onChange={() => toggle('minAlt')}
-              />
-              <span className={styles.swatchDashed} />
-              <span>{t('nightChart.minAlt', { deg: minAltDeg })}</span>
-            </label>
-          ) : null}
-          {bands.map((b) => (
-            <label key={b.key} className={styles.legendItem}>
-              <input type="checkbox" checked={!off.has(b.key)} onChange={() => toggle(b.key)} />
-              <span className={`${styles.swatchBox} ${styles[`band_${b.key}`] ?? ''}`} />
-              <span>{bandLabel(b.key)}</span>
-              <span className={styles.legendHours}>{hours(b.totalSec)}</span>
-            </label>
-          ))}
-          {hidden > 0 ? (
-            <span className={styles.legendMore}>{t('nightChart.more', { count: hidden })}</span>
-          ) : null}
-        </fieldset>
+        {legendOnTop ? null : legendBox}
       </div>
       <details className={styles.details}>
         <summary>{t('nightChart.table')}</summary>
