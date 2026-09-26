@@ -358,6 +358,283 @@ components:
         - ipTruncated
         - createdAt
         - lastSeenAt
+    JobResult:
+      oneOf:
+        - $ref: "#/components/schemas/MultiSimResult"
+        - $ref: "#/components/schemas/ImpactResult"
+      discriminator:
+        propertyName: kind
+        mapping:
+          multi_sim: "#/components/schemas/MultiSimResult"
+          impact: "#/components/schemas/ImpactResult"
+    MultiSimResult:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - multi_sim
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        rigName:
+          type: string
+        siteTimeZone:
+          type: string
+        nightFrom:
+          type: string
+          format: date
+          example: 2026-09-18
+        nightCount:
+          type: integer
+          minimum: 1
+        weather:
+          type: boolean
+        computedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nights:
+          type: array
+          items:
+            $ref: "#/components/schemas/MultiSimNight"
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/MultiSimProject"
+      required:
+        - kind
+        - rigId
+        - rigName
+        - siteTimeZone
+        - nightFrom
+        - nightCount
+        - weather
+        - computedAt
+        - nights
+        - projects
+    MultiSimNight:
+      type: object
+      properties:
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        darkHours:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+        hasForecast:
+          type: boolean
+        exposureHours:
+          type: number
+          minimum: 0
+        projects:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+                description: UUID
+              frames:
+                type: number
+                minimum: 0
+              hours:
+                type: number
+                minimum: 0
+            required:
+              - projectId
+              - frames
+              - hours
+      required:
+        - night
+        - darkHours
+        - weight
+        - ratingIndex
+        - hasForecast
+        - exposureHours
+        - projects
+    MultiSimProject:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        approvalStatus:
+          type: string
+        needFrames:
+          type: integer
+          minimum: 0
+        simulatedFrames:
+          type: number
+          minimum: 0
+        hours:
+          type: number
+          minimum: 0
+        nightsUsed:
+          type: integer
+          minimum: 0
+        completesNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        sharePct:
+          type: number
+          minimum: 0
+          maximum: 100
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              need:
+                type: integer
+                minimum: 0
+              simulated:
+                type: number
+                minimum: 0
+            required:
+              - filter
+              - need
+              - simulated
+      required:
+        - projectId
+        - name
+        - approvalStatus
+        - needFrames
+        - simulatedFrames
+        - hours
+        - nightsUsed
+        - completesNight
+        - sharePct
+        - filters
+    ImpactResult:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - impact
+        queueItemId:
+          type: string
+          format: uuid
+          description: UUID
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        rigName:
+          type: string
+        nightFrom:
+          type: string
+          format: date
+          example: 2026-09-18
+        nightCount:
+          type: integer
+          minimum: 1
+        computedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        target:
+          allOf:
+            - $ref: "#/components/schemas/MultiSimProject"
+            - type:
+                - object
+                - "null"
+        shifts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImpactShift"
+        hoursWithout:
+          type: number
+          minimum: 0
+        hoursWith:
+          type: number
+          minimum: 0
+      required:
+        - kind
+        - queueItemId
+        - projectId
+        - projectName
+        - rigId
+        - rigName
+        - nightFrom
+        - nightCount
+        - computedAt
+        - target
+        - shifts
+        - hoursWithout
+        - hoursWith
+    ImpactShift:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        name:
+          type: string
+        hoursWithout:
+          type: number
+          minimum: 0
+        hoursWith:
+          type: number
+          minimum: 0
+        framesWithout:
+          type: number
+          minimum: 0
+        framesWith:
+          type: number
+          minimum: 0
+        completesWithout:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        completesWith:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+      required:
+        - projectId
+        - name
+        - hoursWithout
+        - hoursWith
+        - framesWithout
+        - framesWith
+        - completesWithout
+        - completesWith
     JobView:
       type: object
       properties:
@@ -5846,6 +6123,15 @@ components:
         - voters
         - mine
         - mineChangedSince
+    JobAccepted:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+          description: UUID
+      required:
+        - jobId
     SubmissionRanking:
       type: object
       properties:
@@ -5871,6 +6157,31 @@ components:
       required:
         - items
       additionalProperties: false
+    MultiSimInput:
+      type: object
+      properties:
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        nightFrom:
+          type: string
+          format: date
+          example: 2026-09-18
+        nights:
+          type: integer
+          minimum: 1
+          maximum: 14
+        includeOwnDrafts:
+          type: boolean
+          default: false
+        weather:
+          type: boolean
+          default: false
+      required:
+        - rigId
+        - nightFrom
+        - nights
     SimulationSaved:
       type: object
       properties:
@@ -8435,15 +8746,6 @@ components:
             - lastJob
       required:
         - dso
-    JobAccepted:
-      type: object
-      properties:
-        jobId:
-          type: string
-          format: uuid
-          description: UUID
-      required:
-        - jobId
     NinaBootstrap:
       type: object
       properties:
@@ -12738,6 +13040,51 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/jobs/{id}/result:
+    get:
+      summary: Ergebnis eines Simulations-Jobs abrufen
+      tags:
+        - jobs
+      description: "Aktion: `job.read` · TK 7.4, FA-SIM-04, FA-FRG-05"
+      x-npm-action: job.read
+      x-npm-requirements:
+        - TK 7.4
+        - FA-SIM-04
+        - FA-FRG-05
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Ergebnis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResult"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: job.not_found
           content:
             application/problem+json:
               schema:
@@ -18015,6 +18362,76 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/queue/{kind}/{id}/impact:
+    post:
+      summary: Auswirkungsvorschau berechnen (Job impact, 14 Nächte mit und ohne das Objekt)
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-FRG-05, TK 7.4"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-FRG-05
+        - TK 7.4
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - project
+              - change-request
+          required: true
+          name: kind
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "202":
+          description: Job angelegt bzw. schon offen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: auth.rate_limited
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/me/submission-ranking:
     put:
       summary: Rangfolge der eigenen offenen Gegenstände (vollständige Liste, sonst 422)
@@ -18088,6 +18505,60 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/simulations/multi:
+    post:
+      summary: Mehrnacht-Simulation als Job starten
+      tags:
+        - simulation
+      description: "Aktion: `simulation.run` · FA-SIM-04, TK 7.4, SV-06"
+      x-npm-action: simulation.run
+      x-npm-requirements:
+        - FA-SIM-04
+        - TK 7.4
+        - SV-06
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MultiSimInput"
+      responses:
+        "202":
+          description: Job angelegt bzw. schon offen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          description: auth.rate_limited
           content:
             application/problem+json:
               schema:

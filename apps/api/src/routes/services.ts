@@ -74,6 +74,8 @@ export interface ApiServices {
       sessionId: string,
     ): Promise<{ url: string; fields: Record<string, string> }>;
   };
+  /** Ergebnisse von `multi_sim`/`impact` aus S3 lesen (`tenant/<tid>/jobs/…`); `null`, wenn fehlend. */
+  readonly jobResults: { get(key: string): Promise<unknown> };
   /** Datenbank für Mehrzeilen-Vorgänge außerhalb eines Repositories (Korrektur, Zuordnung, Lease). */
   readonly db: import('@nina-pm/db').OpenDatabase['db'];
   /** Token-Suche der NINA-API über alle Mandanten (TK 5.6, kein Cache). */

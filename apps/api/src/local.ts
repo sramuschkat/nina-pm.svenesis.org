@@ -56,6 +56,9 @@ import { problemResponse } from './lib/problem';
 import type { ApiServices } from './routes/services';
 import { effortJobHandler } from './worker/effort';
 import { effortDbDeps } from './worker/effort-db';
+import { memoryJobResultStore } from './files/job-results';
+import { impactJobHandler, multiSimJobHandler } from './worker/multi-sim';
+import { multiSimDbDeps } from './worker/multi-sim-db';
 import {
   sessionCloseHandler,
   sessionReportHandler,
@@ -131,6 +134,9 @@ const localThumbnailHandler = thumbnailJobHandler({
   save: (tenantId, projectId, key) => setProjectThumbnail(db, tenantId, projectId, key),
 });
 
+// Ergebnisse von multi_sim/impact lokal im Speicher (AP-32a).
+const localJobResults = memoryJobResultStore();
+const localMultiSim = multiSimDbDeps(() => Promise.resolve(db), localJobResults.put);
 const jobs: JobRunnerDeps = {
   queue: () => Promise.resolve(queue),
   handlers: {
@@ -141,6 +147,8 @@ const jobs: JobRunnerDeps = {
     reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
     catalog_refresh: catalogRefreshHandler({ db: () => Promise.resolve(db) }),
     thumbnail: localThumbnailHandler,
+    multi_sim: multiSimJobHandler(localMultiSim),
+    impact: impactJobHandler(localMultiSim),
     // Astro-Wetter (AP-23): lokal mit Beispieldaten, echte Open-Meteo-Abrufe nur mit LOCAL_WEATHER=live.
     weather: weatherJobHandler({
       http:
@@ -210,6 +218,7 @@ const services: ApiServices = {
       }),
   },
   tenantFiles: { deleteTenantFiles: () => Promise.resolve(0) },
+  jobResults: localJobResults,
   maintenanceBanner: () => readMaintenanceBanner(db),
   // Jobs laufen lokal im selben Prozess (statt async Lambda-Invoke).
   uploads: {

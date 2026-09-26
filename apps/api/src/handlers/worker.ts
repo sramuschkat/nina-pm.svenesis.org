@@ -24,6 +24,9 @@ import { catalogRefreshHandler } from '../worker/catalog';
 import { dispatch } from '../worker/dispatch';
 import { effortJobHandler, effortSiteTick } from '../worker/effort';
 import { effortDbDeps } from '../worker/effort-db';
+import { s3JobResultStore } from '../files/job-results';
+import { impactJobHandler, multiSimJobHandler } from '../worker/multi-sim';
+import { multiSimDbDeps } from '../worker/multi-sim-db';
 import {
   sessionCloseHandler,
   sessionReportHandler,
@@ -104,6 +107,12 @@ const thumbnails: ThumbnailDeps = {
   save: async (tenantId, projectId, key) =>
     setProjectThumbnail((await lambdaDatabase()).db, tenantId, projectId, key),
 };
+// Ergebnisse unter tenant/<tid>/jobs/* (iam.md: dataBucket.grantReadWrite(worker, 'tenant/*')).
+const multiSim = multiSimDbDeps(
+  async () => (await lambdaDatabase()).db,
+  (tenantId, jobId, result) =>
+    s3JobResultStore(s3, requiredEnv('DATA_BUCKET')).put(tenantId, jobId, result),
+);
 const jobs: JobRunnerDeps = {
   queue: async () => (await lambdaDatabase()).jobQueue(),
   handlers: {
@@ -115,6 +124,8 @@ const jobs: JobRunnerDeps = {
     catalog_refresh: catalogRefreshHandler({ db: async () => (await lambdaDatabase()).db }),
     weather: weatherJobHandler(weather),
     thumbnail: thumbnailJobHandler(thumbnails),
+    multi_sim: multiSimJobHandler(multiSim),
+    impact: impactJobHandler(multiSim),
   },
 };
 

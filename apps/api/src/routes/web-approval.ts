@@ -4,12 +4,16 @@
  * Einreichers, Warteschlange für alle Mitglieder und Entwürfe für Admins. Die Routen-Aktion prüft die
  * Rolle; die Entscheidung mit dem Objekt (eigene Entwürfe, Freigabestatus) fällt im Handler mit `can`,
  * fachliche Regeln (eigene Stimme, geschlossene Abstimmung, eigene Objekte) im Repository.
+ * Auswirkungsvorschau (AP-32a, FA-FRG-05): `POST /queue/{kind}/{id}/impact` legt den Job `impact` an
+ * (`202 {jobId}`, dedupliziert je Gegenstand, höchstens 3 offene Jobs je Mitglied).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import type { QueueEntry } from '@nina-pm/db';
 import {
   ApproveInput,
   can,
+  dedupeKeys,
+  JobAccepted,
   DecisionComment,
   ProblemError,
   ProjectListItem,
@@ -31,6 +35,7 @@ import { isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
+import { enqueueJob } from '../jobs/enqueue';
 import { scheduleProjectJobs } from './effort-trigger';
 import { effortView, listItem, projectView } from './web-projects';
 
@@ -217,6 +222,23 @@ export const draftsRoute = defineRoute(
   },
 );
 
+export const impactRoute = defineRoute(
+  { action: 'queue.decide', requirements: ['FA-FRG-05', 'TK 7.4'] },
+  {
+    method: 'post',
+    path: `${BASE}/queue/{kind}/{id}/impact`,
+    summary: 'Auswirkungsvorschau berechnen (Job impact, 14 Nächte mit und ohne das Objekt)',
+    tags: ['approval'],
+    request: { params: voteParam },
+    responses: {
+      202: { description: 'Job angelegt bzw. schon offen', ...json(JobAccepted) },
+      ...errors,
+      409: problemContent('approval.not_allowed'),
+      429: problemContent('auth.rate_limited'),
+    },
+  },
+);
+
 export const APPROVAL_ROUTES = [
   submitRoute,
   withdrawRoute,
@@ -229,6 +251,7 @@ export const APPROVAL_ROUTES = [
   acknowledgeRoute,
   rankingRoute,
   draftsRoute,
+  impactRoute,
 ] as const;
 
 // ---- Ansichten ------------------------------------------------------------------------------------
@@ -455,6 +478,28 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
     await voteSubject(x, kind, id);
     await x.approvals.acknowledge(id, x.svc.now());
     return c.body(null, 204);
+  });
+
+  app.openapi(impactRoute, async (c) => {
+    const x = await ctx(c);
+    const { kind, id } = c.req.valid('param');
+    // Änderungsanträge folgen mit AP-32b.
+    if (kind !== 'project') throw new ProblemError('resource.not_found');
+    const meta = await x.projects.meta(id);
+    if (!meta) throw new ProblemError('resource.not_found');
+    if (meta.approvalStatus !== 'submitted')
+      throw new ProblemError('approval.not_allowed', [
+        { path: 'approvalStatus', message: `${meta.approvalStatus} → impact` },
+      ]);
+    const { tenant } = requireTenant(c);
+    const input = { queueItemId: id };
+    const r = await enqueueJob(x.svc.repositories(tenant).job, x.svc.jobInvoker, {
+      kind: 'impact',
+      input,
+      dedupeKey: dedupeKeys.impact(input),
+      createdBy: tenant.memberId ?? null,
+    });
+    return c.json({ jobId: r.jobId }, 202);
   });
 
   app.openapi(rankingRoute, async (c) => {

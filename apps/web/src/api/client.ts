@@ -328,10 +328,26 @@ export const projectsApi = {
 export type SimulationCreate = Schemas['SimulationCreate'];
 export type SimulationSaved = Schemas['SimulationSaved'];
 
-/** Simulator S-40 (AP-13f): im Browser gerechneten Plan speichern (`night_plan`, TK 7.2). */
+export type MultiSimInput = Schemas['MultiSimInput'];
+export type MultiSimResult = Schemas['MultiSimResult'];
+export type ImpactResult = Schemas['ImpactResult'];
+export type JobView = Schemas['JobView'];
+
+/**
+ * Simulator S-40 (AP-13f): im Browser gerechneten Plan speichern (`night_plan`, TK 7.2); Mehrnacht-
+ * Simulation als Job (AP-32a, FA-SIM-04).
+ */
 export const simulationApi = {
   save: (body: SimulationCreate) =>
     apiFetch<SimulationSaved>(`${V1}/simulations`, json('POST', body)),
+  multi: (body: MultiSimInput) =>
+    apiFetch<{ jobId: string }>(`${V1}/simulations/multi`, json('POST', body)),
+};
+
+/** Jobs (TK 7.4): Status abfragen, Ergebnis von `multi_sim`/`impact` holen (AP-32a). */
+export const jobsApi = {
+  get: (id: string) => apiFetch<JobView>(`${V1}/jobs/${id}`),
+  result: (id: string) => apiFetch<MultiSimResult | ImpactResult>(`${V1}/jobs/${id}/result`),
 };
 
 export type QueueItem = Schemas['QueueItem'];
@@ -353,6 +369,9 @@ export const approvalApi = {
       ...json('POST', body),
       ...ifMatch(version),
     }),
+  /** Auswirkungsvorschau als Job `impact` (AP-32a, FA-FRG-05, Admin). */
+  impact: (kind: 'project' | 'change-request', id: string) =>
+    apiFetch<{ jobId: string }>(`${V1}/queue/${kind}/${id}/impact`, json('POST')),
   withdraw: (id: string, version: number) =>
     apiFetch<ProjectView>(`${V1}/projects/${id}/withdraw`, {
       ...json('POST'),

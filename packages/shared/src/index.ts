@@ -17,3 +17,4 @@ export * from './season';
 export * from './thumbnail';
 export * from './session-log';
 export * from './session-kpis';
+export * from './multi-sim';

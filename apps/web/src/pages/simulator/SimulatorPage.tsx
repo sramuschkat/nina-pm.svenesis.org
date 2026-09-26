@@ -34,6 +34,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { SchedulerForm } from '../equipment/RigsPage';
 import { NinaTabs } from '../nina/NinaLayout';
+import { MultiNightPanel } from './MultiNightPanel';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
 import {
@@ -125,6 +126,8 @@ export function SimulatorPage() {
   );
   /** Gewähltes Ziel (Kartentitel): Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben (AP-26g). */
   const [picked, setPicked] = useState<string | null>(null);
+  /** Bereich *Mehrnacht* (AP-32a, FA-SIM-04) – Knopf neben *Simulieren* wie in der Skizze S-40. */
+  const [multiOpen, setMultiOpen] = useState(false);
   const ids = { drafts: useId(), slider: useId(), settings: useId() };
 
   const rigList = rigs.data ?? [];
@@ -317,6 +320,16 @@ export function SimulatorPage() {
                 {t('simulator.save')}
               </button>
             ) : null}
+            {canSave ? (
+              <button
+                type="button"
+                className={styles.button}
+                aria-expanded={multiOpen}
+                onClick={() => setMultiOpen(!multiOpen)}
+              >
+                {t('simulator.multiNight')}
+              </button>
+            ) : null}
             <button
               type="button"
               className={styles.buttonPrimary}
@@ -422,6 +435,10 @@ export function SimulatorPage() {
           {t('simulator.tonight')}
         </button>
       </div>
+
+      {multiOpen && canSave && rig && night ? (
+        <MultiNightPanel rigId={rig.id} nightFrom={night} withDrafts={withDrafts} />
+      ) : null}
 
       {sim.isError ? (
         <ProblemMessage code={problemCode(sim.error)} onRetry={() => void sim.refetch()} />

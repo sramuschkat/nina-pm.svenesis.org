@@ -36,6 +36,8 @@ export const MultiSimInput = z
     nights: z.number().int().min(1).max(MAX_MULTI_SIM_NIGHTS),
     /** Vorschau mit eigenen Entwürfen und eingereichten Objekten (FK 6.14). */
     includeOwnDrafts: z.boolean().default(false),
+    /** Frames je Nacht mit der Klar-Wahrscheinlichkeit aus der Nachtbewertung gewichten (FA-SIM-04). */
+    weather: z.boolean().default(false),
   })
   .meta({ id: 'MultiSimInput' });
 export type MultiSimInput = z.infer<typeof MultiSimInput>;
