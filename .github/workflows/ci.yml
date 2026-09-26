@@ -5,10 +5,14 @@
 # Tempo (24.09.2026): Die Prüfungen laufen als parallele Jobs statt nacheinander; Playwright-Browser
 # kommen aus dem Cache; reine Doku-Änderungen (Arbeitspakete, Changelog, Betrieb, Specs) überspringen
 # Tests, Build und E2E. Übersprungene Jobs gelten für GitHub als erfolgreich.
-# Tempo (26.09.2026, Entscheidung Sven): `test` läuft in 2, die E2E-Suite in 3 Shards auf je eigenem Runner
+# Tempo (26.09.2026, Entscheidung Sven): `test` läuft in 2, die E2E-Suite in 4 Shards auf je eigenem Runner
 # (eigene Datenbank bzw. eigener lokaler Stack je Shard). Sammel-Jobs unter den bisherigen Namen `test` und
 # `e2e + a11y (Playwright, lokaler Stack)` sind nur grün, wenn alle Shards grün (oder übersprungen) sind –
-# Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig.
+# Pflicht-Prüfungen in den Branch-Regeln bleiben damit gültig. Playwright verteilt beim Sharden einzelne Tests
+# (`fullyParallel`), E2E läuft in 4 Shards. Zwei Vitest-Worker brachten auf dem 2-vCPU-Runner nichts (gemessen
+# 172/157 s statt 173 s) und ließen zeitkritische Tests ins Timeout laufen – deshalb bleibt es bei einem.
+# Minuten (Entscheidung Sven): Nach `pnpm pr:land` hat derselbe Stand gerade im PR bestanden – auf `main`
+# laufen deshalb nur lint · typecheck, build und gitleaks; Tests und E2E auf `main` prüft jede Nacht nightly.yml.
 name: ci
 
 on:
@@ -72,7 +76,7 @@ jobs:
   test-shard:
     name: test (${{ matrix.shard }}/2)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -140,15 +144,15 @@ jobs:
       - run: pnpm cdk synth --no-lookups --no-notices --quiet
 
   e2e-shard:
-    name: e2e (${{ matrix.shard }}/3)
+    name: e2e (${{ matrix.shard }}/4)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     # Prod-naher Stack: gebaute SPA hinter den Headern aus iam.md §10 + API im Node-Adapter mit Test-Login
     # und PGlite (TK 17); kein AWS, kein Docker. Enthält `pnpm test:a11y` (a11y.spec.ts, TK 18).
     steps:
@@ -173,7 +177,7 @@ jobs:
       - name: Systembibliotheken für Chromium (mit Cache)
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: pnpm exec playwright install-deps chromium
-      - run: pnpm e2e --shard=${{ matrix.shard }}/3
+      - run: pnpm e2e --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

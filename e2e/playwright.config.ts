@@ -12,7 +12,9 @@ const WEB_PORT = 4173;
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
-  fullyParallel: false,
+  // Je Shard ein Worker (ein lokaler Stack, eine Datenbank); `fullyParallel` verteilt beim Sharden einzelne
+  // Tests statt ganzer Dateien, damit die CI-Shards gleich lang laufen. Tests hängen nicht voneinander ab.
+  fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
