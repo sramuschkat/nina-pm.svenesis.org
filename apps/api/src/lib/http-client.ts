@@ -31,6 +31,11 @@ export interface GetJsonOptions {
 
 export interface HttpClient {
   getJson(url: string, options?: GetJsonOptions): Promise<unknown>;
+  /** Binärer Abruf (Bilder, AP-25): Inhalt und `content-type`. */
+  getBytes?(
+    url: string,
+    options?: GetJsonOptions,
+  ): Promise<{ readonly bytes: Uint8Array; readonly contentType: string }>;
 }
 
 const wait = (ms: number) =>
@@ -38,36 +43,49 @@ const wait = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-export function httpClient(options: HttpClientOptions = {}): HttpClient {
+export function httpClient(options: HttpClientOptions = {}): Required<HttpClient> {
   const doFetch = options.fetchImpl ?? fetch;
   const sleep = options.sleep ?? wait;
   const userAgent = `${USER_AGENT_BASE}/${options.version ?? 'dev'} (+${SITE_URL})`;
-  return {
-    async getJson(url, o = {}) {
-      const retries = o.retries ?? 2;
-      let lastError: unknown;
-      for (let attempt = 0; attempt <= retries; attempt += 1) {
-        if (attempt > 0) await sleep(500 * 2 ** (attempt - 1));
-        try {
-          const res = await doFetch(url, {
-            headers: { 'user-agent': userAgent, accept: 'application/json' },
-            signal: AbortSignal.timeout(o.timeoutMs ?? 10_000),
-          });
-          if (!res.ok) {
-            const error = new HttpError(res.status, url);
-            const transient = res.status === 429 || res.status >= 500;
-            if (!(o.retryOnStatus ?? true) || !transient) throw error;
-            lastError = error;
-            continue;
-          }
-          return (await res.json()) as unknown;
-        } catch (error) {
-          // Wiederholbare Statusantworten landen nicht hier (oben `continue`), alle übrigen enden sofort.
-          if (error instanceof HttpError) throw error;
+  /** Ein Abruf mit Zeitlimit und Wiederholungen; `read` liest die erfolgreiche Antwort. */
+  async function request<T>(
+    url: string,
+    accept: string,
+    o: GetJsonOptions,
+    read: (res: Response) => Promise<T>,
+  ): Promise<T> {
+    const retries = o.retries ?? 2;
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      if (attempt > 0) await sleep(500 * 2 ** (attempt - 1));
+      try {
+        const res = await doFetch(url, {
+          headers: { 'user-agent': userAgent, accept },
+          signal: AbortSignal.timeout(o.timeoutMs ?? 10_000),
+        });
+        if (!res.ok) {
+          const error = new HttpError(res.status, url);
+          const transient = res.status === 429 || res.status >= 500;
+          if (!(o.retryOnStatus ?? true) || !transient) throw error;
           lastError = error;
+          continue;
         }
+        return await read(res);
+      } catch (error) {
+        // Wiederholbare Statusantworten landen nicht hier (oben `continue`), alle übrigen enden sofort.
+        if (error instanceof HttpError) throw error;
+        lastError = error;
       }
-      throw lastError instanceof Error ? lastError : new Error('Abruf fehlgeschlagen');
-    },
+    }
+    throw lastError instanceof Error ? lastError : new Error('Abruf fehlgeschlagen');
+  }
+  return {
+    getJson: (url, o = {}) =>
+      request(url, 'application/json', o, async (res) => (await res.json()) as unknown),
+    getBytes: (url, o = {}) =>
+      request(url, '*/*', o, async (res) => ({
+        bytes: new Uint8Array(await res.arrayBuffer()),
+        contentType: res.headers.get('content-type') ?? '',
+      })),
   };
 }

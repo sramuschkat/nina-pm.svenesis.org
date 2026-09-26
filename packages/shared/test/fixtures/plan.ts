@@ -147,6 +147,7 @@ const project = (n: number, over: Partial<Project>): Project => ({
   targetType: null,
   dsoObjectId: null,
   dsoPrimaryId: null,
+  thumbnailUrl: null,
   catalogNames: '',
   mosaic: { cols: 1, rows: 1, overlapPct: 20 },
   descriptionMd: '',

@@ -195,3 +195,9 @@ export {
   type WeatherCacheEntry,
   type WeatherSite,
 } from './repositories/weather';
+export {
+  projectsWithoutThumbnail,
+  setProjectThumbnail,
+  thumbnailKeyInUse,
+  type ThumbnailCandidate,
+} from './repositories/thumbnail';

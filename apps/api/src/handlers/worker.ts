@@ -1,12 +1,15 @@
 /** Lambda `worker`: Job-Dispatcher für Zeitpläne und Jobs (TK 13, 7.4). */
-import { S3Client } from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   deleteExpiredInvitations,
   EquipmentRepository,
   expireSubmissions,
   JobRepository,
   latestWeather,
+  projectsWithoutThumbnail,
   recordTenantStorage,
+  setProjectThumbnail,
+  thumbnailKeyInUse,
   saveWeather,
   siteNightRunDone,
   tenantIdsForStorage,
@@ -38,6 +41,13 @@ import {
 import { measureTenantStorage, tickTasks } from '../worker/tasks';
 import { httpClient } from '../lib/http-client';
 import { weatherJobHandler, weatherTick, type WeatherJobDeps } from '../weather/job';
+import {
+  HIPS2FITS_TIMEOUT_MS,
+  thumbnailJobHandler,
+  thumbnailTick,
+  type ThumbnailDeps,
+} from '../worker/thumbnail';
+import { thumbnailLoader } from '../worker/thumbnail-db';
 
 // Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
 emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-worker');
@@ -66,12 +76,33 @@ const sessionJobs: SessionJobDeps = {
   enqueue: async (tenantId, input) =>
     (await lambdaDatabase()).repositories({ tenantId }).job.enqueue(input),
 };
+const http = httpClient({ version: ENGINE_VERSION });
+const s3 = new S3Client({});
 const weather: WeatherJobDeps = {
-  http: httpClient({ version: ENGINE_VERSION }),
+  http,
   latest: async (lat, lon) => latestWeather((await lambdaDatabase()).db, lat, lon),
   save: async (entry) => saveWeather((await lambdaDatabase()).db, entry),
   site: async (tenantId, siteId) =>
     new EquipmentRepository((await lambdaDatabase()).db, { tenantId }).site(siteId),
+};
+const thumbnails: ThumbnailDeps = {
+  load: thumbnailLoader(async () => (await lambdaDatabase()).db),
+  keyInUse: async (key) => thumbnailKeyInUse((await lambdaDatabase()).db, key),
+  fetchImage: (url) => http.getBytes(url, { timeoutMs: HIPS2FITS_TIMEOUT_MS }),
+  // Nur unter catalog/thumbs/* (iam.md: webBucket.grantReadWrite(worker, 'catalog/thumbs/*')).
+  put: async (key, bytes) => {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: requiredEnv('WEB_BUCKET'),
+        Key: key,
+        Body: bytes,
+        ContentType: 'image/jpeg',
+        CacheControl: 'public, max-age=31536000, immutable',
+      }),
+    );
+  },
+  save: async (tenantId, projectId, key) =>
+    setProjectThumbnail((await lambdaDatabase()).db, tenantId, projectId, key),
 };
 const jobs: JobRunnerDeps = {
   queue: async () => (await lambdaDatabase()).jobQueue(),
@@ -83,6 +114,7 @@ const jobs: JobRunnerDeps = {
     reconcile: reconcileJobHandler(sessionOps),
     catalog_refresh: catalogRefreshHandler({ db: async () => (await lambdaDatabase()).db }),
     weather: weatherJobHandler(weather),
+    thumbnail: thumbnailJobHandler(thumbnails),
   },
 };
 
@@ -111,6 +143,18 @@ const maintenance = {
     logger.info('weather_sites', { runs });
     return runs;
   },
+  thumbnails: async () => {
+    const db = (await lambdaDatabase()).db;
+    const runs = await thumbnailTick(
+      {
+        candidates: (limit) => projectsWithoutThumbnail(db, limit),
+        enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
+      },
+      jobs,
+    );
+    logger.info('thumbnail_tick', { runs });
+    return runs;
+  },
   reconcileSiteNights: async () => {
     const runs = await reconcileSiteTick(effort, jobs, new Date());
     logger.info('reconcile_site_nights', { runs });
@@ -128,7 +172,7 @@ const maintenance = {
   },
   measureStorage: async () => {
     const db = (await lambdaDatabase()).db;
-    const reader = s3TenantUsageReader(new S3Client({}), requiredEnv('DATA_BUCKET'));
+    const reader = s3TenantUsageReader(s3, requiredEnv('DATA_BUCKET'));
     const measured = await measureTenantStorage({
       tenantIds: () => tenantIdsForStorage(db),
       usage: (id) => reader.usage(id),

@@ -35,6 +35,8 @@ import {
   latestWeather,
   saveWeather,
   siteNightRunDone,
+  setProjectThumbnail,
+  thumbnailKeyInUse,
   weatherSites,
 } from '@nina-pm/db';
 import { seedCore, seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
@@ -64,6 +66,8 @@ import { reconcileJobHandler } from './worker/session-ops';
 import { httpClient } from './lib/http-client';
 import { weatherJobHandler, weatherTick } from './weather/job';
 import { sampleOpenMeteo } from './weather/sample';
+import { thumbnailLoader } from './worker/thumbnail-db';
+import { thumbnailJobHandler } from './worker/thumbnail';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
@@ -104,6 +108,28 @@ const localSessionJobs: SessionJobDeps = {
   db: () => Promise.resolve(db),
   enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
 };
+// Vorschaubilder (AP-25) lokal im Speicher, ausgeliefert unter /catalog/thumbs/… (Vite leitet weiter);
+// ohne LOCAL_THUMBNAILS=live ein graues Platzhalterbild statt eines CDS-Abrufs.
+const localThumbs = new Map<string, Uint8Array>();
+const PLACEHOLDER_JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=',
+  'base64',
+);
+const localThumbnailHandler = thumbnailJobHandler({
+  load: thumbnailLoader(() => Promise.resolve(db)),
+  keyInUse: (key) =>
+    Promise.resolve(localThumbs.has(key)).then(async (has) => has || thumbnailKeyInUse(db, key)),
+  fetchImage: (url) =>
+    process.env.LOCAL_THUMBNAILS === 'live'
+      ? httpClient({ version: 'local' }).getBytes(url, { timeoutMs: 60_000 })
+      : Promise.resolve({ bytes: new Uint8Array(PLACEHOLDER_JPEG), contentType: 'image/jpeg' }),
+  put: (key, bytes) => {
+    localThumbs.set(key, bytes);
+    return Promise.resolve();
+  },
+  save: (tenantId, projectId, key) => setProjectThumbnail(db, tenantId, projectId, key),
+});
+
 const jobs: JobRunnerDeps = {
   queue: () => Promise.resolve(queue),
   handlers: {
@@ -113,6 +139,7 @@ const jobs: JobRunnerDeps = {
     session_report: sessionReportHandler(localSessionJobs),
     reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
     catalog_refresh: catalogRefreshHandler({ db: () => Promise.resolve(db) }),
+    thumbnail: localThumbnailHandler,
     // Astro-Wetter (AP-23): lokal mit Beispieldaten, echte Open-Meteo-Abrufe nur mit LOCAL_WEATHER=live.
     weather: weatherJobHandler({
       http:
@@ -279,6 +306,12 @@ if (AUTH_TEST_MODE) {
 
 // Lokal gibt es kein CloudFront: den Origin-Verify-Header hier ergänzen.
 const local = new Hono<ApiEnv>();
+local.get('/catalog/thumbs/:file', (c) => {
+  const bytes = localThumbs.get(`catalog/thumbs/${c.req.param('file')}`);
+  return bytes
+    ? c.body(bytes as Uint8Array<ArrayBuffer>, 200, { 'content-type': 'image/jpeg' })
+    : c.notFound();
+});
 local.all('*', (c) => {
   const headers = new Headers(c.req.raw.headers);
   headers.set('x-origin-verify', LOCAL_ORIGIN_VERIFY);

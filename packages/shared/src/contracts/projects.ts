@@ -359,6 +359,8 @@ export const ProjectView = z
     dsoObjectId: Uuid.nullable(),
     /** `primary_id` des Katalogobjekts – Pfad des Katalogbilds (`catalogImagePaths`). */
     dsoPrimaryId: z.string().nullable(),
+    /** Vorschaubild des Bildfelds (AP-25, FA-PRJ-02) unter `/catalog/thumbs/…`; `null` = noch keins. */
+    thumbnailUrl: z.string().nullable(),
     catalogNames: z.string(),
     descriptionMd: z.string(),
     raDeg: z.number().nullable(),

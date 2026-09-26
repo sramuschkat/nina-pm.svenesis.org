@@ -63,6 +63,8 @@ export const dedupeKeys = {
   reconcileSiteNight: (siteId: string, night: string) => `reconcile:${siteId}:${night}`,
   /** Stündlicher Wetterlauf je Standort (TK 13); `hour` = `YYYY-MM-DDTHH` in UTC. */
   weatherSiteHour: (siteId: string, hour: string) => `weather:${siteId}:${hour}`,
+  /** Vorschaubild des Projekt-Bildfelds (AP-25). */
+  thumbnail: (projectId: string) => `thumbnail:${projectId}`,
   sessionClose: (sessionId: string) => `session_close:${sessionId}`,
   sessionReport: (sessionId: string) => `session_report:${sessionId}`,
 } as const;

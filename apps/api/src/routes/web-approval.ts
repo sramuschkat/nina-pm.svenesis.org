@@ -30,7 +30,7 @@ import { isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
-import { scheduleEffort } from './effort-trigger';
+import { scheduleProjectJobs } from './effort-trigger';
 import { effortView, listItem, projectView } from './web-projects';
 
 const BASE = '/api/web/v1';
@@ -299,7 +299,7 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
       projects: repos.projects(),
       approvals: repos.approvals(),
       /** Aufwand-Kennzeichen nach Einreichen/Freigeben neu rechnen (Job `effort`, AP-13e). */
-      effort: (projectId: string) => scheduleEffort(svc, repos, projectId),
+      effort: (projectId: string) => scheduleProjectJobs(svc, repos, projectId),
     };
   };
 

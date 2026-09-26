@@ -42,8 +42,8 @@ import {
   type ListFilters,
 } from './list-model';
 import { engineMoonProfile } from './model';
-import { CatalogImage } from '../catalog/CatalogImage';
 import { ProjectsLayout } from './ProjectsLayout';
+import { ProjectImage } from './ProjectImage';
 import styles from './projects.module.css';
 
 type View = 'list' | 'cards' | 'detail';
@@ -607,17 +607,13 @@ function ProjectCard({
   return (
     <article className={styles.card} aria-labelledby={`${baseId}-name`}>
       <div className={styles.cardSide}>
-        {p.dsoPrimaryId ? (
-          <CatalogImage
-            primaryId={p.dsoPrimaryId}
-            name={p.targetName || p.name}
-            size="large"
-            className={styles.thumbImage}
-            fallback={<div className={styles.thumb}>{t('projectList.thumbLater')}</div>}
-          />
-        ) : (
-          <div className={styles.thumb}>{t('projectList.thumbLater')}</div>
-        )}
+        <ProjectImage
+          thumbnailUrl={p.thumbnailUrl}
+          primaryId={p.dsoPrimaryId}
+          name={p.targetName || p.name}
+          className={styles.thumbImage}
+          fallback={<div className={styles.thumb}>{t('projectList.thumbLater')}</div>}
+        />
         <Link to={`/projekte/${p.id}`} className={styles.button}>
           {t('projectList.open')}
         </Link>
