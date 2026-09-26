@@ -5,7 +5,8 @@
  * Wunsch-Rig, Zeitraum (abgelaufen markiert) und geschätztem Bedarf; Filter „ohne meine Stimme“ und
  * „geändert seit meiner Stimme“; jede Spalte sortierbar. Admins entscheiden im Detailbereich:
  * *Freigeben* (Rig, Position je Rig, Status, Termine, Kommentar), *Zurückgeben*, *Ablehnen*
- * (Bestätigungsdialog). Auswirkungsvorschau, Sichtbarkeit und Fristen folgen mit R2/R4.
+ * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
+ * folgt mit R3.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
@@ -28,6 +29,7 @@ import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useMoonProfileLabel, useNumber } from '../equipment/shared';
 import { EFFORT_FILTERS } from './list-model';
 import { ProjectsLayout } from './ProjectsLayout';
+import { useQueueVisibility, VisibilityBars } from './VisibilityWeeks';
 import {
   NO_QUEUE_FILTERS,
   filterQueue,
@@ -52,6 +54,7 @@ export function QueuePage() {
     queryFn: async () => (await approvalApi.queue()).items,
   });
   const rigs = useEquipmentList('rigs');
+  const sites = useEquipmentList('sites');
   const filters = useEquipmentList('filters');
   const [f, setF] = useState<QueueFilters>(NO_QUEUE_FILTERS);
   const [sort, setSort] = useState<QueueSort | null>(null);
@@ -67,6 +70,7 @@ export function QueuePage() {
     [queue.data, f, sort],
   );
   const current = (queue.data ?? []).find((q) => q.id === selected) ?? null;
+  const visibility = useQueueVisibility(items, rigs.data ?? [], sites.data ?? []);
 
   return (
     <ProjectsLayout title={t('queue.title')}>
@@ -134,6 +138,7 @@ export function QueuePage() {
               onSelect={setSelected}
               onVote={(id, on) => vote.mutate({ id, on })}
               voting={vote.isPending}
+              visibility={visibility}
             />
           )}
           {canDecide && current ? (
@@ -170,6 +175,7 @@ function QueueTable({
   onSelect,
   onVote,
   voting,
+  visibility,
 }: {
   items: readonly QueueItem[];
   sort: QueueSort | null;
@@ -182,6 +188,7 @@ function QueueTable({
   canDecide: boolean;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  visibility: ReturnType<typeof useQueueVisibility>;
   onVote: (id: string, on: boolean) => void;
   voting: boolean;
 }) {
@@ -225,13 +232,15 @@ function QueueTable({
             {header('submitted', t('queue.col.submitted'))}
             <th scope="col">{t('queue.col.rig')}</th>
             <th scope="col">{t('queue.col.period')}</th>
+            <th scope="col">{t('queue.col.visibility')}</th>
             {header('hours', t('queue.col.hours'), true)}
             {canDecide ? <th scope="col">{t('projectList.col.actions')}</th> : null}
           </tr>
         </thead>
         <tbody>
-          {items.map((q) => {
+          {items.map((q, index) => {
             const own = q.createdBy === meId;
+            const weeks = visibility.weeks[index] ?? null;
             const expired = periodExpired(q, today);
             return (
               <tr key={q.id} data-selected={selected === q.id}>
@@ -293,6 +302,15 @@ function QueueTable({
                     ? `${q.requestPeriodFrom ?? '…'} – ${q.requestPeriodTo ?? '…'}`
                     : '–'}
                   {expired ? <span className={styles.flag}>{t('queue.periodExpired')}</span> : null}
+                </td>
+                <td>
+                  {weeks ? (
+                    <VisibilityBars weeks={weeks} name={q.name} />
+                  ) : visibility.state === 'loading' && q.target && q.requestedRigId ? (
+                    <span className={styles.muted}>{t('common.loading')}</span>
+                  ) : (
+                    '–'
+                  )}
                 </td>
                 <td className={styles.num}>{`${num(q.estimatedHours, 1)} h`}</td>
                 {canDecide ? (
