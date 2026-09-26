@@ -397,7 +397,8 @@ export function HistoryTab({ projectId }: { projectId: string }) {
       id: 'who',
       header: t('projectEditor.history.who'),
       sortValue: (r) => r.h.userName,
-      priority: 2,
+      // In der schmalen rechten Spalte (AP-26f) fällt der Name vor dem Kommentar weg.
+      priority: 3,
       cell: (r) => r.h.userName ?? '–',
     },
     {
@@ -409,7 +410,7 @@ export function HistoryTab({ projectId }: { projectId: string }) {
     {
       id: 'comment',
       header: t('projectEditor.history.comment'),
-      priority: 3,
+      priority: 2,
       cell: (r) => r.h.comment ?? '',
     },
   ];
