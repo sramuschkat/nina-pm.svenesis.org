@@ -15,7 +15,6 @@ import type { FilterWheelView, Me, RigView } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
 import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
-import { SaveButton } from './shared';
 import { moveItem, SortChainEditor } from './SortChainEditor';
 
 const state = vi.hoisted(() => ({
@@ -114,14 +113,9 @@ beforeEach(() => {
   state.updateRig.mockReset();
 });
 
-/** Scheduler-Formular mit dem *Speichern* des Kartenkopfs (außerhalb, über das `form`-Attribut). */
+/** Scheduler-Formular mit eigenem *Speichern* im Kopf (seit AP-26i nur noch im Nacht-Simulator). */
 function Scheduler({ canWrite = true }: { canWrite?: boolean }) {
-  return (
-    <>
-      <SaveButton form="rig-scheduler-form" />
-      <SchedulerForm rig={rig} canWrite={canWrite} />
-    </>
-  );
+  return <SchedulerForm rig={rig} canWrite={canWrite} />;
 }
 
 function Chain({ initial }: { initial: string[] }) {
@@ -361,7 +355,14 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     fireEvent.keyDown(tab(/^Filterrad/), { key: 'ArrowLeft' });
     expect(tab(/^Scheduler/)).toHaveAttribute('aria-selected', 'true');
     expect(tab(/^Scheduler/)).toHaveFocus();
-    expect(screen.getByRole('form', { name: 'Scheduler-Einstellungen' })).toBeVisible();
+    // Seit AP-26i nur Zusammenfassung mit Link in den Simulator.
+    const summary = screen.getByRole('region', { name: 'Scheduler-Einstellungen' });
+    expect(summary).toBeVisible();
+    expect(within(summary).getByRole('link', { name: 'Im Simulator bearbeiten' })).toHaveAttribute(
+      'href',
+      `/nina/simulator?rig=${full.id}&einstellungen=1`,
+    );
+    expect(within(summary).getByText('Proportionale Zeit')).toBeInTheDocument();
     fireEvent.keyDown(tab(/^Scheduler/), { key: 'End' });
     expect(tab(/^NINA/)).toHaveAttribute('aria-selected', 'true');
     expect(
@@ -450,7 +451,7 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('');
   });
 
-  it('Kartenkopf: Speichern sendet das Formular des aktiven Reiters; auf Filterrad/NINA keins', async () => {
+  it('Kartenkopf: Speichern sendet das Formular des aktiven Reiters; auf Scheduler/Filterrad/NINA keins', async () => {
     state.scheduler.mockResolvedValue({ ...full, settingsVersion: 5 });
     wrap(<RigsPage />);
     const title = await screen.findByRole('heading', { level: 2, name: 'Rig A' });
@@ -461,26 +462,19 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     expect(save()).toHaveAttribute('form', 'rig-general-form');
     fireEvent.click(tab(/^Ausrüstung/));
     expect(save()).toHaveAttribute('form', 'rig-equipment-form');
+    // Scheduler: nur Zusammenfassung (AP-26i) – kein Speichern im Kartenkopf.
     fireEvent.click(tab(/^Scheduler/));
-    expect(save()).toHaveAttribute('form', 'rig-scheduler-form');
-    fireEvent.click(save());
-    await waitFor(() => expect(state.scheduler).toHaveBeenCalledTimes(1));
-    expect(state.updateRig).not.toHaveBeenCalled();
-    expect(
-      await within(screen.getByRole('form', { name: 'Scheduler-Einstellungen' })).findByRole(
-        'status',
-      ),
-    ).toHaveTextContent('Gespeichert.');
+    expect(within(head).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     fireEvent.click(tab(/^NINA/));
     expect(within(head).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
   });
 
-  it('User: Scheduler gesperrt, weder Speichern noch Löschen im Kartenkopf', async () => {
+  it('User: weder Speichern noch Löschen im Kartenkopf, Scheduler nur als Zusammenfassung', async () => {
     state.me = me('user');
     wrap(<RigsPage />);
     await screen.findByRole('heading', { level: 2, name: 'Rig A' });
     fireEvent.click(tab(/^Scheduler/));
-    expect(screen.getByLabelText('Strategie')).toBeDisabled();
+    expect(screen.queryByLabelText('Strategie')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument();
   });

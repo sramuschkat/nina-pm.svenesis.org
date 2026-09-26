@@ -81,22 +81,26 @@
 .settingsPanel[hidden] {
   display: none;
 }
-.stepBody {
+/* Einstellungen (AP-26i): Hinweis und NINA-Übernahme in einer Zeile, darunter das Formular in Abschnitten. */
+.settingsInfo {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--npm-space-4);
+  align-items: flex-start;
+  gap: var(--npm-space-2) var(--npm-space-4);
 }
-.settings {
-  flex: 3 1 480px;
-  min-width: 0;
+.settingsInfo > p {
+  flex: 1 1 24rem;
+  margin: 0;
 }
 .nina {
-  flex: 1 1 220px;
-  border-left: 1px solid var(--npm-border);
-  padding-left: var(--npm-space-3);
-}
-.nina h3 {
-  margin-top: 0;
+  flex: 0 1 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  font-size: var(--npm-font-small);
 }
 .dateRow {
   display: flex;

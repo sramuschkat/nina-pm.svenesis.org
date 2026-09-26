@@ -118,7 +118,10 @@ export function SimulatorPage() {
   const [cursor, setCursor] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   /** `null` = Voreinstellung: aufgeklappt, solange Rig oder Nacht fehlen (AP-26b). */
-  const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
+  // `einstellungen=1` (Link aus Ausrüstung → Rigs → Scheduler, AP-26i) öffnet die Einstellungen.
+  const [settingsOpen, setSettingsOpen] = useState<boolean | null>(() =>
+    params.get('einstellungen') === '1' ? true : null,
+  );
   /** Gewähltes Ziel (Kartentitel): Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben (AP-26g). */
   const [picked, setPicked] = useState<string | null>(null);
   const ids = { drafts: useId(), slider: useId(), settings: useId() };
@@ -375,16 +378,17 @@ export function SimulatorPage() {
             </label>
           </div>
           {rig ? (
-            <div className={styles.stepBody}>
-              <div className={styles.settings}>
-                <p className={styles.note}>{t('simulator.howItWorks')}</p>
-                <SchedulerForm rig={rig} canWrite={canSettings} />
+            <>
+              {/* AP-26i: Übernahmestatus kompakt neben dem Hinweis, darunter die Einstellungen in Abschnitten. */}
+              <div className={styles.settingsInfo}>
+                <p className={styles.muted}>{t('simulator.howItWorks')}</p>
+                <aside className={styles.nina} aria-label={t('simulator.nina')}>
+                  <strong>{t('simulator.nina')}</strong>
+                  <UptakeStatus rigId={rig.id} settingsVersion={rig.settingsVersion} />
+                </aside>
               </div>
-              <aside className={styles.nina} aria-label={t('simulator.nina')}>
-                <h3>{t('simulator.nina')}</h3>
-                <UptakeStatus rigId={rig.id} settingsVersion={rig.settingsVersion} />
-              </aside>
-            </div>
+              <SchedulerForm rig={rig} canWrite={canSettings} />
+            </>
           ) : null}
         </div>
       </section>

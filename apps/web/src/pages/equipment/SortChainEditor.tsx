@@ -10,7 +10,7 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import styles from './equipment.module.css';
 
 /** i18n-Schlüssel je Sortierschlüssel (sort-chain.md, Spalte „Anzeige“). */
-const LABEL: Record<SortChainKey, string> = {
+export const SORT_CHAIN_LABEL: Record<SortChainKey, string> = {
   lowest_peak_altitude: 'sortChain.lowestPeakAltitude',
   setting_soonest: 'sortChain.settingSoonest',
   most_remaining: 'sortChain.mostRemaining',
@@ -48,7 +48,8 @@ export function SortChainEditor({
 }) {
   const { t } = useTranslation();
   const [dragging, setDragging] = useState<number | null>(null);
-  const label = (key: string) => (key in LABEL ? t(LABEL[key as SortChainKey]) : key);
+  const label = (key: string) =>
+    key in SORT_CHAIN_LABEL ? t(SORT_CHAIN_LABEL[key as SortChainKey]) : key;
   const unused = sortChainKeys.filter((k) => !value.includes(k));
   const Up = uiIcons.up;
   const Down = uiIcons.down;

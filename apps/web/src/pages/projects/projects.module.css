@@ -366,8 +366,8 @@ tr[data-dragging='true'] {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-/* Plan je Filter (AP-26h): ein gemeinsames Raster für alle Zeilen – die Filtermarken sind so breit wie die
-   breiteste, Balken und Werte beginnen deshalb in jeder Zeile an derselben Stelle. */
+/* Plan je Filter (AP-26h/AP-26i): ein Raster je Projekt; alle Filtermarken der Seite sind so breit wie die
+   breiteste (`--plan-chip-w`, gemessen in ProjectsLayout) – Balken beginnen überall an derselben Stelle. */
 .filterPlan {
   display: grid;
   grid-template-columns: max-content minmax(96px, 1fr);
@@ -381,9 +381,15 @@ tr[data-dragging='true'] {
 .filterPlan li {
   display: contents;
 }
-.filterPlan li > :first-child {
-  justify-self: stretch;
+.filterPlan li > :first-child,
+.planChips li > :first-child {
+  box-sizing: border-box;
+  width: var(--plan-chip-w, auto);
   justify-content: center;
+}
+/* Hülle für die gleich breiten Filtermarken (ProjectsLayout, AP-26i): ohne eigene Box. */
+.chipScope {
+  display: contents;
 }
 .cards {
   display: grid;

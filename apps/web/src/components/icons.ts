@@ -27,6 +27,8 @@ import {
   MoonStar,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   Play,
   PlugZap,
   RefreshCw,
@@ -148,6 +150,9 @@ export const uiIcons = {
   /** Karte im Vollbild bzw. zurück (Sternkarte, AP-26f). */
   fullscreen: Maximize,
   exitFullscreen: Minimize,
+  /** Seitenbereich rechts ein-/ausklappen (Sternkarte, AP-26i). */
+  panelClose: PanelRightClose,
+  panelOpen: PanelRightOpen,
 } as const;
 
 /**

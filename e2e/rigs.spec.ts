@@ -1,6 +1,6 @@
 /**
  * AP-09c: S-10 Rigs gegen den lokalen Stack (Seed aus seed-demo.json): Rig anlegen und
- * Scheduler-Einstellungen speichern, 412 bei parallelem Speichern, Filterradbelegung mit Vorschlag
+ * Scheduler-Einstellungen speichern (seit AP-26i im Nacht-Simulator), 412 bei parallelem Speichern, Filterradbelegung mit Vorschlag
  * bestätigen, User nur lesend, 768/2400 px. Seit AP-26b: Rig-Liste links, Detail rechts mit Reitern
  * (Allgemein, Ausrüstung, Scheduler, Filterrad, NINA), *Neu* im Seitenkopf. Seit AP-26d stehen
  * *Löschen* und *Speichern* im Kopf der Rig-Karte; *Speichern* sendet das Formular des aktiven Reiters.
@@ -68,8 +68,12 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await showTab(page, 'Filterrad');
   await expect(page.getByText('Farbkamera ohne Filterrad')).toBeVisible();
 
+  // Scheduler: am Rig nur Zusammenfassung, bearbeitet wird im Nacht-Simulator (AP-26i).
   await showTab(page, 'Scheduler');
+  await page.getByRole('link', { name: 'Im Simulator bearbeiten' }).click();
+  await page.waitForURL(/\/nina\/simulator\?rig=[0-9a-f-]+&einstellungen=1/);
   const scheduler = page.getByRole('form', { name: 'Scheduler-Einstellungen' });
+  await expect(scheduler).toBeVisible();
   await scheduler.getByLabel('Dither alle N Belichtungen').fill('3');
   await scheduler.getByLabel('Autofokus alle (min)').fill('0');
   await expect(scheduler.getByText('Autofokus aus')).toBeVisible();
@@ -77,12 +81,12 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
   await expect(scheduler.getByLabel('Flat-Quelle')).toBeDisabled();
   await scheduler.getByLabel('Automatische Flats am Ende der Session').check();
   await scheduler.getByLabel('Flat-Quelle').selectOption({ label: 'Himmel' });
-  await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await scheduler.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(scheduler.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
-  await expect(page.getByText('Einstellungsversion 2')).toBeVisible();
 
   const id = await rigId(page, name);
   const rig = (await (await page.request.get(`/api/web/v1/rigs/${id}`)).json()) as {
+    settingsVersion: number;
     scheduler: {
       ditherEvery: number;
       flatsEnabled: boolean;
@@ -91,6 +95,7 @@ test('S-10: Rig anlegen und Scheduler-Einstellungen speichern', async ({ page })
       overhead: { afEveryMin: number };
     };
   };
+  expect(rig.settingsVersion).toBe(2);
   expect(rig.scheduler).toMatchObject({
     ditherEvery: 3,
     flatsEnabled: true,
@@ -105,24 +110,23 @@ test('S-10: paralleles Speichern → 412 mit „Neu laden“, danach speicherbar
 }) => {
   const a = await pageAs(browser, 'owner');
   const b = await pageAs(browser, 'admin');
-  await openRig(a, /^Rig B/);
-  await openRig(b, /^Rig B/);
-  await showTab(a, 'Scheduler');
-  await showTab(b, 'Scheduler');
+  // Scheduler-Einstellungen im Nacht-Simulator (AP-26i).
+  const id = await rigId(a, 'Rig B');
+  for (const p of [a, b]) await p.goto(`/nina/simulator?rig=${id}&einstellungen=1`);
   const formA = a.getByRole('form', { name: 'Scheduler-Einstellungen' });
   const formB = b.getByRole('form', { name: 'Scheduler-Einstellungen' });
   await formA.getByLabel('Überschuss (%)').fill('12');
-  await a.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await formA.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(formA.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
 
   await formB.getByLabel('Überschuss (%)').fill('20');
-  await b.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await formB.getByRole('button', { name: 'Speichern', exact: true }).click();
   const conflict = formB.getByRole('alert');
   await expect(conflict).toContainText('Jemand anderes hat den Datensatz inzwischen geändert');
   await conflict.getByRole('button', { name: 'Neu laden' }).click();
   await expect(formB.getByLabel('Überschuss (%)')).toHaveValue('12');
   await formB.getByLabel('Überschuss (%)').fill('20');
-  await b.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await formB.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(formB.getByRole('status').filter({ hasText: 'Gespeichert.' })).toBeVisible();
 });
 

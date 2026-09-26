@@ -1,0 +1,92 @@
+/* Scheduler-Einstellungen (AP-26i): sechs kompakte Abschnitte nebeneinander statt zweier langer Spalten –
+   kleine Beschriftungen, Felder 28 px, Zahlenfelder paarweise. Nur noch im Nacht-Simulator bearbeitet. */
+.form {
+  gap: var(--npm-space-3);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.head h3 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+.spacer {
+  flex-grow: 1;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--npm-space-3);
+  align-items: start;
+}
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-surface-sub);
+  font-size: var(--npm-font-small);
+}
+.box h4 {
+  margin: 0;
+  font-size: var(--npm-font-label);
+  font-weight: 700;
+  color: var(--npm-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+/* Sortierkette: lange Namen – doppelt breit, sobald das Raster mehr als zwei Spalten hat. */
+@media (min-width: 1100px) {
+  .wide {
+    grid-column: span 2;
+  }
+}
+/* Zwei Zahlenfelder nebeneinander. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--npm-space-2);
+  align-items: end;
+}
+.box :is(input:not([type='checkbox']):not([type='radio']), select) {
+  min-height: 28px;
+  height: 28px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--npm-font-small);
+}
+.box label,
+.box :is(span, p) {
+  font-size: inherit;
+}
+.box :is(label, span)[class*='label'] {
+  font-size: var(--npm-font-label);
+}
+/* Zusammenfassung am Rig (AP-26i). */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.summary p {
+  margin: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--npm-space-2) var(--npm-space-4);
+  margin: 0;
+}
+.facts dt {
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.facts dd {
+  margin: 0;
+}

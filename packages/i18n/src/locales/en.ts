@@ -1350,6 +1350,13 @@ export const en: Messages = {
       downloadS: 'Download per exposure',
     },
     scheduler: {
+      on: 'on',
+      off: 'off',
+      everyN: 'every {{n}} exposures',
+      flipSummary: '{{after}}–{{max}} min after the meridian',
+      editInSimulator: 'Edit in the simulator',
+      movedHint:
+        'Scheduler settings are edited in the night simulator, where you immediately see how they change the plan.',
       title: 'Scheduler settings',
       syncHint: 'Changes apply immediately and reach NINA with its next request.',
       strategySection: 'Allocation',
@@ -2182,9 +2189,11 @@ export const en: Messages = {
   },
   skymap: {
     newProjectWith: 'New project with {{name}}',
-    sideLabel: 'Object, field and layers',
+    sideLabel: 'Field, mosaic and layers',
     side: {
-      object: 'Object',
+      object: 'Selected object and night',
+      collapse: 'Collapse side panel',
+      expand: 'Show field, mosaic and layers',
       field: 'Field & mosaic',
       layers: 'Layers',
       noSelection: 'No object selected – click an object on the map or search above.',

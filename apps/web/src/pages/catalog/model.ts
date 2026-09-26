@@ -77,7 +77,8 @@ export function filtersFromParams(p: URLSearchParams): BrowserFilters {
   const catalog = get('catalog');
   const family = get('family');
   return {
-    tab: get('tab') === 'beste' ? 'best' : 'all',
+    // „Beste der Nacht“ ist der erste Reiter und Standard (Wunsch Sven 26.09.2026); `alle` wählt die Liste.
+    tab: get('tab') === 'alle' ? 'all' : 'best',
     family: family === 'galaxies' || family === 'nebulae' || family === 'clusters' ? family : '',
     q: get('q'),
     group: (DSO_TYPE_GROUPS as readonly string[]).includes(group) ? group : '',
@@ -105,7 +106,7 @@ export function paramsFromFilters(f: BrowserFilters): URLSearchParams {
   const set = (k: keyof BrowserFilters, v: string) => {
     if (v !== '') p.set(KEYS[k], v);
   };
-  if (f.tab === 'best') p.set(KEYS.tab, 'beste');
+  if (f.tab === 'all') p.set(KEYS.tab, 'alle');
   set('family', f.family);
   set('q', f.q.trim());
   set('group', f.group);

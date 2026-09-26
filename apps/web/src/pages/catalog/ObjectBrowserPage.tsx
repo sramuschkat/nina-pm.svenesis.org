@@ -252,7 +252,7 @@ export function ObjectBrowserPage() {
       <section className={styles.results} aria-labelledby={ids.results}>
         <Tabs
           label={t('catalog.tabsLabel')}
-          tabs={(['all', 'best'] as const).map((tab) => ({
+          tabs={(['best', 'all'] as const).map((tab) => ({
             key: tab,
             label: t(`catalog.tab.${tab}`),
           }))}
@@ -861,8 +861,8 @@ function ResultTable({
       id: 'image',
       header: t('catalog.col.image'),
       headerHidden: true,
-      priority: 4,
-      // Beim Überfahren das große Bild (AP-26h).
+      // Immer sichtbar, auch in „Beste der Nacht“ (AP-26i); beim Überfahren das große Bild (AP-26h).
+      priority: 1,
       cell: (o) => (
         <ThumbPreview
           preview={() => <CatalogImage primaryId={o.primaryId} name={o.displayName} size="large" />}

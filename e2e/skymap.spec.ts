@@ -59,7 +59,7 @@ test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
   await testLogin(page, 'user1');
   await page.goto(ORION);
   await page.getByRole('tab', { name: 'Ebenen', exact: true }).click();
-  const aside = page.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
+  const aside = page.getByRole('complementary', { name: 'Bildfeld, Mosaik und Ebenen' });
   await aside.getByRole('tab', { name: 'Overlays' }).click();
   // Der Zustand steht in der URL; das Häkchen folgt nach der Navigation.
   await aside.getByRole('checkbox', { name: 'Galaktisch' }).click();
@@ -74,7 +74,7 @@ test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
 test('S-21: Beste der Nacht mit Bewertung und Filterempfehlung', async ({ page }) => {
   await page.setViewportSize(WIDE);
   await testLogin(page, 'user1');
-  await page.goto('/planung/objekte?reiter=beste&nacht=2026-12-15&familie=nebulae');
+  await page.goto('/planung/objekte?nacht=2026-12-15&familie=nebulae');
   await expect(page.getByRole('tab', { name: 'Beste der Nacht' })).toHaveAttribute(
     'aria-selected',
     'true',
