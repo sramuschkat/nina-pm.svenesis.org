@@ -42,7 +42,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
-  min-height: var(--npm-row-h);
+  min-height: calc(var(--npm-row-h) + 8px);
   padding: 0 var(--npm-space-3);
   border: none;
   border-bottom: 2px solid transparent;
@@ -50,7 +50,7 @@
   background: none;
   color: var(--npm-text-light);
   font: inherit;
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-base);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -69,7 +69,7 @@
   text-align: left;
 }
 .vertical .tab[aria-selected='true'] {
-  background: var(--npm-note-bg);
+  background: var(--npm-selected-bg);
   color: var(--npm-link);
 }
 .tab:focus-visible,

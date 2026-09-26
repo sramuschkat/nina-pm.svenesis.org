@@ -3,9 +3,6 @@
 .page {
   composes: page from '../admin/admin.module.css';
 }
-.head {
-  composes: head from '../admin/admin.module.css';
-}
 .panel {
   composes: panel from '../admin/admin.module.css';
 }
@@ -65,12 +62,6 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--npm-space-3);
-}
 .numberField {
   flex: 0 1 9rem;
 }
@@ -86,17 +77,6 @@
 .numberField .input {
   width: 100%;
 }
-.rigField {
-  flex: 1 1 14rem;
-  min-width: 0;
-}
-.nightNav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-2);
-  font-variant-numeric: tabular-nums;
-}
 .viewToggle {
   display: flex;
   flex-wrap: wrap;
@@ -106,38 +86,155 @@
   padding: 0;
   border: 0;
 }
-.nightInfo {
-  margin: 0;
+.common {
+  display: block;
   color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+/* ---- Objektbrowser nach Stilsystem AP-26d ---------------------------------------------------------- */
+/* Kontextleiste: Rig und Nacht in einer schmalen Karte über den Ergebnissen. */
+/* Kontextleiste als Karte in einer Zeile. Bewusst ohne `composes: panel` – dessen Spaltenlayout käme wegen
+   der Ladereihenfolge der Stylesheets zuletzt und gewönne. */
+.context {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  min-width: 0;
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+}
+.context .label {
+  white-space: nowrap;
+}
+.rigField {
+  flex: 0 1 20rem;
+  min-width: 0;
+}
+.divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--npm-space-1) 0;
+  background: var(--npm-border);
+}
+.nightNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
   font-variant-numeric: tabular-nums;
+}
+.nightInfo {
+  margin: 0 0 0 auto;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+/* Ergebniskarte: Reiter, Filterleiste und Tabelle in einer Fläche; die Tabelle reicht bis an den Rand. */
+.results {
+  composes: panel from '../admin/admin.module.css';
+  padding: 0;
+  gap: 0;
+}
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.filterRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.filterRow > p {
+  margin: 0;
+}
+.state {
+  margin: 0;
+  padding: var(--npm-space-4);
 }
 .resultHead {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--npm-space-2) var(--npm-space-3);
+}
+/* `.results` komponiert `.panel` (Kartentitel 16 px); die Trefferzahl bleibt Nebentext. */
+.results .resultTitle {
+  margin: 0;
+  font-size: var(--npm-font-small);
+  font-weight: 600;
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .pager {
   display: flex;
   align-items: center;
-  gap: var(--npm-space-2);
-  font-variant-numeric: tabular-nums;
-}
-.common {
-  display: block;
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-small);
   color: var(--npm-text-light);
-  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.source {
+  margin: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-top: 1px solid var(--npm-border);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+/* Kleine Knöpfe (28 px) für Zeilen und Leisten; Symbolknopf quadratisch und ruhig (ohne Rahmen). */
+.buttonSm {
+  composes: button from '../admin/admin.module.css';
+  min-height: 28px;
+  padding: 0 var(--npm-space-2);
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-small);
+}
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--npm-radius);
+  background: transparent;
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
+  text-decoration: none;
+}
+.iconButton[aria-expanded='true'] {
+  background: var(--npm-selected-bg);
+  color: var(--npm-link);
+}
+.iconButton:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .rowActions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-2);
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--npm-space-1);
 }
-.source {
-  margin: var(--npm-space-3) 0 0;
-  color: var(--npm-text-light);
-  font-size: 0.9em;
+.card .rowActions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 /* 768 px: weniger wichtige Spalten entfallen statt horizontal zu scrollen (components.md §1). */
 @media (max-width: 1279px) {
@@ -176,14 +273,6 @@
   aspect-ratio: 1;
   object-fit: cover;
   background: var(--npm-skeleton);
-}
-/* Reiter Alle Objekte / Beste der Nacht */
-/* Inhalt der Reiter Alle Objekte / Beste der Nacht (Tabs, AP-26b): Abstände wie die Seite. */
-.tabPanel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-5);
-  padding-top: var(--npm-space-3);
 }
 /* Miniaturbild in der Liste (128-px-Katalogbild, verkleinert) */
 .listThumb,

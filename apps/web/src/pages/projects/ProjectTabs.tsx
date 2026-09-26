@@ -7,7 +7,7 @@
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { useId, useMemo, useState, type FormEvent } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
 import { useCan } from '../../auth';
@@ -166,7 +166,7 @@ function NightTab({
     }).props;
   }, [site, night, nights.data, raDeg, decDeg, draft.targetName, draft.name, draft.conditions, t]);
   return chart ? (
-    <NightChart {...chart} />
+    <NightChart {...chart} legend="top" />
   ) : (
     <NightChart
       window={null}
@@ -202,8 +202,8 @@ export function NotesTab({
       await client.invalidateQueries({ queryKey: ['project-notes', projectId] });
     },
   });
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  // Kein eigenes `<form>`: der Reiter liegt im Formular des oberen Bereichs (keine verschachtelten Formulare).
+  const submit = () => {
     if (body.trim()) add.mutate();
   };
   const when = (iso: string) =>
@@ -213,7 +213,7 @@ export function NotesTab({
   return (
     <div className={styles.stack}>
       {canWrite ? (
-        <form onSubmit={submit} className={styles.stack}>
+        <div className={styles.stack}>
           <label htmlFor={id} className={styles.muted}>
             {t('projectEditor.notes.new')}
           </label>
@@ -227,11 +227,16 @@ export function NotesTab({
           />
           {add.error ? <ProblemMessage code={problemCode(add.error)} /> : null}
           <div>
-            <button type="submit" className={styles.buttonPrimary} disabled={!body.trim()}>
+            <button
+              type="button"
+              className={styles.buttonPrimary}
+              disabled={!body.trim()}
+              onClick={submit}
+            >
               {t('projectEditor.notes.add')}
             </button>
           </div>
-        </form>
+        </div>
       ) : null}
       {notes.isError ? (
         <ProblemMessage code={problemCode(notes.error)} onRetry={() => void notes.refetch()} />

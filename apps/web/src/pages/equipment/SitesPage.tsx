@@ -18,12 +18,14 @@ import styles from './equipment.module.css';
 import {
   CheckField,
   DeleteDialog,
+  DetailHead,
   EquipmentLayout,
   FormActions,
   ListDetail,
   NewButton,
   NumberField,
   PickList,
+  SaveError,
   SelectField,
   TextField,
   UsageNotice,
@@ -32,6 +34,7 @@ import {
   useEquipmentMutations,
   useFieldError,
   useNumber,
+  useRigUsage,
   validate,
   type FieldErrors,
 } from './shared';
@@ -132,6 +135,7 @@ export function SitesPage() {
   const zones = useMemo(timeZones, []);
   const fieldError = useFieldError(editor.errors);
   const num = useNumber();
+  const usage = useRigUsage('siteId', editor.selectedId);
   const d = editor.draft;
   const disabled = !canWrite;
   const [coordFormat, setCoordFormat] = useState<'sexagesimal' | 'decimal'>('sexagesimal');
@@ -168,7 +172,9 @@ export function SitesPage() {
             render={(s: SiteView) => (
               <>
                 <span>{s.name}</span>
-                <span className={styles.pickMeta}>{s.timeZone}</span>
+                <span className={styles.pickMeta}>
+                  {t(`equipment.observatoryType.${s.observatoryType}`)} · {s.timeZone}
+                </span>
               </>
             )}
           />
@@ -176,174 +182,178 @@ export function SitesPage() {
         detail={
           editor.hasDetail ? (
             <div className={styles.stack}>
-              <form className={styles.form} onSubmit={submit} aria-labelledby="site-form-title">
-                <div className={styles.formTitle}>
-                  <h2 id="site-form-title">
-                    {editor.selected ? editor.selected.name : t('equipment.sites.new')}
-                  </h2>
-                </div>
-                {editor.del.usage ? (
-                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
-                ) : null}
-                <div className={styles.grid}>
-                  <TextField
-                    label={t('equipment.field.name')}
-                    value={d.name}
-                    onChange={(v) => editor.set('name', v)}
-                    error={fieldError('name')}
-                    disabled={disabled}
-                  />
-                  <TextField
-                    label={t('equipment.sites.field.pierName')}
-                    value={d.pierName ?? ''}
-                    onChange={(v) => editor.set('pierName', v)}
-                    disabled={disabled}
-                  />
-                  <SelectField
-                    label={t('equipment.sites.field.observatoryType')}
-                    value={d.observatoryType}
-                    onChange={(v) => editor.set('observatoryType', v)}
-                    options={observatoryTypes.map((o) => ({
-                      value: o,
-                      label: t(`equipment.observatoryType.${o}`),
-                    }))}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className={styles.section}>
-                  <h3>{t('equipment.sites.position')}</h3>
-                  <div className={styles.grid}>
-                    <div className={styles.field}>
-                      <CoordinateInput
-                        kind="lat"
-                        label={t('equipment.sites.field.latitude')}
-                        valueDeg={d.latitudeDeg}
-                        onChange={(v) => editor.set('latitudeDeg', v)}
-                        format={coordFormat}
-                        onFormatChange={setCoordFormat}
-                        disabled={disabled}
-                        required
-                      />
-                      <span className={styles.muted} data-testid="lat-other">
-                        {d.latitudeDeg === null
-                          ? ''
-                          : formatCoordinate(
-                              'lat',
-                              d.latitudeDeg,
-                              coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
-                            )}
-                      </span>
-                      {fieldError('latitudeDeg') ? (
-                        <span className={styles.fieldError}>{fieldError('latitudeDeg')}</span>
-                      ) : null}
-                    </div>
-                    <div className={styles.field}>
-                      <CoordinateInput
-                        kind="lon"
-                        label={t('equipment.sites.field.longitude')}
-                        valueDeg={d.longitudeDeg}
-                        onChange={(v) => editor.set('longitudeDeg', v)}
-                        format={coordFormat}
-                        onFormatChange={setCoordFormat}
-                        disabled={disabled}
-                        required
-                      />
-                      <span className={styles.muted}>
-                        {d.longitudeDeg === null
-                          ? ''
-                          : formatCoordinate(
-                              'lon',
-                              d.longitudeDeg,
-                              coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
-                            )}
-                      </span>
-                      {fieldError('longitudeDeg') ? (
-                        <span className={styles.fieldError}>{fieldError('longitudeDeg')}</span>
-                      ) : null}
-                    </div>
-                    <NumberField
-                      label={t('equipment.sites.field.elevation')}
-                      unit="m"
-                      value={d.elevationM}
-                      onChange={(v) => editor.set('elevationM', v)}
-                      error={fieldError('elevationM')}
-                      disabled={disabled}
-                    />
-                    <NumberField
-                      label={t('equipment.sites.field.elevation')}
-                      unit="ft"
-                      value={d.elevationM === null ? null : Math.round(d.elevationM * FEET_PER_M)}
-                      onChange={(v) =>
-                        editor.set(
-                          'elevationM',
-                          v === null ? null : Math.round((v / FEET_PER_M) * 10) / 10,
-                        )
-                      }
-                      disabled={disabled}
-                    />
-                    <NumberField
-                      label={t('equipment.sites.field.bortle')}
-                      value={d.bortleClass}
-                      min={1}
-                      max={9}
-                      onChange={(v) => editor.set('bortleClass', v)}
-                      error={fieldError('bortleClass')}
-                      disabled={disabled}
-                    />
-                    <TextField
-                      label={t('equipment.sites.field.timeZone')}
-                      value={d.timeZone}
-                      list="site-tz-list"
-                      onChange={(v) => editor.set('timeZone', v.trim())}
-                      error={
-                        fieldError('timeZone') ??
-                        (zones.includes(d.timeZone) ? undefined : t('equipment.sites.tzUnknown'))
-                      }
-                      hint={t('equipment.sites.tzHint')}
-                      disabled={disabled}
-                    />
-                    <datalist id="site-tz-list">
-                      {zones.map((z) => (
-                        <option key={z} value={z} />
-                      ))}
-                    </datalist>
-                  </div>
-                  {suspicious ? (
-                    <p className={styles.warning} role="status">
-                      {t('equipment.sites.longitudeSuspicious')}
-                    </p>
-                  ) : null}
-                </div>
-                <div className={styles.section}>
-                  <div className={styles.grid}>
-                    <TextField
-                      label={t('equipment.sites.field.weatherSafetyUrl')}
-                      type="url"
-                      maxLength={500}
-                      value={d.weatherSafetyUrl ?? ''}
-                      onChange={(v) => editor.set('weatherSafetyUrl', v)}
-                      error={fieldError('weatherSafetyUrl')}
-                      disabled={disabled}
-                      wide
-                    />
-                    <TextField
-                      label={t('equipment.field.notes')}
-                      value={d.notes}
-                      maxLength={4000}
-                      multiline
-                      onChange={(v) => editor.set('notes', v)}
-                      disabled={disabled}
-                      wide
-                    />
-                  </div>
-                </div>
-                <FormActions
+              <form className={styles.card} onSubmit={submit} aria-labelledby="site-form-title">
+                <DetailHead
+                  titleId="site-form-title"
+                  title={editor.selected ? editor.selected.name : t('equipment.sites.new')}
+                  meta={usage}
                   canWrite={canWrite}
                   saving={editor.save.isPending}
                   saved={editor.saved}
-                  error={editor.save.error}
                   onDelete={editor.onDelete((s) => s.name)}
                 />
+                <div className={styles.cardBody}>
+                  <SaveError error={editor.save.error} />
+                  {editor.del.usage ? (
+                    <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                  ) : null}
+                  <section className={styles.section} aria-labelledby="site-general">
+                    <h3 id="site-general">{t('equipment.section.general')}</h3>
+                    <div className={styles.grid}>
+                      <TextField
+                        label={t('equipment.field.name')}
+                        value={d.name}
+                        onChange={(v) => editor.set('name', v)}
+                        error={fieldError('name')}
+                        disabled={disabled}
+                      />
+                      <TextField
+                        label={t('equipment.sites.field.pierName')}
+                        value={d.pierName ?? ''}
+                        onChange={(v) => editor.set('pierName', v)}
+                        disabled={disabled}
+                      />
+                      <SelectField
+                        label={t('equipment.sites.field.observatoryType')}
+                        value={d.observatoryType}
+                        onChange={(v) => editor.set('observatoryType', v)}
+                        options={observatoryTypes.map((o) => ({
+                          value: o,
+                          label: t(`equipment.observatoryType.${o}`),
+                        }))}
+                        disabled={disabled}
+                      />
+                    </div>
+                  </section>
+                  <section className={styles.section} aria-labelledby="site-position">
+                    <h3 id="site-position">{t('equipment.sites.position')}</h3>
+                    <div className={styles.grid}>
+                      <div className={styles.field}>
+                        <CoordinateInput
+                          kind="lat"
+                          label={t('equipment.sites.field.latitude')}
+                          valueDeg={d.latitudeDeg}
+                          onChange={(v) => editor.set('latitudeDeg', v)}
+                          format={coordFormat}
+                          onFormatChange={setCoordFormat}
+                          disabled={disabled}
+                          required
+                        />
+                        <span className={styles.muted} data-testid="lat-other">
+                          {d.latitudeDeg === null
+                            ? ''
+                            : formatCoordinate(
+                                'lat',
+                                d.latitudeDeg,
+                                coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
+                              )}
+                        </span>
+                        {fieldError('latitudeDeg') ? (
+                          <span className={styles.fieldError}>{fieldError('latitudeDeg')}</span>
+                        ) : null}
+                      </div>
+                      <div className={styles.field}>
+                        <CoordinateInput
+                          kind="lon"
+                          label={t('equipment.sites.field.longitude')}
+                          valueDeg={d.longitudeDeg}
+                          onChange={(v) => editor.set('longitudeDeg', v)}
+                          format={coordFormat}
+                          onFormatChange={setCoordFormat}
+                          disabled={disabled}
+                          required
+                        />
+                        <span className={styles.muted}>
+                          {d.longitudeDeg === null
+                            ? ''
+                            : formatCoordinate(
+                                'lon',
+                                d.longitudeDeg,
+                                coordFormat === 'decimal' ? 'sexagesimal' : 'decimal',
+                              )}
+                        </span>
+                        {fieldError('longitudeDeg') ? (
+                          <span className={styles.fieldError}>{fieldError('longitudeDeg')}</span>
+                        ) : null}
+                      </div>
+                      <NumberField
+                        label={t('equipment.sites.field.elevation')}
+                        unit="m"
+                        value={d.elevationM}
+                        onChange={(v) => editor.set('elevationM', v)}
+                        error={fieldError('elevationM')}
+                        disabled={disabled}
+                      />
+                      <NumberField
+                        label={t('equipment.sites.field.elevation')}
+                        unit="ft"
+                        value={d.elevationM === null ? null : Math.round(d.elevationM * FEET_PER_M)}
+                        onChange={(v) =>
+                          editor.set(
+                            'elevationM',
+                            v === null ? null : Math.round((v / FEET_PER_M) * 10) / 10,
+                          )
+                        }
+                        disabled={disabled}
+                      />
+                      <NumberField
+                        label={t('equipment.sites.field.bortle')}
+                        value={d.bortleClass}
+                        min={1}
+                        max={9}
+                        onChange={(v) => editor.set('bortleClass', v)}
+                        error={fieldError('bortleClass')}
+                        disabled={disabled}
+                      />
+                      <TextField
+                        label={t('equipment.sites.field.timeZone')}
+                        value={d.timeZone}
+                        list="site-tz-list"
+                        onChange={(v) => editor.set('timeZone', v.trim())}
+                        error={
+                          fieldError('timeZone') ??
+                          (zones.includes(d.timeZone) ? undefined : t('equipment.sites.tzUnknown'))
+                        }
+                        hint={t('equipment.sites.tzHint')}
+                        disabled={disabled}
+                      />
+                      <datalist id="site-tz-list">
+                        {zones.map((z) => (
+                          <option key={z} value={z} />
+                        ))}
+                      </datalist>
+                    </div>
+                    {suspicious ? (
+                      <p className={styles.warning} role="status">
+                        {t('equipment.sites.longitudeSuspicious')}
+                      </p>
+                    ) : null}
+                  </section>
+                  <section className={styles.section} aria-labelledby="site-more">
+                    <h3 id="site-more">{t('equipment.section.more')}</h3>
+                    <div className={styles.grid}>
+                      <TextField
+                        label={t('equipment.sites.field.weatherSafetyUrl')}
+                        type="url"
+                        maxLength={500}
+                        value={d.weatherSafetyUrl ?? ''}
+                        onChange={(v) => editor.set('weatherSafetyUrl', v)}
+                        error={fieldError('weatherSafetyUrl')}
+                        disabled={disabled}
+                        wide
+                      />
+                      <TextField
+                        label={t('equipment.field.notes')}
+                        value={d.notes}
+                        maxLength={4000}
+                        multiline
+                        onChange={(v) => editor.set('notes', v)}
+                        disabled={disabled}
+                        wide
+                      />
+                    </div>
+                  </section>
+                </div>
               </form>
               {editor.selected ? <SiteLinks site={editor.selected} canWrite={canWrite} /> : null}
             </div>
@@ -352,7 +362,7 @@ export function SitesPage() {
         aside={
           <aside className={styles.derived} aria-labelledby="site-derived">
             <h2 id="site-derived">{t('equipment.sites.overview')}</h2>
-            <dl>
+            <dl className={styles.kv}>
               <dt>{t('equipment.sites.field.latitude')}</dt>
               <dd>{num(d.latitudeDeg, 4)}°</dd>
               <dt>{t('equipment.sites.field.longitude')}</dt>
@@ -579,9 +589,7 @@ function SiteLinks({ site, canWrite }: { site: SiteView; canWrite: boolean }) {
             onChange={(v) => setDraft({ ...draft, isDefault: v })}
           />
           <FormActions
-            canWrite
             saving={save.isPending}
-            saved={false}
             error={save.error}
             extra={
               <button type="button" className={styles.button} onClick={() => setEditing(null)}>

@@ -86,11 +86,6 @@ export function TenantSettingsPage() {
   const Save = actionIcons.save;
   return (
     <AdminLayout title={t('admin.settings.title')}>
-      <nav className={styles.tabs} aria-label={t('admin.settings.tabsLabel')}>
-        <span className={styles.tab} aria-current="page">
-          {t('admin.settings.general')}
-        </span>
-      </nav>
       <section className={styles.panel} aria-labelledby="settings-general">
         <h2 id="settings-general">{t('admin.settings.general')}</h2>
         {query.isPending || !draft ? (

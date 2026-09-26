@@ -1,7 +1,7 @@
 /**
  * Vorlagen-Editor unter der Filtersammlung (FA-BPL-01…06, FK 14.3 S-14) im Listen-/Detail-Muster
  * (AP-26b): links die Vorlagen (gefiltert nach Teleskop + Kamera), rechts die gewählte Vorlage;
- * *Neue Vorlage* rechts im Abschnittskopf, *Löschen* unter dem Formular. Name, Zeilen (Filter, Belichtung, Anzahl, Stunden, Mondprofil,
+ * *Neue Vorlage* rechts im Abschnittskopf, *Löschen* und *Speichern* im Kartenkopf (AP-26d). Name, Zeilen (Filter, Belichtung, Anzahl, Stunden, Mondprofil,
  * Gain, Offset, Auslesemodus, Binning, aktiv), *+ Filter*, *Vorlage speichern*. Gain/Offset leer =
  * NINA-Standard (NT-38); Binning und Auslesemodus nur aus der gewählten Kamera (FA-KAM-06).
  */
@@ -14,10 +14,11 @@ import { ICON_SIZE, actionIcons } from '../../components/icons';
 import styles from './equipment.module.css';
 import {
   DeleteDialog,
-  FormActions,
+  DetailHead,
   ListDetail,
   NewButton,
   PickList,
+  SaveError,
   SelectField,
   TextField,
   UsageNotice,
@@ -336,7 +337,6 @@ export function TemplateEditor({ canWrite }: { canWrite: boolean }) {
         list={
           <PickList
             label={t('equipment.templates.list')}
-            headingLevel={3}
             items={matching}
             selectedId={editor.selectedId}
             onSelect={editor.select}
@@ -377,72 +377,74 @@ export function TemplateEditor({ canWrite }: { canWrite: boolean }) {
         detail={
           editor.hasDetail ? (
             <form
-              className={styles.form}
+              className={styles.card}
               onSubmit={submit}
               aria-label={t('equipment.templates.form')}
             >
-              <div className={styles.formTitle}>
-                <h3>{editor.selected ? editor.selected.name : t('equipment.templates.new')}</h3>
-              </div>
-              {editor.del.usage ? (
-                <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
-              ) : null}
-              <div className={styles.grid}>
-                <TextField
-                  label={t('equipment.field.name')}
-                  value={d.name}
-                  onChange={(v) => editor.set('name', v)}
-                  error={fieldError('name')}
-                  disabled={disabled}
-                />
-                <SelectField
-                  label={t('equipment.templates.telescope')}
-                  value={d.telescopeId ?? ''}
-                  onChange={(v) => editor.set('telescopeId', v === '' ? null : v)}
-                  options={[
-                    { value: '', label: t('equipment.none') },
-                    ...(telescopes.data ?? []).map((x) => ({ value: x.id, label: x.name })),
-                  ]}
-                  disabled={disabled}
-                />
-                <SelectField
-                  label={t('equipment.templates.camera')}
-                  value={d.cameraId ?? ''}
-                  onChange={(v) => editor.set('cameraId', v === '' ? null : v)}
-                  options={[
-                    { value: '', label: t('equipment.none') },
-                    ...(cameras.data ?? []).map((x) => ({ value: x.id, label: x.name })),
-                  ]}
-                  disabled={disabled}
-                />
-              </div>
-              {d.lines.length === 0 ? (
-                <p className={styles.muted}>{t('equipment.templates.noLines')}</p>
-              ) : (
-                <DataTable
-                  columns={templateColumns}
-                  rows={d.lines.map((l, i) => ({ l, i }))}
-                  rowKey={(r) => String(r.i)}
-                  rowLabel={(r) => String(r.i + 1)}
-                  label={t('equipment.templates.title')}
-                />
-              )}
-              <p className={styles.muted}>
-                {t('equipment.templates.total', { hours: num(totalHours, 1) })}
-              </p>
-              {canWrite ? (
-                <button type="button" className={styles.button} onClick={addLine}>
-                  <Add size={ICON_SIZE.table} aria-hidden />
-                  {t('equipment.templates.addLine')}
-                </button>
-              ) : null}
-              <FormActions
+              <DetailHead
+                titleId="template-form-title"
+                level={3}
+                title={editor.selected ? editor.selected.name : t('equipment.templates.new')}
                 canWrite={canWrite}
                 saving={editor.save.isPending}
                 saved={editor.saved}
-                error={editor.save.error}
                 onDelete={editor.onDelete((s) => s.name)}
               />
+              <div className={styles.cardBody}>
+                <SaveError error={editor.save.error} />
+                {editor.del.usage ? (
+                  <UsageNotice usage={editor.del.usage} onClose={editor.del.clearUsage} />
+                ) : null}
+                <div className={styles.grid}>
+                  <TextField
+                    label={t('equipment.field.name')}
+                    value={d.name}
+                    onChange={(v) => editor.set('name', v)}
+                    error={fieldError('name')}
+                    disabled={disabled}
+                  />
+                  <SelectField
+                    label={t('equipment.templates.telescope')}
+                    value={d.telescopeId ?? ''}
+                    onChange={(v) => editor.set('telescopeId', v === '' ? null : v)}
+                    options={[
+                      { value: '', label: t('equipment.none') },
+                      ...(telescopes.data ?? []).map((x) => ({ value: x.id, label: x.name })),
+                    ]}
+                    disabled={disabled}
+                  />
+                  <SelectField
+                    label={t('equipment.templates.camera')}
+                    value={d.cameraId ?? ''}
+                    onChange={(v) => editor.set('cameraId', v === '' ? null : v)}
+                    options={[
+                      { value: '', label: t('equipment.none') },
+                      ...(cameras.data ?? []).map((x) => ({ value: x.id, label: x.name })),
+                    ]}
+                    disabled={disabled}
+                  />
+                </div>
+                {d.lines.length === 0 ? (
+                  <p className={styles.muted}>{t('equipment.templates.noLines')}</p>
+                ) : (
+                  <DataTable
+                    columns={templateColumns}
+                    rows={d.lines.map((l, i) => ({ l, i }))}
+                    rowKey={(r) => String(r.i)}
+                    rowLabel={(r) => String(r.i + 1)}
+                    label={t('equipment.templates.title')}
+                  />
+                )}
+                <p className={styles.muted}>
+                  {t('equipment.templates.total', { hours: num(totalHours, 1) })}
+                </p>
+                {canWrite ? (
+                  <button type="button" className={styles.button} onClick={addLine}>
+                    <Add size={ICON_SIZE.table} aria-hidden />
+                    {t('equipment.templates.addLine')}
+                  </button>
+                ) : null}
+              </div>
             </form>
           ) : null
         }

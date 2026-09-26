@@ -1,6 +1,6 @@
 /**
- * S-50 Wettervorhersage (FK 14.3; FA-WET-01…09, AP-23): Kopf mit Standort-/Rig-Auswahl, Koordinaten,
- * Zeitzone, Standortzeit und eigener Ortszeit; 7-Tage-Astro-Wetter (`WeatherChart`) mit Nachtdetail;
+ * S-50 Wettervorhersage (FK 14.3; FA-WET-01…09, AP-23): Seitengerüst `PageHeader` (AP-26d), Kontextkarte
+ * mit Standort-/Rig-Auswahl, Koordinaten, Zeitzone, Standortzeit und eigener Ortszeit; 7-Tage-Astro-Wetter (`WeatherChart`) mit Nachtdetail;
  * Nachttabelle mit Bewertung, Abdeckung, dunklen und mondlosen Stunden, bestem Fenster und Mond; die
  * meteoblue-Karte nur als externer Link (Datenschutz, FA-WET-08). Auswahl in der URL (`?standort=`).
  */
@@ -12,6 +12,7 @@ import { useSearchParams } from 'react-router';
 import { equipmentApi, type WeatherView } from '../../api/client';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { WeatherChart } from '../../components/WeatherChart';
@@ -222,10 +223,7 @@ export function WeatherPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.head}>
-        <h1>{t('weatherPage.title')}</h1>
-      </div>
-      <p className={styles.muted}>{t('weatherPage.intro')}</p>
+      <PageHeader title={t('weatherPage.title')} meta={t('weatherPage.intro')} />
       {sites.isPending ? (
         <p role="status">{t('common.loading')}</p>
       ) : sites.isError ? (
@@ -234,77 +232,79 @@ export function WeatherPage() {
         <p className={styles.muted}>{t('weatherPage.noSites')}</p>
       ) : (
         <>
-          <div className={styles.toolbar}>
-            <div className={styles.field}>
-              <label htmlFor="weather-site">{t('weatherPage.site')}</label>
-              <select
-                id="weather-site"
-                className={styles.input}
-                value={site ? `site:${site.id}` : ''}
-                onChange={(e) => select(e.target.value)}
-              >
-                <optgroup label={t('weatherPage.sites')}>
-                  {siteList.map((s) => (
-                    <option key={s.id} value={`site:${s.id}`}>
-                      {s.name}
-                    </option>
-                  ))}
-                </optgroup>
-                {(rigs.data ?? []).length > 0 ? (
-                  <optgroup label={t('weatherPage.rigs')}>
-                    {(rigs.data ?? []).map((r) => (
-                      <option key={r.id} value={`rig:${r.id}`}>
-                        {t('weatherPage.rigAt', {
-                          rig: r.name,
-                          site: siteList.find((s) => s.id === r.siteId)?.name ?? '',
-                        })}
+          <div className={styles.context}>
+            <div className={styles.toolbar}>
+              <div className={styles.field}>
+                <label htmlFor="weather-site">{t('weatherPage.site')}</label>
+                <select
+                  id="weather-site"
+                  className={styles.input}
+                  value={site ? `site:${site.id}` : ''}
+                  onChange={(e) => select(e.target.value)}
+                >
+                  <optgroup label={t('weatherPage.sites')}>
+                    {siteList.map((s) => (
+                      <option key={s.id} value={`site:${s.id}`}>
+                        {s.name}
                       </option>
                     ))}
                   </optgroup>
-                ) : null}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <span id="weather-unit">{t('weatherPage.unit')}</span>
-              <div className={styles.unit} role="radiogroup" aria-labelledby="weather-unit">
-                {(['c', 'f'] as const).map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    role="radio"
-                    aria-checked={unit === u}
-                    onClick={() => setUnit(u)}
-                  >
-                    {t(u === 'c' ? 'weatherPage.celsius' : 'weatherPage.fahrenheit')}
-                  </button>
-                ))}
+                  {(rigs.data ?? []).length > 0 ? (
+                    <optgroup label={t('weatherPage.rigs')}>
+                      {(rigs.data ?? []).map((r) => (
+                        <option key={r.id} value={`rig:${r.id}`}>
+                          {t('weatherPage.rigAt', {
+                            rig: r.name,
+                            site: siteList.find((s) => s.id === r.siteId)?.name ?? '',
+                          })}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null}
+                </select>
+              </div>
+              <div className={styles.field}>
+                <span id="weather-unit">{t('weatherPage.unit')}</span>
+                <div className={styles.unit} role="radiogroup" aria-labelledby="weather-unit">
+                  {(['c', 'f'] as const).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      role="radio"
+                      aria-checked={unit === u}
+                      onClick={() => setUnit(u)}
+                    >
+                      {t(u === 'c' ? 'weatherPage.celsius' : 'weatherPage.fahrenheit')}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
+            {site ? (
+              <dl className={styles.facts}>
+                <div>
+                  <dt>{t('weatherPage.coordinates')}</dt>
+                  <dd>
+                    {num(site.latitudeDeg, 4)}°, {num(site.longitudeDeg, 4)}°
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t('weatherPage.zone')}</dt>
+                  <dd>{site.timeZone}</dd>
+                </div>
+                <div>
+                  <dt>{t('weatherPage.siteTime')}</dt>
+                  <dd>
+                    <SiteTime atUtc={now.toISOString()} siteTimeZone={site.timeZone} withDate />
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t('weatherPage.ownTime')}</dt>
+                  <dd>{clock(now.toISOString(), ownZone)}</dd>
+                </div>
+              </dl>
+            ) : null}
           </div>
-          {site ? (
-            <dl className={styles.facts}>
-              <div>
-                <dt>{t('weatherPage.coordinates')}</dt>
-                <dd>
-                  {num(site.latitudeDeg, 4)}°, {num(site.longitudeDeg, 4)}°
-                </dd>
-              </div>
-              <div>
-                <dt>{t('weatherPage.zone')}</dt>
-                <dd>{site.timeZone}</dd>
-              </div>
-              <div>
-                <dt>{t('weatherPage.siteTime')}</dt>
-                <dd>
-                  <SiteTime atUtc={now.toISOString()} siteTimeZone={site.timeZone} withDate />
-                </dd>
-              </div>
-              <div>
-                <dt>{t('weatherPage.ownTime')}</dt>
-                <dd>{clock(now.toISOString(), ownZone)}</dd>
-              </div>
-            </dl>
-          ) : null}
           <section className={styles.panel} aria-labelledby="weather-chart">
             <h2 id="weather-chart" className="visually-hidden">
               {t('weatherPage.title')}

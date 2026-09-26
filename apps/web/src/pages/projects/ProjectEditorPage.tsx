@@ -1,12 +1,13 @@
 /**
- * S-31 Projekt-Editor (FK 14.3, FA-PRJ-01…23, AP-11b; Aufteilung AP-26b nach Svens Vorlage): Kopf mit
- * Brotkrumen und Projektfortschritt, Titel mit Status, Aufwand und Favorit, rechts Rig, Projektstatus,
- * Speichern/Freigabe/Duplizieren/Löschen. Darunter drei Bereiche mit eigenen Reitern: oben *Ziel* ·
- * *Bedingungen* · *Bild & Notizen* (Vorschaubild, Himmelslage, Beschreibung, Notizen, Freigabe-Verlauf),
- * Mitte *Nachtdiagramm* · *Saisondiagramm* · *Wetter*, unten je Panel der Belichtungsplan und *Panels*. Das Projekt wird mit `If-Match` gespeichert (412 bei
- * parallelem Speichern), nur geänderte Felder. Neue Projekte sind Entwürfe und dürfen unvollständig
- * sein (FA-PRJ-01); Zeilen setzen Koordinaten voraus (erst dann gibt es das Hauptpanel).
- * Einreichen, Freigabe und Änderungsanträge folgen mit AP-12a, Mosaik und Sternkarte mit R2.
+ * S-31 Projekt-Editor (FK 14.3, FA-PRJ-01…23, AP-11b; Aufteilung AP-26b nach Svens Vorlage, Seitenkopf
+ * AP-26d): `PageHeader` mit Brotkrumen (Projekte › Status), Titel, Metazeile (Kennzeichen, Aufwand,
+ * Favorit, ungespeichert; Rig, Projektstatus, Projektfortschritt) und Aktionen (Einreichen/Zurückziehen,
+ * Duplizieren, ⋯-Menü mit *Löschen*, *Speichern* ganz rechts). Darunter drei Karten mit eigenen Reitern:
+ * oben *Ziel* · *Bedingungen* · *Bild & Notizen* (Vorschaubild, Himmelslage, Beschreibung, Notizen,
+ * Freigabe-Verlauf), Mitte *Nachtdiagramm* · *Saisondiagramm* · *Wetter*, unten je Panel der
+ * Belichtungsplan und *Panels*. Das Projekt wird mit `If-Match` gespeichert (412 bei parallelem
+ * Speichern), nur geänderte Felder. Neue Projekte sind Entwürfe und dürfen unvollständig sein
+ * (FA-PRJ-01); Zeilen setzen Koordinaten voraus (erst dann gibt es das Hauptpanel).
  */
 import {
   canTransition,
@@ -18,7 +19,7 @@ import {
   type ProjectStatus,
 } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
@@ -32,10 +33,12 @@ import {
   type RigView,
 } from '../../api/client';
 import { ApiError, useAuth, useCan } from '../../auth';
+import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
 import { ICON_SIZE, actionIcons, areaIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { EffortChip } from '../../components/EffortChip';
@@ -284,7 +287,6 @@ function Editor({
   const [topTab, setTopTab] = useState<TopTab>('target');
   const [imageTab, setImageTab] = useState<ImageTab>('preview');
   const canHistory = useCan('project.history.read', resource);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [defaultSaved, setDefaultSaved] = useState(false);
 
   const rig = (rigs.data ?? []).find((r) => r.id === draft.rigId) ?? null;
@@ -796,89 +798,78 @@ function Editor({
 
   return (
     <div className={styles.editor}>
-      <header className={styles.editorHead}>
-        <div className={styles.crumbRow}>
-          <nav aria-label={t('projectEditor.crumbs')}>
-            <ol className={styles.crumbs}>
-              <li>
-                <Link to="/projekte">{t('projectEditor.list')}</Link>
-              </li>
-              {statusLabel ? <li>{statusLabel}</li> : null}
-              <li aria-current="page">{title}</li>
-            </ol>
-          </nav>
-          <div className={styles.headMeta}>
-            {sums ? <ProjectProgress sums={sums} /> : null}
-            <div className={styles.headRig}>
-              <RigSelect
-                rigs={rigOptions}
-                value={draft.rigId}
-                onChange={(v) => set('rigId', v)}
-                disabled={disabled}
-                label={t('projectEditor.rig')}
-                onEmptyAction={() => void navigate(EQUIPMENT_PATHS.rigs)}
+      <PageHeader
+        crumbs={[
+          { label: t('projectEditor.list'), to: PROJECT_PATHS.list },
+          ...(statusLabel ? [{ label: statusLabel }] : []),
+        ]}
+        title={title}
+        titleHint={title}
+        meta={
+          <>
+            <span className={styles.metaGroup}>
+              {saved ? (
+                <StatusBadge kind="approval" value={saved.approvalStatus} size="sm" />
+              ) : null}
+              {saved?.status ? <StatusBadge kind="project" value={saved.status} size="sm" /> : null}
+              <EffortChip
+                effort={effort.effort}
+                state={effort.state}
+                live={effort.live}
+                stale={!effort.live && (saved?.effortStale ?? false)}
+                size="sm"
               />
-            </div>
-            {statusOptions.length > 0 && canStatus ? (
-              <select
-                className={styles.input}
-                aria-label={t('projectEditor.status')}
-                value={saved?.status ?? 'planning'}
-                onChange={(e) => status.mutate(e.target.value as ProjectStatus)}
-              >
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`status.project.${s}`)}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-          </div>
-        </div>
-        <div className={styles.titleRow}>
-          <div className={styles.titleMain}>
-            <h1 title={title}>{title}</h1>
-            {saved ? <StatusBadge kind="approval" value={saved.approvalStatus} size="sm" /> : null}
-            {saved?.status ? <StatusBadge kind="project" value={saved.status} size="sm" /> : null}
-            <EffortChip
-              effort={effort.effort}
-              state={effort.state}
-              live={effort.live}
-              stale={!effort.live && (saved?.effortStale ?? false)}
-              size="sm"
-            />
-            {saved && canFavorite ? (
-              <button
-                type="button"
-                className={`${styles.iconButton} ${styles.favorite}`}
-                aria-pressed={saved.favorite}
-                aria-label={t('projectEditor.favorite')}
-                title={t('projectEditor.favorite')}
-                onClick={() => favorite.mutate(!saved.favorite)}
-              >
-                <Star
-                  size={ICON_SIZE.button}
-                  aria-hidden
-                  fill={saved.favorite ? 'currentColor' : 'none'}
+              {saved && canFavorite ? (
+                <button
+                  type="button"
+                  className={`${styles.iconButton} ${styles.favorite}`}
+                  aria-pressed={saved.favorite}
+                  aria-label={t('projectEditor.favorite')}
+                  title={t('projectEditor.favorite')}
+                  onClick={() => favorite.mutate(!saved.favorite)}
+                >
+                  <Star
+                    size={ICON_SIZE.table}
+                    aria-hidden
+                    fill={saved.favorite ? 'currentColor' : 'none'}
+                  />
+                </button>
+              ) : null}
+              {dirty && saved ? (
+                <span className={styles.dirty}>{t('projectEditor.unsaved')}</span>
+              ) : null}
+            </span>
+            <span className={styles.metaGroup}>
+              <span className={styles.headRig}>
+                <RigSelect
+                  rigs={rigOptions}
+                  value={draft.rigId}
+                  onChange={(v) => set('rigId', v)}
+                  disabled={disabled}
+                  label={t('projectEditor.rig')}
+                  onEmptyAction={() => void navigate(EQUIPMENT_PATHS.rigs)}
                 />
-              </button>
-            ) : null}
-            {dirty && saved ? (
-              <span className={styles.dirty}>{t('projectEditor.unsaved')}</span>
-            ) : null}
-          </div>
-          <div className={styles.headActions}>
-            {canEdit ? (
-              <button
-                type="submit"
-                form={formId}
-                className={styles.buttonPrimary}
-                disabled={save.isPending || !dirty}
-              >
-                <Save size={ICON_SIZE.button} aria-hidden />
-                {t('projectEditor.save')}
-              </button>
-            ) : null}
+              </span>
+              {statusOptions.length > 0 && canStatus ? (
+                <select
+                  className={`${styles.input} ${styles.headStatus}`}
+                  aria-label={t('projectEditor.status')}
+                  value={saved?.status ?? 'planning'}
+                  onChange={(e) => status.mutate(e.target.value as ProjectStatus)}
+                >
+                  {statusOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`status.project.${s}`)}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {sums ? <ProjectProgress sums={sums} /> : null}
+            </span>
+          </>
+        }
+        actions={
+          <>
             {saved &&
             canSubmit &&
             (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned') ? (
@@ -911,18 +902,27 @@ function Editor({
               </button>
             ) : null}
             {saved && canDelete ? (
+              <ProjectMoreActions
+                name={saved.name}
+                onDelete={() => remove.mutateAsync()}
+                pending={remove.isPending}
+                error={remove.error}
+              />
+            ) : null}
+            {canEdit ? (
               <button
-                type="button"
-                className={styles.buttonDanger}
-                onClick={() => setConfirmDelete(true)}
+                type="submit"
+                form={formId}
+                className={styles.buttonPrimary}
+                disabled={save.isPending || !dirty}
               >
-                <actionIcons.delete size={ICON_SIZE.button} aria-hidden />
-                {t('projectEditor.delete')}
+                <Save size={ICON_SIZE.button} aria-hidden />
+                {t('projectEditor.save')}
               </button>
             ) : null}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
       {!canEdit ? (
         <p className={styles.note} role="note">
           {me?.mfaRequired ? t('errors.auth.mfaRequired') : t('projectEditor.readOnly')}
@@ -1029,19 +1029,64 @@ function Editor({
           <p className={styles.areaNote}>{t('projectEditor.plan.saveFirst')}</p>
         </section>
       )}
+    </div>
+  );
+}
 
+/**
+ * ⋯-Menü im Editor-Kopf (Stilsystem AP-26d): *Löschen* als Gefahr-Eintrag, die Bestätigung bleibt beim
+ * `ConfirmDialog`. Der Aufrufer zeigt das Menü nur mit dem Recht `project.delete`.
+ */
+export function ProjectMoreActions({
+  name,
+  onDelete,
+  pending,
+  error,
+}: {
+  name: string;
+  onDelete: () => Promise<unknown>;
+  pending: boolean;
+  error: unknown;
+}) {
+  const { t } = useTranslation();
+  const [confirm, setConfirm] = useState(false);
+  // Nach *Abbrechen* zurück auf den ⋯-Knopf (der Menüeintrag, der den Dialog öffnete, ist dann weg).
+  const anchor = useRef<HTMLSpanElement>(null);
+  const cancel = () => {
+    setConfirm(false);
+    setTimeout(() => anchor.current?.querySelector('button')?.focus(), 0);
+  };
+  return (
+    <span ref={anchor} className={styles.contents}>
+      <ActionMenu
+        label={t('projectEditor.moreActions')}
+        items={[
+          {
+            key: 'delete',
+            label: t('projectEditor.delete'),
+            icon: <actionIcons.delete size={ICON_SIZE.table} aria-hidden />,
+            danger: true,
+            onSelect: () => setConfirm(true),
+          },
+        ]}
+      />
       <ConfirmDialog
-        open={confirmDelete}
-        title={t('projectEditor.deleteTitle', { name: saved?.name ?? '' })}
+        open={confirm}
+        title={t('projectEditor.deleteTitle', { name })}
         consequence={t('projectEditor.deleteConsequence')}
         confirmLabel={t('projectEditor.delete')}
         variant="danger"
-        state={remove.isPending ? 'loading' : remove.isError ? 'error' : 'ready'}
-        {...(remove.error ? { errorKey: problemI18nKey(problemCode(remove.error)) } : {})}
-        onConfirm={() => remove.mutateAsync().catch(() => undefined)}
-        onCancel={() => setConfirmDelete(false)}
+        state={pending ? 'loading' : error ? 'error' : 'ready'}
+        {...(error ? { errorKey: problemI18nKey(problemCode(error)) } : {})}
+        onConfirm={() =>
+          onDelete().then(
+            () => undefined,
+            () => undefined,
+          )
+        }
+        onCancel={cancel}
       />
-    </div>
+    </span>
   );
 }
 

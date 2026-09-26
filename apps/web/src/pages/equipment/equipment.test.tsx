@@ -357,12 +357,35 @@ describe('Listen-/Detail-Muster (AP-26b)', () => {
       await screen.findByText('Wähle links einen Eintrag oder lege einen neuen an.'),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('Öffnung (mm)')).not.toBeInTheDocument();
-    const head = screen.getByRole('heading', { level: 1, name: 'Teleskope' }).parentElement;
+    const head = screen.getByRole('heading', { level: 1, name: 'Teleskope' }).closest('header');
     fireEvent.click(within(head as HTMLElement).getByRole('button', { name: 'Neu' }));
     expect(screen.getByRole('heading', { level: 2, name: 'Neues Teleskop' })).toBeInTheDocument();
     expect(screen.getByLabelText('Öffnung (mm)')).toHaveValue(null);
     expect(screen.queryByText('Wähle links einen Eintrag oder lege einen neuen an.')).toBeNull();
     await expectNoSeriousA11y();
+  });
+
+  it('Kartenkopf (AP-26d): Löschen und Speichern über den Feldern; Speichern sendet das Formular', async () => {
+    state.update.mockResolvedValue({ ...telescope, apertureMm: 90 });
+    wrap(<TelescopesPage />);
+    const title = await screen.findByRole('heading', { level: 2, name: 'GT81' });
+    const head = title.parentElement?.parentElement as HTMLElement;
+    expect(within(head).getByText('in keinem Rig verwendet')).toBeInTheDocument();
+    expect(within(head).getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
+    const save = within(head).getByRole('button', { name: 'Speichern' });
+    const form = screen.getByRole('form', { name: 'GT81' });
+    expect(save).toHaveAttribute('type', 'submit');
+    expect(form).toContainElement(save);
+    const name = screen.getByLabelText('Name');
+    expect(save.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Einheit neben dem Feld, im Feldnamen für Screenreader erhalten.
+    expect(within(form).getAllByText('mm', { exact: true }).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('Öffnung (mm)'), { target: { value: '90' } });
+    fireEvent.click(save);
+    await waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
+    const [kind, id, body] = state.update.mock.calls[0] as [string, string, { apertureMm: number }];
+    expect([kind, id, body.apertureMm]).toEqual(['telescopes', telescope.id, 90]);
+    expect(await within(head).findByRole('status')).toHaveTextContent('Gespeichert.');
   });
 
   it('nach dem Löschen wieder Leerzustand', async () => {

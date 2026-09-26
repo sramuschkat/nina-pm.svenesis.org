@@ -82,21 +82,24 @@ test('Dichte-Test: Zeilenhöhe und Abstände ändern sich, die Breite nicht', as
   expect(results.compact?.mainW).toBe(results.wide?.mainW);
 });
 
-test('Dichte-Schalter der Shell: Wahl bleibt nach Neuladen, Breite unverändert', async ({
-  page,
-}) => {
+test('Dichte im Benutzermenü: Wahl bleibt nach Neuladen, Breite unverändert', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await testLogin(page, 'owner');
   await page.goto('/');
   const width = async () =>
     page.locator('#main').evaluate((el) => el.getBoundingClientRect().width);
   const before = await width();
-  await page.getByRole('radio', { name: 'kompakt' }).click();
+  // Dichte im Benutzermenü (AP-26d).
+  const choose = async (name: string) => {
+    await page.getByRole('button', { name: 'Benutzermenü' }).click();
+    await page.getByRole('menuitemradio', { name }).click();
+  };
+  await choose('kompakt');
   await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
   expect(await width()).toBe(before);
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-density', 'compact');
-  await page.getByRole('radio', { name: 'normal' }).click();
+  await choose('normal');
 });
 
 for (const width of [768, 1280, 2400]) {

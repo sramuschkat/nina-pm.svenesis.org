@@ -69,7 +69,8 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 |---|---|---|---|---|---|
 | [AP-26a](AP-26a.md) | Tabellen: sortierbar, Spalten ausblenden statt scrollen | M | AP-25 | – | ☑ |
 | [AP-26b](AP-26b.md) | Seitenaufbau: Reiter statt Scrollen, Projekt-Editor in drei Bereichen | M | AP-26a | – | ☑ |
-| [AP-26c](AP-26c.md) | Rahmen: Kopf, Filterleisten, Seitenleiste, Startseite | S | AP-26b | – | ◐ |
+| [AP-26c](AP-26c.md) | Rahmen: Kopf, Filterleisten, Seitenleiste, Startseite | S | AP-26b | – | ☑ |
+| [AP-26d](AP-26d.md) | Stilsystem: ein Seitengerüst, eine Typo-Skala, Karten als Fläche | L | AP-26c | – | ◐ |
 
 ## R3
 

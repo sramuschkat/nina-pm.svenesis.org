@@ -79,106 +79,114 @@ export function QueuePage() {
   );
 
   return (
-    <ProjectsLayout title={t('queue.title')}>
-      <p className={styles.muted}>{t('queue.hint')}</p>
+    <ProjectsLayout title={t('queue.title')} meta={t('queue.hint')}>
       {queue.isError ? (
         <ProblemMessage code={problemCode(queue.error)} onRetry={() => void queue.refetch()} />
       ) : queue.isPending ? (
         <p role="status">{t('common.loading')}</p>
       ) : (
         <>
-          <FilterBar
-            label={t('projectList.filters')}
-            search={{
-              value: f.query,
-              onChange: (query) => setF({ ...f, query }),
-              label: t('projectList.search'),
-              placeholder: t('queue.searchPlaceholder'),
-              maxLength: 80,
-            }}
-            chips={[
-              ...(f.withoutMyVote
-                ? [
-                    {
-                      id: 'withoutMyVote',
-                      label: t('queue.filter.withoutMyVote'),
-                      onRemove: () => setF({ ...f, withoutMyVote: false }),
-                    },
-                  ]
-                : []),
-              ...(f.changedSinceMyVote
-                ? [
-                    {
-                      id: 'changedSinceMyVote',
-                      label: t('queue.filter.changed'),
-                      onRemove: () => setF({ ...f, changedSinceMyVote: false }),
-                    },
-                  ]
-                : []),
-              ...(f.effort
-                ? [
-                    {
-                      id: 'effort',
-                      label: t('filterBar.chip', {
-                        label: t('projectList.filter.effort'),
-                        value: effortLabel(f.effort),
-                      }),
-                      onRemove: () => setF({ ...f, effort: '' }),
-                    },
-                  ]
-                : []),
-            ]}
-            panel={
-              <>
-                <FilterCheck
-                  label={t('queue.filter.withoutMyVote')}
-                  checked={f.withoutMyVote}
-                  onChange={(on) => setF({ ...f, withoutMyVote: on })}
-                />
-                <FilterCheck
-                  label={t('queue.filter.changed')}
-                  checked={f.changedSinceMyVote}
-                  onChange={(on) => setF({ ...f, changedSinceMyVote: on })}
-                />
-                <FilterField label={t('projectList.filter.effort')} htmlFor={effortId}>
-                  <select
-                    id={effortId}
-                    className={styles.input}
-                    value={f.effort}
-                    onChange={(e) => setF({ ...f, effort: e.target.value })}
-                  >
-                    <option value="">{t('projectList.all')}</option>
-                    {EFFORT_FILTERS.map((k) => (
-                      <option key={k} value={k}>
-                        {effortLabel(k)}
-                      </option>
-                    ))}
-                  </select>
-                </FilterField>
-              </>
-            }
-            onReset={() => setF(NO_QUEUE_FILTERS)}
-            count={t('queue.count', { n: items.length, total: queue.data.length })}
-          />
-          {vote.error ? <ProblemMessage code={problemCode(vote.error)} /> : null}
-          {queue.data.length === 0 ? (
-            <p className={styles.note}>{t('queue.empty')}</p>
-          ) : (
-            <QueueTable
-              items={items}
-              rigs={rigs.data ?? []}
-              filters={filters.data ?? []}
-              zone={zone}
-              today={today}
-              meId={me?.member?.id ?? ''}
-              canDecide={canDecide}
-              selected={selected}
-              onSelect={setSelected}
-              onVote={(id, on) => vote.mutate({ id, on })}
-              voting={vote.isPending}
-              visibility={visibilityById}
+          <div className={styles.listCard}>
+            <FilterBar
+              label={t('projectList.filters')}
+              className={styles.listBar}
+              search={{
+                value: f.query,
+                onChange: (query) => setF({ ...f, query }),
+                label: t('projectList.search'),
+                placeholder: t('queue.searchPlaceholder'),
+                maxLength: 80,
+              }}
+              chips={[
+                ...(f.withoutMyVote
+                  ? [
+                      {
+                        id: 'withoutMyVote',
+                        label: t('queue.filter.withoutMyVote'),
+                        onRemove: () => setF({ ...f, withoutMyVote: false }),
+                      },
+                    ]
+                  : []),
+                ...(f.changedSinceMyVote
+                  ? [
+                      {
+                        id: 'changedSinceMyVote',
+                        label: t('queue.filter.changed'),
+                        onRemove: () => setF({ ...f, changedSinceMyVote: false }),
+                      },
+                    ]
+                  : []),
+                ...(f.effort
+                  ? [
+                      {
+                        id: 'effort',
+                        label: t('filterBar.chip', {
+                          label: t('projectList.filter.effort'),
+                          value: effortLabel(f.effort),
+                        }),
+                        onRemove: () => setF({ ...f, effort: '' }),
+                      },
+                    ]
+                  : []),
+              ]}
+              panel={
+                <>
+                  <FilterCheck
+                    label={t('queue.filter.withoutMyVote')}
+                    checked={f.withoutMyVote}
+                    onChange={(on) => setF({ ...f, withoutMyVote: on })}
+                  />
+                  <FilterCheck
+                    label={t('queue.filter.changed')}
+                    checked={f.changedSinceMyVote}
+                    onChange={(on) => setF({ ...f, changedSinceMyVote: on })}
+                  />
+                  <FilterField label={t('projectList.filter.effort')} htmlFor={effortId}>
+                    <select
+                      id={effortId}
+                      className={styles.input}
+                      value={f.effort}
+                      onChange={(e) => setF({ ...f, effort: e.target.value })}
+                    >
+                      <option value="">{t('projectList.all')}</option>
+                      {EFFORT_FILTERS.map((k) => (
+                        <option key={k} value={k}>
+                          {effortLabel(k)}
+                        </option>
+                      ))}
+                    </select>
+                  </FilterField>
+                </>
+              }
+              onReset={() => setF(NO_QUEUE_FILTERS)}
+              count={t('queue.count', { n: items.length, total: queue.data.length })}
             />
-          )}
+            {vote.error ? (
+              <div className={styles.listBody}>
+                <ProblemMessage code={problemCode(vote.error)} />
+              </div>
+            ) : null}
+            {queue.data.length === 0 ? (
+              <div className={styles.listBody}>
+                <p className={styles.note}>{t('queue.empty')}</p>
+              </div>
+            ) : (
+              <QueueTable
+                items={items}
+                rigs={rigs.data ?? []}
+                filters={filters.data ?? []}
+                zone={zone}
+                today={today}
+                meId={me?.member?.id ?? ''}
+                canDecide={canDecide}
+                selected={selected}
+                onSelect={setSelected}
+                onVote={(id, on) => vote.mutate({ id, on })}
+                voting={vote.isPending}
+                visibility={visibilityById}
+              />
+            )}
+          </div>
           {canDecide && current ? (
             <DecisionPanel
               key={current.id}

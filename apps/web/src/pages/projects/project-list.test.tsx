@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
  * S-30 Projektliste (AP-11c): Filter (Filterleiste mit Chips, AP-26c), Gruppen je Rig mit Zählern,
- * Priorität (Position unter den freigegebenen Projekten), Rechte (Papierkorb nur Admin), Löschen über
- * `ConfirmDialog`, Wiederherstellen ohne Dialog, axe.
+ * Priorität (Position unter den freigegebenen Projekten), Rechte (Papierkorb nur Admin), Löschen im
+ * Zeilenmenü ⋯ (AP-26d) über `ConfirmDialog`, Wiederherstellen ohne Dialog, axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -213,6 +214,7 @@ describe('Modell (FA-PRJ-13/14/19)', () => {
 
 describe('S-30 (Komponente)', () => {
   it('Admin: Gruppe mit Kopfzeile, Filter, Löschen über ConfirmDialog; axe', async () => {
+    const user = userEvent.setup();
     state.items = [
       item(1, { approvalStatus: 'approved', status: 'active', priority: 1, name: 'NGC 281' }),
       item(2, { name: 'M 31', createdBy: ID(9), createdByName: 'Zoe' }),
@@ -241,12 +243,50 @@ describe('S-30 (Komponente)', () => {
     fireEvent.change(screen.getByLabelText('Ersteller'), { target: { value: ID(9) } });
     expect(screen.queryByRole('link', { name: 'NGC 281' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'M 31' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '„M 31“ löschen' }));
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen zu M 31' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('Papierkorb');
     await expectNoSeriousA11y();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
     await waitFor(() => expect(state.remove).toHaveBeenCalledWith(ID(102)));
+  });
+
+  it('Zeilenmenü ⋯: Löschen nur mit Recht, Stern bleibt sichtbar, Abbrechen ohne Aufruf', async () => {
+    const user = userEvent.setup();
+    state.me = me('user');
+    state.items = [
+      item(1, { name: 'Mein Entwurf' }),
+      item(2, {
+        name: 'Fremd',
+        createdBy: ID(9),
+        createdByName: 'Zoe',
+        approvalStatus: 'approved',
+        status: 'active',
+      }),
+    ];
+    state.remove.mockResolvedValue(undefined);
+    renderPage();
+    await screen.findByRole('link', { name: 'Mein Entwurf' });
+    // Gruppenzeile schlank: Rig fett, Zähler in derselben Zeile.
+    expect(screen.getByRole('columnheader', { name: /Rig A/ })).toHaveTextContent(
+      '1 Aktiv · 1 Entwurf',
+    );
+    expect(screen.getByRole('button', { name: '„Fremd“ als Favorit' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Weitere Aktionen zu Fremd' })).toBeNull();
+    const more = screen.getByRole('button', { name: 'Weitere Aktionen zu Mein Entwurf' });
+    await user.click(more);
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
+    let dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Projekt „Mein Entwurf“ löschen?');
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(state.remove).not.toHaveBeenCalled();
+    await user.click(more);
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
+    dialog = await screen.findByRole('alertdialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(state.remove).toHaveBeenCalledWith(ID(101)));
   });
 
   it('Karte: Katalogbild bei verknüpftem Katalogobjekt, sonst Platzhalter (AP-20)', async () => {

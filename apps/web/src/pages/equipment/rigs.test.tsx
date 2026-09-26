@@ -2,7 +2,8 @@
 /**
  * S-10 (AP-09c): Sortierkette (Ziehen und Tastatur), Scheduler-Validierung (`afEveryMin = 0` = aus,
  * Flip), 412 beim Speichern, Filterrad-Status und Bestätigungs-Nutzlast; Reiter der Rig-Seite
- * (AP-26b): Tastatur, Sichtbarkeit, Speichern über Reiter hinweg, Fehler im verdeckten Reiter.
+ * (AP-26b): Tastatur, Sichtbarkeit, Speichern über Reiter hinweg, Fehler im verdeckten Reiter;
+ * *Speichern* im Kopf der Rig-Karte sendet das Formular des aktiven Reiters (AP-26d).
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -14,6 +15,7 @@ import type { FilterWheelView, Me, RigView } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
 import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
+import { SaveButton } from './shared';
 import { moveItem, SortChainEditor } from './SortChainEditor';
 
 const state = vi.hoisted(() => ({
@@ -112,6 +114,16 @@ beforeEach(() => {
   state.updateRig.mockReset();
 });
 
+/** Scheduler-Formular mit dem *Speichern* des Kartenkopfs (außerhalb, über das `form`-Attribut). */
+function Scheduler({ canWrite = true }: { canWrite?: boolean }) {
+  return (
+    <>
+      <SaveButton form="rig-scheduler-form" />
+      <SchedulerForm rig={rig} canWrite={canWrite} />
+    </>
+  );
+}
+
 function Chain({ initial }: { initial: string[] }) {
   const [value, setValue] = useState(initial);
   return (
@@ -169,7 +181,7 @@ describe('Sortierkette (FA-SCH-03)', () => {
 describe('Scheduler-Einstellungen', () => {
   it('Autofokus alle 0 min = aus: Hinweis, Dauer gesperrt; Speichern mit If-Match-Version', async () => {
     state.scheduler.mockResolvedValue({ ...rig, settingsVersion: 5 });
-    wrap(<SchedulerForm rig={rig} canWrite />);
+    wrap(<Scheduler />);
     const af = screen.getByLabelText('Autofokus alle (min)');
     fireEvent.change(af, { target: { value: '0' } });
     expect(screen.getByText('Autofokus aus')).toBeInTheDocument();
@@ -181,7 +193,7 @@ describe('Scheduler-Einstellungen', () => {
   });
 
   it('maxAfter < after → Hinweis am Feld, kein Aufruf', async () => {
-    wrap(<SchedulerForm rig={rig} canWrite />);
+    wrap(<Scheduler />);
     fireEvent.change(screen.getByLabelText('maximal Minuten nach Meridian (min)'), {
       target: { value: '3' },
     });
@@ -197,17 +209,16 @@ describe('Scheduler-Einstellungen', () => {
     state.scheduler.mockRejectedValue(
       new ApiError({ status: 412, code: 'resource.version_conflict' }),
     );
-    wrap(<SchedulerForm rig={rig} canWrite />);
+    wrap(<Scheduler />);
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Jemand anderes hat den Datensatz inzwischen geändert');
     expect(within(alert).getByRole('button', { name: 'Neu laden' })).toBeInTheDocument();
   });
 
-  it('ohne rig.settings.write: alles gesperrt, kein Speichern', () => {
+  it('ohne rig.settings.write: alles gesperrt, keine Sortier-Knöpfe', () => {
     wrap(<SchedulerForm rig={rig} canWrite={false} />);
     expect(screen.getByLabelText('Strategie')).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /nach oben/ })).not.toBeInTheDocument();
   });
 });
@@ -354,7 +365,7 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     fireEvent.keyDown(tab(/^Scheduler/), { key: 'End' });
     expect(tab(/^NINA/)).toHaveAttribute('aria-selected', 'true');
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Übernahmestatus in NINA' }),
+      screen.getByRole('heading', { level: 3, name: 'Übernahmestatus in NINA' }),
     ).toBeVisible();
     await expectNoSeriousA11y();
   });
@@ -437,6 +448,41 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Neu' }));
     expect(screen.getByRole('tablist', { name: 'Rig-Bereiche' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('');
+  });
+
+  it('Kartenkopf: Speichern sendet das Formular des aktiven Reiters; auf Filterrad/NINA keins', async () => {
+    state.scheduler.mockResolvedValue({ ...full, settingsVersion: 5 });
+    wrap(<RigsPage />);
+    const title = await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    const head = title.parentElement?.parentElement as HTMLElement;
+    expect(within(head).getByText('Einstellungsversion 4')).toBeInTheDocument();
+    expect(within(head).getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
+    const save = () => within(head).getByRole('button', { name: 'Speichern' });
+    expect(save()).toHaveAttribute('form', 'rig-general-form');
+    fireEvent.click(tab(/^Ausrüstung/));
+    expect(save()).toHaveAttribute('form', 'rig-equipment-form');
+    fireEvent.click(tab(/^Scheduler/));
+    expect(save()).toHaveAttribute('form', 'rig-scheduler-form');
+    fireEvent.click(save());
+    await waitFor(() => expect(state.scheduler).toHaveBeenCalledTimes(1));
+    expect(state.updateRig).not.toHaveBeenCalled();
+    expect(
+      await within(screen.getByRole('form', { name: 'Scheduler-Einstellungen' })).findByRole(
+        'status',
+      ),
+    ).toHaveTextContent('Gespeichert.');
+    fireEvent.click(tab(/^NINA/));
+    expect(within(head).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+  });
+
+  it('User: Scheduler gesperrt, weder Speichern noch Löschen im Kartenkopf', async () => {
+    state.me = me('user');
+    wrap(<RigsPage />);
+    await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+    fireEvent.click(tab(/^Scheduler/));
+    expect(screen.getByLabelText('Strategie')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument();
   });
 
   it('rigTabOf: Ausrüstungsfelder auf „Ausrüstung“, übrige auf „Allgemein“', () => {

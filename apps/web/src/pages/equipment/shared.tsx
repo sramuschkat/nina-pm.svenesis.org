@@ -1,7 +1,8 @@
 /**
- * Gemeinsame Teile der Ausrüstungsseiten S-10…S-15 (AP-09b): Reiter, Stammdaten-Abfragen, Formularfelder
- * mit zod-Prüfung aus `packages/shared`, das Listen-/Detail-Muster (AP-26b: links Liste, rechts Detail)
- * und die Löschsperre mit Verwenderliste (FA-RIG-13, `409 resource.in_use`).
+ * Gemeinsame Teile der Ausrüstungsseiten S-10…S-15 (AP-09b): Seitengerüst mit Bereichsreitern,
+ * Stammdaten-Abfragen, Formularfelder mit zod-Prüfung aus `packages/shared`, das Listen-/Detail-Muster
+ * (AP-26b: links Liste, rechts Detail), die Detailkarte mit *Löschen* und *Speichern* im Kartenkopf
+ * (Stilsystem AP-26d) und die Löschsperre mit Verwenderliste (FA-RIG-13, `409 resource.in_use`).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type ReactNode } from 'react';
@@ -10,6 +11,7 @@ import { equipmentApi, type EquipmentKind, type EquipmentKinds } from '../../api
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import styles from './equipment.module.css';
 import { SectionTabs, newId, problemCode } from '../admin/shared';
@@ -25,6 +27,10 @@ export const EQUIPMENT_PATHS = {
   moonProfiles: '/ausruestung/mondprofile',
 } as const;
 
+/**
+ * Seitengerüst der Ausrüstung (Stilsystem AP-26d): `PageHeader` mit dem Seitentitel, der Hauptaktion
+ * *Neu…* rechts (`actions`) und den Bereichsreitern unter dem Titel; darunter der Nur-Lese-Hinweis.
+ */
 export function EquipmentLayout({
   title,
   actions,
@@ -39,21 +45,23 @@ export function EquipmentLayout({
   const canWrite = useCan('equipment.write');
   return (
     <div className={styles.page}>
-      <SectionTabs
-        label={t('equipment.tabsLabel')}
-        tabs={[
-          { to: EQUIPMENT_PATHS.rigs, label: t('rigs.tab') },
-          { to: EQUIPMENT_PATHS.sites, label: t('equipment.sites.tab') },
-          { to: EQUIPMENT_PATHS.telescopes, label: t('equipment.telescopes.tab') },
-          { to: EQUIPMENT_PATHS.cameras, label: t('equipment.cameras.tab') },
-          { to: EQUIPMENT_PATHS.filters, label: t('equipment.filters.tab') },
-          { to: EQUIPMENT_PATHS.moonProfiles, label: t('equipment.moonProfiles.tab') },
-        ]}
+      <PageHeader
+        title={title}
+        actions={actions}
+        nav={
+          <SectionTabs
+            label={t('equipment.tabsLabel')}
+            tabs={[
+              { to: EQUIPMENT_PATHS.rigs, label: t('rigs.tab') },
+              { to: EQUIPMENT_PATHS.sites, label: t('equipment.sites.tab') },
+              { to: EQUIPMENT_PATHS.telescopes, label: t('equipment.telescopes.tab') },
+              { to: EQUIPMENT_PATHS.cameras, label: t('equipment.cameras.tab') },
+              { to: EQUIPMENT_PATHS.filters, label: t('equipment.filters.tab') },
+              { to: EQUIPMENT_PATHS.moonProfiles, label: t('equipment.moonProfiles.tab') },
+            ]}
+          />
+        }
       />
-      <div className={styles.head}>
-        <h1>{title}</h1>
-        {actions}
-      </div>
       {/* Nur-Lese-Hinweis: User sehen die Stammdaten; ohne 2FA ruhen Admin-Rechte (SV-03). */}
       {canWrite ? null : (
         <p className={styles.readOnly} role="note">
@@ -150,18 +158,35 @@ interface FieldBase {
   wide?: boolean;
 }
 
+/**
+ * Beschriftung 12 px über dem Feld; eine Einheit steht rechts neben dem Feld (Stilsystem AP-26d) und bleibt
+ * für Screenreader Teil des Feldnamens („Öffnung (mm)“).
+ */
 function FieldShell({
   id,
   label,
   error,
   hint,
   wide,
+  unit,
   children,
-}: FieldBase & { id: string; children: ReactNode }) {
+}: FieldBase & { id: string; unit?: string | undefined; children: ReactNode }) {
   return (
     <div className={`${styles.field} ${wide ? styles.fieldWide : ''}`}>
-      <label htmlFor={id}>{label}</label>
-      {children}
+      <label htmlFor={id}>
+        {label}
+        {unit ? <span className="visually-hidden"> ({unit})</span> : null}
+      </label>
+      {unit ? (
+        <div className={styles.control}>
+          {children}
+          <span className={styles.unit} aria-hidden>
+            {unit}
+          </span>
+        </div>
+      ) : (
+        children
+      )}
       {hint ? (
         <span id={`${id}-hint`} className={styles.muted}>
           {hint}
@@ -243,7 +268,7 @@ export function NumberField({
       setText(value === null ? '' : String(value));
   }
   return (
-    <FieldShell id={id} {...base} label={unit ? `${base.label} (${unit})` : base.label}>
+    <FieldShell id={id} {...base} unit={unit}>
       <input
         id={id}
         className={styles.input}
@@ -384,29 +409,27 @@ export function ListDetail({
 }
 
 /**
- * Auswahlliste links (FK 14.3 „Auswahl +/-“): eine Zeile je Objekt als Knopf, die gewählte Zeile
- * markiert (`aria-current`). Mit `searchText` steht darüber ein Suchfeld. *Neu* steht im Listenmuster
- * (AP-26b) rechts im Seitenkopf; `onNew` zeigt den Knopf zusätzlich im Listenkopf (nur mit Schreibrecht).
+ * Auswahlliste links (FK 14.3 „Auswahl +/-“) als Karte: optional Filter (`toolbar`) und Suchfeld, darunter
+ * eine Zeile je Objekt als Knopf – Name und darunter eine gedämpfte Metazeile (`render` liefert beide
+ * Teile). Die gewählte Zeile ist gefüllt (`--npm-selected-bg`, Name in Linkfarbe, `aria-current`).
+ * *Neu* steht im Seitenkopf bzw. Abschnittskopf; `label` benennt die Liste (Region, Suchfeld).
  */
 export function PickList<T extends { id: string }>({
   label,
   items,
   selectedId,
   onSelect,
-  onNew,
   render,
   state,
   onRetry,
   emptyText,
   searchText,
   toolbar,
-  headingLevel = 2,
 }: {
   label: string;
   items: readonly T[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onNew?: (() => void) | undefined;
   render: (item: T) => ReactNode;
   state: 'loading' | 'error' | 'ready';
   onRetry?: () => void;
@@ -415,13 +438,9 @@ export function PickList<T extends { id: string }>({
   searchText?: (item: T) => string;
   /** Filterfelder über der Liste (z. B. Teleskop/Kamera der Vorlagen). */
   toolbar?: ReactNode;
-  /** Überschriftenebene des Listentitels (3 in einem Abschnitt mit eigener h2). */
-  headingLevel?: 2 | 3;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const Add = actionIcons.add;
-  const Heading = headingLevel === 3 ? 'h3' : 'h2';
   const needle = query.trim().toLocaleLowerCase();
   const shown =
     searchText && needle !== ''
@@ -429,22 +448,13 @@ export function PickList<T extends { id: string }>({
       : items;
   return (
     <section className={styles.pick} aria-label={label}>
-      <div className={styles.pickHead}>
-        <Heading>{label}</Heading>
-        {onNew ? (
-          <button type="button" className={styles.button} onClick={onNew}>
-            <Add size={ICON_SIZE.table} aria-hidden />
-            {t('equipment.new')}
-          </button>
-        ) : null}
-      </div>
       {toolbar}
       {searchText && state === 'ready' && items.length > 0 ? (
         <input
           type="search"
           className={styles.input}
           value={query}
-          placeholder={t('equipment.search')}
+          placeholder={t('equipment.searchIn', { list: label })}
           aria-label={t('equipment.searchIn', { list: label })}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -463,7 +473,7 @@ export function PickList<T extends { id: string }>({
             <li key={item.id}>
               <button
                 type="button"
-                className={styles.pickItem}
+                className={styles.pickRow}
                 aria-current={item.id === selectedId ? 'true' : undefined}
                 onClick={() => onSelect(item.id)}
               >
@@ -477,57 +487,129 @@ export function PickList<T extends { id: string }>({
   );
 }
 
-/** Speichern / Löschen unter einem Formular; Löschen nur nach `ConfirmDialog` (E4). */
-export function FormActions({
+// ---- Detailkarte ----------------------------------------------------------------------------------
+
+/** *Speichern* (primär); `form` verbindet den Knopf mit einem Formular außerhalb (Rigs: Reiter). */
+export function SaveButton({ form, disabled }: { form?: string | undefined; disabled?: boolean }) {
+  const { t } = useTranslation();
+  const Save = actionIcons.save;
+  return (
+    <button type="submit" form={form} className={styles.buttonPrimary} disabled={disabled}>
+      <Save size={ICON_SIZE.button} aria-hidden />
+      {t('equipment.save')}
+    </button>
+  );
+}
+
+/**
+ * Kopf der Detailkarte (Stilsystem AP-26d): links der Titel des Objekts (h2) mit gedämpfter Nebeninfo
+ * (`meta`, z. B. „in 2 Rigs verwendet“), rechts weitere Werkzeuge (`tools`), *Löschen* (Gefahr, nur Text)
+ * und *Speichern* (primär, ganz rechts) samt „Gespeichert.“. Steht der Kopf im Formular, ist *Speichern*
+ * dessen Submit-Knopf; sonst verbindet `form` ihn mit dem Formular (Rigs). `canSave = false` blendet
+ * *Speichern* aus (z. B. mitgelieferte Mondprofile, Reiter ohne eigenes Formular).
+ */
+export function DetailHead({
+  titleId,
+  title,
+  meta,
+  tools,
   canWrite,
-  saving,
-  saved,
-  error,
+  canSave = canWrite,
+  form,
+  saving = false,
+  saved = false,
   onDelete,
   deleteLabel,
-  extra,
+  level = 2,
 }: {
+  titleId: string;
+  title: ReactNode;
+  meta?: ReactNode;
+  tools?: ReactNode;
   canWrite: boolean;
-  saving: boolean;
-  saved: boolean;
-  error: unknown;
+  canSave?: boolean;
+  form?: string | undefined;
+  saving?: boolean;
+  saved?: boolean;
   onDelete?: (() => void) | undefined;
   deleteLabel?: string;
-  extra?: ReactNode;
+  /** Überschriftenebene des Titels (3 für eine Karte unter einer eigenen h2). */
+  level?: 2 | 3;
 }) {
   const { t } = useTranslation();
-  if (!canWrite) return null;
-  const Save = actionIcons.save;
   const Delete = actionIcons.delete;
-  const code = error ? problemCode(error) : null;
+  const Heading = level === 3 ? 'h3' : 'h2';
   return (
-    <div className={styles.formFoot}>
-      {code && code !== 'validation.failed' ? <ProblemMessage code={code} /> : null}
-      {code === 'validation.failed' ? (
-        <p className={styles.fieldError} role="alert">
-          {t('errors.validation.failed')}
-        </p>
-      ) : null}
-      <div className={styles.actions}>
-        <button type="submit" className={styles.buttonPrimary} disabled={saving}>
-          <Save size={ICON_SIZE.button} aria-hidden />
-          {t('equipment.save')}
-        </button>
-        {extra}
-        {onDelete ? (
-          <button type="button" className={styles.buttonDanger} onClick={onDelete}>
-            <Delete size={ICON_SIZE.button} aria-hidden />
-            {deleteLabel ?? t('equipment.delete')}
-          </button>
-        ) : null}
+    <div className={styles.cardHead}>
+      <div className={styles.cardTitle}>
+        <Heading id={titleId}>{title}</Heading>
+        {meta ? <span className={styles.cardMeta}>{meta}</span> : null}
+      </div>
+      <div className={styles.cardActions}>
         {saved ? (
           <span className={styles.success} role="status">
             {t('equipment.saved')}
           </span>
         ) : null}
+        {tools}
+        {canWrite && onDelete ? (
+          <button type="button" className={styles.buttonDanger} onClick={onDelete}>
+            <Delete size={ICON_SIZE.button} aria-hidden />
+            {deleteLabel ?? t('equipment.delete')}
+          </button>
+        ) : null}
+        {canSave ? <SaveButton form={form} disabled={saving} /> : null}
       </div>
     </div>
   );
+}
+
+/** Fehler des letzten Speicherns im Kartenrumpf (Feldfehler stehen zusätzlich am Feld). */
+export function SaveError({ error }: { error: unknown }) {
+  const { t } = useTranslation();
+  const code = error ? problemCode(error) : null;
+  if (code === null) return null;
+  return code === 'validation.failed' ? (
+    <p className={styles.fieldError} role="alert">
+      {t('errors.validation.failed')}
+    </p>
+  ) : (
+    <ProblemMessage code={code} />
+  );
+}
+
+/** Speichern / Abbrechen unter einem eingebetteten Unterformular (Remote-Verbindungen eines Standorts). */
+export function FormActions({
+  saving,
+  error,
+  extra,
+}: {
+  saving: boolean;
+  error: unknown;
+  extra?: ReactNode;
+}) {
+  return (
+    <div className={styles.formFoot}>
+      <SaveError error={error} />
+      <div className={styles.actions}>
+        <SaveButton disabled={saving} />
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+/** Nebeninfo einer Stammdaten-Karte: in wie vielen Rigs das Objekt steckt (Standort, Teleskop, Kamera). */
+export function useRigUsage(field: 'siteId' | 'telescopeId' | 'cameraId', id: string | null) {
+  const { t } = useTranslation();
+  const rigs = useEquipmentList('rigs');
+  if (id === null || !rigs.data) return null;
+  const count = rigs.data.filter((r) => r[field] === id).length;
+  return count === 0
+    ? t('equipment.usage.none')
+    : count === 1
+      ? t('equipment.usage.one')
+      : t('equipment.usage.many', { count });
 }
 
 // ---- Löschen mit Löschsperre ----------------------------------------------------------------------

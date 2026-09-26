@@ -5,8 +5,10 @@
  * *Filterrad* (Belegung mit Zuordnung zu NINA) · *NINA* (zugeordnete Instanzen mit Übernahmestatus,
  * AP-14c, FA-SIM-09). Allgemein und Ausrüstung speichern gemeinsam den ganzen Rig-Entwurf; verdeckte
  * Reiter bleiben im DOM (`keepMounted`), ein Feldfehler in einem verdeckten Reiter holt ihn nach vorn.
- * *Neu* steht rechts im Seitenkopf. Gespeichert wird mit `If-Match` (`settingsVersion`, 412 bei
- * parallelem Speichern).
+ * *Neu* steht rechts im Seitenkopf; *Löschen* und *Speichern* stehen im Kopf der Rig-Karte (AP-26d) –
+ * *Speichern* sendet das Formular des aktiven Reiters (Allgemein/Ausrüstung: Rig-Entwurf, Scheduler:
+ * Scheduler-Einstellungen; Filterrad und NINA haben eigene Aktionen). Gespeichert wird mit `If-Match`
+ * (`settingsVersion`, 412 bei parallelem Speichern).
  */
 import {
   flatsSources,
@@ -29,15 +31,16 @@ import css from './rigs.module.css';
 import {
   CheckField,
   DeleteDialog,
+  DetailHead,
   EQUIPMENT_PATHS,
   EquipmentLayout,
   equipmentKey,
-  FormActions,
   ListDetail,
   NewButton,
   NumberField,
   PickList,
   problemCode,
+  SaveError,
   SelectField,
   serverFieldErrors,
   TextField,
@@ -75,6 +78,13 @@ type Scheduler = RigView['scheduler'];
 /** Reiter der Rig-Seite (AP-26b). */
 export type RigTab = 'general' | 'equipment' | 'scheduler' | 'filterWheel' | 'nina';
 const RIG_TABS: readonly RigTab[] = ['general', 'equipment', 'scheduler', 'filterWheel', 'nina'];
+
+/** Formulare der Reiter, die *Speichern* im Kartenkopf sendet (`form`-Attribut des Knopfs). */
+const RIG_FORM_IDS = {
+  general: 'rig-general-form',
+  equipment: 'rig-equipment-form',
+  scheduler: 'rig-scheduler-form',
+} as const;
 
 /** Felder des Rig-Entwurfs auf dem Reiter *Ausrüstung*; alle übrigen liegen auf *Allgemein*. */
 const EQUIPMENT_FIELDS: ReadonlySet<string> = new Set<keyof RigDraft>([
@@ -261,18 +271,27 @@ export function RigsPage() {
   };
 
   /** Allgemein und Ausrüstung: je ein Formular, beide speichern den ganzen Entwurf. */
-  const rigForm = (children: ReactNode) => (
-    <form className={styles.form} onSubmit={submit} aria-labelledby="rig-form-title" noValidate>
+  const rigForm = (id: string, children: ReactNode) => (
+    <form
+      id={id}
+      className={styles.flat}
+      onSubmit={submit}
+      aria-labelledby="rig-form-title"
+      noValidate
+    >
       {children}
-      <FormActions
-        canWrite={canWrite}
-        saving={saveRig.isPending}
-        saved={saved}
-        error={isConflict(saveRig.error) ? null : saveRig.error}
-        onDelete={selected ? () => del.ask(selected.id, selected.name) : undefined}
-      />
     </form>
   );
+  /** Ziel von *Speichern* im Kartenkopf je Reiter; `null` = kein Knopf. */
+  const saveTarget =
+    tab === 'general' || tab === 'equipment'
+      ? canWrite
+        ? RIG_FORM_IDS[tab]
+        : null
+      : tab === 'scheduler' && selected && canSettings
+        ? RIG_FORM_IDS.scheduler
+        : null;
+  const rigTab = tab === 'general' || tab === 'equipment';
   const saveFirst = (
     <p className={styles.note} role="note">
       {t('rigs.tabs.saveFirst')}
@@ -280,6 +299,7 @@ export function RigsPage() {
   );
 
   const general = rigForm(
+    RIG_FORM_IDS.general,
     <>
       <div className={styles.grid}>
         <TextField
@@ -333,7 +353,7 @@ export function RigsPage() {
         />
         <Link to={EQUIPMENT_PATHS.sites}>{t('rigs.edit')}</Link>
         {site ? (
-          <dl className={styles.facts}>
+          <dl className={styles.kv}>
             <dt>{t('equipment.sites.field.latitude')}</dt>
             <dd>{num(site.latitudeDeg, 4)}°</dd>
             <dt>{t('equipment.sites.field.longitude')}</dt>
@@ -353,6 +373,7 @@ export function RigsPage() {
   );
 
   const equipment = rigForm(
+    RIG_FORM_IDS.equipment,
     <>
       <div className={styles.columns}>
         <section className={styles.section} aria-labelledby="rig-telescope">
@@ -370,7 +391,7 @@ export function RigsPage() {
           />
           <Link to={EQUIPMENT_PATHS.telescopes}>{t('rigs.edit')}</Link>
           {telescope && tel ? (
-            <dl className={styles.facts}>
+            <dl className={styles.kv}>
               <dt>{t('equipment.telescopes.field.aperture')}</dt>
               <dd>{num(telescope.apertureMm, 0)} mm</dd>
               <dt>{t('equipment.telescopes.field.focalLength')}</dt>
@@ -415,7 +436,7 @@ export function RigsPage() {
           />
           <Link to={EQUIPMENT_PATHS.cameras}>{t('rigs.edit')}</Link>
           {camera ? (
-            <dl className={styles.facts}>
+            <dl className={styles.kv}>
               <dt>{t('equipment.cameras.derived.resolution')}</dt>
               <dd>
                 {camera.widthPx} × {camera.heightPx}
@@ -474,7 +495,7 @@ export function RigsPage() {
       {scale ? (
         <section className={styles.section} aria-labelledby="rig-derived">
           <h3 id="rig-derived">{t('rigs.derived')}</h3>
-          <dl className={styles.facts}>
+          <dl className={styles.kv}>
             <dt>{t('rigs.scale')}</dt>
             <dd>{num(scale.scaleArcsecPx, 2)}″/px</dd>
             <dt>{t('rigs.fov')}</dt>
@@ -527,70 +548,84 @@ export function RigsPage() {
         }
         detail={
           selected || creating ? (
-            <section className={css.detail} aria-labelledby="rig-form-title">
-              <div className={styles.formTitle}>
-                <h2 id="rig-form-title">{selected ? selected.name : t('rigs.new')}</h2>
-                {selected ? (
-                  <span className={styles.muted}>
-                    {t('rigs.version', { version: selected.settingsVersion })}
-                  </span>
-                ) : null}
-              </div>
-              {del.usage ? <UsageNotice usage={del.usage} onClose={del.clearUsage} /> : null}
-              {isConflict(saveRig.error) ? (
-                <div className={styles.warning} role="alert">
-                  <p>{t('common.conflict')}</p>
-                  <button type="button" className={styles.button} onClick={() => void reload()}>
-                    {t('rigs.reload')}
-                  </button>
-                </div>
-              ) : null}
-              <Tabs
-                label={t('rigs.tabs.label')}
-                value={tab}
-                onChange={setTab}
-                keepMounted
-                panelClassName={css.tabPanel}
-                tabs={RIG_TABS.map((key) => ({
-                  key,
-                  label: label[key],
-                  ...(tabsWithErrors.has(key)
-                    ? { badge: <span className={css.tabError}>{t('rigs.tabs.hasErrors')}</span> }
-                    : {}),
-                }))}
-                panels={{
-                  general,
-                  equipment,
-                  scheduler: selected ? (
-                    <SchedulerForm rig={selected} canWrite={canSettings} />
-                  ) : (
-                    saveFirst
-                  ),
-                  filterWheel: !selected ? (
-                    saveFirst
-                  ) : camera?.isColor ? (
-                    <p className={styles.note} role="note">
-                      {t('rigs.wheel.osc')}
-                    </p>
-                  ) : (
-                    <FilterWheelSection rig={selected} canWrite={canSettings} />
-                  ),
-                  nina: selected ? (
-                    <section className={styles.form} aria-labelledby="rig-nina-title">
-                      <div className={styles.formTitle}>
-                        <h2 id="rig-nina-title">{t('nina.uptake.title')}</h2>
-                      </div>
-                      <UptakeStatus
-                        rigId={selected.id}
-                        settingsVersion={selected.settingsVersion}
-                      />
-                      <p className={styles.muted}>{t('rigs.instancesLater')}</p>
-                    </section>
-                  ) : (
-                    saveFirst
-                  ),
-                }}
+            <section className={styles.card} aria-labelledby="rig-form-title">
+              <DetailHead
+                titleId="rig-form-title"
+                title={selected ? selected.name : t('rigs.new')}
+                meta={
+                  selected ? t('rigs.version', { version: selected.settingsVersion }) : undefined
+                }
+                canWrite={canWrite}
+                canSave={saveTarget !== null}
+                form={saveTarget ?? undefined}
+                saving={rigTab && saveRig.isPending}
+                saved={rigTab && saved}
+                onDelete={selected ? () => del.ask(selected.id, selected.name) : undefined}
               />
+              <div className={styles.cardBody}>
+                {del.usage ? <UsageNotice usage={del.usage} onClose={del.clearUsage} /> : null}
+                {rigTab ? (
+                  <SaveError error={isConflict(saveRig.error) ? null : saveRig.error} />
+                ) : null}
+                {isConflict(saveRig.error) ? (
+                  <div className={styles.warning} role="alert">
+                    <p>{t('common.conflict')}</p>
+                    <button type="button" className={styles.button} onClick={() => void reload()}>
+                      {t('rigs.reload')}
+                    </button>
+                  </div>
+                ) : null}
+                <Tabs
+                  label={t('rigs.tabs.label')}
+                  value={tab}
+                  onChange={setTab}
+                  keepMounted
+                  panelClassName={css.tabPanel}
+                  tabs={RIG_TABS.map((key) => ({
+                    key,
+                    label: label[key],
+                    ...(tabsWithErrors.has(key)
+                      ? { badge: <span className={css.tabError}>{t('rigs.tabs.hasErrors')}</span> }
+                      : {}),
+                  }))}
+                  panels={{
+                    general,
+                    equipment,
+                    scheduler: selected ? (
+                      <SchedulerForm
+                        rig={selected}
+                        canWrite={canSettings}
+                        formId={RIG_FORM_IDS.scheduler}
+                      />
+                    ) : (
+                      saveFirst
+                    ),
+                    filterWheel: !selected ? (
+                      saveFirst
+                    ) : camera?.isColor ? (
+                      <p className={styles.note} role="note">
+                        {t('rigs.wheel.osc')}
+                      </p>
+                    ) : (
+                      <FilterWheelSection rig={selected} canWrite={canSettings} />
+                    ),
+                    nina: selected ? (
+                      <section className={styles.flat} aria-labelledby="rig-nina-title">
+                        <div className={styles.flatTitle}>
+                          <h3 id="rig-nina-title">{t('nina.uptake.title')}</h3>
+                        </div>
+                        <UptakeStatus
+                          rigId={selected.id}
+                          settingsVersion={selected.settingsVersion}
+                        />
+                        <p className={styles.muted}>{t('rigs.instancesLater')}</p>
+                      </section>
+                    ) : (
+                      saveFirst
+                    ),
+                  }}
+                />
+              </div>
             </section>
           ) : null
         }
@@ -602,7 +637,19 @@ export function RigsPage() {
 
 // ---- Scheduler-Einstellungen ---------------------------------------------------------------------
 
-export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boolean }) {
+/**
+ * Scheduler-Einstellungen eines Rigs (eigener Endpunkt, `rig.settings.write`). Der Knopf *Speichern*
+ * steht im Kopf der Rig-Karte und sendet dieses Formular über `formId`.
+ */
+export function SchedulerForm({
+  rig,
+  canWrite,
+  formId = RIG_FORM_IDS.scheduler,
+}: {
+  rig: RigView;
+  canWrite: boolean;
+  formId?: string;
+}) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const [draft, setDraft] = useState<Scheduler>(rig.scheduler);
@@ -643,11 +690,25 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
   const flipInvalid = draft.flipMaxAfterMeridianMin < draft.flipAfterMeridianMin;
   const code = save.error ? problemCode(save.error) : null;
   return (
-    <form className={styles.form} onSubmit={submit} aria-labelledby="scheduler-title">
-      <div className={styles.formTitle}>
-        <h2 id="scheduler-title">{t('rigs.scheduler.title')}</h2>
+    <form id={formId} className={styles.flat} onSubmit={submit} aria-labelledby="scheduler-title">
+      <div className={styles.flatTitle}>
+        <h3 id="scheduler-title">{t('rigs.scheduler.title')}</h3>
         <span className={styles.muted}>{t('rigs.scheduler.syncHint')}</span>
+        {saved ? (
+          <span className={styles.success} role="status">
+            {t('equipment.saved')}
+          </span>
+        ) : null}
       </div>
+      <SaveError
+        error={
+          code === 'resource.version_conflict' ||
+          code === 'rig.sort_chain_invalid' ||
+          code === 'rig.flip_settings_invalid'
+            ? null
+            : save.error
+        }
+      />
       {code === 'resource.version_conflict' ? (
         <div className={styles.warning} role="alert">
           <p>{t('common.conflict')}</p>
@@ -665,7 +726,7 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
       ) : null}
       <div className={styles.columns}>
         <section className={styles.section} aria-labelledby="scheduler-strategy">
-          <h3 id="scheduler-strategy">{t('rigs.scheduler.strategySection')}</h3>
+          <h4 id="scheduler-strategy">{t('rigs.scheduler.strategySection')}</h4>
           <SelectField
             label={t('rigs.scheduler.strategy')}
             value={draft.strategy}
@@ -713,7 +774,7 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
           />
         </section>
         <section className={styles.section} aria-labelledby="scheduler-exposure">
-          <h3 id="scheduler-exposure">{t('rigs.scheduler.exposureSection')}</h3>
+          <h4 id="scheduler-exposure">{t('rigs.scheduler.exposureSection')}</h4>
           <CheckField
             label={t('rigs.scheduler.dither')}
             checked={draft.ditherEnabled}
@@ -750,7 +811,7 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
             error={fieldError('filterSwitchTolerancePct')}
             disabled={disabled || !draft.filterSwitchEnabled}
           />
-          <h3>{t('rigs.scheduler.flatsSection')}</h3>
+          <h4>{t('rigs.scheduler.flatsSection')}</h4>
           <CheckField
             label={t('rigs.scheduler.flats')}
             checked={draft.flatsEnabled}
@@ -796,7 +857,7 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
           />
         </section>
         <section className={styles.section} aria-labelledby="scheduler-flip">
-          <h3 id="scheduler-flip">{t('rigs.scheduler.flipSection')}</h3>
+          <h4 id="scheduler-flip">{t('rigs.scheduler.flipSection')}</h4>
           <CheckField
             label={t('rigs.scheduler.flip')}
             checked={draft.flipEnabled}
@@ -840,7 +901,7 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
             error={fieldError('flipDurationS')}
             disabled={disabled || !draft.flipEnabled}
           />
-          <h3>{t('rigs.scheduler.overheadSection')}</h3>
+          <h4>{t('rigs.scheduler.overheadSection')}</h4>
           <NumberField
             label={t('rigs.overhead.slewCenterS')}
             unit="s"
@@ -894,18 +955,6 @@ export function SchedulerForm({ rig, canWrite }: { rig: RigView; canWrite: boole
           />
         </section>
       </div>
-      <FormActions
-        canWrite={canWrite}
-        saving={save.isPending}
-        saved={saved}
-        error={
-          code === 'resource.version_conflict' ||
-          code === 'rig.sort_chain_invalid' ||
-          code === 'rig.flip_settings_invalid'
-            ? null
-            : save.error
-        }
-      />
     </form>
   );
 }

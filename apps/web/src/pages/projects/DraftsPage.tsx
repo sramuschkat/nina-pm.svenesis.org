@@ -55,26 +55,29 @@ export function DraftsPage() {
     },
   ];
   return (
-    <ProjectsLayout title={t('drafts.title')}>
+    <ProjectsLayout title={t('drafts.title')} meta={canAdmin ? t('drafts.hint') : undefined}>
       {!canAdmin ? (
         <ProblemMessage code={me?.mfaRequired ? 'auth.mfa_required' : 'permission.denied'} />
       ) : drafts.isError ? (
         <ProblemMessage code={problemCode(drafts.error)} onRetry={() => void drafts.refetch()} />
       ) : drafts.isPending ? (
         <p role="status">{t('common.loading')}</p>
-      ) : drafts.data.length === 0 ? (
-        <p className={styles.muted}>{t('drafts.empty')}</p>
       ) : (
-        <>
-          <p className={styles.note}>{t('drafts.hint')}</p>
-          <DataTable
-            columns={columns}
-            rows={drafts.data}
-            rowKey={(p) => p.id}
-            rowLabel={(p) => p.name}
-            label={t('drafts.title')}
-          />
-        </>
+        <div className={styles.listCard}>
+          {drafts.data.length === 0 ? (
+            <div className={styles.listBody}>
+              <p className={styles.muted}>{t('drafts.empty')}</p>
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={drafts.data}
+              rowKey={(p) => p.id}
+              rowLabel={(p) => p.name}
+              label={t('drafts.title')}
+            />
+          )}
+        </div>
       )}
     </ProjectsLayout>
   );

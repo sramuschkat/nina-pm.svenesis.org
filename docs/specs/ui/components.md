@@ -1,7 +1,7 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
 Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a, AP-26b, AP-26c und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a** · `Tabs` → **AP-26b** · `FilterBar` → **AP-26c**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a** · `Tabs` → **AP-26b** · `FilterBar` → **AP-26c** · `PageHeader`, `ActionMenu` → **AP-26d**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
@@ -50,7 +50,7 @@ Der wichtigste und am häufigsten wiederverwendete Baustein: Nachtdiagramm, Simu
 |---|---|
 | Eigenschaften | `window: {startUtc, endUtc}` (Mittag–Mittag) · `twilight: {civil, nautical, astronomical}` je Rand · `sun?: {atUtc, altDeg}[]` (Sonnenhöhe für die Himmelsfarbe; fehlt sie, wird der Himmel aus `twilight` gestuft) · `series?: AltitudeSeries[]` (Höhenkurven je Ziel, `{id, label, color, points: [{atUtc, altDeg}]}`; `color` als CSS-Farbe oder Token `var(--npm-chart-…)`; die **erste** Reihe ist das Hauptziel der Stundenstreifen) · `moon?: {points, illuminationPct, riseUtc, setUtc}` · `recommended?: {fromUtc, toUtc}[]` (nutzbare Zeit des Hauptziels aus der Engine: Dämmerung, Mindesthöhe, Mondprofil) · `blocks?: TimelineBlock[]` (`{id, fromUtc, toUtc, label, kind: 'regular' \| 'transit' \| 'flat' \| 'idle', color?, actual?: boolean}`) · `filterBars?: {fromUtc, toUtc, color, label}[]` (Filterbalken über den Blöcken in Filterfarben, FA-SIM-07; AP-13f) · `markers?: {atUtc, kind: 'flip' \| 'transit' \| 'now' \| 'custom', label}[]` · `minAltDeg?: number` (gestrichelte Linie) · `timeZone: string` (Anzeige in Standortzeit, IANA) · `secondaryTimeZone?: string` (optionale zweite Beschriftungszeile, z. B. Mandantenzeit; NT-03) · `height?: number` · `onSelect?: (atUtc) => void` |
 | Zustände | `window` fehlt → `error`; keine `series` und keine `blocks` → `empty` („keine Nacht mit Dunkelheit“, der Fall Polartag ist damit abgedeckt) |
-| Darstellung | **Himmel nach Sonnenhöhe** (Entscheidung 24.09.2026, Vorbild Svens Screenshot): Farbverlauf golden → blau → dunkel aus `SKY_STOPS` (`@nina-pm/ui-tokens`), **in beiden Themes gleich** – das Diagramm zeigt den Himmel; Achsen, Beschriftung und Legende außerhalb folgen dem Theme. Dämmerungswechsel als feine senkrechte Linie mit Kürzel am Fuß (B/N/A bzw. C/N/A); Raster 0/30/60/90° und volle Stunden. Höhenkurven als Linien (Hauptziel hell), **Mond als rote Fläche mit Linie**, Beleuchtung „Mond n %“ oben rechts (Text, kein Symbolzeichen), Mindesthöhe rot gestrichelt. **Stundenstreifen** unter dem Diagramm, je Zeile eine Farbe: *Empfohlene Belichtungszeit* (`recommended`), *über Mindesthöhe ohne Mond*, *mit Mond*, *über Mindesthöhe* (jeweils nur in astronomischer Dunkelheit, Mond ≤ 0° = ohne Mond) und *astronomisch dunkel* (Sonne ≤ −18°); gerastert auf 5 min, nur Anzeige. **Legende** rechts (bei schmalem Container darunter) als `fieldset` mit Checkbox je Ebene (Ziele, Mond, Mindesthöhe, Streifen) und der Stundensumme je Streifen; Ausblenden ändert nur die Zeichnung. Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Marken als senkrechte Linien mit Kürzel. **Zeitachse (NT-03):** Stundenbeschriftung in `timeZone`, am Achsenende das Zonenkürzel aus `formatTzAbbr` (`rules/ui.md`, z. B. „CDT“); mit `secondaryTimeZone` eine zweite, gedämpfte Zeile mit eigenem Kürzel. Jede Beschriftung wird je Zeitpunkt über `Intl` aus dem UTC-Wert berechnet – **nie** über einen festen Versatz zwischen den Zonen. Tooltips und Marken zeigen Uhrzeit **mit** Kürzel (`21:08 CDT`); die Kürzel stehen am rechten Ende jeder Achsenzeile |
+| Darstellung | **Himmel nach Sonnenhöhe** (Entscheidung 24.09.2026, Vorbild Svens Screenshot): Farbverlauf golden → blau → dunkel aus `SKY_STOPS` (`@nina-pm/ui-tokens`), **in beiden Themes gleich** – das Diagramm zeigt den Himmel; Achsen, Beschriftung und Legende außerhalb folgen dem Theme. Dämmerungswechsel als feine senkrechte Linie mit Kürzel am Fuß (B/N/A bzw. C/N/A); Raster 0/30/60/90° und volle Stunden. Höhenkurven als Linien (Hauptziel hell), **Mond als rote Fläche mit Linie**, Beleuchtung „Mond n %“ oben rechts (Text, kein Symbolzeichen), Mindesthöhe rot gestrichelt. **Stundenstreifen** unter dem Diagramm, je Zeile eine Farbe: *Empfohlene Belichtungszeit* (`recommended`), *über Mindesthöhe ohne Mond*, *mit Mond*, *über Mindesthöhe* (jeweils nur in astronomischer Dunkelheit, Mond ≤ 0° = ohne Mond) und *astronomisch dunkel* (Sonne ≤ −18°); gerastert auf 5 min, nur Anzeige. **Legende** rechts (bei schmalem Container darunter; mit `legend: 'top'` als kompakte, umbrechende Zeile über dem Diagramm, Projekt-Editor AP-26d) als `fieldset` mit Checkbox je Ebene (Ziele, Mond, Mindesthöhe, Streifen) und der Stundensumme je Streifen; Ausblenden ändert nur die Zeichnung. Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Blöcke als Balken unten (Ist-Balken schmaler und unter dem Soll-Balken, wenn `actual`), Marken als senkrechte Linien mit Kürzel. **Zeitachse (NT-03):** Stundenbeschriftung in `timeZone`, am Achsenende das Zonenkürzel aus `formatTzAbbr` (`rules/ui.md`, z. B. „CDT“); mit `secondaryTimeZone` eine zweite, gedämpfte Zeile mit eigenem Kürzel. Jede Beschriftung wird je Zeitpunkt über `Intl` aus dem UTC-Wert berechnet – **nie** über einen festen Versatz zwischen den Zonen. Tooltips und Marken zeigen Uhrzeit **mit** Kürzel (`21:08 CDT`); die Kürzel stehen am rechten Ende jeder Achsenzeile |
 | Größen | Mindestbreite **320 px**, Mindesthöhe 120 px; Standardhöhe 180 px (Editor) bzw. 240 px (Simulator). Unter 480 px entfallen die Stundenbeschriftungen bis auf jede dritte |
 | Grenzfälle | (1) **keine Dunkelheit** (Mitternachtssonne) → nur Dämmerungsstreifen, Hinweistext im Diagramm; (2) **durchgehende Dunkelheit** (Polarnacht) → kein Dämmerungsstreifen; (3) **Zeitumstellung in der Nacht** → die Achse folgt der Standortzeit und enthält 23 bzw. 25 Stunden, die Beschriftung springt sichtbar, das Kürzel wechselt an der Sprungstelle (z. B. „CDT“ → „CST“, Chicago 31.10./01.11.2026: 25 h); (3a) **nur eine der beiden Zonen stellt um** → die zweite Zeile verschiebt sich innerhalb der Nacht gegen die erste (Beispiel Standort `America/Chicago`, `secondaryTimeZone` `Europe/Berlin`, Nacht 24./25.10.2026: Berlin stellt um 01:00 UTC von MESZ auf MEZ um, Chicago erst am 01.11. – Abstand 7 h → 6 h, 19:30 CDT = 02:30 MESZ, 20:30 CDT = 02:30 MEZ); beide Zeilen tragen ihr jeweils gültiges Kürzel; (4) mehr als 12 `series` → nur die ersten 12 werden gezeichnet, der Rest als „+n weitere“ in der Legende |
 | Textalternative | `<details>`-Tabelle mit Dämmerungszeiten, je Ziel Auf-/Untergang und Kulmination, je Stundenstreifen Summe und Zeiträume, je Block Von/Bis/Label – alle Zeiten mit Kürzel |
@@ -197,6 +197,32 @@ Jede Filterleiste über einer Liste (Projektliste, Warteschlange, Objektbrowser;
 | Textalternative | Leiste `role="group"` mit `aria-label`; Chips als Liste „Aktive Filter“; × ist ein Knopf mit Namen „Filter *label* entfernen“; Bereich `role="group"` mit dem Namen des Knopfs; Umschalter mit `aria-pressed` und Text (Symbol nur zusätzlich) |
 | Grenzfall | kein aktiver Filter (keine Chip-Liste) · Filterwert, den es nicht mehr gibt (unbekanntes Rig → „Unbekanntes Rig“, der Chip bleibt entfernbar) · sehr langer Wert (gekürzt, `title`) · Umschalter wechselt die Liste (Papierkorb: Suche, Filter und Ansicht entfallen, der Fokus bleibt auf dem Umschalter) · 768 px mit allen Filtern aktiv (Zeile bricht um) |
 
+### 2.14 `PageHeader` (Seitengerüst, AP-26d)
+
+Kopf jeder Arbeitsseite. Titel und Hauptaktion stehen auf allen Seiten an derselben Stelle.
+
+| | |
+|---|---|
+| Eigenschaften | `title` · `meta?` (Zeile unter dem Titel: Kennzeichen, Mandant/Datum, Rig, Fortschritt) · `actions?` (Knöpfe rechts, Hauptaktion zuletzt) · `crumbs?: {label, to?}[]` (nur Detailseiten) · `nav?` (Bereichsreiter, z. B. `SectionTabs`, **unter** dem Titel) · `titleHint?` (`title`-Attribut bei gekürztem Titel) |
+| Zustände | `ready`; Lade- und Fehlerzustände liefert die Seite darunter |
+| Tastatur | keine eigene Bedienung; Reihenfolge Brotkrumen → Aktionen → Reiter |
+| Größen | Titel 24 px, einzeilig mit „…“; unter 1024 px rücken die Aktionen unter den Titel |
+| Textalternative | Titel ist die einzige `h1` der Seite; Brotkrumen als `nav` mit dem Namen „Brotkrumen“ |
+| Grenzfall | sehr langer Projektname (Kürzung mit `titleHint`) · keine Aktionen (Nur-Lese-Rechte) · Seite ohne Bereichsreiter |
+
+### 2.15 `ActionMenu` (⋯-Menü, AP-26d)
+
+Seltene oder folgenreiche Aktionen, z. B. *Löschen* im Seitenkopf oder Zeilenaktionen in Tabellen. Die Bestätigung (`ConfirmDialog`) bleibt beim Aufrufer.
+
+| | |
+|---|---|
+| Eigenschaften | `label` (zugänglicher Name, z. B. „Weitere Aktionen zu M 31“) · `items: {key, label, icon?, onSelect, danger?, disabled?}[]` · `size?: 'sm' \| 'md'` (`sm` in Tabellen, ohne Rahmen) |
+| Zustände | ohne Einträge kein Knopf; deaktivierte Einträge bleiben sichtbar |
+| Tastatur | Radix-Menü: `Enter`/`Space` öffnet, Pfeile wählen, `Esc` schließt, Fokus zurück auf den Knopf |
+| Größen | Knopf in Steuerhöhe (28 px in Tabellen), Menü mindestens 180 px |
+| Textalternative | Knopf mit `aria-label`, Einträge als `menuitem`; Gefahr trägt der Text, die Farbe nur zusätzlich |
+| Grenzfall | ein einziger Eintrag · alle Einträge deaktiviert · Menü am rechten Fensterrand (öffnet nach links) |
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
@@ -209,6 +235,7 @@ Jede Filterleiste über einer Liste (Projektliste, Warteschlange, Objektbrowser;
 | Favorit · Zurück · vorige/nächste Nacht · externer Link (Projekt-Editor, AP-11b) | `star` · `arrow-left` · `chevron-left`/`chevron-right` · `external-link` |
 | Ziehen (Rangfolge S-32, Priorität S-30, AP-12b) | `grip-vertical` |
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
+| Saison eines Objekts (Objektbrowser, AP-26d) | `calendar-range` |
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
 | Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
 | Filter aufklappen · Filter entfernen (`FilterBar`, AP-26c) | `plus` + `chevron-down` · `x` |

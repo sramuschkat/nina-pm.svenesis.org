@@ -351,6 +351,21 @@ describe('Sortierung per Spaltenkopf (AP-26a)', () => {
 });
 
 describe('S-41 An NINA ausgeliefert', () => {
+  it('Seitengerüst (AP-26d): je Seite genau ein h1, keine Brotkrumen, NINA-Reiter unter dem Titel', async () => {
+    for (const [path, page, title] of [
+      ['/nina/ausgeliefert', <DeliveryPage key="d" />, 'An NINA ausgeliefert'],
+      ['/nina/instanzen', <InstancesPage key="i" />, 'NINA-Instanzen & Tokens'],
+    ] as const) {
+      const { unmount } = renderAt(path, page);
+      const h1 = await screen.findByRole('heading', { level: 1, name: title });
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+      expect(screen.queryByRole('navigation', { name: /Brotkrumen|›/ })).toBeNull();
+      const tabs = screen.getByRole('navigation', { name: 'NINA-Bereiche' });
+      expect(h1.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      unmount();
+    }
+  });
+
   it('Karten mit Einzelfeld/Mosaik, RA/Dec, Rotation, Rig, Fortschritt je Filter; Hinweis ausgeschaltet; axe', async () => {
     renderAt('/nina/ausgeliefert', <DeliveryPage />);
     const card = (await screen.findByRole('article', { name: 'Ziel 1' })) as HTMLElement;

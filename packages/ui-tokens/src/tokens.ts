@@ -4,6 +4,9 @@
  * Abweichungen für WCAG AA (rules/ui.md): Text- und Knopffarbe `link`/`button` sind eine dunklere Stufe
  * des Akzentblaus – `#3498db` erreicht auf Weiß nur ≈ 3,1:1. Das Dunkel-Theme (Navy-Basis) ist ein
  * Vorschlag dieses Pakets (TK 11.3 nennt keine Werte), Abnahme über H-16.
+ * Stilsystem AP-26d (Entwurf freigegeben von Sven, 26.09.2026): Fläche `bg` und Linie `border` leicht
+ * kühler, Text `text`/`text-light` dunkler als auf der Website – ruhigerer Kontrast der Arbeitsseiten;
+ * neue Flächen für weiche Kennzeichen (`*-bg`), Tabellenkopf (`surface-sub`) und Auswahl (`selected-bg`).
  * Quelle der generierten Datei `tokens.css` (`pnpm --filter @nina-pm/ui-tokens generate`).
  */
 
@@ -24,11 +27,14 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     button: '#1f6aa5',
     'button-hover': '#174f7c',
     'on-button': '#ffffff',
-    text: '#333333',
-    'text-light': '#595959',
-    bg: '#f8f9fa',
+    text: '#1f2933',
+    'text-light': '#52606d',
+    bg: '#f3f5f8',
     white: '#ffffff',
-    border: '#e0e0e0',
+    border: '#e3e7ec',
+    'border-strong': '#cbd2d9',
+    'surface-sub': '#f8fafc',
+    'selected-bg': '#e8f1f9',
     'on-primary': '#ffffff',
     'on-primary-muted': 'rgba(255, 255, 255, 0.85)',
     'note-bg': 'rgba(26, 42, 58, 0.05)',
@@ -36,8 +42,12 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'danger-hover': '#8c1d18',
     'danger-bg': '#fdecea',
     success: '#1e7e4f',
+    'success-bg': '#edf7f0',
     warning: '#8a5a00',
-    'warning-bg': '#fff3cd',
+    'warning-bg': '#fff4d6',
+    info: '#1f6aa5',
+    'info-bg': '#e8f1f9',
+    'neutral-bg': '#eef1f4',
     muted: '#6b7785',
     skeleton: '#e9ecef',
     /** Aufwand-Kennzeichen „Transit“ (FA-PRJ-23: violett). */
@@ -55,9 +65,12 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'on-button': '#0b1621',
     text: '#e6edf3',
     'text-light': '#a9b6c3',
-    bg: '#0f1a24',
-    white: '#1a2a3a',
-    border: '#2c3e50',
+    bg: '#0d1620',
+    white: '#15222f',
+    border: '#243647',
+    'border-strong': '#33495e',
+    'surface-sub': '#1a2a3a',
+    'selected-bg': '#1f3a52',
     'on-primary': '#ffffff',
     'on-primary-muted': 'rgba(255, 255, 255, 0.85)',
     'note-bg': 'rgba(255, 255, 255, 0.05)',
@@ -65,8 +78,12 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     'danger-hover': '#f6aea9',
     'danger-bg': '#3b1f1f',
     success: '#6fcf97',
+    'success-bg': '#173325',
     warning: '#f0b429',
     'warning-bg': '#3a2f12',
+    info: '#85c1e9',
+    'info-bg': '#1f3a52',
+    'neutral-bg': '#243647',
     muted: '#8b98a5',
     skeleton: '#243647',
     violet: '#c3a6f5',
@@ -75,8 +92,9 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
 
 /** Themen-unabhängige Werte. */
 export const BASE: Readonly<Record<string, string>> = {
-  radius: '8px',
-  shadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+  radius: '6px',
+  'radius-card': '10px',
+  shadow: '0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.04)',
   'max-width': '1100px',
   transition: '0.25s ease',
   font: '-apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
@@ -256,22 +274,25 @@ export const CHART_SERIES_COUNT = 6;
 /** Abstandsskala (UI-4): `--npm-space-n` = Basis × `--npm-space-scale`. */
 export const SPACE_PX = [4, 8, 12, 16, 24, 32, 48] as const;
 
-/** Typografie in px bei Schriftskalierung 1 (TK 11.3, gemessen auf Astro-Wetter). */
+/**
+ * Typografie in px bei Schriftskalierung 1 (Stilsystem AP-26d): Titel 24 · Kartentitel 16 · Fließtext,
+ * Tabellen und Felder 14 · Nebentext 13 · Beschriftung und Tabellenkopf 12.
+ */
 export const TYPE_PX: Readonly<Record<string, number>> = {
-  base: 16,
-  h1: 32,
-  h2: 20,
-  h3: 16.8,
-  label: 12.8,
-  field: 15.2,
-  small: 13.6,
+  base: 14,
+  h1: 24,
+  h2: 16,
+  h3: 14,
+  label: 12,
+  field: 14,
+  small: 13,
 };
 
 /** Dichte-Schalter (TK 11.3): ändert nur Dichtewerte, nie die Breite. */
 export const DENSITY: Readonly<Record<Density, Readonly<Record<string, string>>>> = {
-  compact: { 'row-h': '28px', 'font-scale': '0.9', 'space-scale': '0.75', 'chart-h': '140px' },
-  normal: { 'row-h': '34px', 'font-scale': '1', 'space-scale': '1', 'chart-h': '180px' },
-  wide: { 'row-h': '40px', 'font-scale': '1.05', 'space-scale': '1.25', 'chart-h': '240px' },
+  compact: { 'row-h': '28px', 'font-scale': '0.93', 'space-scale': '0.75', 'chart-h': '140px' },
+  normal: { 'row-h': '32px', 'font-scale': '1', 'space-scale': '1', 'chart-h': '180px' },
+  wide: { 'row-h': '36px', 'font-scale': '1.07', 'space-scale': '1.25', 'chart-h': '240px' },
 };
 
 export const STORAGE_KEYS = {
@@ -309,7 +330,7 @@ export function renderTokensCss(): string {
     '}',
     ':root[data-theme="dark"] {',
     decl(COLORS.dark),
-    '  --npm-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);',
+    '  --npm-shadow: none;',
     '  color-scheme: dark;',
     '}',
     ...DENSITIES.map((d) => `:root[data-density="${d}"] {\n${decl(DENSITY[d])}\n}`),

@@ -26,6 +26,7 @@ import { CoordinateInput } from '../../components/CoordinateInput';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
+import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
@@ -493,11 +494,7 @@ export function SkyMapPage() {
 
   return (
     <div className={styles.page}>
-      <PlanningTabs />
-      <nav aria-label={t('skymap.crumbs')} className={styles.muted}>
-        {t('skymap.crumbs')}
-      </nav>
-      <h1 className={styles.title}>{t('skymap.title')}</h1>
+      <PageHeader title={t('skymap.title')} nav={<PlanningTabs />} />
 
       <div className={styles.toolbar} role="toolbar" aria-label={t('skymap.title')}>
         <Section title={t('skymap.section.search')}>

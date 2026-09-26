@@ -69,37 +69,7 @@
   padding-top: var(--npm-space-3);
 }
 
-/* Brotkrumen und Kopf */
-.crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--npm-font-small);
-  color: var(--npm-text-light);
-}
-.crumbs li + li::before {
-  content: '›';
-  margin-right: var(--npm-space-2);
-}
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-3);
-}
-.head h1 {
-  margin: 0;
-  font-size: var(--npm-font-h2);
-}
-.headActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--npm-space-2);
-  margin-left: auto;
-}
+/* Kopf der Bereichsseiten */
 .favorite[aria-pressed='true'] {
   color: var(--npm-warning);
 }
@@ -223,6 +193,16 @@
 .small {
   width: 7em;
 }
+/* Felder der Werkzeugzeilen in eigener Breite statt der vollen Zeilenbreite des Grundfelds. */
+.quick .input,
+.templates .input {
+  width: auto;
+  min-width: 8rem;
+}
+.quick .small {
+  width: 7em;
+  min-width: 0;
+}
 .lineTable input,
 .lineTable select {
   min-width: 0;
@@ -231,6 +211,17 @@
 }
 .lineTable td {
   vertical-align: middle;
+}
+.lineTable input[type='number'] {
+  min-width: 4.5em;
+}
+.lineTable select {
+  min-width: 5.5em;
+}
+/* Hinweis „Filter nicht zugeordnet“ unter der Filterwahl statt über der Nachbarspalte. */
+.lineTable .flag {
+  display: block;
+  margin: 2px 0 0;
 }
 .lineTable tr[data-enabled='false'] td {
   color: var(--npm-text-light);
@@ -251,19 +242,23 @@
   display: flex;
   gap: var(--npm-space-1);
 }
+/* Summen des Panels als Fußleiste der Plan-Karte (Stilsystem AP-26d): gedämpfter Text, Werte kräftig. */
 .sums {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--npm-space-4);
+  gap: var(--npm-space-1) var(--npm-space-5);
   margin: 0;
-  padding-top: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-4);
   border-top: 1px solid var(--npm-border);
+  border-radius: 0 0 var(--npm-radius-card) var(--npm-radius-card);
+  background: var(--npm-surface-sub);
+  color: var(--npm-text-light);
   font-size: var(--npm-font-small);
   font-variant-numeric: tabular-nums;
 }
 .sums strong {
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  color: var(--npm-text);
+  font-weight: 600;
 }
 .duplicateBox {
   display: flex;
@@ -275,49 +270,85 @@
   border-radius: var(--npm-radius);
 }
 
-/* ---- S-30 Projektliste ---- */
+/* ---- S-30 Projektliste, S-33 Warteschlange, S-34 Entwürfe ---- */
+/* Liste als Karte (Stilsystem AP-26d): Filterzeile oben mit Trennlinie, Tabelle ohne Innenabstand bis
+   an den Rand, Hinweise in einer gedämpften Fußzeile. `overflow: clip` rundet die Ecken ab, ohne einen
+   Scrollbereich zu bilden (der stehende Tabellenkopf bleibt wirksam). */
+.listCard {
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+  min-width: 0;
+  overflow: clip;
+}
+.listBar {
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.listBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  min-width: 0;
+}
+.listFoot {
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-top: 1px solid var(--npm-border);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+/* Ansicht: weicher Umschalter (aktive Wahl als Karte auf neutraler Fläche). */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--npm-border);
+  gap: 2px;
+  padding: 2px;
   border-radius: var(--npm-radius);
-  overflow: hidden;
+  background: var(--npm-neutral-bg);
 }
 .segment,
 .segmentActive {
-  min-height: var(--npm-row-h);
+  min-height: calc(var(--npm-row-h) - 4px);
   padding: 0 var(--npm-space-3);
   border: none;
-  background: var(--npm-white);
-  color: var(--npm-text);
+  border-radius: calc(var(--npm-radius) - 2px);
+  background: transparent;
+  color: var(--npm-text-light);
   font: inherit;
+  font-size: var(--npm-font-small);
   cursor: pointer;
 }
-.segment + .segment,
-.segment + .segmentActive,
-.segmentActive + .segment {
-  border-left: 1px solid var(--npm-border);
-}
 .segmentActive {
-  background: var(--npm-button);
-  color: var(--npm-on-button);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-weight: 600;
+  box-shadow: var(--npm-shadow);
+}
+.segment:hover {
+  color: var(--npm-text);
 }
 .segment:focus-visible,
 .segmentActive:focus-visible {
   outline: var(--npm-focus-ring);
-  outline-offset: -2px;
+  outline-offset: 1px;
 }
 .group {
-  composes: panel;
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-3);
   min-width: 0;
 }
+.group + .group {
+  padding-top: var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+}
 .groupHead {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--npm-space-3);
+  gap: var(--npm-space-1) var(--npm-space-3);
 }
 .groupHead h2 {
   margin: 0;
@@ -429,8 +460,8 @@ tr[data-dragging='true'] {
 }
 .typeTag {
   padding: 0 var(--npm-space-2);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: 999px;
+  background: var(--npm-neutral-bg);
   font-size: var(--npm-font-label);
   font-weight: 400;
   color: var(--npm-text-light);
@@ -456,10 +487,11 @@ tr[data-dragging='true'] {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
   gap: var(--npm-space-3);
-  padding: var(--npm-space-3);
+  padding: var(--npm-space-4);
   border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
   min-width: 0;
 }
 @media (max-width: 900px) {
@@ -480,10 +512,11 @@ tr[data-dragging='true'] {
   grid-template-columns: auto 2em minmax(160px, 2fr) minmax(90px, 1fr) minmax(140px, 1.5fr) auto;
   align-items: center;
   gap: var(--npm-space-3);
-  padding: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-4);
   border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
 .rankItem[data-dragging='true'] {
   opacity: 0.5;
@@ -519,25 +552,6 @@ tr[data-dragging='true'] {
 }
 
 /* ---- S-33 Warteschlange ---- */
-.sortButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--npm-space-1);
-  padding: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-.sortButton:focus-visible {
-  outline: var(--npm-focus-ring);
-  outline-offset: 2px;
-}
-tr[data-selected='true'] td {
-  background: var(--npm-note-bg);
-}
 .planChips {
   display: flex;
   flex-direction: column;
@@ -569,11 +583,10 @@ tr[data-selected='true'] td {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-3);
-  border-left: 4px solid var(--npm-accent);
 }
 .decision h2 {
   margin: 0;
-  font-size: var(--npm-font-h3);
+  font-size: var(--npm-font-h2);
 }
 .decision fieldset {
   border: none;
@@ -662,33 +675,66 @@ tr[data-selected='true'] td {
   gap: var(--npm-space-2);
   min-width: 120px;
 }
+/* Gruppenzeile schlank: Rig fett, Ausrüstung gedämpft daneben, Zähler rechts. */
 .groupHeadInline {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--npm-space-1) var(--npm-space-3);
 }
+.groupMeta,
+.groupCounts {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  font-weight: 400;
+}
+.groupCounts {
+  margin-left: auto;
+}
 
-/* Projekt-Editor in drei Bereichen (AP-26b): Kopf, darunter oben / Mitte / unten je mit eigenen
-   Reitern. Oberer und mittlerer Bereich haben eine Höchsthöhe mit eigener Scrollfläche, damit Kopf und
-   alle drei Reiterleisten bei 1280 × 800 ohne Scrollen sichtbar sind. */
+/* Projekt-Editor in drei Bereichen (AP-26b, Stilsystem AP-26d): Seitenkopf (`PageHeader`), darunter
+   oben / Mitte / unten je eine Karte mit eigenen Reitern. Oberer und mittlerer Bereich haben eine
+   Höchsthöhe mit eigener Scrollfläche, damit Kopf und alle drei Reiterleisten bei 1280 × 800 ohne
+   Scrollen sichtbar sind (Rechnung: Kopf bis ≈ 194 px, drei Karten mit Reiterleiste je 43 px, Abstände
+   3 × 12 px; oben ≤ 20vh, Mitte ≤ 29vh → unterste Reiterleiste endet bei ≈ 750 px). */
 .editor {
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-2);
+  gap: var(--npm-space-3);
   min-width: 0;
 }
-.editorHead {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-}
-.crumbRow {
-  display: flex;
+/* Metazeile: Zustand (Kennzeichen, Aufwand, Favorit) und Kontext (Rig, Status, Fortschritt) als je eine
+   Gruppe, die als Ganzes umbricht. Steuerelemente kompakt (28 px). */
+.metaGroup {
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--npm-space-1) var(--npm-space-4);
+  gap: var(--npm-space-2);
+  min-width: 0;
+  margin-right: var(--npm-space-3);
+}
+.metaGroup .favorite {
+  min-width: 28px;
+  min-height: 28px;
+}
+.headRig {
+  display: inline-flex;
+  width: 13rem;
+  max-width: 100%;
+}
+.metaGroup .headRig button {
+  min-width: 0;
+  min-height: 28px;
+  font-size: var(--npm-font-small);
+}
+.metaGroup .headStatus {
+  width: 9rem;
+  min-height: 28px;
+  font-size: var(--npm-font-small);
+}
+/* Hülle ohne eigene Box (⋯-Menü mit Dialog im Kopf). */
+.contents {
+  display: contents;
 }
 .headProgress {
   display: inline-flex;
@@ -697,72 +743,40 @@ tr[data-selected='true'] td {
   font-size: var(--npm-font-small);
   color: var(--npm-text-light);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .headProgress > :first-child {
-  width: 8rem;
+  width: 5rem;
 }
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: var(--npm-space-2) var(--npm-space-4);
-}
-.titleMain {
-  display: flex;
-  align-items: center;
-  gap: var(--npm-space-2);
-  flex: 1 1 auto;
-  min-width: 0;
-}
-/* Lange Namen einzeilig mit „…“ (voller Name im Tooltip), damit der Kopf nicht umbricht. */
-.titleMain h1 {
-  margin: 0;
-  min-width: 4rem;
-  font-size: var(--npm-font-h2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.titleMain > :not(h1) {
-  flex-shrink: 0;
-}
-.titleRow .headActions {
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-.titleRow .headActions {
-  align-items: center;
-}
-.headRig {
-  width: 15rem;
-  max-width: 100%;
-}
+/* Karte je Bereich: Radius und Schatten des Stilsystems, innen keine zweite Umrandung. */
 .area {
   display: flex;
   flex-direction: column;
   min-width: 0;
   background: var(--npm-white);
   border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
 }
 .areaTop {
-  max-height: clamp(10rem, 22vh, 28rem);
+  max-height: clamp(9rem, 20vh, 28rem);
   overflow: auto;
-  padding: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
 }
 .areaMiddle {
   max-height: clamp(12rem, 29vh, 32rem);
   overflow: auto;
-  padding: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-4);
 }
 .areaNote {
   margin: 0;
-  padding: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
   color: var(--npm-text-light);
 }
 .targetGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: var(--npm-space-3);
+  gap: var(--npm-space-3) var(--npm-space-4);
   align-items: start;
 }
 .span2 {
@@ -771,7 +785,7 @@ tr[data-selected='true'] td {
 .fovValue {
   display: flex;
   align-items: center;
-  min-height: 2rem;
+  min-height: var(--npm-row-h);
   font-variant-numeric: tabular-nums;
 }
 .previewRow {
@@ -795,50 +809,34 @@ tr[data-selected='true'] td {
   border-radius: var(--npm-radius);
   overflow: hidden;
 }
+/* Belichtungsplan: Werkzeugzeile, Tabelle bis an den Kartenrand, Summen als Fußleiste der Karte. */
 .planBody {
   display: flex;
   flex-direction: column;
-  gap: var(--npm-space-2);
-  padding: var(--npm-space-2) var(--npm-space-3) 0;
+  min-width: 0;
 }
 .planTools {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--npm-space-2) var(--npm-space-4);
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
 }
-.planBody .sums {
-  margin: 0 calc(-1 * var(--npm-space-3));
-  padding: var(--npm-space-2) var(--npm-space-3);
-  color: var(--npm-text-light);
+.planNote {
+  margin: var(--npm-space-2) var(--npm-space-4) 0;
 }
-.planBody .sums strong {
-  color: var(--npm-text);
+.planEmpty {
+  margin: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
+.planBody .duplicateBox {
+  margin: var(--npm-space-2) var(--npm-space-4);
 }
 .panelList {
-  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
 }
 @media (max-width: 1023px) {
   .span2 {
     grid-column: 1 / -1;
   }
-  .titleRow,
-  .titleRow .headActions {
-    flex-wrap: wrap;
-  }
-  .titleRow .headActions {
-    flex-shrink: 1;
-    min-width: 0;
-  }
-}
-.headMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-2) var(--npm-space-3);
-  margin-left: auto;
-}
-.headMeta .input {
-  width: 9rem;
 }

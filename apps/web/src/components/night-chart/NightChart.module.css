@@ -1,5 +1,5 @@
 /* Nachtdiagramm (components.md §2.3): Mindestbreite 320 px, Höhe aus der Dichtestufe, Farben aus Tokens.
-   Legende rechts neben dem Diagramm, bei schmalem Container darunter. */
+   Legende rechts neben dem Diagramm, bei schmalem Container darunter; mit `legend="top"` als Zeile darüber. */
 .figure {
   margin: 0;
   display: flex;
@@ -170,4 +170,38 @@
   background: var(--npm-white);
   color: var(--npm-text);
   cursor: pointer;
+}
+/* Legende als Zeile über dem Diagramm (`legend="top"`, Projekt-Editor AP-26d): kompakt und umbrechend,
+   ohne Rahmen; Titel nur für Screenreader. */
+.bodyTop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.bodyTop .chartCol {
+  flex: none;
+  width: 100%;
+  gap: var(--npm-space-1);
+}
+.legendTop {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--npm-space-4);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+}
+.legendTop .legendItem {
+  min-height: 22px;
+  gap: var(--npm-space-1);
+}
+.legendTop .legendHours {
+  margin-left: 0;
+  padding-left: var(--npm-space-1);
+  color: var(--npm-text);
 }

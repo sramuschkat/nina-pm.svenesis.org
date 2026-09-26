@@ -6,6 +6,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +32,7 @@ import {
   templatesFor,
   toDraft,
 } from './model';
-import { researchLinks } from './ProjectEditorPage';
+import { ProjectMoreActions, researchLinks } from './ProjectEditorPage';
 
 const state = vi.hoisted(() => ({
   me: null as unknown,
@@ -421,7 +422,7 @@ describe('Belichtungsplan (Komponente)', () => {
     await expectNoSeriousA11y();
   });
 
-  it('Summenzeile: Filter · GEPLANT · AKTUELL · Gesamtfortschritt', () => {
+  it('Summen als Fußleiste: Filter · Geplant · Aktuell · Gesamtfortschritt, Werte hervorgehoben', () => {
     plan(
       project([
         line(1, 'Ha', { counters: counters(60, 22, 2) }),
@@ -436,6 +437,7 @@ describe('Belichtungsplan (Komponente)', () => {
   });
 
   it('Zeile mit Aufnahmen: Aufnahmefelder gesperrt, geplant änderbar; Duplizieren ruft die Route', async () => {
+    const user = userEvent.setup();
     state.duplicateLine.mockResolvedValue(project([line(1, 'Ha')]));
     plan(project([line(1, 'Ha', { hasCaptures: true, counters: counters(60, 22, 2) })]));
     expect(screen.getByText(/Zeilen mit Schloss haben Aufnahmen/)).toBeInTheDocument();
@@ -444,7 +446,8 @@ describe('Belichtungsplan (Komponente)', () => {
     expect(screen.getAllByLabelText(/Zeile hat Aufnahmen/).length).toBeGreaterThanOrEqual(6);
     expect(screen.getByLabelText('Geplante Aufnahmen der Zeile Ha')).toBeEnabled();
     expect(screen.getByLabelText('Mondprofil der Zeile Ha')).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Zeile Ha duplizieren' }));
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen zu Zeile Ha' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Zeile duplizieren' }));
     const box = screen.getByRole('group', { name: 'Zeile duplizieren' });
     expect(within(box).getByLabelText('Alte Zeile deaktivieren')).toBeChecked();
     fireEvent.click(within(box).getByRole('button', { name: 'Zeile duplizieren' }));
@@ -483,6 +486,12 @@ describe('Belichtungsplan (Komponente)', () => {
       cameraId: null,
     } as ExposureTemplateView;
     const { unmount } = plan(project([line(1, 'Ha', { hasCaptures: true })]), true, [tpl]);
+    // Vorlagenzeile klappt über *Vorlage* in der Reiterleiste auf (AP-26d).
+    const toggle = screen.getByRole('button', { name: 'Vorlage' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('Vorlage')).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByLabelText('Vorlage')).toBeDisabled();
     expect(
       screen.getByText(/Nicht verfügbar – das Projekt hat bereits Aufnahmen/),
@@ -491,8 +500,46 @@ describe('Belichtungsplan (Komponente)', () => {
     plan(project([line(1, 'Ha')]), false, [tpl]);
     expect(screen.queryByRole('button', { name: 'Hinzufügen' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Vorlage')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Zeile Ha löschen' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Vorlage' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Weitere Aktionen zu Zeile Ha' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Zeile Ha aktiv')).toBeDisabled();
     await expectNoSeriousA11y();
+  });
+});
+
+describe('Stilsystem AP-26d: Aktionen im ⋯-Menü', () => {
+  it('Zeile löschen über das ⋯-Menü der Zeile öffnet die Bestätigung, erst dann die Route', async () => {
+    const user = userEvent.setup();
+    state.deleteLine.mockResolvedValue(project([]));
+    plan(project([line(1, 'Ha')]));
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen zu Zeile Ha' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Zeile Ha löschen?' });
+    expect(state.deleteLine).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Löschen' }));
+    await waitFor(() => expect(state.deleteLine).toHaveBeenCalledWith(ID(10), ID(101)));
+  });
+
+  it('Editor-Kopf: *Löschen* im ⋯-Menü öffnet den ConfirmDialog, Abbrechen löscht nicht; axe', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn(() => Promise.resolve());
+    wrap(<ProjectMoreActions name="NGC 281" onDelete={onDelete} pending={false} error={null} />);
+    const trigger = screen.getByRole('button', { name: 'Weitere Aktionen' });
+    await expectNoSeriousA11y();
+    await user.click(trigger);
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Projekt „NGC 281“ löschen?' });
+    expect(dialog).toHaveTextContent('Papierkorb');
+    await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(onDelete).not.toHaveBeenCalled();
+    await user.click(trigger);
+    await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Löschen' }),
+    );
+    await waitFor(() => expect(onDelete).toHaveBeenCalledTimes(1));
   });
 });

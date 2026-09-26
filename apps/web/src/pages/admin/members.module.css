@@ -19,7 +19,7 @@
   overflow-y: auto;
   background: var(--npm-white);
   color: var(--npm-text);
-  border-radius: var(--npm-radius);
+  border-radius: var(--npm-radius-card);
   box-shadow: var(--npm-shadow);
   padding: var(--npm-space-5);
   display: flex;

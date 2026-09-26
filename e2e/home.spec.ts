@@ -1,13 +1,13 @@
 /**
- * AP-26c: Startseite als Übersicht gegen den lokalen Stack – Kopf mit Mandant, Karten Warteschlange,
- * Wetter heute (Beispieldaten des lokalen Wetter-Adapters), Aktive Projekte, Letzte Sessions mit ihren
- * Links; axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
+ * AP-26c/AP-26d: Startseite als Übersicht gegen den lokalen Stack – Kopf mit Mandant, Kennzahlen, Karten
+ * Warteschlange, Wetter heute Nacht (Beispieldaten des lokalen Wetter-Adapters), Aktive Projekte, Letzte
+ * Sessions mit ihren Links; axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { tableOverflow, testLogin } from './support';
 
-const CARDS = ['Warteschlange', 'Wetter heute', 'Aktive Projekte', 'Letzte Sessions'];
+const CARDS = ['Warteschlange', 'Wetter heute Nacht', 'Aktive Projekte', 'Letzte Sessions'];
 
 async function openHome(page: Page, fixture = 'owner') {
   await testLogin(page, fixture);
@@ -19,11 +19,10 @@ async function openHome(page: Page, fixture = 'owner') {
 test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async ({ page }) => {
   await openHome(page);
   for (const name of CARDS) await expect(page.getByRole('region', { name })).toBeVisible();
-  await expect(
-    page
-      .getByRole('region', { name: 'Warteschlange' })
-      .getByText(/\d+ offen · \d+ ohne deine Stimme|Keine offenen Einreichungen\./),
-  ).toBeVisible();
+  const kpis = page.getByRole('list', { name: 'Kennzahlen' });
+  await expect(kpis.getByRole('listitem')).toHaveCount(4);
+  await expect(kpis).toContainText(/\d+ offen\s*\d+ ohne deine Stimme/);
+  await expect(kpis).toContainText(/Integration \p{L}+/u);
   await expect(page.getByRole('link', { name: 'Neues Projekt' })).toHaveAttribute(
     'href',
     '/projekte/neu',

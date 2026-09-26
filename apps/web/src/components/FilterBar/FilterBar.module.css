@@ -1,5 +1,6 @@
 /* Filterleiste (components.md §2.13): eine Zeile, bricht bei wenig Platz um (nie horizontal scrollen),
-   Chips als Pillen, aufklappbarer Bereich als Raster; Farben und Abstände aus Tokens. */
+   Chips als weiche Pillen, Umschalter ruhig (Stilsystem AP-26d), aufklappbarer Bereich als Raster;
+   Farben und Abstände aus Tokens. */
 .bar {
   display: flex;
   flex-direction: column;
@@ -20,10 +21,10 @@
 }
 .input {
   min-height: var(--npm-row-h);
-  padding: 0 var(--npm-space-2);
-  border: 1px solid var(--npm-border);
-  border-radius: calc(var(--npm-radius) / 2);
-  background: var(--npm-bg);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
   color: var(--npm-text);
   font-size: var(--npm-font-field);
   width: 100%;
@@ -50,12 +51,14 @@
   gap: var(--npm-space-1);
   max-width: 20rem;
   min-width: 0;
+  min-height: calc(var(--npm-row-h) - 4px);
   padding-left: var(--npm-space-3);
-  border: 1px solid var(--npm-border);
+  padding-right: 2px;
   border-radius: 999px;
-  background: var(--npm-note-bg);
-  color: var(--npm-text);
+  background: var(--npm-selected-bg);
+  color: var(--npm-link);
   font-size: var(--npm-font-small);
+  font-weight: 600;
 }
 .chipText {
   overflow: hidden;
@@ -72,7 +75,7 @@
   border: none;
   border-radius: 999px;
   background: none;
-  color: var(--npm-text-light);
+  color: var(--npm-link);
   cursor: pointer;
 }
 .chipRemove:hover {
@@ -82,26 +85,27 @@
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
-  min-height: var(--npm-row-h);
-  padding: 0 var(--npm-space-3);
-  border: 1px solid var(--npm-border);
+  min-height: calc(var(--npm-row-h) - 4px);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid transparent;
   border-radius: var(--npm-radius);
-  background: var(--npm-white);
-  color: var(--npm-text);
+  background: transparent;
+  color: var(--npm-text-light);
   font: inherit;
   font-size: var(--npm-font-small);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
 .toggle:hover {
-  border-color: var(--npm-accent);
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
 }
 .toggle[aria-expanded='true'],
 .toggle[aria-pressed='true'] {
-  border-color: var(--npm-accent);
-  background: var(--npm-note-bg);
+  background: var(--npm-selected-bg);
   color: var(--npm-link);
+  font-weight: 600;
 }
 .chipRemove:focus-visible,
 .toggle:focus-visible,
@@ -130,7 +134,7 @@
   padding: var(--npm-space-3);
   border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius);
-  background: var(--npm-white);
+  background: var(--npm-surface-sub);
   min-width: 0;
 }
 .panelActions {
@@ -146,7 +150,8 @@
 }
 .field label {
   font-weight: 600;
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
 }
 .check {
   display: inline-flex;

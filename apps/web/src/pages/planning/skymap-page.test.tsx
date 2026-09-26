@@ -190,6 +190,16 @@ describe('S-20 Sternkarte', () => {
     await expectNoSeriousA11y();
   });
 
+  it('Seitengerüst (AP-26d): genau ein h1, keine Brotkrumen, Planungsreiter unter dem Titel', async () => {
+    renderPage();
+    const h1 = await screen.findByRole('heading', { level: 1, name: 'Sternkarte' });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.queryByRole('navigation', { name: /Brotkrumen|›/ })).not.toBeInTheDocument();
+    const tabs = screen.getByRole('navigation', { name: 'Planungsbereiche' });
+    // Reiter folgen dem Titel im Dokument (unter dem Titel).
+    expect(h1.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('ohne Rotator: für User gesperrt auf den Kamerawinkel, kein Anheften', async () => {
     renderPage();
     const slider = await screen.findByRole('slider', { name: 'Rotation (°)' });

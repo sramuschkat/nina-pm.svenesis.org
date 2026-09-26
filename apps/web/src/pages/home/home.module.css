@@ -1,5 +1,6 @@
-/* Startseite als Übersicht (AP-26c): Kopf wie die Arbeitsseiten, Karten im Raster (3 Spalten ab 1280 px,
-   2 Spalten darunter; Mindestbreite 768 px ohne horizontales Scrollen). */
+/* Startseite als Übersicht (AP-26c, Stilsystem AP-26d): Seitenkopf, Kennzahlen (4 Kacheln ab 1280 px,
+   darunter 2), zwei Spalten (2 : 1 ab 1280 px, darunter eine); Karten als Fläche ohne farbige Kante,
+   Kopf mit Titel links und Link rechts. Mindestbreite 768 px ohne horizontales Scrollen. */
 .page {
   composes: page from '../admin/admin.module.css';
 }
@@ -13,79 +14,130 @@
   composes: iconButton from '../equipment/equipment.module.css';
 }
 
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-3);
-}
-.titleBlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-  margin-right: auto;
-  min-width: 0;
-}
-.titleBlock h1 {
-  margin: 0;
-  font-size: var(--npm-font-h2);
-}
-
-.grid {
+/* Kennzahlen */
+.kpis {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--npm-space-5);
-  align-items: stretch;
-}
-.wide,
-.side {
-  grid-column: 1 / -1;
+  gap: var(--npm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 @media (min-width: 1280px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  /* Aktive Projekte über zwei Spalten, Letzte Sessions rechts daneben über beide Zeilen. */
-  .wide {
-    grid-column: 1 / span 2;
-  }
-  .side {
-    grid-column: 3;
-    grid-row: 1 / span 2;
+  .kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-
-.card {
-  background: var(--npm-white);
-  border-radius: var(--npm-radius);
-  box-shadow: var(--npm-shadow);
-  border-top: 4px solid var(--npm-accent);
-  padding: var(--npm-space-5);
+.tile {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
   min-width: 0;
 }
-.cardTitle {
+.tileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: calc(var(--npm-row-h) + 4px);
+  height: calc(var(--npm-row-h) + 4px);
+  border-radius: var(--npm-radius);
+  background: var(--npm-selected-bg);
+  color: var(--npm-link);
+}
+.tileText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tileLabel {
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  color: var(--npm-text-light);
+}
+.tileValue {
+  font-size: var(--npm-font-h1);
+  font-weight: 650;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.tileQuiet {
+  font-size: var(--npm-font-base);
+  line-height: 1.7;
+  color: var(--npm-text-light);
+}
+.tileSub {
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  overflow-wrap: anywhere;
+}
+
+/* Zwei Spalten */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (min-width: 1280px) {
+  .columns {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  min-width: 0;
+}
+.column:empty {
+  display: none;
+}
+
+/* Karte: Kopf mit Titel und Link, Inhalt bündig (Tabelle) oder mit Innenabstand (`cardBody`). */
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+  min-width: 0;
+  overflow: clip;
+}
+.cardHead {
   display: flex;
   align-items: center;
   gap: var(--npm-space-2);
-  margin: 0;
-  font-size: var(--npm-font-h3);
+  padding: var(--npm-space-3) var(--npm-space-4);
 }
-.cardBody {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
+.cardTitle {
   flex: 1 1 auto;
   min-width: 0;
+  margin: 0;
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
 }
 .more {
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
-  align-self: flex-start;
-  font-weight: 600;
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: 0 var(--npm-space-4) var(--npm-space-4);
+  min-width: 0;
 }
 
 .skeleton {
@@ -95,9 +147,6 @@
   background: var(--npm-skeleton);
 }
 
-.summary {
-  font-weight: 600;
-}
 .list {
   list-style: none;
   margin: 0;
@@ -184,41 +233,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Aktive Projekte je Rig */
-.rigGroups {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-4);
-}
-.rigGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-}
-.rigName {
-  margin: 0;
-  font-size: var(--npm-font-small);
-  color: var(--npm-text-light);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.projectRow {
-  display: grid;
-  grid-template-columns: minmax(8em, 1.4fr) minmax(80px, 1fr) max-content max-content max-content;
-  align-items: center;
-  gap: var(--npm-space-2) var(--npm-space-3);
-}
+/* Aktive Projekte: Tabelle je Rig */
 .projectName {
-  min-width: 0;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
-.progress {
-  min-width: 0;
+.progressCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 120px;
 }
-.numbers {
-  color: var(--npm-text-light);
-  font-size: var(--npm-font-small);
-  font-variant-numeric: tabular-nums;
-  text-align: end;
-  white-space: nowrap;
+.progressCell > :first-child {
+  flex: 1 1 auto;
+  min-width: 80px;
 }

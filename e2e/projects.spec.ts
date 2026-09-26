@@ -3,7 +3,7 @@
  * Zeile per Schnelleingabe ergänzen, Kopf ändern und mit `If-Match` speichern; 412 bei parallelem
  * Speichern; Nachtdiagramm-Vorschau; User sieht ein fremdes Projekt nicht bearbeitbar; axe in beiden
  * Themes; 768/2400 px ohne horizontales Scrollen; drei Bereiche mit Reitern (AP-26b): bei 1280 × 800
- * Kopf und alle drei Reiterleisten ohne Scrollen sichtbar.
+ * Kopf und alle drei Reiterleisten ohne Scrollen sichtbar; *Löschen* im ⋯-Menü (AP-26d).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -161,4 +161,13 @@ test('S-31 bei 1280 × 800: Kopf und alle drei Reiterleisten ohne Scrollen sicht
   );
   await page.getByRole('tab', { name: 'Himmelslage' }).click();
   await expect(page.getByRole('img', { name: /^Himmelslage von NGC 281/ })).toBeVisible();
+
+  // Stilsystem (AP-26d): *Löschen* im ⋯-Menü des Kopfs, Bestätigung per Dialog, Esc zurück zum Knopf.
+  const more = page.getByRole('button', { name: 'Weitere Aktionen', exact: true });
+  await more.click();
+  await page.getByRole('menuitem', { name: 'Löschen' }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(more).toBeFocused();
 });

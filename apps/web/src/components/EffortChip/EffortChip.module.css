@@ -1,15 +1,15 @@
+/* Weiches Kennzeichen ohne Punkt (Stilsystem AP-26d): getönte Fläche statt Rahmen. */
 .chip {
   display: inline-flex;
   align-items: center;
   gap: var(--npm-space-1);
   padding: 0 var(--npm-space-2);
-  min-height: calc(var(--npm-row-h) * 0.65);
+  min-height: 22px;
   border-radius: 999px;
-  font-size: var(--npm-font-small);
+  font-size: var(--npm-font-label);
   font-weight: 600;
   white-space: nowrap;
-  border: 1px solid currentColor;
-  background: var(--npm-white);
+  background: var(--npm-neutral-bg);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -23,18 +23,21 @@
 }
 .success {
   color: var(--npm-success);
+  background: var(--npm-success-bg);
 }
 .info {
-  color: var(--npm-link);
+  color: var(--npm-info);
+  background: var(--npm-info-bg);
 }
 .danger {
   color: var(--npm-danger);
+  background: var(--npm-danger-bg);
 }
 .violet {
   color: var(--npm-violet);
 }
 .muted {
-  color: var(--npm-muted);
+  color: var(--npm-text-light);
   font-weight: 400;
 }
 .stale {
@@ -44,7 +47,6 @@
 .skeleton {
   color: var(--npm-text-light);
   background: var(--npm-skeleton);
-  border-color: var(--npm-skeleton);
   font-weight: 400;
 }
 .retry {

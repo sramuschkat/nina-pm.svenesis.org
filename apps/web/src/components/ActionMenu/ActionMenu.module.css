@@ -1,0 +1,58 @@
+/* ⋯-Menü (components.md §2.15): ruhiger Symbolknopf, Einträge in Steuerhöhe, Gefahr in Gefahrenfarbe. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--npm-row-h);
+  height: var(--npm-row-h);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.trigger:hover,
+.trigger[data-state='open'] {
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
+}
+.sm {
+  width: 28px;
+  height: 28px;
+  border-color: transparent;
+  background: transparent;
+}
+.menu {
+  min-width: 180px;
+  padding: var(--npm-space-1);
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  z-index: 300;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  color: var(--npm-text);
+  font-size: var(--npm-font-base);
+  cursor: pointer;
+  outline: none;
+}
+.item[data-highlighted] {
+  background: var(--npm-neutral-bg);
+}
+.item[data-disabled] {
+  color: var(--npm-muted);
+  cursor: default;
+}
+.danger {
+  color: var(--npm-danger);
+}
+.danger[data-highlighted] {
+  background: var(--npm-danger-bg);
+}
