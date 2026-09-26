@@ -5726,6 +5726,7 @@ components:
           enum:
             - approval
             - change
+            - change_request
         action:
           type: string
         userId:
@@ -6062,6 +6063,8 @@ components:
             - "null"
         version:
           type: integer
+        changeRequest:
+          $ref: "#/components/schemas/ChangeRequestInfo"
       required:
         - kind
         - id
@@ -6092,6 +6095,7 @@ components:
         - effort
         - suggestedPriorityPosition
         - version
+        - changeRequest
     QueueVotes:
       type: object
       properties:
@@ -6123,6 +6127,64 @@ components:
         - voters
         - mine
         - mineChangedSince
+    ChangeRequestInfo:
+      type:
+        - object
+        - "null"
+      properties:
+        status:
+          type: string
+          enum:
+            - open
+            - approved
+            - rejected
+            - withdrawn
+        proposal: {}
+        comment:
+          type:
+            - string
+            - "null"
+        baseVersion:
+          type: integer
+        projectVersion:
+          type: integer
+        projectChangedSince:
+          type: boolean
+        diff:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeRequestDiffEntry"
+      required:
+        - status
+        - comment
+        - baseVersion
+        - projectVersion
+        - projectChangedSince
+        - diff
+    ChangeRequestDiffEntry:
+      type: object
+      properties:
+        field:
+          type: string
+        lineId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        lineLabel:
+          type:
+            - string
+            - "null"
+        current: {}
+        proposed: {}
+        unchanged:
+          type: boolean
+      required:
+        - field
+        - lineId
+        - lineLabel
+        - unchanged
     JobAccepted:
       type: object
       properties:
@@ -6156,6 +6218,242 @@ components:
           maxItems: 500
       required:
         - items
+      additionalProperties: false
+    ChangeRequestView:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - open
+            - approved
+            - rejected
+            - withdrawn
+        proposal: {}
+        comment:
+          type:
+            - string
+            - "null"
+        baseVersion:
+          type: integer
+        projectVersion:
+          type: integer
+        projectChangedSince:
+          type: boolean
+        diff:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeRequestDiffEntry"
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        requestedBy:
+          type: string
+          format: uuid
+          description: UUID
+        requestedByName:
+          type: string
+        version:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        updatedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        decidedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        decidedByName:
+          type:
+            - string
+            - "null"
+        decisionComment:
+          type:
+            - string
+            - "null"
+      required:
+        - status
+        - comment
+        - baseVersion
+        - projectVersion
+        - projectChangedSince
+        - diff
+        - id
+        - projectId
+        - projectName
+        - requestedBy
+        - requestedByName
+        - version
+        - createdAt
+        - updatedAt
+        - decidedAt
+        - decidedByName
+        - decisionComment
+    ChangeRequestInput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        proposal:
+          $ref: "#/components/schemas/ChangeRequestProposal"
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+          default: null
+      required:
+        - proposal
+      additionalProperties: false
+    ChangeRequestProposal:
+      type: object
+      properties:
+        descriptionMd:
+          type: string
+          maxLength: 20000
+        startDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        dueDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        conditions:
+          type: object
+          properties:
+            minAltitudeDeg:
+              type: number
+              minimum: 0
+              maximum: 90
+            minTimeOnTargetH:
+              type: number
+              exclusiveMinimum: 0
+              maximum: 24
+            twilight:
+              type: string
+              enum:
+                - astronomical
+                - nautical
+                - civil
+            moonAvoidanceEnabled:
+              type: boolean
+            moonMustBeDown:
+              type: boolean
+            moonSeparationDeg:
+              type: number
+              minimum: 0
+              maximum: 180
+            moonWidthDays:
+              type: number
+              minimum: 0
+            moonRelaxScale:
+              type: number
+              minimum: 0
+            moonMinAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxAltDeg:
+              type: number
+              minimum: -90
+              maximum: 90
+            moonMaxIlluminationPct:
+              type: number
+              minimum: 0
+              maximum: 100
+          additionalProperties: false
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeRequestLineChange"
+          maxItems: 200
+          default: []
+        newLines:
+          type: array
+          items:
+            $ref: "#/components/schemas/LineCreate"
+          maxItems: 50
+          default: []
+      additionalProperties: false
+    ChangeRequestLineChange:
+      type: object
+      properties:
+        lineId:
+          type: string
+          format: uuid
+          description: UUID
+        plannedCount:
+          type: integer
+          minimum: 0
+          maximum: 100000
+        enabled:
+          type: boolean
+      required:
+        - lineId
+      additionalProperties: false
+    ChangeRequestList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChangeRequestView"
+      required:
+        - items
+    ChangeRequestUpdate:
+      type: object
+      properties:
+        proposal:
+          $ref: "#/components/schemas/ChangeRequestProposal"
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+          default: null
+      required:
+        - proposal
+      additionalProperties: false
+    ChangeRequestDecision:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+            - approved
+            - rejected
+        comment:
+          type:
+            - string
+            - "null"
+          maxLength: 4000
+          default: null
+        projectVersion:
+          type: integer
+          minimum: 1
+      required:
+        - decision
+        - projectVersion
       additionalProperties: false
     MultiSimInput:
       type: object
@@ -18415,7 +18713,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
-          description: approval.not_allowed
+          description: approval.not_allowed / change_request.not_open
           content:
             application/problem+json:
               schema:
@@ -18505,6 +18803,382 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/change-requests:
+    post:
+      summary: Änderungsantrag für ein freigegebenes Projekt stellen
+      tags:
+        - approval
+      description: "Aktion: `changeRequest.create` · FA-FRG-08"
+      x-npm-action: changeRequest.create
+      x-npm-requirements:
+        - FA-FRG-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRequestInput"
+      responses:
+        "201":
+          description: Gestellt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: approval.not_allowed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    get:
+      summary: Änderungsanträge eines Projekts
+      tags:
+        - approval
+      description: "Aktion: `project.read` · FA-FRG-08, FA-FRG-12"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-FRG-08
+        - FA-FRG-12
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Anträge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/change-requests/{id}:
+    get:
+      summary: Änderungsantrag mit Gegenüberstellung
+      tags:
+        - approval
+      description: "Aktion: `queue.read` · FA-FRG-08"
+      x-npm-action: queue.read
+      x-npm-requirements:
+        - FA-FRG-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Antrag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      summary: Offenen Änderungsantrag bearbeiten
+      tags:
+        - approval
+      description: "Aktion: `changeRequest.update` · FA-FRG-08, FA-FRG-14"
+      x-npm-action: changeRequest.update
+      x-npm-requirements:
+        - FA-FRG-08
+        - FA-FRG-14
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Antrags; abweichend → 412"
+          required: false
+          description: "`version` des Antrags; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRequestUpdate"
+      responses:
+        "200":
+          description: Gespeichert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: change_request.not_open
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/change-requests/{id}/withdraw:
+    post:
+      summary: Änderungsantrag zurückziehen (Antragsteller)
+      tags:
+        - approval
+      description: "Aktion: `changeRequest.update` · FA-FRG-08"
+      x-npm-action: changeRequest.update
+      x-npm-requirements:
+        - FA-FRG-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Antrags; abweichend → 412"
+          required: false
+          description: "`version` des Antrags; abweichend → 412"
+          name: if-match
+          in: header
+      responses:
+        "200":
+          description: Zurückgezogen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: change_request.not_open
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/change-requests/{id}/decide:
+    post:
+      summary: Änderungsantrag annehmen oder ablehnen
+      tags:
+        - approval
+      description: "Aktion: `queue.decide` · FA-FRG-08, FA-FRG-10"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-FRG-08
+        - FA-FRG-10
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            description: "`version` des Antrags; abweichend → 412"
+          required: false
+          description: "`version` des Antrags; abweichend → 412"
+          name: if-match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRequestDecision"
+      responses:
+        "200":
+          description: Entschieden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeRequestView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: change_request.conflict / change_request.not_open / approval.own_object
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "412":
+          description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

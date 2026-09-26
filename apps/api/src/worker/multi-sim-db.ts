@@ -1,5 +1,6 @@
 /** Anbindung der Jobs `multi_sim`/`impact` an Datenbank, Nacht-Tabelle und Wetter-Cache (Rolle `app_job`). */
 import {
+  ChangeRequestRepository,
   EquipmentRepository,
   latestWeather,
   ProjectRepository,
@@ -46,6 +47,19 @@ export function multiSimDbDeps(
     async loadProject(tenantId, projectId) {
       const d = await new ProjectRepository(await database(), { tenantId }).detail(projectId);
       return d ? projectView(d) : null;
+    },
+    async loadChangeRequest(tenantId, id) {
+      const db = await database();
+      const row = await db
+        .selectFrom('changeRequest')
+        .select(['id', 'status'])
+        .where('tenantId', '=', tenantId)
+        .where('id', '=', id)
+        .executeTakeFirst();
+      if (row?.status !== 'open') return null;
+      const r = await new ChangeRequestRepository(db, { tenantId }).byId(id);
+      const d = await new ProjectRepository(db, { tenantId }).detail(r.row.projectId);
+      return d ? { project: projectView(d), proposal: r.proposal } : null;
     },
     nights: (site, now, from, count) => siteNights(site, now, from, count),
     async weather(site, now) {

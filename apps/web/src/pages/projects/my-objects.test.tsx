@@ -152,7 +152,12 @@ describe('S-32 Meine Objekte', () => {
       'Zoe, Max',
     );
     fireEvent.click(screen.getByRole('button', { name: '„Zweites“ nach oben' }));
-    await waitFor(() => expect(state.ranking).toHaveBeenCalledWith([ID(102), ID(101)]));
+    await waitFor(() =>
+      expect(state.ranking).toHaveBeenCalledWith([
+        { kind: 'project', id: ID(102) },
+        { kind: 'project', id: ID(101) },
+      ]),
+    );
     await expectNoSeriousA11y();
   });
 

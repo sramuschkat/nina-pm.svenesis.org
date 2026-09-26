@@ -975,3 +975,74 @@ tr[data-dragging='true'] {
 .impact p {
   margin: 0;
 }
+/* Änderungsanträge (AP-32b): Gegenüberstellung alt/neu, Antragskarten, Formular. */
+.diffTable {
+  composes: table from '../equipment/equipment.module.css';
+}
+.diffTable tbody th {
+  text-align: start;
+  font-weight: 600;
+}
+.diffTable tr[data-unchanged='true'] td {
+  color: var(--npm-muted);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.crList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  min-width: 0;
+}
+.crHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.crForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+}
+.crGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.crLineRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 7rem auto;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.crNewLine {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  align-items: end;
+  gap: var(--npm-space-2);
+}
+/* Warteschlange: Reiter nach Art ohne eigenen Innenabstand (AP-32b). */
+.kindPanel {
+  padding: 0;
+}

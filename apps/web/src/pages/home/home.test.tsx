@@ -356,7 +356,7 @@ describe('Startseite (Mandant)', () => {
       'true',
     );
     fireEvent.click(within(queue).getByRole('button', { name: 'Für „Objekt 1“ stimmen' }));
-    await waitFor(() => expect(state.vote).toHaveBeenCalledWith(ID(101), true));
+    await waitFor(() => expect(state.vote).toHaveBeenCalledWith(ID(101), true, 'project'));
     expect(within(queue).getByRole('link', { name: 'Zur Warteschlange' })).toHaveAttribute(
       'href',
       '/projekte/warteschlange',

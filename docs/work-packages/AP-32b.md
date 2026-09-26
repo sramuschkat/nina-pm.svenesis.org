@@ -26,6 +26,22 @@ Koordinaten, Panels und Rig ändert weiterhin nur der Admin.
 - Warteschlange mit Anträgen (Stimmen, Rang, Benachrichtigungen), Reiter *Änderungsanträge* mit alt/neu,
   Auswirkungsvorschau für Anträge
 
+## Umsetzung (26.09.2026)
+- Ein Antrag ist ein eigener Eintrag der Warteschlange (`kind: change-request`, Version des Antrags, Stimmen,
+  Rang in der gemeinsamen Rangfolge des Einreichers) mit Gegenüberstellung gegen die **aktuelle** Fassung
+  (`QueueItem.changeRequest`); die Plan-Chips zeigen den Plan „mit Antrag“.
+- Annehmen wendet die beantragten Felder in **einer** Transaktion an (`ProjectRepository.patchIn/patchLineIn/
+  addLineIn`, Änderungsprotokoll und Projektversion wie beim Bearbeiten); die Entscheidung trägt die gesehene
+  Projektversion (`409 change_request.conflict`, sonst) und die Antragsversion (`If-Match`, 412).
+- Zurückziehen nur durch den Antragsteller (Admins lehnen ab); Ablehnen mit Pflichtkommentar und
+  Bestätigungsdialog; eigene Anträge eines Admins wie eigene Objekte (FA-FRG-10).
+- Freigabe-Verlauf (FA-FRG-12): „Änderungsantrag gestellt/angenommen/abgelehnt/zurückgezogen“ aus der
+  Antragszeile (keine Migration – `approval_event.action` hat einen festen CHECK).
+- Oberfläche: Projekt-Editor Reiter *Änderungsanträge* (Antrag stellen/bearbeiten/zurückziehen: Anzahl und
+  aktiv je Zeile, neue Zeilen, Mindesthöhe, Mindestzeit, Dämmerung, Start/Fällig, Beschreibung, Begründung);
+  Warteschlange Reiter *Alle | Einreichungen | Änderungsanträge*, Entscheidung mit Gegenüberstellung und
+  Auswirkungsvorschau; *Meine Objekte* mit Anträgen in der Rangliste.
+
 ## Automatisierte Abnahme
 - [ ] Konflikt bei geänderter Version (Antrag 412, Entscheidung 409)
 - [ ] CI grün, Changelog, AP- und Anforderungs-IDs im PR

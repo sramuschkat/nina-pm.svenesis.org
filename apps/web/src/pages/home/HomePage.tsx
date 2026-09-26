@@ -364,7 +364,8 @@ function QueueCard() {
   });
   // Stimme wie in S-33 (FA-FRG-14): gleicher Aufruf, gleicher Cache; eigene Objekte gesperrt.
   const vote = useMutation({
-    mutationFn: ({ id, on }: { id: string; on: boolean }) => approvalApi.vote(id, on),
+    mutationFn: ({ id, on, kind }: { id: string; on: boolean; kind: QueueItem['kind'] }) =>
+      approvalApi.vote(id, on, kind),
     onSuccess: () => client.invalidateQueries({ queryKey: QUEUE_KEY }),
   });
   const meId = me?.member?.id ?? '';
@@ -388,7 +389,7 @@ function QueueCard() {
                   item={q}
                   own={q.createdBy === meId}
                   voting={vote.isPending}
-                  onVote={(on) => vote.mutate({ id: q.id, on })}
+                  onVote={(on) => vote.mutate({ id: q.id, on, kind: q.kind })}
                 />
               ))}
             </ul>

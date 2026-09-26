@@ -712,6 +712,25 @@ async function projectExamples(): Promise<Record<string, Example>> {
     ).site_id;
     const clearNight = `/api/web/v1/sites/${siteId}/clear-nights/2026-09-10`;
     const clearVotes = () => admin().query('DELETE FROM queue_vote WHERE subject_id = $1', [S]);
+    // Änderungsantrag des Einreichers zum freigegebenen Session-Projekt (AP-32b).
+    const cr = await stack.services
+      .repositories({ tenantId: world.tenantA, memberId: submitter })
+      .changeRequests()
+      .create(
+        SP,
+        {
+          proposal: { lines: [{ lineId: spLine, plannedCount: 50 }], newLines: [] },
+          comment: null,
+        },
+        stack.clock.now(),
+      );
+    const crId = cr.row.id;
+    const crRes = { tenantId: world.tenantA, createdBy: submitter, status: 'open' };
+    const reopen = () =>
+      admin().query(
+        "UPDATE change_request SET status = 'open', decided_by = NULL, decided_at = NULL, submitter_rank = 1 WHERE id = $1",
+        [crId],
+      );
     return {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
       'GET /api/web/v1/dso': { url: '/api/web/v1/dso?q=M%2031' },
@@ -890,6 +909,45 @@ async function projectExamples(): Promise<Record<string, Example>> {
             warnings: [],
           },
         },
+      },
+      'POST /api/web/v1/projects/{id}/change-requests': {
+        url: `/api/web/v1/projects/${SP}/change-requests`,
+        method: 'POST',
+        okStatus: 201,
+        body: { proposal: { lines: [{ lineId: spLine, enabled: false }] }, comment: null },
+        resource: { tenantId: world.tenantA, createdBy: submitter, approvalStatus: 'approved' },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'GET /api/web/v1/projects/{id}/change-requests': {
+        url: `/api/web/v1/projects/${SP}/change-requests`,
+        resource: { tenantId: world.tenantA, createdBy: submitter, approvalStatus: 'approved' },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'GET /api/web/v1/change-requests/{id}': {
+        url: `/api/web/v1/change-requests/${crId}`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'PATCH /api/web/v1/change-requests/{id}': {
+        url: `/api/web/v1/change-requests/${crId}`,
+        method: 'PATCH',
+        body: { proposal: { lines: [{ lineId: spLine, plannedCount: 60 }] }, comment: 'mehr Ha' },
+        resource: crRes,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      // Zurückziehen darf nur der Antragsteller (kein Persona) – Admins lehnen ab statt zurückzuziehen.
+      'POST /api/web/v1/change-requests/{id}/withdraw': {
+        url: `/api/web/v1/change-requests/${crId}/withdraw`,
+        method: 'POST',
+        resource: crRes,
+        okStatus: 403,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/change-requests/{id}/decide': {
+        url: `/api/web/v1/change-requests/${crId}/decide`,
+        method: 'POST',
+        body: { decision: 'rejected', comment: 'nicht jetzt', projectVersion: 1 },
+        reset: reopen,
+        expect: { 'fremder Mandant (Admin)': 404 },
       },
       'POST /api/web/v1/simulations/multi': {
         url: '/api/web/v1/simulations/multi',

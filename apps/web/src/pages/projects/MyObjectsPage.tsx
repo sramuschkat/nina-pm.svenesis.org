@@ -3,13 +3,20 @@
  * *Eingereicht* die ziehbare Rangliste (Griff, Rang, Objekt, Stimmen, Frist) mit Pfeilen als
  * Tastaturweg und *Zurückziehen*; sonst Karten mit Fortschritt, Plan je Filter, letztem Kommentar der
  * Freigabe und – für Entwürfe und zurückgegebene Objekte – *Einreichen*. Prognose folgt mit AP-13e.
+ * Offene Änderungsanträge (AP-32b) stehen mit in der Rangliste (FA-FRG-15).
  */
 import { approvalStatuses, type ApprovalStatus } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { approvalApi, projectsApi, type ProjectListItem, type QueueItem } from '../../api/client';
+import {
+  approvalApi,
+  changeRequestsApi,
+  projectsApi,
+  type ProjectListItem,
+  type QueueItem,
+} from '../../api/client';
 import { useAuth } from '../../auth';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
@@ -104,12 +111,18 @@ function RankedList({
   const [dragId, setDragId] = useState<string | null>(null);
   const ids = entries.map((e) => e.id);
   const refresh = () => client.invalidateQueries({ queryKey: ['projects'] });
+  const kindOf = new Map(entries.map((e) => [e.id, e.kind]));
   const ranking = useMutation({
-    mutationFn: (order: string[]) => approvalApi.ranking(order),
+    mutationFn: (order: string[]) =>
+      approvalApi.ranking(order.map((id) => ({ kind: kindOf.get(id) ?? 'project', id }))),
     onSuccess: refresh,
   });
+  // Offene Änderungsanträge (AP-32b) teilen sich die Rangfolge; Zurückziehen über den Antrag.
   const withdraw = useMutation({
-    mutationFn: (e: QueueItem) => approvalApi.withdraw(e.id, e.version),
+    mutationFn: async (e: QueueItem): Promise<unknown> =>
+      e.kind === 'change-request'
+        ? changeRequestsApi.withdraw(e.id, e.version)
+        : approvalApi.withdraw(e.id, e.version),
     onSuccess: refresh,
   });
   if (loading) return <p role="status">{t('common.loading')}</p>;
@@ -128,7 +141,7 @@ function RankedList({
       )}
       <ol className={styles.rankList} aria-label={t('myObjects.ranking')}>
         {entries.map((e, index) => {
-          const project = projects.find((p) => p.id === e.id);
+          const project = projects.find((p) => p.id === e.projectId);
           return (
             <li
               key={e.id}
@@ -145,7 +158,10 @@ function RankedList({
               </span>
               <span className={styles.rankNo}>{index + 1}</span>
               <span className={styles.rankName}>
-                <Link to={`/projekte/${e.id}`}>{e.name}</Link>
+                <Link to={`/projekte/${e.projectId}`}>{e.name}</Link>
+                {e.kind === 'change-request' ? (
+                  <span className={styles.muted}> · {t('changeRequests.badge')}</span>
+                ) : null}
               </span>
               <span title={e.votes.voters.map((v) => v.displayName).join(', ')}>
                 {t('myObjects.votes', { count: e.votes.count })}

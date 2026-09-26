@@ -185,7 +185,7 @@ describe('S-33 Auswirkungsvorschau', () => {
     state.impact.mockResolvedValue({ jobId: ID(97) });
     state.jobStatus = 'done';
     state.result = impact;
-    wrap(<ImpactPanel projectId={ID(20)} />);
+    wrap(<ImpactPanel id={ID(20)} />);
     fireEvent.click(screen.getByRole('button', { name: 'Auswirkung berechnen' }));
     await waitFor(() => expect(state.impact).toHaveBeenCalledWith('project', ID(20)));
     expect(
