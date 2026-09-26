@@ -24,9 +24,11 @@ on:
 permissions:
   contents: read
 
+# In PRs ersetzt ein neuer Push den laufenden Lauf. Auf `main` läuft jeder Push vollständig: Landen zwei PRs
+# kurz nacheinander, würde ein Abbruch den ersten Lauf rot melden („Shards: cancelled“).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
