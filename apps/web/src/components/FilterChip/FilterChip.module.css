@@ -2,7 +2,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px;
+  /* Alle Filtermarken gleich breit (AP-26k, Wunsch Sven 26.09.2026): Platz für vier breite Großbuchstaben
+     (Kürzel sind höchstens vier Zeichen, `MAX_CHARS`); nur ein ungewöhnlich breites Kürzel wird breiter. */
+  box-sizing: border-box;
+  min-width: calc(3.3em + 2 * var(--npm-space-2) + 4px);
   padding: 0 var(--npm-space-2);
   border-radius: calc(var(--npm-radius) / 2);
   font-weight: 700;

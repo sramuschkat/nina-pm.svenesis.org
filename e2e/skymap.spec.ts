@@ -58,8 +58,22 @@ test('S-20: Bildfeld ziehen, Koordinaten folgen; Neues Projekt übernimmt Framin
 test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
   await testLogin(page, 'user1');
   await page.goto(ORION);
-  await page.getByRole('tab', { name: 'Ebenen', exact: true }).click();
+  // AP-26k: Seitenbereich tatsächlich rechts neben der Karte (gleiche Oberkante), Objektbereich darunter.
   const aside = page.getByRole('complementary', { name: 'Bildfeld, Mosaik und Ebenen' });
+  const mapBox = await page
+    .getByRole('img', { name: 'Sternkarte mit Bildfeld des Rigs' })
+    .boundingBox();
+  const sideBox = await aside.boundingBox();
+  const belowBox = await page
+    .getByRole('region', { name: 'Gewähltes Objekt und Nacht' })
+    .boundingBox();
+  expect(mapBox && sideBox && belowBox).toBeTruthy();
+  if (mapBox && sideBox && belowBox) {
+    expect(sideBox.x).toBeGreaterThanOrEqual(mapBox.x + mapBox.width - 1);
+    expect(Math.abs(sideBox.y - mapBox.y)).toBeLessThan(40);
+    expect(belowBox.y).toBeGreaterThan(mapBox.y + mapBox.height - 1);
+  }
+  await page.getByRole('tab', { name: 'Ebenen', exact: true }).click();
   await aside.getByRole('tab', { name: 'Overlays' }).click();
   // Der Zustand steht in der URL; das Häkchen folgt nach der Navigation.
   await aside.getByRole('checkbox', { name: 'Galaktisch' }).click();
