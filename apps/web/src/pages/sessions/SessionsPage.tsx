@@ -22,7 +22,7 @@ import styles from './sessions.module.css';
 
 export const SESSIONS_PATH = '/auswertung/sessions';
 
-/** Bereichsreiter der Auswertung für `PageHeader.nav`: Sessions (S-60) und Klarnacht-Statistik (S-64). */
+/** Bereichsreiter der Auswertung für `PageHeader.nav`: Sessions (S-60), Folgeplanung (S-62), Klarnacht-Statistik (S-64). */
 export function EvaluationTabs() {
   const { t } = useTranslation();
   return (
@@ -30,6 +30,7 @@ export function EvaluationTabs() {
       label={t('sessions.tabsLabel')}
       tabs={[
         { to: SESSIONS_PATH, label: t('sessions.title') },
+        { to: '/auswertung/folgeplanung', label: t('forecast.title') },
         { to: '/auswertung/klarnacht', label: t('clearNights.title') },
       ]}
     />

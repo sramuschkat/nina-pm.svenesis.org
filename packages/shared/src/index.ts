@@ -19,3 +19,4 @@ export * from './session-log';
 export * from './session-kpis';
 export * from './multi-sim';
 export * from './change-requests';
+export * from './forecast';

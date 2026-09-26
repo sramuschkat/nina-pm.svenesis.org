@@ -949,6 +949,17 @@ async function projectExamples(): Promise<Record<string, Example>> {
         reset: reopen,
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'GET /api/web/v1/forecast': {
+        url: `/api/web/v1/forecast?rigId=${common.rigId}`,
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/forecast/run': {
+        url: '/api/web/v1/forecast/run',
+        method: 'POST',
+        okStatus: 202,
+        body: { rigId: common.rigId },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'POST /api/web/v1/simulations/multi': {
         url: '/api/web/v1/simulations/multi',
         method: 'POST',

@@ -8798,6 +8798,169 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Folgeplanung je Rig: Restbedarf, Prognose, Kandidatennächte, Saisonwarnungen
+         * @description Aktion: `project.read` · FA-FOL-01, FA-FOL-02, FA-FOL-03, FA-FOL-04, S-62
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUID */
+                    rigId: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Prognose */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ForecastView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/forecast/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mehrnacht-Prognose für den Standort des Rigs neu berechnen (Job forecast)
+         * @description Aktion: `simulation.run` · FA-FOL-02, FA-FOL-05, TK 13
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description UUID
+                         */
+                        rigId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Job angelegt bzw. schon offen */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JobAccepted"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/nina-instances": {
         parameters: {
             query?: never;
@@ -15260,6 +15423,132 @@ export interface components {
                 durationS?: number;
                 message?: string;
             }[];
+        };
+        ForecastView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            rigName: string;
+            siteTimeZone: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            computedAt: string | null;
+            nights: components["schemas"]["ForecastNight"][];
+            clearQuota: {
+                rate: number;
+                /** @enum {string} */
+                source: "stats" | "default";
+                recordedNights: number;
+            };
+            projects: components["schemas"]["ForecastProject"][];
+            resume: components["schemas"]["ForecastResume"][];
+        };
+        ForecastNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            darkHours: number | null;
+            weight: number;
+            /** @enum {string} */
+            weightSource: "forecast" | "quota";
+            weather: components["schemas"]["ForecastNightWeather"];
+        };
+        ForecastNightWeather: {
+            nightMean: number | null;
+            ratingIndex: number | null;
+            coverage: number | null;
+            bestWindow: components["schemas"]["WeatherBestWindow"];
+            aerosolMissing: boolean;
+            seeingIncomplete: boolean;
+            incomplete: boolean;
+            precipProbPct: number | null;
+            precipMm: number | null;
+        } | null;
+        ForecastProject: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            priority: number;
+            status: string | null;
+            need: components["schemas"]["ForecastFilterNeed"][];
+            needFrames: number;
+            needHours: number;
+            optimistic: components["schemas"]["ForecastEstimate"];
+            realistic: components["schemas"]["ForecastEstimate"];
+            candidates: components["schemas"]["ForecastCandidate"][];
+            seasonWarning: {
+                achievablePct: number | null;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                seasonEnd: string | null;
+            } | null;
+            suggestions: components["schemas"]["ForecastAction"][];
+        };
+        ForecastFilterNeed: {
+            filter: string;
+            frames: number;
+            hours: number;
+        };
+        ForecastEstimate: {
+            nights: number | null;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            completesNight: string | null;
+            extrapolated: boolean;
+        };
+        ForecastCandidate: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            frames: number;
+            hours: number;
+            benefit: number;
+            /** @enum {string} */
+            light: "green" | "yellow" | "red";
+            filters: {
+                filter: string;
+                frames: number;
+            }[];
+        };
+        ForecastAction: {
+            /** @enum {string} */
+            kind: "raise_priority" | "pause" | "reduce_frames" | "other_rig" | "next_year";
+            oneClick: boolean;
+        };
+        ForecastResume: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            status: string;
+            needFrames: number;
+            target: {
+                raDeg: number;
+                decDeg: number;
+            } | null;
+            conditions: {
+                minAltitudeDeg: number;
+                minTimeOnTargetH: number;
+                /** @enum {string} */
+                twilight: "astronomical" | "nautical" | "civil";
+            };
         };
         NinaInstanceView: {
             /**

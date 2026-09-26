@@ -26,7 +26,8 @@ import { effortJobHandler, effortSiteTick } from '../worker/effort';
 import { effortDbDeps } from '../worker/effort-db';
 import { s3JobResultStore } from '../files/job-results';
 import { impactJobHandler, multiSimJobHandler } from '../worker/multi-sim';
-import { multiSimDbDeps } from '../worker/multi-sim-db';
+import { forecastDbDeps, multiSimDbDeps } from '../worker/multi-sim-db';
+import { forecastJobHandler, forecastSiteTick } from '../worker/forecast';
 import {
   sessionCloseHandler,
   sessionReportHandler,
@@ -126,6 +127,7 @@ const jobs: JobRunnerDeps = {
     thumbnail: thumbnailJobHandler(thumbnails),
     multi_sim: multiSimJobHandler(multiSim),
     impact: impactJobHandler(multiSim),
+    forecast: forecastJobHandler(forecastDbDeps(async () => (await lambdaDatabase()).db)),
   },
 };
 
@@ -169,6 +171,11 @@ const maintenance = {
   reconcileSiteNights: async () => {
     const runs = await reconcileSiteTick(effort, jobs, new Date());
     logger.info('reconcile_site_nights', { runs });
+    return runs;
+  },
+  forecastSiteNights: async () => {
+    const runs = await forecastSiteTick(effort, jobs, new Date());
+    logger.info('forecast_site_nights', { runs });
     return runs;
   },
   effortSiteNights: async () => {

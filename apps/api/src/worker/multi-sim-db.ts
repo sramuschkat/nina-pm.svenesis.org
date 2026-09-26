@@ -2,6 +2,7 @@
 import {
   ChangeRequestRepository,
   EquipmentRepository,
+  replaceForecast,
   latestWeather,
   ProjectRepository,
   type OpenDatabase,
@@ -11,6 +12,7 @@ import { siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
 import { projectView } from '../routes/web-projects';
 import { weatherView } from '../weather/view';
+import type { ForecastDeps } from './forecast';
 import type { MultiSimDeps } from './multi-sim';
 
 type Db = OpenDatabase['db'];
@@ -71,5 +73,28 @@ export function multiSimDbDeps(
       return out;
     },
     putResult,
+  };
+}
+
+/** Anbindung des Jobs `forecast` (AP-33): Rigs des Standorts, Rig-Kontext wie `multi_sim`, Speichern. */
+export function forecastDbDeps(database: () => Promise<Db>): ForecastDeps {
+  const base = multiSimDbDeps(database, () => Promise.reject(new Error('kein Ergebnis')));
+  return {
+    loadRig: base.loadRig,
+    nights: base.nights,
+    async rigIdsOfSite(tenantId, siteId) {
+      const rows = await (
+        await database()
+      )
+        .selectFrom('rig')
+        .select('id')
+        .where('tenantId', '=', tenantId)
+        .where('siteId', '=', siteId)
+        .orderBy('id')
+        .execute();
+      return rows.map((r) => r.id);
+    },
+    replace: async (tenantId, rigId, rows, now) =>
+      replaceForecast(await database(), tenantId, rigId, rows, now),
   };
 }

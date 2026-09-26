@@ -416,6 +416,17 @@ export const approvalApi = {
   drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
 };
 
+export type ForecastView = Schemas['ForecastView'];
+export type ForecastProject = Schemas['ForecastProject'];
+
+/** Folgeplanung S-62 (AP-33): gespeicherte Mehrnacht-Prognose je Rig und Neuberechnung (Job `forecast`). */
+export const forecastApi = {
+  get: (rigId: string) =>
+    apiFetch<ForecastView>(`${V1}/forecast?rigId=${encodeURIComponent(rigId)}`),
+  run: (rigId: string) =>
+    apiFetch<{ jobId: string }>(`${V1}/forecast/run`, json('POST', { rigId })),
+};
+
 export type ChangeRequestView = Schemas['ChangeRequestView'];
 export type ChangeRequestDiffEntry = Schemas['ChangeRequestDiffEntry'];
 export type ChangeRequestProposal = Schemas['ChangeRequestProposal'];

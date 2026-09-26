@@ -25,11 +25,12 @@ export function useJob<T>(jobId: string | null) {
     staleTime: Infinity,
   });
   const failed = job.data?.status === 'failed';
+  const finished = job.data?.status === 'done' || failed;
   return {
     job,
     result,
-    /** Läuft noch (angelegt, wartend oder in Arbeit). */
-    running: jobId !== null && !failed && !ready && !job.isError,
+    /** Läuft noch (angelegt, wartend oder in Arbeit); Jobs ohne Ergebnisdatei sind mit `done` fertig. */
+    running: jobId !== null && !finished && !job.isError,
     failed,
     errorCode: job.data?.errorCode ?? null,
   };

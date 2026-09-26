@@ -12,6 +12,8 @@ export interface MaintenanceDeps {
   readonly effortSiteNights?: () => Promise<number>;
   /** Verwaiste Sessions, Metrik `StaleRunningSessions`, fällige Session-Jobs (AP-15, `tick-5min`). */
   readonly sessions?: () => Promise<unknown>;
+  /** Mehrnacht-Prognose je Standort und Nacht nach dem lokalen Mittag (AP-33, NT-08, `tick-hourly`). */
+  readonly forecastSiteNights?: () => Promise<number>;
   /** Zähler-Abgleich je Standort und Nacht nach dem lokalen Mittag (AP-15, NT-08, `tick-hourly`). */
   readonly reconcileSiteNights?: () => Promise<number>;
   /** Astro-Wetter je Standort aktiver Mandanten → `weather_cache` (AP-23, `tick-hourly`). */
@@ -56,6 +58,14 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
             {
               name: 'effort_site_nights',
               run: async () => void (await maintenance.effortSiteNights?.()),
+            },
+          ]
+        : []),
+      ...(maintenance?.forecastSiteNights
+        ? [
+            {
+              name: 'forecast_site_nights',
+              run: async () => void (await maintenance.forecastSiteNights?.()),
             },
           ]
         : []),
