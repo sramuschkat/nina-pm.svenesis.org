@@ -1,0 +1,23 @@
+/* Vorschaubild mit großer Fassung beim Überfahren (components.md §2.16, AP-26h). */
+.thumb {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.preview {
+  position: fixed;
+  z-index: 50;
+  padding: var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.18);
+  pointer-events: none;
+}
+.preview img {
+  display: block;
+  width: 320px;
+  height: 320px;
+  object-fit: cover;
+  border-radius: var(--npm-radius);
+  background: var(--npm-skeleton);
+}

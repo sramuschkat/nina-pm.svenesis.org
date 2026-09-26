@@ -127,14 +127,19 @@
   padding: var(--npm-space-2) var(--npm-space-3);
   background: var(--npm-surface-sub);
   min-width: 0;
-  font-size: var(--npm-font-small);
+  /* Deutlich kleiner (Wunsch Sven 26.09.2026): 11 px, Titel 13 px. */
+  font-size: calc(11px * var(--npm-font-scale));
+  line-height: 1.35;
+}
+.card :is(p, dl, ul, span, label) {
+  font-size: inherit;
 }
 .card[data-selected='true'] {
   border-color: var(--card-color, var(--npm-accent));
 }
 .card h3 {
   margin: 0 0 var(--npm-space-1);
-  font-size: var(--npm-font-base, 14px);
+  font-size: var(--npm-font-small);
 }
 .cardTitle {
   display: flex;
@@ -300,7 +305,13 @@
   min-height: 20px;
 }
 .logBox .log tbody tr:hover td {
+  background: var(--npm-surface-sub);
+}
+/* Zeile zur Uhrzeit des Schiebers (AP-26h). */
+.logBox .log tbody tr[data-selected='true'] td {
   background: var(--npm-selected-bg);
+  color: var(--npm-link);
+  font-weight: 700;
 }
 .badge,
 .badgeError {

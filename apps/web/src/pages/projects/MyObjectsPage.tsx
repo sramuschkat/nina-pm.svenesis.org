@@ -22,6 +22,7 @@ import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import { FilterPlan } from './ProjectListPage';
 import { ProjectsLayout } from './ProjectsLayout';
 import { SubmitPanel } from './SubmitPanel';
+import { ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
 
 const MINE_KEY = ['projects', 'mine'] as const;
@@ -238,6 +239,7 @@ function ObjectCard({ project: p }: { project: ProjectListItem }) {
     <article className={styles.objectCard} aria-label={p.name}>
       <div className={styles.cardMain}>
         <h3 className={styles.cardTitle}>
+          <ProjectThumb thumbnailUrl={p.thumbnailUrl} primaryId={p.dsoPrimaryId} name={p.name} />
           <Link to={`/projekte/${p.id}`}>{p.name}</Link>
           <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
           {p.status ? <StatusBadge kind="project" value={p.status} size="sm" /> : null}

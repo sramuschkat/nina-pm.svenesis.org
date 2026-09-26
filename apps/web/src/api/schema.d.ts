@@ -13357,6 +13357,8 @@ export interface components {
             projectType: "deep_sky" | "exoplanet";
             targetName: string | null;
             targetType: string | null;
+            dsoPrimaryId: string | null;
+            thumbnailUrl: string | null;
             /**
              * Format: uuid
              * @description UUID

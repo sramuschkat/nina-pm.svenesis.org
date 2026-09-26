@@ -1,0 +1,10 @@
+/* Kleines Vorschaubild in Projektlisten (AP-26h): 40 px, quadratisch, Platzhalter gleicher Größe. */
+.small,
+.empty {
+  display: block;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: calc(var(--npm-radius) / 1.5);
+  background: var(--npm-skeleton);
+}

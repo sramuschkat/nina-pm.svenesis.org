@@ -248,6 +248,15 @@ describe('S-40 Nacht-Simulator', () => {
       target: { value: String(Date.parse('2026-09-18T08:00:00Z') / 1000) },
     });
     expect(screen.getByText(/Was macht das Rig um 03:00 CDT\?/)).toBeInTheDocument();
+    // Das Planprotokoll markiert die Zeile zur Uhrzeit (AP-26h): der letzte Eintrag bis 03:00 CDT.
+    const table = screen.getByRole('table', { name: 'Planprotokoll' });
+    const current = table.querySelectorAll('tr[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    const time = within(current[0] as HTMLElement)
+      .getAllByRole('cell')
+      .map((c) => c.textContent ?? '')
+      .find((x) => /^\d\d:\d\d(:\d\d)? CDT$/.test(x));
+    expect(time && time.slice(0, 5) <= '03:00').toBe(true);
   });
 
   it('Ergebnis zuerst (AP-26b): mit Rig und Nacht zugeklappt, Schalter klappt die Einstellungen auf', async () => {

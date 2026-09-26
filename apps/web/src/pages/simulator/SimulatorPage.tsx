@@ -13,7 +13,7 @@
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import { formatTzAbbr, formatZonedTime, formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import {
@@ -234,6 +234,27 @@ export function SimulatorPage() {
 
   const tz = site?.timeZone ?? 'UTC';
   const result = sim.data ?? null;
+  /**
+   * Zeile des Planprotokolls zur Uhrzeit des Schiebers (AP-26h): der letzte Eintrag, der bis dahin
+   * begonnen hat. Das Protokoll springt dorthin und markiert sie.
+   */
+  const activeRow = useMemo(() => {
+    if (!result || cursor === null) return null;
+    let key: string | null = null;
+    for (const r of result.protocol) if (Date.parse(r.atUtc) / 1000 <= cursor) key = r.key;
+    return key;
+  }, [result, cursor]);
+  const logBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = logBox.current;
+    if (!box || activeRow === null) return;
+    const row = box.querySelector<HTMLElement>(`tr[data-row="${CSS.escape(activeRow)}"]`);
+    if (!row) return;
+    // Nur das Protokoll rollen, nicht die Seite (der Schieber bleibt im Blick).
+    const b = box.getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    box.scrollTop += r.top - b.top - box.clientHeight / 2 + r.height / 2;
+  }, [activeRow]);
   const highlighted = useMemo(
     () =>
       result && picked
@@ -533,12 +554,18 @@ export function SimulatorPage() {
                 </button>
               </div>
             </div>
-            <div className={styles.logBox}>
+            <div className={styles.logBox} ref={logBox}>
               <DataTable
                 className={styles.log}
                 columns={protocolColumns(t, tz)}
                 rows={result.protocol}
                 rowKey={(r) => r.key}
+                rowProps={(r) => ({
+                  'data-row': r.key,
+                  ...(r.key === activeRow
+                    ? { 'data-selected': 'true', 'aria-current': 'true' as const }
+                    : {}),
+                })}
                 rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
                 label={t('simulator.protocol')}
               />
