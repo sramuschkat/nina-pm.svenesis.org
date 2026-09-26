@@ -22,7 +22,7 @@ test('S-21: Suche, Nachtwerte am Rig, Projekt anlegen übernimmt das Katalogobje
   page,
 }) => {
   await testLogin(page, 'user1');
-  await page.goto('/planung/objekte');
+  await page.goto('/planung/objekte?reiter=alle');
   await expect(page.getByRole('heading', { level: 1, name: 'Objektbrowser' })).toBeVisible();
   await page.getByLabel('Suche', { exact: true }).fill('Andromeda');
   const row = page.getByRole('row').filter({ hasText: 'Andromeda Galaxy' }).first();
@@ -66,7 +66,7 @@ test('Katalogsuche im Editor füllt Name, Koordinaten und Typ', async ({ page })
 
 test('S-21 Galerie und Filter nach Anzeigegruppe', async ({ page }) => {
   await testLogin(page, 'user1');
-  await page.goto('/planung/objekte?typ=planetary_nebula&katalog=M&ansicht=galerie');
+  await page.goto('/planung/objekte?reiter=alle&typ=planetary_nebula&katalog=M&ansicht=galerie');
   await expect(page.getByRole('heading', { name: '4 Treffer' })).toBeVisible();
   await expect(page.getByText('M 57')).toBeVisible();
   await expectNoSerious(page, 'S-21 Galerie');
@@ -100,7 +100,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`S-21 ohne serious/critical (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => window.localStorage.setItem('npm.theme', t), theme);
     await testLogin(page, 'owner');
-    await page.goto('/planung/objekte?katalog=M');
+    await page.goto('/planung/objekte?reiter=alle&katalog=M');
     await expect(page.getByRole('heading', { name: /\d+ Treffer/ })).toBeVisible();
     await expectNoSerious(page, `S-21 ${theme}`);
   });
@@ -110,7 +110,7 @@ for (const width of [768, 2400]) {
   test(`S-21 bei ${String(width)} px ohne horizontales Scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await testLogin(page, 'owner');
-    await page.goto('/planung/objekte?katalog=M');
+    await page.goto('/planung/objekte?reiter=alle&katalog=M');
     await expect(page.getByRole('heading', { name: /\d+ Treffer/ })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Nutzbar' })).toBeVisible();
     expect(await overflow(page), `Liste @ ${String(width)}`).toBeLessThanOrEqual(0);

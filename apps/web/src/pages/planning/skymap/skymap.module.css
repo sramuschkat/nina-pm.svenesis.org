@@ -136,9 +136,13 @@
 }
 .main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
   gap: var(--npm-space-3);
   align-items: start;
+}
+/* Seitenbereich zugeklappt (AP-26i): nur der Knopf, die Karte nimmt die Breite. */
+.main[data-side='closed'] {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 .main:fullscreen {
   padding: var(--npm-space-3);
@@ -221,8 +225,9 @@
 .moonInfo {
   font-variant-numeric: tabular-nums;
 }
-/* Seitenbereich mit Reitern *Objekt*, *Bildfeld & Mosaik*, *Ebenen* (AP-26f). */
+/* Seitenbereich mit Reitern *Bildfeld & Mosaik* und *Ebenen* (AP-26f, einklappbar AP-26i). */
 .side {
+  position: relative;
   min-width: 0;
   border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius-card);
@@ -289,4 +294,67 @@
 }
 .swatch[data-category='completed'] {
   background: var(--npm-sky-project-completed);
+}
+/* Knopf zum Ein-/Ausklappen: oben rechts im Seitenbereich, zugeklappt allein in einer schmalen Leiste. */
+.sideToggle {
+  position: absolute;
+  top: var(--npm-space-1);
+  right: var(--npm-space-1);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--npm-radius);
+  background: none;
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.sideToggle:hover {
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
+}
+.side[data-collapsed='true'] {
+  width: 40px;
+  min-height: 40px;
+}
+.side[data-collapsed='true'] .sideToggle {
+  top: var(--npm-space-1);
+  right: var(--npm-space-1);
+}
+/* Die Reiterleiste lässt rechts Platz für den Knopf. */
+.side [role='tablist'] {
+  padding-right: 40px;
+}
+/* Gewähltes Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte in voller Breite (AP-26i). */
+.below {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+}
+@media (max-width: 1279px) {
+  .below {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.belowObject,
+.belowChart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.below .section:first-child,
+.belowChart > .section {
+  padding-top: 0;
+  border-top: 0;
 }

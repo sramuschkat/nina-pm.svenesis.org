@@ -154,7 +154,7 @@ function Where() {
   return <output data-testid="where">{l.pathname + l.search}</output>;
 }
 
-const renderPage = (path = '/planung/objekte') =>
+const renderPage = (path = '/planung/objekte?reiter=alle') =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
@@ -204,7 +204,9 @@ describe('Modell S-21', () => {
   });
 
   it('Anfrage: Nachtwerte nur mit Standort, Bildfeld aus der kleineren Kante', () => {
-    const f = filtersFromParams(new URLSearchParams('sort=usable&stunden=3&bildfeld=1&mag=9,5'));
+    const f = filtersFromParams(
+      new URLSearchParams('reiter=alle&sort=usable&stunden=3&bildfeld=1&mag=9,5'),
+    );
     expect(searchFromFilters(f, { siteId: null, night: null, fovArcmin: null })).toEqual({
       sort: 'name',
       limit: 50,
@@ -233,7 +235,10 @@ describe('Modell S-21', () => {
   it('Beste der Nacht: Bewertung mit Rig-Bildfeld, nur Kandidaten, Familie (FA-FRM-13)', () => {
     const f = filtersFromParams(new URLSearchParams('reiter=beste&familie=nebulae&sort=mag'));
     expect(f).toMatchObject({ tab: 'best', family: 'nebulae' });
-    expect(paramsFromFilters(f).get('reiter')).toBe('beste');
+    // „Beste der Nacht“ ist Standard (AP-26i): in der URL steht nur `reiter=alle`.
+    expect(paramsFromFilters(f).get('reiter')).toBeNull();
+    expect(paramsFromFilters({ ...f, tab: 'all' }).get('reiter')).toBe('alle');
+    expect(filtersFromParams(new URLSearchParams()).tab).toBe('best');
     expect(
       searchFromFilters(f, { siteId: ID(600), night: '2026-10-20', fovArcmin: 114.04 }),
     ).toMatchObject({ sort: 'score', candidates: 'true', rigFovArcmin: 114, family: 'nebulae' });
@@ -321,7 +326,7 @@ describe('S-21 Objektbrowser', () => {
   });
 
   it('Weitere Filter: Chip je aktivem Filter, × entfernt ihn aus URL und Anfrage; Zurücksetzen', async () => {
-    renderPage('/planung/objekte?sternbild=And&mag=8&ansicht=galerie');
+    renderPage('/planung/objekte?reiter=alle&sternbild=And&mag=8&ansicht=galerie');
     await screen.findByText('M 31');
     const more = screen.getByRole('button', { name: 'Weitere Filter' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
@@ -342,7 +347,9 @@ describe('S-21 Objektbrowser', () => {
     await waitFor(() =>
       expect(screen.queryByRole('list', { name: 'Aktive Filter' })).not.toBeInTheDocument(),
     );
-    expect(screen.getByTestId('where')).toHaveTextContent('/planung/objekte?ansicht=galerie');
+    expect(screen.getByTestId('where')).toHaveTextContent(
+      '/planung/objekte?reiter=alle&ansicht=galerie',
+    );
   });
 
   it('mit Rig: Nacht, Nachtwerte in Standortzeit, Mond, nutzbare Stunden, Bildfeld', async () => {
@@ -504,7 +511,7 @@ describe('S-21 Objektbrowser', () => {
   });
 
   it('Galerie: 320 px, bei Fehler 128 px, sonst leeres Feld', async () => {
-    renderPage('/planung/objekte?ansicht=galerie');
+    renderPage('/planung/objekte?reiter=alle&ansicht=galerie');
     const img = await screen.findByRole('img', { name: 'Vorschaubild M 31' });
     expect(img).toHaveAttribute('src', '/catalog/img/ngc-l/ngc224.jpg');
     fireEvent.error(img);

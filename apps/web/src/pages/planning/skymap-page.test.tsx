@@ -172,7 +172,7 @@ beforeEach(() => {
 });
 
 describe('S-20 Sternkarte', () => {
-  it('Karte zuerst (AP-26f): Werkzeugleiste, Seitenreiter Objekt / Bildfeld & Mosaik / Ebenen; Karte als Bild', async () => {
+  it('Karte zuerst (AP-26f/26i): Werkzeugleiste, Objekt unter der Karte, Seitenbereich einklappbar; Karte als Bild', async () => {
     renderPage();
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Sternkarte' }),
@@ -181,17 +181,26 @@ describe('S-20 Sternkarte', () => {
     expect(within(toolbar).getByRole('combobox', { name: 'Katalogsuche' })).toBeInTheDocument();
     expect(within(toolbar).getByLabelText('Uhrzeit')).toBeInTheDocument();
     expect(within(toolbar).getByRole('button', { name: 'Jetzt' })).toBeInTheDocument();
-    const side = screen.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
-    expect(within(side).getByRole('tab', { name: 'Objekt' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    // AP-26i: Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte; rechts nur Bildfeld & Ebenen.
+    const below = screen.getByRole('region', { name: 'Gewähltes Objekt und Nacht' });
     expect(
-      within(side).getByRole('heading', { level: 2, name: 'Mitte des Bildfelds' }),
+      within(below).getByRole('heading', { level: 2, name: 'Mitte des Bildfelds' }),
     ).toBeVisible();
-    fireEvent.click(within(side).getByRole('tab', { name: 'Bildfeld & Mosaik' }));
+    const side = screen.getByRole('complementary', { name: 'Bildfeld, Mosaik und Ebenen' });
+    expect(
+      within(side)
+        .getAllByRole('tab')
+        .map((x) => x.textContent),
+    ).toEqual(['Bildfeld & Mosaik', 'Ebenen']);
     for (const name of ['Ausrüstung', 'Bildfeld', 'Mosaik'])
       expect(within(side).getByRole('heading', { level: 2, name })).toBeInTheDocument();
+    // Einklappen: der Seitenbereich nimmt keine Breite mehr, der Knopf holt ihn zurück.
+    fireEvent.click(within(side).getByRole('button', { name: 'Seitenbereich einklappen' }));
+    expect(within(side).queryByRole('tab')).toBeNull();
+    fireEvent.click(
+      within(side).getByRole('button', { name: 'Bildfeld, Mosaik und Ebenen einblenden' }),
+    );
+    expect(within(side).getAllByRole('tab')).toHaveLength(2);
     expect(await screen.findByText('Refraktor 80/480')).toBeInTheDocument();
     expect(screen.getByText('2,8° × 1,9°')).toBeInTheDocument();
     expect(
@@ -286,7 +295,7 @@ describe('S-20 Sternkarte', () => {
     await screen.findByRole('option', { name: /M 42/ });
     fireEvent.keyDown(box, { key: 'Enter' });
     const link = await screen.findByRole('link', { name: 'Neues Projekt mit M 42' });
-    // Das gewählte Objekt steht im Seitenreiter *Objekt*.
+    // Das gewählte Objekt steht unter der Karte (AP-26i).
     expect(screen.getByRole('heading', { level: 2, name: 'M 42' })).toBeVisible();
     await waitFor(() =>
       expect(new URLSearchParams(link.getAttribute('href')?.split('?')[1]).get('objekt')).toBe(
@@ -359,7 +368,7 @@ describe('S-20 Sternkarte', () => {
   it('Reiter Ebenen: Himmelsfotos, Kataloge, Overlays; Foto-Wahl in der URL', async () => {
     renderPage();
     fireEvent.click(await screen.findByRole('tab', { name: 'Ebenen' }));
-    const aside = screen.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
+    const aside = screen.getByRole('complementary', { name: 'Bildfeld, Mosaik und Ebenen' });
     expect(within(aside).getByRole('radio', { name: 'DSS2 Farbe' })).toBeVisible();
     expect(within(aside).queryByRole('checkbox', { name: 'Äquatorial' })).toBeNull();
     fireEvent.click(within(aside).getByRole('tab', { name: 'Overlays' }));

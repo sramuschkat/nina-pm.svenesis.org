@@ -1353,6 +1353,13 @@ export const de = {
       downloadS: 'Download je Belichtung',
     },
     scheduler: {
+      on: 'an',
+      off: 'aus',
+      everyN: 'alle {{n}} Belichtungen',
+      flipSummary: '{{after}}–{{max}} min nach dem Meridian',
+      editInSimulator: 'Im Simulator bearbeiten',
+      movedHint:
+        'Die Scheduler-Einstellungen werden im Nacht-Simulator bearbeitet – dort sieht man sofort, was sie am Plan ändern.',
       title: 'Scheduler-Einstellungen',
       syncHint: 'Änderungen gelten sofort und gehen mit der nächsten Abfrage an NINA.',
       strategySection: 'Verteilung',
@@ -2188,9 +2195,11 @@ export const de = {
   },
   skymap: {
     newProjectWith: 'Neues Projekt mit {{name}}',
-    sideLabel: 'Objekt, Bildfeld und Ebenen',
+    sideLabel: 'Bildfeld, Mosaik und Ebenen',
     side: {
-      object: 'Objekt',
+      object: 'Gewähltes Objekt und Nacht',
+      collapse: 'Seitenbereich einklappen',
+      expand: 'Bildfeld, Mosaik und Ebenen einblenden',
       field: 'Bildfeld & Mosaik',
       layers: 'Ebenen',
       noSelection: 'Kein Objekt gewählt – ein Objekt auf der Karte anklicken oder oben suchen.',
