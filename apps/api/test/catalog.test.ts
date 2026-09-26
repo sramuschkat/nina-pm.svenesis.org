@@ -273,20 +273,24 @@ describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
       }
       return best;
     };
+    const timings: Record<string, number> = {};
     for (const q of ['m31', 'ngc', 'orion', 'sh2-1'])
-      expect(
-        await fastest(() =>
-          searchDso(index, {
-            q,
-            sort: 'name',
-            limit: 50,
-            offset: 0,
-            minAltDeg: 30,
-            twilight: 'astronomical',
-          }),
-        ),
-        q,
-      ).toBeLessThan(300);
+      timings[q] = await fastest(() =>
+        searchDso(index, {
+          q,
+          sort: 'name',
+          limit: 50,
+          offset: 0,
+          minAltDeg: 30,
+          twilight: 'astronomical',
+        }),
+      );
+    console.info(
+      `Suche: ${Object.entries(timings)
+        .map(([q, ms]) => `${q} ${String(Math.round(ms))} ms`)
+        .join(', ')}`,
+    );
+    for (const [q, ms] of Object.entries(timings)) expect(ms, q).toBeLessThan(300);
     clearNightCache();
     const t1 = performance.now();
     const r = await search(`siteId=${siteId}&night=2026-11-15&sort=usable&limit=20`);
