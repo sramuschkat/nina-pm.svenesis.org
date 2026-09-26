@@ -2,6 +2,9 @@ import type { Page } from '@playwright/test';
 
 export const csrf = { 'X-NPM-Request': '1' };
 
+/** Breites Fenster für Inhaltsprüfungen: `DataTable` blendet dann keine Spalte aus (AP-26a). */
+export const WIDE = { width: 2400, height: 1000 };
+
 /** Test-Login (nur lokaler Node-Adapter, TK 17) mit einer Identität aus docs/seed/seed-demo.json. */
 export async function testLogin(page: Page, identityFixture: string): Promise<void> {
   const res = await page.request.post('/api/auth/test-login', {

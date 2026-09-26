@@ -6,7 +6,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { testLogin } from './support';
+import { WIDE, testLogin } from './support';
 
 const ORION =
   '/planung/sternkarte?ra=83.82&dec=-5.39&fov=4&fra=83.82&fdec=-5.39&t=1797368400&foto=keins';
@@ -69,6 +69,7 @@ test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
 });
 
 test('S-21: Beste der Nacht mit Bewertung und Filterempfehlung', async ({ page }) => {
+  await page.setViewportSize(WIDE);
   await testLogin(page, 'user1');
   await page.goto('/planung/objekte?reiter=beste&nacht=2026-12-15&familie=nebulae');
   await expect(page.getByRole('tab', { name: 'Beste der Nacht' })).toHaveAttribute(

@@ -4,7 +4,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { csrf, testLogin } from './support';
+import { WIDE, csrf, testLogin } from './support';
 
 const NIGHT = '2026-09-17';
 const STARFRONT = { latitudeDeg: 31.5471, longitudeDeg: -99.3823, elevationM: 400 };
@@ -109,13 +109,21 @@ test('Mosaik 2×2 aus der Sternkarte → vier Panels, Panel-Liste, Simulator mit
       .map((v) => v.id),
   ).toEqual([]);
 
+  await page.setViewportSize(WIDE);
   await page.goto(`/nina/simulator?rig=${s.rigId}&nacht=${NIGHT}`);
   await expect(page.getByText(/^Plan-Hash sha256:/)).toBeVisible({ timeout: 30_000 });
   // Blöcke je Panel: das Planprotokoll nennt je Belichtung die Panel-Nummer (= NINA-Nummer).
   const rows = page.getByRole('row').filter({ hasText: 'Belichtung' }).filter({ hasText: s.name });
   await expect(rows.first()).toBeVisible();
+  // Spalte über ihren Kopf finden (Spalten niedriger Priorität können ausgeblendet sein, AP-26a).
+  const heads = await page
+    .getByRole('table', { name: 'Planprotokoll' })
+    .getByRole('columnheader')
+    .allTextContents();
+  const panelCol = heads.findIndex((h) => h.startsWith('Panel'));
+  expect(panelCol).toBeGreaterThanOrEqual(0);
   const panels = new Set<string>();
   for (const row of await rows.all())
-    panels.add((await row.getByRole('cell').nth(3).textContent()) ?? '');
+    panels.add((await row.getByRole('cell').nth(panelCol).textContent()) ?? '');
   expect([...panels].sort()).toEqual(['1', '2', '3', '4']);
 });

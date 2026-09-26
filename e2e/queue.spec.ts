@@ -4,7 +4,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { csrf, tableOverflow, testLogin } from './support';
+import { WIDE, csrf, tableOverflow, testLogin } from './support';
 
 async function submittedProject(page: Page, name: string): Promise<string> {
   const rigs = (await (await page.request.get('/api/web/v1/rigs')).json()) as {
@@ -45,7 +45,7 @@ test('S-33: User stimmt ab, Admin gibt frei, Verlauf zeigt die Stimmen', async (
   const name = `E2E-Warteschlange ${String(Date.now())}`;
   const id = await submittedProject(submitter, name);
 
-  const voter = await (await browser.newContext()).newPage();
+  const voter = await (await browser.newContext({ viewport: WIDE })).newPage();
   await testLogin(voter, 'user2');
   await voter.goto('/projekte/warteschlange');
   const row = voter.getByRole('row').filter({ hasText: name });

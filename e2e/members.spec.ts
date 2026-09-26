@@ -32,7 +32,7 @@ test('Owner entzieht Admin-Rechte (ConfirmDialog) und ernennt wieder – wirkt a
   await expect(nav(admin).getByRole('link', { name: 'Administration' })).toBeVisible();
 
   await owner.goto('/verwaltung/mitglieder');
-  await owner.getByRole('button', { name: 'Anton Admin' }).click();
+  await owner.getByRole('button', { name: 'Anton Admin', exact: true }).click();
   await owner.getByRole('button', { name: 'Admin-Rechte entziehen' }).click();
   const dialog = owner.getByRole('alertdialog', {
     name: 'Admin-Rechte von „Anton Admin“ entziehen?',
@@ -46,7 +46,7 @@ test('Owner entzieht Admin-Rechte (ConfirmDialog) und ernennt wieder – wirkt a
     await expect(nav(admin).getByText('Administration')).toHaveCount(0);
     expect((await admin.request.get('/api/web/v1/members')).status()).toBe(403);
   } finally {
-    await owner.getByRole('button', { name: 'Anton Admin' }).click();
+    await owner.getByRole('button', { name: 'Anton Admin', exact: true }).click();
     await owner.getByLabel('Grund (optional, steht im Änderungsprotokoll)').fill('E2E zurück');
     await owner.getByRole('button', { name: 'Zu Admin machen' }).click();
     await expect(owner.getByRole('button', { name: 'Admin-Rechte entziehen' })).toBeVisible();
@@ -63,7 +63,7 @@ test('Sitzungen beenden → das Mitglied erhält bei der nächsten Anfrage 401',
   const user = await pageAs(browser, 'user2');
   expect((await user.request.get('/api/auth/me')).status()).toBe(200);
   await owner.goto('/verwaltung/mitglieder');
-  await owner.getByRole('button', { name: 'Ben Benutzer' }).click();
+  await owner.getByRole('button', { name: 'Ben Benutzer', exact: true }).click();
   await owner.getByRole('button', { name: 'Sitzungen beenden' }).click();
   await owner
     .getByRole('alertdialog', { name: 'Sitzungen von „Ben Benutzer“ beenden?' })
@@ -80,9 +80,9 @@ test('Admin sieht keine Owner-Aktionen; die API lehnt trotzdem ab (403)', async 
   await expect(admin.getByRole('heading', { name: 'Einladen' })).toBeVisible();
   await expect(admin.getByRole('radio', { name: 'Admin' })).toHaveCount(0);
   await expect(admin.getByRole('button', { name: 'User einladen' })).toBeVisible();
-  await admin.getByRole('button', { name: 'Olivia Owner' }).click();
+  await admin.getByRole('button', { name: 'Olivia Owner', exact: true }).click();
   await expect(admin.getByText('Der Owner ist geschützt')).toBeVisible();
-  await admin.getByRole('button', { name: 'Uta User' }).click();
+  await admin.getByRole('button', { name: 'Uta User', exact: true }).click();
   await expect(admin.getByRole('button', { name: 'Sitzungen beenden' })).toBeVisible();
   await expect(admin.getByRole('button', { name: 'Zu Admin machen' })).toHaveCount(0);
   const uta = await memberId(admin, 'Uta User');
@@ -117,7 +117,7 @@ test('Admin ohne 2FA sieht nur User-Aktionen und den Hinweis auth.mfa_required',
       'Zwei-Faktor-Authentifizierung bei Discord erforderlich',
     );
     await owner.goto('/verwaltung/mitglieder');
-    await owner.getByRole('button', { name: 'Uta User' }).click();
+    await owner.getByRole('button', { name: 'Uta User', exact: true }).click();
     await expect(owner.getByText('Rechte ruhen – 2FA fehlt:')).toBeVisible();
   } finally {
     await setRole('user');
@@ -163,7 +163,7 @@ for (const width of [768, 2400]) {
     const owner = await pageAs(browser, 'owner');
     await owner.setViewportSize({ width, height: 900 });
     await owner.goto('/verwaltung/mitglieder');
-    await owner.getByRole('button', { name: 'Anton Admin' }).click();
+    await owner.getByRole('button', { name: 'Anton Admin', exact: true }).click();
     expect(
       await owner.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,

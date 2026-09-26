@@ -29,7 +29,7 @@ test('S-42: Instanz anlegen, Token einmal, Diagnose, Widerruf wirkt sofort', asy
   await page.getByRole('button', { name: 'Fertig' }).click();
   await expect(page.getByText(token)).toHaveCount(0);
 
-  await page.getByRole('button', { name }).click();
+  await page.getByRole('button', { name, exact: true }).click();
   const detail = page.getByRole('region', { name });
   await expect(detail.getByText('GET /bootstrap')).toBeVisible();
   await detail.getByRole('button', { name: 'Widerrufen' }).click();
