@@ -14,3 +14,4 @@ export * from './priority';
 export * from './metrics';
 export * from './catalog';
 export * from './season';
+export * from './thumbnail';

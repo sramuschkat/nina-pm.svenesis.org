@@ -67,12 +67,12 @@ import {
   type Conditions,
   type ProjectDraft,
 } from './model';
-import { CatalogImage } from '../catalog/CatalogImage';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { PanelList } from './PanelList';
 import { ProjectTabs } from './ProjectTabs';
 import { SubmitPanel } from './SubmitPanel';
+import { ProjectImage } from './ProjectImage';
 import styles from './projects.module.css';
 
 export const PROJECT_PATHS = {
@@ -908,17 +908,13 @@ function Editor({
           aria-labelledby={`${topTabsId}-preview`}
           hidden={topTab !== 'preview'}
         >
-          {draft.dsoPrimaryId ? (
-            <CatalogImage
-              primaryId={draft.dsoPrimaryId}
-              name={draft.targetName || draft.name}
-              size="large"
-              className={styles.previewImage}
-              fallback={<div className={styles.preview}>{t('projectEditor.previewLater')}</div>}
-            />
-          ) : (
-            <div className={styles.preview}>{t('projectEditor.previewLater')}</div>
-          )}
+          <ProjectImage
+            thumbnailUrl={saved?.thumbnailUrl}
+            primaryId={draft.dsoPrimaryId}
+            name={draft.targetName || draft.name}
+            className={styles.previewImage}
+            fallback={<div className={styles.preview}>{t('projectEditor.previewLater')}</div>}
+          />
           <dl className={styles.facts}>
             <dt>{t('projectEditor.facts.site')}</dt>
             <dd>{site?.name ?? '–'}</dd>

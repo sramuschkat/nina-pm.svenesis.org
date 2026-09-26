@@ -1073,6 +1073,7 @@ export const de = {
     favoriteFor: '„{{name}}“ als Favorit',
     deleteFor: '„{{name}}“ löschen',
     open: 'Öffnen',
+    frameImageAlt: 'Bildfeld von {{name}} (Himmelsfoto)',
     thumbLater: 'Vorschaubild folgt',
     cardTabs: 'Bereiche der Projektkarte',
     cardTab: {

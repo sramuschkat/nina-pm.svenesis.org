@@ -62,9 +62,9 @@ Zeile:  [ Name, ra, dec, Typ, Großachse′, Kleinachse′, PA, Helligkeit, Ster
 | Pfad (S3) | Inhalt |
 |---|---|
 | **`catalog/img/…`** | die aus dem Website-Ordner **kopierten** Katalogbilder (`img/dso/`, `img/ngc/`, `img/ngc-l/`), unverändert übernommen |
-| **`catalog/thumbs/…`** | die von NINA-PM **selbst erzeugten** Vorschauen des Jobs `thumbnail` (AP-25), 128 px je Katalogzeile und 320 px je Bildkandidat |
+| **`catalog/thumbs/…`** | die von NINA-PM **selbst erzeugten** Vorschauen des Jobs `thumbnail` (AP-25): das **Bildfeld je Projekt** aus hips2fits, `catalog/thumbs/<sha256>.jpg` (TK 12; Entscheidung Sven 26.09.2026 – keine eigenen Bilder je Katalogzeile, die kopierten decken alle Zeilen ab) |
 
-Beide werden über die normalisierte `primary_id` gefunden; ein selbst erzeugtes Bild überschreibt nie ein kopiertes, weil die Pfade getrennt sind. Die Wikipedia-Titel kommen aus dem Website-Auszug und werden als Recherche-Link angezeigt (FA-FRM-14).
+Die kopierten Bilder werden über die normalisierte `primary_id` gefunden, die Vorschauen über `project.thumbnail_s3_key`; ein selbst erzeugtes Bild überschreibt nie ein kopiertes, weil die Pfade getrennt sind. Die Wikipedia-Titel kommen aus dem Website-Auszug und werden als Recherche-Link angezeigt (FA-FRM-14).
 
 ## 3. Filter und Dubletten
 
@@ -106,6 +106,6 @@ Katalogteil der Positivliste aus WS-22; Fundstellen in `astro-tools/tools/verify
 | T-KAT-09 | Bezeichnungen normalisiert | `:369`, `:377` | keine führenden Nullen (`PGC 0…`, `SH 2…`), Sterne benannt (`NGC 1990` → `Alnilam`, `M 73` → `NGC 6994`); keine Sternnummern (`HD`, `HIP`, `WDS`) an Nebeln; keine Bezeichnung eines Objekts an einem anderen (M 102 nicht an M 101) |
 | T-KAT-10 | Objektzahl | `:322`, `:379` | Zeilen getrennt gezählt: **`13.969` aus `NGC.csv`** (Sollwert der Version v20260501; Konzeptstand 13.957) **+ `64`** aus `addendum.csv` (Sollwert = Zeilenzahl derselben Version). Der Test prüft beide Zahlen einzeln und schreibt die Summe `13.969 + 64` in den Importbericht; Abweichung → Test schlägt fehl, die Zahlen werden in FK, TK und Schema-Kommentar nachgezogen (WS-27) |
 | T-KAT-11 | Idempotenz | – (AP-20) | zweiter Importlauf ändert außer `updated_at` keine Zeile; Import bricht bei doppelter `primary_id` ab |
-| T-KAT-12 | Bilder und Vorschauen | `:351`, `:385` | ein 128-px-Bild je Zeile, ein 320-px-Bild je Bildkandidat; Dateinamen aus der normalisierten `primary_id` eindeutig. Geprüft wird **beides getrennt**: kopierte Katalogbilder unter `catalog/img/…`, selbst erzeugte Vorschauen unter `catalog/thumbs/…` (§2, AP-25, H-11) |
+| T-KAT-12 | Bilder und Vorschauen | `:351`, `:385` | ein 128-px-Bild je Zeile, ein 320-px-Bild je Bildkandidat; Dateinamen aus der normalisierten `primary_id` eindeutig. Geprüft wird **beides getrennt**: kopierte Katalogbilder unter `catalog/img/…` (AP-20, H-11), selbst erzeugte Vorschauen unter `catalog/thumbs/<sha256>.jpg` – nie unter `catalog/img/`, Schlüssel eindeutig und stabil (AP-25) |
 
 **Nicht Teil der Importtests** (Negativliste WS-23): alle Prüfungen zu Seitenstruktur, `?v=`-Versionen, HEALPix, Projektion, Sternbinärdatei, Doppelsternen und TLE-Alter sowie die Wikipedia-Weiterleitungstests (`:355`, `:358`, `:371`) – Wikipedia-Titel sind Anzeige und brechen keinen Import.

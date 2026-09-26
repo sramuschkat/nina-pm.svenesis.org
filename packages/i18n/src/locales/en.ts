@@ -1069,6 +1069,7 @@ export const en: Messages = {
     favoriteFor: '“{{name}}” as favourite',
     deleteFor: 'Delete “{{name}}”',
     open: 'Open',
+    frameImageAlt: 'Field of view of {{name}} (sky photo)',
     thumbLater: 'Preview image pending',
     cardTabs: 'Project card sections',
     cardTab: {

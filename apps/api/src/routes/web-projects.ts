@@ -37,6 +37,7 @@ import {
   type Action,
   type AuthContext,
   type ProjectStatus,
+  thumbnailUrl,
 } from '@nina-pm/shared';
 import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
@@ -45,7 +46,7 @@ import { imageScale } from '@nina-pm/shared';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
-import { scheduleEffort } from './effort-trigger';
+import { scheduleProjectJobs } from './effort-trigger';
 import { requireTenant } from './tenant';
 
 const BASE = '/api/web/v1';
@@ -110,6 +111,7 @@ export function projectView(d: ProjectDetail): z.output<typeof ProjectView> {
     targetType: p.targetType,
     dsoObjectId: p.dsoObjectId,
     dsoPrimaryId: d.dsoPrimaryId,
+    thumbnailUrl: p.thumbnailS3Key ? thumbnailUrl(p.thumbnailS3Key) : null,
     catalogNames: p.catalogNames,
     descriptionMd: p.descriptionMd,
     raDeg: p.raDeg,
@@ -613,8 +615,8 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
     const repos = svc.repositories(tenant);
-    /** Aufwand-Kennzeichen neu rechnen (Job `effort`, AP-13e). */
-    const effort = (projectId: string) => scheduleEffort(svc, repos, projectId);
+    /** Aufwand-Kennzeichen (AP-13e) und Vorschaubild (AP-25) neu rechnen. */
+    const effort = (projectId: string) => scheduleProjectJobs(svc, repos, projectId);
     return { svc, auth, repo: repos.projects(), effort };
   };
 

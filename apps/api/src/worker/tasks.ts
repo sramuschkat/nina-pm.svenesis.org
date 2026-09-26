@@ -16,6 +16,8 @@ export interface MaintenanceDeps {
   readonly reconcileSiteNights?: () => Promise<number>;
   /** Astro-Wetter je Standort aktiver Mandanten → `weather_cache` (AP-23, `tick-hourly`). */
   readonly weather?: () => Promise<number>;
+  /** Fehlende Vorschaubilder der Projekte → Jobs `thumbnail` (AP-25, `tick-hourly`). */
+  readonly thumbnails?: () => Promise<number>;
 }
 
 /**
@@ -24,7 +26,7 @@ export interface MaintenanceDeps {
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
  * verwaiste Sessions und legt fällige Session-Jobs an (AP-15). `tick-hourly` holt zuerst das Astro-Wetter
- * je Standort (AP-23).
+ * je Standort (AP-23) und fehlende Vorschaubilder (AP-25).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
@@ -37,6 +39,9 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
     'tick-hourly': [
       ...(maintenance?.weather
         ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
+        : []),
+      ...(maintenance?.thumbnails
+        ? [{ name: 'thumbnails', run: async () => void (await maintenance.thumbnails?.()) }]
         : []),
       ...(maintenance?.expireSubmissions
         ? [

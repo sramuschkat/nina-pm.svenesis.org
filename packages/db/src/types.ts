@@ -359,6 +359,8 @@ export interface ProjectTable {
   effortDetail: Json | null;
   effortInputHash: string | null;
   effortComputedAt: Timestamp | null;
+  /** Vorschaubild des Bildfelds (AP-25): `catalog/thumbs/<sha256>.jpg` im Web-Bucket. */
+  thumbnailS3Key: string | null;
   requestComment: string | null;
   startDate: DateKey | null;
   dueDate: DateKey | null;

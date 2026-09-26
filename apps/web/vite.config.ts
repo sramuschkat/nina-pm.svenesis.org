@@ -20,6 +20,11 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': { target: `http://localhost:${process.env.API_PORT ?? 8787}`, changeOrigin: false },
+      // Vorschaubilder (AP-25): lokal aus dem Speicher der API (prod: CloudFront `/catalog/*`).
+      '/catalog/thumbs': {
+        target: `http://localhost:${process.env.API_PORT ?? 8787}`,
+        changeOrigin: false,
+      },
     },
   },
   preview: { port: 4173, strictPort: true },
