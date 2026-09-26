@@ -431,6 +431,9 @@ export type NightSession = Schemas['NightSession'];
 export type NightSessionDetail = Schemas['NightSessionDetail'];
 export type NightSessionLineRow = Schemas['NightSessionLineRow'];
 export type NightSessionCapture = Schemas['NightSessionCapture'];
+export type NightSessionKpis = Schemas['NightSessionKpis'];
+export type NightSessionReason = Schemas['NightSessionReason'];
+export type CaptureRejectResult = Schemas['CaptureRejectResult'];
 
 /** Sessions und Auswertung R1 (AP-15, S-60/S-61): Liste, Detail, Korrektur, geprüft, Zuordnung. */
 export const sessionsApi = {
@@ -457,6 +460,12 @@ export const sessionsApi = {
     ),
   review: (id: string, reviewed: boolean) =>
     apiFetch<undefined>(`${V1}/sessions/${id}/review`, json('PUT', { reviewed })),
+  /** Einzelne Aufnahme verwerfen bzw. zurücknehmen (FA-AUS-20; Rechte wie Korrektur). */
+  reject: (captureId: string, rejected: boolean, reason: string | null) =>
+    apiFetch<CaptureRejectResult>(
+      `${V1}/captures/${captureId}`,
+      json('PATCH', { rejected, reason }),
+    ),
   /** Nicht zugeordnete Aufnahme einer Zeile zuordnen (FA-AUS-22, Admin). */
   assign: (captureId: string, exposureLineId: string) =>
     apiFetch<undefined>(`${V1}/captures/${captureId}/assign`, json('PATCH', { exposureLineId })),

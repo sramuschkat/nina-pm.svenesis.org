@@ -314,6 +314,19 @@
   "guiding",
   "other"
  ],
+ "deviationReasons": [
+  "center_failed",
+  "block_skipped",
+  "safety_pause",
+  "transit",
+  "autofocus",
+  "meridian_flip",
+  "exposure_aborted",
+  "exposure_failed",
+  "skipped_timeaware",
+  "device_error",
+  "lease_lost"
+ ],
  "transitObservationStatuses": [
   "requested",
   "locked",

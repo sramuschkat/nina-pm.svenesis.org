@@ -678,6 +678,179 @@ export async function applyCorrection(
 }
 
 /**
+ * Einzelne Aufnahme verwerfen bzw. zurücknehmen (`PATCH /web/v1/captures/{id}`, FA-AUS-20, TK 6.6): nur
+ * gespeicherte, zugeordnete Lights (sonst `409 capture.not_rejectable`). In **einer** Transaktion mit
+ * Wächter auf der Zeile: Aufnahme ändern, `capture_night` der Nacht nachführen – Nicht-Bonus nach der
+ * Regel `verworfen = max(Korrektur, einzeln verworfene)` (FA-AUS-06), Bonus in *Bonus verworfen* –,
+ * Integrationszeit mit der **gemeldeten** Belichtung der Aufnahme (NT-E3), der von einer Korrektur ohne
+ * Einzelauswahl abgedeckte Rest mit der Belichtung der Zeile; Zeilenzähler, `project.effort_stale`,
+ * Rückkehr nach *Aktiv* (FA-PRJ-12). Unveränderter Zustand ändert nichts (idempotent).
+ */
+export async function rejectCapture(
+  db: Kysely<Database>,
+  input: {
+    tenantId: string;
+    userId: string;
+    captureId: string;
+    rejected: boolean;
+    reason: string | null;
+  },
+  now: Date,
+): Promise<{
+  captureId: string;
+  rejected: boolean;
+  rejectedCount: number;
+  bonusRejectedCount: number;
+  projectStatus: string | null;
+}> {
+  const target = await db
+    .selectFrom('capture')
+    .select(['exposureLineId'])
+    .where('tenantId', '=', input.tenantId)
+    .where('id', '=', input.captureId)
+    .executeTakeFirst();
+  if (!target) throw new ProblemError('resource.not_found');
+  if (!target.exposureLineId) throw new ProblemError('capture.not_rejectable');
+  const lineId = target.exposureLineId;
+  return withTx(
+    db,
+    async (trx) => {
+      const line = await trx
+        .selectFrom('exposureLine')
+        .select(['id', 'projectId', 'exposureS'])
+        .where('tenantId', '=', input.tenantId)
+        .where('id', '=', lineId)
+        .executeTakeFirst();
+      if (!line) throw new ProblemError('resource.not_found');
+      const c = await trx
+        .selectFrom('capture')
+        .select([
+          'id',
+          'night',
+          'frameType',
+          'result',
+          'assignment',
+          'isBonus',
+          'rejected',
+          'exposureS',
+          'exposureLineId',
+        ])
+        .where('tenantId', '=', input.tenantId)
+        .where('id', '=', input.captureId)
+        .executeTakeFirst();
+      if (!c) throw new ProblemError('resource.not_found');
+      if (
+        c.frameType !== 'light' ||
+        c.result !== 'saved' ||
+        c.assignment !== 'assigned' ||
+        c.exposureLineId !== lineId
+      )
+        throw new ProblemError('capture.not_rejectable');
+      const night = String(c.night);
+      const cn = await trx
+        .selectFrom('captureNight')
+        .selectAll()
+        .where('tenantId', '=', input.tenantId)
+        .where('exposureLineId', '=', lineId)
+        .where('night', '=', night)
+        .executeTakeFirst();
+      const was = Boolean(c.rejected);
+      if (was === input.rejected) {
+        // Nur der Grund kann sich ändern; Zähler bleiben.
+        if (was)
+          await trx
+            .updateTable('capture')
+            .set({ rejectReason: input.reason })
+            .where('tenantId', '=', input.tenantId)
+            .where('id', '=', c.id)
+            .execute();
+        return {
+          captureId: c.id,
+          rejected: was,
+          rejectedCount: Number(cn?.rejectedCount ?? 0),
+          bonusRejectedCount: Number(cn?.bonusRejectedCount ?? 0),
+          projectStatus: null,
+        };
+      }
+      await trx
+        .updateTable('capture')
+        .set({ rejected: input.rejected, rejectReason: input.rejected ? input.reason : null })
+        .where('tenantId', '=', input.tenantId)
+        .where('id', '=', c.id)
+        .execute();
+      const step = input.rejected ? 1 : -1;
+      const exposure = Number(c.exposureS);
+      const lineExposure = Number(line.exposureS);
+      const correction = Number(cn?.rejectedCorrection ?? 0);
+      const individual = Number(cn?.rejectedIndividual ?? 0);
+      const rejectedBefore = Number(cn?.rejectedCount ?? 0);
+      const bonusRejectedBefore = Number(cn?.bonusRejectedCount ?? 0);
+      let individualAfter = individual;
+      let rejectedAfter = rejectedBefore;
+      let bonusRejectedAfter = bonusRejectedBefore;
+      // Integration: die Aufnahme selbst mit ihrer gemeldeten Belichtung; bei Nicht-Bonus ändert sich
+      // zusätzlich der von der Korrektur abgedeckte Rest (max-Regel) mit der Belichtung der Zeile.
+      let integrationDelta = -step * exposure;
+      if (c.isBonus) {
+        bonusRejectedAfter = Math.max(0, bonusRejectedBefore + step);
+      } else {
+        individualAfter = Math.max(0, individual + step);
+        rejectedAfter = Math.max(correction, individualAfter);
+        const restBefore = Math.max(0, rejectedBefore - individual);
+        const restAfter = Math.max(0, rejectedAfter - individualAfter);
+        integrationDelta -= (restAfter - restBefore) * lineExposure;
+      }
+      if (cn)
+        await trx
+          .updateTable('captureNight')
+          .set((eb) => ({
+            rejectedIndividual: individualAfter,
+            rejectedCount: rejectedAfter,
+            bonusRejectedCount: bonusRejectedAfter,
+            integrationS: eb('integrationS', '+', integrationDelta),
+            updatedAt: now,
+          }))
+          .where('tenantId', '=', input.tenantId)
+          .where('exposureLineId', '=', lineId)
+          .where('night', '=', night)
+          .execute();
+      await trx
+        .updateTable('exposureLine')
+        .set((eb) => ({
+          rejectedCount: eb('rejectedCount', '+', rejectedAfter - rejectedBefore),
+          bonusRejectedCount: eb(
+            'bonusRejectedCount',
+            '+',
+            bonusRejectedAfter - bonusRejectedBefore,
+          ),
+          updatedAt: now,
+        }))
+        .where('tenantId', '=', input.tenantId)
+        .where('id', '=', lineId)
+        .execute();
+      await trx
+        .updateTable('project')
+        .set({ effortStale: true })
+        .where('tenantId', '=', input.tenantId)
+        .where('id', '=', line.projectId)
+        .execute();
+      const status = await new ProjectRepository(trx, {
+        tenantId: input.tenantId,
+        memberId: input.userId,
+      }).reactivateAfterCounts(trx, line.projectId, now);
+      return {
+        captureId: c.id,
+        rejected: input.rejected,
+        rejectedCount: rejectedAfter,
+        bonusRejectedCount: bonusRejectedAfter,
+        projectStatus: status,
+      };
+    },
+    { guard: [{ table: 'exposure_line', id: lineId, tenantId: input.tenantId }] },
+  );
+}
+
+/**
  * Nachträgliche Zuordnung (`PATCH /web/v1/captures/{id}/assign`, DAT5-12): Kette gegen den Mandanten
  * (sonst `409 capture.assign_mismatch`), Zähler +1 und `capture_night` anlegen bzw. erhöhen.
  */

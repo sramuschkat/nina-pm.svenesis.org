@@ -111,6 +111,9 @@ export type PierSide = (typeof pierSides)[number];
 export const rejectReasons = ["clouds","wind","focus","satellite","guiding","other"] as const;
 export type RejectReason = (typeof rejectReasons)[number];
 
+export const deviationReasons = ["center_failed","block_skipped","safety_pause","transit","autofocus","meridian_flip","exposure_aborted","exposure_failed","skipped_timeaware","device_error","lease_lost"] as const;
+export type DeviationReason = (typeof deviationReasons)[number];
+
 export const transitObservationStatuses = ["requested","locked","observed","missed","cancelled"] as const;
 export type TransitObservationStatus = (typeof transitObservationStatuses)[number];
 

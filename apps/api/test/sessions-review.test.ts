@@ -275,6 +275,178 @@ describe('Korrektur (FA-AUS-06, DAT-1)', () => {
   });
 });
 
+describe('Aufnahmen verwerfen (AP-31, FA-AUS-20)', () => {
+  interface Counts {
+    acquired_count: number;
+    rejected_count: number;
+    rejected_individual: number;
+    rejected_correction: number;
+    bonus_count: number;
+    bonus_rejected_count: number;
+    integration_s: number;
+  }
+  it('Regel max ohne Doppelabzug, Bonus verworfen, gemeldete Belichtung; Abgleich findet nichts', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    // Eine gespeicherte Aufnahme als Bonus kennzeichnen, Zähler per Abgleich nachziehen.
+    const lights = await t.q<{ id: string; exposure_s: number; night: string }>(
+      `SELECT id, exposure_s, night::text AS night FROM capture WHERE exposure_line_id = $1
+         AND frame_type = 'light' AND result = 'saved' ORDER BY captured_at`,
+      [t.lineId],
+    );
+    expect(lights.length).toBeGreaterThanOrEqual(4);
+    const bonus = lights.at(-1) as { id: string };
+    await t.q('UPDATE capture SET is_bonus = true WHERE id = $1', [bonus.id]);
+    await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+    const night = lights[0]?.night as string;
+    const counts = async () =>
+      (
+        await t.q<Counts>(
+          `SELECT acquired_count, rejected_count, rejected_individual, rejected_correction, bonus_count,
+                  bonus_rejected_count, integration_s::float AS integration_s
+             FROM capture_night WHERE exposure_line_id = $1 AND night = $2`,
+          [t.lineId, night],
+        )
+      )[0] as Counts;
+    const line = async () =>
+      (
+        await t.q<{ rejected_count: number; bonus_rejected_count: number }>(
+          'SELECT rejected_count, bonus_rejected_count FROM exposure_line WHERE id = $1',
+          [t.lineId],
+        )
+      )[0];
+    const reject = (id: string, rejected: boolean, reason: string | null = 'clouds') =>
+      t.web(`/captures/${id}`, { method: 'PATCH', body: { rejected, reason } });
+    const base = await counts();
+    const deviating = lights.find((l) => Number(l.exposure_s) === 330) as { id: string };
+    const plain = lights.filter((l) => Number(l.exposure_s) === 300 && l.id !== bonus.id);
+    const [p1, p2] = plain as unknown as [{ id: string }, { id: string }];
+
+    // 1) Einzeln verwerfen: gemeldete 330 s.
+    const r1 = await reject(deviating.id, true);
+    expect(r1.status).toBe(200);
+    expect(r1.body).toMatchObject({ rejected: true, rejectedCount: 1, bonusRejectedCount: 0 });
+    let c = await counts();
+    expect(c.rejected_individual).toBe(1);
+    expect(c.integration_s).toBeCloseTo(base.integration_s - 330, 3);
+    // Idempotent.
+    expect((await reject(deviating.id, true)).body).toMatchObject({ rejectedCount: 1 });
+    expect((await counts()).integration_s).toBeCloseTo(c.integration_s, 3);
+
+    // 2) Korrektur 2 über der Untergrenze 1: Rest mit Zeilenbelichtung 300 s.
+    const sessionId = (
+      await t.q<{ session_id: string }>('SELECT session_id FROM capture WHERE id = $1', [p1.id])
+    )[0]?.session_id as string;
+    const corr = await t.web(`/sessions/${sessionId}/corrections`, {
+      method: 'POST',
+      body: { exposureLineId: t.lineId, rejected: 2 },
+    });
+    expect(corr.body.rejectedCount).toBe(2);
+    c = await counts();
+    expect(c.integration_s).toBeCloseTo(base.integration_s - 330 - 300, 3);
+
+    // 3) Zweite Aufnahme einzeln: von der Korrektur schon abgedeckt – kein Doppelabzug.
+    expect((await reject(p1.id, true)).body).toMatchObject({ rejectedCount: 2 });
+    c = await counts();
+    expect([c.rejected_individual, c.rejected_count]).toEqual([2, 2]);
+    expect(c.integration_s).toBeCloseTo(base.integration_s - 330 - 300, 3);
+    // Korrektur unter der Untergrenze → 409.
+    const low = await t.web(`/sessions/${sessionId}/corrections`, {
+      method: 'POST',
+      body: { exposureLineId: t.lineId, rejected: 1 },
+    });
+    expect([low.status, low.body.code]).toEqual([409, 'correction.conflict']);
+
+    // 4) Dritte einzeln: jetzt 3 > Korrektur.
+    expect((await reject(p2.id, true)).body).toMatchObject({ rejectedCount: 3 });
+    // 5) Erste zurücknehmen: max(2, 2) = 2; Integration +330, Korrektur-Rest bleibt 0.
+    expect((await reject(deviating.id, false)).body).toMatchObject({ rejectedCount: 2 });
+    c = await counts();
+    expect(c.integration_s).toBeCloseTo(base.integration_s - 600, 3);
+
+    // 6) Bonus verwerfen: zählt nur in *Bonus verworfen*.
+    const rb = await reject(bonus.id, true, 'satellite');
+    expect(rb.body).toMatchObject({ rejectedCount: 2, bonusRejectedCount: 1 });
+    c = await counts();
+    expect(c.bonus_rejected_count).toBe(1);
+    expect(await line()).toMatchObject({ rejected_count: 2, bonus_rejected_count: 1 });
+    const [cap] = await t.q<{ rejected: boolean; reject_reason: string }>(
+      'SELECT rejected, reject_reason FROM capture WHERE id = $1',
+      [bonus.id],
+    );
+    expect(cap).toEqual({ rejected: true, reject_reason: 'satellite' });
+    const [proj] = await t.q<{ effort_stale: boolean }>(
+      'SELECT effort_stale FROM project WHERE id = $1',
+      [t.pid],
+    );
+    expect(proj?.effort_stale).toBe(true);
+
+    // Der Abgleich aus den Aufnahmen kommt zu denselben Zählern.
+    const check = await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+    expect(check).toMatchObject({ linesFixed: 0, rowsFixed: 0 });
+
+    // Detail: Kennzeichen und Grund je Aufnahme, Bonus verworfen je Zeile.
+    const bonusSession = (
+      await t.q<{ session_id: string }>('SELECT session_id FROM capture WHERE id = $1', [bonus.id])
+    )[0]?.session_id as string;
+    const detail = await t.web(`/sessions/${bonusSession}`);
+    const shown = (detail.body.captures as Body[]).find((x) => x.id === bonus.id);
+    expect(shown).toMatchObject({ rejected: true, rejectReason: 'satellite', isBonus: true });
+    expect((detail.body.rows as Body[])[0]).toMatchObject({ bonusRejected: 1 });
+  });
+
+  it('nicht verwerfbar: nicht zugeordnet; Rechte wie Korrektur (User nur mit Mandanteneinstellung)', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    const [unassigned] = await t.q<{ id: string }>(
+      "SELECT id FROM capture WHERE assignment = 'unassigned' LIMIT 1",
+    );
+    const bad = await t.web(`/captures/${unassigned?.id as string}`, {
+      method: 'PATCH',
+      body: { rejected: true },
+    });
+    expect([bad.status, bad.body.code]).toEqual([409, 'capture.not_rejectable']);
+    expect(
+      (await t.web(`/captures/${id()}`, { method: 'PATCH', body: { rejected: true } })).status,
+    ).toBe(404);
+    const [own] = await t.q<{ id: string }>(
+      "SELECT id FROM capture WHERE exposure_line_id = $1 AND result = 'saved' LIMIT 1",
+      [t.lineId],
+    );
+    const asUser = () =>
+      t.web(`/captures/${own?.id as string}`, {
+        method: 'PATCH',
+        body: { rejected: true, reason: 'focus' },
+        as: 'user',
+      });
+    expect((await asUser()).status).toBe(403);
+    await t.web('/tenant/settings', {
+      method: 'PATCH',
+      body: { settings: { userCorrections: true } },
+    });
+    expect((await asUser()).status).toBe(200);
+  });
+});
+
+describe('Kennzahlen und Abweichungsgründe (AP-31, FA-AUS-04/05/09)', () => {
+  it('Detail trägt KPIs aus Plan, Aufnahmen und Ereignissen', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    const items = (await t.web('/sessions')).body.items as Body[];
+    const online = items.find((x) => x.createdOffline === false) as Body;
+    const d = (await t.web(`/sessions/${online.id as string}`)).body;
+    const kpis = d.kpis as Body;
+    const [sum] = await t.q<{ s: number }>(
+      "SELECT COALESCE(sum(exposure_s), 0)::float AS s FROM capture WHERE session_id = $1 AND frame_type = 'light' AND result = 'saved'",
+      [online.id],
+    );
+    expect(kpis.exposureS).toBeCloseTo(Number(sum?.s), 3);
+    expect(kpis.plan).toMatchObject({ plannedFrames: expect.any(Number) });
+    expect(typeof kpis.filterChanges).toBe('number');
+    expect(Array.isArray(d.reasons)).toBe(true);
+  });
+});
+
 describe('reconcile (NT-08)', () => {
   const jobs = () => ({
     queue: () => Promise.resolve(new JobQueue(s.pg.db)),

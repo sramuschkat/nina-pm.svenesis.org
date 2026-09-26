@@ -205,3 +205,13 @@
   width: 100%;
   background: var(--npm-success);
 }
+/* Reiter Kennzahlen (AP-31, S-61). */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--npm-space-3) var(--npm-space-4);
+}
+.subTitle {
+  margin: var(--npm-space-2) 0 0;
+  font-size: var(--npm-font-h3);
+}

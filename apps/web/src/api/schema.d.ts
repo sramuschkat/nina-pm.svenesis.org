@@ -8820,6 +8820,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/captures/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Einzelne Aufnahme verwerfen bzw. zurücknehmen
+         * @description Aktion: `session.correct` · FA-AUS-20, FA-AUS-06, FK 8.4
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CaptureReject"];
+                };
+            };
+            responses: {
+                /** @description Zähler der Zeile in der Nacht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CaptureRejectResult"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description capture.not_rejectable */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/web/v1/sessions/{id}/review": {
         parameters: {
             query?: never;
@@ -11281,7 +11372,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.not_rejectable" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
             requestId?: string;
             errors?: {
                 path: string;
@@ -14424,6 +14515,8 @@ export interface components {
             capturesTruncated: boolean;
             events: components["schemas"]["NightSessionEvent"][];
             flats: components["schemas"]["NightSessionFlat"][];
+            kpis: components["schemas"]["NightSessionKpis"];
+            reasons: components["schemas"]["NightSessionReason"][];
         };
         NightSessionLineRow: {
             /**
@@ -14451,6 +14544,7 @@ export interface components {
             rejectedCorrection: number;
             accepted: number;
             bonus: number;
+            bonusRejected: number;
             integrationS: number;
         };
         NightSessionCapture: {
@@ -14491,6 +14585,8 @@ export interface components {
             temperatureDeviation: boolean;
             settingsDeviation: boolean;
             rejected: boolean;
+            /** @enum {string|null} */
+            rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
             fileName: string | null;
         };
         NightSessionEvent: {
@@ -14519,6 +14615,45 @@ export interface components {
             darkFlatsTaken: number;
             flatExposureS: number | null;
         };
+        NightSessionKpis: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darkFromUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            darkToUtc: string | null;
+            runtimeS: number | null;
+            usableDarkS: number | null;
+            exposureS: number;
+            efficiencyPct: number | null;
+            overhead: {
+                autofocusS: number;
+                flipS: number;
+                otherS: number;
+                pct: number;
+            } | null;
+            safetyPauseS: number;
+            blockChanges: number;
+            filterChanges: number;
+            plan: {
+                plannedFrames: number;
+                plannedExposureS: number;
+                acquiredFrames: number;
+                acquiredExposureS: number;
+                framesPct: number | null;
+                timePct: number | null;
+            } | null;
+        };
+        NightSessionReason: {
+            /** @enum {string} */
+            reason: "center_failed" | "block_skipped" | "safety_pause" | "transit" | "autofocus" | "meridian_flip" | "exposure_aborted" | "exposure_failed" | "skipped_timeaware" | "device_error" | "lease_lost";
+            count: number;
+            durationS: number | null;
+        };
         NightSessionCorrection: {
             /**
              * Format: uuid
@@ -14533,6 +14668,25 @@ export interface components {
             reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
             /** @default null */
             comment: string | null;
+        };
+        CaptureRejectResult: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            captureId: string;
+            rejected: boolean;
+            rejectedCount: number;
+            bonusRejectedCount: number;
+            projectStatus: string | null;
+        };
+        CaptureReject: {
+            rejected: boolean;
+            /**
+             * @default null
+             * @enum {string|null}
+             */
+            reason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
         };
         NightSessionReviewed: {
             reviewed: boolean;

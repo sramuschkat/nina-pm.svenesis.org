@@ -117,6 +117,7 @@ components:
             - rig.change_has_captures
             - correction.conflict
             - site_night.has_session
+            - capture.not_rejectable
             - capture.assign_mismatch
             - line.locked_by_captures
             - nina.night_invalid
@@ -7158,6 +7159,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NightSessionFlat"
+        kpis:
+          $ref: "#/components/schemas/NightSessionKpis"
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionReason"
       required:
         - session
         - rows
@@ -7165,6 +7172,8 @@ components:
         - capturesTruncated
         - events
         - flats
+        - kpis
+        - reasons
     NightSessionLineRow:
       type: object
       properties:
@@ -7212,6 +7221,9 @@ components:
         bonus:
           type: integer
           minimum: 0
+        bonusRejected:
+          type: integer
+          minimum: 0
         integrationS:
           type: number
       required:
@@ -7228,6 +7240,7 @@ components:
         - rejectedCorrection
         - accepted
         - bonus
+        - bonusRejected
         - integrationS
     NightSessionCapture:
       type: object
@@ -7302,6 +7315,18 @@ components:
           type: boolean
         rejected:
           type: boolean
+        rejectReason:
+          type:
+            - string
+            - "null"
+          enum:
+            - clouds
+            - wind
+            - focus
+            - satellite
+            - guiding
+            - other
+            - null
         fileName:
           type:
             - string
@@ -7325,6 +7350,7 @@ components:
         - temperatureDeviation
         - settingsDeviation
         - rejected
+        - rejectReason
         - fileName
     NightSessionEvent:
       type: object
@@ -7390,6 +7416,146 @@ components:
         - darkFlatsPlanned
         - darkFlatsTaken
         - flatExposureS
+    NightSessionKpis:
+      type: object
+      properties:
+        darkFromUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        darkToUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        runtimeS:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        usableDarkS:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        exposureS:
+          type: number
+          minimum: 0
+        efficiencyPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        overhead:
+          type:
+            - object
+            - "null"
+          properties:
+            autofocusS:
+              type: number
+              minimum: 0
+            flipS:
+              type: number
+              minimum: 0
+            otherS:
+              type: number
+              minimum: 0
+            pct:
+              type: number
+              minimum: 0
+              maximum: 100
+          required:
+            - autofocusS
+            - flipS
+            - otherS
+            - pct
+        safetyPauseS:
+          type: number
+          minimum: 0
+        blockChanges:
+          type: integer
+          minimum: 0
+        filterChanges:
+          type: integer
+          minimum: 0
+        plan:
+          type:
+            - object
+            - "null"
+          properties:
+            plannedFrames:
+              type: integer
+              minimum: 0
+            plannedExposureS:
+              type: number
+              minimum: 0
+            acquiredFrames:
+              type: integer
+              minimum: 0
+            acquiredExposureS:
+              type: number
+              minimum: 0
+            framesPct:
+              type:
+                - number
+                - "null"
+              minimum: 0
+            timePct:
+              type:
+                - number
+                - "null"
+              minimum: 0
+          required:
+            - plannedFrames
+            - plannedExposureS
+            - acquiredFrames
+            - acquiredExposureS
+            - framesPct
+            - timePct
+      required:
+        - darkFromUtc
+        - darkToUtc
+        - runtimeS
+        - usableDarkS
+        - exposureS
+        - efficiencyPct
+        - overhead
+        - safetyPauseS
+        - blockChanges
+        - filterChanges
+        - plan
+    NightSessionReason:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+            - center_failed
+            - block_skipped
+            - safety_pause
+            - transit
+            - autofocus
+            - meridian_flip
+            - exposure_aborted
+            - exposure_failed
+            - skipped_timeaware
+            - device_error
+            - lease_lost
+        count:
+          type: integer
+          minimum: 0
+        durationS:
+          type:
+            - number
+            - "null"
+          minimum: 0
+      required:
+        - reason
+        - count
+        - durationS
     NightSessionCorrection:
       type: object
       properties:
@@ -7422,6 +7588,52 @@ components:
           default: null
       required:
         - exposureLineId
+        - rejected
+      additionalProperties: false
+    CaptureRejectResult:
+      type: object
+      properties:
+        captureId:
+          type: string
+          format: uuid
+          description: UUID
+        rejected:
+          type: boolean
+        rejectedCount:
+          type: integer
+          minimum: 0
+        bonusRejectedCount:
+          type: integer
+          minimum: 0
+        projectStatus:
+          type:
+            - string
+            - "null"
+      required:
+        - captureId
+        - rejected
+        - rejectedCount
+        - bonusRejectedCount
+        - projectStatus
+    CaptureReject:
+      type: object
+      properties:
+        rejected:
+          type: boolean
+        reason:
+          type:
+            - string
+            - "null"
+          enum:
+            - clouds
+            - wind
+            - focus
+            - satellite
+            - guiding
+            - other
+            - null
+          default: null
+      required:
         - rejected
       additionalProperties: false
     NightSessionReviewed:
@@ -18495,6 +18707,69 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "409":
           description: correction.conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/captures/{id}:
+    patch:
+      summary: Einzelne Aufnahme verwerfen bzw. zurücknehmen
+      tags:
+        - sessions
+      description: "Aktion: `session.correct` · FA-AUS-20, FA-AUS-06, FK 8.4"
+      x-npm-action: session.correct
+      x-npm-requirements:
+        - FA-AUS-20
+        - FA-AUS-06
+        - FK 8.4
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptureReject"
+      responses:
+        "200":
+          description: Zähler der Zeile in der Nacht
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptureRejectResult"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: capture.not_rejectable
           content:
             application/problem+json:
               schema:

@@ -26,12 +26,15 @@ import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { problemCode } from '../admin/shared';
+import { SessionKpisPanel } from './SessionKpisPanel';
 import { SessionLogPanel } from './SessionLogPanel';
 import styles from './sessions.module.css';
 import { SESSIONS_PATH, SessionTime, hours } from './SessionsPage';
 
-type Tab = 'plan' | 'captures' | 'events' | 'flats' | 'log';
-const TABS: readonly Tab[] = ['plan', 'captures', 'events', 'log', 'flats'];
+type Tab = 'plan' | 'captures' | 'events' | 'flats' | 'log' | 'kpis';
+/** Reihenfolge nach FK 14.3 (S-61). */
+const TABS: readonly Tab[] = ['plan', 'events', 'captures', 'log', 'kpis', 'flats'];
+type CaptureFilter = 'all' | 'deviations' | 'unassigned' | 'rejected';
 
 export function SessionDetailPage() {
   const { t } = useTranslation();
@@ -44,7 +47,7 @@ export function SessionDetailPage() {
   const canReview = useCan('session.review');
   const [tab, setTab] = useState<Tab>('plan');
   const [correctLine, setCorrectLine] = useState<string | null>(null);
-  const [captureFilter, setCaptureFilter] = useState<'all' | 'deviations' | 'unassigned'>('all');
+  const [captureFilter, setCaptureFilter] = useState<CaptureFilter>('all');
   const refresh = () => client.invalidateQueries({ queryKey: ['sessions'] });
   const review = useMutation({
     mutationFn: (reviewed: boolean) => sessionsApi.review(id, reviewed),
@@ -168,6 +171,7 @@ export function SessionDetailPage() {
             events: <Events detail={d} />,
             flats: <Flats detail={d} />,
             log: <SessionLogPanel sessionId={id} siteTimeZone={s.siteTimeZone} />,
+            kpis: <SessionKpisPanel detail={d} />,
           }}
         />
       </section>
@@ -248,6 +252,14 @@ function PlanTable({
       priority: 4,
       align: 'end',
       cell: (r) => r.bonus,
+    },
+    {
+      id: 'bonusRejected',
+      header: t('sessions.plan.col.bonusRejected'),
+      sortValue: (r) => r.bonusRejected,
+      priority: 4,
+      align: 'end',
+      cell: (r) => r.bonusRejected,
     },
     {
       id: 'action',
@@ -423,7 +435,13 @@ function Flags({ c }: { c: NightSessionCapture }) {
       ) : null}
       {c.isBonus ? <span className={styles.pill}>{t('sessions.captures.bonus')}</span> : null}
       {c.rejected ? (
-        <span className={styles.pillDanger}>{t('sessions.captures.rejected')}</span>
+        <span className={styles.pillDanger}>
+          {c.rejectReason
+            ? t('sessions.captures.rejectedWith', {
+                reason: t(`sessions.correction.reasons.${c.rejectReason}`),
+              })
+            : t('sessions.captures.rejected')}
+        </span>
       ) : null}
       {c.assignment === 'unassigned' ? (
         <span className={styles.pillWarn}>{t('sessions.captures.unassignedFlag')}</span>
@@ -439,19 +457,23 @@ function Captures({
   onChanged,
 }: {
   detail: NightSessionDetail;
-  filter: 'all' | 'deviations' | 'unassigned';
-  onFilter: (f: 'all' | 'deviations' | 'unassigned') => void;
+  filter: CaptureFilter;
+  onFilter: (f: CaptureFilter) => void;
   onChanged: () => Promise<unknown>;
 }) {
   const { t } = useTranslation();
   const zone = detail.session.siteTimeZone;
+  const [rejecting, setRejecting] = useState<NightSessionCapture | null>(null);
   const list = detail.captures.filter((c) =>
     filter === 'deviations'
       ? c.temperatureDeviation || c.settingsDeviation
       : filter === 'unassigned'
         ? c.assignment === 'unassigned'
-        : true,
+        : filter === 'rejected'
+          ? c.rejected
+          : true,
   );
+  const ownerOf = new Map(detail.rows.map((r) => [r.projectId, r.projectCreatedBy]));
   const unassigned = detail.captures.filter((c) => c.assignment === 'unassigned');
   // AP-26a: Zeit bleibt immer sichtbar; Kennzeichen und Ergebnis weichen zuerst.
   const captureColumns: DataColumn<NightSessionCapture>[] = [
@@ -511,6 +533,21 @@ function Captures({
       priority: 3,
       cell: (c) => <Flags c={c} />,
     },
+    {
+      id: 'action',
+      header: t('sessions.captures.col.action'),
+      headerHidden: true,
+      nowrap: true,
+      cell: (c) =>
+        c.frameType === 'light' && c.result === 'saved' && c.assignment === 'assigned' ? (
+          <RejectButton
+            capture={c}
+            createdBy={c.projectId ? (ownerOf.get(c.projectId) ?? null) : null}
+            onReject={setRejecting}
+            onChanged={onChanged}
+          />
+        ) : null,
+    },
   ];
   return (
     <>
@@ -521,14 +558,32 @@ function Captures({
             id="captures-filter"
             className={styles.input}
             value={filter}
-            onChange={(e) => onFilter(e.target.value as 'all' | 'deviations' | 'unassigned')}
+            onChange={(e) => onFilter(e.target.value as CaptureFilter)}
           >
             <option value="all">{t('sessions.captures.all')}</option>
             <option value="deviations">{t('sessions.captures.deviations')}</option>
             <option value="unassigned">{t('sessions.captures.unassigned')}</option>
+            <option value="rejected">{t('sessions.captures.onlyRejected')}</option>
           </select>
         </div>
+        <button
+          type="button"
+          className={styles.button}
+          disabled={list.length === 0}
+          onClick={() => downloadCsv(detail, list, zone)}
+        >
+          {t('sessions.captures.csv')}
+        </button>
       </div>
+      {rejecting ? (
+        <RejectForm
+          key={rejecting.id}
+          capture={rejecting}
+          zone={zone}
+          onDone={() => setRejecting(null)}
+          onChanged={onChanged}
+        />
+      ) : null}
       {detail.capturesTruncated ? (
         <p className={styles.muted}>
           {t('sessions.detail.truncated', { count: detail.captures.length })}
@@ -550,6 +605,188 @@ function Captures({
       )}
     </>
   );
+}
+
+/**
+ * *Verwerfen* bzw. *Zurücknehmen* je Aufnahme (FA-AUS-20): Rechte wie bei der Korrektur – Admins immer,
+ * User für eigene Projekte; ob der Mandant das erlaubt, entscheidet die API.
+ */
+function RejectButton({
+  capture,
+  createdBy,
+  onReject,
+  onChanged,
+}: {
+  capture: NightSessionCapture;
+  createdBy: string | null;
+  onReject: (c: NightSessionCapture) => void;
+  onChanged: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation();
+  const allowed = useCan('session.correct', {
+    ...(createdBy ? { createdBy } : {}),
+    settings: { userCorrections: true },
+  });
+  const undo = useMutation({
+    mutationFn: () => sessionsApi.reject(capture.id, false, null),
+    onSettled: onChanged,
+  });
+  if (!allowed) return null;
+  return capture.rejected ? (
+    <button
+      type="button"
+      className={styles.linkButton}
+      disabled={undo.isPending}
+      onClick={() => undo.mutate()}
+    >
+      {t('sessions.captures.unreject')}
+    </button>
+  ) : (
+    <button type="button" className={styles.linkButton} onClick={() => onReject(capture)}>
+      {t('sessions.captures.reject')}
+    </button>
+  );
+}
+
+/** Grund wählen und verwerfen (FA-AUS-20); die Zähler folgen der Regel max (FA-AUS-06). */
+function RejectForm({
+  capture,
+  zone,
+  onDone,
+  onChanged,
+}: {
+  capture: NightSessionCapture;
+  zone: string;
+  onDone: () => void;
+  onChanged: () => Promise<unknown>;
+}) {
+  const { t } = useTranslation();
+  const [reason, setReason] = useState('');
+  const save = useMutation({
+    mutationFn: () => sessionsApi.reject(capture.id, true, reason || null),
+    onSuccess: async () => {
+      await onChanged();
+      onDone();
+    },
+  });
+  return (
+    <form
+      className={styles.form}
+      aria-labelledby="reject-title"
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+    >
+      <h2 id="reject-title">{t('sessions.captures.rejectTitle')}</h2>
+      <p className={styles.muted}>
+        <SiteTime atUtc={capture.capturedAt} siteTimeZone={zone} /> · {capture.projectName ?? '–'} ·{' '}
+        {capture.filterShortName} · {t('sessions.captures.seconds', { s: capture.exposureS })}
+        {capture.isBonus ? ` · ${t('sessions.captures.bonus')}` : ''}
+      </p>
+      <div className={styles.row}>
+        <div className={styles.field}>
+          <label htmlFor="reject-reason">{t('sessions.correction.reason')}</label>
+          <select
+            id="reject-reason"
+            className={`${styles.input} ${styles.rigSelect}`}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          >
+            <option value="">{t('sessions.correction.noReason')}</option>
+            {rejectReasons.map((r) => (
+              <option key={r} value={r}>
+                {t(`sessions.correction.reasons.${r}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className={styles.actions}>
+        <button type="submit" className={styles.buttonPrimary} disabled={save.isPending}>
+          {t('sessions.captures.rejectSubmit')}
+        </button>
+        <button type="button" className={styles.button} onClick={onDone}>
+          {t('sessions.correction.cancel')}
+        </button>
+      </div>
+      {save.error ? <ProblemMessage code={problemCode(save.error)} /> : null}
+    </form>
+  );
+}
+
+/** CSV der angezeigten Aufnahmen (FA-AUS-12), Zeiten in UTC und Standortzeit. */
+function downloadCsv(
+  detail: NightSessionDetail,
+  list: readonly NightSessionCapture[],
+  zone: string,
+) {
+  const local = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: zone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const cell = (v: string | number | boolean | null) => {
+    const text = v === null ? '' : String(v);
+    return /[";\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const head = [
+    'capturedAtUtc',
+    'capturedAtSite',
+    'frameType',
+    'project',
+    'filter',
+    'filterActual',
+    'exposureS',
+    'gain',
+    'offset',
+    'binning',
+    'result',
+    'bonus',
+    'rejected',
+    'rejectReason',
+    'temperatureDeviation',
+    'settingsDeviation',
+    'assignment',
+    'fileName',
+  ];
+  const rows = list.map((c) =>
+    [
+      c.capturedAt,
+      local.format(new Date(Date.parse(c.capturedAt))),
+      c.frameType,
+      c.projectName,
+      c.filterShortName,
+      c.filterActual,
+      c.exposureS,
+      c.gain,
+      c.offset,
+      c.binning,
+      c.result,
+      c.isBonus,
+      c.rejected,
+      c.rejectReason,
+      c.temperatureDeviation,
+      c.settingsDeviation,
+      c.assignment,
+      c.fileName,
+    ]
+      .map(cell)
+      .join(';'),
+  );
+  const blob = new Blob([`\uFEFF${[head.join(';'), ...rows].join('\r\n')}\r\n`], {
+    type: 'text/csv;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `session-${detail.session.night}-${detail.session.rigName.replace(/[^\w-]+/g, '_')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Nicht zugeordnete Aufnahmen einer Zeile zuordnen (FA-AUS-22, Admin); erst dann zählen sie. */
