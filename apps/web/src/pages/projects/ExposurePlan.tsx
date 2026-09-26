@@ -8,6 +8,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Link } from 'react-router';
 import {
   projectsApi,
@@ -20,6 +21,7 @@ import {
   type RigView,
 } from '../../api/client';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
@@ -316,64 +318,32 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
   const [duplicate, setDuplicate] = useState<LineView | null>(null);
   const [deactivate, setDeactivate] = useState(true);
   const [remove, setRemove] = useState<LineView | null>(null);
+  const num = useNumber();
+  const moonLabel = useMoonProfileLabel();
+  const lineColumns = columnsFor(
+    props,
+    run,
+    { t, num, moonLabel },
+    {
+      onDuplicate: (line) => {
+        setDeactivate(true);
+        setDuplicate(line);
+      },
+      onDelete: setRemove,
+    },
+  );
   if (lines.length === 0) return <p className={styles.muted}>{t('projectEditor.plan.empty')}</p>;
   return (
     <>
-      <div className={styles.tableWrap}>
-        <table className={`${styles.table} ${styles.lineTable}`}>
-          <thead>
-            <tr>
-              <th scope="col">{t('projectEditor.plan.col.enabled')}</th>
-              <th scope="col">{t('projectEditor.plan.col.filter')}</th>
-              <th scope="col">{t('projectEditor.plan.col.moon')}</th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.exposure')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.planned')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.acquired')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.rejected')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.accepted')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.bonus')}
-              </th>
-              <th scope="col">{t('projectEditor.plan.col.progress')}</th>
-              <th scope="col">{t('projectEditor.plan.col.gain')}</th>
-              <th scope="col">{t('projectEditor.plan.col.offset')}</th>
-              <th scope="col">{t('projectEditor.plan.col.binning')}</th>
-              <th scope="col">{t('projectEditor.plan.col.readout')}</th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.total')}
-              </th>
-              <th scope="col" className={styles.num}>
-                {t('projectEditor.plan.col.percent')}
-              </th>
-              <th scope="col">{t('projectEditor.plan.col.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <LineRow
-                key={line.id}
-                {...props}
-                line={line}
-                onDuplicate={() => {
-                  setDeactivate(true);
-                  setDuplicate(line);
-                }}
-                onDelete={() => setRemove(line)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        columns={lineColumns}
+        rows={lines}
+        rowKey={(l) => l.id}
+        rowLabel={(l) => l.filterShortName}
+        label={t('projectEditor.plan.title')}
+        rowProps={(l) => ({ 'data-enabled': l.enabled })}
+        className={styles.lineTable}
+      />
       {duplicate ? (
         <div
           className={styles.duplicateBox}
@@ -432,140 +402,124 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
   );
 }
 
-function LineRow({
-  project,
-  line,
-  canEdit,
-  filters,
-  moonProfiles,
-  camera,
-  rig,
-  rigPath,
-  run,
-  onDuplicate,
-  onDelete,
-}: ExposurePlanProps & {
-  line: LineView;
-  run: Run;
-  onDuplicate: () => void;
-  onDelete: () => void;
-}) {
-  const { t } = useTranslation();
-  const num = useNumber();
-  const moonLabel = useMoonProfileLabel();
-  const filter = filters.find((f) => f.id === line.filterId);
-  const name = line.filterShortName;
-  const patch = (body: object) => void run(() => projectsApi.patchLine(project.id, line.id, body));
-  const locked = (field: string) => !canEdit || isLocked(line, field);
+/**
+ * Spalten des Belichtungsplans (AP-26a): bearbeitbar, **nicht** sortierbar (Reihenfolge = NINA-Reihenfolge).
+ * Bei wenig Platz werden Zähler und Kamera-Einstellungen zuerst ausgeblendet und stehen dann in der
+ * Detailzeile – Aktiv, Filter, Belichtung, Soll und Aktionen bleiben immer sichtbar.
+ */
+function columnsFor(
+  props: ExposurePlanProps,
+  run: Run,
+  fmt: {
+    t: TFunction;
+    num: ReturnType<typeof useNumber>;
+    moonLabel: ReturnType<typeof useMoonProfileLabel>;
+  },
+  actions: { onDuplicate: (line: LineView) => void; onDelete: (line: LineView) => void },
+): DataColumn<LineView>[] {
+  const { project, canEdit, filters, moonProfiles, camera, rig, rigPath } = props;
+  const { t, num, moonLabel } = fmt;
+  const patch = (line: LineView, body: object) =>
+    void run(() => projectsApi.patchLine(project.id, line.id, body));
+  const locked = (line: LineView, field: string) => !canEdit || isLocked(line, field);
   const lockTitle = t('projectEditor.plan.lockedTitle');
   const Lock = actionIcons.lock;
-  const lockedText = (text: string) => (
+  const lockedText = (line: LineView, text: string) => (
     <span className={styles.locked} title={lockTitle}>
       {line.hasCaptures ? <Lock size={ICON_SIZE.table} aria-label={lockTitle} /> : null}
       {text}
     </span>
   );
-  const moonValue =
-    line.moonMode === 'profile'
-      ? (line.moonProfileId ?? '')
-      : line.moonMode === 'none'
-        ? 'none'
-        : 'project';
   const binnings = camera?.supportedBinning.length ? camera.supportedBinning : [1, 2, 3, 4];
-  const unassigned = filterUnassigned(line.filterId, rig?.filterWheel);
-  return (
-    <tr data-enabled={line.enabled}>
-      <td>
+  return [
+    {
+      id: 'enabled',
+      header: t('projectEditor.plan.col.enabled'),
+      cell: (line) => (
         <input
           type="checkbox"
           checked={line.enabled}
           disabled={!canEdit}
-          aria-label={t('projectEditor.plan.enabledFor', { filter: name })}
-          onChange={(e) => patch({ enabled: e.target.checked })}
+          aria-label={t('projectEditor.plan.enabledFor', { filter: line.filterShortName })}
+          onChange={(e) => patch(line, { enabled: e.target.checked })}
         />
-      </td>
-      <td>
-        {locked('filterId') ? (
-          <span className={styles.locked} title={line.hasCaptures ? lockTitle : undefined}>
-            {line.hasCaptures ? <Lock size={ICON_SIZE.table} aria-label={lockTitle} /> : null}
-            <FilterChip shortName={name} color={filter?.colorHex ?? '#888888'} size="sm" />
-          </span>
-        ) : (
-          <select
-            className={styles.input}
-            aria-label={t('projectEditor.plan.filterFor', { filter: name })}
-            value={line.filterId ?? ''}
-            onChange={(e) => patch({ filterId: e.target.value })}
-          >
-            {filters.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.shortName}
-              </option>
-            ))}
-          </select>
-        )}
-        {unassigned ? (
-          <Link className={styles.flag} to={rigPath}>
-            {t('projectEditor.plan.unassigned')}
-          </Link>
-        ) : null}
-      </td>
-      <td>
-        <select
-          className={styles.input}
-          aria-label={t('projectEditor.plan.moonFor', { filter: name })}
-          value={moonValue}
-          disabled={!canEdit}
-          onChange={(e) => {
-            const v = e.target.value;
-            patch(
-              v === 'project'
-                ? { moonMode: 'project_default', moonProfileId: null }
-                : v === 'none'
-                  ? { moonMode: 'none', moonProfileId: null }
-                  : { moonMode: 'profile', moonProfileId: v },
-            );
-          }}
-        >
-          <option value="project">{t('projectEditor.plan.moonProject')}</option>
-          <option value="none">{t('projectEditor.plan.moonNone')}</option>
-          {moonProfiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {moonLabel(p.name)}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className={styles.num}>
-        {locked('exposureS') ? (
-          lockedText(`${num(line.exposureS, 0)} s`)
+      ),
+    },
+    {
+      id: 'filter',
+      header: t('projectEditor.plan.col.filter'),
+      nowrap: true,
+      cell: (line) => {
+        const filter = filters.find((f) => f.id === line.filterId);
+        const name = line.filterShortName;
+        return (
+          <>
+            {locked(line, 'filterId') ? (
+              <span className={styles.locked} title={line.hasCaptures ? lockTitle : undefined}>
+                {line.hasCaptures ? <Lock size={ICON_SIZE.table} aria-label={lockTitle} /> : null}
+                <FilterChip shortName={name} color={filter?.colorHex ?? '#888888'} size="sm" />
+              </span>
+            ) : (
+              <select
+                className={styles.input}
+                aria-label={t('projectEditor.plan.filterFor', { filter: name })}
+                value={line.filterId ?? ''}
+                onChange={(e) => patch(line, { filterId: e.target.value })}
+              >
+                {filters.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.shortName}
+                  </option>
+                ))}
+              </select>
+            )}
+            {filterUnassigned(line.filterId, rig?.filterWheel) ? (
+              <Link className={styles.flag} to={rigPath}>
+                {t('projectEditor.plan.unassigned')}
+              </Link>
+            ) : null}
+          </>
+        );
+      },
+    },
+    {
+      id: 'exposure',
+      header: t('projectEditor.plan.col.exposure'),
+      align: 'end',
+      cell: (line) =>
+        locked(line, 'exposureS') ? (
+          lockedText(line, `${num(line.exposureS, 0)} s`)
         ) : (
           <NumberCell
-            label={t('projectEditor.plan.exposureFor', { filter: name })}
+            label={t('projectEditor.plan.exposureFor', { filter: line.filterShortName })}
             value={line.exposureS}
-            onCommit={(v) => (v !== null && v > 0 ? patch({ exposureS: v }) : undefined)}
+            onCommit={(v) => (v !== null && v > 0 ? patch(line, { exposureS: v }) : undefined)}
           />
-        )}
-      </td>
-      <td className={styles.num}>
-        {canEdit ? (
+        ),
+    },
+    {
+      id: 'planned',
+      header: t('projectEditor.plan.col.planned'),
+      align: 'end',
+      cell: (line) =>
+        canEdit ? (
           <NumberCell
-            label={t('projectEditor.plan.plannedFor', { filter: name })}
+            label={t('projectEditor.plan.plannedFor', { filter: line.filterShortName })}
             value={line.plannedCount}
             step={1}
             onCommit={(v) =>
-              v !== null && v >= 0 ? patch({ plannedCount: Math.round(v) }) : undefined
+              v !== null && v >= 0 ? patch(line, { plannedCount: Math.round(v) }) : undefined
             }
           />
         ) : (
           line.plannedCount
-        )}
-      </td>
-      <td className={styles.num}>{line.counters.acquired}</td>
-      <td className={styles.num}>{line.counters.rejected}</td>
-      <td className={styles.num}>{line.counters.accepted}</td>
-      <td className={styles.num}>{line.counters.bonus}</td>
-      <td>
+        ),
+    },
+    {
+      id: 'progress',
+      header: t('projectEditor.plan.col.progress'),
+      priority: 2,
+      cell: (line) => (
         <ProgressBar
           acquired={line.counters.accepted}
           planned={line.counters.planned}
@@ -573,60 +527,135 @@ function LineRow({
           exposureS={line.exposureS}
           size="sm"
         />
-      </td>
-      <td>
-        {locked('gain') ? (
-          lockedText(line.gain === null ? t('projectEditor.plan.default') : String(line.gain))
+      ),
+    },
+    {
+      id: 'accepted',
+      header: t('projectEditor.plan.col.accepted'),
+      align: 'end',
+      priority: 2,
+      cell: (line) => line.counters.accepted,
+    },
+    {
+      id: 'moon',
+      header: t('projectEditor.plan.col.moon'),
+      priority: 2,
+      cell: (line) => {
+        const value =
+          line.moonMode === 'profile'
+            ? (line.moonProfileId ?? '')
+            : line.moonMode === 'none'
+              ? 'none'
+              : 'project';
+        return (
+          <select
+            className={styles.input}
+            aria-label={t('projectEditor.plan.moonFor', { filter: line.filterShortName })}
+            value={value}
+            disabled={!canEdit}
+            onChange={(e) => {
+              const v = e.target.value;
+              patch(
+                line,
+                v === 'project'
+                  ? { moonMode: 'project_default', moonProfileId: null }
+                  : v === 'none'
+                    ? { moonMode: 'none', moonProfileId: null }
+                    : { moonMode: 'profile', moonProfileId: v },
+              );
+            }}
+          >
+            <option value="project">{t('projectEditor.plan.moonProject')}</option>
+            <option value="none">{t('projectEditor.plan.moonNone')}</option>
+            {moonProfiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {moonLabel(p.name)}
+              </option>
+            ))}
+          </select>
+        );
+      },
+    },
+    {
+      id: 'total',
+      header: t('projectEditor.plan.col.total'),
+      align: 'end',
+      nowrap: true,
+      priority: 3,
+      cell: (line) => `${num((line.plannedCount * line.exposureS) / 3600, 1)} h`,
+    },
+    {
+      id: 'gain',
+      header: t('projectEditor.plan.col.gain'),
+      priority: 3,
+      cell: (line) =>
+        locked(line, 'gain') ? (
+          lockedText(line, line.gain === null ? t('projectEditor.plan.default') : String(line.gain))
         ) : (
           <NumberCell
-            label={t('projectEditor.plan.gainFor', { filter: name })}
+            label={t('projectEditor.plan.gainFor', { filter: line.filterShortName })}
             value={line.gain}
             step={1}
             placeholder={t('projectEditor.plan.default')}
-            onCommit={(v) => patch({ gain: v === null ? null : Math.round(v) })}
+            onCommit={(v) => patch(line, { gain: v === null ? null : Math.round(v) })}
           />
-        )}
-      </td>
-      <td>
-        {locked('offsetAdu') ? (
+        ),
+    },
+    {
+      id: 'offset',
+      header: t('projectEditor.plan.col.offset'),
+      priority: 3,
+      cell: (line) =>
+        locked(line, 'offsetAdu') ? (
           lockedText(
+            line,
             line.offsetAdu === null ? t('projectEditor.plan.default') : String(line.offsetAdu),
           )
         ) : (
           <NumberCell
-            label={t('projectEditor.plan.offsetFor', { filter: name })}
+            label={t('projectEditor.plan.offsetFor', { filter: line.filterShortName })}
             value={line.offsetAdu}
             step={1}
             placeholder={t('projectEditor.plan.default')}
-            onCommit={(v) => patch({ offsetAdu: v === null ? null : Math.round(v) })}
+            onCommit={(v) => patch(line, { offsetAdu: v === null ? null : Math.round(v) })}
           />
-        )}
-      </td>
-      <td>
-        {locked('binning') ? (
-          lockedText(`${line.binning}×${line.binning}`)
+        ),
+    },
+    {
+      id: 'binning',
+      header: t('projectEditor.plan.col.binning'),
+      priority: 3,
+      cell: (line) =>
+        locked(line, 'binning') ? (
+          lockedText(line, `${line.binning}×${line.binning}`)
         ) : (
           <select
             className={styles.input}
-            aria-label={t('projectEditor.plan.binningFor', { filter: name })}
+            aria-label={t('projectEditor.plan.binningFor', { filter: line.filterShortName })}
             value={line.binning}
-            onChange={(e) => patch({ binning: Number(e.target.value) })}
+            onChange={(e) => patch(line, { binning: Number(e.target.value) })}
           >
             {binnings.map((b) => (
               <option key={b} value={b}>{`${b}×${b}`}</option>
             ))}
           </select>
-        )}
-      </td>
-      <td>
-        {locked('readoutMode') ? (
-          lockedText(line.readoutMode ?? t('projectEditor.plan.default'))
+        ),
+    },
+    {
+      id: 'readout',
+      header: t('projectEditor.plan.col.readout'),
+      priority: 4,
+      cell: (line) =>
+        locked(line, 'readoutMode') ? (
+          lockedText(line, line.readoutMode ?? t('projectEditor.plan.default'))
         ) : (
           <select
             className={styles.input}
-            aria-label={t('projectEditor.plan.readoutFor', { filter: name })}
+            aria-label={t('projectEditor.plan.readoutFor', { filter: line.filterShortName })}
             value={line.readoutMode ?? ''}
-            onChange={(e) => patch({ readoutMode: e.target.value === '' ? null : e.target.value })}
+            onChange={(e) =>
+              patch(line, { readoutMode: e.target.value === '' ? null : e.target.value })
+            }
           >
             <option value="">{t('projectEditor.plan.default')}</option>
             {(camera?.readoutModes ?? []).map((m) => (
@@ -635,36 +664,66 @@ function LineRow({
               </option>
             ))}
           </select>
-        )}
-      </td>
-      <td className={styles.num}>{`${num((line.plannedCount * line.exposureS) / 3600, 1)} h`}</td>
-      <td className={styles.num}>{`${num(line.counters.percentDone, 0)} %`}</td>
-      <td>
-        {canEdit ? (
+        ),
+    },
+    {
+      id: 'percent',
+      header: t('projectEditor.plan.col.percent'),
+      align: 'end',
+      nowrap: true,
+      priority: 4,
+      cell: (line) => `${num(line.counters.percentDone, 0)} %`,
+    },
+    {
+      id: 'acquired',
+      header: t('projectEditor.plan.col.acquired'),
+      align: 'end',
+      priority: 5,
+      cell: (line) => line.counters.acquired,
+    },
+    {
+      id: 'rejected',
+      header: t('projectEditor.plan.col.rejected'),
+      align: 'end',
+      priority: 5,
+      cell: (line) => line.counters.rejected,
+    },
+    {
+      id: 'bonus',
+      header: t('projectEditor.plan.col.bonus'),
+      align: 'end',
+      priority: 5,
+      cell: (line) => line.counters.bonus,
+    },
+    {
+      id: 'actions',
+      header: t('projectEditor.plan.col.actions'),
+      headerHidden: true,
+      cell: (line) =>
+        canEdit ? (
           <span className={styles.rowActions}>
             <button
               type="button"
               className={styles.iconButton}
-              aria-label={t('projectEditor.plan.duplicateFor', { filter: name })}
+              aria-label={t('projectEditor.plan.duplicateFor', { filter: line.filterShortName })}
               title={t('projectEditor.plan.duplicate')}
-              onClick={onDuplicate}
+              onClick={() => actions.onDuplicate(line)}
             >
               <actionIcons.duplicate size={ICON_SIZE.table} aria-hidden />
             </button>
             <button
               type="button"
               className={styles.iconButton}
-              aria-label={t('projectEditor.plan.deleteFor', { filter: name })}
+              aria-label={t('projectEditor.plan.deleteFor', { filter: line.filterShortName })}
               title={t('projectEditor.delete')}
-              onClick={onDelete}
+              onClick={() => actions.onDelete(line)}
             >
               <actionIcons.delete size={ICON_SIZE.table} aria-hidden />
             </button>
           </span>
-        ) : null}
-      </td>
-    </tr>
-  );
+        ) : null,
+    },
+  ];
 }
 
 /** Zahl in der Tabelle: lokale Eingabe, übernommen beim Verlassen bzw. mit Enter. */

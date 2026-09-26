@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { equipmentApi, type WeatherView } from '../../api/client';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
@@ -18,6 +19,8 @@ import { problemCode } from '../admin/shared';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { meteoblueHref } from './model';
 import styles from './weather.module.css';
+
+type WeatherNight = WeatherView['nights'][number];
 
 export const weatherKey = (siteId: string) => ['weather', siteId] as const;
 
@@ -83,6 +86,139 @@ export function WeatherPage() {
   const clock = (iso: string, zone: string) =>
     `${formatZonedTime(iso, zone)} ${formatTzAbbr(iso, zone)}`;
   const view = weather.data;
+  // Nachttabelle (AP-26a): Nacht und Bewertung bleiben immer sichtbar, Nebenwerte weichen bei wenig Platz.
+  const nightColumns = (v: WeatherView): DataColumn<WeatherNight>[] => [
+    {
+      id: 'night',
+      header: t('weatherPage.col.night'),
+      sortValue: (n) => n.night,
+      nowrap: true,
+      cell: (n) => (
+        <button
+          type="button"
+          className={styles.linkButton}
+          onClick={() => setNight(n.night)}
+          aria-label={t('weatherPage.show', { night: formatNightKey(n.night) })}
+        >
+          {formatNightKey(n.night)}
+        </button>
+      ),
+    },
+    {
+      id: 'rating',
+      header: t('weatherPage.col.rating'),
+      sortValue: (n) => n.nightMean,
+      cell: (n) => {
+        const flags = [
+          n.aerosolMissing ? t('weather.flag.aerosolMissing') : null,
+          n.seeingIncomplete ? t('weather.flag.seeingIncomplete') : null,
+          n.coverage !== null && n.coverage < 1
+            ? t('weather.flag.incomplete', { pct: num(n.coverage * 100, 0) })
+            : null,
+        ].filter(Boolean);
+        return (
+          <>
+            <span className={styles.nowrap}>
+              {n.darkFromUtc === null
+                ? t('weather.chart.noDark')
+                : n.nightMean === null
+                  ? t('weather.rating.none')
+                  : `${t(`weather.rating.${String(n.ratingIndex)}`)} ${num(n.nightMean * 100, 0)} %`}
+            </span>
+            {flags.length > 0 ? (
+              <>
+                <br />
+                <span className={styles.flagText}>{flags.join(' · ')}</span>
+              </>
+            ) : null}
+          </>
+        );
+      },
+    },
+    {
+      id: 'coverage',
+      header: t('weatherPage.col.coverage'),
+      sortValue: (n) => n.coverage,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (n) => (n.coverage === null ? '–' : `${num(n.coverage * 100, 0)} %`),
+    },
+    {
+      id: 'dark',
+      header: t('weatherPage.col.dark'),
+      sortValue: (n) => n.darknessSec,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (n) => hours(n.darknessSec),
+    },
+    {
+      id: 'moonless',
+      header: t('weatherPage.col.moonless'),
+      sortValue: (n) => n.moonlessSec,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (n) => hours(n.moonlessSec),
+    },
+    {
+      id: 'bestWindow',
+      header: t('weatherPage.col.bestWindow'),
+      sortValue: (n) => n.bestWindow?.sec ?? null,
+      priority: 2,
+      cell: (n) => {
+        const w = n.bestWindow;
+        return w ? (
+          <>
+            <span className={styles.nowrap}>
+              {t('weatherPage.windowTimes', {
+                from: formatZonedTime(w.fromUtc, v.timeZone),
+                to: formatZonedTime(w.toUtc, v.timeZone),
+                zone: formatTzAbbr(w.toUtc, v.timeZone),
+              })}
+            </span>
+            <br />
+            {t('weatherPage.windowHours', {
+              h: num(w.sec / 3600, 1),
+              free: num(w.moonFreeSec / 3600, 1),
+            })}
+            {w.fair ? ` · ${t('weather.verdict.fairShort')}` : ''}
+          </>
+        ) : (
+          '–'
+        );
+      },
+    },
+    {
+      id: 'moon',
+      header: t('weatherPage.col.moon'),
+      sortValue: (n) => n.moonIllumPct,
+      priority: 3,
+      cell: (n) => (
+        <>
+          <span className={styles.nowrap}>
+            {t('weatherPage.moonText', { pct: num(n.moonIllumPct, 0) })}
+          </span>
+          {n.moonEvents.length > 0 ? (
+            <>
+              <br />
+              <span className={styles.nowrap}>
+                {n.moonEvents
+                  .map((e) =>
+                    t(e.type === 'rise' ? 'weatherPage.moonRise' : 'weatherPage.moonSet', {
+                      at: formatZonedTime(e.atUtc, v.timeZone),
+                    }),
+                  )
+                  .join(' · ')}{' '}
+                {formatTzAbbr(n.moonEvents[0]?.atUtc ?? now.toISOString(), v.timeZone)}
+              </span>
+            </>
+          ) : null}
+        </>
+      ),
+    },
+  ];
 
   return (
     <div className={styles.page}>
@@ -220,128 +356,17 @@ export function WeatherPage() {
           {view && view.status === 'ready' ? (
             <section className={styles.panel} aria-labelledby="weather-nights">
               <h2 id="weather-nights">{t('weatherPage.nights')}</h2>
-              <div
-                className={styles.tableWrap}
-                tabIndex={0}
-                role="region"
-                aria-labelledby="weather-nights"
-              >
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('weatherPage.col.night')}</th>
-                      <th scope="col">{t('weatherPage.col.rating')}</th>
-                      <th scope="col" className={styles.num}>
-                        {t('weatherPage.col.coverage')}
-                      </th>
-                      <th scope="col" className={styles.num}>
-                        {t('weatherPage.col.dark')}
-                      </th>
-                      <th scope="col" className={styles.num}>
-                        {t('weatherPage.col.moonless')}
-                      </th>
-                      <th scope="col">{t('weatherPage.col.bestWindow')}</th>
-                      <th scope="col">{t('weatherPage.col.moon')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {view.nights.map((n) => {
-                      const flags = [
-                        n.aerosolMissing ? t('weather.flag.aerosolMissing') : null,
-                        n.seeingIncomplete ? t('weather.flag.seeingIncomplete') : null,
-                        n.coverage !== null && n.coverage < 1
-                          ? t('weather.flag.incomplete', { pct: num(n.coverage * 100, 0) })
-                          : null,
-                      ].filter(Boolean);
-                      const w = n.bestWindow;
-                      return (
-                        <tr
-                          key={n.night}
-                          className={n.night === night ? styles.selected : undefined}
-                        >
-                          <th scope="row">
-                            <button
-                              type="button"
-                              className={styles.linkButton}
-                              onClick={() => setNight(n.night)}
-                              aria-label={t('weatherPage.show', { night: formatNightKey(n.night) })}
-                            >
-                              {formatNightKey(n.night)}
-                            </button>
-                          </th>
-                          <td>
-                            <span className={styles.nowrap}>
-                              {n.darkFromUtc === null
-                                ? t('weather.chart.noDark')
-                                : n.nightMean === null
-                                  ? t('weather.rating.none')
-                                  : `${t(`weather.rating.${String(n.ratingIndex)}`)} ${num(n.nightMean * 100, 0)} %`}
-                            </span>
-                            {flags.length > 0 ? (
-                              <>
-                                <br />
-                                <span className={styles.flagText}>{flags.join(' · ')}</span>
-                              </>
-                            ) : null}
-                          </td>
-                          <td className={styles.num}>
-                            {n.coverage === null ? '–' : `${num(n.coverage * 100, 0)} %`}
-                          </td>
-                          <td className={styles.num}>{hours(n.darknessSec)}</td>
-                          <td className={styles.num}>{hours(n.moonlessSec)}</td>
-                          <td>
-                            {w ? (
-                              <>
-                                <span className={styles.nowrap}>
-                                  {t('weatherPage.windowTimes', {
-                                    from: formatZonedTime(w.fromUtc, view.timeZone),
-                                    to: formatZonedTime(w.toUtc, view.timeZone),
-                                    zone: formatTzAbbr(w.toUtc, view.timeZone),
-                                  })}
-                                </span>
-                                <br />
-                                {t('weatherPage.windowHours', {
-                                  h: num(w.sec / 3600, 1),
-                                  free: num(w.moonFreeSec / 3600, 1),
-                                })}
-                                {w.fair ? ` · ${t('weather.verdict.fairShort')}` : ''}
-                              </>
-                            ) : (
-                              '–'
-                            )}
-                          </td>
-                          <td>
-                            <span className={styles.nowrap}>
-                              {t('weatherPage.moonText', { pct: num(n.moonIllumPct, 0) })}
-                            </span>
-                            {n.moonEvents.length > 0 ? (
-                              <>
-                                <br />
-                                <span className={styles.nowrap}>
-                                  {n.moonEvents
-                                    .map((e) =>
-                                      t(
-                                        e.type === 'rise'
-                                          ? 'weatherPage.moonRise'
-                                          : 'weatherPage.moonSet',
-                                        { at: formatZonedTime(e.atUtc, view.timeZone) },
-                                      ),
-                                    )
-                                    .join(' · ')}{' '}
-                                  {formatTzAbbr(
-                                    n.moonEvents[0]?.atUtc ?? now.toISOString(),
-                                    view.timeZone,
-                                  )}
-                                </span>
-                              </>
-                            ) : null}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable
+                columns={nightColumns(view)}
+                rows={view.nights}
+                rowKey={(n) => n.night}
+                rowLabel={(n) => formatNightKey(n.night)}
+                label={t('weatherPage.nights')}
+                rowProps={(n) => ({
+                  'data-selected': n.night === night,
+                  className: n.night === night ? styles.selected : undefined,
+                })}
+              />
             </section>
           ) : null}
           {site ? (

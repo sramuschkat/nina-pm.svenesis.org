@@ -756,3 +756,21 @@ tr[data-selected='true'] td {
 .visBarShort {
   opacity: 0.35;
 }
+.badgesInline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.progressCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 120px;
+}
+.groupHeadInline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}

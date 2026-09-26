@@ -489,6 +489,7 @@ export interface DsoSearch {
   candidates?: 'true';
   family?: 'galaxies' | 'nebulae' | 'clusters';
   sort?: 'name' | 'mag' | 'size' | 'usable' | 'altitude' | 'score';
+  dir?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 }

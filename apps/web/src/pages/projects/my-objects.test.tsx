@@ -208,6 +208,25 @@ describe('S-34 Entwürfe', () => {
     expect(row).toHaveTextContent('Zurückgegeben');
   });
 
+  it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Ersteller“ sortiert auf- und absteigend', async () => {
+    state.me = me('owner');
+    state.drafts = [
+      { ...listItem(4, 'draft', 'Mitte'), createdByName: 'Max' },
+      { ...listItem(5, 'draft', 'Letzter'), createdByName: 'Zoe' },
+      { ...listItem(6, 'returned', 'Erster'), createdByName: 'Anna' },
+    ];
+    wrap(<DraftsPage />);
+    const head = await screen.findByRole('columnheader', { name: /Ersteller/ });
+    const order = () =>
+      screen.getAllByRole('link', { name: /^(Mitte|Letzter|Erster)$/ }).map((l) => l.textContent);
+    expect(order()).toEqual(['Mitte', 'Letzter', 'Erster']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Erster', 'Mitte', 'Letzter']);
+    fireEvent.click(within(head).getByRole('button'));
+    expect(order()).toEqual(['Letzter', 'Mitte', 'Erster']);
+    expect(head).toHaveAttribute('aria-sort', 'descending');
+  });
+
   it('User: keine Berechtigung, kein Reiter „Entwürfe“', async () => {
     wrap(<DraftsPage />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();

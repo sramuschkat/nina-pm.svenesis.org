@@ -61,6 +61,16 @@ Reihenfolge innerhalb eines Releases ist verbindlich (Tabelle von oben nach unte
 | [AP-24](AP-24.md) | Saisondiagramm und Wochen-Sichtbarkeit | S | AP-10 | – | ◐ |
 | [AP-25](AP-25.md) | Vorschaubilder | S | AP-20 | – | ◐ |
 
+## UI-Überarbeitung (vor R3)
+
+Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme-2026-09-26.md`: vor R3 die Oberfläche überarbeiten, damit die neuen Bildschirme von R3 auf der verbesserten Grundlage entstehen. Reihenfolge: Tabellen zuerst.
+
+| AP | Titel | Größe | Abhängig von | Mensch | Status |
+|---|---|---|---|---|---|
+| [AP-26a](AP-26a.md) | Tabellen: sortierbar, Spalten ausblenden statt scrollen | M | AP-25 | – | ◐ |
+| [AP-26b](AP-26b.md) | Seitenaufbau: Reiter statt Scrollen, Projekt-Editor in drei Bereichen | M | AP-26a | – | ☐ |
+| [AP-26c](AP-26c.md) | Rahmen: Kopf, Filterleisten, Seitenleiste, Startseite | S | AP-26b | – | ☐ |
+
 ## R3
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |

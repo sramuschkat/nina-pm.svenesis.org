@@ -5,7 +5,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { csrf, testLogin } from './support';
+import { csrf, tableOverflow, testLogin } from './support';
 
 async function createProject(page: Page, name: string, targetType: string): Promise<string> {
   const { items } = (await (await page.request.get('/api/web/v1/rigs')).json()) as {
@@ -97,7 +97,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-for (const width of [768, 2400]) {
+for (const width of [768, 1280, 2400]) {
   test(`S-30 bei ${String(width)} px ohne horizontales Scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await testLogin(page, 'owner');
@@ -110,6 +110,7 @@ for (const width of [768, 2400]) {
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow, view).toBeLessThanOrEqual(0);
+      expect(await tableOverflow(page), view).toEqual([]);
     }
   });
 }

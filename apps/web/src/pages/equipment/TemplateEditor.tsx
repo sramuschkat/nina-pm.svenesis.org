@@ -8,6 +8,7 @@ import { ExposureTemplateInput } from '@nina-pm/shared';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ExposureTemplateView } from '../../api/client';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import styles from './equipment.module.css';
 import {
@@ -34,6 +35,12 @@ interface LineDraft {
   moonMode: 'profile' | 'project_default' | 'none';
   moonProfileId: string | null;
   enabled: boolean;
+}
+
+/** Tabellenzeile: Entwurf der Zeile und ihr Index. */
+interface Row {
+  l: LineDraft;
+  i: number;
 }
 
 interface TemplateDraft {
@@ -136,6 +143,181 @@ export function TemplateEditor({ canWrite }: { canWrite: boolean }) {
   const totalHours = d.lines
     .filter((l) => l.enabled)
     .reduce((s, l) => s + ((l.exposureS ?? 0) * (l.plannedCount ?? 0)) / 3600, 0);
+  const invalid = (i: number, key: string) =>
+    editor.errors[['lines', i, key].join('.')] ? true : undefined;
+  const numberColumn = (
+    id: string,
+    key: 'exposureS' | 'plannedCount' | 'gain' | 'offsetAdu',
+    label: string,
+    priority?: number,
+  ): DataColumn<Row> => ({
+    id,
+    header: label,
+    ...(priority ? { priority } : {}),
+    cell: ({ l, i }) => (
+      <input
+        className={styles.input}
+        type="number"
+        step={key === 'exposureS' ? 'any' : 1}
+        aria-label={`${label} ${String(i + 1)}`}
+        value={l[key] ?? ''}
+        disabled={disabled}
+        aria-invalid={invalid(i, key)}
+        placeholder={key === 'gain' || key === 'offsetAdu' ? 'NINA' : undefined}
+        onChange={(e) =>
+          setLine(i, { [key]: e.target.value === '' ? null : Number(e.target.value) })
+        }
+      />
+    ),
+  });
+  // Zeilen einer Vorlage: Reihenfolge = NINA-Reihenfolge, daher nicht sortierbar (AP-26a).
+  const templateColumns: DataColumn<Row>[] = [
+    {
+      id: 'filter',
+      header: t('equipment.templates.col.filter'),
+      cell: ({ l, i }) => (
+        <select
+          className={styles.input}
+          aria-label={`${t('equipment.templates.col.filter')} ${String(i + 1)}`}
+          value={l.filterId}
+          disabled={disabled}
+          aria-invalid={invalid(i, 'filterId')}
+          onChange={(e) => setLine(i, { filterId: e.target.value })}
+        >
+          <option value="">–</option>
+          {(filters.data ?? []).map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.shortName}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    numberColumn('exposure', 'exposureS', t('equipment.templates.col.exposure')),
+    numberColumn('count', 'plannedCount', t('equipment.templates.col.count')),
+    {
+      id: 'hours',
+      header: t('equipment.templates.col.hours'),
+      align: 'end',
+      priority: 3,
+      cell: ({ l }) => num(((l.exposureS ?? 0) * (l.plannedCount ?? 0)) / 3600, 1),
+    },
+    {
+      id: 'moon',
+      header: t('equipment.templates.col.moon'),
+      priority: 2,
+      cell: ({ l, i }) => (
+        <select
+          className={styles.input}
+          aria-label={`${t('equipment.templates.col.moon')} ${String(i + 1)}`}
+          value={moonValue(l)}
+          disabled={disabled}
+          aria-invalid={invalid(i, 'moonProfileId')}
+          onChange={(e) => {
+            const v = e.target.value;
+            setLine(
+              i,
+              v.startsWith(':')
+                ? { moonMode: v.slice(1) as LineDraft['moonMode'], moonProfileId: null }
+                : { moonMode: 'profile', moonProfileId: v || null },
+            );
+          }}
+        >
+          <option value=":project_default">{t('equipment.templates.moonProjectDefault')}</option>
+          <option value=":none">{t('equipment.templates.moonNone')}</option>
+          {(moonProfiles.data ?? []).map((m) => (
+            <option key={m.id} value={m.id}>
+              {profileName(m.name)}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    numberColumn('gain', 'gain', t('equipment.templates.col.gain'), 3),
+    numberColumn('offset', 'offsetAdu', t('equipment.templates.col.offset'), 3),
+    {
+      id: 'readout',
+      header: t('equipment.templates.col.readout'),
+      priority: 4,
+      cell: ({ l, i }) => (
+        <select
+          className={styles.input}
+          aria-label={`${t('equipment.templates.col.readout')} ${String(i + 1)}`}
+          value={l.readoutMode ?? ''}
+          disabled={disabled}
+          aria-invalid={invalid(i, 'readoutMode')}
+          onChange={(e) =>
+            setLine(i, { readoutMode: e.target.value === '' ? null : e.target.value })
+          }
+        >
+          <option value="">{t('equipment.templates.cameraDefault')}</option>
+          {(camera?.readoutModes ?? []).map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      id: 'binning',
+      header: t('equipment.templates.col.binning'),
+      priority: 3,
+      cell: ({ l, i }) => (
+        <select
+          className={styles.input}
+          aria-label={`${t('equipment.templates.col.binning')} ${String(i + 1)}`}
+          value={String(l.binning)}
+          disabled={disabled}
+          aria-invalid={invalid(i, 'binning')}
+          onChange={(e) => setLine(i, { binning: Number(e.target.value) })}
+        >
+          {(camera?.supportedBinning ?? [1, 2, 3, 4]).map((b) => (
+            <option key={b} value={String(b)}>
+              {b}×{b}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      id: 'enabled',
+      header: t('equipment.templates.col.enabled'),
+      cell: ({ l, i }) => (
+        <input
+          type="checkbox"
+          aria-label={`${t('equipment.templates.col.enabled')} ${String(i + 1)}`}
+          checked={l.enabled}
+          disabled={disabled}
+          onChange={(e) => setLine(i, { enabled: e.target.checked })}
+        />
+      ),
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: t('equipment.actions'),
+            headerHidden: true,
+            cell: ({ i }: Row) => (
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={t('equipment.removeRow', { n: i + 1 })}
+                onClick={() =>
+                  editor.set(
+                    'lines',
+                    d.lines.filter((_, j) => j !== i),
+                  )
+                }
+              >
+                <Delete size={ICON_SIZE.table} aria-hidden />
+              </button>
+            ),
+          },
+        ]
+      : []),
+  ];
   return (
     <section className={styles.panel} aria-labelledby="template-title">
       <div className={styles.formTitle}>
@@ -210,176 +392,13 @@ export function TemplateEditor({ canWrite }: { canWrite: boolean }) {
         {d.lines.length === 0 ? (
           <p className={styles.muted}>{t('equipment.templates.noLines')}</p>
         ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{t('equipment.templates.col.filter')}</th>
-                  <th>{t('equipment.templates.col.exposure')}</th>
-                  <th>{t('equipment.templates.col.count')}</th>
-                  <th className={styles.num}>{t('equipment.templates.col.hours')}</th>
-                  <th>{t('equipment.templates.col.moon')}</th>
-                  <th>{t('equipment.templates.col.gain')}</th>
-                  <th>{t('equipment.templates.col.offset')}</th>
-                  <th>{t('equipment.templates.col.readout')}</th>
-                  <th>{t('equipment.templates.col.binning')}</th>
-                  <th>{t('equipment.templates.col.enabled')}</th>
-                  {canWrite ? <th aria-label={t('equipment.actions')} /> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {d.lines.map((l, i) => {
-                  const n = String(i + 1);
-                  const invalid = (key: string) =>
-                    editor.errors[['lines', i, key].join('.')] ? true : undefined;
-                  const numberCell = (
-                    key: 'exposureS' | 'plannedCount' | 'gain' | 'offsetAdu',
-                    label: string,
-                  ) => (
-                    <td>
-                      <input
-                        className={styles.input}
-                        type="number"
-                        step={key === 'exposureS' ? 'any' : 1}
-                        aria-label={`${label} ${n}`}
-                        value={l[key] ?? ''}
-                        disabled={disabled}
-                        aria-invalid={invalid(key)}
-                        placeholder={key === 'gain' || key === 'offsetAdu' ? 'NINA' : undefined}
-                        onChange={(e) =>
-                          setLine(i, {
-                            [key]: e.target.value === '' ? null : Number(e.target.value),
-                          })
-                        }
-                      />
-                    </td>
-                  );
-                  return (
-                    <tr key={i}>
-                      <td>
-                        <select
-                          className={styles.input}
-                          aria-label={`${t('equipment.templates.col.filter')} ${n}`}
-                          value={l.filterId}
-                          disabled={disabled}
-                          aria-invalid={invalid('filterId')}
-                          onChange={(e) => setLine(i, { filterId: e.target.value })}
-                        >
-                          <option value="">–</option>
-                          {(filters.data ?? []).map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.shortName}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      {numberCell('exposureS', t('equipment.templates.col.exposure'))}
-                      {numberCell('plannedCount', t('equipment.templates.col.count'))}
-                      <td className={styles.num}>
-                        {num(((l.exposureS ?? 0) * (l.plannedCount ?? 0)) / 3600, 1)}
-                      </td>
-                      <td>
-                        <select
-                          className={styles.input}
-                          aria-label={`${t('equipment.templates.col.moon')} ${n}`}
-                          value={moonValue(l)}
-                          disabled={disabled}
-                          aria-invalid={invalid('moonProfileId')}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setLine(
-                              i,
-                              v.startsWith(':')
-                                ? {
-                                    moonMode: v.slice(1) as LineDraft['moonMode'],
-                                    moonProfileId: null,
-                                  }
-                                : { moonMode: 'profile', moonProfileId: v || null },
-                            );
-                          }}
-                        >
-                          <option value=":project_default">
-                            {t('equipment.templates.moonProjectDefault')}
-                          </option>
-                          <option value=":none">{t('equipment.templates.moonNone')}</option>
-                          {(moonProfiles.data ?? []).map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {profileName(m.name)}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      {numberCell('gain', t('equipment.templates.col.gain'))}
-                      {numberCell('offsetAdu', t('equipment.templates.col.offset'))}
-                      <td>
-                        <select
-                          className={styles.input}
-                          aria-label={`${t('equipment.templates.col.readout')} ${n}`}
-                          value={l.readoutMode ?? ''}
-                          disabled={disabled}
-                          aria-invalid={invalid('readoutMode')}
-                          onChange={(e) =>
-                            setLine(i, {
-                              readoutMode: e.target.value === '' ? null : e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">{t('equipment.templates.cameraDefault')}</option>
-                          {(camera?.readoutModes ?? []).map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className={styles.input}
-                          aria-label={`${t('equipment.templates.col.binning')} ${n}`}
-                          value={String(l.binning)}
-                          disabled={disabled}
-                          aria-invalid={invalid('binning')}
-                          onChange={(e) => setLine(i, { binning: Number(e.target.value) })}
-                        >
-                          {(camera?.supportedBinning ?? [1, 2, 3, 4]).map((b) => (
-                            <option key={b} value={String(b)}>
-                              {b}×{b}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`${t('equipment.templates.col.enabled')} ${n}`}
-                          checked={l.enabled}
-                          disabled={disabled}
-                          onChange={(e) => setLine(i, { enabled: e.target.checked })}
-                        />
-                      </td>
-                      {canWrite ? (
-                        <td>
-                          <button
-                            type="button"
-                            className={styles.iconButton}
-                            aria-label={t('equipment.removeRow', { n: i + 1 })}
-                            onClick={() =>
-                              editor.set(
-                                'lines',
-                                d.lines.filter((_, j) => j !== i),
-                              )
-                            }
-                          >
-                            <Delete size={ICON_SIZE.table} aria-hidden />
-                          </button>
-                        </td>
-                      ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={templateColumns}
+            rows={d.lines.map((l, i) => ({ l, i }))}
+            rowKey={(r) => String(r.i)}
+            rowLabel={(r) => String(r.i + 1)}
+            label={t('equipment.templates.title')}
+          />
         )}
         <p className={styles.muted}>
           {t('equipment.templates.total', { hours: num(totalHours, 1) })}

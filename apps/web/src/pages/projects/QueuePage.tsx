@@ -8,6 +8,7 @@
  * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
  * folgt mit R3.
  */
+import type { SeasonBar } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +22,10 @@ import {
 } from '../../api/client';
 import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { EffortChip } from '../../components/EffortChip';
 import { FilterChip } from '../../components/FilterChip';
-import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
+import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useMoonProfileLabel, useNumber } from '../equipment/shared';
@@ -35,9 +37,8 @@ import {
   filterQueue,
   nightKeyIn,
   periodExpired,
-  sortQueue,
+  queueSortValue,
   type QueueFilters,
-  type QueueSort,
   type QueueSortKey,
 } from './queue-model';
 import styles from './projects.module.css';
@@ -57,7 +58,6 @@ export function QueuePage() {
   const sites = useEquipmentList('sites');
   const filters = useEquipmentList('filters');
   const [f, setF] = useState<QueueFilters>(NO_QUEUE_FILTERS);
-  const [sort, setSort] = useState<QueueSort | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const vote = useMutation({
     mutationFn: ({ id, on }: { id: string; on: boolean }) => approvalApi.vote(id, on),
@@ -65,12 +65,13 @@ export function QueuePage() {
   });
   const zone = me?.tenant?.timeZone ?? 'UTC';
   const today = nightKeyIn(Date.now(), zone);
-  const items = useMemo(
-    () => sortQueue(filterQueue(queue.data ?? [], f), sort),
-    [queue.data, f, sort],
-  );
+  const items = useMemo(() => filterQueue(queue.data ?? [], f), [queue.data, f]);
   const current = (queue.data ?? []).find((q) => q.id === selected) ?? null;
   const visibility = useQueueVisibility(items, rigs.data ?? [], sites.data ?? []);
+  const visibilityById = useMemo(
+    () => new Map(items.map((q, i) => [q.id, visibility.weeks[i] ?? null])),
+    [items, visibility.weeks],
+  );
 
   return (
     <ProjectsLayout title={t('queue.title')}>
@@ -126,8 +127,6 @@ export function QueuePage() {
           ) : (
             <QueueTable
               items={items}
-              sort={sort}
-              onSort={setSort}
               rigs={rigs.data ?? []}
               filters={filters.data ?? []}
               zone={zone}
@@ -138,7 +137,7 @@ export function QueuePage() {
               onSelect={setSelected}
               onVote={(id, on) => vote.mutate({ id, on })}
               voting={vote.isPending}
-              visibility={visibility}
+              visibility={visibilityById}
             />
           )}
           {canDecide && current ? (
@@ -163,8 +162,6 @@ export function QueuePage() {
 
 function QueueTable({
   items,
-  sort,
-  onSort,
   rigs,
   filters,
   zone,
@@ -178,8 +175,6 @@ function QueueTable({
   visibility,
 }: {
   items: readonly QueueItem[];
-  sort: QueueSort | null;
-  onSort: (s: QueueSort) => void;
   rigs: readonly RigView[];
   filters: readonly FilterView[];
   zone: string;
@@ -188,149 +183,190 @@ function QueueTable({
   canDecide: boolean;
   selected: string | null;
   onSelect: (id: string | null) => void;
-  visibility: ReturnType<typeof useQueueVisibility>;
+  visibility: ReadonlyMap<string, SeasonBar[] | null>;
   onVote: (id: string, on: boolean) => void;
   voting: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const num = useNumber();
   const Vote = actionIcons.vote;
-  const header = (key: QueueSortKey, label: string, numeric = false) => {
-    const active = sort?.key === key;
-    const dir = active ? sort.dir : null;
-    return (
-      <th
-        scope="col"
-        className={numeric ? styles.num : undefined}
-        aria-sort={dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
-      >
-        <button
-          type="button"
-          className={styles.sortButton}
-          onClick={() => onSort({ key, dir: active && dir === 'asc' ? 'desc' : 'asc' })}
-        >
-          {label}
-          {active && dir === 'asc' ? <uiIcons.up size={ICON_SIZE.table} aria-hidden /> : null}
-          {active && dir === 'desc' ? <uiIcons.down size={ICON_SIZE.table} aria-hidden /> : null}
-        </button>
-      </th>
-    );
-  };
+  const sortBy = (key: QueueSortKey) => (q: QueueItem) => queueSortValue(q, key);
+  // Priorität: 1 bleibt immer, höhere Zahlen werden bei wenig Platz zuerst ausgeblendet (AP-26a).
+  const columns: DataColumn<QueueItem>[] = [
+    {
+      id: 'name',
+      header: t('queue.col.object'),
+      sortValue: sortBy('name'),
+      nowrap: true,
+      cell: (q) => (
+        <>
+          <Link to={`/projekte/${q.id}`}>{q.name}</Link>
+          {q.votes.mineChangedSince ? (
+            <span className={styles.flag}>{t('queue.changedSinceVote')}</span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'votes',
+      header: t('queue.col.votes'),
+      sortValue: sortBy('votes'),
+      cell: (q) => {
+        const own = q.createdBy === meId;
+        return (
+          <span className={styles.voteCell}>
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.voteButton}`}
+              aria-pressed={q.votes.mine}
+              aria-label={
+                own ? t('queue.voteOwn', { name: q.name }) : t('queue.voteFor', { name: q.name })
+              }
+              title={own ? t('queue.voteOwnHint') : undefined}
+              disabled={own || voting}
+              onClick={() => onVote(q.id, !q.votes.mine)}
+            >
+              <Vote
+                size={ICON_SIZE.table}
+                aria-hidden
+                fill={q.votes.mine ? 'currentColor' : 'none'}
+              />
+            </button>
+            <span title={q.votes.voters.map((v) => v.displayName).join(', ')}>{q.votes.count}</span>
+          </span>
+        );
+      },
+    },
+    {
+      id: 'effort',
+      header: t('queue.col.effort'),
+      priority: 2,
+      cell: (q) => <EffortChip effort={q.effort} size="sm" />,
+    },
+    {
+      id: 'plan',
+      header: t('queue.col.plan'),
+      priority: 2,
+      cell: (q) => <PlanChips item={q} filters={filters} />,
+    },
+    {
+      id: 'visibility',
+      header: t('queue.col.visibility'),
+      priority: 2,
+      cell: (q) => {
+        const weeks = visibility.get(q.id) ?? null;
+        return weeks ? (
+          <VisibilityBars weeks={weeks} name={q.name} />
+        ) : q.target && q.requestedRigId ? (
+          <span className={styles.muted}>{t('common.loading')}</span>
+        ) : (
+          '–'
+        );
+      },
+    },
+    {
+      id: 'deadline',
+      header: t('queue.col.deadline'),
+      sortValue: sortBy('deadline'),
+      priority: 3,
+      nowrap: true,
+      cell: (q) => (q.expiresAt ? formatDateTime(q.expiresAt, zone, i18n.language) : '–'),
+    },
+    {
+      id: 'creator',
+      header: t('queue.col.creator'),
+      sortValue: sortBy('creator'),
+      priority: 3,
+      nowrap: true,
+      cell: (q) => q.createdByName,
+    },
+    {
+      id: 'rig',
+      header: t('queue.col.rig'),
+      sortValue: (q) => rigs.find((r) => r.id === q.requestedRigId)?.name ?? null,
+      priority: 3,
+      cell: (q) => rigs.find((r) => r.id === q.requestedRigId)?.name ?? '–',
+    },
+    {
+      id: 'hours',
+      header: t('queue.col.hours'),
+      sortValue: sortBy('hours'),
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (q) => `${num(q.estimatedHours, 1)} h`,
+    },
+    {
+      id: 'rank',
+      header: t('queue.col.rank'),
+      sortValue: sortBy('rank'),
+      priority: 4,
+      nowrap: true,
+      cell: (q) =>
+        q.submitterRank
+          ? t('queue.rank', { rank: q.submitterRank.rank, of: q.submitterRank.of })
+          : '–',
+    },
+    {
+      id: 'period',
+      header: t('queue.col.period'),
+      sortValue: (q) => q.requestPeriodFrom ?? q.requestPeriodTo,
+      priority: 4,
+      cell: (q) => (
+        <>
+          {q.requestPeriodFrom || q.requestPeriodTo
+            ? `${q.requestPeriodFrom ?? '…'} – ${q.requestPeriodTo ?? '…'}`
+            : '–'}
+          {periodExpired(q, today) ? (
+            <span className={styles.flag}>{t('queue.periodExpired')}</span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'submitted',
+      header: t('queue.col.submitted'),
+      sortValue: sortBy('submitted'),
+      priority: 5,
+      nowrap: true,
+      cell: (q) => (q.submittedAt ? formatDateTime(q.submittedAt, zone, i18n.language) : '–'),
+    },
+    {
+      id: 'type',
+      header: t('queue.col.type'),
+      sortValue: (q) => q.targetType,
+      priority: 5,
+      cell: (q) => q.targetType ?? '–',
+    },
+    ...(canDecide
+      ? [
+          {
+            id: 'actions',
+            header: t('projectList.col.actions'),
+            headerHidden: true,
+            cell: (q: QueueItem) => (
+              <button
+                type="button"
+                className={styles.button}
+                aria-expanded={selected === q.id}
+                onClick={() => onSelect(selected === q.id ? null : q.id)}
+              >
+                {t('queue.decide')}
+              </button>
+            ),
+          },
+        ]
+      : []),
+  ];
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            {header('deadline', t('queue.col.deadline'))}
-            {header('name', t('queue.col.object'))}
-            <th scope="col">{t('queue.col.type')}</th>
-            {header('creator', t('queue.col.creator'))}
-            {header('rank', t('queue.col.rank'))}
-            <th scope="col">{t('queue.col.effort')}</th>
-            <th scope="col">{t('queue.col.plan')}</th>
-            {header('votes', t('queue.col.votes'))}
-            {header('submitted', t('queue.col.submitted'))}
-            <th scope="col">{t('queue.col.rig')}</th>
-            <th scope="col">{t('queue.col.period')}</th>
-            <th scope="col">{t('queue.col.visibility')}</th>
-            {header('hours', t('queue.col.hours'), true)}
-            {canDecide ? <th scope="col">{t('projectList.col.actions')}</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((q, index) => {
-            const own = q.createdBy === meId;
-            const weeks = visibility.weeks[index] ?? null;
-            const expired = periodExpired(q, today);
-            return (
-              <tr key={q.id} data-selected={selected === q.id}>
-                <td>{q.expiresAt ? formatDateTime(q.expiresAt, zone, i18n.language) : '–'}</td>
-                <td>
-                  <Link to={`/projekte/${q.id}`}>{q.name}</Link>
-                  {q.votes.mineChangedSince ? (
-                    <span className={styles.flag}>{t('queue.changedSinceVote')}</span>
-                  ) : null}
-                </td>
-                <td>{q.targetType ?? '–'}</td>
-                <td>{q.createdByName}</td>
-                <td>
-                  {q.submitterRank
-                    ? t('queue.rank', { rank: q.submitterRank.rank, of: q.submitterRank.of })
-                    : '–'}
-                </td>
-                <td>
-                  <EffortChip effort={q.effort} size="sm" />
-                </td>
-                <td>
-                  <PlanChips item={q} filters={filters} />
-                </td>
-                <td>
-                  <span className={styles.voteCell}>
-                    <button
-                      type="button"
-                      className={`${styles.iconButton} ${styles.voteButton}`}
-                      aria-pressed={q.votes.mine}
-                      aria-label={
-                        own
-                          ? t('queue.voteOwn', { name: q.name })
-                          : t('queue.voteFor', { name: q.name })
-                      }
-                      title={own ? t('queue.voteOwnHint') : undefined}
-                      disabled={own || voting}
-                      onClick={() => onVote(q.id, !q.votes.mine)}
-                    >
-                      <Vote
-                        size={ICON_SIZE.table}
-                        aria-hidden
-                        fill={q.votes.mine ? 'currentColor' : 'none'}
-                      />
-                    </button>
-                    <span title={q.votes.voters.map((v) => v.displayName).join(', ')}>
-                      {q.votes.count}
-                    </span>
-                  </span>
-                  {q.votes.voters.length > 0 ? (
-                    <span className={styles.voterNames}>
-                      {q.votes.voters.map((v) => v.displayName).join(', ')}
-                    </span>
-                  ) : null}
-                </td>
-                <td>{q.submittedAt ? formatDateTime(q.submittedAt, zone, i18n.language) : '–'}</td>
-                <td>{rigs.find((r) => r.id === q.requestedRigId)?.name ?? '–'}</td>
-                <td>
-                  {q.requestPeriodFrom || q.requestPeriodTo
-                    ? `${q.requestPeriodFrom ?? '…'} – ${q.requestPeriodTo ?? '…'}`
-                    : '–'}
-                  {expired ? <span className={styles.flag}>{t('queue.periodExpired')}</span> : null}
-                </td>
-                <td>
-                  {weeks ? (
-                    <VisibilityBars weeks={weeks} name={q.name} />
-                  ) : visibility.state === 'loading' && q.target && q.requestedRigId ? (
-                    <span className={styles.muted}>{t('common.loading')}</span>
-                  ) : (
-                    '–'
-                  )}
-                </td>
-                <td className={styles.num}>{`${num(q.estimatedHours, 1)} h`}</td>
-                {canDecide ? (
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.button}
-                      aria-expanded={selected === q.id}
-                      onClick={() => onSelect(selected === q.id ? null : q.id)}
-                    >
-                      {t('queue.decide')}
-                    </button>
-                  </td>
-                ) : null}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={items}
+      rowKey={(q) => q.id}
+      rowLabel={(q) => q.name}
+      label={t('queue.title')}
+      rowProps={(q) => ({ 'data-selected': selected === q.id })}
+    />
   );
 }
 

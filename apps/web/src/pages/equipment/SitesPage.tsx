@@ -11,6 +11,7 @@ import type { SiteLinkView, SiteView } from '../../api/client';
 import { useCan } from '../../auth';
 import { CoordinateInput } from '../../components/CoordinateInput';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { SiteWeather } from '../weather/SiteWeather';
 import styles from './equipment.module.css';
@@ -414,6 +415,83 @@ function SiteLinks({ site, canWrite }: { site: SiteView; canWrite: boolean }) {
       .then(() => setEditing(null))
       .catch(() => undefined);
   };
+  // AP-26a: Name (öffnet die Bearbeitung) und Löschen bleiben immer sichtbar.
+  const columns: DataColumn<SiteLinkView>[] = [
+    {
+      id: 'service',
+      header: t('equipment.sites.links.service'),
+      sortValue: (l) => l.serviceType,
+      priority: 2,
+      cell: (l) => l.serviceType,
+    },
+    {
+      id: 'name',
+      header: t('equipment.field.name'),
+      sortValue: (l) => l.name,
+      cell: (l) =>
+        canWrite ? (
+          <button
+            type="button"
+            className={styles.pickItem}
+            onClick={() => {
+              setDraft({
+                serviceType: l.serviceType,
+                name: l.name,
+                remoteIdOrUrl: l.remoteIdOrUrl,
+                notes: l.notes,
+                isDefault: l.isDefault,
+              });
+              setErrors({});
+              setEditing(l.id);
+            }}
+          >
+            {l.name}
+          </button>
+        ) : (
+          l.name
+        ),
+    },
+    {
+      id: 'remote',
+      header: t('equipment.sites.links.remote'),
+      sortValue: (l) => l.remoteIdOrUrl,
+      priority: 2,
+      cell: (l) =>
+        /^https?:\/\//.test(l.remoteIdOrUrl) ? (
+          <a href={l.remoteIdOrUrl} target="_blank" rel="noopener noreferrer">
+            {l.remoteIdOrUrl}
+          </a>
+        ) : (
+          <code>{l.remoteIdOrUrl}</code>
+        ),
+    },
+    {
+      id: 'default',
+      header: t('equipment.sites.links.default'),
+      sortValue: (l) => l.isDefault,
+      priority: 3,
+      cell: (l) => (l.isDefault ? t('equipment.yes') : ''),
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: t('equipment.actions'),
+            headerHidden: true,
+            cell: (l: SiteLinkView) => (
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={t('equipment.deleteNamed', { name: l.name })}
+                onClick={() => setConfirm(l)}
+              >
+                <Delete size={ICON_SIZE.table} aria-hidden />
+              </button>
+            ),
+          },
+        ]
+      : []),
+  ];
   return (
     <section className={styles.panel} aria-labelledby="site-links-title">
       <div className={styles.formTitle}>
@@ -437,71 +515,13 @@ function SiteLinks({ site, canWrite }: { site: SiteView; canWrite: boolean }) {
       {mine.length === 0 ? (
         <p className={styles.muted}>{t('equipment.sites.links.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t('equipment.sites.links.service')}</th>
-                <th>{t('equipment.field.name')}</th>
-                <th>{t('equipment.sites.links.remote')}</th>
-                <th>{t('equipment.sites.links.default')}</th>
-                {canWrite ? <th aria-label={t('equipment.actions')} /> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((l) => (
-                <tr key={l.id}>
-                  <td>{l.serviceType}</td>
-                  <td>
-                    {canWrite ? (
-                      <button
-                        type="button"
-                        className={styles.pickItem}
-                        onClick={() => {
-                          setDraft({
-                            serviceType: l.serviceType,
-                            name: l.name,
-                            remoteIdOrUrl: l.remoteIdOrUrl,
-                            notes: l.notes,
-                            isDefault: l.isDefault,
-                          });
-                          setErrors({});
-                          setEditing(l.id);
-                        }}
-                      >
-                        {l.name}
-                      </button>
-                    ) : (
-                      l.name
-                    )}
-                  </td>
-                  <td>
-                    {/^https?:\/\//.test(l.remoteIdOrUrl) ? (
-                      <a href={l.remoteIdOrUrl} target="_blank" rel="noopener noreferrer">
-                        {l.remoteIdOrUrl}
-                      </a>
-                    ) : (
-                      <code>{l.remoteIdOrUrl}</code>
-                    )}
-                  </td>
-                  <td>{l.isDefault ? t('equipment.yes') : ''}</td>
-                  {canWrite ? (
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.iconButton}
-                        aria-label={t('equipment.deleteNamed', { name: l.name })}
-                        onClick={() => setConfirm(l)}
-                      >
-                        <Delete size={ICON_SIZE.table} aria-hidden />
-                      </button>
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={mine}
+          rowKey={(l) => l.id}
+          rowLabel={(l) => l.name}
+          label={t('equipment.sites.links.title')}
+        />
       )}
       {editing !== null ? (
         <form className={styles.section} onSubmit={(e) => void submit(e)}>

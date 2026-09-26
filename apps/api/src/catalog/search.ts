@@ -166,24 +166,44 @@ export function searchDso(
     }
     scored.push({ x, score });
   }
+  // Natürliche Richtung je Sortierung; `dir` kehrt sie um (Spaltenkopf, AP-26a). Leere Werte immer hinten.
+  const natural: Record<typeof q.sort, 'asc' | 'desc'> = {
+    name: 'asc',
+    mag: 'asc',
+    size: 'desc',
+    usable: 'desc',
+    altitude: 'desc',
+    score: 'desc',
+  };
+  const sign = (q.dir ?? natural[q.sort]) === 'asc' ? 1 : -1;
+  const key = (x: (typeof scored)[number]['x']): number | null => {
+    switch (q.sort) {
+      case 'mag':
+        return x.mag ?? null;
+      case 'size':
+        return x.row.sizeMajorArcmin ?? null;
+      case 'usable':
+        return night ? night.metrics(x.row).usableHours : null;
+      case 'altitude':
+        return night ? (night.metrics(x.row).peakAltDeg ?? null) : null;
+      case 'score':
+        return rank(x);
+      default:
+        return null;
+    }
+  };
   scored.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    if (q.sort === 'mag') return (a.x.mag ?? 99) - (b.x.mag ?? 99) || byName(a.x, b.x);
-    if (q.sort === 'size')
-      return (b.x.row.sizeMajorArcmin ?? -1) - (a.x.row.sizeMajorArcmin ?? -1) || byName(a.x, b.x);
-    if (night && q.sort === 'usable')
-      return (
-        night.metrics(b.x.row).usableHours - night.metrics(a.x.row).usableHours ||
-        (night.metrics(b.x.row).peakAltDeg ?? -90) - (night.metrics(a.x.row).peakAltDeg ?? -90) ||
-        byName(a.x, b.x)
-      );
-    if (q.sort === 'score') return (rank(b.x) ?? -1) - (rank(a.x) ?? -1) || byName(a.x, b.x);
-    if (night && q.sort === 'altitude')
-      return (
-        (night.metrics(b.x.row).peakAltDeg ?? -90) - (night.metrics(a.x.row).peakAltDeg ?? -90) ||
-        byName(a.x, b.x)
-      );
-    return byName(a.x, b.x);
+    if (q.sort === 'name') return sign * byName(a.x, b.x);
+    const ka = key(a.x);
+    const kb = key(b.x);
+    if (ka === null || kb === null) return ka === kb ? byName(a.x, b.x) : ka === null ? 1 : -1;
+    // Gleichstand bei den nutzbaren Stunden: höher stehende Objekte zuerst (wie bisher).
+    const tie =
+      q.sort === 'usable' && night
+        ? (night.metrics(b.x.row).peakAltDeg ?? -90) - (night.metrics(a.x.row).peakAltDeg ?? -90)
+        : 0;
+    return sign * (ka - kb) || tie || byName(a.x, b.x);
   });
   return {
     items: scored

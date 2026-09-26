@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { memberApi, tenantApi, type ChangeLogEntry } from '../../api/client';
 import { useAuth } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import styles from './admin.module.css';
 import { AdminLayout } from './AdminLayout';
@@ -71,24 +72,7 @@ export function ChangeLogPage() {
           <p className={styles.muted}>{t('system.audit.empty')}</p>
         ) : (
           <>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('system.audit.col.time')}</th>
-                    <th scope="col">{t('admin.log.col.actor')}</th>
-                    <th scope="col">{t('admin.log.col.object')}</th>
-                    <th scope="col">{t('system.audit.col.action')}</th>
-                    <th scope="col">{t('admin.log.col.changes')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((e) => (
-                    <ChangeRow key={e.id} entry={e} zone={zone} names={names} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ChangeTable items={items} zone={zone} names={names} />
             {changes.hasNextPage ? (
               <div className={styles.actions}>
                 <button
@@ -113,6 +97,7 @@ export function ChangeLogPage() {
           onRetry={() => void system.refetch()}
           items={system.data?.pages.flatMap((p) => p.items) ?? []}
           zone={zone}
+          label={t('admin.log.systemActions')}
           hasMore={system.hasNextPage}
           loadingMore={system.isFetchingNextPage}
           onMore={() => void system.fetchNextPage()}
@@ -122,12 +107,13 @@ export function ChangeLogPage() {
   );
 }
 
-function ChangeRow({
-  entry,
+/** Tabelle der Änderungen (Zeit, Akteur, Objekt, Aktion, Änderungen). */
+function ChangeTable({
+  items,
   zone,
   names,
 }: {
-  entry: ChangeLogEntry;
+  items: readonly ChangeLogEntry[];
   zone: string;
   names: ReadonlyMap<string, string>;
 }) {
@@ -151,26 +137,61 @@ function ChangeRow({
     }
     return typeof v === 'object' ? JSON.stringify(v) : String(v);
   };
-  const parts = Object.entries(entry.diff).map(([key, v]) => {
-    if (v && typeof v === 'object' && ('from' in v || 'to' in v)) {
-      const d = v as { from?: unknown; to?: unknown };
-      return `${field(key)}: ${value(key, d.from)} → ${value(key, d.to)}`;
-    }
-    return `${field(key)}: ${value(key, v)}`;
-  });
-  const entityKey = `admin.log.entity.${entry.entity}`;
+  const changesText = (entry: ChangeLogEntry) =>
+    Object.entries(entry.diff)
+      .map(([key, v]) => {
+        if (v && typeof v === 'object' && ('from' in v || 'to' in v)) {
+          const d = v as { from?: unknown; to?: unknown };
+          return `${field(key)}: ${value(key, d.from)} → ${value(key, d.to)}`;
+        }
+        return `${field(key)}: ${value(key, v)}`;
+      })
+      .join(' · ');
+  const objectText = (entry: ChangeLogEntry) => {
+    const entityKey = `admin.log.entity.${entry.entity}`;
+    const entity = i18n.exists(entityKey) ? t(entityKey) : entry.entity;
+    return `${entity}${entry.subjectName ? `: ${entry.subjectName}` : ''}`;
+  };
+  const actorText = (entry: ChangeLogEntry) => entry.actorName ?? t('admin.log.unknownActor');
+  const actionText = (entry: ChangeLogEntry) => t(`admin.log.action.${entry.action}`);
+  const columns: DataColumn<ChangeLogEntry>[] = [
+    {
+      id: 'time',
+      header: t('system.audit.col.time'),
+      sortValue: (e) => e.createdAt,
+      nowrap: true,
+      cell: (e) => <DateTime at={e.createdAt} zone={zone} />,
+    },
+    {
+      id: 'actor',
+      header: t('admin.log.col.actor'),
+      sortValue: actorText,
+      priority: 2,
+      cell: actorText,
+    },
+    { id: 'object', header: t('admin.log.col.object'), sortValue: objectText, cell: objectText },
+    {
+      id: 'action',
+      header: t('system.audit.col.action'),
+      sortValue: actionText,
+      priority: 3,
+      cell: actionText,
+    },
+    {
+      id: 'changes',
+      header: t('admin.log.col.changes'),
+      priority: 4,
+      className: styles.details,
+      cell: changesText,
+    },
+  ];
   return (
-    <tr>
-      <td className={styles.nowrap}>
-        <DateTime at={entry.createdAt} zone={zone} />
-      </td>
-      <td>{entry.actorName ?? t('admin.log.unknownActor')}</td>
-      <td>
-        {i18n.exists(entityKey) ? t(entityKey) : entry.entity}
-        {entry.subjectName ? `: ${entry.subjectName}` : ''}
-      </td>
-      <td>{t(`admin.log.action.${entry.action}`)}</td>
-      <td className={styles.details}>{parts.join(' · ')}</td>
-    </tr>
+    <DataTable
+      columns={columns}
+      rows={items}
+      rowKey={(e) => e.id}
+      rowLabel={objectText}
+      label={t('admin.log.changes')}
+    />
   );
 }

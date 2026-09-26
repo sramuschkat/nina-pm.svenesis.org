@@ -19,3 +19,20 @@ export function collectCspViolations(page: Page): string[] {
   });
   return violations;
 }
+
+/**
+ * AP-26a: Keine Datentabelle ist breiter als ihr Container (Spalten ausblenden statt horizontal
+ * scrollen). Liefert je überlaufender Tabelle ihren Namen und den Überstand in px.
+ */
+export async function tableOverflow(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('table')]
+      .filter((t) => t.offsetParent !== null && t.parentElement)
+      .map((t) => ({
+        name: t.getAttribute('aria-label') ?? t.id,
+        over: t.scrollWidth - (t.parentElement?.clientWidth ?? 0),
+      }))
+      .filter((x) => x.over > 1)
+      .map((x) => `${x.name}: ${String(x.over)} px`),
+  );
+}

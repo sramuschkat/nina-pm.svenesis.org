@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { systemApi, type IdentityAdmin, type SuperUser } from '../../api/client';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SYSTEM_TIMEZONE } from '../../lib/time';
@@ -40,6 +41,57 @@ function SuperUserList() {
   });
   const invalid = discordUserId !== '' && !DISCORD_ID_PATTERN.test(discordUserId);
   const Add = actionIcons.add;
+  const columns: DataColumn<SuperUser>[] = [
+    {
+      id: 'name',
+      header: t('system.superUsers.col.name'),
+      sortValue: (u) => u.discordUsername,
+      cell: (u) => u.discordUsername,
+    },
+    {
+      id: 'discordId',
+      header: t('system.superUsers.col.discordId'),
+      sortValue: (u) => u.discordUserId,
+      priority: 3,
+      className: styles.code,
+      cell: (u) => u.discordUserId,
+    },
+    {
+      id: 'mfa',
+      header: t('system.superUsers.col.mfa'),
+      sortValue: (u) => u.mfa,
+      priority: 2,
+      cell: (u) => (
+        <span className={u.mfa ? styles.pillOk : styles.pillWarn}>
+          {u.mfa ? t('admin.mfaOn') : t('admin.mfaOff')}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: t('system.superUsers.col.status'),
+      sortValue: (u) => t(`system.superUsers.status.${u.status}`),
+      cell: (u) => (
+        <span className={u.status === 'active' ? styles.pillOk : styles.pill}>
+          {t(`system.superUsers.status.${u.status}`)}
+        </span>
+      ),
+    },
+    {
+      id: 'since',
+      header: t('system.superUsers.col.since'),
+      sortValue: (u) => u.createdAt,
+      priority: 2,
+      nowrap: true,
+      cell: (u) => <DateTime at={u.createdAt} zone={SYSTEM_TIMEZONE} />,
+    },
+    {
+      id: 'actions',
+      header: t('system.superUsers.col.actions'),
+      headerHidden: true,
+      cell: (u) => <SuperUserActions user={u} />,
+    },
+  ];
   return (
     <section className={styles.panel} aria-labelledby="super-users">
       <h2 id="super-users">{t('system.superUsers.list')}</h2>
@@ -48,27 +100,13 @@ function SuperUserList() {
       ) : list.isError ? (
         <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('system.superUsers.col.name')}</th>
-                <th scope="col">{t('system.superUsers.col.discordId')}</th>
-                <th scope="col">{t('system.superUsers.col.mfa')}</th>
-                <th scope="col">{t('system.superUsers.col.status')}</th>
-                <th scope="col">{t('system.superUsers.col.since')}</th>
-                <th scope="col">
-                  <span className={styles.muted}>{t('system.superUsers.col.actions')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.data.superUsers.map((u) => (
-                <SuperUserRow key={u.identityId} user={u} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={list.data.superUsers}
+          rowKey={(u) => u.identityId}
+          rowLabel={(u) => u.discordUsername}
+          label={t('system.superUsers.list')}
+        />
       )}
       <form
         className={styles.row}
@@ -106,7 +144,8 @@ function SuperUserList() {
   );
 }
 
-function SuperUserRow({ user }: { user: SuperUser }) {
+/** Aktionen einer Zeile: deaktivieren/reaktivieren, entfernen (mit `ConfirmDialog`). */
+function SuperUserActions({ user }: { user: SuperUser }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: SUPER_USERS_KEY });
@@ -123,57 +162,40 @@ function SuperUserRow({ user }: { user: SuperUser }) {
     onSettled: refresh,
   });
   return (
-    <tr>
-      <td>{user.discordUsername}</td>
-      <td className={styles.code}>{user.discordUserId}</td>
-      <td>
-        <span className={user.mfa ? styles.pillOk : styles.pillWarn}>
-          {user.mfa ? t('admin.mfaOn') : t('admin.mfaOff')}
-        </span>
-      </td>
-      <td>
-        <span className={user.status === 'active' ? styles.pillOk : styles.pill}>
-          {t(`system.superUsers.status.${user.status}`)}
-        </span>
-      </td>
-      <td>
-        <DateTime at={user.createdAt} zone={SYSTEM_TIMEZONE} />
-      </td>
-      <td>
-        <div className={styles.actions}>
-          {user.status === 'active' ? (
-            <button type="button" className={styles.button} onClick={disable.open}>
-              {t('system.superUsers.disable')}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={styles.button}
-              disabled={enable.isPending}
-              onClick={() => enable.mutate()}
-            >
-              {t('system.superUsers.enable')}
-            </button>
-          )}
-          <button type="button" className={styles.buttonDanger} onClick={remove.open}>
-            {t('system.superUsers.remove')}
+    <>
+      <div className={styles.actions}>
+        {user.status === 'active' ? (
+          <button type="button" className={styles.button} onClick={disable.open}>
+            {t('system.superUsers.disable')}
           </button>
-        </div>
-        <ConfirmDialog
-          {...disable.dialog}
-          title={t('system.superUsers.disableTitle', { name: user.discordUsername })}
-          consequence={t('system.superUsers.disableConsequence')}
-          confirmLabel={t('system.superUsers.disable')}
-        />
-        <ConfirmDialog
-          {...remove.dialog}
-          variant="danger"
-          title={t('system.superUsers.removeTitle', { name: user.discordUsername })}
-          consequence={t('system.superUsers.removeConsequence')}
-          confirmLabel={t('system.superUsers.remove')}
-        />
-      </td>
-    </tr>
+        ) : (
+          <button
+            type="button"
+            className={styles.button}
+            disabled={enable.isPending}
+            onClick={() => enable.mutate()}
+          >
+            {t('system.superUsers.enable')}
+          </button>
+        )}
+        <button type="button" className={styles.buttonDanger} onClick={remove.open}>
+          {t('system.superUsers.remove')}
+        </button>
+      </div>
+      <ConfirmDialog
+        {...disable.dialog}
+        title={t('system.superUsers.disableTitle', { name: user.discordUsername })}
+        consequence={t('system.superUsers.disableConsequence')}
+        confirmLabel={t('system.superUsers.disable')}
+      />
+      <ConfirmDialog
+        {...remove.dialog}
+        variant="danger"
+        title={t('system.superUsers.removeTitle', { name: user.discordUsername })}
+        consequence={t('system.superUsers.removeConsequence')}
+        confirmLabel={t('system.superUsers.remove')}
+      />
+    </>
   );
 }
 

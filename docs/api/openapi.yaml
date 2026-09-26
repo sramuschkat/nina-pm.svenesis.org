@@ -18316,6 +18316,14 @@ paths:
           name: sort
           in: query
         - schema:
+            type: string
+            enum:
+              - asc
+              - desc
+          required: false
+          name: dir
+          in: query
+        - schema:
             type: integer
             minimum: 1
             maximum: 100

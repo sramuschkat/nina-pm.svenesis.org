@@ -12,6 +12,7 @@ import { sessionApi, type SessionList } from '../../api/client';
 import { useAppearance } from '../../app/theme';
 import { useAuth } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SYSTEM_TIMEZONE } from '../../lib/time';
@@ -19,6 +20,7 @@ import styles from '../admin/admin.module.css';
 import { DateTime, problemCode, useConfirm } from '../admin/shared';
 
 const SESSIONS_KEY = ['me', 'sessions'] as const;
+type Session = SessionList['sessions'][number];
 
 export function PersonalSettingsPage() {
   const { t } = useTranslation();
@@ -104,6 +106,49 @@ function Sessions() {
     await signedOut();
   });
   const LogOut = actionIcons.logout;
+  const deviceName = (s: Session) => s.device ?? t('me.unknownDevice');
+  const columns: DataColumn<Session>[] = [
+    {
+      id: 'device',
+      header: t('me.col.device'),
+      sortValue: deviceName,
+      cell: (s) => (
+        <>
+          {deviceName(s)}{' '}
+          {s.current ? <span className={styles.pillOk}>{t('me.current')}</span> : null}
+        </>
+      ),
+    },
+    {
+      id: 'ip',
+      header: t('me.col.ip'),
+      sortValue: (s) => s.ipTruncated,
+      priority: 3,
+      className: styles.code,
+      cell: (s) => s.ipTruncated ?? '–',
+    },
+    {
+      id: 'created',
+      header: t('me.col.created'),
+      sortValue: (s) => s.createdAt,
+      priority: 2,
+      nowrap: true,
+      cell: (s) => <DateTime at={s.createdAt} zone={zone} />,
+    },
+    {
+      id: 'lastSeen',
+      header: t('me.col.lastSeen'),
+      sortValue: (s) => s.lastSeenAt,
+      nowrap: true,
+      cell: (s) => <DateTime at={s.lastSeenAt} zone={zone} />,
+    },
+    {
+      id: 'actions',
+      header: t('system.superUsers.col.actions'),
+      headerHidden: true,
+      cell: (s) => <EndSession session={s} onEndedCurrent={signedOut} />,
+    },
+  ];
   return (
     <section className={styles.panel} aria-labelledby="me-sessions">
       <div className={styles.head}>
@@ -125,26 +170,13 @@ function Sessions() {
           <p className={styles.muted}>
             {t('me.lastLogin')} <DateTime at={sessions.data.lastLoginAt} zone={zone} />
           </p>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th scope="col">{t('me.col.device')}</th>
-                  <th scope="col">{t('me.col.ip')}</th>
-                  <th scope="col">{t('me.col.created')}</th>
-                  <th scope="col">{t('me.col.lastSeen')}</th>
-                  <th scope="col">
-                    <span className={styles.muted}>{t('system.superUsers.col.actions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.data.sessions.map((s) => (
-                  <SessionRow key={s.id} session={s} zone={zone} onEndedCurrent={signedOut} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            rows={sessions.data.sessions}
+            rowKey={(s) => s.id}
+            rowLabel={deviceName}
+            label={t('me.sessions')}
+          />
         </>
       )}
       <ConfirmDialog
@@ -158,13 +190,12 @@ function Sessions() {
   );
 }
 
-function SessionRow({
+/** *Beenden* einer Sitzung über den `ConfirmDialog`; die eigene Sitzung meldet ab. */
+function EndSession({
   session,
-  zone,
   onEndedCurrent,
 }: {
-  session: SessionList['sessions'][number];
-  zone: string;
+  session: Session;
   onEndedCurrent: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -175,29 +206,16 @@ function SessionRow({
     else await client.invalidateQueries({ queryKey: SESSIONS_KEY });
   });
   return (
-    <tr>
-      <td>
-        {session.device ?? t('me.unknownDevice')}{' '}
-        {session.current ? <span className={styles.pillOk}>{t('me.current')}</span> : null}
-      </td>
-      <td className={styles.code}>{session.ipTruncated ?? '–'}</td>
-      <td className={styles.nowrap}>
-        <DateTime at={session.createdAt} zone={zone} />
-      </td>
-      <td className={styles.nowrap}>
-        <DateTime at={session.lastSeenAt} zone={zone} />
-      </td>
-      <td>
-        <button type="button" className={styles.button} onClick={end.open}>
-          {t('me.end')}
-        </button>
-        <ConfirmDialog
-          {...end.dialog}
-          title={session.current ? t('me.endCurrentTitle') : t('me.endTitle')}
-          consequence={session.current ? t('me.endCurrentConsequence') : t('me.endConsequence')}
-          confirmLabel={t('me.end')}
-        />
-      </td>
-    </tr>
+    <>
+      <button type="button" className={styles.button} onClick={end.open}>
+        {t('me.end')}
+      </button>
+      <ConfirmDialog
+        {...end.dialog}
+        title={session.current ? t('me.endCurrentTitle') : t('me.endTitle')}
+        consequence={session.current ? t('me.endCurrentConsequence') : t('me.endConsequence')}
+        confirmLabel={t('me.end')}
+      />
+    </>
   );
 }

@@ -19,6 +19,7 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { CheckList, type CheckItem } from '../../components/CheckList';
+import { DataTable, type DataColumn, type SortValue } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
@@ -27,8 +28,21 @@ import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { SchedulerForm } from '../equipment/RigsPage';
 import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
-import { PROTOCOL_COLUMNS, cell, protocolCsv, protocolTsv, siteClock } from './protocol';
-import type { Check, SimulationRequest, SimulationResult, TargetCard } from './simulate';
+import {
+  PROTOCOL_COLUMNS,
+  cell,
+  protocolCsv,
+  protocolTsv,
+  siteClock,
+  type ProtocolColumn,
+} from './protocol';
+import type {
+  Check,
+  ProtocolRow,
+  SimulationRequest,
+  SimulationResult,
+  TargetCard,
+} from './simulate';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
 
@@ -37,6 +51,47 @@ const hm = (atUtc: string, tz: string) =>
   `${formatZonedTime(atUtc, tz)} ${formatTzAbbr(atUtc, tz)}`;
 const iso = (unix: number) => new Date(unix * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 const shiftNight = (night: string, days: number) => keyFromDays(daysFromKey(night) + days);
+
+/**
+ * Protokollspalten (AP-26a): Zeit, Befehl und Ziel bleiben immer sichtbar; je größer die Priorität,
+ * desto früher weicht die Spalte in die Detailzeile. Sortiert wird nach Rohwerten, nicht nach Text.
+ */
+const PROTOCOL_SPEC: Record<
+  ProtocolColumn,
+  { priority: number; sort: (r: ProtocolRow) => SortValue }
+> = {
+  time: { priority: 1, sort: (r) => r.atUtc },
+  cmd: { priority: 1, sort: (r) => r.cmd },
+  target: { priority: 1, sort: (r) => r.projectName },
+  panel: { priority: 3, sort: (r) => r.panel },
+  no: { priority: 3, sort: (r) => r.no },
+  filter: { priority: 2, sort: (r) => r.filter },
+  exposure: { priority: 2, sort: (r) => r.exposureS },
+  gain: { priority: 5, sort: (r) => r.gain },
+  offset: { priority: 5, sort: (r) => r.offset },
+  binning: { priority: 5, sort: (r) => r.binning },
+  readout: { priority: 6, sort: (r) => r.readoutMode },
+  rotation: { priority: 5, sort: (r) => r.rotationDeg },
+  ra: { priority: 7, sort: (r) => r.raDeg },
+  dec: { priority: 7, sort: (r) => r.decDeg },
+  alt: { priority: 3, sort: (r) => r.altDeg },
+  moonSep: { priority: 4, sort: (r) => r.moonSepDeg },
+  moonOk: { priority: 4, sort: (r) => r.moonOk },
+  required: { priority: 6, sort: (r) => r.requiredSepDeg },
+  dark: { priority: 6, sort: (r) => r.dark },
+  la: { priority: 6, sort: (r) => r.la },
+  profile: { priority: 5, sort: (r) => r.moonProfile },
+};
+
+const protocolColumns = (t: Parameters<typeof cell>[2], tz: string): DataColumn<ProtocolRow>[] =>
+  PROTOCOL_COLUMNS.map((c) => ({
+    id: c,
+    header: t(`simulator.col.${c}`),
+    sortValue: PROTOCOL_SPEC[c].sort,
+    priority: PROTOCOL_SPEC[c].priority,
+    ...(c === 'time' ? { align: 'end' as const, nowrap: true } : {}),
+    cell: (r: ProtocolRow) => cell(r, c, t, tz),
+  }));
 
 export function SimulatorPage() {
   const { t, i18n } = useTranslation();
@@ -406,36 +461,13 @@ export function SimulatorPage() {
                 </span>
               ) : null}
             </div>
-            <div
-              className={styles.tableWrap}
-              // Breite Tabelle scrollt waagrecht: per Tastatur erreichbar (axe scrollable-region-focusable).
-              tabIndex={0}
-              role="region"
-              aria-label={t('simulator.protocol')}
-            >
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    {PROTOCOL_COLUMNS.map((c) => (
-                      <th key={c} scope="col">
-                        {t(`simulator.col.${c}`)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.protocol.map((r) => (
-                    <tr key={r.key}>
-                      {PROTOCOL_COLUMNS.map((c) => (
-                        <td key={c} className={c === 'time' ? styles.num : undefined}>
-                          {cell(r, c, t, tz)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={protocolColumns(t, tz)}
+              rows={result.protocol}
+              rowKey={(r) => r.key}
+              rowLabel={(r) => `${siteClock(r.atUtc, tz)} ${r.projectName}`}
+              label={t('simulator.protocol')}
+            />
             <Findings result={result} tz={tz} />
             <p className={styles.hash}>{t('simulator.hash', { hash: result.plan.outputHash })}</p>
           </details>

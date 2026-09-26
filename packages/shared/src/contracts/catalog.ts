@@ -69,6 +69,8 @@ export const DsoQuery = z.object({
   candidates: z.enum(['true', 'false']).optional(),
   family: z.enum(['galaxies', 'nebulae', 'clusters']).optional(),
   sort: z.enum(['name', 'mag', 'size', 'usable', 'altitude', 'score']).default('name'),
+  /** Richtung (AP-26a, Spaltenkopf); ohne Angabe die natürliche: Name/Helligkeit auf, sonst ab. */
+  dir: z.enum(['asc', 'desc']).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).max(20000).default(0),
 });

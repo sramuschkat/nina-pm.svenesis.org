@@ -9,8 +9,9 @@ import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { equipmentApi, projectsApi, type SiteView } from '../../api/client';
+import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
 import { useCan } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
 import { NightChart } from '../../components/night-chart';
@@ -23,6 +24,12 @@ import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 
 type TabKey = 'charts' | 'weather' | 'notes' | 'history';
+
+/** Zeile des Freigabe-Verlaufs mit stabilem Schlüssel. */
+interface HistoryRow {
+  h: HistoryEntry;
+  key: string;
+}
 
 export function ProjectTabs({
   projectId,
@@ -295,32 +302,46 @@ function HistoryTab({ projectId }: { projectId: string }) {
   if (history.isPending) return <p role="status">{t('common.loading')}</p>;
   if (history.data.length === 0)
     return <p className={styles.muted}>{t('projectEditor.history.empty')}</p>;
+  const what = (h: HistoryEntry) =>
+    h.kind === 'approval'
+      ? approvalText(h)
+      : t('projectEditor.history.change', { entity: h.entity, action: h.action });
+  const columns: DataColumn<HistoryRow>[] = [
+    {
+      id: 'when',
+      header: t('projectEditor.history.when'),
+      sortValue: (r) => r.h.createdAt,
+      nowrap: true,
+      cell: (r) => when(r.h.createdAt),
+    },
+    {
+      id: 'who',
+      header: t('projectEditor.history.who'),
+      sortValue: (r) => r.h.userName,
+      priority: 2,
+      cell: (r) => r.h.userName ?? '–',
+    },
+    {
+      id: 'what',
+      header: t('projectEditor.history.what'),
+      sortValue: (r) => what(r.h),
+      cell: (r) => what(r.h),
+    },
+    {
+      id: 'comment',
+      header: t('projectEditor.history.comment'),
+      priority: 3,
+      cell: (r) => r.h.comment ?? '',
+    },
+  ];
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('projectEditor.history.when')}</th>
-            <th scope="col">{t('projectEditor.history.who')}</th>
-            <th scope="col">{t('projectEditor.history.what')}</th>
-            <th scope="col">{t('projectEditor.history.comment')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.data.map((h, i) => (
-            <tr key={`${h.createdAt}-${String(i)}`}>
-              <td>{when(h.createdAt)}</td>
-              <td>{h.userName ?? '–'}</td>
-              <td>
-                {h.kind === 'approval'
-                  ? approvalText(h)
-                  : t('projectEditor.history.change', { entity: h.entity, action: h.action })}
-              </td>
-              <td>{h.comment ?? ''}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={history.data.map((h, i) => ({ h, key: `${h.createdAt}-${String(i)}` }))}
+      rowKey={(r) => r.key}
+      rowLabel={(r) => when(r.h.createdAt)}
+      label={t('projectEditor.tabs.history')}
+      defaultSort={{ id: 'when', dir: 'desc' }}
+    />
   );
 }

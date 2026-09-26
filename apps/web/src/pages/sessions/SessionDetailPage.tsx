@@ -18,6 +18,7 @@ import {
   type NightSessionLineRow,
 } from '../../api/client';
 import { useCan } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -185,60 +186,84 @@ function PlanTable({
 }) {
   const { t } = useTranslation();
   if (rows.length === 0) return <p className={styles.muted}>{t('sessions.plan.empty')}</p>;
+  // AP-26a: Projekt und Aktion bleiben immer sichtbar, Nebenzahlen weichen bei wenig Platz.
+  const columns: DataColumn<NightSessionLineRow>[] = [
+    {
+      id: 'project',
+      header: t('sessions.plan.col.project'),
+      sortValue: (r) => r.projectName,
+      cell: (r) => r.projectName,
+    },
+    {
+      id: 'filter',
+      header: t('sessions.plan.col.filter'),
+      sortValue: (r) => r.filterShortName,
+      cell: (r) => r.filterShortName,
+    },
+    {
+      id: 'planned',
+      header: t('sessions.plan.col.planned'),
+      sortValue: (r) => r.planned,
+      priority: 2,
+      align: 'end',
+      cell: (r) => r.planned ?? (hasPlan ? '–' : t('sessions.detail.noPlan')),
+    },
+    {
+      id: 'acquired',
+      header: t('sessions.plan.col.acquired'),
+      sortValue: (r) => r.acquired,
+      priority: 3,
+      align: 'end',
+      cell: (r) => r.acquired,
+    },
+    {
+      id: 'rejected',
+      header: t('sessions.plan.col.rejected'),
+      sortValue: (r) => r.rejected,
+      priority: 3,
+      align: 'end',
+      cell: (r) => r.rejected,
+    },
+    {
+      id: 'accepted',
+      header: t('sessions.plan.col.accepted'),
+      sortValue: (r) => r.accepted,
+      priority: 2,
+      align: 'end',
+      cell: (r) => r.accepted,
+    },
+    {
+      id: 'integration',
+      header: t('sessions.plan.col.integration'),
+      sortValue: (r) => r.integrationS,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (r) => t('sessions.hours', { h: hours(r.integrationS) }),
+    },
+    {
+      id: 'bonus',
+      header: t('sessions.plan.col.bonus'),
+      sortValue: (r) => r.bonus,
+      priority: 4,
+      align: 'end',
+      cell: (r) => r.bonus,
+    },
+    {
+      id: 'action',
+      header: t('sessions.plan.col.action'),
+      headerHidden: true,
+      cell: (r) => <CorrectButton row={r} onCorrect={onCorrect} />,
+    },
+  ];
   return (
-    <div
-      className={styles.tableWrap}
-      tabIndex={0}
-      role="region"
-      aria-label={t('sessions.detail.tab.plan')}
-    >
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('sessions.plan.col.project')}</th>
-            <th scope="col">{t('sessions.plan.col.filter')}</th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.planned')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.acquired')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.rejected')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.accepted')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.integration')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.plan.col.bonus')}
-            </th>
-            <th scope="col">{t('sessions.plan.col.action')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.exposureLineId}>
-              <td>{r.projectName}</td>
-              <td>{r.filterShortName}</td>
-              <td className={styles.num}>
-                {r.planned ?? (hasPlan ? '–' : t('sessions.detail.noPlan'))}
-              </td>
-              <td className={styles.num}>{r.acquired}</td>
-              <td className={styles.num}>{r.rejected}</td>
-              <td className={styles.num}>{r.accepted}</td>
-              <td className={styles.num}>{t('sessions.hours', { h: hours(r.integrationS) })}</td>
-              <td className={styles.num}>{r.bonus}</td>
-              <td>
-                <CorrectButton row={r} onCorrect={onCorrect} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={rows}
+      rowKey={(r) => r.exposureLineId}
+      rowLabel={(r) => `${r.projectName} · ${r.filterShortName}`}
+      label={t('sessions.detail.tab.plan')}
+    />
   );
 }
 
@@ -428,6 +453,65 @@ function Captures({
         : true,
   );
   const unassigned = detail.captures.filter((c) => c.assignment === 'unassigned');
+  // AP-26a: Zeit bleibt immer sichtbar; Kennzeichen und Ergebnis weichen zuerst.
+  const captureColumns: DataColumn<NightSessionCapture>[] = [
+    {
+      id: 'time',
+      header: t('sessions.captures.col.time'),
+      sortValue: (c) => c.capturedAt,
+      nowrap: true,
+      cell: (c) => <SiteTime atUtc={c.capturedAt} siteTimeZone={zone} />,
+    },
+    {
+      id: 'type',
+      header: t('sessions.captures.col.type'),
+      sortValue: (c) => t(`sessions.captures.type.${c.frameType}`),
+      priority: 3,
+      cell: (c) => t(`sessions.captures.type.${c.frameType}`),
+    },
+    {
+      id: 'project',
+      header: t('sessions.captures.col.project'),
+      sortValue: (c) => c.projectName,
+      priority: 2,
+      cell: (c) => c.projectName ?? '–',
+    },
+    {
+      id: 'filter',
+      header: t('sessions.captures.col.filter'),
+      sortValue: (c) => c.filterShortName,
+      cell: (c) => (
+        <>
+          {c.filterShortName}
+          {c.filterActual && c.filterActual !== c.filterShortName ? (
+            <span className={styles.muted}> ({c.filterActual})</span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: 'exposure',
+      header: t('sessions.captures.col.exposure'),
+      sortValue: (c) => c.exposureS,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (c) => t('sessions.captures.seconds', { s: c.exposureS }),
+    },
+    {
+      id: 'result',
+      header: t('sessions.captures.col.result'),
+      sortValue: (c) => t(`sessions.captures.result.${c.result}`),
+      priority: 4,
+      cell: (c) => t(`sessions.captures.result.${c.result}`),
+    },
+    {
+      id: 'flags',
+      header: t('sessions.captures.col.flags'),
+      priority: 3,
+      cell: (c) => <Flags c={c} />,
+    },
+  ];
   return (
     <>
       <div className={styles.toolbar}>
@@ -456,52 +540,13 @@ function Captures({
       {list.length === 0 ? (
         <p className={styles.muted}>{t('sessions.captures.empty')}</p>
       ) : (
-        <div
-          className={styles.tableWrap}
-          tabIndex={0}
-          role="region"
-          aria-label={t('sessions.detail.tab.captures')}
-        >
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('sessions.captures.col.time')}</th>
-                <th scope="col">{t('sessions.captures.col.type')}</th>
-                <th scope="col">{t('sessions.captures.col.project')}</th>
-                <th scope="col">{t('sessions.captures.col.filter')}</th>
-                <th scope="col" className={styles.num}>
-                  {t('sessions.captures.col.exposure')}
-                </th>
-                <th scope="col">{t('sessions.captures.col.result')}</th>
-                <th scope="col">{t('sessions.captures.col.flags')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((c) => (
-                <tr key={c.id}>
-                  <td className={styles.nowrap}>
-                    <SiteTime atUtc={c.capturedAt} siteTimeZone={zone} />
-                  </td>
-                  <td>{t(`sessions.captures.type.${c.frameType}`)}</td>
-                  <td>{c.projectName ?? '–'}</td>
-                  <td>
-                    {c.filterShortName}
-                    {c.filterActual && c.filterActual !== c.filterShortName ? (
-                      <span className={styles.muted}> ({c.filterActual})</span>
-                    ) : null}
-                  </td>
-                  <td className={styles.num}>
-                    {t('sessions.captures.seconds', { s: c.exposureS })}
-                  </td>
-                  <td>{t(`sessions.captures.result.${c.result}`)}</td>
-                  <td>
-                    <Flags c={c} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={captureColumns}
+          rows={list}
+          rowKey={(c) => c.id}
+          rowLabel={(c) => `${c.projectName ?? '–'} · ${c.filterShortName}`}
+          label={t('sessions.detail.tab.captures')}
+        />
       )}
     </>
   );
@@ -579,103 +624,125 @@ function Events({ detail }: { detail: NightSessionDetail }) {
   const zone = detail.session.siteTimeZone;
   if (detail.events.length === 0)
     return <p className={styles.muted}>{t('sessions.events.empty')}</p>;
+  const kind = (k: string) =>
+    i18n.exists(`sessions.events.kind.${k}`) ? t(`sessions.events.kind.${k}`) : k;
+  type SessionEvent = NightSessionDetail['events'][number];
+  // AP-26a: Zeit und Art bleiben immer sichtbar; Meldung und Dauer weichen bei wenig Platz.
+  const columns: DataColumn<SessionEvent>[] = [
+    {
+      id: 'time',
+      header: t('sessions.events.col.time'),
+      sortValue: (e) => e.occurredAt,
+      nowrap: true,
+      cell: (e) => <SiteTime atUtc={e.occurredAt} siteTimeZone={zone} />,
+    },
+    {
+      id: 'kind',
+      header: t('sessions.events.col.kind'),
+      sortValue: (e) => kind(e.kind),
+      cell: (e) => kind(e.kind),
+    },
+    {
+      id: 'message',
+      header: t('sessions.events.col.message'),
+      sortValue: (e) => e.message,
+      priority: 2,
+      cell: (e) => e.message ?? '–',
+    },
+    {
+      id: 'duration',
+      header: t('sessions.events.col.duration'),
+      sortValue: (e) => e.durationS,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (e) =>
+        e.durationS === null ? '–' : t('sessions.captures.seconds', { s: Math.round(e.durationS) }),
+    },
+  ];
   return (
-    <div
-      className={styles.tableWrap}
-      tabIndex={0}
-      role="region"
-      aria-label={t('sessions.detail.tab.events')}
-    >
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('sessions.events.col.time')}</th>
-            <th scope="col">{t('sessions.events.col.kind')}</th>
-            <th scope="col">{t('sessions.events.col.message')}</th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.events.col.duration')}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {detail.events.map((e) => (
-            <tr key={e.id}>
-              <td className={styles.nowrap}>
-                <SiteTime atUtc={e.occurredAt} siteTimeZone={zone} />
-              </td>
-              <td>
-                {i18n.exists(`sessions.events.kind.${e.kind}`)
-                  ? t(`sessions.events.kind.${e.kind}`)
-                  : e.kind}
-              </td>
-              <td>{e.message ?? '–'}</td>
-              <td className={styles.num}>
-                {e.durationS === null
-                  ? '–'
-                  : t('sessions.captures.seconds', { s: Math.round(e.durationS) })}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={detail.events}
+      rowKey={(e) => e.id}
+      rowLabel={(e) => kind(e.kind)}
+      label={t('sessions.detail.tab.events')}
+    />
   );
 }
 
 function Flats({ detail }: { detail: NightSessionDetail }) {
   const { t } = useTranslation();
   if (detail.flats.length === 0) return <p className={styles.muted}>{t('sessions.flats.empty')}</p>;
+  type SessionFlat = NightSessionDetail['flats'][number];
+  const flatKey = (f: SessionFlat) =>
+    `${f.filterShortName}-${String(f.rotatorMechDeg)}-${String(f.binning)}`;
+  // AP-26a: Filter bleibt immer sichtbar; Belichtung und Binning weichen zuerst.
+  const columns: DataColumn<SessionFlat>[] = [
+    {
+      id: 'filter',
+      header: t('sessions.flats.col.filter'),
+      sortValue: (f) => f.filterShortName,
+      cell: (f) => f.filterShortName,
+    },
+    {
+      id: 'rotator',
+      header: t('sessions.flats.col.rotator'),
+      sortValue: (f) => f.rotatorMechDeg,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (f) => `${f.rotatorMechDeg.toFixed(1)}°`,
+    },
+    {
+      id: 'binning',
+      header: t('sessions.flats.col.binning'),
+      sortValue: (f) => f.binning,
+      priority: 3,
+      align: 'end',
+      cell: (f) => f.binning,
+    },
+    {
+      id: 'flats',
+      header: t('sessions.flats.col.flats'),
+      sortValue: (f) => f.flatsTaken,
+      align: 'end',
+      nowrap: true,
+      cell: (f) => `${String(f.flatsTaken)}/${String(f.flatsPlanned)}`,
+    },
+    {
+      id: 'darkFlats',
+      header: t('sessions.flats.col.darkFlats'),
+      sortValue: (f) => f.darkFlatsTaken,
+      priority: 2,
+      align: 'end',
+      nowrap: true,
+      cell: (f) => `${String(f.darkFlatsTaken)}/${String(f.darkFlatsPlanned)}`,
+    },
+    {
+      id: 'exposure',
+      header: t('sessions.flats.col.exposure'),
+      sortValue: (f) => f.flatExposureS,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (f) =>
+        f.flatExposureS === null ? '–' : t('sessions.captures.seconds', { s: f.flatExposureS }),
+    },
+    {
+      id: 'status',
+      header: t('sessions.flats.col.status'),
+      sortValue: (f) => f.status,
+      cell: (f) => f.status,
+    },
+  ];
   return (
-    <div
-      className={styles.tableWrap}
-      tabIndex={0}
-      role="region"
-      aria-label={t('sessions.detail.tab.flats')}
-    >
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col">{t('sessions.flats.col.filter')}</th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.flats.col.rotator')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.flats.col.binning')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.flats.col.flats')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.flats.col.darkFlats')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('sessions.flats.col.exposure')}
-            </th>
-            <th scope="col">{t('sessions.flats.col.status')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {detail.flats.map((f) => (
-            <tr key={`${f.filterShortName}-${String(f.rotatorMechDeg)}-${String(f.binning)}`}>
-              <td>{f.filterShortName}</td>
-              <td className={styles.num}>{f.rotatorMechDeg.toFixed(1)}°</td>
-              <td className={styles.num}>{f.binning}</td>
-              <td className={styles.num}>
-                {f.flatsTaken}/{f.flatsPlanned}
-              </td>
-              <td className={styles.num}>
-                {f.darkFlatsTaken}/{f.darkFlatsPlanned}
-              </td>
-              <td className={styles.num}>
-                {f.flatExposureS === null
-                  ? '–'
-                  : t('sessions.captures.seconds', { s: f.flatExposureS })}
-              </td>
-              <td>{f.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={detail.flats}
+      rowKey={flatKey}
+      rowLabel={(f) => f.filterShortName}
+      label={t('sessions.detail.tab.flats')}
+    />
   );
 }

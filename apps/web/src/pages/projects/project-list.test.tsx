@@ -210,8 +210,20 @@ describe('S-30 (Komponente)', () => {
     ];
     state.remove.mockResolvedValue(undefined);
     renderPage();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Rig A' })).toBeInTheDocument();
-    expect(screen.getByText('1 Aktiv · 1 Entwurf')).toBeInTheDocument();
+    // Rig-Gruppe als Zwischenüberschrift in einer gemeinsamen Tabelle (AP-26a)
+    const group = await screen.findByRole('columnheader', { name: /Rig A/ });
+    expect(group).toHaveTextContent('1 Aktiv · 1 Entwurf');
+    expect(screen.getAllByRole('table')).toHaveLength(1);
+    // Sortieren per Spaltenkopf: Name aufsteigend, Pfeile der Priorität verschwinden
+    const names = () =>
+      screen.getAllByRole('link').filter((l) => ['NGC 281', 'M 31'].includes(l.textContent ?? ''));
+    expect(names().map((l) => l.textContent)).toEqual(['NGC 281', 'M 31']);
+    expect(screen.getByRole('button', { name: /NGC 281.*oben|nach oben/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
+    expect(names().map((l) => l.textContent)).toEqual(['M 31', 'NGC 281']);
+    expect(screen.queryByRole('button', { name: /nach oben/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Name/ }));
     expect(screen.getByRole('tab', { name: 'Gelöscht' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Ersteller'), { target: { value: ID(9) } });
     expect(screen.queryByRole('link', { name: 'NGC 281' })).not.toBeInTheDocument();

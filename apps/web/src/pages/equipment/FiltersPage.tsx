@@ -8,6 +8,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FilterView } from '../../api/client';
 import { useCan } from '../../auth';
+import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
 import styles from './equipment.module.css';
 import {
@@ -361,6 +362,86 @@ function FilterCollection({
     .map((ft) => ({ type: ft, n: shown.filter((f) => f.filterType === ft).length }))
     .filter((x) => x.n > 0);
   const telescopeName = (id: string | null) => telescopes.find((x) => x.id === id)?.name ?? '';
+  // AP-26a: Kurzname (wählt den Filter zum Bearbeiten) bleibt immer sichtbar, Nebenspalten weichen.
+  const columns: DataColumn<FilterView>[] = [
+    {
+      id: 'shortName',
+      header: t('equipment.filters.field.shortName'),
+      sortValue: (f) => f.shortName,
+      nowrap: true,
+      cell: (f) => (
+        <button
+          type="button"
+          className={styles.pickItem}
+          aria-current={f.id === selectedId ? 'true' : undefined}
+          onClick={() => onSelect(f.id)}
+        >
+          <FilterChip shortName={f.shortName} color={f.colorHex} title={f.shortName} />
+          <span>{f.shortName}</span>
+        </button>
+      ),
+    },
+    {
+      id: 'fullName',
+      header: t('equipment.filters.field.fullName'),
+      sortValue: (f) => f.fullName,
+      priority: 2,
+      cell: (f) => f.fullName,
+    },
+    {
+      id: 'brand',
+      header: t('equipment.field.brand'),
+      sortValue: (f) => f.brand,
+      priority: 4,
+      cell: (f) => f.brand,
+    },
+    {
+      id: 'type',
+      header: t('equipment.filters.field.type'),
+      sortValue: (f) => t(`equipment.filterType.${f.filterType}`),
+      priority: 2,
+      cell: (f) => t(`equipment.filterType.${f.filterType}`),
+    },
+    {
+      id: 'bandwidth',
+      header: t('equipment.filters.field.bandwidth'),
+      sortValue: (f) => f.bandwidthNm,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (f) => (f.bandwidthNm === null ? '–' : `${num(f.bandwidthNm, 1)} nm`),
+    },
+    {
+      id: 'size',
+      header: t('equipment.filters.field.size'),
+      sortValue: (f) => f.size,
+      priority: 4,
+      cell: (f) => f.size ?? '',
+    },
+    {
+      id: 'telescope',
+      header: t('equipment.filters.field.telescope'),
+      sortValue: (f) => telescopeName(f.telescopeId),
+      priority: 3,
+      cell: (f) => telescopeName(f.telescopeId),
+    },
+    {
+      id: 'default',
+      header: t('equipment.filters.default'),
+      sortValue: (f) => f.defaultOnNewProject,
+      priority: 4,
+      cell: (f) => (f.defaultOnNewProject ? t('equipment.yes') : ''),
+    },
+    {
+      id: 'defaultExposure',
+      header: t('equipment.filters.field.defaultExposure'),
+      sortValue: (f) => f.defaultExposureS,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (f) => (f.defaultExposureS === null ? '–' : `${num(f.defaultExposureS, 0)} s`),
+    },
+  ];
   return (
     <div className={styles.listEditor}>
       <SelectField
@@ -375,52 +456,14 @@ function FilterCollection({
       {shown.length === 0 ? (
         <p className={styles.muted}>{t('equipment.filters.empty')}</p>
       ) : (
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>{t('equipment.filters.field.shortName')}</th>
-                <th>{t('equipment.filters.field.fullName')}</th>
-                <th>{t('equipment.field.brand')}</th>
-                <th>{t('equipment.filters.field.type')}</th>
-                <th className={styles.num}>{t('equipment.filters.field.bandwidth')}</th>
-                <th>{t('equipment.filters.field.size')}</th>
-                <th>{t('equipment.filters.field.telescope')}</th>
-                <th>{t('equipment.filters.default')}</th>
-                <th className={styles.num}>{t('equipment.filters.field.defaultExposure')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((f) => (
-                <tr key={f.id} aria-selected={f.id === selectedId}>
-                  <td>
-                    <button
-                      type="button"
-                      className={styles.pickItem}
-                      aria-current={f.id === selectedId ? 'true' : undefined}
-                      onClick={() => onSelect(f.id)}
-                    >
-                      <FilterChip shortName={f.shortName} color={f.colorHex} title={f.shortName} />
-                      <span>{f.shortName}</span>
-                    </button>
-                  </td>
-                  <td>{f.fullName}</td>
-                  <td>{f.brand}</td>
-                  <td>{t(`equipment.filterType.${f.filterType}`)}</td>
-                  <td className={styles.num}>
-                    {f.bandwidthNm === null ? '–' : `${num(f.bandwidthNm, 1)} nm`}
-                  </td>
-                  <td>{f.size ?? ''}</td>
-                  <td>{telescopeName(f.telescopeId)}</td>
-                  <td>{f.defaultOnNewProject ? t('equipment.yes') : ''}</td>
-                  <td className={styles.num}>
-                    {f.defaultExposureS === null ? '–' : `${num(f.defaultExposureS, 0)} s`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={shown}
+          rowKey={(f) => f.id}
+          rowLabel={(f) => f.shortName}
+          label={t('equipment.filters.collection')}
+          rowProps={(f) => ({ 'aria-selected': f.id === selectedId })}
+        />
       )}
       <p className={styles.muted} data-testid="filter-sums">
         {byType.map((x) => `${t(`equipment.filterType.${x.type}`)}: ${String(x.n)}`).join(' · ')}

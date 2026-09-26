@@ -1,7 +1,7 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
-Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25 und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
@@ -156,6 +156,21 @@ Schutz gegen Versehen (Entscheidung E4 vom 21.09.2026): **Pflicht** vor jeder fo
 
 Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederherstellen* ohne Dialog, weil sie nichts zerstört) ist kein eigener Baustein, sondern ein Filter der Projektliste (Fachkonzept S-30).
 
+### 2.11 `DataTable` (Datentabelle, AP-26a)
+
+Jede Datentabelle der Oberfläche (Entscheidung Sven, 26.09.2026). Ausgenommen sind nur die Textalternativen der Diagramme (§1 *Canvas-Bausteine*) und reine Formularraster ohne Datenzeilen, z. B. die Gain-Modi einer Kamera.
+
+| | |
+|---|---|
+| Eigenschaften | `columns: DataColumn<T>[]` · `rows: T[]` · `rowKey(row)` · `label: string` (zugänglicher Name) · `rowLabel?(row)` (Kurzname für den Detailknopf) · `sort?`/`onSortChange?` (gesteuert, z. B. URL-Zustand) · `defaultSort?` · `serverSorted?` (Zeilen kommen sortiert, der Baustein sortiert nicht selbst) · `groups?: {key(row), header(key, rows)}` · `rowProps?(row)` (z. B. `aria-selected`, Ziehen) · `state?: 'loading' \| 'error' \| 'ready'` · `empty?` · `error?`. Spalte: `id` · `header` · `cell(row)` · `sortValue?(row)` (clientseitig sortierbar) oder `sortable?` (serverseitig) · `priority?` (1 = nie ausblenden, Standard) · `align?: 'start' \| 'end'` · `nowrap?` · `headerHidden?` (Kopf nur für Screenreader, z. B. Bild- oder Aktionsspalte) |
+| Sortierung | Klick auf den Spaltenkopf: aufsteigend → absteigend → aus (Ausgangsreihenfolge der Seite). Stabil; leere Werte (`null`, `''`) **immer** zuletzt, auch absteigend; Zeichenketten natürlich (`Intl.Collator`, `numeric`: „M 31“ vor „M 101“) in der Sprache der Oberfläche. Bei Gruppen wird innerhalb jeder Gruppe sortiert, die Gruppen behalten ihre Reihenfolge. **Bearbeitbare Tabellen mit fachlicher Reihenfolge** (Belichtungsplan, Panels, Belichtungsvorlage, Filterrad: NINA-Reihenfolge) geben kein `sortValue` an |
+| Spalten ausblenden | Ist die Tabelle breiter als ihr Container, blendet der Baustein vor dem Zeichnen so lange die Spalte mit der **höchsten** `priority` aus (bei Gleichstand die rechte zuerst), bis sie passt; Spalten mit Priorität 1 nie. Sobald eine Spalte fehlt, erscheint vorn eine Spalte mit Detailknopf (`chevron-right`/`chevron-down`, `aria-expanded`, Name „Weitere Angaben zu *rowLabel*“); die Detailzeile zeigt die ausgeblendeten Spalten als Liste *Kopf: Wert* – dieselben Zellen, also auch Eingabefelder. Neue Containerbreite (ResizeObserver), andere Zeilen- oder Spaltenzahl → neu berechnen. **Nie horizontal scrollen** (`overflow-x: clip`) |
+| Zustände | `loading` (Skelett, `role="status"`), `empty` (Standard „Keine Einträge.“ oder `empty`), `error` (`error`, z. B. `ProblemMessage` mit *Erneut versuchen*), `ready` |
+| Tastatur | Sortierbare Köpfe sind Knöpfe (`Tab`, `Enter`/`Space`), `title` „Sortieren nach *Kopf*“; Detailknopf je Zeile ebenso; die Zellen behalten ihre eigenen Bedienelemente |
+| Größen | Mindestbreite = Summe der Spalten mit Priorität 1; volle Containerbreite; stehender Kopf (`position: sticky`); Zeilenhöhe `--npm-row-h`; Zahlen rechtsbündig (`align: 'end'`) |
+| Textalternative | Die Tabelle selbst: `aria-label` = `label`, `aria-sort` an sortierbaren Köpfen (`none`/`ascending`/`descending`), Gruppenköpfe als `<th scope="colgroup">`, Detailzeile als `<dl>` |
+| Grenzfall | alle Werte einer Spalte leer · gleiche Werte (stabile Reihenfolge) · so schmal, dass nur Priorität 1 bleibt · Gruppe nach Filterung leer (entfällt) · gesteuerte Sortierung auf eine nicht mehr vorhandene Spalte (unsortiert) |
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
@@ -169,6 +184,7 @@ Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederhe
 | Ziehen (Rangfolge S-32, Priorität S-30, AP-12b) | `grip-vertical` |
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
+| Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 
