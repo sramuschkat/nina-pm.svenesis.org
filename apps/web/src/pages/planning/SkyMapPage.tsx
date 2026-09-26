@@ -1,7 +1,8 @@
 /**
- * S-20 Sternkarte (FK 14.3; FA-FRM-02…12, AP-21): Werkzeugleiste in Abschnitten (Suche & Position, Rig,
- * Ausrüstung, Bildfeld, Mosaik, Aktionen), Himmelskarte in der Mitte, Seitenleiste mit Reitern
- * *Himmelsfotos* · *Kataloge* · *Overlays*, Zeitsteuerung unten mit Mondinfo und 24-h-Zeitleiste.
+ * S-20 Sternkarte (FK 14.3; FA-FRM-02…12, AP-21; „Karte zuerst“ AP-26f): Werkzeugleiste über der Karte (Suche,
+ * Rig, Datum/Uhrzeit, *Jetzt*, *Neues Projekt*), Himmelskarte über die übrige Höhe mit Zoom und Zeitsteuerung
+ * in der Karte, Seitenbereich mit Reitern *Objekt* (gewähltes Objekt, Bildfeldmitte, Nachtdiagramm),
+ * *Bildfeld & Mosaik* und *Ebenen* (*Himmelsfotos* · *Kataloge* · *Overlays*).
  * Der Zustand steht in der URL (`skymap/model.ts`). Ohne Rotator zeigt das Bildfeld den Kamerawinkel des
  * Rigs und warnt bei Abweichung (FA-FRM-05, NT-30). Die Übernahme des Mosaiks als Panels folgt mit AP-22.
  */
@@ -294,6 +295,11 @@ export function SkyMapPage() {
 
   // ---- Auswahl ---------------------------------------------------------------------------------
   const [selected, setSelected] = useState<Selected>(null);
+  const [sideTab, setSideTab] = useState<SideTab>('object');
+  // Ein gewähltes Objekt (Karte oder Katalogsuche) erscheint im Reiter *Objekt* (AP-26f).
+  useEffect(() => {
+    if (selected) setSideTab('object');
+  }, [selected]);
   const [photoStatus, setPhotoStatus] = useState({ shown: 0, pending: 0 });
 
   const moveTo = (raDeg: number, decDeg: number, fov?: number) =>
@@ -518,402 +524,196 @@ export function SkyMapPage() {
     <div className={styles.page}>
       <PageHeader title={t('skymap.title')} nav={<PlanningTabs />} />
 
-      <div className={styles.toolbar} role="toolbar" aria-label={t('skymap.title')}>
-        <Section title={t('skymap.section.search')}>
-          <div className={styles.searchBox}>
-            <CatalogSearch onPick={pickFromCatalog} />
-          </div>
-          <div className={styles.coords}>
-            <CoordinateInput
-              kind="ra"
-              label={t('skymap.ra')}
-              valueDeg={state.fra}
-              onChange={(v) => v !== null && update({ fra: v, ra: v })}
-            />
-            <CoordinateInput
-              kind="dec"
-              label={t('skymap.dec')}
-              valueDeg={state.fdec}
-              onChange={(v) => v !== null && update({ fdec: v, dec: v })}
-            />
-          </div>
-        </Section>
-        <Section title={t('skymap.section.rig')}>
+      {/* Karte zuerst (AP-26f): eine Werkzeugleiste über der Karte, die Karte füllt die übrige Höhe, die
+          Zeitsteuerung liegt unten in der Karte, Einstellungen in Seitenreitern rechts. */}
+      <div className={styles.topbar} role="toolbar" aria-label={t('skymap.title')}>
+        <div className={styles.searchBox}>
+          <CatalogSearch onPick={pickFromCatalog} compact />
+        </div>
+        <div className={styles.topRig}>
           <RigSelect
             rigs={rigOptions}
             value={rig?.id ?? null}
             onChange={(id) => update({ rig: id, rot: null })}
             label={t('skymap.section.rig')}
           />
-          <span className={styles.muted}>
-            {site ? `${t('skymap.site')}: ${site.name}` : t('skymap.noRig')}
-          </span>
-        </Section>
-        <Section title={t('skymap.section.equipment')}>
-          <dl className={styles.facts}>
-            <dt>{t('skymap.telescope')}</dt>
-            <dd>{telescope?.name ?? '–'}</dd>
-            <dt>{t('skymap.camera')}</dt>
-            <dd>{camera?.name ?? '–'}</dd>
-          </dl>
-          <Field id="skymap-color" label={t('skymap.frameColor')}>
-            <select
-              id="skymap-color"
-              className={styles.input}
-              value={frameColor}
-              onChange={(e) => {
-                setFrameColor(e.target.value);
-                writeLocal(FRAME_COLOR_KEY, e.target.value);
-              }}
-            >
-              {Object.entries(FRAME_COLORS).map(([token, key]) => (
-                <option key={token} value={token}>
-                  {t(`skymap.frameColors.${key}`)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="skymap-compare" label={t('skymap.compareRig')}>
-            <select
-              id="skymap-compare"
-              className={styles.input}
-              value={compareRig?.id ?? ''}
-              onChange={(e) => update({ compare: e.target.value || null })}
-            >
-              <option value="">{t('skymap.compareNone')}</option>
-              {rigList
-                .filter((r) => r.id !== rig?.id)
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
-          </Field>
-        </Section>
-        <Section title={t('skymap.section.field')}>
-          {rig ? (
-            <>
-              <dl className={styles.facts}>
-                <dt>{t('skymap.fov')}</dt>
-                <dd>
-                  {fovText(rig.derived.fovWidthDeg)} × {fovText(rig.derived.fovHeightDeg)}
-                </dd>
-                <dt>{t('skymap.scale')}</dt>
-                <dd>{num(rig.derived.scaleArcsecPx, 2)}″/px</dd>
-                <dt>{t('skymap.focal')}</dt>
-                <dd>
-                  {telescope
-                    ? `${num(telescope.focalLengthMm * (telescope.reducerFactor ?? 1), 0)} mm`
-                    : '–'}
-                </dd>
-              </dl>
-              <div className={styles.rotation}>
-                <label htmlFor="skymap-rot">{t('skymap.rotation')}</label>
-                <input
-                  id="skymap-rot"
-                  type="range"
-                  min={0}
-                  max={359.9}
-                  step={0.1}
-                  value={rotationLocked ? cameraAngle : pa}
-                  disabled={rotationLocked}
-                  onChange={(e) => update({ rot: Number(e.target.value) })}
-                />
-                <input
-                  aria-label={t('skymap.rotation')}
-                  className={styles.numberInput}
-                  type="number"
-                  min={0}
-                  max={359.9}
-                  step={0.1}
-                  value={Math.round((rotationLocked ? cameraAngle : pa) * 10) / 10}
-                  disabled={rotationLocked}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    if (Number.isFinite(v)) update({ rot: ((v % 360) + 360) % 360 });
-                  }}
-                />
-                <button
-                  type="button"
-                  className={styles.button}
-                  onClick={() => update({ rot: null })}
-                >
-                  {t('skymap.rotationReset')}
-                </button>
-                {canWriteRig ? (
-                  <button
-                    type="button"
-                    className={styles.button}
-                    disabled={pin.isPending || Math.abs(pa - cameraAngle) < 0.05}
-                    onClick={() => pin.mutate()}
-                  >
-                    {t('skymap.rotationPin')}
-                  </button>
-                ) : null}
-              </div>
-              {rotationLocked ? (
-                <p className={styles.muted}>
-                  {t('skymap.rotationLocked', { deg: num(cameraAngle, 1) })}
-                </p>
-              ) : rotationMismatch ? (
-                <p className={styles.warning} role="status">
-                  {t('skymap.rotationMismatch', { deg: num(cameraAngle, 1) })}
-                </p>
-              ) : null}
-              {pin.isSuccess ? (
-                <p className={styles.success} role="status">
-                  {t('skymap.rotationPinned')}
-                </p>
-              ) : null}
-              {pin.isError ? <ProblemMessage code={problemCode(pin.error)} /> : null}
-            </>
+        </div>
+        <Field id="skymap-date" label={t('skymap.time.date')}>
+          <input
+            id="skymap-date"
+            type="date"
+            className={styles.input}
+            value={parts.date}
+            onChange={(e) => {
+              const v = fromZoned(e.target.value, parts.time, zone);
+              if (v !== null) update({ t: v });
+            }}
+          />
+        </Field>
+        <Field id="skymap-clock" label={t('skymap.time.clock')}>
+          <input
+            id="skymap-clock"
+            type="time"
+            className={styles.input}
+            value={parts.time}
+            onChange={(e) => {
+              const v = fromZoned(parts.date, e.target.value, zone);
+              if (v !== null) update({ t: v });
+            }}
+          />
+        </Field>
+        <span className={styles.muted}>
+          {t('skymap.time.zone', { zone: formatTzAbbr(new Date(time * 1000), zone) })}
+        </span>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={() => {
+            setPlaying(false);
+            update({ t: null });
+          }}
+        >
+          {t('skymap.time.now')}
+        </button>
+        <span className={styles.spacer} />
+        {canCreate ? (
+          <Link className={styles.buttonPrimary} to={newProjectHref}>
+            <actionIcons.add size={ICON_SIZE.button} aria-hidden />
+            {selected?.kind === 'dso'
+              ? t('skymap.newProjectWith', { name: selected.item.displayName })
+              : t('skymap.newProject')}
+          </Link>
+        ) : null}
+        {project.data && canUpdateProject ? (
+          <button
+            type="button"
+            className={styles.button}
+            disabled={apply.isPending}
+            onClick={startApply}
+          >
+            <actionIcons.save size={ICON_SIZE.button} aria-hidden />
+            {t('skymap.applyToProject')}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
+          title={fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
+          onClick={() => {
+            if (document.fullscreenElement) void document.exitFullscreen();
+            else void mapArea.current?.requestFullscreen?.();
+          }}
+        >
+          {fullscreen ? (
+            <uiIcons.exitFullscreen size={ICON_SIZE.button} aria-hidden />
           ) : (
-            <p className={styles.muted}>{t('skymap.noRig')}</p>
+            <uiIcons.fullscreen size={ICON_SIZE.button} aria-hidden />
           )}
-        </Section>
-        <Section title={t('skymap.section.mosaic')}>
-          <div className={styles.mosaic}>
-            <NumberBox
-              id="skymap-cols"
-              label={t('skymap.cols')}
-              value={state.cols}
-              min={1}
-              max={16}
-              onChange={(v) => update({ cols: v })}
-            />
-            <NumberBox
-              id="skymap-rows"
-              label={t('skymap.rows')}
-              value={state.rows}
-              min={1}
-              max={16}
-              onChange={(v) => update({ rows: v })}
-            />
-            <NumberBox
-              id="skymap-overlap"
-              label={t('skymap.overlap')}
-              value={state.overlap}
-              min={0}
-              max={60}
-              onChange={(v) => update({ overlap: v })}
-            />
-          </div>
-          <p className={styles.muted}>{t('skymap.mosaicHint')}</p>
-        </Section>
-        <Section title={t('skymap.section.actions')}>
-          <div className={styles.actions}>
-            {canCreate ? (
-              <Link className={styles.buttonPrimary} to={newProjectHref}>
-                <actionIcons.add size={ICON_SIZE.button} aria-hidden />
-                {t('skymap.newProject')}
-              </Link>
-            ) : null}
-            {project.data && canUpdateProject ? (
-              <button
-                type="button"
-                className={styles.button}
-                disabled={apply.isPending}
-                onClick={startApply}
-              >
-                <actionIcons.save size={ICON_SIZE.button} aria-hidden />
-                {t('skymap.applyToProject')}
-              </button>
-            ) : null}
+        </button>
+      </div>
+      {apply.isSuccess ? (
+        <p className={styles.success} role="status">
+          {t('skymap.applied')}
+        </p>
+      ) : null}
+      {apply.isError ? <ProblemMessage code={problemCode(apply.error)} /> : null}
+      <div className={styles.main} ref={mapArea}>
+        <div className={styles.map} id={ids.map}>
+          <SkyCanvas
+            input={input}
+            center={center}
+            up={up}
+            fovDeg={state.fov}
+            survey={state.survey === 'none' ? null : state.survey}
+            photoAlpha={state.alpha}
+            label={t('skymap.mapLabel')}
+            description={t('skymap.mapDescription', {
+              ra: formatCoordinate('ra', state.ra, 'sexagesimal'),
+              dec: formatCoordinate('dec', state.dec, 'sexagesimal'),
+              fov: fovText(state.fov),
+              fra: formatCoordinate('ra', state.fra, 'sexagesimal'),
+              fdec: formatCoordinate('dec', state.fdec, 'sexagesimal'),
+              rot: num(frame?.paDeg ?? 0, 1),
+            })}
+            onView={(c, fov) => {
+              const r = sky.vecToRadec(c);
+              update({ ra: r.raDeg, dec: r.decDeg, fov });
+            }}
+            onFrameMove={(c) => {
+              const r = sky.vecToRadec(c);
+              update({ fra: r.raDeg, fdec: r.decDeg });
+            }}
+            onPick={onPick}
+            onPhotoStatus={(s) => {
+              if (s.shown !== photoStatus.shown || s.pending !== photoStatus.pending)
+                setPhotoStatus(s);
+            }}
+          />
+          <div className={styles.zoomBox}>
             <button
               type="button"
               className={styles.button}
-              onClick={() => {
-                if (document.fullscreenElement) void document.exitFullscreen();
-                else void mapArea.current?.requestFullscreen?.();
-              }}
+              aria-label={t('skymap.time.zoomOut')}
+              title={t('skymap.time.zoomOut')}
+              onClick={() => update({ fov: Math.min(FOV_MAX, state.fov * 1.5) })}
             >
-              {fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
+              <uiIcons.unchecked size={ICON_SIZE.button} aria-hidden />
             </button>
+            <span className={styles.muted}>
+              {t('skymap.time.zoom', { fov: fovText(state.fov) })}
+            </span>
+            <button
+              type="button"
+              className={styles.button}
+              aria-label={t('skymap.time.zoomIn')}
+              title={t('skymap.time.zoomIn')}
+              onClick={() => update({ fov: Math.max(0.1, state.fov / 1.5) })}
+            >
+              <actionIcons.add size={ICON_SIZE.button} aria-hidden />
+            </button>{' '}
           </div>
-          {apply.isSuccess ? (
-            <p className={styles.success} role="status">
-              {t('skymap.applied')}
-            </p>
-          ) : null}
-          {apply.isError ? <ProblemMessage code={problemCode(apply.error)} /> : null}
-        </Section>
-      </div>
-
-      <div className={styles.main} ref={mapArea}>
-        <div className={styles.mapColumn}>
-          <div className={styles.map} id={ids.map}>
-            <SkyCanvas
-              input={input}
-              center={center}
-              up={up}
-              fovDeg={state.fov}
-              survey={state.survey === 'none' ? null : state.survey}
-              photoAlpha={state.alpha}
-              label={t('skymap.mapLabel')}
-              description={t('skymap.mapDescription', {
-                ra: formatCoordinate('ra', state.ra, 'sexagesimal'),
-                dec: formatCoordinate('dec', state.dec, 'sexagesimal'),
-                fov: fovText(state.fov),
-                fra: formatCoordinate('ra', state.fra, 'sexagesimal'),
-                fdec: formatCoordinate('dec', state.fdec, 'sexagesimal'),
-                rot: num(frame?.paDeg ?? 0, 1),
-              })}
-              onView={(c, fov) => {
-                const r = sky.vecToRadec(c);
-                update({ ra: r.raDeg, dec: r.decDeg, fov });
-              }}
-              onFrameMove={(c) => {
-                const r = sky.vecToRadec(c);
-                update({ fra: r.raDeg, fdec: r.decDeg });
-              }}
-              onPick={onPick}
-              onPhotoStatus={(s) => {
-                if (s.shown !== photoStatus.shown || s.pending !== photoStatus.pending)
-                  setPhotoStatus(s);
-              }}
-            />
-            {selected ? (
-              <InfoCard
-                selected={selected}
-                rigId={rig?.id ?? null}
-                canCreate={canCreate}
-                onClose={() => setSelected(null)}
-                onMoveFrame={(ra, dec) => update({ fra: ra, fdec: dec })}
-              />
-            ) : null}
-          </div>
-
           <section className={styles.timebar} aria-label={t('skymap.time.label')}>
-            <div className={styles.timeRow}>
-              <Field id="skymap-date" label={t('skymap.time.date')}>
-                <input
-                  id="skymap-date"
-                  type="date"
-                  className={styles.input}
-                  value={parts.date}
-                  onChange={(e) => {
-                    const v = fromZoned(e.target.value, parts.time, zone);
-                    if (v !== null) update({ t: v });
-                  }}
-                />
-              </Field>
-              <Field id="skymap-clock" label={t('skymap.time.clock')}>
-                <input
-                  id="skymap-clock"
-                  type="time"
-                  className={styles.input}
-                  value={parts.time}
-                  onChange={(e) => {
-                    const v = fromZoned(parts.date, e.target.value, zone);
-                    if (v !== null) update({ t: v });
-                  }}
-                />
-              </Field>
-              <span className={styles.muted}>
-                {t('skymap.time.zone', { zone: formatTzAbbr(new Date(time * 1000), zone) })}
-              </span>
-              <div className={styles.timeButtons}>
-                <button type="button" className={styles.button} onClick={() => shift(-86400)}>
-                  {t('skymap.time.minusDay')}
-                </button>
-                <button type="button" className={styles.button} onClick={() => shift(-3600)}>
-                  {t('skymap.time.minusHour')}
-                </button>
-                <button type="button" className={styles.button} onClick={() => shift(-600)}>
-                  {t('skymap.time.minusTen')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.button}
-                  aria-pressed={playing}
-                  onClick={() => {
-                    if (!playing && state.t === null) update({ t: time });
-                    setPlaying(!playing);
-                  }}
-                >
-                  {playing ? t('skymap.time.pause') : t('skymap.time.play')}
-                </button>
-                <button type="button" className={styles.button} onClick={() => shift(600)}>
-                  {t('skymap.time.plusTen')}
-                </button>
-                <button type="button" className={styles.button} onClick={() => shift(3600)}>
-                  {t('skymap.time.plusHour')}
-                </button>
-                <button type="button" className={styles.button} onClick={() => shift(86400)}>
-                  {t('skymap.time.plusDay')}
-                </button>
-                <button
-                  type="button"
-                  className={styles.button}
-                  onClick={() => {
-                    setPlaying(false);
-                    update({ t: null });
-                  }}
-                >
-                  {t('skymap.time.now')}
-                </button>
-              </div>
-              {scene ? (
-                <span className={styles.moonInfo}>
-                  {t('skymap.time.moonInfo', {
-                    alt: num(scene.moonAltDeg, 0),
-                    sep: num(scene.moonSepDeg, 0),
-                    pct: num(scene.moonIllumPct, 0),
-                  })}
-                </span>
-              ) : null}
-              <div className={styles.timeButtons}>
-                <button
-                  type="button"
-                  className={styles.button}
-                  aria-label={t('skymap.time.zoomOut')}
-                  title={t('skymap.time.zoomOut')}
-                  onClick={() => update({ fov: Math.min(FOV_MAX, state.fov * 1.5) })}
-                >
-                  <uiIcons.unchecked size={ICON_SIZE.button} aria-hidden />
-                </button>
-                <span className={styles.muted}>
-                  {t('skymap.time.zoom', { fov: fovText(state.fov) })}
-                </span>
-                <button
-                  type="button"
-                  className={styles.button}
-                  aria-label={t('skymap.time.zoomIn')}
-                  title={t('skymap.time.zoomIn')}
-                  onClick={() => update({ fov: Math.max(0.1, state.fov / 1.5) })}
-                >
-                  <actionIcons.add size={ICON_SIZE.button} aria-hidden />
-                </button>
-              </div>
+            <div className={styles.timeButtons}>
+              <button type="button" className={styles.button} onClick={() => shift(-86400)}>
+                {t('skymap.time.minusDay')}
+              </button>
+              <button type="button" className={styles.button} onClick={() => shift(-3600)}>
+                {t('skymap.time.minusHour')}
+              </button>
+              <button type="button" className={styles.button} onClick={() => shift(-600)}>
+                {t('skymap.time.minusTen')}
+              </button>
+              <button
+                type="button"
+                className={styles.button}
+                aria-pressed={playing}
+                onClick={() => {
+                  if (!playing && state.t === null) update({ t: time });
+                  setPlaying(!playing);
+                }}
+              >
+                {playing ? t('skymap.time.pause') : t('skymap.time.play')}
+              </button>
+              <button type="button" className={styles.button} onClick={() => shift(600)}>
+                {t('skymap.time.plusTen')}
+              </button>
+              <button type="button" className={styles.button} onClick={() => shift(3600)}>
+                {t('skymap.time.plusHour')}
+              </button>
+              <button type="button" className={styles.button} onClick={() => shift(86400)}>
+                {t('skymap.time.plusDay')}
+              </button>{' '}
             </div>
-            {site ? (
-              <div className={styles.timeline}>
-                <h2 className={styles.muted}>
-                  {t('skymap.time.timeline')} · {formatNightKey(nightKey)}
-                </h2>
-                {chart ? (
-                  <NightChart
-                    {...chart}
-                    bands={false}
-                    crop={false}
-                    height={180}
-                    cursorUtc={time}
-                    onCursorChange={(at) => {
-                      setPlaying(false);
-                      update({ t: at });
-                    }}
-                  />
-                ) : (
-                  <NightChart
-                    window={null}
-                    timeZone={zone}
-                    state={nights.isError ? 'error' : 'loading'}
-                    onRetry={() => void nights.refetch()}
-                  />
-                )}
-              </div>
-            ) : null}
+            {scene ? (
+              <span className={styles.moonInfo}>
+                {t('skymap.time.moonInfo', {
+                  alt: num(scene.moonAltDeg, 0),
+                  sep: num(scene.moonSepDeg, 0),
+                  pct: num(scene.moonIllumPct, 0),
+                })}
+              </span>
+            ) : null}{' '}
           </section>
         </div>
 
@@ -932,18 +732,249 @@ export function SkyMapPage() {
           }}
           onCancel={() => setConfirmApply(false)}
         />
-        <Sidebar
-          state={state}
-          update={update}
-          toggle={toggle}
-          hasSite={site !== null}
-          photoStatus={photoStatus}
-          dsoCount={{ shown: dsoItems.length, total: dso.data?.total ?? 0 }}
-        />
+        <aside className={styles.side} aria-label={t('skymap.sideLabel')}>
+          <Tabs<SideTab>
+            label={t('skymap.sideLabel')}
+            tabs={SIDE_TABS.map((k) => ({ key: k, label: t(`skymap.side.${k}`) }))}
+            value={sideTab}
+            onChange={setSideTab}
+            keepMounted
+            panelClassName={styles.sidePanel}
+            panels={{
+              object: (
+                <>
+                  {selected ? (
+                    <InfoCard
+                      selected={selected}
+                      rigId={rig?.id ?? null}
+                      canCreate={canCreate}
+                      onClose={() => setSelected(null)}
+                      onMoveFrame={(ra, dec) => update({ fra: ra, fdec: dec })}
+                    />
+                  ) : (
+                    <p className={styles.muted}>{t('skymap.side.noSelection')}</p>
+                  )}
+                  <Section title={t('skymap.side.frameCenter')}>
+                    <div className={styles.coords}>
+                      <CoordinateInput
+                        kind="ra"
+                        label={t('skymap.ra')}
+                        valueDeg={state.fra}
+                        onChange={(v) => v !== null && update({ fra: v, ra: v })}
+                      />
+                      <CoordinateInput
+                        kind="dec"
+                        label={t('skymap.dec')}
+                        valueDeg={state.fdec}
+                        onChange={(v) => v !== null && update({ fdec: v, dec: v })}
+                      />
+                    </div>
+                  </Section>
+                  {site ? (
+                    <Section title={`${t('skymap.time.timeline')} · ${formatNightKey(nightKey)}`}>
+                      {chart ? (
+                        <NightChart
+                          {...chart}
+                          bands={false}
+                          crop={false}
+                          height={180}
+                          cursorUtc={time}
+                          onCursorChange={(at) => {
+                            setPlaying(false);
+                            update({ t: at });
+                          }}
+                        />
+                      ) : (
+                        <NightChart
+                          window={null}
+                          timeZone={zone}
+                          state={nights.isError ? 'error' : 'loading'}
+                          onRetry={() => void nights.refetch()}
+                        />
+                      )}{' '}
+                    </Section>
+                  ) : null}
+                </>
+              ),
+              field: (
+                <>
+                  <Section title={t('skymap.section.equipment')}>
+                    <dl className={styles.facts}>
+                      <dt>{t('skymap.site')}</dt>
+                      <dd>{site?.name ?? '–'}</dd>
+                      <dt>{t('skymap.telescope')}</dt>
+                      <dd>{telescope?.name ?? '–'}</dd>
+                      <dt>{t('skymap.camera')}</dt>
+                      <dd>{camera?.name ?? '–'}</dd>
+                    </dl>
+                    <Field id="skymap-color" label={t('skymap.frameColor')}>
+                      <select
+                        id="skymap-color"
+                        className={styles.input}
+                        value={frameColor}
+                        onChange={(e) => {
+                          setFrameColor(e.target.value);
+                          writeLocal(FRAME_COLOR_KEY, e.target.value);
+                        }}
+                      >
+                        {Object.entries(FRAME_COLORS).map(([token, key]) => (
+                          <option key={token} value={token}>
+                            {t(`skymap.frameColors.${key}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field id="skymap-compare" label={t('skymap.compareRig')}>
+                      <select
+                        id="skymap-compare"
+                        className={styles.input}
+                        value={compareRig?.id ?? ''}
+                        onChange={(e) => update({ compare: e.target.value || null })}
+                      >
+                        <option value="">{t('skymap.compareNone')}</option>
+                        {rigList
+                          .filter((r) => r.id !== rig?.id)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                      </select>
+                    </Field>
+                  </Section>
+                  <Section title={t('skymap.section.field')}>
+                    {rig ? (
+                      <>
+                        <dl className={styles.facts}>
+                          <dt>{t('skymap.fov')}</dt>
+                          <dd>
+                            {fovText(rig.derived.fovWidthDeg)} × {fovText(rig.derived.fovHeightDeg)}
+                          </dd>
+                          <dt>{t('skymap.scale')}</dt>
+                          <dd>{num(rig.derived.scaleArcsecPx, 2)}″/px</dd>
+                          <dt>{t('skymap.focal')}</dt>
+                          <dd>
+                            {telescope
+                              ? `${num(telescope.focalLengthMm * (telescope.reducerFactor ?? 1), 0)} mm`
+                              : '–'}
+                          </dd>
+                        </dl>
+                        <div className={styles.rotation}>
+                          <label htmlFor="skymap-rot">{t('skymap.rotation')}</label>
+                          <input
+                            id="skymap-rot"
+                            type="range"
+                            min={0}
+                            max={359.9}
+                            step={0.1}
+                            value={rotationLocked ? cameraAngle : pa}
+                            disabled={rotationLocked}
+                            onChange={(e) => update({ rot: Number(e.target.value) })}
+                          />
+                          <input
+                            aria-label={t('skymap.rotation')}
+                            className={styles.numberInput}
+                            type="number"
+                            min={0}
+                            max={359.9}
+                            step={0.1}
+                            value={Math.round((rotationLocked ? cameraAngle : pa) * 10) / 10}
+                            disabled={rotationLocked}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              if (Number.isFinite(v)) update({ rot: ((v % 360) + 360) % 360 });
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className={styles.button}
+                            onClick={() => update({ rot: null })}
+                          >
+                            {t('skymap.rotationReset')}
+                          </button>
+                          {canWriteRig ? (
+                            <button
+                              type="button"
+                              className={styles.button}
+                              disabled={pin.isPending || Math.abs(pa - cameraAngle) < 0.05}
+                              onClick={() => pin.mutate()}
+                            >
+                              {t('skymap.rotationPin')}
+                            </button>
+                          ) : null}
+                        </div>
+                        {rotationLocked ? (
+                          <p className={styles.muted}>
+                            {t('skymap.rotationLocked', { deg: num(cameraAngle, 1) })}
+                          </p>
+                        ) : rotationMismatch ? (
+                          <p className={styles.warning} role="status">
+                            {t('skymap.rotationMismatch', { deg: num(cameraAngle, 1) })}
+                          </p>
+                        ) : null}
+                        {pin.isSuccess ? (
+                          <p className={styles.success} role="status">
+                            {t('skymap.rotationPinned')}
+                          </p>
+                        ) : null}
+                        {pin.isError ? <ProblemMessage code={problemCode(pin.error)} /> : null}
+                      </>
+                    ) : (
+                      <p className={styles.muted}>{t('skymap.noRig')}</p>
+                    )}{' '}
+                  </Section>
+                  <Section title={t('skymap.section.mosaic')}>
+                    <div className={styles.mosaic}>
+                      <NumberBox
+                        id="skymap-cols"
+                        label={t('skymap.cols')}
+                        value={state.cols}
+                        min={1}
+                        max={16}
+                        onChange={(v) => update({ cols: v })}
+                      />
+                      <NumberBox
+                        id="skymap-rows"
+                        label={t('skymap.rows')}
+                        value={state.rows}
+                        min={1}
+                        max={16}
+                        onChange={(v) => update({ rows: v })}
+                      />
+                      <NumberBox
+                        id="skymap-overlap"
+                        label={t('skymap.overlap')}
+                        value={state.overlap}
+                        min={0}
+                        max={60}
+                        onChange={(v) => update({ overlap: v })}
+                      />
+                    </div>
+                    <p className={styles.muted}>{t('skymap.mosaicHint')}</p>{' '}
+                  </Section>
+                </>
+              ),
+              layers: (
+                <LayerTabs
+                  state={state}
+                  update={update}
+                  toggle={toggle}
+                  hasSite={site !== null}
+                  photoStatus={photoStatus}
+                  dsoCount={{ shown: dsoItems.length, total: dso.data?.total ?? 0 }}
+                />
+              ),
+            }}
+          />
+        </aside>
       </div>
     </div>
   );
 }
+
+/** Reiter des Seitenbereichs (AP-26f). */
+const SIDE_TABS = ['object', 'field', 'layers'] as const;
+type SideTab = (typeof SIDE_TABS)[number];
 
 /** Rig-Rumpf für `PUT /rigs/{id}` mit neuer Standardrotation (Anheften, S-20). */
 function rigBody(r: RigView, rotationDeg: number) {
@@ -1020,7 +1051,8 @@ function NumberBox({
   );
 }
 
-function Sidebar({
+/** Ebenen der Karte (Reiter *Ebenen* des Seitenbereichs): Himmelsfotos, Kataloge, Overlays. */
+function LayerTabs({
   state,
   update,
   toggle,
@@ -1049,7 +1081,7 @@ function Sidebar({
     </label>
   );
   return (
-    <aside className={styles.sidebar} aria-label={t('skymap.sidebarLabel')}>
+    <div className={styles.layers}>
       <Tabs
         label={t('skymap.sidebarLabel')}
         tabs={(['photos', 'catalogs', 'overlays'] as const).map((k) => ({
@@ -1205,7 +1237,7 @@ function Sidebar({
           ),
         }}
       />
-    </aside>
+    </div>
   );
 }
 

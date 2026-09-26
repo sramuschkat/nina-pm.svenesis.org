@@ -9,6 +9,7 @@ import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
 import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
@@ -19,7 +20,8 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { Tabs } from '../../components/Tabs';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../equipment/shared';
-import { SiteWeather } from '../weather/SiteWeather';
+import { useSiteWeather } from '../weather/WeatherPage';
+import { weatherHref } from '../weather/model';
 import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
@@ -116,13 +118,92 @@ export function ChartArea({ draft, site }: { draft: ProjectDraft; site: SiteView
             needs
           ),
           weather: site ? (
-            <SiteWeather siteId={site.id} siteName={site.name} />
+            <WeatherTiles
+              site={site}
+              onPick={(n) => {
+                const i = list.findIndex((x) => x.night === n);
+                if (i >= 0) setOffset(i);
+                setTab('night');
+              }}
+            />
           ) : (
             <p className={styles.note}>{t('weatherPage.noRig')}</p>
           ),
         }}
       />
     </section>
+  );
+}
+
+// ---- Wetter ---------------------------------------------------------------------------------------
+
+/** Kennzeichen je Bewertungsstufe (0 sehr schlecht … 4 ausgezeichnet). */
+const RATING_PILL = ['pillDanger', 'pillDanger', 'pillWarn', 'pillOk', 'pillOk'] as const;
+
+/**
+ * Wetter-Reiter des Editors (AP-26f): die Nächte der Vorhersage als Kacheln (Bewertung, Mond) statt der
+ * hohen Stundentabelle; ein Klick zeigt die Nacht im Nacht-Reiter, Stundenwerte auf der Wetterseite.
+ */
+function WeatherTiles({ site, onPick }: { site: SiteView; onPick: (night: string) => void }) {
+  const { t, i18n } = useTranslation();
+  const weather = useSiteWeather(site.id);
+  const view = weather.data;
+  const pct = (v: number) =>
+    new Intl.NumberFormat(i18n.language, { maximumFractionDigits: 0 }).format(v * 100);
+  return (
+    <div className={styles.stack}>
+      <p className={styles.muted}>{t('weatherPage.forProject', { site: site.name })}</p>
+      {weather.isError && !view ? (
+        <ProblemMessage code={problemCode(weather.error)} onRetry={() => void weather.refetch()} />
+      ) : !view ? (
+        <p className={styles.muted} role="status">
+          {t('common.loading')}
+        </p>
+      ) : view.status === 'pending' ? (
+        <p className={styles.muted} role="status">
+          {t('weatherPage.pending')}
+        </p>
+      ) : (
+        <ul className={styles.weatherTiles}>
+          {view.nights.map((n) => {
+            const rating =
+              n.darkFromUtc === null
+                ? t('weather.chart.noDark')
+                : n.nightMean === null || n.ratingIndex === null
+                  ? t('weather.rating.none')
+                  : t(`weather.rating.${String(n.ratingIndex)}`);
+            const pill = n.ratingIndex === null ? 'pill' : (RATING_PILL[n.ratingIndex] ?? 'pill');
+            return (
+              <li key={n.night}>
+                <button
+                  type="button"
+                  className={styles.weatherTile}
+                  onClick={() => onPick(n.night)}
+                  aria-label={t('projectEditor.weatherTile', {
+                    night: formatNightKey(n.night),
+                    rating,
+                  })}
+                >
+                  <strong>{formatNightKey(n.night)}</strong>
+                  <span className={`${styles.pill} ${styles[pill] ?? ''}`}>
+                    {rating}
+                    {n.nightMean !== null ? ` ${pct(n.nightMean)} %` : ''}
+                  </span>
+                  <span className={styles.muted}>
+                    {t('projectEditor.weatherMoon', { pct: Math.round(n.moonIllumPct) })}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div>
+        <Link className={styles.button} to={weatherHref(site.id)}>
+          {t('weatherPage.openFull')}
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -316,7 +397,8 @@ export function HistoryTab({ projectId }: { projectId: string }) {
       id: 'who',
       header: t('projectEditor.history.who'),
       sortValue: (r) => r.h.userName,
-      priority: 2,
+      // In der schmalen rechten Spalte (AP-26f) fällt der Name vor dem Kommentar weg.
+      priority: 3,
       cell: (r) => r.h.userName ?? '–',
     },
     {
@@ -328,7 +410,7 @@ export function HistoryTab({ projectId }: { projectId: string }) {
     {
       id: 'comment',
       header: t('projectEditor.history.comment'),
-      priority: 3,
+      priority: 2,
       cell: (r) => r.h.comment ?? '',
     },
   ];

@@ -868,6 +868,8 @@ export const en: Messages = {
     },
   },
   projectEditor: {
+    weatherTile: 'Night {{night}}: {{rating}} – show in the night chart',
+    weatherMoon: 'Moon {{pct}} %',
     new: 'New project',
     newTitle: 'New project',
     list: 'Projects',
@@ -885,9 +887,8 @@ export const en: Messages = {
     status: 'Project status',
     readOnly: 'You can only view this project.',
     rigChangeAnyway: 'Change rig anyway',
-    topTabs: 'Target, conditions, image and notes',
+    sideLabel: 'Charts, image and notes',
     areas: {
-      top: 'Target and conditions',
       charts: 'Charts',
     },
     progress: '{{done}} of {{total}} h · {{pct}} %',
@@ -898,7 +899,6 @@ export const en: Messages = {
       hint: 'Drag to pan, mouse wheel or +/− to zoom. Align and build mosaics in the sky map.',
       needsCoordinates: 'Enter coordinates to see the sky location.',
     },
-    tabHasErrors: 'error',
     target: 'Target',
     conditions: 'Conditions',
     openSkyMap: 'Open in the sky map',
@@ -2181,6 +2181,15 @@ export const en: Messages = {
     },
   },
   skymap: {
+    newProjectWith: 'New project with {{name}}',
+    sideLabel: 'Object, field and layers',
+    side: {
+      object: 'Object',
+      field: 'Field & mosaic',
+      layers: 'Layers',
+      noSelection: 'No object selected – click an object on the map or search above.',
+      frameCenter: 'Centre of the field',
+    },
     title: 'Sky map',
     tabsLabel: 'Planning areas',
     tab: { skymap: 'Sky map', objects: 'Object browser' },
@@ -2188,12 +2197,10 @@ export const en: Messages = {
     mapDescription:
       'View centre {{ra}} {{dec}}, field {{fov}}. Frame at {{fra}} {{fdec}}, rotation {{rot}}°. Drag to pan, drag inside the frame to move it; arrow keys pan, plus and minus zoom.',
     section: {
-      search: 'Search & position',
       rig: 'Rig',
       equipment: 'Equipment',
       field: 'Field of view',
       mosaic: 'Mosaic',
-      actions: 'Actions',
     },
     ra: 'RA (J2000)',
     dec: 'Dec (J2000)',
@@ -2316,7 +2323,7 @@ export const en: Messages = {
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
       zoom: 'Field {{fov}}',
-      timeline: '24 h timeline (noon to noon)',
+      timeline: 'Night of the field centre',
       target: 'Frame',
     },
     info: {

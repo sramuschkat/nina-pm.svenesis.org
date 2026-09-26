@@ -82,6 +82,7 @@ test('Mosaik 2×2 aus der Sternkarte → vier Panels, Panel-Liste, Simulator mit
   await page.goto(
     `/planung/sternkarte?ra=13.2046&dec=56.6297&fra=13.2046&fdec=56.6297&fov=8&rig=${s.rigId}&projekt=${s.projectId}&foto=keins`,
   );
+  await page.getByRole('tab', { name: 'Bildfeld & Mosaik' }).click();
   await page.getByLabel('Panels horizontal').fill('2');
   await page.getByLabel('Panels vertikal').fill('2');
   await expect(page).toHaveURL(/h=2&v=2/);

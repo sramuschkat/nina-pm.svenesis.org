@@ -20,6 +20,8 @@ import {
   Compass,
   Copy,
   FolderKanban,
+  Maximize,
+  Minimize,
   Minus,
   Moon,
   MoonStar,
@@ -143,6 +145,9 @@ export const uiIcons = {
   season: CalendarRange,
   /** Aktiven Filter entfernen (Chip in der FilterBar, AP-26c). */
   remove: X,
+  /** Karte im Vollbild bzw. zurück (Sternkarte, AP-26f). */
+  fullscreen: Maximize,
+  exitFullscreen: Minimize,
 } as const;
 
 /**

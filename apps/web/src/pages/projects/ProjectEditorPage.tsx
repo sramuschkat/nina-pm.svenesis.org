@@ -36,7 +36,7 @@ import { ApiError, useAuth, useCan } from '../../auth';
 import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { CoordinateInput } from '../../components/CoordinateInput';
-import { ICON_SIZE, actionIcons, areaIcons } from '../../components/icons';
+import { ICON_SIZE, actionIcons, areaIcons, uiIcons } from '../../components/icons';
 import { Markdown } from '../../components/Markdown';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
@@ -284,7 +284,6 @@ function Editor({
   const canEdit = saved ? canUpdate : canCreate;
 
   const [clientErrors, setClientErrors] = useState<FieldErrors>({});
-  const [topTab, setTopTab] = useState<TopTab>('target');
   const [imageTab, setImageTab] = useState<ImageTab>('preview');
   const canHistory = useCan('project.history.read', resource);
   const [defaultSaved, setDefaultSaved] = useState(false);
@@ -374,10 +373,16 @@ function Editor({
     onError: (e) => {
       const found = e instanceof FormErrors ? e.errors : serverErrors(e);
       if (e instanceof FormErrors) setClientErrors(e.errors);
-      // Fehler in einem verdeckten Reiter: dorthin wechseln, damit das Feld sichtbar ist.
+      // Erstes fehlerhaftes Feld zeigen (AP-26f: Karten statt Reiter; die Beschreibung liegt unter
+      // *Bild & Notizen*).
       const first = Object.keys(found)[0];
-      if (first) setTopTab(tabOf(first));
       if (first === 'descriptionMd') setImageTab('description');
+      if (first)
+        setTimeout(() => {
+          const el = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+          el?.scrollIntoView?.({ block: 'center' });
+          el?.focus();
+        }, 0);
     },
   });
   const submit = (e: FormEvent) => {
@@ -385,7 +390,6 @@ function Editor({
     save.mutate(false);
   };
   const errors: FieldErrors = { ...serverErrors(save.error), ...clientErrors };
-  const tabsWithErrors = new Set(Object.keys(errors).map(tabOf));
   const fieldError = (path: string) => (errors[path] ? t('equipment.invalid') : undefined);
   const disabled = !canEdit;
   const formId = useId();
@@ -465,8 +469,6 @@ function Editor({
         <CatalogSearch
           disabled={disabled}
           onPick={(o) => setDraft(applyCatalogPick(draft, catalogPick(o, t)))}
-          linkedName={draft.dsoObjectId ? draft.targetName || draft.name : null}
-          onUnlink={() => setDraft({ ...draft, dsoObjectId: null, dsoPrimaryId: null })}
         />
       </div>
       <TextField
@@ -772,7 +774,8 @@ function Editor({
   ];
   const imagePanel = (
     <Tabs<ImageTab>
-      orientation="vertical"
+      className={styles.imageTabs}
+      panelClassName={styles.areaMiddle}
       keepMounted
       label={t('projectEditor.tabs.imageNotes')}
       value={imageTab}
@@ -973,62 +976,83 @@ function Editor({
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
       )}
 
-      <form
-        id={formId}
-        className={styles.area}
-        onSubmit={submit}
-        noValidate
-        aria-label={t('projectEditor.areas.top')}
-      >
-        <Tabs<TopTab>
-          keepMounted
-          label={t('projectEditor.topTabs')}
-          value={topTab}
-          onChange={setTopTab}
-          panelClassName={styles.areaTop}
-          tabs={TOP_TABS.map((key) => ({
-            key,
-            label: t(TOP_TAB_LABEL[key]),
-            ...(tabsWithErrors.has(key)
-              ? {
-                  badge: <span className={styles.tabError}>{t('projectEditor.tabHasErrors')}</span>,
-                }
-              : {}),
-          }))}
-          panels={{ target: targetPanel, conditions: conditionsPanel, image: imagePanel }}
-        />
-      </form>
+      {/* Zwei Spalten ab 1280 px (AP-26f): links Ziel, Bedingungen und Belichtungsplan, rechts Diagramme
+          und Bild & Notizen (bleibt beim Rollen stehen). Keine Bereiche mit eigenem Rollbalken. */}
+      <div className={styles.editorColumns}>
+        <div className={styles.editorMain}>
+          <form id={formId} className={styles.editorForm} onSubmit={submit} noValidate>
+            <section className={styles.area} aria-labelledby={`${formId}-target`}>
+              <div className={styles.areaHead}>
+                <h2 id={`${formId}-target`} className={styles.areaTitle}>
+                  {t('projectEditor.target')}
+                </h2>
+                {draft.dsoObjectId ? (
+                  <span className={styles.linkedChip}>
+                    {t('catalog.editor.linked', { name: draft.targetName || draft.name })}
+                    {!disabled ? (
+                      <button
+                        type="button"
+                        aria-label={t('catalog.editor.unlink')}
+                        title={t('catalog.editor.unlink')}
+                        onClick={() =>
+                          setDraft({ ...draft, dsoObjectId: null, dsoPrimaryId: null })
+                        }
+                      >
+                        <uiIcons.remove size={ICON_SIZE.table} aria-hidden />
+                      </button>
+                    ) : null}
+                  </span>
+                ) : null}
+              </div>
+              <div className={styles.areaBody}>{targetPanel}</div>
+            </section>
+            <section className={styles.area} aria-labelledby={`${formId}-conditions`}>
+              <div className={styles.areaHead}>
+                <h2 id={`${formId}-conditions`} className={styles.areaTitle}>
+                  {t('projectEditor.conditions')}
+                </h2>
+              </div>
+              <div className={styles.areaBody}>{conditionsPanel}</div>
+            </section>
+          </form>
 
-      <ChartArea draft={draft} site={site} />
-
-      {saved ? (
-        <ExposurePlan
-          project={saved}
-          canEdit={canEdit}
-          rig={rig}
-          camera={camera}
-          filters={filters.data ?? []}
-          moonProfiles={moonProfiles.data ?? []}
-          templates={templates.data ?? []}
-          onChange={onChange}
-          onReload={onReload}
-          rigPath={EQUIPMENT_PATHS.rigs}
-          panelsTab={
-            <PanelList
+          {saved ? (
+            <ExposurePlan
               project={saved}
-              rig={rig}
               canEdit={canEdit}
-              canRigSettings={canRigSettings}
+              rig={rig}
+              camera={camera}
+              filters={filters.data ?? []}
+              moonProfiles={moonProfiles.data ?? []}
+              templates={templates.data ?? []}
               onChange={onChange}
               onReload={onReload}
+              rigPath={EQUIPMENT_PATHS.rigs}
+              panelsTab={
+                <PanelList
+                  project={saved}
+                  rig={rig}
+                  canEdit={canEdit}
+                  canRigSettings={canRigSettings}
+                  onChange={onChange}
+                  onReload={onReload}
+                />
+              }
             />
-          }
-        />
-      ) : (
-        <section className={styles.area} aria-label={t('projectEditor.plan.title')}>
-          <p className={styles.areaNote}>{t('projectEditor.plan.saveFirst')}</p>
-        </section>
-      )}
+          ) : (
+            <section className={styles.area} aria-label={t('projectEditor.plan.title')}>
+              <p className={styles.areaNote}>{t('projectEditor.plan.saveFirst')}</p>
+            </section>
+          )}
+        </div>
+
+        <aside className={styles.editorSide} aria-label={t('projectEditor.sideLabel')}>
+          <ChartArea draft={draft} site={site} />
+          <section className={styles.area} aria-label={t('projectEditor.tabs.imageNotes')}>
+            {imagePanel}
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -1113,19 +1137,8 @@ function ProjectProgress({ sums }: { sums: ReturnType<typeof planSums> }) {
   );
 }
 
-/** Reiter des oberen Bereichs (AP-26b, Aufteilung nach Svens Vorlage). */
-const TOP_TABS = ['target', 'conditions', 'image'] as const;
-type TopTab = (typeof TOP_TABS)[number];
-const TOP_TAB_LABEL: Record<TopTab, string> = {
-  target: 'projectEditor.target',
-  conditions: 'projectEditor.conditions',
-  image: 'projectEditor.tabs.imageNotes',
-};
 /** Unterreiter von *Bild & Notizen*. */
 type ImageTab = 'preview' | 'sky' | 'description' | 'notes' | 'history';
-/** Reiter eines Feldpfads: Bedingungen unter `conditions.*`, die Beschreibung unter *Bild & Notizen*. */
-const tabOf = (path: string): TopTab =>
-  path.startsWith('conditions.') ? 'conditions' : path === 'descriptionMd' ? 'image' : 'target';
 
 /** Fehler der Client-Prüfung (zod) als Feldpfade. */
 class FormErrors extends Error {

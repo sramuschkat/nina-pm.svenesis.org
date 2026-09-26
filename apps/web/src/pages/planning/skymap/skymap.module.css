@@ -1,6 +1,7 @@
-/* Sternkarte S-20 (AP-21): volle Fensterbreite ohne Obergrenze; Werkzeugleiste in Abschnitten, Karte mit
-   Seitenleiste rechts (unter 1.280 px darunter), Zeitsteuerung unter der Karte. Abstände über --npm-space-*,
-   Farben über Tokens; die Karte selbst zeichnet mit --npm-sky-*. */
+/* Sternkarte S-20 (AP-21, „Karte zuerst“ AP-26f): volle Fensterbreite ohne Obergrenze; eine Werkzeugleiste
+   über der Karte, die Karte füllt die übrige Fensterhöhe (mindestens 560 px), Zeitsteuerung und Zoom liegen in
+   der Karte, Seitenbereich mit Reitern rechts (unter 1.280 px darunter). Abstände über --npm-space-*, Farben
+   über Tokens; die Karte selbst zeichnet mit --npm-sky-*. */
 .page {
   composes: page from '../../admin/admin.module.css';
 }
@@ -37,21 +38,41 @@
   background: var(--npm-warning-bg);
   color: var(--npm-text);
 }
-.toolbar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: var(--npm-space-3);
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
+.topbar > .muted {
+  line-height: var(--npm-row-h);
+}
+.topRig {
+  flex: 0 1 14rem;
+  min-width: 0;
+}
+.iconButton {
+  composes: button from '../../admin/admin.module.css';
+  width: var(--npm-row-h);
+  padding: 0;
+  justify-content: center;
+}
+.spacer {
+  flex-grow: 1;
+}
+/* Abschnitt im Seitenbereich: Überschrift und Inhalt, getrennt durch eine Linie statt eigener Karte. */
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-2);
   min-width: 0;
-  padding: var(--npm-space-3) var(--npm-space-4);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius-card);
-  background: var(--npm-white);
-  box-shadow: var(--npm-shadow);
+  padding-top: var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
 }
 .sectionTitle {
   margin: 0;
@@ -61,6 +82,8 @@
   letter-spacing: 0.04em;
 }
 .searchBox {
+  flex: 1 1 12rem;
+  max-width: 22rem;
   min-width: 0;
 }
 .coords {
@@ -113,7 +136,7 @@
 }
 .main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
   gap: var(--npm-space-3);
   align-items: start;
 }
@@ -127,21 +150,41 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.mapColumn {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
 .map {
   position: relative;
-  height: clamp(420px, 66vh, 1100px);
+  height: max(560px, calc(100dvh - 17rem));
   border-radius: var(--npm-radius-card);
   overflow: hidden;
   background: var(--npm-sky-bg);
 }
 .main:fullscreen .map {
-  height: calc(100vh - 20rem);
+  height: calc(100dvh - 2 * var(--npm-space-3));
+}
+/* Zoom oben rechts und Zeitsteuerung unten in der Karte (AP-26f): halbtransparente Leisten über dem Himmel. */
+.zoomBox,
+.timebar {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-radius: var(--npm-radius-card);
+  background: rgba(13, 22, 32, 0.86);
+  color: #e6edf3;
+}
+.zoomBox {
+  top: var(--npm-space-3);
+  right: var(--npm-space-3);
+}
+.zoomBox .muted,
+.timebar .muted {
+  color: #c3ccd6;
+}
+.timebar {
+  left: var(--npm-space-3);
+  right: var(--npm-space-3);
+  bottom: var(--npm-space-3);
 }
 .canvasWrap {
   position: absolute;
@@ -157,39 +200,17 @@
   outline-offset: -2px;
 }
 .info {
-  position: absolute;
-  left: var(--npm-space-3);
-  bottom: var(--npm-space-3);
-  max-width: min(24rem, calc(100% - 2 * var(--npm-space-3)));
-  padding: var(--npm-space-2) var(--npm-space-3);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius);
-  background: var(--npm-white);
-  box-shadow: var(--npm-shadow);
-}
-.info h2 {
-  margin: 0 0 var(--npm-space-1);
-  font-size: var(--npm-font-h2);
-}
-.links {
-  margin: var(--npm-space-2) 0;
-}
-.timebar {
   display: flex;
   flex-direction: column;
   gap: var(--npm-space-2);
   min-width: 0;
-  padding: var(--npm-space-3) var(--npm-space-4);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius-card);
-  background: var(--npm-white);
-  box-shadow: var(--npm-shadow);
 }
-.timeRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--npm-space-2) var(--npm-space-3);
+.info h2 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+.links {
+  margin: var(--npm-space-2) 0;
 }
 .timeButtons {
   display: flex;
@@ -200,20 +221,25 @@
 .moonInfo {
   font-variant-numeric: tabular-nums;
 }
-.timeline h2 {
-  margin: 0 0 var(--npm-space-1);
-  font-size: var(--npm-font-label);
-}
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-2);
+/* Seitenbereich mit Reitern *Objekt*, *Bildfeld & Mosaik*, *Ebenen* (AP-26f). */
+.side {
   min-width: 0;
-  padding: var(--npm-space-2) var(--npm-space-3) var(--npm-space-3);
   border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius-card);
   background: var(--npm-white);
   box-shadow: var(--npm-shadow);
+}
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  padding: var(--npm-space-3) var(--npm-space-4) var(--npm-space-4);
+}
+.sidePanel[hidden] {
+  display: none;
+}
+.layers {
+  min-width: 0;
 }
 /* Inhalt der Seitenleisten-Reiter (Tabs, AP-26b) */
 .panel {

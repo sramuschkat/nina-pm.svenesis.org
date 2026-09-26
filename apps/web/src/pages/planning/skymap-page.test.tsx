@@ -172,13 +172,26 @@ beforeEach(() => {
 });
 
 describe('S-20 Sternkarte', () => {
-  it('Werkzeugleiste mit Rig, Ausrüstung, Bildfeld, Mosaik und Aktionen; Karte als Bild', async () => {
+  it('Karte zuerst (AP-26f): Werkzeugleiste, Seitenreiter Objekt / Bildfeld & Mosaik / Ebenen; Karte als Bild', async () => {
     renderPage();
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Sternkarte' }),
     ).toBeInTheDocument();
-    for (const name of ['Suche & Position', 'Rig', 'Ausrüstung', 'Bildfeld', 'Mosaik', 'Aktionen'])
-      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument();
+    const toolbar = screen.getByRole('toolbar', { name: 'Sternkarte' });
+    expect(within(toolbar).getByRole('combobox', { name: 'Katalogsuche' })).toBeInTheDocument();
+    expect(within(toolbar).getByLabelText('Uhrzeit')).toBeInTheDocument();
+    expect(within(toolbar).getByRole('button', { name: 'Jetzt' })).toBeInTheDocument();
+    const side = screen.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
+    expect(within(side).getByRole('tab', { name: 'Objekt' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(
+      within(side).getByRole('heading', { level: 2, name: 'Mitte des Bildfelds' }),
+    ).toBeVisible();
+    fireEvent.click(within(side).getByRole('tab', { name: 'Bildfeld & Mosaik' }));
+    for (const name of ['Ausrüstung', 'Bildfeld', 'Mosaik'])
+      expect(within(side).getByRole('heading', { level: 2, name })).toBeInTheDocument();
     expect(await screen.findByText('Refraktor 80/480')).toBeInTheDocument();
     expect(screen.getByText('2,8° × 1,9°')).toBeInTheDocument();
     expect(
@@ -203,6 +216,7 @@ describe('S-20 Sternkarte', () => {
 
   it('ohne Rotator: für User gesperrt auf den Kamerawinkel, kein Anheften', async () => {
     renderPage();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Bildfeld & Mosaik' }));
     const slider = await screen.findByRole('slider', { name: 'Rotation (°)' });
     await waitFor(() => expect(slider).toBeDisabled());
     expect(
@@ -217,6 +231,7 @@ describe('S-20 Sternkarte', () => {
     state.me = me('owner');
     state.updateRig.mockResolvedValue(rig({ defaultRotationDeg: 40 }));
     renderPage('/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.82&fdec=-5.39&rot=40&t=1797368400');
+    fireEvent.click(await screen.findByRole('tab', { name: 'Bildfeld & Mosaik' }));
     expect(
       await screen.findByText(/Weicht vom Kamerawinkel des Rigs \(12,0°\) ab/),
     ).toBeInTheDocument();
@@ -270,7 +285,9 @@ describe('S-20 Sternkarte', () => {
     fireEvent.change(box, { target: { value: 'm42' } });
     await screen.findByRole('option', { name: /M 42/ });
     fireEvent.keyDown(box, { key: 'Enter' });
-    const link = await screen.findByRole('link', { name: 'Neues Projekt' });
+    const link = await screen.findByRole('link', { name: 'Neues Projekt mit M 42' });
+    // Das gewählte Objekt steht im Seitenreiter *Objekt*.
+    expect(screen.getByRole('heading', { level: 2, name: 'M 42' })).toBeVisible();
     await waitFor(() =>
       expect(new URLSearchParams(link.getAttribute('href')?.split('?')[1]).get('objekt')).toBe(
         'NGC 1976',
@@ -339,9 +356,10 @@ describe('S-20 Sternkarte', () => {
     await waitFor(() => expect(state.patch).toHaveBeenCalledTimes(1));
   });
 
-  it('Seitenleiste: Reiter Himmelsfotos, Kataloge, Overlays; Foto-Wahl in der URL', async () => {
+  it('Reiter Ebenen: Himmelsfotos, Kataloge, Overlays; Foto-Wahl in der URL', async () => {
     renderPage();
-    const aside = await screen.findByRole('complementary', { name: 'Kartenebenen' });
+    fireEvent.click(await screen.findByRole('tab', { name: 'Ebenen' }));
+    const aside = screen.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
     expect(within(aside).getByRole('radio', { name: 'DSS2 Farbe' })).toBeVisible();
     expect(within(aside).queryByRole('checkbox', { name: 'Äquatorial' })).toBeNull();
     fireEvent.click(within(aside).getByRole('tab', { name: 'Overlays' }));
