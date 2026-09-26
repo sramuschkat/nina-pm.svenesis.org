@@ -871,6 +871,8 @@ export const de = {
     },
   },
   projectEditor: {
+    weatherTile: 'Nacht {{night}}: {{rating}} – im Nachtdiagramm zeigen',
+    weatherMoon: 'Mond {{pct}} %',
     new: 'Neues Projekt',
     newTitle: 'Neues Projekt',
     list: 'Projekte',
@@ -888,9 +890,8 @@ export const de = {
     status: 'Projektstatus',
     readOnly: 'Dieses Projekt kannst du nur ansehen.',
     rigChangeAnyway: 'Rig trotzdem wechseln',
-    topTabs: 'Ziel, Bedingungen, Bild und Notizen',
+    sideLabel: 'Diagramme, Bild und Notizen',
     areas: {
-      top: 'Ziel und Bedingungen',
       charts: 'Diagramme',
     },
     progress: '{{done}} von {{total}} h · {{pct}} %',
@@ -901,7 +902,6 @@ export const de = {
       hint: 'Ziehen verschiebt die Ansicht, Mausrad oder +/− zoomen. Ausrichten und Mosaik in der Sternkarte.',
       needsCoordinates: 'Trage Koordinaten ein, um die Himmelslage zu sehen.',
     },
-    tabHasErrors: 'Fehler',
     target: 'Ziel',
     conditions: 'Bedingungen',
     openSkyMap: 'In der Sternkarte öffnen',
@@ -2187,6 +2187,15 @@ export const de = {
     },
   },
   skymap: {
+    newProjectWith: 'Neues Projekt mit {{name}}',
+    sideLabel: 'Objekt, Bildfeld und Ebenen',
+    side: {
+      object: 'Objekt',
+      field: 'Bildfeld & Mosaik',
+      layers: 'Ebenen',
+      noSelection: 'Kein Objekt gewählt – ein Objekt auf der Karte anklicken oder oben suchen.',
+      frameCenter: 'Mitte des Bildfelds',
+    },
     title: 'Sternkarte',
     tabsLabel: 'Planungsbereiche',
     tab: { skymap: 'Sternkarte', objects: 'Objektbrowser' },
@@ -2194,12 +2203,10 @@ export const de = {
     mapDescription:
       'Blickmitte {{ra}} {{dec}}, Sichtfeld {{fov}}. Bildfeld bei {{fra}} {{fdec}}, Rotation {{rot}}°. Ziehen verschiebt die Ansicht, Ziehen im Bildfeld das Bildfeld; Pfeiltasten schwenken, Plus und Minus zoomen.',
     section: {
-      search: 'Suche & Position',
       rig: 'Rig',
       equipment: 'Ausrüstung',
       field: 'Bildfeld',
       mosaic: 'Mosaik',
-      actions: 'Aktionen',
     },
     ra: 'RA (J2000)',
     dec: 'Dec (J2000)',
@@ -2322,7 +2329,7 @@ export const de = {
       zoomIn: 'Hineinzoomen',
       zoomOut: 'Herauszoomen',
       zoom: 'Sichtfeld {{fov}}',
-      timeline: '24-h-Zeitleiste (Mittag bis Mittag)',
+      timeline: 'Nacht der Bildfeldmitte',
       target: 'Bildfeld',
     },
     info: {

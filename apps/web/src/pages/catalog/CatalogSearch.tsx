@@ -17,9 +17,12 @@ export function CatalogSearch({
   disabled,
   linkedName,
   onUnlink,
+  compact = false,
 }: {
   onPick: (o: DsoView) => void;
   disabled?: boolean;
+  /** Werkzeugleiste (Sternkarte, AP-26f): Hinweis nur für Screenreader, damit die Leiste eine Zeile bleibt. */
+  compact?: boolean;
   /** Anzeigename des verknüpften Katalogobjekts (Projekt mit `dsoObjectId`). */
   linkedName?: string | null;
   onUnlink?: () => void;
@@ -87,7 +90,7 @@ export function CatalogSearch({
           } else if (e.key === 'Escape') setOpen(false);
         }}
       />
-      <span id={ids.hint} className={styles.muted}>
+      <span id={ids.hint} className={compact ? 'visually-hidden' : styles.muted}>
         {t('catalog.editor.hint')}
       </span>
       <ul

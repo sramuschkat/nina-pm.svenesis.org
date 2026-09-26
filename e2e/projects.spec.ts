@@ -2,8 +2,8 @@
  * AP-11b: S-31 Projekt-Editor gegen den lokalen Stack (Seed aus seed-demo.json): Projekt anlegen,
  * Zeile per Schnelleingabe ergänzen, Kopf ändern und mit `If-Match` speichern; 412 bei parallelem
  * Speichern; Nachtdiagramm-Vorschau; User sieht ein fremdes Projekt nicht bearbeitbar; axe in beiden
- * Themes; 768/2400 px ohne horizontales Scrollen; drei Bereiche mit Reitern (AP-26b): bei 1280 × 800
- * Kopf und alle drei Reiterleisten ohne Scrollen sichtbar; *Löschen* im ⋯-Menü (AP-26d).
+ * Themes; 768/2400 px ohne horizontales Scrollen; Karten in zwei Spalten: bei 1280 × 800
+ * zwei Spalten ohne Bereiche mit eigenem Rollbalken (AP-26f); *Löschen* im ⋯-Menü (AP-26d).
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -53,7 +53,6 @@ test('S-31: Projekt anlegen, Zeile ergänzen, speichern (If-Match)', async ({ pa
   const current = (await (await page.request.get(`/api/web/v1/projects/${id}`)).json()) as {
     version: number;
   };
-  await page.getByRole('tab', { name: 'Bedingungen' }).click();
   await page.getByLabel('Mindesthöhe (°)').fill('35');
   await expect(page.getByText('Ungespeicherte Änderungen')).toBeVisible();
   const patch = page.waitForRequest(
@@ -80,10 +79,7 @@ test('S-31: Projekt anlegen, Zeile ergänzen, speichern (If-Match)', async ({ pa
   await expect(page.getByRole('alert').filter({ hasText: 'inzwischen geändert' })).toBeVisible();
   await page.getByRole('button', { name: 'Neu laden' }).click();
   await expect(page.getByLabel('Mindesthöhe (°)')).toHaveValue('35');
-  await page.getByRole('tab', { name: 'Ziel', exact: true }).click();
   await expect(page.getByLabel('Katalognamen')).toHaveValue('Sh2-184');
-  // Oberer Bereich als Reiter: die übrigen Felder sind verdeckt, nicht entfernt.
-  await expect(page.getByLabel('Mindesthöhe (°)')).toBeHidden();
 });
 
 test('S-31: User öffnet einen fremden Entwurf nicht (FA-BER-02), keine Bearbeitung', async ({
@@ -129,36 +125,36 @@ for (const width of [768, 2400]) {
   });
 }
 
-test('S-31 bei 1280 × 800: Kopf und alle drei Reiterleisten ohne Scrollen sichtbar (AP-26b)', async ({
+test('S-31 bei 1280 × 800: zwei Spalten, keine Bereiche mit eigenem Rollbalken (AP-26f)', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await testLogin(page, 'owner');
   await createViaEditor(page, `E2E-Bereiche ${String(Date.now())}`);
   await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
-  const inView = async (name: string) => {
-    const box = await page.getByRole('tablist', { name, exact: true }).boundingBox();
-    expect(box, name).not.toBeNull();
-    expect((box?.y ?? 0) + (box?.height ?? 0), name).toBeLessThanOrEqual(800);
-  };
   await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
   await expect(page.getByRole('button', { name: 'Speichern' })).toBeInViewport();
-  await inView('Ziel, Bedingungen, Bild und Notizen');
-  await inView('Diagramme');
-  await inView('Belichtungsplan');
-  expect(await page.evaluate(() => window.scrollY)).toBe(0);
-
-  // Tastatur: Pfeiltaste wechselt den Reiter, verdeckte Felder bleiben im Formular.
-  await page.getByRole('tab', { name: 'Ziel', exact: true }).focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Bedingungen' })).toBeFocused();
-  await expect(page.getByLabel('Mindesthöhe (°)')).toBeVisible();
-  await expect(page.getByLabel('Zielname')).toBeHidden();
-  await page.keyboard.press('End');
-  await expect(page.getByRole('tab', { name: 'Bild & Notizen' })).toHaveAttribute(
-    'aria-selected',
-    'true',
+  // Links die Karte *Ziel*, rechts daneben die Diagramme – beide ohne Rollen sichtbar.
+  const target = await page
+    .getByRole('heading', { level: 2, name: 'Ziel', exact: true })
+    .boundingBox();
+  const charts = await page.getByRole('tablist', { name: 'Diagramme', exact: true }).boundingBox();
+  expect(target && charts && charts.x > target.x + 200).toBe(true);
+  expect((charts?.y ?? 900) + (charts?.height ?? 0)).toBeLessThanOrEqual(800);
+  // Alle Felder offen (Karten statt Reiter): Ziel und Bedingungen zugleich sichtbar.
+  await expect(page.getByLabel('Zielname')).toBeVisible();
+  await expect(page.getByLabel('Mindesthöhe (°)')).toBeAttached();
+  // Kein Element mit eigenem senkrechtem Rollbalken – die Seite rollt.
+  const scrollers = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('main *')]
+      .filter((el) => {
+        const oy = getComputedStyle(el).overflowY;
+        return (oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight + 1;
+      })
+      .map((el) => el.className || el.tagName),
   );
+  expect(scrollers).toEqual([]);
+
   await page.getByRole('tab', { name: 'Himmelslage' }).click();
   await expect(page.getByRole('img', { name: /^Himmelslage von NGC 281/ })).toBeVisible();
 

@@ -58,7 +58,8 @@ test('S-20: Bildfeld ziehen, Koordinaten folgen; Neues Projekt übernimmt Framin
 test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
   await testLogin(page, 'user1');
   await page.goto(ORION);
-  const aside = page.getByRole('complementary', { name: 'Kartenebenen' });
+  await page.getByRole('tab', { name: 'Ebenen', exact: true }).click();
+  const aside = page.getByRole('complementary', { name: 'Objekt, Bildfeld und Ebenen' });
   await aside.getByRole('tab', { name: 'Overlays' }).click();
   // Der Zustand steht in der URL; das Häkchen folgt nach der Navigation.
   await aside.getByRole('checkbox', { name: 'Galaktisch' }).click();
