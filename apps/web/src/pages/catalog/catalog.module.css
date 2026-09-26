@@ -345,3 +345,9 @@
   padding: var(--npm-space-2) 0 var(--npm-space-2) 36px;
   white-space: normal;
 }
+.objectNightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding-top: var(--npm-space-2);
+}

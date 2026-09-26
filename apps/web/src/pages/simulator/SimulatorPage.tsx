@@ -51,6 +51,7 @@ import type {
   SimulationResult,
   TargetCard,
 } from './simulate';
+import { useUniformWidth } from '../../lib/use-uniform-width';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
 
@@ -248,6 +249,8 @@ export function SimulatorPage() {
     return key;
   }, [result, cursor]);
   const logBox = useRef<HTMLDivElement>(null);
+  // Filtermarken aller Zielkarten gleich breit (AP-26j, Wunsch Sven 26.09.2026).
+  const cardsRef = useUniformWidth(`.${styles.lines} > li > :first-child`, '--sim-chip-w');
   useEffect(() => {
     const box = logBox.current;
     if (!box || activeRow === null) return;
@@ -437,7 +440,7 @@ export function SimulatorPage() {
             {result.cards.length === 0 && result.unallocated.length === 0 ? (
               <p className={styles.note}>{t('simulator.empty')}</p>
             ) : (
-              <div className={styles.cards}>
+              <div className={styles.cards} ref={cardsRef}>
                 {result.cards.map((c) => (
                   <TargetCardView
                     key={c.projectId}

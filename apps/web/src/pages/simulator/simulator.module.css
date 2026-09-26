@@ -231,6 +231,13 @@
 .lines li > :last-child {
   margin-left: auto;
 }
+/* Filtermarken aller Zielkarten gleich breit (AP-26j; Breite aus `useUniformWidth`). */
+.lines > li > :first-child {
+  box-sizing: border-box;
+  width: var(--sim-chip-w, auto);
+  flex-shrink: 0;
+  justify-content: center;
+}
 .plain {
   list-style: none;
   padding: 0;

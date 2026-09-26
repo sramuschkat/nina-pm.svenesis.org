@@ -75,7 +75,8 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 | [AP-26f](AP-26f.md) | Projekt-Editor ohne innere Rollbereiche, Sternkarte „Karte zuerst“ | M | AP-26e | – | ☑ |
 | [AP-26g](AP-26g.md) | Nacht-Simulator auf einer Seite: Zielkarten, Plangrafik, kompaktes Planprotokoll | S | AP-26f | – | ☑ |
 | [AP-26h](AP-26h.md) | Vorschaubilder in Listen, Filterplan fluchtend, Simulator: Protokoll folgt der Uhrzeit | S | AP-26g | – | ☑ |
-| [AP-26i](AP-26i.md) | Objektbrowser „Beste der Nacht“ zuerst, Filtermarken gleich breit, Sternkarte einklappbar, Scheduler nur im Simulator | M | AP-26h | – | ◐ |
+| [AP-26i](AP-26i.md) | Objektbrowser „Beste der Nacht“ zuerst, Filtermarken gleich breit, Sternkarte einklappbar, Scheduler nur im Simulator | M | AP-26h | – | ☑ |
+| [AP-26j](AP-26j.md) | Saisondiagramm als Reiter neben dem Höhendiagramm, Sternkarten-Seitenbereich immer rechts, Filtermarken der Zielkarten gleich breit | S | AP-26i | – | ◐ |
 
 ## R3
 

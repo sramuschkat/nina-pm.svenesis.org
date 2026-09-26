@@ -813,6 +813,10 @@ export const de = {
     endCurrentConsequence: 'Du wirst auf diesem Gerät sofort abgemeldet.',
   },
   nightChart: {
+    tabs: {
+      altitude: 'Höhendiagramm',
+      season: 'Saisondiagramm',
+    },
     label: 'Nachtdiagramm, Zeiten in Standortzeit ({{zone}})',
     empty: 'Keine Nacht mit Dunkelheit bzw. kein Ziel über dem Horizont.',
     error: 'Das Nachtdiagramm kann nicht gezeichnet werden.',
@@ -2055,6 +2059,7 @@ export const de = {
     },
   },
   catalog: {
+    chartsOf: 'Diagramme zu {{name}}',
     nightOf:
       'Höhe von {{name}} in der gewählten Nacht am Standort des Rigs; weicht deine Zeitzone ab, steht deine Zeit unter der Standortzeit.',
     context: 'Rig und Nacht',
@@ -2136,8 +2141,6 @@ export const de = {
     nightInfo: 'Dunkel {{from}}–{{to}} · Mond {{pct}} % beleuchtet',
     noDarkness: 'In dieser Nacht wird es nicht dunkel genug (Grenze {{twilight}}).',
     createProject: 'Projekt anlegen',
-    seasonFor: 'Saison von {{name}}',
-    seasonOf: 'Saisondiagramm: {{name}}',
     skyMap: 'Sternkarte',
     skyMapFor: '{{name}} in der Sternkarte',
     createProjectFor: 'Projekt anlegen für {{name}}',
@@ -2194,6 +2197,7 @@ export const de = {
     },
   },
   skymap: {
+    chartsLabel: 'Höhen- und Saisondiagramm',
     newProjectWith: 'Neues Projekt mit {{name}}',
     sideLabel: 'Bildfeld, Mosaik und Ebenen',
     side: {
