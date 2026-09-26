@@ -6,7 +6,12 @@
  */
 import { randomUUID } from 'node:crypto';
 import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
-import type { EquipmentRepository, OpenDatabase, TenantAdminRepository } from '@nina-pm/db';
+import {
+  DemoEvaluationRepository,
+  type EquipmentRepository,
+  type OpenDatabase,
+  type TenantAdminRepository,
+} from '@nina-pm/db';
 import { seedEquipment, type SeedDemo } from '@nina-pm/db/seed';
 import {
   DiscordUserId,
@@ -20,6 +25,7 @@ import { z } from 'zod';
 import seedDemo from '../../../../docs/seed/seed-demo.json' with { type: 'json' };
 import { invitationLink, isoUtc } from '../lib/format';
 import { EXPORT_TENANT_KEY, runExportSetup } from './export-setup';
+import { DEMO_TENANT_KEY, runDemoEvaluation } from './demo-evaluation';
 
 export interface SqsLike {
   send(command: ReceiveMessageCommand): Promise<{
@@ -34,7 +40,7 @@ export interface OpsDeps {
   readonly admin: () => Promise<TenantAdminRepository>;
   /** Ausrüstung eines Mandanten (Seed, AP-09a); DB-Rolle app_rw. */
   readonly equipment: (tenantId: string) => Promise<EquipmentRepository>;
-  /** Datenbank (app_rw, nur lesend genutzt) für `export-setup`. */
+  /** Datenbank (app_rw) für `export-setup` (nur lesen) und `demo-evaluation`. */
   readonly database: () => Promise<OpenDatabase['db']>;
   /** Basis-URL für Einladungslinks, z. B. https://nina-pm.svenesis.org. */
   readonly appOrigin: string;
@@ -66,6 +72,8 @@ const HELP = {
     'Zeigt bis zu 10 Nachrichten aus nina-pm-worker-failures, ohne sie zu löschen.',
   'export-setup':
     '{"command":"export-setup","tenant":"test"} – nur lesen: Aufbau des Test-Mandanten (Ausrüstung, Rigs, Projekte, Mengen der Auswertungsdaten) als JSON; lokal über `pnpm demo:export`.',
+  'demo-evaluation':
+    '{"command":"demo-evaluation","tenant":"test","step":"plan|clear|projects|nights|finish","to"?:"YYYY-MM-DD","from"?:0,"count"?:10} – nur Test-Mandant: Auswertungsdaten löschen und 90 Demo-Nächte erzeugen; Ablauf über `pnpm demo:evaluation`.',
 } as const;
 
 type Command = keyof typeof HELP;
@@ -180,6 +188,19 @@ async function execute(
       const tenant = await (await deps.admin()).tenantByKey(EXPORT_TENANT_KEY);
       if (!tenant) return { error: 'tenant.not_found' };
       return runExportSetup(await deps.database(), tenant, now);
+    }
+    case 'demo-evaluation': {
+      if (event.tenant !== DEMO_TENANT_KEY)
+        return { error: 'demo.tenant_not_allowed', hint: 'nur "tenant":"test"' };
+      const admin = await deps.admin();
+      const tenant = await admin.tenantByKey(DEMO_TENANT_KEY);
+      if (!tenant) return { error: 'tenant.not_found' };
+      const db = await deps.database();
+      const member = await new DemoEvaluationRepository(db, tenant.id).creator(
+        tenant.ownerMemberId,
+      );
+      if (!member) return { error: 'demo.no_member', hint: 'Test-Mandant braucht einen Owner' };
+      return runDemoEvaluation({ db, tenantId: tenant.id, memberId: member }, event, now);
     }
     case 'seed': {
       const a = Args[command].parse(event);

@@ -223,3 +223,9 @@ export {
 } from './repositories/forecast';
 export { projectReportRows, type ReportRows } from './repositories/report';
 export { evaluationCounts, type EvaluationCounts } from './repositories/setup-export';
+export {
+  DEMO_BATCH,
+  DEMO_CLEAR_ORDER,
+  DemoEvaluationRepository,
+  type DemoClearProgress,
+} from './repositories/demo-evaluation';

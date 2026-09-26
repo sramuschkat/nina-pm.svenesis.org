@@ -32,6 +32,7 @@
     "loadtest:prod": "tsx tools/deploy/src/loadtest.ts",
     "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts",
     "demo:export": "tsx tools/deploy/src/demo-export.ts",
+    "demo:evaluation": "tsx tools/deploy/src/demo-evaluation.ts",
     "catalog:build": "tsx tools/catalog-import/src/cli.ts",
     "catalog:upload": "tsx tools/catalog-import/src/upload.ts"
   },
