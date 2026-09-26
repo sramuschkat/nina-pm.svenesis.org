@@ -65,6 +65,7 @@ Der wichtigste und am häufigsten wiederverwendete Baustein: Nachtdiagramm, Simu
 | Darstellung | Balken je Nacht bzw. Woche (je `range`), Mindestzeit als waagerechte Linie, Saisonende als senkrechte Marke mit Datum |
 | Größen | Mindestbreite 280 px, Höhe 120 px |
 | Grenzfall | **zirkumpolar** (kein Saisonende) → keine Marke, Fußnote „ganzjährig“; **außerhalb der Saison** → Saisonbeginn als zweite Marke, Bereich davor gedämpft |
+| Umsetzung (AP-24) | `months[]` ist je **Balken** ein Eintrag (1 Monat: Nacht, sonst Woche); `month` = erste Nacht, `usableHours` = nutzbare Stunden **je Nacht** (Mittel), `moonPct` = Anteil mit Mond über dem Horizont; zusätzlich optional `nights`, `peakAltDeg` (höchste Zielhöhe, rechte Achse), `today`, `status` (`never` → Hinweis) und `state`. Die Stunden je Filter-Stufe (FA-SIC-02) sind noch nicht enthalten |
 
 ### 2.5 `WeatherChart` (Astro-Wetter-Grafik)
 

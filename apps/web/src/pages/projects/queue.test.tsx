@@ -15,6 +15,25 @@ import { QueuePage } from './QueuePage';
 import { NO_QUEUE_FILTERS, filterQueue, nightKeyIn, periodExpired, sortQueue } from './queue-model';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+/** Nacht-Tabelle Starfront (CDT) ab 2026-09-26, 30 Nächte – für die Spalte „Sichtbarkeit 4 Wochen“. */
+function nightsTable() {
+  const day = (i: number) => new Date(Date.UTC(2026, 8, 26 + i)).toISOString().slice(0, 10);
+  return {
+    currentNight: day(0),
+    tzdataVersion: '2026a',
+    timeZoneTransitions: [
+      { atUtc: '2026-03-08T08:00:00Z', utcOffsetMinutes: -300 },
+      { atUtc: '2026-11-01T07:00:00Z', utcOffsetMinutes: -360 },
+    ],
+    nights: Array.from({ length: 30 }, (_, i) => ({
+      night: day(i),
+      noonStartUtc: `${day(i)}T17:00:00Z`,
+      noonEndUtc: `${day(i + 1)}T17:00:00Z`,
+      nightWindowEndUtc: `${day(i + 1)}T13:00:00Z`,
+    })),
+  };
+}
 const ME = ID(3);
 
 const state = vi.hoisted(() => ({
@@ -30,7 +49,23 @@ vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
   equipmentApi: {
     list: (kind: string) =>
-      Promise.resolve({ items: kind === 'rigs' ? [{ id: ID(500), name: 'Rig A' }] : [] }),
+      Promise.resolve({
+        items:
+          kind === 'rigs'
+            ? [{ id: ID(500), name: 'Rig A', siteId: ID(600) }]
+            : kind === 'sites'
+              ? [
+                  {
+                    id: ID(600),
+                    name: 'Starfront',
+                    latitudeDeg: 31.5471,
+                    longitudeDeg: -99.3823,
+                    timeZone: 'America/Chicago',
+                  },
+                ]
+              : [],
+      }),
+    nights: () => Promise.resolve(nightsTable()),
   },
   projectsApi: { list: () => Promise.resolve({ items: [{}, {}] }) },
   approvalApi: {
@@ -98,6 +133,9 @@ const item = (n: number, over: Partial<QueueItem> = {}): QueueItem =>
     effort: null,
     suggestedPriorityPosition: null,
     version: 7,
+    target: null,
+    conditions: { minAltitudeDeg: 30, minTimeOnTargetH: 1, twilight: 'astronomical' },
+    startDate: null,
     ...over,
   }) as QueueItem;
 
@@ -215,5 +253,29 @@ describe('S-33 (Komponente)', () => {
     renderPage();
     expect(await screen.findByRole('link', { name: 'Objekt 1' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Entscheiden' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Sichtbarkeit 4 Wochen (AP-24)', () => {
+  it('vier Mini-Balken je Eintrag am Standort des Wunsch-Rigs; ohne Koordinaten „–“', async () => {
+    state.me = me('user');
+    state.queue = [
+      item(1, { name: 'M 31', target: { raDeg: 10.68, decDeg: 41.27 } }),
+      item(2, { name: 'Südziel', target: { raDeg: 0, decDeg: -80 } }),
+      item(3, { name: 'Ohne Ziel' }),
+    ];
+    renderPage();
+    const m31 = await screen.findByRole('img', {
+      name: /Sichtbarkeit von M 31 in den nächsten 4 Wochen/,
+    });
+    expect(m31.getAttribute('aria-label')).toMatch(/ab 26\.09\. \d+,\d h je Nacht · ab 03\.10\./);
+    expect(m31.children).toHaveLength(4);
+    const south = screen.getByRole('img', { name: /Sichtbarkeit von Südziel/ });
+    expect(south.getAttribute('aria-label')).toContain(
+      '0,0 h je Nacht (Mindestzeit nicht erreicht)',
+    );
+    const row = screen.getByRole('link', { name: 'Ohne Ziel' }).closest('tr') as HTMLElement;
+    expect(within(row).queryByRole('img', { name: /Sichtbarkeit/ })).not.toBeInTheDocument();
+    await expectNoSeriousA11y();
   });
 });

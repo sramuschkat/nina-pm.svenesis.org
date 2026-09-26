@@ -1,0 +1,104 @@
+/* Saisondiagramm (components.md §2.4): Mindestbreite 280 px, Höhe 120 px Zeichenfläche plus Achsen,
+   Farben aus Tokens (Stundenstreifen des Nachtdiagramms), folgt dem Theme. */
+.figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  width: 100%;
+  min-width: 0;
+}
+.canvasWrap {
+  width: 100%;
+  min-width: 280px;
+  height: 156px;
+}
+.canvasWrap:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.live,
+.note {
+  margin: 0;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  font-size: var(--npm-font-small);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+.moonless {
+  background: var(--npm-chart-moonless);
+}
+.moonlit {
+  background: var(--npm-chart-moonlit);
+}
+.dashed {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--npm-chart-min-alt) 0 4px, transparent 4px 7px);
+}
+.line {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  background: var(--npm-chart-marker);
+}
+.details summary {
+  cursor: pointer;
+  font-size: var(--npm-font-small);
+  color: var(--npm-link);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--npm-font-small);
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-top: 1px solid var(--npm-border);
+}
+.skeleton {
+  width: 100%;
+  min-width: 280px;
+  height: 156px;
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-skeleton);
+}
+.message {
+  min-width: 280px;
+  padding: var(--npm-space-3);
+  border: 1px dashed var(--npm-border);
+  border-radius: calc(var(--npm-radius) / 2);
+  color: var(--npm-text-light);
+}
+.retry {
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  cursor: pointer;
+}

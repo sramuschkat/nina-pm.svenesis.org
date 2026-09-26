@@ -8,6 +8,7 @@
  * „Ausreichend“ heißt: der **längste zusammenhängende** nutzbare Lauf der Nacht erreicht die Mindestzeit –
  * dieselbe Bedingung, mit der eine Einheit an einer Nacht überhaupt teilnimmt (allocation.md §3.2).
  */
+import { moonAt } from '../astro/bodies';
 import type { Site } from '../astro/horizon';
 import type { Target } from '../astro/target';
 import type { TimeZoneTransition } from '../astro/timezone';
@@ -28,6 +29,11 @@ export interface SeasonInput {
   /** Mindestzeit am Ziel in Sekunden. */
   readonly minTimeSec: number;
   readonly startDate?: string | null;
+  /**
+   * Mondanteil je Nacht mitrechnen (Saisondiagramm FA-SIC-02, AP-24): nutzbare Sekunden mit Mond über dem
+   * Horizont (scheinbare Mitte > 0°, moon.md). Nur Anzeige; die Mondhöhe wird je 30 min abgetastet.
+   */
+  readonly withMoon?: boolean;
 }
 
 export interface SeasonNight {
@@ -35,7 +41,14 @@ export interface SeasonNight {
   readonly usableSec: number;
   readonly longestRunSec: number;
   readonly sufficient: boolean;
+  /** Höchste scheinbare Zielhöhe in nutzbaren Slots; `null` = kein nutzbarer Slot. */
+  readonly peakAltDeg: number | null;
+  /** Nutzbare Sekunden mit Mond über dem Horizont; `null` ohne `withMoon`. */
+  readonly moonUpSec: number | null;
 }
+
+/** Abtastschritt der Mondhöhe in Slots (6 × 5 min = 30 min). */
+const MOON_SAMPLE_SLOTS = 6;
 
 export interface SeasonResult {
   /** `never`: in keiner Nacht ausreichend (bzw. nie über der Mindesthöhe). */
@@ -73,7 +86,14 @@ export function seasonWindow(input: SeasonInput): SeasonResult {
   for (const night of input.nights) {
     // Vorfilter (AST-N11): ergibt die erste Nacht „nie sichtbar“, entfällt der Rasterlauf für den Rest.
     if (never) {
-      nights.push({ night, usableSec: 0, longestRunSec: 0, sufficient: false });
+      nights.push({
+        night,
+        usableSec: 0,
+        longestRunSec: 0,
+        sufficient: false,
+        peakAltDeg: null,
+        moonUpSec: input.withMoon ? 0 : null,
+      });
       continue;
     }
     const ctx = buildNightContext({
@@ -90,11 +110,31 @@ export function seasonWindow(input: SeasonInput): SeasonResult {
     });
     never = e.visibility === 'never';
     const longestRunSec = e.longestRunSlots * SLOT_SECONDS;
+    let moonUpSec: number | null = null;
+    if (input.withMoon) {
+      moonUpSec = 0;
+      let up = false;
+      for (let i = 0; i < e.canImage.length; i += 1) {
+        if (i % MOON_SAMPLE_SLOTS === 0) {
+          const mid =
+            ((ctx.boundaryUtc[i] ?? 0) +
+              (ctx.boundaryUtc[i + MOON_SAMPLE_SLOTS] ?? ctx.boundaryUtc[e.canImage.length] ?? 0)) /
+            2;
+          // Abtasten nur, wenn im Block überhaupt nutzbare Slots liegen.
+          up = e.canImage.slice(i, i + MOON_SAMPLE_SLOTS).some(Boolean)
+            ? moonAt(mid, input.site).altDeg > 0
+            : false;
+        }
+        if (e.canImage[i] && up) moonUpSec += SLOT_SECONDS;
+      }
+    }
     nights.push({
       night,
       usableSec: e.usableSlots * SLOT_SECONDS,
       longestRunSec,
       sufficient: longestRunSec >= input.minTimeSec,
+      peakAltDeg: e.peakAltDeg,
+      moonUpSec,
     });
   }
   const ok = nights.map((n) => n.sufficient);

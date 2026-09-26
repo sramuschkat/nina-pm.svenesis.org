@@ -728,3 +728,31 @@ tr[data-selected='true'] td {
   flex-wrap: wrap;
   gap: var(--npm-space-2);
 }
+.seasonHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.seasonHead h3 {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.visBars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+  padding: 1px;
+  border-bottom: 1px solid var(--npm-border);
+}
+.visBar,
+.visBarShort {
+  display: inline-block;
+  width: 7px;
+  border-radius: 1px 1px 0 0;
+  background: var(--npm-chart-moonless);
+}
+.visBarShort {
+  opacity: 0.35;
+}

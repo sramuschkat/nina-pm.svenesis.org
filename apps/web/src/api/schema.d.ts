@@ -13375,6 +13375,21 @@ export interface components {
              * @description UUID
              */
             requestedRigId: string | null;
+            target: {
+                raDeg: number;
+                decDeg: number;
+            } | null;
+            conditions: {
+                minAltitudeDeg: number;
+                minTimeOnTargetH: number;
+                /** @enum {string} */
+                twilight: "astronomical" | "nautical" | "civil";
+            };
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            startDate: string | null;
             /**
              * Format: date
              * @example 2026-09-18

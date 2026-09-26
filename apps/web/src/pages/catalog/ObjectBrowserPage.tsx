@@ -20,7 +20,13 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
-import { catalogApi, equipmentApi, type DsoList, type DsoView } from '../../api/client';
+import {
+  catalogApi,
+  equipmentApi,
+  type DsoList,
+  type DsoView,
+  type SiteView,
+} from '../../api/client';
 import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
 import { PlanningTabs } from '../planning/PlanningTabs';
@@ -30,6 +36,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList, useNumber } from '../equipment/shared';
+import { SeasonPanel } from '../projects/SeasonPanel';
 import {
   aliasesOf,
   CATALOG_PATH,
@@ -404,6 +411,7 @@ export function ObjectBrowserPage() {
             rigId={rigId}
             rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
             canCreate={canCreate}
+            site={site}
           />
         )}
         {data ? (
@@ -565,7 +573,12 @@ interface RowProps {
   /** Bildfeld des Rigs (Grad) – Sichtfeld der Sternkarte. */
   readonly rigFov: readonly [number, number] | null;
   readonly canCreate: boolean;
+  /** Standort des Rigs – Saisondiagramm je Objekt (AP-24); ohne Rig kein Diagramm. */
+  readonly site?: SiteView | null;
 }
+
+/** Mindestzeit des Saisondiagramms im Objektbrowser (ohne Projekt): 1 h am Stück, astronomische Dunkelheit. */
+const BROWSER_SEASON = { minTimeOnTargetH: 1, twilight: 'astronomical' } as const;
 
 function useCells({ minAlt, timeZone }: Pick<RowProps, 'minAlt' | 'timeZone'>) {
   const { t } = useTranslation();
@@ -621,10 +634,24 @@ function Actions({
   rigId,
   rigFov,
   canCreate,
-}: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone'>) {
+  season,
+}: { o: DsoView; season?: { open: boolean; toggle: () => void } } & Omit<
+  RowProps,
+  'minAlt' | 'timeZone' | 'site'
+>) {
   const { t } = useTranslation();
   return (
     <div className={styles.rowActions}>
+      {season ? (
+        <button
+          type="button"
+          className={styles.button}
+          aria-expanded={season.open}
+          onClick={season.toggle}
+        >
+          {season.open ? t('catalog.seasonHide') : t('catalog.season')}
+        </button>
+      ) : null}
       {canCreate ? (
         <Link className={styles.button} to={createProjectHref(o.primaryId, rigId)}>
           {t('catalog.createProject')}
@@ -658,110 +685,135 @@ function ResultTable({
   const cell = useCells(row);
   const night = items.some((o) => o.night !== null);
   const scored = items.some((o) => o.night?.score !== null && o.night?.score !== undefined);
+  const [seasonOf, setSeasonOf] = useState<string | null>(null);
+  const seasonObject = items.find((o) => o.id === seasonOf) ?? null;
   return (
-    <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby={labelledBy}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th scope="col" className={styles.hideNarrow}>
-              {t('catalog.col.image')}
-            </th>
-            <th scope="col">{t('catalog.col.object')}</th>
-            <th scope="col" className={styles.hideNarrow}>
-              {t('catalog.col.aliases')}
-            </th>
-            <th scope="col">{t('catalog.col.type')}</th>
-            <th scope="col">{t('catalog.col.constellation')}</th>
-            <th scope="col" className={styles.num}>
-              {t('catalog.col.size')}
-            </th>
-            <th scope="col" className={styles.num}>
-              {t('catalog.col.mag')}
-            </th>
-            <th scope="col" className={`${styles.num} ${styles.hideNarrow}`}>
-              {t('catalog.col.surfBr')}
-            </th>
-            {scored ? (
-              <>
-                <th scope="col" className={styles.num}>
-                  {t('catalog.col.score')}
-                </th>
-                <th scope="col">{t('catalog.col.filter')}</th>
-              </>
-            ) : null}
-            {night ? (
-              <>
-                <th scope="col">{t('catalog.col.best')}</th>
-                <th scope="col" className={styles.hideNarrow}>
-                  {t('catalog.col.moon')}
-                </th>
-                <th scope="col" className={styles.num}>
-                  {t('catalog.col.usable')}
-                </th>
-              </>
-            ) : null}
-            <th scope="col">{t('catalog.col.actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((o) => {
-            const { designations, common } = aliasesOf(o);
-            return (
-              <tr key={o.id}>
-                <td className={styles.hideNarrow}>
-                  <CatalogImage
-                    primaryId={o.primaryId}
-                    name={o.displayName}
-                    size="small"
-                    className={styles.listThumb}
-                    fallback={<div className={styles.listThumbEmpty} aria-hidden />}
-                  />
-                </td>
-                <td>
-                  <strong>{o.displayName}</strong>
-                  {common[0] ? <span className={styles.common}>{common[0]}</span> : null}
-                </td>
-                <td className={styles.hideNarrow} title={designations.join(', ')}>
-                  {designations.slice(0, 3).join(', ')}
-                  {designations.length > 3 ? ' …' : ''}
-                </td>
-                <td>{cell.group(o)}</td>
-                <td
-                  title={
-                    o.constellation
-                      ? IAU_CONSTELLATION_NAMES[
-                          o.constellation as keyof typeof IAU_CONSTELLATION_NAMES
-                        ]
-                      : undefined
-                  }
-                >
-                  {o.constellation ?? '–'}
-                </td>
-                <td className={`${styles.num} ${styles.nowrap}`}>{cell.size(o)}</td>
-                <td className={`${styles.num} ${styles.nowrap}`}>{cell.mag(o)}</td>
-                <td className={`${styles.num} ${styles.hideNarrow}`}>{cell.surfBr(o)}</td>
-                {scored ? (
-                  <>
-                    <td className={`${styles.num} ${styles.nowrap}`}>{cell.score(o)}</td>
-                    <td className={styles.nowrap}>{cell.filter(o)}</td>
-                  </>
-                ) : null}
-                {night ? (
-                  <>
-                    <td className={styles.nowrap}>{cell.best(o)}</td>
-                    <td className={`${styles.hideNarrow} ${styles.nowrap}`}>{cell.moon(o)}</td>
-                    <td className={`${styles.num} ${styles.nowrap}`}>{cell.usable(o)}</td>
-                  </>
-                ) : null}
-                <td>
-                  <Actions o={o} rigId={row.rigId} rigFov={row.rigFov} canCreate={row.canCreate} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className={styles.tableWrap} tabIndex={0} role="region" aria-labelledby={labelledBy}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th scope="col" className={styles.hideNarrow}>
+                {t('catalog.col.image')}
+              </th>
+              <th scope="col">{t('catalog.col.object')}</th>
+              <th scope="col" className={styles.hideNarrow}>
+                {t('catalog.col.aliases')}
+              </th>
+              <th scope="col">{t('catalog.col.type')}</th>
+              <th scope="col">{t('catalog.col.constellation')}</th>
+              <th scope="col" className={styles.num}>
+                {t('catalog.col.size')}
+              </th>
+              <th scope="col" className={styles.num}>
+                {t('catalog.col.mag')}
+              </th>
+              <th scope="col" className={`${styles.num} ${styles.hideNarrow}`}>
+                {t('catalog.col.surfBr')}
+              </th>
+              {scored ? (
+                <>
+                  <th scope="col" className={styles.num}>
+                    {t('catalog.col.score')}
+                  </th>
+                  <th scope="col">{t('catalog.col.filter')}</th>
+                </>
+              ) : null}
+              {night ? (
+                <>
+                  <th scope="col">{t('catalog.col.best')}</th>
+                  <th scope="col" className={styles.hideNarrow}>
+                    {t('catalog.col.moon')}
+                  </th>
+                  <th scope="col" className={styles.num}>
+                    {t('catalog.col.usable')}
+                  </th>
+                </>
+              ) : null}
+              <th scope="col">{t('catalog.col.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((o) => {
+              const { designations, common } = aliasesOf(o);
+              return (
+                <tr key={o.id}>
+                  <td className={styles.hideNarrow}>
+                    <CatalogImage
+                      primaryId={o.primaryId}
+                      name={o.displayName}
+                      size="small"
+                      className={styles.listThumb}
+                      fallback={<div className={styles.listThumbEmpty} aria-hidden />}
+                    />
+                  </td>
+                  <td>
+                    <strong>{o.displayName}</strong>
+                    {common[0] ? <span className={styles.common}>{common[0]}</span> : null}
+                  </td>
+                  <td className={styles.hideNarrow} title={designations.join(', ')}>
+                    {designations.slice(0, 3).join(', ')}
+                    {designations.length > 3 ? ' …' : ''}
+                  </td>
+                  <td>{cell.group(o)}</td>
+                  <td
+                    title={
+                      o.constellation
+                        ? IAU_CONSTELLATION_NAMES[
+                            o.constellation as keyof typeof IAU_CONSTELLATION_NAMES
+                          ]
+                        : undefined
+                    }
+                  >
+                    {o.constellation ?? '–'}
+                  </td>
+                  <td className={`${styles.num} ${styles.nowrap}`}>{cell.size(o)}</td>
+                  <td className={`${styles.num} ${styles.nowrap}`}>{cell.mag(o)}</td>
+                  <td className={`${styles.num} ${styles.hideNarrow}`}>{cell.surfBr(o)}</td>
+                  {scored ? (
+                    <>
+                      <td className={`${styles.num} ${styles.nowrap}`}>{cell.score(o)}</td>
+                      <td className={styles.nowrap}>{cell.filter(o)}</td>
+                    </>
+                  ) : null}
+                  {night ? (
+                    <>
+                      <td className={styles.nowrap}>{cell.best(o)}</td>
+                      <td className={`${styles.hideNarrow} ${styles.nowrap}`}>{cell.moon(o)}</td>
+                      <td className={`${styles.num} ${styles.nowrap}`}>{cell.usable(o)}</td>
+                    </>
+                  ) : null}
+                  <td>
+                    <Actions
+                      o={o}
+                      rigId={row.rigId}
+                      rigFov={row.rigFov}
+                      canCreate={row.canCreate}
+                      {...(row.site
+                        ? {
+                            season: {
+                              open: seasonOf === o.id,
+                              toggle: () => setSeasonOf(seasonOf === o.id ? null : o.id),
+                            },
+                          }
+                        : {})}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {row.site && seasonObject ? (
+        <SeasonPanel
+          site={row.site}
+          title={t('catalog.seasonOf', { name: seasonObject.displayName })}
+          target={{ raDeg: seasonObject.raDeg, decDeg: seasonObject.decDeg }}
+          conditions={{ minAltitudeDeg: row.minAlt, ...BROWSER_SEASON }}
+        />
+      ) : null}
+    </>
   );
 }
 
