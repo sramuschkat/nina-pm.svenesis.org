@@ -70,6 +70,11 @@ export interface DataTableProps<T> {
   /** Inhalt im Fehlerzustand (z. B. `ProblemMessage`). */
   readonly error?: ReactNode;
   readonly className?: string;
+  /**
+   * Eigener Inhalt der Detailzeile (AP-26e, z. B. Nachtdiagramm im Objektbrowser): die Zeile ist dann
+   * immer aufklappbar und zeigt ihn unter den ausgeblendeten Spalten.
+   */
+  readonly renderDetail?: (row: T) => ReactNode;
 }
 
 export function DataTable<T>(props: DataTableProps<T>) {
@@ -89,7 +94,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
   const hiddenIds = useMemo(() => new Set(order.slice(0, hidden)), [order, hidden]);
   const visible = columns.filter((c) => !hiddenIds.has(c.id));
   const hiddenCols = columns.filter((c) => hiddenIds.has(c.id));
-  const detail = hiddenCols.length > 0;
+  const detail = hiddenCols.length > 0 || props.renderDetail !== undefined;
 
   // Container beobachten: bei neuer Breite wieder alle Spalten zeigen und neu ausblenden.
   useLayoutEffect(() => {
@@ -257,14 +262,17 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     {expanded ? (
                       <tr className={styles.detailRow}>
                         <td colSpan={span}>
-                          <dl className={styles.detailList}>
-                            {hiddenCols.map((c) => (
-                              <div key={c.id}>
-                                <dt>{c.header}</dt>
-                                <dd>{c.cell(row)}</dd>
-                              </div>
-                            ))}
-                          </dl>
+                          {hiddenCols.length > 0 ? (
+                            <dl className={styles.detailList}>
+                              {hiddenCols.map((c) => (
+                                <div key={c.id}>
+                                  <dt>{c.header}</dt>
+                                  <dd>{c.cell(row)}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                          {props.renderDetail?.(row)}
                         </td>
                       </tr>
                     ) : null}

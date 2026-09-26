@@ -9,7 +9,17 @@
   --npm-font: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --npm-focus-ring: 2px solid var(--npm-accent);
   --npm-header-h: 64px;
-  --npm-chart-sky-night: rgb(9, 14, 24);
+  --npm-chart-sky-night: rgb(14, 24, 36);
+  --npm-chart-frame: #10151c;
+  --npm-chart-axis: #9aa7b6;
+  --npm-chart-axis-strong: #c3ccd6;
+  --npm-chart-sky-dark: #0b3a2a;
+  --npm-chart-dark-edge: rgba(143, 209, 158, 0.75);
+  --npm-chart-now: #e5484d;
+  --npm-chart-meridian: #c9a3ff;
+  --npm-chart-best: #8fb3ff;
+  --npm-chart-moon-label: #f5c26b;
+  --npm-chart-curve: #eef2f6;
   --npm-chart-grid: rgba(255, 255, 255, 0.16);
   --npm-chart-label: rgba(228, 233, 239, 0.8);
   --npm-chart-target: #e8ecf2;

@@ -45,7 +45,13 @@ export interface FilterBar {
   readonly toUtc: number;
   readonly color: string;
   readonly label: string;
+  /** Anzahl der Belichtungen im Balken (Plangrafik „R ×10“, AP-26e). */
+  readonly count?: number;
 }
+
+/** Beschriftung eines Filterbalkens in der Plangrafik: „R ×10“, ohne Anzahl nur der Filter. */
+export const filterBarLabel = (f: FilterBar) =>
+  f.count && f.count > 0 ? `${f.label} ×${String(f.count)}` : f.label;
 
 export interface NightMarker {
   readonly atUtc: number;
@@ -270,4 +276,95 @@ export function twilightCrossings(
       if (at !== null && at > win.fromUtc && at < win.toUtc) out.push({ atUtc: at, kind });
   }
   return out.sort((a, b) => a.atUtc - b.atUtc);
+}
+
+/** Horizont mit Refraktion (Sonnenoberrand): Sonnenuntergang und -aufgang im Sinne des Beobachtungsplaners. */
+const SUNSET_DEG = -0.833;
+
+/**
+ * Ausschnitt des Diagramms (AP-26e, `planetWindow` im Beobachtungsplaner): eine Stunde vor Sonnenuntergang
+ * bis eine Stunde nach Sonnenaufgang, auf volle Stunden der Standortzeit (über `hourTicks`, also auch bei
+ * der Zeitumstellung richtig). Ohne Sonnenkurve oder ohne Unter- bzw. Aufgang (Polartag/-nacht) bleibt das
+ * ganze Fenster.
+ */
+export function cropWindow(
+  win: Interval,
+  sun: readonly AltPoint[] | undefined,
+  timeZone: string,
+): Interval {
+  if (!sun || sun.length < 2) return win;
+  let set: number | null = null;
+  let rise: number | null = null;
+  for (let i = 0; i + 1 < sun.length; i += 1) {
+    const a = sun[i] as AltPoint;
+    const b = sun[i + 1] as AltPoint;
+    const cross = (a.altDeg - SUNSET_DEG) * (b.altDeg - SUNSET_DEG) <= 0 && a.altDeg !== b.altDeg;
+    if (!cross) continue;
+    const at = a.atUtc + ((SUNSET_DEG - a.altDeg) / (b.altDeg - a.altDeg)) * (b.atUtc - a.atUtc);
+    if (set === null && b.altDeg < a.altDeg) set = at;
+    else if (set !== null && b.altDeg > a.altDeg) {
+      rise = at;
+      break;
+    }
+  }
+  if (set === null || rise === null) return win;
+  const ticks = hourTicks(win.fromUtc, win.toUtc, timeZone).map((t) => t.atUtc);
+  const from = [...ticks].reverse().find((t) => t <= set - 3600) ?? win.fromUtc;
+  const to = ticks.find((t) => t >= rise + 3600) ?? win.toUtc;
+  return to > from ? { fromUtc: from, toUtc: to } : win;
+}
+
+/**
+ * Beste Zeit eines Ziels (Punkt im Diagramm, `bestSample` im Beobachtungsplaner): der höchste Stand in
+ * astronomischer Dunkelheit, sonst in nautischer, sonst im Fenster; `null`, wenn das Ziel nie über 0° steht.
+ */
+export function bestTime(
+  points: readonly AltPoint[],
+  twilight: TwilightInput | undefined,
+  win: Interval,
+): AltPoint | null {
+  const within = (s: TwilightSpan | undefined) => {
+    if (!s) return [];
+    if (s.allNight) return points.filter((p) => p.atUtc >= win.fromUtc && p.atUtc <= win.toUtc);
+    if (s.startUtc === null || s.endUtc === null) return [];
+    const from = s.startUtc;
+    const to = s.endUtc;
+    return points.filter((p) => p.atUtc >= from && p.atUtc <= to);
+  };
+  for (const list of [
+    within(twilight?.astronomical),
+    within(twilight?.nautical),
+    points.filter((p) => p.atUtc >= win.fromUtc && p.atUtc <= win.toUtc),
+  ]) {
+    const top = peak(list);
+    if (top) return top.altDeg > 0 ? top : null;
+  }
+  return null;
+}
+
+/** Deckkraft der Mondfläche nach Beleuchtung (Beobachtungsplaner: 0,18 + 0,4 × Anteil). */
+export const moonAlpha = (illuminationPct: number) =>
+  0.18 + (0.4 * Math.max(0, Math.min(100, illuminationPct))) / 100;
+
+/** Relative Helligkeit einer Farbe `#rgb`/`#rrggbb`/`rgb(…)` (0–1) für die Textfarbe auf Filterbalken. */
+export function luminance(color: string): number | null {
+  let rgb: number[] | null = null;
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  if (hex?.[1]) {
+    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+    rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  } else {
+    const m = /^rgba?\(([^)]+)\)$/.exec(color.trim());
+    if (m?.[1])
+      rgb = m[1]
+        .split(',')
+        .slice(0, 3)
+        .map((v) => Number(v.trim()));
+  }
+  if (!rgb || rgb.some((v) => Number.isNaN(v))) return null;
+  const lin = rgb.map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * (lin[0] ?? 0) + 0.7152 * (lin[1] ?? 0) + 0.0722 * (lin[2] ?? 0);
 }

@@ -837,6 +837,28 @@ export const de = {
       above: 'Über {{deg}}°',
       dark: 'Astronomisch dunkel',
     },
+    twilightWord: {
+      civil: 'Bürgerl.',
+      nautical: 'Naut.',
+      astronomical: 'Astro.',
+    },
+    nowAt: 'Uhrzeit {{time}}',
+    flipAt: 'Meridian-Flip {{time}}',
+    transitAt: 'Meridian {{time}}',
+    key: {
+      dark: 'Nacht (astronomisch dunkel)',
+      meridian: 'Meridian',
+      flip: 'Meridian-Flip',
+      now: 'Uhrzeit',
+      best: 'Beste Zeit',
+    },
+    facts: {
+      altAt: 'Höhe um {{time}}',
+      best: 'Höchster Stand',
+      bestValue: '{{deg}}° um {{time}}',
+      moonValue: '{{pct}} % beleuchtet',
+      above: 'Über {{deg}}° in der Nacht',
+    },
     twilightShort: {
       civil: 'B',
       nautical: 'N',
@@ -2026,6 +2048,8 @@ export const de = {
     },
   },
   catalog: {
+    nightOf:
+      'Höhe von {{name}} in der gewählten Nacht am Standort des Rigs; weicht deine Zeitzone ab, steht deine Zeit unter der Standortzeit.',
     context: 'Rig und Nacht',
     tabsLabel: 'Ansichten des Objektbrowsers',
     tab: { all: 'Alle Objekte', best: 'Beste der Nacht' },

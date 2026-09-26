@@ -36,6 +36,8 @@ import { CatalogImage } from './CatalogImage';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { NightChart } from '../../components/night-chart';
+import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { FilterBar, FilterCheck } from '../../components/FilterBar';
 import { ICON_SIZE, actionIcons, areaIcons, uiIcons } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
@@ -477,6 +479,7 @@ export function ObjectBrowserPage() {
                     rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
                     canCreate={canCreate}
                     site={site}
+                    night={night}
                     best={filters.tab === 'best'}
                     sort={
                       filters.tab === 'best'
@@ -669,6 +672,8 @@ interface RowProps {
   readonly canCreate: boolean;
   /** Standort des Rigs – Saisondiagramm je Objekt (AP-24); ohne Rig kein Diagramm. */
   readonly site?: SiteView | null;
+  /** Nacht der Kontextleiste (`YYYY-MM-DD`) – Nachtdiagramm in der aufgeklappten Zeile (AP-26e). */
+  readonly night?: string | null;
 }
 
 /** Mindestzeit des Saisondiagramms im Objektbrowser (ohne Projekt): 1 h am Stück, astronomische Dunkelheit. */
@@ -1004,6 +1009,18 @@ function ResultTable({
           rowKey={(o) => o.id}
           rowLabel={(o) => o.displayName}
           label={t('catalog.title')}
+          renderDetail={
+            row.site && row.night
+              ? (o) => (
+                  <ObjectNight
+                    o={o}
+                    site={row.site as SiteView}
+                    night={row.night as string}
+                    minAlt={row.minAlt}
+                  />
+                )
+              : undefined
+          }
           serverSorted
           sort={sort ? { id: columnOf(sort.by), dir: sort.dir } : null}
           onSortChange={(next) =>
@@ -1022,6 +1039,67 @@ function ResultTable({
         </div>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Nachtdiagramm eines Objekts in der aufgeklappten Zeile (AP-26e, Wunsch Sven 26.09.2026): Rig-Standort und
+ * Nacht der Kontextleiste, Kennwerte daneben; Engine im Browser mit der Zonentabelle der Nacht (NT-02).
+ */
+function ObjectNight({
+  o,
+  site,
+  night,
+  minAlt,
+}: {
+  o: DsoView;
+  site: SiteView;
+  night: string;
+  minAlt: number;
+}) {
+  const { t } = useTranslation();
+  const nights = useQuery({
+    queryKey: ['site-nights', site.id, 'from', night],
+    queryFn: () => equipmentApi.nights(site.id, 2, night),
+    staleTime: 60 * 60 * 1000,
+  });
+  const chart = useMemo(() => {
+    if (!nights.data) return null;
+    return nightChartFromEngine({
+      site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
+      night,
+      timeZoneTransitions: nights.data.timeZoneTransitions.map((z) => ({
+        atUtc: Date.parse(z.atUtc) / 1000,
+        utcOffsetMinutes: z.utcOffsetMinutes,
+      })),
+      timeZone: site.timeZone,
+      targets: [
+        {
+          id: o.id,
+          label: o.displayName,
+          color: 'var(--npm-chart-curve)',
+          target: { raJ2000Deg: o.raDeg, decJ2000Deg: o.decDeg },
+        },
+      ],
+      minAltDeg: minAlt,
+      twilight: 'astronomical',
+      transitLabel: '',
+    }).props;
+  }, [nights.data, site, night, o, minAlt]);
+  return (
+    <div className={styles.objectNight}>
+      {chart ? (
+        <NightChart {...chart} bands={false} facts height={220} />
+      ) : (
+        <NightChart
+          window={null}
+          timeZone={site.timeZone}
+          state={nights.isError ? 'error' : 'loading'}
+          onRetry={() => void nights.refetch()}
+        />
+      )}
+      <span className={styles.muted}>{t('catalog.nightOf', { name: o.displayName })}</span>
+    </div>
   );
 }
 

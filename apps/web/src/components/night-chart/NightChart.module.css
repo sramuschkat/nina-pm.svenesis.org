@@ -1,5 +1,6 @@
-/* Nachtdiagramm (components.md §2.3): Mindestbreite 320 px, Höhe aus der Dichtestufe, Farben aus Tokens.
-   Legende rechts neben dem Diagramm, bei schmalem Container darunter; mit `legend="top"` als Zeile darüber. */
+/* Nachtdiagramm (components.md §2.3, Stil AP-26e): Mindestbreite 320 px, Höhe aus der Dichtestufe, Farben
+   aus Tokens. Diagramm in einem dunklen Rahmen (themen-unabhängig), Kennwerte optional rechts daneben;
+   Legende als Zeile darüber (Standard) oder mit `legend="side"` rechts neben dem Diagramm. */
 .figure {
   margin: 0;
   display: flex;
@@ -21,10 +22,46 @@
   flex-direction: column;
   gap: var(--npm-space-2);
 }
+.frame {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--npm-chart-frame);
+}
 .canvasWrap {
   position: relative;
+  flex: 1 1 480px;
   width: 100%;
   min-width: 320px;
+  touch-action: pan-y;
+}
+.interactive {
+  cursor: crosshair;
+}
+/* Kennwerte neben dem Diagramm (`facts`), auf dem Rahmen; bei schmalem Container darunter. */
+.facts {
+  flex: 0 0 11.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: var(--npm-space-3) var(--npm-space-4) var(--npm-space-3) var(--npm-space-2);
+  color: var(--npm-chart-axis-strong);
+}
+.facts dt {
+  font-size: var(--npm-font-label);
+  color: var(--npm-chart-axis);
+}
+.facts dd {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.facts .factMoon {
+  color: var(--npm-chart-moon-label);
 }
 .canvasWrap:focus-visible {
   outline: var(--npm-focus-ring);
@@ -102,15 +139,46 @@
   height: 10px;
   border-radius: 2px;
   background:
-    repeating-linear-gradient(90deg, var(--npm-chart-min-alt) 0 4px, transparent 4px 7px) 0 4px /
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0 4px, transparent 4px 7px) 0 4px /
       100% 2px no-repeat,
     var(--npm-chart-sky-night);
 }
 .swatchMoon {
   width: 18px;
   height: 10px;
-  border-top: 2px solid var(--npm-chart-moon);
+  border-radius: 2px;
   background: var(--npm-chart-moon-fill);
+}
+/* Zeichen ohne Schalter (Legende „top“): astronomisch dunkel, Meridian, Uhrzeit, beste Zeit. */
+.legendKey {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: 22px;
+}
+.keyDark {
+  background: var(--npm-chart-sky-dark);
+}
+.keyMeridian,
+.keyNow {
+  flex: none;
+  display: inline-block;
+  width: 16px;
+}
+.keyMeridian {
+  border-top: 2px dashed var(--npm-chart-meridian);
+}
+.keyNow {
+  border-top: 2px solid var(--npm-chart-now);
+}
+.keyBest {
+  flex: none;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--npm-chart-best);
+  box-shadow: 0 0 0 2px var(--npm-chart-frame);
 }
 .swatchBox {
   width: 18px;

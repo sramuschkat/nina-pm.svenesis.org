@@ -28,6 +28,8 @@ test('S-20: Bildfeld ziehen, Koordinaten folgen; Neues Projekt übernimmt Framin
   await testLogin(page, 'user1');
   await page.goto(ORION);
   await expect(page.getByRole('heading', { level: 1, name: 'Sternkarte' })).toBeVisible();
+  // Erst messen, wenn alle Daten (u. a. das Nachtdiagramm unter der Karte) geladen sind – kein Layoutwechsel mehr.
+  await page.waitForLoadState('networkidle');
   const map = page.getByRole('img', { name: 'Sternkarte mit Bildfeld des Rigs' });
   await map.scrollIntoViewIfNeeded();
   const box = await map.boundingBox();

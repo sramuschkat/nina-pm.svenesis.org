@@ -53,6 +53,10 @@ describe('simulate', () => {
     expect(expose?.dark).toBe(true);
     expect(r.chart.blocks).toHaveLength(r.plan.blocks.length);
     expect(r.chart.filterBars?.length).toBeGreaterThan(0);
+    // Filterleiste der Plangrafik mit Anzahl (AP-26e): Summe = Belichtungen im Protokoll
+    const exposures = r.protocol.filter((x) => x.cmd === 'expose').length;
+    const counted = (r.chart.filterBars ?? []).reduce((n, f) => n + (f.count ?? 0), 0);
+    if (r.protocol.every((x) => x.cmd !== 'expose_series')) expect(counted).toBe(exposures);
     expect(r.header.targets).toBe(r.plan.summary.targets);
   });
 

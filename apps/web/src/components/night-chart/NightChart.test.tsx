@@ -10,9 +10,14 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { SKY_STOPS } from '@nina-pm/ui-tokens';
 import {
+  bestTime,
+  cropWindow,
+  filterBarLabel,
   hourBands,
   hourTicks,
+  luminance,
   maskIntervals,
+  moonAlpha,
   skyColor,
   sunAltFromTwilight,
   twilightCrossings,
@@ -85,7 +90,8 @@ describe('NightChart', () => {
     fireEvent.keyDown(chart, { key: 'ArrowLeft' });
     fireEvent.keyDown(chart, { key: 'ArrowLeft' });
     // am Fensteranfang bleibt der Cursor stehen
-    expect(chart.nextElementSibling).toHaveTextContent(/^19:00 CDT – NGC 281/);
+    const live = document.getElementById(chart.getAttribute('aria-describedby') ?? '');
+    expect(live).toHaveTextContent(/^19:00 CDT – NGC 281/);
     fireEvent.keyDown(chart, { key: 'Enter' });
     expect(selected).toEqual([START]);
     expect(screen.getByText('Mond (42 % beleuchtet)')).toBeInTheDocument();
@@ -243,7 +249,19 @@ describe('Legende mit Ebenen und Stundenstreifen (Entscheidung 24.09.2026)', () 
     await expectNoSeriousA11y();
   });
 
-  it('Standard ohne `legend`: Legende steht hinter dem Diagramm (rechts)', () => {
+  it('legend="side": Legende steht hinter dem Diagramm (rechts); Standard ist oben', () => {
+    const { unmount } = render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('ngc281', 'NGC 281')]}
+        timeZone="America/Chicago"
+        legend="side"
+      />,
+    );
+    const legend = screen.getByRole('group', { name: 'Legende' });
+    const chart = screen.getByRole('img', { name: /Standortzeit/ });
+    expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    unmount();
     render(
       <NightChart
         window={{ startUtc: START, endUtc: END }}
@@ -251,19 +269,22 @@ describe('Legende mit Ebenen und Stundenstreifen (Entscheidung 24.09.2026)', () 
         timeZone="America/Chicago"
       />,
     );
-    const legend = screen.getByRole('group', { name: 'Legende' });
-    const chart = screen.getByRole('img', { name: /Standortzeit/ });
-    expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(
+      screen
+        .getByRole('group', { name: 'Legende' })
+        .compareDocumentPosition(screen.getByRole('img', { name: /Standortzeit/ })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
 describe('Himmel und Stundenstreifen (model)', () => {
   it('skyColor: Stützstellen exakt, dazwischen linear, außerhalb die Randfarbe', () => {
     expect(skyColor(10, SKY_STOPS)).toBe('rgb(166, 140, 69)');
-    expect(skyColor(-18, SKY_STOPS)).toBe('rgb(9, 14, 24)');
-    expect(skyColor(-40, SKY_STOPS)).toBe('rgb(9, 14, 24)');
-    // Mitte zwischen −12° (26, 50, 86) und −18° (9, 14, 24)
-    expect(skyColor(-15, SKY_STOPS)).toBe('rgb(18, 32, 55)');
+    expect(skyColor(-18, SKY_STOPS)).toBe('rgb(14, 24, 36)');
+    expect(skyColor(-40, SKY_STOPS)).toBe('rgb(14, 24, 36)');
+    // Mitte zwischen −12° (31, 51, 80) und −18° (14, 24, 36) – Werte des Beobachtungsplaners (AP-26e)
+    expect(skyColor(-15, SKY_STOPS)).toBe('rgb(23, 38, 58)');
   });
 
   it('sunAltFromTwilight und twilightCrossings: Stufen und B/N/A-Wechsel im Fenster', () => {
@@ -384,5 +405,164 @@ describe('Engine-Adapter (AP-10, menschliche Freigabe „NGC 281 plausibel“)',
     // Himmel aus der Sonnenkurve, empfohlene Zeit = Dämmerung + Mindesthöhe (ohne Mondprofil)
     expect(props.sun).toHaveLength(157);
     expect(props.recommended?.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Stil des Beobachtungsplaners (AP-26e)', () => {
+  /** Mittag bis Mittag in Chicago, 17./18.09.2026 (12:00 CDT = 17:00Z). */
+  const NOON = Date.UTC(2026, 8, 17, 17) / 1000;
+  const at = (d: number, h: number, m = 0) => Date.UTC(2026, 8, d, h, m) / 1000;
+  const sun = [
+    { atUtc: NOON, altDeg: 60 },
+    { atUtc: at(18, 0, 30), altDeg: 0 },
+    { atUtc: at(18, 1, 30), altDeg: -12 },
+    { atUtc: at(18, 6), altDeg: -50 },
+    { atUtc: at(18, 11), altDeg: -12 },
+    { atUtc: at(18, 12), altDeg: 0 },
+    { atUtc: NOON + 24 * H, altDeg: 60 },
+  ];
+
+  it('cropWindow: 1 h vor Sonnenuntergang bis 1 h nach Sonnenaufgang auf volle Standortstunden', () => {
+    const win = { fromUtc: NOON, toUtc: NOON + 24 * H };
+    // Untergang (−0,833°) 19:34 CDT → 18:00 CDT; Aufgang 06:55 CDT → 08:00 CDT
+    expect(cropWindow(win, sun, 'America/Chicago')).toEqual({
+      fromUtc: at(17, 23),
+      toUtc: at(18, 13),
+    });
+    // ohne Sonnenkurve bzw. ohne Untergang (Polartag) das ganze Fenster
+    expect(cropWindow(win, undefined, 'America/Chicago')).toEqual(win);
+    expect(
+      cropWindow(
+        win,
+        sun.map((p) => ({ ...p, altDeg: 10 })),
+        'America/Chicago',
+      ),
+    ).toEqual(win);
+  });
+
+  it('bestTime: höchster Stand in astronomischer Dunkelheit, sonst im Fenster', () => {
+    const s = series('a', 'A');
+    const win = { fromUtc: START, toUtc: END };
+    const span = (from: number, to: number) => ({ startUtc: from, endUtc: to });
+    const tw = (from: number, to: number) => ({
+      civil: span(START, END),
+      nautical: span(START, END),
+      astronomical: span(from, to),
+    });
+    expect(bestTime(s.points, tw(START + 2 * H, END - 2 * H), win)?.atUtc).toBe(START + 6 * H);
+    // Kulmination außerhalb der Dunkelheit: der höchste Punkt in ihr
+    expect(bestTime(s.points, tw(END - 4 * H, END - 2 * H), win)?.atUtc).toBe(END - 4 * H);
+    expect(bestTime(s.points, undefined, win)?.altDeg).toBe(65);
+  });
+
+  it('Hilfen: Filterbeschriftung „R ×10“, Helligkeit, Deckkraft des Mondes', () => {
+    const bar = { fromUtc: 0, toUtc: 1, color: '#c0392b', label: 'R' };
+    expect(filterBarLabel({ ...bar, count: 10 })).toBe('R ×10');
+    expect(filterBarLabel(bar)).toBe('R');
+    expect(luminance('#ffffff')).toBeCloseTo(1);
+    expect(luminance('#000')).toBe(0);
+    expect(luminance('rgb(255, 0, 0)')).toBeCloseTo(0.2126);
+    expect(luminance('var(--npm-x)')).toBeNull();
+    expect(moonAlpha(100)).toBeCloseTo(0.58);
+    expect(moonAlpha(0)).toBeCloseTo(0.18);
+  });
+
+  it('zweite Zeitzone: eigene Zeile nur, wenn sie abweicht; null schaltet sie ab', () => {
+    const props = {
+      window: { startUtc: START, endUtc: END },
+      series: [series('a', 'NGC 281')],
+      timeZone: 'America/Chicago',
+      bands: false,
+      height: 200,
+    };
+    const height = (el: HTMLElement) => el.style.height;
+    const { rerender } = render(<NightChart {...props} secondaryTimeZone="Europe/Berlin" />);
+    expect(height(screen.getByRole('img'))).toBe('214px');
+    rerender(<NightChart {...props} secondaryTimeZone="America/Chicago" />);
+    expect(height(screen.getByRole('img'))).toBe('200px');
+    rerender(<NightChart {...props} secondaryTimeZone={null} />);
+    expect(height(screen.getByRole('img'))).toBe('200px');
+  });
+
+  it('Kennwerte neben dem Diagramm und Uhrzeit per Klick (gesteuert)', async () => {
+    const moved: number[] = [];
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('a', 'NGC 281')]}
+        moon={{ points: [{ atUtc: START, altDeg: 10 }], illuminationPct: 100 }}
+        minAltDeg={30}
+        timeZone="America/Chicago"
+        secondaryTimeZone={null}
+        cursorUtc={START + 6 * H}
+        onCursorChange={(v) => moved.push(v)}
+        facts
+      />,
+    );
+    const facts = screen.getByText('Höchster Stand').closest('dl') as HTMLElement;
+    expect(within(facts).getByText('Höhe um 01:00').nextSibling).toHaveTextContent('65°');
+    expect(within(facts).getByText('Höchster Stand').nextSibling).toHaveTextContent('65° um 01:00');
+    expect(within(facts).getByText('100 % beleuchtet')).toBeInTheDocument();
+    // Zeichenfläche 320 px, Diagramm 34…280 px: Mitte = halbe Nacht
+    const chart = screen.getByRole('img');
+    fireEvent.pointerDown(chart, { clientX: 34 + 123, pointerId: 1 });
+    expect(moved).toEqual([START + 6.5 * H]);
+    fireEvent.keyDown(chart, { key: 'ArrowRight' });
+    expect(moved[1]).toBe(START + 6 * H + 300);
+    await expectNoSeriousA11y();
+  });
+
+  it('Plangrafik: Blöcke als Flächen, Filterleiste „R ×10“, keine Stundenstreifen', () => {
+    const texts: string[] = [];
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, key) =>
+          key === 'measureText'
+            ? (text: string) => ({ width: text.length * 6 })
+            : key === 'fillText'
+              ? (text: string) => texts.push(text)
+              : () => undefined,
+        set: () => true,
+      },
+    );
+    const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as never);
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('a', 'M 31'), series('b', 'M 33', START + 8 * H)]}
+        blocks={[
+          {
+            id: 'b1',
+            fromUtc: START + 2 * H,
+            toUtc: START + 5 * H,
+            label: 'M 31',
+            kind: 'regular',
+          },
+          {
+            id: 'b2',
+            fromUtc: START + 5 * H,
+            toUtc: START + 9 * H,
+            label: 'M 33',
+            kind: 'regular',
+          },
+        ]}
+        filterBars={[
+          { fromUtc: START + 2 * H, toUtc: START + 5 * H, color: '#c0392b', label: 'R', count: 10 },
+        ]}
+        minAltDeg={30}
+        timeZone="America/Chicago"
+        variant="plan"
+        cursorUtc={START + 3 * H}
+        onCursorChange={() => undefined}
+      />,
+    );
+    expect(texts).toContain('R ×10');
+    expect(texts).toContain('M 33');
+    expect(texts.some((x) => x.startsWith('Uhrzeit 22:00'))).toBe(true);
+    const legend = screen.getByRole('group', { name: 'Legende' });
+    expect(within(legend).queryByRole('checkbox', { name: /Astronomisch dunkel/ })).toBeNull();
+    expect(within(legend).getByRole('checkbox', { name: 'M 33' })).toBeChecked();
+    spy.mockRestore();
   });
 });
