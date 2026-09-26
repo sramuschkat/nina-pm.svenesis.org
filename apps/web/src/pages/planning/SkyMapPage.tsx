@@ -310,6 +310,22 @@ export function SkyMapPage() {
         )
       : Math.max(1, size * 3);
     moveTo(o.raDeg, o.decDeg, fov);
+    // Gewähltes Objekt merken: Infokarte und *Neues Projekt* übernehmen es (Katalogverknüpfung).
+    setSelected({
+      kind: 'dso',
+      item: {
+        id: o.id,
+        primaryId: o.primaryId,
+        displayName: o.displayName,
+        group: o.group,
+        raDeg: o.raDeg,
+        decDeg: o.decDeg,
+        mag: o.magV ?? o.magB,
+        sizeMajorArcmin: o.sizeMajorArcmin,
+        sizeMinorArcmin: o.sizeMinorArcmin,
+        positionAngleDeg: o.positionAngleDeg,
+      },
+    });
   };
 
   // ---- Projekt: Übernahme ----------------------------------------------------------------------
@@ -385,7 +401,9 @@ export function SkyMapPage() {
       rot: String(Math.round((frame?.paDeg ?? 0) * 100) / 100),
     });
     if (rig) q.set('rig', rig.id);
-    if (objectParam) q.set('objekt', objectParam);
+    // Das auf der Karte gewählte Objekt geht vor dem aus der Adresse (Objektbrowser → Sternkarte).
+    const picked = selected?.kind === 'dso' ? selected.item.primaryId : objectParam;
+    if (picked) q.set('objekt', picked);
     if (state.cols * state.rows > 1) {
       q.set('h', String(state.cols));
       q.set('v', String(state.rows));
