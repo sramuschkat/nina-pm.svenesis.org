@@ -1,7 +1,7 @@
 # Spezifikation: Wiederverwendbare UI-Bausteine
 
-Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a, AP-26b und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
-**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a** · `Tabs` → **AP-26b**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
+Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-26a, AP-26b, AP-26c und jedes Paket, das einen dieser Bausteine benutzt. Bezug: Fachkonzept 14.1, 14.3, 14.4; Technisches Konzept 11.1–11.3.
+**Warum diese Datei:** Mehrere Pakete liefern Bausteine, und viele weitere benutzen sie. Zuständig ist je Baustein: `FilterChip`, `ProgressBar`, `CoordinateInput`, `RigSelect`, `StatusBadge`, `CheckList`, `ConfirmDialog` → **AP-06a** (Rahmen und Grundbausteine) · `NightTimeline` → **AP-13e**, `EffortChip` → **AP-13e** · `SeasonChart` → **AP-10** · `WeatherChart` → **AP-23** · `DataTable` → **AP-26a** · `Tabs` → **AP-26b** · `FilterBar` → **AP-26c**. Ohne gemeinsamen Vertrag legt das erste Paket das Verhalten für alle fest, und die Nacht-Zeitleiste sieht im Simulator anders aus als im Projekt-Editor (UI-3).
 
 ## 1. Allgemeine Regeln (gelten für jeden Baustein)
 
@@ -154,7 +154,7 @@ Schutz gegen Versehen (Entscheidung E4 vom 21.09.2026): **Pflicht** vor jeder fo
 | Textalternative | `role="alertdialog"`, `aria-labelledby` = Titel, `aria-describedby` = Folgesatz; die Gefahr trägt immer auch der Text (Verb im Knopf, Symbol), nie nur die Farbe; Fehlermeldung per `aria-live="assertive"` |
 | Grenzfall | Doppelklick oder `Enter`-Wiederholung auf dem Aktionsknopf → nur ein Aufruf; Dialog wird während `loading` per `Esc` **nicht** geschlossen; falsche Namenseingabe → Knopf gesperrt, kein Fehlertext vor dem ersten Verlassen des Felds |
 
-Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederherstellen* ohne Dialog, weil sie nichts zerstört) ist kein eigener Baustein, sondern ein Filter der Projektliste (Fachkonzept S-30).
+Die Ansicht *Gelöscht* (Papierkorb für Projekte, Admin/Owner, Aktion *Wiederherstellen* ohne Dialog, weil sie nichts zerstört) ist kein eigener Baustein, sondern ein Filter der Projektliste (Fachkonzept S-30): seit AP-26c der Umschalter *Papierkorb* (`FilterToggle`, `aria-pressed`) in der `FilterBar` (§2.13) statt eines Reiters.
 
 ### 2.11 `DataTable` (Datentabelle, AP-26a)
 
@@ -184,6 +184,19 @@ Jede Reiterleiste innerhalb einer Seite (Bereiche des Projekt-Editors, Rig-Berei
 | Textalternative | `role="tablist"` mit `aria-label`, `aria-orientation`; Reiter `role="tab"` mit `aria-selected`, `aria-controls`; Inhalt `role="tabpanel"` mit `aria-labelledby` |
 | Grenzfall | Reiter verschwindet (Panel gelöscht, Recht fehlt) → die Seite fällt auf den ersten Reiter zurück · `keepMounted` mit Fehlern in einem verdeckten Feld · ein einziger Reiter (Leiste bleibt, damit die Bereichsbezeichnung sichtbar ist) |
 
+### 2.13 `FilterBar` (Filterleiste, AP-26c)
+
+Jede Filterleiste über einer Liste (Projektliste, Warteschlange, Objektbrowser; Entscheidung Sven, 26.09.2026): **eine** Zeile `[Suche] [Filter in der Zeile] [aktive Filter als Chips „Rig: Rig A ×“] [+ Filter ▾] [Umschalter] … [Trefferzahl] [Ansicht]`, alle übrigen Filter in einem aufklappbaren Bereich unter der Zeile. Rig und Nacht des Objektbrowsers sind Bezug der Nachtwerte, kein Filter, und stehen darüber.
+
+| | |
+|---|---|
+| Eigenschaften | `label: string` (zugänglicher Name, `role="group"`) · `search?: {value, onChange, label, placeholder?, onSubmit?, maxLength?}` (Beschriftung nur für Screenreader; `onSubmit` bei `Enter`) · `inline?` (wichtigste Filter als kleine Auswahllisten direkt in der Zeile, z. B. Objekttyp und Katalog im Objektbrowser – sie brauchen keinen Chip, die Auswahl zeigt den Wert) · `chips?: {id, label, onRemove}[]` (aktive Filter aus dem Bereich; `label` als „*Filter*: *Wert*“ über `filterBar.chip`, Ja/Nein-Filter nur mit ihrem Namen) · `panel?` (übrige Filterfelder; ohne `panel` kein Knopf) · `panelLabel?` (Standard „Filter“, im Objektbrowser „Weitere Filter“) · `extra?` (Umschalter, z. B. `FilterToggle` *Papierkorb*) · `count?` (Trefferzahl, `role="status"`) · `view?` (Ansichtsumschalter rechts) · `onReset?` (*Alle zurücksetzen* im Bereich) · `defaultOpen?`. Hilfsbausteine `FilterToggle` (`aria-pressed`), `FilterField` (beschriftetes Feld im Bereich), `FilterCheck` (Kontrollkästchen). Zustand der Filter hält die Seite (Objektbrowser: URL) |
+| Zustände | `ready`; Bereich zu (nur Chips) oder auf (Raster der Felder + *Alle zurücksetzen*). Lade- und Fehlerzustand liefert die Liste darunter; die Trefferzahl fehlt, solange nichts geladen ist |
+| Tastatur | Suche, Zeilenfilter, Chip-×, Knopf, Umschalter, Ansicht in Lesereihenfolge per `Tab`. Knopf *Filter* mit `aria-expanded`/`aria-controls`; Aufklappen setzt den Fokus auf das erste Feld des Bereichs, `Esc` im Bereich schließt ihn und gibt den Fokus an den Knopf zurück. × eines Chips entfernt den Filter; der Fokus geht auf den Chip an derselben Stelle, sonst den vorigen, nach dem letzten auf den Knopf |
+| Größen | Volle Containerbreite; die Zeile bricht bei wenig Platz um (Suche 10–28rem, flexibel), nie horizontal scrollen; Trefferzahl und Ansicht rechtsbündig (`margin-left: auto`). Bereich als Raster `minmax(12rem, 1fr)`. Chip höchstens 20rem, längerer Text mit „…“ und vollem Text im `title`. Zeilenhöhe `--npm-row-h` |
+| Textalternative | Leiste `role="group"` mit `aria-label`; Chips als Liste „Aktive Filter“; × ist ein Knopf mit Namen „Filter *label* entfernen“; Bereich `role="group"` mit dem Namen des Knopfs; Umschalter mit `aria-pressed` und Text (Symbol nur zusätzlich) |
+| Grenzfall | kein aktiver Filter (keine Chip-Liste) · Filterwert, den es nicht mehr gibt (unbekanntes Rig → „Unbekanntes Rig“, der Chip bleibt entfernbar) · sehr langer Wert (gekürzt, `title`) · Umschalter wechselt die Liste (Papierkorb: Suche, Filter und Ansicht entfallen, der Fokus bleibt auf dem Umschalter) · 768 px mit allen Filtern aktiv (Zeile bricht um) |
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
@@ -198,6 +211,7 @@ Jede Reiterleiste innerhalb einer Seite (Bereiche des Projekt-Editors, Rig-Berei
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
 | Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
+| Filter aufklappen · Filter entfernen (`FilterBar`, AP-26c) | `plus` + `chevron-down` · `x` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 

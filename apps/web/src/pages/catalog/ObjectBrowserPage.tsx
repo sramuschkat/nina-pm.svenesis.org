@@ -4,7 +4,9 @@
  * ins Bildfeld“ des Rigs; mit Rig zusätzlich Nacht (◀ ▶, *Heute Nacht*), Mindesthöhe und min. nutzbare
  * Stunden – die Nachtwerte (beste Zeit/Höhe, Mond, nutzbare Stunden) rechnet die API mit der Engine.
  * Umschalter Liste/Galerie, Aktionen *Projekt anlegen* und *Sternkarte* (S-20, AP-21); Reiter
- * *Alle Objekte* / *Beste der Nacht* (FA-FRM-13, Bewertung der Website, AP-21).
+ * *Alle Objekte* / *Beste der Nacht* (FA-FRM-13, Bewertung der Website, AP-21). Filterleiste (FilterBar,
+ * AP-26c): Suche, Objekttyp bzw. Familie und Katalog in der Zeile, übrige Filter unter *Weitere Filter*
+ * mit Chips; Rig und Nacht stehen darüber (Bezug der Nachtwerte, kein Filter).
  */
 import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import {
@@ -32,6 +34,7 @@ import { CatalogImage } from './CatalogImage';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { FilterBar, FilterCheck } from '../../components/FilterBar';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { Tabs } from '../../components/Tabs';
@@ -76,7 +79,7 @@ export function ObjectBrowserPage() {
   const { t, i18n } = useTranslation();
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => filtersFromParams(params), [params]);
-  const ids = { form: useId(), results: useId() };
+  const ids = { results: useId() };
   const canCreate = useCan('project.create');
 
   const rigs = useEquipmentList('rigs');
@@ -146,6 +149,40 @@ export function ObjectBrowserPage() {
   const data = list.data;
   const pages = pageCount(data?.total ?? 0);
   const fmt = useNumber();
+  const fitsLabel =
+    fov === null ? t('catalog.fitsFovNoRig') : t('catalog.fitsFov', { fov: `${fmt(fov, 0)}′` });
+
+  // Aktive Filter aus „Weitere Filter“ als Chips (FilterBar, AP-26c); Suche, Typ und Katalog stehen in der Zeile.
+  type ChipKey =
+    'constellation' | 'magMax' | 'surfBrMax' | 'sizeMin' | 'sizeMax' | 'minAlt' | 'minHours';
+  const valueChip = (key: ChipKey, label: string, value: string) =>
+    filters[key]
+      ? [
+          {
+            id: key,
+            label: t('filterBar.chip', { label, value }),
+            onRemove: () => update({ [key]: '' } as Partial<BrowserFilters>),
+          },
+        ]
+      : [];
+  const constellationName =
+    IAU_CONSTELLATION_NAMES[filters.constellation as keyof typeof IAU_CONSTELLATION_NAMES];
+  const chips = [
+    ...valueChip(
+      'constellation',
+      t('catalog.constellation'),
+      constellationName ? `${constellationName} (${filters.constellation})` : filters.constellation,
+    ),
+    ...valueChip('magMax', t('catalog.magMax'), `${filters.magMax} mag`),
+    ...valueChip('surfBrMax', t('catalog.surfBrMax'), `${filters.surfBrMax} mag/″²`),
+    ...valueChip('sizeMin', t('catalog.sizeMin'), `${filters.sizeMin}′`),
+    ...valueChip('sizeMax', t('catalog.sizeMax'), `${filters.sizeMax}′`),
+    ...valueChip('minAlt', t('catalog.minAlt'), `${filters.minAlt}°`),
+    ...valueChip('minHours', t('catalog.minUsableHours'), `${filters.minHours} h`),
+    ...(filters.fits
+      ? [{ id: 'fits', label: fitsLabel, onRemove: () => update({ fits: false }) }]
+      : []),
+  ];
 
   return (
     <div className={styles.page}>
@@ -171,108 +208,6 @@ export function ObjectBrowserPage() {
             <>
               {best ? <p className={styles.muted}>{best.hint}</p> : null}
 
-              <form
-                className={styles.filters}
-                aria-labelledby={ids.form}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  update({ q: text });
-                }}
-              >
-                <h2 id={ids.form} className={styles.srOnly}>
-                  {t('catalog.filters')}
-                </h2>
-                <div className={`${styles.field} ${styles.searchField}`}>
-                  <label htmlFor="catalog-q">{t('catalog.search')}</label>
-                  <input
-                    id="catalog-q"
-                    type="search"
-                    className={styles.input}
-                    value={text}
-                    placeholder={t('catalog.searchPlaceholder')}
-                    maxLength={80}
-                    onChange={(e) => setText(e.target.value)}
-                  />
-                </div>
-                {filters.tab === 'best' ? (
-                  <Select
-                    id="catalog-family"
-                    label={t('catalog.family')}
-                    value={filters.family}
-                    onChange={(v) => update({ family: v as BrowserFilters['family'] })}
-                    options={[
-                      ['', t('catalog.allFamilies')],
-                      ...(['galaxies', 'nebulae', 'clusters'] as const).map(
-                        (f) => [f, t(`catalog.families.${f}`)] as const,
-                      ),
-                    ]}
-                  />
-                ) : (
-                  <Select
-                    id="catalog-group"
-                    label={t('catalog.group')}
-                    value={filters.group}
-                    onChange={(v) => update({ group: v })}
-                    options={[
-                      ['', t('catalog.allGroups')],
-                      ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
-                    ]}
-                  />
-                )}
-                <Select
-                  id="catalog-catalog"
-                  label={t('catalog.catalog')}
-                  value={filters.catalog}
-                  onChange={(v) => update({ catalog: v })}
-                  options={[
-                    ['', t('catalog.allCatalogs')],
-                    ...dsoCatalogPrefixes.map((c) => [c, c] as const),
-                  ]}
-                />
-                <Select
-                  id="catalog-constellation"
-                  label={t('catalog.constellation')}
-                  value={filters.constellation}
-                  onChange={(v) => update({ constellation: v })}
-                  options={[
-                    ['', t('catalog.allConstellations')],
-                    ...[...IAU_CONSTELLATIONS]
-                      .sort((a, b) =>
-                        IAU_CONSTELLATION_NAMES[a].localeCompare(IAU_CONSTELLATION_NAMES[b]),
-                      )
-                      .map((c) => [c, `${IAU_CONSTELLATION_NAMES[c]} (${c})`] as const),
-                  ]}
-                />
-                <NumberInput
-                  id="catalog-mag"
-                  label={t('catalog.magMax')}
-                  unit="mag"
-                  value={filters.magMax}
-                  onChange={(v) => update({ magMax: v })}
-                />
-                <NumberInput
-                  id="catalog-sb"
-                  label={t('catalog.surfBrMax')}
-                  unit="mag/″²"
-                  value={filters.surfBrMax}
-                  onChange={(v) => update({ surfBrMax: v })}
-                />
-                <NumberInput
-                  id="catalog-size-min"
-                  label={t('catalog.sizeMin')}
-                  unit="′"
-                  value={filters.sizeMin}
-                  onChange={(v) => update({ sizeMin: v })}
-                />
-                <NumberInput
-                  id="catalog-size-max"
-                  label={t('catalog.sizeMax')}
-                  unit="′"
-                  value={filters.sizeMax}
-                  onChange={(v) => update({ sizeMax: v })}
-                />
-              </form>
-
               <div className={styles.filters}>
                 <div className={`${styles.field} ${styles.rigField}`}>
                   <span className={styles.label}>{t('catalog.rig')}</span>
@@ -284,105 +219,211 @@ export function ObjectBrowserPage() {
                   />
                 </div>
                 {site ? (
-                  <>
-                    <div className={styles.nightNav}>
-                      <button
-                        type="button"
-                        className={styles.button}
-                        aria-label={t('catalog.prevNight')}
-                        title={t('catalog.prevNight')}
-                        disabled={!night}
-                        onClick={() => night && update({ night: shiftNight(night, -1) })}
-                      >
-                        <uiIcons.previous size={ICON_SIZE.button} aria-hidden />
-                      </button>
-                      <strong aria-live="polite">
-                        {night ? t('catalog.nightValue', { night: formatNightKey(night) }) : '–'}
-                      </strong>
-                      <button
-                        type="button"
-                        className={styles.button}
-                        aria-label={t('catalog.nextNight')}
-                        title={t('catalog.nextNight')}
-                        disabled={!night}
-                        onClick={() => night && update({ night: shiftNight(night, 1) })}
-                      >
-                        <uiIcons.next size={ICON_SIZE.button} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.button}
-                        onClick={() => update({ night: '' })}
-                      >
-                        {t('catalog.tonight')}
-                      </button>
-                    </div>
-                    <NumberInput
-                      id="catalog-min-alt"
-                      label={t('catalog.minAlt')}
-                      unit="°"
-                      value={filters.minAlt}
-                      placeholder={String(DEFAULT_MIN_ALT)}
-                      onChange={(v) => update({ minAlt: v })}
-                    />
-                    <NumberInput
-                      id="catalog-min-hours"
-                      label={t('catalog.minUsableHours')}
-                      unit="h"
-                      value={filters.minHours}
-                      onChange={(v) => update({ minHours: v })}
-                    />
-                  </>
+                  <div className={styles.nightNav}>
+                    <button
+                      type="button"
+                      className={styles.button}
+                      aria-label={t('catalog.prevNight')}
+                      title={t('catalog.prevNight')}
+                      disabled={!night}
+                      onClick={() => night && update({ night: shiftNight(night, -1) })}
+                    >
+                      <uiIcons.previous size={ICON_SIZE.button} aria-hidden />
+                    </button>
+                    <strong aria-live="polite">
+                      {night ? t('catalog.nightValue', { night: formatNightKey(night) }) : '–'}
+                    </strong>
+                    <button
+                      type="button"
+                      className={styles.button}
+                      aria-label={t('catalog.nextNight')}
+                      title={t('catalog.nextNight')}
+                      disabled={!night}
+                      onClick={() => night && update({ night: shiftNight(night, 1) })}
+                    >
+                      <uiIcons.next size={ICON_SIZE.button} aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.button}
+                      onClick={() => update({ night: '' })}
+                    >
+                      {t('catalog.tonight')}
+                    </button>
+                  </div>
                 ) : rigs.isSuccess && rigList.length === 0 ? (
                   <p className={styles.muted}>{t('catalog.noRig')}</p>
                 ) : null}
-                <label className={styles.check}>
-                  <input
-                    type="checkbox"
-                    checked={filters.fits}
-                    disabled={fov === null}
-                    onChange={(e) => update({ fits: e.target.checked })}
-                  />
-                  {fov === null
-                    ? t('catalog.fitsFovNoRig')
-                    : t('catalog.fitsFov', { fov: `${fmt(fov, 0)}′` })}
-                </label>
-                {filters.tab === 'all' && filters.view === 'gallery' ? (
-                  <Select
-                    id="catalog-sort"
-                    label={t('catalog.sort')}
-                    value={filters.sort}
-                    onChange={(v) => update({ sort: v as BrowserFilters['sort'], dir: '' })}
-                    options={SORTS.filter((s) => site !== null || !NIGHT_SORTS.includes(s)).map(
-                      (s) => [s, t(`catalog.sortBy.${s}`)] as const,
-                    )}
-                  />
-                ) : null}
-                <fieldset className={styles.viewToggle}>
-                  <legend className={styles.label}>{t('catalog.view')}</legend>
-                  {(['list', 'gallery'] as const).map((v) => (
-                    <label key={v} className={styles.check}>
-                      <input
-                        type="radio"
-                        name="catalog-view"
-                        checked={filters.view === v}
-                        onChange={() => update({ view: v, page: filters.page })}
-                      />
-                      {v === 'list' ? t('catalog.viewList') : t('catalog.viewGallery')}
-                    </label>
-                  ))}
-                </fieldset>
-                <button
-                  type="button"
-                  className={styles.button}
-                  onClick={() => {
-                    setText('');
-                    setParams(new URLSearchParams(rigId ? { rig: rigId } : {}), { replace: true });
-                  }}
-                >
-                  {t('catalog.reset')}
-                </button>
               </div>
+
+              <FilterBar
+                label={t('catalog.filters')}
+                search={{
+                  value: text,
+                  onChange: setText,
+                  label: t('catalog.search'),
+                  placeholder: t('catalog.searchPlaceholder'),
+                  maxLength: 80,
+                  onSubmit: () => update({ q: text }),
+                }}
+                inline={
+                  <>
+                    {filters.tab === 'best' ? (
+                      <Select
+                        compact
+                        id="catalog-family"
+                        label={t('catalog.family')}
+                        value={filters.family}
+                        onChange={(v) => update({ family: v as BrowserFilters['family'] })}
+                        options={[
+                          ['', t('catalog.allFamilies')],
+                          ...(['galaxies', 'nebulae', 'clusters'] as const).map(
+                            (f) => [f, t(`catalog.families.${f}`)] as const,
+                          ),
+                        ]}
+                      />
+                    ) : (
+                      <Select
+                        compact
+                        id="catalog-group"
+                        label={t('catalog.group')}
+                        value={filters.group}
+                        onChange={(v) => update({ group: v })}
+                        options={[
+                          ['', t('catalog.allGroups')],
+                          ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
+                        ]}
+                      />
+                    )}
+                    <Select
+                      compact
+                      id="catalog-catalog"
+                      label={t('catalog.catalog')}
+                      value={filters.catalog}
+                      onChange={(v) => update({ catalog: v })}
+                      options={[
+                        ['', t('catalog.allCatalogs')],
+                        ...dsoCatalogPrefixes.map((c) => [c, c] as const),
+                      ]}
+                    />
+                  </>
+                }
+                chips={chips}
+                panelLabel={t('catalog.moreFilters')}
+                panel={
+                  <>
+                    <Select
+                      id="catalog-constellation"
+                      label={t('catalog.constellation')}
+                      value={filters.constellation}
+                      onChange={(v) => update({ constellation: v })}
+                      options={[
+                        ['', t('catalog.allConstellations')],
+                        ...[...IAU_CONSTELLATIONS]
+                          .sort((a, b) =>
+                            IAU_CONSTELLATION_NAMES[a].localeCompare(IAU_CONSTELLATION_NAMES[b]),
+                          )
+                          .map((c) => [c, `${IAU_CONSTELLATION_NAMES[c]} (${c})`] as const),
+                      ]}
+                    />
+                    <NumberInput
+                      id="catalog-mag"
+                      label={t('catalog.magMax')}
+                      unit="mag"
+                      value={filters.magMax}
+                      onChange={(v) => update({ magMax: v })}
+                    />
+                    <NumberInput
+                      id="catalog-sb"
+                      label={t('catalog.surfBrMax')}
+                      unit="mag/″²"
+                      value={filters.surfBrMax}
+                      onChange={(v) => update({ surfBrMax: v })}
+                    />
+                    <NumberInput
+                      id="catalog-size-min"
+                      label={t('catalog.sizeMin')}
+                      unit="′"
+                      value={filters.sizeMin}
+                      onChange={(v) => update({ sizeMin: v })}
+                    />
+                    <NumberInput
+                      id="catalog-size-max"
+                      label={t('catalog.sizeMax')}
+                      unit="′"
+                      value={filters.sizeMax}
+                      onChange={(v) => update({ sizeMax: v })}
+                    />
+                    {site ? (
+                      <>
+                        <NumberInput
+                          id="catalog-min-alt"
+                          label={t('catalog.minAlt')}
+                          unit="°"
+                          value={filters.minAlt}
+                          placeholder={String(DEFAULT_MIN_ALT)}
+                          onChange={(v) => update({ minAlt: v })}
+                        />
+                        <NumberInput
+                          id="catalog-min-hours"
+                          label={t('catalog.minUsableHours')}
+                          unit="h"
+                          value={filters.minHours}
+                          onChange={(v) => update({ minHours: v })}
+                        />
+                      </>
+                    ) : null}
+                    <FilterCheck
+                      label={fitsLabel}
+                      checked={filters.fits}
+                      disabled={fov === null}
+                      onChange={(on) => update({ fits: on })}
+                    />
+                  </>
+                }
+                onReset={() => {
+                  setText('');
+                  setParams(
+                    paramsFromFilters({
+                      ...filtersFromParams(new URLSearchParams()),
+                      rig: rigId ?? '',
+                      tab: filters.tab,
+                      view: filters.view,
+                    }),
+                    { replace: true },
+                  );
+                }}
+                view={
+                  <>
+                    {filters.tab === 'all' && filters.view === 'gallery' ? (
+                      <Select
+                        compact
+                        id="catalog-sort"
+                        label={t('catalog.sort')}
+                        value={filters.sort}
+                        onChange={(v) => update({ sort: v as BrowserFilters['sort'], dir: '' })}
+                        options={SORTS.filter((s) => site !== null || !NIGHT_SORTS.includes(s)).map(
+                          (s) => [s, t(`catalog.sortBy.${s}`)] as const,
+                        )}
+                      />
+                    ) : null}
+                    <fieldset className={styles.viewToggle}>
+                      <legend className={styles.srOnly}>{t('catalog.view')}</legend>
+                      {(['list', 'gallery'] as const).map((v) => (
+                        <label key={v} className={styles.check}>
+                          <input
+                            type="radio"
+                            name="catalog-view"
+                            checked={filters.view === v}
+                            onChange={() => update({ view: v, page: filters.page })}
+                          />
+                          {v === 'list' ? t('catalog.viewList') : t('catalog.viewGallery')}
+                        </label>
+                      ))}
+                    </fieldset>
+                  </>
+                }
+              />
 
               {data?.night ? <NightInfo night={data.night} twilight={search.twilight} /> : null}
 
@@ -466,22 +507,27 @@ export function ObjectBrowserPage() {
 
 // ---- Bausteine der Seite --------------------------------------------------------------------------
 
+/** Auswahlliste; `compact` in der Filterzeile: Beschriftung nur für Screenreader, erste Option benennt. */
 function Select({
   id,
   label,
   value,
   options,
   onChange,
+  compact,
 }: {
   id: string;
   label: string;
   value: string;
   options: readonly (readonly [string, string])[];
   onChange: (value: string) => void;
+  compact?: boolean;
 }) {
   return (
-    <div className={styles.field}>
-      <label htmlFor={id}>{label}</label>
+    <div className={compact ? styles.compactField : styles.field}>
+      <label htmlFor={id} className={compact ? styles.srOnly : undefined}>
+        {label}
+      </label>
       <select
         id={id}
         className={styles.input}

@@ -138,6 +138,8 @@ export const uiIcons = {
   /** Detailzeile auf-/zuklappen (DataTable, AP-26a). */
   detailClosed: ChevronRight,
   detailOpen: ChevronDown,
+  /** Aktiven Filter entfernen (Chip in der FilterBar, AP-26c). */
+  remove: X,
 } as const;
 
 /**

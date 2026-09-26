@@ -1,0 +1,224 @@
+/* Startseite als Übersicht (AP-26c): Kopf wie die Arbeitsseiten, Karten im Raster (3 Spalten ab 1280 px,
+   2 Spalten darunter; Mindestbreite 768 px ohne horizontales Scrollen). */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+.buttonPrimary {
+  composes: buttonPrimary from '../admin/admin.module.css';
+}
+.iconButton {
+  composes: iconButton from '../equipment/equipment.module.css';
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-3);
+}
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin-right: auto;
+  min-width: 0;
+}
+.titleBlock h1 {
+  margin: 0;
+  font-size: var(--npm-font-h2);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--npm-space-5);
+  align-items: stretch;
+}
+.wide,
+.side {
+  grid-column: 1 / -1;
+}
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Aktive Projekte über zwei Spalten, Letzte Sessions rechts daneben über beide Zeilen. */
+  .wide {
+    grid-column: 1 / span 2;
+  }
+  .side {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
+.card {
+  background: var(--npm-white);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  border-top: 4px solid var(--npm-accent);
+  padding: var(--npm-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+.skeleton {
+  width: 100%;
+  height: calc(var(--npm-row-h) * 3);
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-skeleton);
+}
+
+.summary {
+  font-weight: 600;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.list > li {
+  border-top: 1px solid var(--npm-border);
+  padding: var(--npm-space-2) 0;
+}
+.list > li:first-child {
+  border-top: none;
+}
+
+/* Warteschlange: Name und Einreicher, Aufwand, Stimme */
+.queueRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 10em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.voteCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  font-variant-numeric: tabular-nums;
+}
+.voteCell button[aria-pressed='true'] {
+  color: var(--npm-link);
+}
+
+/* Wetter heute: je Standort Name, Farbband der Nacht, Start/Ende, bestes Fenster */
+.sites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+}
+.site {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.siteName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  margin: 0;
+  font-size: var(--npm-font-base);
+}
+.band {
+  display: flex;
+  height: var(--npm-space-5);
+  border-radius: calc(var(--npm-radius) / 2);
+  overflow: hidden;
+  background: var(--npm-wx-bg);
+}
+.bandCell {
+  flex: 1 1 0;
+  min-width: 0;
+  border-right: 1px solid var(--npm-wx-grid);
+}
+.bandCell:last-child {
+  border-right: none;
+}
+.bandScale {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aktive Projekte je Rig */
+.rigGroups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+}
+.rigGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.rigName {
+  margin: 0;
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.projectRow {
+  display: grid;
+  grid-template-columns: minmax(8em, 1.4fr) minmax(80px, 1fr) max-content max-content max-content;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+.projectName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.progress {
+  min-width: 0;
+}
+.numbers {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}

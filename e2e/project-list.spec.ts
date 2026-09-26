@@ -1,7 +1,7 @@
 /**
- * AP-11c: S-30 Projektliste gegen den lokalen Stack: Filter und Favorit; Löschen über den
- * `ConfirmDialog` → erscheint in „Gelöscht“ → Wiederherstellen → wieder in der Liste; User sieht die
- * Ansicht „Gelöscht“ nicht; axe; 768/2400 px.
+ * AP-11c: S-30 Projektliste gegen den lokalen Stack: Filter (Filterleiste mit Chips, AP-26c) und Favorit;
+ * Löschen über den `ConfirmDialog` → erscheint im *Papierkorb* → Wiederherstellen → wieder in der Liste;
+ * User sieht den Papierkorb nicht; axe; 768/2400 px.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -31,21 +31,24 @@ test('S-30: Filter und Favorit', async ({ page }) => {
   await expect(page.getByRole('link', { name: galaxy })).toBeVisible();
   await expect(page.getByRole('link', { name: nebula })).toBeVisible();
 
-  await page.getByLabel('Objekttyp').selectOption({ label: `Nebel-${stamp}` });
+  // Übrige Filter unter „Filter“ (aufklappbar); aktive Filter als Chip mit ×.
+  await page.getByRole('button', { name: 'Filter', exact: true }).click();
+  await page.getByLabel('Objekttyp', { exact: true }).selectOption({ label: `Nebel-${stamp}` });
   await expect(page.getByRole('link', { name: galaxy })).toHaveCount(0);
   await expect(page.getByRole('link', { name: nebula })).toBeVisible();
-  await page.getByLabel('Objekttyp').selectOption({ label: 'alle' });
+  await page.getByRole('button', { name: `Filter Objekttyp: Nebel-${stamp} entfernen` }).click();
+  await expect(page.getByRole('link', { name: galaxy })).toBeVisible();
 
   const star = page.getByRole('button', { name: `„${galaxy}“ als Favorit` });
   await expect(star).toHaveAttribute('aria-pressed', 'false');
   await star.click();
   await expect(star).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('nur Favoriten').check();
+  await page.getByLabel('nur Favoriten', { exact: true }).check();
   await expect(page.getByRole('link', { name: galaxy })).toBeVisible();
   await expect(page.getByRole('link', { name: nebula })).toHaveCount(0);
 });
 
-test('S-30: Löschen → Gelöscht → Wiederherstellen; User sieht „Gelöscht“ nicht', async ({
+test('S-30: Löschen → Papierkorb → Wiederherstellen; User sieht den Papierkorb nicht', async ({
   page,
   browser,
 }) => {
@@ -59,19 +62,22 @@ test('S-30: Löschen → Gelöscht → Wiederherstellen; User sieht „Gelöscht
   await dialog.getByRole('button', { name: 'Löschen' }).click();
   await expect(page.getByRole('link', { name })).toHaveCount(0);
 
-  await page.getByRole('tab', { name: 'Gelöscht' }).click();
+  const trash = page.getByRole('button', { name: 'Papierkorb', exact: true });
+  await trash.click();
+  await expect(trash).toHaveAttribute('aria-pressed', 'true');
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toContainText(/\d{2}:\d{2} (MESZ|MEZ|CEST|CET)/);
   await row.getByRole('button', { name: 'Wiederherstellen' }).click();
   await expect(page.getByRole('row').filter({ hasText: name })).toHaveCount(0);
-  await page.getByRole('tab', { name: 'Projekte' }).click();
+  await trash.click();
+  await expect(trash).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('link', { name })).toBeVisible();
 
   const user = await (await browser.newContext()).newPage();
   await testLogin(user, 'user1');
   await user.goto('/projekte');
   await expect(user.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
-  await expect(user.getByRole('tab', { name: 'Gelöscht' })).toHaveCount(0);
+  await expect(user.getByRole('button', { name: 'Papierkorb', exact: true })).toHaveCount(0);
   expect((await user.request.get('/api/web/v1/projects?deleted=true')).status()).toBe(403);
 });
 

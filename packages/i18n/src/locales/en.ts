@@ -75,8 +75,35 @@ export const en: Messages = {
   home: {
     title: 'Welcome to NINA-PM',
     intro: 'Plan your astrophotography projects as a team – NINA runs them automatically.',
-    tenantTitle: 'Tenant “{{name}}”',
-    tenantIntro: 'The work areas (equipment, projects, planning) follow in the next releases.',
+    overview: 'Overview',
+    subtitle: '{{tenant}} · {{date}}',
+    queue: {
+      title: 'Queue',
+      summary: '{{open}} open · {{missing}} without your vote',
+      by: 'by {{name}}',
+      empty: 'No open submissions.',
+      more: 'To the queue',
+    },
+    weather: {
+      title: 'Weather today',
+      band: 'Hourly rating of the night {{night}} at {{site}}',
+      window: 'Best window {{from}}–{{to}} {{zone}} · {{h}} h',
+      noWindow: 'No continuous window of at least 30 min.',
+      noNight: 'No forecast for the coming night yet.',
+      empty: 'No site created yet.',
+      more: 'To the weather',
+    },
+    projects: {
+      title: 'Active projects',
+      hours: '{{done}} / {{planned}} h',
+      empty: 'No active projects.',
+      more: 'To the project list',
+    },
+    sessions: {
+      title: 'Recent sessions',
+      empty: 'No sessions yet.',
+      more: 'All sessions',
+    },
     systemTitle: 'System context',
     systemIntro: 'Managing tenants and super users follows in the next release.',
   },
@@ -351,16 +378,6 @@ export const en: Messages = {
     hash: 'Plan hash {{hash}}',
     empty: 'No active, approved projects on this rig.',
     running: 'Simulating …',
-  },
-  startLinks: {
-    myObjects: {
-      title: 'My objects',
-      hint: 'Your projects and submissions with approval status',
-    },
-    projects: {
-      title: 'Project list',
-      hint: 'All projects of the tenant with status and progress',
-    },
   },
   notifications: {
     bellUnread: 'Notifications, {{count}} unread',
@@ -1046,11 +1063,9 @@ export const en: Messages = {
   },
   projectList: {
     title: 'Projects',
-    views: 'Project list views',
-    tab: {
-      active: 'Projects',
-      deleted: 'Deleted',
-    },
+    trash: 'Trash',
+    search: 'Search',
+    searchPlaceholder: 'Name, target or catalogue number',
     filters: 'Filters',
     all: 'all',
     filter: {
@@ -1161,6 +1176,7 @@ export const en: Messages = {
     hint: 'All submitted objects. Every member has one vote per object (not for their own); votes and rank order the queue but decide nothing – the admins do.',
     empty: 'The queue is empty.',
     count: '{{n}} of {{total}} submissions',
+    searchPlaceholder: 'Object, target or submitter',
     filter: {
       withoutMyVote: 'only without my vote',
       changed: 'changed since my vote',
@@ -2024,7 +2040,7 @@ export const en: Messages = {
     results: '{{count}} results',
     loadingNight: 'Calculating night values …',
     empty: 'No objects match these filters.',
-    reset: 'Reset filters',
+    moreFilters: 'More filters',
     prevPage: 'Previous page',
     nextPage: 'Next page',
     page: 'Page {{page}} of {{pages}}',
@@ -2449,6 +2465,13 @@ export const en: Messages = {
       peak: 'highest altitude',
       enough: 'Minimum time',
     },
+  },
+  filterBar: {
+    more: 'Filters',
+    chips: 'Active filters',
+    chip: '{{label}}: {{value}}',
+    remove: 'Remove filter {{label}}',
+    reset: 'Reset all',
   },
   dataTable: {
     empty: 'No entries.',

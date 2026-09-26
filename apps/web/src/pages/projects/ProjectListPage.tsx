@@ -1,13 +1,13 @@
 /**
- * S-30 Projektliste (FK 14.3, FA-PRJ-13/14/15/16/19; AP-11c): Filterleiste (Rig, Objekttyp, Ersteller,
- * Freigabestatus, Projektstatus, Favoriten, Aufwand als Platzhalter bis AP-13e), Ansichten
+ * S-30 Projektliste (FK 14.3, FA-PRJ-13/14/15/16/19; AP-11c): Filterleiste (FilterBar, AP-26c: Suche,
+ * Chips; aufklappbar Rig, Objekttyp, Ersteller, Freigabestatus, Projektstatus, Favoriten, Aufwand), Ansichten
  * Liste/Karten/Detail, Gruppen je Rig mit Kopfzeile und Zählern je Status, Priorität per Ziehen bzw.
  * Pfeilen (nur Admin, freigegebene Projekte), Projektkarte mit Reitern *Zielinfo* und *Höhenkurve*, Plan je
- * Filter und Fortschritt; *Löschen* über `ConfirmDialog`. Ansicht *Gelöscht* (Admin/Owner) mit
+ * Filter und Fortschritt; *Löschen* über `ConfirmDialog`. Umschalter *Papierkorb* (Admin/Owner) mit
  * Löschzeitpunkt in Mandantenzeit, Rig, Ersteller und *Wiederherstellen* ohne Dialog (E4).
  */
 import { approvalStatuses, formatTzAbbr, projectStatuses } from '@nina-pm/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useId, useMemo, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -23,6 +23,7 @@ import { useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn, type SortState } from '../../components/DataTable';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
+import { FilterBar, FilterCheck, FilterField, FilterToggle } from '../../components/FilterBar';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
@@ -52,58 +53,27 @@ type View = 'list' | 'cards' | 'detail';
 const LIST_KEY = ['projects', 'list'] as const;
 const DELETED_KEY = ['projects', 'deleted'] as const;
 
+/**
+ * Filterleiste in einer Zeile (FilterBar, AP-26c): Suche, aktive Filter als Chips, übrige Filter
+ * aufklappbar; *Papierkorb* (nur Admin) schaltet statt eines Reiters auf die gelöschten Projekte um.
+ */
 export function ProjectListPage() {
   const { t } = useTranslation();
   const canAdmin = useCan('project.status');
-  const [tab, setTab] = useState<'active' | 'deleted'>('active');
-  return (
-    <ProjectsLayout title={t('projectList.title')}>
-      {canAdmin ? (
-        <Tabs
-          label={t('projectList.views')}
-          tabs={(['active', 'deleted'] as const).map((key) => ({
-            key,
-            label: (
-              <>
-                {key === 'deleted' ? (
-                  <actionIcons.deleted size={ICON_SIZE.table} aria-hidden />
-                ) : null}
-                {t(`projectList.tab.${key}`)}
-              </>
-            ),
-          }))}
-          value={tab}
-          onChange={setTab}
-          panelClassName={styles.tabPanel}
-          panels={{ active: <ActiveView />, deleted: <DeletedView /> }}
-        />
-      ) : (
-        <div className={styles.stack}>
-          <ActiveView />
-        </div>
-      )}
-    </ProjectsLayout>
-  );
-}
-
-// ---- Liste --------------------------------------------------------------------------------------
-
-function ActiveView() {
-  const { t } = useTranslation();
-  const client = useQueryClient();
-  const canAdmin = useCan('project.status');
+  const [trash, setTrash] = useState(false);
+  const [filters, setFilters] = useState<ListFilters>(NO_FILTERS);
+  const [view, setView] = useState<View>('list');
   const list = useQuery({
     queryKey: LIST_KEY,
     queryFn: async () => (await projectsApi.list()).items,
   });
   const rigs = useEquipmentList('rigs');
-  const sites = useEquipmentList('sites');
-  const telescopes = useEquipmentList('telescopes');
-  const cameras = useEquipmentList('cameras');
-  const filtersList = useEquipmentList('filters');
-  const [filters, setFilters] = useState<ListFilters>(NO_FILTERS);
-  const [view, setView] = useState<View>('list');
-  const [remove, setRemove] = useState<ProjectListItem | null>(null);
+  const items = list.data ?? [];
+  const options = useMemo(() => filterOptions(items), [items]);
+  const shown = filterProjects(items, filters);
+  const showTrash = canAdmin && trash;
+  const set = <K extends keyof ListFilters>(key: K, value: ListFilters[K]) =>
+    setFilters((f) => ({ ...f, [key]: value }));
   const ids = {
     rig: useId(),
     type: useId(),
@@ -112,6 +82,203 @@ function ActiveView() {
     status: useId(),
     effort: useId(),
   };
+  const effortLabel = (k: string) =>
+    k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`);
+  const rigName = (id: string) =>
+    id === NO_RIG
+      ? t('projectList.noRig')
+      : ((rigs.data ?? []).find((r) => r.id === id)?.name ?? t('projectList.unknownRig'));
+  const chip = (id: keyof ListFilters, label: string, value: string) => ({
+    id,
+    label: t('filterBar.chip', { label, value }),
+    onRemove: () => set(id, NO_FILTERS[id]),
+  });
+  const chips = [
+    ...(filters.rigId ? [chip('rigId', t('projectList.filter.rig'), rigName(filters.rigId))] : []),
+    ...(filters.targetType
+      ? [chip('targetType', t('projectList.filter.type'), filters.targetType)]
+      : []),
+    ...(filters.createdBy
+      ? [
+          chip(
+            'createdBy',
+            t('projectList.filter.creator'),
+            options.creators.find((c) => c.id === filters.createdBy)?.name ?? '–',
+          ),
+        ]
+      : []),
+    ...(filters.approvalStatus
+      ? [
+          chip(
+            'approvalStatus',
+            t('projectList.filter.approval'),
+            t(`status.approval.${filters.approvalStatus}`),
+          ),
+        ]
+      : []),
+    ...(filters.status
+      ? [chip('status', t('projectList.filter.status'), t(`status.project.${filters.status}`))]
+      : []),
+    ...(filters.effort
+      ? [chip('effort', t('projectList.filter.effort'), effortLabel(filters.effort))]
+      : []),
+    ...(filters.favorites
+      ? [
+          {
+            id: 'favorites',
+            label: t('projectList.filter.favorites'),
+            onRemove: () => set('favorites', false),
+          },
+        ]
+      : []),
+  ];
+  const select = (
+    id: string,
+    label: string,
+    key: 'rigId' | 'targetType' | 'createdBy' | 'approvalStatus' | 'status' | 'effort',
+    opts: readonly (readonly [string, string])[],
+  ) => (
+    <FilterField label={label} htmlFor={id}>
+      <select
+        id={id}
+        className={styles.input}
+        value={filters[key]}
+        onChange={(e) => set(key, e.target.value)}
+      >
+        <option value="">{t('projectList.all')}</option>
+        {opts.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </FilterField>
+  );
+  const panel = (
+    <>
+      {select(ids.rig, t('projectList.filter.rig'), 'rigId', [
+        ...(rigs.data ?? []).map((r) => [r.id, r.name] as const),
+        [NO_RIG, t('projectList.noRig')],
+      ])}
+      {select(
+        ids.type,
+        t('projectList.filter.type'),
+        'targetType',
+        options.targetTypes.map((x) => [x, x] as const),
+      )}
+      {select(
+        ids.creator,
+        t('projectList.filter.creator'),
+        'createdBy',
+        options.creators.map((c) => [c.id, c.name] as const),
+      )}
+      {select(
+        ids.approval,
+        t('projectList.filter.approval'),
+        'approvalStatus',
+        approvalStatuses.map((s) => [s, t(`status.approval.${s}`)] as const),
+      )}
+      {select(
+        ids.status,
+        t('projectList.filter.status'),
+        'status',
+        projectStatuses.map((s) => [s, t(`status.project.${s}`)] as const),
+      )}
+      {select(
+        ids.effort,
+        t('projectList.filter.effort'),
+        'effort',
+        EFFORT_FILTERS.map((k) => [k, effortLabel(k)] as const),
+      )}
+      <FilterCheck
+        label={t('projectList.filter.favorites')}
+        checked={filters.favorites}
+        onChange={(on) => set('favorites', on)}
+      />
+    </>
+  );
+  const viewSwitch = (
+    <div className={styles.segmented} role="radiogroup" aria-label={t('projectList.viewLabel')}>
+      {(['list', 'cards', 'detail'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={view === v}
+          className={view === v ? styles.segmentActive : styles.segment}
+          onClick={() => setView(v)}
+        >
+          {t(`projectList.view.${v}`)}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <ProjectsLayout title={t('projectList.title')}>
+      <div className={styles.stack}>
+        <FilterBar
+          label={t('projectList.filters')}
+          {...(showTrash
+            ? {}
+            : {
+                search: {
+                  value: filters.query,
+                  onChange: (q: string) => set('query', q),
+                  label: t('projectList.search'),
+                  placeholder: t('projectList.searchPlaceholder'),
+                  maxLength: 80,
+                },
+                chips,
+                panel,
+                onReset: () => setFilters(NO_FILTERS),
+                view: viewSwitch,
+                ...(list.data
+                  ? { count: t('projectList.count', { n: shown.length, total: items.length }) }
+                  : {}),
+              })}
+          extra={
+            canAdmin ? (
+              <FilterToggle
+                label={t('projectList.trash')}
+                icon={<actionIcons.deleted size={ICON_SIZE.table} aria-hidden />}
+                pressed={trash}
+                onChange={setTrash}
+              />
+            ) : null
+          }
+        />
+        {showTrash ? (
+          <DeletedView />
+        ) : (
+          <ActiveView list={list} items={items} shown={shown} view={view} />
+        )}
+      </div>
+    </ProjectsLayout>
+  );
+}
+
+// ---- Liste --------------------------------------------------------------------------------------
+
+function ActiveView({
+  list,
+  items,
+  shown,
+  view,
+}: {
+  list: UseQueryResult<ProjectListItem[]>;
+  items: readonly ProjectListItem[];
+  shown: ProjectListItem[];
+  view: View;
+}) {
+  const { t } = useTranslation();
+  const client = useQueryClient();
+  const canAdmin = useCan('project.status');
+  const rigs = useEquipmentList('rigs');
+  const sites = useEquipmentList('sites');
+  const telescopes = useEquipmentList('telescopes');
+  const cameras = useEquipmentList('cameras');
+  const filtersList = useEquipmentList('filters');
+  const [remove, setRemove] = useState<ProjectListItem | null>(null);
 
   const refresh = () => client.invalidateQueries({ queryKey: ['projects'] });
   const favorite = useMutation({
@@ -131,15 +298,10 @@ function ActiveView() {
     },
   });
 
-  const items = list.data ?? [];
-  const options = useMemo(() => filterOptions(items), [items]);
-  const shown = filterProjects(items, filters);
   const groups = groupByRig(
     shown,
     (rigs.data ?? []).map((r) => r.id),
   );
-  const set = <K extends keyof ListFilters>(key: K, value: ListFilters[K]) =>
-    setFilters((f) => ({ ...f, [key]: value }));
 
   if (list.isError)
     return <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />;
@@ -157,134 +319,9 @@ function ActiveView() {
 
   return (
     <>
-      <fieldset className={styles.filterBar}>
-        <legend>{t('projectList.filters')}</legend>
-        <label htmlFor={ids.rig}>
-          {t('projectList.filter.rig')}
-          <select
-            id={ids.rig}
-            className={styles.input}
-            value={filters.rigId}
-            onChange={(e) => set('rigId', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {(rigs.data ?? []).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-            <option value={NO_RIG}>{t('projectList.noRig')}</option>
-          </select>
-        </label>
-        <label htmlFor={ids.type}>
-          {t('projectList.filter.type')}
-          <select
-            id={ids.type}
-            className={styles.input}
-            value={filters.targetType}
-            onChange={(e) => set('targetType', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {options.targetTypes.map((x) => (
-              <option key={x} value={x}>
-                {x}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={ids.creator}>
-          {t('projectList.filter.creator')}
-          <select
-            id={ids.creator}
-            className={styles.input}
-            value={filters.createdBy}
-            onChange={(e) => set('createdBy', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {options.creators.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={ids.approval}>
-          {t('projectList.filter.approval')}
-          <select
-            id={ids.approval}
-            className={styles.input}
-            value={filters.approvalStatus}
-            onChange={(e) => set('approvalStatus', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {approvalStatuses.map((s) => (
-              <option key={s} value={s}>
-                {t(`status.approval.${s}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={ids.status}>
-          {t('projectList.filter.status')}
-          <select
-            id={ids.status}
-            className={styles.input}
-            value={filters.status}
-            onChange={(e) => set('status', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {projectStatuses.map((s) => (
-              <option key={s} value={s}>
-                {t(`status.project.${s}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor={ids.effort}>
-          {t('projectList.filter.effort')}
-          <select
-            id={ids.effort}
-            className={styles.input}
-            value={filters.effort}
-            onChange={(e) => set('effort', e.target.value)}
-          >
-            <option value="">{t('projectList.all')}</option>
-            {EFFORT_FILTERS.map((k) => (
-              <option key={k} value={k}>
-                {k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.check}>
-          <input
-            type="checkbox"
-            checked={filters.favorites}
-            onChange={(e) => set('favorites', e.target.checked)}
-          />
-          {t('projectList.filter.favorites')}
-        </label>
-      </fieldset>
-      <div className={styles.planHead}>
-        <div className={styles.segmented} role="radiogroup" aria-label={t('projectList.viewLabel')}>
-          {(['list', 'cards', 'detail'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={view === v}
-              className={view === v ? styles.segmentActive : styles.segment}
-              onClick={() => setView(v)}
-            >
-              {t(`projectList.view.${v}`)}
-            </button>
-          ))}
-        </div>
-        {canAdmin ? <span className={styles.muted}>{t('projectList.priorityHint')}</span> : null}
-        <span className={styles.muted} role="status">
-          {t('projectList.count', { n: shown.length, total: items.length })}
-        </span>
-      </div>
+      {canAdmin && view === 'list' && shown.length > 0 ? (
+        <p className={styles.muted}>{t('projectList.priorityHint')}</p>
+      ) : null}
       {[favorite.error, priority.error].map((e, i) =>
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
       )}
@@ -892,7 +929,7 @@ function DeletedView() {
           rows={deleted.data}
           rowKey={(p) => p.id}
           rowLabel={(p) => p.name}
-          label={t('projectList.tab.deleted')}
+          label={t('projectList.trash')}
           defaultSort={{ id: 'deletedAt', dir: 'desc' }}
         />
       )}

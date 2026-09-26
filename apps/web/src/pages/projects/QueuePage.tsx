@@ -2,8 +2,9 @@
  * S-33 Warteschlange (FK 14.3, FA-FRG-04/06/07/14/16; AP-12c): Tabelle für alle Mitglieder mit Frist,
  * Objekt, Typ, Einreicher, Rang beim Einreicher, Aufwand (Platzhalter bis AP-13e), Plan-Chips (Tooltip
  * mit Gain/Offset/Binning/Auslesemodus/Mondprofil), Stimmen mit Knopf und Namen, eingereicht am,
- * Wunsch-Rig, Zeitraum (abgelaufen markiert) und geschätztem Bedarf; Filter „ohne meine Stimme“ und
- * „geändert seit meiner Stimme“; jede Spalte sortierbar. Admins entscheiden im Detailbereich:
+ * Wunsch-Rig, Zeitraum (abgelaufen markiert) und geschätztem Bedarf; Filterleiste (FilterBar, AP-26c:
+ * Suche, Chips; aufklappbar „ohne meine Stimme“, „geändert seit meiner Stimme“, Aufwand); jede Spalte
+ * sortierbar. Admins entscheiden im Detailbereich:
  * *Freigeben* (Rig, Position je Rig, Status, Termine, Kommentar), *Zurückgeben*, *Ablehnen*
  * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
  * folgt mit R3.
@@ -24,6 +25,7 @@ import { ApiError, useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { EffortChip } from '../../components/EffortChip';
+import { FilterBar, FilterCheck, FilterField } from '../../components/FilterBar';
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
@@ -59,6 +61,9 @@ export function QueuePage() {
   const filters = useEquipmentList('filters');
   const [f, setF] = useState<QueueFilters>(NO_QUEUE_FILTERS);
   const [selected, setSelected] = useState<string | null>(null);
+  const effortId = useId();
+  const effortLabel = (k: string) =>
+    k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`);
   const vote = useMutation({
     mutationFn: ({ id, on }: { id: string; on: boolean }) => approvalApi.vote(id, on),
     onSuccess: () => client.invalidateQueries({ queryKey: QUEUE_KEY }),
@@ -82,45 +87,79 @@ export function QueuePage() {
         <p role="status">{t('common.loading')}</p>
       ) : (
         <>
-          <fieldset className={styles.filterBar}>
-            <legend>{t('projectList.filters')}</legend>
-            <label className={styles.check}>
-              <input
-                type="checkbox"
-                checked={f.withoutMyVote}
-                onChange={(e) => setF({ ...f, withoutMyVote: e.target.checked })}
-              />
-              {t('queue.filter.withoutMyVote')}
-            </label>
-            <label className={styles.check}>
-              <input
-                type="checkbox"
-                checked={f.changedSinceMyVote}
-                onChange={(e) => setF({ ...f, changedSinceMyVote: e.target.checked })}
-              />
-              {t('queue.filter.changed')}
-            </label>
-            <label>
-              {t('projectList.filter.effort')}
-              <select
-                className={styles.input}
-                value={f.effort}
-                onChange={(e) => setF({ ...f, effort: e.target.value })}
-              >
-                <option value="">{t('projectList.all')}</option>
-                {EFFORT_FILTERS.map((k) => (
-                  <option key={k} value={k}>
-                    {k === 'done' || k === 'none'
-                      ? t(`effort.filter.${k}`)
-                      : t(`status.effort.${k}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className={styles.muted} role="status">
-              {t('queue.count', { n: items.length, total: queue.data.length })}
-            </span>
-          </fieldset>
+          <FilterBar
+            label={t('projectList.filters')}
+            search={{
+              value: f.query,
+              onChange: (query) => setF({ ...f, query }),
+              label: t('projectList.search'),
+              placeholder: t('queue.searchPlaceholder'),
+              maxLength: 80,
+            }}
+            chips={[
+              ...(f.withoutMyVote
+                ? [
+                    {
+                      id: 'withoutMyVote',
+                      label: t('queue.filter.withoutMyVote'),
+                      onRemove: () => setF({ ...f, withoutMyVote: false }),
+                    },
+                  ]
+                : []),
+              ...(f.changedSinceMyVote
+                ? [
+                    {
+                      id: 'changedSinceMyVote',
+                      label: t('queue.filter.changed'),
+                      onRemove: () => setF({ ...f, changedSinceMyVote: false }),
+                    },
+                  ]
+                : []),
+              ...(f.effort
+                ? [
+                    {
+                      id: 'effort',
+                      label: t('filterBar.chip', {
+                        label: t('projectList.filter.effort'),
+                        value: effortLabel(f.effort),
+                      }),
+                      onRemove: () => setF({ ...f, effort: '' }),
+                    },
+                  ]
+                : []),
+            ]}
+            panel={
+              <>
+                <FilterCheck
+                  label={t('queue.filter.withoutMyVote')}
+                  checked={f.withoutMyVote}
+                  onChange={(on) => setF({ ...f, withoutMyVote: on })}
+                />
+                <FilterCheck
+                  label={t('queue.filter.changed')}
+                  checked={f.changedSinceMyVote}
+                  onChange={(on) => setF({ ...f, changedSinceMyVote: on })}
+                />
+                <FilterField label={t('projectList.filter.effort')} htmlFor={effortId}>
+                  <select
+                    id={effortId}
+                    className={styles.input}
+                    value={f.effort}
+                    onChange={(e) => setF({ ...f, effort: e.target.value })}
+                  >
+                    <option value="">{t('projectList.all')}</option>
+                    {EFFORT_FILTERS.map((k) => (
+                      <option key={k} value={k}>
+                        {effortLabel(k)}
+                      </option>
+                    ))}
+                  </select>
+                </FilterField>
+              </>
+            }
+            onReset={() => setF(NO_QUEUE_FILTERS)}
+            count={t('queue.count', { n: items.length, total: queue.data.length })}
+          />
           {vote.error ? <ProblemMessage code={problemCode(vote.error)} /> : null}
           {queue.data.length === 0 ? (
             <p className={styles.note}>{t('queue.empty')}</p>

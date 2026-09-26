@@ -1,4 +1,4 @@
-/** Glocke und Startseite R1 (AP-06b, FA-FRG-11, FK 11 R1): Rollenwechsel → Zähler beim Betroffenen → gelesen. */
+/** Glocke und Startseite (AP-06b, AP-26c, FA-FRG-11): Rollenwechsel → Zähler beim Betroffenen → gelesen. */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { csrf, testLogin } from './support';
@@ -65,19 +65,19 @@ test('Owner ändert die Rolle von user1 → Glocke zählt → alle als gelesen',
   expect(ownerList.items.filter((n) => n.kind === 'role.changed')).toEqual([]);
 });
 
-test('Startseite R1: User → „Meine Objekte“, Admin → Projektliste S-30 (im Rahmen)', async ({
+test('Startseite (AP-26c): Übersicht → Warteschlange (User) bzw. Projektliste S-30 (Admin), im Rahmen', async ({
   browser,
 }) => {
   const user = await pageAs(browser, 'user1');
   await user.goto('/');
-  await user.getByRole('link', { name: /Meine Objekte/ }).click();
-  await expect(user).toHaveURL('/projekte/meine-objekte');
-  await expect(user.getByRole('heading', { name: 'Meine Objekte' })).toBeVisible();
+  await expect(user.getByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
+  await user.getByRole('link', { name: 'Zur Warteschlange' }).click();
+  await expect(user).toHaveURL('/projekte/warteschlange');
+  await expect(user.getByRole('heading', { level: 1, name: 'Warteschlange' })).toBeVisible();
   await expect(user.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible();
   const owner = await pageAs(browser, 'owner');
   await owner.goto('/');
-  await expect(owner.getByRole('link', { name: /Meine Objekte/ })).toHaveCount(0);
-  await owner.getByRole('link', { name: /Projektliste/ }).click();
+  await owner.getByRole('link', { name: 'Zur Projektliste' }).click();
   await expect(owner).toHaveURL('/projekte');
   await expect(owner.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
 });

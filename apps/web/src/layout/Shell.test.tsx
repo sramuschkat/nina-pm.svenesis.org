@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
-/** Rechteanzeige (AP-06a): Administration nur mit member.manage; Hinweis bei mfaRequired statt stiller Ausblendung (SV-03). */
+/**
+ * Rechteanzeige (AP-06a): Administration nur mit member.manage; Hinweis bei mfaRequired statt stiller
+ * Ausblendung (SV-03). Rahmen (AP-26c): eine Kopfleiste mit Menü *Svenesis.org*; unter 1024 px
+ * Navigation eingeklappt, aufgeklappt als Überlagerung (Esc und Klick daneben schließen).
+ */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../test/setup';
 import type { Me } from '../api/client';
 import { AppearanceProvider } from '../app/theme';
@@ -122,5 +127,64 @@ describe('Rechteanzeige in der Shell', () => {
     expect(
       await screen.findByRole('button', { name: 'Benachrichtigungen, 1 ungelesen' }),
     ).toHaveTextContent('1');
+  });
+});
+
+/** Fensterbreite für `matchMedia` vortäuschen (jsdom kennt kein Layout). */
+function mockNarrow(narrow: boolean) {
+  vi.stubGlobal(
+    'matchMedia',
+    (query: string) =>
+      ({
+        matches: narrow && query.includes('max-width: 1023px'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList,
+  );
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('Rahmen (AP-26c)', () => {
+  it('eine Kopfleiste: NINA-PM, Mandant, Menü Svenesis.org mit den Website-Links, Sprache', async () => {
+    const user = userEvent.setup();
+    await renderShell(member('user', 'user', false));
+    const bar = screen.getAllByRole('banner')[0] as HTMLElement;
+    expect(within(bar).getByRole('link', { name: 'NINA-PM' })).toHaveAttribute('href', '/');
+    expect(bar).toHaveTextContent('Demo');
+    expect(within(bar).getByRole('group', { name: 'Sprache' })).toBeInTheDocument();
+    await user.click(within(bar).getByRole('button', { name: /Svenesis\.org/ }));
+    const blog = await screen.findByRole('menuitem', { name: 'Blog' });
+    expect(blog).toHaveAttribute('href', 'https://www.svenesis.org/blog/blog_de.html');
+    await expectNoSeriousA11y();
+  });
+
+  it('breites Fenster: Navigation mit Beschriftung, einklappbar', async () => {
+    mockNarrow(false);
+    await renderShell(member('user', 'user', false));
+    const toggle = within(nav()).getByRole('button', { name: 'Navigation einklappen' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(toggle);
+    expect(within(nav()).getByRole('button', { name: 'Navigation ausklappen' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('unter 1024 px: nur Symbole; aufgeklappt als Überlagerung, Esc und Klick daneben schließen', async () => {
+    mockNarrow(true);
+    await renderShell(member('user', 'user', false));
+    const open = within(nav()).getByRole('button', { name: 'Navigation ausklappen' });
+    expect(open).toHaveAttribute('aria-expanded', 'false');
+    expect(nav().className).not.toMatch(/Overlay/);
+    fireEvent.click(open);
+    expect(nav().className).toMatch(/Overlay/);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(nav().className).not.toMatch(/Overlay/);
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Navigation ausklappen' }));
+    const scrim = document.querySelector('[class*=scrim]') as HTMLElement;
+    fireEvent.click(scrim);
+    expect(nav().className).not.toMatch(/Overlay/);
   });
 });

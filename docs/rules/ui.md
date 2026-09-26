@@ -23,6 +23,7 @@ Quelle: TK 11; FK Kap. 7 (Bildschirme S-xx).
 - Fehler aus Problem Details über `errors.*`-i18n-Schlüssel anzeigen.
 - Jede Seite: Lade-, Leer-, Fehlerzustand; Formulare mit zod-Schemas aus `packages/shared`.
 - **Datentabellen nur mit `DataTable`** (components.md §2.11, AP-26a): sortierbar per Spaltenkopf, jede Spalte mit Priorität; bei Platzmangel Spalten ausblenden statt horizontal scrollen (kein `overflow-x: auto`-Wrapper um Tabellen). Bearbeitbare Tabellen mit NINA-Reihenfolge sortieren nicht.
+- **Rahmen (AP-26c):** Arbeitsseiten haben **eine** Kopfleiste (52 px, Website-Farben) mit NINA-PM, Mandant, Menü *Svenesis.org* (Website-Links, keine Laufzeit-Einbindung), Glocke, Theme, Benutzer, DE/EN; Textseiten behalten den Website-Kopf. Seitenleiste unter 1024 px nur Symbole, aufgeklappt als Überlagerung. Filter als eine Zeile mit Chips (`FilterBar`).
 - **Reiter statt Scrollen (AP-26b):** Arbeitsseiten zeigen weniger gleichzeitig – Inhalte liegen auf Reitern (`Tabs`, components.md §2.12), nicht untereinander. Seitenkopf überall gleich: Titel links, Hauptaktion rechts (`ProjectsLayout`, `EquipmentLayout`, `AdminLayout` mit `actions`). Ausrüstung: Liste links, Detail rechts (`ListDetail`).
 - Wiederverwendbare Bausteine **nur** nach `specs/ui/components.md` (Eigenschaften, Zustände, Mindestgrößen, Grenzfälle); Bausteine importieren kein `useCan`, kein `fetch`, kein Repository.
 - Komponenten-Tests (Testing Library) für Formulare und Rechteanzeige; E2E für Kernabläufe.

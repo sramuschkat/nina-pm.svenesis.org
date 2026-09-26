@@ -1,11 +1,13 @@
 /**
- * Reine Hilfen der Projektliste S-30 (AP-11c; FK 14.3, FA-PRJ-14/16/19): Filter (Rig, Objekttyp,
+ * Reine Hilfen der Projektliste S-30 (AP-11c; FK 14.3, FA-PRJ-14/16/19): Filter (Suche, Rig, Objekttyp,
  * Ersteller, Freigabestatus, Projektstatus, Favoriten, Aufwand), Gruppen je Rig mit Zählern je Status und die
  * Reihenfolge (freigegebene Projekte nach Priorität, danach die übrigen nach Name).
  */
 import type { ProjectListItem } from '../../api/client';
 
 export interface ListFilters {
+  /** Suche in Name, Zielname und Katalognamen (Filterleiste, AP-26c). */
+  readonly query: string;
   readonly rigId: string;
   readonly targetType: string;
   readonly createdBy: string;
@@ -33,6 +35,7 @@ export function effortKey(effort: { tag: string | null } | null | undefined): st
 }
 
 export const NO_FILTERS: ListFilters = {
+  query: '',
   rigId: '',
   targetType: '',
   createdBy: '',
@@ -45,12 +48,19 @@ export const NO_FILTERS: ListFilters = {
 /** Kennung der Gruppe ohne Rig (Entwürfe ohne Rig-Wunsch). */
 export const NO_RIG = 'none';
 
+/** Suchtext passt, wenn eines der Felder ihn (ohne Groß-/Kleinschreibung) enthält. */
+export function matchesQuery(query: string, ...fields: readonly (string | null)[]): boolean {
+  const q = query.trim().toLowerCase();
+  return !q || fields.some((x) => (x ?? '').toLowerCase().includes(q));
+}
+
 export function filterProjects(
   items: readonly ProjectListItem[],
   f: ListFilters,
 ): ProjectListItem[] {
   return items.filter(
     (p) =>
+      matchesQuery(f.query, p.name, p.targetName, p.catalogNames) &&
       (!f.rigId || (p.rigId ?? NO_RIG) === f.rigId) &&
       (!f.targetType || (p.targetType ?? '') === f.targetType) &&
       (!f.createdBy || p.createdBy === f.createdBy) &&

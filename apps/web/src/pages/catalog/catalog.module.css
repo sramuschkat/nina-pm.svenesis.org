@@ -71,11 +71,17 @@
   align-items: flex-end;
   gap: var(--npm-space-3);
 }
-.searchField {
-  flex: 2 1 16rem;
-}
 .numberField {
   flex: 0 1 9rem;
+}
+/* Auswahlliste in der Filterzeile (FilterBar, AP-26c): Beschriftung nur für Screenreader. */
+.compactField {
+  display: flex;
+  min-width: 0;
+}
+.compactField .input {
+  width: auto;
+  max-width: 14rem;
 }
 .numberField .input {
   width: 100%;
