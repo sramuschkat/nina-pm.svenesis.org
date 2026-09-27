@@ -80,7 +80,8 @@ export const TABLE_GRANTS: Readonly<Record<string, TableGrant>> = {
   moon_profile: g(EQUIP, ALL, SI),
   exposure_template: g(EQUIP, ALL, SI),
   exposure_template_line: g(EQUIP, ALL, SI),
-  rig: g(EQUIP, ALL, SI),
+  // UPDATE nur auf `updated_at`: Wächter `FOR UPDATE` der Prognose (Migration 0008), keine Änderung an Rigs.
+  rig: g(EQUIP, ALL, SIU, ['updated_at']),
   rig_lease: g(EQUIP, ALL, SIU),
   nina_instance: g(EQUIP, ALL, S),
 

@@ -162,11 +162,20 @@ export const suites: readonly Suite[] = [
         );
         await rw.query('SELECT 1 FROM dso_object LIMIT 1');
         await job.query('SELECT 1 FROM app_user LIMIT 1');
+        // Wächter der Prognose (Migration 0008): Sperre auf rig erlaubt, Ändern von Rigs nicht.
+        await job.query('BEGIN');
+        await job.query('SELECT 1 FROM rig WHERE false FOR UPDATE');
+        await job.query('ROLLBACK');
+        await expectDenied(
+          job,
+          'UPDATE rig SET name = name WHERE false',
+          'app_job UPDATE rig.name',
+        );
       } finally {
         await job.end();
         await rw.end();
       }
-      return '10 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe ok';
+      return '11 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe und Rig-Sperre ok';
     },
   },
   {

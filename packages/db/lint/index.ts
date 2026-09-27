@@ -129,7 +129,11 @@ function parseGrants(stripped: string): Map<string, Map<DbRole, ParsedGrant>> {
 const sameSet = (a: Iterable<string>, b: Iterable<string>) =>
   JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 
-export function lintMigration(file: string, sql: string): LintFinding[] {
+/**
+ * `later`: Inhalt der späteren Migrationen – ein GRANT, das eine spätere Migration nachreicht (z. B. 0008:
+ * `UPDATE (updated_at) ON rig`), zählt für die Tabelle mit; ausgeführte Migrationen bleiben unverändert.
+ */
+export function lintMigration(file: string, sql: string, later = ''): LintFinding[] {
   const findings: LintFinding[] = [];
   const statements = splitStatements(sql);
   const createdTables: { table: string; statement: number }[] = [];
@@ -152,7 +156,7 @@ export function lintMigration(file: string, sql: string): LintFinding[] {
     if (table) createdTables.push({ table, statement: n });
   });
 
-  const grants = parseGrants(stripSql(statements.join('\n')));
+  const grants = parseGrants(stripSql([...statements, later].join('\n')));
   for (const { table, statement } of createdTables) {
     const expected = TABLE_GRANTS[table];
     if (!expected) {
