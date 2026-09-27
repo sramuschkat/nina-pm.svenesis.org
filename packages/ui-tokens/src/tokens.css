@@ -20,6 +20,15 @@
   --npm-chart-meridian: #c9a3ff;
   --npm-chart-best: #8fb3ff;
   --npm-chart-moon-label: #f5c26b;
+  --npm-chart-moon-line: #f5d76e;
+  --npm-chart-mark-sun: #f0a93b;
+  --npm-chart-mark-civil: #9cc1ee;
+  --npm-chart-mark-nautical: #7aa3d6;
+  --npm-chart-mark-astro: #6b91c4;
+  --npm-chart-mark-moon: #e2c65c;
+  --npm-chart-dim-label: #e4e9ef;
+  --npm-moon-lit: #ecebe2;
+  --npm-moon-dark: #2a3038;
   --npm-chart-curve: #eef2f6;
   --npm-chart-grid: rgba(255, 255, 255, 0.16);
   --npm-chart-label: rgba(228, 233, 239, 0.8);
@@ -123,6 +132,8 @@
   --npm-muted: #6b7785;
   --npm-skeleton: #e9ecef;
   --npm-violet: #6a3fb5;
+  --npm-today: #e67e22;
+  --npm-star: #b9770e;
   --npm-row-h: 32px;
   --npm-font-scale: 1;
   --npm-space-scale: 1;
@@ -177,6 +188,8 @@
   --npm-muted: #8b98a5;
   --npm-skeleton: #243647;
   --npm-violet: #c3a6f5;
+  --npm-today: #f39c12;
+  --npm-star: #f5b041;
   --npm-shadow: none;
   color-scheme: dark;
 }

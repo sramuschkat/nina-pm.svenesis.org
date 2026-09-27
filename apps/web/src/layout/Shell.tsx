@@ -13,7 +13,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
-import { SKYMAP_PATH } from '../pages/planning/skymap/model';
+import { CATALOG_PATH } from '../pages/catalog/model';
 import { TONIGHT_PATH } from '../pages/tonight/TonightPage';
 import { WEATHER_PATH } from '../pages/weather/model';
 import { EQUIPMENT_PATHS } from '../pages/equipment/shared';
@@ -364,7 +364,7 @@ function SideNav({
       key: 'plan',
       areas: [
         { key: 'tonight', visible: !system, to: TONIGHT_PATH },
-        { key: 'planning', visible: !system, to: SKYMAP_PATH },
+        { key: 'planning', visible: !system, to: CATALOG_PATH },
         { key: 'projects', visible: !system, to: '/projekte' },
       ],
     },

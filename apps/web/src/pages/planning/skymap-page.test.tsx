@@ -179,8 +179,11 @@ describe('S-20 Sternkarte', () => {
     ).toBeInTheDocument();
     const toolbar = screen.getByRole('toolbar', { name: 'Sternkarte' });
     expect(within(toolbar).getByRole('combobox', { name: 'Katalogsuche' })).toBeInTheDocument();
-    expect(within(toolbar).getByLabelText('Uhrzeit')).toBeInTheDocument();
-    expect(within(toolbar).getByRole('button', { name: 'Jetzt' })).toBeInTheDocument();
+    // Kontextleiste wie im Objektbrowser: Rig, Nacht mit Mondkalender, Heute Nacht, Uhrzeit, Jetzt.
+    const context = screen.getByRole('region', { name: 'Rig und Nacht' });
+    expect(within(context).getByLabelText('Uhrzeit')).toBeInTheDocument();
+    expect(within(context).getByRole('button', { name: 'Jetzt' })).toBeInTheDocument();
+    expect(within(toolbar).queryByLabelText('Uhrzeit')).toBeNull();
     // AP-26i: Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte; rechts nur Bildfeld & Ebenen.
     const below = screen.getByRole('region', { name: 'Gewähltes Objekt und Nacht' });
     expect(

@@ -10,13 +10,11 @@
  * Nachtwerte, kein Filter); Reiter, Filterleiste und Tabelle in **einer** Karte; Zeilenaktionen als
  * Symbolknöpfe (*Saison*, *Sternkarte*) plus *Projekt*.
  */
-import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import {
   DSO_TYPE_GROUPS,
   IAU_CONSTELLATION_NAMES,
   IAU_CONSTELLATIONS,
   dsoCatalogPrefixes,
-  formatNightKey,
   formatTzAbbr,
   formatZonedTime,
 } from '@nina-pm/shared';
@@ -33,9 +31,11 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
+import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { MoonDarkness, moonDarkness } from '../../components/moon-darkness';
 import { NightChart } from '../../components/night-chart';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { FilterBar, FilterCheck } from '../../components/FilterBar';
@@ -44,7 +44,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { Tabs } from '../../components/Tabs';
 import { ThumbPreview } from '../../components/ThumbPreview';
-import { RigSelect, type RigOption } from '../../components/RigSelect';
+import type { RigOption } from '../../components/RigSelect';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { SeasonPanel } from '../projects/SeasonPanel';
@@ -64,8 +64,6 @@ import {
   type BrowserFilters,
 } from './model';
 import styles from './catalog.module.css';
-
-const shiftNight = (night: string, days: number) => keyFromDays(daysFromKey(night) + days);
 
 /** Neues Projekt aus dem Katalog (die Zielfelder füllt der Editor aus `objekt`). */
 export const createProjectHref = (primaryId: string, rigId: string | null) =>
@@ -119,6 +117,11 @@ export function ObjectBrowserPage() {
     enabled: site !== null,
   });
   const night = filters.night || nights.data?.currentNight || null;
+  // Stabile Koordinaten für den Mondkalender (useMemo dort hängt am Objekt).
+  const siteGeo = useMemo(
+    () => (site ? { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg } : null),
+    [site?.latitudeDeg, site?.longitudeDeg],
+  );
 
   const update = (patch: Partial<BrowserFilters>) => {
     const next = { ...filters, ...patch };
@@ -194,60 +197,31 @@ export function ObjectBrowserPage() {
     <div className={styles.page}>
       <PageHeader title={t('catalog.title')} nav={<PlanningTabs />} />
 
-      {/* Kontextleiste (Stilsystem AP-26d): Rig und Nacht sind Bezug der Nachtwerte, kein Filter. */}
-      <section className={styles.context} aria-label={t('catalog.context')}>
-        <span className={styles.label} aria-hidden>
-          {t('catalog.rig')}
-        </span>
-        <div className={styles.rigField}>
-          <RigSelect
-            rigs={rigOptions}
-            value={rigId}
-            onChange={(v) => update({ rig: v ?? '', night: '' })}
-            label={t('catalog.rig')}
-          />
-        </div>
-        {site ? (
-          <>
-            <span className={styles.divider} aria-hidden />
-            <div className={styles.nightNav}>
-              <button
-                type="button"
-                className={styles.iconButton}
-                aria-label={t('catalog.prevNight')}
-                title={t('catalog.prevNight')}
-                disabled={!night}
-                onClick={() => night && update({ night: shiftNight(night, -1) })}
-              >
-                <uiIcons.previous size={ICON_SIZE.table} aria-hidden />
-              </button>
-              <strong aria-live="polite">
-                {night ? t('catalog.nightValue', { night: formatNightKey(night) }) : '–'}
-              </strong>
-              <button
-                type="button"
-                className={styles.iconButton}
-                aria-label={t('catalog.nextNight')}
-                title={t('catalog.nextNight')}
-                disabled={!night}
-                onClick={() => night && update({ night: shiftNight(night, 1) })}
-              >
-                <uiIcons.next size={ICON_SIZE.table} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSm}
-                onClick={() => update({ night: '' })}
-              >
-                {t('catalog.tonight')}
-              </button>
-            </div>
-          </>
-        ) : rigs.isSuccess && rigList.length === 0 ? (
-          <p className={styles.muted}>{t('catalog.noRig')}</p>
-        ) : null}
+      {/* Kontextleiste der Planung (gleich in der Sternkarte): Rig und Nacht sind Bezug, kein Filter. */}
+      <PlanningContext
+        rigs={rigOptions}
+        rigId={rigId}
+        onRigChange={(v) => update({ rig: v ?? '', night: '' })}
+        site={site}
+        siteGeo={siteGeo}
+        night={night}
+        today={nights.data?.currentNight ?? null}
+        onNightChange={(v) => update({ night: v })}
+        onTonight={() => update({ night: '' })}
+        empty={
+          rigs.isSuccess && rigList.length === 0 ? (
+            <p className={styles.muted}>{t('catalog.noRig')}</p>
+          ) : null
+        }
+      >
         {data?.night ? <NightInfo night={data.night} twilight={search.twilight} /> : null}
-      </section>
+      </PlanningContext>
+
+      {site && night ? (
+        <section className={styles.moonDark} aria-label={t('moonDark.title')}>
+          <SiteMoonDarkness site={site} night={night} current={nights.data?.currentNight ?? null} />
+        </section>
+      ) : null}
 
       <section className={styles.results} aria-labelledby={ids.results}>
         <Tabs
@@ -638,6 +612,45 @@ function Pager({
         <uiIcons.next size={ICON_SIZE.table} aria-hidden />
       </button>
     </div>
+  );
+}
+
+/** „Mond und Dunkelheit“ der gewählten Nacht; Nacht-Grenzen aus der Tabelle des Servers (NT-02). */
+function SiteMoonDarkness({
+  site,
+  night,
+  current,
+}: {
+  site: SiteView;
+  night: string;
+  current: string | null;
+}) {
+  const table = useQuery({
+    queryKey: ['site-nights', site.id, 'from', night],
+    queryFn: () => equipmentApi.nights(site.id, 2, night),
+    staleTime: 60 * 60 * 1000,
+  });
+  const data = useMemo(() => {
+    if (!table.data) return null;
+    return moonDarkness({
+      site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
+      night,
+      timeZoneTransitions: table.data.timeZoneTransitions.map((z) => ({
+        atUtc: Date.parse(z.atUtc) / 1000,
+        utcOffsetMinutes: z.utcOffsetMinutes,
+      })),
+      timeZone: site.timeZone,
+    });
+  }, [table.data, site, night]);
+  if (!data) return null;
+  return (
+    <MoonDarkness
+      data={data}
+      night={night}
+      timeZone={site.timeZone}
+      southern={site.latitudeDeg < 0}
+      nowUtc={night === current ? Math.floor(Date.now() / 1000) : undefined}
+    />
   );
 }
 

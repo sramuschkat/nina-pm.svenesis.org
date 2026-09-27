@@ -107,7 +107,7 @@ describe('Rechteanzeige in der Shell', () => {
     );
     expect(within(nav()).getByRole('link', { name: 'Planung' })).toHaveAttribute(
       'href',
-      '/planung/sternkarte',
+      '/planung/objekte',
     );
     expect(within(nav()).getByRole('link', { name: 'Wetter' })).toHaveAttribute('href', '/wetter');
     expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(

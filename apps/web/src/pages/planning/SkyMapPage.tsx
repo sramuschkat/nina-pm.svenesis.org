@@ -11,7 +11,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
-import { sky } from '@nina-pm/engine';
+import { daysFromKey, keyFromDays, sky } from '@nina-pm/engine';
 import {
   catalogApi,
   equipmentApi,
@@ -29,13 +29,15 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
-import { RigSelect, type RigOption } from '../../components/RigSelect';
+import type { RigOption } from '../../components/RigSelect';
+import { MoonDarkness, moonDarkness } from '../../components/moon-darkness';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../admin/shared';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { researchLinks } from '../projects/ProjectEditorPage';
 import { SeasonPanel } from '../projects/SeasonPanel';
+import { PlanningContext } from './PlanningContext';
 import { PlanningTabs } from './PlanningTabs';
 import {
   FOV_MAX,
@@ -520,37 +522,55 @@ export function SkyMapPage() {
     setPlaying(false);
     update({ t: time + sec });
   };
+  // Andere Nacht: dieselbe Uhrzeit an der entsprechenden Stelle der Nacht (auch über die Zeitumstellung).
+  const goToNight = (night: string) => {
+    const date = keyFromDays(daysFromKey(parts.date) + daysFromKey(night) - daysFromKey(nightKey));
+    const v = fromZoned(date, parts.time, zone);
+    setPlaying(false);
+    if (v !== null) update({ t: v });
+  };
+  const siteGeo = useMemo(
+    () => (site ? { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg } : null),
+    [site?.latitudeDeg, site?.longitudeDeg],
+  );
+  const moonData = useMemo(() => {
+    if (!site || !nights.data) return null;
+    try {
+      return moonDarkness({
+        site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
+        night: nightKey,
+        timeZoneTransitions: nights.data.timeZoneTransitions.map((z) => ({
+          atUtc: Date.parse(z.atUtc) / 1000,
+          utcOffsetMinutes: z.utcOffsetMinutes,
+        })),
+        timeZone: site.timeZone,
+      });
+    } catch {
+      return null;
+    }
+  }, [site, nights.data, nightKey]);
 
   return (
     <div className={styles.page}>
       <PageHeader title={t('skymap.title')} nav={<PlanningTabs />} />
 
-      {/* Karte zuerst (AP-26f): eine Werkzeugleiste über der Karte, die Karte füllt die übrige Höhe, die
-          Zeitsteuerung liegt unten in der Karte, Einstellungen in Seitenreitern rechts. */}
-      <div className={styles.topbar} role="toolbar" aria-label={t('skymap.title')}>
-        <div className={styles.searchBox}>
-          <CatalogSearch onPick={pickFromCatalog} compact />
-        </div>
-        <div className={styles.topRig}>
-          <RigSelect
-            rigs={rigOptions}
-            value={rig?.id ?? null}
-            onChange={(id) => update({ rig: id, rot: null })}
-            label={t('skymap.section.rig')}
-          />
-        </div>
-        <Field id="skymap-date" label={t('skymap.time.date')}>
-          <input
-            id="skymap-date"
-            type="date"
-            className={styles.input}
-            value={parts.date}
-            onChange={(e) => {
-              const v = fromZoned(e.target.value, parts.time, zone);
-              if (v !== null) update({ t: v });
-            }}
-          />
-        </Field>
+      {/* Kontextleiste der Planung wie im Objektbrowser (Wunsch Sven 27.09.2026): Rig, Nacht mit Mondkalender,
+          „Heute Nacht“; rechts Uhrzeit in Standortzeit und „Jetzt“. */}
+      <PlanningContext
+        rigs={rigOptions}
+        rigId={rig?.id ?? null}
+        onRigChange={(id) => update({ rig: id, rot: null })}
+        site={site}
+        siteGeo={siteGeo}
+        night={site ? nightKey : null}
+        today={nights.data?.currentNight ?? null}
+        onNightChange={goToNight}
+        onTonight={() => {
+          const today = nights.data?.currentNight;
+          if (today) goToNight(today);
+          else update({ t: null });
+        }}
+      >
         <Field id="skymap-clock" label={t('skymap.time.clock')}>
           <input
             id="skymap-clock"
@@ -576,6 +596,32 @@ export function SkyMapPage() {
         >
           {t('skymap.time.now')}
         </button>
+      </PlanningContext>
+
+      {/* „Mond und Dunkelheit“ direkt nach Rig und Nacht, wie im Objektbrowser (Wunsch Sven 27.09.2026). */}
+      {site && moonData ? (
+        <section className={styles.moonDark} aria-label={t('moonDark.title')}>
+          <MoonDarkness
+            data={moonData}
+            night={nightKey}
+            timeZone={site.timeZone}
+            southern={site.latitudeDeg < 0}
+            nowUtc={nightKey === nights.data?.currentNight ? clock : undefined}
+            cursorUtc={time}
+            onCursorChange={(at) => {
+              setPlaying(false);
+              update({ t: at });
+            }}
+          />
+        </section>
+      ) : null}
+
+      {/* Karte zuerst (AP-26f): eine Werkzeugleiste über der Karte, die Karte füllt die übrige Höhe, die
+          Zeitsteuerung liegt unten in der Karte, Einstellungen in Seitenreitern rechts. */}
+      <div className={styles.topbar} role="toolbar" aria-label={t('skymap.title')}>
+        <div className={styles.searchBox}>
+          <CatalogSearch onPick={pickFromCatalog} compact />
+        </div>
         <span className={styles.spacer} />
         {canCreate ? (
           <Link className={styles.buttonPrimary} to={newProjectHref}>

@@ -234,6 +234,21 @@ Kleines Vorschaubild in Listen und Tabellen (Projektliste, Meine Objekte, Wartes
 | Zugänglichkeit | Nur Zusatz fürs Auge: die große Fassung ist `aria-hidden`, der Alternativtext steht am kleinen Bild, die Zeile bleibt der Link. Kein zusätzlicher Tab-Halt |
 | Größen | Projektlisten: Spalte mit Priorität 1 (nie ausblenden), ohne Bild ein Platzhalter gleicher Größe |
 
+### 2.17 `MoonDarkness` (Mond und Dunkelheit, Planung)
+
+Kopf und Nachtstreifen einer Nacht in Objektbrowser (S-21) und Sternkarte (S-20), nach dem Beobachtungsplaner (`drawNightStrip`, legacy/…/observing-planner.js). Wunsch Sven vom 27.09.2026.
+
+| | |
+|---|---|
+| Eigenschaften | `data` (aus `moonDarkness()`: Fenster, Stichproben alle 5 min mit Sonnen- und Mondhöhe, Sonnenunter-/-aufgang, Grenzen bürgerlich/nautisch/astronomisch, Mondauf-/-untergang, höchster Mondstand, Phase um Mitternacht der Nacht) · `night` · `timeZone` (Standort) · `southern` (Mondsymbol spiegeln) · `nowUtc` (Kennzeichen „jetzt“, nur in der laufenden Nacht) · `cursorUtc` + `onCursorChange` (rote Linie „eingestellte Uhrzeit“, Klick stellt die Uhrzeit auf 5 min – Sternkarte) |
+| Darstellung | Kopf: `MoonIcon`, aufklappbarer Titel „Mond und Dunkelheit“, Zeile „Phase · n % beleuchtet · x Tage nach Neumond“. Streifen auf dem dunklen Diagrammrahmen (`chart-frame`, themen-unabhängig): Himmel nach Sonnenhöhe (`SKY_STOPS`), unter −18° `chart-sky-dark`, Mondhöhe als gelbe Linie (`chart-moon-line`) mit Fläche (Deckkraft 0,12 + 0,3 · Beleuchtung), Beschriftung des höchsten Stands, Maßlinie „x h y min astronomisch dunkel“, Kennzeichen oben in bis zu drei Zeilen (was nicht passt, entfällt): Sonne und Mond als gezeichnete Formen mit Pfeil (kein Emoji), bürg./naut./astr. gestrichelt, „jetzt“; Stundenzeilen „Standort“ und – nur wenn abweichend – „bei dir“. Legende und Fußnote darunter |
+| Zeiten | Standortzeit (NT-03); die Nacht und ihre Grenzen aus der Zeitzonentabelle des Servers, die Astronomie aus `@nina-pm/engine` |
+| Zugänglichkeit | Canvas mit `role="img"` und Zusammenfassung (Nacht, Dunkelheit, Mond, Zone); Titel als Knopf mit `aria-expanded` |
+
+### 2.18 `MoonIcon` (Mondsymbol)
+
+SVG, dunkle Scheibe (`moon-dark`) und beleuchteter Teil (`moon-lit`) aus Halbkreis und Terminator-Ellipse (`rx = r·|cos φ|`, φ = Phasenwinkel); zunehmend rechts beleuchtet, auf der Südhalbkugel gespiegelt. Rein dekorativ (`aria-hidden`). Verwendet von `MoonDarkness` und dem Mondkalender der Datumswahl (Planung, `pages/planning/NightPicker`).
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
@@ -247,6 +262,7 @@ Kleines Vorschaubild in Listen und Tabellen (Projektliste, Meine Objekte, Wartes
 | Ziehen (Rangfolge S-32, Priorität S-30, AP-12b) | `grip-vertical` |
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
 | Saison eines Objekts (Objektbrowser, AP-26d) | `calendar-range` |
+| Datumswahl der Nacht mit Mondkalender (Planung) | `calendar-days` |
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
 | Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
 | Filter aufklappen · Filter entfernen (`FilterBar`, AP-26c) | `plus` + `chevron-down` · `x` |

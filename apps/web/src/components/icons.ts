@@ -5,6 +5,7 @@
 import {
   ArchiveRestore,
   Bell,
+  CalendarDays,
   CalendarRange,
   ChartLine,
   Check,
@@ -136,6 +137,8 @@ export const uiIcons = {
   /** Vorige/nächste Nacht (Nachtdiagramm im Projekt-Editor). */
   previous: ChevronLeft,
   next: ChevronRight,
+  /** Datumswahl der Nacht mit Mondkalender (Planung). */
+  calendar: CalendarDays,
   /** Griff zum Ziehen (Rangfolge S-32, Priorität S-30). */
   drag: GripVertical,
   /** Sortierbarer Spaltenkopf ohne aktive Sortierung (DataTable, AP-26a). */

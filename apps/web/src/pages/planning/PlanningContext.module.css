@@ -1,0 +1,54 @@
+/* Kontextleiste der Planung (Objektbrowser und Sternkarte gleich, Wunsch Sven 27.09.2026). */
+.context {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  min-width: 0;
+  background: var(--npm-white);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  box-shadow: var(--npm-shadow);
+}
+.label {
+  composes: label from '../admin/admin.module.css';
+}
+.rigField {
+  flex: 0 1 20rem;
+  min-width: 0;
+}
+.divider {
+  align-self: stretch;
+  width: 1px;
+  margin: var(--npm-space-1) 0;
+  background: var(--npm-border);
+}
+.nightNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-variant-numeric: tabular-nums;
+}
+.extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  margin-left: auto;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--npm-text-light);
+}
+.buttonSm {
+  composes: button from '../admin/admin.module.css';
+  min-height: 28px;
+  padding: 0 var(--npm-space-2);
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-small);
+}

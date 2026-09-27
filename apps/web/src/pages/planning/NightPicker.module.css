@@ -1,0 +1,183 @@
+/* Datumswahl der Nacht mit Mondkalender (Planung). */
+/* Datumswahl und Mondkalender */
+.picker {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.pickerLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.dateRow {
+  display: flex;
+  align-items: stretch;
+}
+.dateInput {
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius) 0 0 var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+}
+.calToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border: 1px solid var(--npm-border-strong);
+  border-left: 0;
+  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+  background: var(--npm-white);
+  color: var(--npm-link);
+  font: inherit;
+  cursor: pointer;
+}
+.calToggle[aria-expanded='true'] {
+  background: var(--npm-selected-bg);
+}
+.popover {
+  position: absolute;
+  top: calc(100% + var(--npm-space-1));
+  left: 0;
+  z-index: 30;
+  width: min(34rem, calc(100vw - 2rem));
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+}
+.calHead {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  margin-bottom: var(--npm-space-2);
+}
+.calTitle {
+  margin: 0 auto 0 0;
+  font-size: var(--npm-font-h3, 1rem);
+  font-weight: 600;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--npm-space-1);
+}
+.weekday {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+  text-align: center;
+}
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--npm-space-1) 2px;
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.day:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.weekend {
+  background: var(--npm-neutral-bg);
+}
+.quarterDay {
+  border-color: var(--npm-accent);
+}
+.selected {
+  border-color: var(--npm-accent);
+  background: var(--npm-selected-bg);
+}
+.today {
+  box-shadow: inset 0 0 0 2px var(--npm-today);
+}
+.dayNum {
+  font-weight: 600;
+}
+.star {
+  margin-left: 2px;
+  color: var(--npm-star);
+  vertical-align: 1px;
+}
+.bar {
+  width: 80%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--npm-neutral-bg);
+  overflow: hidden;
+}
+.barFill {
+  display: block;
+  height: 100%;
+  background: var(--npm-success);
+}
+.quarterLabel {
+  color: var(--npm-link);
+  font-size: var(--npm-font-label);
+  line-height: 1.15;
+  text-align: center;
+}
+.calNote {
+  margin: var(--npm-space-2) 0 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+
+/* Knöpfe im Stil der Seiten (Stilsystem AP-26d), hier eigenständig wie in WeatherChart. */
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--npm-radius);
+  background: transparent;
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.iconButton:hover:not(:disabled) {
+  background: var(--npm-neutral-bg);
+}
+.iconButton:focus-visible,
+.buttonSm:focus-visible,
+.calToggle:focus-visible,
+.dateInput:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.buttonSm {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.buttonSm:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

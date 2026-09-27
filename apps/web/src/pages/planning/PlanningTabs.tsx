@@ -1,4 +1,4 @@
-/** Planung (FK 14.2): Reiter Sternkarte (S-20) und Objektbrowser (S-21). */
+/** Planung (FK 14.2): Reiter Objektbrowser (S-21) und Sternkarte (S-20) – Objektbrowser zuerst (Wunsch Sven 27.09.2026). */
 import { useTranslation } from 'react-i18next';
 import { SectionTabs } from '../admin/shared';
 import { CATALOG_PATH } from '../catalog/model';
@@ -10,8 +10,8 @@ export function PlanningTabs() {
     <SectionTabs
       label={t('skymap.tabsLabel')}
       tabs={[
-        { to: SKYMAP_PATH, label: t('skymap.tab.skymap') },
         { to: CATALOG_PATH, label: t('skymap.tab.objects') },
+        { to: SKYMAP_PATH, label: t('skymap.tab.skymap') },
       ]}
     />
   );

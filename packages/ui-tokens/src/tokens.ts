@@ -52,6 +52,9 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     skeleton: '#e9ecef',
     /** Aufwand-Kennzeichen „Transit“ (FA-PRJ-23: violett). */
     violet: '#6a3fb5',
+    /** Mondkalender: heutige Nacht (Rahmen) und die besten Nächte (Stern). */
+    today: '#e67e22',
+    star: '#b9770e',
   },
   dark: {
     primary: '#0b1621',
@@ -87,6 +90,8 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     muted: '#8b98a5',
     skeleton: '#243647',
     violet: '#c3a6f5',
+    today: '#f39c12',
+    star: '#f5b041',
   },
 };
 
@@ -164,6 +169,18 @@ export const CHART: Readonly<Record<string, string>> = {
   'chart-meridian': '#c9a3ff',
   'chart-best': '#8fb3ff',
   'chart-moon-label': '#f5c26b',
+  /** „Mond und Dunkelheit“ (Planung): Mondhöhe als gelbe Linie wie im Beobachtungsplaner, Kennzeichen über dem
+   * Streifen auf dem dunklen Rahmen (aufgehellt gegenüber der Vorlage, die auf hellem Grund zeichnet). */
+  'chart-moon-line': '#f5d76e',
+  'chart-mark-sun': '#f0a93b',
+  'chart-mark-civil': '#9cc1ee',
+  'chart-mark-nautical': '#7aa3d6',
+  'chart-mark-astro': '#6b91c4',
+  'chart-mark-moon': '#e2c65c',
+  'chart-dim-label': '#e4e9ef',
+  /** Mondsymbol (Kalender, Kopf „Mond und Dunkelheit“): beleuchteter und dunkler Teil, themen-unabhängig. */
+  'moon-lit': '#ecebe2',
+  'moon-dark': '#2a3038',
   'chart-curve': '#eef2f6',
   'chart-grid': 'rgba(255, 255, 255, 0.16)',
   'chart-label': 'rgba(228, 233, 239, 0.8)',

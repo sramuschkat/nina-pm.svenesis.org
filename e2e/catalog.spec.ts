@@ -123,3 +123,29 @@ for (const width of [768, 2400]) {
     expect(await overflow(page), `Galerie @ ${String(width)}`).toBeLessThanOrEqual(0);
   });
 }
+
+test('Planung öffnet den Objektbrowser; Mond und Dunkelheit, Datumswahl mit Mondkalender (768 px)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await testLogin(page, 'owner');
+  await page.goto('/planung');
+  await expect(page).toHaveURL(/\/planung\/objekte/);
+  const tabs = page.getByRole('navigation', { name: /Planung/ }).getByRole('link');
+  await expect(tabs.first()).toHaveText('Objektbrowser');
+  await expect(page.getByRole('button', { name: 'Mond und Dunkelheit' })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ })).toBeVisible();
+  const date = page.getByLabel('Nacht ab dem Abend des');
+  const before = await date.inputValue();
+  await page.getByRole('button', { name: 'mit Mondphasen' }).click();
+  const dialog = page.getByRole('dialog', { name: /Mondkalender/ });
+  await expect(
+    dialog.getByRole('button', { name: /Nacht \d\d\.\/\d\d\.\d\d\.:/ }).first(),
+  ).toBeVisible();
+  expect(await overflow(page), 'Kalender @ 768').toBeLessThanOrEqual(0);
+  await expectNoSerious(page, 'Mondkalender');
+  await dialog.getByRole('button', { name: /Nacht 15\./ }).click();
+  await expect(dialog).toBeHidden();
+  await expect(date).not.toHaveValue(before);
+  expect(await date.inputValue()).toMatch(/-15$/);
+});
