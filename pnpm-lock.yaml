@@ -486,6 +486,9 @@ importers:
       '@nina-pm/infra':
         specifier: workspace:*
         version: link:../../infra
+      '@nina-pm/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@nina-pm/smoke':
         specifier: workspace:*
         version: link:../smoke

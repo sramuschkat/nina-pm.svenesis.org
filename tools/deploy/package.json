@@ -13,6 +13,7 @@
     "@nina-pm/db": "workspace:*",
     "@nina-pm/fake-plugin": "workspace:*",
     "@nina-pm/infra": "workspace:*",
+    "@nina-pm/shared": "workspace:*",
     "@nina-pm/smoke": "workspace:*",
     "@nina-pm/spike-dsql": "workspace:*"
   }

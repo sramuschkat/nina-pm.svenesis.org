@@ -33,6 +33,7 @@
     "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts",
     "demo:export": "tsx tools/deploy/src/demo-export.ts",
     "demo:evaluation": "tsx tools/deploy/src/demo-evaluation.ts",
+    "s3:retention-backfill": "tsx tools/deploy/src/retention-backfill.ts",
     "catalog:build": "tsx tools/catalog-import/src/cli.ts",
     "catalog:upload": "tsx tools/catalog-import/src/upload.ts"
   },
