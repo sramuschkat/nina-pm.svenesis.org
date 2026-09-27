@@ -179,8 +179,9 @@ describe('S-40 Nacht-Simulator', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen' }));
     expect(screen.getByText('Noch keine NINA-Instanz verbunden.')).toBeVisible();
     await expectNoSeriousA11y();
-    // Worker-Rechnung (bis 5 s) plus axe: unter Volllast des Gesamtlaufs mehr als die 5 s Standard.
-  }, 20_000);
+    // Worker-Rechnung (bis 5 s) plus zwei axe-Läufe über den ganzen Plan: lokal ≈ 2 s, im CI-Shard unter
+    // Volllast bis > 20 s (Timeouts am 27.09.2026 in drei Läufen) – daher 60 s.
+  }, 60_000);
 
   it('Nachtwechsel lädt die Nacht-Tabelle ab der gewählten Nacht; Speichern schickt den Plan', async () => {
     renderPage();
