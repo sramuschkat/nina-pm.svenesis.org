@@ -10,6 +10,8 @@ import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import {
   ProblemError,
   UPLOAD_LIMITS,
+  UPLOAD_RETENTION_DAYS,
+  retentionTaggingXml,
   UPLOAD_POST_TTL_SECONDS,
   UPLOAD_TICKET_TTL_SECONDS,
   type UploadPurpose,
@@ -114,6 +116,9 @@ export async function createUploadTicket(
   }
   const key = uploadObjectKey(purpose, tenantId, objectId, deps.uuid(), options.fileName);
   const now = deps.now();
+  // Befristete Zwecke tragen das Aufbewahrungs-Tag; `eq $tagging` verhindert, dass der Client es weglässt.
+  const retention = UPLOAD_RETENTION_DAYS[purpose];
+  const tagging = retention === null ? null : retentionTaggingXml(retention);
   const post = await createPresignedPost(deps.s3, {
     Bucket: deps.bucket,
     Key: key,
@@ -121,8 +126,9 @@ export async function createUploadTicket(
       ['content-length-range', 1, sizeMax],
       ['eq', '$Content-Type', contentType],
       ['eq', '$key', key],
+      ...(tagging === null ? [] : [['eq', '$tagging', tagging] as ['eq', string, string]]),
     ],
-    Fields: { 'Content-Type': contentType },
+    Fields: { 'Content-Type': contentType, ...(tagging === null ? {} : { tagging }) },
     Expires: UPLOAD_POST_TTL_SECONDS,
   });
   const payload: TicketPayload = {

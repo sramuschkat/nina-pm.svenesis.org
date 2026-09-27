@@ -228,6 +228,28 @@ describe('Assertion 10: Löschschutz', () => {
     expect(bucket?.Properties.BucketName).toBe(config.buckets.data);
     expect(bucket?.DeletionPolicy).toBe('Retain');
   });
+
+  it('Daten-Bucket: Aufbewahrung über Tags, alte Versionen 30 Tage, abgebrochene Uploads 1 Tag (TK 12)', () => {
+    const [[, bucket] = []] = resources(data, 'AWS::S3::Bucket');
+    const rules = (
+      bucket?.Properties.LifecycleConfiguration as { Rules: Record<string, unknown>[] } | undefined
+    )?.Rules;
+    expect(rules).toContainEqual({
+      Id: 'noncurrent-versions-and-uploads',
+      Status: 'Enabled',
+      NoncurrentVersionExpiration: { NoncurrentDays: 30 },
+      ExpiredObjectDeleteMarker: true,
+      AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+    });
+    for (const days of [2, 7, 400])
+      expect(rules).toContainEqual({
+        Id: `retention-${String(days)}d`,
+        Status: 'Enabled',
+        ExpirationInDays: days,
+        TagFilters: [{ Key: 'npm-retention', Value: `${String(days)}d` }],
+      });
+    expect(rules).toHaveLength(4);
+  });
 });
 
 describe('Backup-Plan (iam.md §11)', () => {

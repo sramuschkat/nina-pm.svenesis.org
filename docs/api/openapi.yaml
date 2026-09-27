@@ -93,6 +93,7 @@ components:
             - discord.webhook_invalid
             - discord.test_failed
             - job.not_found
+            - request.too_large
             - file.too_large
             - file.type_not_allowed
             - nina.token_invalid
