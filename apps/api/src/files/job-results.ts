@@ -4,7 +4,7 @@
  * (`dataBucket.grantRead(api, 'tenant/*')`, iam.md) – ohne CORS und ohne presigned URL im Browser.
  */
 import { GetObjectCommand, NoSuchKey, PutObjectCommand, type S3Client } from '@aws-sdk/client-s3';
-import type { JobResult } from '@nina-pm/shared';
+import { DATA_RETENTION_DAYS, retentionTagging, type JobResult } from '@nina-pm/shared';
 import { jobResultKey } from '../worker/multi-sim';
 
 export interface JobResultStore {
@@ -38,6 +38,8 @@ export function s3JobResultStore(s3: S3Client, bucket: string): JobResultStore {
           Key: key,
           Body: JSON.stringify(result),
           ContentType: 'application/json',
+          // Aufbewahrung 2 Tage über die Lebenszyklusregel des Buckets (TK 12).
+          Tagging: retentionTagging(DATA_RETENTION_DAYS.jobs),
         }),
       );
       return key;

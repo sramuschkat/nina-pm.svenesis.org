@@ -3,6 +3,13 @@ import * as backup from 'aws-cdk-lib/aws-backup';
 import * as dsql from 'aws-cdk-lib/aws-dsql';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import {
+  DATA_ABORT_MULTIPART_DAYS,
+  DATA_NONCURRENT_DAYS,
+  RETENTION_DAY_VALUES,
+  RETENTION_TAG,
+  retentionValue,
+} from '@nina-pm/shared';
 import type { Construct } from 'constructs';
 import { config } from '../config';
 
@@ -31,6 +38,22 @@ export class DataStack extends Stack {
       enforceSSL: true,
       versioned: true,
       removalPolicy: RemovalPolicy.RETAIN,
+      // Aufbewahrung (TK 12, FA-MAN-03): befristete Objekte tragen das Tag `npm-retention` (ein Präfix je
+      // Kategorie geht nicht, der Schlüssel beginnt mit der Mandanten-ID); alte Versionen und Löschmarker
+      // verschwinden nach 30 Tagen, abgebrochene Uploads nach einem Tag.
+      lifecycleRules: [
+        {
+          id: 'noncurrent-versions-and-uploads',
+          noncurrentVersionExpiration: Duration.days(DATA_NONCURRENT_DAYS),
+          expiredObjectDeleteMarker: true,
+          abortIncompleteMultipartUploadAfter: Duration.days(DATA_ABORT_MULTIPART_DAYS),
+        },
+        ...RETENTION_DAY_VALUES.map((days) => ({
+          id: `retention-${retentionValue(days)}`,
+          tagFilters: { [RETENTION_TAG]: retentionValue(days) },
+          expiration: Duration.days(days),
+        })),
+      ],
     });
 
     if (props.importClusterId) {

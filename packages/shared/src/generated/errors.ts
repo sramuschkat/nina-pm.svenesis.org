@@ -39,6 +39,7 @@ export const ERRORS = {
   "discord.webhook_invalid": { http: 422, i18nKey: "errors.discord.webhookInvalid", titleDe: "Webhook-URL ungültig", titleEn: "Webhook URL invalid" },
   "discord.test_failed": { http: 502, i18nKey: "errors.discord.testFailed", titleDe: "Testnachricht fehlgeschlagen", titleEn: "Test message failed" },
   "job.not_found": { http: 404, i18nKey: "errors.job.notFound", titleDe: "Aufgabe nicht gefunden", titleEn: "Task not found" },
+  "request.too_large": { http: 413, i18nKey: "errors.request.tooLarge", titleDe: "Anfrage zu groß", titleEn: "Request too large" },
   "file.too_large": { http: 413, i18nKey: "errors.file.tooLarge", titleDe: "Datei zu groß", titleEn: "File too large" },
   "file.type_not_allowed": { http: 415, i18nKey: "errors.file.typeNotAllowed", titleDe: "Dateityp nicht erlaubt", titleEn: "File type not allowed" },
   "nina.token_invalid": { http: 401, i18nKey: "errors.nina.tokenInvalid", titleDe: "Token ungültig oder widerrufen", titleEn: "Token invalid or revoked" },

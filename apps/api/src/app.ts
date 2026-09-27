@@ -1,5 +1,11 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { COOKIE_NAMES, isProblemError, toFieldErrors } from '@nina-pm/shared';
+import { bodyLimit } from 'hono/body-limit';
+import {
+  COOKIE_NAMES,
+  isProblemError,
+  REQUEST_BODY_MAX_BYTES,
+  toFieldErrors,
+} from '@nina-pm/shared';
 import { resolveSessionState } from './auth/session';
 import { session, type ResolveSession } from './lib/auth';
 import { ninaSession } from './nina/auth';
@@ -105,6 +111,14 @@ export function createApp(deps: AppDeps) {
   app.use('*', requestIdMiddleware());
   app.use('*', originVerify(deps.originVerifyValue));
   app.use('*', requestLog());
+  // Body ≤ 1 MB (TK 15, „Manipulierte Eingaben“) – vor Sitzung und Parsen; größere Daten nur per Upload.
+  app.use(
+    '*',
+    bodyLimit({
+      maxSize: REQUEST_BODY_MAX_BYTES,
+      onError: (c) => problemResponse('request.too_large', { requestId: c.get('requestId') }),
+    }),
+  );
   app.use('*', csrf());
   app.use(
     '*',

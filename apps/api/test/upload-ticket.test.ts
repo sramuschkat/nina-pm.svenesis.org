@@ -1,5 +1,6 @@
 /** Upload-Tickets (TK 12, SEC-23/56/57): presigned POST mit `eq $key` und `content-length-range`. */
 import { S3Client } from '@aws-sdk/client-s3';
+import { retentionTaggingXml } from '@nina-pm/shared';
 import { describe, expect, it } from 'vitest';
 import {
   createUploadTicket,
@@ -50,6 +51,41 @@ describe('createUploadTicket', () => {
       Date.parse(t.expiresAt) -
         Date.parse((policy as unknown as { expiration: string }).expiration),
     ).toBe(0);
+  });
+
+  it('Aufbewahrung (TK 12): befristete Zwecke tragen das Tag, der Client kann es nicht weglassen', async () => {
+    const plan = await createUploadTicket(deps, 'plan_log', TENANT, PLAN_A, 1000, [
+      'application/gzip',
+    ]);
+    const xml = retentionTaggingXml(400);
+    expect(plan.fields.tagging).toBe(xml);
+    const conditions = (
+      JSON.parse(Buffer.from(policyOf(plan.fields), 'base64').toString('utf8')) as {
+        conditions: unknown[];
+      }
+    ).conditions;
+    expect(conditions).toContainEqual(['eq', '$tagging', xml]);
+    const base = { bucket: BUCKET, size: 10, now: NOW };
+    expect(evaluatePostPolicy(policyOf(plan.fields), { ...base, form: plan.fields }).ok).toBe(true);
+    const withoutTag = Object.fromEntries(
+      Object.entries(plan.fields).filter(([k]) => k !== 'tagging'),
+    );
+    expect(evaluatePostPolicy(policyOf(plan.fields), { ...base, form: withoutTag }).ok).toBe(false);
+    expect(
+      evaluatePostPolicy(policyOf(plan.fields), {
+        ...base,
+        form: { ...plan.fields, tagging: retentionTaggingXml(9999) },
+      }).ok,
+    ).toBe(false);
+    const imp = await createUploadTicket(deps, 'tenant_import', TENANT, PLAN_B, 1000, [
+      'application/json',
+    ]);
+    expect(imp.fields.tagging).toBe(retentionTaggingXml(7));
+    // Transit-Ergebnisse bleiben unbefristet: kein Tag.
+    const res = await createUploadTicket(deps, 'transit_result', TENANT, PLAN_B, 1000, [
+      'text/csv',
+    ]);
+    expect(res.fields.tagging).toBeUndefined();
   });
 
   it('SEC-56: Ticket für Schlüssel A lässt sich nicht für Schlüssel B im selben Präfix benutzen', async () => {
