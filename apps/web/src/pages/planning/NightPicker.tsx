@@ -1,11 +1,11 @@
 /**
- * Datumswahl der Nacht mit Mondkalender (Planung, Vorbild „Nacht ab dem Abend des … mit Mondphasen“ und
- * `renderMoonCal` im Beobachtungsplaner): ← Datum [mit Mondphasen] →. Der Kalender zeigt je Nacht Mondsymbol und
- * Beleuchtung um Mitternacht, einen Balken der mondfreien astronomischen Dunkelheit (voll = längste des Monats,
- * mindestens 8 h), Sterne für die drei besten Nächte, getönt die Nächte ab Freitag und Samstag, Viertel mit Rahmen
- * und Namen, orange umrandet die heutige Nacht (aus der Nacht-Tabelle des Servers, nie aus dem Browserdatum) und
- * unten die Viertel mit Uhrzeit in Standortzeit (in Klammern die Gerätezeit, wenn abweichend). Das Datum ist der
- * Nacht-Schlüssel (Abend), ohne `Date`-Rechnung.
+ * Datumswahl der Nacht mit Mondkalender (Planung, Vorbild `renderMoonCal` im Beobachtungsplaner): ← [Datum] →.
+ * Das Datum ist ein Knopf, der nur den eigenen Mondkalender öffnet – kein Kalender des Browsers (Wunsch Sven
+ * 27.09.2026). Der Kalender zeigt je Nacht Mondsymbol und Beleuchtung um Mitternacht, einen Balken der mondfreien
+ * astronomischen Dunkelheit (voll = längste des Monats, mindestens 8 h) und die Viertel mit Namen. Hervorgehoben
+ * sind nur die gewählte Nacht (gefüllt), die heutige Nacht (orange Rahmen, aus der Nacht-Tabelle des Servers, nie
+ * aus dem Browserdatum) und die drei besten Nächte (Stern); unten die Viertel mit Uhrzeit in Standortzeit (in
+ * Klammern die Gerätezeit, wenn abweichend). Das Datum ist der Nacht-Schlüssel (Abend), ohne `Date`-Rechnung.
  */
 import { daysFromKey, keyFromDays, type TimeZoneTransition } from '@nina-pm/engine';
 import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
@@ -17,8 +17,6 @@ import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { MoonIcon, calendarMonth, type Geo } from '../../components/moon-darkness';
 import { iso } from '../../components/night-chart/model';
 import styles from './NightPicker.module.css';
-
-const NIGHT_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 function deviceZone(): string | undefined {
   try {
@@ -52,7 +50,7 @@ export function NightPicker({
   nextLabel: string;
 }) {
   const { t, i18n } = useTranslation();
-  const ids = { date: useId(), dialog: useId() };
+  const ids = { label: useId(), value: useId(), dialog: useId() };
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => night.slice(0, 7));
   const box = useRef<HTMLDivElement>(null);
@@ -122,6 +120,15 @@ export function NightPicker({
       timeZone,
     }).format(sec * 1000);
   const n = (x: number, d = 0) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
+  // Gewählte Nacht als Datum des Abends (nur Anzeige; der Schlüssel ist ein Kalendertag, daher UTC).
+  const [ny, nm, nd] = night.split('-').map(Number) as [number, number, number];
+  const nightLabel = new Intl.DateTimeFormat(lang, {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(Date.UTC(ny, nm - 1, nd));
 
   return (
     <div className={styles.picker} ref={box}>
@@ -134,30 +141,24 @@ export function NightPicker({
       >
         <uiIcons.previous size={ICON_SIZE.table} aria-hidden />
       </button>
-      <label className={styles.pickerLabel} htmlFor={ids.date}>
-        {t('moonCal.nightFrom')}
-        <span className={styles.dateRow}>
-          <input
-            id={ids.date}
-            type="date"
-            className={styles.dateInput}
-            value={night}
-            onChange={(e) => {
-              if (NIGHT_KEY.test(e.target.value)) onChange(e.target.value);
-            }}
-          />
-          <button
-            type="button"
-            className={styles.calToggle}
-            aria-expanded={open}
-            aria-controls={ids.dialog}
-            onClick={() => setOpen((o) => !o)}
-          >
-            <uiIcons.calendar size={ICON_SIZE.table} aria-hidden />
-            {t('moonCal.withPhases')}
-          </button>
-        </span>
-      </label>
+      <div className={styles.pickerLabel}>
+        <span id={ids.label}>{t('moonCal.nightFrom')}</span>
+        <button
+          type="button"
+          className={styles.calToggle}
+          aria-labelledby={`${ids.label} ${ids.value}`}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={ids.dialog}
+          title={t('moonCal.open')}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <uiIcons.calendar size={ICON_SIZE.table} aria-hidden />
+          <span id={ids.value} className={styles.dateValue}>
+            {nightLabel}
+          </span>
+        </button>
+      </div>
       <button
         type="button"
         className={styles.iconButton}
@@ -223,11 +224,8 @@ export function NightPicker({
                   <span key={`pad-${String(i)}`} aria-hidden />
                 ))}
                 {cal.days.map((d) => {
-                  const weekday = (cal.firstWeekday + d.day - 1) % 7;
                   const cls = [
                     styles.day,
-                    weekday === 4 || weekday === 5 ? styles.weekend : '',
-                    d.quarter ? styles.quarterDay : '',
                     d.night === night ? styles.selected : '',
                     d.night === today ? styles.today : '',
                   ].join(' ');

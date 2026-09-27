@@ -31,7 +31,7 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
-import { useWikipedia, WikipediaLink } from './wikipedia';
+import { WikipediaLink } from './wikipedia';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
@@ -53,6 +53,7 @@ import {
   aliasesOf,
   CATALOG_PATH,
   DEFAULT_MIN_ALT,
+  effectiveSort,
   filtersFromParams,
   fovArcmin,
   NATURAL_DIR,
@@ -139,11 +140,9 @@ export function ObjectBrowserPage() {
     return () => window.clearTimeout(id);
   });
 
-  // Beste der Nacht braucht Standort und Bildfeld des Rigs (FA-FRM-13).
-  const best =
-    filters.tab === 'best'
-      ? { hint: site && fov !== null ? t('catalog.bestHint') : t('catalog.bestNeedsRig') }
-      : null;
+  // Bewertung „Beste der Nacht“ braucht Standort und Bildfeld des Rigs (FA-FRM-13).
+  const rated = site !== null && fov !== null;
+  const sort = effectiveSort(filters.sort, { withNight: site !== null, rated });
   const waitForNight = site !== null && night === null && !nights.isError;
   const search = searchFromFilters(filters, {
     siteId: site?.id ?? null,
@@ -225,271 +224,232 @@ export function ObjectBrowserPage() {
       ) : null}
 
       <section className={styles.results} aria-labelledby={ids.results}>
-        <Tabs
-          label={t('catalog.tabsLabel')}
-          tabs={(['best', 'all'] as const).map((tab) => ({
-            key: tab,
-            label: t(`catalog.tab.${tab}`),
-          }))}
-          value={filters.tab}
-          onChange={(tab) => update({ tab })}
-          panelClassName={styles.tabPanel}
-          toolbar={
-            <div className={styles.resultHead}>
-              <h2 id={ids.results} className={styles.resultTitle}>
-                {data ? t('catalog.results', { count: data.total }) : t('catalog.title')}
-              </h2>
-              {data && data.total > 0 ? (
-                <Pager page={filters.page} pages={pages} onPage={(page) => update({ page })} />
-              ) : null}
-            </div>
-          }
-          panels={{
-            [filters.tab]: (
-              <>
-                <div className={styles.filterRow}>
-                  {best ? <p className={styles.muted}>{best.hint}</p> : null}
-                  <FilterBar
-                    label={t('catalog.filters')}
-                    search={{
-                      value: text,
-                      onChange: setText,
-                      label: t('catalog.search'),
-                      placeholder: t('catalog.searchPlaceholder'),
-                      maxLength: 80,
-                      onSubmit: () => update({ q: text }),
-                    }}
-                    inline={
-                      <>
-                        {filters.tab === 'best' ? (
-                          <Select
-                            compact
-                            id="catalog-family"
-                            label={t('catalog.family')}
-                            value={filters.family}
-                            onChange={(v) => update({ family: v as BrowserFilters['family'] })}
-                            options={[
-                              ['', t('catalog.allFamilies')],
-                              ...(['galaxies', 'nebulae', 'clusters'] as const).map(
-                                (f) => [f, t(`catalog.families.${f}`)] as const,
-                              ),
-                            ]}
-                          />
-                        ) : (
-                          <Select
-                            compact
-                            id="catalog-group"
-                            label={t('catalog.group')}
-                            value={filters.group}
-                            onChange={(v) => update({ group: v })}
-                            options={[
-                              ['', t('catalog.allGroups')],
-                              ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
-                            ]}
-                          />
-                        )}
-                        <Select
-                          compact
-                          id="catalog-catalog"
-                          label={t('catalog.catalog')}
-                          value={filters.catalog}
-                          onChange={(v) => update({ catalog: v })}
-                          options={[
-                            ['', t('catalog.allCatalogs')],
-                            ...dsoCatalogPrefixes.map((c) => [c, c] as const),
-                          ]}
-                        />
-                      </>
-                    }
-                    chips={chips}
-                    panelLabel={t('catalog.moreFilters')}
-                    panel={
-                      <>
-                        <Select
-                          id="catalog-constellation"
-                          label={t('catalog.constellation')}
-                          value={filters.constellation}
-                          onChange={(v) => update({ constellation: v })}
-                          options={[
-                            ['', t('catalog.allConstellations')],
-                            ...[...IAU_CONSTELLATIONS]
-                              .sort((a, b) =>
-                                IAU_CONSTELLATION_NAMES[a].localeCompare(
-                                  IAU_CONSTELLATION_NAMES[b],
-                                ),
-                              )
-                              .map((c) => [c, `${IAU_CONSTELLATION_NAMES[c]} (${c})`] as const),
-                          ]}
-                        />
-                        <NumberInput
-                          id="catalog-mag"
-                          label={t('catalog.magMax')}
-                          unit="mag"
-                          value={filters.magMax}
-                          onChange={(v) => update({ magMax: v })}
-                        />
-                        <NumberInput
-                          id="catalog-sb"
-                          label={t('catalog.surfBrMax')}
-                          unit="mag/″²"
-                          value={filters.surfBrMax}
-                          onChange={(v) => update({ surfBrMax: v })}
-                        />
-                        <NumberInput
-                          id="catalog-size-min"
-                          label={t('catalog.sizeMin')}
-                          unit="′"
-                          value={filters.sizeMin}
-                          onChange={(v) => update({ sizeMin: v })}
-                        />
-                        <NumberInput
-                          id="catalog-size-max"
-                          label={t('catalog.sizeMax')}
-                          unit="′"
-                          value={filters.sizeMax}
-                          onChange={(v) => update({ sizeMax: v })}
-                        />
-                        {site ? (
-                          <>
-                            <NumberInput
-                              id="catalog-min-alt"
-                              label={t('catalog.minAlt')}
-                              unit="°"
-                              value={filters.minAlt}
-                              placeholder={String(DEFAULT_MIN_ALT)}
-                              onChange={(v) => update({ minAlt: v })}
-                            />
-                            <NumberInput
-                              id="catalog-min-hours"
-                              label={t('catalog.minUsableHours')}
-                              unit="h"
-                              value={filters.minHours}
-                              onChange={(v) => update({ minHours: v })}
-                            />
-                          </>
-                        ) : null}
-                        <FilterCheck
-                          label={fitsLabel}
-                          checked={filters.fits}
-                          disabled={fov === null}
-                          onChange={(on) => update({ fits: on })}
-                        />
-                      </>
-                    }
-                    onReset={() => {
-                      setText('');
-                      setParams(
-                        paramsFromFilters({
-                          ...filtersFromParams(new URLSearchParams()),
-                          rig: rigId ?? '',
-                          tab: filters.tab,
-                          view: filters.view,
-                        }),
-                        { replace: true },
-                      );
-                    }}
-                    view={
-                      <>
-                        {filters.tab === 'all' && filters.view === 'gallery' ? (
-                          <Select
-                            compact
-                            id="catalog-sort"
-                            label={t('catalog.sort')}
-                            value={filters.sort}
-                            onChange={(v) => update({ sort: v as BrowserFilters['sort'], dir: '' })}
-                            options={SORTS.filter(
-                              (s) => site !== null || !NIGHT_SORTS.includes(s),
-                            ).map((s) => [s, t(`catalog.sortBy.${s}`)] as const)}
-                          />
-                        ) : null}
-                        <fieldset className={styles.viewToggle}>
-                          <legend className={styles.srOnly}>{t('catalog.view')}</legend>
-                          {(['list', 'gallery'] as const).map((v) => (
-                            <label key={v} className={styles.check}>
-                              <input
-                                type="radio"
-                                name="catalog-view"
-                                checked={filters.view === v}
-                                onChange={() => update({ view: v, page: filters.page })}
-                              />
-                              {v === 'list' ? t('catalog.viewList') : t('catalog.viewGallery')}
-                            </label>
-                          ))}
-                        </fieldset>
-                      </>
-                    }
+        <div className={styles.resultHead}>
+          <h2 id={ids.results} className={styles.resultTitle}>
+            {data ? t('catalog.results', { count: data.total }) : t('catalog.title')}
+          </h2>
+          {data && data.total > 0 ? (
+            <Pager page={filters.page} pages={pages} onPage={(page) => update({ page })} />
+          ) : null}
+        </div>
+        <div className={styles.tabPanel}>
+          <div className={styles.filterRow}>
+            <p className={styles.muted}>
+              {rated ? t('catalog.ratedHint') : t('catalog.bestNeedsRig')}
+            </p>
+            <FilterBar
+              label={t('catalog.filters')}
+              search={{
+                value: text,
+                onChange: setText,
+                label: t('catalog.search'),
+                placeholder: t('catalog.searchPlaceholder'),
+                maxLength: 80,
+                onSubmit: () => update({ q: text }),
+              }}
+              inline={
+                <>
+                  <Select
+                    compact
+                    id="catalog-group"
+                    label={t('catalog.group')}
+                    value={filters.group}
+                    onChange={(v) => update({ group: v })}
+                    options={[
+                      ['', t('catalog.allGroups')],
+                      ...DSO_TYPE_GROUPS.map((g) => [g, t(`catalog.groups.${g}`)] as const),
+                    ]}
                   />
-                </div>
+                  <Select
+                    compact
+                    id="catalog-catalog"
+                    label={t('catalog.catalog')}
+                    value={filters.catalog}
+                    onChange={(v) => update({ catalog: v })}
+                    options={[
+                      ['', t('catalog.allCatalogs')],
+                      ...dsoCatalogPrefixes.map((c) => [c, c] as const),
+                    ]}
+                  />
+                </>
+              }
+              chips={chips}
+              panelLabel={t('catalog.moreFilters')}
+              panel={
+                <>
+                  <Select
+                    id="catalog-constellation"
+                    label={t('catalog.constellation')}
+                    value={filters.constellation}
+                    onChange={(v) => update({ constellation: v })}
+                    options={[
+                      ['', t('catalog.allConstellations')],
+                      ...[...IAU_CONSTELLATIONS]
+                        .sort((a, b) =>
+                          IAU_CONSTELLATION_NAMES[a].localeCompare(IAU_CONSTELLATION_NAMES[b]),
+                        )
+                        .map((c) => [c, `${IAU_CONSTELLATION_NAMES[c]} (${c})`] as const),
+                    ]}
+                  />
+                  <NumberInput
+                    id="catalog-mag"
+                    label={t('catalog.magMax')}
+                    unit="mag"
+                    value={filters.magMax}
+                    onChange={(v) => update({ magMax: v })}
+                  />
+                  <NumberInput
+                    id="catalog-sb"
+                    label={t('catalog.surfBrMax')}
+                    unit="mag/″²"
+                    value={filters.surfBrMax}
+                    onChange={(v) => update({ surfBrMax: v })}
+                  />
+                  <NumberInput
+                    id="catalog-size-min"
+                    label={t('catalog.sizeMin')}
+                    unit="′"
+                    value={filters.sizeMin}
+                    onChange={(v) => update({ sizeMin: v })}
+                  />
+                  <NumberInput
+                    id="catalog-size-max"
+                    label={t('catalog.sizeMax')}
+                    unit="′"
+                    value={filters.sizeMax}
+                    onChange={(v) => update({ sizeMax: v })}
+                  />
+                  {site ? (
+                    <>
+                      <NumberInput
+                        id="catalog-min-alt"
+                        label={t('catalog.minAlt')}
+                        unit="°"
+                        value={filters.minAlt}
+                        placeholder={String(DEFAULT_MIN_ALT)}
+                        onChange={(v) => update({ minAlt: v })}
+                      />
+                      <NumberInput
+                        id="catalog-min-hours"
+                        label={t('catalog.minUsableHours')}
+                        unit="h"
+                        value={filters.minHours}
+                        onChange={(v) => update({ minHours: v })}
+                      />
+                    </>
+                  ) : null}
+                  <FilterCheck
+                    label={fitsLabel}
+                    checked={filters.fits}
+                    disabled={fov === null}
+                    onChange={(on) => update({ fits: on })}
+                  />
+                  <FilterCheck
+                    label={t('catalog.candidatesOnly')}
+                    checked={filters.candidates}
+                    onChange={(on) => update({ candidates: on })}
+                  />
+                </>
+              }
+              onReset={() => {
+                setText('');
+                setParams(
+                  paramsFromFilters({
+                    ...filtersFromParams(new URLSearchParams()),
+                    rig: rigId ?? '',
+                    view: filters.view,
+                  }),
+                  { replace: true },
+                );
+              }}
+              view={
+                <>
+                  {filters.view === 'gallery' ? (
+                    <Select
+                      compact
+                      id="catalog-sort"
+                      label={t('catalog.sort')}
+                      value={sort}
+                      onChange={(v) => update({ sort: v as Sort, dir: '' })}
+                      options={SORTS.filter(
+                        (s) =>
+                          (s !== 'score' || rated) && (site !== null || !NIGHT_SORTS.includes(s)),
+                      ).map((s) => [s, t(`catalog.sortBy.${s}`)] as const)}
+                    />
+                  ) : null}
+                  <fieldset className={styles.viewToggle}>
+                    <legend className={styles.srOnly}>{t('catalog.view')}</legend>
+                    {(['list', 'gallery'] as const).map((v) => (
+                      <label key={v} className={styles.check}>
+                        <input
+                          type="radio"
+                          name="catalog-view"
+                          checked={filters.view === v}
+                          onChange={() => update({ view: v, page: filters.page })}
+                        />
+                        {v === 'list' ? t('catalog.viewList') : t('catalog.viewGallery')}
+                      </label>
+                    ))}
+                  </fieldset>
+                </>
+              }
+            />
+          </div>
 
-                {list.isPending || waitForNight ? (
-                  <p role="status" className={styles.state}>
-                    {site !== null ? t('catalog.loadingNight') : t('common.loading')}
-                  </p>
-                ) : list.isError ? (
-                  <div className={styles.state}>
-                    <ProblemMessage
-                      code={problemCode(list.error)}
-                      onRetry={() => void list.refetch()}
-                    />
-                  </div>
-                ) : !data || data.items.length === 0 ? (
-                  <p className={`${styles.muted} ${styles.state}`}>{t('catalog.empty')}</p>
-                ) : filters.view === 'gallery' ? (
-                  <div className={styles.state}>
-                    <Gallery
-                      items={data.items}
-                      minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
-                      timeZone={data.night?.timeZone ?? null}
-                      rigId={rigId}
-                      rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
-                      canCreate={canCreate}
-                    />
-                  </div>
-                ) : (
-                  <ResultTable
-                    items={data.items}
-                    labelledBy={ids.results}
-                    minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
-                    timeZone={data.night?.timeZone ?? null}
-                    rigId={rigId}
-                    rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
-                    canCreate={canCreate}
-                    site={site}
-                    night={night}
-                    best={filters.tab === 'best'}
-                    sort={
-                      filters.tab === 'best'
-                        ? { by: 'score', dir: filters.dir || NATURAL_DIR.score }
-                        : filters.sort === 'name' && !filters.dir
-                          ? null
-                          : { by: filters.sort, dir: filters.dir || NATURAL_DIR[filters.sort] }
-                    }
-                    onSort={(next) =>
-                      filters.tab === 'best'
-                        ? update({ dir: next && next.dir !== NATURAL_DIR.score ? next.dir : '' })
-                        : update(
-                            next && next.by !== 'score'
-                              ? {
-                                  sort: next.by,
-                                  dir: next.dir === NATURAL_DIR[next.by] ? '' : next.dir,
-                                }
-                              : { sort: 'name', dir: '' },
-                          )
-                    }
-                  />
-                )}
-                {data ? (
-                  <p className={styles.source}>
-                    {t('catalog.source', {
-                      version: data.catalog.version,
-                      date: plainDate(data.catalog.fetchedAt, i18n.language),
-                    })}
-                  </p>
-                ) : null}
-              </>
-            ),
-          }}
-        />
+          {list.isPending || waitForNight ? (
+            <p role="status" className={styles.state}>
+              {site !== null ? t('catalog.loadingNight') : t('common.loading')}
+            </p>
+          ) : list.isError ? (
+            <div className={styles.state}>
+              <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
+            </div>
+          ) : !data || data.items.length === 0 ? (
+            <p className={`${styles.muted} ${styles.state}`}>{t('catalog.empty')}</p>
+          ) : filters.view === 'gallery' ? (
+            <div className={styles.state}>
+              <Gallery
+                items={data.items}
+                minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
+                timeZone={data.night?.timeZone ?? null}
+                rigId={rigId}
+                rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
+                canCreate={canCreate}
+              />
+            </div>
+          ) : (
+            <ResultTable
+              items={data.items}
+              labelledBy={ids.results}
+              minAlt={search.minAltDeg ?? DEFAULT_MIN_ALT}
+              timeZone={data.night?.timeZone ?? null}
+              rigId={rigId}
+              rigFov={rig ? [rig.derived.fovWidthDeg, rig.derived.fovHeightDeg] : null}
+              canCreate={canCreate}
+              site={site}
+              night={night}
+              rated={rated}
+              sort={{ by: sort, dir: filters.dir || NATURAL_DIR[sort] }}
+              onSort={(next) => {
+                // Dritter Klick (keine Sortierung) → Standard: Bewertung mit Rig, sonst Name.
+                if (!next) return update({ sort: '', dir: '' });
+                const fallback = effectiveSort('', { withNight: site !== null, rated });
+                update({
+                  sort: next.by === fallback ? '' : next.by,
+                  dir: next.dir === NATURAL_DIR[next.by] ? '' : next.dir,
+                });
+              }}
+            />
+          )}
+          {data ? (
+            <p className={styles.source}>
+              {t('catalog.source', {
+                version: data.catalog.version,
+                date: plainDate(data.catalog.fetchedAt, i18n.language),
+              })}
+            </p>
+          ) : null}
+        </div>
       </section>
     </div>
   );
@@ -768,7 +728,6 @@ function RowActions({
 }: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone' | 'site'>) {
   const { t } = useTranslation();
   const mapLabel = t('catalog.skyMapFor', { name: o.displayName });
-  const wiki = useWikipedia()(o);
   return (
     <div className={styles.rowActions}>
       <Link
@@ -779,16 +738,7 @@ function RowActions({
       >
         <areaIcons.planning size={ICON_SIZE.table} aria-hidden />
       </Link>
-      <a
-        className={styles.iconButton}
-        href={wiki.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={wiki.title}
-        title={wiki.title}
-      >
-        <actionIcons.external size={ICON_SIZE.table} aria-hidden />
-      </a>
+      <WikipediaLink className={styles.iconButton} target={o} iconOnly />
       {canCreate ? (
         <Link
           className={styles.buttonSm}
@@ -829,7 +779,7 @@ function CardActions({
 }
 
 /** Spalte → serverseitige Sortierung (AP-26a: Spaltenkopf statt Auswahlliste). */
-const COLUMN_SORT: Readonly<Record<string, Sort | 'score'>> = {
+const COLUMN_SORT: Readonly<Record<string, Sort>> = {
   object: 'name',
   mag: 'mag',
   size: 'size',
@@ -843,26 +793,26 @@ function ResultTable({
   labelledBy,
   sort,
   onSort,
-  best,
+  rated,
   ...row
 }: {
   items: DsoView[];
   labelledBy: string;
-  /** Aktuelle Sortierung des Servers (`null` = Standard nach Name). */
-  sort: { by: Sort | 'score'; dir: 'asc' | 'desc' } | null;
-  onSort: (next: { by: Sort | 'score'; dir: 'asc' | 'desc' } | null) => void;
-  /** Reiter *Beste der Nacht*: sortiert immer nach der Bewertung. */
-  best: boolean;
+  /** Aktuelle Sortierung des Servers. */
+  sort: { by: Sort; dir: 'asc' | 'desc' };
+  onSort: (next: { by: Sort; dir: 'asc' | 'desc' } | null) => void;
+  /** Rig mit Standort und Bildfeld: Bewertung und Filterempfehlung als Spalten (FA-FRM-13). */
+  rated: boolean;
 } & RowProps) {
   const { t } = useTranslation();
   const cell = useCells(row);
   const night = items.some((o) => o.night !== null);
-  const scored = items.some((o) => o.night?.score !== null && o.night?.score !== undefined);
-  // In „Beste der Nacht“ ist nur die Bewertung sortierbar; sonst alles, was der Server sortieren kann.
+  const scored = rated && night;
+  // Eine Tabelle (Wunsch Sven 27.09.2026): jede Spalte sortierbar, die der Server sortieren kann.
   const sortable = (id: string) =>
-    best
-      ? id === 'score'
-      : id in COLUMN_SORT && id !== 'score' && (night || !['best', 'usable'].includes(id));
+    id in COLUMN_SORT &&
+    (night || !['best', 'usable', 'score'].includes(id)) &&
+    (id !== 'score' || rated);
   const base: DataColumn<DsoView>[] = [
     {
       id: 'image',
@@ -998,7 +948,7 @@ function ResultTable({
     },
   ];
   const columns = base.map((c) => ({ ...c, sortable: sortable(c.id) }));
-  const columnOf = (by: Sort | 'score') =>
+  const columnOf = (by: Sort) =>
     Object.entries(COLUMN_SORT).find(([, s]) => s === by)?.[0] ?? 'object';
   return (
     <>
@@ -1022,7 +972,7 @@ function ResultTable({
               : undefined
           }
           serverSorted
-          sort={sort ? { id: columnOf(sort.by), dir: sort.dir } : null}
+          sort={{ id: columnOf(sort.by), dir: sort.dir }}
           onSortChange={(next) =>
             onSort(next ? { by: COLUMN_SORT[next.id] ?? 'name', dir: next.dir } : null)
           }

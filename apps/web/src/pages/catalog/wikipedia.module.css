@@ -1,0 +1,17 @@
+/* „W“ der Wikipedia-Links in Serifenschrift – Kennzeichnung ohne das geschützte Wikipedia-Logo. */
+.mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15em;
+  font-family: var(--npm-font-serif);
+  font-size: 1.15em;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--npm-text);
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}

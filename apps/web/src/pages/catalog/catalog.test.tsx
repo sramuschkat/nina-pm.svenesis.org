@@ -17,6 +17,7 @@ import { CatalogPanel } from '../system/CatalogPanel';
 import { CatalogSearch } from './CatalogSearch';
 import {
   aliasesOf,
+  effectiveSort,
   filtersFromParams,
   fovArcmin,
   paramsFromFilters,
@@ -199,7 +200,7 @@ describe('Modell S-21', () => {
     );
     expect(filtersFromParams(new URLSearchParams('typ=quasar&sort=x'))).toMatchObject({
       group: '',
-      sort: 'name',
+      sort: '',
     });
   });
 
@@ -223,6 +224,7 @@ describe('Modell S-21', () => {
       sort: 'usable',
       limit: 50,
       offset: 0,
+      rigFovArcmin: 102,
       magMax: 9.5,
       fitsFovArcmin: 102,
       siteId: ID(600),
@@ -232,20 +234,27 @@ describe('Modell S-21', () => {
     });
   });
 
-  it('Beste der Nacht: Bewertung mit Rig-Bildfeld, nur Kandidaten, Familie (FA-FRM-13)', () => {
-    const f = filtersFromParams(new URLSearchParams('reiter=beste&familie=nebulae&sort=mag'));
-    expect(f).toMatchObject({ tab: 'best', family: 'nebulae' });
-    // „Beste der Nacht“ ist Standard (AP-26i): in der URL steht nur `reiter=alle`.
-    expect(paramsFromFilters(f).get('reiter')).toBeNull();
-    expect(paramsFromFilters({ ...f, tab: 'all' }).get('reiter')).toBe('alle');
-    expect(filtersFromParams(new URLSearchParams()).tab).toBe('best');
-    expect(
-      searchFromFilters(f, { siteId: ID(600), night: '2026-10-20', fovArcmin: 114.04 }),
-    ).toMatchObject({ sort: 'score', candidates: 'true', rigFovArcmin: 114, family: 'nebulae' });
-    // Ohne Rig keine Bewertung – die Anfrage bleibt die normale Liste.
-    expect(searchFromFilters(f, { siteId: null, night: null, fovArcmin: null })).not.toHaveProperty(
-      'rigFovArcmin',
-    );
+  it('Eine Tabelle: mit Rig standardmäßig nach Bewertung, nur Bildkandidaten als Filter (FA-FRM-13)', () => {
+    const f = filtersFromParams(new URLSearchParams());
+    expect(f).toMatchObject({ sort: '', candidates: false });
+    const ctx = { siteId: ID(600), night: '2026-10-20', fovArcmin: 114.04 };
+    expect(searchFromFilters(f, ctx)).toMatchObject({ sort: 'score', rigFovArcmin: 114 });
+    expect(searchFromFilters(f, ctx)).not.toHaveProperty('candidates');
+    // Andere Sortierung: Bewertung bleibt als Spalte (rigFovArcmin).
+    expect(searchFromFilters({ ...f, sort: 'mag' }, ctx)).toMatchObject({
+      sort: 'mag',
+      rigFovArcmin: 114,
+    });
+    const c = filtersFromParams(new URLSearchParams('kandidaten=1'));
+    expect(c.candidates).toBe(true);
+    expect(paramsFromFilters(c).toString()).toBe('kandidaten=1');
+    expect(searchFromFilters(c, ctx)).toMatchObject({ sort: 'score', candidates: 'true' });
+    // Ohne Rig keine Bewertung – Standard nach Name.
+    expect(searchFromFilters(f, { siteId: null, night: null, fovArcmin: null })).toMatchObject({
+      sort: 'name',
+    });
+    expect(effectiveSort('score', { withNight: true, rated: false })).toBe('name');
+    expect(effectiveSort('usable', { withNight: false, rated: false })).toBe('name');
   });
 
   it('Aliase ohne Anzeigenamen, Trivialnamen getrennt', () => {
@@ -326,7 +335,7 @@ describe('S-21 Objektbrowser', () => {
   });
 
   it('Weitere Filter: Chip je aktivem Filter, × entfernt ihn aus URL und Anfrage; Zurücksetzen', async () => {
-    renderPage('/planung/objekte?reiter=alle&sternbild=And&mag=8&ansicht=galerie');
+    renderPage('/planung/objekte?sternbild=And&mag=8&ansicht=galerie');
     await screen.findByText('M 31');
     const more = screen.getByRole('button', { name: 'Weitere Filter' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
@@ -338,7 +347,7 @@ describe('S-21 Objektbrowser', () => {
     await waitFor(() => expect(screen.getByTestId('where')).not.toHaveTextContent('mag='));
     await waitFor(() => expect(state.searches.at(-1)).not.toHaveProperty('magMax'));
     expect(screen.getByTestId('where')).toHaveTextContent('sternbild=And');
-    // Neuer Filter im Bereich → neuer Chip; „Alle zurücksetzen“ behält Ansicht und Reiter.
+    // Neuer Filter im Bereich → neuer Chip; „Alle zurücksetzen“ behält die Ansicht.
     fireEvent.click(more);
     fireEvent.change(screen.getByLabelText(/Größe ab/), { target: { value: '10' } });
     fireEvent.blur(screen.getByLabelText(/Größe ab/));
@@ -347,9 +356,7 @@ describe('S-21 Objektbrowser', () => {
     await waitFor(() =>
       expect(screen.queryByRole('list', { name: 'Aktive Filter' })).not.toBeInTheDocument(),
     );
-    expect(screen.getByTestId('where')).toHaveTextContent(
-      '/planung/objekte?reiter=alle&ansicht=galerie',
-    );
+    expect(screen.getByTestId('where')).toHaveTextContent('/planung/objekte?ansicht=galerie');
   });
 
   it('mit Rig: Nacht, Nachtwerte in Standortzeit, Mond, nutzbare Stunden, Bildfeld', async () => {
@@ -400,7 +407,9 @@ describe('S-21 Objektbrowser', () => {
       'nie über 30°',
     );
     expect(screen.getByText('Dunkel 19:40 CDT–06:20 CDT · Mond 62 % beleuchtet')).toBeVisible();
-    expect(screen.getByLabelText('Nacht ab dem Abend des')).toHaveValue('2026-10-20');
+    expect(
+      screen.getByRole('button', { name: 'Nacht ab dem Abend des Di., 20.10.2026' }),
+    ).toHaveAttribute('aria-expanded', 'false');
     // „Mond und Dunkelheit“: Kopf mit Phase, Beleuchtung und Mondalter; Streifen mit Zeiten in Standortzeit.
     expect(await screen.findByRole('button', { name: 'Mond und Dunkelheit' })).toHaveAttribute(
       'aria-expanded',
@@ -436,7 +445,7 @@ describe('S-21 Objektbrowser', () => {
       },
     });
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'mit Mondphasen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Nacht ab dem Abend des/ }));
     const dialog = await screen.findByRole('dialog', { name: /Mondkalender Oktober 2026/ });
     // Oktober 2026: Neumond 10.10. 10:50 CDT → Nacht 09./10.10., Vollmond 25.10. 23:12 CDT → Nacht 25./26.10.
     expect(
@@ -458,7 +467,7 @@ describe('S-21 Objektbrowser', () => {
     await expectNoSeriousA11y();
   });
 
-  it('Reiter Beste der Nacht: Bewertung und Filterempfehlung je Zeile', async () => {
+  it('Eine Tabelle: Bewertung und Filterempfehlung je Zeile, Standard nach Bewertung, jede Spalte sortierbar', async () => {
     state.rigs = [rig];
     state.result = list([
       m31({
@@ -473,16 +482,31 @@ describe('S-21 Objektbrowser', () => {
         },
       }),
     ]);
-    renderPage('/planung/objekte?reiter=beste');
+    renderPage();
     const row = (await screen.findByText('M 31')).closest('tr') as HTMLElement;
     expect(row).toHaveTextContent('84 %');
     expect(row).toHaveTextContent('Breitband (LRGB)');
-    expect(screen.getByRole('tab', { name: 'Beste der Nacht' })).toHaveAttribute(
-      'aria-selected',
-      'true',
+    // Keine Reiter mehr: eine Tabelle, mit Rig nach Bewertung sortiert (FA-FRM-13).
+    expect(screen.queryByRole('tab', { name: 'Beste der Nacht' })).not.toBeInTheDocument();
+    expect(state.searches.at(-1)).toMatchObject({
+      sort: 'score',
+      rigFovArcmin: expect.any(Number),
+    });
+    expect(state.searches.at(-1)).not.toHaveProperty('candidates');
+    expect(screen.getByRole('columnheader', { name: /Bewertung/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
     );
-    expect(screen.getByLabelText('Familie')).toBeInTheDocument();
-    expect(state.searches.at(-1)).toMatchObject({ sort: 'score', candidates: 'true' });
+    // Andere Spalte sortieren: Bewertung bleibt als Spalte.
+    fireEvent.click(
+      within(screen.getByRole('columnheader', { name: /Helligkeit/ })).getByRole('button'),
+    );
+    await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ sort: 'mag' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('sort=mag');
+    // Nur Bildkandidaten als Filter.
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Filter' }));
+    fireEvent.click(screen.getByLabelText('Nur Bildkandidaten (Beste der Nacht)'));
+    await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ candidates: 'true' }));
     await expectNoSeriousA11y();
   });
 

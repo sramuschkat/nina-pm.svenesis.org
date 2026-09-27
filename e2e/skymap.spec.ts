@@ -1,7 +1,7 @@
 /**
  * AP-21: S-20 Sternkarte gegen den lokalen Stack – Karte mit Bildfeld, Ziehen des Bildfelds (Koordinaten
  * folgen, FA-FRM-04), Seitenleiste, Zeitsteuerung, *Neues Projekt* übernimmt Koordinaten, Rotation und Rig
- * (FA-FRM-12); Reiter *Beste der Nacht* in S-21 (FA-FRM-13); axe hell/dunkel, 768/2400 px ohne
+ * (FA-FRM-12); Bewertung *Beste der Nacht* in der Tabelle von S-21 (FA-FRM-13); axe hell/dunkel, 768/2400 px ohne
  * horizontales Scrollen. Ohne Himmelsfotos (`foto=keins`), damit der Test nicht vom CDS-Netz abhängt.
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -85,15 +85,17 @@ test('S-20: Seitenleiste und Zeitsteuerung', async ({ page }) => {
   await expectNoSerious(page, 'S-20');
 });
 
-test('S-21: Beste der Nacht mit Bewertung und Filterempfehlung', async ({ page }) => {
+test('S-21: eine Tabelle, mit Rig nach Bewertung „Beste der Nacht“, Filterempfehlung', async ({
+  page,
+}) => {
   await page.setViewportSize(WIDE);
   await testLogin(page, 'user1');
-  await page.goto('/planung/objekte?nacht=2026-12-15&familie=nebulae');
-  await expect(page.getByRole('tab', { name: 'Beste der Nacht' })).toHaveAttribute(
-    'aria-selected',
-    'true',
+  await page.goto('/planung/objekte?nacht=2026-12-15&kandidaten=1');
+  await expect(page.getByRole('tab', { name: 'Beste der Nacht' })).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Bewertung' })).toHaveAttribute(
+    'aria-sort',
+    'descending',
   );
-  await expect(page.getByRole('columnheader', { name: 'Bewertung' })).toBeVisible();
   const first = page.getByRole('row').nth(1);
   await expect(first).toContainText(/\d+ %/);
   await expect(first).toContainText(/Schmalband|Breitband/);
@@ -126,8 +128,8 @@ test('S-20: gleiche Kontextleiste wie der Objektbrowser; Mond und Dunkelheit, Kl
   await testLogin(page, 'owner');
   await page.goto('/planung/sternkarte');
   const context = page.getByRole('region', { name: 'Rig und Nacht' });
-  await expect(context.getByLabel('Nacht ab dem Abend des')).toBeVisible();
-  await expect(context.getByRole('button', { name: 'mit Mondphasen' })).toBeVisible();
+  await expect(context.getByRole('button', { name: /^Nacht ab dem Abend des/ })).toBeVisible();
+  await expect(context.locator('input[type="date"]')).toHaveCount(0);
   await expect(context.getByRole('button', { name: 'Heute Nacht' })).toBeVisible();
   const clock = context.getByLabel('Uhrzeit');
   const strip = page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ });

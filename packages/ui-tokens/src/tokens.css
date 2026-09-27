@@ -8,6 +8,7 @@
   --npm-transition: 0.25s ease;
   --npm-font: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --npm-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  --npm-font-serif: "Linux Libertine", "Georgia", "Times New Roman", serif;
   --npm-focus-ring: 2px solid var(--npm-accent);
   --npm-header-h: 64px;
   --npm-chart-sky-night: rgb(14, 24, 36);

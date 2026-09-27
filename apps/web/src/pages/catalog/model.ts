@@ -7,12 +7,12 @@ import type { DsoSearch, DsoView } from '../../api/client';
 
 export const CATALOG_PATH = '/planung/objekte';
 export const PAGE_SIZE = 50;
-export const SORTS = ['name', 'mag', 'size', 'usable', 'altitude'] as const;
+export const SORTS = ['score', 'name', 'mag', 'size', 'usable', 'altitude'] as const;
 export type Sort = (typeof SORTS)[number];
 /** Sortierungen, die Nachtwerte brauchen (nur mit Rig). */
-export const NIGHT_SORTS: readonly Sort[] = ['usable', 'altitude'];
+export const NIGHT_SORTS: readonly Sort[] = ['usable', 'altitude', 'score'];
 /** Natürliche Richtung je Sortierung (wie der Server, `search.ts`). */
-export const NATURAL_DIR: Readonly<Record<Sort | 'score', 'asc' | 'desc'>> = {
+export const NATURAL_DIR: Readonly<Record<Sort, 'asc' | 'desc'>> = {
   name: 'asc',
   mag: 'asc',
   size: 'desc',
@@ -21,11 +21,14 @@ export const NATURAL_DIR: Readonly<Record<Sort | 'score', 'asc' | 'desc'>> = {
   score: 'desc',
 };
 
-/** Zustand der Filterleiste; Zahlen als Text wie im Eingabefeld (leer = kein Filter). */
+/**
+ * Zustand der Filterleiste; Zahlen als Text wie im Eingabefeld (leer = kein Filter). Eine Tabelle für alles
+ * (Wunsch Sven 27.09.2026, statt der Reiter *Beste der Nacht* / *Alle Objekte*): mit Rig standardmäßig nach der
+ * Bewertung „Beste der Nacht“ sortiert (FA-FRM-13), *nur Bildkandidaten* ist ein Filter.
+ */
 export interface BrowserFilters {
-  /** Reiter *Alle Objekte* bzw. *Beste der Nacht* (FA-FRM-13). */
-  tab: 'all' | 'best';
-  family: '' | 'galaxies' | 'nebulae' | 'clusters';
+  /** Nur Bildkandidaten (FA-FRM-13, vorher Reiter *Beste der Nacht*). */
+  candidates: boolean;
   q: string;
   group: string;
   catalog: string;
@@ -39,7 +42,8 @@ export interface BrowserFilters {
   minAlt: string;
   minHours: string;
   fits: boolean;
-  sort: Sort;
+  /** Leer = Standard: Bewertung mit Rig, sonst Name. */
+  sort: Sort | '';
   /** Richtung per Spaltenkopf (AP-26a); leer = natürliche Richtung der Sortierung. */
   dir: '' | 'asc' | 'desc';
   view: 'list' | 'gallery';
@@ -47,8 +51,7 @@ export interface BrowserFilters {
 }
 
 const KEYS: Record<keyof BrowserFilters, string> = {
-  tab: 'reiter',
-  family: 'familie',
+  candidates: 'kandidaten',
   q: 'q',
   group: 'typ',
   catalog: 'katalog',
@@ -75,11 +78,8 @@ export function filtersFromParams(p: URLSearchParams): BrowserFilters {
   const sort = get('sort') as Sort;
   const group = get('group');
   const catalog = get('catalog');
-  const family = get('family');
   return {
-    // „Beste der Nacht“ ist der erste Reiter und Standard (Wunsch Sven 26.09.2026); `alle` wählt die Liste.
-    tab: get('tab') === 'alle' ? 'all' : 'best',
-    family: family === 'galaxies' || family === 'nebulae' || family === 'clusters' ? family : '',
+    candidates: get('candidates') === '1',
     q: get('q'),
     group: (DSO_TYPE_GROUPS as readonly string[]).includes(group) ? group : '',
     catalog: (dsoCatalogPrefixes as readonly string[]).includes(catalog) ? catalog : '',
@@ -93,7 +93,7 @@ export function filtersFromParams(p: URLSearchParams): BrowserFilters {
     minAlt: get('minAlt'),
     minHours: get('minHours'),
     fits: get('fits') === '1',
-    sort: SORTS.includes(sort) ? sort : 'name',
+    sort: SORTS.includes(sort) ? sort : '',
     dir: get('dir') === 'asc' || get('dir') === 'desc' ? (get('dir') as 'asc' | 'desc') : '',
     view: get('view') === 'galerie' ? 'gallery' : 'list',
     page: Math.max(1, Number.parseInt(get('page') || '1', 10) || 1),
@@ -106,8 +106,7 @@ export function paramsFromFilters(f: BrowserFilters): URLSearchParams {
   const set = (k: keyof BrowserFilters, v: string) => {
     if (v !== '') p.set(KEYS[k], v);
   };
-  if (f.tab === 'all') p.set(KEYS.tab, 'alle');
-  set('family', f.family);
+  if (f.candidates) p.set(KEYS.candidates, '1');
   set('q', f.q.trim());
   set('group', f.group);
   set('catalog', f.catalog);
@@ -121,7 +120,7 @@ export function paramsFromFilters(f: BrowserFilters): URLSearchParams {
   set('minAlt', f.minAlt);
   set('minHours', f.minHours);
   if (f.fits) p.set(KEYS.fits, '1');
-  if (f.sort !== 'name') p.set(KEYS.sort, f.sort);
+  set('sort', f.sort);
   set('dir', f.dir);
   if (f.view === 'gallery') p.set(KEYS.view, 'galerie');
   if (f.page > 1) p.set(KEYS.page, String(f.page));
@@ -140,16 +139,13 @@ export function searchFromFilters(
   ctx: { siteId: string | null; night: string | null; fovArcmin: number | null },
 ): DsoSearch {
   const withNight = ctx.siteId !== null;
-  const sort = !withNight && NIGHT_SORTS.includes(f.sort) ? 'name' : f.sort;
+  const rated = withNight && ctx.fovArcmin !== null;
+  const sort = effectiveSort(f.sort, { withNight, rated });
   const s: DsoSearch = { sort, limit: PAGE_SIZE, offset: (f.page - 1) * PAGE_SIZE };
   if (f.dir) s.dir = f.dir;
-  // Beste der Nacht: Bewertung der Website mit dem Bildfeld des Rigs, nur Bildkandidaten.
-  if (f.tab === 'best' && withNight && ctx.fovArcmin !== null) {
-    s.sort = 'score';
-    s.candidates = 'true';
-    s.rigFovArcmin = Math.round(ctx.fovArcmin * 10) / 10;
-    if (f.family) s.family = f.family;
-  }
+  // Bewertung „Beste der Nacht“ (Website-Regel) mit dem Bildfeld des Rigs – in jeder Sortierung als Spalte.
+  if (rated && ctx.fovArcmin !== null) s.rigFovArcmin = Math.round(ctx.fovArcmin * 10) / 10;
+  if (f.candidates) s.candidates = 'true';
   if (f.q.trim()) s.q = f.q.trim();
   if (f.group) s.group = f.group;
   if (f.catalog) s.catalog = f.catalog;
@@ -170,6 +166,13 @@ export function searchFromFilters(
     opt('minUsableHours', f.minHours);
   }
   return s;
+}
+
+/** Sortierung der Anfrage: Standard mit Rig die Bewertung, sonst der Name; Nachtsortierungen nur mit Standort. */
+export function effectiveSort(sort: Sort | '', ctx: { withNight: boolean; rated: boolean }): Sort {
+  if (sort === '') return ctx.rated ? 'score' : 'name';
+  if (sort === 'score' && !ctx.rated) return 'name';
+  return !ctx.withNight && NIGHT_SORTS.includes(sort) ? 'name' : sort;
 }
 
 /** Kleinere Kante des Bildfelds in Bogenminuten – „passt ins Bildfeld“ vergleicht die Großachse damit. */

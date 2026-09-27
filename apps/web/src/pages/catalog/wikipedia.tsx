@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { actionIcons, ICON_SIZE } from '../../components/icons';
+import styles from './wikipedia.module.css';
 
 type Titles = Readonly<Record<string, WikipediaEntry>>;
 
@@ -55,20 +56,45 @@ export function useWikipedia() {
   );
 }
 
-/** Ausgeschriebener Link mit Symbol für ein externes Ziel; `className` für Knopf- oder Textform. */
-export function WikipediaLink({ target, className }: { target: WikiTarget; className?: string }) {
+/** Das „W“ in Serifenschrift: erkennbar als Wikipedia, ohne das geschützte Logo. */
+export function WikipediaMark() {
+  return (
+    <span className={styles.mark} aria-hidden>
+      W
+    </span>
+  );
+}
+
+/**
+ * Wikipedia-Link: „W“, Beschriftung und Symbol für ein externes Ziel; `className` für Knopf- oder Textform,
+ * `iconOnly` für die Tabellenzeile (nur „W“, Name über `aria-label`/`title`).
+ */
+export function WikipediaLink({
+  target,
+  className,
+  iconOnly = false,
+}: {
+  target: WikiTarget;
+  className?: string;
+  iconOnly?: boolean;
+}) {
   const wiki = useWikipedia()(target);
   return (
     <a
-      className={className}
+      className={[styles.link, className].filter(Boolean).join(' ')}
       href={wiki.href}
       target="_blank"
       rel="noopener noreferrer"
       title={wiki.title}
       aria-label={wiki.title}
     >
-      {wiki.label}
-      <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+      <WikipediaMark />
+      {iconOnly ? null : (
+        <>
+          {wiki.label}
+          <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+        </>
+      )}
     </a>
   );
 }
