@@ -2419,7 +2419,7 @@ export const en: Messages = {
   },
   moonCal: {
     nightFrom: 'Night from the evening of',
-    withPhases: 'with moon phases',
+    open: 'Open moon calendar',
     title: 'Moon calendar {{month}}',
     today: 'Today',
     prevMonth: 'Previous month',
@@ -2434,11 +2434,10 @@ export const en: Messages = {
     quarterAt: '{{name}} {{day}} about {{time}}',
     bestShort: 'one of the three best nights',
     dayAria: 'Night {{night}}: {{pct}} % illuminated, {{h}} h moon-free darkness {{extra}}',
-    note: 'Phase and illuminated fraction at midnight of the night starting that evening; click a day to pick that night. Orange outline: today.',
+    note: 'Phase and illuminated fraction at midnight of the night starting that evening; click a day to pick that night. Filled: selected night · orange outline: today.',
     darkKey:
       'Green bar: moon-free astronomical darkness of the night (full = the longest of the month, at least 8 h).',
-    bestKey:
-      'Star: the three nights with the longest moon-free darkness · tinted: nights starting Friday and Saturday.',
+    bestKey: 'Star: the three nights with the longest moon-free darkness.',
   },
   tonight: {
     title: 'Tonight',
@@ -2531,14 +2530,11 @@ export const en: Messages = {
     nightOf:
       'Altitude of {{name}} in the selected night at the rig site; if your time zone differs, your time is shown below the site time.',
     context: 'Rig and night',
-    tabsLabel: 'Object browser views',
-    tab: { all: 'All objects', best: 'Best of the night' },
-    bestHint:
-      'Ranking after the Svenesis observing planner: time high up in darkness, moon, brightness and how well the object fills the field – display only, not a scheduler rule.',
-    bestNeedsRig: 'Best of the night needs a rig with a site (field of view and night).',
-    family: 'Family',
-    allFamilies: 'All families',
-    families: { galaxies: 'Galaxies', nebulae: 'Nebulae', clusters: 'Star clusters' },
+    ratedHint:
+      '“Best of the night” rating as in the Svenesis observing planner (time high up in darkness, moon, brightness, how well the object fills the field) – default sort order, display only, not a scheduler rule. Every column can be sorted.',
+    bestNeedsRig:
+      'The “best of the night” rating needs a rig with a site (field of view and night).',
+    candidatesOnly: 'Imaging candidates only (best of the night)',
     scoreValue: '{{score}} %',
     filterHint: { narrowband: 'Narrowband', broadband: 'Broadband (LRGB)' },
     title: 'Object browser',
@@ -2566,6 +2562,7 @@ export const en: Messages = {
     fitsFovNoRig: 'Fits the field of view (choose a rig)',
     sort: 'Sort by',
     sortBy: {
+      score: 'Rating',
       name: 'Name',
       mag: 'Magnitude',
       size: 'Size',

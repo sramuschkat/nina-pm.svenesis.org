@@ -248,6 +248,19 @@ describe('Nachtwerte im Objektbrowser (FA-FRM-15)', () => {
     expect(noFov.status).toBe(422);
   });
 
+  it('Eine Tabelle: nach Bewertung ohne Kandidatenfilter – alle Objekte, unbewertete hinten', async () => {
+    const q = `siteId=${siteId}&night=2026-10-20&sort=score&rigFovArcmin=100`;
+    const all = await search(`${q}&limit=50`);
+    const only = await search(`${q}&candidates=true&limit=50`);
+    expect(all.total).toBeGreaterThan(only.total);
+    expect(all.items.map((i) => i.primaryId)).toEqual(only.items.map((i) => i.primaryId));
+    const tail = await search(`${q}&limit=50&offset=${String(all.total - 50)}`);
+    for (const i of tail.items) expect(i.night?.score ?? null).toBeNull();
+    // Bewertung auch bei anderer Sortierung als Spalte.
+    const byMag = await search(`${q.replace('sort=score', 'sort=mag')}&candidates=true&limit=20`);
+    expect(byMag.items.some((i) => (i.night?.score ?? 0) > 0)).toBe(true);
+  });
+
   it('Nachtfilter ohne Standort → 422, fremder Standort → 404', async () => {
     const bad = await s.request('/api/web/v1/dso?minUsableHours=2', { cookies: tenantCookies });
     expect(bad.status).toBe(422);

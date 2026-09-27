@@ -105,6 +105,8 @@ export const BASE: Readonly<Record<string, string>> = {
   font: '-apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   /** Festbreitenschrift für Protokolle (Planprotokoll des Simulators, AP-26g). */
   'font-mono': 'ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace',
+  /** Serifenschrift für das „W“ der Wikipedia-Links (Kennzeichnung ohne das geschützte Logo). */
+  'font-serif': '"Linux Libertine", "Georgia", "Times New Roman", serif',
   'focus-ring': '2px solid var(--npm-accent)',
   'header-h': '64px',
 };

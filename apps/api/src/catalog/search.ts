@@ -64,7 +64,10 @@ export function indexCatalog(rows: readonly CatalogRow[]): Indexed[] {
   });
 }
 
-/** Bewertung „Beste der Nacht“ (FA-FRM-13); `null` ohne Rig-Bildfeld, ohne Dunkelheit oder für Nicht-Kandidaten. */
+/**
+ * Bewertung „Beste der Nacht“ (FA-FRM-13); `null` ohne Rig-Bildfeld, ohne Dunkelheit, für Nicht-Kandidaten und für
+ * Objekte, die im Dunkeln nicht mindestens 20° hoch stehen (Website-Regel).
+ */
 function scoreOf(
   x: Indexed,
   night: NightEvaluator | undefined,
@@ -72,6 +75,7 @@ function scoreOf(
 ): number | null {
   const kind = websiteKind(x.row.objectType, x.group);
   if (!night || fov === undefined || kind === null || !x.candidate) return null;
+  if ((night.metrics(x.row).peakAltDeg ?? -90) < 20) return null;
   const w = night.weighted(x.row, kind);
   if (!w) return null;
   return (
@@ -168,10 +172,9 @@ export function searchDso(
     // Nachtfilter zuletzt – er rechnet die Engine je verbliebenem Objekt.
     if (night && q.minUsableHours !== undefined && night.metrics(r).usableHours < q.minUsableHours)
       continue;
-    // „Beste der Nacht“: nur bewertete Objekte, die im Dunkeln mindestens 20° hoch stehen (Website-Regel).
-    if (q.sort === 'score') {
-      if (rank(x) === null || (night?.metrics(r).peakAltDeg ?? -90) < 20) continue;
-    }
+    // Nur Bildkandidaten nach Bewertung („Beste der Nacht“): nur bewertete Objekte. Sonst stehen Objekte ohne
+    // Bewertung hinten (eine Tabelle für alles, Wunsch Sven 27.09.2026).
+    if (q.sort === 'score' && q.candidates === 'true' && rank(x) === null) continue;
     scored.push({ x, score });
   }
   // Natürliche Richtung je Sortierung; `dir` kehrt sie um (Spaltenkopf, AP-26a). Leere Werte immer hinten.

@@ -36,7 +36,7 @@ import { problemCode } from '../admin/shared';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { researchLinks } from '../projects/ProjectEditorPage';
-import { useWikipedia } from '../catalog/wikipedia';
+import { useWikipedia, WikipediaMark } from '../catalog/wikipedia';
 import { SeasonPanel } from '../projects/SeasonPanel';
 import { PlanningContext } from './PlanningContext';
 import { PlanningTabs } from './PlanningTabs';
@@ -1389,8 +1389,8 @@ function InfoCard({
   const o = selected.item;
   const wiki = wikipedia(o);
   // Wikipedia zuerst: Artikel aus dem Website-Auszug (FA-FRM-14), sonst die Suche.
-  const links: { name: string; href: string; title?: string }[] = [
-    { name: wiki.label, href: wiki.href, title: wiki.title },
+  const links: { name: string; href: string; title?: string; wiki?: boolean }[] = [
+    { name: wiki.label, href: wiki.href, title: wiki.title, wiki: true },
     ...researchLinks(o.displayName),
   ];
   const q = new URLSearchParams({
@@ -1416,6 +1416,7 @@ function InfoCard({
           <span key={l.name}>
             {i > 0 ? ' · ' : ''}
             <a href={l.href} target="_blank" rel="noopener noreferrer" title={l.title}>
+              {l.wiki ? <WikipediaMark /> : null}
               {l.name}
             </a>
           </span>

@@ -14,30 +14,25 @@
   color: var(--npm-text-light);
   font-size: var(--npm-font-label);
 }
-.dateRow {
-  display: flex;
-  align-items: stretch;
-}
-.dateInput {
-  padding: var(--npm-space-1) var(--npm-space-2);
-  border: 1px solid var(--npm-border-strong);
-  border-radius: var(--npm-radius) 0 0 var(--npm-radius);
-  background: var(--npm-white);
-  color: var(--npm-text);
-  font: inherit;
-}
+/* Das Datum ist ein Knopf, der den Mondkalender öffnet (kein Kalender des Browsers). */
 .calToggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--npm-space-1);
+  gap: var(--npm-space-2);
+  min-height: var(--npm-row-h);
   padding: var(--npm-space-1) var(--npm-space-2);
   border: 1px solid var(--npm-border-strong);
-  border-left: 0;
-  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
+  border-radius: var(--npm-radius);
   background: var(--npm-white);
   color: var(--npm-link);
   font: inherit;
+  font-size: var(--npm-font-field);
   cursor: pointer;
+}
+.dateValue {
+  color: var(--npm-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .calToggle[aria-expanded='true'] {
   background: var(--npm-selected-bg);
@@ -93,12 +88,6 @@
 .day:focus-visible {
   outline: var(--npm-focus-ring);
   outline-offset: 1px;
-}
-.weekend {
-  background: var(--npm-neutral-bg);
-}
-.quarterDay {
-  border-color: var(--npm-accent);
 }
 .selected {
   border-color: var(--npm-accent);
@@ -159,8 +148,7 @@
 }
 .iconButton:focus-visible,
 .buttonSm:focus-visible,
-.calToggle:focus-visible,
-.dateInput:focus-visible {
+.calToggle:focus-visible {
   outline: var(--npm-focus-ring);
   outline-offset: 1px;
 }

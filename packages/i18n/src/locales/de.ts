@@ -2426,7 +2426,7 @@ export const de = {
   },
   moonCal: {
     nightFrom: 'Nacht ab dem Abend des',
-    withPhases: 'mit Mondphasen',
+    open: 'Mondkalender öffnen',
     title: 'Mondkalender {{month}}',
     today: 'Heute',
     prevMonth: 'Voriger Monat',
@@ -2441,11 +2441,10 @@ export const de = {
     quarterAt: '{{name}} {{day}} etwa {{time}}',
     bestShort: 'eine der drei besten Nächte',
     dayAria: 'Nacht {{night}}: {{pct}} % beleuchtet, {{h}} h mondfrei dunkel {{extra}}',
-    note: 'Phase und beleuchteter Anteil jeweils um Mitternacht der Nacht ab diesem Abend; einen Tag anklicken wählt diese Nacht. Orange umrandet: heute.',
+    note: 'Phase und beleuchteter Anteil jeweils um Mitternacht der Nacht ab diesem Abend; einen Tag anklicken wählt diese Nacht. Gefüllt: gewählte Nacht · orange umrandet: heute.',
     darkKey:
       'Grüner Balken: mondfreie astronomische Dunkelheit der Nacht (voll = die längste des Monats, mindestens 8 h).',
-    bestKey:
-      'Stern: die drei Nächte mit der längsten mondfreien Dunkelheit · getönt: Nächte ab Freitag und Samstag.',
+    bestKey: 'Stern: die drei Nächte mit der längsten mondfreien Dunkelheit.',
   },
   tonight: {
     title: 'Heute Nacht',
@@ -2538,14 +2537,11 @@ export const de = {
     nightOf:
       'Höhe von {{name}} in der gewählten Nacht am Standort des Rigs; weicht deine Zeitzone ab, steht deine Zeit unter der Standortzeit.',
     context: 'Rig und Nacht',
-    tabsLabel: 'Ansichten des Objektbrowsers',
-    tab: { all: 'Alle Objekte', best: 'Beste der Nacht' },
-    bestHint:
-      'Rangliste nach der Bewertung des Svenesis-Beobachtungsplaners: Zeit in großer Höhe im Dunkeln, Mond, Helligkeit und Füllung des Bildfelds – nur Anzeige, keine Regel des Schedulers.',
-    bestNeedsRig: 'Beste der Nacht braucht ein Rig mit Standort (Bildfeld und Nacht).',
-    family: 'Familie',
-    allFamilies: 'Alle Familien',
-    families: { galaxies: 'Galaxien', nebulae: 'Nebel', clusters: 'Sternhaufen' },
+    ratedHint:
+      'Bewertung „Beste der Nacht“ wie im Svenesis-Beobachtungsplaner (Zeit in großer Höhe im Dunkeln, Mond, Helligkeit, Füllung des Bildfelds) – Standard-Sortierung, nur Anzeige, keine Regel des Schedulers. Jede Spalte lässt sich sortieren.',
+    bestNeedsRig:
+      'Die Bewertung „Beste der Nacht“ braucht ein Rig mit Standort (Bildfeld und Nacht).',
+    candidatesOnly: 'Nur Bildkandidaten (Beste der Nacht)',
     scoreValue: '{{score}} %',
     filterHint: { narrowband: 'Schmalband', broadband: 'Breitband (LRGB)' },
     title: 'Objektbrowser',
@@ -2573,6 +2569,7 @@ export const de = {
     fitsFovNoRig: 'Passt ins Bildfeld (Rig wählen)',
     sort: 'Sortierung',
     sortBy: {
+      score: 'Bewertung',
       name: 'Name',
       mag: 'Helligkeit',
       size: 'Größe',
