@@ -373,3 +373,12 @@
 .chartPanel {
   padding-top: var(--npm-space-2);
 }
+
+/* „Mond und Dunkelheit“ nach Rig und Nacht (Planung, wie im Objektbrowser). */
+.moonDark {
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  min-width: 0;
+}

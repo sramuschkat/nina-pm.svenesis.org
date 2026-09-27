@@ -400,7 +400,16 @@ describe('S-21 Objektbrowser', () => {
       'nie über 30°',
     );
     expect(screen.getByText('Dunkel 19:40 CDT–06:20 CDT · Mond 62 % beleuchtet')).toBeVisible();
-    expect(screen.getByText('Nacht 20./21.10.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nacht ab dem Abend des')).toHaveValue('2026-10-20');
+    // „Mond und Dunkelheit“: Kopf mit Phase, Beleuchtung und Mondalter; Streifen mit Zeiten in Standortzeit.
+    expect(await screen.findByRole('button', { name: 'Mond und Dunkelheit' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText(/% beleuchtet · \d+,\d Tage nach Neumond/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Mond und Dunkelheit der Nacht 20\.\/21\.10\.:/ }),
+    ).toHaveAccessibleName(/astronomisch dunkel.*Zeiten in CDT/);
     expect(state.searches.at(-1)).toMatchObject({
       siteId: ID(600),
       night: '2026-10-20',
@@ -412,6 +421,40 @@ describe('S-21 Objektbrowser', () => {
     await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ fitsFovArcmin: 102 }));
     fireEvent.click(screen.getByRole('button', { name: 'Nächste Nacht' }));
     await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ night: '2026-10-21' }));
+    await expectNoSeriousA11y();
+  });
+
+  it('Mondkalender: Monat mit Phasen, Vierteln und bester Nacht; Tag anklicken wählt die Nacht', async () => {
+    state.rigs = [rig];
+    state.result = list([m31()], {
+      night: {
+        night: '2026-10-20',
+        timeZone: 'America/Chicago',
+        darkStartUtc: '2026-10-21T00:40:00Z',
+        darkEndUtc: '2026-10-21T11:20:00Z',
+        moonIllumPct: 62,
+      },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'mit Mondphasen' }));
+    const dialog = await screen.findByRole('dialog', { name: /Mondkalender Oktober 2026/ });
+    // Oktober 2026: Neumond 10.10. 10:50 CDT → Nacht 09./10.10., Vollmond 25.10. 23:12 CDT → Nacht 25./26.10.
+    expect(
+      within(dialog).getByRole('button', { name: /Nacht 09\.\/10\.10\.: .* Neumond/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: /Nacht 25\.\/26\.10\.: .* Vollmond/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: /Nacht 20\.\/21\.10\.:.*Heute/ }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(dialog).getAllByRole('button', { name: /eine der drei besten Nächte/ }),
+    ).toHaveLength(3);
+    expect(within(dialog).getByText(/Neumond .* etwa .*·.*Vollmond .* etwa/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: /Nacht 12\.\/13\.10\./ }));
+    await waitFor(() => expect(state.searches.at(-1)).toMatchObject({ night: '2026-10-12' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await expectNoSeriousA11y();
   });
 

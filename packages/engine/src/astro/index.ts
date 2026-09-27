@@ -11,6 +11,13 @@ export {
   type Site,
 } from './horizon';
 export { moonApparent, type MoonPlace } from './moon';
+export {
+  moonAgeDays,
+  moonPhaseAngleDeg,
+  moonPhaseEvents,
+  type MoonPhaseEvent,
+  type MoonQuarter,
+} from './moon-phase';
 export { meanObliquityDeg, nutation, type Nutation } from './nutation';
 export { precessFromJ2000, precessToJ2000 } from './precession';
 export { sunApparent, type SunPlace } from './sun';

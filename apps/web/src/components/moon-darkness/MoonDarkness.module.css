@@ -1,0 +1,124 @@
+/* „Mond und Dunkelheit“ und Mondkalender (Planung): Streifen auf dem dunklen Diagrammrahmen, Farben aus Tokens. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-3);
+}
+.headText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.toggle {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--npm-link);
+  font: inherit;
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.toggle::after {
+  content: '';
+  display: inline-block;
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: 0.5em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-0.2em) rotate(45deg);
+}
+.toggle[aria-expanded='false']::after {
+  transform: rotate(-45deg);
+}
+.toggle:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.title {
+  margin: 0;
+  font-size: var(--npm-font-h2, 1.15rem);
+  font-weight: 600;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--npm-radius);
+  background: var(--npm-chart-frame);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-1) var(--npm-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--npm-font-small);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.key {
+  display: inline-block;
+  width: 1.6em;
+  height: 0.9em;
+  border-radius: 3px;
+  border: 1px solid var(--npm-border-strong);
+}
+.keyDark {
+  background: var(--npm-chart-sky-dark);
+}
+.keyMoon {
+  height: 0;
+  border: 0;
+  border-top: 3px solid var(--npm-chart-moon-line);
+}
+.keyNow {
+  height: 0;
+  border: 0;
+  border-top: 2px dashed var(--npm-chart-marker);
+}
+.keyCursor {
+  height: 0;
+  border: 0;
+  border-top: 3px solid var(--npm-chart-now);
+}
+.clickable {
+  cursor: crosshair;
+}
+.note {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+
+/* Mondsymbol */
+.moonIcon {
+  flex: none;
+}
+.moonDark {
+  fill: var(--npm-moon-dark);
+  stroke: var(--npm-border-strong);
+  stroke-width: 0.75;
+}
+.moonLit {
+  fill: var(--npm-moon-lit);
+}

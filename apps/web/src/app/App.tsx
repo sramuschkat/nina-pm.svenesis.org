@@ -12,6 +12,7 @@ import { ApiError, AuthProvider, useAuth, useCan } from '../auth';
 import { ProblemMessage } from '../components/ProblemMessage';
 import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
+import { CATALOG_PATH } from '../pages/catalog/model';
 import { HomePage } from '../pages/home/HomePage';
 import { TonightPage } from '../pages/tonight/TonightPage';
 import { NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
@@ -47,7 +48,6 @@ import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { SkyMapPage } from '../pages/planning/SkyMapPage';
-import { SKYMAP_PATH } from '../pages/planning/skymap/model';
 import { WeatherPage } from '../pages/weather/WeatherPage';
 import { AppearanceProvider } from './theme';
 
@@ -171,9 +171,9 @@ export function createRouter() {
               path: 'planung',
               element: <RequireAction action="catalog.read" />,
               children: [
-                { index: true, element: <Navigate to={SKYMAP_PATH} replace /> },
-                { path: 'sternkarte', element: <SkyMapPage /> },
+                { index: true, element: <Navigate to={CATALOG_PATH} replace /> },
                 { path: 'objekte', element: <ObjectBrowserPage /> },
+                { path: 'sternkarte', element: <SkyMapPage /> },
               ],
             },
             {

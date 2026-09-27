@@ -119,3 +119,23 @@ for (const width of [768, 2400]) {
     expect(await overflow(page), `S-20 @ ${String(width)}`).toBeLessThanOrEqual(0);
   });
 }
+
+test('S-20: gleiche Kontextleiste wie der Objektbrowser; Mond und Dunkelheit, Klick stellt die Uhrzeit', async ({
+  page,
+}) => {
+  await testLogin(page, 'owner');
+  await page.goto('/planung/sternkarte');
+  const context = page.getByRole('region', { name: 'Rig und Nacht' });
+  await expect(context.getByLabel('Nacht ab dem Abend des')).toBeVisible();
+  await expect(context.getByRole('button', { name: 'mit Mondphasen' })).toBeVisible();
+  await expect(context.getByRole('button', { name: 'Heute Nacht' })).toBeVisible();
+  const clock = context.getByLabel('Uhrzeit');
+  const strip = page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ });
+  await expect(strip).toBeVisible();
+  const box = await strip.boundingBox();
+  if (!box) throw new Error('Streifen ohne Maße');
+  await strip.click({ position: { x: box.width / 2, y: box.height / 2 } });
+  // Mitte des Fensters (1 h vor Sonnenuntergang bis 1 h nach Aufgang) liegt nach Mitternacht.
+  await expect(clock).toHaveValue(/^0[0-3]:\d\d$/);
+  await expect(page.getByText('eingestellte Uhrzeit')).toBeVisible();
+});
