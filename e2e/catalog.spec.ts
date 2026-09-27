@@ -5,7 +5,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { csrf, testLogin } from './support';
+import { WIDE, csrf, testLogin } from './support';
 
 async function expectNoSerious(page: Page, label: string) {
   const result = await new AxeBuilder({ page }).analyze();
@@ -21,6 +21,9 @@ const overflow = (page: Page) =>
 test('S-21: Suche, Nachtwerte am Rig, Projekt anlegen übernimmt das Katalogobjekt', async ({
   page,
 }) => {
+  // Breit genug für alle Spalten: mit Rig stehen Bewertung und Filterempfehlung immer in der Tabelle (eine
+  // Tabelle seit 27.09.2026); schmaler blendet die Tabelle „Typ“ nach Priorität aus.
+  await page.setViewportSize(WIDE);
   await testLogin(page, 'user1');
   await page.goto('/planung/objekte');
   await expect(page.getByRole('heading', { level: 1, name: 'Objektbrowser' })).toBeVisible();
