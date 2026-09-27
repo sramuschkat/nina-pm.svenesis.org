@@ -13,8 +13,33 @@ const GOOD_SITE =
   ok('GRANT SELECT, INSERT ON site TO app_job;');
 
 describe('DSQL-Lint (TK 6.8, ADR-S1)', () => {
-  it.each(readdirSync(dir).filter((f) => f.endsWith('.sql')))('%s ist sauber', (file) => {
-    expect(lintMigration(file, readFileSync(`${dir}${file}`, 'utf8'))).toEqual([]);
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  const read = (f: string) => readFileSync(`${dir}${f}`, 'utf8');
+  it.each(files)('%s ist sauber', (file) => {
+    const later = files
+      .slice(files.indexOf(file) + 1)
+      .map(read)
+      .join('\n');
+    expect(lintMigration(file, read(file), later)).toEqual([]);
+  });
+
+  it('ein GRANT aus einer späteren Migration zählt für die Tabelle (0008: UPDATE (updated_at) ON rig)', () => {
+    const table =
+      ok('CREATE TABLE discord_channel (id uuid PRIMARY KEY);') +
+      ok('GRANT SELECT, INSERT, UPDATE, DELETE ON discord_channel TO app_rw;') +
+      ok('GRANT SELECT, INSERT ON discord_channel TO app_job;');
+    expect(lintMigration('a.sql', table).map((f) => f.rule)).toEqual(['grants']);
+    expect(
+      lintMigration(
+        'a.sql',
+        table,
+        ok(
+          'GRANT UPDATE (enabled, last_delivery_at, last_error, last_error_at) ON discord_channel TO app_job;',
+        ),
+      ),
+    ).toEqual([]);
   });
 
   it('eine Tabelle mit genau den GRANTs aus TK 6.2 ist sauber', () => {
