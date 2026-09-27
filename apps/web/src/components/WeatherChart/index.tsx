@@ -129,6 +129,8 @@ export interface WeatherChartProps {
   cmp3?: 'gem' | 'nbm' | 'base';
   region?: 'europe' | 'other';
   compact?: boolean;
+  /** Nur das Nachtdetail ohne Wochenübersicht und Skala (Heute Nacht, Wunsch Sven 27.09.2026). */
+  detailOnly?: boolean;
   unit?: 'c' | 'f';
   /** Gewählte Nacht (Nachtdetail); ohne Angabe bzw. `null` die laufende oder kommende Nacht. */
   selectedNight?: string | null;
@@ -217,7 +219,7 @@ function densityScale(): number {
 
 export function WeatherChart(props: WeatherChartProps) {
   const { t, i18n } = useTranslation();
-  const { hours, nights, timeZone, compact = false, unit = 'c' } = props;
+  const { hours, nights, timeZone, compact = false, detailOnly = false, unit = 'c' } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
   const weekRef = useRef<HTMLCanvasElement>(null);
   const detailWrapRef = useRef<HTMLDivElement>(null);
@@ -1182,74 +1184,81 @@ export function WeatherChart(props: WeatherChartProps) {
           ) : null}
         </div>
       ) : null}
-      {!compact ? <p className={styles.verdict}>{verdict(selected)}</p> : null}
-      <div
-        ref={wrapRef}
-        className={compact ? styles.wrapCompact : styles.wrap}
-        tabIndex={0}
-        role="img"
-        aria-label={t('weather.chart.label', { zone })}
-        aria-describedby={liveId}
-        onKeyDown={onKey}
-      >
-        <canvas
-          ref={weekRef}
-          className={styles.canvas}
-          aria-hidden="true"
-          onMouseMove={(e) => setTip(hitWeek(e))}
-          onMouseLeave={() => setTip(null)}
-          onClick={(e) => {
-            const hit = hitWeek(e);
-            setTip(hit);
-            if (hit) selectNight(nightOf(unix(hours[hit.i]?.tUtc ?? props.nowUtc)));
-          }}
-        />
-        {symbols.map((s) => {
-          const Icon = weatherIcons[s.key];
-          return (
-            <span
-              key={s.at}
-              className={styles.symbol}
-              style={{ left: s.x, top: ticksTop + 10 * scale }}
-              aria-hidden="true"
-            >
-              <Icon size={12} />
-            </span>
-          );
-        })}
-        {tip && !compact ? (
+      {detailOnly ? (
+        // Nur zum Messen der Breite (ResizeObserver); die Wochenübersicht entfällt.
+        <div ref={wrapRef} aria-hidden="true" />
+      ) : (
+        <>
+          {!compact ? <p className={styles.verdict}>{verdict(selected)}</p> : null}
           <div
-            className={styles.tip}
-            style={{
-              left: Math.min(tip.x + 14, Math.max(0, width - 300)),
-              top: Math.min(tip.y + 14, Math.max(0, week.height - 200)),
-            }}
-            role="tooltip"
+            ref={wrapRef}
+            className={compact ? styles.wrapCompact : styles.wrap}
+            tabIndex={0}
+            role="img"
+            aria-label={t('weather.chart.label', { zone })}
+            aria-describedby={liveId}
+            onKeyDown={onKey}
           >
-            {tipLines(tip.i).map((line, k) => (
-              <div key={line} className={k === 0 ? styles.tipHead : undefined}>
-                {line}
+            <canvas
+              ref={weekRef}
+              className={styles.canvas}
+              aria-hidden="true"
+              onMouseMove={(e) => setTip(hitWeek(e))}
+              onMouseLeave={() => setTip(null)}
+              onClick={(e) => {
+                const hit = hitWeek(e);
+                setTip(hit);
+                if (hit) selectNight(nightOf(unix(hours[hit.i]?.tUtc ?? props.nowUtc)));
+              }}
+            />
+            {symbols.map((s) => {
+              const Icon = weatherIcons[s.key];
+              return (
+                <span
+                  key={s.at}
+                  className={styles.symbol}
+                  style={{ left: s.x, top: ticksTop + 10 * scale }}
+                  aria-hidden="true"
+                >
+                  <Icon size={12} />
+                </span>
+              );
+            })}
+            {tip && !compact ? (
+              <div
+                className={styles.tip}
+                style={{
+                  left: Math.min(tip.x + 14, Math.max(0, width - 300)),
+                  top: Math.min(tip.y + 14, Math.max(0, week.height - 200)),
+                }}
+                role="tooltip"
+              >
+                {tipLines(tip.i).map((line, k) => (
+                  <div key={line} className={k === 0 ? styles.tipHead : undefined}>
+                    {line}
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : null}
           </div>
-        ) : null}
-      </div>
-      <p id={liveId} className={styles.live} aria-live="polite">
-        {cursor === null ? t('weather.chart.keyboardHint') : describe(cursor)}
-      </p>
-      {!compact ? (
-        <div className={styles.scale} aria-label={t('weather.scale.title')}>
-          <span>{t('weather.scale.title')}</span>
-          {SCALE_STEPS.map(([s, r]) => (
-            <span key={r} className={styles.scaleItem}>
-              <span className={styles.swatch} style={{ background: scoreColour(s) }} />
-              {t(`weather.rating.${String(r)}`)}
-            </span>
-          ))}
-          <span className={styles.muted}>{t('weather.scale.estimated')}</span>
-          <span className={styles.muted}>{t('weather.scale.precip')}</span>
-        </div>
-      ) : null}
+          <p id={liveId} className={styles.live} aria-live="polite">
+            {cursor === null ? t('weather.chart.keyboardHint') : describe(cursor)}
+          </p>
+          {!compact ? (
+            <div className={styles.scale} aria-label={t('weather.scale.title')}>
+              <span>{t('weather.scale.title')}</span>
+              {SCALE_STEPS.map(([s, r]) => (
+                <span key={r} className={styles.scaleItem}>
+                  <span className={styles.swatch} style={{ background: scoreColour(s) }} />
+                  {t(`weather.rating.${String(r)}`)}
+                </span>
+              ))}
+              <span className={styles.muted}>{t('weather.scale.estimated')}</span>
+              <span className={styles.muted}>{t('weather.scale.precip')}</span>
+            </div>
+          ) : null}
+        </>
+      )}
       {!compact && detailWindow ? (
         <section
           className={styles.detail}

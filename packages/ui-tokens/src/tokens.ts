@@ -183,6 +183,15 @@ export const CHART: Readonly<Record<string, string>> = {
   /** Mondsymbol (Kalender, Kopf „Mond und Dunkelheit“): beleuchteter und dunkler Teil, themen-unabhängig. */
   'moon-lit': '#ecebe2',
   'moon-dark': '#2a3038',
+  /** „Mond & Planeten“ (Heute Nacht): Farbe je Körper wie im Beobachtungsplaner (`BODY_COL` in astro-core.js). */
+  'body-moon': '#ecebe2',
+  'body-mercury': '#b4b2a9',
+  'body-venus': '#fac775',
+  'body-mars': '#f0997b',
+  'body-jupiter': '#f1efe8',
+  'body-saturn': '#ef9f27',
+  'body-uranus': '#9fd8d3',
+  'body-neptune': '#8ea8f5',
   'chart-curve': '#eef2f6',
   'chart-grid': 'rgba(255, 255, 255, 0.16)',
   'chart-label': 'rgba(228, 233, 239, 0.8)',

@@ -257,6 +257,14 @@ describe('WeatherChart', () => {
     expect(texts).toContain('Gut 69 %');
   });
 
+  it('nur Nachtdetail (Heute Nacht): keine Wochenübersicht, keine Skala, Detail mit ← →', () => {
+    render(<WeatherChart {...base} detailOnly />);
+    expect(screen.getByRole('region', { name: /Nacht im Detail/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Skala:')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Astro-Wetter|Wetter der Woche|Wetter/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Nächste Nacht' })).toBeInTheDocument();
+  });
+
   it('Nachtdetail: vorige/nächste Nacht', () => {
     const onSelectNight = vi.fn();
     render(

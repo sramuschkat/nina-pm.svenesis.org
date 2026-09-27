@@ -33,10 +33,10 @@ import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
 import { WikipediaLink } from './wikipedia';
 import { PlanningContext } from '../planning/PlanningContext';
+import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { DataTable, type DataColumn } from '../../components/DataTable';
-import { MoonDarkness, moonDarkness } from '../../components/moon-darkness';
 import { NightChart } from '../../components/night-chart';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { FilterBar, FilterCheck } from '../../components/FilterBar';
@@ -573,45 +573,6 @@ function Pager({
         <uiIcons.next size={ICON_SIZE.table} aria-hidden />
       </button>
     </div>
-  );
-}
-
-/** „Mond und Dunkelheit“ der gewählten Nacht; Nacht-Grenzen aus der Tabelle des Servers (NT-02). */
-function SiteMoonDarkness({
-  site,
-  night,
-  current,
-}: {
-  site: SiteView;
-  night: string;
-  current: string | null;
-}) {
-  const table = useQuery({
-    queryKey: ['site-nights', site.id, 'from', night],
-    queryFn: () => equipmentApi.nights(site.id, 2, night),
-    staleTime: 60 * 60 * 1000,
-  });
-  const data = useMemo(() => {
-    if (!table.data) return null;
-    return moonDarkness({
-      site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
-      night,
-      timeZoneTransitions: table.data.timeZoneTransitions.map((z) => ({
-        atUtc: Date.parse(z.atUtc) / 1000,
-        utcOffsetMinutes: z.utcOffsetMinutes,
-      })),
-      timeZone: site.timeZone,
-    });
-  }, [table.data, site, night]);
-  if (!data) return null;
-  return (
-    <MoonDarkness
-      data={data}
-      night={night}
-      timeZone={site.timeZone}
-      southern={site.latitudeDeg < 0}
-      nowUtc={night === current ? Math.floor(Date.now() / 1000) : undefined}
-    />
   );
 }
 

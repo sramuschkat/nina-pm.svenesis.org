@@ -30,6 +30,14 @@
   --npm-chart-dim-label: #e4e9ef;
   --npm-moon-lit: #ecebe2;
   --npm-moon-dark: #2a3038;
+  --npm-body-moon: #ecebe2;
+  --npm-body-mercury: #b4b2a9;
+  --npm-body-venus: #fac775;
+  --npm-body-mars: #f0997b;
+  --npm-body-jupiter: #f1efe8;
+  --npm-body-saturn: #ef9f27;
+  --npm-body-uranus: #9fd8d3;
+  --npm-body-neptune: #8ea8f5;
   --npm-chart-curve: #eef2f6;
   --npm-chart-grid: rgba(255, 255, 255, 0.16);
   --npm-chart-label: rgba(228, 233, 239, 0.8);

@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /**
- * AP-35: S-02 „Heute Nacht“ – Karte je Rig mit Nacht vom Server (nicht aus dem Browserdatum), Zeiten in
- * Standortzeit mit Kürzel (CDT), Mond, Wetterband, NINA, Safety-Link, geplante Projekte; Admin schaltet eine
- * Zeile nur für die kommende Nacht aus (danach neue Prognose); ungeprüfte Sessions und Warteschlange (Admin);
- * User ohne Umschalter und ohne Warteschlange; Nacht ohne Prognose; axe.
+ * AP-35: S-02 „Heute Nacht“ (Umbau Wunsch Sven 27.09.2026) – zuerst das Rig wählen (Standort), Nacht vom
+ * Server (nicht aus dem Browserdatum), „Mond und Dunkelheit“, Plan mit Zeiten in Standortzeit mit Kürzel (CDT),
+ * Mond, Wetterband, NINA, Safety-Link, geplante Projekte; „Nacht im Detail“ und „Mond & Planeten“; keine
+ * ungeprüften Sessions und keine Warteschlange mehr; Admin schaltet eine Zeile nur für die kommende Nacht aus
+ * (danach neue Prognose); User ohne Umschalter; Nacht ohne Prognose; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, TonightView } from '../../api/client';
@@ -28,34 +29,41 @@ vi.mock('../../api/client', () => ({
   equipmentApi: {
     list: (kind: string) =>
       Promise.resolve({
-        items: kind === 'filters' ? [{ id: ID(5), shortName: 'Ha', colorHex: '#c62828' }] : [],
+        items:
+          kind === 'filters'
+            ? [{ id: ID(5), shortName: 'Ha', colorHex: '#c62828' }]
+            : kind === 'sites'
+              ? [
+                  {
+                    id: ID(2),
+                    name: 'Starfront',
+                    latitudeDeg: 31.5471,
+                    longitudeDeg: -99.3823,
+                    timeZone: 'America/Chicago',
+                  },
+                  {
+                    id: ID(3),
+                    name: 'Hannover',
+                    latitudeDeg: 52.3705,
+                    longitudeDeg: 9.7332,
+                    timeZone: 'Europe/Berlin',
+                  },
+                ]
+              : [],
       }),
+    nights: () =>
+      Promise.resolve({
+        currentNight: '2026-09-18',
+        nights: [],
+        timeZoneTransitions: [{ atUtc: '2026-03-08T08:00:00Z', utcOffsetMinutes: -300 }],
+      }),
+    weather: () => Promise.resolve({ status: 'pending' }),
   },
   tonightApi: {
     get: () => Promise.resolve(state.view),
     setLine: (...a: unknown[]) => state.setLine(...a) as Promise<unknown>,
   },
   forecastApi: { run: (...a: unknown[]) => state.run(...a) as Promise<unknown> },
-  sessionsApi: {
-    list: () =>
-      Promise.resolve({
-        items: [{ id: ID(30), night: '2026-09-17', rigName: 'Rig A', frames: 42 }],
-      }),
-  },
-  approvalApi: {
-    queue: () =>
-      Promise.resolve({
-        items: [
-          {
-            kind: 'project',
-            id: ID(40),
-            projectId: ID(40),
-            name: 'IC 1396',
-            createdByName: 'Ben',
-          },
-        ],
-      }),
-  },
   jobsApi: {
     get: (id: string) => Promise.resolve({ id, status: 'running', hasResult: false }),
     result: vi.fn(),
@@ -137,14 +145,20 @@ const view = (): TonightView => ({
   ],
 });
 
-const wrap = () =>
+function Where() {
+  const l = useLocation();
+  return <span data-testid="where">{l.search}</span>;
+}
+
+const wrap = (path = '/heute-nacht') =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
           <TonightPage />
+          <Where />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -158,12 +172,16 @@ beforeEach(() => {
 });
 
 describe('S-02 Heute Nacht', () => {
-  it('Karte je Rig: Nacht vom Server, Standortzeit mit Kürzel, Mond, Wetter, NINA, Plan; axe', async () => {
+  it('Rig zuerst, dann Mond und Dunkelheit, Plan, Nacht im Detail, Mond & Planeten; axe', async () => {
     wrap();
-    const card = (await screen.findByRole('heading', { level: 2, name: 'Rig A' })).closest(
-      'section',
-    ) as HTMLElement;
-    expect(card.textContent).toContain('Starfront · Nacht 18./19.09.');
+    const context = await screen.findByRole('region', { name: 'Rig und Nacht' });
+    expect(within(context).getByRole('combobox', { name: 'Rig wählen' })).toHaveTextContent(
+      'Rig A',
+    );
+    expect(context.textContent).toContain('Starfront · Nacht 18./19.09.');
+    const card = (
+      await screen.findByRole('heading', { level: 2, name: 'Plan für diese Nacht' })
+    ).closest('section') as HTMLElement;
     expect(card.textContent).toContain('20:10 CDT–05:40 CDT · 9,5 h');
     expect(card.textContent).toContain('48 % beleuchtet · Untergang 00:00 CDT');
     expect(card.textContent).toContain('Gut 72 %');
@@ -180,10 +198,41 @@ describe('S-02 Heute Nacht', () => {
     expect(row.textContent).toContain('24');
     expect(row.textContent).toContain('2,1 h');
     expect(card.textContent).toContain('2 weitere aktive Projekte ohne Frames in dieser Nacht.');
-    // Darunter: ungeprüfte Sessions, Warteschlange (Admin).
-    expect(await screen.findByRole('link', { name: '17./18.09.' })).toBeTruthy();
-    expect(await screen.findByRole('link', { name: 'IC 1396' })).toBeTruthy();
+    // Mond und Dunkelheit vor dem Plan; Nacht im Detail und Mond & Planeten danach.
+    const moon = await screen.findByRole('img', {
+      name: /Mond und Dunkelheit der Nacht 18\.\/19\.09\./,
+    });
+    expect(moon.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const detail = screen.getByRole('heading', { level: 2, name: 'Nacht im Detail' });
+    expect(card.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('noch keine Vorhersage für diese Nacht')).toBeTruthy();
+    const bodies = screen.getByRole('heading', { level: 2, name: 'Mond & Planeten' });
+    const panel = bodies.closest('section') as HTMLElement;
+    expect(
+      within(panel).getByRole('img', { name: /Sichtbarkeit von Mond und Planeten.*Zeiten in CDT/ }),
+    ).toBeTruthy();
+    expect(within(panel).getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect(panel.textContent).toMatch(/max\. \d+° um \d\d:\d\d CDT/);
+    // Keine ungeprüften Sessions und keine Warteschlange mehr.
+    expect(
+      screen.queryByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),
+    ).toBeNull();
     await expectNoSeriousA11y();
+  });
+
+  it('Rig aus der URL: anderes Rig zeigt dessen Standort', async () => {
+    const v = view();
+    const a = v.rigs[0];
+    if (a)
+      v.rigs.push({ ...a, rigId: ID(4), rigName: 'Rig B', siteId: ID(3), siteName: 'Hannover' });
+    state.view = v;
+    wrap(`/heute-nacht?rig=${ID(4)}`);
+    const context = await screen.findByRole('region', { name: 'Rig und Nacht' });
+    expect(within(context).getByRole('combobox', { name: 'Rig wählen' })).toHaveTextContent(
+      'Rig B',
+    );
+    expect(context.textContent).toContain('Hannover · Nacht 18./19.09.');
+    expect(screen.getByTestId('where')).toHaveTextContent(`rig=${ID(4)}`);
   });
 
   it('Admin: Zeile nur heute aus, danach neue Prognose für das Rig', async () => {
@@ -197,7 +246,7 @@ describe('S-02 Heute Nacht', () => {
     await waitFor(() => expect(state.run).toHaveBeenCalledWith(ID(1)));
   });
 
-  it('User: kein Umschalter, keine Warteschlange; „heute aus“ als Hinweis', async () => {
+  it('User: kein Umschalter; „heute aus“ als Hinweis', async () => {
     state.me = me('user');
     const v = view();
     const rig = v.rigs[0];
@@ -213,7 +262,6 @@ describe('S-02 Heute Nacht', () => {
     wrap();
     expect(await screen.findByText('heute aus')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /heute Nacht/ })).toBeNull();
-    expect(screen.queryByRole('heading', { name: /Offene Warteschlange/ })).toBeNull();
   });
 
   it('Nacht noch nicht in der Prognose: Hinweis und „Prognose berechnen“', async () => {

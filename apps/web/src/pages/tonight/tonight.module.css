@@ -1,4 +1,4 @@
-/* S-02 „Heute Nacht“ (AP-35): Karten je Rig in voller Breite, Bausteine der Startseite. */
+/* S-02 „Heute Nacht“ (AP-35, Umbau 27.09.2026): Rig wählen, darunter Abschnitte in voller Breite, Bausteine der Startseite. */
 .page {
   composes: page from '../home/home.module.css';
 }
@@ -43,23 +43,21 @@
   composes: note from '../equipment/equipment.module.css';
 }
 
-.rigs {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--npm-space-4);
-  align-items: start;
+/* Kontextleiste: zuerst das Rig (bestimmt den Standort), daneben Standort und Nacht. */
+.context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
-@media (min-width: 1600px) {
-  .rigs {
-    grid-template-columns: repeat(auto-fill, minmax(44rem, 1fr));
-  }
-}
-.columns {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: var(--npm-space-4);
-  align-items: start;
-  margin-top: var(--npm-space-4);
+.contextRig {
+  flex: 0 1 24rem;
+  min-width: 0;
 }
 
 .facts {
