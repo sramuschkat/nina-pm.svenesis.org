@@ -45,6 +45,17 @@ export function importReport(b: CatalogBuild): string {
 }
 
 /** Kleine Kennzahlen für die `api` (S-82), ohne die Zeilen. */
+/**
+ * Wikipedia-Titel je `primary_id` (`openngc/wikipedia.json`, eine Zeile je Objekt): die Oberfläche lädt die
+ * Datei als eigenen Teil nach und baut daraus den Wikipedia-Link (`wikipediaLink`, FA-FRM-14).
+ */
+export function wikipediaJson(b: CatalogBuild): string {
+  const lines = Object.entries(b.wikipedia).map(
+    ([id, w]) => `${JSON.stringify(id)}:${JSON.stringify(w)}`,
+  );
+  return `{\n${lines.join(',\n')}\n}\n`;
+}
+
 export function catalogMeta(b: CatalogBuild): string {
   return `${JSON.stringify(
     {

@@ -20,6 +20,9 @@ import {
   dsoObjectTypes,
   IAU_CONSTELLATIONS,
   squeezeDesignation,
+  wikiDesignation,
+  type WikiTitle,
+  type WikipediaEntry,
 } from '@nina-pm/shared';
 
 export interface DsoRow {
@@ -54,6 +57,11 @@ export interface CatalogBuild {
     readonly merged: number;
   };
   readonly rows: DsoRow[];
+  /**
+   * Wikipedia-Titel je `primary_id` aus dem Website-Auszug (`wde`/`wen` der kuratierten Objekte, sonst
+   * Feld 10 von `ngc.json`); nur Zeilen mit mindestens einem Artikel. Nicht in `dso_object` (§2).
+   */
+  readonly wikipedia: Readonly<Record<string, WikipediaEntry>>;
   readonly nonexistent: string[];
   readonly merged: { readonly from: string; readonly into: string; readonly reason: string }[];
   readonly warnings: string[];
@@ -361,7 +369,12 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
     aka?: string[];
     de?: string;
     en?: string;
+    wde?: string;
+    wen?: string;
   }[];
+  // Wikipedia-Titel (Kandidaten in Vorrangfolge: kuratiert vor ngc.json); aufgelöst erst nach dem
+  // Zusammenführen, damit der Titel an der verbleibenden Zeile hängt.
+  const wikiCandidates: { target: string; name: string; w: readonly unknown[] }[] = [];
   const claimed = new Map<string, string>();
   const curatedRow = new Map<string, string>();
   for (const o of curated) {
@@ -383,6 +396,7 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
       continue;
     }
     curatedRow.set(squeeze(normalizeDesignation(o.id)), target);
+    wikiCandidates.push({ target, name: o.id, w: [o.wde ?? 0, o.wen ?? 0] });
     const row = rows.get(target) as Mutable;
     for (const i of ids) {
       const d = normalizeDesignation(i);
@@ -416,8 +430,10 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
   };
   let sharpless = 0;
   for (const o of extract.objects) {
-    const [name, ra, dec, t, major, minor, pa, , common, ids] = o;
+    const [name, ra, dec, t, major, minor, pa, , common, ids, wiki] = o;
     const target = find(name);
+    if (Array.isArray(wiki))
+      wikiCandidates.push({ target: target ?? normalizeDesignation(name), name, w: wiki });
     if (target) {
       const row = rows.get(target) as Mutable;
       for (const i of ids ?? []) {
@@ -604,6 +620,42 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
   for (const p of [...unknownPrefixes].sort())
     warn(`Katalogkürzel ${p} nicht in dsoCatalogPrefixes – nur in names, nicht in catalogs`);
 
+  // Wikipedia-Titel: `1` heißt „Artikel unter der Bezeichnung der Auszugszeile“ – nach dem Zusammenführen
+  // kann das eine andere als die primary_id sein, dann steht der Titel ausgeschrieben.
+  const mergedInto = new Map(merged.map((m) => [m.from, m.into]));
+  const resolve = (id: string) => {
+    let x = id;
+    for (let next = mergedInto.get(x); next !== undefined; next = mergedInto.get(x)) x = next;
+    return x;
+  };
+  const slots = new Map<string, [string | null, string | null]>();
+  for (const c of wikiCandidates) {
+    const id = resolve(c.target);
+    if (!rows.has(id)) continue;
+    const slot = slots.get(id) ?? [null, null];
+    for (const i of [0, 1] as const) {
+      const v = c.w[i];
+      const title =
+        v === 1
+          ? wikiDesignation(normalizeDesignation(c.name))
+          : typeof v === 'string' && v.trim() !== ''
+            ? v.trim()
+            : null;
+      if (v !== 0 && v !== 1 && typeof v !== 'string')
+        warn(`Wikipedia ${c.name}: unbekannter Eintrag ${JSON.stringify(v)}`);
+      slot[i] ??= title;
+    }
+    slots.set(id, slot);
+  }
+  const wikipedia: Record<string, WikipediaEntry> = {};
+  for (const r of out) {
+    const slot = slots.get(r.primaryId);
+    if (!slot || (slot[0] === null && slot[1] === null)) continue;
+    const own = wikiDesignation(r.primaryId);
+    const enc = (t: string | null): WikiTitle => (t === null ? 0 : t === own ? 1 : t);
+    wikipedia[r.primaryId] = [enc(slot[0]), enc(slot[1])];
+  }
+
   return {
     version: input.version,
     fetchedAt: input.fetchedAt,
@@ -617,6 +669,7 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
       merged: merged.length,
     },
     rows: out,
+    wikipedia,
     nonexistent: nonexistent.sort((a, b) => a.localeCompare(b, 'en', { numeric: true })),
     merged,
     warnings,

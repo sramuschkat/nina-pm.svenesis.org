@@ -36,6 +36,7 @@ import { problemCode } from '../admin/shared';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { researchLinks } from '../projects/ProjectEditorPage';
+import { useWikipedia } from '../catalog/wikipedia';
 import { SeasonPanel } from '../projects/SeasonPanel';
 import { PlanningContext } from './PlanningContext';
 import { PlanningTabs } from './PlanningTabs';
@@ -1362,9 +1363,10 @@ function InfoCard({
   onClose: () => void;
   onMoveFrame: (ra: number, dec: number) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const num = useNumber();
   const titleId = useId();
+  const wikipedia = useWikipedia();
   if (selected.kind === 'project') {
     const p = selected.item;
     return (
@@ -1385,8 +1387,12 @@ function InfoCard({
     );
   }
   const o = selected.item;
-  const wiki = `https://${i18n.language === 'en' ? 'en' : 'de'}.wikipedia.org/w/index.php?search=${encodeURIComponent(o.displayName)}`;
-  const links = [...researchLinks(o.displayName), { name: 'Wikipedia', href: wiki }];
+  const wiki = wikipedia(o);
+  // Wikipedia zuerst: Artikel aus dem Website-Auszug (FA-FRM-14), sonst die Suche.
+  const links: { name: string; href: string; title?: string }[] = [
+    { name: wiki.label, href: wiki.href, title: wiki.title },
+    ...researchLinks(o.displayName),
+  ];
   const q = new URLSearchParams({
     objekt: o.primaryId,
     ra: String(o.raDeg),
@@ -1409,7 +1415,7 @@ function InfoCard({
         {links.map((l, i) => (
           <span key={l.name}>
             {i > 0 ? ' · ' : ''}
-            <a href={l.href} target="_blank" rel="noopener noreferrer">
+            <a href={l.href} target="_blank" rel="noopener noreferrer" title={l.title}>
               {l.name}
             </a>
           </span>
