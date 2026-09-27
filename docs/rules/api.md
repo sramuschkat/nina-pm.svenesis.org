@@ -5,6 +5,7 @@ Quelle: TK 7.
 - Hono auf Lambda (`api`), Routen unter `/api/auth`, `/api/web/v1`, `/api/nina/v1`, `/api/system/v1`; gleicher Origin, keine CORS-Freigaben.
 - Schemas mit zod in `packages/shared`; OpenAPI 3.1 wird generiert und eingecheckt (`docs/api/openapi.yaml`), CI prüft Diff.
 - JSON `camelCase`; Zeiten ISO-8601 UTC mit `Z`; Nacht `YYYY-MM-DD`; Winkel Grad.
+- Query-Parameter mit IDs heißen wie das Vertragsfeld – `rigId`, `siteId`, `projectId` –, nie verkürzt (`rig=`). Das gilt für die API unter `/api`; Adressen der Oberfläche (deutsche Pfade wie `/planung/objekte?rig=`) sind davon ausgenommen (Entscheidung Sven 27.09.2026).
 - Fehler: `application/problem+json` `{type, title, status, code, errors[]}`; `code` **nur** aus `docs/contracts/errors.json`. Unerwartete Fehler → `500 internal.error` nur mit `requestId`; keine Stacktraces, SQL-/AWS-Fehlertexte oder Schlüssel in Antworten; Details nur im Log.
 - Nebenläufigkeit: `ETag`/`If-Match` → `412 resource.version_conflict`.
 - Idempotenz: Anlagen mit Client-UUID (v7); Zustandsübergänge über `If-Match`.
