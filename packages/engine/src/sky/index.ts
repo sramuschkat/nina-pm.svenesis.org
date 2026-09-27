@@ -4,3 +4,4 @@ export * from './healpix';
 export * from './planets';
 export * from './projection';
 export * from './vec';
+export * from './night-bodies';

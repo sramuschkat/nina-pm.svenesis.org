@@ -1,0 +1,83 @@
+/* „Mond & Planeten“ (Heute Nacht): Karten je Körper und Sichtbarkeitsbalken auf dem dunklen Diagrammrahmen. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-left: 4px solid var(--body);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+}
+.card[data-body='moon'] {
+  --body: var(--npm-body-moon);
+}
+.card[data-body='mercury'] {
+  --body: var(--npm-body-mercury);
+}
+.card[data-body='venus'] {
+  --body: var(--npm-body-venus);
+}
+.card[data-body='mars'] {
+  --body: var(--npm-body-mars);
+}
+.card[data-body='jupiter'] {
+  --body: var(--npm-body-jupiter);
+}
+.card[data-body='saturn'] {
+  --body: var(--npm-body-saturn);
+}
+.card[data-body='uranus'] {
+  --body: var(--npm-body-uranus);
+}
+.card[data-body='neptune'] {
+  --body: var(--npm-body-neptune);
+}
+.dot {
+  flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-top: 0.2rem;
+  border: 1px solid var(--npm-border-strong);
+  border-radius: 50%;
+  background: var(--body);
+}
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.cardName {
+  font-size: var(--npm-font-h3);
+}
+.muted {
+  margin: 0;
+  color: var(--npm-text-light);
+}
+.canvas {
+  display: block;
+  width: 100%;
+  border-radius: var(--npm-radius);
+  background: var(--npm-chart-frame);
+}
+.note {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
