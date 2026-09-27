@@ -20,6 +20,8 @@ export interface MaintenanceDeps {
   readonly weather?: () => Promise<number>;
   /** Fehlende Vorschaubilder der Projekte → Jobs `thumbnail` (AP-25, `tick-hourly`). */
   readonly thumbnails?: () => Promise<number>;
+  /** Bahndaten der Raumstationen und des Hubble-Teleskops → `catalog/sky/` (Ereignisse der Nacht, `daily`). */
+  readonly skySatellites?: () => Promise<number>;
 }
 
 /**
@@ -28,7 +30,8 @@ export interface MaintenanceDeps {
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
  * verwaiste Sessions und legt fällige Session-Jobs an (AP-15). `tick-hourly` holt zuerst das Astro-Wetter
- * je Standort (AP-23) und fehlende Vorschaubilder (AP-25).
+ * je Standort (AP-23) und fehlende Vorschaubilder (AP-25). `daily` holt außerdem die Bahndaten für
+ * „Ereignisse der Nacht“ (27.09.2026).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
@@ -89,6 +92,14 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
                 {
                   name: 'tenant_storage',
                   run: async () => void (await maintenance.measureStorage?.()),
+                },
+              ]
+            : []),
+          ...(maintenance.skySatellites
+            ? [
+                {
+                  name: 'sky_satellites',
+                  run: async () => void (await maintenance.skySatellites?.()),
                 },
               ]
             : []),

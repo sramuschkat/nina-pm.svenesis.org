@@ -6,7 +6,9 @@
  * 2. der Plan des Rigs: Nachtfenster, Dunkelheit, Mond, Wetterbewertung als Farbband, geplante Projekte mit
  *    erwarteten Frames (Prognose, AP-33), Zeilen „nur heute aus“ (Admin), NINA-Instanzen, Safety-Link,
  * 3. „Nacht im Detail“ (Stundentabelle aus Astro-Wetter, AP-23),
- * 4. „Mond & Planeten“ (Vorlage Beobachtungsplaner).
+ * 4. „Mond & Planeten“ (Vorlage Beobachtungsplaner),
+ * 5. „Ereignisse der Nacht“ (Überflüge, Meteorströme, Milchstraßenzentrum, Finsternisse; Vorlage
+ *    Beobachtungsplaner, Bahndaten täglich vom `worker`).
  * Ungeprüfte Sessions und offene Warteschlange stehen nicht mehr hier (Sessions bzw. Projekte). Alle Zeiten in
  * Standortzeit mit Kürzel (NT-03).
  */
@@ -20,6 +22,7 @@ import { forecastApi, tonightApi, type SiteView, type TonightRig } from '../../a
 import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { NightBodies } from '../../components/night-bodies';
+import { NightEvents } from '../../components/night-events';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
@@ -33,6 +36,7 @@ import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import styles from './tonight.module.css';
 import { TonightLines } from './TonightLines';
+import { useSkySatellites } from './sky-satellites';
 
 export const TONIGHT_PATH = '/heute-nacht';
 export const TONIGHT_KEY = ['tonight'] as const;
@@ -119,6 +123,7 @@ export function TonightPage() {
           <RigCard key={rig.rigId} rig={rig} colorOf={colorOf} />
           {site ? <NightDetail site={site} night={rig.night} /> : null}
           {site ? <MoonAndPlanets site={site} rig={rig} /> : null}
+          {site ? <SkyEvents site={site} rig={rig} /> : null}
         </>
       )}
     </div>
@@ -170,6 +175,99 @@ function NightDetail({ site, night }: { site: SiteView; night: string }) {
  * nach Ende des Nachtfensters (auf volle Stunden); Spalte „jetzt“ in der Nacht zur aktuellen Zeit, sonst 30 min
  * nach Beginn der Dunkelheit.
  */
+/** Fenster von „Mond & Planeten“ und „Ereignisse der Nacht“: eine Stunde vor bis eine Stunde nach dem Nachtfenster. */
+function eventWindow(rig: TonightRig): { from: number; to: number } | null {
+  if (!rig.nightWindow) return null;
+  const from = Date.parse(rig.nightWindow.startUtc) / 1000;
+  const to = Date.parse(rig.nightWindow.endUtc) / 1000;
+  return {
+    from: Math.floor((from - 3600) / 3600) * 3600,
+    to: Math.ceil((to + 3600) / 3600) * 3600,
+  };
+}
+
+/** Grenzgröße der Schätzung „Erwartet“ (Vorlage: Standard 6,0 mag). */
+const LIMITING_MAG = 6;
+
+/**
+ * „Ereignisse der Nacht“: Überflüge (Bahndaten `catalog/sky/satellites.json`), Meteorströme, Zentrum der
+ * Milchstraße und die nächsten Finsternisse – alles aus der Engine, Proben alle 10 min wie die Vorlage.
+ */
+function SkyEvents({ site, rig }: { site: SiteView; rig: TonightRig }) {
+  const { t, i18n } = useTranslation();
+  const headingId = useId();
+  const satellites = useSkySatellites();
+  const geo = useMemo(
+    () => ({ latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }),
+    [site.latitudeDeg, site.longitudeDeg],
+  );
+  const win = eventWindow(rig);
+  const from = win?.from ?? null;
+  const to = win?.to ?? null;
+  const night = useMemo(() => {
+    if (from === null || to === null) return null;
+    const samples = sky.eventSamples(geo, from, to);
+    const galactic = sky.galacticCentre(samples, geo);
+    const mid = samples[Math.floor(samples.length / 2)];
+    return {
+      showers: sky.showersTonight(samples, geo).map((s) => ({
+        tonight: s,
+        rate: sky.meteorRate(s.shower, samples, geo, LIMITING_MAG),
+      })),
+      moonIllumPct: mid?.moonIllumPct ?? 0,
+      galactic,
+      season: galactic ? sky.galacticSeason(galactic.monthsHours) : null,
+      eclipses: sky.nextEclipses(geo, from),
+    };
+  }, [geo, from, to]);
+  const passes = useMemo(() => {
+    if (!satellites.data || from === null || to === null) return null;
+    return sky.satellitePassesForNight(satellites.data.satellites, from, to, {
+      ...geo,
+      elevationM: site.elevationM,
+    });
+  }, [satellites.data, geo, site.elevationM, from, to]);
+  const generated = satellites.data ? Date.parse(satellites.data.generated) : null;
+  return (
+    <section className={styles.card} aria-labelledby={headingId}>
+      <div className={styles.cardHead}>
+        <h2 id={headingId} className={styles.cardTitle}>
+          {t('events.title')}
+        </h2>
+        {generated !== null ? (
+          <span className={styles.muted}>
+            {t('events.data', {
+              date: new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                timeZone: site.timeZone,
+              }).format(generated),
+            })}
+          </span>
+        ) : null}
+      </div>
+      <div className={styles.cardBody}>
+        {!night || from === null ? (
+          <p className={styles.muted}>{t('tonight.noWindow')}</p>
+        ) : (
+          <NightEvents
+            timeZone={site.timeZone}
+            nightUtc={from}
+            passes={passes}
+            showers={night.showers}
+            moonIllumPct={night.moonIllumPct}
+            limitingMag={LIMITING_MAG}
+            galactic={night.galactic}
+            season={night.season}
+            eclipses={night.eclipses}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
 function MoonAndPlanets({ site, rig }: { site: SiteView; rig: TonightRig }) {
   const { t } = useTranslation();
   const headingId = useId();

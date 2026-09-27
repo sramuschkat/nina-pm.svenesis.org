@@ -1,0 +1,108 @@
+/* „Ereignisse der Nacht“ (Heute Nacht): aufklappbare Gruppen mit Anzahl und erster Zeile, darin kleine Tabellen. */
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.group {
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+}
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  cursor: pointer;
+  list-style: none;
+}
+.summary::-webkit-details-marker {
+  display: none;
+}
+.summary::before {
+  content: '';
+  display: inline-block;
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid var(--npm-link);
+  border-bottom: 2px solid var(--npm-link);
+  transform: rotate(-45deg);
+}
+.group[open] > .summary::before {
+  transform: rotate(45deg);
+}
+.summary:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: -2px;
+}
+.icon {
+  color: var(--npm-link);
+}
+.title {
+  font-weight: 600;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  padding: 0 var(--npm-space-1);
+  border-radius: 999px;
+  background: var(--npm-selected-bg);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.peek {
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: 0 var(--npm-space-3) var(--npm-space-3);
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.table th {
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-bottom: 1px solid var(--npm-border);
+  color: var(--npm-text-light);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-bottom: 1px solid var(--npm-border);
+  vertical-align: top;
+}
+.table tr:last-child td {
+  border-bottom: 0;
+}
+.muted {
+  margin: 0;
+  color: var(--npm-text-light);
+}
+.note {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.warning {
+  margin: 0;
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-warning-bg);
+  color: var(--npm-text);
+}

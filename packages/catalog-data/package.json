@@ -16,6 +16,7 @@
     "./openngc/catalog-meta.json": "./openngc/catalog-meta.json",
     "./openngc/wikipedia.json": "./openngc/wikipedia.json",
     "./sky/sky.json": "./sky/sky.json",
-    "./data/stars-8.bin": "./data/stars-8.bin"
+    "./data/stars-8.bin": "./data/stars-8.bin",
+    "./data/sky-events.json": "./data/sky-events.json"
   }
 }

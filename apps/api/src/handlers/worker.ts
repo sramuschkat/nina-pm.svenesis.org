@@ -52,6 +52,7 @@ import {
   type ThumbnailDeps,
 } from '../worker/thumbnail';
 import { thumbnailLoader } from '../worker/thumbnail-db';
+import { CELESTRAK_TIMEOUT_MS, refreshSkySatellites } from '../worker/sky-satellites';
 
 // Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
 emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-worker');
@@ -187,6 +188,29 @@ const maintenance = {
     const expired = await expireSubmissions((await lambdaDatabase()).db, new Date());
     logger.info('submission_expiry', { expired });
     return expired;
+  },
+  skySatellites: async () => {
+    const count = await refreshSkySatellites({
+      fetchText: async (url) =>
+        new TextDecoder().decode(
+          (await http.getBytes(url, { timeoutMs: CELESTRAK_TIMEOUT_MS })).bytes,
+        ),
+      // Nur unter catalog/sky/* (iam.md: webBucket.grantPut(worker, 'catalog/sky/*')).
+      put: async (key, body) => {
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: requiredEnv('WEB_BUCKET'),
+            Key: key,
+            Body: body,
+            ContentType: 'application/json',
+            CacheControl: 'public, max-age=3600',
+          }),
+        );
+      },
+      now: () => new Date(),
+    });
+    logger.info('sky_satellites', { count });
+    return count;
   },
   measureStorage: async () => {
     const db = (await lambdaDatabase()).db;

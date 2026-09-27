@@ -108,6 +108,11 @@ test('S-02: Rig zuerst wählen, dann Mond und Dunkelheit, Nacht im Detail, Mond 
   await expect(page.getByRole('heading', { level: 2, name: 'Nacht im Detail' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Mond & Planeten' })).toBeVisible();
   await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toBeVisible();
+  const events = page.locator('section').filter({
+    has: page.getByRole('heading', { level: 2, name: 'Ereignisse der Nacht' }),
+  });
+  await expect(events).toContainText('Satellitenbahnen Stand');
+  await expect(events).toContainText('Die nächsten Finsternisse am Standort');
   await expect(
     page.getByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),
   ).toHaveCount(0);

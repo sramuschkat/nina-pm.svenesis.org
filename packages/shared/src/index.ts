@@ -23,3 +23,4 @@ export * from './forecast';
 export * from './tonight';
 export * from './demo-evaluation';
 export * from './project-report';
+export * from './sky-satellites';

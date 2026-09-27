@@ -73,6 +73,7 @@ export class JobsStack extends Stack {
     // Rechte genau nach iam.md §3.
     props.dataBucket.grantReadWrite(fn, 'tenant/*');
     props.webBucket.grantReadWrite(fn, 'catalog/thumbs/*');
+    props.webBucket.grantPut(fn, 'catalog/sky/*');
     props.webBucket.grantRead(fn, 'assets/*');
     props.webBucket.grantDelete(fn, 'assets/*');
     props.params.dsqlEndpoint.grantRead(fn);
