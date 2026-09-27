@@ -134,8 +134,8 @@ export function NightEvents(props: NightEventsProps) {
     const peak = (d: number) => {
       const dd = Math.round(Math.abs(d));
       if (dd < 1) return t('events.peakNow');
-      if (d > 0) return dd === 1 ? t('events.peakIn1') : t('events.peakIn', { d: dd });
-      return dd === 1 ? t('events.peakAgo1') : t('events.peakAgo', { d: dd });
+      if (d > 0) return dd === 1 ? t('events.peakInOne') : t('events.peakIn', { d: dd });
+      return dd === 1 ? t('events.peakAgoOne') : t('events.peakAgo', { d: dd });
     };
     const radiant = (s: sky.ShowerTonight) => {
       if (!s.best) return t('events.radNoDark');
