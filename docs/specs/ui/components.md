@@ -253,11 +253,16 @@ SVG, dunkle Scheibe (`moon-dark`) und beleuchteter Teil (`moon-lit`) aus Halbkre
 
 Vorbild `renderPlanetCards`/`drawPlanetBars` im Beobachtungsplaner. Eigenschaften: `rows` (Proben der Nacht aus `sky.nightBodySamples`, 10 min), `site` (Breite/Länge), `timeZone`, `atUtc` (Zeitpunkt der Spalte „jetzt“ und der roten Linie), `atIsNow`. Oben Karten für jeden Körper, der zum besten Moment (`sky.bestBodySample`: am höchsten bei Sonne < −6°, sonst nach Sonnenuntergang) mindestens 10° hoch steht – Name, „max. 72° um 02:40 CDT · S“, Helligkeit bzw. beleuchteter Anteil, linker Rand und Punkt in der Körperfarbe (`body-*`); die übrigen in einer Zeile „Nicht über 10° bei Nacht: …“. Darunter ein Canvas auf `chart-frame`: Dämmerungsleiste (`skyColor`), Stunden in Standortzeit (Gerätezeit darunter, wenn abweichend), je Körper ein Balken über dem Horizont (Deckkraft nach Höhe und Himmelshelligkeit), rechts „jetzt“, „max. Höhe“, „mag · %“ (unter 560 px nur die ersten beiden). Textalternative: `aria-label` mit bestem Moment je Körper. Keine Datenabfrage.
 
+### 2.20 `NightEvents` (Ereignisse der Nacht, Heute Nacht)
+
+Vorbild `renderEvents` im Beobachtungsplaner. Eigenschaften: `timeZone`, `nightUtc`, `passes` (`sky.satellitePassesForNight`, `null` beim Laden), `showers` (`sky.showersTonight` mit `sky.meteorRate`), `moonIllumPct`, `limitingMag`, `galactic` (`sky.galacticCentre`), `season` (`sky.galacticSeason`), `eclipses` (`sky.nextEclipses`). Vier aufklappbare Gruppen (`<details>`) mit Symbol, Titel, Anzahl und erster Zeile im Kopf; darin je eine Tabelle und die Hinweise der Vorlage. Leere Gruppen entfallen, die Überflüge bleiben mit Hinweis, wenn Bahndaten älter als 14 Tage sind; ohne jedes Ereignis ein Leertext. Uhrzeiten in Standortzeit, auf die Minute gerundet wie die Vorlage, Finsternisse mit Datum und Zonenkürzel. Keine Datenabfrage.
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
 |---|---|
 | Heute Nacht · Ausrüstung · Planung · Projekte · NINA · Wetter · Auswertung · Administration · System | `moon-star` · `telescope` · `compass` · `folder-kanban` · `plug-zap` · `cloud-sun` · `chart-line` · `users` · `settings` |
+| Ereignisse der Nacht: Überflüge · Meteorströme · Milchstraßenzentrum · Finsternisse | `satellite` · `sparkles` · `orbit` · `contrast` |
 | Speichern · Einreichen · Freigeben · Zurückgeben · Ablehnen · Simulieren · Duplizieren · Löschen | `save` · `send` · `check` · `undo-2` · `x` · `play` · `copy` · `trash-2` |
 | Benachrichtigungen · Theme hell/dunkel · Benutzer · Hilfe | `bell` · `sun`/`moon` · `user` · `circle-help` |
 | Gelöscht (Papierkorb) · Wiederherstellen · Warnung im `ConfirmDialog` | `trash` · `archive-restore` · `triangle-alert` |

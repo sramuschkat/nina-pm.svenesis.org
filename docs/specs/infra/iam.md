@@ -42,6 +42,7 @@ Kein Zugriff auf `webBucket`, kein SSM-Schreibrecht (Discord-Webhooks liegen in 
 | DSQL-Cluster | `dsql:DbConnect` auf den Cluster-ARN (`PolicyStatement`) | DB-Rolle `app_job` |
 | `dataBucket`, Präfix `tenant/*` | `dataBucket.grantReadWrite(worker, 'tenant/*')` | Importe und Ergebnisdateien lesen, Berichte schreiben |
 | `webBucket`, Präfix `catalog/thumbs/*` | `webBucket.grantReadWrite(worker, 'catalog/thumbs/*')` | Vorschaubilder |
+| `webBucket`, Präfix `catalog/sky/*` | `webBucket.grantPut(worker, 'catalog/sky/*')` | Bahndaten für „Ereignisse der Nacht“ (Zeitplan `daily`, nur schreiben) |
 | `webBucket`, Präfix `assets/*` | `webBucket.grantRead(worker, 'assets/*')` · `webBucket.grantDelete(worker, 'assets/*')` | `weekly`-Aufräumjob alter Build-Assets |
 | SQS `nina-pm-worker-failures` | entsteht durch `onFailure: new SqsDestination(queue)` (CDK vergibt `sqs:SendMessage`) | fehlgeschlagene asynchrone Aufrufe |
 | SSM `/nina-pm/dsql-endpoint`, `/nina-pm/web/build-id`, optional `/nina-pm/system/alarm-webhook` | je Parameter `grantRead(worker)` | §8 |

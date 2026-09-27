@@ -213,6 +213,18 @@ describe('S-02 Heute Nacht', () => {
     ).toBeTruthy();
     expect(within(panel).getAllByRole('listitem').length).toBeGreaterThan(0);
     expect(panel.textContent).toMatch(/max\. \d+° um \d\d:\d\d CDT/);
+    // Ereignisse der Nacht: Bahndaten (hier der mitgelieferte Stand), vier Gruppen aus der Engine.
+    const events = (
+      await screen.findByRole('heading', { level: 2, name: 'Ereignisse der Nacht' })
+    ).closest('section') as HTMLElement;
+    expect(await within(events).findByText(/Satellitenbahnen Stand 15\.09\.2026/)).toBeTruthy();
+    // 18./19.09.: noch kein großer Strom aktiv (Südliche Tauriden ab λ☉ 177°) – Gruppe entfällt.
+    expect(within(events).queryByText('Meteorströme')).toBeNull();
+    expect(within(events).getByText('Zentrum der Milchstraße')).toBeTruthy();
+    expect(within(events).getByText('Die nächsten Finsternisse am Standort')).toBeTruthy();
+    expect(
+      within(events).getByText(/Halbschatten-Mondfinsternis · Sa\., 20\.02\.2027, 17:13 CST/),
+    ).toBeTruthy();
     // Keine ungeprüften Sessions und keine Warteschlange mehr.
     expect(
       screen.queryByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),

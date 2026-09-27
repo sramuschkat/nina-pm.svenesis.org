@@ -173,10 +173,15 @@ describe('Rechte-Tabellen iam.md §2, §3, §5', () => {
     );
   });
 
-  it('worker: tenant/*, catalog/thumbs/* und assets/*; SQS nur SendMessage-Rechte der Destination', () => {
+  it('worker: tenant/*, catalog/thumbs/*, catalog/sky/* und assets/*; SQS nur SendMessage-Rechte der Destination', () => {
     const s3 = s3Of(workerRole.statements).join();
-    for (const prefix of ['/tenant/*', '/catalog/thumbs/*', '/assets/*'])
+    for (const prefix of ['/tenant/*', '/catalog/thumbs/*', '/catalog/sky/*', '/assets/*'])
       expect(s3).toContain(prefix);
+    // Bahndaten (Ereignisse der Nacht): nur schreiben, weder lesen noch löschen.
+    const sky = workerRole.statements.filter((s) => json(s.Resource).includes('/catalog/sky/*'));
+    expect(
+      sky.flatMap(actionsOf).every((a) => a.startsWith('s3:PutObject') || a.startsWith('s3:Abort')),
+    ).toBe(true);
     const sqs = workerRole.statements.filter((s) => actionsOf(s).some((a) => a.startsWith('sqs:')));
     expect(sqs.flatMap(actionsOf)).toContain('sqs:SendMessage');
     expect(sqs.flatMap(actionsOf)).not.toContain('sqs:ReceiveMessage');
