@@ -17,6 +17,7 @@ import { config } from '@nina-pm/infra/config';
 import { printReport, runFakeNight } from '@nina-pm/fake-plugin';
 import { runSmoke } from '@nina-pm/smoke';
 import { loadMigrations, migrationsHash } from '@nina-pm/db/migrate';
+import { deployConcurrencyArgs, hasSecurityChanges } from './cdk-diff';
 import { parseDeployArgs } from './deploy-args';
 import { findGreenProtocol } from './dsql/protocol';
 
@@ -26,6 +27,16 @@ const outputsFile = `${repoRoot}infra/cdk-outputs.json`;
 function capture(cmd: string, args: string[]): { ok: boolean; out: string } {
   const res = spawnSync(cmd, args, { cwd: repoRoot, encoding: 'utf8' });
   return { ok: res.status === 0, out: `${res.stdout ?? ''}`.trim() };
+}
+
+/** Wie `run`, gibt die Ausgabe (stdout und stderr) aber zusätzlich zurück. */
+function runTee(cmd: string, args: string[]): string {
+  const res = spawnSync(cmd, args, { cwd: repoRoot, encoding: 'utf8' });
+  const out = `${res.stdout ?? ''}${res.stderr ?? ''}`;
+  process.stdout.write(out);
+  if (res.status !== 0)
+    fail(`${cmd} ${args.join(' ')} ist fehlgeschlagen (Exit ${res.status ?? '–'}).`);
+  return out;
 }
 
 function run(cmd: string, args: string[]): void {
@@ -347,7 +358,11 @@ async function main(): Promise<void> {
   }
   step('cdk diff – bitte vollständig lesen');
   // Vorlagen-Diff statt Changesets: gleiche Änderungsliste, ohne je Stack ein Changeset anzulegen.
-  run('pnpm', ['cdk', 'diff', '--method=template', ...context]);
+  const diff = runTee('pnpm', ['cdk', 'diff', '--method=template', ...context]);
+  if (hasSecurityChanges(diff))
+    console.log(
+      '\n! Sicherheitsrelevante Änderungen (IAM/Sicherheitsgruppen): Deploy ohne Parallelität – CDK fragt je Stack noch einmal nach (y).',
+    );
 
   const rl = createInterface({ input: stdin, output: stdout });
   const answer = (await rl.question('\nDeploy nach prod ausführen? (ja/nein) '))
@@ -360,12 +375,12 @@ async function main(): Promise<void> {
 
   step('cdk deploy --all');
   // Unabhängige Stacks parallel; Abhängigkeiten (Data → Api → Edge …) hält CDK selbst ein.
+  // Mit sicherheitsrelevanten Änderungen nacheinander, damit CDK selbst nachfragen kann (cdk-diff.ts).
   run('pnpm', [
     'cdk',
     'deploy',
     '--all',
-    '--concurrency',
-    '4',
+    ...deployConcurrencyArgs(diff),
     ...context,
     '--outputs-file',
     outputsFile,
