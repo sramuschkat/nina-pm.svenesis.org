@@ -33,6 +33,7 @@ import {
   Download,
   ExternalLink,
   FolderKanban,
+  LayoutDashboard,
   GripVertical,
   Loader,
   Lock,
@@ -76,6 +77,8 @@ export const ICON_SIZE = { table: 16, button: 20, nav: 24 } as const;
 
 /** Navigationsbereiche (FK 14.2). */
 export const areaIcons = {
+  /** Übersicht (Startseite, eigener Menüpunkt seit 27.09.2026). */
+  overview: LayoutDashboard,
   tonight: MoonStar,
   equipment: Telescope,
   planning: Compass,

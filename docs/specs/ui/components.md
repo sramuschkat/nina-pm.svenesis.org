@@ -261,7 +261,7 @@ Vorbild `renderEvents` im Beobachtungsplaner. Eigenschaften: `timeZone`, `nightU
 
 | Bereich / Aktion | Symbol |
 |---|---|
-| Heute Nacht · Ausrüstung · Planung · Projekte · NINA · Wetter · Auswertung · Administration · System | `moon-star` · `telescope` · `compass` · `folder-kanban` · `plug-zap` · `cloud-sun` · `chart-line` · `users` · `settings` |
+| Übersicht · Heute Nacht · Ausrüstung · Planung · Projekte · NINA · Wetter · Auswertung · Administration · System | `layout-dashboard` · `moon-star` · `telescope` · `compass` · `folder-kanban` · `plug-zap` · `cloud-sun` · `chart-line` · `users` · `settings` |
 | Ereignisse der Nacht: Überflüge · Meteorströme · Milchstraßenzentrum · Finsternisse | `satellite` · `sparkles` · `orbit` · `contrast` |
 | Speichern · Einreichen · Freigeben · Zurückgeben · Ablehnen · Simulieren · Duplizieren · Löschen | `save` · `send` · `check` · `undo-2` · `x` · `play` · `copy` · `trash-2` |
 | Benachrichtigungen · Theme hell/dunkel · Benutzer · Hilfe | `bell` · `sun`/`moon` · `user` · `circle-help` |

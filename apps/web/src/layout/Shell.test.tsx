@@ -65,11 +65,11 @@ function member(
   };
 }
 
-async function renderShell(value: Me) {
+async function renderShell(value: Me, path = '/') {
   me.current = value;
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
           <AppearanceProvider>
             <Shell>
@@ -113,6 +113,28 @@ describe('Rechteanzeige in der Shell', () => {
     expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(
       'href',
       '/heute-nacht',
+    );
+  });
+
+  it('Übersicht als eigener Menüpunkt ganz oben, aktiv nur auf der Startseite (27.09.2026)', async () => {
+    await renderShell(member('user', 'user', false));
+    const links = within(nav()).getAllByRole('link');
+    expect(links[0]).toHaveAccessibleName('Übersicht');
+    expect(links[0]).toHaveAttribute('href', '/');
+    expect(links[0]).toHaveAttribute('aria-current', 'page');
+    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('Übersicht ist auf anderen Seiten nicht aktiv', async () => {
+    await renderShell(member('user', 'user', false), '/heute-nacht');
+    expect(within(nav()).getByRole('link', { name: 'Übersicht' })).not.toHaveAttribute(
+      'aria-current',
+    );
+    expect(within(nav()).getByRole('link', { name: 'Heute Nacht' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
   });
 

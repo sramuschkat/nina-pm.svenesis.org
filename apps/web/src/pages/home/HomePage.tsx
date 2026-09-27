@@ -7,7 +7,7 @@
  * Kennzahlen und Karten nutzen dieselben Abfragen (ein Cache), haben Lade-, Leer- und Fehlerzustand und
  * erscheinen nur mit dem Recht der Zielseite. Im System-Kontext bleibt der Hinweis zur Verwaltung.
  */
-import { formatNightKey, formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,9 +38,7 @@ import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
 import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
-import { TONIGHT_PATH } from '../tonight/TonightPage';
-import { WEATHER_PATH, weatherHref } from '../weather/model';
-import { useNow, useSiteWeather, weatherKey } from '../weather/WeatherPage';
+import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
 
 /** Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste und Sessions: ein Cache, keine Doppelabrufe. */
@@ -119,13 +117,10 @@ function TenantHome() {
         </ul>
       ) : null}
       <div className={styles.columns}>
-        <div className={styles.column}>
-          {canProjects ? <ProjectsCard /> : null}
-          {canSessions ? <SessionsCard /> : null}
-        </div>
+        <div className={styles.column}>{canProjects ? <ProjectsCard /> : null}</div>
         <div className={styles.column}>
           {canQueue ? <QueueCard /> : null}
-          {canWeather ? <WeatherCard /> : null}
+          {canSessions ? <SessionsCard /> : null}
         </div>
       </div>
     </div>
@@ -254,6 +249,31 @@ function IntegrationTile({ zone, now }: { zone: string; now: Date }) {
       }
     />
   );
+}
+
+/** Stunden der laufenden bzw. kommenden Nacht (wie `WeatherChart`: erstes Nachtfenster, das noch nicht vorbei ist). */
+export function tonight(view: WeatherView, nowMs: number) {
+  const window =
+    view.nightWindows.find((w) => Date.parse(w.endUtc) > nowMs) ?? view.nightWindows[0] ?? null;
+  if (!window) return null;
+  const from = Date.parse(window.startUtc);
+  const to = Date.parse(window.endUtc);
+  const cells = view.hours
+    .filter((h) => {
+      const at = Date.parse(h.tUtc);
+      return at >= from && at < to;
+    })
+    .map((h) => ({
+      tUtc: h.tUtc,
+      score: h.overallScore,
+      ratingIndex: h.ratingIndex,
+      colour: ratingColour(h.overallScore, daylightFade(h.sunAltDeg)),
+    }));
+  return {
+    window,
+    night: view.nights.find((n) => n.night === window.night) ?? null,
+    cells,
+  };
 }
 
 /**
@@ -437,138 +457,6 @@ function QueueRow({
         </button>
         <span>{q.votes.count}</span>
       </span>
-    </li>
-  );
-}
-
-// ---- Wetter heute Nacht-------------------------------------------------------------------------------
-
-function WeatherCard() {
-  const { t } = useTranslation();
-  const sites = useEquipmentList('sites');
-  const list = sites.data ?? [];
-  return (
-    <Card title={t('home.weather.title')} to={WEATHER_PATH} more={t('home.weather.more')}>
-      <div className={styles.cardBody}>
-        {sites.isError ? (
-          <ProblemMessage code={problemCode(sites.error)} onRetry={() => void sites.refetch()} />
-        ) : sites.isPending ? (
-          <Skeleton />
-        ) : list.length === 0 ? (
-          <p className={styles.muted}>{t('home.weather.empty')}</p>
-        ) : (
-          <ul className={styles.sites}>
-            {list.map((s) => (
-              <SiteTonight key={s.id} site={s} />
-            ))}
-          </ul>
-        )}
-        <Link to={TONIGHT_PATH} className={styles.more}>
-          {t('tonight.homeLink')}
-        </Link>
-      </div>
-    </Card>
-  );
-}
-
-/** Farbband der laufenden bzw. kommenden Nacht (wie `WeatherChart`: erstes Nachtfenster, das noch nicht vorbei ist). */
-export function tonight(view: WeatherView, nowMs: number) {
-  const window =
-    view.nightWindows.find((w) => Date.parse(w.endUtc) > nowMs) ?? view.nightWindows[0] ?? null;
-  if (!window) return null;
-  const from = Date.parse(window.startUtc);
-  const to = Date.parse(window.endUtc);
-  const cells = view.hours
-    .filter((h) => {
-      const at = Date.parse(h.tUtc);
-      return at >= from && at < to;
-    })
-    .map((h) => ({
-      tUtc: h.tUtc,
-      score: h.overallScore,
-      ratingIndex: h.ratingIndex,
-      colour: ratingColour(h.overallScore, daylightFade(h.sunAltDeg)),
-    }));
-  return {
-    window,
-    night: view.nights.find((n) => n.night === window.night) ?? null,
-    cells,
-  };
-}
-
-function SiteTonight({ site }: { site: SiteView }) {
-  const { t } = useTranslation();
-  const num = useNumber();
-  const weather = useSiteWeather(site.id);
-  const now = useNow();
-  const view = weather.data;
-  const data = view && view.status === 'ready' ? tonight(view, now.getTime()) : null;
-  const zone = view?.timeZone ?? site.timeZone;
-  const clock = (iso: string) => `${formatZonedTime(iso, zone)} ${formatTzAbbr(iso, zone)}`;
-  const rating = (index: number | null, score: number | null) =>
-    score === null || index === null
-      ? t('weather.rating.none')
-      : `${t(`weather.rating.${String(index)}`)} ${num(score * 100, 0)} %`;
-  const n = data?.night ?? null;
-  const w = n?.bestWindow ?? null;
-  return (
-    <li className={styles.site}>
-      <h3 className={styles.siteName}>
-        <Link to={weatherHref(site.id)}>{site.name}</Link>
-        {data ? (
-          <span className={styles.muted}>
-            {formatNightKey(data.window.night)}
-            {n && n.darkFromUtc !== null ? ` · ${rating(n.ratingIndex, n.nightMean)}` : ''}
-          </span>
-        ) : null}
-      </h3>
-      {weather.isError && !view ? (
-        <ProblemMessage code={problemCode(weather.error)} onRetry={() => void weather.refetch()} />
-      ) : !view ? (
-        <Skeleton />
-      ) : view.status === 'pending' ? (
-        <p className={styles.muted} role="status">
-          {t('weatherPage.pending')}
-        </p>
-      ) : !data || data.cells.length === 0 ? (
-        <p className={styles.muted}>{t('home.weather.noNight')}</p>
-      ) : (
-        <>
-          <div
-            className={styles.band}
-            role="img"
-            aria-label={t('home.weather.band', {
-              night: formatNightKey(data.window.night),
-              site: site.name,
-            })}
-          >
-            {data.cells.map((c) => (
-              <span
-                key={c.tUtc}
-                className={styles.bandCell}
-                style={{ background: c.colour }}
-                title={`${clock(c.tUtc)} · ${rating(c.ratingIndex, c.score)}`}
-              />
-            ))}
-          </div>
-          <div className={styles.bandScale} aria-hidden>
-            <span>{clock(data.window.startUtc)}</span>
-            <span>{clock(data.window.endUtc)}</span>
-          </div>
-          <p className={styles.muted}>
-            {n && n.darkFromUtc === null
-              ? t('weather.chart.noDark')
-              : w
-                ? t('home.weather.window', {
-                    from: formatZonedTime(w.fromUtc, zone),
-                    to: formatZonedTime(w.toUtc, zone),
-                    zone: formatTzAbbr(w.toUtc, zone),
-                    h: num(w.sec / 3600, 1),
-                  })
-                : t('home.weather.noWindow')}
-          </p>
-        </>
-      )}
     </li>
   );
 }

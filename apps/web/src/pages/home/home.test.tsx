@@ -2,8 +2,8 @@
 /**
  * Startseite als Übersicht (AP-26c, AP-26d): Kopf mit Mandant und Datum in Mandantenzeit, *Neues Projekt*
  * nur mit Recht; Kennzahlen (aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht);
- * Karten Warteschlange (Stimme wie S-33, eigenes gesperrt), Wetter heute Nacht (Farbband der kommenden
- * Nacht, bestes Fenster in Standortzeit), Aktive Projekte je Rig als Tabelle, Letzte Sessions; Leer- und
+ * Karten Warteschlange (Stimme wie S-33, eigenes gesperrt), Aktive Projekte je Rig als Tabelle, Letzte
+ * Sessions (keine Karte „Wetter heute Nacht“ mehr, 27.09.2026); Leer- und
  * Fehlerzustände; System-Kontext unverändert; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -362,25 +362,8 @@ describe('Startseite (Mandant)', () => {
       '/projekte/warteschlange',
     );
 
-    // Wetter heute Nacht: Farbband der Nacht 24./25.09. in Standortzeit
-    const weather = await card('Wetter heute Nacht');
-    expect(
-      await within(weather).findByRole('img', {
-        name: 'Stündliche Bewertung der Nacht 24./25.09. in Starfront',
-      }),
-    ).toBeInTheDocument();
-    expect(within(weather).getByText('24./25.09. · Gut 78 %')).toBeInTheDocument();
-    expect(within(weather).getByText('Bestes Fenster 20:05–22:00 CDT · 1,9 h')).toBeInTheDocument();
-    expect(within(weather).getByText('18:00 CDT')).toBeInTheDocument();
-    expect(within(weather).getByTitle('20:00 CDT · Gut 80 %')).toBeInTheDocument();
-    expect(within(weather).getByRole('link', { name: 'Starfront' })).toHaveAttribute(
-      'href',
-      `/wetter?standort=${ID(600)}`,
-    );
-    expect(within(weather).getByRole('link', { name: 'Zum Wetter' })).toHaveAttribute(
-      'href',
-      '/wetter',
-    );
+    // Keine Karte „Wetter heute Nacht“ mehr (Wunsch Sven 27.09.2026 – das Wetter steht unter „Heute Nacht“).
+    expect(screen.queryByRole('heading', { name: 'Wetter heute Nacht' })).toBeNull();
 
     // Aktive Projekte je Rig: eine Tabelle, Rig als Gruppenzeile
     const projects = await card('Aktive Projekte');
@@ -423,9 +406,6 @@ describe('Startseite (Mandant)', () => {
       await within(await card('Warteschlange')).findByText('Keine offenen Einreichungen.'),
     ).toBeInTheDocument();
     expect(
-      await within(await card('Wetter heute Nacht')).findByText('Noch kein Standort angelegt.'),
-    ).toBeInTheDocument();
-    expect(
       await within(await card('Aktive Projekte')).findByText('Keine aktiven Projekte.'),
     ).toBeInTheDocument();
     expect(
@@ -439,7 +419,7 @@ describe('Startseite (Mandant)', () => {
     await expectNoSeriousA11y();
   });
 
-  it('Fehler einer Karte mit Erneut versuchen; Wetter noch nicht abgerufen', async () => {
+  it('Fehler einer Karte mit Erneut versuchen', async () => {
     state.queueError = true;
     state.sites = [SITE];
     state.weather = { ...weatherView(), status: 'pending', hours: [], nights: [] };
@@ -447,9 +427,6 @@ describe('Startseite (Mandant)', () => {
     const queue = await screen.findByRole('region', { name: 'Warteschlange' });
     expect(await within(queue).findByRole('alert')).toBeInTheDocument();
     expect(within(queue).getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
-    expect(
-      await within(await card('Wetter heute Nacht')).findByText(/noch keine Vorhersage vor/),
-    ).toBeInTheDocument();
   });
 
   it('Ohne Rechte keine Hauptaktion und keine Karten der Zielseiten', async () => {

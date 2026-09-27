@@ -358,8 +358,10 @@ function SideNav({
   const location = useLocation();
   const canAdmin = useCan('member.manage');
   const system = me?.context === 'system';
-  // Gruppen der Navigation (Stilsystem AP-26d): Planen · Betrieb · Einrichten; System allein.
+  // Gruppen der Navigation (Stilsystem AP-26d): Übersicht allein oben (27.09.2026) · Planen · Betrieb ·
+  // Einrichten; System allein.
   const groups: { key: string; areas: NavArea[] }[] = [
+    { key: 'overview', areas: [{ key: 'overview', visible: !system, to: '/' }] },
     {
       key: 'plan',
       areas: [
@@ -387,6 +389,11 @@ function SideNav({
   ];
   const Toggle = collapsed ? uiIcons.expand : uiIcons.collapse;
   const section = (to: string) => `/${to.split('/')[1] ?? ''}`;
+  // Die Übersicht liegt auf `/` – aktiv nur genau dort, nicht auf jeder Seite.
+  const current = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname.startsWith(section(to));
+  // Gruppen ohne Überschrift: Übersicht und System stehen allein.
+  const labelled = (key: string) => key !== 'system' && key !== 'overview';
   return (
     <nav
       className={[
@@ -404,12 +411,12 @@ function SideNav({
         const headingId = `nav-group-${g.key}`;
         return (
           <div key={g.key} className={styles.navGroup}>
-            {g.key !== 'system' ? (
+            {labelled(g.key) ? (
               <span id={headingId} className={styles.navGroupLabel}>
                 {t(`nav.group.${g.key}`)}
               </span>
             ) : null}
-            <ul aria-labelledby={g.key !== 'system' ? headingId : undefined}>
+            <ul aria-labelledby={labelled(g.key) ? headingId : undefined}>
               {visible.map((a) => {
                 const Icon = areaIcons[a.key];
                 return (
@@ -419,9 +426,7 @@ function SideNav({
                         to={a.to}
                         className={styles.navItem}
                         title={t(`nav.${a.key}`)}
-                        aria-current={
-                          location.pathname.startsWith(section(a.to)) ? 'page' : undefined
-                        }
+                        aria-current={current(a.to) ? 'page' : undefined}
                       >
                         <Icon size={ICON_SIZE.nav} aria-hidden />
                         <span className={styles.navLabel}>{t(`nav.${a.key}`)}</span>
