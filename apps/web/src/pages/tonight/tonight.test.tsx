@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * AP-35: S-02 „Heute Nacht“ (Umbau Wunsch Sven 27.09.2026) – zuerst das Rig wählen (Standort), Nacht vom
- * Server (nicht aus dem Browserdatum), „Mond und Dunkelheit“, Plan mit Zeiten in Standortzeit mit Kürzel (CDT),
- * Mond, Wetterband, NINA, Safety-Link, geplante Projekte; „Nacht im Detail“ und „Mond & Planeten“; keine
+ * Server (nicht aus dem Browserdatum), „Mond und Dunkelheit“, Plan nur mit NINA, Safety-Link und geplanten
+ * Projekten (Zeiten in Standortzeit mit Kürzel, CDT); „Nacht im Detail“ und „Mond & Planeten“; keine
  * ungeprüften Sessions und keine Warteschlange mehr; Admin schaltet eine Zeile nur für die kommende Nacht aus
  * (danach neue Prognose); User ohne Umschalter; Nacht ohne Prognose; axe.
  */
@@ -182,17 +182,15 @@ describe('S-02 Heute Nacht', () => {
     const card = (
       await screen.findByRole('heading', { level: 2, name: 'Plan für diese Nacht' })
     ).closest('section') as HTMLElement;
-    expect(card.textContent).toContain('20:10 CDT–05:40 CDT · 9,5 h');
-    expect(card.textContent).toContain('48 % beleuchtet · Untergang 00:00 CDT');
-    expect(card.textContent).toContain('Gut 72 %');
-    expect(card.textContent).toContain('bestes Fenster 21:00 CDT–03:00 CDT');
+    // Nur, was NINA heute Nacht tut: NINA-Status, Safety-Link, Projekte – Dunkelheit, Mond und Wetter stehen in
+    // „Mond und Dunkelheit“ bzw. „Nacht im Detail“ (nicht doppelt, 27.09.2026).
     expect(card.textContent).toContain('PC: zuletzt gesehen 18.09.2026 12:55 CDT');
     expect(
       within(card).getByRole('link', { name: 'Safety- und Wetterseite der Sternwarte' }),
     ).toHaveProperty('href', 'https://example.org/safety');
-    expect(
-      within(card).getByRole('img', { name: 'Wetter der Nacht 18./19.09. am Rig Rig A' }),
-    ).toBeTruthy();
+    for (const gone of ['Dunkelheit', 'beleuchtet', 'Gut 72 %', 'bestes Fenster'])
+      expect(card.textContent).not.toContain(gone);
+    expect(within(card).queryByRole('img')).toBeNull();
     const table = within(card).getByRole('table', { name: 'Geplante Projekte am Rig Rig A' });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
     expect(row.textContent).toContain('24');
