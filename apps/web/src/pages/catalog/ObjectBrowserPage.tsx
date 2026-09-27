@@ -31,6 +31,7 @@ import {
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { CatalogImage } from './CatalogImage';
+import { useWikipedia, WikipediaLink } from './wikipedia';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
@@ -756,8 +757,8 @@ const skyMapLink = (o: DsoView, rigId: string | null, rigFov: RowProps['rigFov']
   });
 
 /**
- * Zeilenaktionen der Tabelle (Stilsystem AP-26d): *Sternkarte* als Symbolknopf, dazu *Projekt*. Das
- * Saisondiagramm steht seit AP-26j als Reiter neben dem Höhendiagramm in der aufgeklappten Zeile.
+ * Zeilenaktionen der Tabelle (Stilsystem AP-26d): *Sternkarte* und *Wikipedia* als Symbolknöpfe, dazu
+ * *Projekt*. Das Saisondiagramm steht seit AP-26j als Reiter neben dem Höhendiagramm in der aufgeklappten Zeile.
  */
 function RowActions({
   o,
@@ -767,6 +768,7 @@ function RowActions({
 }: { o: DsoView } & Omit<RowProps, 'minAlt' | 'timeZone' | 'site'>) {
   const { t } = useTranslation();
   const mapLabel = t('catalog.skyMapFor', { name: o.displayName });
+  const wiki = useWikipedia()(o);
   return (
     <div className={styles.rowActions}>
       <Link
@@ -777,6 +779,16 @@ function RowActions({
       >
         <areaIcons.planning size={ICON_SIZE.table} aria-hidden />
       </Link>
+      <a
+        className={styles.iconButton}
+        href={wiki.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={wiki.title}
+        title={wiki.title}
+      >
+        <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+      </a>
       {canCreate ? (
         <Link
           className={styles.buttonSm}
@@ -811,6 +823,7 @@ function CardActions({
         <areaIcons.planning size={ICON_SIZE.table} aria-hidden />
         {t('catalog.skyMap')}
       </Link>
+      <WikipediaLink className={styles.buttonSm} target={o} />
     </div>
   );
 }

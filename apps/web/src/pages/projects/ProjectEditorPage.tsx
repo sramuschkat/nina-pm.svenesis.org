@@ -75,6 +75,7 @@ import {
 } from './model';
 import { fovForFrame, skyMapHref } from '../planning/skymap/model';
 import { CatalogSearch } from '../catalog/CatalogSearch';
+import { WikipediaLink } from '../catalog/wikipedia';
 import { PanelList } from './PanelList';
 import { ChangeRequestsTab } from './ChangeRequestsTab';
 import { ChartArea, HistoryTab, NotesTab } from './ProjectTabs';
@@ -726,6 +727,14 @@ function Editor({
             <dt>{t('projectEditor.research')}</dt>
             <dd>
               <ul className={styles.links}>
+                <li>
+                  <WikipediaLink
+                    target={{
+                      primaryId: draft.dsoPrimaryId,
+                      displayName: draft.targetName.trim() || research,
+                    }}
+                  />
+                </li>
                 {researchLinks(research).map((l) => (
                   <li key={l.name}>
                     <a href={l.href} target="_blank" rel="noopener noreferrer">

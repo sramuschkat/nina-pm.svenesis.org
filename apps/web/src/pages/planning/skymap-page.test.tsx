@@ -305,6 +305,13 @@ describe('S-20 Sternkarte', () => {
         'NGC 1976',
       ),
     );
+    // Wikipedia-Artikel aus dem Website-Auszug statt der Suche (FA-FRM-14).
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'Wikipedia' })).toHaveAttribute(
+        'href',
+        'https://de.wikipedia.org/wiki/Orionnebel',
+      ),
+    );
     state.searchItems = [];
   });
 

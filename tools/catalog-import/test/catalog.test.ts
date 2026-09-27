@@ -23,9 +23,10 @@ import {
   OUTPUT_JSON,
   OUTPUT_META,
   OUTPUT_REPORT,
+  OUTPUT_WIKIPEDIA,
   readCatalogInput,
 } from '../src/files';
-import { catalogJson, catalogMeta, importReport } from '../src/output';
+import { catalogJson, catalogMeta, importReport, wikipediaJson } from '../src/output';
 
 const input = readCatalogInput();
 const build = buildCatalog(input);
@@ -217,6 +218,22 @@ describe('Ausgabe', () => {
     expect(readFileSync(OUTPUT_JSON, 'utf8')).toBe(catalogJson(build));
     expect(readFileSync(OUTPUT_REPORT, 'utf8')).toBe(importReport(build));
     expect(readFileSync(OUTPUT_META, 'utf8')).toBe(catalogMeta(build));
+    expect(readFileSync(OUTPUT_WIKIPEDIA, 'utf8')).toBe(wikipediaJson(build));
+  });
+
+  it('Wikipedia-Titel: kuratiert vor ngc.json, an der verbleibenden Zeile, 1 = eigene Bezeichnung (FA-FRM-14)', () => {
+    const w = build.wikipedia;
+    expect(w['NGC 224']).toEqual(['Andromedagalaxie', 'Andromeda Galaxy']);
+    expect(w['B 33']).toEqual(['Pferdekopfnebel', 'Horsehead Nebula']);
+    // M 102 = NGC 5866: der Titel des kuratierten Objekts, ausgeschrieben (nicht die primary_id).
+    expect(w['NGC 5866']).toEqual(['Messier 102', 'Messier 102']);
+    expect(w['IC 434']).toEqual([1, 1]);
+    // Jede Zeile gehört zum Katalog und hat mindestens einen Artikel.
+    for (const [id, [de, en]] of Object.entries(w)) {
+      expect(byId.has(id), id).toBe(true);
+      expect(de !== 0 || en !== 0, id).toBe(true);
+    }
+    expect(Object.keys(w).length).toBeGreaterThan(10000);
   });
 
   it('Kandidaten der Galerie > 800 (§3 Nr. 6)', () => {

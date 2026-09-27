@@ -5,7 +5,7 @@
  * Katalogsuche im Editor (Combobox, Tastatur) und S-82 Kataloge (Stand, *Neu importieren*); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
@@ -558,6 +558,23 @@ describe('S-21 Objektbrowser', () => {
     expect(screen.getByText(/Höhe von M 31 in der gewählten Nacht/)).toBeInTheDocument();
     expect(screen.getByText('Höchster Stand')).toBeInTheDocument();
     await expectNoSeriousA11y();
+  });
+
+  it('Wikipedia-Link je Objekt: Artikel aus dem Website-Auszug (Tabelle und Galerie, FA-FRM-14)', async () => {
+    renderPage();
+    await screen.findByText('M 31');
+    const row = screen.getByRole('link', { name: 'M 31 in der Sternkarte' }).closest('tr');
+    const link = await within(row as HTMLElement).findByRole('link', {
+      name: 'Wikipedia-Artikel zu M 31',
+    });
+    expect(link).toHaveAttribute('href', 'https://de.wikipedia.org/wiki/Andromedagalaxie');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    cleanup();
+    renderPage('/planung/objekte?reiter=alle&ansicht=galerie');
+    const card = await screen.findByRole('link', { name: 'Wikipedia-Artikel zu M 31' });
+    expect(card).toHaveTextContent('Wikipedia');
+    expect(card).toHaveAttribute('href', 'https://de.wikipedia.org/wiki/Andromedagalaxie');
   });
 
   it('Galerie: 320 px, bei Fehler 128 px, sonst leeres Feld', async () => {

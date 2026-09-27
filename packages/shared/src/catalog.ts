@@ -48,6 +48,58 @@ export const catalogImagePaths = (primaryId: string) => ({
   large: `/catalog/img/ngc-l/${catalogImageKey(primaryId)}.jpg`,
 });
 
+/**
+ * Wikipedia-Titel einer Katalogzeile je Sprache (`[de, en]`, dso-import.md §2, FA-FRM-14): Artikeltitel,
+ * `1` = der Artikel trägt die Bezeichnung selbst (`wikiDesignation(primaryId)`), `0` = kein Artikel.
+ */
+export type WikiTitle = string | 0 | 1;
+export type WikipediaEntry = readonly [de: WikiTitle, en: WikiTitle];
+
+const WIKI_PREFIX: Readonly<Record<string, string>> = {
+  Cl: 'Collinder',
+  Mel: 'Melotte',
+  H: 'Harvard',
+  C: 'Caldwell',
+  M: 'Messier',
+};
+
+/**
+ * Bezeichnung, wie Wikipedia sie schreibt (`M 31` → `Messier 31`, `C 41` → `Caldwell 41`, `NGC 224` bleibt,
+ * `Sh2-155` bleibt). Nach `ngcWikiQuery` in `legacy/astro-tools-2026-09-21/js/sky-map.js`.
+ */
+export function wikiDesignation(id: string): string {
+  const s = id.trim();
+  if (/^Sh2-\d+$/.test(s)) return s;
+  const m = /^([A-Za-z]+) ?0*(\d.*)$/.exec(s);
+  return m?.[1] && m[2] ? `${WIKI_PREFIX[m[1]] ?? m[1]} ${m[2]}` : s;
+}
+
+/**
+ * Wikipedia-Link einer Katalogzeile wie im Beobachtungsplaner der Vorlage (`ngcWikiLink`): der Artikel in
+ * der Sprache der Oberfläche, sonst der der anderen Sprache, sonst die Suche nach der Bezeichnung.
+ */
+export function wikipediaLink(
+  entry: WikipediaEntry | undefined,
+  primaryId: string,
+  displayName: string,
+  lang: 'de' | 'en',
+): { href: string; lang: 'de' | 'en'; search: boolean } {
+  const other = lang === 'de' ? 'en' : 'de';
+  const title = (v: WikiTitle | undefined) =>
+    v === 1 ? wikiDesignation(primaryId) : typeof v === 'string' && v !== '' ? v : null;
+  const url = (l: 'de' | 'en', path: string) => `https://${l}.wikipedia.org/wiki/${path}`;
+  const article = (l: 'de' | 'en', t: string) => url(l, encodeURIComponent(t.replace(/ /g, '_')));
+  const own = title(entry?.[lang === 'de' ? 0 : 1]);
+  if (own) return { href: article(lang, own), lang, search: false };
+  const alt = title(entry?.[lang === 'de' ? 1 : 0]);
+  if (alt) return { href: article(other, alt), lang: other, search: false };
+  return {
+    href: url(lang, `Special:Search?search=${encodeURIComponent(wikiDesignation(displayName))}`),
+    lang,
+    search: true,
+  };
+}
+
 /** Die 88 IAU-Sternbilder: Kürzel → lateinischer Name (Eigenname, nicht übersetzt). */
 export const IAU_CONSTELLATION_NAMES = {
   And: 'Andromeda',
