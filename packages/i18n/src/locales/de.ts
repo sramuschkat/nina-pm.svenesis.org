@@ -48,6 +48,7 @@ export const de = {
     label: 'Hauptnavigation',
     collapse: 'Navigation einklappen',
     expand: 'Navigation ausklappen',
+    overview: 'Übersicht',
     tonight: 'Heute Nacht',
     equipment: 'Ausrüstung',
     planning: 'Planung',
@@ -88,15 +89,6 @@ export const de = {
       by: 'von {{name}}',
       empty: 'Keine offenen Einreichungen.',
       more: 'Zur Warteschlange',
-    },
-    weather: {
-      title: 'Wetter heute Nacht',
-      band: 'Stündliche Bewertung der Nacht {{night}} in {{site}}',
-      window: 'Bestes Fenster {{from}}–{{to}} {{zone}} · {{h}} h',
-      noWindow: 'Kein zusammenhängendes Fenster von mindestens 30 min.',
-      noNight: 'Für die kommende Nacht liegt keine Vorhersage vor.',
-      empty: 'Noch kein Standort angelegt.',
-      more: 'Zum Wetter',
     },
     projects: {
       title: 'Aktive Projekte',
@@ -2618,7 +2610,6 @@ export const de = {
     turnOn: 'Wieder an',
     turnOffLabel: '{{filter}} ({{frames}} Frames) nur heute Nacht ausschalten',
     turnOnLabel: '{{filter}} für heute Nacht wieder einschalten',
-    homeLink: 'Heute Nacht je Rig',
   },
   clearNights: {
     title: 'Klarnacht-Statistik',

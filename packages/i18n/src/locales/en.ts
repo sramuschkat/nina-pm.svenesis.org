@@ -50,6 +50,7 @@ export const en: Messages = {
     label: 'Main navigation',
     collapse: 'Collapse navigation',
     expand: 'Expand navigation',
+    overview: 'Overview',
     tonight: 'Tonight',
     equipment: 'Equipment',
     planning: 'Planning',
@@ -90,15 +91,6 @@ export const en: Messages = {
       by: 'by {{name}}',
       empty: 'No open submissions.',
       more: 'To the queue',
-    },
-    weather: {
-      title: 'Weather tonight',
-      band: 'Hourly rating of the night {{night}} at {{site}}',
-      window: 'Best window {{from}}–{{to}} {{zone}} · {{h}} h',
-      noWindow: 'No continuous window of at least 30 min.',
-      noNight: 'No forecast for the coming night yet.',
-      empty: 'No site created yet.',
-      more: 'To the weather',
     },
     projects: {
       title: 'Active projects',
@@ -2611,7 +2603,6 @@ export const en: Messages = {
     turnOn: 'Back on',
     turnOffLabel: 'Switch {{filter}} ({{frames}} frames) off for tonight only',
     turnOnLabel: 'Switch {{filter}} back on for tonight',
-    homeLink: 'Tonight per rig',
   },
   clearNights: {
     title: 'Clear-night statistics',

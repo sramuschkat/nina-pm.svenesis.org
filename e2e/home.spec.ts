@@ -1,13 +1,13 @@
 /**
- * AP-26c/AP-26d: Startseite als Übersicht gegen den lokalen Stack – Kopf mit Mandant, Kennzahlen, Karten
- * Warteschlange, Wetter heute Nacht (Beispieldaten des lokalen Wetter-Adapters), Aktive Projekte, Letzte
- * Sessions mit ihren Links; axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
+ * AP-26c/AP-26d: Startseite als Übersicht gegen den lokalen Stack – eigener Menüpunkt „Übersicht“ (27.09.2026),
+ * Kopf mit Mandant, Kennzahlen, Karten Warteschlange, Aktive Projekte, Letzte Sessions mit ihren Links (keine
+ * Karte „Wetter heute Nacht“ mehr); axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { tableOverflow, testLogin } from './support';
 
-const CARDS = ['Warteschlange', 'Wetter heute Nacht', 'Aktive Projekte', 'Letzte Sessions'];
+const CARDS = ['Warteschlange', 'Aktive Projekte', 'Letzte Sessions'];
 
 async function openHome(page: Page, fixture = 'owner') {
   await testLogin(page, fixture);
@@ -19,6 +19,12 @@ async function openHome(page: Page, fixture = 'owner') {
 test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async ({ page }) => {
   await openHome(page);
   for (const name of CARDS) await expect(page.getByRole('region', { name })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Wetter heute Nacht' })).toHaveCount(0);
+  // Eigener Menüpunkt, aktiv auf der Startseite.
+  const menu = page
+    .getByRole('navigation', { name: 'Hauptnavigation' })
+    .getByRole('link', { name: 'Übersicht' });
+  await expect(menu).toHaveAttribute('aria-current', 'page');
   const kpis = page.getByRole('list', { name: 'Kennzahlen' });
   await expect(kpis.getByRole('listitem')).toHaveCount(4);
   await expect(kpis).toContainText(/\d+ offen\s*\d+ ohne deine Stimme/);
@@ -38,9 +44,12 @@ test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async
   await page.goto('/');
   await page.getByRole('link', { name: 'Alle Sessions' }).click();
   await expect(page).toHaveURL('/auswertung/sessions');
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Zum Wetter' }).click();
-  await expect(page).toHaveURL('/wetter');
+  // Über den Menüpunkt zurück zur Übersicht.
+  await page
+    .getByRole('navigation', { name: 'Hauptnavigation' })
+    .getByRole('link', { name: 'Übersicht' })
+    .click();
+  await expect(page).toHaveURL('/');
 });
 
 test('User: Warteschlange erreichbar, keine Administration', async ({ page }) => {
