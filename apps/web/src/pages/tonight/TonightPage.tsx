@@ -3,8 +3,9 @@
  * wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts (`GET /web/v1/tonight`,
  * vom Server nach NT-01 bestimmt – nie aus dem Browserdatum):
  * 1. „Mond und Dunkelheit“ (wie Objektbrowser und Sternkarte),
- * 2. der Plan des Rigs: Nachtfenster, Dunkelheit, Mond, Wetterbewertung als Farbband, geplante Projekte mit
- *    erwarteten Frames (Prognose, AP-33), Zeilen „nur heute aus“ (Admin), NINA-Instanzen, Safety-Link,
+ * 2. der Plan des Rigs: NINA-Instanzen, Safety-Link, geplante Projekte mit erwarteten Frames (Prognose,
+ *    AP-33), Zeilen „nur heute aus“ (Admin) – Dunkelheit, Mond und Wetter stehen in den Abschnitten 1 und 3
+ *    und sind hier nicht doppelt (Wunsch Sven 27.09.2026),
  * 3. „Nacht im Detail“ (Stundentabelle aus Astro-Wetter, AP-23),
  * 4. „Mond & Planeten“ (Vorlage Beobachtungsplaner),
  * 5. „Ereignisse der Nacht“ (Überflüge, Meteorströme, Milchstraßenzentrum, Finsternisse; Vorlage
@@ -27,8 +28,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
 import { SiteTime } from '../../components/SiteTime';
-import { WeatherChart, ratingColour } from '../../components/WeatherChart';
-import { daylightFade } from '../../components/WeatherChart/model';
+import { WeatherChart } from '../../components/WeatherChart';
 import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
@@ -330,16 +330,6 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
     if (done) void client.invalidateQueries({ queryKey: TONIGHT_KEY });
   }, [done, client]);
   const zone = rig.siteTimeZone;
-  const w = rig.weather;
-  const rating =
-    w && w.ratingIndex !== null && w.nightMean !== null
-      ? t('tonight.weatherRating', {
-          rating: t(`weather.rating.${String(w.ratingIndex)}`),
-          pct: n(w.nightMean * 100, 0),
-        })
-      : null;
-  const rise = rig.moon.events.find((e) => e.type === 'rise');
-  const set = rig.moon.events.find((e) => e.type === 'set');
   const columns: DataColumn<TonightRig['projects'][number]>[] = [
     {
       id: 'name',
@@ -385,52 +375,6 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
       <div className={styles.cardBody}>
         <dl className={styles.facts}>
           <div>
-            <dt>{t('tonight.dark')}</dt>
-            <dd>
-              {rig.dark ? (
-                <>
-                  <SiteTime atUtc={rig.dark.fromUtc} siteTimeZone={zone} />–
-                  <SiteTime atUtc={rig.dark.toUtc} siteTimeZone={zone} /> ·{' '}
-                  {t('tonight.darkValue', { h: n(rig.darkHours) })}
-                </>
-              ) : (
-                t('tonight.noDark')
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('tonight.moon')}</dt>
-            <dd>
-              {t('tonight.moonIllum', { pct: n(rig.moon.illumPct, 0) })}
-              {rise ? (
-                <>
-                  {' · '}
-                  {t('tonight.moonRise')} <SiteTime atUtc={rise.atUtc} siteTimeZone={zone} />
-                </>
-              ) : null}
-              {set ? (
-                <>
-                  {' · '}
-                  {t('tonight.moonSet')} <SiteTime atUtc={set.atUtc} siteTimeZone={zone} />
-                </>
-              ) : null}
-            </dd>
-          </div>
-          <div>
-            <dt>{t('tonight.weather')}</dt>
-            <dd>
-              {rating ?? t('tonight.weatherNone')}
-              {w?.bestWindow ? (
-                <>
-                  {' · '}
-                  {t('tonight.bestWindow')}{' '}
-                  <SiteTime atUtc={w.bestWindow.fromUtc} siteTimeZone={zone} />–
-                  <SiteTime atUtc={w.bestWindow.toUtc} siteTimeZone={zone} />
-                </>
-              ) : null}
-            </dd>
-          </div>
-          <div>
             <dt>{t('tonight.nina')}</dt>
             <dd>
               {rig.instances.length === 0
@@ -452,32 +396,6 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
             </dd>
           </div>
         </dl>
-        {w && w.hours.length > 0 && rig.nightWindow ? (
-          <div>
-            <div
-              className={styles.band}
-              role="img"
-              aria-label={t('tonight.band', {
-                night: formatNightKey(rig.night),
-                rig: rig.rigName,
-              })}
-            >
-              {w.hours.map((h) => (
-                <span
-                  key={h.tUtc}
-                  className={styles.bandCell}
-                  style={{
-                    background: ratingColour(h.overallScore, daylightFade(h.sunAltDeg ?? 0)),
-                  }}
-                />
-              ))}
-            </div>
-            <div className={styles.bandScale} aria-hidden>
-              <SiteTime atUtc={rig.nightWindow.startUtc} siteTimeZone={zone} />
-              <SiteTime atUtc={rig.nightWindow.endUtc} siteTimeZone={zone} />
-            </div>
-          </div>
-        ) : null}
         {rig.weatherSafetyUrl ? (
           <p>
             <a href={rig.weatherSafetyUrl} target="_blank" rel="noopener noreferrer">

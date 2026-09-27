@@ -85,10 +85,9 @@ test('NT-01: 09:00/16:00/20:00 MESZ am 18.09.2026 → 17./18., 18./19., 18./19.0
     await expect(context.getByRole('combobox', { name: 'Rig wählen' })).toContainText(rigName);
     await expect(context, at).toContainText(`Nacht ${night}`);
     // Uhrzeiten in Standortzeit mit Kürzel (NT-03), nie in der Browserzone.
-    const card = page.locator('section').filter({
-      has: page.getByRole('heading', { level: 2, name: 'Plan für diese Nacht' }),
-    });
-    await expect(card).toContainText('CDT');
+    await expect(page.getByRole('region', { name: 'Mond und Dunkelheit' })).toContainText(
+      'Zeiten in Standortzeit (CDT)',
+    );
   }
   await page.context().clearCookies({ name: 'npm_test_now' });
 });
