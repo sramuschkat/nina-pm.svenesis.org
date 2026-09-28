@@ -10,6 +10,7 @@ on:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'spikes/nina-probe/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
@@ -19,6 +20,7 @@ on:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'spikes/nina-probe/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
@@ -51,8 +53,12 @@ jobs:
         run: dotnet build -c Release spikes/nina-build/AdapterNoWpf
       - name: Ansichten mit XAML (d)
         run: dotnet build -c Release spikes/nina-build/Ui
+      - name: Probe-Plugin AP-S2b (mit XAML)
+        run: dotnet build -c Release spikes/nina-probe
       - name: NINA-Version, Ausgabe und keine DLL im Git
-        run: tools/nina-build-check.sh spikes/nina-build
+        run: |
+          tools/nina-build-check.sh spikes/nina-build
+          tools/nina-build-check.sh spikes/nina-probe
 
   # Derselbe Build auf Windows; AP-16a ergänzt hier Adapter-Tests, dotnet publish und die ZIP.
   build:
@@ -70,6 +76,15 @@ jobs:
           dotnet build -c Release spikes/nina-build/Adapter
           dotnet build -c Release spikes/nina-build/AdapterNoWpf
           dotnet build -c Release spikes/nina-build/Ui
+      # AP-S2b: Probe-Plugin für die Protokolle P-01…P-03, P-13 – Inhalt nach
+      # %LOCALAPPDATA%\NINA\Plugins\3.0.0\NINA-PM Probe\ entpacken (spikes/nina-probe/README.md).
+      - name: Probe-Plugin bauen
+        run: dotnet build -c Release spikes/nina-probe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nina-pm-probe
+          path: spikes/nina-probe/bin/Release/NinaPm.Probe.dll
+          retention-days: 30
 
   # AP-08c (rules/engine.md Nr. 7, canonical-json.md): Engine-Bundle unter Jint rechnet dieselben Hashes wie Node –
   # feste Testvektoren und 500 zufällige PlanInput. Bricht dieser Auftrag, würde das Plugin offline anders planen.

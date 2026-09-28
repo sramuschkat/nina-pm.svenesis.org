@@ -30,6 +30,7 @@
     "engine:bundle": "tsx tools/engine-bundle/src/bundle.ts",
     "engine:parity": "tsx tools/engine-bundle/src/parity.ts",
     "fake-plugin": "tsx tools/fake-plugin/src/cli.ts",
+    "test-run:check": "tsx tools/test-run-check/src/cli.ts",
     "golive:check": "tsx tools/deploy/src/golive-check.ts",
     "loadtest:prod": "tsx tools/deploy/src/loadtest.ts",
     "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts",

@@ -10,7 +10,7 @@ Verwendung: Das NINA-Plugin (`apps/nina-plugin`) wird gegen diese Assemblies **k
 ## Astro PM – N.I.N.A. Plugin
 
 Quelle: https://github.com/Josh-Jones-76/AstroPM.NINA.Plugin (Commit 5dd621d, v1.6.0.0)
-Verwendung: Planungsalgorithmus (portiert nach TypeScript, `packages/engine/src/plan`), Ausführungsmuster im NINA-Plugin (`apps/nina-plugin/NinaPm.Nina`), Vergleichsorakel (`tools/astropm-oracle`).
+Verwendung: Planungsalgorithmus (portiert nach TypeScript, `packages/engine/src/plan`), Ausführungsmuster im NINA-Plugin (`apps/nina-plugin/NinaPm.Nina`) und im Probe-Plugin (`spikes/nina-probe`, AP-S2b), Vergleichsorakel (`tools/astropm-oracle`).
 
 ```
 MIT License
