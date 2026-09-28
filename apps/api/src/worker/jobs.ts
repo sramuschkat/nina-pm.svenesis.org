@@ -84,6 +84,28 @@ export async function runJob(deps: JobRunnerDeps, jobId: string): Promise<RunOut
 /** Zeitbudget je `tick-5min`-Lauf (Lambda-Timeout 15 min). */
 export const PICKUP_BUDGET_MS = 10 * 60_000;
 
+/**
+ * Zeitbudget der Abrufe im `tick-hourly`-Lauf (Wetter, Vorschaubilder), gemessen ab Beginn des Laufs:
+ * danach startet keine neue Arbeit mehr. Ein laufender Abruf darf noch zu Ende gehen (hips2fits bis
+ * 3 × 60 s), der Rest bleibt für den nächsten Lauf – so bleibt der Lauf unter dem Lambda-Timeout von 15 min.
+ */
+export const HOURLY_FETCH_BUDGET_MS = 8 * 60_000;
+
+export interface TickBudget {
+  /** Beginn des Laufs (ms, `clock`); ohne Angabe der Aufruf selbst. */
+  readonly startedAt?: number;
+  readonly budgetMs?: number;
+  readonly clock?: () => number;
+}
+
+/** Liefert „Budget erschöpft?“ für einen Lauf (Muster wie `pickupStaleJobs`). */
+export function budgetExhausted(budget: TickBudget = {}, defaultMs = HOURLY_FETCH_BUDGET_MS) {
+  const clock = budget.clock ?? Date.now;
+  const startedAt = budget.startedAt ?? clock();
+  const budgetMs = budget.budgetMs ?? defaultMs;
+  return () => clock() - startedAt > budgetMs;
+}
+
 export async function pickupStaleJobs(
   deps: JobRunnerDeps & { readonly budgetMs?: number; readonly clock?: () => number },
 ): Promise<{ run: number; exhausted: number }> {

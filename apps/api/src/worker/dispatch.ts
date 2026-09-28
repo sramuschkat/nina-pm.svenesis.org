@@ -24,10 +24,17 @@ export function isWorkerEvent(event: unknown): event is WorkerEvent {
   return typeof e.jobId === 'string' && e.jobId.length > 0;
 }
 
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : 'unbekannt');
+
 /**
  * Dispatcher der Lambda `worker` (TK 13, 7.4). Zeitpläne rufen mit `{tick}`, die API mit `{jobId}`.
  * Ein unbekanntes Ereignis ist ein Konfigurationsfehler und wirft – das landet über EventInvokeConfig
  * in der SQS `nina-pm-worker-failures` und löst den Alarm aus.
+ *
+ * Die Aufgaben eines Zeitplans sind voneinander unabhängig: Scheitert eine, laufen die übrigen trotzdem
+ * (Fehler 28.09.2026: `submission_expiry` scheiterte stündlich und nahm Aufwand, Prognose und Abgleich
+ * aller Mandanten mit). Nach dem Durchlauf wirft der Dispatcher einen Sammelfehler, damit Lambda-Fehler,
+ * SQS und Alarm weiter greifen.
  */
 export async function dispatch(event: unknown, deps: DispatchDeps): Promise<{ ran: string[] }> {
   if (!isWorkerEvent(event)) {
@@ -39,9 +46,21 @@ export async function dispatch(event: unknown, deps: DispatchDeps): Promise<{ ra
     return { ran: [`job:${event.jobId}`] };
   }
   const ran: string[] = [];
+  const failed: { task: string; error: unknown }[] = [];
   for (const task of deps.tasks[event.tick]) {
     const started = Date.now();
-    await task.run();
+    try {
+      await task.run();
+    } catch (error) {
+      logger.error('worker_task_failed', {
+        tick: event.tick,
+        task: task.name,
+        durationMs: Date.now() - started,
+        error: errorMessage(error),
+      });
+      failed.push({ task: task.name, error });
+      continue;
+    }
     logger.info('worker_task_done', {
       tick: event.tick,
       task: task.name,
@@ -49,6 +68,13 @@ export async function dispatch(event: unknown, deps: DispatchDeps): Promise<{ ra
     });
     ran.push(task.name);
   }
-  logger.info('worker_tick_done', { tick: event.tick, tasks: ran.length });
+  logger.info('worker_tick_done', { tick: event.tick, tasks: ran.length, failed: failed.length });
+  if (failed.length > 0)
+    throw new AggregateError(
+      failed.map((f) => f.error),
+      `${event.tick}: ${failed.length} Aufgabe(n) fehlgeschlagen – ${failed
+        .map((f) => `${f.task}: ${errorMessage(f.error)}`)
+        .join('; ')}`,
+    );
   return { ran };
 }

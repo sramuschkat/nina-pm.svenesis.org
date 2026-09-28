@@ -19,7 +19,13 @@ import { isoUtc } from '../lib/format';
 import type { HttpClient } from '../lib/http-client';
 import { logger } from '../lib/logger';
 import { tzdataVersion } from '../lib/night-table';
-import { runJob, type JobHandler, type JobRunnerDeps } from '../worker/jobs';
+import {
+  budgetExhausted,
+  runJob,
+  type JobHandler,
+  type JobRunnerDeps,
+  type TickBudget,
+} from '../worker/jobs';
 import { weatherNightTable, type WeatherSiteGeo } from './nights';
 import { hourlyOf, modelChain, modelSet, weatherUrls } from './open-meteo';
 import { prepareHours, type Cmp3Source, type PreparedHour } from './prepare';
@@ -163,17 +169,25 @@ export interface WeatherTickDeps {
 
 /**
  * `tick-hourly`: je Standort aktiver Mandanten `weather:<siteId>:<Stunde>` anlegen und sofort ausführen –
- * der Reihe nach, damit nicht alle Aufrufe gleichzeitig starten; derselbe Ort nur einmal je Lauf.
+ * der Reihe nach, damit nicht alle Aufrufe gleichzeitig starten; derselbe Ort nur einmal je Lauf. Nach dem
+ * Zeitbudget des Laufs (`HOURLY_FETCH_BUDGET_MS`) kein neuer Abruf; der nächste Lauf holt die übrigen Orte.
  */
 export async function weatherTick(
   deps: WeatherTickDeps,
   jobs: JobRunnerDeps,
   now: Date,
+  budget?: TickBudget,
 ): Promise<number> {
+  const exhausted = budgetExhausted(budget);
   const hour = isoUtc(now).slice(0, 13);
   const seen = new Set<string>();
+  const sites = await deps.sites();
   let runs = 0;
-  for (const site of await deps.sites()) {
+  for (const [i, site] of sites.entries()) {
+    if (exhausted()) {
+      logger.warn('weather_tick_budget', { runs, skipped: sites.length - i });
+      break;
+    }
     const place = `${weatherCoord(site.latitudeDeg)},${weatherCoord(site.longitudeDeg)}`;
     if (seen.has(place)) continue;
     seen.add(place);

@@ -16,7 +16,13 @@ import {
 } from '@nina-pm/shared';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
-import { runJob, type JobHandler, type JobRunnerDeps } from './jobs';
+import {
+  budgetExhausted,
+  runJob,
+  type JobHandler,
+  type JobRunnerDeps,
+  type TickBudget,
+} from './jobs';
 
 type Project = z.output<typeof ProjectView>;
 type Rig = z.output<typeof RigView>;
@@ -78,10 +84,23 @@ export interface ThumbnailTickDeps {
   readonly enqueue: (tenantId: string, input: EnqueueInput) => Promise<EnqueueResult>;
 }
 
-/** `tick-hourly`: fehlende Vorschaubilder nachholen, der Reihe nach (CDS nicht parallel belasten). */
-export async function thumbnailTick(deps: ThumbnailTickDeps, jobs: JobRunnerDeps): Promise<number> {
+/**
+ * `tick-hourly`: fehlende Vorschaubilder nachholen, der Reihe nach (CDS nicht parallel belasten). Nach dem
+ * Zeitbudget des Laufs (`HOURLY_FETCH_BUDGET_MS`) kein neuer Abruf; der Rest folgt im nächsten Lauf.
+ */
+export async function thumbnailTick(
+  deps: ThumbnailTickDeps,
+  jobs: JobRunnerDeps,
+  budget?: TickBudget,
+): Promise<number> {
+  const exhausted = budgetExhausted(budget);
+  const candidates = await deps.candidates(THUMBNAIL_TICK_LIMIT);
   let runs = 0;
-  for (const c of await deps.candidates(THUMBNAIL_TICK_LIMIT)) {
+  for (const [i, c] of candidates.entries()) {
+    if (exhausted()) {
+      logger.warn('thumbnail_tick_budget', { runs, skipped: candidates.length - i });
+      break;
+    }
     try {
       const job = await deps.enqueue(c.tenantId, {
         kind: 'thumbnail',
