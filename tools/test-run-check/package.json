@@ -1,0 +1,10 @@
+{
+  "name": "@nina-pm/test-run-check",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Prüft Plugin-Testläufe: result.json gegen das Schema und das NINA-PM-Log gegen die Erwartungen je Protokoll (AP-S2b, CC5-11, ops/plugin-test-protocol.md)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
