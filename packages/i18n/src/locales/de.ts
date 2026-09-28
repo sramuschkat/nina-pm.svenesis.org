@@ -2936,7 +2936,7 @@ export const de = {
     altAzGrid: 'Alt/Az',
     ecliptic: 'Ekliptik',
     galactic: 'Galaktisch',
-    horizon: 'Horizontlinie 0°',
+    horizon: 'Horizont mit Landschaft',
     minAlt: 'Mindesthöhe ({{deg}}°)',
     meridian: 'Meridian',
     zenith: 'Zenit',

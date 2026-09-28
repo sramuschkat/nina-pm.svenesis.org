@@ -2928,7 +2928,7 @@ export const en: Messages = {
     altAzGrid: 'Alt/Az',
     ecliptic: 'Ecliptic',
     galactic: 'Galactic',
-    horizon: 'Horizon line 0°',
+    horizon: 'Horizon with landscape',
     minAlt: 'Minimum altitude ({{deg}}°)',
     meridian: 'Meridian',
     zenith: 'Zenith',
