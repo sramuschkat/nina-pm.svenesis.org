@@ -73,7 +73,8 @@ export function buildMatrix(setup: NightSetup): Matrix {
       if (!ok) return false;
       for (let t = 0; t < tierWorkSec.length; t++) {
         if ((tierWorkSec[t] ?? 0) <= 0) continue;
-        if (t === 0 || moonDown[s] || tierSafe(t, s)) return true;
+        // Mosaik mit Masken je Panel: ein eigenes sichtbares Panel mit sicherer Restarbeit (A-19).
+        if (prof.perPanel ? tierSafe(t, s) : t === 0 || moonDown[s] || tierSafe(t, s)) return true;
       }
       return false;
     });

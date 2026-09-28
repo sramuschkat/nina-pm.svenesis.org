@@ -61,6 +61,11 @@ export interface UnitProfile {
   readonly tiers: readonly Tier[];
   readonly tierWorkSec: readonly number[];
   readonly tierSafe: readonly (readonly boolean[])[];
+  /**
+   * Mosaik ohne Panel-Einheiten mit Masken je Panel (produktiv, A-19): `tierSafe` enthält Mond unten und
+   * die Sichtbarkeit der Panels, auch für Stufe 0 – Nutzer prüfen dann nur `tierSafe`.
+   */
+  readonly perPanel: boolean;
   readonly lines: readonly UnitLine[];
   readonly transit: UnitTransit | null;
   /** Blockfixkosten `fix` (A-16), Kompatibilität 0. */

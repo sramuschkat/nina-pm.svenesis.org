@@ -280,8 +280,20 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       continue;
     }
 
-    // Stufen-Sicherheit (§3.4): Kompatibilität über die erste Zeile der Stufe (SS), produktiv A-28.
+    // Mosaik ohne Panel-Einheiten mit Masken je Panel (A-19): eine Zeile zählt nur in Slots, in denen
+    // ihr Panel selbst nutzbar ist – sonst malte `paint` Slots, in denen kein Panel belichten kann.
+    const perPanel = byPanel.some((p) => p.canImage !== null);
+    const maskOfPanel = new Map(byPanel.map((p) => [p.index, p.canImage]));
+    const visible = (l: UnitLine, s: number) => maskOfPanel.get(l.panelIndex)?.[s] ?? true;
+
+    // Stufen-Sicherheit (§3.4): Kompatibilität über die erste Zeile der Stufe (SS), produktiv A-28;
+    // mit Masken je Panel: ∃ Zeile der Stufe mit Arbeit, deren Panel in s nutzbar und die dort sicher ist
+    // (Mond unten steckt in `safe`; gilt auch für Stufe 0, `UnitProfile.perPanel`).
     const tierSafe = tiers.map((tier, t): boolean[] => {
+      if (perPanel) {
+        const withWork = lines.filter((l) => l.tier === t && l.effRemaining > 0);
+        return moonDown.map((_, s) => withWork.some((l) => l.safe[s] === true && visible(l, s)));
+      }
       if (t === 0) return new Array<boolean>(n).fill(true);
       if (tier.requiresMoonDown) return [...moonDown];
       if (!sw.tierSafeAnyLine) {
@@ -342,6 +354,7 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       tiers,
       tierWorkSec,
       tierSafe,
+      perPanel,
       lines,
       transit,
       fixSec,
