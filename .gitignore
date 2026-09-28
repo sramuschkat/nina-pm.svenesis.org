@@ -32,6 +32,8 @@ spikes/nina-build/**/bin/
 spikes/nina-build/**/obj/
 spikes/nina-probe/**/bin/
 spikes/nina-probe/**/obj/
+spikes/jint-runtime/bin/
+spikes/jint-runtime/obj/
 # Engine-Bundle und Paritäts-Erwartung (pnpm engine:bundle, pnpm engine:parity), AP-08c
 packages/engine/build/
 *.user

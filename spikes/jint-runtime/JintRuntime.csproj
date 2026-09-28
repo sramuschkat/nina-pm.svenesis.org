@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- AP-S2a: Messung von planNight unter Jint (TK 10.4). Kein Produktivcode; Ergebnis in docs/adr/ADR-S2a-jint.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Dieselbe Version wie apps/nina-plugin/NinaPm.Core.Tests (AP-08c). -->
+    <PackageReference Include="Jint" Version="4.16.4" />
+  </ItemGroup>
+</Project>
