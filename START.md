@@ -72,7 +72,7 @@ Setze dann AP-01 um:
 Sag mir am Ende, was im CI noch grün werden muss und was ich als Nächstes tun soll.
 ```
 
-Danach geht es mit **AP-02a** weiter (braucht H-01 und H-04). Das NINA-Plugin ist seit 23.09.2026 ein eigener Block **RP** direkt vor R4: **AP-S2c** (Build-Nachweis ohne Windows) und **AP-S2b** (Spike NINA-Laufzeit) brauchen H-14 erst dann, siehe den Abschnitt „Plugin: was auf welchem Rechner läuft“.
+Danach geht es mit **AP-02a** weiter (braucht H-01 und H-04). Das NINA-Plugin ist seit 23.09.2026 ein eigener Block **RP** direkt vor R4: **AP-S2c** (Build-Nachweis ohne Windows, seit ADR-S2c ohne H-14) und **AP-S2b** (Spike NINA-Laufzeit, braucht H-14), siehe den Abschnitt „Plugin: was auf welchem Rechner läuft“.
 
 ## Folgesitzungen (kurz)
 
@@ -86,7 +86,7 @@ lies dessen Brief und nur die genannten Abschnitte, prüfe blockierende H-Aufgab
 | Aufgabe | Wird gebraucht für | Vorher nötig? |
 |---|---|---|
 | H-02 Repo, H-03 Astro-Tools | AP-01 | **ja**, sonst kann Sitzung 1 nicht starten |
-| H-14 Windows + NINA-Simulatoren, **Referenz-Assemblies** (fünf davon für den Adapter) | AP-S2c, AP-S2b (Block RP, direkt vor R4) | ja, aber erst für RP |
+| H-14 Windows + NINA-Simulatoren (NINA-Version = `NinaVersion`) | AP-S2b (Block RP, direkt vor R4) | ja, aber erst für RP |
 | H-01 AWS-Konto (inkl. Lambda-Parallelitäts-Kontingent ≥ 125), H-04 Standard-`cdk bootstrap` | AP-02a | ja |
 | H-05 SSM-Parameter, H-09 SNS-Bestätigung | AP-02b | nein – nur für die **Abnahme** von AP-02b |
 | H-07 Discord-Anwendung | AP-04a | ja | 
@@ -106,40 +106,30 @@ Das NINA-Plugin ist die einzige Stelle, an der ein zweiter Rechner nötig ist. D
 | Was | Entwicklungsrechner (macOS/Linux) | Windows-Rechner (H-14) |
 |---|---|---|
 | `NinaPm.Core` + `NinaPm.Core.Tests` bauen und testen | ja | ja |
-| Adapter `NinaPm.Nina` schreiben und **kompilieren** | ja, mit `refs/` (fünf NINA-Assemblies) | ja |
+| Adapter `NinaPm.Nina` schreiben und **kompilieren** | ja, gegen die NuGet-Pakete `NINA.*` | ja |
 | `NinaPm.Nina.Tests` kompilieren | ja | ja |
 | Adapter-Tests **ausführen** | nein (`net8.0-windows`) | ja |
-| `NinaPm.Nina.Ui` (XAML) bauen | nicht eingeplant – das übernimmt der CI (AP-S2c prüft, ob es auch lokal geht) | ja |
+| `NinaPm.Nina.Ui` (XAML) bauen | ja (ADR-S2c) | ja |
 | Plugin **ausführen**, Protokolle P-01…P-24 | nein (NINA und ASCOM sind Windows-Programme) | ja |
 | `tools/nina-test-server`, `pnpm test-run:check` | ja | ja |
 
-Damit der Adapter ohne Windows kompiliert, brauchst du einmal je NINA-Version die Referenz-Assemblies aus der NINA-Installation – das Paket `NINA.Plugin` enthält sie nicht. Es sind sechs Dateien: fünf NINA-Assemblies (die braucht der Adapter) und `Microsoft.Xaml.Behaviors` (nur für die Ansichten):
-
-```powershell
-# auf dem Windows-Rechner, im Repository (H-14)
-pwsh tools/fetch-nina-refs.ps1        # legt apps/nina-plugin/refs/nina-<version>/ an
-```
-
-```bash
-# auf dem Entwicklungsrechner, einmal je NINA-Version
-scp -r <windows>:<repo>/apps/nina-plugin/refs/nina-3.1.2 apps/nina-plugin/refs/
-```
-
-Die DLLs bleiben außerhalb von Git (`.gitignore`), nur die `README.md` des Ordners wird eingecheckt. `apps/nina-plugin/Directory.Build.props` findet sie und setzt `EnableWindowsTargeting` und `PlatformTarget`, deshalb brauchen die Befehle keine Schalter. Das ist die lokale Abnahme vor jedem Plugin-PR:
+Der Adapter übersetzt gegen die NuGet-Pakete `NINA.*` (ADR-S2c): `NINA.Plugin` 3.2.0.9001 bringt alle fünf Adapter-Assemblies mit, eine Kopie vom Windows-Rechner ist nicht nötig. Die Version steht als `NinaVersion` in `apps/nina-plugin/Directory.Build.props` und muss zur NINA auf dem Rig passen. `Directory.Build.props` und `Directory.Build.targets` setzen außerdem `EnableWindowsTargeting` und `PlatformTarget`, deshalb brauchen die Befehle keine Schalter. Das ist die lokale Abnahme vor jedem Plugin-PR:
 
 ```bash
 dotnet build apps/nina-plugin/NinaPm.Core
 dotnet test  apps/nina-plugin/NinaPm.Core.Tests
 dotnet build apps/nina-plugin/NinaPm.Nina
 dotnet build apps/nina-plugin/NinaPm.Nina.Tests
+dotnet build apps/nina-plugin/NinaPm.Nina.Ui
+tools/nina-build-check.sh apps/nina-plugin
 ```
 
 Die Runde danach: PR → `plugin.yml` baut auf `windows-latest` die vollständige Lösung und legt die ZIP ab → ZIP auf dem Windows-Rechner nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm\` entpacken → Protokoll aus `docs/ops/plugin-test-protocol.md` fahren → `result.json`, `nina.log` und Screenshots nach `docs/test-runs/<JJJJ-MM-TT>/<P-xx>/` committen → auf dem Entwicklungsrechner `pnpm test-run:check <ordner>`; Claude Code liest `logCheck` und repariert.
 
-**AP-S2c** weist diesen Build-Weg an Minimalprojekten nach, bevor die Plugin-Pakete darauf bauen, und liefert `Directory.Build.props`, `tools/fetch-nina-refs.ps1` und die CI-Aufträge. Trägt er nicht, fällt der Adapter auf reines CI-Bauen zurück und nur `NinaPm.Core` bleibt lokal.
+**AP-S2c** hat diesen Build-Weg an Minimalprojekten nachgewiesen (`spikes/nina-build/`, `docs/adr/ADR-S2c-build.md`) und liefert `Directory.Build.props`/`.targets`, `tools/nina-build-check.sh` und `plugin.yml`.
 
 ## Umgebung
-Welche Prüfungen lokal laufen und welche nur im CI, steht in `CLAUDE.md` (Abschnitt „Umgebung“). Kurz: alles ohne Docker, Browser, Python und AWS läuft lokal, DSQL-Tests und Deploy führt nur Sven aus – **.NET 8 inklusive**, bis auf WPF und das Ausführen des Plugins (siehe oben); der Rest wird über den PR im CI geprüft (`gh run view --log-failed`).
+Welche Prüfungen lokal laufen und welche nur im CI, steht in `CLAUDE.md` (Abschnitt „Umgebung“). Kurz: alles ohne Docker, Browser, Python und AWS läuft lokal, DSQL-Tests und Deploy führt nur Sven aus – **.NET 8 inklusive**, bis auf das Ausführen der Adapter-Tests und des Plugins (siehe oben); der Rest wird über den PR im CI geprüft (`gh run view --log-failed`).
 
 ## Regeln für den Start
 - Keine Geheimnisse erfragen; SSM-Parameter nur mit Namen verwenden (H-05).

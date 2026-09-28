@@ -1,0 +1,4 @@
+<Project>
+  <!-- AP-S2c: Die Nachweisprojekte nutzen dieselben Eigenschaften wie die Plugin-Projekte. -->
+  <Import Project="../../apps/nina-plugin/Directory.Build.props" />
+</Project>

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- AP-S2c (b): Adapter wie NinaPm.Nina – net8.0-windows mit UseWPF, ohne eigene XAML-Datei (TK 10.1/10.5). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>NinaBuild.Adapter</AssemblyName>
+    <!-- Ausgabe direkt in bin/<Konfiguration>/, sonst findet NINA das Plugin nicht (TK 10.5). -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(OS)' == 'Windows_NT'">
+    <OutputPath>$(LOCALAPPDATA)\NINA\Plugins\3.0.0\NinaBuild.Adapter\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Nur zum Übersetzen; NINA bringt die Assemblies zur Laufzeit selbst mit. -->
+    <PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- NINA lädt das Plugin nur ab dieser Version (Manifest). -->
+    <AssemblyMetadata Include="MinimumApplicationVersion" Value="$(NinaVersion)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Core.csproj" />
+  </ItemGroup>
+</Project>

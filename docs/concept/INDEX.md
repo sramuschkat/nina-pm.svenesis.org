@@ -143,40 +143,40 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | 9. Referenzwerte mit Python/astropy | 2176–2250 |
 | &nbsp;&nbsp;9.1 Aufbau | 2180–2204 |
 | &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2205–2250 |
-| 10. NINA-Plugin | 2251–2429 |
+| 10. NINA-Plugin | 2251–2441 |
 | &nbsp;&nbsp;10.1 Rahmen | 2253–2264 |
-| &nbsp;&nbsp;10.2 Struktur | 2265–2325 |
-| &nbsp;&nbsp;10.3 Ablauf im Container | 2326–2348 |
-| &nbsp;&nbsp;10.4 Offline | 2349–2355 |
-| &nbsp;&nbsp;10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows | 2356–2429 |
-| 11. Frontend (React + TypeScript) | 2430–2543 |
-| &nbsp;&nbsp;11.1 Technologie | 2432–2451 |
-| &nbsp;&nbsp;11.2 Struktur | 2452–2481 |
-| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2482–2533 |
-| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2534–2543 |
-| 12. Dateien und S3 | 2544–2565 |
-| 13. Hintergrund-Jobs | 2566–2586 |
-| 14. Externe Dienste | 2587–2605 |
-| 15. Sicherheit | 2606–2650 |
-| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2614–2631 |
-| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2632–2635 |
-| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2636–2650 |
-| 16. Betrieb, Monitoring und Kosten | 2651–2696 |
-| &nbsp;&nbsp;16.1 Logging und Tracing | 2653–2660 |
-| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2661–2678 |
-| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2679–2696 |
-| 17. Teststrategie | 2697–2726 |
-| 18. CI/CD und Deployment | 2727–2755 |
-| 19. Umsetzungsplan für Claude Code | 2756–2878 |
-| &nbsp;&nbsp;R1 – MVP Planung | 2765–2805 |
-| &nbsp;&nbsp;R2 – Framing und Wetter | 2806–2816 |
-| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2817–2827 |
-| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2828–2846 |
-| &nbsp;&nbsp;R4 – Exoplaneten | 2847–2857 |
-| &nbsp;&nbsp;R5 – Komfort | 2858–2867 |
-| &nbsp;&nbsp;R6 – Optional | 2868–2878 |
-| 20. CLAUDE.md | 2879–2907 |
-| 21. Offene technische Punkte und Risiken | 2908–2948 |
+| &nbsp;&nbsp;10.2 Struktur | 2265–2324 |
+| &nbsp;&nbsp;10.3 Ablauf im Container | 2325–2347 |
+| &nbsp;&nbsp;10.4 Offline | 2348–2354 |
+| &nbsp;&nbsp;10.5 NINA-Assemblies, Build und Entwicklung ohne Windows | 2355–2441 |
+| 11. Frontend (React + TypeScript) | 2442–2555 |
+| &nbsp;&nbsp;11.1 Technologie | 2444–2463 |
+| &nbsp;&nbsp;11.2 Struktur | 2464–2493 |
+| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2494–2545 |
+| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2546–2555 |
+| 12. Dateien und S3 | 2556–2577 |
+| 13. Hintergrund-Jobs | 2578–2598 |
+| 14. Externe Dienste | 2599–2617 |
+| 15. Sicherheit | 2618–2662 |
+| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2626–2643 |
+| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2644–2647 |
+| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2648–2662 |
+| 16. Betrieb, Monitoring und Kosten | 2663–2708 |
+| &nbsp;&nbsp;16.1 Logging und Tracing | 2665–2672 |
+| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2673–2690 |
+| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2691–2708 |
+| 17. Teststrategie | 2709–2738 |
+| 18. CI/CD und Deployment | 2739–2767 |
+| 19. Umsetzungsplan für Claude Code | 2768–2890 |
+| &nbsp;&nbsp;R1 – MVP Planung | 2777–2817 |
+| &nbsp;&nbsp;R2 – Framing und Wetter | 2818–2828 |
+| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2829–2839 |
+| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2840–2858 |
+| &nbsp;&nbsp;R4 – Exoplaneten | 2859–2869 |
+| &nbsp;&nbsp;R5 – Komfort | 2870–2879 |
+| &nbsp;&nbsp;R6 – Optional | 2880–2890 |
+| 20. CLAUDE.md | 2891–2919 |
+| 21. Offene technische Punkte und Risiken | 2920–2960 |
 
 ## schema_aurora_dsql.sql
 

@@ -1,0 +1,67 @@
+name: plugin
+
+# NINA-Plugin (TK 18, 10.5). AP-S2c: Build-Nachweis an den Projekten unter spikes/nina-build/; AP-16a zieht die Aufträge
+# auf die echte Lösung (apps/nina-plugin) und ergänzt Adapter-Tests, ZIP und Release beim Tag plugin-v*.
+# Übersetzt wird gegen die NuGet-Pakete NINA.* in der Version aus apps/nina-plugin/Directory.Build.props (ADR-S2c).
+
+on:
+  pull_request:
+    paths:
+      - 'apps/nina-plugin/**'
+      - 'spikes/nina-build/**'
+      - 'tools/nina-build-check.sh'
+      - '.github/workflows/plugin.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/nina-plugin/**'
+      - 'spikes/nina-build/**'
+      - 'tools/nina-build-check.sh'
+      - '.github/workflows/plugin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Sichert die Entwicklung ohne Windows: bricht dieser Auftrag, ist der lokale Arbeitsablauf auf macOS/Linux kaputt.
+  cross-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      # Ohne zusätzliche -p:-Schalter: Directory.Build.props/.targets genügen (TK 10.5).
+      - name: Kern bauen und testen
+        run: dotnet test -c Release spikes/nina-build/Core.Tests
+      - name: Adapter mit UseWPF, ohne XAML (b)
+        run: dotnet build -c Release spikes/nina-build/Adapter
+      - name: Adapter ohne UseWPF (c)
+        run: dotnet build -c Release spikes/nina-build/AdapterNoWpf
+      - name: Ansichten mit XAML (d)
+        run: dotnet build -c Release spikes/nina-build/Ui
+      - name: NINA-Version, Ausgabe und keine DLL im Git
+        run: tools/nina-build-check.sh spikes/nina-build
+
+  # Derselbe Build auf Windows; AP-16a ergänzt hier Adapter-Tests, dotnet publish und die ZIP.
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Kern bauen und testen
+        run: dotnet test -c Release spikes/nina-build/Core.Tests
+      - name: Adapter und Ansichten bauen
+        run: |
+          dotnet build -c Release spikes/nina-build/Adapter
+          dotnet build -c Release spikes/nina-build/AdapterNoWpf
+          dotnet build -c Release spikes/nina-build/Ui

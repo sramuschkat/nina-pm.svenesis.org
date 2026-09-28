@@ -205,7 +205,7 @@ svenesis-nina-pm/
 │  ├─ web/                      # React-SPA (Vite), base '/'
 │  ├─ api/                      # Lambda-Handler (ein Paket): api (Hono, alle Routen), worker (Job-Dispatcher), migrate, ops-cli; local.ts
 │  └─ nina-plugin/              # C#-Lösung (.sln): Core (net8.0) · Adapter (net8.0-windows, ohne XAML) · Ui (WPF) ·
-│                               # refs/ (NINA-Referenz-Assemblies, nicht im Git, 10.5), bindet engine.iife.js ein
+│                               # NINA über NuGet NINA.* (10.5, ADR-S2c), bindet engine.iife.js ein
 ├─ infra/                       # CDK-App: bin/app.ts, lib/*-stack.ts, config.ts,
 │                               # edge/nina-pm-viewer-request.js
 └─ tools/
@@ -216,7 +216,7 @@ svenesis-nina-pm/
    ├─ catalog/                  # portierte Generatoren (ngc-data, Thumbnails, Sterndaten, Ereignisse)
    ├─ fake-plugin/              # CLI: simuliert eine NINA-Nacht gegen die NINA-API (Tests ohne Plugin)
    ├─ test-run-check/           # prüft docs/test-runs/<datum>/<P-xx>/result.json und das Plugin-Log
-   ├─ fetch-nina-refs.ps1       # kopiert auf Windows die sechs NINA-Referenz-Assemblies nach apps/nina-plugin/refs/ (10.5, H-14)
+   ├─ nina-build-check.sh       # NINA.*-Pakete in NinaVersion, Plugin-Ausgabe nur mit eigenen DLLs, keine DLL im Git (10.5)
    ├─ discord-mock/             # lokaler Webhook-Empfänger für Discord-Tests
    ├─ deploy/                   # lokale Skripte mit Svens Admin-Profil (E1, 18): deploy-prod.ts (`pnpm deploy:prod`),
    │                            # test-dsql.ts (`pnpm test:dsql`, kurzlebiger Cluster, auch Spike AP-S1); Claude Code führt sie nie aus
@@ -2253,7 +2253,7 @@ Zusätzlich **Determinismus-Test**: `planNight` mit festen und ≥ 500 zufällig
 ### 10.1 Rahmen
 
 - Basis: offizielles NINA-3-Plugin-Template; Ziel-Framework gemäß NINA 3.x (aktuell .NET 8, `net8.0-windows`).
-- **Fünf Projekte** in `NinaPm.sln`, geschnitten danach, wie viel ohne Windows gebaut und geprüft werden kann (Einzelheiten und Tabelle in 10.5): `NinaPm.Core` (`net8.0`, **ohne** NINA-Abhängigkeit: ApiClient, LocalStore (SQLite), Outbox, PlanClient/EngineHost, Neuplanungs-, Lease- und Nacht-Zustandsmaschine, Playback-Logik über die Schnittstellen `ISequenceHost`, `ICameraControl`, `IMountControl`, `IFilterWheelControl`, `IRotatorControl`, `IClock`, `currentNight`, FilterResolver (nur bestätigte Filterzuordnung, NT-E1), FlatTracker, Zuordnungslogik der Aufnahmen) und `NinaPm.Core.Tests` – beide plattformneutral, von Claude Code auf Linux **und macOS** baubar und testbar; `NinaPm.Nina` (`net8.0-windows` mit `UseWPF`, aber **ohne eigene XAML-Datei**: Plugin-Manifest, Sequenz-Elemente, Bedingungen, Trigger-Walk, Mediator- und Profil-Zugriff, Plate-Solve, MEF-Export) – dünn und dank der Referenz-Assemblies aus 10.5 ebenfalls ohne Windows **kompilierbar**; `NinaPm.Nina.Tests` (`net8.0-windows`: Adapter-Tests gegen NINA-Attrappen – baut ohne Windows, **läuft** nur auf Windows); `NinaPm.Nina.Ui` (`net8.0-windows` mit WPF **und** XAML: Optionsseite, Zielbrowser, Live-Status, Simulatorpanel, Nachtgrafik) – nur auf Windows bzw. im CI baubar. Der Schnitt zwischen Adapter und Ansichten ist Absicht: im Adapter entstehen die Typ- und API-Fehler, und genau der bleibt ohne Windows kompilierbar; reines XAML-Markup bringt vom Compiler kaum Nutzen. Die **Laufzeit** wird in jedem Fall auf einem Windows-Rechner mit NINA nach `claude-code/docs/ops/plugin-test-protocol.md` geprüft. CI: `plugin.yml` baut und testet die vollständige Lösung auf `windows-latest`, die Kern-Tests zusätzlich auf `ubuntu-latest` und sichert den windowsfreien Weg in einem eigenen Auftrag (18, 10.5).
+- **Fünf Projekte** in `NinaPm.sln`, geschnitten danach, wie viel ohne Windows gebaut und geprüft werden kann (Einzelheiten und Tabelle in 10.5): `NinaPm.Core` (`net8.0`, **ohne** NINA-Abhängigkeit: ApiClient, LocalStore (SQLite), Outbox, PlanClient/EngineHost, Neuplanungs-, Lease- und Nacht-Zustandsmaschine, Playback-Logik über die Schnittstellen `ISequenceHost`, `ICameraControl`, `IMountControl`, `IFilterWheelControl`, `IRotatorControl`, `IClock`, `currentNight`, FilterResolver (nur bestätigte Filterzuordnung, NT-E1), FlatTracker, Zuordnungslogik der Aufnahmen) und `NinaPm.Core.Tests` – beide plattformneutral, von Claude Code auf Linux **und macOS** baubar und testbar; `NinaPm.Nina` (`net8.0-windows` mit `UseWPF`, aber **ohne eigene XAML-Datei**: Plugin-Manifest, Sequenz-Elemente, Bedingungen, Trigger-Walk, Mediator- und Profil-Zugriff, Plate-Solve, MEF-Export) – dünn und dank der NuGet-Pakete `NINA.*` (10.5) ebenfalls ohne Windows **kompilierbar**; `NinaPm.Nina.Tests` (`net8.0-windows`: Adapter-Tests gegen NINA-Attrappen – baut ohne Windows, **läuft** nur auf Windows); `NinaPm.Nina.Ui` (`net8.0-windows` mit WPF **und** XAML: Optionsseite, Zielbrowser, Live-Status, Simulatorpanel, Nachtgrafik) – laut AP-S2c ebenfalls ohne Windows baubar. Der Schnitt zwischen Adapter und Ansichten ist Absicht: im Adapter entstehen die Typ- und API-Fehler, und genau der bleibt ohne Windows kompilierbar; reines XAML-Markup bringt vom Compiler kaum Nutzen. Die **Laufzeit** wird in jedem Fall auf einem Windows-Rechner mit NINA nach `claude-code/docs/ops/plugin-test-protocol.md` geprüft. CI: `plugin.yml` baut und testet die vollständige Lösung auf `windows-latest`, die Kern-Tests zusätzlich auf `ubuntu-latest` und sichert den windowsfreien Weg in einem eigenen Auftrag (18, 10.5).
 - **Codebasis Ausführung:** Astro-PM-NINA-Plugin (MIT, Commit `5dd621d`): Container-, Trigger-, Belichtungs-, Flat- und Schleifenmuster werden übernommen bzw. portiert (`claude-code/docs/specs/nina/execution.md`); Copyright-Hinweis in `THIRD_PARTY_NOTICES.md`; kein Name „Astro PM“ in Oberfläche oder Bezeichnern. Target Scheduler (MPL-2.0) nur als Anschauung, kein Code.
 - Abhängigkeiten: `Jint` (Engine, nur offline), `Microsoft.Data.Sqlite` (ein lokaler Speicher `ninapm.db`: Cache, Outbox, Sende-Historie, Dead-Letter, Flat-Kombinationen, Laufzustand), `Polly` (Retries), NSwag-generierter API-Client aus `openapi.yaml`.
 - **Zeittypen (verbindlich, NT-05):** Zeitpunkte als `DateTimeOffset` in UTC, `night` als `string`/`DateOnly`, die Uhr als injiziertes `IClock`; `Microsoft.CodeAnalysis.BannedApiAnalyzers` verbietet `DateTime.Now`, `DateTime.Today`, `TimeZoneInfo.Local` und `ToLocalTime` in `NinaPm.Core` und `NinaPm.Nina` (einzige Ausnahme: der SiteCheck-Hinweis). NSwag bildet `format: date` auf `string` ab; Newtonsoft mit `DateTimeZoneHandling.Utc`, Ausgabe mit `Z`; `ninapm.db` speichert Zeitpunkte als ISO-UTC-Strings. Uhrabgleich nur gegen `serverTimeUtc` (Bootstrap und Heartbeat-Antwort): > 60 s blockiert, offline keine Prüfung, nur ein Hinweis. **PC-Zeitzone (NT-06):** Sie muss nicht die Standortzeit sein; der SiteCheck warnt (`pc_timezone_differs`), wenn der Offset von `TimeZoneInfo.Local` vom Standort-Offset abweicht – NINA nutzt die PC-Zone für DATE-LOC, Dateinamen- und Ordner-Platzhalter und die eingebauten Zeit-Anweisungen. Die Meldung nennt die Folge (L3): `$$DATEMINUS12$$` (NINAs Standard-Datumsordner) und `$$DATE$$` wechseln nach der PC-Zone, bei Starfront mit PC-Zone `Europe/Berlin` also um 05:00 CDT – eine Nacht verteilt sich auf zwei Datumsordner; **Empfehlung: PC-Zone = Standortzone.** *Warten auf Zeit* und das Enddatum der Tagesschleife (FA-NIN-26) gelten in **Standortzeit** (aus `timeZoneTransitions`), das Enddatum ist der letzte Nacht-Schlüssel einschließlich; bei der Zeitumstellung gilt eine mehrdeutige Uhrzeit in ihrer ersten Instanz, eine nicht existierende wird um die Lücke nach vorn verschoben (L2).
@@ -2267,9 +2267,8 @@ Zusätzlich **Determinismus-Test**: `planNight` mit festen und ≥ 500 zufällig
 ```
 apps/nina-plugin/
 ├─ NinaPm.sln
-├─ Directory.Build.props              # gemeinsame Eigenschaften: NinaRefPath, EnableWindowsTargeting, Platform x64 (10.5)
-├─ refs/nina-<version>/               # fünf NINA-Assemblies + Microsoft.Xaml.Behaviors: DLLs NICHT im Git (10.5, H-14),
-│                                     # README.md (Version, Quelle, Datum, Lizenzen) versioniert
+├─ Directory.Build.props              # gemeinsame Eigenschaften: NinaVersion (NuGet NINA.*), EnableWindowsTargeting (10.5)
+├─ Directory.Build.targets            # vom Ziel-Framework abhängig: PlatformTarget x64, NoWarn NU1701 (10.5)
 ├─ NinaPm.Core/                       # net8.0, plattformneutral – Logik ohne NINA-Bezug
 │  ├─ Abstractions/                   # ISequenceHost, ICameraControl, IMountControl, IFilterWheelControl, IRotatorControl
 │  ├─ ApiClient.cs                    # generiert (NSwag) + Auth-Header + Engine-Version-Header
@@ -2315,7 +2314,7 @@ apps/nina-plugin/
 │  └─ Samples/                        # Beispielsequenzen (FA-NIN-25): one-night (R1), multi-night und with-flats (R5); ohne Gerätewerte; nach der Sequenzvorlage (NT-44)
 ├─ NinaPm.Nina.Tests/                 # net8.0-windows: Adapter-Tests gegen NINA-Attrappen (Trigger-Walk, Container, blocked-Warten)
 │                                     # – baut ohne Windows, läuft nur auf Windows
-└─ NinaPm.Nina.Ui/                    # net8.0-windows mit WPF und XAML – nur auf Windows bzw. im CI baubar
+└─ NinaPm.Nina.Ui/                    # net8.0-windows mit WPF und XAML – ohne Windows baubar (AP-S2c), läuft nur auf Windows
    ├─ Options/                        # Optionsseite: Einführung, Verbindung (URL, Token, Speichern & Verbinden, Aktualisieren, Status,
    │                                  # Offline-/Urlaubsmodus), Rig-Anzeige, Zielbrowser + „In Framing-Assistent laden“ (IFramingAssistantVM; Panel (i, j) ↔ NINA-Panelnummer, Panel 1 = oben links = Nordost, NT-32),
    │                                  # Simulator (gesperrt außer offline)
@@ -2353,9 +2352,11 @@ Verbindlich im Detail: `claude-code/docs/specs/nina/execution.md`. Kurzfassung:
 - Offline-Planung nutzt die im Bootstrap gelieferte Nacht-Tabelle (60 Nächte ab der Mittagsnacht, je Zeile mit `nightWindowEndUtc`) mit `tzdataVersion` und `timeZoneTransitions`; `currentNight` rechnet das Plugin daraus (NT-01/NT-02). Offline gibt es keinen Uhrabgleich, nur einen Hinweis (NT-05). Auch im Zustand `unreachable` (drei Heartbeats ohne Antwort, NT-14) wird der nächste Plan mit Jint aus dem Cache gerechnet; seine Meldungen tragen die vom Plugin vergebene `nightPlanId`.
 - Einschalten des Offline-Modus (FA-NIN-04) sendet, sofern erreichbar, einen letzten Heartbeat `state: offline` → keine Alarme, Lease eingefroren (5.6); Rückkehr → `offline_end`, Outbox nachsenden.
 
-### 10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows
+### 10.5 NINA-Assemblies, Build und Entwicklung ohne Windows
 
-**Ausgangslage.** Das NuGet-Paket `NINA.Plugin` liefert nur einen Teil der benötigten Assemblies. Die übrigen kommen im NINA-3-Plugin-Template – und damit auch im Astro-PM-Plugin – als direkte `Reference` mit `HintPath` in das **Installationsverzeichnis** von NINA:
+> **Spec-Ergänzung (ADR-S2c, 28.09.2026):** Übersetzt wird gegen die NuGet-Pakete `NINA.*` statt gegen Referenz-Assemblies aus der NINA-Installation. `refs/` und `tools/fetch-nina-refs.ps1` entfallen. Grund: `NINA.Plugin` 3.2.0.9001 zieht alle fünf Adapter-Assemblies als eigene Pakete nach. Belege und Alternativen: `docs/adr/ADR-S2c-build.md`.
+
+**Ausgangslage.** Das NINA-3-Plugin-Template – und damit auch das Astro-PM-Plugin – bindet einen Teil der NINA-Assemblies als direkte `Reference` mit `HintPath` in das **Installationsverzeichnis** von NINA ein:
 
 ```xml
 <Reference Include="NINA.Sequencer">
@@ -2364,31 +2365,40 @@ Verbindlich im Detail: `claude-code/docs/specs/nina/execution.md`. Kurzfassung:
 </Reference>
 ```
 
-Ohne Windows scheitert ein solcher Build zweistufig: zuerst mit `NETSDK1100` am Windows-Ziel-Framework – das behebt `EnableWindowsTargeting` –, danach an den `HintPath`s selbst, weil `$(ProgramFiles)` dort leer ist (`MSB3245` je Referenz und in der Folge `CS0246` für jeden NINA-Typ). Das Ziel-Framework ist also nur die erste, per Schalter behebbare Hürde; die festen Pfade sind die eigentliche. Dieses Muster übernehmen wir deshalb nicht.
+Ohne Windows scheitert ein solcher Build zweistufig. Zuerst scheitert er mit `NETSDK1100` am Windows-Ziel-Framework; das behebt `EnableWindowsTargeting`. Danach scheitert er an den `HintPath`s selbst, weil `$(ProgramFiles)` dort leer ist (`MSB3245` je Referenz, in der Folge `CS0246` für jeden NINA-Typ). Dieses Muster übernehmen wir deshalb nicht. Seit NINA 3.2 ist es auch nicht mehr nötig: Das Paket `NINA.Plugin` hängt von `NINA.Sequencer`, `NINA.Equipment`, `NINA.WPF.Base`, `NINA.PlateSolving`, `NINA.Image`, `NINA.Core`, `NINA.Profile` und `NINA.Astrometry` in derselben Version ab (Lizenz MPL-2.0).
 
-**Referenz-Assemblies (`refs/`).** Die Pfade werden in `apps/nina-plugin/Directory.Build.props` über eine Eigenschaft gelenkt:
+**NuGet-Pakete `NINA.*`.** Die Version steht an einer Stelle, in `apps/nina-plugin/Directory.Build.props`. Eigenschaften, die vom Ziel-Framework abhängen, stehen in `Directory.Build.targets`. Die Props-Datei wird vor dem Projekt gelesen, dort ist `$(TargetFramework)` noch leer. Eine Bedingung darauf greift in der Props-Datei nie, `PlatformTarget` bliebe `AnyCPU` (ADR-S2c).
 
 ```xml
+<!-- Directory.Build.props -->
 <Project>
   <PropertyGroup>
-    <!-- von tools/fetch-nina-refs.ps1 gesetzt; muss zur installierten NINA-Version passen -->
-    <NinaVersion>3.1.2</NinaVersion>
-    <NinaRefPath Condition="'$(NinaRefPath)'=='' and '$(OS)'=='Windows_NT'">$(ProgramFiles)\N.I.N.A. - Nighttime Imaging 'N' Astronomy\</NinaRefPath>
-    <NinaRefPath Condition="'$(NinaRefPath)'==''">$(MSBuildThisFileDirectory)refs/nina-$(NinaVersion)/</NinaRefPath>
+    <!-- muss zur installierten NINA passen (Rig, Windows-Rechner aus H-14) -->
+    <NinaVersion>3.2.0.9001</NinaVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <PlatformTarget Condition="'$(TargetFramework)' == 'net8.0-windows'">x64</PlatformTarget>
+  </PropertyGroup>
+</Project>
+
+<!-- Directory.Build.targets -->
+<Project>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PlatformTarget>x64</PlatformTarget>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>
 </Project>
 ```
 
-Auf Windows gilt weiter das Installationsverzeichnis, überall sonst `refs/` – dort mit Schrägstrichen, die MSBuild auf allen Systemen versteht; ein von außen gesetztes `NinaRefPath` schlägt beides. Gesetzt wird `PlatformTarget`, **nicht** `<Platforms>`: `Platforms` ist nur die Auswahlliste für Projektmappen-Konfigurationen und ändert den Standardwert `AnyCPU` nicht. Damit braucht kein Build-Aufruf ein zusätzliches `-p:Platform=x64` oder `-p:EnableWindowsTargeting=true`.
+Gesetzt wird `PlatformTarget`, **nicht** `<Platforms>`: `Platforms` ist nur die Auswahlliste für Projektmappen-Konfigurationen und ändert den Standardwert `AnyCPU` nicht. Damit braucht kein Build-Aufruf ein zusätzliches `-p:Platform=x64` oder `-p:EnableWindowsTargeting=true`. `NU1701` betrifft zwei .NET-Framework-Pakete aus NINAs eigenem Baum (`ToastNotifications`, `VVVV.FreeImage`); gegen sie wird weder übersetzt noch werden sie ausgeliefert.
 
-- **Sechs Dateien** liegen in `refs/nina-<version>/`: fünf NINA-Assemblies – `NINA.Equipment`, `NINA.WPF.Base`, `NINA.PlateSolving`, `NINA.Image`, `NINA.Sequencer` – für `NinaPm.Nina`, dazu `Microsoft.Xaml.Behaviors` (MIT, von NINA mitgeliefert, im Paket `NINA.Plugin` nicht enthalten) für `NinaPm.Nina.Ui`. Für den **Adapter-Build genügen die fünf**; die sechste braucht nur das Ansichtsprojekt. Statt der Kopie kann dieses auch `Microsoft.Xaml.Behaviors.Wpf` als `PackageReference` mit `ExcludeAssets runtime` ziehen; Standard ist die Kopie, damit die Version zu der passt, die NINA lädt.
-- Alle sechs mit `<Private>false</Private>` und das Paket `NINA.Plugin` mit `<ExcludeAssets>runtime</ExcludeAssets>`: übersetzt wird dagegen, ausgeliefert nichts davon – NINA lädt seine eigenen.
-- **Dieselbe Regel für Pakete, die NINA schon mitbringt:** `System.ComponentModel.Composition` und `Newtonsoft.Json` nur mit `ExcludeAssets runtime` (der NSwag-Client zieht Newtonsoft mit; zwei Versionen im selben Prozess sind eine klassische Ladefehlerquelle). Eigene Abhängigkeiten – `Jint`, `Microsoft.Data.Sqlite`, `Polly` – werden dagegen mitgeliefert. Ein CI-Schritt prüft den ZIP-Inhalt gegen diese Liste (AP-16a).
-- `tools/fetch-nina-refs.ps1` kopiert die sechs Dateien auf dem Windows-Rechner aus der NINA-Installation nach `refs/nina-<version>/`, liest die Version aus der Dateiversion von `NINA.Sequencer.dll`, setzt `NinaVersion` in `Directory.Build.props` und schreibt daneben eine `README.md` mit Version, Quellpfad, Datum und Lizenzen (die von NINA beim ersten Lauf prüfen und dort mit Fundstelle festhalten; für `Microsoft.Xaml.Behaviors` MIT). Teil von H-14.
-- Die DLLs stehen **nicht** im Git (`.gitignore`: `apps/nina-plugin/refs/**/*.dll`), die `README.md` schon. Auf den Entwicklungsrechner kommen sie einmal je NINA-Version als Kopie vom Windows-Rechner. `THIRD_PARTY_NOTICES.md` hält fest, dass gegen diese Assemblies **kompiliert**, aber keine mitgeliefert wird.
-- `plugin.yml` vergleicht die **im CI installierte** NINA-Version gegen `refs/nina-<version>/README.md` und bricht bei Abweichung ab (18). Dass diese Version auch die des Rechners aus H-14 ist, stellen H-14 und H-15 sicher – der CI sieht diesen Rechner nicht.
+- Jedes Projekt mit NINA-Bezug bindet `<PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />` ein. `IncludeAssets="compile"` statt `ExcludeAssets="runtime"`: Sonst landet WebView2 über `build`-Targets trotzdem in der Ausgabe. Übersetzt wird dagegen, ausgeliefert nichts davon, denn NINA lädt seine eigenen Assemblies.
+- **Dieselbe Regel für Pakete, die NINA schon mitbringt:** `System.ComponentModel.Composition`, `Newtonsoft.Json` und in `NinaPm.Nina.Ui` `Microsoft.Xaml.Behaviors.Wpf` (MIT, früher die sechste Datei aus `refs/`) nur mit `ExcludeAssets runtime`, in der Version, die NINA mitliefert. Der NSwag-Client zieht Newtonsoft mit, und zwei Versionen im selben Prozess sind eine klassische Ladefehlerquelle. Eigene Abhängigkeiten – `Jint`, `Microsoft.Data.Sqlite`, `Polly` – werden dagegen mitgeliefert.
+- **Version prüfen:** `tools/nina-build-check.sh <ordner>` stellt nach dem Build drei Dinge sicher:
+  - alle `NINA.*`-Pakete sind in `NinaVersion` aufgelöst (ausgenommen `NINA.Accord.*`, NINAs Accord-Abspaltung mit eigener Nummer);
+  - die Ausgabe enthält nur eigene DLLs und die mit `--allow` genannten Abhängigkeiten;
+  - keine DLL liegt im Git.
+  
+  Das Skript läuft lokal und im CI (`cross-build`, 18). Die Plugin-Assembly trägt `MinimumApplicationVersion = $(NinaVersion)` als `AssemblyMetadata`, damit NINA sie nicht in einer älteren Version lädt.
+- **NINA-Update:** `NinaVersion` nur zusammen mit dem Update auf dem Rig anheben. Einmal je Version prüft Sven auf dem Windows-Rechner, dass die Dateiversion von `NINA.Sequencer.dll` der Installation `NinaVersion` entspricht (H-14). H-15 hält die NINA-Version in jedem Protokoll fest.
 
 **Ausgabeverzeichnis der Plugin-Projekte.** `NinaPm.Nina` und `NinaPm.Nina.Ui` setzen – wie das Original – `AppendTargetFrameworkToOutputPath`, `AppendRuntimeIdentifierToOutputPath`, `GenerateDependencyFile` und `GenerateRuntimeConfigurationFiles` auf `false`; sonst landen die Dateien in einem Unterordner `net8.0-windows\` und NINA findet das Plugin nicht. Diese vier Eigenschaften gehören **in die beiden Projektdateien, nicht** in `Directory.Build.props`: die Testprojekte brauchen `deps.json` und `runtimeconfig.json` für den Test-Host. Die `Debug`-Ausgabe zeigt nur auf Windows in den Plugin-Ordner:
 
@@ -2404,24 +2414,26 @@ Auf Windows gilt weiter das Installationsverzeichnis, überall sonst `refs/` –
 |---|---|---|---|
 | `NinaPm.Core` | `net8.0` | ja | – |
 | `NinaPm.Core.Tests` | `net8.0` | ja | **ja** – die inhaltliche Prüfung |
-| `NinaPm.Nina` | `net8.0-windows` | **ja**, mit `refs/` | – |
-| `NinaPm.Nina.Tests` | `net8.0-windows` | **ja**, mit `refs/` | nein – `net8.0-windows` läuft nur auf Windows |
-| `NinaPm.Nina.Ui` | `net8.0-windows` mit XAML | nicht eingeplant; AP-S2c prüft, ob der XAML-Compiler ohne Windows trägt | nein |
+| `NinaPm.Nina` | `net8.0-windows` | **ja** (NuGet `NINA.*`) | – |
+| `NinaPm.Nina.Tests` | `net8.0-windows` | **ja** (NuGet `NINA.*`) | nein – `net8.0-windows` läuft nur auf Windows |
+| `NinaPm.Nina.Ui` | `net8.0-windows` mit XAML | **ja** – der Markup-Compiler trägt ohne Windows (ADR-S2c) | nein |
 
 ```bash
 dotnet build apps/nina-plugin/NinaPm.Core
 dotnet test  apps/nina-plugin/NinaPm.Core.Tests
 dotnet build apps/nina-plugin/NinaPm.Nina
 dotnet build apps/nina-plugin/NinaPm.Nina.Tests
+dotnet build apps/nina-plugin/NinaPm.Nina.Ui
+tools/nina-build-check.sh apps/nina-plugin
 ```
 
-Das ist die lokale Abnahme vor jedem Plugin-PR: drei Compiler-Gegenlesungen und eine inhaltliche Prüfung, ohne zusätzliche `-p:`-Schalter, weil `Directory.Build.props` `EnableWindowsTargeting` und `PlatformTarget` setzt. `NinaPm.Nina.Ui` bleibt außen vor; vollständig baut die Lösung nur auf Windows.
+Das ist die lokale Abnahme vor jedem Plugin-PR. Sie besteht aus vier Compiler-Gegenlesungen, einer inhaltlichen Prüfung und der Paket- und Ausgabeprüfung. Zusätzliche `-p:`-Schalter braucht keiner der Befehle, weil `Directory.Build.props` und `Directory.Build.targets` `EnableWindowsTargeting` und `PlatformTarget` setzen. Nur Windows kann die Adapter-Tests ausführen.
 
-**WPF im Adapter.** `NinaPm.Nina` setzt `UseWPF=true`, hat aber **keine eigene XAML-Datei**. Das ist der geplante Weg, nicht die Rückfallebene: `NINA.WPF.Base` trägt die Mediator-Schnittstellen, und sobald deren Signaturen WPF-Typen verwenden, braucht ein Adapter ohne WPF-Referenzen sie trotzdem – der Fehler wäre dann `CS0012` (Typ in nicht referenzierter Assembly). Mit `EnableWindowsTargeting` kommt das Referenzpaket `Microsoft.WindowsDesktop.App` über NuGet, und ohne XAML-Datei läuft der Markup-Compiler gar nicht – genau der ist die unsichere Stelle ohne Windows. **AP-S2c** klärt drei Fragen in dieser Reihenfolge: (1) baut der Adapter mit `UseWPF=true` und ohne XAML ohne Windows? (2) geht es sogar ohne `UseWPF`, etwa mit `<FrameworkReference Include="Microsoft.WindowsDesktop.App" />`? (3) trägt der Markup-Compiler ohne Windows, sodass `NinaPm.Nina.Ui` lokal mitgebaut werden kann? Notwendig ist nur (1); (2) und (3) sind Bequemlichkeit.
+**WPF im Adapter.** `NinaPm.Nina` setzt `UseWPF=true`, hat aber **keine eigene XAML-Datei**. Das ist der geplante Weg, nicht die Rückfallebene: `NINA.WPF.Base` trägt die Mediator-Schnittstellen, und sobald deren Signaturen WPF-Typen verwenden, braucht ein Adapter ohne WPF-Referenzen sie trotzdem – der Fehler wäre dann `CS0012` (Typ in nicht referenzierter Assembly). Mit `EnableWindowsTargeting` kommt das Referenzpaket `Microsoft.WindowsDesktop.App` über NuGet, und ohne XAML-Datei läuft der Markup-Compiler gar nicht – genau der ist die unsichere Stelle ohne Windows. **AP-S2c** hat drei Fragen geklärt, alle mit Ja (ADR-S2c): (1) Der Adapter baut mit `UseWPF=true` und ohne XAML ohne Windows. (2) Er baut sogar ohne `UseWPF`; wir bleiben trotzdem bei `UseWPF=true`, wie das NINA-Template. (3) Der Markup-Compiler trägt ohne Windows, `NinaPm.Nina.Ui` wird lokal mitgebaut.
 
 **Was ohne Windows nicht geht.** Ausführen. NINA und ASCOM sind Windows-Programme; kein Schalter des SDK ändert das. Die Protokolle P-01…P-24 laufen auf dem Rechner aus H-14 gegen `tools/nina-test-server`; die Ergebnisse (`result.json`, `nina.log`, Screenshots) liegen in `docs/test-runs/<JJJJ-MM-TT>/<P-xx>/` und werden mit `pnpm test-run:check <ordner>` ausgewertet – das wieder auf dem Entwicklungsrechner.
 
-**Arbeitsablauf.** Auf dem Entwicklungsrechner (macOS oder Linux): Kern schreiben und testen, Adapter und Adapter-Tests schreiben und **kompilieren**, `tools/nina-test-server` (Node) betreiben, Engine-Bundle und Jint-Parität prüfen. Sind die vier Befehle oben grün, geht der PR heraus; `plugin.yml` baut auf `windows-latest` die vollständige Lösung samt Ansichten, führt die Adapter-Tests aus und legt die ZIP ab. Die ZIP wird auf dem Rechner aus H-14 in `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm\` entpackt und nach `plugin-test-protocol.md` geprüft. Für eine schnelle Runde kann dieser Rechner auch selbst bauen – `dotnet build -c Debug` legt die Dateien dort direkt ab.
+**Arbeitsablauf.** Auf dem Entwicklungsrechner (macOS oder Linux): Kern schreiben und testen, Adapter, Adapter-Tests und Ansichten schreiben und **kompilieren**, `tools/nina-test-server` (Node) betreiben, Engine-Bundle und Jint-Parität prüfen. Sind die Befehle oben grün, geht der PR heraus; `plugin.yml` baut auf `windows-latest` die vollständige Lösung samt Ansichten, führt die Adapter-Tests aus und legt die ZIP ab. Die ZIP wird auf dem Rechner aus H-14 in `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm\` entpackt und nach `plugin-test-protocol.md` geprüft. Für eine schnelle Runde kann dieser Rechner auch selbst bauen – `dotnet build -c Debug` legt die Dateien dort direkt ab.
 
 **Anforderungen an den Windows-Rechner (H-14).** Erste Wahl ist der Observatoriums-PC, weil dort NINA, ASCOM und die Treiber schon liegen. Sonst genügt ein einfacher x64-Rechner nur für NINA und die Simulatorgeräte. Eine Windows-11-ARM-Maschine auf Apple Silicon funktioniert für die Protokolle, führt NINA und die ASCOM-Simulatoren aber unter x64-Emulation aus; **Zeitmessungen** (Flip-Dauer, Settle, `flip_duration_s`) sind dort nicht aussagekräftig und werden nur auf x64-Hardware abgenommen.
 
@@ -2716,7 +2728,7 @@ Preise für eu-central-1 vor Go-live im AWS Pricing Calculator verifizieren (OT-
 | Abnahme prod | manuell im Test-Mandanten (4.4) | neue Funktionen mit echtem Discord-Login und NINA-Simulatorgeräten | nach Deploy |
 | Fake-Plugin | `tools/fake-plugin` gegen lokalen Stack bzw. Test-Mandant | komplette Nacht: Bootstrap, Plan, Lease, Aufnahmen (inkl. doppelt, offline nachgemeldet, unzugeordnet), Ereignisse, Ende, Nachtbericht | jeder PR (lokal), nach Deploy (Test-Mandant) |
 | Plugin-Kern | xUnit (`NinaPm.Core.Tests`; im CI Linux und Windows, lokal zusätzlich macOS) | FilterResolver (nur bestätigte Zuordnung, NT-E1), `currentNight` (Testvektoren, NT-01), `Coordinates` mit `Angle.ByDegree` (NT-28), BannedApiAnalyzers (NT-05), Outbox-Fehlerklassen, LocalStore, ReplanPolicy (a/b/c, Hysterese), LeaseStateMachine, Playback, FlatTracker (Fortsetzen), Bildzuordnung inkl. Timeout, EngineHost-Parität | jeder Commit mit Änderungen in `apps/nina-plugin` |
-| Plugin-Adapter (Build) | `dotnet build` von `NinaPm.Nina` und `NinaPm.Nina.Tests` gegen die Referenz-Assemblies aus `refs/` – auf `ubuntu-latest` im CI und auf dem Entwicklungsrechner (10.5) | der Adapter übersetzt korrekt gegen die NINA-Assemblies; hält den windowsfreien Arbeitsablauf offen | jeder Commit mit Änderungen in `apps/nina-plugin` |
+| Plugin-Adapter (Build) | `dotnet build` von `NinaPm.Nina`, `NinaPm.Nina.Tests` und `NinaPm.Nina.Ui` gegen die NuGet-Pakete `NINA.*`, danach `tools/nina-build-check.sh` – auf `ubuntu-latest` im CI und auf dem Entwicklungsrechner (10.5) | der Adapter übersetzt korrekt gegen die NINA-Assemblies; hält den windowsfreien Arbeitsablauf offen | jeder Commit mit Änderungen in `apps/nina-plugin` |
 | Plugin-Adapter (Einheiten) | xUnit (`NinaPm.Nina.Tests`, NINA-Attrappen) – nur `windows-latest` | Trigger-Walk, Container mit einem Block je Aufruf, `blocked`-Warten, Koordinaten-Injektion | jeder Commit mit Änderungen in `apps/nina-plugin` |
 | Plugin-Adapter (Laufzeit) | NINA-Simulator-Geräte + `tools/nina-test-server` (manuell nach `plugin-test-protocol.md`, P-01…P-24, Ergebnis `result.json` maschinell geprüft) | Trigger-Walk (Muster Astro PM), Flip-Erkennung, Transit mit Trigger-Filter und Abbruch, Neuplanung, Offline, Lease, Flats; ergänzt um NT-46: Safety-Unterbrechung/Wiederaufnahme, Mosaik-Panelwechsel am Meridian, Flip im Transitfenster mit AF/Recenter, globaler Dither-Trigger, Start um 16:00 MESZ (vor/nach lokalem Mittag), Online → Offline mit `nightPlanId`, Nachtende ohne Flats (Parkzeit ≤ `darknessEndUtc` + wenige min), Filterrad umgesteckt, Trained-Flat-Position geändert, Temperaturabweichung, gemischtes Binning bei Flats, Windows-Zone ≠ Standortzone, Uhrabweichung > 60 s; P-09 nach NT-14, P-22 (R1) ohne R5-Flats | Plugin-Release bzw. AP-Abnahme |
 
@@ -2731,7 +2743,7 @@ Preise für eu-central-1 vor Go-live im AWS Pricing Calculator verifizieren (OT-
 | Workflow | Auslöser | Schritte |
 |---|---|---|
 | `ci.yml` | Pull Request, Push `main` | pnpm install · Lint · Typecheck · Unit/Referenz/Isolation/Rechte-Tests · Integrationstests gegen **PostgreSQL 16 als Service-Container** · **`pnpm test:a11y` (axe, CC5-9)** · DSQL-Migration-Lint · OpenAPI-Diff · Web-Build · `cdk synth` (ohne AWS-Zugang; Lookup-Werte wie `HostedZone.fromLookup` aus dem eingecheckten `cdk.context.json`) + CDK-Assertions (unten) · Playwright E2E gegen lokalen Stack · kein Deploy |
-| `plugin.yml` (Aufträge `refs` und `build` auf `windows-latest`, `cross-build` auf `ubuntu-latest`) | Tag `plugin-v*` bzw. Änderungen in `apps/nina-plugin`, `packages/engine` oder `tools/nina-test-server` | **`refs`:** NINA in der in `refs/nina-<version>/README.md` festgehaltenen Version bereitstellen (unbeaufsichtigtes Setup oder entpacktes Installationsarchiv, `actions/cache` je Version), `tools/fetch-nina-refs.ps1` ausführen, Abweichung zwischen installierter und festgehaltener Version → Abbruch, die sechs Dateien als Artefakt `nina-refs` ablegen (Aufbewahrung 7 Tage) · **`build`:** Engine-Bundle bauen · `dotnet test` (`NinaPm.Core.Tests` inkl. Jint-Parität und `NinaPm.Nina.Tests`) · `dotnet publish` der vollständigen Lösung inkl. `NinaPm.Nina.Ui` · beim Tag: ZIP und Beispielsequenzen als **GitHub-Release-Asset** (nach S3 kommen die Beispielsequenzen mit dem nächsten lokalen Deploy, 4.1) · **`cross-build`:** `nina-refs` laden, `NinaPm.Core`, `NinaPm.Nina` und `NinaPm.Nina.Tests` bauen (ohne zusätzliche `-p:`-Schalter, `Directory.Build.props` genügt) und `NinaPm.Core.Tests` ausführen – sichert die Entwicklung ohne Windows (10.5); bricht dieser Auftrag, ist der lokale Arbeitsablauf kaputt |
+| `plugin.yml` (Auftrag `build` auf `windows-latest`, `cross-build` auf `ubuntu-latest`) | Tag `plugin-v*` bzw. Änderungen in `apps/nina-plugin`, `packages/engine` oder `tools/nina-test-server` | **`build`:** Engine-Bundle bauen · `dotnet test` (`NinaPm.Core.Tests` inkl. Jint-Parität und `NinaPm.Nina.Tests`) · `dotnet publish` der vollständigen Lösung inkl. `NinaPm.Nina.Ui` · beim Tag: ZIP und Beispielsequenzen als **GitHub-Release-Asset** (nach S3 kommen die Beispielsequenzen mit dem nächsten lokalen Deploy, 4.1) · **`cross-build`:** `NinaPm.Core`, `NinaPm.Nina`, `NinaPm.Nina.Tests` und `NinaPm.Nina.Ui` gegen die NuGet-Pakete `NINA.*` bauen (ohne zusätzliche `-p:`-Schalter, `Directory.Build.props`/`.targets` genügen), `NinaPm.Core.Tests` ausführen und `tools/nina-build-check.sh` laufen lassen. Der Auftrag sichert die Entwicklung ohne Windows (10.5); bricht er, ist der lokale Arbeitsablauf kaputt (Spec-Ergänzung ADR-S2c, 28.09.2026: kein Auftrag `refs` mehr) |
 | `oracle.yml` (`ubuntu-latest`, .NET 8 + Node) | PR mit Änderungen in `packages/engine`, nightly | Orakel bauen (Originalquellen des Astro-PM-Plugins, gepinnter Commit, Patch) · Grids erzeugen · Vergleich TS ↔ C# · Abweichungsbericht als Artefakt |
 | `reference.yml` (`ubuntu-latest`, Python) | PR mit Änderungen in `tools/reference` · manuell | Fixtures mit astropy erzeugen (gepinnte Versionen, gebündelte IERS-Daten) · Diff zu eingecheckten Fixtures als Artefakt |
 | `nightly.yml` | täglich | Engine-Benchmarks · Abhängigkeits-Audit |

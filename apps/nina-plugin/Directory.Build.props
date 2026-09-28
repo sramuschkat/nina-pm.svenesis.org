@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    Gemeinsame Build-Eigenschaften der Plugin-Projekte (TK 10.5, ADR-S2c).
+    NINA wird über die NuGet-Pakete NINA.* referenziert (seit NINA.Plugin 3.2 alle fünf Adapter-Assemblies),
+    nur zum Übersetzen: jedes Projekt bindet NINA.Plugin mit Version="$(NinaVersion)" und IncludeAssets="compile" ein;
+    ausgeliefert wird nichts davon, NINA lädt seine eigenen Assemblies.
+    Eigenschaften, die vom Ziel-Framework abhängen, stehen in Directory.Build.targets: Diese Datei wird vor dem
+    Projekt gelesen, dort ist $(TargetFramework) noch leer.
+  -->
+  <PropertyGroup>
+    <!-- Muss zur installierten NINA passen (Rig und Windows-Rechner aus H-14); tools/nina-build-check.sh prüft die Pakete. -->
+    <NinaVersion>3.2.0.9001</NinaVersion>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

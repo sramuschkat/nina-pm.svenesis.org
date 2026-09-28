@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- AP-S2c (d): Ansichten wie NinaPm.Nina.Ui – WPF mit XAML (Frage 3 aus TK 10.5). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>NinaBuild.Ui</AssemblyName>
+    <RootNamespace>NinaBuild.Ui</RootNamespace>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Adapter/Adapter.csproj" />
+  </ItemGroup>
+</Project>

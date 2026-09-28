@@ -1,6 +1,8 @@
 # AP-S2c – Spike Build: Adapter ohne Windows bauen (Mensch + Agent)
 
-**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** H-14
+**Release:** RP · **Größe:** S · **Abhängigkeiten:** AP-01 · **Menschliche Aufgaben:** – (bis 28.09.2026: H-14)
+
+> **Umsetzung abweichend vom Brief (28.09.2026, `docs/adr/ADR-S2c-build.md`):** `NINA.Plugin` 3.2.0.9001 bringt alle fünf Adapter-Assemblies als NuGet-Pakete mit. Übersetzt wird deshalb gegen NuGet statt gegen `refs/`. **Es entfallen:** `NinaRefPath`, `tools/fetch-nina-refs.ps1`, die `README.md` je Version, der CI-Auftrag `refs` und das Artefakt `nina-refs`. **Dazu kommen:** `Directory.Build.targets` (PlatformTarget greift in der Props-Datei nicht), `tools/nina-build-check.sh` (NINA-Paketversionen, Ausgabe nur mit eigenen DLLs, keine DLL im Git) und der Nachweis (d) für XAML. Die Abnahmekriterien unten gelten in der angepassten Form.
 
 ## Ziel
 Nachweisen, dass sich `NinaPm.Core` **und** der Adapter `NinaPm.Nina` mit dem .NET-8-SDK ohne Windows bauen lassen, sobald die NINA-Referenz-Assemblies aus H-14 vorliegen. Damit findet die Plugin-Entwicklung auf dem Entwicklungsrechner statt und Windows bleibt für die Laufzeit. Nachgewiesen wird an Minimalprojekten unter `spikes/nina-build/`, weil die echten Projekte erst ab AP-08c/AP-16a existieren. Ergebnis sind die Build-Dateien (`Directory.Build.props`, `tools/fetch-nina-refs.ps1`, die CI-Aufträge `refs` und `cross-build`) und ein ADR mit Go/No-Go, kein Plugin-Code.
@@ -28,10 +30,10 @@ TK 10.1, 10.5, NFA (Wartbarkeit)
 - Plugin-Logik, Ansichten, Ausführung; kein Produktivcode im Plugin
 
 ## Automatisierte Abnahme
-- [ ] `cross-build` auf `ubuntu-latest` grün: die Nachweisprojekte (a) und (b) übersetzen gegen die Assemblies aus `nina-refs`, **ohne** `-p:Platform`/`-p:EnableWindowsTargeting` am Aufruf
-- [ ] Auftrag `refs` bricht ab, wenn die im CI installierte NINA-Version nicht zur `README.md` passt (mit falscher Version geprüft)
-- [ ] CI-Schritt meldet Fehler, sobald eine `.dll` unter `apps/nina-plugin/refs/` versioniert ist
+- [ ] `cross-build` auf `ubuntu-latest` grün: die Nachweisprojekte (a)–(d) übersetzen gegen die NuGet-Pakete `NINA.*`, **ohne** `-p:Platform`/`-p:EnableWindowsTargeting` am Aufruf (angepasst, ADR-S2c)
+- [ ] `tools/nina-build-check.sh` bricht ab, wenn ein `NINA.*`-Paket nicht in `NinaVersion` aufgelöst ist (mit `-p:NinaVersion=3.1.2.9001` geprüft) oder fremde DLLs in der Ausgabe liegen (mit `ExcludeAssets="runtime"` geprüft) (ersetzt den Auftrag `refs`)
+- [ ] CI-Schritt meldet Fehler, sobald eine `.dll` unter `apps/nina-plugin/` oder `spikes/` versioniert ist
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe
-Die sechs Dateien per `fetch-nina-refs.ps1` bereitstellen (H-14), nach `apps/nina-plugin/refs/` auf den Entwicklungsrechner kopieren und dort die Nachweisprojekte aus `spikes/nina-build/` einmal bauen (die vier Befehle aus TK 10.5 greifen erst ab AP-16a, weil `NinaPm.*` noch nicht existiert); Go/No-Go für den Adapter-Build ohne Windows
+~~Die sechs Dateien per `fetch-nina-refs.ps1` bereitstellen (H-14), nach `apps/nina-plugin/refs/` auf den Entwicklungsrechner kopieren~~ (entfällt, ADR-S2c) und die Nachweisprojekte aus `spikes/nina-build/` einmal auf dem Entwicklungsrechner bauen (die vier Befehle aus TK 10.5 greifen erst ab AP-16a, weil `NinaPm.*` noch nicht existiert); Go/No-Go für den Adapter-Build ohne Windows
