@@ -3026,6 +3026,8 @@ export const de = {
       tableCaption: 'Astro-Wetter je Stunde, Zeiten in Standortzeit ({{zone}})',
     },
     row: {
+      siteTime: 'Standort {{zone}}',
+      deviceTime: 'Bei dir {{zone}}',
       sunMoon: 'Sonne / Mond',
       model: 'Modell',
       overall: 'Gesamt',

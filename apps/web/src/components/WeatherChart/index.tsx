@@ -129,6 +129,11 @@ export interface WeatherChartProps {
   cmp3?: 'gem' | 'nbm' | 'base';
   region?: 'europe' | 'other';
   compact?: boolean;
+  /**
+   * Zeitzone des Geräts: weicht sie von der Standortzeit ab, steht unter den Stunden eine zweite, hellere
+   * Stundenzeile in der Zeit des Users (Wunsch Sven 28.09.2026). Ohne Angabe die des Browsers.
+   */
+  deviceTimeZone?: string;
   /** Nur das Nachtdetail ohne Wochenübersicht und Skala (Heute Nacht, Wunsch Sven 27.09.2026). */
   detailOnly?: boolean;
   unit?: 'c' | 'f';
@@ -148,7 +153,7 @@ const LEFT = 132;
 const RIGHT = 8;
 const C = (name: string) => WEATHER[`wx-${name}`] ?? '#888';
 
-interface Row {
+export interface Row {
   key: string;
   h: number;
 }
@@ -196,6 +201,27 @@ const DETAIL_ROWS: Row[] = [
   { key: 'spread', h: 17 },
   { key: 'hum', h: 17 },
 ];
+
+/** Zeile `after` um eine Stundenzeile in Gerätezeit ergänzen (nur bei abweichender Zone). */
+export function withDeviceRow(
+  rows: Row[],
+  after: string,
+  key: string,
+  h: number,
+  dual: boolean,
+): Row[] {
+  if (!dual) return rows;
+  const i = rows.findIndex((r) => r.key === after);
+  return [...rows.slice(0, i + 1), { key, h }, ...rows.slice(i + 1)];
+}
+
+function browserZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
 
 function layout(rows: Row[], scale: number) {
   const r: Record<string, [number, number]> = {};
@@ -264,6 +290,13 @@ export function WeatherChart(props: WeatherChartProps) {
     props.onSelectNight?.(night);
   };
 
+  // Zweite Stundenzeile in Gerätezeit, wenn sie von der Standortzeit abweicht (rules/ui.md).
+  const device = props.deviceTimeZone ?? browserZone();
+  const refIso = hours[0]?.tUtc ?? props.nowUtc;
+  const siteAbbr = formatTzAbbr(refIso, timeZone);
+  const deviceAbbr = device ? formatTzAbbr(refIso, device) : siteAbbr;
+  const dual = device !== undefined && deviceAbbr !== siteAbbr;
+
   const ready = props.state !== 'loading' && hours.length > 0;
   useEffect(() => {
     const el = wrapRef.current;
@@ -299,8 +332,8 @@ export function WeatherChart(props: WeatherChartProps) {
             ],
             scale,
           )
-        : layout(WEEK_ROWS, scale),
-    [compact, scale],
+        : layout(withDeviceRow(WEEK_ROWS, 'ticks', 'ticks2', 13, dual), scale),
+    [compact, scale, dual],
   );
   const left = compact ? 0 : LEFT;
   const colW = width > 0 ? (width - left - RIGHT) / n : 0;
@@ -399,6 +432,18 @@ export function WeatherChart(props: WeatherChartProps) {
           ctx.fillText(String(hr).padStart(2, '0'), x, (r.ticks?.[0] ?? 0) + 6 * scale);
         }
       });
+      // Gerätezeit darunter, heller – dieselben Zeitpunkte, die dort volle Stunden im Abstand sind.
+      if (dual && device)
+        hours.forEach((h) => {
+          const at = unix(h.tUtc);
+          const hd = localHour(at, device);
+          if (hd % tickStep !== 0) return;
+          ctx.fillStyle = C('text');
+          ctx.globalAlpha = 0.6;
+          ctx.textAlign = 'center';
+          ctx.fillText(String(hd).padStart(2, '0'), Math.round(xOf(at)), mid(r.ticks2));
+          ctx.globalAlpha = 1;
+        });
 
       // Sonne und Mond als Höhenkurven (Stundenmitte)
       const sky = r.sky ?? [0, 0];
@@ -692,6 +737,12 @@ export function WeatherChart(props: WeatherChartProps) {
       ctx.fillRect(0, 0, LEFT - 2, height);
       ctx.textAlign = 'right';
       const labels: [string, string, string?, number?][] = [
+        ...(dual
+          ? ([
+              ['ticks', t('weather.row.siteTime', { zone: siteAbbr })],
+              ['ticks2', t('weather.row.deviceTime', { zone: deviceAbbr })],
+            ] as [string, string][])
+          : []),
         ['sky', t('weather.row.sunMoon')],
         ['model', t('weather.row.model')],
         ['overall', t('weather.row.overall')],
@@ -743,7 +794,10 @@ export function WeatherChart(props: WeatherChartProps) {
     }
     return cols;
   }, [detailWindow, hours, props.sunAltDeg, t0]);
-  const detail = useMemo(() => layout(DETAIL_ROWS, scale), [scale]);
+  const detail = useMemo(
+    () => layout(withDeviceRow(DETAIL_ROWS, 'hours', 'hours2', 15, dual), scale),
+    [scale, dual],
+  );
   const detailColW = detailCols.length > 0 ? (detailWidth - LEFT - RIGHT) / detailCols.length : 0;
 
   useEffect(() => {
@@ -784,6 +838,15 @@ export function WeatherChart(props: WeatherChartProps) {
         ctx.fillStyle = C('text');
         ctx.textAlign = 'center';
         ctx.fillText(String(hr).padStart(2, '0'), x0(i) + cw / 2, mid(r.hours));
+        if (dual && device) {
+          ctx.globalAlpha = 0.6;
+          ctx.fillText(
+            String(localHour(c.at, device)).padStart(2, '0'),
+            x0(i) + cw / 2,
+            mid(r.hours2),
+          );
+          ctx.globalAlpha = 1;
+        }
       }
     });
 
@@ -1008,6 +1071,12 @@ export function WeatherChart(props: WeatherChartProps) {
     ctx.fillRect(0, 0, LEFT - 2, height);
     ctx.textAlign = 'right';
     const labels: [string, string, string?][] = [
+      ...(dual
+        ? ([
+            ['hours', t('weather.row.siteTime', { zone: siteAbbr })],
+            ['hours2', t('weather.row.deviceTime', { zone: deviceAbbr })],
+          ] as [string, string][])
+        : []),
       ['wx', t('weather.row.symbol')],
       ['dark', t('weather.row.darkness')],
       ['rating', t('weather.row.night')],

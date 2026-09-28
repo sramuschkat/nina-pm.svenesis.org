@@ -21,7 +21,12 @@ import {
   weatherIconKey,
   windColour,
 } from './model';
-import { WeatherChart, type WeatherChartHour, type WeatherChartNight } from './index';
+import {
+  WeatherChart,
+  withDeviceRow,
+  type WeatherChartHour,
+  type WeatherChartNight,
+} from './index';
 
 /** Zeichenfläche als Aufzeichnung: welche Texte der Baustein schreibt. */
 let texts: string[] = [];
@@ -354,5 +359,22 @@ describe('Anzeigeregeln (components.md §2.5)', () => {
     expect(weatherIconKey(73, false)).toBe('snow');
     expect(weatherIconKey(96, false)).toBe('thunder');
     expect(weatherIconKey(null, false)).toBeNull();
+  });
+});
+
+describe('Rig-Zeit und Zeit des Users (28.09.2026)', () => {
+  const rows = [
+    { key: 'sky', h: 50 },
+    { key: 'ticks', h: 20 },
+    { key: 'model', h: 15 },
+  ];
+  it('zweite Stundenzeile direkt unter den Stunden, nur bei abweichender Zone', () => {
+    expect(withDeviceRow(rows, 'ticks', 'ticks2', 13, true).map((r) => r.key)).toEqual([
+      'sky',
+      'ticks',
+      'ticks2',
+      'model',
+    ]);
+    expect(withDeviceRow(rows, 'ticks', 'ticks2', 13, false)).toBe(rows);
   });
 });

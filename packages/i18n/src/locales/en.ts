@@ -3017,6 +3017,8 @@ export const en: Messages = {
       tableCaption: 'Astro weather per hour, times in site time ({{zone}})',
     },
     row: {
+      siteTime: 'Site {{zone}}',
+      deviceTime: 'Yours {{zone}}',
       sunMoon: 'Sun / moon',
       model: 'Model',
       overall: 'Overall',
