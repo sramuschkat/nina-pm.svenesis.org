@@ -13,6 +13,7 @@ import {
   moonEvents,
   nightTimes,
   separationDeg,
+  sunAt,
   sunAnchors,
   sunCrossings,
   targetAt,
@@ -77,7 +78,18 @@ const within = (actual: number | null, expected: number | null, tol: number, lab
 
 // Toleranzen seit der Astronomie-Prüfung 28.09.2026 nahe an der erreichten Genauigkeit (vorher 10–40× lockerer;
 // ein fehlendes ΔT – 0,0105° am Mond – wäre durchgerutscht). TK 9.2 nennt die fachlichen Obergrenzen.
-describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±15 s)', () => {
+/**
+ * Zeit-Toleranz eines Sonnendurchgangs: ±15 s, bei flach sinkender Sonne entsprechend 0,01° Höhe – so genau ist
+ * die Sonne der Engine (Meeus Kap. 25, gegen ERFA ≤ 0,012°). In hohen Breiten sinkt sie am Horizont langsam
+ * (Longyearbyen 15.04.: 0,0003°/s), dort sind 0,006° Modellunterschied schon 19 s.
+ */
+const tolS = (site: { latDeg: number; lonDeg: number }, t: number | null) => {
+  if (t === null) return 15;
+  const rate = Math.abs(sunAt(t + 60, site).altDeg - sunAt(t - 60, site).altDeg) / 120;
+  return Math.max(15, rate > 0 ? 0.01 / rate : 15);
+};
+
+describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±15 s bzw. 0,01°)', () => {
   it.each(sunMoon.nights.map((n) => [`${n.site} ${n.night}`, n] as const))('%s', (_label, fx) => {
     const s = siteOf(fx.site);
     const site = { latDeg: s.lat, lonDeg: s.lon };
@@ -93,14 +105,19 @@ describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±15 s)', () => {
     for (const [key, crossing] of pairs) {
       const ref = fx.sun[key];
       if (ref.grazing) continue; // streifend: von den Referenztests ausgenommen (night.md §2)
-      within(crossing.startUtc, ref.down, 15, `${key} Abwärts`);
-      within(crossing.endUtc, ref.up, 15, `${key} Aufwärts`);
+      within(crossing.startUtc, ref.down, tolS(site, ref.down), `${key} Abwärts`);
+      within(crossing.endUtc, ref.up, tolS(site, ref.up), `${key} Aufwärts`);
     }
     const anchors = sunAnchors(site, n.noonStartUtc, n.noonEndUtc);
     for (const key of ['flats8', 'flats2'] as const) {
       const ref = fx.sun[key];
       if (ref.grazing) continue;
-      within(sunCrossings(site, anchors, ref.h0).endUtc, ref.up, 15, `${key} Aufwärts`);
+      within(
+        sunCrossings(site, anchors, ref.h0).endUtc,
+        ref.up,
+        tolS(site, ref.up),
+        `${key} Aufwärts`,
+      );
     }
   });
 });
@@ -148,7 +165,9 @@ describe('Ziele: Höhe und Azimut (±0,01°), Meridiandurchgang (±3 s)', () => 
         expect(Math.abs(dAz * Math.cos((sample.altGeoDeg * Math.PI) / 180))).toBeLessThanOrEqual(
           0.01,
         );
-        if (sample.altAppDeg >= 15)
+        // Die Referenz rechnet die scheinbare Höhe seit 28.09.2026 mit Saemundsson wie die Engine (AST-D30) –
+        // damit gilt der Vergleich bis zum Horizont, nicht erst ab 15°.
+        if (sample.altGeoDeg >= -1)
           expect(Math.abs(ours.altDeg - sample.altAppDeg)).toBeLessThanOrEqual(0.01);
       }
       within(

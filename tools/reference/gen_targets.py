@@ -1,6 +1,7 @@
-"""Ziele je Standort (TK 9.1): Höhe/Azimut geometrisch (Satz a) und scheinbar mit festen Parametern
-(Satz b: 1010 hPa, 10 °C, rF 0, 0,55 µm – nur ab 15° verglichen) je 15 min, dazu der erste obere
-Meridiandurchgang in der Nacht (Mittag bis Mittag).
+"""Ziele je Standort (TK 9.1): Höhe/Azimut geometrisch und scheinbar (Saemundsson aus der geometrischen
+Höhe wie die Engine, AST-D30 – bis 28.09.2026 astropys eigene Refraktion mit 1010 hPa/10 °C, entgegen der
+Beschreibung in `common.py`) je 15 min, dazu der erste obere Meridiandurchgang in der Nacht (Mittag bis
+Mittag). Nächte 2026 sowie 1995 und 2045 (Präzession/Nutation über Jahrzehnte).
 
 Der Meridiandurchgang wird wie in der Engine **ohne Aberration** gerechnet (Präzession/Nutation
 IAU 1976/1980 über `erfa.pnm80`, GAST nach IAU 1994): am Pol macht die Aberration (≈ 20″) sonst über
@@ -12,9 +13,10 @@ import numpy as np
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
 
-from common import bisect, load_yaml, location, night_bounds, to_time, write
+from common import apparent, bisect, load_yaml, location, night_bounds, to_time, write
 
-NIGHTS = ["2026-03-15", "2026-09-17"]
+# Zwei Nächte 2026 und zwei außerhalb (1995, 2045) – Präzession/Nutation über Jahrzehnte (Prüfung 28.09.2026).
+NIGHTS = ["2026-03-15", "2026-09-17", "1995-01-15", "2045-07-15"]
 
 
 def hour_angle(coord, loc, t):
@@ -47,16 +49,9 @@ def main():
             for target in targets:
                 c = SkyCoord(ra=target["ra"] * u.deg, dec=target["dec"] * u.deg, frame="icrs")
                 geo = c.transform_to(AltAz(obstime=t, location=loc, pressure=0 * u.hPa))
-                app = c.transform_to(
-                    AltAz(
-                        obstime=t,
-                        location=loc,
-                        pressure=1010 * u.hPa,
-                        temperature=10 * u.deg_C,
-                        relative_humidity=0,
-                        obswl=0.55 * u.micron,
-                    )
-                )
+                # scheinbar über Saemundsson aus der geometrischen Höhe wie die Engine (AST-D30) – vorher
+                # astropys eigene Refraktion (1010 hPa, 10 °C), entgegen der Beschreibung in `common.py`
+                app_alt = apparent(geo.alt.deg)
                 # erster oberer Meridiandurchgang: HA von − nach + im 5-min-Raster, dann Bisektion
                 fine = np.arange(start, end, 300.0)
                 ha = hour_angle(c, loc, to_time(fine))
@@ -82,7 +77,7 @@ def main():
                                 "t": float(grid[k]),
                                 "altGeoDeg": round(float(geo.alt.deg[k]), 6),
                                 "azDeg": round(float(geo.az.deg[k]), 6),
-                                "altAppDeg": round(float(app.alt.deg[k]), 6),
+                                "altAppDeg": round(float(app_alt[k]), 6),
                             }
                             for k in range(len(grid))
                         ],
