@@ -89,7 +89,7 @@ Entscheidung Sven, 26.09.2026, nach der Bestandsaufnahme `../ui/bestandsaufnahme
 | [AP-32b](AP-32b.md) | Änderungsanträge mit Konflikt-Diff (Teil 2 von [AP-32](AP-32.md)) | M | AP-32a | – | ☑ |
 | [AP-33](AP-33.md) | Folgeplanung S-62 und Prognose | M | AP-32b | – | ☑ |
 | [AP-34](AP-34.md) | Projektbericht S-63 | S | AP-31 | – | ☑ |
-| [AP-35](AP-35.md) | „Heute Nacht“ S-02 | S | AP-33 | – | ◐ |
+| [AP-35](AP-35.md) | „Heute Nacht“ S-02 | S | AP-33 | – | ☑ 28.09.2026 |
 
 ## RP – NINA-Plugin (direkt vor R4)
 
@@ -98,7 +98,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
 | [AP-S2b](AP-S2b.md) | Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent) | S | AP-01 | H-14, H-15 | ☐ |
-| [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | H-14 | ☐ |
+| [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | – (ADR-S2c) | ◐ |
 | [AP-08c](AP-08c.md) | Engine-Bundle und Jint-Parität | S | AP-08b, AP-S2c | – | ☐ |
 | [AP-S2a](AP-S2a.md) | Spike Jint-Laufzeit | S | AP-08c | – | ☐ |
 | [AP-16a](AP-16a.md) | Plugin: Lösung, Core, Kopplung, NINA-Test-Server | M | AP-S2b, AP-S2c, AP-08c, AP-14a | H-14, H-15 | ☐ |

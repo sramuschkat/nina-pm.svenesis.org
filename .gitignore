@@ -28,14 +28,14 @@ apps/nina-plugin/**/bin/
 apps/nina-plugin/**/obj/
 tools/astropm-oracle/**/bin/
 tools/astropm-oracle/**/obj/
+spikes/nina-build/**/bin/
+spikes/nina-build/**/obj/
 *.user
 TestResults/
 
-# NINA-Referenz-Assemblies (H-14): nur die README.md je Version wird eingecheckt
-apps/nina-plugin/refs/**
-!apps/nina-plugin/refs/
-!apps/nina-plugin/refs/*/
-!apps/nina-plugin/refs/**/README.md
+# NINA-Assemblies nie einchecken: übersetzt wird gegen die NuGet-Pakete NINA.* (ADR-S2c);
+# tools/nina-build-check.sh meldet trotzdem jede versionierte DLL unter apps/nina-plugin/ und spikes/
+apps/nina-plugin/**/*.dll
 
 # CDK-Ausgaben des lokalen Deploys
 infra/cdk-outputs.json

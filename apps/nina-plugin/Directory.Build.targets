@@ -1,0 +1,9 @@
+<Project>
+  <!-- Nach dem Projekt gelesen, damit $(TargetFramework) gesetzt ist (ADR-S2c). -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- NU1701: NINA zieht .NET-Framework-Pakete nach (ToastNotifications, VVVV.FreeImage). Übersetzt wird nicht gegen sie,
+         ausgeliefert auch nicht (IncludeAssets="compile"). Projektweit, weil die Warnung am transitiven Paket hängt. -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+</Project>

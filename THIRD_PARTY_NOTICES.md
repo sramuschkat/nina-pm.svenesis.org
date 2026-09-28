@@ -2,6 +2,11 @@
 
 Lizenzhinweise für übernommenen Code und übernommene Daten. Weitere Einträge (z. B. Jint, NuGet-Pakete) ergänzt Claude Code mit dem jeweiligen Arbeitspaket.
 
+## N.I.N.A. – Nighttime Imaging 'N' Astronomy
+
+Quelle: NuGet-Pakete `NINA.Plugin` und Abhängigkeiten `NINA.*`, Version 3.2.0.9001 (https://nighttime-imaging.eu/), Lizenz: Mozilla Public License 2.0 (`LICENSE.txt` im Paket).
+Verwendung: Das NINA-Plugin (`apps/nina-plugin`) wird gegen diese Assemblies **kompiliert** (`IncludeAssets="compile"`, ADR-S2c). Keine NINA-Assembly wird mitgeliefert oder verändert; zur Laufzeit lädt NINA seine eigenen.
+
 ## Astro PM – N.I.N.A. Plugin
 
 Quelle: https://github.com/Josh-Jones-76/AstroPM.NINA.Plugin (Commit 5dd621d, v1.6.0.0)
