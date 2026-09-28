@@ -254,7 +254,11 @@ export const createProjectRoute = defineRoute(
     summary: 'Projekt als Entwurf anlegen (Client-UUID; unvollständig erlaubt)',
     tags: ['projects'],
     request: { body: { ...json(ProjectCreate), required: true } },
-    responses: { 201: { description: 'Angelegt', ...json(ProjectView) }, ...errors },
+    responses: {
+      201: { description: 'Angelegt (bzw. eigenes Projekt mit dieser ID)', ...json(ProjectView) },
+      ...errors,
+      409: problemContent('resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt)'),
+    },
   },
 );
 
@@ -319,7 +323,11 @@ export const duplicateProjectRoute = defineRoute(
     summary: 'Projekt als neuen Entwurf duplizieren (Zähler 0)',
     tags: ['projects'],
     request: { params: idParam, body: { ...json(ProjectDuplicate), required: true } },
-    responses: { 201: { description: 'Dupliziert', ...json(ProjectView) }, ...errors },
+    responses: {
+      201: { description: 'Dupliziert (bzw. eigenes Projekt mit dieser ID)', ...json(ProjectView) },
+      ...errors,
+      409: problemContent('resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt)'),
+    },
   },
 );
 

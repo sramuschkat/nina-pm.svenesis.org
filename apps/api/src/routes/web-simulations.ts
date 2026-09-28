@@ -3,7 +3,7 @@
  * `night_plan(origin = 'web_simulation')`. Der Plan muss zur angegebenen Nacht gehören; das Rig muss im
  * Mandanten existieren (404). Rechnen tut der Browser mit derselben Engine (FA-SIM-05).
  * `POST /api/web/v1/simulations/multi` (AP-32a, FA-SIM-04): Mehrnacht-Simulation als Job `multi_sim`
- * (`202 {jobId}`; höchstens 14 Nächte, dedupliziert je Rig und Startnacht, höchstens 3 offene Jobs je
+ * (`202 {jobId}`; höchstens 14 Nächte, dedupliziert je Rig, Startnacht, Mitglied und Optionen, höchstens 3 offene Jobs je
  * Mitglied → `429 auth.rate_limited`).
  */
 import { OpenAPIHono } from '@hono/zod-openapi';
@@ -79,11 +79,14 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
     const input = c.req.valid('json');
     const repos = svc.repositories(tenant);
     if (!(await repos.equipment().rig(input.rigId))) throw new ProblemError('resource.not_found');
+    const memberId = tenant.memberId;
+    if (!memberId) throw new ProblemError('permission.denied');
     const r = await enqueueJob(repos.job, svc.jobInvoker, {
       kind: 'multi_sim',
       input,
-      dedupeKey: dedupeKeys.multiSim(input),
-      createdBy: tenant.memberId ?? null,
+      // Je Mitglied und Optionen (TK 7.4, Spec-Ergänzung 28.09.2026).
+      dedupeKey: dedupeKeys.multiSim(input, memberId),
+      createdBy: memberId,
     });
     return c.json({ jobId: r.jobId }, 202);
   });

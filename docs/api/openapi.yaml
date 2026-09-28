@@ -17654,7 +17654,7 @@ paths:
               $ref: "#/components/schemas/ProjectCreate"
       responses:
         "201":
-          description: Angelegt
+          description: Angelegt (bzw. eigenes Projekt mit dieser ID)
           content:
             application/json:
               schema:
@@ -17673,6 +17673,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt)
           content:
             application/problem+json:
               schema:
@@ -17932,7 +17938,7 @@ paths:
               $ref: "#/components/schemas/ProjectDuplicate"
       responses:
         "201":
-          description: Dupliziert
+          description: Dupliziert (bzw. eigenes Projekt mit dieser ID)
           content:
             application/json:
               schema:
@@ -17951,6 +17957,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt)
           content:
             application/problem+json:
               schema:

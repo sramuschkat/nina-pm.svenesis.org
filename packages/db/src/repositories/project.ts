@@ -14,6 +14,7 @@
  */
 import {
   autoReactivate,
+  autoReadyToProcess,
   canTransition,
   effectiveTenantSettings,
   imageScale,
@@ -34,6 +35,7 @@ import type { Database, ExposureLineTable, ProjectPanelTable, ProjectTable } fro
 import { TenantRepo } from './base';
 import { EquipmentRepository, type FilterWheelEntry } from './equipment';
 import { insertNotifications } from './notification';
+import { lockSubmitters, nextSubmitterRank, renumberRanks } from './ranks';
 
 type Tx = Transaction<Database>;
 export type ProjectRow = Selectable<ProjectTable>;
@@ -336,12 +338,23 @@ export class ProjectRepository extends TenantRepo {
     if (!row) throw invalid([{ path: 'dsoObjectId', message: 'Katalogobjekt unbekannt' }]);
   }
 
+  /**
+   * Wiederholte Anlage mit derselben Client-ID (Idempotenz, rules/api.md): nur das **eigene**, nicht
+   * gelöschte Projekt kommt zurück. Gehört die ID einem anderen Mitglied oder ist das Projekt gelöscht,
+   * `409 resource.in_use` – ohne Inhalte preiszugeben (sonst läse jedes Mitglied fremde Entwürfe).
+   */
+  private idempotentReplay(trx: Tx, existing: ProjectRow, memberId: string) {
+    if (existing.createdBy !== memberId || existing.deletedAt !== null)
+      throw new ProblemError('resource.in_use', [{ path: 'id', message: 'ID bereits vergeben' }]);
+    return this.detailOf(trx, existing);
+  }
+
   create(input: ProjectCreate, now: Date): Promise<ProjectDetail> {
     const memberId = this.ctx.memberId;
     if (!memberId) throw new ProblemError('permission.denied');
     return this.tx(async (trx) => {
       const existing = await this.row(input.id, trx, true);
-      if (existing) return this.detailOf(trx, existing);
+      if (existing) return this.idempotentReplay(trx, existing, memberId);
       await this.checkRig(trx, input.rigId);
       await this.checkDso(trx, input.dsoObjectId);
       await trx
@@ -530,21 +543,25 @@ export class ProjectRepository extends TenantRepo {
     }
     if (Object.keys(set).length === 0) return this.detailOf(trx, p);
     await this.touch(trx, p, now, set);
-    // Einzelfeld: Panel 0 folgt den Projektkoordinaten; ohne Panel entsteht es mit den Koordinaten.
+    // Einzelfeld: Panel 0 folgt den Projektkoordinaten; ohne aktives Panel entsteht eines mit den
+    // Koordinaten – nur wenn die Änderung Koordinaten enthält (nicht bei jedem Umbenennen) und mit dem
+    // nächsten freien Index über **alle** Panels: `UNIQUE (project_id, panel_index)` gilt auch für weich
+    // gelöschte (sonst 500 nach dem Löschen von Panel 0, wie in `addPanel`/`applyMosaic`).
     const ra = (set.raDeg as number | null | undefined) ?? p.raDeg;
     const dec = (set.decDeg as number | null | undefined) ?? p.decDeg;
     const rot = (set.rotationDeg as number | undefined) ?? p.rotationDeg;
+    const coordinatesChanged = 'raDeg' in set || 'decDeg' in set || 'rotationDeg' in set;
     const panels = await this.panelsOf(trx, id);
-    if (ra !== null && dec !== null) {
+    if (ra !== null && dec !== null && coordinatesChanged) {
       if (panels.length === 0)
-        await this.insertPanel(trx, id, 0, {
+        await this.insertPanel(trx, id, await this.nextPanelIndex(trx, id), {
           label: 'Main',
           raDeg: ra,
           decDeg: dec,
           rotationDeg: rot,
           notes: '',
         });
-      else if (panels.length === 1 && ('raDeg' in set || 'decDeg' in set || 'rotationDeg' in set))
+      else if (panels.length === 1)
         await trx
           .updateTable('projectPanel')
           .set({ raDeg: ra, decDeg: dec, rotationDeg: rot })
@@ -554,6 +571,17 @@ export class ProjectRepository extends TenantRepo {
     }
     await this.log(trx, id, 'update', diff, now);
     return this.detailOf(trx, (await this.row(id, trx)) as ProjectRow);
+  }
+
+  /** Nächster freier `panel_index` über alle Panels des Projekts, auch weich gelöschte. */
+  private async nextPanelIndex(trx: Tx, projectId: string): Promise<number> {
+    const max = await trx
+      .selectFrom('projectPanel')
+      .select((eb) => eb.fn.max('panelIndex').as('max'))
+      .where('tenantId', '=', this.tenantId)
+      .where('projectId', '=', projectId)
+      .executeTakeFirst();
+    return max?.max === null || max?.max === undefined ? 0 : Number(max.max) + 1;
   }
 
   private panelsOf(trx: Tx, projectId: string) {
@@ -567,41 +595,134 @@ export class ProjectRepository extends TenantRepo {
       .execute();
   }
 
-  /** Papierkorb (FA-PRJ-15, E4): immer weich. */
+  /**
+   * Papierkorb (FA-PRJ-15, E4): immer weich. Was an der Sichtbarkeit hängt, wird mit aufgeräumt:
+   * - offene Änderungsanträge zum Projekt werden zurückgezogen (wie `ChangeRequestRepository.withdraw`:
+   *   Status `withdrawn`, Rang frei, Stimmen ruhen) – sonst blockierten sie unsichtbar die Rangfolge des
+   *   Antragstellers (`422 ranking.incomplete`, „n von m“);
+   * - ein eingereichtes Projekt gibt seinen Rang beim Einreicher frei, die übrigen rücken nach;
+   * - ein freigegebenes Projekt verlässt die Priorität seines Rigs (Lücke geschlossen); sein Wert bleibt
+   *   gespeichert, damit `restore` es an dieselbe Stelle zurücksetzt.
+   * Wächter: Projektzeile, dazu `app_user` der betroffenen Einreicher (rules/dsql.md).
+   */
   softDelete(id: string, now: Date): Promise<void> {
     return this.tx(
       async (trx) => {
         const p = await this.row(id, trx);
         if (!p) throw notFound();
+        const requests = await trx
+          .selectFrom('changeRequest')
+          .select(['id', 'requestedBy', 'version'])
+          .where('tenantId', '=', this.tenantId)
+          .where('projectId', '=', id)
+          .where('status', '=', 'open')
+          .orderBy('id')
+          .execute();
+        const submitters = [
+          ...new Set([
+            ...(p.approvalStatus === 'submitted' || p.submitterRank !== null ? [p.createdBy] : []),
+            ...requests.map((r) => r.requestedBy),
+          ]),
+        ].sort();
+        await lockSubmitters(trx, this.tenantId, submitters);
         await trx
           .updateTable('project')
-          .set({ deletedAt: now, updatedAt: now, version: p.version + 1 })
+          .set({ deletedAt: now, submitterRank: null, updatedAt: now, version: p.version + 1 })
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
-        await this.log(trx, id, 'delete', { name: p.name }, now);
+        for (const r of requests)
+          await trx
+            .updateTable('changeRequest')
+            .set({
+              status: 'withdrawn',
+              submitterRank: null,
+              version: r.version + 1,
+              updatedAt: now,
+            })
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', r.id)
+            .where('status', '=', 'open')
+            .execute();
+        for (const member of submitters) await renumberRanks(trx, this.tenantId, member);
+        if (p.approvalStatus === 'approved' && p.rigId)
+          await this.renumberPriority(trx, p.rigId, null, now);
+        await this.log(
+          trx,
+          id,
+          'delete',
+          {
+            name: p.name,
+            ...(requests.length > 0 ? { changeRequestsWithdrawn: requests.map((r) => r.id) } : {}),
+            ...(p.submitterRank !== null ? { rank: p.submitterRank } : {}),
+          },
+          now,
+        );
       },
       [{ table: 'project', id }],
     );
   }
 
-  /** Wiederherstellen mit unverändertem Freigabe- und Projektstatus (FA-PRJ-15). */
+  /**
+   * Wiederherstellen mit unverändertem Freigabe- und Projektstatus (FA-PRJ-15). Rang und Priorität folgen
+   * dem Papierkorb: ein eingereichtes Projekt reiht sich am Ende der Rangfolge seines Einreichers ein, ein
+   * freigegebenes kehrt an seine frühere Position im Rig zurück (höchstens ans Ende).
+   */
   restore(id: string, now: Date): Promise<ProjectDetail> {
     return this.tx(
       async (trx) => {
         const p = await this.row(id, trx, true);
         if (!p || p.deletedAt === null) throw notFound();
+        const submitted = p.approvalStatus === 'submitted';
+        if (submitted) await lockSubmitters(trx, this.tenantId, [p.createdBy]);
+        const rank = submitted ? await nextSubmitterRank(trx, this.tenantId, p.createdBy) : null;
         await trx
           .updateTable('project')
-          .set({ deletedAt: null, updatedAt: now, version: p.version + 1 })
+          .set({ deletedAt: null, submitterRank: rank, updatedAt: now, version: p.version + 1 })
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
+        if (submitted) await renumberRanks(trx, this.tenantId, p.createdBy);
+        if (p.approvalStatus === 'approved' && p.rigId)
+          await this.renumberPriority(trx, p.rigId, { id, position: p.priority }, now);
         await this.log(trx, id, 'restore', { name: p.name }, now);
         return this.detailOf(trx, (await this.row(id, trx)) as ProjectRow);
       },
       [{ table: 'project', id }],
     );
+  }
+
+  /**
+   * Priorität je Rig 1…n über die freigegebenen, nicht gelöschten Projekte (FA-PRJ-13); `insert` setzt
+   * ein Projekt an `position` (1 = höchste, höchstens ans Ende). Schreibt nur geänderte Zeilen.
+   */
+  private async renumberPriority(
+    trx: Tx,
+    rigId: string,
+    insert: { id: string; position: number } | null,
+    now: Date,
+  ) {
+    const peers = await trx
+      .selectFrom('project')
+      .select(['id', 'priority'])
+      .where('tenantId', '=', this.tenantId)
+      .where('rigId', '=', rigId)
+      .where('approvalStatus', '=', 'approved')
+      .where('deletedAt', 'is', null)
+      .orderBy('priority')
+      .orderBy('id')
+      .execute();
+    const order = peers.map((x) => x.id).filter((x) => x !== insert?.id);
+    if (insert)
+      order.splice(Math.min(Math.max(insert.position, 1) - 1, order.length), 0, insert.id);
+    for (const [i, pid] of order.entries())
+      if (peers.find((x) => x.id === pid)?.priority !== i + 1)
+        await trx
+          .updateTable('project')
+          .set({ priority: i + 1, updatedAt: now })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', pid)
+          .execute();
   }
 
   /** Duplizieren (FA-PRJ-08): neuer Entwurf mit denselben Panels und Zeilen, Zähler 0. */
@@ -614,7 +735,7 @@ export class ProjectRepository extends TenantRepo {
     if (!memberId) throw new ProblemError('permission.denied');
     return this.tx(async (trx) => {
       const existing = await this.row(input.id, trx, true);
-      if (existing) return this.detailOf(trx, existing);
+      if (existing) return this.idempotentReplay(trx, existing, memberId);
       const src = await this.row(sourceId, trx);
       if (!src) throw notFound();
       const rigId = input.rigId === undefined ? projectRigId(src) : input.rigId;
@@ -701,13 +822,7 @@ export class ProjectRepository extends TenantRepo {
           .where('id', '=', input.id)
           .executeTakeFirst();
         if (!exists) {
-          const max = await trx
-            .selectFrom('projectPanel')
-            .select((eb) => eb.fn.max('panelIndex').as('max'))
-            .where('tenantId', '=', this.tenantId)
-            .where('projectId', '=', projectId)
-            .executeTakeFirst();
-          const index = max?.max === null || max?.max === undefined ? 0 : Number(max.max) + 1;
+          const index = await this.nextPanelIndex(trx, projectId);
           const { id, ...panel } = input;
           await this.insertPanel(trx, projectId, index, panel, id);
           await this.touch(trx, p, now);
@@ -1338,14 +1453,25 @@ export class ProjectRepository extends TenantRepo {
   }
 
   /**
-   * Nach einer Zähleränderung außerhalb des Editors (Korrektur, FA-AUS-06): steigt der Planungsbedarf
-   * eines fertigen Projekts wieder über 0, geht es zurück nach *Aktiv* (FA-PRJ-12,
-   * `autoReactivateOnRemaining`) – mit Protokolleintrag. Liefert den neuen Status oder `null`.
+   * Automatischer Statuswechsel nach Zähler- oder Zeilenänderungen (FA-PRJ-11/12), beide Richtungen:
+   * - *Bereit zur Bearbeitung* bzw. *Abgeschlossen* → *Aktiv*, wenn der Planungsbedarf wieder über 0 steigt
+   *   (`autoReactivateOnRemaining`, Standard an);
+   * - *Aktiv* → *Bereit zur Bearbeitung*, wenn das Projekt „fertig“ ist und am Rig kein Bonus aktiv ist
+   *   (`autoReadyToProcess`, Standard aus; nicht für Exoplaneten, FA-EXO-34).
+   * Nur freigegebene, nicht gelöschte Projekte. Liefert den neuen Status oder `null`.
    */
-  async reactivateAfterCounts(trx: Tx, projectId: string, now: Date): Promise<string | null> {
-    const p = await this.row(projectId, trx);
-    if (!p || p.approvalStatus !== 'approved') return null;
-    if (p.status !== 'ready_to_process' && p.status !== 'completed') return null;
+  private async automaticStatus(trx: Tx, p: ProjectRow): Promise<ProjectStatus | null> {
+    if (p.approvalStatus !== 'approved' || p.deletedAt !== null) return null;
+    const status = p.status as ProjectStatus | null;
+    if (status !== 'active' && status !== 'ready_to_process' && status !== 'completed') return null;
+    const tenant = await trx
+      .selectFrom('tenant')
+      .select('settings')
+      .where('id', '=', this.tenantId)
+      .executeTakeFirst();
+    const settings = effectiveTenantSettings(tenant?.settings);
+    if (status === 'active' && !settings.autoReadyToProcess) return null;
+    if (status !== 'active' && !settings.autoReactivateOnRemaining) return null;
     const lines = await trx
       .selectFrom('exposureLine')
       .selectAll()
@@ -1353,62 +1479,63 @@ export class ProjectRepository extends TenantRepo {
       .where('projectId', '=', p.id)
       .where('deletedAt', 'is', null)
       .execute();
-    const need = projectProgress(lines, await this.overshootPct(trx, p)).planningNeed;
-    const tenant = await trx
-      .selectFrom('tenant')
-      .select('settings')
-      .where('id', '=', this.tenantId)
-      .executeTakeFirst();
-    const next = autoReactivate(
-      p.status as ProjectStatus,
-      need,
-      effectiveTenantSettings(tenant?.settings).autoReactivateOnRemaining,
-    );
+    const progress = projectProgress(lines, await this.overshootPct(trx, p));
+    if (status !== 'active')
+      return autoReactivate(status, progress.planningNeed, settings.autoReactivateOnRemaining);
+    const rigId = projectRigId(p);
+    const rig = rigId
+      ? await trx
+          .selectFrom('rig')
+          .select('bonusEnabled')
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', rigId)
+          .executeTakeFirst()
+      : undefined;
+    return autoReadyToProcess({
+      status,
+      projectType: p.projectType,
+      finished: progress.finished,
+      bonusEnabled: rig?.bonusEnabled ?? false,
+      autoReadyToProcess: settings.autoReadyToProcess,
+    });
+  }
+
+  /** Felder und Protokolleintrag eines automatischen Statuswechsels (`completed_at` wie beim manuellen). */
+  private async automaticStatusSet(trx: Tx, p: ProjectRow, next: ProjectStatus, now: Date) {
+    await this.log(trx, p.id, 'status', { from: p.status, to: next, automatic: true }, now);
+    return { status: next, completedAt: next === 'active' ? null : p.completedAt };
+  }
+
+  /**
+   * Nach einer Zähleränderung außerhalb des Editors (Aufnahmen-Ingest, Korrektur, Verwerfen,
+   * Zähler-Abgleich): automatischer Statuswechsel nach `automaticStatus` – mit Protokolleintrag.
+   * Liefert den neuen Status oder `null`.
+   */
+  async autoStatusAfterCounts(trx: Tx, projectId: string, now: Date): Promise<string | null> {
+    const p = await this.row(projectId, trx);
+    if (!p) return null;
+    const next = await this.automaticStatus(trx, p);
     if (!next) return null;
     await trx
       .updateTable('project')
-      .set({ status: next, completedAt: null, version: p.version + 1, updatedAt: now })
+      .set({
+        ...(await this.automaticStatusSet(trx, p, next, now)),
+        version: p.version + 1,
+        updatedAt: now,
+      })
       .where('tenantId', '=', this.tenantId)
       .where('id', '=', p.id)
       .execute();
-    await this.log(trx, p.id, 'status', { from: p.status, to: next, automatic: true }, now);
     return next;
   }
 
   /**
-   * Nach einer Zeilenänderung: Version/`effort_stale` und die automatische Rückkehr nach *Aktiv*, wenn
-   * der Planungsbedarf eines fertigen Projekts wieder über 0 steigt (FA-PRJ-12, `autoReactivateOnRemaining`).
+   * Nach einer Zeilenänderung: Version/`effort_stale` und der automatische Statuswechsel (FA-PRJ-12) –
+   * zurück nach *Aktiv* bei neuem Planungsbedarf bzw. *Bereit zur Bearbeitung*, wenn nun „fertig“.
    */
   private async afterLineChange(trx: Tx, p: ProjectRow, now: Date) {
-    const set: Record<string, unknown> = {};
-    if (
-      p.approvalStatus === 'approved' &&
-      (p.status === 'ready_to_process' || p.status === 'completed')
-    ) {
-      const lines = await trx
-        .selectFrom('exposureLine')
-        .selectAll()
-        .where('tenantId', '=', this.tenantId)
-        .where('projectId', '=', p.id)
-        .where('deletedAt', 'is', null)
-        .execute();
-      const need = projectProgress(lines, await this.overshootPct(trx, p)).planningNeed;
-      const tenant = await trx
-        .selectFrom('tenant')
-        .select('settings')
-        .where('id', '=', this.tenantId)
-        .executeTakeFirst();
-      const next = autoReactivate(
-        p.status as ProjectStatus,
-        need,
-        effectiveTenantSettings(tenant?.settings).autoReactivateOnRemaining,
-      );
-      if (next) {
-        set.status = next;
-        set.completedAt = null;
-        await this.log(trx, p.id, 'status', { from: p.status, to: next, automatic: true }, now);
-      }
-    }
+    const next = await this.automaticStatus(trx, p);
+    const set = next ? await this.automaticStatusSet(trx, p, next, now) : {};
     await this.touch(trx, p, now, set);
   }
 

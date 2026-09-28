@@ -97,6 +97,28 @@ export function autoReactivate(
   return status === 'ready_to_process' || status === 'completed' ? 'active' : null;
 }
 
+export interface AutoReadyInput {
+  readonly status: ProjectStatus | null;
+  readonly projectType: string;
+  /** „fertig“ aus `projectProgress` (alle aktiven Zeilen Planungsbedarf 0, mindestens eine aktive). */
+  readonly finished: boolean;
+  /** `rig.bonus_enabled` des Projekt-Rigs – Bonus-Aufnahmen laufen, solange das Projekt *Aktiv* ist. */
+  readonly bonusEnabled: boolean;
+  /** Mandanteneinstellung `autoReadyToProcess` (Standard aus). */
+  readonly autoReadyToProcess: boolean;
+}
+
+/**
+ * Automatischer Wechsel *Aktiv* → *Bereit zur Bearbeitung* (FA-PRJ-11/12): nur mit
+ * `autoReadyToProcess`, nur wenn „fertig“ **und** am Rig kein Bonus aktiv ist; nie für
+ * Exoplaneten-Projekte (FA-EXO-34). Gegenstück zu `autoReactivate`.
+ */
+export function autoReadyToProcess(p: AutoReadyInput): ProjectStatus | null {
+  if (!p.autoReadyToProcess || p.status !== 'active') return null;
+  if (p.projectType === 'exoplanet' || p.bonusEnabled || !p.finished) return null;
+  return 'ready_to_process';
+}
+
 export interface CompletenessInput {
   readonly name: string;
   readonly rigId: string | null;
