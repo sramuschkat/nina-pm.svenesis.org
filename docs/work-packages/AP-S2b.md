@@ -34,4 +34,4 @@ TK 10.1, 10.3, OT-08
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe
-P-01…P-03 und P-13 durchführen (H-14, H-15), Kommandozeilenstart einmal über die Windows-Aufgabenplanung, Go/No-Go
+P-01…P-03 und P-13 durchführen (H-14, H-15), Kommandozeilenstart einmal über die Windows-Aufgabenplanung, Go/No-Go. Dazu der **Versionsabgleich aus AP-S2c** (verschoben am 28.09.2026, ADR-S2c): Dateiversion von `NINA.Sequencer.dll` der Installation = `NinaVersion` (`docs/ops/windows-vm.md` Schritt 5)

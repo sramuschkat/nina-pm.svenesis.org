@@ -97,86 +97,86 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | 2. Architekturüberblick | 83–157 |
 | &nbsp;&nbsp;2.1 Komponenten | 85–120 |
 | &nbsp;&nbsp;2.2 Wichtige Abläufe | 121–157 |
-| 3. Monorepo und Projektstruktur | 158–243 |
-| &nbsp;&nbsp;3.1 Verzeichnisbaum | 160–226 |
-| &nbsp;&nbsp;3.2 Werkzeuge und Konventionen | 227–243 |
-| 4. AWS-Infrastruktur mit CDK | 244–339 |
-| &nbsp;&nbsp;4.1 Stacks | 246–260 |
-| &nbsp;&nbsp;4.2 Wesentliche Ressourcen und Einstellungen | 261–278 |
-| &nbsp;&nbsp;4.3 Domain und CloudFront | 279–314 |
-| &nbsp;&nbsp;4.4 Umgebung und Konfiguration | 315–325 |
-| &nbsp;&nbsp;4.5 Einbindung in die Website www.svenesis.org | 326–339 |
-| 5. Authentifizierung und Autorisierung (Discord) | 340–488 |
-| &nbsp;&nbsp;5.1 Discord-Anwendung | 342–348 |
-| &nbsp;&nbsp;5.2 Anmeldeablauf | 349–391 |
-| &nbsp;&nbsp;5.3 Sitzungen und Cookies | 392–421 |
-| &nbsp;&nbsp;5.4 Super User und Notfallzugang | 422–428 |
-| &nbsp;&nbsp;5.5 Autorisierung | 429–471 |
-| &nbsp;&nbsp;5.6 NINA-Instanzen | 472–488 |
-| 6. Datenbank (Aurora DSQL) | 489–655 |
-| &nbsp;&nbsp;6.0 DSQL-Fakten (geprüft 17.09.2026, im Spike AP-S1 am 23.09.2026 nachgewiesen) | 495–510 |
-| &nbsp;&nbsp;6.1 Leitlinien | 511–525 |
-| &nbsp;&nbsp;6.2 Tabellengruppen | 526–549 |
-| &nbsp;&nbsp;6.3 Wichtige Abfragen (Indizes darauf ausgelegt) | 550–560 |
-| &nbsp;&nbsp;6.4 Abgeleitete Werte (nicht gespeichert) | 561–564 |
-| &nbsp;&nbsp;6.5 Verbindung aus Lambda | 565–585 |
-| &nbsp;&nbsp;6.6 Transaktionen, Konflikte, Idempotenz | 586–610 |
-| &nbsp;&nbsp;6.7 Mandanten-Guard | 611–627 |
-| &nbsp;&nbsp;6.8 Migrationen | 628–638 |
-| &nbsp;&nbsp;6.9 Lokale Entwicklung | 639–644 |
-| &nbsp;&nbsp;6.10 Datensicherung | 645–655 |
-| 7. API | 656–2026 |
-| &nbsp;&nbsp;7.1 Konventionen | 658–673 |
-| &nbsp;&nbsp;7.2 Endpunkte Web (Auszug, vollständig in OpenAPI) | 674–711 |
-| &nbsp;&nbsp;7.3 Endpunkte NINA (`/nina/v1`) | 712–731 |
-| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 732–757 |
-| &nbsp;&nbsp;7.5 Verträge | 758–761 |
-| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 762–2006 |
-| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2007–2026 |
-| 8. Scheduler- und Astronomie-Engine | 2027–2175 |
-| &nbsp;&nbsp;8.1 Grundsätze | 2029–2038 |
-| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2039–2097 |
-| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2098–2115 |
-| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2116–2159 |
-| &nbsp;&nbsp;8.5 Transitrechnung | 2160–2167 |
-| &nbsp;&nbsp;8.6 Leistung | 2168–2175 |
-| 9. Referenzwerte mit Python/astropy | 2176–2250 |
-| &nbsp;&nbsp;9.1 Aufbau | 2180–2204 |
-| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2205–2250 |
-| 10. NINA-Plugin | 2251–2441 |
-| &nbsp;&nbsp;10.1 Rahmen | 2253–2264 |
-| &nbsp;&nbsp;10.2 Struktur | 2265–2324 |
-| &nbsp;&nbsp;10.3 Ablauf im Container | 2325–2347 |
-| &nbsp;&nbsp;10.4 Offline | 2348–2354 |
-| &nbsp;&nbsp;10.5 NINA-Assemblies, Build und Entwicklung ohne Windows | 2355–2441 |
-| 11. Frontend (React + TypeScript) | 2442–2555 |
-| &nbsp;&nbsp;11.1 Technologie | 2444–2463 |
-| &nbsp;&nbsp;11.2 Struktur | 2464–2493 |
-| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2494–2545 |
-| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2546–2555 |
-| 12. Dateien und S3 | 2556–2577 |
-| 13. Hintergrund-Jobs | 2578–2598 |
-| 14. Externe Dienste | 2599–2617 |
-| 15. Sicherheit | 2618–2662 |
-| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2626–2643 |
-| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2644–2647 |
-| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2648–2662 |
-| 16. Betrieb, Monitoring und Kosten | 2663–2708 |
-| &nbsp;&nbsp;16.1 Logging und Tracing | 2665–2672 |
-| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2673–2690 |
-| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2691–2708 |
-| 17. Teststrategie | 2709–2738 |
-| 18. CI/CD und Deployment | 2739–2767 |
-| 19. Umsetzungsplan für Claude Code | 2768–2890 |
-| &nbsp;&nbsp;R1 – MVP Planung | 2777–2817 |
-| &nbsp;&nbsp;R2 – Framing und Wetter | 2818–2828 |
-| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2829–2839 |
-| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2840–2858 |
-| &nbsp;&nbsp;R4 – Exoplaneten | 2859–2869 |
-| &nbsp;&nbsp;R5 – Komfort | 2870–2879 |
-| &nbsp;&nbsp;R6 – Optional | 2880–2890 |
-| 20. CLAUDE.md | 2891–2919 |
-| 21. Offene technische Punkte und Risiken | 2920–2960 |
+| 3. Monorepo und Projektstruktur | 158–244 |
+| &nbsp;&nbsp;3.1 Verzeichnisbaum | 160–227 |
+| &nbsp;&nbsp;3.2 Werkzeuge und Konventionen | 228–244 |
+| 4. AWS-Infrastruktur mit CDK | 245–340 |
+| &nbsp;&nbsp;4.1 Stacks | 247–261 |
+| &nbsp;&nbsp;4.2 Wesentliche Ressourcen und Einstellungen | 262–279 |
+| &nbsp;&nbsp;4.3 Domain und CloudFront | 280–315 |
+| &nbsp;&nbsp;4.4 Umgebung und Konfiguration | 316–326 |
+| &nbsp;&nbsp;4.5 Einbindung in die Website www.svenesis.org | 327–340 |
+| 5. Authentifizierung und Autorisierung (Discord) | 341–489 |
+| &nbsp;&nbsp;5.1 Discord-Anwendung | 343–349 |
+| &nbsp;&nbsp;5.2 Anmeldeablauf | 350–392 |
+| &nbsp;&nbsp;5.3 Sitzungen und Cookies | 393–422 |
+| &nbsp;&nbsp;5.4 Super User und Notfallzugang | 423–429 |
+| &nbsp;&nbsp;5.5 Autorisierung | 430–472 |
+| &nbsp;&nbsp;5.6 NINA-Instanzen | 473–489 |
+| 6. Datenbank (Aurora DSQL) | 490–656 |
+| &nbsp;&nbsp;6.0 DSQL-Fakten (geprüft 17.09.2026, im Spike AP-S1 am 23.09.2026 nachgewiesen) | 496–511 |
+| &nbsp;&nbsp;6.1 Leitlinien | 512–526 |
+| &nbsp;&nbsp;6.2 Tabellengruppen | 527–550 |
+| &nbsp;&nbsp;6.3 Wichtige Abfragen (Indizes darauf ausgelegt) | 551–561 |
+| &nbsp;&nbsp;6.4 Abgeleitete Werte (nicht gespeichert) | 562–565 |
+| &nbsp;&nbsp;6.5 Verbindung aus Lambda | 566–586 |
+| &nbsp;&nbsp;6.6 Transaktionen, Konflikte, Idempotenz | 587–611 |
+| &nbsp;&nbsp;6.7 Mandanten-Guard | 612–628 |
+| &nbsp;&nbsp;6.8 Migrationen | 629–639 |
+| &nbsp;&nbsp;6.9 Lokale Entwicklung | 640–645 |
+| &nbsp;&nbsp;6.10 Datensicherung | 646–656 |
+| 7. API | 657–2027 |
+| &nbsp;&nbsp;7.1 Konventionen | 659–674 |
+| &nbsp;&nbsp;7.2 Endpunkte Web (Auszug, vollständig in OpenAPI) | 675–712 |
+| &nbsp;&nbsp;7.3 Endpunkte NINA (`/nina/v1`) | 713–732 |
+| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 733–758 |
+| &nbsp;&nbsp;7.5 Verträge | 759–762 |
+| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 763–2007 |
+| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2008–2027 |
+| 8. Scheduler- und Astronomie-Engine | 2028–2176 |
+| &nbsp;&nbsp;8.1 Grundsätze | 2030–2039 |
+| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2040–2098 |
+| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2099–2116 |
+| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2117–2160 |
+| &nbsp;&nbsp;8.5 Transitrechnung | 2161–2168 |
+| &nbsp;&nbsp;8.6 Leistung | 2169–2176 |
+| 9. Referenzwerte mit Python/astropy | 2177–2251 |
+| &nbsp;&nbsp;9.1 Aufbau | 2181–2205 |
+| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2206–2251 |
+| 10. NINA-Plugin | 2252–2442 |
+| &nbsp;&nbsp;10.1 Rahmen | 2254–2265 |
+| &nbsp;&nbsp;10.2 Struktur | 2266–2325 |
+| &nbsp;&nbsp;10.3 Ablauf im Container | 2326–2348 |
+| &nbsp;&nbsp;10.4 Offline | 2349–2355 |
+| &nbsp;&nbsp;10.5 NINA-Assemblies, Build und Entwicklung ohne Windows | 2356–2442 |
+| 11. Frontend (React + TypeScript) | 2443–2556 |
+| &nbsp;&nbsp;11.1 Technologie | 2445–2464 |
+| &nbsp;&nbsp;11.2 Struktur | 2465–2494 |
+| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2495–2546 |
+| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2547–2556 |
+| 12. Dateien und S3 | 2557–2578 |
+| 13. Hintergrund-Jobs | 2579–2599 |
+| 14. Externe Dienste | 2600–2618 |
+| 15. Sicherheit | 2619–2663 |
+| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2627–2644 |
+| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2645–2648 |
+| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2649–2663 |
+| 16. Betrieb, Monitoring und Kosten | 2664–2709 |
+| &nbsp;&nbsp;16.1 Logging und Tracing | 2666–2673 |
+| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2674–2691 |
+| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2692–2709 |
+| 17. Teststrategie | 2710–2739 |
+| 18. CI/CD und Deployment | 2740–2768 |
+| 19. Umsetzungsplan für Claude Code | 2769–2891 |
+| &nbsp;&nbsp;R1 – MVP Planung | 2778–2818 |
+| &nbsp;&nbsp;R2 – Framing und Wetter | 2819–2829 |
+| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2830–2840 |
+| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2841–2859 |
+| &nbsp;&nbsp;R4 – Exoplaneten | 2860–2870 |
+| &nbsp;&nbsp;R5 – Komfort | 2871–2880 |
+| &nbsp;&nbsp;R6 – Optional | 2881–2891 |
+| 20. CLAUDE.md | 2892–2920 |
+| 21. Offene technische Punkte und Risiken | 2921–2961 |
 
 ## schema_aurora_dsql.sql
 

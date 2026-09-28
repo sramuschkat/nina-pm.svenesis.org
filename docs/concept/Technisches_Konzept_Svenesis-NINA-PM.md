@@ -217,6 +217,7 @@ svenesis-nina-pm/
    ├─ fake-plugin/              # CLI: simuliert eine NINA-Nacht gegen die NINA-API (Tests ohne Plugin)
    ├─ test-run-check/           # prüft docs/test-runs/<datum>/<P-xx>/result.json und das Plugin-Log
    ├─ nina-build-check.sh       # NINA.*-Pakete in NinaVersion, Plugin-Ausgabe nur mit eigenen DLLs, keine DLL im Git (10.5)
+   ├─ engine-bundle/            # pnpm engine:bundle → engine.iife.js, pnpm engine:parity → Hash-Erwartung für Jint (AP-08c)
    ├─ discord-mock/             # lokaler Webhook-Empfänger für Discord-Tests
    ├─ deploy/                   # lokale Skripte mit Svens Admin-Profil (E1, 18): deploy-prod.ts (`pnpm deploy:prod`),
    │                            # test-dsql.ts (`pnpm test:dsql`, kurzlebiger Cluster, auch Spike AP-S1); Claude Code führt sie nie aus

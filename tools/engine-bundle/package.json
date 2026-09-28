@@ -1,0 +1,16 @@
+{
+  "name": "@nina-pm/engine-bundle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Engine-Bundle engine.iife.js für Jint und Erwartungsdatei des Paritätstests Node ↔ Jint (AP-08c, rules/engine.md Nr. 7)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1"
+  }
+}
