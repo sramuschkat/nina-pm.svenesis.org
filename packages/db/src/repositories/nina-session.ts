@@ -6,7 +6,7 @@
  * - Die Lease steht in `rig_lease` (nie auf `rig`); Wächter ist die `rig_lease`-Zeile (`FOR UPDATE`).
  * - Statusübergänge: running → completed | aborted | stale; einziger Rückweg stale → running.
  */
-import { ProblemError } from '@nina-pm/shared';
+import { dedupeKeys, ProblemError } from '@nina-pm/shared';
 import type { Kysely, Selectable, Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, RigLeaseTable, SessionTable } from '../types';
@@ -50,6 +50,30 @@ function leaseHeld(l: LeaseRow | undefined, now: Date): boolean {
   if (!l || l.activeSessionId === null) return false;
   const frozen = l.offlineUntil !== null && new Date(l.offlineUntil) > now;
   return frozen || (l.leaseUntil !== null && new Date(l.leaseUntil) > now);
+}
+
+const isoSec = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+function jsonObject(value: unknown): Record<string, unknown> {
+  const v: unknown = typeof value === 'string' ? JSON.parse(value) : value;
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {};
+}
+
+/**
+ * Admin-Freigabe je Session (M5; Spec-Ergänzung 28.09.2026, `execution.md` §6): die Freigabe steht
+ * dauerhaft an der Session (`session.kpis.leaseReleasedAt`, Spalte bis zum Sessionende sonst ungenutzt)
+ * – `rig_lease.released_session_id` merkt nur die zuletzt freigegebene Session und wird beim nächsten
+ * Lease-Erwerb zurückgesetzt. Eine so ausgeschlossene Session erhält die Lease auf keinem Weg zurück.
+ */
+function leaseReleasedAt(s: Pick<SessionRow, 'kpis'>): string | null {
+  const at = jsonObject(s.kpis).leaseReleasedAt;
+  return typeof at === 'string' ? at : null;
+}
+
+function excludedByRelease(s: SessionRow, lease: LeaseRow): boolean {
+  return lease.releasedSessionId === s.id || leaseReleasedAt(s) !== null;
 }
 
 export class NinaSessionRepository extends TenantRepo {
@@ -103,17 +127,46 @@ export class NinaSessionRepository extends TenantRepo {
       .executeTakeFirstOrThrow();
   }
 
-  private async setLease(trx: Tx, sessionId: string, until: Date, now: Date) {
+  /**
+   * Lease an `sessionId` vergeben. `offlineUntil` gehört immer dem Halter: ein neuer Erwerb friert nur
+   * ein, wenn der Halter selbst den Offline-Modus meldet (sonst erbte er das Einfrieren eines Vorgängers).
+   */
+  private async setLease(
+    trx: Tx,
+    sessionId: string,
+    until: Date,
+    now: Date,
+    offlineUntil: Date | null = null,
+  ) {
     await trx
       .updateTable('rigLease')
       .set({
         activeSessionId: sessionId,
         leaseUntil: until,
+        offlineUntil,
         releasedSessionId: null,
         updatedAt: now,
       })
       .where('rigId', '=', this.rigId)
       .where('tenantId', '=', this.tenantId)
+      .execute();
+  }
+
+  /**
+   * `session_close` neu scharf schalten (TK 13, NIN5-7): verlässt eine Session den Status `stale`
+   * (Rückkehr nach `running` oder echtes Ende), gilt ein beim Verwaisen angelegter `session_close` als
+   * überholt. Sein `dedupe_key` erhält einen Zusatz, damit `sessionsDueForClose` die Session beim
+   * nächsten Ende bzw. Verwaisen wieder schließt (Flats, Klarnacht-Statistik, Aufwand). `dedupe_active`
+   * bleibt, ein noch offener Job läuft zu Ende (der Handler überspringt eine laufende Session).
+   */
+  private async rearmClose(trx: Tx, sessionId: string, now: Date): Promise<void> {
+    const key = dedupeKeys.sessionClose(sessionId);
+    await trx
+      .updateTable('job')
+      .set({ dedupeKey: `${key}:rearmed:${isoSec(now)}` })
+      .where('tenantId', '=', this.tenantId)
+      .where('kind', '=', 'session_close')
+      .where('dedupeKey', '=', key)
       .execute();
   }
 
@@ -308,22 +361,27 @@ export class NinaSessionRepository extends TenantRepo {
     session: SessionRow;
     lease: LeaseView;
     ended: boolean;
+    /** `outbox_pending` fiel mit diesem PATCH von > 0 auf 0 (Jobs am Sessionende, NIN5-7). */
+    outboxDrained: boolean;
     nightPlanId: string | null;
   }> {
     return withTx(this.db, async (trx) => {
       const s = await this.session(id, trx);
       if (!s) throw new ProblemError('resource.not_found');
       const lease = await this.lockLease(trx);
+      const released = excludedByRelease(s, lease);
       const set: Partial<Record<keyof SessionTable, unknown>> = {};
       let leaseView: LeaseView = {
         untilUtc:
           lease.activeSessionId === id && lease.leaseUntil ? new Date(lease.leaseUntil) : null,
-        leaseLost: lease.activeSessionId !== id && leaseHeld(lease, now),
+        leaseLost:
+          (released && OPEN.has(s.status)) ||
+          (lease.activeSessionId !== id && leaseHeld(lease, now)),
       };
       let ended = false;
       if (input.status === 'running') {
         if (!OPEN.has(s.status)) throw new ProblemError('session.closed');
-        if (lease.releasedSessionId === id) {
+        if (released) {
           leaseView = { untilUtc: null, leaseLost: true };
         } else {
           if (lease.activeSessionId !== id && leaseHeld(lease, now))
@@ -333,12 +391,14 @@ export class NinaSessionRepository extends TenantRepo {
           leaseView = { untilUtc: until, leaseLost: false };
           set.status = 'running';
           set.lastHeartbeatAt = now;
+          if (s.status === 'stale') await this.rearmClose(trx, id, now);
         }
       } else if (input.status === 'completed' || input.status === 'aborted') {
         if (OPEN.has(s.status)) {
           set.status = input.status;
           set.endedAt = input.endedAt ?? now;
           ended = true;
+          if (s.status === 'stale') await this.rearmClose(trx, id, now);
           if (lease.activeSessionId === id)
             await trx
               .updateTable('rigLease')
@@ -361,8 +421,13 @@ export class NinaSessionRepository extends TenantRepo {
       if (input.offlinePlan) {
         await this.saveOfflinePlan(trx, id, s.night, input.offlinePlan, now);
         nightPlanId = input.offlinePlan.nightPlanId;
-        // Offline-Nachmeldung: ohne Lease angenommen; eine freie Lease wird für die Session gehalten (L9).
-        if (s.status === 'running' && (lease.activeSessionId === id || !leaseHeld(lease, now))) {
+        // Offline-Nachmeldung: ohne Lease angenommen; eine freie Lease wird für die Session gehalten (L9)
+        // – nie für eine per Admin-Freigabe ausgeschlossene Session (M5).
+        if (
+          s.status === 'running' &&
+          !released &&
+          (lease.activeSessionId === id || !leaseHeld(lease, now))
+        ) {
           const until = new Date(now.getTime() + LEASE_MS);
           await this.setLease(trx, id, until, now);
           leaseView = { untilUtc: until, leaseLost: false };
@@ -376,7 +441,9 @@ export class NinaSessionRepository extends TenantRepo {
           .where('tenantId', '=', this.tenantId)
           .execute();
       const session = (await this.session(id, trx)) as SessionRow;
-      return { session, lease: leaseView, ended, nightPlanId };
+      const outboxDrained =
+        s.outboxPending !== null && s.outboxPending > 0 && session.outboxPending === 0;
+      return { session, lease: leaseView, ended, outboxDrained, nightPlanId };
     });
   }
 
@@ -384,6 +451,8 @@ export class NinaSessionRepository extends TenantRepo {
    * Heartbeat (M5, M6, FA-NIN-04): verlängert bzw. **holt** die Lease zurück, wenn sie frei ist oder
    * dieser Session gehört, die Session nicht per Admin-Freigabe ausgeschlossen und `running`/`stale`
    * ist (`stale → running`); Offline-Modus friert die Lease ein. Ohne `sessionId` keine Lease.
+   * `rig_lease.offline_until` ändert nur der (neue) Halter: Heartbeats einer anderen Instanz bzw. einer
+   * Session ohne Lease frieren weder ein noch tauen sie das Einfrieren des Halters auf.
    */
   heartbeat(
     input: { sessionId: string | null; offline: boolean; offlineUntil: Date | null },
@@ -391,23 +460,6 @@ export class NinaSessionRepository extends TenantRepo {
   ): Promise<LeaseView | null> {
     return withTx(this.db, async (trx) => {
       const lease = await this.lockLease(trx);
-      if (input.offline) {
-        const max = new Date(now.getTime() + OFFLINE_MAX_MS);
-        const until = input.offlineUntil && input.offlineUntil < max ? input.offlineUntil : max;
-        await trx
-          .updateTable('rigLease')
-          .set({ offlineUntil: until, updatedAt: now })
-          .where('rigId', '=', this.rigId)
-          .where('tenantId', '=', this.tenantId)
-          .execute();
-      } else if (lease.offlineUntil !== null) {
-        await trx
-          .updateTable('rigLease')
-          .set({ offlineUntil: null, updatedAt: now })
-          .where('rigId', '=', this.rigId)
-          .where('tenantId', '=', this.tenantId)
-          .execute();
-      }
       if (!input.sessionId) return null;
       const s = await this.session(input.sessionId, trx);
       if (!s) return { untilUtc: null, leaseLost: true };
@@ -422,17 +474,24 @@ export class NinaSessionRepository extends TenantRepo {
         .execute();
       const mine = lease.activeSessionId === null || lease.activeSessionId === s.id;
       const free = mine || !leaseHeld(lease, now);
-      if (!OPEN.has(s.status) || lease.releasedSessionId === s.id || !free)
+      if (!OPEN.has(s.status) || excludedByRelease(s, lease) || !free)
         return { untilUtc: null, leaseLost: true };
       const until = new Date(now.getTime() + LEASE_MS);
-      await this.setLease(trx, s.id, until, now);
-      if (s.status === 'stale')
+      let offlineUntil: Date | null = null;
+      if (input.offline) {
+        const max = new Date(now.getTime() + OFFLINE_MAX_MS);
+        offlineUntil = input.offlineUntil && input.offlineUntil < max ? input.offlineUntil : max;
+      }
+      await this.setLease(trx, s.id, until, now, offlineUntil);
+      if (s.status === 'stale') {
         await trx
           .updateTable('session')
           .set({ status: 'running' })
           .where('id', '=', s.id)
           .where('tenantId', '=', this.tenantId)
           .execute();
+        await this.rearmClose(trx, s.id, now);
+      }
       return { untilUtc: until, leaseLost: false };
     });
   }
@@ -530,6 +589,23 @@ export async function releaseRigLease(
       .forUpdate()
       .executeTakeFirst();
     if (!lease) return { releasedSessionId: null };
+    // Freigabe an der Session festhalten, bis sie abgeschlossen ist (M5, `leaseReleasedAt`).
+    if (lease.activeSessionId) {
+      const s = await trx
+        .selectFrom('session')
+        .select(['status', 'kpis'])
+        .where('tenantId', '=', tenantId)
+        .where('rigId', '=', rigId)
+        .where('id', '=', lease.activeSessionId)
+        .executeTakeFirst();
+      if (s && OPEN.has(s.status))
+        await trx
+          .updateTable('session')
+          .set({ kpis: JSON.stringify({ ...jsonObject(s.kpis), leaseReleasedAt: isoSec(now) }) })
+          .where('tenantId', '=', tenantId)
+          .where('id', '=', lease.activeSessionId)
+          .execute();
+    }
     await trx
       .updateTable('rigLease')
       .set({
@@ -555,8 +631,17 @@ export async function closeSessionFlats(
   db: Kysely<Database>,
   tenantId: string,
   sessionId: string,
-): Promise<{ projectIds: string[] }> {
+): Promise<{ projectIds: string[]; skipped: boolean }> {
   return withTx(db, async (trx) => {
+    // Seit dem Anlegen des Jobs wieder aufgenommen (stale → running): nichts schließen; der nächste
+    // `session_close` folgt beim Ende bzw. erneuten Verwaisen (Neu-Scharfschalten, `rearmClose`).
+    const session = await trx
+      .selectFrom('session')
+      .select('status')
+      .where('tenantId', '=', tenantId)
+      .where('id', '=', sessionId)
+      .executeTakeFirst();
+    if (session?.status === 'running') return { projectIds: [], skipped: true };
     const combos = await trx
       .selectFrom('flatCombination')
       .selectAll()
@@ -589,7 +674,7 @@ export async function closeSessionFlats(
       .where('sessionId', '=', sessionId)
       .where('projectId', 'is not', null)
       .execute();
-    return { projectIds: rows.map((r) => r.projectId as string).sort() };
+    return { projectIds: rows.map((r) => r.projectId as string).sort(), skipped: false };
   });
 }
 

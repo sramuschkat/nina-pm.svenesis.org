@@ -132,6 +132,34 @@ function parseOverhead(value: unknown): Overhead {
   return { ...DEFAULT_OVERHEAD, ...o };
 }
 
+/**
+ * Bestätigte Plätze, an denen NINA einen anderen Namen meldet (NT-E1). Fehlt der Platz in der Meldung,
+ * gilt er nicht als geändert – dieselbe Regel wie `settingsMismatch` im Heartbeat.
+ */
+export function changedWheelPositions(
+  wheel: readonly Pick<FilterWheelEntry, 'position' | 'ninaFilterName' | 'ninaConfirmedAt'>[],
+  reported: ReportedWheel['slots'],
+): number[] {
+  const out: number[] = [];
+  for (const slot of wheel) {
+    if (slot.ninaFilterName === null || slot.ninaConfirmedAt === null) continue;
+    const r = reported.find((x) => x.position === slot.position);
+    if (r && r.name !== slot.ninaFilterName) out.push(slot.position);
+  }
+  return out;
+}
+
+function sameReportedSlots(a: ReportedWheel['slots'], b: ReportedWheel['slots']): boolean {
+  if (a.length !== b.length) return false;
+  const key = (list: ReportedWheel['slots']) =>
+    JSON.stringify(
+      [...list]
+        .sort((x, y) => x.position - y.position)
+        .map((x) => [x.position, x.name, x.focusOffset ?? null]),
+    );
+  return key(a) === key(b);
+}
+
 function parseReported(value: unknown): ReportedWheel | null {
   if (value === null || value === undefined) return null;
   // Heartbeat (AP-14): `{slots:[{position,name,focusOffset}], reportedAt}`; eine bloße Liste ist auch erlaubt.
@@ -1274,36 +1302,6 @@ export class EquipmentRepository extends TenantRepo {
   }
 
   /**
-   * Heartbeat meldet an bestätigten Plätzen einen anderen NINA-Namen (NT-E1, `filter_wheel_changed`):
-   * diese Plätze gelten als unbestätigt; die nächsten `targets` liefern dort `ninaFilterName = null`.
-   */
-  unconfirmFilterSlots(id: string, positions: readonly number[], now: Date): Promise<void> {
-    return this.tx(
-      async (trx) => {
-        const rig = await this.rig(id, trx);
-        if (!rig) throw notFound();
-        const wheel = rig.filterWheel.map((s) =>
-          positions.includes(s.position)
-            ? { ...s, ninaConfirmedAt: null, ninaConfirmedBy: null }
-            : s,
-        );
-        await trx
-          .updateTable('rig')
-          .set({
-            filterWheel: json(wheel),
-            settingsVersion: rig.settingsVersion + 1,
-            updatedAt: now,
-          })
-          .where('tenantId', '=', this.tenantId)
-          .where('id', '=', id)
-          .execute();
-        await this.staleEffort(trx, { rigId: id });
-      },
-      [{ table: 'rig', id }],
-    );
-  }
-
-  /**
    * Filterradbelegung bestätigen (FA-RIG-14, NT-E1): je Platz Web-Filter und NINA-Name; bestätigt am/von
    * wird gesetzt, unveränderte bestätigte Plätze behalten ihre Bestätigung. Erhöht `settings_version`.
    */
@@ -1374,31 +1372,45 @@ export class EquipmentRepository extends TenantRepo {
   }
 
   /**
-   * Vom Plugin gemeldetes Filterrad speichern (NT-E1; Heartbeat ab AP-14). Meldet NINA an einem
-   * bestätigten Platz einen anderen Namen, gilt der Platz als unbestätigt (`ninaConfirmedAt = null`,
-   * Alarm `filter_wheel_changed` folgt mit AP-14); dann steigt auch `settings_version`.
+   * Vom Plugin gemeldetes Filterrad speichern (NT-E1; Heartbeat `POST /nina/v1/heartbeat`). Meldet NINA
+   * an einem bestätigten Platz einen anderen Namen, gilt der Platz als unbestätigt (`ninaConfirmedAt`/
+   * `ninaConfirmedBy = null`, Alarm `filter_wheel_changed`); dann steigt `settings_version` und der
+   * Aufwand wird neu gerechnet. Ein in der Meldung **fehlender** Platz gilt – wie in
+   * `settingsMismatch` – nicht als geändert (Filterrad getrennt, Teilmeldung).
+   * Mit `refreshMs` (Heartbeat) wird ohne Sperre vorgeprüft und die Rig-Zeile nur geschrieben, wenn sich
+   * etwas ändert oder die gespeicherte Meldung älter als `refreshMs` ist (OCC, DAT-17).
    */
-  reportNinaFilterWheel(
+  async reportNinaFilterWheel(
     id: string,
     slots: ReportedWheel['slots'],
     now: Date,
+    opts: { refreshMs?: number } = {},
   ): Promise<{ changedPositions: number[] }> {
+    if (opts.refreshMs !== undefined) {
+      const rig = await this.rig(id);
+      if (!rig) throw notFound();
+      const stored = rig.ninaFilterWheel;
+      const fresh =
+        stored?.reportedAt != null &&
+        now.getTime() - Date.parse(stored.reportedAt) < opts.refreshMs;
+      if (
+        fresh &&
+        sameReportedSlots(stored.slots, slots) &&
+        changedWheelPositions(rig.filterWheel, slots).length === 0
+      )
+        return { changedPositions: [] };
+    }
     return this.tx(
       async (trx) => {
         const rig = await this.rig(id, trx);
         if (!rig) throw notFound();
         const reportedAt = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
-        const changedPositions: number[] = [];
-        const wheel = rig.filterWheel.map((slot) => {
-          const reported = slots.find((r) => r.position === slot.position);
-          const differs =
-            slot.ninaFilterName !== null &&
-            slot.ninaConfirmedAt !== null &&
-            reported?.name !== slot.ninaFilterName;
-          if (!differs) return slot;
-          changedPositions.push(slot.position);
-          return { ...slot, ninaConfirmedAt: null };
-        });
+        const changedPositions = changedWheelPositions(rig.filterWheel, slots);
+        const wheel = rig.filterWheel.map((slot) =>
+          changedPositions.includes(slot.position)
+            ? { ...slot, ninaConfirmedAt: null, ninaConfirmedBy: null }
+            : slot,
+        );
         await trx
           .updateTable('rig')
           .set({
@@ -1414,6 +1426,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('tenantId', '=', this.tenantId)
           .where('id', '=', id)
           .execute();
+        if (changedPositions.length > 0) await this.staleEffort(trx, { rigId: id });
         return { changedPositions };
       },
       [{ table: 'rig', id }],

@@ -3,11 +3,12 @@
  * Aufnahmen und Ereignisse (idempotent, Grenzen, Zugehörigkeit), Zähler und Abweichungen, Heartbeat mit
  * Lease-Rückholung (M5/M6) und NINA-Einstellungen (NT-22, NT-E1), Isolation je Session (SEC-53).
  */
-import { applyCorrection } from '@nina-pm/db';
+import { applyCorrection, closeSessionFlats, type EnqueueInput } from '@nina-pm/db';
 import { COOKIE_NAMES, nina } from '@nina-pm/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CAMERA, filterInput, rigInput, SCHEDULER, SITE, TELESCOPE } from './support/equipment';
 import { createStack, type Stack } from './support/stack';
+import { sessionTick } from '../src/worker/session-ops';
 
 let s: Stack;
 beforeAll(async () => {
@@ -530,5 +531,289 @@ describe('Heartbeat: NINA-Einstellungen (NT-22, NT-E1, M2, M7)', () => {
     const targets = await t.call(t.tokens.a1, '/targets');
     const line = ((targets.body.projects as Body[])[0]?.panels as { lines: Body[] }[])[0]?.lines[0];
     expect(line?.ninaFilterName).toBeNull();
+  });
+});
+
+const tickDeps = () => ({
+  db: () => Promise.resolve(s.pg.db),
+  enqueue: (tenantId: string, input: EnqueueInput) =>
+    s.services.repositories({ tenantId }).job.enqueue(input),
+  notify: () => Promise.resolve(0),
+  emit: () => undefined,
+  service: 'nina-pm-worker',
+});
+const closeJobs = async (sid: string) =>
+  (
+    await s.pg.admin.query(
+      "SELECT dedupe_key, status FROM job WHERE kind = 'session_close' AND input->>'sessionId' = $1 ORDER BY created_at, dedupe_key",
+      [sid],
+    )
+  ).rows as { dedupe_key: string; status: string }[];
+const finishJobs = () =>
+  s.pg.admin.query("UPDATE job SET status = 'done', dedupe_active = NULL, finished_at = now()");
+const leaseRow = async (rigId: string) =>
+  (
+    await s.pg.admin.query(
+      'SELECT active_session_id, offline_until FROM rig_lease WHERE rig_id = $1',
+      [rigId],
+    )
+  ).rows[0] as { active_session_id: string | null; offline_until: Date | null };
+
+describe('Offline-Session für eine vergangene Nacht (P0-2, FA-NIN-04, night.md §1.1)', () => {
+  it('offline: gerade beendete Nacht und Nacht vor 20 Tagen → 201; online → 422; zu alt bzw. übermorgen → 422', async () => {
+    const t = await setup();
+    // 14:00Z = 09:00 CDT: Nacht 2026-09-17 ist vorbei, currentNight = 2026-09-18.
+    const justEnded = await t.session(t.tokens.a2, { night: '2026-09-17', offline: true });
+    expect([justEnded.status, justEnded.body.code]).toEqual([201, undefined]);
+    const older = await t.session(t.tokens.a2, { night: '2026-08-29', offline: true });
+    expect([older.status, older.body.code]).toEqual([201, undefined]);
+    const online = await t.session(t.tokens.a1, { night: '2026-09-17' });
+    expect([online.status, online.body.code]).toEqual([422, 'nina.night_invalid']);
+    const tooOld = await t.session(t.tokens.a2, { night: '2026-08-20', offline: true });
+    expect([tooOld.status, tooOld.body.code]).toEqual([422, 'nina.night_invalid']);
+    const future = await t.session(t.tokens.a2, { night: '2026-09-20', offline: true });
+    expect([future.status, future.body.code]).toEqual([422, 'nina.night_invalid']);
+  });
+
+  it('bekannte id → 200 vor der Nachtprüfung, auch wenn die Nacht inzwischen vorbei ist', async () => {
+    const t = await setup();
+    const sid = id();
+    const body = { id: sid, startedAtUtc: '2026-09-18T13:30:00Z' };
+    expect((await t.session(t.tokens.a1, body)).status).toBe(201);
+    s.clock.advance(2 * 86_400_000);
+    const again = await t.session(t.tokens.a1, body);
+    expect([again.status, again.body.sessionId]).toEqual([200, sid]);
+    const offline = { id: id(), night: '2026-09-17', offline: true };
+    expect((await t.session(t.tokens.a2, offline)).status).toBe(201);
+    s.clock.advance(30 * 86_400_000);
+    expect((await t.session(t.tokens.a2, offline)).status).toBe(200);
+  });
+});
+
+describe('Admin-Freigabe bleibt an der Session (P1-3, M5)', () => {
+  it('nach Übernahme und Ende der Ersatz-Session holt die freigegebene Session die Lease auf keinem Weg zurück', async () => {
+    const t = await setup();
+    const old = id();
+    await t.session(t.tokens.a1, { id: old });
+    expect((await t.web(`/rigs/${t.rig.id}/lease/release`, { method: 'POST' })).status).toBe(200);
+    const next = id();
+    expect((await t.session(t.tokens.a2, { id: next })).status).toBe(201);
+    await t.call(t.tokens.a2, `/sessions/${next}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:05:00Z', outboxPending: 0 },
+    });
+    expect((await leaseRow(t.rig.id)).active_session_id).toBeNull();
+    // Heartbeat, Offline-Plan-Nachmeldung und Fortsetzen: jeweils leaseLost, Lease bleibt frei.
+    const beat = await t.hb(t.tokens.a1, { sessionId: old });
+    expect(beat.body.lease).toEqual({ untilUtc: null, leaseLost: true });
+    const offlinePlan = await t.call(t.tokens.a1, `/sessions/${old}`, {
+      method: 'PATCH',
+      body: {
+        offline: true,
+        offlinePlan: {
+          nightPlanId: id(),
+          inputHash: `sha256:${'a'.repeat(64)}`,
+          engineVersion: '0.6.0',
+          blocks: [],
+        },
+      },
+    });
+    expect([offlinePlan.status, offlinePlan.body.lease]).toEqual([
+      200,
+      { untilUtc: null, leaseLost: true },
+    ]);
+    const resume = await t.call(t.tokens.a1, `/sessions/${old}`, {
+      method: 'PATCH',
+      body: { status: 'running', resumedAtUtc: '2026-09-18T14:06:00Z' },
+    });
+    expect([resume.status, resume.body.lease]).toEqual([200, { untilUtc: null, leaseLost: true }]);
+    expect((await leaseRow(t.rig.id)).active_session_id).toBeNull();
+  });
+
+  it('zweite Freigabe (andere Session) hebt den Ausschluss der ersten nicht auf', async () => {
+    const t = await setup();
+    const first = id();
+    await t.session(t.tokens.a1, { id: first });
+    await t.web(`/rigs/${t.rig.id}/lease/release`, { method: 'POST' });
+    const second = id();
+    await t.session(t.tokens.a2, { id: second });
+    const release = await t.web(`/rigs/${t.rig.id}/lease/release`, { method: 'POST' });
+    expect(release.body.releasedSessionId).toBe(second);
+    const beatFirst = await t.hb(t.tokens.a1, { sessionId: first });
+    expect((beatFirst.body.lease as Body).leaseLost).toBe(true);
+    const beatSecond = await t.hb(t.tokens.a2, { sessionId: second });
+    expect((beatSecond.body.lease as Body).leaseLost).toBe(true);
+    // Eine neue Session startet normal.
+    expect((await t.session(t.tokens.a1)).status).toBe(201);
+  });
+});
+
+describe('offline_until gehört dem Halter (P2, FA-NIN-04)', () => {
+  it('Heartbeat einer Session ohne Lease friert nicht ein', async () => {
+    const t = await setup();
+    const holder = id();
+    await t.session(t.tokens.a1, { id: holder });
+    const other = id();
+    await t.session(t.tokens.a2, { id: other, offline: true });
+    await t.hb(t.tokens.a2, { state: 'offline', sessionId: other });
+    expect((await leaseRow(t.rig.id)).offline_until).toBeNull();
+    // Die Lease des Halters verfällt normal (nicht eingefroren).
+    s.clock.advance(4 * 60_000);
+    expect((await t.session(t.tokens.a2)).status).toBe(201);
+  });
+
+  it('Online-Heartbeats einer anderen Instanz tauen das Einfrieren des Halters nicht auf', async () => {
+    const t = await setup();
+    const frozen = id();
+    await t.session(t.tokens.a1, { id: frozen });
+    await t.hb(t.tokens.a1, { state: 'offline', sessionId: frozen });
+    const until = (await leaseRow(t.rig.id)).offline_until;
+    expect(until).not.toBeNull();
+    const side = id();
+    await t.session(t.tokens.a2, { id: side, offline: true });
+    await t.hb(t.tokens.a2, { sessionId: side });
+    await t.hb(t.tokens.a2);
+    expect((await leaseRow(t.rig.id)).offline_until).toEqual(until);
+    s.clock.advance(30 * 60_000);
+    expect((await t.session(t.tokens.a2)).status).toBe(409);
+    // Der Halter kommt zurück: Einfrieren endet, die Lease läuft normal weiter.
+    const back = await t.hb(t.tokens.a1, { sessionId: frozen });
+    expect((back.body.lease as Body).leaseLost).toBe(false);
+    expect((await leaseRow(t.rig.id)).offline_until).toBeNull();
+  });
+});
+
+describe('Filterrad aus dem Heartbeat (P1-4, NT-E1)', () => {
+  it('Meldung wird gespeichert, fehlender Platz bleibt bestätigt, unveränderte Meldung höchstens stündlich', async () => {
+    const t = await setup();
+    const wheel = [
+      { position: 1, name: 'L', focusOffset: 0 },
+      { position: 2, name: 'R', focusOffset: 12 },
+    ];
+    await t.hb(t.tokens.a1, { filterWheel: wheel });
+    const view = async () => (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body;
+    const first = await view();
+    expect(first.reported).toEqual({ reportedAt: '2026-09-18T14:00:00Z', slots: wheel });
+    // Platz 0 fehlt in der Meldung: weder Alarmcode noch Entbestätigung (wie settingsMismatch).
+    const slot0 = (first.slots as Body[]).find((x) => x.position === 0);
+    expect(slot0?.ninaConfirmedAt).not.toBeNull();
+    const state = await s.pg.admin.query("SELECT last_state FROM nina_instance WHERE name = 'A1'");
+    expect(
+      (state.rows[0] as { last_state: { mismatchCodes: string[] } }).last_state.mismatchCodes,
+    ).not.toContain('filter_wheel_changed');
+    s.clock.advance(10 * 60_000);
+    await t.hb(t.tokens.a1, { filterWheel: wheel });
+    expect(((await view()).reported as Body).reportedAt).toBe('2026-09-18T14:00:00Z');
+    s.clock.advance(60 * 60_000);
+    await t.hb(t.tokens.a1, { filterWheel: wheel });
+    expect(((await view()).reported as Body).reportedAt).toBe('2026-09-18T15:10:00Z');
+    // Geänderte Meldung sofort.
+    s.clock.advance(60_000);
+    await t.hb(t.tokens.a1, { filterWheel: [{ position: 1, name: 'L', focusOffset: 0 }] });
+    expect(((await view()).reported as Body).reportedAt).toBe('2026-09-18T15:11:00Z');
+  });
+
+  it('umbenannter bestätigter Platz → unbestätigt, settings_version steigt genau einmal', async () => {
+    const t = await setup();
+    const before = (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body.settingsVersion as number;
+    const renamed = [{ position: 0, name: 'H-alpha 7nm', focusOffset: 0 }];
+    await t.hb(t.tokens.a1, { filterWheel: renamed });
+    await t.hb(t.tokens.a1, { filterWheel: renamed });
+    const view = (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body;
+    expect(view.settingsVersion).toBe(before + 1);
+    const slot0 = (view.slots as Body[]).find((x) => x.position === 0);
+    expect(slot0).toMatchObject({
+      ninaConfirmedAt: null,
+      ninaConfirmedBy: null,
+      reportedName: 'H-alpha 7nm',
+    });
+  });
+});
+
+describe('session_close nach Rückkehr aus stale (P1-5, TK 13, NIN5-7)', () => {
+  it('verwaist geschlossen, per Heartbeat zurück, später beendet → wird erneut geschlossen', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    s.clock.advance(11 * 60_000);
+    await sessionTick(tickDeps(), s.clock.now());
+    expect(await closeJobs(sid)).toEqual([
+      { dedupe_key: `session_close:${sid}`, status: 'pending' },
+    ]);
+    await finishJobs();
+    // Kurze Lücke: der Heartbeat holt die Session zurück (stale → running) und schaltet neu scharf.
+    const beat = await t.hb(t.tokens.a1, { sessionId: sid });
+    expect((beat.body.lease as Body).leaseLost).toBe(false);
+    expect((await closeJobs(sid)).map((j) => j.dedupe_key)).toEqual([
+      `session_close:${sid}:rearmed:2026-09-18T14:11:00Z`,
+    ]);
+    // Ein Close-Job für eine inzwischen wieder laufende Session schließt nichts.
+    expect((await closeSessionFlats(s.pg.db, t.tenantId, sid)).skipped).toBe(true);
+    // Echtes Ende mit ausstehender Outbox: der Tick schließt nach 6 h (vorher blockierte der alte Job).
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:20:00Z', outboxPending: 3 },
+    });
+    s.clock.set(new Date('2026-09-18T20:30:00Z'));
+    expect((await sessionTick(tickDeps(), s.clock.now())).closing).toBe(1);
+    expect((await closeJobs(sid)).map((j) => j.dedupe_key)).toEqual([
+      `session_close:${sid}:rearmed:2026-09-18T14:11:00Z`,
+      `session_close:${sid}`,
+    ]);
+    expect((await sessionTick(tickDeps(), s.clock.now())).closing).toBe(0);
+  });
+
+  it('nach Rückkehr erneut verwaist → zweiter Close; Ende direkt aus stale schaltet ebenfalls neu scharf', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    s.clock.advance(11 * 60_000);
+    await sessionTick(tickDeps(), s.clock.now());
+    await finishJobs();
+    await t.hb(t.tokens.a1, { sessionId: sid });
+    s.clock.advance(11 * 60_000);
+    expect((await sessionTick(tickDeps(), s.clock.now())).closing).toBe(1);
+    await finishJobs();
+    const done = await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'aborted', endedAtUtc: '2026-09-18T14:25:00Z', outboxPending: 0 },
+    });
+    expect(done.body.status).toBe('aborted');
+    const keys = (await closeJobs(sid)).map((j) => j.dedupe_key);
+    expect(keys).toHaveLength(3);
+    expect(keys.filter((k) => k === `session_close:${sid}`)).toHaveLength(1);
+  });
+
+  it('PATCH einer abgeschlossenen Session legt Jobs nur beim Ende bzw. beim Leeren der Outbox an', async () => {
+    const t = await setup();
+    const count = async () =>
+      (
+        (
+          await s.pg.admin.query(
+            "SELECT count(*)::int AS n FROM job WHERE kind IN ('session_close', 'session_report')",
+          )
+        ).rows[0] as { n: number }
+      ).n;
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    const patch = (body: Body) =>
+      t.call(t.tokens.a1, `/sessions/${sid}`, { method: 'PATCH', body });
+    await patch({ status: 'completed', endedAtUtc: '2026-09-18T14:05:00Z', outboxPending: 2 });
+    expect(await count()).toBe(0);
+    await patch({ status: 'completed', outboxPending: 0 });
+    expect(await count()).toBe(2);
+    await finishJobs();
+    await patch({ status: 'completed', outboxPending: 0 });
+    await patch({ ninaConditions: {} });
+    expect(await count()).toBe(2);
+
+    const direct = id();
+    await t.session(t.tokens.a1, { id: direct });
+    const end = { status: 'completed', endedAtUtc: '2026-09-18T14:06:00Z', outboxPending: 0 };
+    await t.call(t.tokens.a1, `/sessions/${direct}`, { method: 'PATCH', body: end });
+    expect(await count()).toBe(4);
+    await finishJobs();
+    await t.call(t.tokens.a1, `/sessions/${direct}`, { method: 'PATCH', body: end });
+    expect(await count()).toBe(4);
   });
 });

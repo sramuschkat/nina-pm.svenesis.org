@@ -4,7 +4,8 @@
  * - `markStaleSessions` (`tick-5min`): *läuft* → *verwaist* bei 10 min ohne Heartbeat (nur
  *   `offline_since IS NULL`) bzw. 2 h nach `session_end_utc` der letzten Planrevision.
  * - `sessionsDueForClose` (`tick-5min`): beendete bzw. verwaiste Sessions ohne `session_close`-Job,
- *   sobald `outbox_pending = 0` oder 6 h nach `ended_at` (NIN5-7).
+ *   sobald `outbox_pending = 0` oder 6 h nach `ended_at` (NIN5-7). Verlässt eine Session `stale`, benennt
+ *   `NinaSessionRepository.rearmClose` den alten Job um (`…:rearmed:<Zeit>`), damit sie erneut fällig wird.
  * - `reconcileSite` (Job `reconcile` aus `tick-hourly`, einmal je Standortnacht): Zähler je Zeile und
  *   Nacht aus `capture`/`correction` neu bilden (Regel max, FA-AUS-06), verwaiste `capture_night`-Zeilen
  *   entfernen, Zeilenzähler als Summe; überspringt Rigs mit laufender Session.

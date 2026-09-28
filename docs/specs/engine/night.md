@@ -23,6 +23,9 @@ Ergebnis: N (Nacht-Schlüssel)
 - `currentNight` rechnet **nur aus der Tabelle**: `N.nightWindowEndUtc` ist die Tabellenspalte (§1, vom Server nach §3 gerechnet); Plugin und Browser führen dafür keine eigene Dämmerungssuche aus (H1). `now` ist ein UTC-Zeitpunkt (`IClock`, NT-05), nie die Windows- oder Browser-Uhrzeit in Ortszeit.
 - Fehlt `N` in der Tabelle aus einem anderen Grund (`now ≥ noonEndUtc` der letzten Zeile, Folgenacht fehlt – Tabelle zu kurz), gilt `engine.input_invalid`; das Plugin lädt die Tabelle nach (§1 „Horizont“).
 - **Serverprüfung:** `POST /api/nina/v1/plan` und `POST /api/nina/v1/sessions` akzeptieren als `night` nur `currentNight(site, serverNow)` oder die **folgende** Nacht; sonst `422 nina.night_invalid`.
+- **Spec-Ergänzung (Vorschlag 28.09.2026, Freigabe Sven):** Die Prüfung bei `POST /sessions` hat zwei Ausnahmen, damit offline gepufferte Aufnahmen nicht verloren gehen (FA-NIN-04, FA-NIN-15, NT-14):
+  1. **Idempotenz zuerst:** Ist die `id` für dieses Rig schon bekannt, antwortet der Server `200` mit der gespeicherten Session, **ohne** die Nacht zu prüfen (Wiederholung nach Netzfehler am Morgen danach, `execution.md` §6).
+  2. **Offline angelegte Session (`offline: true`):** zusätzlich zulässig ist jede **vergangene** Nacht der Standorttabelle, deren Ende (`noonEndUtc`) höchstens **21 Tage** (Offline-Modus höchstens 14 Tage, FA-NIN-04, plus 7 Tage für späte Meldungen, TK 6.6; `OFFLINE_MAX_MS + LATE_REPORT_MS`) vor `serverNow` liegt. Nächte nach der folgenden Nacht bleiben `422`, ebenso ältere Nächte und `POST /plan`. Online angelegte Sessions (`offline: false`) prüfen unverändert.
 - Beispiel Starfront (Planung in Deutschland): 18.09. 09:00 MESZ (07:00Z, 02:00 CDT) → `2026-09-17`; 16:00 MESZ (14:00Z, 09:00 CDT; `nightWindow.endUtc` der Nacht 17.09. = 13:00Z ≤ now) → `2026-09-18`, das Plugin wartet auf den ersten Block; 20:00 MESZ (18:00Z, 13:00 CDT) → `2026-09-18`.
 
 ## 2. Dämmerungssuche (verbindlich)
