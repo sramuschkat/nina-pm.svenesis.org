@@ -2842,12 +2842,10 @@ export const de = {
     newProjectWith: 'Neues Projekt mit {{name}}',
     sideLabel: 'Bildfeld, Mosaik und Ebenen',
     side: {
-      object: 'Gewähltes Objekt und Nacht',
       collapse: 'Seitenbereich einklappen',
       expand: 'Bildfeld, Mosaik und Ebenen einblenden',
       field: 'Bildfeld & Mosaik',
       layers: 'Ebenen',
-      noSelection: 'Kein Objekt gewählt – ein Objekt auf der Karte anklicken oder oben suchen.',
       frameCenter: 'Mitte des Bildfelds',
     },
     title: 'Sternkarte',
@@ -3020,8 +3018,6 @@ export const de = {
       zoomIn: 'Hineinzoomen',
       zoomOut: 'Herauszoomen',
       zoom: 'Sichtfeld {{fov}}',
-      timeline: 'Nacht der Bildfeldmitte',
-      target: 'Bildfeld',
     },
     info: {
       close: 'Schließen',

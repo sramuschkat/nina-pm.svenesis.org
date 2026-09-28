@@ -2834,12 +2834,10 @@ export const en: Messages = {
     newProjectWith: 'New project with {{name}}',
     sideLabel: 'Field, mosaic and layers',
     side: {
-      object: 'Selected object and night',
       collapse: 'Collapse side panel',
       expand: 'Show field, mosaic and layers',
       field: 'Field & mosaic',
       layers: 'Layers',
-      noSelection: 'No object selected – click an object on the map or search above.',
       frameCenter: 'Centre of the field',
     },
     title: 'Sky map',
@@ -3012,8 +3010,6 @@ export const en: Messages = {
       zoomIn: 'Zoom in',
       zoomOut: 'Zoom out',
       zoom: 'Field {{fov}}',
-      timeline: 'Night of the field centre',
-      target: 'Frame',
     },
     info: {
       close: 'Close',
