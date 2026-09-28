@@ -69,7 +69,7 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
   const key = request ? JSON.stringify(request) : '';
   const sim = useQuery({
     queryKey: ['simulation', key],
-    queryFn: () => run(request as SimulationRequest),
+    queryFn: ({ signal }) => run(request as SimulationRequest, signal),
     enabled: request !== null,
     staleTime: Infinity,
     retry: false,

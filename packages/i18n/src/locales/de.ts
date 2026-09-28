@@ -2892,6 +2892,10 @@ export const de = {
     applyConfirmTitle: 'Mosaik in „{{name}}“ übernehmen?',
     applyConfirm:
       '{{count}} Panels fallen weg; {{soft}} davon haben Aufnahmen und werden nur ausgeblendet. Die übrigen Panels erhalten die neuen Zentren und behalten ihren Fortschritt.',
+    applyConfirmGrow:
+      'Das Mosaik wächst von {{from}} auf {{to}} Panels; jedes neue Panel erhält eine Kopie des Belichtungsplans – zusammen {{lines}} Belichtungszeilen.',
+    applyConflict:
+      'Das Projekt wurde inzwischen geändert und wird neu geladen. Bitte prüfen und erneut übernehmen.',
     fullscreen: 'Vollbild',
     exitFullscreen: 'Vollbild beenden',
     sidebarLabel: 'Kartenebenen',

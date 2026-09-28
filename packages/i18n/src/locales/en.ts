@@ -2884,6 +2884,10 @@ export const en: Messages = {
     applyConfirmTitle: 'Apply the mosaic to “{{name}}”?',
     applyConfirm:
       '{{count}} panels are removed; {{soft}} of them have captures and are only hidden. The remaining panels get the new centres and keep their progress.',
+    applyConfirmGrow:
+      'The mosaic grows from {{from}} to {{to}} panels; every new panel gets a copy of the exposure plan – {{lines}} exposure lines in total.',
+    applyConflict:
+      'The project has been changed in the meantime and is being reloaded. Please check and apply again.',
     fullscreen: 'Full screen',
     exitFullscreen: 'Exit full screen',
     sidebarLabel: 'Map layers',

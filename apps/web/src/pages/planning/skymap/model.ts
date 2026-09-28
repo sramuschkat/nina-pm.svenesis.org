@@ -8,6 +8,7 @@
  * Blickrichtung am Horizont verankert (`az`, `hoehe`): Beim Verändern der Zeit ziehen die Sterne durchs
  * Bild, der Horizont bleibt stehen.
  */
+import { sky } from '@nina-pm/engine';
 import { SURVEY_IDS, type SurveyId } from './surveys';
 import { OVERLAYS, PROJECT_OVERLAYS, type Overlay, type ProjectOverlay } from './render';
 
@@ -153,6 +154,58 @@ export function stateFromParams(p: URLSearchParams): SkyMapState {
 }
 
 const round = (x: number, digits: number) => String(Math.round(x * 10 ** digits) / 10 ** digits);
+
+/**
+ * Winkel auf `digits` Nachkommastellen runden und in [0, 360) legen: 359,999997° wird 0, nicht 360 – die API
+ * (`MosaicApply`, Projekt) lehnt 360 ab (28.09.2026).
+ */
+export function roundAngle(deg: number, digits: number): number {
+  const f = 10 ** digits;
+  const r = Math.round((((deg % 360) + 360) % 360) * f) / f;
+  return r >= 360 ? 0 : r;
+}
+
+/** Kleinster Abstand zweier Winkel (Grad, 0…180) – 359,9° und 0,1° liegen 0,2° auseinander. */
+export function angleDiffDeg(a: number, b: number): number {
+  const d = Math.abs((((a - b) % 360) + 360) % 360);
+  return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Koordinaten für *Neues Projekt mit X* (28.09.2026, P1-14): Liegt das gewählte Objekt im Bildfeld (samt Mosaik),
+ * gilt die Bildfeldmitte – der Nutzer hat es so ausgerichtet. Sonst die Koordinaten des Objekts; vorher ging die
+ * Bildfeldmitte irgendwo am Himmel mit dem Objekt in den Editor, und der überschrieb die Katalogkoordinaten.
+ */
+export function newProjectCoords(
+  frame: { readonly raDeg: number; readonly decDeg: number },
+  object: { readonly raDeg: number; readonly decDeg: number } | null,
+  frameSize: {
+    readonly fovWidthDeg: number;
+    readonly fovHeightDeg: number;
+    readonly cols: number;
+    readonly rows: number;
+    readonly overlapPct: number;
+  } | null,
+): { raDeg: number; decDeg: number } {
+  if (!object) return { raDeg: frame.raDeg, decDeg: frame.decDeg };
+  // Kantenlänge des ganzen Mosaiks; das Objekt „liegt im Bildfeld“ bis zur halben kürzeren Kante.
+  const extent = (fov: number, n: number, overlapPct: number) =>
+    fov * (n - (n - 1) * (overlapPct / 100));
+  const tolerance = frameSize
+    ? 0.5 *
+      Math.min(
+        extent(frameSize.fovWidthDeg, frameSize.cols, frameSize.overlapPct),
+        extent(frameSize.fovHeightDeg, frameSize.rows, frameSize.overlapPct),
+      )
+    : 0;
+  const sep = sky.angleBetweenDeg(
+    sky.radecToVec(frame.raDeg, frame.decDeg),
+    sky.radecToVec(object.raDeg, object.decDeg),
+  );
+  return sep <= tolerance
+    ? { raDeg: frame.raDeg, decDeg: frame.decDeg }
+    : { raDeg: object.raDeg, decDeg: object.decDeg };
+}
 const sameSet = <T>(a: ReadonlySet<T>, b: ReadonlySet<T>) =>
   a.size === b.size && [...a].every((x) => b.has(x));
 
@@ -163,18 +216,18 @@ export function paramsFromState(
 ): URLSearchParams {
   const d = DEFAULT_STATE;
   const p = new URLSearchParams();
-  p.set('ra', round(s.ra, 5));
+  p.set('ra', String(roundAngle(s.ra, 5)));
   p.set('dec', round(s.dec, 5));
   p.set('fov', round(s.fov, 4));
   if (s.orient === 'horizon') {
     p.set('ausrichtung', 'horizont');
-    if (s.vaz !== null) p.set('az', round(s.vaz, 3));
+    if (s.vaz !== null) p.set('az', String(roundAngle(s.vaz, 3)));
     if (s.valt !== null) p.set('hoehe', round(s.valt, 3));
   }
   if (s.names === 'latin') p.set('namen', 'latein');
-  p.set('fra', round(s.fra, 5));
+  p.set('fra', String(roundAngle(s.fra, 5)));
   p.set('fdec', round(s.fdec, 5));
-  if (s.rot !== null) p.set('rot', round(s.rot, 2));
+  if (s.rot !== null) p.set('rot', String(roundAngle(s.rot, 2)));
   if (s.cols !== 1) p.set('h', String(s.cols));
   if (s.rows !== 1) p.set('v', String(s.rows));
   if (s.overlap !== d.overlap) p.set('ueberlappung', round(s.overlap, 1));

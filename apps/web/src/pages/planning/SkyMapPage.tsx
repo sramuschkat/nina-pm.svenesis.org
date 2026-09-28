@@ -53,8 +53,11 @@ import {
   FOV_MIN,
   OVERVIEW_ALT,
   OVERVIEW_FOV,
+  angleDiffDeg,
   fovForFrame,
+  newProjectCoords,
   paramsFromState,
+  roundAngle,
   stateFromParams,
   type SkyMapState,
 } from './skymap/model';
@@ -77,7 +80,7 @@ import {
 } from './skymap/render';
 import { constellationAt } from './skymap/constellation';
 import { SkyCanvas } from './skymap/SkyCanvas';
-import { fromZoned, nightKeyAt, sceneAt, zonedParts } from './skymap/scene';
+import { atNightClock, fromZoned, nightKeyAt, sceneAt, zonedParts } from './skymap/scene';
 import { loadBrightSky, loadFaintStars, type BrightSky, type StarField } from './skymap/sky-data';
 import { SURVEY_IDS, type SurveyId } from './skymap/surveys';
 import { Tabs } from '../../components/Tabs';
@@ -90,6 +93,10 @@ const FRAME_COLORS = {
   'project-submitted': 'submitted',
 } as const;
 const FRAME_COLOR_KEY = 'npm.skymap.frameColor';
+/** Rückfrage vor „Ins Projekt übernehmen“, wenn das Mosaik um mehr als diesen Faktor wächst … */
+const GROWTH_FACTOR_CONFIRM = 4;
+/** … oder danach mehr Belichtungszeilen (Panels × Zeilen je Panel) entstehen. */
+const LINES_CONFIRM = 100;
 const DEFAULT_MIN_ALT = 30;
 
 /** Projekt → Kategorie der Projekt-Overlays (FK 14.3 S-20). */
@@ -222,7 +229,8 @@ export function SkyMapPage() {
   const cameraAngle = rig?.defaultRotationDeg ?? 0;
   const pa = effectiveRotation(rig, state.rot);
   const rotationLocked = rig !== null && !rig.hasRotator && !canWriteRig;
-  const rotationMismatch = rig !== null && !rig.hasRotator && Math.abs(pa - cameraAngle) > 0.05;
+  // Über den Winkelabstand: 359,98° und 0° sind derselbe Kamerawinkel.
+  const rotationMismatch = rig !== null && !rig.hasRotator && angleDiffDeg(pa, cameraAngle) > 0.05;
 
   const frame: FrameSpec | null = rig
     ? {
@@ -473,9 +481,10 @@ export function SkyMapPage() {
       return projectsApi.applyMosaic(
         p.id,
         {
-          raDeg: Math.round(state.fra * 1e6) / 1e6,
+          // Winkel nach dem Runden in [0, 360): 359,9999997° würde sonst 360 und von der API abgelehnt.
+          raDeg: roundAngle(state.fra, 6),
           decDeg: Math.round(state.fdec * 1e6) / 1e6,
-          rotationDeg: Math.round(((frame?.paDeg ?? 0) % 360) * 100) / 100,
+          rotationDeg: roundAngle(frame?.paDeg ?? 0, 2),
           cols: state.cols,
           rows: state.rows,
           overlapPct: state.overlap,
@@ -485,15 +494,30 @@ export function SkyMapPage() {
       );
     },
     onSuccess: (view) => client.setQueryData(['projects', view.id], view),
+    // 412: jemand hat das Projekt inzwischen geändert – neu laden, damit der nächste Versuch die neue Version
+    // schickt (vorher blieb die alte Version im Cache und jeder weitere Versuch scheiterte ebenso).
+    onError: (error) => {
+      if (problemCode(error) === 'resource.version_conflict' && projectParam)
+        void client.invalidateQueries({ queryKey: ['projects', projectParam] });
+    },
   });
-  // Fallen Panels weg, fragt die Karte vorher nach (mit Aufnahmen weich gelöscht, FA-PRJ-06).
+  const applyConflict = apply.isError && problemCode(apply.error) === 'resource.version_conflict';
+  // Fallen Panels weg, fragt die Karte vorher nach (mit Aufnahmen weich gelöscht, FA-PRJ-06). Ebenso, wenn das
+  // Mosaik stark wächst: jedes Panel erhält eine Kopie des Belichtungsplans (28.09.2026, P1-15).
   const [confirmApply, setConfirmApply] = useState(false);
-  const removedPanels = (project.data?.panels ?? []).slice(state.cols * state.rows);
+  const currentPanels = project.data?.panels ?? [];
+  const newPanelCount = state.cols * state.rows;
+  const removedPanels = currentPanels.slice(newPanelCount);
   const removedWithCaptures = removedPanels.filter((p) =>
     p.lines.some((l) => l.hasCaptures),
   ).length;
+  const linesPerPanel = Math.max(0, ...currentPanels.map((p) => p.lines.length));
+  const largeGrowth =
+    newPanelCount > Math.max(1, currentPanels.length) &&
+    (newPanelCount > GROWTH_FACTOR_CONFIRM * Math.max(1, currentPanels.length) ||
+      newPanelCount * linesPerPanel > LINES_CONFIRM);
   const startApply = () => {
-    if (removedPanels.length > 0) setConfirmApply(true);
+    if (removedPanels.length > 0 || largeGrowth) setConfirmApply(true);
     else apply.mutate();
   };
   const pin = useMutation({
@@ -512,10 +536,16 @@ export function SkyMapPage() {
   });
 
   const newProjectHref = (() => {
+    // Gewähltes Katalogobjekt außerhalb des Bildfelds: seine Koordinaten statt der Bildfeldmitte (P1-14).
+    const target = newProjectCoords(
+      { raDeg: state.fra, decDeg: state.fdec },
+      selected?.kind === 'dso' ? selected.item : null,
+      frame,
+    );
     const q = new URLSearchParams({
-      ra: String(Math.round(state.fra * 1e6) / 1e6),
-      dec: String(Math.round(state.fdec * 1e6) / 1e6),
-      rot: String(Math.round((frame?.paDeg ?? 0) * 100) / 100),
+      ra: String(roundAngle(target.raDeg, 6)),
+      dec: String(Math.round(target.decDeg * 1e6) / 1e6),
+      rot: String(roundAngle(frame?.paDeg ?? 0, 2)),
     });
     if (rig) q.set('rig', rig.id);
     // Das auf der Karte gewählte Objekt geht vor dem aus der Adresse (Objektbrowser → Sternkarte).
@@ -646,6 +676,8 @@ export function SkyMapPage() {
     setPlaying(false);
     if (v !== null) update({ t: v });
   };
+  // ±1 Tag über den Nacht-Schlüssel statt ±86 400 s: dieselbe Uhrzeit auch über die Zeitumstellung.
+  const shiftNight = (days: -1 | 1) => goToNight(keyFromDays(daysFromKey(nightKey) + days));
   const siteGeo = useMemo(
     () => (site ? { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg } : null),
     [site?.latitudeDeg, site?.longitudeDeg],
@@ -695,7 +727,8 @@ export function SkyMapPage() {
             className={styles.input}
             value={parts.time}
             onChange={(e) => {
-              const v = fromZoned(parts.date, e.target.value, zone);
+              // In der angezeigten Nacht bleiben: vor 12:00 der Morgen danach (P1-13).
+              const v = atNightClock(nightKey, e.target.value, zone);
               if (v !== null) update({ t: v });
             }}
           />
@@ -765,7 +798,13 @@ export function SkyMapPage() {
           {t('skymap.applied')}
         </p>
       ) : null}
-      {apply.isError ? <ProblemMessage code={problemCode(apply.error)} /> : null}
+      {applyConflict ? (
+        <p className={styles.warning} role="alert">
+          {t('skymap.applyConflict')}
+        </p>
+      ) : apply.isError ? (
+        <ProblemMessage code={problemCode(apply.error)} />
+      ) : null}
       <div className={styles.main} ref={mapArea} data-side={sideOpen ? 'open' : 'closed'}>
         <div className={styles.map} id={ids.map}>
           <div className={styles.stage}>
@@ -931,7 +970,7 @@ export function SkyMapPage() {
               </div>
             ) : null}
             <div className={styles.timeButtons}>
-              <button type="button" className={styles.button} onClick={() => shift(-86400)}>
+              <button type="button" className={styles.button} onClick={() => shiftNight(-1)}>
                 {t('skymap.time.minusDay')}
               </button>
               <button type="button" className={styles.button} onClick={() => shift(-3600)}>
@@ -957,7 +996,7 @@ export function SkyMapPage() {
               <button type="button" className={styles.button} onClick={() => shift(3600)}>
                 {t('skymap.time.plusHour')}
               </button>
-              <button type="button" className={styles.button} onClick={() => shift(86400)}>
+              <button type="button" className={styles.button} onClick={() => shiftNight(1)}>
                 {t('skymap.time.plusDay')}
               </button>
               {scene ? (
@@ -1021,12 +1060,20 @@ export function SkyMapPage() {
         <ConfirmDialog
           open={confirmApply}
           title={t('skymap.applyConfirmTitle', { name: project.data?.name ?? '' })}
-          consequence={t('skymap.applyConfirm', {
-            count: removedPanels.length,
-            soft: removedWithCaptures,
-          })}
+          consequence={
+            removedPanels.length > 0
+              ? t('skymap.applyConfirm', {
+                  count: removedPanels.length,
+                  soft: removedWithCaptures,
+                })
+              : t('skymap.applyConfirmGrow', {
+                  from: Math.max(1, currentPanels.length),
+                  to: newPanelCount,
+                  lines: newPanelCount * linesPerPanel,
+                })
+          }
           confirmLabel={t('skymap.applyToProject')}
-          variant="danger"
+          variant={removedPanels.length > 0 ? 'danger' : 'default'}
           onConfirm={() => {
             setConfirmApply(false);
             apply.mutate();
@@ -1180,7 +1227,7 @@ export function SkyMapPage() {
                               <button
                                 type="button"
                                 className={styles.button}
-                                disabled={pin.isPending || Math.abs(pa - cameraAngle) < 0.05}
+                                disabled={pin.isPending || angleDiffDeg(pa, cameraAngle) < 0.05}
                                 onClick={() => pin.mutate()}
                               >
                                 {t('skymap.rotationPin')}
@@ -1331,6 +1378,13 @@ function NumberBox({
   max: number;
   onChange: (v: number) => void;
 }) {
+  // Eigener Text während der Eingabe (P1-15): Leeren ergab vorher Number('') = 0 → auf 1 geklemmt, und die
+  // nächste Ziffer 5 wurde zu „15“. Übernommen wird nur eine gültige Zahl im Bereich; beim Verlassen geklemmt.
+  const [text, setText] = useState<string | null>(null);
+  const parse = (s: string) => {
+    const v = Number(s);
+    return s.trim() === '' || !Number.isFinite(v) ? null : Math.round(v);
+  };
   return (
     <Field id={id} label={label}>
       <input
@@ -1339,10 +1393,19 @@ function NumberBox({
         className={styles.numberInput}
         min={min}
         max={max}
-        value={value}
+        value={text ?? String(value)}
         onChange={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, Math.round(v))));
+          setText(e.target.value);
+          const v = parse(e.target.value);
+          if (v !== null && v >= min && v <= max && v !== value) onChange(v);
+        }}
+        onBlur={() => {
+          const v = text === null ? null : parse(text);
+          setText(null);
+          if (v !== null) {
+            const clamped = Math.min(max, Math.max(min, v));
+            if (clamped !== value) onChange(clamped);
+          }
         }}
       />
     </Field>

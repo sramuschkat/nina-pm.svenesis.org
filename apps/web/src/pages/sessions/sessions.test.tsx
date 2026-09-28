@@ -420,4 +420,48 @@ describe('S-61 Session-Detail', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
     expect(screen.queryByRole('button', { name: 'Zuordnen' })).toBeNull();
   });
+
+  it('Korrektur: Zeilenwechsel übernimmt die Zahl der neuen Zeile (P1-12)', async () => {
+    state.correct.mockResolvedValue({ rejectedCount: 0, projectStatus: null });
+    const d = detail();
+    const first = d.rows[0] as NightSessionDetail['rows'][number];
+    d.rows = [
+      { ...first, rejected: 5, rejectedIndividual: 0, rejectedCorrection: 5 },
+      {
+        ...first,
+        exposureLineId: ID(21),
+        filterShortName: 'OIII',
+        rejected: 0,
+        rejectedIndividual: 0,
+        rejectedCorrection: 0,
+      },
+    ];
+    state.detail = d;
+    renderAt(`/auswertung/sessions/${ID(1)}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Korrektur erfassen' }));
+    const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
+    expect(input.value).toBe('5');
+    fireEvent.change(screen.getByLabelText('Zeile'), { target: { value: ID(21) } });
+    expect(input.value).toBe('0');
+    fireEvent.click(screen.getByRole('button', { name: 'Korrektur speichern' }));
+    await waitFor(() =>
+      expect(state.correct).toHaveBeenCalledWith(ID(1), {
+        exposureLineId: ID(21),
+        rejected: 0,
+        reason: null,
+        comment: null,
+      }),
+    );
+  });
+
+  it('User ohne Recht auf eine Zeile sieht „Korrektur erfassen“ nicht (API antwortet 403)', async () => {
+    state.me = me('user');
+    const d = detail();
+    d.rows = d.rows.map((r) => ({ ...r, projectCreatedBy: ID(93) }));
+    state.detail = d;
+    renderAt(`/auswertung/sessions/${ID(1)}`);
+    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
+    expect(screen.queryByRole('button', { name: 'Korrektur erfassen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Korrektur' })).toBeNull();
+  });
 });
