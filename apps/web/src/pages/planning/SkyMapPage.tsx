@@ -40,6 +40,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import type { RigOption } from '../../components/RigSelect';
 import { MoonDarkness, moonDarkness } from '../../components/moon-darkness';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
+import { useSettled } from '../../lib/use-settled';
 import { problemCode } from '../admin/shared';
 import { CatalogSearch } from '../catalog/CatalogSearch';
 import { useEquipmentList, useNumber } from '../equipment/shared';
@@ -98,6 +99,8 @@ const GROWTH_FACTOR_CONFIRM = 4;
 /** … oder danach mehr Belichtungszeilen (Panels × Zeilen je Panel) entstehen. */
 const LINES_CONFIRM = 100;
 const DEFAULT_MIN_ALT = 30;
+/** So lange muss die Ansicht stillstehen, bevor die Katalogobjekte der neuen Region geladen werden. */
+const REGION_SETTLE_MS = 300;
 
 /** Projekt → Kategorie der Projekt-Overlays (FK 14.3 S-20). */
 export function projectCategory(
@@ -330,22 +333,31 @@ export function SkyMapPage() {
   const bucket = Math.max(0.5, regionRadius / 2);
   // Weite Ansichten zeigen nur die helleren Objekte, sonst wird die Karte unlesbar.
   const magMax = Math.min(state.density, state.fov > 60 ? 8 : state.fov > 30 ? 9.5 : 16);
-  const regionKey = [
-    Math.round(centerRd.raDeg / bucket) * bucket,
-    Math.round(centerRd.decDeg / bucket) * bucket,
-    Math.round(regionRadius * 10) / 10,
-    magMax,
-  ];
+  // Erst anfragen, wenn die Ansicht kurz stillsteht; überholte Anfragen bricht React Query über `signal` ab.
+  const regionKey = useSettled(
+    [
+      Math.round(centerRd.raDeg / bucket) * bucket,
+      Math.round(centerRd.decDeg / bucket) * bucket,
+      Math.round(regionRadius * 10) / 10,
+      magMax,
+    ].join(' '),
+    REGION_SETTLE_MS,
+  )
+    .split(' ')
+    .map(Number) as [number, number, number, number];
   const dso = useQuery({
     queryKey: ['dso-region', ...regionKey],
-    queryFn: () =>
-      catalogApi.region({
-        ra: (((regionKey[0] as number) % 360) + 360) % 360,
-        dec: Math.max(-90, Math.min(90, regionKey[1] as number)),
-        radius: Math.min(90, regionRadius + bucket),
-        magMax,
-        limit: 1500,
-      }),
+    queryFn: ({ signal }) =>
+      catalogApi.region(
+        {
+          ra: ((regionKey[0] % 360) + 360) % 360,
+          dec: Math.max(-90, Math.min(90, regionKey[1])),
+          radius: Math.min(90, regionKey[2] + Math.max(0.5, regionKey[2] / 2)),
+          magMax: regionKey[3],
+          limit: 1500,
+        },
+        signal,
+      ),
     enabled: state.overlays.has('dso'),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
