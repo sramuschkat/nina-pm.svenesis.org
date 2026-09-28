@@ -85,13 +85,15 @@ export const TABLE_GRANTS: Readonly<Record<string, TableGrant>> = {
   rig_lease: g(EQUIP, ALL, SIU),
   nina_instance: g(EQUIP, ALL, S),
 
-  // Projekte & Freigabe: worker liest, importiert, ändert Status/Zähler an project und exposure_line.
+  // Projekte & Freigabe: worker liest, importiert, ändert Status/Zähler an project und exposure_line
+  // sowie den Rang offener Änderungsanträge.
   project: g(PROJ, ALL, SIU),
   project_panel: g(PROJ, ALL, SI),
   exposure_line: g(PROJ, ALL, SIU),
   project_note: g(PROJ, ALL, SI),
   approval_event: g(PROJ, ALL, SI),
-  change_request: g(PROJ, ALL, SI),
+  // UPDATE nur auf `submitter_rank`: Rangfolge beim Verfall einer Einreichung (Migration 0009), Anträge sonst unverändert.
+  change_request: g(PROJ, ALL, SIU, ['submitter_rank']),
   queue_vote: g(PROJ, ALL, SI),
 
   // Exoplaneten.

@@ -132,7 +132,8 @@ const jobs: JobRunnerDeps = {
   },
 };
 
-const maintenance = {
+/** Wartungsaufgaben eines Laufs; `startedAt` begrenzt die externen Abrufe (`HOURLY_FETCH_BUDGET_MS`). */
+const maintenanceFor = (startedAt: number) => ({
   cleanupInvitations: async () => {
     const deleted = await deleteExpiredInvitations((await lambdaDatabase()).db, new Date());
     logger.info('invitation_cleanup', { deleted });
@@ -153,6 +154,7 @@ const maintenance = {
       },
       jobs,
       new Date(),
+      { startedAt },
     );
     logger.info('weather_sites', { runs });
     return runs;
@@ -165,6 +167,7 @@ const maintenance = {
         enqueue: (tenantId, input) => new JobRepository(db, { tenantId }).enqueue(input),
       },
       jobs,
+      { startedAt },
     );
     logger.info('thumbnail_tick', { runs });
     return runs;
@@ -228,7 +231,10 @@ const maintenance = {
     logger.info('tenant_storage', { measured });
     return measured;
   },
-};
+});
 
 export const handler = (event: unknown) =>
-  dispatch(event, { tasks: tickTasks(jobs, maintenance), runJob: (jobId) => runJob(jobs, jobId) });
+  dispatch(event, {
+    tasks: tickTasks(jobs, maintenanceFor(Date.now())),
+    runJob: (jobId) => runJob(jobs, jobId),
+  });

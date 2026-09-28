@@ -10,6 +10,7 @@ import m0005 from '../../migrations/0005_ausfuehrung.sql';
 import m0006 from '../../migrations/0006_speicherbedarf.sql';
 import m0007 from '../../migrations/0007_panel_aktiv.sql';
 import m0008 from '../../migrations/0008_rig_sperre_worker.sql';
+import m0009 from '../../migrations/0009_antragsrang_worker.sql';
 import type { Migration } from './types';
 
 export const bundledMigrations: readonly Migration[] = [
@@ -21,4 +22,5 @@ export const bundledMigrations: readonly Migration[] = [
   { id: '0006_speicherbedarf', sql: m0006 },
   { id: '0007_panel_aktiv', sql: m0007 },
   { id: '0008_rig_sperre_worker', sql: m0008 },
+  { id: '0009_antragsrang_worker', sql: m0009 },
 ];

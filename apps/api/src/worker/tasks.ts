@@ -29,9 +29,10 @@ export interface MaintenanceDeps {
  * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
- * verwaiste Sessions und legt fällige Session-Jobs an (AP-15). `tick-hourly` holt zuerst das Astro-Wetter
- * je Standort (AP-23) und fehlende Vorschaubilder (AP-25). `daily` holt außerdem die Bahndaten für
- * „Ereignisse der Nacht“ (27.09.2026).
+ * verwaiste Sessions und legt fällige Session-Jobs an (AP-15). `tick-hourly` holt danach das Astro-Wetter
+ * je Standort (AP-23) und fehlende Vorschaubilder (AP-25) – zuletzt und mit Zeitbudget
+ * (`HOURLY_FETCH_BUDGET_MS`), damit langsame externe Dienste die Aufgaben je Standort nicht verdrängen
+ * (28.09.2026). `daily` holt außerdem die Bahndaten für „Ereignisse der Nacht“ (27.09.2026).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
@@ -42,12 +43,7 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
         : []),
     ],
     'tick-hourly': [
-      ...(maintenance?.weather
-        ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
-        : []),
-      ...(maintenance?.thumbnails
-        ? [{ name: 'thumbnails', run: async () => void (await maintenance.thumbnails?.()) }]
-        : []),
+      // Erst die Aufgaben je Mandant/Standort (Datenbank, kurz), dann die externen Abrufe mit Zeitbudget.
       ...(maintenance?.expireSubmissions
         ? [
             {
@@ -79,6 +75,12 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
               run: async () => void (await maintenance.reconcileSiteNights?.()),
             },
           ]
+        : []),
+      ...(maintenance?.weather
+        ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
+        : []),
+      ...(maintenance?.thumbnails
+        ? [{ name: 'thumbnails', run: async () => void (await maintenance.thumbnails?.()) }]
         : []),
     ],
     daily: maintenance

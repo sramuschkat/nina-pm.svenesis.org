@@ -171,11 +171,18 @@ export const suites: readonly Suite[] = [
           'UPDATE rig SET name = name WHERE false',
           'app_job UPDATE rig.name',
         );
+        // Verfall einer Einreichung (Migration 0009): Rang offener Anträge ja, Inhalt/Status nein.
+        await job.query('UPDATE change_request SET submitter_rank = submitter_rank WHERE false');
+        await expectDenied(
+          job,
+          'UPDATE change_request SET status = status WHERE false',
+          'app_job UPDATE change_request.status',
+        );
       } finally {
         await job.end();
         await rw.end();
       }
-      return '11 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe und Rig-Sperre ok';
+      return '12 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe, Rig-Sperre und Antragsrang ok';
     },
   },
   {

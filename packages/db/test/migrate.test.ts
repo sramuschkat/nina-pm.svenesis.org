@@ -177,6 +177,7 @@ describe('Migrationsdateien', () => {
       '0006_speicherbedarf',
       '0007_panel_aktiv',
       '0008_rig_sperre_worker',
+      '0009_antragsrang_worker',
     ]);
     const bundled = readFileSync(
       fileURLToPath(new URL('../src/migrate/bundled.ts', import.meta.url)),
