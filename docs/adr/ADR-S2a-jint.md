@@ -41,20 +41,33 @@ Gemessen hat `spikes/jint-runtime` mit Jint 4.16.4 und Engine 0.8.0.
 | Speicher | Gehalten wird wenig (Richtwert ≈ 30 MiB, groß ≈ 108 MiB), **allokiert** wird viel (Richtwert ≈ 1,3 GiB je Plan, kurzlebig). `LimitMemory` zählt die **Allokation** des Aufrufs: Die kleinste funktionierende Grenze für den Richtwert war 1298 MiB, genau die Allokation. Als Speicherschutz ist es damit ungeeignet |
 | Prozess | nach allen Stufen 135 MiB Arbeitsspeicher, 66 MiB GC-Heap |
 
-### x64 (CI-Runner `ubuntu-latest`)
-Stufen bis zum Richtwert, Auftrag `jint-runtime` in `plugin.yml`, Artefakt `jint-runtime`: **Werte folgen aus dem ersten CI-Lauf dieses PR.** Ein Sternwarten-PC (x64-Mini-PC) dürfte eher in dieser Größenordnung liegen als der M4.
+### x64 (CI-Runner `ubuntu-latest`, 4 Kerne, .NET 8.0.31), Lauf zu PR #139
+Stufen bis zum Richtwert, Auftrag `jint-runtime` in `plugin.yml`, Artefakt `jint-runtime`.
+
+| Stufe | Einheiten | Node | Jint 1. Aufruf | Jint warm | gegenüber M4 |
+|---|---|---|---|---|---|
+| klein 5×1×3 | 5 | 20 ms | 2194 ms | 1183 ms | 2,7× |
+| mittel 15×2×4 | 30 | 33 ms | 2676 ms | 2641 ms | 2,8× |
+| **Richtwert 30×3×5** | 90 | 58 ms | 6270 ms | **6207 ms** | 2,8× |
+| Richtwert, Neuplanung | 90 | 55 ms | 5999 ms | 5936 ms | 2,8× |
+
+- Das Bundle lädt in 1,4 s (danach 60 ms). Alle Hashes sind gleich.
+- Rekursionstiefe 7, Zeitlimit und Abbruch (1 ms) greifen, der Thread mit 256 KiB Stack läuft durch.
+- Arbeitsspeicher 177 MiB, GC-Heap 57 MiB.
+
+Ein Sternwarten-PC (x64-Mini-PC) liegt eher bei diesen Werten als beim M4. Der Richtwert bleibt mit rund 6 s unter der Prüfschwelle von 10 s aus der Entscheidung unten.
 
 ## Entscheidung (Vorschlag)
 Jint bleibt die Offline-Engine. `EngineHost` in `NinaPm.Core` (AP-16b) setzt:
 
 1. **Eine Engine je Plugin-Lauf** auf einem **eigenen Hintergrund-Thread** mit Warteschlange. Jint ist nicht threadsicher. Das Bundle wird einmal beim Plugin-Start geladen, das kostet rund 0,4 s; danach wird die Engine wiederverwendet.
 2. **`Strict()`, `LimitRecursion(64)`** (gebraucht: 7).
-3. **`TimeoutInterval(60 s)`** je Aufruf, das ist etwa 25× der Richtwert auf dem M4. Wird die Grenze überschritten, gilt der Plan als nicht gebaut: `blocked { plan_failed }` mit 5-min-Sperre (execution.md §2).
+3. **`TimeoutInterval(60 s)`** je Aufruf, das ist etwa 10× der Richtwert auf x64. Wird die Grenze überschritten, gilt der Plan als nicht gebaut: `blocked { plan_failed }` mit 5-min-Sperre (execution.md §2).
 4. **`CancellationToken`** verknüpft mit Sequenz-Stopp und Plugin-Ende. Die Reaktion liegt bei wenigen ms.
 5. **Kein `LimitMemory`**: Die Option misst Allokation, nicht Belegung. Den Speicher begrenzt stattdessen die Eingabe.
 6. **Offline-Lastgrenze:** Bis **90 Einheiten** (Richtwert) plant das Plugin offline ohne Einschränkung. Darüber meldet es beim Planaufbau einmal `warning` Code `offline_plan_large` und plant trotzdem, das Zeitlimit sichert ab.
 
-   Die Zahl 90 prüfe ich nach den x64-Werten. Liegt der Richtwert dort über 10 s, schlage ich vor, offline nur Projekte mit Restbedarf in der aktuellen Nacht einzubeziehen (Vorfilter im Kern, vor Jint).
+   Geprüft an den x64-Werten: Der Richtwert braucht dort 6,2 s, also bleibt die Grenze bei 90. Würde er auf der Zielhardware über 10 s liegen, wäre der nächste Schritt ein Vorfilter im Kern vor Jint: offline nur Projekte mit Restbedarf in der aktuellen Nacht.
 
 ## Folgen
 - TK 10.2 (`EngineHost`) und TK 10.4: Parameter aus der Entscheidung nachtragen, sobald Sven die Empfehlung bestätigt hat. Der Code folgt mit AP-16b.
