@@ -640,8 +640,14 @@ export function dsoSearchParams(s: DsoSearch): string {
 export const catalogApi = {
   search: (s: DsoSearch) => apiFetch<DsoList>(`${V1}/dso?${dsoSearchParams(s)}`),
   /** Katalog-Overlay der Sternkarte (FA-FRM-09): Objekte im Umkreis, Dichte über `magMax`. */
-  region: (q: { ra: number; dec: number; radius: number; magMax: number; limit?: number }) =>
-    apiFetch<DsoRegion>(`${V1}/dso/region?${dsoSearchParams(q as unknown as DsoSearch)}`),
+  region: (
+    q: { ra: number; dec: number; radius: number; magMax: number; limit?: number },
+    signal?: AbortSignal,
+  ) =>
+    apiFetch<DsoRegion>(
+      `${V1}/dso/region?${dsoSearchParams(q as unknown as DsoSearch)}`,
+      signal ? { signal } : {},
+    ),
   status: () => apiFetch<CatalogStatus>('/api/system/v1/catalogs'),
   refresh: () => apiFetch<{ jobId: string }>('/api/system/v1/catalogs/dso/refresh', json('POST')),
 };

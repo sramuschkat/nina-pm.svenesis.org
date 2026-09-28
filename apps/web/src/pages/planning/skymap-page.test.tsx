@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
   patch: vi.fn(),
   searchItems: [] as unknown[],
   gets: 0,
+  regions: [] as { q: { radius: number }; signal: unknown }[],
 }));
 
 vi.mock('../../api/client', async (importOriginal) => {
@@ -71,7 +72,10 @@ vi.mock('../../api/client', async (importOriginal) => {
       applyMosaic: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
     },
     catalogApi: {
-      region: () => Promise.resolve({ items: [], total: 0 }),
+      region: (q: { radius: number }, signal: unknown) => {
+        state.regions.push({ q, signal });
+        return Promise.resolve({ items: [], total: 0 });
+      },
       search: () =>
         Promise.resolve({
           items: state.searchItems,
@@ -173,6 +177,7 @@ beforeEach(() => {
   state.project = null;
   state.updateRig.mockReset();
   state.patch.mockReset();
+  state.regions = [];
 });
 
 describe('S-20 Sternkarte', () => {
@@ -215,6 +220,21 @@ describe('S-20 Sternkarte', () => {
       '/planung/sternkarte',
     );
     await expectNoSeriousA11y();
+  });
+
+  it('Katalogregion: sofort beim Öffnen, beim Zoomen erst nach Stillstand und nur einmal (Logs 25.09.2026)', async () => {
+    renderPage();
+    await waitFor(() => expect(state.regions).toHaveLength(1));
+    expect(state.regions[0]?.signal).toBeInstanceOf(AbortSignal);
+    const zoomIn = screen.getByRole('button', { name: 'Hineinzoomen' });
+    fireEvent.click(zoomIn);
+    fireEvent.click(zoomIn);
+    fireEvent.click(zoomIn);
+    expect(state.regions).toHaveLength(1);
+    await waitFor(() => expect(state.regions).toHaveLength(2));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(state.regions).toHaveLength(2);
+    expect(state.regions[1]?.q.radius).toBeLessThan(state.regions[0]?.q.radius ?? 0);
   });
 
   it('Seitengerüst (AP-26d): genau ein h1, keine Brotkrumen, Planungsreiter unter dem Titel', async () => {
