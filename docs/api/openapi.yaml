@@ -10225,7 +10225,7 @@ components:
                     maxLength: 256
                   position:
                     type: integer
-                    minimum: 0
+                    minimum: 1
                   ninaFilterName:
                     type:
                       - string
@@ -13605,7 +13605,7 @@ components:
             properties:
               position:
                 type: integer
-                minimum: 0
+                minimum: 1
               name:
                 type: string
                 maxLength: 256
