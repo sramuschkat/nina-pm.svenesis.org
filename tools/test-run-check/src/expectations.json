@@ -1,0 +1,155 @@
+{
+  "$comment": "Erwartungen je Plugin-Protokoll (ops/plugin-test-protocol.md). steps = Schritte in result.json (Anzahl und Reihenfolge verbindlich); require/forbid = Log-Ereignisse mit Feldwerten (min = Mindestanzahl); checks = Sonderprüfungen aus check.ts. Weitere Protokolle ergänzen die Pakete, die sie brauchen (AP-16a …).",
+  "global": {
+    "forbid": [
+      {
+        "event": "ERROR"
+      }
+    ]
+  },
+  "protocols": {
+    "P-01": {
+      "package": "AP-S2b",
+      "steps": [
+        "Sequenz mit Probe-Container und globalen Triggern (Meridian Flip, AF nach Zeit, AF nach Filterwechsel, Center after Drift) gestartet",
+        "20 × 60-s-Belichtungen als interne Elemente, Trigger laufen zwischen den Belichtungen",
+        "Flip nutzt die Zielkoordinaten (kein „No target information available for flip“ im NINA-Log)",
+        "AF-Zählung stimmt (AF nach Filterwechsel je Wechsel, AF nach Zeit im Takt)",
+        "Screenshot Sequenzansicht abgelegt"
+      ],
+      "require": [
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "saved"
+          },
+          "min": 20
+        },
+        {
+          "event": "TRIGGER",
+          "where": {
+            "type": "MeridianFlipTrigger"
+          }
+        },
+        {
+          "event": "FLIP",
+          "where": {
+            "pierBefore": "west",
+            "pierAfter": "east"
+          },
+          "has": ["durationS"]
+        }
+      ],
+      "checks": ["triggerBetweenCaptures", "uniqueCaptures"]
+    },
+    "P-02": {
+      "package": "AP-S2b",
+      "steps": [
+        "20 kurze Belichtungen in schneller Folge, je Belichtung eine Aufnahme-ID vor der Belichtung",
+        "Keine Fehlzuordnung: jede Aufnahme-ID und jeder Dateiname genau einmal gespeichert",
+        "FITS-Header-Screenshot mit Zielname und Positionswinkel abgelegt"
+      ],
+      "require": [
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "saved"
+          },
+          "min": 20,
+          "has": ["id", "file"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "failed"
+          }
+        }
+      ],
+      "checks": ["uniqueCaptures"]
+    },
+    "P-03": {
+      "package": "AP-S2b",
+      "steps": [
+        "Abbruch einer laufenden Belichtung über den Probe-Abbruch",
+        "Belichtung endet weniger als 5 s nach dem Abbruch",
+        "Nächste Belichtung startet"
+      ],
+      "require": [
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "aborted"
+          }
+        }
+      ],
+      "checks": ["abortWithin5s", "savedAfterAbort", "uniqueCaptures"],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "probe_abort_fallback"
+          }
+        }
+      ]
+    },
+    "P-13": {
+      "package": "AP-S2b",
+      "steps": [
+        "Autofokus-Trigger „AF nach Zeit“ (1 min) per Typfilter unterdrückt, Triggertypnamen der installierten NINA notiert",
+        "Laufende 120-s-Belichtung über eigenen Abbruch-Token beendet, nächste Belichtung startet",
+        "Auslesemodus per Name gesetzt",
+        "Flip mit Simulator-Meridian in 5 min, Pier-Seite vor und nach dem Trigger-Aufruf geloggt",
+        "Lauf mit Pier-Seite unbekannt: nur FLIP_UNDETECTED, kein FLIP"
+      ],
+      "require": [
+        {
+          "event": "TRIGGER_SUPPRESSED",
+          "where": {
+            "type": "AutofocusAfterTimeTrigger"
+          }
+        },
+        {
+          "event": "TRIGGER_SUPPRESSED",
+          "where": {
+            "type": "DitherAfterExposures"
+          }
+        },
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "aborted"
+          }
+        },
+        {
+          "event": "READOUT",
+          "where": {
+            "mode": "set"
+          },
+          "has": ["name", "index"]
+        },
+        {
+          "event": "FLIP",
+          "where": {
+            "pierBefore": "west",
+            "pierAfter": "east"
+          },
+          "has": ["durationS"]
+        },
+        {
+          "event": "FLIP_UNDETECTED"
+        }
+      ],
+      "checks": ["abortWithin5s", "savedAfterAbort", "uniqueCaptures"],
+      "forbid": [
+        {
+          "event": "TRIGGER",
+          "where": {
+            "type": "AutofocusAfterTimeTrigger"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    AP-S2b: Probe-Plugin für die Stellen ohne Vorbild (P-01…P-03, P-13). Kein Produktivcode; entfällt, sobald
+    AP-16a…16h die echten Projekte liefern. Ausnahmsweise mit XAML (Parameter im Sequenz-Editor): Regel 13
+    (XAML nur in NinaPm.Nina.Ui) gilt für die Plugin-Projekte, nicht für diesen Spike.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>NinaPm.Probe</AssemblyName>
+    <RootNamespace>NinaPm.Probe</RootNamespace>
+    <Version>0.1.0</Version>
+    <AssemblyTitle>NINA-PM Probe</AssemblyTitle>
+    <Company>Svenesis</Company>
+    <Product>NINA-PM Probe</Product>
+    <!-- Ausgabe direkt in bin/<Konfiguration>/, NINA lädt sie so aus dem Plugin-Ordner (TK 10.5). -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(OS)' == 'Windows_NT'">
+    <OutputPath>$(LOCALAPPDATA)\NINA\Plugins\3.0.0\NINA-PM Probe\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Nur zum Übersetzen, NINA bringt alles mit (ADR-S2c). -->
+    <PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Plugin-Manifest (von PluginBase gelesen). -->
+    <AssemblyMetadata Include="Identifier" Value="7f3c2a91-5b4e-4d8a-9c61-2e0f4b7d8a15" />
+    <AssemblyMetadata Include="Name" Value="NINA-PM Probe" />
+    <AssemblyMetadata Include="Author" Value="Svenesis" />
+    <AssemblyMetadata Include="Description" Value="Spike AP-S2b: Trigger-Walk, Bildzuordnung, Belichtungsabbruch, Auslesemodus und Flip-Erkennung für NINA-PM prüfen. Kein Produktiv-Plugin." />
+    <AssemblyMetadata Include="License" Value="Proprietary" />
+    <AssemblyMetadata Include="Repository" Value="https://github.com/sramuschkat/nina-pm.svenesis.org" />
+    <AssemblyMetadata Include="MinimumApplicationVersion" Value="$(NinaVersion)" />
+  </ItemGroup>
+</Project>

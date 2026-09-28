@@ -1,0 +1,3 @@
+<Project>
+  <Import Project="../../apps/nina-plugin/Directory.Build.targets" />
+</Project>

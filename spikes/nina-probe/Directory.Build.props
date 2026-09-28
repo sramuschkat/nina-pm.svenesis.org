@@ -1,0 +1,4 @@
+<Project>
+  <!-- AP-S2b: dieselben Build-Eigenschaften wie die Plugin-Projekte (ADR-S2c). -->
+  <Import Project="../../apps/nina-plugin/Directory.Build.props" />
+</Project>
