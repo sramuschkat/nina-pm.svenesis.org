@@ -29,6 +29,7 @@ export {
   type SortChainKey,
 } from './grid';
 export { randomGrid, seededRandom, type RandomGridOptions } from './grid-random';
+export { randomPlanInput } from './plan-input-random';
 export { compatSwitches, DEVIATION_IDS, type CompatSwitches } from './compat';
 export { buildMatrix, priorityOrder } from './matrix';
 export { budgetSlots, decrementWork, paint, type BudgetInput, type PaintStage } from './paint';

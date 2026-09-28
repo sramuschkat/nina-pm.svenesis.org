@@ -27,6 +27,8 @@
     "pr:land": "tsx tools/deploy/src/pr-land.ts",
     "changelog:collect": "tsx tools/deploy/src/changelog.ts",
     "oracle:run": "tsx tools/astropm-oracle/src/cli.ts",
+    "engine:bundle": "tsx tools/engine-bundle/src/bundle.ts",
+    "engine:parity": "tsx tools/engine-bundle/src/parity.ts",
     "fake-plugin": "tsx tools/fake-plugin/src/cli.ts",
     "golive:check": "tsx tools/deploy/src/golive-check.ts",
     "loadtest:prod": "tsx tools/deploy/src/loadtest.ts",

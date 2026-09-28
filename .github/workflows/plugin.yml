@@ -3,12 +3,15 @@ name: plugin
 # NINA-Plugin (TK 18, 10.5). AP-S2c: Build-Nachweis an den Projekten unter spikes/nina-build/; AP-16a zieht die Aufträge
 # auf die echte Lösung (apps/nina-plugin) und ergänzt Adapter-Tests, ZIP und Release beim Tag plugin-v*.
 # Übersetzt wird gegen die NuGet-Pakete NINA.* in der Version aus apps/nina-plugin/Directory.Build.props (ADR-S2c).
+# AP-08c: engine-parity prüft die Engine unter Jint gegen Node (auch bei jeder Änderung in packages/engine).
 
 on:
   pull_request:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'packages/engine/**'
+      - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
       - '.github/workflows/plugin.yml'
   push:
@@ -16,6 +19,8 @@ on:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'packages/engine/**'
+      - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
       - '.github/workflows/plugin.yml'
   workflow_dispatch:
@@ -65,3 +70,26 @@ jobs:
           dotnet build -c Release spikes/nina-build/Adapter
           dotnet build -c Release spikes/nina-build/AdapterNoWpf
           dotnet build -c Release spikes/nina-build/Ui
+
+  # AP-08c (rules/engine.md Nr. 7, canonical-json.md): Engine-Bundle unter Jint rechnet dieselben Hashes wie Node –
+  # feste Testvektoren und 500 zufällige PlanInput. Bricht dieser Auftrag, würde das Plugin offline anders planen.
+  engine-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pnpm install --frozen-lockfile
+      - name: Engine bündeln (engine.iife.js, ES2020)
+        run: pnpm engine:bundle
+      - name: Erwartung mit Node (500 Pläne)
+        run: pnpm engine:parity --count 500 --seed 1
+      - name: Parität unter Jint
+        run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests

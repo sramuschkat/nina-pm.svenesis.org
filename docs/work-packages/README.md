@@ -98,8 +98,8 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
 | [AP-S2b](AP-S2b.md) | Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent) | S | AP-01 | H-14, H-15 | ☐ |
-| [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | – (ADR-S2c) | ◐ |
-| [AP-08c](AP-08c.md) | Engine-Bundle und Jint-Parität | S | AP-08b, AP-S2c | – | ☐ |
+| [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | – (ADR-S2c) | ☑ 28.09.2026 |
+| [AP-08c](AP-08c.md) | Engine-Bundle und Jint-Parität | S | AP-08b, AP-S2c | – | ◐ |
 | [AP-S2a](AP-S2a.md) | Spike Jint-Laufzeit | S | AP-08c | – | ☐ |
 | [AP-16a](AP-16a.md) | Plugin: Lösung, Core, Kopplung, NINA-Test-Server | M | AP-S2b, AP-S2c, AP-08c, AP-14a | H-14, H-15 | ☐ |
 | [AP-16b](AP-16b.md) | Plugin Core: Planung, Neuplanung, Offline-Plan | M | AP-16a, AP-S2a, AP-13d | H-15 | ☐ |
