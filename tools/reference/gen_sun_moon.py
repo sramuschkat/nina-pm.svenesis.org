@@ -14,7 +14,14 @@ from common import apparent, bisect, crossings, load_yaml, location, night_bound
 
 LEVELS = {"sun": -0.8333, "civil": -6.0, "nautical": -12.0, "astronomical": -18.0, "flats8": -8.0, "flats2": -2.0}
 MONTHLY = [f"2026-{m:02d}-15" for m in range(1, 13)]
-EXTRA = {"starfront": ["2026-09-15", "2026-09-17", "2026-09-18", "2026-09-19"], "hannover": ["2026-06-21", "2026-07-29"]}
+EXTRA = {
+    "starfront": ["2026-09-15", "2026-09-17", "2026-09-18", "2026-09-19"],
+    "hannover": ["2026-06-21", "2026-07-29"],
+    # Rand der Polarnacht und weiße Nächte (Astronomie-Prüfung 28.09.2026)
+    "tromso": ["2026-01-17", "2026-05-10", "2026-11-25"],
+    "longyearbyen": ["2026-02-15", "2026-04-15", "2026-11-12"],
+    "casey": ["2026-06-21", "2026-12-21"],
+}
 
 
 def sun_alt(loc, t):
@@ -34,13 +41,27 @@ def night_entry(site, night):
     start, end = night_bounds(site, night)
     grid = np.arange(start, end + 1, 60.0)
     t = to_time(grid)
-    sun = sun_alt(loc, t)
-    hmin, hmax = float(sun.min()), float(sun.max())
+    # Anker wie die Engine (night.md §2, Astronomie-Prüfung 28.09.2026): Antitransit = tiefster Sonnenstand
+    # zwischen den Mittagen, Transits davor und danach; Durchgänge nur in diesen Intervallen – in hohen Breiten
+    # liegen sie sonst außerhalb von Mittag bis Mittag und fehlten in der Referenz.
+    wide = np.arange(start - 13 * 3600, end + 13 * 3600 + 1, 60.0)
+    sun_w = sun_alt(loc, to_time(wide))
+    inside = (wide >= start) & (wide <= end)
+    k_anti = int(np.argmin(np.where(inside, sun_w, np.inf)))
+    before = (wide >= wide[k_anti] - 13 * 3600) & (wide <= wide[k_anti])
+    after = (wide >= wide[k_anti]) & (wide <= wide[k_anti] + 13 * 3600)
+    k_tr0 = int(np.argmax(np.where(before, sun_w, -np.inf)))
+    k_tr1 = int(np.argmax(np.where(after, sun_w, -np.inf)))
+    hmin, hmax = float(sun_w[k_anti]), float(sun_w[k_tr0])
+    f = lambda x: float(sun_alt(loc, to_time(x)))
     events = {}
     for name, level in LEVELS.items():
-        found = crossings(grid, sun, lambda x: float(sun_alt(loc, to_time(x))), level)
-        down = next((c["t"] for c in found if c["direction"] == "down"), None)
-        up = next((c["t"] for c in found if c["direction"] == "up"), None)
+        down = up = None
+        if hmin <= level <= hmax:
+            d = [c for c in crossings(wide[k_tr0 : k_anti + 1], sun_w[k_tr0 : k_anti + 1], f, level) if c["direction"] == "down"]
+            u_ = [c for c in crossings(wide[k_anti : k_tr1 + 1], sun_w[k_anti : k_tr1 + 1], f, level) if c["direction"] == "up"]
+            down = d[-1]["t"] if d else None
+            up = u_[0]["t"] if u_ else None
         events[name] = {
             "h0": level,
             "down": down,

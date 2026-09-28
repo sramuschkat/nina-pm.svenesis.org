@@ -25,3 +25,20 @@
   lat: -29.2563
   lon: -70.7377
   tz: America/Santiago
+# Hohe Breiten und Südpolarkreis (Astronomie-Prüfung 28.09.2026): weiße Nächte, Polartag und -nacht,
+# streifende Dämmerung, Nachtfenster am Rand der Polarnacht (night.md §3).
+- id: tromso
+  name: Tromsø (NO)
+  lat: 69.6492
+  lon: 18.9553
+  tz: Europe/Oslo
+- id: longyearbyen
+  name: Longyearbyen, Spitzbergen
+  lat: 78.2232
+  lon: 15.6267
+  tz: Arctic/Longyearbyen
+- id: casey
+  name: Casey-Station (AQ)
+  lat: -66.2821
+  lon: 110.5276
+  tz: Antarctica/Casey

@@ -148,7 +148,9 @@ describe('Ziele: Höhe und Azimut (±0,01°), Meridiandurchgang (±3 s)', () => 
         expect(Math.abs(dAz * Math.cos((sample.altGeoDeg * Math.PI) / 180))).toBeLessThanOrEqual(
           0.01,
         );
-        if (sample.altAppDeg >= 15)
+        // Die Referenz rechnet die scheinbare Höhe seit 28.09.2026 mit Saemundsson wie die Engine (AST-D30) –
+        // damit gilt der Vergleich bis zum Horizont, nicht erst ab 15°.
+        if (sample.altGeoDeg >= -1)
           expect(Math.abs(ours.altDeg - sample.altAppDeg)).toBeLessThanOrEqual(0.01);
       }
       within(

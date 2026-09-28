@@ -3,7 +3,8 @@ Saisonbeginn/-ende – unabhängig von der Engine mit astropy gerechnet.
 
 Je Nacht wie die Engine (night.md §3, allocation.md §2/§3.1):
 - Nachtfenster = bürgerliche Dämmerung (Sonne geometrisch −6°) ∓ 1 h, Beginn auf 5 min ab-, Ende auf
-  5 min aufgerundet (UTC); Durchgänge aus einem 60-s-Raster linear verfeinert.
+  5 min aufgerundet (UTC), begrenzt auf Mittag bis Mittag; Durchgänge aus einem 60-s-Raster linear verfeinert.
+  Polarnacht (Sonne nie über −6°): Mittag bis Mittag; Polartag (nie unter −6°): 18:00 Standortzeit + 12 h.
 - Slot (300 s) nutzbar, wenn an **beiden** Grenzen Sonne < Dämmerungsgrenze und scheinbare Zielhöhe ≥
   Mindesthöhe (Saemundsson aus der geometrischen Höhe).
 - Nacht ausreichend, wenn der längste zusammenhängende Lauf ≥ Mindestzeit.
@@ -26,6 +27,8 @@ CASES = [
     {"id": "ngc281-starfront", "site": "starfront", "target": "ngc281", "twilight": "astronomical", "minAltDeg": 30, "minTimeSec": 3600, "from": "2026-09-17"},
     {"id": "m31-hannover", "site": "hannover", "target": "m31", "twilight": "astronomical", "minAltDeg": 30, "minTimeSec": 3600, "from": "2026-09-17"},
     {"id": "m8-starfront", "site": "starfront", "target": "m8", "twilight": "astronomical", "minAltDeg": 30, "minTimeSec": 3600, "from": "2026-11-15"},
+    # Hohe Breite: weiße Nächte, Polarnacht, Fenster am Rand der Polarnacht (Astronomie-Prüfung 28.09.2026)
+    {"id": "ngc6946-tromso", "site": "tromso", "target": "ngc6946", "twilight": "nautical", "minAltDeg": 30, "minTimeSec": 3600, "from": "2026-09-17"},
 ]
 
 
@@ -46,14 +49,30 @@ def crossing(grid, values, level, direction):
 
 def night_usable(site, loc, coord, case, night):
     start, end = night_bounds(site, night)
-    grid = np.arange(start, end + 1, 60.0)
+    # Anker wie die Engine (night.md §2): Antitransit = tiefster Sonnenstand im Mittag-bis-Mittag-Intervall,
+    # Transits davor und danach; Abwärtsdurchgang dazwischen vor, Aufwärtsdurchgang nach dem Antitransit.
+    grid = np.arange(start - 13 * 3600, end + 13 * 3600 + 1, 60.0)
     sun = sun_alt(loc, grid)
-    dusk = crossing(grid, sun, -6.0, "down")
-    dawn = crossing(grid, sun, -6.0, "up")
-    if dusk is None or dawn is None:
-        raise SystemExit(f"{case['id']} {night}: keine bürgerliche Dämmerung")
-    w0 = int(np.floor((dusk - 3600) / 300) * 300)
-    w1 = int(np.ceil((dawn + 3600) / 300) * 300)
+    inside = (grid >= start) & (grid <= end)
+    k_anti = int(np.argmin(np.where(inside, sun, np.inf)))
+    before = (grid >= grid[k_anti] - 13 * 3600) & (grid <= grid[k_anti])
+    after = (grid >= grid[k_anti]) & (grid <= grid[k_anti] + 13 * 3600)
+    k_tr0 = int(np.argmax(np.where(before, sun, -np.inf)))
+    k_tr1 = int(np.argmax(np.where(after, sun, -np.inf)))
+    h_min, h_max = float(sun[k_anti]), float(sun[k_tr0])
+    dusk = crossing(grid[k_tr0 : k_anti + 1], sun[k_tr0 : k_anti + 1], -6.0, "down")
+    dawn = crossing(grid[k_anti : k_tr1 + 1], sun[k_anti : k_tr1 + 1], -6.0, "up")
+    if h_min <= -6.0 <= h_max and dusk is not None and dawn is not None:
+        # night.md §3: ∓ 1 h, auf 5 min gerundet, begrenzt auf Mittag bis Mittag
+        w0 = max(int(start), int(np.floor((dusk - 3600) / 300) * 300))
+        w1 = min(int(end), int(np.ceil((dawn + 3600) / 300) * 300))
+    elif h_max < -6.0:
+        # Polarnacht: ganze Nacht von Mittag bis Mittag
+        w0, w1 = int(start), int(end)
+    else:
+        # Polartag: 18:00 Standortzeit + 12 h
+        w0 = int(start) + 6 * 3600
+        w1 = w0 + 12 * 3600
     bounds = np.arange(w0, w1 + 1, 300.0)
     t = to_time(bounds)
     sun_b = sun_alt(loc, bounds)
