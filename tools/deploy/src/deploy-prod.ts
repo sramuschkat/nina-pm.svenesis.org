@@ -18,8 +18,10 @@ import { printReport, runFakeNight } from '@nina-pm/fake-plugin';
 import { runSmoke } from '@nina-pm/smoke';
 import { loadMigrations, migrationsHash } from '@nina-pm/db/migrate';
 import { deployConcurrencyArgs, hasSecurityChanges } from './cdk-diff';
+import { ensureGreenCi as ensureGreenCiRun } from './ci-gate';
 import { parseDeployArgs } from './deploy-args';
 import { findGreenProtocol } from './dsql/protocol';
+import { checkHeadIsFreshOriginMain } from './git-checks';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const outputsFile = `${repoRoot}infra/cdk-outputs.json`;
@@ -157,89 +159,24 @@ async function backupBeforeMigrations(): Promise<void> {
   fail(`Backup-Job ${job.out} nach 60 min nicht abgeschlossen.`);
 }
 
-/** Letzter CI-Lauf (ci.yml) eines Commits: `<status> <conclusion>` oder leer. */
-function ciState(sha: string): string {
-  return capture('gh', [
-    'run',
-    'list',
-    '--commit',
-    sha,
-    '--workflow',
-    'ci.yml',
-    '--limit',
-    '1',
-    '--json',
-    'status,conclusion',
-    '--jq',
-    '.[0].status + " " + .[0].conclusion',
-  ]).out;
-}
-
-/**
- * CI-Vorbedingung (TK 18) ohne unnötiges Warten:
- * 1. grüner Lauf auf HEAD, oder
- * 2. grüner Lauf auf einem Commit mit **identischem Dateistand** (gleicher Git-Tree) – nach einem
- *    Merge-Commit eines aktuellen PR-Branches ist das der PR-Lauf; gleiche Dateien, gleiche Prüfungen, oder
- * 3. der Lauf auf HEAD läuft noch oder ist gerade angelegt (`queued`, `pending`, `requested`, `waiting`,
- *    `in_progress`, z. B. direkt nach `pr:land`) → warten (`gh run watch`), statt abzubrechen.
- */
+/** CI-Vorbedingung (TK 18), Logik in `ci-gate.ts`. */
 async function ensureGreenCi(sha: string): Promise<string> {
-  if (ciState(sha) === 'completed success') return 'Lauf auf diesem Commit';
-  const tree = capture('git', ['rev-parse', `${sha}^{tree}`]).out;
-  const recent = capture('gh', [
-    'run',
-    'list',
-    '--workflow',
-    'ci.yml',
-    '--status',
-    'success',
-    '--limit',
-    '40',
-    '--json',
-    'headSha',
-    '--jq',
-    '.[].headSha',
-  ]).out.split('\n');
-  for (const candidate of recent) {
-    if (!candidate || candidate === sha) continue;
-    const t = capture('git', ['rev-parse', `${candidate}^{tree}`]);
-    if (t.ok && t.out === tree) return `gleicher Stand wie ${candidate.slice(0, 7)}`;
-  }
-  // Direkt nach dem Merge legt GitHub den Lauf erst nach einigen Sekunden an.
-  let state = ciState(sha);
-  for (let i = 0; state === '' && i < 12; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    state = ciState(sha);
-  }
-  if (
-    state.startsWith('in_progress') ||
-    state.startsWith('queued') ||
-    state.startsWith('waiting') ||
-    state.startsWith('pending') ||
-    state.startsWith('requested')
-  ) {
-    console.log(`  CI auf ${sha.slice(0, 7)} läuft noch – warte …`);
-    const id = capture('gh', [
-      'run',
-      'list',
-      '--commit',
-      sha,
-      '--workflow',
-      'ci.yml',
-      '--limit',
-      '1',
-      '--json',
-      'databaseId',
-      '--jq',
-      '.[0].databaseId',
-    ]).out;
-    spawnSync('gh', ['run', 'watch', id, '--interval', '15', '--exit-status'], {
-      cwd: repoRoot,
-      stdio: 'ignore',
+  try {
+    return await ensureGreenCiRun(sha, {
+      git: (args) => capture('git', args),
+      gh: (args) => capture('gh', args),
+      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      watch: (id) => {
+        spawnSync('gh', ['run', 'watch', id, '--interval', '15', '--exit-status'], {
+          cwd: repoRoot,
+          stdio: 'ignore',
+        });
+      },
+      log: (line) => console.log(line),
     });
-    if (ciState(sha) === 'completed success') return 'Lauf auf diesem Commit, abgewartet';
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
   }
-  return fail(`CI auf ${sha.slice(0, 7)} ist nicht grün (${ciState(sha) || 'kein Lauf'}).`);
 }
 
 async function main(): Promise<void> {
@@ -252,14 +189,14 @@ async function main(): Promise<void> {
   step('Vorbedingungen');
   const dirty = capture('git', ['status', '--porcelain']).out;
   if (dirty !== '') fail(`Arbeitsbaum ist nicht sauber:\n${dirty}`);
-  // Nur den aktuellen main deployen – ein gescheitertes `git pull` hätte sonst den alten Stand ausgeliefert.
-  capture('git', ['fetch', '--quiet', 'origin', 'main']);
-  const head = capture('git', ['rev-parse', 'HEAD']).out;
-  const remote = capture('git', ['rev-parse', 'origin/main']).out;
-  if (remote && head !== remote)
-    fail(
-      `HEAD (${head.slice(0, 7)}) ist nicht origin/main (${remote.slice(0, 7)}) – erst \`git checkout main && git pull --ff-only\`.`,
-    );
+  // Nur den aktuellen main deployen – ein gescheitertes `git pull` oder `git fetch` hätte sonst den alten
+  // Stand ausgeliefert (git-checks.ts).
+  let sha: string;
+  try {
+    sha = checkHeadIsFreshOriginMain((args) => capture('git', args));
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
   // Sync-Token der Test-Instanz nur aus der lokalen Umgebung (H-24); nie ausgeben, nie in Dateien.
   // Pflicht seit 25.09.2026: ohne Token kein Deploy (DB-Erreichbarkeit und Fake-Plugin-Nacht, SV-07).
   const testRigToken = process.env.TEST_RIG_TOKEN?.trim() ?? '';
@@ -267,7 +204,6 @@ async function main(): Promise<void> {
     fail(
       'TEST_RIG_TOKEN fehlt (H-24): Token der Test-Instanz als Umgebungsvariable setzen, nie in Dateien.',
     );
-  const sha = capture('git', ['rev-parse', 'HEAD']).out;
   const ciSource = await ensureGreenCi(sha);
   const account = capture('aws', [
     'sts',
