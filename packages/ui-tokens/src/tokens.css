@@ -59,7 +59,8 @@
   --npm-chart-series-5: #80cbc4;
   --npm-chart-series-6: #f48fb1;
   --npm-sky-bg: rgb(6, 10, 20);
-  --npm-sky-ground: rgba(28, 25, 22, 0.82);
+  --npm-sky-ground: rgb(23, 20, 17);
+  --npm-sky-horizon-glow: rgba(120, 140, 180, 0.2);
   --npm-sky-milky-way: rgba(205, 215, 255, 0.3);
   --npm-sky-grid-eq: rgba(120, 170, 230, 0.32);
   --npm-sky-grid-altaz: rgba(120, 220, 160, 0.3);
@@ -79,7 +80,6 @@
   --npm-sky-star-label: rgba(228, 233, 239, 0.85);
   --npm-sky-dso: #8fd3a8;
   --npm-sky-dso-label: rgba(170, 225, 190, 0.9);
-  --npm-sky-horizon: #e67e22;
   --npm-sky-min-alt: #e5484d;
   --npm-sky-meridian: rgba(240, 240, 240, 0.4);
   --npm-sky-heatmap: rgba(229, 72, 77, 0.22);

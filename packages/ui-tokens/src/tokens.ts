@@ -221,8 +221,10 @@ export const CHART: Readonly<Record<string, string>> = {
  */
 export const SKY: Readonly<Record<string, string>> = {
   'sky-bg': 'rgb(6, 10, 20)',
-  /** Boden unter dem Horizont: fast deckend wie in der Vorlage (`sky-map.js` SM.ground), Sterne darunter nur schwach. */
-  'sky-ground': 'rgba(28, 25, 22, 0.82)',
+  /** Boden und Landschaft (Hügel, Bäume) unter dem Horizont: deckend wie in der Vorlage (`sky-map.js` SM.ground). */
+  'sky-ground': 'rgb(23, 20, 17)',
+  /** Dunst über dem Horizont (bis 10° auslaufend), hebt die Landschaft vom Nachthimmel ab. */
+  'sky-horizon-glow': 'rgba(120, 140, 180, 0.2)',
   /** Milchstraße: Farbe der Vorlage, die Deckkraft (0,3) ist die Stärke des Bands bei voller Dunkelheit. */
   'sky-milky-way': 'rgba(205, 215, 255, 0.3)',
   'sky-grid-eq': 'rgba(120, 170, 230, 0.32)',
@@ -248,7 +250,6 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-star-label': 'rgba(228, 233, 239, 0.85)',
   'sky-dso': '#8fd3a8',
   'sky-dso-label': 'rgba(170, 225, 190, 0.9)',
-  'sky-horizon': '#e67e22',
   'sky-min-alt': '#e5484d',
   'sky-meridian': 'rgba(240, 240, 240, 0.4)',
   'sky-heatmap': 'rgba(229, 72, 77, 0.22)',

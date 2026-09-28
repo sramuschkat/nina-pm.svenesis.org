@@ -11,6 +11,7 @@ import { sky } from '@nina-pm/engine';
 import { describe, expect, it } from 'vitest';
 import { effectiveRotation, projectCategory } from '../SkyMapPage';
 import { constellationAt } from './constellation';
+import { hillAlt, LANDSCAPE_MAX_DEG, landscapeAlt, TREES } from './landscape';
 import {
   DEFAULT_STATE,
   OVERVIEW_ALT,
@@ -21,6 +22,7 @@ import {
   stateFromParams,
 } from './model';
 import {
+  behindLand,
   colorParts,
   constellationName,
   drawSky,
@@ -430,5 +432,38 @@ describe('Überfahren, Anklicken, Horizont (Vorlage sky-map.js)', () => {
     expect(constellationName(l, 'latin', 'de')).toBe('Ursa Major');
     expect(colorParts('rgba(205, 215, 255, 0.3)')).toEqual([205, 215, 255, 0.3]);
     expect(colorParts('#5ce1e6')).toEqual([92, 225, 230, 1]);
+  });
+});
+
+describe('Landschaft am Horizont (28.09.2026)', () => {
+  it('niedrig: Hügel 0,15–1,5°, mit Bäumen höchstens gut 3°; fest erzeugt', () => {
+    const hills = Array.from({ length: 3600 }, (_, i) => hillAlt(i / 10));
+    expect(Math.min(...hills)).toBeGreaterThanOrEqual(0.15);
+    expect(Math.max(...hills)).toBeLessThan(1.6);
+    expect(LANDSCAPE_MAX_DEG).toBeGreaterThan(1.5);
+    expect(LANDSCAPE_MAX_DEG).toBeLessThan(3.6);
+    expect(TREES.length).toBeGreaterThan(100);
+    expect(TREES.some((t) => t.kind === 'conifer')).toBe(true);
+    expect(TREES.some((t) => t.kind === 'broadleaf')).toBe(true);
+    // Ein Baum ragt über die Hügellinie hinaus.
+    const t = TREES[0];
+    if (!t) throw new Error('keine Bäume');
+    expect(landscapeAlt(t.azDeg)).toBeGreaterThan(hillAlt(t.azDeg) + 0.5);
+    expect(landscapeAlt(t.azDeg + 360)).toBe(landscapeAlt(t.azDeg));
+  });
+
+  it('verdeckt: unter der Oberkante von Hügeln und Bäumen', () => {
+    const scene = sceneAt(
+      Date.UTC(2026, 8, 28, 3) / 1000,
+      { latitudeDeg: 31.5, longitudeDeg: -98.5, timeZone: 'America/Chicago' },
+      { raDeg: 0, decDeg: 0 },
+      30,
+      30,
+    );
+    const H = scene.observer.toHorizon;
+    const az = 123.4;
+    expect(behindLand(H, horizonVec(H, az, landscapeAlt(az) - 0.05))).toBe(true);
+    expect(behindLand(H, horizonVec(H, az, landscapeAlt(az) + 0.05))).toBe(false);
+    expect(behindLand(H, horizonVec(H, az, 10))).toBe(false);
   });
 });

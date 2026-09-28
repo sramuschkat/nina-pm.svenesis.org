@@ -12,6 +12,7 @@
  */
 import { mosaicPanels, offsetToSky, sky } from '@nina-pm/engine';
 import type { DsoMarker } from '../../../api/client';
+import { landscapeAlt } from './landscape';
 import { milkyWayAt, type BrightSky, type MilkyWayGrid, type StarField } from './sky-data';
 
 export type Vec = readonly [number, number, number];
@@ -153,7 +154,7 @@ export function readColors(el: Element): Colors {
     'star-label',
     'dso',
     'dso-label',
-    'horizon',
+    'horizon-glow',
     'min-alt',
     'meridian',
     'heatmap',
@@ -406,6 +407,9 @@ function paintGround(
   const s = scratchImage(gw, gh);
   const [gr, gg, gb, ga] = colorParts(colors.ground ?? 'rgba(28,25,22,0.8)');
   const [hr, hg, hb, ha] = colorParts(colors.heatmap ?? 'rgba(229,72,77,0.22)');
+  // Aufhellung über dem Horizont (Dunst), damit sich die Landschaft vom Nachthimmel abhebt.
+  const [lr, lg, lb, la] = colorParts(colors['horizon-glow'] ?? 'rgba(120,140,180,0.18)');
+  const GLOW_DEG = 10;
   if (!s) {
     // Ohne Offscreen-Bild (Tests): grobe Zellen direkt.
     for (let y = 0; y < view.height; y += 12)
@@ -433,6 +437,11 @@ function paintGround(
         px[o + 1] = hg;
         px[o + 2] = hb;
         px[o + 3] = Math.round(ha * 255);
+      } else if (ground && alt >= 0 && alt < GLOW_DEG) {
+        px[o] = lr;
+        px[o + 1] = lg;
+        px[o + 2] = lb;
+        px[o + 3] = Math.round(la * (1 - alt / GLOW_DEG) * 255);
       }
     }
   }
@@ -564,9 +573,8 @@ function drawDso(
     if (!p || p.x < -50 || p.y < -50 || p.x > view.width + 50 || p.y > view.height + 50) continue;
     const major = ((o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
     const minor = ((o.sizeMinorArcmin ?? o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
-    // Unter dem Horizont blass und ohne Namen (außer dem gewählten Objekt).
-    const below = observer !== null && altOf(observer.toHorizon, v) < 0 && o.id !== selectedId;
-    ctx.globalAlpha = below ? 0.35 : 1;
+    // Hinter Boden und Landschaft verborgen (außer dem gewählten Objekt).
+    if (observer !== null && o.id !== selectedId && behindLand(observer.toHorizon, v)) continue;
     ctx.strokeStyle = colors.dso ?? '#8fd3a8';
     ctx.lineWidth = o.id === selectedId ? 2.5 : 1.2;
     ctx.beginPath();
@@ -577,8 +585,6 @@ function drawDso(
       ctx.ellipse(p.x, p.y, Math.max(2, minor / 2), major / 2, -pa, 0, 2 * Math.PI);
     } else ctx.arc(p.x, p.y, 3.5, 0, 2 * Math.PI);
     ctx.stroke();
-    ctx.globalAlpha = 1;
-    if (below) continue;
     const labelled =
       view.fovDeg <= 20 ||
       o.id === selectedId ||
@@ -676,6 +682,72 @@ function drawFrame(
   ctx.setLineDash([]);
 }
 
+/**
+ * Landschaft (Hügel und Bäume, `landscape.ts`) als deckende Silhouette über dem Boden: je sichtbarem Grad
+ * Azimut fein abgetastet (etwa ein Bildpunkt je Probe), unten bis 1° unter den Horizont, damit die weiche
+ * Kante des Bodens verdeckt ist. Abschnitte hinter dem Betrachter fallen weg.
+ */
+function drawLandscape(
+  ctx: CanvasRenderingContext2D,
+  view: sky.SkyView,
+  H: sky.Mat3,
+  color: string,
+) {
+  const degPerPx = view.fovDeg / view.width;
+  const step = Math.min(0.2, Math.max(0.002, degPerPx));
+  const margin = Math.max(view.width, view.height);
+  const onScreen = (p: { x: number; y: number } | null) =>
+    p !== null &&
+    p.x > -margin &&
+    p.x < view.width + margin &&
+    p.y > -margin &&
+    p.y < view.height + margin;
+  ctx.fillStyle = color;
+  let top: { x: number; y: number }[] = [];
+  let bottom: { x: number; y: number }[] = [];
+  const flush = () => {
+    if (top.length > 1) {
+      ctx.beginPath();
+      top.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      for (let i = bottom.length - 1; i >= 0; i -= 1) {
+        const p = bottom[i] as { x: number; y: number };
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    top = [];
+    bottom = [];
+  };
+  for (let d = 0; d < 360; d += 1) {
+    // Grob prüfen, ob dieser Grad Azimut im Bild liegt; sonst Abschnitt beenden.
+    const probe = sky.project(view, horizonVec(H, d + 0.5, 1));
+    const probeInView =
+      probe !== null &&
+      probe.x > -40 &&
+      probe.x < view.width + 40 &&
+      probe.y > -40 - 4 * (view.width / view.fovDeg) &&
+      probe.y < view.height + 40 + 2 * (view.width / view.fovDeg);
+    if (!probeInView) {
+      flush();
+      continue;
+    }
+    const n = Math.max(1, Math.ceil(1 / step));
+    for (let i = 0; i <= n; i += 1) {
+      const az = d + i / n;
+      const t = sky.project(view, horizonVec(H, az, landscapeAlt(az)));
+      const b = sky.project(view, horizonVec(H, az, -1));
+      if (!onScreen(t) || !onScreen(b) || !t || !b) {
+        flush();
+        continue;
+      }
+      top.push(t);
+      bottom.push(b);
+    }
+  }
+  flush();
+}
+
 function drawObserver(
   ctx: CanvasRenderingContext2D,
   view: sky.SkyView,
@@ -686,11 +758,7 @@ function drawObserver(
 ) {
   const H = obs.toHorizon;
   paintGround(ctx, view, obs, overlays, colors);
-  if (overlays.has('horizon')) {
-    ctx.strokeStyle = colors.horizon ?? '#e67e22';
-    ctx.lineWidth = 1.8;
-    polyline(ctx, view, frameCircle(H, 0, null, 360));
-  }
+  if (overlays.has('horizon')) drawLandscape(ctx, view, H, colors.ground ?? '#1a1713');
   if (overlays.has('minAlt')) {
     ctx.strokeStyle = colors['min-alt'] ?? '#e5484d';
     ctx.lineWidth = 1.4;
@@ -731,6 +799,12 @@ export function horizonVec(H: sky.Mat3, azDeg: number, altDeg: number): Vec {
     Math.cos(a) * Math.cos(h),
     Math.sin(h),
   ]);
+}
+
+/** Liegt die Richtung hinter Boden oder Landschaft (unter der Oberkante von Hügeln und Bäumen)? */
+export function behindLand(H: sky.Mat3, v: Vec): boolean {
+  const h = toAltAz(H, v);
+  return h.altDeg < landscapeAlt(h.azDeg);
 }
 
 /** Höhe und Azimut (Grad, Nord über Ost) eines J2000-Vektors. */
@@ -785,16 +859,13 @@ function drawBodies(
   const disc = (id: BodyId, v: Vec, r: number, color: string, label: string) => {
     const p = sky.project(view, v);
     if (!p || p.x < -r || p.y < -r || p.x > view.width + r || p.y > view.height + r) return;
-    // Unter dem Horizont nur blass und ohne Namen (der Boden deckt den Himmel dort ab).
-    const below = obs !== null && input.overlays.has('horizon') && altOf(obs.toHorizon, v) < 0;
-    ctx.globalAlpha = below ? 0.35 : 1;
+    // Hinter Boden und Landschaft verborgen (beides deckend).
+    if (obs !== null && input.overlays.has('horizon') && behindLand(obs.toHorizon, v)) return;
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
     ctx.fill();
-    ctx.globalAlpha = 1;
     hits.push({ x: p.x, y: p.y, r, id });
-    if (below) return;
     labels.block(p.x - r, p.y - r, p.x + r, p.y + r);
     pending.push({ txt: label, x: p.x + r + 4, y: p.y - r - 2 });
   };
@@ -867,7 +938,7 @@ export function drawSky(
     bodies: [] as HitIndex['bodies'][number][],
   };
   const labels = new Labels(ctx, view.width);
-  const up = observer ? (v: Vec) => altOf(observer.toHorizon, v) > 0 : null;
+  const up = observer ? (v: Vec) => !behindLand(observer.toHorizon, v) : null;
   ctx.fillStyle = colors.bg ?? '#000';
   ctx.fillRect(0, 0, view.width, view.height);
   // Taghimmel: Grund aufhellen, solange die Sonne über −6° steht.
