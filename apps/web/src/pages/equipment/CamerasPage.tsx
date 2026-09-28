@@ -140,6 +140,28 @@ export function readoutMismatch(
   return missing.length + unknown.length > 0 ? { missing, unknown } : null;
 }
 
+/** Standard-Binning nach Änderung der unterstützten Stufen: bleibt, sonst die kleinste verbleibende. */
+export function keptBinning(current: number, supported: readonly number[]): number {
+  if (supported.length === 0 || supported.includes(current)) return current;
+  return Math.min(...supported);
+}
+
+/**
+ * Standard-Auslesemodus nach Änderung der Liste: Wird der Standard selbst umbenannt (`edited`), folgt er
+ * dem neuen Namen; fehlt er sonst in der Liste, gilt der erste nicht leere Modus.
+ */
+export function keptReadoutMode(
+  current: string,
+  before: readonly string[],
+  after: readonly string[],
+  edited?: number,
+): string {
+  const valid = after.filter((m) => m.trim() !== '');
+  const renamed = edited !== undefined && before[edited] === current ? after[edited] : undefined;
+  if (renamed !== undefined && renamed.trim() !== '') return renamed;
+  return valid.includes(current) ? current : (valid[0] ?? current);
+}
+
 type BinnedRow = ReturnType<typeof cameraDerived>['binned'][number];
 interface GainRow {
   g: GainModeDraft;
@@ -180,6 +202,7 @@ export function CamerasPage() {
     void editor.submit({
       ...d,
       readoutModes: d.readoutModes.map((m) => m.trim()).filter(Boolean),
+      defaultReadoutMode: d.defaultReadoutMode.trim(),
       supportedBinning: [...d.supportedBinning].sort((a, b) => a - b),
     });
   };
@@ -307,11 +330,24 @@ export function CamerasPage() {
       : []),
   ];
   const Warn = actionIcons.warning;
-  const toggleBinning = (b: number, on: boolean) =>
-    editor.set(
-      'supportedBinning',
-      on ? [...new Set([...d.supportedBinning, b])] : d.supportedBinning.filter((x) => x !== b),
-    );
+  // Standard-Binning und -Auslesemodus bleiben gültig, wenn sich die Auswahl ändert (Prüfung 28.09.2026):
+  // vorher zeigte die Auswahl schon den neuen Wert, der Entwurf behielt den alten und Speichern scheiterte.
+  const toggleBinning = (b: number, on: boolean) => {
+    const next = on
+      ? [...new Set([...d.supportedBinning, b])]
+      : d.supportedBinning.filter((x) => x !== b);
+    editor.replace({
+      ...d,
+      supportedBinning: next,
+      defaultBinning: keptBinning(d.defaultBinning, next),
+    });
+  };
+  const setReadoutModes = (next: string[], edited?: number) =>
+    editor.replace({
+      ...d,
+      readoutModes: next,
+      defaultReadoutMode: keptReadoutMode(d.defaultReadoutMode, d.readoutModes, next, edited),
+    });
   return (
     <EquipmentLayout
       title={t('equipment.cameras.title')}
@@ -537,7 +573,9 @@ export function CamerasPage() {
                       label={t('equipment.cameras.field.defaultReadoutMode')}
                       value={d.defaultReadoutMode}
                       onChange={(v) => editor.set('defaultReadoutMode', v)}
-                      options={d.readoutModes.filter(Boolean).map((m) => ({ value: m, label: m }))}
+                      options={d.readoutModes
+                        .filter((m) => m.trim() !== '')
+                        .map((m) => ({ value: m, label: m }))}
                       error={fieldError('defaultReadoutMode')}
                       disabled={disabled}
                     />
@@ -631,9 +669,9 @@ export function CamerasPage() {
                           maxLength={60}
                           disabled={disabled}
                           onChange={(e) =>
-                            editor.set(
-                              'readoutModes',
+                            setReadoutModes(
                               d.readoutModes.map((x, j) => (j === i ? e.target.value : x)),
+                              i,
                             )
                           }
                         />
@@ -643,10 +681,7 @@ export function CamerasPage() {
                             className={styles.iconButton}
                             aria-label={t('equipment.removeRow', { n: i + 1 })}
                             onClick={() =>
-                              editor.set(
-                                'readoutModes',
-                                d.readoutModes.filter((_, j) => j !== i),
-                              )
+                              setReadoutModes(d.readoutModes.filter((_, j) => j !== i))
                             }
                           >
                             <Delete size={ICON_SIZE.table} aria-hidden />
@@ -659,7 +694,7 @@ export function CamerasPage() {
                     <button
                       type="button"
                       className={styles.button}
-                      onClick={() => editor.set('readoutModes', [...d.readoutModes, ''])}
+                      onClick={() => setReadoutModes([...d.readoutModes, ''])}
                     >
                       <Add size={ICON_SIZE.table} aria-hidden />
                       {t('equipment.cameras.addReadoutMode')}

@@ -20,6 +20,7 @@ import {
   filterProjects,
   groupByRig,
   movedPosition,
+  priorityRank,
 } from './list-model';
 import { ProjectListPage } from './ProjectListPage';
 
@@ -210,6 +211,19 @@ describe('Modell (FA-PRJ-13/14/19)', () => {
     expect(movedPosition([a, b, c], b.id, -1)).toBeNull();
     expect(movedPosition([a, b, c], c.id, 1)).toBeNull(); // Entwurf hat keine Priorität
   });
+
+  it('Prüfung 28.09.2026: mit Filter zählen Priorität und Verschieben in der ganzen Rig-Gruppe', () => {
+    const p = (n: number, name: string) =>
+      item(n, { approvalStatus: 'approved', status: 'active', priority: n, name });
+    const all = [p(1, 'A'), p(2, 'B'), p(3, 'C'), p(4, 'D')];
+    const shown = [all[1], all[3]] as typeof all; // sichtbar: B, D
+    expect(priorityRank(all, ID(104))).toBe(4);
+    // „D nach oben“ in der gefilterten Liste: D rückt vor B, also auf Position 2 (nicht 1).
+    expect(movedPosition(all, ID(104), -1, shown)).toBe(2);
+    expect(movedPosition(all, ID(102), 1, shown)).toBe(4);
+    expect(movedPosition(all, ID(102), -1, shown)).toBeNull();
+    expect(priorityRank(all, item(9, {}).id)).toBeNull();
+  });
 });
 
 describe('S-30 (Komponente)', () => {
@@ -315,6 +329,32 @@ describe('S-30 (Komponente)', () => {
     fireEvent.click(await screen.findByRole('button', { name: '„Zweites“ nach oben' }));
     await waitFor(() => expect(state.priority).toHaveBeenCalledWith(ID(102), 1));
     expect(screen.getByRole('button', { name: '„Erstes“ nach oben' })).toBeDisabled();
+  });
+
+  it('Prüfung 28.09.2026: gefiltert zeigt die Liste die echte Priorität und verschiebt absolut', async () => {
+    state.items = [1, 2, 3, 4].map((n) =>
+      item(n, {
+        approvalStatus: 'approved',
+        status: 'active',
+        priority: n,
+        name: n % 2 === 0 ? `Nebel ${String(n)}` : `Galaxie ${String(n)}`,
+      }),
+    );
+    state.priority.mockResolvedValue({});
+    renderPage();
+    await screen.findByRole('link', { name: 'Nebel 4' });
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Suche' }), {
+      target: { value: 'Nebel' },
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'Galaxie 1' })).not.toBeInTheDocument(),
+    );
+    const row = (name: string) => screen.getByRole('link', { name }).closest('tr') as HTMLElement;
+    expect(within(row('Nebel 2')).getByText('2')).toBeInTheDocument();
+    expect(within(row('Nebel 4')).getByText('4')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '„Nebel 2“ nach oben' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '„Nebel 4“ nach oben' }));
+    await waitFor(() => expect(state.priority).toHaveBeenCalledWith(ID(104), 2));
   });
 
   it('Chips: Filter setzen ergibt Chip, × entfernt ihn; Suche in Name und Katalognamen', async () => {

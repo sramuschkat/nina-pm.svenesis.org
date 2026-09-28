@@ -779,6 +779,16 @@ export function useEditor<K extends EquipmentKind, D extends object>({
       setDraft(toDraft(first));
     }
   }
+  // Gewähltes Objekt nicht (mehr) in der Liste – Rest aus dem Cache des vorigen Mandanten oder
+  // inzwischen gelöscht: gilt als nicht gewählt (Prüfung 28.09.2026), sonst stünde es weiter rechts und
+  // *Speichern* spräche es an. Danach wird wie beim ersten Laden das erste Objekt vorgewählt.
+  if (selectedId !== null && list.data && !items.some((i) => i.id === selectedId)) {
+    setSelectedId(null);
+    setDraft(empty());
+    setClientErrors({});
+    setSaved(false);
+    setPicked(false);
+  }
   const selected = items.find((i) => i.id === selectedId) ?? null;
   const reset = () => {
     setClientErrors({});

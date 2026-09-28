@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import { formatCoordinate, parseCoordinate } from './coords';
@@ -50,6 +51,30 @@ describe('parseCoordinate (§2.6)', () => {
     expect(parseCoordinate('dec', '90')).toEqual({ ok: true, valueDeg: 90 });
   });
 
+  it('Himmelsrichtung bei Breite und Länge: Süd/West negativ, nicht zusammen mit Vorzeichen', () => {
+    const w = Math.round(-(9 + 8 / 60) * 1e6) / 1e6;
+    expect(parseCoordinate('lon', '9° 8′ W')).toEqual({ ok: true, valueDeg: w });
+    expect(parseCoordinate('lon', '9 8 w')).toEqual({ ok: true, valueDeg: w });
+    expect(parseCoordinate('lon', '9.7 E')).toEqual({ ok: true, valueDeg: 9.7 });
+    expect(parseCoordinate('lon', '9,7 O')).toEqual({ ok: true, valueDeg: 9.7 });
+    expect(parseCoordinate('lat', '33° 52′ S')).toEqual({
+      ok: true,
+      valueDeg: Math.round(-(33 + 52 / 60) * 1e6) / 1e6,
+    });
+    expect(parseCoordinate('lat', '52.5N')).toEqual({ ok: true, valueDeg: 52.5 });
+    // „s“ direkt nach der Ziffer bleibt das Sekundenzeichen.
+    expect(parseCoordinate('lat', '52 22 14s')).toEqual({
+      ok: true,
+      valueDeg: Math.round((52 + 22 / 60 + 14 / 3600) * 1e6) / 1e6,
+    });
+    expect(parseCoordinate('lon', '-9 W')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseCoordinate('lat', '10 W')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseCoordinate('lon', '190 W')).toEqual({ ok: false, reason: 'range' });
+    expect(parseCoordinate('lon', 'W')).toEqual({ ok: false, reason: 'invalid' });
+    // Deklination und RA kennen keine Himmelsrichtung.
+    expect(parseCoordinate('dec', '10 S')).toEqual({ ok: false, reason: 'invalid' });
+  });
+
   it('ungültig und leer', () => {
     expect(parseCoordinate('ra', 'abc')).toEqual({ ok: false, reason: 'invalid' });
     expect(parseCoordinate('ra', '10h 61m')).toEqual({ ok: false, reason: 'invalid' });
@@ -92,6 +117,81 @@ describe('CoordinateInput', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Pflichtfeld');
     await userEvent.click(input);
     await userEvent.type(input, '-12 30 00');
+    await userEvent.tab();
     expect(onChange).toHaveBeenLastCalledWith(-12.5);
+  });
+
+  it('Prüfung 28.09.2026: Übernahme erst beim Verlassen bzw. mit Enter, nie Teilwerte je Tastendruck', async () => {
+    const onChange = vi.fn();
+    function Controlled() {
+      const [value, setValue] = useState<number | null>(null);
+      return (
+        <CoordinateInput
+          kind="ra"
+          valueDeg={value}
+          onChange={(v) => {
+            onChange(v);
+            setValue(v);
+          }}
+        />
+      );
+    }
+    render(<Controlled />);
+    const input = screen.getByLabelText('Rektaszension');
+    await userEvent.type(input, '10h 42m 44s');
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith(
+      Math.round((10 + 42 / 60 + 44 / 3600) * 15 * 1e6) / 1e6,
+    );
+    expect(input).toHaveValue('10h 42m 44.0s');
+    // Enter übernimmt ebenfalls; unveränderter Wert meldet nichts erneut.
+    await userEvent.clear(input);
+    await userEvent.type(input, '12h{Enter}');
+    expect(onChange).toHaveBeenLastCalledWith(180);
+    await userEvent.tab();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('ungültiger Text wird nie übernommen, bleibt stehen und meldet sich als ungültig', async () => {
+    const onChange = vi.fn();
+    const onValidityChange = vi.fn();
+    render(
+      <CoordinateInput
+        kind="lon"
+        valueDeg={9.7}
+        onChange={onChange}
+        onValidityChange={onValidityChange}
+      />,
+    );
+    const input = screen.getByLabelText('Länge');
+    await userEvent.clear(input);
+    await userEvent.type(input, '9° 8′ X');
+    await userEvent.tab();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input).toHaveValue('9° 8′ X');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(onValidityChange).toHaveBeenLastCalledWith(false);
+    // Himmelsrichtung W → West negativ; das Feld ist wieder gültig.
+    await userEvent.clear(input);
+    await userEvent.type(input, '9° 8′ W');
+    await userEvent.tab();
+    expect(onChange).toHaveBeenLastCalledWith(Math.round(-(9 + 8 / 60) * 1e6) / 1e6);
+    expect(onValidityChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('neuer Wert von außen ersetzt den Text und löscht einen Fehler', () => {
+    const { rerender } = render(
+      <CoordinateInput kind="lat" valueDeg={52} onChange={() => undefined} />,
+    );
+    const input = screen.getByLabelText('Breite');
+    expect(input).toHaveValue('52° 00′ 00″');
+    rerender(<CoordinateInput kind="lat" valueDeg={-33.5} onChange={() => undefined} />);
+    expect(input).toHaveValue('−33° 30′ 00″');
+    rerender(
+      <CoordinateInput kind="lat" valueDeg={-33.5} format="decimal" onChange={() => undefined} />,
+    );
+    expect(input).toHaveValue('-33.5');
   });
 });

@@ -33,6 +33,7 @@ import {
   toDraft,
 } from './model';
 import { ProjectMoreActions, researchLinks } from './ProjectEditorPage';
+import { rebaseDraft } from '../../lib/draft-rebase';
 
 const state = vi.hoisted(() => ({
   me: null as unknown,
@@ -315,6 +316,29 @@ describe('Modell (FA-PRJ-20/21, FA-BPL-03/05)', () => {
     expect(changedFields({ ...d, targetName: '  ' }, p)).toEqual({ targetName: null });
   });
 
+  it('Prüfung 28.09.2026: Entwurf gegen seine Basis – fremde Änderungen werden nicht zurückgesetzt', () => {
+    const v3 = project([]);
+    const draft = { ...toDraft(v3), descriptionMd: 'meine Notiz' };
+    // Anderer Admin speichert Zielname und Mindesthöhe (v4); der Fensterfokus lädt neu.
+    const v4 = project([], {
+      targetName: 'Pacman',
+      conditions: { ...v3.conditions, minAltitudeDeg: 40 },
+      version: 4,
+    });
+    // Vorher: Diff gegen v4 mit If-Match 4 → Zielname und Mindesthöhe still zurückgesetzt.
+    expect(changedFields(draft, v4)).toMatchObject({ targetName: 'NGC 281' });
+    // Jetzt: Entwurf auf v4 heben, Diff gegen die neue Basis enthält nur die eigene Änderung.
+    const rebased = rebaseDraft(draft, toDraft(v3), toDraft(v4));
+    expect(rebased).not.toBeNull();
+    expect(rebased?.targetName).toBe('Pacman');
+    expect(rebased?.conditions.minAltitudeDeg).toBe(40);
+    expect(changedFields(rebased as typeof draft, v4)).toEqual({ descriptionMd: 'meine Notiz' });
+    // Beide ändern die Beschreibung verschieden → Konflikt, die Basis bleibt (If-Match 3 → 412).
+    const v5 = project([], { descriptionMd: 'fremde Notiz', version: 5 });
+    expect(rebaseDraft(draft, toDraft(v3), toDraft(v5))).toBeNull();
+    expect(changedFields(draft, v3)).toEqual({ descriptionMd: 'meine Notiz' });
+  });
+
   it('Vorlagen-Regel: passende Kombination, gesperrt mit Aufnahmen; Filterrad-Kennzeichen', () => {
     const tpl = (id: number, telescopeId: string | null, cameraId: string | null) =>
       ({ id: ID(id), name: `T${String(id)}`, telescopeId, cameraId }) as ExposureTemplateView;
@@ -507,6 +531,43 @@ describe('Belichtungsplan (Komponente)', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Zeile Ha aktiv')).toBeDisabled();
     await expectNoSeriousA11y();
+  });
+});
+
+describe('Vorlage auf alle Panels (Prüfung 28.09.2026)', () => {
+  it('fragt nach, sobald irgendein Panel Zeilen hat – auch wenn das offene leer ist', async () => {
+    const tpl = {
+      id: ID(700),
+      name: 'SHO 300 s',
+      telescopeId: null,
+      cameraId: null,
+    } as ExposureTemplateView;
+    const p = project([]);
+    const second = {
+      ...p.panels[0],
+      id: ID(51),
+      panelIndex: 1,
+      label: 'P2',
+      lines: [line(1, 'Ha')],
+    };
+    state.applyTemplate.mockReset();
+    state.applyTemplate.mockResolvedValue({ ...p });
+    plan({ ...p, panels: [...p.panels, second] } as ProjectView, true, [tpl]);
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage' }));
+    fireEvent.change(screen.getByLabelText('Vorlage'), { target: { value: tpl.id } });
+    fireEvent.click(screen.getByLabelText('Auf alle Panels'));
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlage anwenden' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('in allen Panels');
+    expect(state.applyTemplate).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vorlage anwenden' }));
+    await waitFor(() =>
+      expect(state.applyTemplate).toHaveBeenCalledWith(p.id, {
+        templateId: tpl.id,
+        panelId: null,
+        replace: true,
+      }),
+    );
   });
 });
 

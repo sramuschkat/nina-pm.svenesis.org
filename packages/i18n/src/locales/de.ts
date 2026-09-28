@@ -1048,6 +1048,8 @@ export const de = {
       templatesEdit: 'Vorlagen bearbeiten',
       templateConfirmTitle: 'Vorlage anwenden?',
       templateConfirm: 'Die Zeilen ohne Aufnahmen werden durch die Zeilen der Vorlage ersetzt.',
+      templateConfirmAll:
+        'Die Zeilen ohne Aufnahmen werden in allen Panels durch die Zeilen der Vorlage ersetzt.',
       quick: 'Schnelleingabe',
       filter: 'Filter',
       filterChoose: '– Filter –',

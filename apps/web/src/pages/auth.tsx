@@ -4,12 +4,12 @@
  * nur relativ (TK 5.2).
  */
 import { safeNext } from '@nina-pm/shared';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../api/client';
-import { ApiError, discordLoginUrl, useAuth } from '../auth';
+import { ApiError, discordLoginUrl, ME_QUERY_KEY, useAuth } from '../auth';
 import { ProblemMessage } from '../components/ProblemMessage';
 import { SiteTime } from '../components/SiteTime';
 import { LogoMark, TextLayout } from '../layout/Frame';
@@ -88,9 +88,13 @@ export function SelectTenantPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
+  const client = useQueryClient();
   const choose = useMutation({
     mutationFn: (body: { tenantKey: string } | { system: true }) => api.setContext(body),
     onSuccess: async () => {
+      // Daten des vorigen Mandanten verwerfen (Prüfung 28.09.2026): sonst zeigen Seiten kurz dessen
+      // Cache und Editoren wählen dessen Objekte vor. Nur die Anmeldung (`auth`) bleibt.
+      client.removeQueries({ predicate: (q) => q.queryKey[0] !== ME_QUERY_KEY[0] });
       await refresh();
       await navigate(next);
     },

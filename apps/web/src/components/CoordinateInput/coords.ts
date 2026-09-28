@@ -2,6 +2,8 @@
  * Koordinaten lesen und schreiben (components.md §2.6). Beide Schreibweisen werden bei der Eingabe
  * angenommen; RA wird auf [0, 360) normalisiert, Dec/Breite auf [-90, 90] **begrenzt** (Fehler statt
  * stillem Abschneiden), Länge auf [-180, 180]. Rundung auf 1e-6° wie die Engine (canonical-json.md).
+ * Breite und Länge nehmen zusätzlich eine nachgestellte Himmelsrichtung an (`52° 22′ N`, `9° 8′ W`; Süd und
+ * West negativ, Ost auch als „O“) – vorher blieb „9° 8′ W“ ungültig und der Teilwert „9° 8′“ (Ost) stehen.
  */
 export type CoordKind = 'ra' | 'dec' | 'lon' | 'lat';
 export type CoordFormat = 'sexagesimal' | 'decimal';
@@ -37,9 +39,51 @@ const DECIMAL = /^([+\-−])?\s*(\d{1,3}(?:[.,]\d+)?)\s*°?$/;
 /** Nur Stunden („12h“, „5,5 h“) – für RA. */
 const HOURS = /^(\d{1,2}(?:[.,]\d+)?)\s*h$/i;
 
+/** Himmelsrichtung am Ende: Breite N/S, Länge E/O (Ost) bzw. W; Süd und West sind negativ. */
+const HEMISPHERE: Readonly<Partial<Record<CoordKind, Readonly<Record<string, 1 | -1>>>>> = {
+  lat: { N: 1, S: -1 },
+  lon: { E: 1, O: 1, W: -1 },
+};
+
+/**
+ * Trennt eine nachgestellte Himmelsrichtung ab („9° 8′ W“ → „9° 8′“, −1). Ein kleines „s“ direkt nach einer
+ * Ziffer bleibt das Sekundenzeichen („52 22 14s“). Vorzeichen **und** Richtung zugleich ist ungültig.
+ */
+function splitHemisphere(
+  kind: CoordKind,
+  text: string,
+): { text: string; sign: 1 | -1 } | { invalid: true } {
+  const table = HEMISPHERE[kind];
+  const m = table ? /^(.*?)\s*([a-z])$/i.exec(text) : null;
+  if (!table || !m) return { text, sign: 1 };
+  const body = m[1] ?? '';
+  const letter = m[2] ?? '';
+  const sign = table[letter.toUpperCase()];
+  if (sign === undefined || (letter === 's' && /\d$/.test(text.slice(0, -1))))
+    return { text, sign: 1 };
+  if (body === '' || /^[+\-−]/.test(body)) return { invalid: true };
+  return { text: body, sign };
+}
+
 export function parseCoordinate(kind: CoordKind, input: string): ParseResult {
-  const text = input.trim().replace(/\s+/g, ' ');
-  if (text === '') return { ok: true, valueDeg: null };
+  const trimmed = input.trim().replace(/\s+/g, ' ');
+  if (trimmed === '') return { ok: true, valueDeg: null };
+  const split = splitHemisphere(kind, trimmed);
+  if ('invalid' in split) return { ok: false, reason: 'invalid' };
+  const parsed = parseUnsigned(kind, split.text);
+  if (!parsed.ok || parsed.valueDeg === null) return parsed;
+  const value = split.sign * parsed.valueDeg;
+  if (kind === 'ra') {
+    if (value < 0 || value > 360) return { ok: false, reason: 'range' };
+    return { ok: true, valueDeg: round6(value === 360 ? 0 : value) };
+  }
+  const { min, max } = COORD_RANGE[kind];
+  if (value < min || value > max) return { ok: false, reason: 'range' };
+  return { ok: true, valueDeg: round6(value) };
+}
+
+/** Zahlwert ohne Himmelsrichtung (Vorzeichen vorn erlaubt), noch ohne Bereichsprüfung. */
+function parseUnsigned(kind: CoordKind, text: string): ParseResult {
   let value: number | undefined;
   const sex = SEXAGESIMAL.exec(text);
   const hours = kind === 'ra' ? HOURS.exec(text) : null;
@@ -60,13 +104,7 @@ export function parseCoordinate(kind: CoordKind, input: string): ParseResult {
     value = sign * Number((dec[2] ?? '').replace(',', '.'));
   }
   if (!Number.isFinite(value)) return { ok: false, reason: 'invalid' };
-  if (kind === 'ra') {
-    if (value < 0 || value > 360) return { ok: false, reason: 'range' };
-    return { ok: true, valueDeg: round6(value === 360 ? 0 : value) };
-  }
-  const { min, max } = COORD_RANGE[kind];
-  if (value < min || value > max) return { ok: false, reason: 'range' };
-  return { ok: true, valueDeg: round6(value) };
+  return { ok: true, valueDeg: value };
 }
 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0');
