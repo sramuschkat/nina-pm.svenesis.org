@@ -58,7 +58,10 @@ describe('NightEvents', () => {
     const table = screen.getByRole('table', { name: 'Überflüge von Raumstationen und Hubble' });
     const row = within(table).getAllByRole('row')[1];
     expect(row?.textContent).toContain('verschwindet im Erdschatten');
-    expect(row?.textContent).toMatch(/bis −0,6 mag/);
+    // Höchster Punkt auf die Sekunde verfeinert (Astronomie-Prüfung 28.09.2026): die ISS steigt bis zum
+    // Schatteneintritt um 21:25 auf 29° NW und wird dabei −1,0 mag hell (Vorlage: 20-s-Probe, 25°, −0,6 mag).
+    expect(row?.textContent).toContain('21:25 · 29° NW');
+    expect(row?.textContent).toMatch(/bis −1(,0)? mag/);
     expect(screen.getByText('Zeiten in Standortzeit (CDT).')).toBeTruthy();
     await expectNoSeriousA11y();
   });

@@ -157,6 +157,24 @@ describe('Dämmerung je Grenze (night.md §2–§4)', () => {
     expect(n.nightWindow).toMatchObject({ startUtc: n.noonStartUtc, endUtc: n.noonEndUtc });
   });
 
+  it('Rand der Polarnacht 78,22° N, 12.11.: Fenster auf Mittag–Mittag begrenzt, keine Überschneidung (Prüfung 28.09.2026)', () => {
+    const at78 = (night: string) =>
+      nightTimes({
+        site: { latDeg: 78.22, lonDeg: 15.65 },
+        night,
+        timeZoneTransitions: tz(['2026-10-25T01:00:00Z', 60]),
+      });
+    const prev = at78('2026-11-11');
+    const n = at78('2026-11-12');
+    const next = at78('2026-11-13');
+    expect(n.twilight.civil.kind).toBe('normal');
+    expect(n.nightWindow.startUtc).toBeGreaterThanOrEqual(n.noonStartUtc);
+    expect(n.nightWindow.endUtc).toBeLessThanOrEqual(n.noonEndUtc);
+    expect(n.nightWindow.slots).toBe((n.nightWindow.endUtc - n.nightWindow.startUtc) / 300);
+    expect(prev.nightWindow.endUtc).toBeLessThanOrEqual(n.nightWindow.startUtc);
+    expect(n.nightWindow.endUtc).toBeLessThanOrEqual(next.nightWindow.startUtc);
+  });
+
   it('Polartag 78° N, 21.06.: h_min über −6° → Fenster 18:00 Standortzeit + 12 h', () => {
     const n = nightTimes({
       site: { latDeg: 78, lonDeg: 15.6 },

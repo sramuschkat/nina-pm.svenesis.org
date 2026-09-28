@@ -55,6 +55,7 @@ export {
 export {
   METEOR_SHOWERS,
   meteorRate,
+  radiantAt,
   showersTonight,
   type MeteorRate,
   type MeteorShower,

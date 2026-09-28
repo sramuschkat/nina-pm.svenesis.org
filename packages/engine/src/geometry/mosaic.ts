@@ -4,7 +4,7 @@
  * Panel-Masken (Höhe, Mondabstand, `tM`) rechnet die Planung produktiv mit diesen Koordinaten (A-19).
  */
 import { asin, atan, atan2, cos, sin } from '../math';
-import { DEG, RAD } from '../astro/angles';
+import { DEG, RAD, norm360 } from '../astro/angles';
 import { q } from '../round';
 
 export interface MosaicInput {
@@ -60,7 +60,7 @@ function frame(raDeg: number, decDeg: number): { p: Vec; e: Vec; n: Vec } {
   };
 }
 
-/** Inverse Gnomonik: Standardkoordinaten (Grad, Tangentialebene) → α, δ (Grad, ungerundet). */
+/** Inverse Gnomonik: Standardkoordinaten (Grad, Tangentialebene) → α ∈ [0, 360), δ (Grad, ungerundet). */
 export function offsetToSky(
   raDeg: number,
   decDeg: number,
@@ -74,7 +74,7 @@ export function offsetToSky(
   const theta = atan2(xi, eta);
   const dec = asin(sin(d0) * cos(rho) + cos(d0) * sin(rho) * cos(theta));
   const dra = atan2(sin(rho) * sin(theta), cos(d0) * cos(rho) - sin(d0) * sin(rho) * cos(theta));
-  return { raDeg: raDeg + dra * DEG, decDeg: dec * DEG };
+  return { raDeg: norm360(raDeg + dra * DEG), decDeg: dec * DEG };
 }
 
 /** Feldrotation `γ` am Panel (Grad, ungerundet), exakt über Vektoren (§2.2). */

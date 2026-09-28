@@ -225,6 +225,8 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       for (const line of panel.lines) {
         const d = def++;
         if (opts.allowedPanel !== null && panel.index !== opts.allowedPanel) continue;
+        // Mosaik ohne Panel-Einheiten: nur Panels, die selbst über der Mindesthöhe stehen (A-19).
+        if (panel.canImage && panel.canImage[cs] !== true) continue;
         if (line.exposureS <= 0 || !line.enabled || line.tier < 0) continue;
         const rest = restOf(line);
         if (rest <= 0 && !opts.includeCompleted) continue;

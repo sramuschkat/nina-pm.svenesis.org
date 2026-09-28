@@ -40,7 +40,8 @@ export function altAz(
  */
 export function refractionArcmin(geometricAltDeg: number): number {
   const h = geometricAltDeg < -1 ? -1 : geometricAltDeg;
-  return 1.02 / tanD(h + 10.3 / (h + 5.11));
+  // Am Zenit liefert die Formel einen winzigen negativen Wert (−0,0019′, Meeus Kap. 16): auf 0 begrenzt.
+  return Math.max(0, 1.02 / tanD(h + 10.3 / (h + 5.11)));
 }
 
 /** Scheinbare Höhe aus geometrischer Höhe. */

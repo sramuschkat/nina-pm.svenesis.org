@@ -105,7 +105,7 @@ export interface SolarEclipse {
   readonly c4Utc: number;
   /** Geometrische Sonnenhöhe zur größten Finsternis, Grad. */
   readonly altDeg: number;
-  /** Erste und letzte 2-min-Probe zwischen C1 und C4 mit der Sonne über −0,5°. */
+  /** Erste und letzte 2-min-Probe zwischen C1 und C4 mit der Sonne über −0,833° (Oberrand am Horizont). */
   readonly visFromUtc: number;
   readonly visToUtc: number;
   readonly whole: boolean;
@@ -198,7 +198,8 @@ const clamp1 = (x: number) => Math.max(-1, Math.min(1, x));
 /**
  * Sonnenfinsternisse am Standort ab `fromUtc` (Vorlage `solarEclipses`), höchstens `count` innerhalb von
  * `maxYears` Jahren: an jedem Neumond nahe genug am Knoten (geozentrisch ≤ 1,8°) der topozentrische Mond vor
- * der topozentrischen Sonne; gelistet, wenn die Sonne zwischen C1 und C4 einmal über −0,5° steht.
+ * der topozentrischen Sonne; gelistet, wenn die Sonne zwischen C1 und C4 einmal über −0,833° steht (Oberrand
+ * am Horizont wie bei Sonnenauf-/-untergang; vorher −0,5°, Astronomie-Prüfung 28.09.2026).
  */
 export function solarEclipses(
   fromUtc: number,
@@ -238,7 +239,7 @@ export function solarEclipses(
       c3 = bisect(f2, tm, c4, 24);
     }
     const vis: number[] = [];
-    for (let tt = c1; tt <= c4; tt += 120) if (sunAt(tt, site).altDeg > -0.5) vis.push(tt);
+    for (let tt = c1; tt <= c4; tt += 120) if (sunAt(tt, site).altDeg > -0.8333) vis.push(tt);
     const visFrom = vis[0];
     const visTo = vis[vis.length - 1];
     if (visFrom === undefined || visTo === undefined) continue;

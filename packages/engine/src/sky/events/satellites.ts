@@ -12,6 +12,7 @@ import { type Site } from '../../astro/horizon';
 import { sunApparent } from '../../astro/sun';
 import { gmstDeg, jdeFromUnix, jdFromUnix } from '../../astro/time';
 import { roundHalfAwayFromZero } from '../../round';
+import { goldenMin } from './common';
 import { parseTle, sgp4, sgp4init, WGS72_RADIUS_KM, type Sgp4Record } from './sgp4';
 
 /** Satellit mit Bahnelementen, wie in `sky-events.json` (`satellites[]`). */
@@ -139,7 +140,8 @@ export interface SatellitePass {
   /** Erste und letzte sichtbare Sekunde (Unix, UTC), auf ≈ 1 s verfeinert. */
   readonly startUtc: number;
   readonly endUtc: number;
-  /** Höchster Punkt unter den 20-s-Proben. */
+  /** Höchster Punkt: um die höchste 20-s-Probe per Goldenem Schnitt auf eine Sekunde verfeinert (Prüfung
+   *  28.09.2026 – die Probe allein lag bei hohen Überflügen bis 7,5° zu tief). */
   readonly max: PassPoint;
   /** Hellste geschätzte Helligkeit der Proben, mag (`null` ohne Schätzung). */
   readonly brightestMag: number | null;
@@ -156,6 +158,28 @@ const PASS_MIN_ALT_DEG = 10;
 const PASS_SUN_MAX_DEG = -6;
 /** Mindestdauer eines gelisteten Überflugs, s. */
 const PASS_MIN_DURATION_S = 60;
+
+/**
+ * Höchster Punkt eines Überflugs zwischen den Nachbarproben der höchsten Probe (±20 s, innerhalb des sichtbaren
+ * Abschnitts): Goldener Schnitt auf 1 s, dann auf die volle Sekunde gerundet. Nie tiefer als die Probe.
+ */
+function refineMax(
+  rec: Sgp4Record,
+  std: number,
+  site: SatelliteObserver,
+  sample: PassPoint,
+  start: number,
+  end: number,
+): PassPoint {
+  const a = Math.max(start, sample.t - PASS_STEP_S);
+  const b = Math.min(end, sample.t + PASS_STEP_S);
+  if (b - a < 2) return sample;
+  const alt = (t: number) => satelliteLook(rec, t, site, std)?.altDeg ?? -90;
+  const t = roundHalfAwayFromZero(goldenMin((x) => -alt(x), a, b, 1));
+  const lk = satelliteLook(rec, t, site, std);
+  if (!lk || lk.altDeg <= sample.altDeg) return sample;
+  return { t, altDeg: lk.altDeg, azDeg: lk.azDeg, mag: lk.mag };
+}
 
 /**
  * Sichtbare Überflüge zwischen `startUtc` und `endUtc` (Vorlage `satellitePasses`): über 10°, im Sonnenlicht,
@@ -213,14 +237,19 @@ export function satellitePasses(
       const stop = Math.min(t, endUtc);
       const end = stop > last ? edge(last, stop) : last;
       const faded = !!look && look.altDeg > PASS_MIN_ALT_DEG && !look.lit;
-      if (end - start >= PASS_MIN_DURATION_S && cur.max)
+      const max = cur.max ? refineMax(rec, sat.std, site, cur.max, start, end) : null;
+      const brightest =
+        max?.mag != null && (cur.brightest === null || max.mag < cur.brightest)
+          ? max.mag
+          : cur.brightest;
+      if (end - start >= PASS_MIN_DURATION_S && max)
         passes.push({
           id: sat.id,
           name: sat.name,
           startUtc: start,
           endUtc: end,
-          max: cur.max,
-          brightestMag: cur.brightest,
+          max,
+          brightestMag: brightest,
           faded,
           track: cur.track,
         });

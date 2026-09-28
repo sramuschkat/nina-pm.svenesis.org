@@ -233,9 +233,15 @@ export function setupFromGrid(grid: GridInput): NightSetup {
         safe: lineSafe(l),
       };
     };
+    // Mosaik ohne Panel-Einheiten (produktiv): jedes Panel mit eigener Höhenmaske (A-19).
+    const ownMask = (index: number) =>
+      sw.panelCoordinates && panelIdx === null && project.panels.length > 1
+        ? (mask.panels.find((m) => m.index === index)?.canImage ?? null)
+        : null;
     const byPanel = project.panels.map((p) => ({
       index: p.index,
       lines: p.lines.map((l) => toLine(p, l)),
+      canImage: ownMask(p.index),
     }));
     if (!projectLines.has(u.projectId))
       projectLines.set(u.projectId, { projectId: u.projectId, panels: byPanel });

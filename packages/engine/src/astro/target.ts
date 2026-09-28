@@ -57,6 +57,8 @@ export function targetAt(target: Target, unixSec: number, site: Site): TargetAtS
 
 /**
  * Erste obere (bzw. untere, NT-26) Kulmination in `[windowStart, windowEnd)`; sonst `null`.
+ * Ohne jährliche Aberration (TK 9.1): gegen einen vollen scheinbaren Ort (astropy) ≤ 20 s für |δ| < 85°, am
+ * Polarstern bis ≈ 2 min (Astronomie-Prüfung 28.09.2026) – das Plugin flippt ohnehin nach NINAs eigener Zeit.
  * `t = t_start + ((Ziel − LHA(t_start)) mod 360°) / 15,0410686 °/h`, auf ganze Sekunden abgerundet.
  */
 export function meridianTransitUtc(

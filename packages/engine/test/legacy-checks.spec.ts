@@ -48,7 +48,7 @@ describe('verify-planner.js:423 – Meeus 22.a (Nutation und Schiefe)', () => {
   });
 });
 
-describe('verify-planner.js:428-441 – Mond gegen JPL Horizons (mit ΔT, ±0,01°)', () => {
+describe('verify-planner.js:428-441 – Mond gegen JPL Horizons (mit ΔT, ±0,0075°; erreicht ≤ 0,0065°)', () => {
   /** Horizons, astrometrisch ICRF (J2000), geozentrisch – Zeitpunkte in UT. */
   const HORIZONS: [string, number, number][] = [
     ['2026-09-20T00:00:00Z', 280.166075044, -27.134002192],
@@ -76,7 +76,7 @@ describe('verify-planner.js:428-441 – Mond gegen JPL Horizons (mit ΔT, ±0,01
         Math.cos(a) * Math.tan(d) * nu.depsDeg);
     const meanDec = m.decDeg - (Math.sin(e) * Math.cos(a) * nu.dpsiDeg + Math.sin(a) * nu.depsDeg);
     const j = precessToJ2000(meanRa, meanDec, jde);
-    expect(separationDeg(j.raDeg, j.decDeg, ra, dec)).toBeLessThan(0.01);
+    expect(separationDeg(j.raDeg, j.decDeg, ra, dec)).toBeLessThan(0.0075);
   });
 });
 

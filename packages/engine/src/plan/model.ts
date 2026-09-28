@@ -88,7 +88,13 @@ export interface PastSlots {
 /** Panels eines Projekts mit allen Zeilen (auch bei Panel-Einheiten), nach Panel-Index. */
 export interface ProjectLines {
   readonly projectId: string;
-  readonly panels: readonly { readonly index: number; readonly lines: readonly UnitLine[] }[];
+  readonly panels: readonly {
+    readonly index: number;
+    readonly lines: readonly UnitLine[];
+    /** Höhe und Dämmerung am Panel selbst (produktiv, Mosaik ohne Panel-Einheiten, A-19; Prüfung
+     *  28.09.2026); `null` = es gilt die Maske der Einheit. `pick` überspringt Panels außerhalb. */
+    readonly canImage: readonly boolean[] | null;
+  }[];
 }
 
 /** Alles, was `paint` außer den Profilen braucht. */

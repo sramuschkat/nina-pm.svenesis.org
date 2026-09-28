@@ -71,8 +71,9 @@ export function unproject(view: SkyView, x: number, y: number): Vec3 {
 export const degPerPixel = (view: SkyView) => view.fovDeg / view.width;
 
 /**
- * Positionswinkel der Bildoberkante gegen Himmelsnord am Punkt `v` (Grad, Nord über Ost) – damit
- * zeichnet die Karte das Bildfeld eines Rigs mit dem richtigen Winkel, auch in der Horizontansicht.
+ * Bildschirmwinkel der Himmelsnordrichtung am Punkt `v` (Grad), gemessen von „oben“ gegen den Uhrzeigersinn
+ * (bei Ost links also nach Ost) – der Aufrufer addiert den Positionswinkel eines Objekts (Nord über Ost) und
+ * zeichnet damit Bildfeld und Ellipsen auch in der Horizontansicht richtig gedreht. Genau am Pol 0 (entartet).
  */
 export function screenNorthAngle(view: SkyView, v: Vec3): number {
   const p = project(view, v);

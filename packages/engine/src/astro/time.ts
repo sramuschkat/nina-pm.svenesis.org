@@ -5,7 +5,11 @@
  */
 import { norm360 } from './angles';
 
-/** ΔT = TT − UT1 in Sekunden, gültig 2026–2030 (Fehler < 0,2 s, TK 9.1). */
+/**
+ * ΔT = TT − UT1 in Sekunden, gültig 2026–2030 (Fehler < 0,2 s, TK 9.1). UT1 = UTC angenommen (|DUT1| ≤ 0,9 s).
+ * Außerhalb bleibt der Fehler klein (Astronomie-Prüfung 28.09.2026): 1990 +11 s, 2000 +5 s, 2010 +3 s – der Mond
+ * verschiebt sich dadurch höchstens ≈ 6″, Präzession und Nutation praktisch gar nicht.
+ */
 export const DELTA_T_S = 69;
 
 export const J2000 = 2451545.0;

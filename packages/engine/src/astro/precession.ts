@@ -3,7 +3,7 @@
  * (δ = 89,85° für den J2000-Pol im Jahr 2026). Die Mittelwert-Rektaszension mit J2000 statt Datum
  * kostet 70 s im Meridiandurchgang (WS-24) – deshalb immer präzedieren.
  */
-import { asinD, atan2D, cosD, norm360, sinD } from './angles';
+import { atan2D, cosD, norm360, sinD } from './angles';
 import { centuries } from './time';
 
 interface Angles {
@@ -48,5 +48,5 @@ export function precessToJ2000(
   const a = cosD(decDeg) * sinD(r);
   const b = cosD(theta) * cosD(decDeg) * cosD(r) + sinD(theta) * sinD(decDeg);
   const c = -sinD(theta) * cosD(decDeg) * cosD(r) + cosD(theta) * sinD(decDeg);
-  return { raDeg: norm360(atan2D(a, b) - zeta), decDeg: asinD(Math.max(-1, Math.min(1, c))) };
+  return { raDeg: norm360(atan2D(a, b) - zeta), decDeg: atan2D(c, Math.sqrt(a * a + b * b)) };
 }

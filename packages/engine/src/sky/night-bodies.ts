@@ -2,12 +2,14 @@
  * Mond und Planeten einer Nacht am Standort („Mond & Planeten“ auf *Heute Nacht*, Wunsch Sven 27.09.2026):
  * Höhe, Azimut, Helligkeit bzw. beleuchteter Anteil in festen Schritten und der beste Moment je Körper.
  * Portiert aus `legacy/astro-tools-2026-09-21/js/observing-planner.js` (`renderPlanets`, `bestSample`) und
- * `astro-core.js` (`bodyAt`): Mond topozentrisch und scheinbar (`moonAt`), Planeten geometrisch aus `planetAt`.
+ * `astro-core.js` (`bodyAt`): Mond topozentrisch und scheinbar (`moonAt`), Planeten aus `planetAt` mit derselben
+ * Refraktion (Saemundsson) – vorher geometrisch, dadurch gingen Planeten scheinbar einige Minuten später auf als
+ * der Mond bei gleicher Höhe (Astronomie-Prüfung 28.09.2026).
  * Nur Anzeige – die Planung nutzt keine Planeten.
  */
 import { norm180 } from '../astro/angles';
 import { moonAt, sunAt } from '../astro/bodies';
-import { altAz, localApparentSiderealDeg, type Site } from '../astro/horizon';
+import { altAz, apparentAltitudeDeg, localApparentSiderealDeg, type Site } from '../astro/horizon';
 import { jdeFromUnix } from '../astro/time';
 import { PLANET_IDS, planetAt, type PlanetId } from './planets';
 
@@ -40,7 +42,7 @@ export function bodyAtSite(id: NightBodyId, unixSec: number, site: Site): BodySa
   const p = planetAt(id, jdeFromUnix(unixSec));
   const ha = norm180(localApparentSiderealDeg(unixSec, site.lonDeg) - p.raDeg);
   const { altDeg, azDeg } = altAz(ha, p.decDeg, site.latDeg);
-  return { altDeg, azDeg, mag: p.mag, illumPct: null };
+  return { altDeg: apparentAltitudeDeg(altDeg), azDeg, mag: p.mag, illumPct: null };
 }
 
 /** Proben von `fromUtc` bis `toUtc` (einschließlich) im Abstand `stepSec` (Vorlage: 10 min). */

@@ -10,10 +10,12 @@ export const tanD = (x: number) => tan(x * RAD);
 export const asinD = (x: number) => asin(x) * DEG;
 export const atan2D = (y: number, x: number) => atan2(y, x) * DEG;
 
-/** Auf [0, 360) normalisieren (rules/engine.md Nr. 9). */
+/** Auf [0, 360) normalisieren (rules/engine.md Nr. 9). Winzige negative Werte ergäben sonst 360 und −0 bliebe
+ *  −0 (Astronomie-Prüfung 28.09.2026). */
 export function norm360(x: number): number {
   const r = x % 360;
-  return r < 0 ? r + 360 : r;
+  const y = r < 0 ? r + 360 : r;
+  return y >= 360 ? 0 : y + 0;
 }
 
 /** Auf (−180, 180] normalisieren. */
