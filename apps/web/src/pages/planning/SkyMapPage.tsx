@@ -168,15 +168,25 @@ export function SkyMapPage() {
   const state = useMemo(() => stateFromParams(params), [params]);
   const projectParam = params.get('projekt');
   const objectParam = params.get('objekt');
-  // Aus der aktuellen Adresse ableiten, nicht aus dem Zustand des letzten Renderns: zwei schnelle
-  // Änderungen (z. B. Mosaik horizontal, dann vertikal) überschreiben sich sonst gegenseitig.
+  // Auf der zuletzt gesetzten Adresse aufbauen, nicht auf der des letzten Renderns: zwei schnelle Änderungen
+  // (z. B. Mosaik horizontal, dann vertikal) überschrieben sich sonst gegenseitig. `setParams(prev => …)` reicht
+  // dafür nicht – React Router übergibt als `prev` die Adresse des letzten Renderns; seit die Karte teurer zeichnet
+  // (Landschaft, Milchstraße), ging so im E2E-Test „Mosaik 2×2“ die erste Änderung verloren (28.09.2026).
+  const pending = useRef<URLSearchParams | null>(null);
+  // Sobald eine Adresse gerendert ist, gilt wieder sie (auch nach Zurück-Taste oder Links von außen).
+  useEffect(() => {
+    pending.current = null;
+  }, [params]);
   const update = (patch: Partial<SkyMapState>) => {
     const extra: Record<string, string> = {};
     if (projectParam) extra.projekt = projectParam;
     if (objectParam) extra.objekt = objectParam;
-    setParams((prev) => paramsFromState({ ...stateFromParams(prev), ...patch }, extra), {
-      replace: true,
-    });
+    const next = paramsFromState(
+      { ...stateFromParams(pending.current ?? params), ...patch },
+      extra,
+    );
+    pending.current = next;
+    setParams(next, { replace: true });
   };
   const num = useNumber();
   const ids = { map: useId() };
