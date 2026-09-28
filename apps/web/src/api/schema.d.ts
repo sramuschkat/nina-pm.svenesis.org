@@ -16397,6 +16397,7 @@ export interface components {
              * @description UUID
              */
             projectCreatedBy: string | null;
+            canCorrect: boolean;
             /**
              * Format: uuid
              * @description UUID

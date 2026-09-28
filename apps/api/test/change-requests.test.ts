@@ -68,7 +68,7 @@ async function setup() {
     rig.id,
     {
       slots: [
-        { position: 0, filterId: ha.id, ninaFilterName: 'Ha 3nm' },
+        { position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' },
         { position: 1, filterId: oiii.id, ninaFilterName: 'OIII 3nm' },
       ],
     },

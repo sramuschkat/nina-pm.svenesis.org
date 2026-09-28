@@ -61,6 +61,12 @@ export const NightSessionLineRow = z
     projectName: z.string(),
     /** Eigentümer (für *Korrektur erfassen* als User, FA-AUS-06). */
     projectCreatedBy: Uuid.nullable(),
+    /**
+     * Darf der Aufrufer diese Zeile korrigieren und ihre Aufnahmen verwerfen (`session.correct` mit der
+     * Mandanteneinstellung `userCorrections`, FA-AUS-06)? Vom Server gerechnet, weil User die Einstellung
+     * nicht lesen dürfen (Entscheidung Sven 28.09.2026).
+     */
+    canCorrect: z.boolean(),
     exposureLineId: Uuid,
     filterShortName: z.string(),
     exposureS: z.number().min(0),

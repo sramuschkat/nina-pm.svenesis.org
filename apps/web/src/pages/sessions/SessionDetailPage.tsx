@@ -7,7 +7,7 @@
  * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats, Protokoll (AP-30, `SessionLogPanel`).
  * Plangrafik, Kennzahlen und Transits folgen mit ihren Paketen (R2/R3/R4).
  */
-import { can, formatNightKey, rejectReasons } from '@nina-pm/shared';
+import { formatNightKey, rejectReasons } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ import {
   type NightSessionDetail,
   type NightSessionLineRow,
 } from '../../api/client';
-import { useAuth, useCan } from '../../auth';
+import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
@@ -45,7 +45,6 @@ export function SessionDetailPage() {
     queryFn: () => sessionsApi.get(id),
   });
   const canReview = useCan('session.review');
-  const { context } = useAuth();
   const [tab, setTab] = useState<Tab>('plan');
   const [correctLine, setCorrectLine] = useState<string | null>(null);
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter>('all');
@@ -65,7 +64,7 @@ export function SessionDetailPage() {
   const night = formatNightKey(s.night);
   const unassigned = d.captures.filter((c) => c.assignment === 'unassigned');
   // Nur Zeilen, die der Nutzer korrigieren darf (wie `CorrectButton`); sonst antwortet die API mit 403.
-  const correctable = d.rows.filter((r) => canCorrect(context, r));
+  const correctable = d.rows.filter(canCorrect);
   return (
     <div className={styles.page}>
       <PageHeader
@@ -282,15 +281,13 @@ function PlanTable({
   );
 }
 
-/** Admins immer; User nur für eigene Projekte – ob der Mandant das erlaubt, entscheidet die API. */
-function canCorrect(
-  context: ReturnType<typeof useAuth>['context'],
-  row: NightSessionLineRow,
-): boolean {
-  return can(context, 'session.correct', {
-    ...(row.projectCreatedBy ? { createdBy: row.projectCreatedBy } : {}),
-    settings: { userCorrections: true },
-  });
+/**
+ * Darf der Nutzer die Zeile korrigieren? Die API rechnet das je Zeile mit der Mandanteneinstellung
+ * `userCorrections` (`canCorrect`), die User nicht lesen dürfen – vorher zeigte die Seite den Knopf auch bei
+ * abgeschalteter Einstellung, und die API antwortete 403 (28.09.2026).
+ */
+function canCorrect(row: NightSessionLineRow): boolean {
+  return row.canCorrect;
 }
 
 function CorrectButton({
@@ -301,8 +298,7 @@ function CorrectButton({
   onCorrect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { context } = useAuth();
-  if (!canCorrect(context, row)) return null;
+  if (!canCorrect(row)) return null;
   return (
     <button type="button" className={styles.button} onClick={() => onCorrect(row.exposureLineId)}>
       {t('sessions.plan.correctRow')}
@@ -491,7 +487,8 @@ function Captures({
           ? c.rejected
           : true,
   );
-  const ownerOf = new Map(detail.rows.map((r) => [r.projectId, r.projectCreatedBy]));
+  // Verwerfen einzelner Aufnahmen: dieselbe Berechtigung wie die Korrektur der Zeile ihres Projekts.
+  const correctableProjects = new Set(detail.rows.filter(canCorrect).map((r) => r.projectId));
   const unassigned = detail.captures.filter((c) => c.assignment === 'unassigned');
   // AP-26a: Zeit bleibt immer sichtbar; Kennzeichen und Ergebnis weichen zuerst.
   const captureColumns: DataColumn<NightSessionCapture>[] = [
@@ -560,7 +557,7 @@ function Captures({
         c.frameType === 'light' && c.result === 'saved' && c.assignment === 'assigned' ? (
           <RejectButton
             capture={c}
-            createdBy={c.projectId ? (ownerOf.get(c.projectId) ?? null) : null}
+            allowed={c.projectId !== null && correctableProjects.has(c.projectId)}
             onReject={setRejecting}
             onChanged={onChanged}
           />
@@ -631,20 +628,16 @@ function Captures({
  */
 function RejectButton({
   capture,
-  createdBy,
+  allowed,
   onReject,
   onChanged,
 }: {
   capture: NightSessionCapture;
-  createdBy: string | null;
+  allowed: boolean;
   onReject: (c: NightSessionCapture) => void;
   onChanged: () => Promise<unknown>;
 }) {
   const { t } = useTranslation();
-  const allowed = useCan('session.correct', {
-    ...(createdBy ? { createdBy } : {}),
-    settings: { userCorrections: true },
-  });
   const undo = useMutation({
     mutationFn: () => sessionsApi.reject(capture.id, false, null),
     onSettled: onChanged,

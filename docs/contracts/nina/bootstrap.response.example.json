@@ -66,21 +66,21 @@
         "shortName": "L",
         "name": "Luminance",
         "color": "#c8c8c8",
-        "position": 0,
+        "position": 1,
         "ninaFilterName": "L"
       },
       {
         "shortName": "Ha",
         "name": "H-alpha 3 nm",
         "color": "#d0342c",
-        "position": 1,
+        "position": 2,
         "ninaFilterName": "Ha 3nm"
       },
       {
         "shortName": "R",
         "name": "Red",
         "color": "#e53935",
-        "position": 2,
+        "position": 3,
         "ninaFilterName": "Red"
       }
     ],

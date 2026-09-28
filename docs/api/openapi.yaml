@@ -8764,6 +8764,8 @@ components:
             - "null"
           format: uuid
           description: UUID
+        canCorrect:
+          type: boolean
         exposureLineId:
           type: string
           format: uuid
@@ -8805,6 +8807,7 @@ components:
         - projectId
         - projectName
         - projectCreatedBy
+        - canCorrect
         - exposureLineId
         - filterShortName
         - exposureS
@@ -10222,7 +10225,7 @@ components:
                     maxLength: 256
                   position:
                     type: integer
-                    minimum: 0
+                    minimum: 1
                   ninaFilterName:
                     type:
                       - string
@@ -13602,7 +13605,7 @@ components:
             properties:
               position:
                 type: integer
-                minimum: 0
+                minimum: 1
               name:
                 type: string
                 maxLength: 256

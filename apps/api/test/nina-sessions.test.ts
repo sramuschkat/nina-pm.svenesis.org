@@ -52,7 +52,7 @@ async function setup() {
   await eq.updateScheduler(rig.id, SCHEDULER, now);
   await eq.putFilterWheel(
     rig.id,
-    { slots: [{ position: 0, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
+    { slots: [{ position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
     now,
   );
   const project = async (rigId: string) => {
@@ -508,7 +508,7 @@ describe('Heartbeat: NINA-Einstellungen (NT-22, NT-E1, M2, M7)', () => {
   it('umbenannter Filter an bestätigtem Platz → unbestätigt, filter_wheel_changed, targets mit null', async () => {
     const t = await setup();
     const beat = await t.hb(t.tokens.a1, {
-      filterWheel: [{ position: 0, name: 'H-alpha 7nm', focusOffset: 0 }],
+      filterWheel: [{ position: 1, name: 'H-alpha 7nm', focusOffset: 0 }],
       rotator: {
         connected: true,
         rangeType: 'QUARTER',
@@ -687,16 +687,16 @@ describe('Filterrad aus dem Heartbeat (P1-4, NT-E1)', () => {
   it('Meldung wird gespeichert, fehlender Platz bleibt bestätigt, unveränderte Meldung höchstens stündlich', async () => {
     const t = await setup();
     const wheel = [
-      { position: 1, name: 'L', focusOffset: 0 },
-      { position: 2, name: 'R', focusOffset: 12 },
+      { position: 2, name: 'L', focusOffset: 0 },
+      { position: 3, name: 'R', focusOffset: 12 },
     ];
     await t.hb(t.tokens.a1, { filterWheel: wheel });
     const view = async () => (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body;
     const first = await view();
     expect(first.reported).toEqual({ reportedAt: '2026-09-18T14:00:00Z', slots: wheel });
-    // Platz 0 fehlt in der Meldung: weder Alarmcode noch Entbestätigung (wie settingsMismatch).
-    const slot0 = (first.slots as Body[]).find((x) => x.position === 0);
-    expect(slot0?.ninaConfirmedAt).not.toBeNull();
+    // Platz 1 fehlt in der Meldung: weder Alarmcode noch Entbestätigung (wie settingsMismatch).
+    const slot1 = (first.slots as Body[]).find((x) => x.position === 1);
+    expect(slot1?.ninaConfirmedAt).not.toBeNull();
     const state = await s.pg.admin.query("SELECT last_state FROM nina_instance WHERE name = 'A1'");
     expect(
       (state.rows[0] as { last_state: { mismatchCodes: string[] } }).last_state.mismatchCodes,
@@ -709,20 +709,20 @@ describe('Filterrad aus dem Heartbeat (P1-4, NT-E1)', () => {
     expect(((await view()).reported as Body).reportedAt).toBe('2026-09-18T15:10:00Z');
     // Geänderte Meldung sofort.
     s.clock.advance(60_000);
-    await t.hb(t.tokens.a1, { filterWheel: [{ position: 1, name: 'L', focusOffset: 0 }] });
+    await t.hb(t.tokens.a1, { filterWheel: [{ position: 2, name: 'L', focusOffset: 0 }] });
     expect(((await view()).reported as Body).reportedAt).toBe('2026-09-18T15:11:00Z');
   });
 
   it('umbenannter bestätigter Platz → unbestätigt, settings_version steigt genau einmal', async () => {
     const t = await setup();
     const before = (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body.settingsVersion as number;
-    const renamed = [{ position: 0, name: 'H-alpha 7nm', focusOffset: 0 }];
+    const renamed = [{ position: 1, name: 'H-alpha 7nm', focusOffset: 0 }];
     await t.hb(t.tokens.a1, { filterWheel: renamed });
     await t.hb(t.tokens.a1, { filterWheel: renamed });
     const view = (await t.web(`/rigs/${t.rig.id}/filter-wheel`)).body;
     expect(view.settingsVersion).toBe(before + 1);
-    const slot0 = (view.slots as Body[]).find((x) => x.position === 0);
-    expect(slot0).toMatchObject({
+    const slot1 = (view.slots as Body[]).find((x) => x.position === 1);
+    expect(slot1).toMatchObject({
       ninaConfirmedAt: null,
       ninaConfirmedBy: null,
       reportedName: 'H-alpha 7nm',

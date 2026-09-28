@@ -60,7 +60,7 @@ async function setup() {
   await eq.updateScheduler(rig.id, SCHEDULER, now);
   await eq.putFilterWheel(
     rig.id,
-    { slots: [{ position: 0, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
+    { slots: [{ position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
     now,
   );
   /** Vollständiges Projekt (Name, Rig, Koordinaten, Ziel, eine Zeile) des Mitglieds `as`. */

@@ -77,7 +77,7 @@ export const NinaHeartbeat = z
       .optional(),
     lastMeasuredRotationDeg: Angle.nullable().optional(),
     filterWheel: z
-      .array(z.object({ position: z.number().int().min(0), name: Text, focusOffset: z.number() }))
+      .array(z.object({ position: z.number().int().min(1), name: Text, focusOffset: z.number() }))
       .max(64)
       .nullable()
       .optional(),

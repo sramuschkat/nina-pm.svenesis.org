@@ -167,12 +167,23 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
 
   app.openapi(sessionDetailRoute, async (c) => {
     const svc = await services();
-    const detail = await svc
-      .repositories(requireTenant(c).tenant)
+    const { auth, tenant } = requireTenant(c);
+    const repos = svc.repositories(tenant);
+    const detail = await repos
       .sessionReview()
       .detail(c.req.valid('param').id, NIGHT_SESSION_CAPTURE_LIMIT);
+    // Je Zeile, ob der Aufrufer korrigieren darf – dieselbe Prüfung wie bei Korrektur und Verwerfen unten.
+    const { userCorrections } = (await repos.tenant().settings()).settings;
+    const rows = detail.rows.map((r) => ({
+      ...r,
+      canCorrect: can(auth, 'session.correct', {
+        tenantId: tenant.tenantId,
+        ...(r.projectCreatedBy ? { createdBy: r.projectCreatedBy } : {}),
+        settings: { userCorrections },
+      }),
+    }));
     c.header('cache-control', 'no-store');
-    return c.json(detail, 200);
+    return c.json({ ...detail, rows }, 200);
   });
 
   app.openapi(sessionCorrectionRoute, async (c) => {
