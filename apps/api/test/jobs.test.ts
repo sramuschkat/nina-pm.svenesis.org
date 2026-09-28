@@ -42,7 +42,7 @@ const sim = (day: number) => {
   return {
     kind: 'multi_sim' as const,
     input,
-    dedupeKey: dedupeKeys.multiSim(input),
+    dedupeKey: dedupeKeys.multiSim(input, MEMBER.user),
     createdBy: MEMBER.user,
   };
 };

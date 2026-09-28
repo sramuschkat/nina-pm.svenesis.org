@@ -187,6 +187,9 @@ function TemplatePicker({
   const [templateId, setTemplateId] = useState('');
   const [allPanels, setAllPanels] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  // „Auf alle Panels“ ersetzt die Zeilen **aller** Panels – bestätigen, sobald irgendein Panel Zeilen hat
+  // (Prüfung 28.09.2026: vorher zählten nur die Zeilen des offenen Panels).
+  const replacesLines = allPanels ? project.panels.some((p) => p.lines.length > 0) : hasLines;
   const apply = () =>
     run(() =>
       projectsApi.applyTemplate(project.id, {
@@ -228,7 +231,7 @@ function TemplatePicker({
         type="button"
         className={styles.button}
         disabled={!allowed || templateId === ''}
-        onClick={() => (hasLines ? setConfirm(true) : void apply())}
+        onClick={() => (replacesLines ? setConfirm(true) : void apply())}
       >
         {t('projectEditor.plan.templateApply')}
       </button>
@@ -241,7 +244,11 @@ function TemplatePicker({
       <ConfirmDialog
         open={confirm}
         title={t('projectEditor.plan.templateConfirmTitle')}
-        consequence={t('projectEditor.plan.templateConfirm')}
+        consequence={
+          allPanels
+            ? t('projectEditor.plan.templateConfirmAll')
+            : t('projectEditor.plan.templateConfirm')
+        }
         confirmLabel={t('projectEditor.plan.templateApply')}
         onConfirm={apply}
         onCancel={() => setConfirm(false)}

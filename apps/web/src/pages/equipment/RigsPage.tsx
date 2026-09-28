@@ -57,6 +57,7 @@ import {
 } from './shared';
 import { NINA_PATHS } from '../nina/NinaLayout';
 import { UptakeStatus } from '../nina/UptakeStatus';
+import { rebaseDraft } from '../../lib/draft-rebase';
 import { FilterWheelSection } from './FilterWheelSection';
 import { SORT_CHAIN_LABEL, SortChainEditor } from './SortChainEditor';
 import type { SortChainKey } from '@nina-pm/shared';
@@ -154,6 +155,12 @@ export function RigsPage() {
   const { save, remove } = useEquipmentMutations('rigs');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RigDraft>(emptyRig);
+  /**
+   * Fassung, auf der der Entwurf beruht (Prüfung 28.09.2026): gespeichert wird mit deren
+   * `settingsVersion`, nicht mit der einer später nachgeladenen Liste – sonst überschriebe der ganze
+   * Entwurf fremde Änderungen ohne 412. Gesetzt bei Auswahl, nach dem Speichern und beim Neuladen.
+   */
+  const [base, setBase] = useState<RigView | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saved, setSaved] = useState(false);
   const [picked, setPicked] = useState(false);
@@ -170,15 +177,30 @@ export function RigsPage() {
     if (first) {
       setSelectedId(first.id);
       setDraft(rigDraft(first));
+      setBase(first);
     }
   }
   const selected = items.find((r) => r.id === selectedId) ?? null;
+  // Neuere Fassung des gewählten Rigs (Fensterfokus, eigenes Speichern von Filterrad/Scheduler): Entwurf
+  // darauf heben, solange sich die Änderungen nicht überschneiden; sonst Konflikthinweis und 412.
+  if (selected && base?.id === selected.id && selected.settingsVersion > base.settingsVersion) {
+    const next = rebaseDraft(draft, rigDraft(base), rigDraft(selected));
+    if (next) {
+      setDraft(next);
+      setBase(selected);
+    }
+  }
+  const stale =
+    selected !== null &&
+    base?.id === selected.id &&
+    selected.settingsVersion > base.settingsVersion;
   const select = (id: string) => {
     const rig = items.find((r) => r.id === id);
     if (!rig) return;
     setSelectedId(id);
     setCreating(false);
     setDraft(rigDraft(rig));
+    setBase(rig);
     setErrors({});
     setSaved(false);
     save.reset();
@@ -191,6 +213,7 @@ export function RigsPage() {
       setSelectedId(null);
       setCreating(false);
       setDraft(emptyRig());
+      setBase(null);
     },
   );
   const set = <K extends keyof RigDraft>(key: K, value: RigDraft[K]) => {
@@ -206,15 +229,27 @@ export function RigsPage() {
   const saveRig = useMutation({
     mutationFn: (body: object) =>
       selected
-        ? equipmentApi.updateRig(selected.id, body, selected.settingsVersion)
+        ? equipmentApi.updateRig(
+            selected.id,
+            body,
+            (base?.id === selected.id ? base : selected).settingsVersion,
+          )
         : save.mutateAsync({ id: null, body }),
     onSuccess: async (view) => {
-      await client.invalidateQueries({ queryKey: equipmentKey('rigs') });
       const rig = view as RigView;
+      // Basis vor dem Neuladen setzen, damit die frische Liste nicht als fremde Änderung gilt.
       setSelectedId(rig.id);
       setCreating(false);
       setDraft(rigDraft(rig));
+      setBase(rig);
       setSaved(true);
+      // Filterrad und Übernahmestatus tragen die Einstellungsversion mit: ohne Neuladen schickte das
+      // Filterrad danach die alte Version (falsches 412, Prüfung 28.09.2026).
+      await Promise.all([
+        client.invalidateQueries({ queryKey: equipmentKey('rigs') }),
+        client.invalidateQueries({ queryKey: ['equipment', 'filter-wheel', rig.id] }),
+        client.invalidateQueries({ queryKey: ['nina-instances'] }),
+      ]);
     },
     onError: (e) => reveal(serverFieldErrors(e)),
   });
@@ -235,7 +270,10 @@ export function RigsPage() {
   const reload = async () => {
     const fresh = await rigs.refetch();
     const rig = fresh.data?.find((r) => r.id === selectedId);
-    if (rig) setDraft(rigDraft(rig));
+    if (rig) {
+      setDraft(rigDraft(rig));
+      setBase(rig);
+    }
     saveRig.reset();
   };
 
@@ -265,6 +303,7 @@ export function RigsPage() {
     setSelectedId(null);
     setCreating(true);
     setDraft(emptyRig());
+    setBase(null);
     setNeedsDefaults(true);
     setErrors({});
     setSaved(false);
@@ -565,7 +604,7 @@ export function RigsPage() {
                 {rigTab ? (
                   <SaveError error={isConflict(saveRig.error) ? null : saveRig.error} />
                 ) : null}
-                {isConflict(saveRig.error) ? (
+                {isConflict(saveRig.error) || stale ? (
                   <div className={styles.warning} role="alert">
                     <p>{t('common.conflict')}</p>
                     <button type="button" className={styles.button} onClick={() => void reload()}>

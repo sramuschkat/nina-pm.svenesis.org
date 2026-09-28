@@ -1019,7 +1019,8 @@ CREATE TABLE session (
     nina_conditions jsonb,                         -- Mittel/Min/Max aus NINA-Geräten (FA-AUS-15 b)
     reviewed        boolean NOT NULL DEFAULT false,
     reviewed_by     uuid REFERENCES app_user(id),
-    kpis            jsonb,                         -- Effizienz, Overhead, Blockwechsel ... (nach Ende berechnet)
+    kpis            jsonb,                         -- Effizienz, Overhead, Blockwechsel ... (nach Ende berechnet);
+                                                   -- bis dahin nur {"leaseReleasedAt"}: Admin-Freigabe dieser Session (M5, Vorschlag 28.09.2026, execution.md §6)
     forecast_snapshot jsonb,                       -- Wetterbewertung zum Sessionbeginn
     outbox_pending  integer,                       -- offene Plugin-Meldungen beim Sessionende
     report_status   text NOT NULL DEFAULT 'none' CHECK (report_status IN ('none','pending','sent','failed','skipped')),  -- Nachtbericht (FA-AUS-21)

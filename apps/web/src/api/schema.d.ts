@@ -5181,7 +5181,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Angelegt */
+                /** @description Angelegt (bzw. eigenes Projekt mit dieser ID) */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -5210,6 +5210,15 @@ export interface paths {
                 };
                 /** @description resource.not_found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5566,7 +5575,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Dupliziert */
+                /** @description Dupliziert (bzw. eigenes Projekt mit dieser ID) */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -5595,6 +5604,15 @@ export interface paths {
                 };
                 /** @description resource.not_found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use (ID gehört einem anderen bzw. gelöschten Projekt) */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

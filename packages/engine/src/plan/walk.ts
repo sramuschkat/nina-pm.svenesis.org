@@ -215,6 +215,24 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     }
     return sec;
   };
+  /**
+   * Mosaik ohne Panel-Einheiten (A-19): das Panel steht über die ganze Belichtung samt Download über
+   * seiner Mindesthöhe – wie die Mondsicherheit ab Belichtungsbeginn (A-26, §8.5 Nr. 4). Slots, in denen
+   * die Einheit selbst nicht nutzbar ist (Nachtende-Kulanz hinter dem letzten Slot), regelt die Kulanz.
+   */
+  const panelCovers = (
+    row: Row,
+    mask: readonly boolean[],
+    cs: number,
+    atS: number,
+    cost: number,
+  ): boolean => {
+    if (mask[cs] !== true) return false;
+    const end = atS + cost;
+    for (let k = cs + 1; k < n && k * SLOT_S < end; k++)
+      if (mask[k] !== true && row.profile.canImage[k] === true) return false;
+    return true;
+  };
 
   /** §9 `pick`, seiteneffektfrei. */
   function pick(row: Row, cs: number, opts: PickOptions): Picked | null {
@@ -225,13 +243,15 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       for (const line of panel.lines) {
         const d = def++;
         if (opts.allowedPanel !== null && panel.index !== opts.allowedPanel) continue;
-        // Mosaik ohne Panel-Einheiten: nur Panels, die selbst über der Mindesthöhe stehen (A-19).
-        if (panel.canImage && panel.canImage[cs] !== true) continue;
         if (line.exposureS <= 0 || !line.enabled || line.tier < 0) continue;
         const rest = restOf(line);
         if (rest <= 0 && !opts.includeCompleted) continue;
         const cost = line.exposureS + dl;
         if (cost > opts.targetRemainingSec) continue;
+        // Mosaik ohne Panel-Einheiten: nur Panels, die selbst über der Mindesthöhe stehen, und zwar
+        // über die ganze Belichtung, nicht nur im Startslot (A-19).
+        if (panel.canImage && !panelCovers(row, panel.canImage, cs, opts.atS ?? cs * SLOT_S, cost))
+          continue;
         const lunar = line.tier > 0;
         const offset = opts.atS === undefined ? 0 : opts.atS - cs * SLOT_S;
         if (lunar && (line.safe[cs] !== true || headroomOf(line, cs) - offset < cost)) continue;
@@ -393,8 +413,11 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       blocks.push(block);
       lastClosed = block;
     } else {
-      // Block ohne Belichtung entfällt, seine Slots sind Leerlauf (§8.4).
-      const first = Math.floor(block.startS / SLOT_S);
+      // Block ohne Belichtung entfällt, seine Slots sind Leerlauf (§8.4) – außer dem angeschnittenen
+      // ersten Slot, in den die letzte Belichtung des vorigen Blocks derselben Einheit hineinläuft.
+      let first = Math.floor(block.startS / SLOT_S);
+      const prev = lastClosed as WalkBlock | null;
+      if (prev !== null && prev.row === block.row && prev.endS > first * SLOT_S) first++;
       const last = Math.min(n, Math.ceil(atS / SLOT_S));
       for (let fs = Math.max(0, first); fs < last; fs++)
         if (assignment[fs] === block.row && !m.locked[fs]) assignment[fs] = -1;
@@ -491,7 +514,11 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       // den ersten Fenster-Slot, transit.md §3); sonst ab dem ersten gesperrten Fenster-Slot.
       const startSlot = Math.floor(tr.startS / SLOT_S);
       const startLocked = startSlot >= s && startSlot <= lastLocked;
-      const seriesS = startLocked ? tr.startS : Math.max(tr.startS, firstWindow * SLOT_S);
+      // Neuplanung mitten im Fenster (§5.3): die Serie beginnt frühestens nach Uhrstart und Slew.
+      const seriesS = Math.max(
+        startLocked ? tr.startS : Math.max(tr.startS, firstWindow * SLOT_S),
+        t + settings.slewCenterS,
+      );
       let untilS = Math.min(tr.endS, (lastLocked + 1) * SLOT_S);
       // Slotmitte-Regel: der angeschnittene letzte Fenster-Slot ist nicht gesperrt (Mitte ≥ Fensterende),
       // die Serie läuft trotzdem bis Fensterende (A-21, NIN5-5); der Folgeblock beginnt danach.
@@ -712,20 +739,32 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       let cs = Math.floor(t / SLOT_S);
       if (cs > s && assignment[cs] !== r) break;
       let allowed = row.profile.panelIndex;
-      // Mosaik ohne Panel-Einheiten: kurz vor Blockende auf das aktuelle Panel sperren (A-19).
+      // Mosaik ohne Panel-Einheiten: kurz vor Blockende auf das aktuelle Panel sperren (A-19) – aber nur,
+      // solange es die nächste Belichtung noch aufnehmen kann. Ist es untergegangen (eigene Maske),
+      // fertig oder mondunsicher, bleibt der Pool offen, statt den Rest des Laufs freizugeben (A-29);
+      // ein anderes Panel muss dann samt Slew und Filterwahl des neuen Blocks bis Blockende passen.
+      let switchS = 0;
       if (
         allowed === null &&
         multiPanel(row) &&
         currentPanel !== null &&
         blockEnd - t < row.profile.minTimeSec
-      )
-        allowed = currentPanel;
+      ) {
+        const stays = pick(row, Math.min(n - 1, Math.floor(t / SLOT_S)), {
+          targetRemainingSec: blockEnd - t,
+          includeCompleted: settings.bonusEnabled,
+          allowedPanel: currentPanel,
+          atS: t,
+        });
+        if (stays !== null) allowed = currentPanel;
+        else switchS = settings.slewCenterS + settings.filterChangeS;
+      }
       // Dither erst, wenn im Block noch eine Belichtung folgt (ENG5-6).
       if (ditherDue) {
         ditherDue = false;
         const after = t + settings.ditherSettleS;
         const next = pick(row, Math.min(n - 1, Math.floor(after / SLOT_S)), {
-          targetRemainingSec: blockEnd - after,
+          targetRemainingSec: blockEnd - after - switchS,
           includeCompleted: settings.bonusEnabled,
           allowedPanel: allowed,
           atS: after,
@@ -822,7 +861,7 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       }
       cs = Math.min(n - 1, Math.floor(t / SLOT_S));
       const opts = {
-        targetRemainingSec: blockEnd - t,
+        targetRemainingSec: blockEnd - t - switchS,
         includeCompleted: false,
         allowedPanel: allowed,
         atS: t,
@@ -832,10 +871,15 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       if (!chosen && settings.bonusEnabled) {
         chosen = pick(row, cs, { ...opts, includeCompleted: true });
         const last = lastLine.get(r);
-        // A-23: letzte Zeile derselben Einheit, falls in cs sicher und bis Blockende passend.
+        // A-23: letzte Zeile derselben Einheit, falls in cs sicher und bis Blockende passend; im Mosaik
+        // ohne Panel-Einheiten nur, solange ihr Panel sichtbar bleibt (A-19).
+        const lastMask = last
+          ? (unitPanels(row).find((p) => p.index === last.panelIndex)?.canImage ?? null)
+          : null;
         if (
           !chosen &&
           last &&
+          (lastMask === null || panelCovers(row, lastMask, cs, t, last.line.exposureS + dl)) &&
           (last.line.tier <= 0 ||
             headroomOf(last.line, cs) - (t - cs * SLOT_S) >= last.line.exposureS + dl) &&
           last.line.exposureS + dl <= blockEnd - t
@@ -855,7 +899,7 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         const graceLimit = limits.length > 0 ? Math.min(...limits) : blockEnd;
         if (blockEnd === nightEnd && !laterAssigned && !graceUsed && graceLimit > blockEnd) {
           const grace = pick(row, cs, {
-            targetRemainingSec: graceLimit - t,
+            targetRemainingSec: graceLimit - t - switchS,
             includeCompleted: settings.bonusEnabled,
             allowedPanel: allowed,
             atS: t,

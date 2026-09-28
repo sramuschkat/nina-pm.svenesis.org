@@ -738,6 +738,8 @@ Alles, was länger als ~5 s dauern kann oder große Daten erzeugt, läuft als **
 3. Frontend pollt `GET /web/v1/jobs/{id}` (Status, Fortschritt, Download-Link).
 4. Der Zeitplan `tick-5min` übernimmt liegengebliebene Jobs (`pending` älter als 2 min oder `running` älter als 20 min; höchstens 3 Versuche, `discord_post` 5) – damit kein Job verloren geht, wenn der asynchrone Aufruf scheitert.
 
+> **Spec-Ergänzung (Vorschlag 28.09.2026, Freigabe Sven):** Der Schlüssel `multi_sim:<rigId>:<nightFrom>` aus Punkt 1 lässt das auslösende Mitglied und die Optionen weg – ein zweiter Auslöser mit anderen `nights`, `weather` oder `includeOwnDrafts` (der Worker rechnet dann mit den Entwürfen von `job.created_by`) bekäme den offenen Job eines anderen Mitglieds bzw. einer anderen Einstellung. Verbindlich ist daher **`multi_sim:<rigId>:<nightFrom>:<memberId>:<optionsHash>`**; `optionsHash` = FNV-1a (32 Bit, 8 Hex-Zeichen) über die kanonische JSON-Liste aller übrigen Eingabefelder (Schlüssel sortiert, nach zod-Standardwerten), sodass neue ergebnisrelevante Optionen automatisch eingehen (`dedupeKeys.multiSim` in `packages/shared/src/contracts/jobs.ts`). Die Obergrenze von 3 offenen Jobs je Mitglied bleibt unverändert.
+
 | `job.kind` | Auslöser | Ergebnis |
 |---|---|---|
 | `multi_sim`, `impact` | Simulator, Warteschlange | Mehrnacht-Simulation, Auswirkungsvorschau (FA-SIM-04, FA-FRG-05) |

@@ -6,7 +6,15 @@
  * *Speichern* im Kopf der Rig-Karte sendet das Formular des aktiven Reiters (AP-26d).
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { useState, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,6 +30,8 @@ const state = vi.hoisted(() => ({
   lists: {} as Record<string, unknown[]>,
   scheduler: vi.fn(),
   updateRig: vi.fn(),
+  wheelVersion: 4,
+  putWheel: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -30,7 +40,25 @@ vi.mock('../../api/client', () => ({
     list: (kind: string) => Promise.resolve({ items: state.lists[kind] ?? [] }),
     schedulerSettings: (...args: unknown[]) => state.scheduler(...args) as Promise<unknown>,
     updateRig: (...args: unknown[]) => state.updateRig(...args) as Promise<unknown>,
-    filterWheel: () => Promise.resolve({ settingsVersion: 4, reported: null, slots: [] }),
+    filterWheel: () =>
+      Promise.resolve({
+        settingsVersion: state.wheelVersion,
+        reported: { reportedAt: '2026-09-24T10:00:00Z', slots: [{ position: 1, name: 'Ha' }] },
+        slots: [
+          {
+            position: 1,
+            filterId: '00000000-0000-4000-8000-000000000041',
+            ninaFilterName: null,
+            ninaConfirmedAt: null,
+            ninaConfirmedBy: null,
+            reportedName: 'Ha',
+            suggestion: 'Ha',
+            suggestedFilterId: null,
+            changedByNina: false,
+          },
+        ],
+      }),
+    putFilterWheel: (...args: unknown[]) => state.putWheel(...args) as Promise<unknown>,
   },
   ninaApi: { instances: () => Promise.resolve({ items: [] }) },
 }));
@@ -94,11 +122,12 @@ const scheduler: RigView['scheduler'] = {
 
 const rig = { id: ID(30), settingsVersion: 4, scheduler } as RigView;
 
-function wrap(children: ReactNode) {
+function wrap(
+  children: ReactNode,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <AuthProvider>{children}</AuthProvider>
       </MemoryRouter>
@@ -111,6 +140,8 @@ beforeEach(() => {
   state.lists = {};
   state.scheduler.mockReset();
   state.updateRig.mockReset();
+  state.putWheel.mockReset();
+  state.wheelVersion = 4;
 });
 
 /** Scheduler-Formular mit eigenem *Speichern* im Kopf (seit AP-26i nur noch im Nacht-Simulator). */
@@ -477,6 +508,75 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
     expect(screen.queryByLabelText('Strategie')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument();
+  });
+
+  describe('Prüfung 28.09.2026: gespeichert wird mit der Version der Entwurfsbasis', () => {
+    const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    it('fremde Änderung an einem anderen Feld: Entwurf übernimmt sie, Speichern mit neuer Version', async () => {
+      state.updateRig.mockImplementation((_id: string, body: object, v: number) =>
+        Promise.resolve({ ...full, ...body, settingsVersion: v + 1 }),
+      );
+      const client = newClient();
+      wrap(<RigsPage />, client);
+      await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rig Mein Name' } });
+      // Anderer Admin speichert Notizen (v5); der Fensterfokus lädt die Liste neu.
+      state.lists.rigs = [{ ...full, settingsVersion: 5, notes: 'Notiz vom Kollegen' }];
+      await act(() => client.invalidateQueries({ queryKey: ['equipment', 'rigs'] }));
+      await waitFor(() =>
+        expect(screen.getByLabelText('Notizen')).toHaveValue('Notiz vom Kollegen'),
+      );
+      expect(screen.getByLabelText('Name')).toHaveValue('Rig Mein Name');
+      fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+      await waitFor(() => expect(state.updateRig).toHaveBeenCalled());
+      const [, body, version] = state.updateRig.mock.calls[0] as [string, RigView, number];
+      expect([version, body.name, body.notes]).toEqual([5, 'Rig Mein Name', 'Notiz vom Kollegen']);
+    });
+
+    it('fremde Änderung am selben Feld: Konflikthinweis, Speichern mit alter Version (412)', async () => {
+      state.updateRig.mockRejectedValue(
+        new ApiError({ status: 412, code: 'resource.version_conflict' }),
+      );
+      const client = newClient();
+      wrap(<RigsPage />, client);
+      await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rig Mein Name' } });
+      state.lists.rigs = [{ ...full, settingsVersion: 5, name: 'Rig Kollege' }];
+      await act(() => client.invalidateQueries({ queryKey: ['equipment', 'rigs'] }));
+      expect(await screen.findByText(/Jemand anderes hat den Datensatz/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Name')).toHaveValue('Rig Mein Name');
+      fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+      await waitFor(() => expect(state.updateRig).toHaveBeenCalled());
+      expect(state.updateRig.mock.calls[0]?.[2]).toBe(4);
+      // „Neu laden“ übernimmt die fremde Fassung.
+      fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
+      await waitFor(() => expect(screen.getByLabelText('Name')).toHaveValue('Rig Kollege'));
+      expect(screen.queryByText(/Jemand anderes hat den Datensatz/)).not.toBeInTheDocument();
+    });
+
+    it('nach dem Speichern lädt das Filterrad die neue Version (kein falsches 412)', async () => {
+      state.updateRig.mockImplementation(() => {
+        state.wheelVersion = 5;
+        state.lists.rigs = [{ ...full, name: 'Rig Z', settingsVersion: 5 }];
+        return Promise.resolve({ ...full, name: 'Rig Z', settingsVersion: 5 });
+      });
+      state.putWheel.mockResolvedValue({ settingsVersion: 6, reported: null, slots: [] });
+      state.lists.filters = [{ id: ID(41), shortName: 'Ha', colorHex: '#FF0000', bandwidthNm: 3 }];
+      wrap(<RigsPage />);
+      await screen.findByRole('heading', { level: 2, name: 'Rig A' });
+      fireEvent.click(tab(/^Filterrad/));
+      await screen.findByRole('button', { name: 'Platz 1 bestätigen' });
+      fireEvent.click(tab(/^Allgemein/));
+      fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rig Z' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+      await screen.findByRole('heading', { level: 2, name: 'Rig Z' });
+      expect(state.updateRig.mock.calls[0]?.[2]).toBe(4);
+      fireEvent.click(tab(/^Filterrad/));
+      fireEvent.click(screen.getByRole('button', { name: 'Platz 1 bestätigen' }));
+      await waitFor(() => expect(state.putWheel).toHaveBeenCalled());
+      expect(state.putWheel.mock.calls[0]?.[2]).toBe(5);
+    });
   });
 
   it('rigTabOf: Ausrüstungsfelder auf „Ausrüstung“, übrige auf „Allgemein“', () => {

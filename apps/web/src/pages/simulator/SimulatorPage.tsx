@@ -220,7 +220,7 @@ export function SimulatorPage() {
   const key = request ? JSON.stringify(request) : '';
   const sim = useQuery({
     queryKey: ['simulation', key],
-    queryFn: () => run(request as SimulationRequest),
+    queryFn: ({ signal }) => run(request as SimulationRequest, signal),
     enabled: request !== null,
     staleTime: Infinity,
     retry: false,
@@ -437,7 +437,13 @@ export function SimulatorPage() {
       </div>
 
       {multiOpen && canSave && rig && night ? (
-        <MultiNightPanel rigId={rig.id} nightFrom={night} withDrafts={withDrafts} />
+        // Neuer Zustand je Rig, Startnacht und Entwurfswahl – sonst bliebe das Ergebnis der vorigen Auswahl stehen.
+        <MultiNightPanel
+          key={`${rig.id}|${night}|${withDrafts}`}
+          rigId={rig.id}
+          nightFrom={night}
+          withDrafts={withDrafts}
+        />
       ) : null}
 
       {sim.isError ? (

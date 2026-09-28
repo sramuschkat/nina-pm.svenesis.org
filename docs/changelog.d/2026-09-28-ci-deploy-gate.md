@@ -1,0 +1,7 @@
+### CI und Deploy-Tor: kein grüner Doku-Lauf über rotem `main`, `pr:land` mergt nur den geprüften Stand (2026-09-28)
+
+- **CI auf `main` immer vollständig** (`.github/workflows/ci.yml`): Die Abkürzung „nur Doku geändert → Tests, Build und E2E überspringen“ gilt nur noch in PRs. Auf `main` verglich der Filter bisher mit dem Vorgänger-Commit; war dessen Lauf rot und der nächste Merge reine Doku, endete der Lauf trotzdem grün, und `pnpm deploy:prod` hätte den ungeprüften Stand akzeptiert.
+- **Geschützte Kopien nie als Doku**: `legacy/**` und `packages/catalog-data/**` (auch deren `README.md`, geprüft von `tools/repo-check`) lösen in PRs immer die volle CI aus – das Muster `*/README.md` hatte sie mit erfasst.
+- **Deploy-Tor zählt nur vollständige Läufe** (`tools/deploy/src/ci-gate.ts`): Ein CI-Lauf mit übersprungenen Jobs genügt `pnpm deploy:prod` nicht mehr – weder auf HEAD noch als Lauf mit gleichem Git-Tree (sonst hätte ein reiner Doku-PR-Lauf die Lücke offen gehalten).
+- **`git fetch` wird geprüft** (`tools/deploy/src/git-checks.ts`): Scheitert `git fetch origin main` oder lässt sich `origin/main` nicht auflösen, bricht `pnpm deploy:prod` ab, statt gegen einen veralteten `origin/main` zu vergleichen.
+- **`pnpm pr:land` mergt nur den abgewarteten Kopf-Commit**: `headRefOid` wird vor dem Warten auf die CI gelesen, vor dem Merge verglichen und als `--match-head-commit` an `gh pr merge` übergeben. Kam während des Wartens ein Push dazu, bricht `pr:land` ab.

@@ -5,7 +5,9 @@
  */
 import { Temporal } from '@js-temporal/polyfill';
 import {
+  daysFromKey,
   jdeFromUnix,
+  keyFromDays,
   localApparentSiderealDeg,
   moonAt,
   precessToJ2000,
@@ -53,6 +55,18 @@ export function nightKeyAt(unixSec: number, timeZone: string): string {
   );
   const date = z.toPlainDate();
   return (z.hour < 12 ? date.subtract({ days: 1 }) : date).toString();
+}
+
+/**
+ * Uhrzeit innerhalb der Nacht `night` (Mittag bis Mittag, NT-01) → Unix-Sekunden: vor 12:00 der Morgen nach dem
+ * Abend `night`, sonst der Abend selbst. Die Uhrzeit-Eingabe der Sternkarte nahm vorher das Kalenderdatum des
+ * angezeigten Zeitpunkts – 01:30 in der Nacht 17./18. sprang so in die Nacht 16./17. (28.09.2026, P1-13).
+ */
+export function atNightClock(night: string, time: string, timeZone: string): number | null {
+  const m = /^(\d{2}):\d{2}/.exec(time);
+  if (!m) return null;
+  const date = Number(m[1]) < 12 ? keyFromDays(daysFromKey(night) + 1) : night;
+  return fromZoned(date, time, timeZone);
 }
 
 const toJ2000Vec = (raDeg: number, decDeg: number, jde: number) => {

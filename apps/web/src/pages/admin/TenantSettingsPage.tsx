@@ -10,20 +10,12 @@ import { tenantApi, type TenantSettings } from '../../api/client';
 import { useAuth } from '../../auth';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
+import { isTimeZone, timeZoneSuggestions } from '../../lib/time-zones';
 import styles from './admin.module.css';
 import { AdminLayout } from './AdminLayout';
 import { DateTime, problemCode } from './shared';
 
 const SETTINGS_KEY = ['tenant', 'settings'] as const;
-
-/** IANA-Zonen der Laufzeit (zur Auswahl; der Server prüft erneut). */
-function timeZones(): string[] {
-  try {
-    return Intl.supportedValuesOf('timeZone');
-  } catch {
-    return ['Europe/Berlin', 'UTC'];
-  }
-}
 
 type BoolKey =
   | 'adminSelfApproval'
@@ -40,7 +32,7 @@ export function TenantSettingsPage() {
   const [displayName, setDisplayName] = useState('');
   const [draft, setDraft] = useState<TenantSettings | null>(null);
   const [saved, setSaved] = useState(false);
-  const zones = useMemo(timeZones, []);
+  const zones = useMemo(timeZoneSuggestions, []);
   useEffect(() => {
     if (query.data) {
       setDisplayName(query.data.displayName);
@@ -75,7 +67,7 @@ export function TenantSettingsPage() {
     !!draft &&
     (displayName.trim() !== query.data.displayName ||
       Object.entries(draft).some(([k, v]) => query.data.settings[k as keyof TenantSettings] !== v));
-  const zoneInvalid = !!draft && !zones.includes(draft.tenantTimezone);
+  const zoneInvalid = !!draft && !isTimeZone(draft.tenantTimezone);
   const check = (key: BoolKey) =>
     draft ? (
       <label className={styles.check}>

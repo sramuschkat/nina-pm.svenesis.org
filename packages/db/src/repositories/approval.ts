@@ -25,6 +25,7 @@ import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 import { insertNotifications } from './notification';
+import { nextSubmitterRank, openRequests, renumberRanks } from './ranks';
 import { ProjectRepository, type ProjectDetail, type ProjectRow } from './project';
 
 type Tx = Transaction<Database>;
@@ -70,68 +71,6 @@ async function voteSnapshot(db: Kysely<Database> | Tx, tenantId: string, project
     voterIds: rows.map((r) => r.voterId),
     names: rows.map((r) => r.displayName),
   };
-}
-
-/**
- * Rang 1…n der offenen Gegenstände eines Einreichers in bisheriger Reihenfolge (FA-FRG-15): eingereichte
- * Projekte und offene Änderungsanträge (AP-32b) teilen sich eine Rangfolge.
- */
-export async function renumberRanks(db: Tx, tenantId: string, createdBy: string) {
-  const projects = await db
-    .selectFrom('project')
-    .select(['id', 'submitterRank', 'createdAt'])
-    .where('tenantId', '=', tenantId)
-    .where('createdBy', '=', createdBy)
-    .where('approvalStatus', '=', 'submitted')
-    .where('deletedAt', 'is', null)
-    .execute();
-  const requests = await db
-    .selectFrom('changeRequest')
-    .select(['id', 'submitterRank', 'createdAt'])
-    .where('tenantId', '=', tenantId)
-    .where('requestedBy', '=', createdBy)
-    .where('status', '=', 'open')
-    .execute();
-  const all = [
-    ...projects.map((r) => ({ ...r, table: 'project' as const })),
-    ...requests.map((r) => ({ ...r, table: 'changeRequest' as const })),
-  ].sort(
-    (a, b) =>
-      (a.submitterRank ?? Number.MAX_SAFE_INTEGER) - (b.submitterRank ?? Number.MAX_SAFE_INTEGER) ||
-      new Date(a.createdAt as unknown as string).getTime() -
-        new Date(b.createdAt as unknown as string).getTime() ||
-      (a.id < b.id ? -1 : 1),
-  );
-  for (const [i, r] of all.entries())
-    if (r.submitterRank !== i + 1)
-      await db
-        .updateTable(r.table)
-        .set({ submitterRank: i + 1 })
-        .where('tenantId', '=', tenantId)
-        .where('id', '=', r.id)
-        .execute();
-}
-
-/** Nächster freier Rang eines Einreichers (Ende der gemeinsamen Rangfolge). */
-export async function nextSubmitterRank(db: Tx, tenantId: string, createdBy: string) {
-  const [p, c] = await Promise.all([
-    db
-      .selectFrom('project')
-      .select((eb) => eb.fn.max('submitterRank').as('max'))
-      .where('tenantId', '=', tenantId)
-      .where('createdBy', '=', createdBy)
-      .where('approvalStatus', '=', 'submitted')
-      .where('deletedAt', 'is', null)
-      .executeTakeFirst(),
-    db
-      .selectFrom('changeRequest')
-      .select((eb) => eb.fn.max('submitterRank').as('max'))
-      .where('tenantId', '=', tenantId)
-      .where('requestedBy', '=', createdBy)
-      .where('status', '=', 'open')
-      .executeTakeFirst(),
-  ]);
-  return Math.max(Number(p?.max ?? 0), Number(c?.max ?? 0)) + 1;
 }
 
 export class ApprovalRepository extends TenantRepo {
@@ -610,12 +549,9 @@ export class ApprovalRepository extends TenantRepo {
         .where('approvalStatus', '=', 'submitted')
         .where('deletedAt', 'is', null)
         .execute();
-      const requests = await trx
-        .selectFrom('changeRequest')
-        .select('id')
-        .where('tenantId', '=', this.tenantId)
-        .where('requestedBy', '=', me)
-        .where('status', '=', 'open')
+      const requests = await openRequests(trx, this.tenantId)
+        .select('c.id')
+        .where('c.requestedBy', '=', me)
         .execute();
       const expected = new Set([
         ...open.map((o) => `project:${o.id}`),
@@ -680,12 +616,9 @@ export class ApprovalRepository extends TenantRepo {
         .groupBy('createdBy')
         .execute(),
     ]);
-    const openRequests = await this.db
-      .selectFrom('changeRequest')
-      .select(['requestedBy', (eb) => eb.fn.countAll<string>().as('n')])
-      .where('tenantId', '=', this.tenantId)
-      .where('status', '=', 'open')
-      .groupBy('requestedBy')
+    const requestCounts = await openRequests(this.db, this.tenantId)
+      .select(['c.requestedBy', (eb) => eb.fn.countAll<string>().as('n')])
+      .groupBy('c.requestedBy')
       .execute();
     const projects = this.projects();
     const tenant = await this.db
@@ -699,7 +632,7 @@ export class ApprovalRepository extends TenantRepo {
         const at = events.find((e) => e.projectId === p.id)?.at;
         const of =
           Number(ranks.find((r) => r.createdBy === p.createdBy)?.n ?? 0) +
-          Number(openRequests.find((r) => r.requestedBy === p.createdBy)?.n ?? 0);
+          Number(requestCounts.find((r) => r.requestedBy === p.createdBy)?.n ?? 0);
         return {
           detail: (await projects.detail(p.id)) as ProjectDetail,
           createdByName: names.find((n) => n.id === p.createdBy)?.displayName ?? '',

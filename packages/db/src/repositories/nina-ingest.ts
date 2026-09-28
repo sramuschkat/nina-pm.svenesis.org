@@ -416,6 +416,17 @@ export class NinaIngestRepository extends TenantRepo {
           .execute();
       }
 
+      // Neue Aufnahmen können ein Projekt „fertig“ machen → automatisch *Bereit zur Bearbeitung*
+      // (FA-PRJ-11/12, Mandanteneinstellung `autoReadyToProcess`); Projekte aufsteigend nach ID.
+      const touchedProjects = [
+        ...new Set(touched.map((lineId) => (lines.get(lineId) as LineInfo).projectId)),
+      ].sort();
+      if (touchedProjects.length > 0) {
+        const projectRepo = new ProjectRepository(trx, this.ctx);
+        for (const projectId of touchedProjects)
+          await projectRepo.autoStatusAfterCounts(trx, projectId, now);
+      }
+
       await this.countFlats(trx, sessionId, added, now);
 
       const withoutLease = added.length > 0 && !(await this.holdsLease(trx, sessionId, now));
@@ -668,11 +679,11 @@ export async function applyCorrection(
       .where('tenantId', '=', input.tenantId)
       .where('id', '=', line.projectId)
       .execute();
-    // Verbleibend steigt → fertiges Projekt zurück nach *Aktiv* (FA-PRJ-12, AP-15).
+    // Verbleibend steigt bzw. sinkt → automatischer Statuswechsel (FA-PRJ-12, AP-15).
     const status = await new ProjectRepository(trx, {
       tenantId: input.tenantId,
       memberId: input.userId,
-    }).reactivateAfterCounts(trx, line.projectId, now);
+    }).autoStatusAfterCounts(trx, line.projectId, now);
     return { rejectedCount: after, projectStatus: status };
   });
 }
@@ -837,7 +848,7 @@ export async function rejectCapture(
       const status = await new ProjectRepository(trx, {
         tenantId: input.tenantId,
         memberId: input.userId,
-      }).reactivateAfterCounts(trx, line.projectId, now);
+      }).autoStatusAfterCounts(trx, line.projectId, now);
       return {
         captureId: c.id,
         rejected: input.rejected,

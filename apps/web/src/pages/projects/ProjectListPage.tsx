@@ -43,6 +43,7 @@ import {
   filterProjects,
   groupByRig,
   movedPosition,
+  priorityRank,
   type ListFilters,
 } from './list-model';
 import { engineMoonProfile } from './model';
@@ -300,10 +301,10 @@ function ActiveView({
     },
   });
 
-  const groups = groupByRig(
-    shown,
-    (rigs.data ?? []).map((r) => r.id),
-  );
+  const rigOrder = (rigs.data ?? []).map((r) => r.id);
+  const groups = groupByRig(shown, rigOrder);
+  // Ungefilterte Gruppen: Priorität und Verschieben rechnen absolut (der Server kennt keine Filter).
+  const allGroups = groupByRig(items, rigOrder);
 
   if (list.isError)
     return (
@@ -356,13 +357,14 @@ function ActiveView({
           {view === 'list' ? (
             <ProjectTable
               groups={groups}
+              allGroups={allGroups}
               groupName={rigName}
               groupMeta={rigMeta}
               filters={filtersList.data ?? []}
               onFavorite={(id, on) => favorite.mutate({ id, on })}
               onDelete={setRemove}
-              onMove={(groupItems, id, delta) => {
-                const position = movedPosition(groupItems, id, delta);
+              onMove={(group, shownInGroup, id, delta) => {
+                const position = movedPosition(group, id, delta, shownInGroup);
                 if (position !== null) priority.mutate({ id, position });
               }}
               onDropAt={(id, position) => priority.mutate({ id, position })}
@@ -467,6 +469,7 @@ export function FilterPlan({
  */
 function ProjectTable({
   groups,
+  allGroups,
   groupName,
   groupMeta,
   filters,
@@ -476,12 +479,19 @@ function ProjectTable({
   onDropAt,
 }: {
   groups: ReturnType<typeof groupByRig>;
+  /** Dieselben Gruppen ohne Filter – Grundlage der (absoluten) Priorität. */
+  allGroups: ReturnType<typeof groupByRig>;
   groupName: (rigId: string) => string;
   groupMeta: (rigId: string) => string;
   filters: readonly FilterView[];
   onFavorite: (id: string, on: boolean) => void;
   onDelete: (p: ProjectListItem) => void;
-  onMove: (groupItems: readonly ProjectListItem[], id: string, delta: number) => void;
+  onMove: (
+    group: readonly ProjectListItem[],
+    shownInGroup: readonly ProjectListItem[],
+    id: string,
+    delta: number,
+  ) => void;
   onDropAt: (id: string, position: number) => void;
 }) {
   const { t } = useTranslation();
@@ -491,7 +501,9 @@ function ProjectTable({
   const [sort, setSort] = useState<SortState | null>(null);
   const groupOf = (p: ProjectListItem) => p.rigId ?? NO_RIG;
   const byGroup = new Map(groups.map((g) => [g.rigId, g]));
+  const allByGroup = new Map(allGroups.map((g) => [g.rigId, g]));
   const itemsOf = (p: ProjectListItem) => byGroup.get(groupOf(p))?.items ?? [];
+  const allItemsOf = (p: ProjectListItem) => allByGroup.get(groupOf(p))?.items ?? itemsOf(p);
   const approvedOf = (p: ProjectListItem) =>
     itemsOf(p).filter((x) => x.approvalStatus === 'approved');
   // Priorität lässt sich nur in der Standard-Reihenfolge ändern.
@@ -499,9 +511,10 @@ function ProjectTable({
   const onDrop = (e: DragEvent, target: ProjectListItem) => {
     e.preventDefault();
     const approved = approvedOf(target);
-    const index = approved.findIndex((p) => p.id === target.id);
+    const position = priorityRank(allItemsOf(target), target.id);
     const sameGroup = approved.some((p) => p.id === dragId);
-    if (dragId && sameGroup && index >= 0 && dragId !== target.id) onDropAt(dragId, index + 1);
+    if (dragId && sameGroup && position !== null && dragId !== target.id)
+      onDropAt(dragId, position);
     setDragId(null);
   };
   const priorityColumn: DataColumn<ProjectListItem> = {
@@ -510,12 +523,13 @@ function ProjectTable({
     nowrap: true,
     cell: (p) => {
       if (p.approvalStatus !== 'approved') return '–';
+      // Sichtbare Nachbarn bestimmen die Pfeile, die Zahl ist die echte Priorität im Rig.
       const approved = approvedOf(p);
       const index = approved.findIndex((x) => x.id === p.id);
       return (
         <span className={styles.priorityCell}>
           <span className={styles.dragHandle} aria-hidden>
-            {index + 1}
+            {priorityRank(allItemsOf(p), p.id) ?? index + 1}
           </span>
           {reorder ? (
             <>
@@ -524,7 +538,7 @@ function ProjectTable({
                 className={styles.iconButton}
                 aria-label={t('projectList.up', { name: p.name })}
                 disabled={index === 0}
-                onClick={() => onMove(itemsOf(p), p.id, -1)}
+                onClick={() => onMove(allItemsOf(p), itemsOf(p), p.id, -1)}
               >
                 <uiIcons.up size={ICON_SIZE.table} aria-hidden />
               </button>
@@ -533,7 +547,7 @@ function ProjectTable({
                 className={styles.iconButton}
                 aria-label={t('projectList.down', { name: p.name })}
                 disabled={index === approved.length - 1}
-                onClick={() => onMove(itemsOf(p), p.id, 1)}
+                onClick={() => onMove(allItemsOf(p), itemsOf(p), p.id, 1)}
               >
                 <uiIcons.down size={ICON_SIZE.table} aria-hidden />
               </button>

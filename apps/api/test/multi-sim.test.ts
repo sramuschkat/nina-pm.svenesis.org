@@ -1,6 +1,6 @@
 /**
  * AP-32a (FA-SIM-04, FA-FRG-05; TK 7.4; PGlite): Mehrnacht-Simulation und Auswirkungsvorschau als Jobs –
- * `202 {jobId}`, Deduplizierung je Rig und Startnacht, Lauf im Worker mit Ergebnis im Speicher statt S3,
+ * `202 {jobId}`, Deduplizierung je Rig, Startnacht, Mitglied und Optionen, Lauf im Worker mit Ergebnis im Speicher statt S3,
  * Abruf über `GET /jobs/{id}/result`; eigene Einreichungen nur mit `includeOwnDrafts`; Vorschau nur für
  * eingereichte Objekte.
  */
@@ -142,6 +142,40 @@ describe('Mehrnacht-Simulation (FA-SIM-04)', () => {
     expect(projects[0]).toMatchObject({ needFrames: 30 });
     // Andere dürfen fremde Jobs nicht lesen (job.read mit Ersteller).
     expect((await t.web(`/jobs/${jobId}/result`, { as: 'user' })).status).toBe(403);
+  });
+
+  it('Deduplizierung je Mitglied und Optionen (TK 7.4, Spec-Ergänzung 28.09.2026)', async () => {
+    const t = await setup();
+    const body = { rigId: t.rig.id, nightFrom: '2026-09-18', nights: 3 };
+    const post = async (b: Body, as: 'owner' | 'user' = 'owner') => {
+      const r = await t.web('/simulations/multi', { method: 'POST', body: b, as });
+      expect(r.status).toBe(202);
+      return r.body.jobId as string;
+    };
+    const base = await post(body);
+    // Gleiche Eingabe (auch mit ausdrücklichen Standardwerten) → derselbe offene Job.
+    expect(await post({ ...body, includeOwnDrafts: false, weather: false })).toBe(base);
+    // Anderes Mitglied, andere Nächte, Wetter oder eigene Entwürfe → eigener Job.
+    const other = [
+      await post(body, 'user'),
+      await post({ ...body, nights: 14 }),
+      await post({ ...body, weather: true }),
+    ];
+    expect(new Set([base, ...other]).size).toBe(4);
+    // Höchstens 3 offene Jobs je Mitglied gelten weiter (hier: owner hat 3 offen).
+    const limited = await t.web('/simulations/multi', {
+      method: 'POST',
+      body: { ...body, includeOwnDrafts: true },
+    });
+    expect(limited.status).toBe(429);
+    // Der Job des Users rechnet mit dessen Entwürfen, nicht mit denen des Owners.
+    const own = await post({ ...body, includeOwnDrafts: true }, 'user');
+    expect(own).not.toBe(other[0]);
+    expect(await t.run(own)).toBe('done');
+    const r = await t.web(`/jobs/${own}/result`, { as: 'user' });
+    expect((r.body.projects as Body[]).map((p) => p.projectId).sort()).toEqual(
+      [t.approved, t.submitted].sort(),
+    );
   });
 
   it('eigene Einreichungen nur mit includeOwnDrafts; unbekanntes Rig 404; >14 Nächte 422', async () => {

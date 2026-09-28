@@ -447,6 +447,92 @@ describe('Kennzahlen und Abweichungsgründe (AP-31, FA-AUS-04/05/09)', () => {
   });
 });
 
+describe('Automatisch Bereit zur Bearbeitung (FA-PRJ-11/12, autoReadyToProcess)', () => {
+  const statusOf = async (t: Awaited<ReturnType<typeof setup>>) =>
+    (await t.q<{ status: string }>('SELECT status FROM project WHERE id = $1', [t.pid]))[0]?.status;
+  const autoLog = (t: Awaited<ReturnType<typeof setup>>) =>
+    t.q<{ diff: unknown }>(
+      "SELECT diff FROM change_log WHERE entity = 'project' AND entity_id = $1 AND action = 'status'",
+      [t.pid],
+    );
+  const enable = (t: Awaited<ReturnType<typeof setup>>, on = true) =>
+    t.web('/tenant/settings', { method: 'PATCH', body: { settings: { autoReadyToProcess: on } } });
+
+  it('Ingest macht das Projekt fertig → Bereit zur Bearbeitung; ohne Einstellung bleibt es Aktiv', async () => {
+    const t = await setup();
+    // Soll 3: die Fake-Nacht liefert 5 gespeicherte Lights → Planungsbedarf 0 („fertig“).
+    await t.q('UPDATE exposure_line SET planned_count = 3 WHERE id = $1', [t.lineId]);
+    expect((await enable(t)).status).toBe(200);
+    await t.fakeNight();
+    expect(await statusOf(t)).toBe('ready_to_process');
+    const logs = await autoLog(t);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]?.diff).toMatchObject({
+      from: 'active',
+      to: 'ready_to_process',
+      automatic: true,
+    });
+    // Frames verworfen → Planungsbedarf > 0 → zurück nach Aktiv (autoReactivateOnRemaining).
+    const sessionId = ((await t.web('/sessions')).body.items as Body[])[0]?.id as string;
+    const r = await t.web(`/sessions/${sessionId}/corrections`, {
+      method: 'POST',
+      body: { exposureLineId: t.lineId, rejected: 3, reason: 'clouds' },
+    });
+    expect(r.body).toMatchObject({ projectStatus: 'active' });
+    // Korrektur zurückgenommen → wieder fertig → wieder Bereit zur Bearbeitung.
+    const back = await t.web(`/sessions/${sessionId}/corrections`, {
+      method: 'POST',
+      body: { exposureLineId: t.lineId, rejected: 0 },
+    });
+    expect(back.body).toMatchObject({ projectStatus: 'ready_to_process' });
+  });
+
+  it('Standard aus, Bonus am Rig oder Exoplanet: kein automatischer Wechsel', async () => {
+    const t = await setup();
+    await t.q('UPDATE exposure_line SET planned_count = 3 WHERE id = $1', [t.lineId]);
+    await t.fakeNight();
+    expect(await statusOf(t)).toBe('active');
+    // Mit Einstellung, aber Bonus aktiv: Bonus-Aufnahmen laufen, solange das Projekt Aktiv ist.
+    await enable(t);
+    await t.q('UPDATE rig SET bonus_enabled = true WHERE id = $1', [t.rig.id]);
+    await t.q('UPDATE exposure_line SET acquired_count = 99 WHERE id = $1', [t.lineId]);
+    await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+    expect(await statusOf(t)).toBe('active');
+    await t.q('UPDATE rig SET bonus_enabled = false WHERE id = $1', [t.rig.id]);
+    await t.q("UPDATE project SET project_type = 'exoplanet' WHERE id = $1", [t.pid]);
+    await t.q('UPDATE exposure_line SET acquired_count = 99 WHERE id = $1', [t.lineId]);
+    await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+    expect(await statusOf(t)).toBe('active');
+    expect(await autoLog(t)).toEqual([]);
+  });
+
+  it('Zähler-Abgleich und Zeilenänderung lösen den Wechsel ebenfalls aus', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    expect(await statusOf(t)).toBe('active');
+    await enable(t);
+    // Abgleich: Soll 3 bei 5 Aufnahmen, Zähler auf 0 verfälscht → Abgleich stellt 5 her → fertig.
+    await t.q('UPDATE exposure_line SET planned_count = 3, acquired_count = 0 WHERE id = $1', [
+      t.lineId,
+    ]);
+    await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+    expect(await statusOf(t)).toBe('ready_to_process');
+    // Zeile im Editor aufgestockt → Planungsbedarf > 0 → Aktiv; wieder gesenkt → Bereit.
+    const up = await t.web(`/projects/${t.pid}/lines/${t.lineId}`, {
+      method: 'PATCH',
+      body: { plannedCount: 10 },
+    });
+    expect(up.status).toBe(200);
+    expect(await statusOf(t)).toBe('active');
+    const down = await t.web(`/projects/${t.pid}/lines/${t.lineId}`, {
+      method: 'PATCH',
+      body: { plannedCount: 5 },
+    });
+    expect(down.status).toBe(200);
+    expect(down.body).toMatchObject({ status: 'ready_to_process' });
+  });
+});
+
 describe('reconcile (NT-08)', () => {
   const jobs = () => ({
     queue: () => Promise.resolve(new JobQueue(s.pg.db)),

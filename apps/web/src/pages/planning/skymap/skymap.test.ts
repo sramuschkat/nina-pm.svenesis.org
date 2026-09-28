@@ -16,8 +16,11 @@ import {
   DEFAULT_STATE,
   OVERVIEW_ALT,
   OVERVIEW_FOV,
+  angleDiffDeg,
   fovForFrame,
+  newProjectCoords,
   paramsFromState,
+  roundAngle,
   skyMapHref,
   stateFromParams,
 } from './model';
@@ -44,7 +47,7 @@ import {
   type HitIndex,
   type RenderInput,
 } from './render';
-import { fromZoned, nightKeyAt, sceneAt, zonedParts } from './scene';
+import { atNightClock, fromZoned, nightKeyAt, sceneAt, zonedParts } from './scene';
 import { decodeFaintStars, decodeMilkyWay, milkyWayAt, moveStar, parseSky } from './sky-data';
 
 const skyJson = () =>
@@ -547,5 +550,56 @@ describe('Karte: Meridian, Mindesthöhe, Nacht, Gitter (Astronomie-Prüfung 28.0
     expect(formatDecLabel(45 + 10 / 60, 1 / 6)).toBe('+45°10′');
     expect(formatDecLabel(-0.5, 0.25)).toBe('−0°30′');
     expect(formatDecLabel(60, 10)).toBe('+60°');
+  });
+});
+
+describe('Sternkarte: Winkel, Uhrzeit in der Nacht, Ziel für Neues Projekt (28.09.2026)', () => {
+  it('roundAngle legt gerundete Winkel in [0, 360); paramsFromState schreibt nie 360', () => {
+    expect(roundAngle(359.9999997, 6)).toBe(0);
+    expect(roundAngle(-0.5, 2)).toBe(359.5);
+    expect(roundAngle(720.25, 2)).toBe(0.25);
+    const p = paramsFromState({ ...DEFAULT_STATE, ra: 359.999997, fra: 359.999997, rot: 359.999 });
+    expect(p.get('ra')).toBe('0');
+    expect(p.get('fra')).toBe('0');
+    expect(p.get('rot')).toBe('0');
+    expect(stateFromParams(p).fra).toBe(0);
+  });
+
+  it('angleDiffDeg rechnet über 0°/360° hinweg', () => {
+    expect(angleDiffDeg(359.98, 0)).toBeCloseTo(0.02, 9);
+    expect(angleDiffDeg(10, 350)).toBeCloseTo(20, 9);
+    expect(angleDiffDeg(90, 270)).toBe(180);
+  });
+
+  it('atNightClock: vor 12:00 der Morgen nach dem Abend der Nacht (NT-01)', () => {
+    const zone = 'America/Chicago';
+    expect(atNightClock('2026-09-17', '01:30', zone)).toBe(fromZoned('2026-09-18', '01:30', zone));
+    expect(atNightClock('2026-09-17', '23:00', zone)).toBe(fromZoned('2026-09-17', '23:00', zone));
+    expect(nightKeyAt(atNightClock('2026-09-17', '11:59', zone) as number, zone)).toBe(
+      '2026-09-17',
+    );
+    expect(nightKeyAt(atNightClock('2026-09-17', '12:00', zone) as number, zone)).toBe(
+      '2026-09-17',
+    );
+    expect(atNightClock('2026-09-17', '', zone)).toBeNull();
+  });
+
+  it('newProjectCoords: Objekt außerhalb des Bildfelds → Koordinaten des Objekts, sonst Bildfeldmitte', () => {
+    const size = { fovWidthDeg: 2.8, fovHeightDeg: 1.9, cols: 1, rows: 1, overlapPct: 20 };
+    const m42 = { raDeg: 83.82, decDeg: -5.39 };
+    // Bildfeld irgendwo anders: der Editor bekäme sonst die fremde Mitte samt Katalogobjekt.
+    expect(newProjectCoords({ raDeg: 10, decDeg: 40 }, m42, size)).toEqual(m42);
+    // Bewusst leicht versetzt ausgerichtet: Bildfeldmitte bleibt.
+    expect(newProjectCoords({ raDeg: 83.5, decDeg: -5.2 }, m42, size)).toEqual({
+      raDeg: 83.5,
+      decDeg: -5.2,
+    });
+    // Mosaik 3×1 vergrößert die Toleranz nur bis zur halben kürzeren Kante.
+    expect(newProjectCoords({ raDeg: 83.82, decDeg: -4.2 }, m42, { ...size, cols: 3 })).toEqual(
+      m42,
+    );
+    expect(newProjectCoords({ raDeg: 1, decDeg: 2 }, null, size)).toEqual({ raDeg: 1, decDeg: 2 });
+    // Ohne Rig kein Bildfeld: immer das Objekt.
+    expect(newProjectCoords({ raDeg: 83.83, decDeg: -5.39 }, m42, null)).toEqual(m42);
   });
 });

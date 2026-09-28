@@ -125,58 +125,58 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | &nbsp;&nbsp;6.8 Migrationen | 628–638 |
 | &nbsp;&nbsp;6.9 Lokale Entwicklung | 639–644 |
 | &nbsp;&nbsp;6.10 Datensicherung | 645–655 |
-| 7. API | 656–2024 |
+| 7. API | 656–2026 |
 | &nbsp;&nbsp;7.1 Konventionen | 658–673 |
 | &nbsp;&nbsp;7.2 Endpunkte Web (Auszug, vollständig in OpenAPI) | 674–711 |
 | &nbsp;&nbsp;7.3 Endpunkte NINA (`/nina/v1`) | 712–731 |
-| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 732–755 |
-| &nbsp;&nbsp;7.5 Verträge | 756–759 |
-| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 760–2004 |
-| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2005–2024 |
-| 8. Scheduler- und Astronomie-Engine | 2025–2173 |
-| &nbsp;&nbsp;8.1 Grundsätze | 2027–2036 |
-| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2037–2095 |
-| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2096–2113 |
-| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2114–2157 |
-| &nbsp;&nbsp;8.5 Transitrechnung | 2158–2165 |
-| &nbsp;&nbsp;8.6 Leistung | 2166–2173 |
-| 9. Referenzwerte mit Python/astropy | 2174–2248 |
-| &nbsp;&nbsp;9.1 Aufbau | 2178–2202 |
-| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2203–2248 |
-| 10. NINA-Plugin | 2249–2427 |
-| &nbsp;&nbsp;10.1 Rahmen | 2251–2262 |
-| &nbsp;&nbsp;10.2 Struktur | 2263–2323 |
-| &nbsp;&nbsp;10.3 Ablauf im Container | 2324–2346 |
-| &nbsp;&nbsp;10.4 Offline | 2347–2353 |
-| &nbsp;&nbsp;10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows | 2354–2427 |
-| 11. Frontend (React + TypeScript) | 2428–2541 |
-| &nbsp;&nbsp;11.1 Technologie | 2430–2449 |
-| &nbsp;&nbsp;11.2 Struktur | 2450–2479 |
-| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2480–2531 |
-| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2532–2541 |
-| 12. Dateien und S3 | 2542–2563 |
-| 13. Hintergrund-Jobs | 2564–2584 |
-| 14. Externe Dienste | 2585–2603 |
-| 15. Sicherheit | 2604–2648 |
-| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2612–2629 |
-| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2630–2633 |
-| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2634–2648 |
-| 16. Betrieb, Monitoring und Kosten | 2649–2694 |
-| &nbsp;&nbsp;16.1 Logging und Tracing | 2651–2658 |
-| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2659–2676 |
-| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2677–2694 |
-| 17. Teststrategie | 2695–2724 |
-| 18. CI/CD und Deployment | 2725–2753 |
-| 19. Umsetzungsplan für Claude Code | 2754–2876 |
-| &nbsp;&nbsp;R1 – MVP Planung | 2763–2803 |
-| &nbsp;&nbsp;R2 – Framing und Wetter | 2804–2814 |
-| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2815–2825 |
-| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2826–2844 |
-| &nbsp;&nbsp;R4 – Exoplaneten | 2845–2855 |
-| &nbsp;&nbsp;R5 – Komfort | 2856–2865 |
-| &nbsp;&nbsp;R6 – Optional | 2866–2876 |
-| 20. CLAUDE.md | 2877–2905 |
-| 21. Offene technische Punkte und Risiken | 2906–2946 |
+| &nbsp;&nbsp;7.4 Lang laufende Berechnungen | 732–757 |
+| &nbsp;&nbsp;7.5 Verträge | 758–761 |
+| &nbsp;&nbsp;7.6 NINA-API: Datenstrukturen | 762–2006 |
+| &nbsp;&nbsp;7.7 Discord-Kanäle je Mandant (ausgehend) | 2007–2026 |
+| 8. Scheduler- und Astronomie-Engine | 2027–2175 |
+| &nbsp;&nbsp;8.1 Grundsätze | 2029–2038 |
+| &nbsp;&nbsp;8.2 Öffentliche Schnittstelle (Auszug) | 2039–2097 |
+| &nbsp;&nbsp;8.3 Planungsalgorithmus (verbindlich) | 2098–2115 |
+| &nbsp;&nbsp;8.4 Übernahme aus den Svenesis-Astro-Tools (Kopiervorlage) | 2116–2159 |
+| &nbsp;&nbsp;8.5 Transitrechnung | 2160–2167 |
+| &nbsp;&nbsp;8.6 Leistung | 2168–2175 |
+| 9. Referenzwerte mit Python/astropy | 2176–2250 |
+| &nbsp;&nbsp;9.1 Aufbau | 2180–2204 |
+| &nbsp;&nbsp;9.2 Toleranzen (Tests in `packages/engine/test/reference.spec.ts`) | 2205–2250 |
+| 10. NINA-Plugin | 2251–2429 |
+| &nbsp;&nbsp;10.1 Rahmen | 2253–2264 |
+| &nbsp;&nbsp;10.2 Struktur | 2265–2325 |
+| &nbsp;&nbsp;10.3 Ablauf im Container | 2326–2348 |
+| &nbsp;&nbsp;10.4 Offline | 2349–2355 |
+| &nbsp;&nbsp;10.5 Referenz-Assemblies, Build und Entwicklung ohne Windows | 2356–2429 |
+| 11. Frontend (React + TypeScript) | 2430–2543 |
+| &nbsp;&nbsp;11.1 Technologie | 2432–2451 |
+| &nbsp;&nbsp;11.2 Struktur | 2452–2481 |
+| &nbsp;&nbsp;11.3 Gestaltung nach Vorbild www.svenesis.org | 2482–2533 |
+| &nbsp;&nbsp;11.4 Auth und Rechte im Frontend | 2534–2543 |
+| 12. Dateien und S3 | 2544–2565 |
+| 13. Hintergrund-Jobs | 2566–2586 |
+| 14. Externe Dienste | 2587–2605 |
+| 15. Sicherheit | 2606–2650 |
+| &nbsp;&nbsp;15.1 Bedrohung von außen → Maßnahme | 2614–2631 |
+| &nbsp;&nbsp;15.2 Schutz gegen Versehen | 2632–2635 |
+| &nbsp;&nbsp;15.3 Bewusst nicht vorgesehen | 2636–2650 |
+| 16. Betrieb, Monitoring und Kosten | 2651–2696 |
+| &nbsp;&nbsp;16.1 Logging und Tracing | 2653–2660 |
+| &nbsp;&nbsp;16.2 Alarme (SNS → E-Mail) | 2661–2678 |
+| &nbsp;&nbsp;16.3 Kostenschätzung (geringe Last, eu-central-1, grob) | 2679–2696 |
+| 17. Teststrategie | 2697–2726 |
+| 18. CI/CD und Deployment | 2727–2755 |
+| 19. Umsetzungsplan für Claude Code | 2756–2878 |
+| &nbsp;&nbsp;R1 – MVP Planung | 2765–2805 |
+| &nbsp;&nbsp;R2 – Framing und Wetter | 2806–2816 |
+| &nbsp;&nbsp;R3 – Auswertung und Folgeplanung | 2817–2827 |
+| &nbsp;&nbsp;RP – NINA-Plugin „Eine Nacht automatisch“ (direkt vor R4) | 2828–2846 |
+| &nbsp;&nbsp;R4 – Exoplaneten | 2847–2857 |
+| &nbsp;&nbsp;R5 – Komfort | 2858–2867 |
+| &nbsp;&nbsp;R6 – Optional | 2868–2878 |
+| 20. CLAUDE.md | 2879–2907 |
+| 21. Offene technische Punkte und Risiken | 2908–2948 |
 
 ## schema_aurora_dsql.sql
 

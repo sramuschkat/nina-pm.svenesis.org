@@ -199,6 +199,39 @@ describe('S-13 Kameras', () => {
   });
 });
 
+describe('S-13 Kameras: Standardwerte bleiben gültig (Prüfung 28.09.2026)', () => {
+  it('einzigen Auslesemodus umbenennen: Standard folgt; Binning 1 abwählen: Standard wird 2', async () => {
+    state.update.mockImplementation((_k: string, id: string, body: object) =>
+      Promise.resolve({ ...camera, id, ...body }),
+    );
+    wrap(<CamerasPage />);
+    const mode = await screen.findByLabelText('Auslesemodus 1');
+    fireEvent.change(mode, { target: { value: 'High Gain' } });
+    const readout = screen.getByRole('combobox', { name: 'Auslesemodus' });
+    expect(readout).toHaveValue('High Gain');
+    fireEvent.click(screen.getByLabelText('1×1'));
+    expect(screen.getByRole('combobox', { name: 'Binning' })).toHaveValue('2');
+    fireEvent.submit(mode.closest('form') as HTMLFormElement);
+    await waitFor(() => expect(state.update).toHaveBeenCalledTimes(1));
+    expect(state.update.mock.calls[0]?.[2]).toMatchObject({
+      readoutModes: ['High Gain'],
+      defaultReadoutMode: 'High Gain',
+      supportedBinning: [2],
+      defaultBinning: 2,
+    });
+  });
+
+  it('Modus hinzufügen und Standard entfernen: erster verbleibender Modus wird Standard', async () => {
+    wrap(<CamerasPage />);
+    await screen.findByLabelText('Auslesemodus 1');
+    fireEvent.click(screen.getByRole('button', { name: 'Auslesemodus hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Auslesemodus 2'), { target: { value: 'Low Noise' } });
+    expect(screen.getByRole('combobox', { name: 'Auslesemodus' })).toHaveValue('Default');
+    fireEvent.click(screen.getByRole('button', { name: 'Zeile 1 entfernen' }));
+    expect(screen.getByRole('combobox', { name: 'Auslesemodus' })).toHaveValue('Low Noise');
+  });
+});
+
 describe('S-14 Filtersammlung: Sortierung per Spaltenkopf (AP-26a)', () => {
   const filter = (n: number, shortName: string, fullName: string, bandwidthNm: number | null) => ({
     id: ID(30 + n),

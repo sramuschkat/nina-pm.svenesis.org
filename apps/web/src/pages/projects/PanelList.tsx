@@ -168,6 +168,9 @@ export function PanelList({
           aria-label={t('projectEditor.panelList.rotationOf', { n: position(p) + 1 })}
           disabled={!canEdit}
           onBlur={(e) => {
+            // Nur nach echter Eingabe: die Anzeige ist auf 0,01° gerundet, bloßes Durchtabben schrieb
+            // sonst den gerundeten Wert (31,059489° → 31,06°, Prüfung 28.09.2026).
+            if (e.target.value === e.target.defaultValue) return;
             const v = Number(e.target.value);
             if (Number.isFinite(v) && v >= 0 && v < 360 && Math.abs(v - p.rotationDeg) > 1e-6)
               void patch(p, { rotationDeg: v });

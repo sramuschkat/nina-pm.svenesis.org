@@ -4,7 +4,9 @@
 #
 # Tempo (24.09.2026): Die Prüfungen laufen als parallele Jobs statt nacheinander; Playwright-Browser
 # kommen aus dem Cache; reine Doku-Änderungen (Arbeitspakete, Changelog, Betrieb, Specs) überspringen
-# Tests, Build und E2E. Übersprungene Jobs gelten für GitHub als erfolgreich.
+# Tests, Build und E2E – **nur in PRs**. Übersprungene Jobs gelten für GitHub als erfolgreich; auf `main` läuft
+# deshalb immer die volle CI (28.09.2026): Sonst wäre ein reiner Doku-Merge nach einem roten `main`-Lauf grün,
+# und `pnpm deploy:prod` hätte den ungeprüften Stand akzeptiert.
 # Tempo (26.09.2026, Entscheidung Sven): `test` und die E2E-Suite laufen in Shards auf je eigenem Runner
 # (eigene Datenbank bzw. eigener lokaler Stack je Shard). Sammel-Jobs unter den bisherigen Namen `test` und
 # `e2e + a11y (Playwright, lokaler Stack)` sind nur grün, wenn alle Shards grün (oder übersprungen) sind –
@@ -44,16 +46,22 @@ jobs:
       - id: filter
         name: Nur Doku geändert?
         env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          # Doku ohne Wirkung auf Code oder Tests; alles andere (auch docs/contracts, docs/api, docs/seed,
-          # docs/test-runs, docs/concept, docs/rules) löst die volle CI aus.
+          # Nur in PRs: Doku ohne Wirkung auf Code oder Tests überspringt Tests, Build und E2E. Auf `main` (push)
+          # immer volle CI – der Vergleich mit dem Vorgänger würde einen roten Vorgänger-Lauf verdecken.
+          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; echo "Kein PR: volle CI"; exit 0; fi
+          # Alles andere (auch docs/contracts, docs/api, docs/seed, docs/test-runs, docs/concept, docs/rules) löst
+          # die volle CI aus – ebenso die geschützten Kopien (legacy/, packages/catalog-data/, geprüft von
+          # tools/repo-check), auch deren README.md. Die erste passende Zeile gewinnt.
           if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           files=$(git diff --name-only "$BASE" HEAD)
           code=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
+              legacy/*|packages/catalog-data/*) code=true ;;
               docs/CHANGELOG.md|docs/changelog.d/*|docs/work-packages/*|docs/ops/*|docs/history/*|docs/adr/*|docs/specs/*|docs/runbooks/*|CLAUDE.md|START.md|README.md|*/README.md) ;;
               *) code=true ;;
             esac

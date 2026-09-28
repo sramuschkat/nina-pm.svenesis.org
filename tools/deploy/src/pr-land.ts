@@ -1,7 +1,7 @@
 /**
  * `pnpm pr:land <nr> [<nr> …] [--deploy]` – PRs der Reihe nach landen, ohne daneben zu warten:
  * je PR auf die CI warten, prüfen, ob er konfliktfrei ist, mit Merge-Commit mergen und den Branch
- * löschen. Mit `--deploy` folgt danach `pnpm deploy:prod` (fragt weiterhin nach „ja“).
+ * löschen – nur den Kopf-Commit, dessen CI abgewartet wurde (`--match-head-commit`). Mit `--deploy` folgt danach `pnpm deploy:prod` (fragt weiterhin nach „ja“).
  *
  * Ersatz für GitHub-Auto-Merge: im privaten Repo ohne GitHub Pro gibt es keine Pflicht-Checks, und
  * `gh pr merge --auto` würde sofort mergen, statt auf die CI zu warten. Nur Sven führt das aus
@@ -9,6 +9,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { mergeAtHead, readPrHead } from './pr-land-merge';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -46,7 +47,14 @@ async function land(pr: string): Promise<void> {
   }
   if (state !== 'OPEN') fail(`#${pr} ist ${state || 'nicht auffindbar'}.`);
 
-  console.log(`\n▶ #${pr}: warte auf die CI …`);
+  // Kopf-Commit vor dem Warten festhalten: gemergt wird nur genau dieser Stand (pr-land-merge.ts).
+  let head: string;
+  try {
+    head = readPrHead(gh, pr);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  console.log(`\n▶ #${pr} (${head.slice(0, 7)}): warte auf die CI …`);
   // Neue Läufe nach einem Push brauchen einen Moment, bis sie erscheinen.
   await sleep(5000);
   const checks = gh(['pr', 'checks', pr, '--watch', '--interval', '15', '--fail-fast'], true);
@@ -57,8 +65,11 @@ async function land(pr: string): Promise<void> {
     fail(`#${pr} hat Konflikte mit main – Claude Code löst sie, danach erneut pnpm pr:land ${pr}.`);
   if (m !== 'MERGEABLE') fail(`#${pr}: GitHub meldet mergeable = ${m}.`);
 
-  const merged = gh(['pr', 'merge', pr, '--merge', '--delete-branch'], true);
-  if (!merged.ok) fail(`#${pr} ließ sich nicht mergen.`);
+  try {
+    mergeAtHead(gh, pr, head);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
   console.log(`✓ #${pr} gemergt.`);
 }
 
