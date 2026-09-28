@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me } from '../../api/client';
-import { AuthProvider } from '../../auth';
+import { ApiError, AuthProvider } from '../../auth';
 import { SkyMapPage } from './SkyMapPage';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   updateRig: vi.fn(),
   patch: vi.fn(),
   searchItems: [] as unknown[],
+  gets: 0,
 }));
 
 vi.mock('../../api/client', async (importOriginal) => {
@@ -63,7 +64,10 @@ vi.mock('../../api/client', async (importOriginal) => {
     },
     projectsApi: {
       list: () => Promise.resolve({ items: [] }),
-      get: () => Promise.resolve(state.project),
+      get: () => {
+        state.gets += 1;
+        return Promise.resolve(state.project);
+      },
       applyMosaic: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
     },
     catalogApi: {
@@ -405,5 +409,94 @@ describe('S-20 Sternkarte', () => {
     expect(screen.getByLabelText('Uhrzeit')).toHaveValue('16:00');
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt' }));
     expect(where().get('t')).toBeNull();
+  });
+
+  it('Uhrzeit nach Mitternacht bleibt in der angezeigten Nacht (P1-13)', async () => {
+    // 17.09.2026 23:00 CDT = 18.09. 04:00 UTC, Nacht 17./18.09.
+    renderPage('/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.82&fdec=-5.39&t=1789704000');
+    const clock = await screen.findByLabelText('Uhrzeit');
+    expect(clock).toHaveValue('23:00');
+    fireEvent.change(clock, { target: { value: '01:30' } });
+    // 18.09. 01:30 CDT = 06:30 UTC – nicht 17.09. 01:30 (Nacht 16./17.).
+    expect(where().get('t')).toBe('1789713000');
+  });
+
+  it('+1 d über die Zeitumstellung behält die Uhrzeit (Chicago 01.11.2026)', async () => {
+    // 31.10.2026 22:00 CDT = 01.11. 03:00 UTC; die Nacht 31.10./01.11. hat 25 h.
+    renderPage('/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.82&fdec=-5.39&t=1793502000');
+    fireEvent.click(await screen.findByRole('button', { name: '+1 d' }));
+    // 01.11. 22:00 CST = 02.11. 04:00 UTC (+25 h), nicht 21:00 CST.
+    expect(where().get('t')).toBe('1793592000');
+    expect(screen.getByLabelText('Uhrzeit')).toHaveValue('22:00');
+    fireEvent.click(screen.getByRole('button', { name: '−1 d' }));
+    expect(where().get('t')).toBe('1793502000');
+  });
+
+  it('Mosaik-Zahl: Leeren und neu tippen ergibt die getippte Zahl (P1-15)', async () => {
+    renderPage();
+    const cols = await screen.findByLabelText('Panels horizontal');
+    fireEvent.change(cols, { target: { value: '' } });
+    expect(cols).toHaveValue(null);
+    expect(where().get('h')).toBeNull();
+    fireEvent.change(cols, { target: { value: '5' } });
+    expect(where().get('h')).toBe('5');
+    // Außerhalb des Bereichs erst beim Verlassen geklemmt.
+    fireEvent.change(cols, { target: { value: '40' } });
+    expect(where().get('h')).toBe('5');
+    fireEvent.blur(cols);
+    expect(where().get('h')).toBe('16');
+    expect(cols).toHaveValue(16);
+  });
+
+  it('stark wachsendes Mosaik: Rückfrage vor dem Übernehmen (P1-15)', async () => {
+    state.rig = rig({ hasRotator: true });
+    state.project = {
+      id: ID(10),
+      name: 'Orion',
+      createdBy: ID(92),
+      approvalStatus: 'draft',
+      version: 7,
+      mosaic: { cols: 1, rows: 1, overlapPct: 20 },
+      panels: [{ id: ID(11), lines: [{ hasCaptures: false }, { hasCaptures: false }] }],
+    };
+    state.patch.mockResolvedValue({ ...(state.project as object), version: 8 });
+    renderPage(
+      `/planung/sternkarte?ra=83.82&dec=-5.39&fra=83.5&fdec=-5.2&h=3&v=2&projekt=${ID(10)}`,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Ins Projekt übernehmen' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Das Mosaik wächst von 1 auf 6 Panels');
+    expect(dialog).toHaveTextContent('zusammen 12 Belichtungszeilen');
+    expect(state.patch).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ins Projekt übernehmen' }));
+    await waitFor(() => expect(state.patch).toHaveBeenCalledTimes(1));
+  });
+
+  it('412 beim Übernehmen: Projekt neu laden und Hinweis zeigen', async () => {
+    state.rig = rig({ hasRotator: true });
+    state.project = {
+      id: ID(10),
+      name: 'Orion',
+      createdBy: ID(92),
+      approvalStatus: 'draft',
+      version: 7,
+      mosaic: { cols: 1, rows: 1, overlapPct: 20 },
+      panels: [{ id: ID(11), lines: [] }],
+    };
+    state.patch.mockRejectedValue(new ApiError({ status: 412, code: 'resource.version_conflict' }));
+    renderPage(
+      `/planung/sternkarte?ra=83.82&dec=-5.39&fra=359.9999997&fdec=-5.2&projekt=${ID(10)}`,
+    );
+    await screen.findByRole('button', { name: 'Ins Projekt übernehmen' });
+    const before = state.gets;
+    fireEvent.click(screen.getByRole('button', { name: 'Ins Projekt übernehmen' }));
+    expect(
+      await screen.findByText(
+        'Das Projekt wurde inzwischen geändert und wird neu geladen. Bitte prüfen und erneut übernehmen.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(state.gets).toBeGreaterThan(before));
+    // Rektaszension knapp unter 360° wird 0, nicht 360 (MosaicApply: < 360).
+    expect((state.patch.mock.calls[0]?.[1] as { raDeg: number }).raDeg).toBe(0);
   });
 });

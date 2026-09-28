@@ -7,7 +7,7 @@
  * mit Filter, nicht zugeordnete zuordnen), Ereignisse, Flats, Protokoll (AP-30, `SessionLogPanel`).
  * Plangrafik, Kennzahlen und Transits folgen mit ihren Paketen (R2/R3/R4).
  */
-import { formatNightKey, rejectReasons } from '@nina-pm/shared';
+import { can, formatNightKey, rejectReasons } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +18,7 @@ import {
   type NightSessionDetail,
   type NightSessionLineRow,
 } from '../../api/client';
-import { useCan } from '../../auth';
+import { useAuth, useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
@@ -45,6 +45,7 @@ export function SessionDetailPage() {
     queryFn: () => sessionsApi.get(id),
   });
   const canReview = useCan('session.review');
+  const { context } = useAuth();
   const [tab, setTab] = useState<Tab>('plan');
   const [correctLine, setCorrectLine] = useState<string | null>(null);
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter>('all');
@@ -63,6 +64,8 @@ export function SessionDetailPage() {
   const s = d.session;
   const night = formatNightKey(s.night);
   const unassigned = d.captures.filter((c) => c.assignment === 'unassigned');
+  // Nur Zeilen, die der Nutzer korrigieren darf (wie `CorrectButton`); sonst antwortet die API mit 403.
+  const correctable = d.rows.filter((r) => canCorrect(context, r));
   return (
     <div className={styles.page}>
       <PageHeader
@@ -85,15 +88,15 @@ export function SessionDetailPage() {
           </>
         }
         actions={
-          d.rows.length > 0 || canReview ? (
+          correctable.length > 0 || canReview ? (
             <>
-              {d.rows.length > 0 ? (
+              {correctable.length > 0 ? (
                 <button
                   type="button"
                   className={styles.button}
                   onClick={() => {
                     setTab('plan');
-                    setCorrectLine(d.rows[0]?.exposureLineId ?? null);
+                    setCorrectLine(correctable[0]?.exposureLineId ?? null);
                   }}
                 >
                   {t('sessions.detail.correct')}
@@ -148,7 +151,7 @@ export function SessionDetailPage() {
                   <CorrectionForm
                     key={correctLine}
                     sessionId={id}
-                    rows={d.rows}
+                    rows={correctable}
                     initialLine={correctLine}
                     onDone={() => setCorrectLine(null)}
                   />
@@ -280,6 +283,16 @@ function PlanTable({
 }
 
 /** Admins immer; User nur für eigene Projekte – ob der Mandant das erlaubt, entscheidet die API. */
+function canCorrect(
+  context: ReturnType<typeof useAuth>['context'],
+  row: NightSessionLineRow,
+): boolean {
+  return can(context, 'session.correct', {
+    ...(row.projectCreatedBy ? { createdBy: row.projectCreatedBy } : {}),
+    settings: { userCorrections: true },
+  });
+}
+
 function CorrectButton({
   row,
   onCorrect,
@@ -288,11 +301,8 @@ function CorrectButton({
   onCorrect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const allowed = useCan('session.correct', {
-    ...(row.projectCreatedBy ? { createdBy: row.projectCreatedBy } : {}),
-    settings: { userCorrections: true },
-  });
-  if (!allowed) return null;
+  const { context } = useAuth();
+  if (!canCorrect(context, row)) return null;
   return (
     <button type="button" className={styles.button} onClick={() => onCorrect(row.exposureLineId)}>
       {t('sessions.plan.correctRow')}
@@ -316,7 +326,9 @@ function CorrectionForm({
   const [lineId, setLineId] = useState(initialLine);
   const row = rows.find((r) => r.exposureLineId === lineId) ?? rows[0];
   const min = row?.rejectedIndividual ?? 0;
-  const [rejected, setRejected] = useState(Math.max(min, row?.rejectedCorrection ?? 0));
+  const startValue = (r: NightSessionLineRow | undefined) =>
+    Math.max(r?.rejectedIndividual ?? 0, r?.rejectedCorrection ?? 0);
+  const [rejected, setRejected] = useState(startValue(row));
   const [reason, setReason] = useState('');
   const [comment, setComment] = useState('');
   const save = useMutation({
@@ -347,7 +359,13 @@ function CorrectionForm({
             id="correction-line"
             className={styles.input}
             value={lineId}
-            onChange={(e) => setLineId(e.target.value)}
+            onChange={(e) => {
+              // Zeilenwechsel: Zahl der neuen Zeile übernehmen, nicht die der vorigen senden (P1-12).
+              const next = e.target.value;
+              setLineId(next);
+              setRejected(startValue(rows.find((r) => r.exposureLineId === next)));
+              save.reset();
+            }}
           >
             {rows.map((r) => (
               <option key={r.exposureLineId} value={r.exposureLineId}>
