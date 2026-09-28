@@ -3,7 +3,14 @@
  * FA-SYN-04…07, FA-RIG-06, FA-NIN-04, NT-01, NT-09, NT-14, NT-22, NT-E1, M5, M6, M7).
  * Mandant und Rig ausschließlich aus dem Token.
  */
-import { activeAdminIds, alertSentSince, type NinaPrincipal } from '@nina-pm/db';
+import {
+  activeAdminIds,
+  alertSentSince,
+  changedWheelPositions,
+  LATE_REPORT_MS,
+  OFFLINE_MAX_MS,
+  type NinaPrincipal,
+} from '@nina-pm/db';
 import {
   currentNightRow,
   dedupeKeys,
@@ -18,7 +25,7 @@ import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import { captureForecastSnapshot } from '../sessions/log';
-import { siteNights } from '../lib/night-table';
+import { noonNightKey, siteNights } from '../lib/night-table';
 import { createNotificationService } from '../notifications/service';
 import type { ApiServices } from '../routes/services';
 import { targets } from './sync';
@@ -29,21 +36,54 @@ type Heartbeat = z.output<typeof nina.NinaHeartbeat>;
 
 const isoOrNull = (d: Date | null) => (d === null ? null : isoUtc(d));
 
-/** `night` nur `currentNight` des Standorts oder die folgende Nacht (NT-01). */
-async function checkNight(svc: ApiServices, p: NinaPrincipal, night: string) {
+const DAY_MS = 86_400_000;
+/**
+ * Rückwirkend angenommene Nächte einer offline angelegten Session (Spec-Ergänzung 28.09.2026,
+ * `night.md` §1.1): Offline-Modus höchstens 14 Tage (FA-NIN-04) plus die 7 Tage für späte Meldungen
+ * (TK 6.6) – maßgeblich ist das Ende der Nacht (`noonEndUtc`).
+ */
+const OFFLINE_NIGHT_WINDOW_MS = OFFLINE_MAX_MS + LATE_REPORT_MS;
+
+/**
+ * `night` nur `currentNight` des Standorts oder die folgende Nacht (NT-01). Eine **offline** angelegte
+ * Session darf zusätzlich eine vergangene Nacht tragen, deren Ende höchstens
+ * `OFFLINE_NIGHT_WINDOW_MS` zurückliegt – sonst gingen die offline gepufferten Aufnahmen verloren.
+ */
+async function checkNight(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  night: string,
+  opts: { offline: boolean } = { offline: false },
+) {
   const eq = svc.repositories({ tenantId: p.tenantId }).equipment();
   const rig = await eq.rig(p.rigId);
   const site = rig ? await eq.site(rig.siteId) : undefined;
   if (!rig || !site) throw new ProblemError('nina.token_invalid');
   const now = svc.now();
-  const table = siteNights(site, now, undefined, 3);
+  const earliest = now.getTime() - OFFLINE_NIGHT_WINDOW_MS;
+  const table = opts.offline
+    ? siteNights(
+        site,
+        now,
+        noonNightKey(site.timeZone, earliest),
+        Math.ceil(OFFLINE_NIGHT_WINDOW_MS / DAY_MS) + 4,
+      )
+    : siteNights(site, now, undefined, 3);
   const current = currentNightRow(table, isoUtc(now)).night;
-  const next = table.nights[table.nights.findIndex((n) => n.night === current) + 1]?.night;
-  if (night !== current && night !== next) throw new ProblemError('nina.night_invalid');
-  return rig;
+  const currentIndex = table.nights.findIndex((n) => n.night === current);
+  const next = table.nights[currentIndex + 1]?.night;
+  if (night === current || night === next) return rig;
+  if (opts.offline) {
+    const index = table.nights.findIndex((n) => n.night === night);
+    const row = table.nights[index];
+    if (row && index < currentIndex && Date.parse(row.noonEndUtc) >= earliest) return rig;
+  }
+  throw new ProblemError('nina.night_invalid');
 }
 
 const HOUR_MS = 3_600_000;
+/** Unveränderte Filterrad-Meldung höchstens stündlich neu speichern (`reportedAt`). */
+const REPORTED_WHEEL_REFRESH_MS = HOUR_MS;
 
 /**
  * Betriebsalarm in der App an alle aktiven Admins (AP-15, TK 16.2): entprellt über `payload.key` im
@@ -79,8 +119,11 @@ async function rigName(svc: ApiServices, p: NinaPrincipal) {
 }
 
 export async function createSession(svc: ApiServices, p: NinaPrincipal, body: SessionCreate) {
-  await checkNight(svc, p, body.night);
   const repos = svc.repositories({ tenantId: p.tenantId });
+  // Idempotenz vor der Nachtprüfung (execution.md §6): eine bekannte Session antwortet immer `200`,
+  // auch wenn ihre Nacht inzwischen nicht mehr `currentNight` ist (Wiederholung nach Netzfehler).
+  const known = await repos.ninaSession(p.rigId, p.instanceId).session(body.id);
+  if (!known) await checkNight(svc, p, body.night, { offline: body.offline });
   const busyAlert = async () =>
     alertAdmins(
       svc,
@@ -183,8 +226,15 @@ export async function patchSession(
     },
     now,
   );
+  // Nur beim Übergang: Session gerade beendet bzw. Outbox gerade leer geworden – nicht bei jedem
+  // weiteren PATCH einer abgeschlossenen Session (sonst je PATCH ein neuer Close-/Berichtsjob).
   const closed = r.session.status === 'completed' || r.session.status === 'aborted';
-  if (closed && (r.session.outboxPending ?? 0) === 0 && r.session.endedAt !== null)
+  if (
+    closed &&
+    (r.ended || r.outboxDrained) &&
+    (r.session.outboxPending ?? 0) === 0 &&
+    r.session.endedAt !== null
+  )
     await enqueueSessionJobs(svc, p, sessionId, new Date(r.session.endedAt));
   return {
     sessionId,
@@ -278,13 +328,10 @@ export function settingsMismatch(
     else if (rig.afEveryMin > 0 && t.autofocusAfterTimeMin !== rig.afEveryMin)
       codes.add('af_time_mismatch');
   }
-  const changedPositions: number[] = [];
-  if (hb.filterWheel)
-    for (const slot of rig.filterWheel) {
-      if (slot.ninaConfirmedAt === null || slot.ninaFilterName === null) continue;
-      const reported = hb.filterWheel.find((w) => w.position === slot.position);
-      if (reported && reported.name !== slot.ninaFilterName) changedPositions.push(slot.position);
-    }
+  // Dieselbe Regel wie beim Speichern (`reportNinaFilterWheel`): fehlende Plätze gelten nicht als geändert.
+  const changedPositions = hb.filterWheel
+    ? changedWheelPositions(rig.filterWheel, hb.filterWheel)
+    : [];
   if (changedPositions.length > 0) codes.add('filter_wheel_changed');
   return { codes: [...codes].sort(), changedPositions };
 }
@@ -316,8 +363,14 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     site,
     filterWheel: rig.filterWheel,
   });
-  if (mismatch.changedPositions.length > 0)
-    await eq.unconfirmFilterSlots(p.rigId, mismatch.changedPositions, now);
+  // Gemeldetes Filterrad speichern (NT-E1, S-10) und umgesteckte Plätze entbestätigen – dieselbe Regel
+  // wie `settingsMismatch` (fehlende Plätze gelten nicht als geändert). Geschrieben wird die Rig-Zeile
+  // nur bei Änderung bzw. höchstens stündlich, damit der 60-s-Heartbeat nicht mit Rig-Änderungen
+  // kollidiert (OCC, DAT-17).
+  if (hb.filterWheel)
+    await eq.reportNinaFilterWheel(p.rigId, hb.filterWheel, now, {
+      refreshMs: REPORTED_WHEEL_REFRESH_MS,
+    });
   if (mismatch.codes.length > 0) {
     logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
     // Mit Code-Liste; dieselbe Liste höchstens einmal je 24 h, eine geänderte sofort.

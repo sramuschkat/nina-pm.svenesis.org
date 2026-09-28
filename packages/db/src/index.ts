@@ -32,6 +32,7 @@ export {
 } from './repositories/invitations';
 export { PreferenceRepository } from './repositories/preference';
 export {
+  changedWheelPositions,
   DEFAULT_OVERHEAD,
   EquipmentRepository,
   type CameraRow,
