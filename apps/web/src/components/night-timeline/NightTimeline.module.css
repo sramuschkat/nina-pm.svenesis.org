@@ -1,0 +1,126 @@
+/* Zeitleiste der Nacht: Spuren auf dem dunklen Diagrammrahmen, eine gemeinsame Zeitachse, Linie „jetzt“. */
+.timeline {
+  --label-w: 7rem;
+  --gap: var(--npm-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-chart-frame);
+  color: var(--npm-chart-dim-label);
+  min-width: 0;
+}
+.lanes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.row {
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap);
+}
+.laneLabel {
+  color: var(--npm-chart-axis);
+  font-size: var(--npm-font-label);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.laneLabelDevice {
+  color: var(--npm-chart-label);
+  font-size: var(--npm-font-label);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tickDevice {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--npm-chart-label);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+}
+.axis {
+  position: relative;
+  height: 1.1rem;
+}
+.tick {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--npm-chart-axis);
+  font-size: var(--npm-font-label);
+  font-variant-numeric: tabular-nums;
+}
+.track {
+  position: relative;
+  height: 1.35rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+.grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--npm-chart-grid);
+}
+.segment,
+.segmentLabelled {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 3px;
+}
+.segmentLabelled {
+  padding: 0 4px;
+  color: var(--npm-chart-frame);
+  font-size: var(--npm-font-label);
+  font-weight: 600;
+  line-height: calc(1.35rem - 4px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Durchgehendes Band: volle Höhe, ohne Rundung; die Seite gibt Abschnitte lückenlos an. */
+.band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 1px;
+}
+.note {
+  position: absolute;
+  inset: 0;
+  padding: 0 var(--npm-space-2);
+  color: var(--npm-chart-axis);
+  font-size: var(--npm-font-label);
+  line-height: 1.35rem;
+}
+.now {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: calc(var(--label-w) + var(--gap) + (100% - var(--label-w) - var(--gap)) * var(--now-f));
+  width: 2px;
+  background: var(--npm-chart-now);
+  pointer-events: none;
+}
+.caption {
+  margin: var(--npm-space-1) 0 0;
+  color: var(--npm-chart-axis);
+  font-size: var(--npm-font-small);
+}

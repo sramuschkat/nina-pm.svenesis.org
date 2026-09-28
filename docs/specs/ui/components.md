@@ -257,6 +257,10 @@ Vorbild `renderPlanetCards`/`drawPlanetBars` im Beobachtungsplaner. Eigenschafte
 
 Vorbild `renderEvents` im Beobachtungsplaner. Eigenschaften: `timeZone`, `nightUtc`, `passes` (`sky.satellitePassesForNight`, `null` beim Laden), `showers` (`sky.showersTonight` mit `sky.meteorRate`), `moonIllumPct`, `limitingMag`, `galactic` (`sky.galacticCentre`), `season` (`sky.galacticSeason`), `eclipses` (`sky.nextEclipses`). Vier aufklappbare Gruppen (`<details>`) mit Symbol, Titel, Anzahl und erster Zeile im Kopf; darin je eine Tabelle und die Hinweise der Vorlage. Leere Gruppen entfallen, die Überflüge bleiben mit Hinweis, wenn Bahndaten älter als 14 Tage sind; ohne jedes Ereignis ein Leertext. Uhrzeiten in Standortzeit, auf die Minute gerundet wie die Vorlage, Finsternisse mit Datum und Zonenkürzel. Keine Datenabfrage.
 
+### 2.21 `NightTimeline` (Zeitleiste der Nacht, Heute Nacht)
+
+Mehrere Spuren auf **einer** Zeitachse in Standortzeit (volle Stunden, ab 17 Stunden jede zweite; Zeile „Standort CDT“), darunter heller eine zweite Stundenzeile in der Zeit des Users („Bei dir MESZ“), wenn dessen Zone abweicht (`deviceTimeZone`, sonst die des Browsers), dazu eine rote Linie „jetzt“ durch alle Spuren (`chart-now`, nur im Fenster). Eigenschaften: `fromUtc`, `toUtc`, `timeZone`, `nowUtc?`, `label` und `lanes`; jede Spur hat `key`, `label`, `segments` (von–bis, CSS-Farbe aus Tokens, optional Beschriftung, Deckkraft, Tooltip), optional `markers` (Zeitpunkt, Farbe, Titel), `note` (Text in leerer Spur), `continuous` (durchgehendes Band, z. B. Himmel und Wetter) und `describe` (Abschnitte und Marken als visuell verborgene Textliste). Auf dem dunklen Rahmen `chart-frame`; Beschriftungen in Balken werden abgeschnitten. Der Baustein rechnet nichts und fragt keine Daten ab – „Heute Nacht“ liefert Himmel (Sonnenhöhe), Wetter (Gesamtnote je Stunde), Mond (Zeit über dem Horizont), Plan (Blöcke, Flips, Flats aus der Simulation im Browser), Filter und Ereignisse.
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |

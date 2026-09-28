@@ -59,6 +59,10 @@ vi.mock('../../api/client', () => ({
       }),
     weather: () => Promise.resolve({ status: 'pending' }),
   },
+  projectsApi: {
+    list: () => Promise.resolve({ items: [] }),
+    get: () => Promise.reject(new Error('nicht gebraucht')),
+  },
   tonightApi: {
     get: () => Promise.resolve(state.view),
     setLine: (...a: unknown[]) => state.setLine(...a) as Promise<unknown>,
@@ -172,58 +176,79 @@ beforeEach(() => {
 });
 
 describe('S-02 Heute Nacht', () => {
-  it('Rig zuerst, dann Mond und Dunkelheit, Plan, Nacht im Detail, Mond & Planeten; axe', async () => {
+  it('Kopf mit Einschätzung, Kennzahlen, Zeitleiste, Plan und Ereignisse, Details eingeklappt; axe', async () => {
     wrap();
     const context = await screen.findByRole('region', { name: 'Rig und Nacht' });
     expect(within(context).getByRole('combobox', { name: 'Rig wählen' })).toHaveTextContent(
       'Rig A',
     );
     expect(context.textContent).toContain('Starfront · Nacht 18./19.09.');
+    // Einschätzung: Wetterklasse der Nacht und Countdown (die Testnacht liegt in der Vergangenheit).
+    expect(context.textContent).toContain('Gut 72 % · Dunkelheit vorbei');
+    // Vier Kennzahlen – Dunkel, Mond, Wetter, Plan/NINA stehen nur hier (Standortzeit CDT).
+    const kpis = screen.getByRole('list', { name: 'Kennzahlen der Nacht' });
+    const items = within(kpis)
+      .getAllByRole('listitem')
+      .map((li) => li.textContent);
+    expect(items[0]).toContain('9,5 h');
+    expect(items[0]).toContain('20:10–05:40 CDT');
+    expect(items[1]).toContain('48 %');
+    expect(items[1]).toContain('unter 00:00');
+    expect(items[2]).toContain('Gut 72 %');
+    expect(items[2]).toContain('bestes Fenster 21:00–03:00');
+    expect(items[3]).toContain('NINA zuletzt 12:55 CDT');
+    // Zeitleiste auf einer Achse: Himmel, Wetter, Mond, Plan, Ereignisse.
+    const timeline = screen.getByRole('group', { name: 'Zeitleiste der Nacht' });
+    for (const lane of ['Himmel', 'Wetter', 'Mond', 'Plan', 'Ereignisse'])
+      expect(within(timeline).getByText(lane)).toBeTruthy();
+    expect(timeline.textContent).toMatch(/Standortzeit \(CDT\)/);
+    // Plan: Projekte aus der Prognose, Safety-Link im Kopf; keine doppelten Angaben.
     const card = (
       await screen.findByRole('heading', { level: 2, name: 'Plan für diese Nacht' })
     ).closest('section') as HTMLElement;
-    // Nur, was NINA heute Nacht tut: NINA-Status, Safety-Link, Projekte – Dunkelheit, Mond und Wetter stehen in
-    // „Mond und Dunkelheit“ bzw. „Nacht im Detail“ (nicht doppelt, 27.09.2026).
-    expect(card.textContent).toContain('PC: zuletzt gesehen 18.09.2026 12:55 CDT');
     expect(
       within(card).getByRole('link', { name: 'Safety- und Wetterseite der Sternwarte' }),
     ).toHaveProperty('href', 'https://example.org/safety');
-    for (const gone of ['Dunkelheit', 'beleuchtet', 'Gut 72 %', 'bestes Fenster'])
+    for (const gone of [
+      'Dunkelheit',
+      'beleuchtet',
+      'Gut 72 %',
+      'bestes Fenster',
+      'zuletzt gesehen',
+    ])
       expect(card.textContent).not.toContain(gone);
-    expect(within(card).queryByRole('img')).toBeNull();
     const table = within(card).getByRole('table', { name: 'Geplante Projekte am Rig Rig A' });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
     expect(row.textContent).toContain('24');
     expect(row.textContent).toContain('2,1 h');
     expect(card.textContent).toContain('2 weitere aktive Projekte ohne Frames in dieser Nacht.');
-    // Mond und Dunkelheit vor dem Plan; Nacht im Detail und Mond & Planeten danach.
-    const moon = await screen.findByRole('img', {
-      name: /Mond und Dunkelheit der Nacht 18\.\/19\.09\./,
-    });
-    expect(moon.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const detail = screen.getByRole('heading', { level: 2, name: 'Nacht im Detail' });
-    expect(card.compareDocumentPosition(detail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText('noch keine Vorhersage für diese Nacht')).toBeTruthy();
+    // Reihenfolge: Kennzahlen → Zeitleiste → Plan.
+    expect(kpis.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(timeline.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Rechte Spalte: Mond & Planeten kurz, Ereignisse der Nacht.
     const bodies = screen.getByRole('heading', { level: 2, name: 'Mond & Planeten' });
-    const panel = bodies.closest('section') as HTMLElement;
-    expect(
-      within(panel).getByRole('img', { name: /Sichtbarkeit von Mond und Planeten.*Zeiten in CDT/ }),
-    ).toBeTruthy();
-    expect(within(panel).getAllByRole('listitem').length).toBeGreaterThan(0);
-    expect(panel.textContent).toMatch(/max\. \d+° um \d\d:\d\d CDT/);
-    // Ereignisse der Nacht: Bahndaten (hier der mitgelieferte Stand), vier Gruppen aus der Engine.
+    const short = bodies.closest('section') as HTMLElement;
+    expect(within(short).getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect(short.textContent).toMatch(/max\. \d+° um \d\d:\d\d/);
     const events = (
       await screen.findByRole('heading', { level: 2, name: 'Ereignisse der Nacht' })
     ).closest('section') as HTMLElement;
     expect(await within(events).findByText(/Satellitenbahnen Stand 15\.09\.2026/)).toBeTruthy();
     // 18./19.09.: noch kein großer Strom aktiv (Südliche Tauriden ab λ☉ 177°) – Gruppe entfällt.
     expect(within(events).queryByText('Meteorströme')).toBeNull();
-    expect(within(events).getByText('Zentrum der Milchstraße')).toBeTruthy();
     expect(within(events).getByText('Die nächsten Finsternisse am Standort')).toBeTruthy();
     expect(
       within(events).getByText(/Halbschatten-Mondfinsternis · Sa\., 20\.02\.2027, 17:13 CST/),
     ).toBeTruthy();
-    // Keine ungeprüften Sessions und keine Warteschlange mehr.
+    // Eingeklappt: Nacht im Detail und Sichtbarkeit von Mond & Planeten – Inhalt erst beim Aufklappen.
+    expect(screen.queryByText('noch keine Vorhersage für diese Nacht')).toBeNull();
+    fireEvent.click(screen.getByText('Nacht im Detail'));
+    expect(await screen.findByText('noch keine Vorhersage für diese Nacht')).toBeTruthy();
+    fireEvent.click(screen.getByText('Mond und Planeten – Sichtbarkeit'));
+    expect(
+      await screen.findByRole('img', { name: /Sichtbarkeit von Mond und Planeten.*Zeiten in CDT/ }),
+    ).toBeTruthy();
+    // Keine ungeprüften Sessions und keine Warteschlange.
     expect(
       screen.queryByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),
     ).toBeNull();

@@ -111,3 +111,164 @@
   padding: 0 var(--npm-space-2);
   font-size: var(--npm-font-label);
 }
+
+/* Einschätzung in der Kontextleiste (Umbau 28.09.2026): Ton nach Wetterklasse, Tokens der Statusfarben. */
+.verdict {
+  margin-inline-start: auto;
+  padding: 2px var(--npm-space-2);
+  border-radius: var(--npm-radius);
+  background: var(--npm-neutral-bg);
+  color: var(--npm-text);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+.verdict[data-tone='good'] {
+  background: var(--npm-success-bg);
+}
+.verdict[data-tone='fair'] {
+  background: var(--npm-warning-bg);
+}
+.verdict[data-tone='poor'] {
+  background: var(--npm-danger-bg);
+}
+
+/* Vier Kennzahlen – die Zahlen der Nacht stehen nur hier. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--npm-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+}
+.kpiLabel {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-label);
+}
+.kpiValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.kpiSub {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Zwei Spalten: links der Plan, rechts Ereignisse und Mond & Planeten kurz (unter 1.280 px untereinander). */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (max-width: 1279px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-4);
+  min-width: 0;
+}
+.bodyList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+.bodyList li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.bodyDot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--npm-border-strong);
+  border-radius: 50%;
+  background: var(--body);
+}
+.bodyList li[data-body='moon'] {
+  --body: var(--npm-body-moon);
+}
+.bodyList li[data-body='mercury'] {
+  --body: var(--npm-body-mercury);
+}
+.bodyList li[data-body='venus'] {
+  --body: var(--npm-body-venus);
+}
+.bodyList li[data-body='mars'] {
+  --body: var(--npm-body-mars);
+}
+.bodyList li[data-body='jupiter'] {
+  --body: var(--npm-body-jupiter);
+}
+.bodyList li[data-body='saturn'] {
+  --body: var(--npm-body-saturn);
+}
+.bodyList li[data-body='uranus'] {
+  --body: var(--npm-body-uranus);
+}
+.bodyList li[data-body='neptune'] {
+  --body: var(--npm-body-neptune);
+}
+
+/* Eingeklappte Details: Stundentabelle und Sichtbarkeit von Mond & Planeten. */
+.fold {
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
+}
+.foldSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.foldSummary::-webkit-details-marker {
+  display: none;
+}
+.foldSummary::before {
+  content: '';
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid var(--npm-link);
+  border-bottom: 2px solid var(--npm-link);
+  transform: rotate(-45deg);
+}
+.fold[open] > .foldSummary::before {
+  transform: rotate(45deg);
+}
+.foldSummary:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: -2px;
+}
+.foldBody {
+  padding: 0 var(--npm-space-4) var(--npm-space-4);
+}
