@@ -99,6 +99,7 @@ const detail = (): NightSessionDetail => ({
       projectId: ID(10),
       projectName: 'NGC 281',
       projectCreatedBy: ID(92),
+      canCorrect: true,
       exposureLineId: ID(20),
       filterShortName: 'Ha',
       exposureS: 300,
@@ -454,14 +455,16 @@ describe('S-61 Session-Detail', () => {
     );
   });
 
-  it('User ohne Recht auf eine Zeile sieht „Korrektur erfassen“ nicht (API antwortet 403)', async () => {
+  it('ohne Recht auf eine Zeile (API: canCorrect = false) kein „Korrektur erfassen“, kein Verwerfen', async () => {
     state.me = me('user');
     const d = detail();
-    d.rows = d.rows.map((r) => ({ ...r, projectCreatedBy: ID(93) }));
+    // Auch das eigene Projekt, wenn der Mandant `userCorrections` abgeschaltet hat – die API liefert false.
+    d.rows = d.rows.map((r) => ({ ...r, canCorrect: false }));
     state.detail = d;
     renderAt(`/auswertung/sessions/${ID(1)}`);
     await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
     expect(screen.queryByRole('button', { name: 'Korrektur erfassen' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Korrektur' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Verwerfen' })).toBeNull();
   });
 });

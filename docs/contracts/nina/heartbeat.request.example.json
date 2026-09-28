@@ -60,17 +60,17 @@
   "lastMeasuredRotationDeg": 0.3,
   "filterWheel": [
     {
-      "position": 0,
+      "position": 1,
       "name": "L",
       "focusOffset": 0
     },
     {
-      "position": 1,
+      "position": 2,
       "name": "Ha 3nm",
       "focusOffset": 35
     },
     {
-      "position": 2,
+      "position": 3,
       "name": "Red",
       "focusOffset": 12
     }

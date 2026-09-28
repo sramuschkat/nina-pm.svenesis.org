@@ -63,7 +63,7 @@ async function setup() {
   await eq.updateScheduler(rig.id, SCHEDULER, now);
   await eq.putFilterWheel(
     rig.id,
-    { slots: [{ position: 0, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
+    { slots: [{ position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
     now,
   );
   const created = await web('/projects', {
@@ -272,6 +272,25 @@ describe('Korrektur (FA-AUS-06, DAT-1)', () => {
       body: { exposureLineId: id(), rejected: 1 },
     });
     expect([foreign.status, foreign.body.code]).toEqual([422, 'validation.failed']);
+  });
+});
+
+describe('Detail: canCorrect je Zeile (Entscheidung Sven 28.09.2026)', () => {
+  it('Admin immer; User für das eigene Projekt nur mit Mandanteneinstellung userCorrections', async () => {
+    const t = await setup();
+    await t.fakeNight();
+    const sessionId = ((await t.web('/sessions')).body.items as Body[])[0]?.id as string;
+    const canCorrect = async (as?: 'user') =>
+      ((await t.web(`/sessions/${sessionId}`, as ? { as } : {})).body.rows as Body[]).map(
+        (r) => r.canCorrect,
+      );
+    expect(await canCorrect()).toEqual([true]);
+    expect(await canCorrect('user')).toEqual([false]);
+    await t.web('/tenant/settings', {
+      method: 'PATCH',
+      body: { settings: { userCorrections: true } },
+    });
+    expect(await canCorrect('user')).toEqual([true]);
   });
 });
 

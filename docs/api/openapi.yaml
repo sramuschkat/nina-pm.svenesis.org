@@ -8764,6 +8764,8 @@ components:
             - "null"
           format: uuid
           description: UUID
+        canCorrect:
+          type: boolean
         exposureLineId:
           type: string
           format: uuid
@@ -8805,6 +8807,7 @@ components:
         - projectId
         - projectName
         - projectCreatedBy
+        - canCorrect
         - exposureLineId
         - filterShortName
         - exposureS

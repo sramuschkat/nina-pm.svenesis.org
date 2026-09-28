@@ -64,7 +64,7 @@ export const NinaBootstrap = z
             shortName: Text,
             name: Text,
             color: Text,
-            position: z.number().int().min(0),
+            position: z.number().int().min(1),
             ninaFilterName: Text.nullable(),
           }),
         )
