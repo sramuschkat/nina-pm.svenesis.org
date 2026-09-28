@@ -16,7 +16,8 @@ Was geprüft wird (execution.md §2, §4.3, §4.5, §4.6, §5):
    - **Aus dem CI:** Im PR unter *Checks → plugin → build → Artifacts* die Datei `nina-pm-probe` laden und entpacken.
    - **In der VM bauen:** `git pull` im geklonten Repository, dann `dotnet build -c Debug spikes\nina-probe`. Die Debug-Ausgabe landet direkt im Plugin-Ordner.
 2. `NinaPm.Probe.dll` nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\NINA-PM Probe\` kopieren (Ordner anlegen), NINA neu starten.
-3. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.0** stehen.
+3. NINA **ganz** beenden (`Get-Process NINA` darf nichts mehr liefern) und neu starten: Plugins lädt NINA nur beim Start.
+4. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.0** stehen. Fehlt es, steht der Grund nur auf Log-Stufe *Trace* im NINA-Log (`Select-String -Pattern "Probe"`).
 
 **Vor jedem Protokoll** die Begleitdatei `%LOCALAPPDATA%\NINA\NinaPmProbe\nina-pm.log` löschen oder umbenennen. Das Plugin schreibt jede `NINA-PM |`-Zeile zusätzlich dorthin; die Datei ist später dein `nina.log`.
 
@@ -29,7 +30,7 @@ Im *Erweiterten Sequenzer*:
 
 Vor dem Start: Kamera, Montierung, Filterrad und Safety-Monitor der Simulatoren verbunden, Montierung entparkt und nachführend. Die Montierung schwenkt zu Beginn auf das Probe-Ziel mit Meridian in *n* Minuten, wenn *Zum Ziel schwenken* an ist.
 
-Meridian-Flip in NINA (*Optionen → Montierung → Meridian-Flip*): *Minuten nach Meridian* 1, *Max. Minuten nach Meridian* 5, *Pause vor Meridian* 0, *Recenter* aus.
+Meridian-Flip in NINA 3: Einen globalen Schalter gibt es nicht. Aktiv ist der Flip, sobald der Trigger **Meridian Flip** in *Globale Trigger* steckt. Die Zeiten stehen unter *Optionen → Bildaufnahme (Imaging) → Meridian Flip*: *Minutes after meridian* 1, *Max. minutes after meridian* 5, *Pause before meridian* 0, *Use telescope side of pier* an, *Recenter after flip* aus. Der Teleskop-Simulator muss nachführen und die Pier-Seite melden (*Ausrüstung → Teleskop*: vor dem Flip „West“, nicht „Unknown“).
 
 | Parameter | P-01 | P-02 | P-03 | P-13 Lauf A | P-13 Lauf B |
 |---|---|---|---|---|---|

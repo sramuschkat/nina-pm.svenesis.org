@@ -35,6 +35,7 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | Flip-Einstellungen | `IMeridianFlipSettings`: `MinutesAfterMeridian`, `MaxMinutesAfterMeridian`, `PauseTimeBeforeMeridian`, `Recenter`, `UseSideOfPier`, `AutoFocusAfterFlip`, `SettleTime`, `RotateImageAfterFlip` | Heartbeat-Felder und §4.5 unverändert |
 | Auslesemodus | `CameraInfo.ReadoutModes` (`IEnumerable<string>`), `ICameraMediator.SetReadoutModeForNormalImages(short)` | Name → Index wie §4.3 |
 | Safety | `SafetyMonitorCondition` (in `GetConditionsSnapshot()` der Vorfahren), `SafetyMonitorInfo.Connected`/`IsSafe` | Unterscheidung wie §4.6 umsetzbar |
+| Plugin-Manifest | `PluginBase.Identifier` liest das **`GuidAttribute`** der Assembly, `Name`/`Author`/Kurzbeschreibung kommen aus `AssemblyTitle`/`AssemblyCompany`/`AssemblyDescription`; `AssemblyMetadata("Identifier")` wird nicht gelesen. Fehlt das `Guid`-Attribut, bricht `LoadPlugin` ab und protokolliert nur auf Trace-Stufe (`KeyNotFoundException: GuidAttribute`, VM-Test 28.09.2026) | Probe korrigiert; **AP-16a:** `NinaPm.Nina` braucht `[assembly: Guid]`, `AssemblyTitle`, `AssemblyCompany`, `AssemblyDescription` und `MinimumApplicationVersion` |
 | Ansichten | `NINA.View.Sequencer.SequenceBlockView` und `…MiniSequencer.MiniSequenceItem` in `NINA.Sequencer`; das Probe-XAML baut auf dem Mac | bestätigt ADR-S2c Frage 3 auch mit NINA-Typen im XAML |
 
 ### Zur Laufzeit (VM, NINA 3.2, Simulatoren) – offen
@@ -46,7 +47,7 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | Abbruch über eigenen Token < 5 s | P-03, P-13 (2) | offen |
 | Typfilter AF/Dither, Auslesemodus per Name, Flip `west → east`, Pier-Seite unbekannt → nur `FLIP_UNDETECTED` | P-13 | offen |
 | Positionswinkel-Konvention im FITS-Header | P-02 Screenshot | offen |
-| Versionsabgleich `NINA.Sequencer.dll` = 3.2.0.9001 (aus AP-S2c verschoben) | `windows-vm.md` Schritt 5 | offen |
+| Versionsabgleich `NINA.Sequencer.dll` = 3.2.0.9001 (aus AP-S2c verschoben) | `windows-vm.md` Schritt 5 | ✔ Sven 28.09.2026, VM: `FileVersion` 3.2.0.9001 = `NinaVersion` |
 | Kommandozeile `--profileid`/`--sequencefile`/`--runsequence`/`--exitaftersequence` (Kurzformen?), Start über die Aufgabenplanung | README Probe §5 | offen |
 | *Loop While Safe* unterbricht → `interrupted`, Stopp → `user_skip` (§4.6) | README Probe §5 | offen |
 
