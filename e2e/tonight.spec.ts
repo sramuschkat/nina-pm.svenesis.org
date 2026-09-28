@@ -4,8 +4,8 @@
  * 17./18., 18./19. und 18./19.09. (rules/ui.md, NT-01). Die Serveruhr stellt das Cookie `npm_test_now` je
  * Anfrage (nur `AUTH_TEST_MODE`), die Browseruhr `page.clock` – die Nacht kommt trotzdem nur vom Server.
  * Zuerst wird das Rig gewählt (Umbau 27./28.09.2026): Auswahl per Liste, Rig in der URL; darunter
- * Einschätzung, Kennzahlen, Zeitleiste der Nacht, Plan, Ereignisse, Mond & Planeten kurz und eingeklappt
- * „Nacht im Detail“ und die Sichtbarkeit von Mond & Planeten. Dazu axe hell/dunkel und 768/2400 px ohne
+ * Einschätzung, Kennzahlen, Zeitleiste der Nacht, direkt darunter eingeklappt „Nachtwetter im Detail“ und die
+ * Sichtbarkeit von Mond & Planeten, dann Plan und Ereignisse. Dazu axe hell/dunkel und 768/2400 px ohne
  * horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -112,14 +112,13 @@ test('S-02: Rig zuerst wählen, dann Kennzahlen, Zeitleiste, Plan, Ereignisse; D
   for (const lane of ['Himmel', 'Wetter', 'Mond', 'Plan', 'Ereignisse'])
     await expect(timeline.getByText(lane, { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Plan für diese Nacht' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: 'Mond & Planeten' })).toBeVisible();
   // Eingeklappt: erst beim Aufklappen sichtbar.
   await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toHaveCount(
     0,
   );
   await page.getByText('Mond und Planeten – Sichtbarkeit').click();
   await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toBeVisible();
-  await page.getByText('Nacht im Detail').click();
+  await page.getByText('Nachtwetter im Detail').click();
   const events = page.locator('section').filter({
     has: page.getByRole('heading', { level: 2, name: 'Ereignisse der Nacht' }),
   });

@@ -2481,7 +2481,6 @@ export const en: Messages = {
     zoneNote: 'Times in site time ({{zone}}).',
   },
   bodies: {
-    title: 'Moon & planets',
     name: {
       moon: 'Moon',
       mercury: 'Mercury',
@@ -2574,8 +2573,6 @@ export const en: Messages = {
   tonight: {
     timeline: 'Timeline of the night',
     bodiesDetail: 'Moon and planets – visibility',
-    bodiesNone: 'Neither the moon nor a planet gets above 10° at night.',
-    bodyBest: 'max {{alt}}° at {{time}}',
     verdict: {
       rating: '{{rating}} {{pct}} %',
       noWeather: 'no forecast yet',
@@ -2632,7 +2629,7 @@ export const en: Messages = {
     empty: 'No rigs yet.',
     context: 'Rig and night',
     planTitle: 'Plan for this night',
-    detail: 'Night in detail',
+    detail: 'Night weather in detail',
     noWindow: 'There is no night window for this night.',
     night: 'Night {{night}}',
     weatherNone: 'no forecast for this night yet',

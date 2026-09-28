@@ -222,14 +222,21 @@ describe('S-02 Heute Nacht', () => {
     expect(row.textContent).toContain('24');
     expect(row.textContent).toContain('2,1 h');
     expect(card.textContent).toContain('2 weitere aktive Projekte ohne Frames in dieser Nacht.');
-    // Reihenfolge: Kennzahlen → Zeitleiste → Plan.
+    // Reihenfolge: Kennzahlen → Zeitleiste → eingeklappte Details → Plan.
     expect(kpis.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(timeline.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Rechte Spalte: Mond & Planeten kurz, Ereignisse der Nacht.
-    const bodies = screen.getByRole('heading', { level: 2, name: 'Mond & Planeten' });
-    const short = bodies.closest('section') as HTMLElement;
-    expect(within(short).getAllByRole('listitem').length).toBeGreaterThan(0);
-    expect(short.textContent).toMatch(/max\. \d+° um \d\d:\d\d/);
+    // Kein eigenes Kurzfenster „Mond & Planeten“ mehr; die Sichtbarkeit steht eingeklappt unter der Zeitleiste.
+    expect(screen.queryByRole('heading', { level: 2, name: 'Mond & Planeten' })).toBeNull();
+    const weatherFold = screen.getByText('Nachtwetter im Detail');
+    const bodiesFold = screen.getByText('Mond und Planeten – Sichtbarkeit');
+    expect(
+      timeline.compareDocumentPosition(weatherFold) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      weatherFold.compareDocumentPosition(bodiesFold) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      bodiesFold.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     const events = (
       await screen.findByRole('heading', { level: 2, name: 'Ereignisse der Nacht' })
     ).closest('section') as HTMLElement;
@@ -242,9 +249,9 @@ describe('S-02 Heute Nacht', () => {
     ).toBeTruthy();
     // Eingeklappt: Nacht im Detail und Sichtbarkeit von Mond & Planeten – Inhalt erst beim Aufklappen.
     expect(screen.queryByText('noch keine Vorhersage für diese Nacht')).toBeNull();
-    fireEvent.click(screen.getByText('Nacht im Detail'));
+    fireEvent.click(weatherFold);
     expect(await screen.findByText('noch keine Vorhersage für diese Nacht')).toBeTruthy();
-    fireEvent.click(screen.getByText('Mond und Planeten – Sichtbarkeit'));
+    fireEvent.click(bodiesFold);
     expect(
       await screen.findByRole('img', { name: /Sichtbarkeit von Mond und Planeten.*Zeiten in CDT/ }),
     ).toBeTruthy();

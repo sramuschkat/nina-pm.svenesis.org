@@ -2488,7 +2488,6 @@ export const de = {
     zoneNote: 'Zeiten in Standortzeit ({{zone}}).',
   },
   bodies: {
-    title: 'Mond & Planeten',
     name: {
       moon: 'Mond',
       mercury: 'Merkur',
@@ -2582,8 +2581,6 @@ export const de = {
   tonight: {
     timeline: 'Zeitleiste der Nacht',
     bodiesDetail: 'Mond und Planeten – Sichtbarkeit',
-    bodiesNone: 'Weder Mond noch Planeten kommen nachts über 10°.',
-    bodyBest: 'max. {{alt}}° um {{time}}',
     verdict: {
       rating: '{{rating}} {{pct}} %',
       noWeather: 'noch keine Vorhersage',
@@ -2640,7 +2637,7 @@ export const de = {
     empty: 'Noch keine Rigs angelegt.',
     context: 'Rig und Nacht',
     planTitle: 'Plan für diese Nacht',
-    detail: 'Nacht im Detail',
+    detail: 'Nachtwetter im Detail',
     noWindow: 'Für diese Nacht gibt es kein Nachtfenster.',
     night: 'Nacht {{night}}',
     weatherNone: 'noch keine Vorhersage für diese Nacht',

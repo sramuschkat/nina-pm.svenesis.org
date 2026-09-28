@@ -6,12 +6,12 @@
  * 2. vier Kennzahlen (Dunkel, Mond, Wetter, Plan/NINA) – die Zahlen stehen nur hier,
  * 3. Zeitleiste der Nacht auf einer Achse: Himmel, Wetter, Mond, Plan (Simulation im Browser wie der
  *    Simulator: Projektblöcke, Flips, Flats), Filter, Ereignisse; rote Linie „jetzt“,
- * 4. zwei Spalten: links der Plan (geplante Projekte aus der Prognose, „nur heute aus“, Safety-Link),
- *    rechts „Ereignisse der Nacht“ und Mond & Planeten kurz,
- * 5. eingeklappt: „Nacht im Detail“ (Stundentabelle Astro-Wetter) und die Sichtbarkeit von Mond & Planeten.
+ * 4. direkt darunter eingeklappt: „Nachtwetter im Detail“ (Stundentabelle Astro-Wetter) und die Sichtbarkeit
+ *    von Mond & Planeten (28.09.2026),
+ * 5. zwei Spalten: links der Plan (geplante Projekte aus der Prognose, „nur heute aus“, Safety-Link),
+ *    rechts „Ereignisse der Nacht“.
  * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
-import { sky as skyNs } from '@nina-pm/engine';
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
@@ -139,19 +139,17 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
           <TonightTimeline rig={rig} sky={sky} plan={plan} nowUtc={now} />
         </div>
       </section>
-      <div className={styles.split}>
-        <RigCard rig={rig} colorOf={colorOf} />
-        <div className={styles.side}>
-          <SkyEvents site={site} sky={sky} />
-          <PlanetsShort sky={sky} timeZone={site.timeZone} />
-        </div>
-      </div>
+      {/* Details direkt unter der Zeitleiste, eingeklappt (Wunsch Sven 28.09.2026). */}
       <Fold title={t('tonight.detail')}>
         <NightDetail site={site} night={rig.night} />
       </Fold>
       <Fold title={t('tonight.bodiesDetail')}>
         <MoonAndPlanets site={site} sky={sky} now={now} />
       </Fold>
+      <div className={styles.split}>
+        <RigCard rig={rig} colorOf={colorOf} />
+        <SkyEvents site={site} sky={sky} />
+      </div>
     </>
   );
 }
@@ -233,50 +231,6 @@ function SkyEvents({ site, sky }: { site: SiteView; sky: NightSky }) {
             season={sky.season}
             eclipses={sky.eclipses}
           />
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** Mond & Planeten kurz: je Körper, der nachts 10° erreicht, die beste Höhe mit Uhrzeit. */
-function PlanetsShort({ sky, timeZone }: { sky: NightSky; timeZone: string }) {
-  const { t, i18n } = useTranslation();
-  const headingId = useId();
-  const n = (x: number) => x.toLocaleString(i18n.language, { maximumFractionDigits: 0 });
-  const clock = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone,
-  });
-  const best = skyNs.NIGHT_BODIES.map((id) => ({ id, b: skyNs.bestBodySample(sky.bodies, id) }))
-    .filter((x) => (x.b?.sample.altDeg ?? 0) >= 10)
-    .sort((a, b) => (b.b?.sample.altDeg ?? 0) - (a.b?.sample.altDeg ?? 0));
-  return (
-    <section className={styles.card} aria-labelledby={headingId}>
-      <div className={styles.cardHead}>
-        <h2 id={headingId} className={styles.cardTitle}>
-          {t('bodies.title')}
-        </h2>
-      </div>
-      <div className={styles.cardBody}>
-        {best.length === 0 ? (
-          <p className={styles.muted}>{t('tonight.bodiesNone')}</p>
-        ) : (
-          <ul className={styles.bodyList}>
-            {best.map(({ id, b }) => (
-              <li key={id} data-body={id}>
-                <span className={styles.bodyDot} aria-hidden />
-                <span>{t(`bodies.name.${id}`)}</span>
-                <span className={styles.muted}>
-                  {t('tonight.bodyBest', {
-                    alt: n(b?.sample.altDeg ?? 0),
-                    time: clock.format((b?.t ?? 0) * 1000),
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
     </section>

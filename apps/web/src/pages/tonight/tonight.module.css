@@ -182,59 +182,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-4);
-  min-width: 0;
-}
-.bodyList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-variant-numeric: tabular-nums;
-}
-.bodyList li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--npm-space-2);
-}
-.bodyDot {
-  width: 0.7rem;
-  height: 0.7rem;
-  border: 1px solid var(--npm-border-strong);
-  border-radius: 50%;
-  background: var(--body);
-}
-.bodyList li[data-body='moon'] {
-  --body: var(--npm-body-moon);
-}
-.bodyList li[data-body='mercury'] {
-  --body: var(--npm-body-mercury);
-}
-.bodyList li[data-body='venus'] {
-  --body: var(--npm-body-venus);
-}
-.bodyList li[data-body='mars'] {
-  --body: var(--npm-body-mars);
-}
-.bodyList li[data-body='jupiter'] {
-  --body: var(--npm-body-jupiter);
-}
-.bodyList li[data-body='saturn'] {
-  --body: var(--npm-body-saturn);
-}
-.bodyList li[data-body='uranus'] {
-  --body: var(--npm-body-uranus);
-}
-.bodyList li[data-body='neptune'] {
-  --body: var(--npm-body-neptune);
-}
-
 /* Eingeklappte Details: Stundentabelle und Sichtbarkeit von Mond & Planeten. */
 .fold {
   border: 1px solid var(--npm-border);
