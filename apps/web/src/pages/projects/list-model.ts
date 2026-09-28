@@ -129,16 +129,35 @@ export function groupByRig(
   });
 }
 
-/** Neue Position (1-basiert) unter den freigegebenen Projekten des Rigs nach Verschieben um `delta`. */
+/**
+ * Priorität (1-basiert) unter den freigegebenen Projekten der **ganzen** Rig-Gruppe – unabhängig von
+ * Filtern, denn der Server rechnet mit absoluten Positionen (FA-PRJ-13, Prüfung 28.09.2026). `null` =
+ * nicht freigegeben.
+ */
+export function priorityRank(group: readonly ProjectListItem[], id: string): number | null {
+  const index = sortInGroup(group)
+    .filter((p) => p.approvalStatus === 'approved')
+    .findIndex((p) => p.id === id);
+  return index < 0 ? null : index + 1;
+}
+
+/**
+ * Neue Position (1-basiert, absolut in der ganzen Rig-Gruppe) nach Verschieben um `delta` unter den
+ * **sichtbaren** Projekten (`shown`, gefiltert; Standard: alle): das Projekt nimmt den Platz des sichtbaren
+ * Nachbarn ein. Vorher zählte die Position nur in der gefilterten Liste und landete am falschen Platz.
+ */
 export function movedPosition(
   group: readonly ProjectListItem[],
   id: string,
   delta: number,
+  shown: readonly ProjectListItem[] = group,
 ): number | null {
-  const approved = sortInGroup(group).filter((p) => p.approvalStatus === 'approved');
+  const visible = new Set(shown.map((p) => p.id));
+  const approved = sortInGroup(group).filter(
+    (p) => p.approvalStatus === 'approved' && (visible.has(p.id) || p.id === id),
+  );
   const index = approved.findIndex((p) => p.id === id);
   if (index < 0) return null;
-  const next = index + delta;
-  if (next < 0 || next >= approved.length) return null;
-  return next + 1;
+  const neighbor = approved[index + delta];
+  return neighbor ? priorityRank(group, neighbor.id) : null;
 }

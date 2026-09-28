@@ -39,7 +39,7 @@ const panel = (n: number, over: Record<string, unknown> = {}) => ({
   label: `Panel ${String(n)}`,
   raDeg: 314 + n * 0.1,
   decDeg: 44.5,
-  rotationDeg: 30,
+  rotationDeg: n === 1 ? 31.059489 : 30,
   notes: '',
   enabled: true,
   lines: [] as { hasCaptures: boolean }[],
@@ -157,6 +157,32 @@ describe('Panel-Liste (FA-PRJ-06)', () => {
         2,
       ),
     );
+  });
+
+  it('Prüfung 28.09.2026: RA wird erst beim Verlassen einmal gespeichert, Durchtabben schreibt nichts', async () => {
+    state.patch.mockResolvedValue({ id: ID(1) });
+    renderList();
+    const ra = screen.getByLabelText('RA Panel 1');
+    fireEvent.focus(ra);
+    for (const v of ['1', '10', '10h', '10h 4', '10h 42', '10h 42m 4', '10h 42m 44'])
+      fireEvent.change(ra, { target: { value: v } });
+    expect(state.patch).not.toHaveBeenCalled();
+    fireEvent.blur(ra);
+    await waitFor(() => expect(state.patch).toHaveBeenCalledTimes(1));
+    expect(state.patch).toHaveBeenCalledWith(ID(1), ID(101), {
+      raDeg: Math.round((10 + 42 / 60 + 44 / 3600) * 15 * 1e6) / 1e6,
+    });
+    // Ungültige Eingabe wird nicht gespeichert.
+    const dec = screen.getByLabelText('Dec Panel 1');
+    fireEvent.focus(dec);
+    fireEvent.change(dec, { target: { value: '+44 3x' } });
+    fireEvent.blur(dec);
+    // Rotation mit mehr Nachkommastellen als die Anzeige: nur Fokus und Verlassen schreibt nicht.
+    const rot = screen.getByLabelText('Rotation Panel 1 (°)');
+    fireEvent.focus(rot);
+    fireEvent.blur(rot);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(state.patch).toHaveBeenCalledTimes(1);
   });
 
   it('ohne Bearbeitungsrecht nur lesend', () => {

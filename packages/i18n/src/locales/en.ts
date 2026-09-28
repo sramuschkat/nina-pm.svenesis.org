@@ -1044,6 +1044,8 @@ export const en: Messages = {
       templatesEdit: 'Edit templates',
       templateConfirmTitle: 'Apply template?',
       templateConfirm: 'Lines without captures are replaced by the template lines.',
+      templateConfirmAll:
+        'Lines without captures are replaced by the template lines in all panels.',
       quick: 'Quick entry',
       filter: 'Filter',
       filterChoose: '– filter –',

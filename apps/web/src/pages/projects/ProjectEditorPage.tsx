@@ -45,6 +45,7 @@ import { EffortChip } from '../../components/EffortChip';
 import { ProgressBar } from '../../components/ProgressBar';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
+import { rebaseDraft } from '../../lib/draft-rebase';
 import { useLiveEffort, type LiveEffortInput } from '../../lib/use-live-effort';
 import {
   CheckField,
@@ -151,8 +152,14 @@ export function ProjectEditorPage() {
     staleTime: 60_000,
   });
 
-  // Entwurf: einmal je Projekt aus der gespeicherten Fassung, neu aus der eigenen Vorbelegung.
-  const [draft, setDraft] = useState<{ for: string; value: ProjectDraft } | null>(null);
+  // Entwurf: einmal je Projekt aus der gespeicherten Fassung, neu aus der eigenen Vorbelegung. `base` ist
+  // die Fassung, auf der der Entwurf beruht (Prüfung 28.09.2026): Änderungen und `If-Match` beziehen sich
+  // auf sie, nicht auf eine später nachgeladene Fassung – sonst setzte Speichern fremde Änderungen zurück.
+  const [draft, setDraft] = useState<{
+    for: string;
+    value: ProjectDraft;
+    base: ProjectView | null;
+  } | null>(null);
   const draftKey =
     id ??
     `new:${objekt ?? ''}:${rigParam ?? ''}:${String(raParam)}:${String(decParam)}:${String(rotParam)}`;
@@ -166,10 +173,22 @@ export function ProjectEditorPage() {
       if (raParam !== null && decParam !== null)
         value = { ...value, raDeg: raParam, decDeg: decParam };
       if (rotParam !== null) value = { ...value, rotationDeg: rotParam };
-      setDraft({ for: draftKey, value });
+      setDraft({ for: draftKey, value, base: null });
     } else if (!isNew && project.data) {
-      setDraft({ for: draftKey, value: toDraft(project.data) });
+      setDraft({ for: draftKey, value: toDraft(project.data), base: project.data });
     }
+  }
+  // Neuere Fassung (Neuladen beim Fensterfokus, eigene Änderung an Zeilen/Panels/Status): Entwurf darauf
+  // heben, wenn sich die Änderungen nicht überschneiden; sonst bleibt die Basis und der Editor zeigt den
+  // Konflikt – Speichern mit der alten Version endet dann mit 412.
+  if (
+    draft?.for === draftKey &&
+    draft.base &&
+    project.data &&
+    project.data.version > draft.base.version
+  ) {
+    const next = rebaseDraft(draft.value, toDraft(draft.base), toDraft(project.data));
+    if (next) setDraft({ for: draftKey, value: next, base: project.data });
   }
 
   if (!isNew && project.isError)
@@ -193,14 +212,15 @@ export function ProjectEditorPage() {
       key={draftKey}
       pendingMosaic={pendingMosaic}
       saved={isNew ? null : (project.data ?? null)}
+      base={draft.base}
       draft={draft.value}
-      setDraft={(value) => setDraft({ for: draftKey, value })}
+      setDraft={(value) => setDraft({ for: draftKey, value, base: draft.base })}
       onSaved={(view) => {
         client.setQueryData(projectKey(view.id), view);
         if (isNew) {
           void navigate(PROJECT_PATHS.edit(view.id), { replace: true });
         } else {
-          setDraft({ for: draftKey, value: toDraft(view) });
+          setDraft({ for: draftKey, value: toDraft(view), base: view });
         }
       }}
       onChange={(view) => client.setQueryData(projectKey(view.id), view)}
@@ -210,7 +230,7 @@ export function ProjectEditorPage() {
       }}
       onReset={async () => {
         const res = await project.refetch();
-        if (res.data) setDraft({ for: draftKey, value: toDraft(res.data) });
+        if (res.data) setDraft({ for: draftKey, value: toDraft(res.data), base: res.data });
       }}
     />
   );
@@ -230,7 +250,10 @@ function catalogPick(o: DsoView, t: (key: string) => string): CatalogPick {
 }
 
 interface EditorProps {
+  /** Aktuelle Fassung (Zeilen, Panels, Status, Kennzeichen). */
   saved: ProjectView | null;
+  /** Fassung, auf der der Entwurf beruht: Teiländerung und `If-Match` (neu: `null`). */
+  base: ProjectView | null;
   /** Mosaik aus der Sternkarte, das nach dem Anlegen übernommen wird (AP-22). */
   pendingMosaic?: { cols: number; rows: number; overlapPct: number } | null;
   draft: ProjectDraft;
@@ -243,6 +266,7 @@ interface EditorProps {
 
 function Editor({
   saved,
+  base,
   pendingMosaic = null,
   draft,
   setDraft,
@@ -342,8 +366,10 @@ function Editor({
   const setCond = <K extends keyof Conditions>(key: K, value: Conditions[K]) =>
     setDraft({ ...draft, conditions: { ...draft.conditions, [key]: value } });
 
-  const changes = saved ? changedFields(draft, saved) : null;
+  const changes = saved && base ? changedFields(draft, base) : null;
   const dirty = saved === null || Object.keys(changes ?? {}).length > 0;
+  /** Fremde Änderung am selben Feld seit der Basis (siehe `rebaseDraft`): Neu laden nötig. */
+  const stale = saved !== null && base !== null && saved.version > base.version;
 
   const save = useMutation({
     mutationFn: async (acceptRigConflicts: boolean) => {
@@ -368,7 +394,7 @@ function Editor({
       const body = { ...changes, ...(acceptRigConflicts ? { acceptRigConflicts: true } : {}) };
       const result = validate(ProjectPatch, body);
       if (!result.ok) throw new FormErrors(result.errors);
-      return projectsApi.patch(saved.id, result.data as object, saved.version);
+      return projectsApi.patch(saved.id, result.data as object, (base ?? saved).version);
     },
     onMutate: () => setClientErrors({}),
     onSuccess: onSaved,
@@ -398,10 +424,8 @@ function Editor({
 
   const status = useMutation({
     mutationFn: (next: ProjectStatus) => projectsApi.setStatus(saved?.id ?? '', next),
-    onSuccess: (view) => {
-      onChange(view);
-      setDraft(toDraft(view));
-    },
+    // Der Entwurf wird auf die neue Fassung gehoben (ProjectEditorPage), eigene Eingaben bleiben.
+    onSuccess: (view) => onChange(view),
   });
   const favorite = useMutation({
     mutationFn: (on: boolean) => projectsApi.favorite(saved?.id ?? '', on),
@@ -951,10 +975,14 @@ function Editor({
               : t('projectEditor.readOnly')}
         </p>
       ) : null}
-      {isConflict(save.error) ? (
+      {isConflict(save.error) || (stale && dirty) ? (
         <div className={styles.warning} role="alert">
           <p>{t('common.conflict')}</p>
-          <button type="button" className={styles.button} onClick={() => void onReset()}>
+          <button
+            type="button"
+            className={styles.button}
+            onClick={() => void onReset().then(() => save.reset())}
+          >
             {t('projectEditor.reload')}
           </button>
         </div>

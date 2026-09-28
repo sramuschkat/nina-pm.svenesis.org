@@ -93,8 +93,8 @@ Der Baustein zeichnet ausschließlich, was die Engine schon gerechnet hat. **Er 
 | | |
 |---|---|
 | Einsatz | Standort, Projekt, Sternkarte |
-| Eigenschaften | `kind: 'ra' \| 'dec' \| 'lon' \| 'lat'` · `valueDeg: number \| null` · `onChange(valueDeg \| null)` · `format?: 'sexagesimal' \| 'decimal'` (umschaltbar, Merkung in `user_preference`) · `disabled?` · `required?` |
-| Verhalten | nimmt beide Schreibweisen bei der Eingabe an (`00h 52m 49s`, `00 52 49`, `13.2046`, `+56° 37′ 48″`, `56:37:48`), zeigt in der gewählten an; Umschalter als kleiner Knopf im Feld |
+| Eigenschaften | `kind: 'ra' \| 'dec' \| 'lon' \| 'lat'` · `valueDeg: number \| null` · `onChange(valueDeg \| null)` · `onValidityChange?(valid)` · `format?: 'sexagesimal' \| 'decimal'` (umschaltbar, Merkung in `user_preference`) · `disabled?` · `required?` |
+| Verhalten | nimmt beide Schreibweisen bei der Eingabe an (`00h 52m 49s`, `00 52 49`, `13.2046`, `+56° 37′ 48″`, `56:37:48`), Breite/Länge auch mit nachgestellter Himmelsrichtung (`33° 52′ S`, `9° 8′ W`, Ost als `E`/`O`; Süd/West negativ), zeigt in der gewählten an; Umschalter als kleiner Knopf im Feld. **`onChange` erst beim Verlassen oder mit Enter** und nur mit gültigem, geändertem Wert – nie Teilwerte je Tastendruck; ungültiger Text bleibt stehen und wird nicht übernommen, `onValidityChange(false)` meldet das dem Aufrufer, der *Speichern* sperrt (Prüfung 28.09.2026) |
 | Zustände | ungültige Eingabe → `error` am Feld mit Beispiel; leer und `required` → `error` beim Verlassen |
 | Grenzfälle | RA auf `[0, 360)` normalisiert (`24h 00m` → `00h 00m`), Dec auf `[-90, +90]` begrenzt (Eingabe darüber → Fehler, **kein** stilles Abschneiden); Rundung auf 1e-6° wie die Engine (`canonical-json.md`) |
 | Barrierefrei | ein `<input>` (kein Dreifach-Feld), Format im `aria-describedby` |

@@ -13,6 +13,7 @@ import { CoordinateInput } from '../../components/CoordinateInput';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
+import { isTimeZone, timeZoneSuggestions } from '../../lib/time-zones';
 import { SiteWeather } from '../weather/SiteWeather';
 import styles from './equipment.module.css';
 import {
@@ -80,14 +81,6 @@ const emptySite = (): SiteDraft => ({
   notes: '',
 });
 
-function timeZones(): string[] {
-  try {
-    return Intl.supportedValuesOf('timeZone');
-  } catch {
-    return ['Europe/Berlin', 'America/Chicago', 'UTC'];
-  }
-}
-
 /** Mittlerer UTC-Versatz der Zone in Stunden (Januar/Juli) – nur Anzeigehilfe über `Intl`. */
 function meanOffsetHours(timeZone: string): number | null {
   try {
@@ -132,19 +125,25 @@ export function SitesPage() {
     toDraft: siteDraft,
     empty: emptySite,
   });
-  const zones = useMemo(timeZones, []);
+  const zones = useMemo(timeZoneSuggestions, []);
   const fieldError = useFieldError(editor.errors);
   const num = useNumber();
   const usage = useRigUsage('siteId', editor.selectedId);
   const d = editor.draft;
   const disabled = !canWrite;
   const [coordFormat, setCoordFormat] = useState<'sexagesimal' | 'decimal'>('sexagesimal');
+  // Koordinatenfeld mit Fehler (ungültiger Text wird nicht übernommen): Speichern gesperrt, sonst
+  // ginge der alte bzw. ein Teilwert still mit (Prüfung 28.09.2026: „9° 8′ W“ als +9,13).
+  const [coordInvalid, setCoordInvalid] = useState({ lat: false, lon: false });
+  const zoneValid = isTimeZone(d.timeZone);
   const suspicious =
-    d.longitudeDeg !== null && zones.includes(d.timeZone)
-      ? longitudeSuspicious(d.longitudeDeg, d.timeZone)
-      : false;
+    d.longitudeDeg !== null && zoneValid ? longitudeSuspicious(d.longitudeDeg, d.timeZone) : false;
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (coordInvalid.lat || coordInvalid.lon) {
+      e.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
     void editor.submit({
       ...d,
       pierName: d.pierName?.trim() ? d.pierName.trim() : null,
@@ -234,6 +233,9 @@ export function SitesPage() {
                           label={t('equipment.sites.field.latitude')}
                           valueDeg={d.latitudeDeg}
                           onChange={(v) => editor.set('latitudeDeg', v)}
+                          onValidityChange={(valid) =>
+                            setCoordInvalid((c) => (c.lat === !valid ? c : { ...c, lat: !valid }))
+                          }
                           format={coordFormat}
                           onFormatChange={setCoordFormat}
                           disabled={disabled}
@@ -258,6 +260,9 @@ export function SitesPage() {
                           label={t('equipment.sites.field.longitude')}
                           valueDeg={d.longitudeDeg}
                           onChange={(v) => editor.set('longitudeDeg', v)}
+                          onValidityChange={(valid) =>
+                            setCoordInvalid((c) => (c.lon === !valid ? c : { ...c, lon: !valid }))
+                          }
                           format={coordFormat}
                           onFormatChange={setCoordFormat}
                           disabled={disabled}
@@ -312,7 +317,7 @@ export function SitesPage() {
                         onChange={(v) => editor.set('timeZone', v.trim())}
                         error={
                           fieldError('timeZone') ??
-                          (zones.includes(d.timeZone) ? undefined : t('equipment.sites.tzUnknown'))
+                          (zoneValid ? undefined : t('equipment.sites.tzUnknown'))
                         }
                         hint={t('equipment.sites.tzHint')}
                         disabled={disabled}
@@ -355,7 +360,11 @@ export function SitesPage() {
                   </section>
                 </div>
               </form>
-              {editor.selected ? <SiteLinks site={editor.selected} canWrite={canWrite} /> : null}
+              {/* Schlüssel je Standort: eine offene Bearbeitung gehört zum alten Standort und darf nicht
+                  mit dem neuen gespeichert werden (Prüfung 28.09.2026). */}
+              {editor.selected ? (
+                <SiteLinks key={editor.selected.id} site={editor.selected} canWrite={canWrite} />
+              ) : null}
             </div>
           ) : null
         }
