@@ -7,6 +7,27 @@ import { formatCoordinate, parseCoordinate } from './coords';
 import { CoordinateInput } from './index';
 
 describe('parseCoordinate (§2.6)', () => {
+  it('Astronomie-Prüfung 28.09.2026: kein stilles Zerlegen, nur Stunden, keine 360, kein −00°', () => {
+    // „12 345“ ohne Trenner zwischen Minuten und Sekunden ist ungültig (vorher 12°34′05″).
+    expect(parseCoordinate('dec', '12 345')).toEqual({ ok: false, reason: 'invalid' });
+    expect(parseCoordinate('dec', '12 34 5')).toEqual({
+      ok: true,
+      valueDeg: Math.round((12 + 34 / 60 + 5 / 3600) * 1e6) / 1e6,
+    });
+    expect(parseCoordinate('dec', "12° 34'")).toEqual({
+      ok: true,
+      valueDeg: Math.round((12 + 34 / 60) * 1e6) / 1e6,
+    });
+    // Nur Stunden für RA.
+    expect(parseCoordinate('ra', '12h')).toEqual({ ok: true, valueDeg: 180 });
+    expect(parseCoordinate('ra', '5,5 h')).toEqual({ ok: true, valueDeg: 82.5 });
+    expect(parseCoordinate('ra', '24h')).toEqual({ ok: true, valueDeg: 0 });
+    // Dezimal nie „360“, sexagesimal nie „−00° 00′ 00″“.
+    expect(formatCoordinate('ra', 359.9999999, 'decimal')).toBe('0');
+    expect(formatCoordinate('dec', -0.0001, 'sexagesimal')).toBe('+00° 00′ 00″');
+    expect(formatCoordinate('dec', -0.5, 'sexagesimal')).toBe('−00° 30′ 00″');
+  });
+
   it.each([
     ['ra', '00h 52m 49s', 13.204167],
     ['ra', '00 52 49', 13.204167],

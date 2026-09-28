@@ -63,6 +63,8 @@ export const unit = (raDeg: number, decDeg: number): [number, number, number] =>
 
 interface SkyJson {
   stars: (number | string)[][];
+  /** `[μα·cos δ, μδ]` je Stern in mas/Jahr (seit 28.09.2026). */
+  motion?: number[];
   lines: Record<string, number[][]>;
   bounds: [string, number[]][];
   labels: (string | number)[][];
@@ -106,14 +108,43 @@ export function milkyWayAt(mw: MilkyWayGrid, raDeg: number, decDeg: number): num
   );
 }
 
-export function parseSky(json: SkyJson): BrightSky {
+/** Aktuelles Jahr als Dezimalzahl (Epoche der Sterne auf der Karte). */
+export const currentEpoch = () => 1970 + Date.now() / (365.25 * 86400 * 1000);
+
+/**
+ * Ort J2000 von Epoche 2000 zur Epoche `epoch` bewegt (Eigenbewegung in mas/Jahr, `pmRa` = μα·cos δ). Parallaxe
+ * und Radialgeschwindigkeit bleiben weg (≪ 1″ für die Karte). Astronomie-Prüfung 28.09.2026: vorher ohne
+ * Eigenbewegung, schnelle Sterne (Barnards Stern) lagen bis ≈ 4′ daneben.
+ */
+export function moveStar(
+  raDeg: number,
+  decDeg: number,
+  pmRaMas: number,
+  pmDecMas: number,
+  epoch: number,
+): [number, number] {
+  const dt = epoch - 2000;
+  const dec = decDeg + (pmDecMas * dt) / 3.6e6;
+  const c = Math.cos((decDeg * Math.PI) / 180);
+  const ra = raDeg + (c > 1e-6 ? (pmRaMas * dt) / 3.6e6 / c : 0);
+  return [((ra % 360) + 360) % 360, Math.max(-90, Math.min(90, dec))];
+}
+
+export function parseSky(json: SkyJson, epoch = currentEpoch()): BrightSky {
   const n = json.stars.length;
   const vec = new Float64Array(n * 3);
   const mag = new Float32Array(n);
   const names = new Map<number, { de: string; en: string }>();
   const bayer = new Map<number, string>();
   json.stars.forEach((s, i) => {
-    const v = unit(s[0] as number, s[1] as number);
+    const [ra, dec] = moveStar(
+      s[0] as number,
+      s[1] as number,
+      json.motion?.[i * 2] ?? 0,
+      json.motion?.[i * 2 + 1] ?? 0,
+      epoch,
+    );
+    const v = unit(ra, dec);
     vec.set(v, i * 3);
     mag[i] = s[2] as number;
     const de = typeof s[4] === 'string' ? s[4] : '';
@@ -146,7 +177,7 @@ export function parseSky(json: SkyJson): BrightSky {
  * `stars-8.bin` (Format in `legacy/…/tools/star-catalog-data.js`): 12 Byte Kopf („SVST“, Version, Satzlänge,
  * Anzahl), je Stern RA uint16 (Vollkreis), Dec int16 (±90° = ±32767), mag × 20 uint8, …; little-endian.
  */
-export function decodeFaintStars(buf: ArrayBuffer): StarField {
+export function decodeFaintStars(buf: ArrayBuffer, epoch = currentEpoch()): StarField {
   const dv = new DataView(buf);
   const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
   if (magic !== 'SVST') throw new Error('stars-8.bin: unbekanntes Format');
@@ -156,8 +187,14 @@ export function decodeFaintStars(buf: ArrayBuffer): StarField {
   const mag = new Float32Array(count);
   for (let i = 0; i < count; i += 1) {
     const o = 12 + rec * i;
-    const ra = (dv.getUint16(o, true) / 65536) * 360;
-    const dec = (dv.getInt16(o + 2, true) / 32767) * 90;
+    // Satz: RA, Dec, mag, B−V, μα·cos δ, μδ (int16, mas/Jahr), Parallaxe – Eigenbewegung zur Nacht.
+    const [ra, dec] = moveStar(
+      (dv.getUint16(o, true) / 65536) * 360,
+      (dv.getInt16(o + 2, true) / 32767) * 90,
+      rec >= 10 ? dv.getInt16(o + 6, true) : 0,
+      rec >= 10 ? dv.getInt16(o + 8, true) : 0,
+      epoch,
+    );
     vec.set(unit(ra, dec), i * 3);
     mag[i] = dv.getUint8(o + 4) / 20;
   }

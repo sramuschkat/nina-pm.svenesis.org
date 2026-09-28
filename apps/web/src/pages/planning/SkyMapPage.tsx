@@ -17,7 +17,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
-import { daysFromKey, keyFromDays, sky } from '@nina-pm/engine';
+import { apparentAltitudeDeg, daysFromKey, keyFromDays, sky } from '@nina-pm/engine';
 import {
   catalogApi,
   equipmentApi,
@@ -168,15 +168,25 @@ export function SkyMapPage() {
   const state = useMemo(() => stateFromParams(params), [params]);
   const projectParam = params.get('projekt');
   const objectParam = params.get('objekt');
-  // Aus der aktuellen Adresse ableiten, nicht aus dem Zustand des letzten Renderns: zwei schnelle
-  // Änderungen (z. B. Mosaik horizontal, dann vertikal) überschreiben sich sonst gegenseitig.
+  // Auf der zuletzt gesetzten Adresse aufbauen, nicht auf der des letzten Renderns: zwei schnelle Änderungen
+  // (z. B. Mosaik horizontal, dann vertikal) überschrieben sich sonst gegenseitig. `setParams(prev => …)` reicht
+  // dafür nicht – React Router übergibt als `prev` die Adresse des letzten Renderns; seit die Karte teurer zeichnet
+  // (Landschaft, Milchstraße), ging so im E2E-Test „Mosaik 2×2“ die erste Änderung verloren (28.09.2026).
+  const pending = useRef<URLSearchParams | null>(null);
+  // Sobald eine Adresse gerendert ist, gilt wieder sie (auch nach Zurück-Taste oder Links von außen).
+  useEffect(() => {
+    pending.current = null;
+  }, [params]);
   const update = (patch: Partial<SkyMapState>) => {
     const extra: Record<string, string> = {};
     if (projectParam) extra.projekt = projectParam;
     if (objectParam) extra.objekt = objectParam;
-    setParams((prev) => paramsFromState({ ...stateFromParams(prev), ...patch }, extra), {
-      replace: true,
-    });
+    const next = paramsFromState(
+      { ...stateFromParams(pending.current ?? params), ...patch },
+      extra,
+    );
+    pending.current = next;
+    setParams(next, { replace: true });
   };
   const num = useNumber();
   const ids = { map: useId() };
@@ -218,7 +228,10 @@ export function SkyMapPage() {
     ? {
         raDeg: state.fra,
         decDeg: state.fdec,
-        paDeg: rotationLocked ? cameraAngle : pa,
+        // Ohne Rotator nimmt NINA im Kamerawinkel auf, und „Ins Projekt übernehmen“ speichert ihn (NT-30) – also
+        // zeigt die Karte das Bildfeld so; ein abweichend gewählter Winkel erscheint gestrichelt (`ghost`,
+        // Astronomie-Prüfung 28.09.2026: vorher sah ein Admin den gewählten Winkel, gespeichert wurde ein anderer).
+        paDeg: rig.hasRotator ? pa : cameraAngle,
         fovWidthDeg: rig.derived.fovWidthDeg,
         fovHeightDeg: rig.derived.fovHeightDeg,
         cols: state.cols,
@@ -570,6 +583,7 @@ export function SkyMapPage() {
     projects: projectFrames,
     frame,
     compare,
+    ghost: frame && rotationMismatch ? { ...frame, paDeg: pa } : null,
     selectedId: selected?.kind === 'dso' || selected?.kind === 'project' ? selected.item.id : null,
     selectedVec,
     names: state.names,
@@ -1686,7 +1700,9 @@ function InfoCard({
   const rd = sky.vecToRadec(vec);
   const conAbbr = bright ? constellationAt(bright.bounds, rd.raDeg, rd.decDeg) : null;
   const conLabel = bright?.labels.find((l) => l.abbr === conAbbr);
-  const hor = scene ? toAltAz(scene.observer.toHorizon, vec) : null;
+  // Scheinbare Höhe wie Planung und Zeitleiste (Astronomie-Prüfung 28.09.2026; vorher geometrisch).
+  const geo = scene ? toAltAz(scene.observer.toHorizon, vec) : null;
+  const hor = geo ? { ...geo, altDeg: apparentAltitudeDeg(geo.altDeg) } : null;
   const target = vec;
   const q = new URLSearchParams({ ra: String(rd.raDeg), dec: String(rd.decDeg) });
   if (selected.kind === 'dso') q.set('objekt', selected.item.primaryId);
