@@ -10,6 +10,7 @@ on:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'spikes/jint-runtime/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
@@ -19,6 +20,7 @@ on:
     paths:
       - 'apps/nina-plugin/**'
       - 'spikes/nina-build/**'
+      - 'spikes/jint-runtime/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-build-check.sh'
@@ -93,3 +95,30 @@ jobs:
         run: pnpm engine:parity --count 500 --seed 1
       - name: Parität unter Jint
         run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests
+
+  # AP-S2a (TK 10.4): Laufzeit von planNight unter Jint auf dem x64-Runner – Messwert, keine Abnahmegrenze.
+  # Ergebnis als Artefakt jint-runtime (docs/adr/ADR-S2a-jint.md).
+  jint-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm engine:bundle
+      - name: Eingaben und Node-Vergleich
+        run: pnpm engine:bench
+      - name: Messung unter Jint (Stufen bis 30 × 3 × 5)
+        run: dotnet run -c Release --project spikes/jint-runtime -- --runs 3 --quick
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jint-runtime
+          path: packages/engine/build/jint-bench-result.json
+          retention-days: 30

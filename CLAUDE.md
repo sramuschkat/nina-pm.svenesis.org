@@ -52,7 +52,7 @@ Fehlt lokal ein Werkzeug oder der Netzzugang: **nicht improvisieren**, sondern d
 - `pnpm cdk synth` (ohne AWS-Zugang; Lookup-Werte aus der eingecheckten `cdk.context.json`) · Deploy nur durch Sven mit `pnpm deploy:prod` (H-06)
 - `pnpm pr:land <nr…> [--deploy]` (nur Sven: auf CI warten, mergen, optional deployen) · `pnpm changelog:collect`
 - `pnpm golive:check` · `pnpm loadtest:prod` · `pnpm alarm:probe` (nur Sven, AWS/prod; Protokolle unter `docs/test-runs/`) · Runbooks in `docs/runbooks/`
-- `pnpm e2e` · `pnpm fake-plugin` · `pnpm engine:bundle` · `pnpm engine:parity` · `pnpm nina-test-server` · `pnpm test-run:check <ordner>` · `pnpm oracle:run <grid>`
+- `pnpm e2e` · `pnpm fake-plugin` · `pnpm engine:bundle` · `pnpm engine:parity` · `pnpm engine:bench` · `pnpm nina-test-server` · `pnpm test-run:check <ordner>` · `pnpm oracle:run <grid>`
 - `dotnet build apps/nina-plugin/NinaPm.Core` · `dotnet test apps/nina-plugin/NinaPm.Core.Tests` · `dotnet build apps/nina-plugin/NinaPm.Nina` · `dotnet build apps/nina-plugin/NinaPm.Nina.Tests` · `dotnet build apps/nina-plugin/NinaPm.Nina.Ui` · `tools/nina-build-check.sh apps/nina-plugin` (lokal vor jedem Plugin-PR, TK 10.5) · Adapter-Tests ausführen nur auf `windows-latest`
 
 ## Harte Regeln (Kurzfassung – Details in `docs/rules/`)
