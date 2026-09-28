@@ -2,6 +2,8 @@
  * Mondsymbol (Vorbild `drawMoonIcon` in legacy/…/astro-core.js): dunkle Scheibe, beleuchteter Teil aus einem
  * Halbkreis und der Terminator-Ellipse mit `rx = r·|cos φ|` (φ = Phasenwinkel). Zunehmend rechts beleuchtet,
  * abnehmend links; auf der Südhalbkugel gespiegelt. Rein dekorativ (`aria-hidden`), der Text steht daneben.
+ * Konvention wie in Kalendern und Almanachen (Astronomie-Prüfung 28.09.2026): Das Symbol zeigt die Phase, nicht
+ * die Lage am Himmel – in Äquatornähe steht die beleuchtete Seite in Wahrheit oben bzw. unten („Mondschiffchen“).
  */
 import styles from './MoonDarkness.module.css';
 

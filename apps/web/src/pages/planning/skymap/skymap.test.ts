@@ -7,7 +7,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { sky } from '@nina-pm/engine';
+import { apparentAltitudeDeg, sky } from '@nina-pm/engine';
 import { describe, expect, it } from 'vitest';
 import { effectiveRotation, projectCategory } from '../SkyMapPage';
 import { constellationAt } from './constellation';
@@ -26,7 +26,10 @@ import {
   colorParts,
   constellationName,
   drawSky,
+  formatDecLabel,
+  formatRaLabel,
   framePanels,
+  geometricForApparent,
   framePolygon,
   hitBody,
   hitConstellation,
@@ -34,6 +37,7 @@ import {
   hitMarker,
   hitStar,
   horizonVec,
+  meridianPoints,
   OVERLAYS,
   toAltAz,
   twilightClass,
@@ -41,7 +45,7 @@ import {
   type RenderInput,
 } from './render';
 import { fromZoned, nightKeyAt, sceneAt, zonedParts } from './scene';
-import { decodeFaintStars, decodeMilkyWay, milkyWayAt, parseSky } from './sky-data';
+import { decodeFaintStars, decodeMilkyWay, milkyWayAt, moveStar, parseSky } from './sky-data';
 
 const skyJson = () =>
   JSON.parse(
@@ -465,5 +469,83 @@ describe('Landschaft am Horizont (28.09.2026)', () => {
     expect(behindLand(H, horizonVec(H, az, landscapeAlt(az) - 0.05))).toBe(true);
     expect(behindLand(H, horizonVec(H, az, landscapeAlt(az) + 0.05))).toBe(false);
     expect(behindLand(H, horizonVec(H, az, 10))).toBe(false);
+  });
+});
+
+describe('Eigenbewegung der Sterne (Astronomie-Prüfung 28.09.2026)', () => {
+  it('Epoche 2000 unverändert, 36 Jahre bewegen um μ·36', () => {
+    expect(moveStar(10, 20, 500, -300, 2000)).toEqual([10, 20]);
+    const [ra, dec] = moveStar(0, 0, 1000, -1000, 2036);
+    expect(ra).toBeCloseTo(0.01, 9);
+    expect(dec).toBeCloseTo(-0.01, 9);
+  });
+
+  it('sky.json trägt die Eigenbewegung: Arktur (μ ≈ 2,3″/Jahr) liegt 2026 gut 1′ neben 2000', () => {
+    const at2000 = parseSky(skyJson(), 2000);
+    const at2026 = parseSky(skyJson(), 2026);
+    const i = [...(at2000.stars.names ?? [])].find(([, n]) => n.en === 'Arcturus')?.[0];
+    if (i === undefined) throw new Error('Arktur fehlt');
+    const v0: [number, number, number] = [
+      at2000.stars.vec[i * 3] ?? 0,
+      at2000.stars.vec[i * 3 + 1] ?? 0,
+      at2000.stars.vec[i * 3 + 2] ?? 0,
+    ];
+    const v1: [number, number, number] = [
+      at2026.stars.vec[i * 3] ?? 0,
+      at2026.stars.vec[i * 3 + 1] ?? 0,
+      at2026.stars.vec[i * 3 + 2] ?? 0,
+    ];
+    const sepArcmin = (Math.acos(Math.min(1, sky.dot(v0, v1))) * 180 * 60) / Math.PI;
+    expect(sepArcmin).toBeGreaterThan(0.9);
+    expect(sepArcmin).toBeLessThan(1.1);
+  });
+});
+
+describe('Karte: Meridian, Mindesthöhe, Nacht, Gitter (Astronomie-Prüfung 28.09.2026)', () => {
+  const scene = sceneAt(
+    Date.UTC(2026, 8, 28, 3) / 1000,
+    { latitudeDeg: 31.5, longitudeDeg: -98.5, timeZone: 'America/Chicago' },
+    { raDeg: 0, decDeg: 0 },
+    30,
+    30,
+  );
+
+  it('Meridian: jeder Punkt liegt im Azimut 0° oder 180° (vorher die Ost-West-Linie bei 90°)', () => {
+    for (const v of meridianPoints(scene.observer.toHorizon)) {
+      const h = toAltAz(scene.observer.toHorizon, v);
+      if (Math.abs(h.altDeg) > 89.9) continue; // Zenit/Nadir: Azimut unbestimmt
+      const az = Math.round(h.azDeg * 1e6) / 1e6;
+      expect([0, 180, 360]).toContain(az);
+    }
+  });
+
+  it('Mindesthöhe: geometrische Linie + Refraktion = scheinbare Grenze der Planung', () => {
+    for (const alt of [0, 10, 20, 30, 60]) {
+      const h = geometricForApparent(alt);
+      expect(apparentAltitudeDeg(h)).toBeCloseTo(alt, 6);
+    }
+    // Bei 20° liegt die Linie 2,7′ tiefer als die geometrische 20°-Linie.
+    expect(20 - geometricForApparent(20)).toBeCloseTo(0.0458, 3);
+  });
+
+  it('Nacht-Schlüssel über die Ortszeit, auch an Umstellungstagen', () => {
+    // Berlin 29.03.2026 12:30 MESZ (10:30Z) → Nacht 29.03. (vorher 28.03.)
+    expect(nightKeyAt(Date.UTC(2026, 2, 29, 10, 30) / 1000, 'Europe/Berlin')).toBe('2026-03-29');
+    // Berlin 25.10.2026 11:30 MEZ (10:30Z) → noch Nacht 24.10. (vorher 25.10.)
+    expect(nightKeyAt(Date.UTC(2026, 9, 25, 10, 30) / 1000, 'Europe/Berlin')).toBe('2026-10-24');
+    expect(nightKeyAt(Date.UTC(2026, 8, 28, 3) / 1000, 'America/Chicago')).toBe('2026-09-27');
+  });
+
+  it('Gitterbeschriftung: ganze Sekunden mit Übertrag, Bogenminuten bei feinem Dec-Raster', () => {
+    expect(formatRaLabel(0.375, 0.375)).toBe('0h01m30s'); // Linien alle 1m30s
+    expect(formatRaLabel(0.75, 0.375)).toBe('0h03m00s'); // gleiche Form in einem Raster
+    expect(formatRaLabel(0.75, 0.25)).toBe('0h03m');
+    expect(formatRaLabel(0.375, 0.125)).toBe('0h01m30s');
+    expect(formatRaLabel(14.875, 0.125)).toBe('0h59m30s');
+    expect(formatRaLabel(14.99999, 1.5)).toBe('1h');
+    expect(formatRaLabel(30, 15)).toBe('2h');
+    expect(formatDecLabel(45 + 10 / 60, 1 / 6)).toBe('+45°10′');
+    expect(formatDecLabel(-0.5, 0.25)).toBe('−0°30′');
+    expect(formatDecLabel(60, 10)).toBe('+60°');
   });
 });

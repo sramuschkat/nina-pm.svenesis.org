@@ -42,9 +42,17 @@ export function fromZoned(date: string, time: string, timeZone: string): number 
   }
 }
 
-/** Nacht-Schlüssel (Mittag bis Mittag in Standortzeit, NT-01) eines Zeitpunkts. */
+/**
+ * Nacht-Schlüssel (Mittag bis Mittag in Standortzeit, NT-01) eines Zeitpunkts: vor 12:00 Standortzeit die Nacht
+ * des Vortags. Über die Ortszeit statt „−12 h“ gerechnet – sonst lag an Umstellungstagen eine Stunde lang die
+ * falsche Nacht vor (Astronomie-Prüfung 28.09.2026).
+ */
 export function nightKeyAt(unixSec: number, timeZone: string): string {
-  return zonedParts(unixSec - 12 * 3600, timeZone).date;
+  const z = Temporal.Instant.fromEpochMilliseconds(Math.round(unixSec * 1000)).toZonedDateTimeISO(
+    timeZone,
+  );
+  const date = z.toPlainDate();
+  return (z.hour < 12 ? date.subtract({ days: 1 }) : date).toString();
 }
 
 const toJ2000Vec = (raDeg: number, decDeg: number, jde: number) => {

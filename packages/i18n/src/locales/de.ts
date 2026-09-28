@@ -2878,7 +2878,7 @@ export const de = {
     rotationPinned: 'Rotation als Rig-Standard gespeichert.',
     rotationLocked: 'Ohne Rotator gilt der Kamerawinkel des Rigs ({{deg}}°).',
     rotationMismatch:
-      'Weicht vom Kamerawinkel des Rigs ({{deg}}°) ab – ohne Rotator nimmt NINA {{deg}}° auf.',
+      'Weicht vom Kamerawinkel des Rigs ({{deg}}°) ab – ohne Rotator nimmt NINA {{deg}}° auf. Die Karte zeigt das Bildfeld im Kamerawinkel, den gewählten Winkel gestrichelt; übernommen wird er erst nach dem Anheften.',
     cols: 'Panels horizontal',
     rows: 'Panels vertikal',
     overlap: 'Überlappung (%)',

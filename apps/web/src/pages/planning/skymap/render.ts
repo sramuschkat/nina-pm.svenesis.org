@@ -10,7 +10,7 @@
  * Alle Richtungen als J2000-Einheitsvektoren; Projektion und Rahmen aus `@nina-pm/engine` (`sky`), Panels
  * über `mosaicPanels` (geometry.md §2). Farben ausschließlich über die Tokens `--npm-sky-*`.
  */
-import { mosaicPanels, offsetToSky, sky } from '@nina-pm/engine';
+import { mosaicPanels, offsetToSky, refractionArcmin, sky } from '@nina-pm/engine';
 import type { DsoMarker } from '../../../api/client';
 import { landscapeAlt } from './landscape';
 import { milkyWayAt, type BrightSky, type MilkyWayGrid, type StarField } from './sky-data';
@@ -111,6 +111,8 @@ export interface RenderInput {
   readonly projects: readonly ProjectFrame[];
   readonly frame: FrameSpec | null;
   readonly compare: FrameSpec | null;
+  /** Rig ohne Rotator: der frei gewählte Winkel gestrichelt neben dem Bildfeld im Kamerawinkel (NT-30). */
+  readonly ghost?: FrameSpec | null;
   readonly selectedId: string | null;
   /** Richtung des gewählten Objekts (Stern, Himmelskörper, Katalogobjekt) für den Auswahlring. */
   readonly selectedVec: Vec | null;
@@ -247,6 +249,32 @@ function drawGrid(
     polyline(ctx, view, frameCircle(toFrame, null, lon, 120));
 }
 
+/**
+ * RA-Beschriftung des Gitters: auf ganze Sekunden gerundet mit Übertrag (nie „0h60m“), Sekunden, sobald der
+ * Linienabstand kein Vielfaches einer Zeitminute ist (Astronomie-Prüfung 28.09.2026: vorher auf Minuten gerundet – bei
+ * starkem Zoom zwei Linien mit derselben Beschriftung).
+ */
+export function formatRaLabel(raDeg: number, stepDeg: number): string {
+  const total = Math.round((((raDeg % 360) + 360) % 360) * 240) % 86400; // Zeitsekunden
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  // Sekunden, sobald der Linienabstand kein Vielfaches einer Zeitminute ist (z. B. 1m30s, 30s).
+  const stepS = Math.round(stepDeg * 240);
+  if (stepS % 60 !== 0 || sec !== 0) return `${String(h)}h${pad(m)}m${pad(sec)}s`;
+  return m ? `${String(h)}h${pad(m)}m` : `${String(h)}h`;
+}
+
+/** Dec-Beschriftung: ganze Grad bzw. Grad und Bogenminuten, sobald der Linienabstand unter 1° liegt. */
+export function formatDecLabel(decDeg: number, stepDeg: number): string {
+  const sign = decDeg > 0 ? '+' : decDeg < 0 ? '−' : '';
+  const arcmin = Math.round(Math.abs(decDeg) * 60);
+  if (stepDeg >= 1) return `${sign}${String(Math.round(arcmin / 60))}°`;
+  const d = Math.floor(arcmin / 60);
+  return `${sign}${String(d)}°${String(arcmin % 60).padStart(2, '0')}′`;
+}
+
 /** Äquatoriale Beschriftung an den Kreuzungen nahe der Bildmitte. */
 function drawEqLabels(ctx: CanvasRenderingContext2D, view: sky.SkyView, color: string) {
   const step = gridStep(view.fovDeg);
@@ -259,25 +287,13 @@ function drawEqLabels(ctx: CanvasRenderingContext2D, view: sky.SkyView, color: s
   for (let k = -3; k <= 3; k += 1) {
     const ra = (((ra0 + k * raStep) % 360) + 360) % 360;
     const p = sky.project(view, unit(ra, Math.max(-89, Math.min(89, dec0))));
-    if (p && p.x > 4 && p.x < view.width - 40 && p.y > 12 && p.y < view.height - 4) {
-      const h = ra / 15;
-      const hh = Math.floor(h + 1e-9);
-      const mm = Math.round((h - hh) * 60);
-      ctx.fillText(
-        `${String(hh)}h${mm ? String(mm).padStart(2, '0') + 'm' : ''}`,
-        p.x + 3,
-        p.y - 3,
-      );
-    }
+    if (p && p.x > 4 && p.x < view.width - 40 && p.y > 12 && p.y < view.height - 4)
+      ctx.fillText(formatRaLabel(ra, raStep), p.x + 3, p.y - 3);
     const dec = dec0 + k * step;
     if (dec <= -90 || dec >= 90) continue;
     const q = sky.project(view, unit(ra0, dec));
     if (q && q.x > 4 && q.x < view.width - 40 && q.y > 12 && q.y < view.height - 4)
-      ctx.fillText(
-        `${dec > 0 ? '+' : ''}${String(Math.round(dec * 100) / 100)}°`,
-        q.x + 3,
-        q.y + 12,
-      );
+      ctx.fillText(formatDecLabel(dec, step), q.x + 3, q.y + 12);
   }
 }
 
@@ -565,12 +581,14 @@ function drawDso(
   colors: Colors,
   observer: Observer | null,
 ): { txt: string; x: number; y: number; selected: boolean }[] {
-  const pxPerDeg = view.width / view.fovDeg;
   const out: { txt: string; x: number; y: number; selected: boolean }[] = [];
   for (const o of items) {
     const v = unit(o.raDeg, o.decDeg);
     const p = sky.project(view, v);
     if (!p || p.x < -50 || p.y < -50 || p.x > view.width + 50 || p.y > view.height + 50) continue;
+    // Maßstab der stereografischen Projektion am Ort des Objekts (2k/(1+cos θ) je Radiant) – die Bildmitte allein
+    // (Breite/Sichtfeld) lag bei weiten Ansichten bis 27 % daneben (Astronomie-Prüfung 28.09.2026).
+    const pxPerDeg = ((2 * view.k) / (1 + sky.dot(v, view.center))) * DEG;
     const major = ((o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
     const minor = ((o.sizeMinorArcmin ?? o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
     // Hinter Boden und Landschaft verborgen (außer dem gewählten Objekt).
@@ -763,14 +781,19 @@ function drawObserver(
     ctx.strokeStyle = colors['min-alt'] ?? '#e5484d';
     ctx.lineWidth = 1.4;
     ctx.setLineDash([6, 4]);
-    polyline(ctx, view, frameCircle(H, obs.minAltDeg, null, 360));
+    // Die Planung vergleicht die scheinbare Höhe; die Karte zeichnet geometrisch – also die Linie dort, wo
+    // geometrische Höhe + Refraktion = Mindesthöhe (Astronomie-Prüfung 28.09.2026: vorher 0,05° zu hoch bei 20°).
+    polyline(ctx, view, frameCircle(H, geometricForApparent(obs.minAltDeg), null, 360));
     ctx.setLineDash([]);
   }
   if (overlays.has('meridian')) {
     ctx.strokeStyle = colors.meridian ?? '#ccc';
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 4]);
-    polyline(ctx, view, frameCircle(H, null, 0, 180));
+    // Meridian = Großkreis Nord – Zenit – Süd: im Horizontrahmen (Ost, Nord, Zenit) Länge 90° (Nordhälfte) und
+    // 270° (Südhälfte). Vorher Länge 0° – das war die halbe Ost-West-Linie durch den Ostpunkt (Prüfung 28.09.2026).
+    polyline(ctx, view, frameCircle(H, null, 90, 180));
+    polyline(ctx, view, frameCircle(H, null, 270, 180));
     ctx.setLineDash([]);
   }
   if (overlays.has('zenith')) {
@@ -805,6 +828,18 @@ export function horizonVec(H: sky.Mat3, azDeg: number, altDeg: number): Vec {
 export function behindLand(H: sky.Mat3, v: Vec): boolean {
   const h = toAltAz(H, v);
   return h.altDeg < landscapeAlt(h.azDeg);
+}
+
+/** Geometrische Höhe, deren scheinbare Höhe (Saemundsson wie die Planung) `apparentDeg` ist. */
+export function geometricForApparent(apparentDeg: number): number {
+  let h = apparentDeg;
+  for (let i = 0; i < 16; i += 1) h = apparentDeg - refractionArcmin(h) / 60;
+  return h;
+}
+
+/** Punkte des Meridians (Nord- und Südhälfte) im Horizontrahmen – für Tests. */
+export function meridianPoints(H: sky.Mat3): Vec[] {
+  return [...frameCircle(H, null, 90, 36), ...frameCircle(H, null, 270, 36)];
 }
 
 /** Höhe und Azimut (Grad, Nord über Ost) eines J2000-Vektors. */
@@ -1020,6 +1055,11 @@ export function drawSky(
   }
   if (input.compare)
     drawFrame(ctx, view, input.compare, colors['frame-compare'] ?? '#7fc8f8', { dashed: true });
+  if (input.ghost)
+    drawFrame(ctx, view, input.ghost, colors[input.frameColor] ?? colors.frame ?? '#ff4fd8', {
+      dashed: true,
+      width: 1.2,
+    });
   if (input.frame)
     drawFrame(ctx, view, input.frame, colors[input.frameColor] ?? colors.frame ?? '#ff4fd8', {
       numbers: true,

@@ -90,6 +90,20 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
   for (let s = 0; s < S; s += 1) if (sunOk[s] && sunOk[s + 1]) darkSlots.push(s);
   const darkHours = (darkSlots.length * 300) / 3600;
 
+  // Ränder der Dunkelheit (exakte Durchgänge): Objekte, die nach der Abenddämmerung untergehen bzw. vor der
+  // Morgendämmerung aufgehen, stehen dort am höchsten – das 5-min-Raster allein unterschätzte ihre Gipfelhöhe
+  // um bis zu ≈ 1° (Astronomie-Prüfung 28.09.2026) und konnte die 20°-Regel der Bewertung kippen.
+  const edges =
+    crossings.kind === 'normal'
+      ? [crossings.startUtc, crossings.endUtc]
+          .filter((t): t is number => t !== null)
+          .map((t) => ({
+            t,
+            lst: localApparentSiderealDeg(t, ctx.site.lonDeg),
+            k: nearestBoundary(ctx.boundaryUtc, t),
+          }))
+      : [];
+
   const placeOf = (row: CatalogRow) =>
     targetApparent({ raJ2000Deg: row.raDeg, decJ2000Deg: row.decDeg }, ctx.jdeMid);
   const altitudesOf = (place: { raDeg: number; decDeg: number }) =>
@@ -136,8 +150,21 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
       if (anyDark && !dark[k]) return;
       if (best < 0 || a > (alt[best] as number)) best = k;
     });
-    const peakAlt = alt[best] as number;
-    const moon = ctx.moon[best];
+    let peakAlt = alt[best] as number;
+    let peakT = ctx.boundaryUtc[best] as number;
+    let moonAt = best;
+    if (anyDark)
+      for (const e of edges) {
+        const a = apparentAltitudeDeg(
+          altAz(norm180(e.lst - place.raDeg), place.decDeg, ctx.site.latDeg).altDeg,
+        );
+        if (a > peakAlt) {
+          peakAlt = a;
+          peakT = e.t;
+          moonAt = e.k;
+        }
+      }
+    const moon = ctx.moon[moonAt];
     const moonSepDeg =
       moon && moon.altDeg > 0
         ? Math.round(separationDeg(moon.raDeg, moon.decDeg, place.raDeg, place.decDeg))
@@ -146,7 +173,7 @@ export function nightEvaluator(input: NightEvaluatorInput): NightEvaluator {
       visibility,
       usableHours: round1((usableSlots * 300) / 3600),
       peakAltDeg: peakAlt > 0 ? round1(peakAlt) : null,
-      peakUtc: peakAlt > 0 ? iso(ctx.boundaryUtc[best] as number) : null,
+      peakUtc: peakAlt > 0 ? iso(peakT) : null,
       moonSepDeg,
     };
   };
@@ -198,4 +225,13 @@ export function cachedNightEvaluator(key: string, build: () => NightEvaluator): 
 
 export function clearNightCache() {
   evaluators.clear();
+}
+
+/** Index der Slotgrenze, die `t` am nächsten liegt. */
+function nearestBoundary(boundaries: readonly number[], t: number): number {
+  let best = 0;
+  boundaries.forEach((b, k) => {
+    if (Math.abs(b - t) < Math.abs((boundaries[best] as number) - t)) best = k;
+  });
+  return best;
 }
