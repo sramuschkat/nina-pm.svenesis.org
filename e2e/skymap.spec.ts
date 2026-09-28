@@ -3,6 +3,8 @@
  * folgen, FA-FRM-04), Seitenleiste, Zeitsteuerung, *Neues Projekt* übernimmt Koordinaten, Rotation und Rig
  * (FA-FRM-12); Bewertung *Beste der Nacht* in der Tabelle von S-21 (FA-FRM-13); axe hell/dunkel, 768/2400 px ohne
  * horizontales Scrollen. Ohne Himmelsfotos (`foto=keins`), damit der Test nicht vom CDS-Netz abhängt.
+ * Seit 28.09.2026 nach der Vorlage `sky-map.js`: Rundblick als Start, Sternbild beim Überfahren, Infokarte über
+ * der Karte, Drehen zur nächsten Himmelsrichtung, lateinische Sternbildnamen.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -140,4 +142,49 @@ test('S-20: gleiche Kontextleiste wie der Objektbrowser; Mond und Dunkelheit, Kl
   // Mitte des Fensters (1 h vor Sonnenuntergang bis 1 h nach Aufgang) liegt nach Mitternacht.
   await expect(clock).toHaveValue(/^0[0-3]:\d\d$/);
   await expect(page.getByText('eingestellte Uhrzeit')).toBeVisible();
+});
+
+test('S-20: Rundblick wie die Vorlage – Sternbild beim Überfahren, Infokarte über der Karte, Drehen, Namen', async ({
+  page,
+}) => {
+  await page.setViewportSize(WIDE);
+  await testLogin(page, 'owner');
+  // Ohne Blickrichtung in der Adresse: Rundblick (Horizont unten, Blick nach Süden, 150°), 15.12.2026 abends.
+  await page.goto('/planung/sternkarte?t=1797368400&foto=keins');
+  const map = page.getByRole('img', { name: 'Sternkarte mit Bildfeld des Rigs' });
+  await expect(map).toBeVisible();
+  await expect(page.getByText(/Blick nach Süden · Sichtfeld 150/)).toBeVisible();
+  await page.waitForLoadState('networkidle');
+
+  // Überfahren: irgendwo in der Mitte liegt ein Sternbild höchstens 24 px entfernt.
+  const box = await map.boundingBox();
+  if (!box) throw new Error('Karte ohne Größe');
+  let hovered: string | null = null;
+  for (let i = 1; i < 12 && !hovered; i += 1) {
+    await page.mouse.move(box.x + (box.width * i) / 12, box.y + box.height * 0.4);
+    hovered = await map.getAttribute('data-hover');
+  }
+  expect(hovered).toMatch(/^[A-Z][a-z]{1,2}$/);
+
+  // Zur nächsten Himmelsrichtung drehen und lateinische Namen.
+  await page.getByRole('button', { name: 'Zur nächsten Himmelsrichtung drehen' }).click();
+  await expect(page).toHaveURL(/ausrichtung=horizont/);
+  await expect(page.getByText(/Blick nach Südwesten/)).toBeVisible();
+  await page.getByRole('combobox', { name: 'Namen' }).selectOption('latin');
+  await expect(page).toHaveURL(/namen=latein/);
+  // Objekt aus der Suche: Ring und Infokarte liegen über der Karte (unten rechts), nicht darunter.
+  await page.getByRole('combobox', { name: 'Katalogsuche' }).fill('M 31');
+  await page.getByRole('option', { name: /^M 31/ }).click();
+  const card = page.getByRole('region', { name: 'M 31' });
+  await expect(card).toBeVisible();
+  const cardBox = await card.boundingBox();
+  const mapBox = await map.boundingBox();
+  if (!cardBox || !mapBox) throw new Error('ohne Maße');
+  expect(cardBox.x).toBeGreaterThan(mapBox.x + mapBox.width / 3);
+  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(mapBox.y + mapBox.height + 1);
+  await expect(card.getByText('Andromeda', { exact: true })).toBeVisible(); // Sternbild
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+
+  await expectNoSerious(page, 'S-20 Rundblick');
 });

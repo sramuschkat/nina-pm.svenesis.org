@@ -12,6 +12,8 @@ export interface StarField {
   readonly mag: Float32Array;
   /** Namen der hellen Sterne (Index → Name de/en, Bayer). */
   readonly names?: ReadonlyMap<number, { de: string; en: string }>;
+  /** Bayer-Buchstabe der hellen Sterne (Index → z. B. „α“), für die Infokarte. */
+  readonly bayer?: ReadonlyMap<number, string>;
 }
 
 export interface ConstellationLabel {
@@ -23,17 +25,34 @@ export interface ConstellationLabel {
   readonly en: string;
 }
 
+export interface ConstellationLines {
+  /** IAU-Kürzel (Hervorheben beim Überfahren). */
+  readonly abbr: string;
+  readonly parts: readonly (readonly (readonly [number, number, number])[])[];
+}
+
+export interface ConstellationBound {
+  readonly abbr: string;
+  readonly ring: readonly (readonly [number, number, number])[];
+  /** Ecken J2000 (Grad) für die Zuordnung eines Orts zum Sternbild. */
+  readonly corners: readonly (readonly [number, number])[];
+}
+
+/** Milchstraße als Raster (J2000, Zeilen ab Dec +90° südwärts, Spalten ab RA 0° ostwärts), Stufe 0–5. */
+export interface MilkyWayGrid {
+  readonly w: number;
+  readonly h: number;
+  readonly step: number;
+  readonly cells: Uint8Array;
+}
+
 export interface BrightSky {
   readonly stars: StarField;
   /** Polylinien je Sternbild als Vektorfolgen. */
-  readonly lines: readonly (readonly (readonly [number, number, number])[])[];
-  readonly bounds: readonly (readonly (readonly [number, number, number])[])[];
+  readonly lines: readonly ConstellationLines[];
+  readonly bounds: readonly ConstellationBound[];
   readonly labels: readonly ConstellationLabel[];
-  /** Milchstraße auf einem 1°-Raster: Mittelpunkt und Stufe 1–5. */
-  readonly milkyWay: readonly {
-    readonly vec: readonly [number, number, number];
-    readonly level: number;
-  }[];
+  readonly milkyWay: MilkyWayGrid;
 }
 
 export const unit = (raDeg: number, decDeg: number): [number, number, number] => {
@@ -57,32 +76,34 @@ const pairs = (flat: readonly number[]) => {
   return out;
 };
 
-/** Milchstraße: Lauflängen (Buchstabe a–f = Stufe 0–5, dann Länge) auf 0,5°, zusammengefasst auf 1°. */
-export function decodeMilkyWay(mw: SkyJson['milkyWay']): BrightSky['milkyWay'] {
-  const grid = new Uint8Array(mw.w * mw.h);
+/** Milchstraße: Lauflängen (Buchstabe a–f = Stufe 0–5, dann Länge) auf dem 0,5°-Raster der Vorlage. */
+export function decodeMilkyWay(mw: SkyJson['milkyWay']): MilkyWayGrid {
+  const cells = new Uint8Array(mw.w * mw.h);
   const re = /([a-f])(\d+)/g;
   let pos = 0;
   for (let m = re.exec(mw.rle); m; m = re.exec(mw.rle)) {
     const level = (m[1] as string).charCodeAt(0) - 97;
     const n = Number(m[2]);
-    if (level > 0) grid.fill(level, pos, pos + n);
+    if (level > 0) cells.fill(level, pos, pos + n);
     pos += n;
   }
-  const out: { vec: [number, number, number]; level: number }[] = [];
-  for (let row = 0; row < mw.h; row += 2) {
-    for (let col = 0; col < mw.w; col += 2) {
-      const level = Math.max(
-        grid[row * mw.w + col] ?? 0,
-        grid[row * mw.w + col + 1] ?? 0,
-        grid[(row + 1) * mw.w + col] ?? 0,
-        grid[(row + 1) * mw.w + col + 1] ?? 0,
-      );
-      if (level === 0) continue;
-      // Zeilen ab Dec +90° südwärts, Spalten ab RA 0° ostwärts; Mittelpunkt der 1°-Zelle.
-      out.push({ vec: unit((col + 1) * mw.step, 90 - (row + 1) * mw.step), level });
-    }
-  }
-  return out;
+  return { w: mw.w, h: mw.h, step: mw.step, cells };
+}
+
+/** Stufe der Milchstraße an einem Ort (J2000, Grad), bilinear zwischen den vier Nachbarzellen (Vorlage). */
+export function milkyWayAt(mw: MilkyWayGrid, raDeg: number, decDeg: number): number {
+  const fx = raDeg / mw.step - 0.5;
+  const fy = (90 - decDeg) / mw.step - 0.5;
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const at = (x: number, y: number) =>
+    mw.cells[Math.min(mw.h - 1, Math.max(0, y)) * mw.w + (((x % mw.w) + mw.w) % mw.w)] ?? 0;
+  return (
+    (at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx) * (1 - ty) +
+    (at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx) * ty
+  );
 }
 
 export function parseSky(json: SkyJson): BrightSky {
@@ -90,6 +111,7 @@ export function parseSky(json: SkyJson): BrightSky {
   const vec = new Float64Array(n * 3);
   const mag = new Float32Array(n);
   const names = new Map<number, { de: string; en: string }>();
+  const bayer = new Map<number, string>();
   json.stars.forEach((s, i) => {
     const v = unit(s[0] as number, s[1] as number);
     vec.set(v, i * 3);
@@ -97,11 +119,17 @@ export function parseSky(json: SkyJson): BrightSky {
     const de = typeof s[4] === 'string' ? s[4] : '';
     const en = typeof s[5] === 'string' ? s[5] : de;
     if (de || en) names.set(i, { de: de || en, en: en || de });
+    if (typeof s[6] === 'string' && s[6]) bayer.set(i, s[6]);
   });
   return {
-    stars: { count: n, vec, mag, names },
-    lines: Object.values(json.lines).flatMap((polys) => polys.map(pairs)),
-    bounds: json.bounds.map(([, ring]) => pairs(ring)),
+    stars: { count: n, vec, mag, names, bayer },
+    lines: Object.entries(json.lines).map(([abbr, polys]) => ({ abbr, parts: polys.map(pairs) })),
+    bounds: json.bounds.map(([abbr, ring]) => {
+      const corners: [number, number][] = [];
+      for (let i = 0; i + 1 < ring.length; i += 2)
+        corners.push([ring[i] as number, ring[i + 1] as number]);
+      return { abbr, ring: pairs(ring), corners };
+    }),
     labels: json.labels.map((l) => ({
       abbr: String(l[0]),
       vec: unit(Number(l[1]), Number(l[2])),

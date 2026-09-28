@@ -221,14 +221,29 @@ export const CHART: Readonly<Record<string, string>> = {
  */
 export const SKY: Readonly<Record<string, string>> = {
   'sky-bg': 'rgb(6, 10, 20)',
-  'sky-ground': 'rgba(60, 40, 18, 0.45)',
-  'sky-milky-way': 'rgba(170, 190, 230, 0.07)',
+  /** Boden unter dem Horizont: fast deckend wie in der Vorlage (`sky-map.js` SM.ground), Sterne darunter nur schwach. */
+  'sky-ground': 'rgba(28, 25, 22, 0.82)',
+  /** Milchstraße: Farbe der Vorlage, die Deckkraft (0,3) ist die Stärke des Bands bei voller Dunkelheit. */
+  'sky-milky-way': 'rgba(205, 215, 255, 0.3)',
   'sky-grid-eq': 'rgba(120, 170, 230, 0.32)',
   'sky-grid-altaz': 'rgba(120, 220, 160, 0.3)',
   'sky-ecliptic': 'rgba(240, 200, 90, 0.55)',
   'sky-galactic': 'rgba(210, 140, 230, 0.5)',
   'sky-const-line': 'rgba(150, 175, 215, 0.45)',
   'sky-const-label': 'rgba(175, 195, 225, 0.75)',
+  /** Überfahrenes Sternbild (Vorlage SM.lineHi, SM.conHi). */
+  'sky-const-line-hi': 'rgba(190, 212, 255, 0.95)',
+  'sky-const-label-hi': '#e4e9ef',
+  /** Himmelsrichtungen unter dem Horizont (Vorlage SM.compass, SM.compassDim). */
+  'sky-compass': '#8fd19e',
+  'sky-compass-dim': 'rgba(143, 209, 158, 0.7)',
+  /** Ring um das gewählte Objekt (Vorlage SM.info). */
+  'sky-selected': '#5ce1e6',
+  /** Hinterlegung der Ecktexte über dem Himmel und deren Schrift. */
+  'sky-chrome-bg': 'rgba(11, 17, 25, 0.66)',
+  'sky-chrome-text': '#e4e9ef',
+  /** Schatten der Knopfleiste und der Infokarte über dem Himmel. */
+  'sky-chrome-shadow': '0 2px 12px rgba(0, 0, 0, 0.45)',
   'sky-star': '#f4f6fb',
   'sky-star-label': 'rgba(228, 233, 239, 0.85)',
   'sky-dso': '#8fd3a8',

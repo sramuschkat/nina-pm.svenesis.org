@@ -2,6 +2,11 @@
  * Zustand der Sternkarte S-20 in der URL (teilbare Links, Zurück-Taste): Blickrichtung und Sichtfeld,
  * Ausrichtung, Bildfeld (Mitte, Rotation, Mosaik), Rig und Vergleichs-Rig, Zeitpunkt, Himmelsfoto und
  * Ebenen. Ohne React; getestet in der Testdatei neben diesem Modul.
+ *
+ * Ohne Angaben in der Adresse öffnet die Karte wie die Vorlage (`sky-map.js`) im Rundblick: Horizont unten,
+ * Blick nach Süden (Südhalbkugel: Norden), 150° weit. In der Ausrichtung „Horizont unten“ bleibt die
+ * Blickrichtung am Horizont verankert (`az`, `hoehe`): Beim Verändern der Zeit ziehen die Sterne durchs
+ * Bild, der Horizont bleibt stehen.
  */
 import { SURVEY_IDS, type SurveyId } from './surveys';
 import { OVERLAYS, PROJECT_OVERLAYS, type Overlay, type ProjectOverlay } from './render';
@@ -15,6 +20,13 @@ export interface SkyMapState {
   /** Horizontales Sichtfeld (Grad). */
   readonly fov: number;
   readonly orient: 'north' | 'horizon';
+  /** Blickrichtung am Horizont (nur `horizon`): Azimut (Grad, Nord über Ost); `null` = Süden bzw. Norden
+   *  auf der Südhalbkugel, wenn `valt` gesetzt ist, sonst aus `ra`/`dec` zum Zeitpunkt. */
+  readonly vaz: number | null;
+  /** Höhe der Blickmitte (Grad, nur `horizon`). */
+  readonly valt: number | null;
+  /** Sternbildnamen in der Sprache der Oberfläche oder lateinisch (Vorlage: Auswahl „Namen“). */
+  readonly names: 'local' | 'latin';
   /** Bildfeldmitte J2000 (Grad). */
   readonly fra: number;
   readonly fdec: number;
@@ -39,6 +51,9 @@ export interface SkyMapState {
 
 export const FOV_MIN = 0.1;
 export const FOV_MAX = 180;
+/** Rundblick der Vorlage: 150° weit, Blickmitte 40° hoch – der Horizont liegt nahe dem unteren Rand. */
+export const OVERVIEW_FOV = 150;
+export const OVERVIEW_ALT = 40;
 
 export const DEFAULT_OVERLAYS: readonly Overlay[] = [
   'milkyWay',
@@ -60,6 +75,9 @@ export const DEFAULT_STATE: SkyMapState = {
   dec: -5.39,
   fov: 8,
   orient: 'north',
+  vaz: null,
+  valt: null,
+  names: 'local',
   fra: 83.82,
   fdec: -5.39,
   rot: null,
@@ -96,14 +114,21 @@ const list = <T extends string>(
 
 export function stateFromParams(p: URLSearchParams): SkyMapState {
   const d = DEFAULT_STATE;
+  // Leere Adresse (Menü „Sternkarte“): Rundblick wie in der Vorlage.
+  const overview = !['ra', 'dec', 'fra', 'fdec', 'fov', 'ausrichtung'].some((k) => p.has(k));
+  const orient = overview ? 'horizon' : p.get('ausrichtung') === 'horizont' ? 'horizon' : 'north';
   const fra = num(p, 'fra', 0, 360) ?? num(p, 'ra', 0, 360) ?? d.fra;
   const fdec = num(p, 'fdec', -90, 90) ?? num(p, 'dec', -90, 90) ?? d.fdec;
   const survey = p.get('foto');
   return {
     ra: num(p, 'ra', 0, 360) ?? fra,
     dec: num(p, 'dec', -90, 90) ?? fdec,
-    fov: num(p, 'fov', FOV_MIN, FOV_MAX) ?? d.fov,
-    orient: p.get('ausrichtung') === 'horizont' ? 'horizon' : 'north',
+    fov: num(p, 'fov', FOV_MIN, FOV_MAX) ?? (overview ? OVERVIEW_FOV : d.fov),
+    orient,
+    vaz: orient === 'horizon' ? (num(p, 'az', 0, 360) ?? null) : null,
+    valt:
+      orient === 'horizon' ? (num(p, 'hoehe', -90, 90) ?? (overview ? OVERVIEW_ALT : null)) : null,
+    names: p.get('namen') === 'latein' ? 'latin' : 'local',
     fra,
     fdec,
     rot: num(p, 'rot', 0, 360) ?? null,
@@ -141,7 +166,12 @@ export function paramsFromState(
   p.set('ra', round(s.ra, 5));
   p.set('dec', round(s.dec, 5));
   p.set('fov', round(s.fov, 4));
-  if (s.orient === 'horizon') p.set('ausrichtung', 'horizont');
+  if (s.orient === 'horizon') {
+    p.set('ausrichtung', 'horizont');
+    if (s.vaz !== null) p.set('az', round(s.vaz, 3));
+    if (s.valt !== null) p.set('hoehe', round(s.valt, 3));
+  }
+  if (s.names === 'latin') p.set('namen', 'latein');
   p.set('fra', round(s.fra, 5));
   p.set('fdec', round(s.fdec, 5));
   if (s.rot !== null) p.set('rot', round(s.rot, 2));

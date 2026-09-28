@@ -3,12 +3,16 @@
  * (äquatorial, Alt/Az, Ekliptik, galaktische Ebene), Sternbilder, Sterne, Katalogobjekte mit
  * Winkelgrößen-Ellipsen, Beobachter (Horizont, Mindesthöhe, Meridian, Zenit, Sichtbarkeits-Heatmap),
  * Sonne/Taghimmel/Mond/Planeten, Projekt-Overlays und das Bildfeld des Rigs samt Mosaik und Vergleichs-Rig.
+ * Nach der Vorlage `legacy/astro-tools-2026-09-21/js/sky-map.js` (28.09.2026): Himmelsrichtungen unter dem
+ * Horizont, deckender Boden, Milchstraße als weiches Bild aus dem 0,5°-Raster, das überfahrene Sternbild
+ * hervorgehoben, das gewählte Objekt mit Ring, Beschriftungen nach Vorrang ohne Überlappung. `drawSky` gibt
+ * die Trefferliste (Sternbild-Ecken, Sterne, Himmelskörper) für Überfahren und Anklicken zurück.
  * Alle Richtungen als J2000-Einheitsvektoren; Projektion und Rahmen aus `@nina-pm/engine` (`sky`), Panels
  * über `mosaicPanels` (geometry.md §2). Farben ausschließlich über die Tokens `--npm-sky-*`.
  */
 import { mosaicPanels, offsetToSky, sky } from '@nina-pm/engine';
 import type { DsoMarker } from '../../../api/client';
-import type { BrightSky, StarField } from './sky-data';
+import { milkyWayAt, type BrightSky, type MilkyWayGrid, type StarField } from './sky-data';
 
 export type Vec = readonly [number, number, number];
 
@@ -79,6 +83,20 @@ export interface Bodies {
   readonly planets: readonly { id: string; vec: Vec; mag: number }[];
 }
 
+/** Himmelskörper des Sonnensystems auf der Karte (`sun`, `moon` oder eine Planeten-ID). */
+export type BodyId = 'sun' | 'moon' | sky.PlanetId;
+
+/** Trefferliste einer Zeichnung (Bildpunkte), für Überfahren und Anklicken. */
+export interface HitIndex {
+  /** Ecken und Mitten der Sternbildlinien sowie die Namenspunkte, je mit IAU-Kürzel. */
+  readonly verts: readonly { x: number; y: number; abbr: string }[];
+  /** Gezeichnete helle Sterne (Index in `bright.stars`). */
+  readonly stars: readonly { x: number; y: number; i: number; mag: number }[];
+  readonly bodies: readonly { x: number; y: number; r: number; id: BodyId }[];
+}
+
+export const EMPTY_HITS: HitIndex = { verts: [], stars: [], bodies: [] };
+
 export interface RenderInput {
   readonly view: sky.SkyView;
   readonly overlays: ReadonlySet<Overlay>;
@@ -93,6 +111,12 @@ export interface RenderInput {
   readonly frame: FrameSpec | null;
   readonly compare: FrameSpec | null;
   readonly selectedId: string | null;
+  /** Richtung des gewählten Objekts (Stern, Himmelskörper, Katalogobjekt) für den Auswahlring. */
+  readonly selectedVec: Vec | null;
+  /** IAU-Kürzel des überfahrenen Sternbilds. */
+  readonly hoverCon: string | null;
+  /** Sternbildnamen: Landessprache (DE deutsch, EN englisch) oder lateinisch. */
+  readonly names: 'local' | 'latin';
   /** Token der Rahmenfarbe (`--npm-sky-…`), z. B. `frame`, `frame-compare`. */
   readonly frameColor: string;
   readonly lang: 'de' | 'en';
@@ -100,6 +124,9 @@ export interface RenderInput {
   readonly moonLabel: string;
   readonly sunLabel: string;
   readonly zenithLabel: string;
+  /** Himmelsrichtungen N, NO, O, SO, S, SW, W, NW in der Sprache der Oberfläche. */
+  readonly compassLabels: readonly string[];
+  readonly milkyWayLabel: string;
 }
 
 /** Aufgelöste Farben aus den Tokens (`--npm-sky-*`), einmal je Zeichnung gelesen. */
@@ -116,7 +143,12 @@ export function readColors(el: Element): Colors {
     'ecliptic',
     'galactic',
     'const-line',
+    'const-line-hi',
     'const-label',
+    'const-label-hi',
+    'compass',
+    'compass-dim',
+    'selected',
     'star',
     'star-label',
     'dso',
@@ -248,24 +280,211 @@ function drawEqLabels(ctx: CanvasRenderingContext2D, view: sky.SkyView, color: s
   }
 }
 
-function drawMilkyWay(
+/** Farbe `rgb(…)`/`rgba(…)`/`#rrggbb` → Kanäle 0–255 und Deckkraft 0–1 (für Bildpunkte im Offscreen-Bild). */
+export function colorParts(c: string): [number, number, number, number] {
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.trim());
+  if (hex)
+    return [
+      parseInt(hex[1] ?? '0', 16),
+      parseInt(hex[2] ?? '0', 16),
+      parseInt(hex[3] ?? '0', 16),
+      1,
+    ];
+  const m = /rgba?\(([^)]+)\)/.exec(c);
+  if (!m) return [136, 136, 136, 1];
+  const [r = 136, g = 136, b = 136, a = 1] = (m[1] ?? '').split(',').map((x) => Number(x.trim()));
+  return [r, g, b, a];
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Zeichenfläche für ein grobes Bild (4-px-Zellen), das weich hochskaliert wird; ohne DOM `null`. */
+let scratch: HTMLCanvasElement | null = null;
+function scratchImage(w: number, h: number) {
+  if (typeof document === 'undefined') return null;
+  scratch ??= document.createElement('canvas');
+  scratch.width = w;
+  scratch.height = h;
+  const c = scratch.getContext('2d');
+  if (!c) return null;
+  return { canvas: scratch, ctx: c, img: c.createImageData(w, h) };
+}
+
+/** Höhe (Grad) eines J2000-Vektors über dem Horizont. */
+const altOf = (H: sky.Mat3, v: Vec) => Math.asin(Math.max(-1, Math.min(1, sky.dot(H[2], v)))) / DEG;
+
+/** Stufe der Dämmerung nach der Sonnenhöhe: 0 Tag, 1 bürgerlich, 2 nautisch, 3 astronomisch, 4 Nacht. */
+export function twilightClass(sunAltDeg: number): 0 | 1 | 2 | 3 | 4 {
+  if (sunAltDeg > -0.833) return 0;
+  if (sunAltDeg > -6) return 1;
+  if (sunAltDeg > -12) return 2;
+  if (sunAltDeg > -18) return 3;
+  return 4;
+}
+
+const CELL = 4;
+
+/**
+ * Milchstraße wie in der Vorlage (`paintMilkyWay`): jede 4-px-Zelle zurück an den Himmel, Stufe aus dem
+ * 0,5°-Raster bilinear, Deckkraft 0,35 für Stufe 1 bis 1 für Stufe 5, zum Horizont hin schwächer; das kleine
+ * Bild wird weich hochskaliert. In der Dämmerung und beim Hineinzoomen tritt das Band zurück. Gibt eine
+ * helle Stelle nahe der Bildmitte für den Namen zurück.
+ */
+function paintMilkyWay(
   ctx: CanvasRenderingContext2D,
   view: sky.SkyView,
-  mw: BrightSky['milkyWay'],
+  mw: MilkyWayGrid,
   color: string,
-) {
-  const px = Math.max(1.5, (view.width / view.fovDeg) * 1.2);
-  const limit = Math.cos(Math.min(179, viewRadiusDeg(view) + 2) * DEG);
-  ctx.fillStyle = color;
-  for (const cell of mw) {
-    if (sky.dot(cell.vec, view.center) < limit) continue;
-    const p = sky.project(view, cell.vec);
-    if (!p) continue;
-    ctx.globalAlpha = Math.min(1, cell.level / 2.5);
-    ctx.fillRect(p.x - px / 2, p.y - px / 2, px, px);
+  observer: Observer | null,
+): { x: number; y: number } | null {
+  const cls = observer ? twilightClass(observer.sunAltDeg) : 4;
+  const gain = Math.max(0, Math.log2(150 / view.fovDeg));
+  const fade = [0, 0, 0.3, 0.7, 1][cls] ?? 1;
+  const dim = clamp(1 - gain * 0.3, 0.25, 1);
+  if (fade * dim <= 0) return null;
+  const gw = Math.ceil(view.width / CELL);
+  const gh = Math.ceil(view.height / CELL);
+  const s = scratchImage(gw, gh);
+  if (!s) return null;
+  const [r, g, b, strength] = colorParts(color);
+  const px = s.img.data;
+  let best = Infinity;
+  let spot: { x: number; y: number } | null = null;
+  for (let gy = 0; gy < gh; gy += 1) {
+    for (let gx = 0; gx < gw; gx += 1) {
+      const x = (gx + 0.5) * CELL;
+      const y = (gy + 0.5) * CELL;
+      const v = sky.unproject(view, x, y);
+      let altF = 1;
+      let alt = 90;
+      if (observer) {
+        alt = altOf(observer.toHorizon, v);
+        if (alt < 0) continue;
+        altF = clamp(alt / 15, 0.35, 1);
+      }
+      const rd = sky.vecToRadec(v);
+      const level = milkyWayAt(mw, rd.raDeg, rd.decDeg);
+      if (!(level > 0)) continue;
+      const o = (gy * gw + gx) * 4;
+      px[o] = r;
+      px[o + 1] = g;
+      px[o + 2] = b;
+      px[o + 3] = Math.round(
+        (clamp(level, 0, 1) * 0.35 + (clamp(level - 1, 0, 4) / 4) * 0.65) * altF * 255,
+      );
+      if (level >= 3 && alt > 20) {
+        const d = Math.abs(x - view.width / 2) + Math.abs(y - view.height / 2);
+        if (d < best) {
+          best = d;
+          spot = { x, y };
+        }
+      }
+    }
   }
-  ctx.globalAlpha = 1;
+  s.ctx.putImageData(s.img, 0, 0);
+  ctx.save();
+  ctx.globalAlpha = strength * fade * dim;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(s.canvas, 0, 0, gw * CELL, gh * CELL);
+  ctx.restore();
+  return fade * dim >= 0.5 ? spot : null;
 }
+
+/** Boden unter dem Horizont (deckend, weiche Kante) und Heatmap unter der Höhen-Schwelle. */
+function paintGround(
+  ctx: CanvasRenderingContext2D,
+  view: sky.SkyView,
+  obs: Observer,
+  overlays: ReadonlySet<Overlay>,
+  colors: Colors,
+) {
+  const ground = overlays.has('horizon');
+  const heat = overlays.has('heatmap');
+  if (!ground && !heat) return;
+  const gw = Math.ceil(view.width / CELL);
+  const gh = Math.ceil(view.height / CELL);
+  const s = scratchImage(gw, gh);
+  const [gr, gg, gb, ga] = colorParts(colors.ground ?? 'rgba(28,25,22,0.8)');
+  const [hr, hg, hb, ha] = colorParts(colors.heatmap ?? 'rgba(229,72,77,0.22)');
+  if (!s) {
+    // Ohne Offscreen-Bild (Tests): grobe Zellen direkt.
+    for (let y = 0; y < view.height; y += 12)
+      for (let x = 0; x < view.width; x += 12) {
+        const alt = altOf(obs.toHorizon, sky.unproject(view, x + 6, y + 6));
+        if (alt < 0 && ground) ctx.fillStyle = colors.ground ?? '#222';
+        else if (heat && alt < obs.heatAltDeg) ctx.fillStyle = colors.heatmap ?? '#a33';
+        else continue;
+        ctx.fillRect(x, y, 12, 12);
+      }
+    return;
+  }
+  const px = s.img.data;
+  for (let gy = 0; gy < gh; gy += 1) {
+    for (let gx = 0; gx < gw; gx += 1) {
+      const alt = altOf(obs.toHorizon, sky.unproject(view, (gx + 0.5) * CELL, (gy + 0.5) * CELL));
+      const o = (gy * gw + gx) * 4;
+      if (alt < 0 && ground) {
+        px[o] = gr;
+        px[o + 1] = gg;
+        px[o + 2] = gb;
+        px[o + 3] = Math.round(ga * 255);
+      } else if (heat && alt < obs.heatAltDeg) {
+        px[o] = hr;
+        px[o + 1] = hg;
+        px[o + 2] = hb;
+        px[o + 3] = Math.round(ha * 255);
+      }
+    }
+  }
+  s.ctx.putImageData(s.img, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(s.canvas, 0, 0, gw * CELL, gh * CELL);
+  ctx.restore();
+}
+
+/** Beschriftungen nach Vorrang: eine Beschriftung, die eine frühere überdecken würde, entfällt (Vorlage). */
+export class Labels {
+  private readonly boxes: [number, number, number, number][] = [];
+  constructor(
+    private readonly ctx: CanvasRenderingContext2D,
+    private readonly width: number,
+  ) {}
+  /** Fläche freihalten (z. B. Scheibe eines Himmelskörpers). */
+  block(x0: number, y0: number, x1: number, y1: number) {
+    this.boxes.push([x0, y0, x1, y1]);
+  }
+  put(
+    txt: string,
+    x: number,
+    y: number,
+    color: string,
+    font: string,
+    align: 'left' | 'center' = 'left',
+    force = false,
+  ): boolean {
+    if (!txt) return false;
+    const ctx = this.ctx;
+    ctx.font = font;
+    const w = Number(ctx.measureText(txt).width) || txt.length * 6;
+    const x0 = clamp(align === 'center' ? x - w / 2 : x, 2, Math.max(2, this.width - w - 2));
+    const box: [number, number, number, number] = [x0 - 2, y - 7, x0 + w + 2, y + 7];
+    if (
+      !force &&
+      this.boxes.some((o) => box[0] < o[2] && box[2] > o[0] && box[1] < o[3] && box[3] > o[1])
+    )
+      return false;
+    this.boxes.push(box);
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, x0, y);
+    ctx.textBaseline = 'alphabetic';
+    return true;
+  }
+}
+
+const FONT = 'system-ui, sans-serif';
 
 /** Grenzhelligkeit der Sterne je Sichtfeld: 5 mag bei 180°, 8 mag unter 10°. */
 export function starLimitMag(fovDeg: number): number {
@@ -282,6 +501,7 @@ function drawStars(
   field: StarField,
   limitMag: number,
   color: string,
+  hits?: { x: number; y: number; i: number; mag: number }[],
 ) {
   const limit = Math.cos(Math.min(179, viewRadiusDeg(view) + 1) * DEG);
   ctx.fillStyle = color;
@@ -294,33 +514,36 @@ function drawStars(
     const p = sky.project(view, v);
     if (!p || p.x < -4 || p.y < -4 || p.x > view.width + 4 || p.y > view.height + 4) continue;
     const r = Math.max(0.5, 0.45 * (limitMag + 1.5 - m));
+    hits?.push({ x: p.x, y: p.y, i, mag: m });
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
     ctx.fill();
   }
 }
 
-function drawStarNames(
-  ctx: CanvasRenderingContext2D,
+function starNameLabels(
   view: sky.SkyView,
   field: StarField,
   lang: 'de' | 'en',
+  labels: Labels,
   color: string,
+  up: ((v: Vec) => boolean) | null,
 ) {
   if (!field.names) return;
   const maxMag = view.fovDeg > 90 ? 1.5 : view.fovDeg > 40 ? 2.5 : 4;
-  ctx.fillStyle = color;
-  ctx.font = '11px system-ui, sans-serif';
-  for (const [i, name] of field.names) {
-    if ((field.mag[i] as number) > maxMag) continue;
+  const list = [...field.names]
+    .filter(([i]) => (field.mag[i] as number) <= maxMag)
+    .sort((x, y) => (field.mag[x[0]] as number) - (field.mag[y[0]] as number));
+  for (const [i, name] of list) {
     const v: Vec = [
       field.vec[i * 3] as number,
       field.vec[i * 3 + 1] as number,
       field.vec[i * 3 + 2] as number,
     ];
+    if (up && !up(v)) continue;
     const p = sky.project(view, v);
     if (!p || p.x < 0 || p.y < 0 || p.x > view.width || p.y > view.height) continue;
-    ctx.fillText(lang === 'en' ? name.en : name.de, p.x + 5, p.y - 4);
+    labels.put(lang === 'en' ? name.en : name.de, p.x + 5, p.y - 6, color, `11px ${FONT}`);
   }
 }
 
@@ -331,15 +554,19 @@ function drawDso(
   sizes: boolean,
   selectedId: string | null,
   colors: Colors,
-) {
+  observer: Observer | null,
+): { txt: string; x: number; y: number; selected: boolean }[] {
   const pxPerDeg = view.width / view.fovDeg;
-  ctx.font = '11px system-ui, sans-serif';
+  const out: { txt: string; x: number; y: number; selected: boolean }[] = [];
   for (const o of items) {
     const v = unit(o.raDeg, o.decDeg);
     const p = sky.project(view, v);
     if (!p || p.x < -50 || p.y < -50 || p.x > view.width + 50 || p.y > view.height + 50) continue;
     const major = ((o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
     const minor = ((o.sizeMinorArcmin ?? o.sizeMajorArcmin ?? 0) / 60) * pxPerDeg;
+    // Unter dem Horizont blass und ohne Namen (außer dem gewählten Objekt).
+    const below = observer !== null && altOf(observer.toHorizon, v) < 0 && o.id !== selectedId;
+    ctx.globalAlpha = below ? 0.35 : 1;
     ctx.strokeStyle = colors.dso ?? '#8fd3a8';
     ctx.lineWidth = o.id === selectedId ? 2.5 : 1.2;
     ctx.beginPath();
@@ -350,16 +577,22 @@ function drawDso(
       ctx.ellipse(p.x, p.y, Math.max(2, minor / 2), major / 2, -pa, 0, 2 * Math.PI);
     } else ctx.arc(p.x, p.y, 3.5, 0, 2 * Math.PI);
     ctx.stroke();
+    ctx.globalAlpha = 1;
+    if (below) continue;
     const labelled =
       view.fovDeg <= 20 ||
       o.id === selectedId ||
       (o.mag !== null && o.mag < (view.fovDeg > 60 ? 5 : 7)) ||
       (view.fovDeg <= 60 && o.displayName.startsWith('M '));
-    if (labelled) {
-      ctx.fillStyle = colors['dso-label'] ?? '#aaa';
-      ctx.fillText(o.displayName, p.x + Math.max(5, minor / 2), p.y - 4);
-    }
+    if (labelled)
+      out.push({
+        txt: o.displayName,
+        x: p.x + Math.max(5, minor / 2),
+        y: p.y - 6,
+        selected: o.id === selectedId,
+      });
   }
+  return out;
 }
 
 /** Ecken eines Bildfelds (Tangentialebene, geometry.md §2.1) als Vektorfolge mit Zwischenpunkten. */
@@ -452,23 +685,7 @@ function drawObserver(
   zenithLabel: string,
 ) {
   const H = obs.toHorizon;
-  // Boden und Heatmap aus einer groben Abtastung des Bilds (Höhe je Zelle).
-  if (overlays.has('horizon') || overlays.has('heatmap')) {
-    const cell = 12;
-    for (let y = 0; y < view.height; y += cell) {
-      for (let x = 0; x < view.width; x += cell) {
-        const v = sky.unproject(view, x + cell / 2, y + cell / 2);
-        const alt = Math.asin(Math.max(-1, Math.min(1, sky.dot(H[2], v)))) / DEG;
-        if (alt < 0 && overlays.has('horizon')) {
-          ctx.fillStyle = colors.ground ?? '#222';
-          ctx.fillRect(x, y, cell, cell);
-        } else if (overlays.has('heatmap') && alt < obs.heatAltDeg) {
-          ctx.fillStyle = colors.heatmap ?? 'rgba(229,72,77,0.2)';
-          ctx.fillRect(x, y, cell, cell);
-        }
-      }
-    }
-  }
+  paintGround(ctx, view, obs, overlays, colors);
   if (overlays.has('horizon')) {
     ctx.strokeStyle = colors.horizon ?? '#e67e22';
     ctx.lineWidth = 1.8;
@@ -505,28 +722,87 @@ function drawObserver(
   }
 }
 
+/** Richtung am Horizont (Azimut von Nord über Ost, Höhe) als J2000-Vektor. */
+export function horizonVec(H: sky.Mat3, azDeg: number, altDeg: number): Vec {
+  const a = azDeg * DEG;
+  const h = altDeg * DEG;
+  return sky.matVec(sky.transpose(H), [
+    Math.sin(a) * Math.cos(h),
+    Math.cos(a) * Math.cos(h),
+    Math.sin(h),
+  ]);
+}
+
+/** Höhe und Azimut (Grad, Nord über Ost) eines J2000-Vektors. */
+export function toAltAz(H: sky.Mat3, v: Vec): { altDeg: number; azDeg: number } {
+  const az = Math.atan2(sky.dot(H[0], v), sky.dot(H[1], v)) / DEG;
+  return { altDeg: altOf(H, v), azDeg: (az + 360) % 360 };
+}
+
+/** Himmelsrichtungen knapp unter dem Horizont (Vorlage): Haupt-Richtungen kräftiger, Neben-Richtungen blasser. */
+function compassLabels(
+  view: sky.SkyView,
+  obs: Observer,
+  names: readonly string[],
+  labels: Labels,
+  colors: Colors,
+) {
+  for (let i = 0; i < 8; i += 1) {
+    const p = sky.project(view, horizonVec(obs.toHorizon, i * 45, 0));
+    const below = sky.project(view, horizonVec(obs.toHorizon, i * 45, -2));
+    if (!p || !below) continue;
+    const dx = below.x - p.x;
+    const dy = below.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const x = p.x + (dx / len) * 15;
+    const y = p.y + (dy / len) * 15;
+    if (x < 8 || x > view.width - 8 || y < 8 || y > view.height - 8) continue;
+    const main = i % 2 === 0;
+    labels.put(
+      names[i] ?? '',
+      x,
+      y,
+      (main ? colors.compass : colors['compass-dim']) ?? '#8fd19e',
+      main ? `600 12px ${FONT}` : `11px ${FONT}`,
+      'center',
+      true,
+    );
+  }
+}
+
 function drawBodies(
   ctx: CanvasRenderingContext2D,
   view: sky.SkyView,
   input: RenderInput,
   colors: Colors,
+  labels: Labels,
+  hits: HitIndex['bodies'][number][],
 ) {
   const b = input.bodies;
   if (!b) return;
-  ctx.font = '12px system-ui, sans-serif';
-  const disc = (v: Vec, r: number, color: string, label: string) => {
+  const pending: { txt: string; x: number; y: number }[] = [];
+  const obs = input.observer;
+  const disc = (id: BodyId, v: Vec, r: number, color: string, label: string) => {
     const p = sky.project(view, v);
-    if (!p) return;
+    if (!p || p.x < -r || p.y < -r || p.x > view.width + r || p.y > view.height + r) return;
+    // Unter dem Horizont nur blass und ohne Namen (der Boden deckt den Himmel dort ab).
+    const below = obs !== null && input.overlays.has('horizon') && altOf(obs.toHorizon, v) < 0;
+    ctx.globalAlpha = below ? 0.35 : 1;
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
     ctx.fill();
-    ctx.fillStyle = colors.label ?? '#ddd';
-    ctx.fillText(label, p.x + r + 4, p.y - r);
+    ctx.globalAlpha = 1;
+    hits.push({ x: p.x, y: p.y, r, id });
+    if (below) return;
+    labels.block(p.x - r, p.y - r, p.x + r, p.y + r);
+    pending.push({ txt: label, x: p.x + r + 4, y: p.y - r - 2 });
   };
-  if (input.overlays.has('sun') && b.sun) disc(b.sun, 7, colors.sun ?? '#f6c85f', input.sunLabel);
+  if (input.overlays.has('sun') && b.sun)
+    disc('sun', b.sun, 7, colors.sun ?? '#f6c85f', input.sunLabel);
   if (input.overlays.has('moon') && b.moon)
     disc(
+      'moon',
       b.moon.vec,
       6,
       colors.moon ?? '#e8ecf2',
@@ -535,25 +811,67 @@ function drawBodies(
   if (input.overlays.has('planets'))
     for (const p of b.planets)
       disc(
+        p.id as BodyId,
         p.vec,
         Math.max(2, 4 - p.mag / 2),
         colors.planet ?? '#f7b267',
         input.planetNames[p.id] ?? p.id,
       );
+  for (const l of pending)
+    labels.put(l.txt, l.x, l.y, colors.label ?? '#ddd', `12px ${FONT}`, 'left', true);
 }
 
-/** Zeichnet alle Ebenen außer den Fotos (die kommen vorher aus `HipsLayer`). */
+/** Name eines Sternbilds nach Einstellung: Latein oder Landessprache (DE deutsch, EN englisch). */
+export function constellationName(
+  l: { de: string; latin: string; en: string },
+  names: 'local' | 'latin',
+  lang: 'de' | 'en',
+): string {
+  if (names === 'latin') return l.latin;
+  return lang === 'en' ? l.en : l.de;
+}
+
+/** Polylinie wie `polyline`, merkt dazu sichtbare Ecken und Mitten mit dem Kürzel des Sternbilds. */
+function constellationLine(
+  ctx: CanvasRenderingContext2D,
+  view: sky.SkyView,
+  pts: readonly Vec[],
+  abbr: string,
+  verts: { x: number; y: number; abbr: string }[],
+  up: ((v: Vec) => boolean) | null,
+) {
+  polyline(ctx, view, pts);
+  let last: { x: number; y: number } | null = null;
+  for (const v of pts) {
+    const p = up && !up(v) ? null : sky.project(view, v);
+    const on = p !== null && p.x >= 0 && p.y >= 0 && p.x <= view.width && p.y <= view.height;
+    if (on) {
+      verts.push({ x: p.x, y: p.y, abbr });
+      if (last) verts.push({ x: (p.x + last.x) / 2, y: (p.y + last.y) / 2, abbr });
+    }
+    last = on ? p : null;
+  }
+}
+
+/** Zeichnet alle Ebenen außer den Fotos (die kommen vorher aus `HipsLayer`); gibt die Trefferliste zurück. */
 export function drawSky(
   ctx: CanvasRenderingContext2D,
   input: RenderInput,
   colors: Colors,
   drawPhotos: () => void,
-) {
-  const { view, overlays } = input;
+): HitIndex {
+  const { view, overlays, observer } = input;
+  const hits = {
+    verts: [] as { x: number; y: number; abbr: string }[],
+    stars: [] as { x: number; y: number; i: number; mag: number }[],
+    bodies: [] as HitIndex['bodies'][number][],
+  };
+  const labels = new Labels(ctx, view.width);
+  const up = observer ? (v: Vec) => altOf(observer.toHorizon, v) > 0 : null;
   ctx.fillStyle = colors.bg ?? '#000';
   ctx.fillRect(0, 0, view.width, view.height);
   // Taghimmel: Grund aufhellen, solange die Sonne über −6° steht.
-  const sunAlt = input.observer?.sunAltDeg ?? -90;
+  const sunAlt = observer?.sunAltDeg ?? -90;
   if (overlays.has('daySky') && sunAlt > -6) {
     ctx.globalAlpha = Math.min(1, (sunAlt + 6) / 12);
     ctx.fillStyle = colors.day ?? '#5c8ed4';
@@ -561,14 +879,21 @@ export function drawSky(
     ctx.globalAlpha = 1;
   }
   drawPhotos();
+  let mwSpot: { x: number; y: number } | null = null;
   if (overlays.has('milkyWay') && input.bright && (!input.photosShown || view.fovDeg > 40))
-    drawMilkyWay(ctx, view, input.bright.milkyWay, colors['milky-way'] ?? '#223');
+    mwSpot = paintMilkyWay(
+      ctx,
+      view,
+      input.bright.milkyWay,
+      colors['milky-way'] ?? 'rgba(205,215,255,0.3)',
+      observer,
+    );
   if (overlays.has('eqGrid')) {
     drawGrid(ctx, view, null, colors['grid-eq'] ?? '#468', 1.5);
     drawEqLabels(ctx, view, colors['grid-eq'] ?? '#468');
   }
-  if (overlays.has('altAzGrid') && input.observer)
-    drawGrid(ctx, view, input.observer.toHorizon, colors['grid-altaz'] ?? '#4a6');
+  if (overlays.has('altAzGrid') && observer)
+    drawGrid(ctx, view, observer.toHorizon, colors['grid-altaz'] ?? '#4a6');
   if (overlays.has('ecliptic')) {
     ctx.strokeStyle = colors.ecliptic ?? '#dc5';
     ctx.lineWidth = 1.3;
@@ -584,37 +909,37 @@ export function drawSky(
       ctx.strokeStyle = colors['const-line'] ?? '#678';
       ctx.lineWidth = 0.6;
       ctx.setLineDash([3, 3]);
-      for (const ring of input.bright.bounds) polyline(ctx, view, ring);
+      for (const b of input.bright.bounds) polyline(ctx, view, b.ring);
       ctx.setLineDash([]);
     }
     if (overlays.has('constLines')) {
-      ctx.strokeStyle = colors['const-line'] ?? '#678';
-      ctx.lineWidth = 1;
-      for (const line of input.bright.lines) polyline(ctx, view, line);
-    }
-    if (overlays.has('constLabels')) {
-      ctx.fillStyle = colors['const-label'] ?? '#89a';
-      ctx.font = '12px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      for (const l of input.bright.labels) {
-        if (view.fovDeg > 100 && l.rank > 1) continue;
-        if (view.fovDeg > 50 && l.rank > 2) continue;
-        const p = sky.project(view, l.vec);
-        if (p && p.x > 0 && p.y > 0 && p.x < view.width && p.y < view.height)
-          ctx.fillText(input.lang === 'en' ? l.latin : l.de, p.x, p.y);
-      }
-      ctx.textAlign = 'left';
+      // Das überfahrene Sternbild zuletzt, kräftiger und heller (Vorlage).
+      for (const pass of [false, true])
+        for (const c of input.bright.lines) {
+          if ((c.abbr === input.hoverCon) !== pass) continue;
+          ctx.strokeStyle = pass
+            ? (colors['const-line-hi'] ?? '#bed4ff')
+            : (colors['const-line'] ?? '#678');
+          ctx.lineWidth = pass ? 1.8 : 1;
+          for (const part of c.parts) constellationLine(ctx, view, part, c.abbr, hits.verts, up);
+        }
     }
     const limit = starLimitMag(view.fovDeg);
-    drawStars(ctx, view, input.bright.stars, limit, colors.star ?? '#fff');
+    drawStars(ctx, view, input.bright.stars, limit, colors.star ?? '#fff', hits.stars);
     if (input.faint && limit > 6) drawStars(ctx, view, input.faint, limit, colors.star ?? '#fff');
-    if (overlays.has('starNames'))
-      drawStarNames(ctx, view, input.bright.stars, input.lang, colors['star-label'] ?? '#ddd');
   }
-  if (input.observer) drawObserver(ctx, view, input.observer, overlays, colors, input.zenithLabel);
-  if (overlays.has('dso'))
-    drawDso(ctx, view, input.dso, overlays.has('dsoSizes'), input.selectedId, colors);
-  drawBodies(ctx, view, input, colors);
+  if (observer) drawObserver(ctx, view, observer, overlays, colors, input.zenithLabel);
+  const dsoLabels = overlays.has('dso')
+    ? drawDso(
+        ctx,
+        view,
+        input.dso,
+        overlays.has('dsoSizes'),
+        input.selectedId,
+        colors,
+        overlays.has('horizon') ? observer : null,
+      )
+    : [];
   for (const p of input.projects) {
     if (!input.projectOverlays.has(p.category)) continue;
     drawFrame(ctx, view, p.frame, colors[`project-${p.category}`] ?? '#aaa', {
@@ -629,6 +954,131 @@ export function drawSky(
       numbers: true,
       width: 2,
     });
+  // Das gewählte Objekt: gestrichelter Ring (Vorlage: Karte offen = cyan).
+  if (input.selectedVec) {
+    const q = sky.project(view, input.selectedVec);
+    if (q && q.x > -12 && q.y > -12 && q.x < view.width + 12 && q.y < view.height + 12) {
+      ctx.strokeStyle = colors.selected ?? '#5ce1e6';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, 11, 0, 2 * Math.PI);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      labels.block(q.x - 11, q.y - 11, q.x + 11, q.y + 11);
+    }
+  }
+
+  // Beschriftungen nach Vorrang (Vorlage): Himmelsrichtungen, überfahrenes Sternbild, Himmelskörper,
+  // gewähltes Katalogobjekt, übrige Katalogobjekte, Sternnamen, Sternbildnamen, Milchstraße.
+  if (observer && overlays.has('horizon'))
+    compassLabels(view, observer, input.compassLabels, labels, colors);
+  const placed = (input.bright?.labels ?? [])
+    .map((l) => {
+      if (up && !up(l.vec)) return null;
+      const q = sky.project(view, l.vec);
+      if (!q || q.x < 6 || q.y < 6 || q.x > view.width - 6 || q.y > view.height - 6) return null;
+      hits.verts.push({ x: q.x, y: q.y, abbr: l.abbr });
+      return { l, q };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  for (const { l, q } of placed)
+    if (l.abbr === input.hoverCon)
+      labels.put(
+        constellationName(l, input.names, input.lang),
+        q.x,
+        q.y,
+        colors['const-label-hi'] ?? '#e4e9ef',
+        `600 12px ${FONT}`,
+        'center',
+        true,
+      );
+  drawBodies(ctx, view, input, colors, labels, hits.bodies);
+  for (const d of dsoLabels.filter((x) => x.selected))
+    labels.put(d.txt, d.x, d.y, colors['dso-label'] ?? '#aaa', `600 11px ${FONT}`, 'left', true);
+  for (const d of dsoLabels.filter((x) => !x.selected))
+    labels.put(d.txt, d.x, d.y, colors['dso-label'] ?? '#aaa', `11px ${FONT}`);
+  if (input.bright && overlays.has('starNames'))
+    starNameLabels(
+      view,
+      input.bright.stars,
+      input.lang,
+      labels,
+      colors['star-label'] ?? '#ddd',
+      overlays.has('horizon') ? up : null,
+    );
+  if (overlays.has('constLabels')) {
+    // Vorlage: schmale Karten nur die bekanntesten, ab 560 px alle; beim Hineinzoomen alle.
+    const gain = Math.max(0, Math.log2(150 / view.fovDeg));
+    const maxRank = Math.min(
+      3,
+      (view.width < 440 ? 1 : view.width < 560 ? 2 : 3) + Math.floor(gain),
+    );
+    for (const { l, q } of placed)
+      if (l.rank <= maxRank && l.abbr !== input.hoverCon)
+        labels.put(
+          constellationName(l, input.names, input.lang),
+          q.x,
+          q.y,
+          colors['const-label'] ?? '#89a',
+          `11px ${FONT}`,
+          'center',
+        );
+  }
+  if (mwSpot && input.milkyWayLabel)
+    labels.put(
+      input.milkyWayLabel,
+      mwSpot.x,
+      mwSpot.y,
+      colors['const-label'] ?? '#89a',
+      `italic 11px ${FONT}`,
+      'center',
+    );
+  return hits;
+}
+
+/** Nächstes Sternbild (Ecke, Linienmitte oder Namenspunkt) im Umkreis von `radius` Pixeln (Vorlage: 24 px). */
+export function hitConstellation(hits: HitIndex, x: number, y: number, radius = 24): string | null {
+  let best: string | null = null;
+  let bd = radius * radius;
+  for (const p of hits.verts) {
+    const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = p.abbr;
+    }
+  }
+  return best;
+}
+
+/** Himmelskörper unter dem Zeiger (Scheibe + 10 px). */
+export function hitBody(hits: HitIndex, x: number, y: number): BodyId | null {
+  let best: BodyId | null = null;
+  let bd = Infinity;
+  for (const b of hits.bodies) {
+    const d = (b.x - x) ** 2 + (b.y - y) ** 2;
+    if (d < (b.r + 10) ** 2 && d < bd) {
+      bd = d;
+      best = b.id;
+    }
+  }
+  return best;
+}
+
+/** Stern im Umkreis von 16 px; helle gewinnen – jede Größenklasse zählt wie 2 px näher (Vorlage). */
+export function hitStar(hits: HitIndex, x: number, y: number): number | null {
+  let best: number | null = null;
+  let bs = Infinity;
+  for (const p of hits.stars) {
+    const d = Math.hypot(p.x - x, p.y - y);
+    if (d > 16) continue;
+    const score = d + 2 * p.mag;
+    if (score < bs) {
+      bs = score;
+      best = p.i;
+    }
+  }
+  return best;
 }
 
 // ---- Treffer ------------------------------------------------------------------------------------

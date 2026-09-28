@@ -166,41 +166,197 @@
   overflow: auto;
 }
 
+/* Karte: Himmel (`.stage`) über der übrigen Höhe, darunter Zeitschieber, Zeitschritte und Ebenen-Chips wie in
+   der Vorlage (28.09.2026). */
 .map {
-  position: relative;
-  height: max(560px, calc(100dvh - 17rem));
+  display: flex;
+  flex-direction: column;
+  height: max(620px, calc(100dvh - 14rem));
+  border: 1px solid var(--npm-border);
   border-radius: var(--npm-radius-card);
   overflow: hidden;
-  background: var(--npm-sky-bg);
+  background: var(--npm-white);
+  box-shadow: var(--npm-shadow);
 }
 .main:fullscreen .map {
   height: calc(100dvh - 2 * var(--npm-space-3));
 }
-/* Zoom oben rechts und Zeitsteuerung unten in der Karte (AP-26f): halbtransparente Leisten über dem Himmel. */
-.zoomBox,
-.timebar {
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--npm-sky-bg);
+}
+/* Ecktexte über dem Himmel (Vorlage `backed`): links die Dämmerung und das überfahrene Sternbild, rechts
+   Uhrzeit, Blickrichtung und Sichtfeld – auf dunkler Hinterlegung, die Karte bleibt bedienbar. */
+.phase,
+.hoverName,
+.clockBox {
   position: absolute;
+  z-index: 1;
+  margin: 0;
+  padding: 2px var(--npm-space-2);
+  border-radius: calc(var(--npm-radius) / 2);
+  background: var(--npm-sky-chrome-bg);
+  color: var(--npm-sky-chrome-text);
+  font-size: var(--npm-font-label);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.phase {
+  top: var(--npm-space-2);
+  left: var(--npm-space-2);
+  font-weight: 600;
+}
+.hoverName {
+  top: calc(var(--npm-space-2) + 1.9rem);
+  left: var(--npm-space-2);
+}
+.clockBox {
+  top: var(--npm-space-2);
+  right: var(--npm-space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.clockMain {
+  font-weight: 600;
+}
+/* Runde Knopfleiste rechts in der Karte (Vorlage `.op-map-ctrl`). */
+.mapCtrl {
+  position: absolute;
+  top: 5.2rem;
+  right: var(--npm-space-2);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--npm-space-1);
+  border-radius: 999px;
+  background: var(--npm-white);
+  box-shadow: var(--npm-sky-chrome-shadow);
+}
+.ctrlButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--npm-text);
+  cursor: pointer;
+}
+.ctrlButton:hover:not(:disabled) {
+  background: var(--npm-neutral-bg);
+  color: var(--npm-accent);
+}
+.ctrlButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ctrlButton:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.ctrlSep {
+  align-self: center;
+  width: 50%;
+  margin: 2px 0;
+  border-top: 1px solid var(--npm-border);
+}
+/* Infokarte des gewählten Objekts über der Karte unten rechts – auch im Vollbild (Vorlage `#op-sm-info`). */
+.infoOverlay {
+  position: absolute;
+  right: var(--npm-space-2);
+  bottom: var(--npm-space-2);
+  z-index: 3;
+  width: min(26rem, calc(100% - 2 * var(--npm-space-2)));
+  max-height: 70%;
+  overflow: auto;
+  padding: var(--npm-space-3);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius-card);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  box-shadow: var(--npm-sky-chrome-shadow);
+}
+.infoHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+}
+.infoKind {
+  margin: 0;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.closeButton {
+  composes: iconButton;
+  flex: none;
+}
+/* Unter dem Himmel: Zeitschieber, Zeitschritte mit Mondangabe, Ebenen-Chips (Vorlage `.op-tb`). */
+.timebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-top: 1px solid var(--npm-border);
+}
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.timeSlider {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--npm-accent);
+}
+.chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--npm-space-1) var(--npm-space-3);
-  padding: var(--npm-space-1) var(--npm-space-2);
-  border-radius: var(--npm-radius-card);
-  background: rgba(13, 22, 32, 0.86);
-  color: #e6edf3;
+  gap: var(--npm-space-1) var(--npm-space-2);
 }
-.zoomBox {
-  top: var(--npm-space-3);
-  right: var(--npm-space-3);
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  height: 1.9rem;
+  padding: 0 var(--npm-space-3) 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: 999px;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-size: var(--npm-font-label);
+  cursor: pointer;
+  user-select: none;
 }
-.zoomBox .muted,
-.timebar .muted {
-  color: #c3ccd6;
+.chip input {
+  margin: 0;
+  accent-color: var(--npm-accent);
 }
-.timebar {
-  left: var(--npm-space-3);
-  right: var(--npm-space-3);
-  bottom: var(--npm-space-3);
+.chip:has(input:checked) {
+  border-color: var(--npm-accent);
+  background: var(--npm-neutral-bg);
+}
+.chip:has(input:focus-visible) {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.chipSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
 }
 .canvasWrap {
   position: absolute;
@@ -224,6 +380,7 @@
 .info h2 {
   margin: 0;
   font-size: var(--npm-font-h2);
+  overflow-wrap: anywhere;
 }
 .links {
   margin: var(--npm-space-2) 0;

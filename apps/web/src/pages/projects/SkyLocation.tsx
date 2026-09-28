@@ -86,12 +86,16 @@ export function SkyLocation({
             frame,
             compare: null,
             selectedId: null,
+            selectedVec: null,
+            names: 'local',
             frameColor: 'frame',
             lang: i18n.language === 'en' ? 'en' : 'de',
             planetNames: {},
             moonLabel: t('skymap.moonLabel'),
             sunLabel: t('skymap.sunLabel'),
             zenithLabel: t('skymap.zenithLabel'),
+            compassLabels: [],
+            milkyWayLabel: '',
           }}
           center={center}
           up={[0, 0, 1]}
