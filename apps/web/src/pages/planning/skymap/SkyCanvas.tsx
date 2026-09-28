@@ -1,20 +1,40 @@
 /**
  * Zeichenfläche der Sternkarte (S-20): Canvas mit `devicePixelRatio`, `ResizeObserver` und Neuzeichnen
  * höchstens einmal je Frame. Bedienung (FA-FRM-04): Ziehen im Bildfeld verschiebt das Bildfeld (Koordinaten
- * folgen), Ziehen daneben die Ansicht, Mausrad bzw. `+`/`−` zoomen, Pfeiltasten schwenken, Klick wählt ein
- * Katalogobjekt oder Projekt. Der Fokuswert (Blickmitte, Sichtfeld) steht per `aria-live` als Text daneben.
+ * folgen), Ziehen daneben die Ansicht, Mausrad bzw. `+`/`−` zoomen, Doppelklick zoomt hinein (mit Umschalt
+ * heraus), Pfeiltasten schwenken, Klick wählt ein Objekt. Wie in der Vorlage (`sky-map.js`) hebt das
+ * Überfahren das nächste Sternbild hervor und nennt es samt Stern oben links; ein Tipp ins Leere tut dasselbe
+ * auf Touch-Geräten. Der Fokuswert (Blickmitte, Sichtfeld) steht per `aria-live` als Text daneben.
  */
 import { sky } from '@nina-pm/engine';
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import { HipsLayer } from './hips';
 import { FOV_MAX, FOV_MIN } from './model';
-import { drawSky, hitFrame, readColors, type FrameSpec, type RenderInput } from './render';
+import {
+  EMPTY_HITS,
+  constellationName,
+  drawSky,
+  hitConstellation,
+  hitFrame,
+  hitStar,
+  readColors,
+  type FrameSpec,
+  type HitIndex,
+  type RenderInput,
+} from './render';
 import type { SurveyId } from './surveys';
 import styles from './skymap.module.css';
 
 export interface SkyCanvasProps {
   /** Alles außer der Ansicht, die die Zeichenfläche aus Größe, Blickmitte und Sichtfeld bildet. */
-  readonly input: Omit<RenderInput, 'view' | 'photosShown'>;
+  readonly input: Omit<RenderInput, 'view' | 'photosShown' | 'hoverCon'>;
   readonly center: sky.Vec3;
   readonly up: sky.Vec3;
   readonly fovDeg: number;
@@ -24,7 +44,7 @@ export interface SkyCanvasProps {
   readonly description: string;
   readonly onView: (center: sky.Vec3, fovDeg: number) => void;
   readonly onFrameMove: (center: sky.Vec3) => void;
-  readonly onPick: (x: number, y: number, view: sky.SkyView) => void;
+  readonly onPick: (x: number, y: number, view: sky.SkyView, hits: HitIndex) => void;
   readonly onPhotoStatus?: (status: { shown: number; pending: number }) => void;
 }
 
@@ -51,6 +71,9 @@ export function SkyCanvas(props: SkyCanvasProps) {
   const frameRequest = useRef<number | null>(null);
   const latest = useRef(props);
   latest.current = props;
+  const hits = useRef<HitIndex>(EMPTY_HITS);
+  /** Überfahrenes Sternbild und überfahrener Stern (Index in `bright.stars`). */
+  const [hover, setHover] = useState<{ con: string | null; star: number | null } | null>(null);
 
   // Nachladende Kacheln lösen ein Neuzeichnen aus – höchstens eines je Frame.
   if (!hips.current)
@@ -93,13 +116,25 @@ export function SkyCanvas(props: SkyCanvasProps) {
     const colors = readColors(c);
     const survey = props.survey;
     let status = { shown: 0, pending: 0 };
-    drawSky(ctx, { ...props.input, view, photosShown: survey !== null }, colors, () => {
-      if (survey && hips.current)
-        status = hips.current.draw(ctx, view, survey, dpr, props.photoAlpha);
-    });
+    hits.current = drawSky(
+      ctx,
+      { ...props.input, view, photosShown: survey !== null, hoverCon: hover?.con ?? null },
+      colors,
+      () => {
+        if (survey && hips.current)
+          status = hips.current.draw(ctx, view, survey, dpr, props.photoAlpha);
+      },
+    );
     props.onPhotoStatus?.(status);
     // Zeichnet bei jeder Eingabe neu; `tick` zählt nachgeladene Kacheln.
-  }, [view?.width, view?.height, props, tick]);
+  }, [view?.width, view?.height, props, tick, hover]);
+
+  const hoverAt = (x: number, y: number) => {
+    const con = hitConstellation(hits.current, x, y);
+    const star = hitStar(hits.current, x, y);
+    const next = con || star !== null ? { con, star } : null;
+    if (next?.con !== hover?.con || next?.star !== hover?.star) setHover(next);
+  };
 
   const point = (e: { clientX: number; clientY: number }) => {
     const r = canvas.current?.getBoundingClientRect();
@@ -127,9 +162,13 @@ export function SkyCanvas(props: SkyCanvasProps) {
 
   const onPointerMove = (e: PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current;
-    if (!d) return;
     const { x, y } = point(e);
+    if (!d) {
+      if (e.pointerType === 'mouse') hoverAt(x, y);
+      return;
+    }
     if (!d.moved && Math.hypot(x - d.startX, y - d.startY) < 3) return;
+    if (!d.moved && hover) setHover(null);
     d.moved = true;
     if (d.mode === 'frame')
       latest.current.onFrameMove(sky.unproject(d.view, x + d.offX, y + d.offY));
@@ -151,8 +190,15 @@ export function SkyCanvas(props: SkyCanvasProps) {
     drag.current = null;
     if (d && !d.moved && view) {
       const { x, y } = point(e);
-      props.onPick(x, y, view);
+      // Tipp auf Touch-Geräten: hebt wie das Überfahren hervor.
+      if (e.pointerType !== 'mouse') hoverAt(x, y);
+      props.onPick(x, y, view, hits.current);
     }
+  };
+
+  const onDoubleClick = (e: MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = point(e);
+    zoomAt(e.shiftKey ? 2 : 0.5, x, y);
   };
 
   const zoomAt = (factor: number, x?: number, y?: number) => {
@@ -202,12 +248,25 @@ export function SkyCanvas(props: SkyCanvasProps) {
     e.preventDefault();
   };
 
+  const bright = props.input.bright;
+  const hoverText = (() => {
+    if (!hover || !bright) return '';
+    const label = bright.labels.find((l) => l.abbr === hover.con);
+    const star = hover.star !== null ? bright.stars.names?.get(hover.star) : undefined;
+    const lang = props.input.lang;
+    return [
+      label ? constellationName(label, props.input.names, lang) : '',
+      star ? (lang === 'en' ? star.en : star.de) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  })();
+
   return (
     <div ref={wrap} className={styles.canvasWrap}>
       <canvas
         ref={canvas}
         className={styles.canvas}
-        style={{ width: `${String(size.w)}px`, height: `${String(size.h)}px` }}
         role="img"
         aria-label={props.label}
         aria-describedby="skymap-description"
@@ -216,8 +275,23 @@ export function SkyCanvas(props: SkyCanvasProps) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={() => (drag.current = null)}
+        onPointerLeave={() => {
+          if (!drag.current && hover) setHover(null);
+        }}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
+        data-hover={hover?.con ?? undefined}
+        style={{
+          width: `${String(size.w)}px`,
+          height: `${String(size.h)}px`,
+          cursor: hover?.star !== null && hover?.star !== undefined ? 'pointer' : undefined,
+        }}
       />
+      {hoverText ? (
+        <span className={styles.hoverName} aria-hidden>
+          {hoverText}
+        </span>
+      ) : null}
       <p id="skymap-description" className={styles.srOnly} aria-live="polite">
         {props.description}
       </p>

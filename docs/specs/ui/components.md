@@ -279,6 +279,7 @@ Mehrere Spuren auf **einer** Zeitachse in Standortzeit (volle Stunden, ab 17 Stu
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
 | Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
 | Filter aufklappen · Filter entfernen (`FilterBar`, AP-26c) | `plus` + `chevron-down` · `x` |
+| Sternkarte: Hineinzoomen · Herauszoomen · zur vorigen/nächsten Himmelsrichtung drehen · Rundblick · Vollbild/zurück | `plus` · `minus` · `chevron-left`/`chevron-right` · `mountain` · `maximize`/`minimize` |
 
 Die Zuordnung liegt als Konstante `apps/web/src/components/icons.ts`; Seiten importieren **nur** daraus, damit dasselbe Symbol überall dasselbe bedeutet.
 

@@ -45,6 +45,7 @@ import {
   Minus,
   Moon,
   MoonStar,
+  Mountain,
   Orbit,
   PanelLeftClose,
   PanelLeftOpen,
@@ -157,6 +158,13 @@ export const uiIcons = {
   season: CalendarRange,
   /** Aktiven Filter entfernen (Chip in der FilterBar, AP-26c). */
   remove: X,
+  /** Sternkarte (Knopfleiste nach Vorlage, 28.09.2026): zoomen, zur vorigen/nächsten Himmelsrichtung drehen,
+   *  Rundblick (Horizont unten, 150°). */
+  zoomIn: Plus,
+  zoomOut: Minus,
+  turnLeft: ChevronLeft,
+  turnRight: ChevronRight,
+  overview: Mountain,
   /** Karte im Vollbild bzw. zurück (Sternkarte, AP-26f). */
   fullscreen: Maximize,
   exitFullscreen: Minimize,

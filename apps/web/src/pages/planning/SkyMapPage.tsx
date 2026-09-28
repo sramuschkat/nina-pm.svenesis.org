@@ -5,6 +5,12 @@
  * *Bildfeld & Mosaik* und *Ebenen* (*Himmelsfotos* · *Kataloge* · *Overlays*).
  * Der Zustand steht in der URL (`skymap/model.ts`). Ohne Rotator zeigt das Bildfeld den Kamerawinkel des
  * Rigs und warnt bei Abweichung (FA-FRM-05, NT-30). Die Übernahme des Mosaiks als Panels folgt mit AP-22.
+ *
+ * Nach der Vorlage `legacy/astro-tools-2026-09-21/js/sky-map.js` (28.09.2026): Rundblick als Start, runde
+ * Knopfleiste rechts in der Karte (zoomen, zur vorigen/nächsten Himmelsrichtung drehen, Rundblick, Vollbild),
+ * Dämmerung und Uhrzeit (Standort und bei dir) oben in der Karte, Sterne, Mond, Planeten und Katalogobjekte
+ * anklickbar mit Ring und Infokarte über der Karte (auch im Vollbild), unter der Karte ein Zeitschieber über
+ * die Nacht und die wichtigsten Ebenen als Chips samt Sprache der Sternbildnamen.
  */
 import { formatNightKey, formatTzAbbr } from '@nina-pm/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,6 +48,9 @@ import { PlanningContext } from './PlanningContext';
 import { PlanningTabs } from './PlanningTabs';
 import {
   FOV_MAX,
+  FOV_MIN,
+  OVERVIEW_ALT,
+  OVERVIEW_FOV,
   fovForFrame,
   paramsFromState,
   stateFromParams,
@@ -49,12 +58,22 @@ import {
 } from './skymap/model';
 import {
   PROJECT_OVERLAYS,
+  constellationName,
+  hitBody,
   hitMarker,
+  hitStar,
+  horizonVec,
+  toAltAz,
+  twilightClass,
+  type BodyId,
+  type Bodies,
   type FrameSpec,
+  type HitIndex,
   type Overlay,
   type ProjectFrame,
   type ProjectOverlay,
 } from './skymap/render';
+import { constellationAt } from './skymap/constellation';
 import { SkyCanvas } from './skymap/SkyCanvas';
 import { fromZoned, nightKeyAt, sceneAt, zonedParts } from './skymap/scene';
 import { loadBrightSky, loadFaintStars, type BrightSky, type StarField } from './skymap/sky-data';
@@ -108,7 +127,37 @@ const writeLocal = (key: string, value: string) => {
 };
 
 type Selected =
-  { kind: 'dso'; item: DsoMarker } | { kind: 'project'; item: ProjectListItem } | null;
+  | { kind: 'dso'; item: DsoMarker }
+  | { kind: 'project'; item: ProjectListItem }
+  | { kind: 'star'; index: number }
+  | { kind: 'body'; id: BodyId }
+  | null;
+
+const PHASES = ['day', 'civil', 'nautical', 'astronomical', 'night'] as const;
+const COMPASS = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as const;
+/** Himmelsrichtung (Index 0–7 in `COMPASS`) eines Azimuts. */
+const compassIndex = (azDeg: number) => Math.round(azDeg / 45) % 8;
+
+/** Richtung eines Himmelskörpers zum Zeitpunkt der Szene. */
+function bodyVec(b: Bodies, id: BodyId): sky.Vec3 | null {
+  if (id === 'sun') return b.sun;
+  if (id === 'moon') return b.moon?.vec ?? null;
+  return b.planets.find((p) => p.id === id)?.vec ?? null;
+}
+
+const starVec = (b: BrightSky, i: number): sky.Vec3 => [
+  b.stars.vec[i * 3] as number,
+  b.stars.vec[i * 3 + 1] as number,
+  b.stars.vec[i * 3 + 2] as number,
+];
+
+const deviceZone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return 'UTC';
+  }
+};
 
 export function SkyMapPage() {
   const { t, i18n } = useTranslation();
@@ -207,6 +256,7 @@ export function SkyMapPage() {
   });
   const time = state.t ?? clock;
   const zone = site?.timeZone ?? 'UTC';
+  const devZone = useMemo(deviceZone, []);
 
   const scene = useMemo(
     () =>
@@ -237,18 +287,29 @@ export function SkyMapPage() {
     };
   }, [state.fov, faint]);
 
-  const up: sky.Vec3 =
-    state.orient === 'horizon' && scene
-      ? sky.matVec(sky.transpose(scene.observer.toHorizon), [0, 0, 1])
-      : [0, 0, 1];
-  const center = sky.radecToVec(state.ra, state.dec);
+  // „Horizont unten“ mit Standort: Blickrichtung am Horizont verankert (Azimut, Höhe), die Sterne ziehen
+  // mit der Zeit durchs Bild. Ohne Azimut Süden (Südhalbkugel Norden), ohne Höhe die gespeicherte Blickmitte.
+  const horizonView = state.orient === 'horizon' && scene !== null;
+  const up: sky.Vec3 = horizonView
+    ? sky.matVec(sky.transpose(scene.observer.toHorizon), [0, 0, 1])
+    : [0, 0, 1];
+  const center: sky.Vec3 =
+    horizonView && state.valt !== null
+      ? horizonVec(
+          scene.observer.toHorizon,
+          state.vaz ?? ((site?.latitudeDeg ?? 0) < 0 ? 0 : 180),
+          state.valt,
+        )
+      : sky.radecToVec(state.ra, state.dec);
+  const centerRd = sky.vecToRadec(center);
+  const centerHor = scene ? toAltAz(scene.observer.toHorizon, center) : null;
   const regionRadius = Math.min(90, state.fov * 0.9);
   const bucket = Math.max(0.5, regionRadius / 2);
   // Weite Ansichten zeigen nur die helleren Objekte, sonst wird die Karte unlesbar.
   const magMax = Math.min(state.density, state.fov > 60 ? 8 : state.fov > 30 ? 9.5 : 16);
   const regionKey = [
-    Math.round(state.ra / bucket) * bucket,
-    Math.round(state.dec / bucket) * bucket,
+    Math.round(centerRd.raDeg / bucket) * bucket,
+    Math.round(centerRd.decDeg / bucket) * bucket,
     Math.round(regionRadius * 10) / 10,
     magMax,
   ];
@@ -306,8 +367,39 @@ export function SkyMapPage() {
   useEffect(() => writeLocal(SIDE_OPEN_KEY, String(sideOpen)), [sideOpen]);
   const [photoStatus, setPhotoStatus] = useState({ shown: 0, pending: 0 });
 
+  /** Blickmitte (und Sichtfeld) setzen; mit verankertem Horizont als Azimut und Höhe. */
+  const viewPatch = (c: sky.Vec3, fov?: number): Partial<SkyMapState> => {
+    const r = sky.vecToRadec(c);
+    const patch: Partial<SkyMapState> = { ra: r.raDeg, dec: r.decDeg, ...(fov ? { fov } : {}) };
+    if (!horizonView) return patch;
+    const h = toAltAz(scene.observer.toHorizon, c);
+    return { ...patch, vaz: h.azDeg, valt: h.altDeg };
+  };
   const moveTo = (raDeg: number, decDeg: number, fov?: number) =>
-    update({ ra: raDeg, dec: decDeg, fra: raDeg, fdec: decDeg, ...(fov ? { fov } : {}) });
+    update({ ...viewPatch(sky.radecToVec(raDeg, decDeg), fov), fra: raDeg, fdec: decDeg });
+  const centerOn = (v: sky.Vec3) => update(viewPatch(v));
+  /** Zur vorigen (−1) bzw. nächsten (+1) Himmelsrichtung drehen (Vorlage ← →); schaltet auf „Horizont unten“. */
+  const turn = (dir: -1 | 1) => {
+    if (!centerHor) return;
+    const k = centerHor.azDeg / 45;
+    const next = dir > 0 ? Math.floor(k + 1e-6) + 1 : Math.ceil(k - 1e-6) - 1;
+    update({
+      orient: 'horizon',
+      vaz: (((next * 45) % 360) + 360) % 360,
+      valt: horizonView
+        ? centerHor.altDeg
+        : state.fov >= 100
+          ? OVERVIEW_ALT
+          : Math.max(10, centerHor.altDeg),
+    });
+  };
+  const overview = () =>
+    update({
+      orient: 'horizon',
+      fov: OVERVIEW_FOV,
+      vaz: horizonView && centerHor ? (compassIndex(centerHor.azDeg) * 45) % 360 : null,
+      valt: OVERVIEW_ALT,
+    });
 
   const pickFromCatalog = (o: DsoView) => {
     const size = (o.sizeMajorArcmin ?? 0) / 60;
@@ -444,6 +536,27 @@ export function SkyMapPage() {
   );
 
   const dsoItems = dso.data?.items ?? [];
+  const selectedVec: sky.Vec3 | null = !selected
+    ? null
+    : selected.kind === 'dso'
+      ? sky.radecToVec(selected.item.raDeg, selected.item.decDeg)
+      : selected.kind === 'star'
+        ? bright
+          ? starVec(bright, selected.index)
+          : null
+        : selected.kind === 'body'
+          ? scene
+            ? bodyVec(scene.bodies, selected.id)
+            : null
+          : null;
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.fullscreenElement) setSelected(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selected]);
   const input = {
     overlays: state.overlays,
     projectOverlays: state.projects,
@@ -455,7 +568,11 @@ export function SkyMapPage() {
     projects: projectFrames,
     frame,
     compare,
-    selectedId: selected ? selected.item.id : null,
+    selectedId: selected?.kind === 'dso' || selected?.kind === 'project' ? selected.item.id : null,
+    selectedVec,
+    names: state.names,
+    compassLabels: COMPASS.map((c) => t(`bodies.compass.${c}`)),
+    milkyWayLabel: t('skymap.milkyWay'),
     frameColor,
     lang: lang as 'de' | 'en',
     planetNames,
@@ -464,8 +581,14 @@ export function SkyMapPage() {
     zenithLabel: t('skymap.zenithLabel'),
   };
 
-  const onPick = (x: number, y: number, view: sky.SkyView) => {
-    const hitDso = state.overlays.has('dso') ? hitMarker(view, dsoItems, x, y) : null;
+  // Was ein Klick trifft, in der Reihenfolge der Vorlage: Mond oder Planet, Katalogobjekt, Projekt, Stern.
+  const onPick = (x: number, y: number, view: sky.SkyView, hits: HitIndex) => {
+    const body = hitBody(hits, x, y);
+    if (body) {
+      setSelected({ kind: 'body', id: body });
+      return;
+    }
+    const hitDso = state.overlays.has('dso') ? hitMarker(view, dsoItems, x, y, 14) : null;
     if (hitDso) {
       setSelected({ kind: 'dso', item: hitDso });
       return;
@@ -479,7 +602,12 @@ export function SkyMapPage() {
       16,
     );
     const item = hitProject ? (projects.data ?? []).find((p) => p.id === hitProject.id) : null;
-    setSelected(item ? { kind: 'project', item } : null);
+    if (item) {
+      setSelected({ kind: 'project', item });
+      return;
+    }
+    const star = hitStar(hits, x, y);
+    setSelected(star !== null ? { kind: 'star', index: star } : null);
   };
 
   // ---- Zeitleiste ------------------------------------------------------------------------------
@@ -643,22 +771,6 @@ export function SkyMapPage() {
             {t('skymap.applyToProject')}
           </button>
         ) : null}
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
-          title={fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
-          onClick={() => {
-            if (document.fullscreenElement) void document.exitFullscreen();
-            else void mapArea.current?.requestFullscreen?.();
-          }}
-        >
-          {fullscreen ? (
-            <uiIcons.exitFullscreen size={ICON_SIZE.button} aria-hidden />
-          ) : (
-            <uiIcons.fullscreen size={ICON_SIZE.button} aria-hidden />
-          )}
-        </button>
       </div>
       {apply.isSuccess ? (
         <p className={styles.success} role="status">
@@ -668,60 +780,149 @@ export function SkyMapPage() {
       {apply.isError ? <ProblemMessage code={problemCode(apply.error)} /> : null}
       <div className={styles.main} ref={mapArea} data-side={sideOpen ? 'open' : 'closed'}>
         <div className={styles.map} id={ids.map}>
-          <SkyCanvas
-            input={input}
-            center={center}
-            up={up}
-            fovDeg={state.fov}
-            survey={state.survey === 'none' ? null : state.survey}
-            photoAlpha={state.alpha}
-            label={t('skymap.mapLabel')}
-            description={t('skymap.mapDescription', {
-              ra: formatCoordinate('ra', state.ra, 'sexagesimal'),
-              dec: formatCoordinate('dec', state.dec, 'sexagesimal'),
-              fov: fovText(state.fov),
-              fra: formatCoordinate('ra', state.fra, 'sexagesimal'),
-              fdec: formatCoordinate('dec', state.fdec, 'sexagesimal'),
-              rot: num(frame?.paDeg ?? 0, 1),
-            })}
-            onView={(c, fov) => {
-              const r = sky.vecToRadec(c);
-              update({ ra: r.raDeg, dec: r.decDeg, fov });
-            }}
-            onFrameMove={(c) => {
-              const r = sky.vecToRadec(c);
-              update({ fra: r.raDeg, fdec: r.decDeg });
-            }}
-            onPick={onPick}
-            onPhotoStatus={(s) => {
-              if (s.shown !== photoStatus.shown || s.pending !== photoStatus.pending)
-                setPhotoStatus(s);
-            }}
-          />
-          <div className={styles.zoomBox}>
-            <button
-              type="button"
-              className={styles.button}
-              aria-label={t('skymap.time.zoomOut')}
-              title={t('skymap.time.zoomOut')}
-              onClick={() => update({ fov: Math.min(FOV_MAX, state.fov * 1.5) })}
-            >
-              <uiIcons.unchecked size={ICON_SIZE.button} aria-hidden />
-            </button>
-            <span className={styles.muted}>
-              {t('skymap.time.zoom', { fov: fovText(state.fov) })}
-            </span>
-            <button
-              type="button"
-              className={styles.button}
-              aria-label={t('skymap.time.zoomIn')}
-              title={t('skymap.time.zoomIn')}
-              onClick={() => update({ fov: Math.max(0.1, state.fov / 1.5) })}
-            >
-              <actionIcons.add size={ICON_SIZE.button} aria-hidden />
-            </button>{' '}
+          <div className={styles.stage}>
+            <SkyCanvas
+              input={input}
+              center={center}
+              up={up}
+              fovDeg={state.fov}
+              survey={state.survey === 'none' ? null : state.survey}
+              photoAlpha={state.alpha}
+              label={t('skymap.mapLabel')}
+              description={t('skymap.mapDescription', {
+                ra: formatCoordinate('ra', centerRd.raDeg, 'sexagesimal'),
+                dec: formatCoordinate('dec', centerRd.decDeg, 'sexagesimal'),
+                fov: fovText(state.fov),
+                fra: formatCoordinate('ra', state.fra, 'sexagesimal'),
+                fdec: formatCoordinate('dec', state.fdec, 'sexagesimal'),
+                rot: num(frame?.paDeg ?? 0, 1),
+              })}
+              onView={(c, fov) => update(viewPatch(c, fov))}
+              onFrameMove={(c) => {
+                const r = sky.vecToRadec(c);
+                update({ fra: r.raDeg, fdec: r.decDeg });
+              }}
+              onPick={onPick}
+              onPhotoStatus={(s) => {
+                if (s.shown !== photoStatus.shown || s.pending !== photoStatus.pending)
+                  setPhotoStatus(s);
+              }}
+            />
+            {/* Ecktexte wie in der Vorlage: links die Dämmerung, rechts Uhrzeit, Blickrichtung und Sichtfeld. */}
+            {scene ? (
+              <p className={styles.phase}>
+                {t(`skymap.phase.${PHASES[twilightClass(scene.sunAltDeg)]}`)}
+              </p>
+            ) : null}
+            <div className={styles.clockBox}>
+              <span className={styles.clockMain}>
+                {t('skymap.clock.site', {
+                  time: parts.time,
+                  zone: formatTzAbbr(new Date(time * 1000), zone),
+                })}
+              </span>
+              {site && devZone !== zone ? (
+                <span>
+                  {t('skymap.clock.device', {
+                    time: zonedParts(time, devZone).time,
+                    zone: formatTzAbbr(new Date(time * 1000), devZone),
+                  })}
+                </span>
+              ) : null}
+              <span>
+                {horizonView && centerHor
+                  ? `${t('skymap.view.direction', {
+                      dir: t(`skymap.compassLong.${COMPASS[compassIndex(centerHor.azDeg)] ?? 's'}`),
+                    })} · `
+                  : ''}
+                {t('skymap.time.zoom', { fov: fovText(state.fov) })}
+              </span>
+            </div>
+            {/* Runde Knopfleiste rechts (Vorlage `.op-map-ctrl`): zoomen, drehen, Rundblick, Vollbild. */}
+            <div className={styles.mapCtrl} role="group" aria-label={t('skymap.ctrl.label')}>
+              <MapButton
+                label={t('skymap.time.zoomIn')}
+                disabled={state.fov <= FOV_MIN + 1e-9}
+                onClick={() => update({ fov: Math.max(FOV_MIN, state.fov / 1.5) })}
+              >
+                <uiIcons.zoomIn size={ICON_SIZE.button} aria-hidden />
+              </MapButton>
+              <MapButton
+                label={t('skymap.time.zoomOut')}
+                disabled={state.fov >= FOV_MAX - 1e-9}
+                onClick={() => update({ fov: Math.min(FOV_MAX, state.fov * 1.5) })}
+              >
+                <uiIcons.zoomOut size={ICON_SIZE.button} aria-hidden />
+              </MapButton>
+              <span className={styles.ctrlSep} aria-hidden />
+              <MapButton
+                label={t('skymap.ctrl.turnLeft')}
+                disabled={!scene}
+                onClick={() => turn(-1)}
+              >
+                <uiIcons.turnLeft size={ICON_SIZE.button} aria-hidden />
+              </MapButton>
+              <MapButton
+                label={t('skymap.ctrl.turnRight')}
+                disabled={!scene}
+                onClick={() => turn(1)}
+              >
+                <uiIcons.turnRight size={ICON_SIZE.button} aria-hidden />
+              </MapButton>
+              <MapButton label={t('skymap.ctrl.overview')} disabled={!scene} onClick={overview}>
+                <uiIcons.overview size={ICON_SIZE.button} aria-hidden />
+              </MapButton>
+              <span className={styles.ctrlSep} aria-hidden />
+              <MapButton
+                label={fullscreen ? t('skymap.exitFullscreen') : t('skymap.fullscreen')}
+                onClick={() => {
+                  if (document.fullscreenElement) void document.exitFullscreen();
+                  else void mapArea.current?.requestFullscreen?.();
+                }}
+              >
+                {fullscreen ? (
+                  <uiIcons.exitFullscreen size={ICON_SIZE.button} aria-hidden />
+                ) : (
+                  <uiIcons.fullscreen size={ICON_SIZE.button} aria-hidden />
+                )}
+              </MapButton>
+            </div>
+            {/* Infokarte über der Karte unten rechts – auch im Vollbild sichtbar (Vorlage). */}
+            {selected ? (
+              <div className={styles.infoOverlay}>
+                <InfoCard
+                  selected={selected}
+                  rigId={rig?.id ?? null}
+                  canCreate={canCreate}
+                  bright={bright}
+                  scene={scene}
+                  names={state.names}
+                  onClose={() => setSelected(null)}
+                  onCenter={centerOn}
+                  onMoveFrame={(ra, dec) => update({ fra: ra, fdec: dec })}
+                />
+              </div>
+            ) : null}
           </div>
           <section className={styles.timebar} aria-label={t('skymap.time.label')}>
+            {moonData ? (
+              <div className={styles.sliderRow}>
+                <input
+                  type="range"
+                  className={styles.timeSlider}
+                  aria-label={t('skymap.timeSlider')}
+                  aria-valuetext={parts.time}
+                  min={moonData.window.fromUtc}
+                  max={moonData.window.toUtc}
+                  step={60}
+                  value={Math.min(moonData.window.toUtc, Math.max(moonData.window.fromUtc, time))}
+                  onChange={(e) => {
+                    setPlaying(false);
+                    update({ t: Number(e.target.value) });
+                  }}
+                />
+              </div>
+            ) : null}
             <div className={styles.timeButtons}>
               <button type="button" className={styles.button} onClick={() => shift(-86400)}>
                 {t('skymap.time.minusDay')}
@@ -751,34 +952,69 @@ export function SkyMapPage() {
               </button>
               <button type="button" className={styles.button} onClick={() => shift(86400)}>
                 {t('skymap.time.plusDay')}
-              </button>{' '}
+              </button>
+              {scene ? (
+                <span className={styles.moonInfo}>
+                  {t('skymap.time.moonInfo', {
+                    alt: num(scene.moonAltDeg, 0),
+                    sep: num(scene.moonSepDeg, 0),
+                    pct: num(scene.moonIllumPct, 0),
+                  })}
+                </span>
+              ) : null}
             </div>
-            {scene ? (
-              <span className={styles.moonInfo}>
-                {t('skymap.time.moonInfo', {
-                  alt: num(scene.moonAltDeg, 0),
-                  sep: num(scene.moonSepDeg, 0),
-                  pct: num(scene.moonIllumPct, 0),
-                })}
-              </span>
-            ) : null}{' '}
+            {/* Ebenen als Chips und die Sprache der Sternbildnamen (Vorlage `.op-tb`). */}
+            <div className={styles.chips} role="group" aria-label={t('skymap.chips.label')}>
+              {(
+                [
+                  ['constLines', t('skymap.constLines')],
+                  ['constLabels', t('skymap.constLabels')],
+                  ['constBounds', t('skymap.constBounds')],
+                  ['eqGrid', t('skymap.chips.grid')],
+                  ['milkyWay', t('skymap.milkyWay')],
+                ] as const
+              ).map(([key, label]) => (
+                <label className={styles.chip} key={key}>
+                  <input
+                    type="checkbox"
+                    checked={state.overlays.has(key)}
+                    onChange={() => update({ overlays: toggle(state.overlays, key) })}
+                  />
+                  {label}
+                </label>
+              ))}
+              <label className={styles.chip}>
+                <input
+                  type="checkbox"
+                  checked={state.survey !== 'none'}
+                  onChange={() =>
+                    update({ survey: state.survey === 'none' ? 'dss2color' : 'none' })
+                  }
+                />
+                {t('skymap.chips.photos')}
+              </label>
+              <label className={styles.chipSelect}>
+                <span aria-hidden>{t('skymap.names.label')}</span>
+                <select
+                  aria-label={t('skymap.names.label')}
+                  className={styles.input}
+                  value={state.names}
+                  onChange={(e) =>
+                    update({ names: e.target.value === 'latin' ? 'latin' : 'local' })
+                  }
+                >
+                  <option value="local">{t('skymap.names.local')}</option>
+                  <option value="latin">{t('skymap.names.latin')}</option>
+                </select>
+              </label>
+            </div>
           </section>
         </div>
 
         {/* Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte in voller Breite (AP-26i). */}
         <section className={styles.below} aria-label={t('skymap.side.object')}>
           <div className={styles.belowObject}>
-            {selected ? (
-              <InfoCard
-                selected={selected}
-                rigId={rig?.id ?? null}
-                canCreate={canCreate}
-                onClose={() => setSelected(null)}
-                onMoveFrame={(ra, dec) => update({ fra: ra, fdec: dec })}
-              />
-            ) : (
-              <p className={styles.muted}>{t('skymap.side.noSelection')}</p>
-            )}
+            {selected ? null : <p className={styles.muted}>{t('skymap.side.noSelection')}</p>}
             <Section title={t('skymap.side.frameCenter')}>
               <div className={styles.coords}>
                 <CoordinateInput
@@ -1067,6 +1303,18 @@ export function SkyMapPage() {
                     update={update}
                     toggle={toggle}
                     hasSite={site !== null}
+                    onOrient={(o) => {
+                      if (o === 'north')
+                        update({
+                          orient: 'north',
+                          ra: centerRd.raDeg,
+                          dec: centerRd.decDeg,
+                          vaz: null,
+                          valt: null,
+                        });
+                      else if (centerHor)
+                        update({ orient: 'horizon', vaz: centerHor.azDeg, valt: centerHor.altDeg });
+                    }}
                     photoStatus={photoStatus}
                     dsoCount={{ shown: dsoItems.length, total: dso.data?.total ?? 0 }}
                   />
@@ -1166,6 +1414,7 @@ function LayerTabs({
   update,
   toggle,
   hasSite,
+  onOrient,
   photoStatus,
   dsoCount,
 }: {
@@ -1173,6 +1422,7 @@ function LayerTabs({
   update: (p: Partial<SkyMapState>) => void;
   toggle: <T>(set: ReadonlySet<T>, v: T) => Set<T>;
   hasSite: boolean;
+  onOrient: (o: 'north' | 'horizon') => void;
   photoStatus: { shown: number; pending: number };
   dsoCount: { shown: number; total: number };
 }) {
@@ -1327,7 +1577,7 @@ function LayerTabs({
                     type="radio"
                     name="skymap-orient"
                     checked={state.orient === 'north'}
-                    onChange={() => update({ orient: 'north' })}
+                    onChange={() => onOrient('north')}
                   />
                   {t('skymap.orientNorth')}
                 </label>
@@ -1337,7 +1587,7 @@ function LayerTabs({
                     name="skymap-orient"
                     checked={state.orient === 'horizon'}
                     disabled={!hasSite}
-                    onChange={() => update({ orient: 'horizon' })}
+                    onChange={() => onOrient('horizon')}
                   />
                   {t('skymap.orientHorizon')}
                 </label>
@@ -1350,28 +1600,82 @@ function LayerTabs({
   );
 }
 
+/** Runder Knopf der Knopfleiste in der Karte (Vorlage `.op-map-ctrl button`). */
+function MapButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={styles.ctrlButton}
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+const wikiArticle = (lang: 'de' | 'en', title: string) =>
+  `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+const wikiSearch = (lang: 'de' | 'en', q: string) =>
+  `https://${lang}.wikipedia.org/w/index.php?search=${encodeURIComponent(q)}`;
+
 function InfoCard({
   selected,
   rigId,
   canCreate,
+  bright,
+  scene,
+  names,
   onClose,
+  onCenter,
   onMoveFrame,
 }: {
   selected: NonNullable<Selected>;
   rigId: string | null;
   canCreate: boolean;
+  bright: BrightSky | null;
+  scene: ReturnType<typeof sceneAt> | null;
+  names: 'local' | 'latin';
   onClose: () => void;
+  onCenter: (v: sky.Vec3) => void;
   onMoveFrame: (ra: number, dec: number) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === 'en' ? 'en' : 'de';
   const num = useNumber();
   const titleId = useId();
   const wikipedia = useWikipedia();
+  const close = (
+    <button
+      type="button"
+      className={styles.closeButton}
+      aria-label={t('skymap.info.close')}
+      title={t('skymap.info.close')}
+      onClick={onClose}
+    >
+      <uiIcons.remove size={ICON_SIZE.button} aria-hidden />
+    </button>
+  );
   if (selected.kind === 'project') {
     const p = selected.item;
     return (
       <section className={styles.info} aria-labelledby={titleId}>
-        <h2 id={titleId}>{p.name}</h2>
+        <header className={styles.infoHead}>
+          <h2 id={titleId}>{p.name}</h2>
+          {close}
+        </header>
         <p className={styles.muted}>
           {t('skymap.info.status')}: {t(`skymap.project.${projectCategory(p)}`)}
         </p>
@@ -1379,65 +1683,156 @@ function InfoCard({
           <Link className={styles.button} to={`/projekte/${p.id}`}>
             {t('skymap.info.openProject')}
           </Link>
-          <button type="button" className={styles.button} onClick={onClose}>
-            {t('skymap.info.close')}
-          </button>
         </div>
       </section>
     );
   }
-  const o = selected.item;
-  const wiki = wikipedia(o);
-  // Wikipedia zuerst: Artikel aus dem Website-Auszug (FA-FRM-14), sonst die Suche.
-  const links: { name: string; href: string; title?: string; wiki?: boolean }[] = [
-    { name: wiki.label, href: wiki.href, title: wiki.title, wiki: true },
-    ...researchLinks(o.displayName),
-  ];
-  const q = new URLSearchParams({
-    objekt: o.primaryId,
-    ra: String(o.raDeg),
-    dec: String(o.decDeg),
-  });
+
+  // Ort, Titel, Typ und Helligkeit je Art.
+  let vec: sky.Vec3 | null = null;
+  let title = '';
+  let kind = '';
+  let mag: number | null = null;
+  let extra: { dt: string; dd: string } | null = null;
+  const links: { name: string; href: string; title?: string; wiki?: boolean }[] = [];
+  if (selected.kind === 'dso') {
+    const o = selected.item;
+    vec = sky.radecToVec(o.raDeg, o.decDeg);
+    title = o.displayName;
+    kind = t(`catalog.groups.${o.group}`);
+    mag = o.mag;
+    extra = {
+      dt: t('skymap.info.size'),
+      dd: o.sizeMajorArcmin === null ? '–' : `${num(o.sizeMajorArcmin, 1)}′`,
+    };
+    // Wikipedia zuerst: Artikel aus dem Website-Auszug (FA-FRM-14), sonst die Suche.
+    const wiki = wikipedia(o);
+    links.push({ name: wiki.label, href: wiki.href, title: wiki.title, wiki: true });
+    links.push(...researchLinks(o.displayName));
+  } else if (selected.kind === 'star' && bright) {
+    const i = selected.index;
+    vec = starVec(bright, i);
+    const name = bright.stars.names?.get(i);
+    const bayer = bright.stars.bayer?.get(i);
+    const rd = sky.vecToRadec(vec);
+    const con = constellationAt(bright.bounds, rd.raDeg, rd.decDeg);
+    mag = bright.stars.mag[i] ?? null;
+    title = name
+      ? lang === 'en'
+        ? name.en
+        : name.de
+      : bayer && con
+        ? `${bayer} ${con}`
+        : t('skymap.info.starUnnamed', { mag: num(mag ?? 0, 1) });
+    kind = t('skymap.info.kind.star');
+    if (name || (bayer && con))
+      links.push({
+        name: 'Wikipedia',
+        href: wikiSearch(
+          lang,
+          name ? (lang === 'en' ? name.en : name.de) : `${bayer ?? ''} ${con ?? ''}`,
+        ),
+        wiki: true,
+      });
+  } else if (selected.kind === 'body' && scene) {
+    const id = selected.id;
+    vec = bodyVec(scene.bodies, id);
+    title =
+      id === 'sun'
+        ? t('skymap.sunLabel')
+        : id === 'moon'
+          ? t('skymap.moonLabel')
+          : t(`skymap.planet.${id}`);
+    kind = t(`skymap.info.kind.${id === 'sun' ? 'sun' : id === 'moon' ? 'moon' : 'planet'}`);
+    mag = scene.bodies.planets.find((p) => p.id === id)?.mag ?? null;
+    if (id === 'moon')
+      extra = { dt: t('skymap.info.illum'), dd: `${num(scene.moonIllumPct, 0)} %` };
+    links.push({ name: 'Wikipedia', href: wikiArticle(lang, t(`skymap.wiki.${id}`)), wiki: true });
+  }
+  if (!vec) return null;
+  const rd = sky.vecToRadec(vec);
+  const conAbbr = bright ? constellationAt(bright.bounds, rd.raDeg, rd.decDeg) : null;
+  const conLabel = bright?.labels.find((l) => l.abbr === conAbbr);
+  const hor = scene ? toAltAz(scene.observer.toHorizon, vec) : null;
+  const target = vec;
+  const q = new URLSearchParams({ ra: String(rd.raDeg), dec: String(rd.decDeg) });
+  if (selected.kind === 'dso') q.set('objekt', selected.item.primaryId);
   if (rigId) q.set('rig', rigId);
   return (
     <section className={styles.info} aria-labelledby={titleId}>
-      <h2 id={titleId}>{o.displayName}</h2>
+      <header className={styles.infoHead}>
+        <div>
+          <p className={styles.infoKind}>{kind}</p>
+          <h2 id={titleId}>{title}</h2>
+        </div>
+        {close}
+      </header>
       <dl className={styles.facts}>
-        <dt>{t('skymap.info.type')}</dt>
-        <dd>{t(`catalog.groups.${o.group}`)}</dd>
-        <dt>{t('skymap.info.mag')}</dt>
-        <dd>{o.mag === null ? '–' : num(o.mag, 1)}</dd>
-        <dt>{t('skymap.info.size')}</dt>
-        <dd>{o.sizeMajorArcmin === null ? '–' : `${num(o.sizeMajorArcmin, 1)}′`}</dd>
+        {hor ? (
+          <>
+            <dt>{t('skymap.info.position')}</dt>
+            <dd>
+              {t(hor.altDeg >= 0 ? 'skymap.info.positionValue' : 'skymap.info.belowHorizon', {
+                alt: num(hor.altDeg, 0),
+                dir: t(`bodies.compass.${COMPASS[compassIndex(hor.azDeg)] ?? 's'}`),
+              })}
+            </dd>
+          </>
+        ) : null}
+        {mag !== null ? (
+          <>
+            <dt>{t('skymap.info.mag')}</dt>
+            <dd>{num(mag, 1)}</dd>
+          </>
+        ) : null}
+        {extra ? (
+          <>
+            <dt>{extra.dt}</dt>
+            <dd>{extra.dd}</dd>
+          </>
+        ) : null}
+        {conLabel ? (
+          <>
+            <dt>{t('skymap.info.constellation')}</dt>
+            <dd>{constellationName(conLabel, names, lang).replace(/ (Caput|Cauda)$/, '')}</dd>
+          </>
+        ) : null}
+        <dt>{t('skymap.info.coords')}</dt>
+        <dd>
+          {formatCoordinate('ra', rd.raDeg, 'sexagesimal')} ·{' '}
+          {formatCoordinate('dec', rd.decDeg, 'sexagesimal')}
+        </dd>
       </dl>
-      <p className={styles.links}>
-        {t('skymap.info.research')}:{' '}
-        {links.map((l, i) => (
-          <span key={l.name}>
-            {i > 0 ? ' · ' : ''}
-            <a href={l.href} target="_blank" rel="noopener noreferrer" title={l.title}>
-              {l.wiki ? <WikipediaMark /> : null}
-              {l.name}
-            </a>
-          </span>
-        ))}
-      </p>
+      {links.length > 0 ? (
+        <p className={styles.links}>
+          {t('skymap.info.research')}:{' '}
+          {links.map((l, i) => (
+            <span key={l.name}>
+              {i > 0 ? ' · ' : ''}
+              <a href={l.href} target="_blank" rel="noopener noreferrer" title={l.title}>
+                {l.wiki ? <WikipediaMark /> : null}
+                {l.name}
+              </a>
+            </span>
+          ))}
+        </p>
+      ) : null}
       <div className={styles.actions}>
+        <button type="button" className={styles.button} onClick={() => onCenter(target)}>
+          {t('skymap.info.center')}
+        </button>
         <button
           type="button"
           className={styles.button}
-          onClick={() => onMoveFrame(o.raDeg, o.decDeg)}
+          onClick={() => onMoveFrame(rd.raDeg, rd.decDeg)}
         >
           {t('skymap.info.moveFrame')}
         </button>
-        {canCreate ? (
+        {canCreate && selected.kind === 'dso' ? (
           <Link className={styles.button} to={`/projekte/neu?${q.toString()}`}>
             {t('skymap.info.createProject')}
           </Link>
         ) : null}
-        <button type="button" className={styles.button} onClick={onClose}>
-          {t('skymap.info.close')}
-        </button>
       </div>
     </section>
   );
