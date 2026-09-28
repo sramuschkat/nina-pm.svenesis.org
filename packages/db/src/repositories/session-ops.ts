@@ -7,10 +7,12 @@
  *   sobald `outbox_pending = 0` oder 6 h nach `ended_at` (NIN5-7).
  * - `reconcileSite` (Job `reconcile` aus `tick-hourly`, einmal je Standortnacht): Zähler je Zeile und
  *   Nacht aus `capture`/`correction` neu bilden (Regel max, FA-AUS-06), verwaiste `capture_night`-Zeilen
- *   entfernen, Zeilenzähler als Summe; überspringt Rigs mit laufender Session.
+ *   entfernen, Zeilenzähler als Summe, danach automatischer Projektstatus (FA-PRJ-12); überspringt Rigs
+ *   mit laufender Session.
  * - `activeAdminIds`, `alertSentSince`: Empfänger und Entprellung der Betriebsalarme in der App.
  */
 import { withTx } from '../tx';
+import { ProjectRepository } from './project';
 import type { Database } from '../types';
 import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
@@ -451,7 +453,7 @@ async function reconcileLine(
       Number(line.rejectedCount) === totals.rejected &&
       Number(line.bonusCount) === totals.bonus &&
       Number(line.bonusRejectedCount) === totals.bonusRejected;
-    if (!lineSame)
+    if (!lineSame) {
       await trx
         .updateTable('exposureLine')
         .set({
@@ -464,6 +466,14 @@ async function reconcileLine(
         .where('tenantId', '=', tenantId)
         .where('id', '=', lineId)
         .execute();
+      // Korrigierte Zähler → automatischer Statuswechsel wie im Ingest (FA-PRJ-12); `worker` (app_job)
+      // darf `project` ändern und `change_log` schreiben.
+      await new ProjectRepository(trx, { tenantId }).autoStatusAfterCounts(
+        trx,
+        line.projectId,
+        now,
+      );
+    }
     return { changed: !lineSame || rowsFixed + rowsDeleted > 0, rowsFixed, rowsDeleted };
   });
 }

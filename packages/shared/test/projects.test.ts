@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   autoReactivate,
+  autoReadyToProcess,
   canTransition,
   isDeliverable,
   lineCounters,
@@ -73,6 +74,23 @@ describe('Soll erreicht / fertig (FA-PRJ-12)', () => {
     expect(autoReactivate('ready_to_process', 3, false)).toBeNull();
     expect(autoReactivate('on_hold', 3, true)).toBeNull();
     expect(autoReactivate('completed', 0, true)).toBeNull();
+  });
+
+  it('automatisch Bereit zur Bearbeitung nur aus active, fertig, ohne Bonus, Deep-Sky und mit Einstellung', () => {
+    const base = {
+      status: 'active' as const,
+      projectType: 'deep_sky',
+      finished: true,
+      bonusEnabled: false,
+      autoReadyToProcess: true,
+    };
+    expect(autoReadyToProcess(base)).toBe('ready_to_process');
+    expect(autoReadyToProcess({ ...base, autoReadyToProcess: false })).toBeNull();
+    expect(autoReadyToProcess({ ...base, finished: false })).toBeNull();
+    expect(autoReadyToProcess({ ...base, bonusEnabled: true })).toBeNull();
+    expect(autoReadyToProcess({ ...base, projectType: 'exoplanet' })).toBeNull();
+    expect(autoReadyToProcess({ ...base, status: 'on_hold' })).toBeNull();
+    expect(autoReadyToProcess({ ...base, status: 'ready_to_process' })).toBeNull();
   });
 });
 

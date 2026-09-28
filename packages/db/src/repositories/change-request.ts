@@ -22,7 +22,8 @@ import {
 import type { Kysely, Selectable, Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { ChangeRequestTable, Database } from '../types';
-import { nextSubmitterRank, renumberRanks, type VoteSummary } from './approval';
+import type { VoteSummary } from './approval';
+import { nextSubmitterRank, openRequests, renumberRanks } from './ranks';
 import { TenantRepo } from './base';
 import { insertNotifications } from './notification';
 import { ProjectRepository } from './project';
@@ -689,13 +690,10 @@ export class ChangeRequestRepository extends TenantRepo {
         .where('createdBy', 'in', users)
         .groupBy('createdBy')
         .execute(),
-      this.db
-        .selectFrom('changeRequest')
-        .select(['requestedBy', (eb) => eb.fn.countAll<string>().as('n')])
-        .where('tenantId', '=', this.tenantId)
-        .where('status', '=', 'open')
-        .where('requestedBy', 'in', users)
-        .groupBy('requestedBy')
+      openRequests(this.db, this.tenantId)
+        .select(['c.requestedBy', (eb) => eb.fn.countAll<string>().as('n')])
+        .where('c.requestedBy', 'in', users)
+        .groupBy('c.requestedBy')
         .execute(),
     ]);
     return records.map((r) => {

@@ -62,10 +62,34 @@ export const ForecastJobInput = z
   .meta({ id: 'ForecastJobInput' });
 export type ForecastJobInput = z.infer<typeof ForecastJobInput>;
 
+/** FNV-1a (32 Bit) als 8 Hex-Zeichen – kurzer, deterministischer Schlüsselteil, kein Sicherheitsmerkmal. */
+function fnv1a(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+/** Kanonische Optionen (Schlüssel sortiert) – neue ergebnisrelevante Felder landen automatisch im Hash. */
+function optionsHash(options: Record<string, unknown>): string {
+  const keys = Object.keys(options).sort();
+  return fnv1a(JSON.stringify(keys.map((k) => [k, options[k] ?? null])));
+}
+
 /** `dedupe_key` ist für `multi_sim` und `impact` Pflicht (TK 7.4, SEC-51). */
 export const dedupeKeys = {
-  multiSim: (i: Pick<MultiSimInput, 'rigId' | 'nightFrom'>) =>
-    `multi_sim:${i.rigId}:${i.nightFrom}`,
+  /**
+   * Mehrnacht-Simulation (Spec-Ergänzung TK 7.4, Vorschlag 28.09.2026): Rig, erste Nacht, **auslösendes
+   * Mitglied** (der Worker rechnet mit dessen Entwürfen, `includeOwnDrafts`) und ein Hash aller übrigen
+   * Optionen (`nights`, `weather`, `includeOwnDrafts`, …) – sonst bekäme ein Mitglied das offene Ergebnis
+   * eines anderen bzw. einer anderen Einstellung.
+   */
+  multiSim: (i: MultiSimInput, memberId: string) => {
+    const { rigId, nightFrom, ...options } = i;
+    return `multi_sim:${rigId}:${nightFrom}:${memberId}:${optionsHash(options)}`;
+  },
   impact: (i: ImpactInput) => `impact:${i.queueItemId}`,
   effort: (projectId: string) => `effort:${projectId}`,
   effortSiteNight: (siteId: string, night: string) => `effort:${siteId}:${night}`,
