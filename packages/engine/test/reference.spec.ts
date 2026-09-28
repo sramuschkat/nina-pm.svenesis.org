@@ -75,7 +75,9 @@ const within = (actual: number | null, expected: number | null, tol: number, lab
   expect(Math.abs((actual ?? 0) - expected), label).toBeLessThanOrEqual(tol);
 };
 
-describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±60 s)', () => {
+// Toleranzen seit der Astronomie-Prüfung 28.09.2026 nahe an der erreichten Genauigkeit (vorher 10–40× lockerer;
+// ein fehlendes ΔT – 0,0105° am Mond – wäre durchgerutscht). TK 9.2 nennt die fachlichen Obergrenzen.
+describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±15 s)', () => {
   it.each(sunMoon.nights.map((n) => [`${n.site} ${n.night}`, n] as const))('%s', (_label, fx) => {
     const s = siteOf(fx.site);
     const site = { latDeg: s.lat, lonDeg: s.lon };
@@ -91,19 +93,19 @@ describe('Sonne: Dämmerung, Auf-/Untergang, Himmelsflats (±60 s)', () => {
     for (const [key, crossing] of pairs) {
       const ref = fx.sun[key];
       if (ref.grazing) continue; // streifend: von den Referenztests ausgenommen (night.md §2)
-      within(crossing.startUtc, ref.down, 60, `${key} Abwärts`);
-      within(crossing.endUtc, ref.up, 60, `${key} Aufwärts`);
+      within(crossing.startUtc, ref.down, 15, `${key} Abwärts`);
+      within(crossing.endUtc, ref.up, 15, `${key} Aufwärts`);
     }
     const anchors = sunAnchors(site, n.noonStartUtc, n.noonEndUtc);
     for (const key of ['flats8', 'flats2'] as const) {
       const ref = fx.sun[key];
       if (ref.grazing) continue;
-      within(sunCrossings(site, anchors, ref.h0).endUtc, ref.up, 60, `${key} Aufwärts`);
+      within(sunCrossings(site, anchors, ref.h0).endUtc, ref.up, 15, `${key} Aufwärts`);
     }
   });
 });
 
-describe('Mond: Auf-/Untergang (±30 s), Höhe (±0,05°), Ort (±0,1°), Beleuchtung (±1 %)', () => {
+describe('Mond: Auf-/Untergang (±5 s), Höhe (±0,01°), Ort (±0,01°), Beleuchtung (±0,05 %)', () => {
   it.each(sunMoon.nights.map((n) => [`${n.site} ${n.night}`, n] as const))('%s', (_label, fx) => {
     const s = siteOf(fx.site);
     const site = { latDeg: s.lat, lonDeg: s.lon };
@@ -117,21 +119,21 @@ describe('Mond: Auf-/Untergang (±30 s), Höhe (±0,05°), Ort (±0,1°), Beleuc
       expect(
         Math.abs(e.atUtc - (ref[i]?.t ?? 0)),
         `${e.type} ${String(e.atUtc)}`,
-      ).toBeLessThanOrEqual(30);
+      ).toBeLessThanOrEqual(5);
       expect(Math.abs(moonAt(e.atUtc, site).altDeg)).toBeLessThanOrEqual(0.01);
     });
     for (const m of fx.moon) {
       const ours2 = moonAt(m.t, site);
       expect(
         separationDeg(ours2.raDeg, ours2.decDeg, m.raTopoDeg, m.decTopoDeg),
-      ).toBeLessThanOrEqual(0.1);
-      expect(Math.abs(ours2.altDeg - m.altAppDeg)).toBeLessThanOrEqual(0.05);
-      expect(Math.abs(ours2.illumPct - m.illumPct)).toBeLessThanOrEqual(1);
+      ).toBeLessThanOrEqual(0.01);
+      expect(Math.abs(ours2.altDeg - m.altAppDeg)).toBeLessThanOrEqual(0.01);
+      expect(Math.abs(ours2.illumPct - m.illumPct)).toBeLessThanOrEqual(0.05);
     }
   });
 });
 
-describe('Ziele: Höhe (±0,05°), Meridiandurchgang (±30 s)', () => {
+describe('Ziele: Höhe und Azimut (±0,01°), Meridiandurchgang (±3 s)', () => {
   it.each(targets.targets.map((t) => [`${t.site} ${t.night} ${t.target}`, t] as const))(
     '%s',
     (_label, fx) => {
@@ -140,14 +142,19 @@ describe('Ziele: Höhe (±0,05°), Meridiandurchgang (±30 s)', () => {
       const target = { raJ2000Deg: fx.raJ2000Deg, decJ2000Deg: fx.decJ2000Deg };
       for (const sample of fx.samples) {
         const ours = targetAt(target, sample.t, site);
-        expect(Math.abs(ours.altGeometricDeg - sample.altGeoDeg)).toBeLessThanOrEqual(0.05);
+        expect(Math.abs(ours.altGeometricDeg - sample.altGeoDeg)).toBeLessThanOrEqual(0.01);
+        // Azimut auf dem Himmel gemessen (× cos h), sonst wird er nahe dem Zenit beliebig empfindlich.
+        const dAz = ((ours.azDeg - sample.azDeg + 540) % 360) - 180;
+        expect(Math.abs(dAz * Math.cos((sample.altGeoDeg * Math.PI) / 180))).toBeLessThanOrEqual(
+          0.01,
+        );
         if (sample.altAppDeg >= 15)
-          expect(Math.abs(ours.altDeg - sample.altAppDeg)).toBeLessThanOrEqual(0.05);
+          expect(Math.abs(ours.altDeg - sample.altAppDeg)).toBeLessThanOrEqual(0.01);
       }
       within(
         meridianTransitUtc(target, site, fx.noonStartUtc, fx.noonEndUtc),
         fx.meridianTransitUtc,
-        30,
+        3,
         'tM',
       );
     },

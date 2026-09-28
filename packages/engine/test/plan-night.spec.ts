@@ -262,6 +262,34 @@ describe('Plan (TK 7.6)', () => {
     expect(b?.transitObservationId).toBe('00000000-0000-4000-8000-00000000f001');
   });
 
+  it('Mosaik ohne Panel-Einheiten: Höhe je Panel – ein Panel unter der Mindesthöhe wird nie belichtet (Prüfung 28.09.2026)', () => {
+    // Panel 0 steigt in Starfront (31,5° N) bis 65°, Panel 1 (δ −35°) nie über 23,5° < 30°. Früher galt für
+    // beide die Höhe der Projektmitte (= Panel 0), Panel 1 wurde mitbelichtet.
+    const base = project({ lines: 1 });
+    const p0 = base.panels[0];
+    if (!p0) throw new Error('Panel fehlt');
+    const low = {
+      ...p0,
+      id: id('a'),
+      index: 1,
+      decDeg: -35,
+      lines: p0.lines.map((l) => ({ ...l, id: id('c') })),
+    };
+    const mosaic = { ...base, panels: [p0, low] };
+    const plan = planNight(
+      input([mosaic], {
+        scheduler: { ...input([]).scheduler, mosaicPanelsIndependent: false },
+      }),
+    );
+    const exposed = new Set(
+      plan.blocks
+        .flatMap((b) => b.entries)
+        .flatMap((e) => (e.cmd === 'expose' ? [e.exposureLineId] : [])),
+    );
+    expect(exposed.has(p0.lines[0]?.id ?? '')).toBe(true);
+    expect(exposed.has(low.lines[0]?.id ?? '')).toBe(false);
+  });
+
   it('Kompatibilitätsmodus gibt es nur für Grids (Orakel)', () => {
     expect(() => planNight(input([project()], { mode: 'compat' }))).toThrow(/productive/);
   });

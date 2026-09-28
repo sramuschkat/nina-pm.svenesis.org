@@ -147,7 +147,12 @@ export function nightTimes(input: NightInput): NightTimes {
   const civil = twilight.civil;
   let window: { startUtc: number; endUtc: number };
   if (civil.kind === 'normal' && civil.startUtc !== null && civil.endUtc !== null) {
-    window = { startUtc: floorSlot(civil.startUtc - 3600), endUtc: ceilSlot(civil.endUtc + 3600) };
+    // Nie über Mittag–Mittag hinaus (Prüfung 28.09.2026): über ≈ 66° Breite liegen die bürgerlichen Durchgänge
+    // am Rand der Polarnacht so nah an den Mittagen, dass ±1 h das Fenster in die Nachbarnächte schieben würde.
+    window = {
+      startUtc: Math.max(noonStartUtc, floorSlot(civil.startUtc - 3600)),
+      endUtc: Math.min(noonEndUtc, ceilSlot(civil.endUtc + 3600)),
+    };
   } else if (civil.kind === 'polarDay') {
     // 18:00 Standortzeit + 12 h (wie Original, allocation.md §2)
     const start = localTimeOfNightUtc(night, 18 * 3600, input.timeZoneTransitions);

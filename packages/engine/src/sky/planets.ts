@@ -2,8 +2,12 @@
  * Planetenorte für die Sternkarte (AP-21, FA-FRM-08 „Mond/Sonne/Planeten“): Kepler-Elemente mit Raten je
  * Jahrhundert nach JPL „Approximate Positions of the Major Planets“ (Tabelle 1, gültig 1800–2050), Erde =
  * Erde-Mond-Schwerpunkt, ohne Lichtlaufzeit. Helligkeit nach Mallama & Hilton (2018). Portiert aus
- * `legacy/astro-tools-2026-09-21/js/astro-core.js` (heliocentric, planetCoords, planetMagnitude); dort gegen
- * JPL Horizons auf ≈ 0,05° geprüft (Test `sky.spec.ts`). Nur Anzeige – die Planung nutzt keine Planeten.
+ * `legacy/astro-tools-2026-09-21/js/astro-core.js` (heliocentric, planetCoords, planetMagnitude). Genauigkeit
+ * (Astronomie-Prüfung 28.09.2026, gegen astropy 2020–2035): Merkur, Venus, Neptun ≤ 75″, Mars ≤ 96″, Uranus
+ * ≤ 122″, Jupiter und Saturn bis ≈ 340″ (≈ 0,09°) – im Wesentlichen die Grenze der JPL-Tabelle selbst
+ * (Jupiter 400″, Saturn 600″); Lichtlaufzeit ≤ 40″, Aberration ≤ 20″. Helligkeit gegen Mallama & Hilton ≤ 0,01 mag;
+ * bei Uranus fehlt der Term der Sub-Erd-Breite (≈ 0,05 mag zu schwach). Nur Anzeige – die Planung nutzt keine
+ * Planeten.
  */
 import { acos, atan2, cos, exp, log10, sin } from '../math';
 import { DEG, RAD, norm360 } from '../astro/angles';

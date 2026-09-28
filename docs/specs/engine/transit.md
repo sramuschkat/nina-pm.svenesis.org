@@ -18,7 +18,7 @@ Verbindlich für AP-41 (Rechnung) und AP-44 (Reservierung, Plugin-Transitblock: 
   - `BJD_UTC` → `+ (32,184 s + (TAI−UTC)(T0))/86400`.
   - `HJD_UTC` → zusätzlich **Heliozentrum → Baryzentrum**: `+ (r⃗_Sonne,bary(T0) · n̂)/c`. Größe 0,15 … **4,6 Lichtsekunden** (Maximum bei Konjunktion der vier Riesenplaneten 5,0 s).
   - `JD_UTC` / `JD` → **volle Rømer-Korrektur**: `+ (r⃗_Erde,bary(T0) · n̂)/c`, also bis **±8,5 min** – nicht der 5-s-Sonnenversatz. JD_UTC ist eine geo-/topozentrische Zeit, kein heliozentrisches Maß; wer hier den HJD-Zweig nimmt, verfehlt das Transitfenster.
-  - Unbekanntes System → `timeSystemSource = 'unknown'`, Fensterpuffer **+ 2 min** und Kennzeichen „Zeitsystem unsicher" in S-22/S-31.
+  - Unbekanntes System → `timeSystemSource = 'unknown'`, Fensterpuffer **+ 10 min** und Kennzeichen „Zeitsystem unsicher" in S-22/S-31. Die frühere Angabe + 2 min deckte nur eine Verwechslung von BJD/HJD bzw. UTC/TDB (≤ 74 s) ab, nicht eine Epoche, die in Wahrheit `JD_UTC` ist (Rømer bis ±8,5 min + 69 s; Astronomie-Prüfung 28.09.2026).
 - **Schaltsekunden zur Epoche (verbindlich, AST-T7).** `TAI − UTC` wird **zum Zeitpunkt von `T0`** als Stufenfunktion über **Datum** gelesen, nicht über Jahr. Vollständige Tabelle ab 1999 (frühere Epochen über die IANA-Datei, ab 1972-01-01 = 10 s):
 
   | gültig ab | TAI−UTC |
@@ -59,19 +59,22 @@ nightMid = Mitte des Nachtfensters (FK 8.1), als JD_UTC
 n0     = q((jdUtcToBjdTdb(nightMid) − T0)/P, 1)          # beide Seiten BJD_TDB, Rundung canonical-json.md
 Kandidaten: alle n ab n0 nach beiden Seiten, solange Tc_utc(n) im Suchintervall
             [nightStart − halbeBreite ; nightEnd + halbeBreite] liegt   # JD_UTC
-            halbeBreite = T14/48 + k·sigma + max(baselineVorMin, baselineNachMin)/1440
+            halbeBreite = T14/48 + puffer(n) + max(baselineVorMin, baselineNachMin)/1440
+                          (+ 10/1440 bei timeSystemSource = 'unknown'; derselbe Puffer wie im Fenster,
+                           sonst fällt ein Randtransit mit 5-min-Untergrenze heraus – Prüfung 28.09.2026)
             (bei Ultrakurzperioden P < 0,4 d liegen mehrere Transits in einer Nacht)
 
 Tc_bjd = T0 + n·P + ocMin/1440   # BJD_TDB; letzte O−C verschiebt die Mitte MIT Vorzeichen
 Tc_utc = bjdTdbToJdUtc(Tc_bjd, raJ2000, decJ2000)        # §1, zwei Iterationen  <-- PFLICHT
 
 sigma  = |n|·sigmaP + sigmaT0 + ocSigmaMin/1440  # Tage; linear addiert = konservativ
-puffer = max(k·sigma, ocSigmaMin/1440, 5/1440)   # k aus {1,2,3}, Standard 1; Untergrenze 5 min
+puffer = max(k·sigma, 5/1440)   # k aus {1,2,3}, Standard 1; Untergrenze 5 min
+                                # (ocSigmaMin steckt schon in sigma; ein eigener Term wäre doppelt)
 ingress = Tc_utc − T14/48 ; egress = Tc_utc + T14/48     # JD_UTC
 fenster = [ingress − puffer − baselineVorMin/1440 ; egress + puffer + baselineNachMin/1440]
-          + 2/1440 beidseitig, wenn timeSystemSource = 'unknown'
+          + 10/1440 beidseitig, wenn timeSystemSource = 'unknown'
 ```
-- **Warum der Umrechnungsschritt Pflicht ist (AST-T1):** Ohne ihn steht in `fenster[]` ein BJD_TDB-Wert, der in §3 unmittelbar als UTC in den NINA-Vertrag geschrieben wird. Der Versatz ist Rømer + Uhrterme: im durchgerechneten Beispiel (HAT-P-17 b, n = 375) **141 s**, im Maximum **bis 9,7 min** – das Fenster verfehlt den Transit.
+- **Warum der Umrechnungsschritt Pflicht ist (AST-T1):** Ohne ihn steht in `fenster[]` ein BJD_TDB-Wert, der in §3 unmittelbar als UTC in den NINA-Vertrag geschrieben wird. Der Versatz ist Rømer + Uhrterme, **mit Vorzeichen** `JD_UTC − BJD_TDB = −ltt − (TT−UTC) − (TDB−TT)` mit `ltt = (r⃗_Erde,bary · n̂)/c` (positiv, wenn die Erde auf der Zielseite des Baryzentrums steht; TDB−TT < 2 ms): in der Beispielnacht 2026-09-18 (HAT-P-17 b, Starfront, 04:30Z) `ltt = +362,23 s` → **−431,41 s** (astropy `light_travel_time(kind='barycentric')`, nachgerechnet 28.09.2026), im Maximum **bis 9,7 min** – das Fenster verfehlt den Transit.
 - **Puffer und O−C (AST-T4):** `σ` aus dem Katalog ist bei gut vermessenen Zielen winzig (HAT-P-17 b bei n = 375: 0,29 min), die reale Abweichung nicht (dessen O−C = 1,0 ± 0,94 min). Deshalb geht `ocSigmaMin` in `σ` ein und der Puffer hat eine Untergrenze von 5 min. `ocMin` wird nur angewendet, wenn `|ocMin| > 3·ocSigmaMin`. Liegen ≥ 3 eigene `transit_result`-Zeilen vor, geht deren empirische Streuung zusätzlich als `σ_TTV` in die Summe – bei TTV-Systemen (ExoClock-Kennzeichen `TTVs`, z. B. TrES-3 b mit O−C > 10 min) ist die lineare Ephemeride sonst wertlos.
 - **Ephemeridenalter (verbindlich, AST-T9):** `σ` wächst linear mit |n|. Regel: `k·σ ≤ 0,5·T14` **und** `k·σ ≤ 30 min` ⇒ planbar · `0,5·T14 < k·σ ≤ T14` ⇒ Warnung *Ephemeride unsicher*, Baseline auf `k·σ` erhöhen · `k·σ > T14` ⇒ nicht festlegbar (`409 transit.ephemeris_stale`), Katalogaktualisierung erzwingen. Zusätzlich Warnung, wenn `ephemeris.source_date` älter als 365 Tage ist und ein neuerer Katalogstand vorliegt. Zahlenbeispiel (TESS-Kandidat, σP = 1e-4 d, σT0 = 1e-3 d, P = 3 d, T14 = 2 h): nach 1 Jahr σ = 19 min, nach 3 Jahren 54 min, nach 10 Jahren **177 min** – mehr als jede Nacht hergibt.
 - **Baseline (verbindlich, AST-T13):** Vorgabe **dauerabhängig**: `baselineVorMin = baselineNachMin = clamp(round(30·T14[h]), 30, 120)`, also T14/2 je Seite mit Minimum 30 min und Deckel 2 h. Belegt ist nur das **30-min-Minimum** (BAA: „observe for half the expected transit duration either side … 30 mins … should be considered the minimum"); ein fester 60-min-Wert ist bei T14 = 1,4 h zu lang und bei T14 = 4 h nur halb so lang wie nötig.
@@ -98,7 +101,7 @@ fenster = [ingress − puffer − baselineVorMin/1440 ; egress + puffer + baseli
 
 ## 4. Pflicht-Tests
 - 3 Fixture-Planeten (HAT-P-17 b, WASP-12 b, TrES-3 b) × **mindestens 5 Epochen, über ≥ 1 Jahr verteilt** (Abstand ≥ 2 Monate), damit der Rømer-Term sein Vorzeichen wechselt. Die Menge enthält **ein Ziel mit |β| < 10°** (WASP-12 b, β = +6,4°, Rømer-Spanne 16,5 min) und **eines mit |β| > 60°** (TrES-3 b, β = +61,0°, Spanne 8,1 min). Vergleich gegen `astropy.time.Time.light_travel_time(kind='barycentric')` – **nicht** gegen „barycorr", das ist kein astropy-Bestandteil (AST-T16). Toleranz **±1 s**. Dieselbe Fixture-Liste in TK 9.1 (`transits.yaml`).
-- **Skalen-Gegenprobe (AST-T1):** Für jeden Fixture-Fall wird zusätzlich geprüft, dass `fenster[0]` und `block.startUtc` **JD_UTC** sind: die Differenz zu `Tc_bjd − T14/48 − puffer − baseline` muss den erwarteten Rømer- plus Uhrterm ergeben (Beispiel HAT-P-17 b, n = 375: −210,157 s + 69,184 s = **−140,97 s**). Ein Durchlauf ohne den Umrechnungsschritt fällt damit auf.
+- **Skalen-Gegenprobe (AST-T1):** Für jeden Fixture-Fall wird zusätzlich geprüft, dass `fenster[0]` und `block.startUtc` **JD_UTC** sind: die Differenz `fenster[0] − (Tc_bjd − T14/48 − puffer − baseline)` in Sekunden muss `−ltt − (TT−UTC) − (TDB−TT)` ergeben (Beispielnacht 2026-09-18, HAT-P-17 b, Starfront: −362,23 s − 69,184 s + 0,002 s = **−431,41 s**; Rømer- und Uhrterm haben bei positivem `ltt` dasselbe Vorzeichen – die frühere Zeile „−210,157 s + 69,184 s“ war mehrdeutig und ist ersetzt). Ein Durchlauf ohne den Umrechnungsschritt fällt damit auf.
 - **Bezugsrahmen (AST-T6):** derselbe Transit mit J2000- und mit datumsbezogener Zielrichtung – Differenz ≤ 0,05 s (erwartet ≈ 0 mit J2000, ≈ 3 s mit der falschen Richtung).
 - **Zeitsystem-Gegenprobe (AST-T8):** dieselbe Epoche als `HJD_UTC` und als `BJD_UTC` eingespeist – die Differenz muss `32,184 s + (TAI−UTC)(T0) ± (r⃗_Sonne,bary·n̂)/c` ergeben; eine HJD/BJD-Verwechslung wird so sichtbar.
 - **Schaltsekunden:** je eine Epoche **unmittelbar vor und nach jedem Sprung** der Tabelle (1999/2006/2009/2012-07/2015-07/2017). Der Test prüft **strenge Sortierung nach Datum** und Schrittweiten aus {+1, −1} – **nicht** Monotonie der Werte: eine negative Schaltsekunde wird diskutiert, und der CGPM-Beschluss von 2022 ändert das Regime bis 2035 (AST-T14).
@@ -106,6 +109,6 @@ fenster = [ingress − puffer − baselineVorMin/1440 ; egress + puffer + baseli
 - **Ephemeridenalter:** ein Fall mit `k·σ` zwischen `0,5·T14` und `T14` → Warnung; einer über `T14` → `409 transit.ephemeris_stale`.
 - **Tiefe:** je eine Zeile aus NASA (%), TOI (ppm) und ExoClock (mmag) → alle drei ergeben dieselbe Tiefe in mmag (Kontrollwert 1 % = 10 000 ppm = 10,912 mmag, ±0,002).
 - **Baseline:** T14 = 1,36 h → 41 min je Seite; T14 = 4,04 h → **120 min** (der Deckel greift bereits hier: `round(30·4,04) = 121` → `clamp(…,30,120)`); T14 = 6 h → 120 min.
-- Zeitsystem: HJD_UTC-Epoche (2008) → nach Normalisierung stimmt die Mitte auf ±1 s; BTJD-Wert ohne Offset wird erkannt und korrigiert; ein MJD-artiger Wert wird **abgelehnt** (`422 exo.epoch_out_of_range`) statt geraten; `unknown` → Fenster 2 min breiter.
+- Zeitsystem: HJD_UTC-Epoche (2008) → nach Normalisierung stimmt die Mitte auf ±1 s; BTJD-Wert ohne Offset wird erkannt und korrigiert; ein MJD-artiger Wert wird **abgelehnt** (`422 exo.epoch_out_of_range`) statt geraten; `unknown` → Fenster je Seite 10 min breiter.
 - Ultrakurzperiode `P = 0,3 d`: zwei Transitfenster in einer Nacht, beide gefunden.
 - Reservierung: Soll-Plan „Transit-Sperre".

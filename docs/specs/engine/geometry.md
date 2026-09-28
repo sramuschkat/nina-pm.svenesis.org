@@ -50,14 +50,14 @@ paPanel = (pa₀ + γ) mod 360
 - **Wirkung:** Bei einem 4×4-Mosaik mit 4,5° Panelabstand und `δ₀ = 70°` reicht `Δα` bis **26,99°** und `γ` bis **25,43°** – weit über der Rotationstoleranz von 5°. Ohne diese Korrektur würde die Prüfung ohne Rotator laufend `panel_rotation_mismatch` melden und mit Rotator falsch rotieren.
 - **Ohne Rotator** (`has_rotator = false`) ist der Soll-Winkel weiterhin der feste Kamerawinkel (`rig.default_rotation_deg`, zugleich `pa₀`, NT-30); `paPanel` wird nur **geprüft**, und zwar **modulo 180°** wie in `flip-rotation.md` §3 (NT-E4): Abweichung > Toleranz → Warnung `panel_rotation_mismatch` im Projekt, im Framing und im Simulator (FA-RIG-10, FK 8.8). Es wird nichts gedreht.
 - **Gespiegelte Optik (NT-33):** Alle Formeln setzen ein nicht gespiegeltes Bild voraus (kein Umlenk-/Zenitspiegel im Strahlengang; WCS nicht `Flipped`). Gespiegelte Optik wird **nicht unterstützt**: meldet das Plate-Solve `Flipped`, gibt das Plugin `warning` Code `optics_mirrored` aus und überspringt die Winkelprüfung; Panelraster und Positionswinkel wären seitenverkehrt. Dokumentierte Einschränkung.
-- Panel-Masken (Höhe, Mondabstand, `tM`) werden produktiv **je Panel** mit `α, δ` des Panels gerechnet (`allocation.md` A-19); im Kompatibilitätsmodus mit dem Projektzentrum.
+- Panel-Masken (Höhe, Mondabstand, `tM`) werden produktiv **je Panel** mit `α, δ` des Panels gerechnet – für Panel-Einheiten wie für Mosaike ohne Panel-Einheiten (`allocation.md` §3.1, A-19; seit 28.09.2026); im Kompatibilitätsmodus mit dem Projektzentrum.
 
 ### 2.3 Pflicht-Tests (Werte nachgerechnet, α₀ = 0)
 | Fall | Erwartung |
 |---|---|
 | 1×1 | Panel = Projektzentrum, `paPanel = pa₀` |
 | 2×2, `pa₀ = 0`, `δ₀ = 0`, Bildfeld 1°×1°, Überlappung 10 % | Offsets ±0,45°; Panel (+0,45/+0,45) → `α = 0,44999°`, `δ = 0,44998°`, `γ = 0,000000°` |
-| 3×3, `pa₀ = 30°` | Panelraster um 30° gedreht; `γ` unabhängig von `pa₀` (nur `ξ, η` gehen ein) |
+| 3×3, `pa₀ = 30°` | Panelraster um 30° gedreht; `γ` hängt nur von `ξ, η` ab. **Näherung (Prüfung 28.09.2026):** Die gnomonische Projektion ist nicht winkeltreu – am Panel stehen die Bilder von Sensor-X und Sensor-Y nicht exakt senkrecht (4×4 mit 5°-Panels bis 0,78°, 5×5 mit 10°×7°-Panels bis 5,2° Schiefe). `pa₀ + γ` richtet die Nordrichtung der Panelmitte aus und liegt höchstens die halbe Schiefe neben dem besten Kompromiss (Winkelhalbierende); gegenüber der Rotationstoleranz von 5° nur bei sehr großen Mosaiken spürbar. Die Überdeckung bleibt lückenlos (nachgeprüft bis δ₀ = 85°) |
 | `δ₀ = 30°`, ξ = η = 6,75° | `α = 8,30442°`, `δ = 36,43003°`, `γ = +4,1696°` |
 | `δ₀ = 70°`, ξ = η = 6,75° | `α = 26,98992°`, `δ = 75,16370°`, `γ = +25,4278°` |
 | `δ₀ = 70°`, ξ = +6,75°, η = −6,75° | `α = 14,58621°`, `δ = 62,51981°`, `γ = +13,7841°` |

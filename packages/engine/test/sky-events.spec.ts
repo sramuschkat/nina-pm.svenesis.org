@@ -99,11 +99,13 @@ describe('Überflüge (Vorlage satellitePasses)', () => {
     expect(p?.id).toBe(25544);
     near(p?.startUtc, at('2026-09-28T02:23:06Z'), 5);
     near(p?.endUtc, at('2026-09-28T02:24:53Z'), 5);
-    expect(p?.max.t).toBe(at('2026-09-28T02:24:40Z'));
-    near(p?.max.altDeg, 25.232, 0.1);
-    near(p?.max.azDeg, 304.932, 0.1);
-    near(p?.max.mag, -0.637, 0.05);
-    near(p?.brightestMag, -0.637, 0.05);
+    // Höchster Punkt verfeinert (Prüfung 28.09.2026; Vorlage: beste 20-s-Probe 02:24:40, 25,2°): die ISS
+    // steigt noch, als sie um 02:24:53 in den Erdschatten tritt – der höchste sichtbare Punkt ist das Ende.
+    expect(p?.max.t).toBe(at('2026-09-28T02:24:53Z'));
+    near(p?.max.altDeg, 28.715, 0.01);
+    near(p?.max.azDeg, 303.362, 0.01);
+    near(p?.max.mag, -0.991, 0.01);
+    near(p?.brightestMag, -0.991, 0.01);
     expect(p?.faded).toBe(true);
     expect(p?.track).toHaveLength(5);
     near(p?.track[0]?.azDeg, 309.77, 0.1);
@@ -113,10 +115,11 @@ describe('Überflüge (Vorlage satellitePasses)', () => {
     const p = night.passes[1];
     near(p?.startUtc, at('2026-09-28T11:31:43Z'), 5);
     near(p?.endUtc, at('2026-09-28T11:36:24Z'), 5);
-    expect(p?.max.t).toBe(at('2026-09-28T11:34:00Z'));
-    near(p?.max.altDeg, 19.138, 0.1);
-    near(p?.max.azDeg, 142.56, 0.1);
-    near(p?.max.mag, 0.863, 0.05);
+    // Verfeinert auf die Sekunde (Vorlage: Probe 11:34:00).
+    expect(p?.max.t).toBe(at('2026-09-28T11:34:03Z'));
+    near(p?.max.altDeg, 19.123, 0.01);
+    near(p?.max.azDeg, 141.199, 0.01);
+    near(p?.max.mag, 0.917, 0.01);
     near(p?.brightestMag, 0.187, 0.05);
     expect(p?.faded).toBe(false);
     near(p?.track[0]?.azDeg, 185.59, 0.1);
@@ -169,18 +172,34 @@ describe('Meteorströme (Vorlage showersTonight, meteorRate)', () => {
     expect(x?.shower.nameDe).toBe('Südliche Tauriden');
     near(x?.daysToPeak, 38.7736, 0.01);
     expect(Math.floor(Math.abs(x?.daysToPeak ?? 0) + 0.5)).toBe(39);
-    expect(x?.best?.t).toBe(at('2026-09-28T09:40:00Z'));
-    near(x?.best?.altDeg, 73.543, 0.05);
-    near(x?.best?.azDeg, 179.747, 0.05);
-    expect(x?.from30Utc).toBe(at('2026-09-28T05:30:00Z'));
+    // Mit Radiantendrift (IMO-Kalender 2026, Tabelle 6; Prüfung 28.09.2026): 39 Tage vor dem Maximum steht
+    // der Radiant bei α ≈ 23°, δ ≈ +6,5° statt 52,5°/+15° – er kulminiert 2 h früher und tiefer als in der
+    // Vorlage (09:40Z, 73,5°).
+    expect(x?.best?.t).toBe(at('2026-09-28T07:40:00Z'));
+    near(x?.best?.altDeg, 65.221, 0.05);
+    near(x?.best?.azDeg, 177.354, 0.05);
+    expect(x?.from30Utc).toBe(at('2026-09-28T03:50:00Z'));
   });
 
-  it('erwartete Rate (Grenzgröße 6,0) wie die Vorlage', () => {
+  it('Radiantendrift: am Maximum die Position der Stromliste, 39 Tage davor nach IMO-Tabelle 6', () => {
+    const sta = sky.METEOR_SHOWERS.find((s) => s.key === 'STA');
+    if (!sta) throw new Error('STA fehlt');
+    expect(sky.radiantAt(sta, sta.peakLonDeg)).toEqual({ raDeg: 52.5, decDeg: 15 });
+    // 25.09.2026 (λ☉ 181,58°): Tabelle 21° / +6°.
+    const r = sky.radiantAt(sta, 181.58);
+    near(r.raDeg, 21, 0.5);
+    near(r.decDeg, 6, 0.5);
+    // Oktober-Draconiden: nur ein Tabellenpunkt, keine Drift.
+    const dra = sky.METEOR_SHOWERS.find((s) => s.key === 'DRA');
+    if (dra) expect(sky.radiantAt(dra, 193)).toEqual({ raDeg: dra.raDeg, decDeg: dra.decDeg });
+  });
+
+  it('erwartete Rate (Grenzgröße 6,0) wie die Vorlage, Radiant mit Drift', () => {
     const sta = sky.METEOR_SHOWERS.find((s) => s.key === 'STA');
     const r = sta ? sky.meteorRate(sta, rows, STARFRONT, 6.0) : null;
-    near(r?.perHour, 0.1652, 0.002);
-    expect(r?.t).toBe(at('2026-09-28T09:40:00Z'));
-    near(r?.altDeg, 73.543, 0.05);
+    near(r?.perHour, 0.1554, 0.002);
+    expect(r?.t).toBe(at('2026-09-28T07:50:00Z'));
+    near(r?.altDeg, 65.209, 0.05);
     near(r?.zhr, 1.9413, 0.002);
   });
 
@@ -253,7 +272,9 @@ describe('Finsternisse (Vorlage lunarEclipses, solarEclipses, renderEvents)', ()
     ['2027-02-20T23:13:01Z', 0.9476, '2027-02-21T00:35:45Z', '2027-02-21T01:10:45Z', false, -15.65],
     ['2027-08-17T07:14:13Z', 0.5721, '2027-08-17T05:22:03Z', '2027-08-17T09:02:03Z', true, 44.63],
     ['2028-01-12T04:13:22Z', 0.0732, '2028-01-12T03:43:57Z', '2028-01-12T04:38:57Z', true, 54.38],
-    ['2028-01-26T13:54:44Z', 0.2422, '2028-01-26T13:36:40Z', '2028-01-26T14:52:40Z', false, 3.26],
+    // Sonnenaufgang während der Finsternis: sichtbar ab Sonne über −0,833° (Oberrand) statt −0,5° wie in der
+    // Vorlage – eine 2-min-Probe früher (Astronomie-Prüfung 28.09.2026).
+    ['2028-01-26T13:54:44Z', 0.2422, '2028-01-26T13:34:39Z', '2028-01-26T14:52:40Z', false, 3.26],
     ['2029-01-14T16:49:10Z', 0.6011, '2029-01-14T15:22:46Z', '2029-01-14T18:22:46Z', true, 30.23],
     ['2031-11-14T22:18:24Z', 0.2075, '2031-11-14T21:29:43Z', '2031-11-14T23:01:43Z', true, 14.52],
   ];

@@ -8,7 +8,11 @@ import { canonicalInputJson } from '../canonical';
 import { EngineInputError } from '../astro/time';
 import { sha256hex } from '../hash/sha256';
 import { ENGINE_VERSION } from '../version';
-import { buildEligibility, type EligibilityLine } from '../visibility/eligibility';
+import {
+  buildEligibility,
+  type Eligibility,
+  type EligibilityLine,
+} from '../visibility/eligibility';
 import type { MoonProfile } from '../visibility/moon-safe';
 import { buildNightContext } from '../visibility/night-context';
 import { rotationWithinTolerance } from '../geometry/rotation';
@@ -155,6 +159,10 @@ export function planNight(input: PlanInput): NightPlan {
         panel.lines.filter((l) => participates(project, panel, l)).map((l) => ({ panel, line: l })),
       );
       const coords = g.target && split ? g.target : project;
+      // Mosaik ohne Panel-Einheiten (Prüfung 28.09.2026, Entscheidung Sven): Höhe, Dämmerung und Mondabstand
+      // je Panel mit dessen Koordinaten (geometry.md §2.2, A-19); die Einheit kann belichten, sobald eines
+      // ihrer Panels kann, `pick` wählt dann nur Panels, die selbst über der Mindesthöhe stehen.
+      const perPanel = !split && g.panels.length > 1;
       const asTarget = (c: { raDeg: number; decDeg: number }): Target => ({
         raJ2000Deg: c.raDeg,
         decJ2000Deg: c.decDeg,
@@ -172,31 +180,68 @@ export function planNight(input: PlanInput): NightPlan {
         id: line.id,
         moonProfile: engineProfile(line.moonProfileId),
       }));
-      const elig = buildEligibility(ctx, {
-        target: { raJ2000Deg: coords.raDeg, decJ2000Deg: coords.decDeg },
-        twilight: project.twilight,
-        minAltDeg: project.minAltitudeDeg,
-        startDate: project.startDate,
-        lines: eligibilityLines,
-      });
+      const eligFor = (c: { raDeg: number; decDeg: number }, ls: EligibilityLine[]) =>
+        buildEligibility(ctx, {
+          target: { raJ2000Deg: c.raDeg, decJ2000Deg: c.decDeg },
+          twilight: project.twilight,
+          minAltDeg: project.minAltitudeDeg,
+          startDate: project.startDate,
+          lines: ls,
+        });
+      const panelElig = perPanel
+        ? new Map(
+            g.panels.map((panel) => {
+              const own = new Set(lines.filter((x) => x.panel === panel).map((x) => x.line.id));
+              return [
+                panel.index,
+                eligFor(
+                  panel,
+                  eligibilityLines.filter((l) => own.has(l.id)),
+                ),
+              ];
+            }),
+          )
+        : null;
+      const elig = panelElig
+        ? combineEligibility([...panelElig.values()])
+        : eligFor(coords, eligibilityLines);
       const safeOf = new Map(elig.lines.map((l) => [l.id, l.safe]));
-      const gridPanels = g.panels.map((panel) => ({
-        index: panel.index,
-        lines: lines
-          .filter((x) => x.panel === panel)
-          .map(({ line }): GridLine => ({
-            id: line.id,
-            filter: line.filter,
-            exposureS: line.exposureS,
-            planned: line.planned,
-            accepted: line.accepted + line.pending,
-            enabled: line.enabled,
-            moonProfile: line.moonProfileId,
-            safe: maskToRanges(
-              (safeOf.get(line.id) ?? []).map((ok, s) => ok && ctx.moonDown[s] !== true),
-            ),
-          })),
-      }));
+      const gridPanels = g.panels.map((panel) => {
+        const pe = panelElig?.get(panel.index);
+        return {
+          index: panel.index,
+          ...(pe
+            ? {
+                canImage: maskToRanges(pe.canImage),
+                peakAltDeg: pe.peakAltDeg ?? 0,
+                meridianAtS: (() => {
+                  const tm = meridianTransitUtc(
+                    { raJ2000Deg: panel.raDeg, decJ2000Deg: panel.decDeg },
+                    site,
+                    w0,
+                    wEnd,
+                    'upper',
+                  );
+                  return tm === null ? null : rel(tm);
+                })(),
+              }
+            : {}),
+          lines: lines
+            .filter((x) => x.panel === panel)
+            .map(({ line }): GridLine => ({
+              id: line.id,
+              filter: line.filter,
+              exposureS: line.exposureS,
+              planned: line.planned,
+              accepted: line.accepted + line.pending,
+              enabled: line.enabled,
+              moonProfile: line.moonProfileId,
+              safe: maskToRanges(
+                (safeOf.get(line.id) ?? []).map((ok, s) => ok && ctx.moonDown[s] !== true),
+              ),
+            })),
+        };
+      });
       const transit = project.transit
         ? {
             windowS: [
@@ -529,4 +574,43 @@ export function planNight(input: PlanInput): NightPlan {
   const { inputHash: _ih, ...hashed } = plan;
   void _ih;
   return { ...plan, outputHash: `sha256:${sha256hex(canonicalInputJson(hashed))}` };
+}
+
+/**
+ * Sichtbarkeit einer Mosaik-Einheit aus den Panels (Prüfung 28.09.2026): belichtbar, sobald ein Panel es ist;
+ * Zeilen-Masken je Panel unverändert; höchste Höhe über alle Panels; `never` nur, wenn kein Panel je aufgeht.
+ */
+function combineEligibility(list: readonly Eligibility[]): Eligibility {
+  const first = list[0];
+  if (!first) throw new EngineInputError('engine.input_invalid', 'Mosaik ohne Panels');
+  const canImage = first.canImage.map((_, s) => list.some((e) => e.canImage[s] === true));
+  let longest = 0;
+  let run = 0;
+  let firstUsable: number | null = null;
+  let lastUsable: number | null = null;
+  canImage.forEach((ok, s) => {
+    if (ok) {
+      run += 1;
+      longest = Math.max(longest, run);
+      firstUsable ??= s;
+      lastUsable = s;
+    } else run = 0;
+  });
+  const peaks = list.map((e) => e.peakAltDeg).filter((p): p is number => p !== null);
+  const visibility = list.some((e) => e.visibility === 'circumpolar')
+    ? 'circumpolar'
+    : list.some((e) => e.visibility === 'normal')
+      ? 'normal'
+      : 'never';
+  return {
+    visibility,
+    targetAltDeg: first.targetAltDeg,
+    canImage,
+    lines: list.flatMap((e) => e.lines),
+    usableSlots: canImage.filter(Boolean).length,
+    longestRunSlots: longest,
+    firstUsableSlot: firstUsable,
+    lastUsableSlot: lastUsable,
+    peakAltDeg: peaks.length > 0 ? Math.max(...peaks) : null,
+  };
 }
