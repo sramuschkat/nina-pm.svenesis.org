@@ -29,6 +29,15 @@ function canImage(m: Matrix, r: Row | number, s: number): boolean {
   return row?.profile.canImage[s] === true;
 }
 
+/**
+ * Stufe `t` darf in Slot `s` belichten (§3.4): Stufe 0 immer, Mond unten immer, sonst `tierSafe`. Mosaik
+ * ohne Panel-Einheiten mit Masken je Panel: nur `tierSafe`, das die Sichtbarkeit der Panels enthält (A-19).
+ */
+function tierOk(m: Matrix, row: Row, t: number, s: number): boolean {
+  if (row.profile.perPanel) return row.profile.tierSafe[t]?.[s] === true;
+  return t === 0 || m.moonDown[s] === true || row.profile.tierSafe[t]?.[s] === true;
+}
+
 /** Produktiv `UsableSlot` (A-6), Kompatibilität `CanImage`. */
 function imageable(m: Matrix, row: Row, s: number): boolean {
   return m.setup.switches.usableSlotPasses ? row.usable[s] === true : canImage(m, row, s);
@@ -135,8 +144,14 @@ function preClaimTransits(m: Matrix): void {
         (a.profile.transit?.lockedAtS ?? 0) - (b.profile.transit?.lockedAtS ?? 0) ||
         a.index - b.index,
     );
-  const lockedByTransit = (s: number) =>
-    m.locked[s] === true && m.rows[m.assignment[s] ?? -1]?.profile.transit != null;
+  // Neuplanung (§5.3): vergangene Slots sind erledigt – die eigenen der laufenden Transit-Einheit
+  // (Vorlauf, begonnene Serie) und die eines schon vergangenen Transits sind kein Konflikt (A-20).
+  const pastEnd = m.setup.past?.startSlot ?? 0;
+  const lockedByTransit = (s: number, own: number) =>
+    s >= pastEnd &&
+    m.locked[s] === true &&
+    m.assignment[s] !== own &&
+    m.rows[m.assignment[s] ?? -1]?.profile.transit != null;
   for (const row of transitRows) {
     const t = row.profile.transit;
     if (!t) continue;
@@ -147,7 +162,7 @@ function preClaimTransits(m: Matrix): void {
       if (mid < t.startS) continue;
       if (mid >= t.endS) break;
       // Produktiv: jedes Überlappen mit einem schon gesperrten Transit ist ein Konflikt (A-20, ENG-14).
-      if (sw.transitByLockedAt && lockedByTransit(s)) conflict = true;
+      if (sw.transitByLockedAt && lockedByTransit(s, row.index)) conflict = true;
       if (!canImage(m, row, s)) continue;
       if (m.assignment[s] !== -1) continue; // Kompatibilität: früheres Fenster gewinnt den Slot
       claim.push(s);
@@ -162,7 +177,7 @@ function preClaimTransits(m: Matrix): void {
         const a = s * SLOT_S;
         if (a + SLOT_S <= from || a >= seriesStart) continue;
         if (m.assignment[s] !== -1) {
-          if (lockedByTransit(s)) conflict = true;
+          if (lockedByTransit(s, row.index)) conflict = true;
           continue;
         }
         lead.push(s);
@@ -219,7 +234,7 @@ function prefilterGreedy(m: Matrix): void {
       let safe = 0;
       for (let s = 0; s < m.slots; s++) {
         if (!canImage(m, row, s)) continue;
-        if (t === 0 || m.moonDown[s] || row.profile.tierSafe[t]?.[s] === true) safe++;
+        if (tierOk(m, row, t, s)) safe++;
       }
       accessible += Math.min(row.tierWorkSec[t] ?? 0, safe * 300.0);
     }
@@ -1169,6 +1184,7 @@ function paintGreedy(m: Matrix): void {
       let budget = row.tierWorkSec[t] ?? 0;
       for (let s = 0; s < m.slots && budget > 0; s++) {
         if (!m.moonDown[s] || m.assignment[s] !== -1 || !canImage(m, row, s)) continue;
+        if (!tierOk(m, row, t, s)) continue;
         m.assignment[s] = ri;
         m.hint[s] = 'la';
         row.tierWorkSec[t] = Math.max(0, (row.tierWorkSec[t] ?? 0) - 300.0);
@@ -1182,12 +1198,12 @@ function paintGreedy(m: Matrix): void {
       let best = -1;
       for (let t = row.tierWorkSec.length - 1; t >= 1; t--) {
         if ((row.tierWorkSec[t] ?? 0) <= 0) continue;
-        if (m.moonDown[s] || row.profile.tierSafe[t]?.[s] === true) {
+        if (tierOk(m, row, t, s)) {
           best = t;
           break;
         }
       }
-      if (best < 0 && row.tierWorkSec.length > 0 && (row.tierWorkSec[0] ?? 0) > 0) best = 0;
+      if (best < 0 && (row.tierWorkSec[0] ?? 0) > 0 && tierOk(m, row, 0, s)) best = 0;
       if (best < 0) continue;
       m.assignment[s] = ri;
       m.hint[s] = best > 0 ? (m.moonDown[s] ? 'la' : 'nonLa') : 'any';
