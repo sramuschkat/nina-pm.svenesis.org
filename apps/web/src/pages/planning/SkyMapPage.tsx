@@ -26,6 +26,8 @@ import {
   type DsoView,
   type ProjectListItem,
   type RigView,
+  type SiteNightsView,
+  type SiteView,
 } from '../../api/client';
 import { useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
@@ -618,34 +620,6 @@ export function SkyMapPage() {
     enabled: site !== null,
     staleTime: 60 * 60_000,
   });
-  const chart = useMemo(() => {
-    if (!site || !nights.data) return null;
-    try {
-      return nightChartFromEngine({
-        site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
-        night: nightKey,
-        timeZoneTransitions: nights.data.timeZoneTransitions.map((z) => ({
-          atUtc: Date.parse(z.atUtc) / 1000,
-          utcOffsetMinutes: z.utcOffsetMinutes,
-        })),
-        timeZone: site.timeZone,
-        targets: [
-          {
-            id: 'frame',
-            label: t('skymap.time.target'),
-            color: 'var(--npm-chart-target)',
-            target: { raJ2000Deg: state.fra, decJ2000Deg: state.fdec },
-          },
-        ],
-        minAltDeg: DEFAULT_MIN_ALT,
-        twilight: 'astronomical',
-        transitLabel: t('projectEditor.charts.meridian'),
-      }).props;
-    } catch {
-      return null;
-    }
-  }, [site, nights.data, nightKey, state.fra, state.fdec, t]);
-
   const parts = zonedParts(time, zone);
   const shift = (sec: number) => {
     setPlaying(false);
@@ -900,6 +874,25 @@ export function SkyMapPage() {
                   onClose={() => setSelected(null)}
                   onCenter={centerOn}
                   onMoveFrame={(ra, dec) => update({ fra: ra, fdec: dec })}
+                  charts={(target) =>
+                    site ? (
+                      <InfoCharts
+                        site={site}
+                        nights={nights.data ?? null}
+                        nightsError={nights.isError}
+                        onRetry={() => void nights.refetch()}
+                        nightKey={nightKey}
+                        target={target}
+                        time={time}
+                        tab={chartTab}
+                        onTab={setChartTab}
+                        onTime={(at) => {
+                          setPlaying(false);
+                          update({ t: at });
+                        }}
+                      />
+                    ) : null
+                  }
                 />
               </div>
             ) : null}
@@ -1011,90 +1004,6 @@ export function SkyMapPage() {
           </section>
         </div>
 
-        {/* Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte in voller Breite (AP-26i). */}
-        <section className={styles.below} aria-label={t('skymap.side.object')}>
-          <div className={styles.belowObject}>
-            {selected ? null : <p className={styles.muted}>{t('skymap.side.noSelection')}</p>}
-            <Section title={t('skymap.side.frameCenter')}>
-              <div className={styles.coords}>
-                <CoordinateInput
-                  kind="ra"
-                  label={t('skymap.ra')}
-                  valueDeg={state.fra}
-                  onChange={(v) => v !== null && update({ fra: v, ra: v })}
-                />
-                <CoordinateInput
-                  kind="dec"
-                  label={t('skymap.dec')}
-                  valueDeg={state.fdec}
-                  onChange={(v) => v !== null && update({ fdec: v, dec: v })}
-                />
-              </div>
-            </Section>
-          </div>
-          <div className={styles.belowChart}>
-            {site ? (
-              // Höhen- und Saisondiagramm des aktuellen Objekts als Reiter (AP-26j): das gewählte Objekt,
-              // sonst die Mitte des Bildfelds.
-              <Tabs<'altitude' | 'season'>
-                label={t('skymap.chartsLabel')}
-                value={chartTab}
-                onChange={setChartTab}
-                tabs={[
-                  { key: 'altitude', label: t('nightChart.tabs.altitude') },
-                  { key: 'season', label: t('nightChart.tabs.season') },
-                ]}
-                toolbar={
-                  <span className={styles.muted}>
-                    {chartTab === 'altitude'
-                      ? `${t('skymap.time.timeline')} · ${formatNightKey(nightKey)}`
-                      : selected?.kind === 'dso'
-                        ? selected.item.displayName
-                        : t('skymap.side.frameCenter')}
-                  </span>
-                }
-                panelClassName={styles.chartPanel}
-                panels={{
-                  altitude: chart ? (
-                    <NightChart
-                      {...chart}
-                      bands={false}
-                      crop={false}
-                      height={180}
-                      cursorUtc={time}
-                      onCursorChange={(at) => {
-                        setPlaying(false);
-                        update({ t: at });
-                      }}
-                    />
-                  ) : (
-                    <NightChart
-                      window={null}
-                      timeZone={zone}
-                      state={nights.isError ? 'error' : 'loading'}
-                      onRetry={() => void nights.refetch()}
-                    />
-                  ),
-                  season: (
-                    <SeasonPanel
-                      site={site}
-                      target={
-                        selected?.kind === 'dso'
-                          ? { raDeg: selected.item.raDeg, decDeg: selected.item.decDeg }
-                          : { raDeg: state.fra, decDeg: state.fdec }
-                      }
-                      conditions={{
-                        minAltitudeDeg: DEFAULT_MIN_ALT,
-                        minTimeOnTargetH: 1,
-                        twilight: 'astronomical',
-                      }}
-                    />
-                  ),
-                }}
-              />
-            ) : null}
-          </div>
-        </section>
         <ConfirmDialog
           open={confirmApply}
           title={t('skymap.applyConfirmTitle', { name: project.data?.name ?? '' })}
@@ -1140,6 +1049,24 @@ export function SkyMapPage() {
               panels={{
                 field: (
                   <>
+                    {/* Bildfeldmitte im Seitenbereich; Höhen- und Saisondiagramm stehen seit 28.09.2026 in der
+                        Infokarte des gewählten Objekts über der Karte. */}
+                    <Section title={t('skymap.side.frameCenter')}>
+                      <div className={styles.coords}>
+                        <CoordinateInput
+                          kind="ra"
+                          label={t('skymap.ra')}
+                          valueDeg={state.fra}
+                          onChange={(v) => v !== null && update({ fra: v, ra: v })}
+                        />
+                        <CoordinateInput
+                          kind="dec"
+                          label={t('skymap.dec')}
+                          valueDeg={state.fdec}
+                          onChange={(v) => v !== null && update({ fdec: v, dec: v })}
+                        />
+                      </div>
+                    </Section>
                     <Section title={t('skymap.section.equipment')}>
                       <dl className={styles.facts}>
                         <dt>{t('skymap.site')}</dt>
@@ -1641,6 +1568,7 @@ function InfoCard({
   onClose,
   onCenter,
   onMoveFrame,
+  charts,
 }: {
   selected: NonNullable<Selected>;
   rigId: string | null;
@@ -1651,6 +1579,8 @@ function InfoCard({
   onClose: () => void;
   onCenter: (v: sky.Vec3) => void;
   onMoveFrame: (ra: number, dec: number) => void;
+  /** Höhen- und Saisondiagramm des Objekts als Reiter (Wunsch Sven 28.09.2026). */
+  charts: (target: { raDeg: number; decDeg: number; label: string }) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'de';
@@ -1684,6 +1614,9 @@ function InfoCard({
             {t('skymap.info.openProject')}
           </Link>
         </div>
+        {p.raDeg !== null && p.decDeg !== null
+          ? charts({ raDeg: p.raDeg, decDeg: p.decDeg, label: p.name })
+          : null}
       </section>
     );
   }
@@ -1834,6 +1767,116 @@ function InfoCard({
           </Link>
         ) : null}
       </div>
+      {/* Sonne und Mond wandern in der Nacht zu weit für eine feste Zielkurve; der Mond steht ohnehin im
+          Diagramm. */}
+      {selected.kind === 'body' && (selected.id === 'sun' || selected.id === 'moon')
+        ? null
+        : charts({ raDeg: rd.raDeg, decDeg: rd.decDeg, label: title })}
     </section>
+  );
+}
+
+/**
+ * Höhen- und Saisondiagramm des gewählten Objekts als Reiter in der Infokarte (Wunsch Sven 28.09.2026; vorher
+ * unter der Karte, AP-26j). Klick ins Höhendiagramm stellt die Uhrzeit der Karte.
+ */
+function InfoCharts({
+  site,
+  nights,
+  nightsError,
+  onRetry,
+  nightKey,
+  target,
+  time,
+  tab,
+  onTab,
+  onTime,
+}: {
+  site: SiteView;
+  nights: SiteNightsView | null;
+  nightsError: boolean;
+  onRetry: () => void;
+  nightKey: string;
+  target: { raDeg: number; decDeg: number; label: string };
+  time: number;
+  tab: 'altitude' | 'season';
+  onTab: (t: 'altitude' | 'season') => void;
+  onTime: (at: number) => void;
+}) {
+  const { t } = useTranslation();
+  const { raDeg, decDeg, label } = target;
+  const chart = useMemo(() => {
+    if (!nights) return null;
+    try {
+      return nightChartFromEngine({
+        site: { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg },
+        night: nightKey,
+        timeZoneTransitions: nights.timeZoneTransitions.map((z) => ({
+          atUtc: Date.parse(z.atUtc) / 1000,
+          utcOffsetMinutes: z.utcOffsetMinutes,
+        })),
+        timeZone: site.timeZone,
+        targets: [
+          {
+            id: 'object',
+            label,
+            color: 'var(--npm-chart-target)',
+            target: { raJ2000Deg: raDeg, decJ2000Deg: decDeg },
+          },
+        ],
+        minAltDeg: DEFAULT_MIN_ALT,
+        twilight: 'astronomical',
+        transitLabel: t('projectEditor.charts.meridian'),
+      }).props;
+    } catch {
+      return null;
+    }
+  }, [site, nights, nightKey, raDeg, decDeg, label, t]);
+  return (
+    <Tabs<'altitude' | 'season'>
+      label={t('skymap.chartsLabel')}
+      value={tab}
+      onChange={onTab}
+      tabs={[
+        { key: 'altitude', label: t('nightChart.tabs.altitude') },
+        { key: 'season', label: t('nightChart.tabs.season') },
+      ]}
+      toolbar={
+        tab === 'altitude' ? (
+          <span className={styles.muted}>{formatNightKey(nightKey)}</span>
+        ) : undefined
+      }
+      panelClassName={styles.chartPanel}
+      panels={{
+        altitude: chart ? (
+          <NightChart
+            {...chart}
+            bands={false}
+            crop={false}
+            height={160}
+            cursorUtc={time}
+            onCursorChange={onTime}
+          />
+        ) : (
+          <NightChart
+            window={null}
+            timeZone={site.timeZone}
+            state={nightsError ? 'error' : 'loading'}
+            onRetry={onRetry}
+          />
+        ),
+        season: (
+          <SeasonPanel
+            site={site}
+            target={{ raDeg, decDeg }}
+            conditions={{
+              minAltitudeDeg: DEFAULT_MIN_ALT,
+              minTimeOnTargetH: 1,
+              twilight: 'astronomical',
+            }}
+          />
+        ),
+      }}
+    />
   );
 }

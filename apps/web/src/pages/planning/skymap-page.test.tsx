@@ -172,7 +172,7 @@ beforeEach(() => {
 });
 
 describe('S-20 Sternkarte', () => {
-  it('Karte zuerst (AP-26f/26i): Werkzeugleiste, Objekt unter der Karte, Seitenbereich einklappbar; Karte als Bild', async () => {
+  it('Karte zuerst (AP-26f/26i): Werkzeugleiste, Seitenbereich mit Bildfeldmitte, einklappbar; Karte als Bild', async () => {
     renderPage();
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Sternkarte' }),
@@ -184,18 +184,15 @@ describe('S-20 Sternkarte', () => {
     expect(within(context).getByLabelText('Uhrzeit')).toBeInTheDocument();
     expect(within(context).getByRole('button', { name: 'Jetzt' })).toBeInTheDocument();
     expect(within(toolbar).queryByLabelText('Uhrzeit')).toBeNull();
-    // AP-26i: Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte; rechts nur Bildfeld & Ebenen.
-    const below = screen.getByRole('region', { name: 'Gewähltes Objekt und Nacht' });
-    expect(
-      within(below).getByRole('heading', { level: 2, name: 'Mitte des Bildfelds' }),
-    ).toBeVisible();
+    // Seit 28.09.2026 nichts mehr unter der Karte: Bildfeldmitte im Seitenbereich, Diagramme in der Infokarte.
+    expect(screen.queryByRole('region', { name: 'Gewähltes Objekt und Nacht' })).toBeNull();
     const side = screen.getByRole('complementary', { name: 'Bildfeld, Mosaik und Ebenen' });
     expect(
       within(side)
         .getAllByRole('tab')
         .map((x) => x.textContent),
     ).toEqual(['Bildfeld & Mosaik', 'Ebenen']);
-    for (const name of ['Ausrüstung', 'Bildfeld', 'Mosaik'])
+    for (const name of ['Mitte des Bildfelds', 'Ausrüstung', 'Bildfeld', 'Mosaik'])
       expect(within(side).getByRole('heading', { level: 2, name })).toBeInTheDocument();
     // Einklappen: der Seitenbereich nimmt keine Breite mehr, der Knopf holt ihn zurück.
     fireEvent.click(within(side).getByRole('button', { name: 'Seitenbereich einklappen' }));
@@ -298,8 +295,18 @@ describe('S-20 Sternkarte', () => {
     await screen.findByRole('option', { name: /M 42/ });
     fireEvent.keyDown(box, { key: 'Enter' });
     const link = await screen.findByRole('link', { name: 'Neues Projekt mit M 42' });
-    // Das gewählte Objekt steht unter der Karte (AP-26i).
-    expect(screen.getByRole('heading', { level: 2, name: 'M 42' })).toBeVisible();
+    // Infokarte über der Karte mit Höhen- und Saisondiagramm als Reiter (28.09.2026).
+    const card = screen.getByRole('region', { name: 'M 42' });
+    expect(
+      within(card)
+        .getAllByRole('tab')
+        .map((x) => x.textContent),
+    ).toEqual(['Höhendiagramm', 'Saisondiagramm']);
+    fireEvent.click(within(card).getByRole('tab', { name: 'Saisondiagramm' }));
+    expect(within(card).getByRole('tab', { name: 'Saisondiagramm' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     await waitFor(() =>
       expect(new URLSearchParams(link.getAttribute('href')?.split('?')[1]).get('objekt')).toBe(
         'NGC 1976',

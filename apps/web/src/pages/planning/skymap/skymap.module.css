@@ -86,9 +86,10 @@
   max-width: 22rem;
   min-width: 0;
 }
+/* RA und Dec nebeneinander, im schmalen Seitenbereich untereinander (Felder brauchen je 10rem). */
 .coords {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--npm-space-2);
 }
 .field {
@@ -145,9 +146,8 @@
 .main[data-side='closed'] {
   grid-template-columns: minmax(0, 1fr) auto;
 }
-/* Feste Plätze (AP-26k): Karte links oben, Seitenbereich rechts daneben, Objekt und Nacht darunter über
-   die volle Breite – unabhängig von der Reihenfolge im Dokument (die automatische Platzierung hatte den
-   Seitenbereich hinter den Objektbereich in eine eigene Zeile geschoben). */
+/* Feste Plätze (AP-26k): Karte links, Seitenbereich rechts daneben – unabhängig von der Reihenfolge im
+   Dokument. Objekt und Diagramme stehen seit 28.09.2026 in der Infokarte über der Karte. */
 .main > .map {
   grid-column: 1;
   grid-row: 1;
@@ -155,10 +155,6 @@
 .main > .side {
   grid-column: 2;
   grid-row: 1;
-}
-.main > .below {
-  grid-column: 1 / -1;
-  grid-row: 2;
 }
 .main:fullscreen {
   padding: var(--npm-space-3);
@@ -269,13 +265,15 @@
   border-top: 1px solid var(--npm-border);
 }
 /* Infokarte des gewählten Objekts über der Karte unten rechts – auch im Vollbild (Vorlage `#op-sm-info`). */
+/* Mit Höhen- und Saisondiagramm (28.09.2026) breiter und höher; rechts bleibt die Knopfleiste frei, oben
+   die Uhrzeit. */
 .infoOverlay {
   position: absolute;
-  right: var(--npm-space-2);
+  right: calc(2.2rem + 3 * var(--npm-space-2));
   bottom: var(--npm-space-2);
   z-index: 3;
-  width: min(26rem, calc(100% - 2 * var(--npm-space-2)));
-  max-height: 70%;
+  width: min(30rem, calc(100% - 2.2rem - 5 * var(--npm-space-2)));
+  max-height: calc(100% - 5rem);
   overflow: auto;
   padding: var(--npm-space-3);
   border: 1px solid var(--npm-border);
@@ -373,6 +371,7 @@
 }
 .info {
   display: flex;
+  min-height: 0;
   flex-direction: column;
   gap: var(--npm-space-2);
   min-width: 0;
@@ -497,35 +496,6 @@
 /* Die Reiterleiste lässt rechts Platz für den Knopf. */
 .side [role='tablist'] {
   padding-right: 40px;
-}
-/* Gewähltes Objekt, Bildfeldmitte und Nachtdiagramm unter der Karte in voller Breite (AP-26i). */
-.below {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: minmax(16rem, 24rem) minmax(0, 1fr);
-  gap: var(--npm-space-4);
-  padding: var(--npm-space-3) var(--npm-space-4);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius-card);
-  background: var(--npm-white);
-  box-shadow: var(--npm-shadow);
-}
-@media (max-width: 1279px) {
-  .below {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-.belowObject,
-.belowChart {
-  display: flex;
-  flex-direction: column;
-  gap: var(--npm-space-3);
-  min-width: 0;
-}
-.below .section:first-child,
-.belowChart > .section {
-  padding-top: 0;
-  border-top: 0;
 }
 .chartPanel {
   padding-top: var(--npm-space-2);
