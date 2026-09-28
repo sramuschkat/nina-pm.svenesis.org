@@ -86,9 +86,10 @@
   max-width: 22rem;
   min-width: 0;
 }
+/* RA und Dec nebeneinander, im schmalen Seitenbereich untereinander (Felder brauchen je 10rem). */
 .coords {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: var(--npm-space-2);
 }
 .field {
