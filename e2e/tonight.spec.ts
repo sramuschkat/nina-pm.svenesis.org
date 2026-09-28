@@ -3,8 +3,9 @@
  * Standort `America/Chicago`: am 18.09.2026 um 09:00, 16:00 und 20:00 MESZ zeigt „Heute Nacht“ die Nächte
  * 17./18., 18./19. und 18./19.09. (rules/ui.md, NT-01). Die Serveruhr stellt das Cookie `npm_test_now` je
  * Anfrage (nur `AUTH_TEST_MODE`), die Browseruhr `page.clock` – die Nacht kommt trotzdem nur vom Server.
- * Zuerst wird das Rig gewählt (Umbau 27.09.2026): Auswahl per Liste, Rig in der URL; darunter „Mond und
- * Dunkelheit“, Plan, „Nacht im Detail“, „Mond & Planeten“. Dazu axe hell/dunkel und 768/2400 px ohne
+ * Zuerst wird das Rig gewählt (Umbau 27./28.09.2026): Auswahl per Liste, Rig in der URL; darunter
+ * Einschätzung, Kennzahlen, Zeitleiste der Nacht, Plan, Ereignisse, Mond & Planeten kurz und eingeklappt
+ * „Nacht im Detail“ und die Sichtbarkeit von Mond & Planeten. Dazu axe hell/dunkel und 768/2400 px ohne
  * horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -85,14 +86,15 @@ test('NT-01: 09:00/16:00/20:00 MESZ am 18.09.2026 → 17./18., 18./19., 18./19.0
     await expect(context.getByRole('combobox', { name: 'Rig wählen' })).toContainText(rigName);
     await expect(context, at).toContainText(`Nacht ${night}`);
     // Uhrzeiten in Standortzeit mit Kürzel (NT-03), nie in der Browserzone.
-    await expect(page.getByRole('region', { name: 'Mond und Dunkelheit' })).toContainText(
-      'Zeiten in Standortzeit (CDT)',
-    );
+    // Rig-Zeit oben, darunter die Zeit des Users (Browserzone Europe/Berlin).
+    const timeline = page.getByRole('group', { name: 'Zeitleiste der Nacht' });
+    await expect(timeline).toContainText('Standort CDT');
+    await expect(timeline).toContainText('Bei dir MESZ');
   }
   await page.context().clearCookies({ name: 'npm_test_now' });
 });
 
-test('S-02: Rig zuerst wählen, dann Mond und Dunkelheit, Nacht im Detail, Mond & Planeten', async ({
+test('S-02: Rig zuerst wählen, dann Kennzahlen, Zeitleiste, Plan, Ereignisse; Details eingeklappt', async ({
   page,
 }) => {
   await testLogin(page, 'owner');
@@ -103,10 +105,21 @@ test('S-02: Rig zuerst wählen, dann Mond und Dunkelheit, Nacht im Detail, Mond 
   await page.getByRole('option', { name: new RegExp(rigName) }).click();
   await expect(page).toHaveURL(new RegExp(`rig=${rigId}`));
   await expect(context).toContainText(`E2E-Heute`);
-  await expect(page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: 'Nacht im Detail' })).toBeVisible();
+  await expect(
+    page.getByRole('list', { name: 'Kennzahlen der Nacht' }).getByRole('listitem'),
+  ).toHaveCount(4);
+  const timeline = page.getByRole('group', { name: 'Zeitleiste der Nacht' });
+  for (const lane of ['Himmel', 'Wetter', 'Mond', 'Plan', 'Ereignisse'])
+    await expect(timeline.getByText(lane, { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Plan für diese Nacht' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'Mond & Planeten' })).toBeVisible();
+  // Eingeklappt: erst beim Aufklappen sichtbar.
+  await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toHaveCount(
+    0,
+  );
+  await page.getByText('Mond und Planeten – Sichtbarkeit').click();
   await expect(page.getByRole('img', { name: /Sichtbarkeit von Mond und Planeten/ })).toBeVisible();
+  await page.getByText('Nacht im Detail').click();
   const events = page.locator('section').filter({
     has: page.getByRole('heading', { level: 2, name: 'Ereignisse der Nacht' }),
   });

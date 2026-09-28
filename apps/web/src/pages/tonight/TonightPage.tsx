@@ -1,22 +1,20 @@
 /**
- * S-02 „Heute Nacht“ (FK 14.3; FA-FOL-06, FA-FOL-05; AP-35; Umbau Wunsch Sven 27.09.2026): zuerst das **Rig**
- * wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts (`GET /web/v1/tonight`,
- * vom Server nach NT-01 bestimmt – nie aus dem Browserdatum):
- * 1. „Mond und Dunkelheit“ (wie Objektbrowser und Sternkarte),
- * 2. der Plan des Rigs: NINA-Instanzen, Safety-Link, geplante Projekte mit erwarteten Frames (Prognose,
- *    AP-33), Zeilen „nur heute aus“ (Admin) – Dunkelheit, Mond und Wetter stehen in den Abschnitten 1 und 3
- *    und sind hier nicht doppelt (Wunsch Sven 27.09.2026),
- * 3. „Nacht im Detail“ (Stundentabelle aus Astro-Wetter, AP-23),
- * 4. „Mond & Planeten“ (Vorlage Beobachtungsplaner),
- * 5. „Ereignisse der Nacht“ (Überflüge, Meteorströme, Milchstraßenzentrum, Finsternisse; Vorlage
- *    Beobachtungsplaner, Bahndaten täglich vom `worker`).
- * Ungeprüfte Sessions und offene Warteschlange stehen nicht mehr hier (Sessions bzw. Projekte). Alle Zeiten in
- * Standortzeit mit Kürzel (NT-03).
+ * S-02 „Heute Nacht“ (FK 14.3; FA-FOL-06, FA-FOL-05; AP-35; Umbau 27./28.09.2026 nach Entwurf Sven): zuerst das
+ * **Rig** wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts
+ * (`GET /web/v1/tonight`, vom Server nach NT-01 – nie aus dem Browserdatum):
+ * 1. Kopf mit Einschätzung und Countdown,
+ * 2. vier Kennzahlen (Dunkel, Mond, Wetter, Plan/NINA) – die Zahlen stehen nur hier,
+ * 3. Zeitleiste der Nacht auf einer Achse: Himmel, Wetter, Mond, Plan (Simulation im Browser wie der
+ *    Simulator: Projektblöcke, Flips, Flats), Filter, Ereignisse; rote Linie „jetzt“,
+ * 4. zwei Spalten: links der Plan (geplante Projekte aus der Prognose, „nur heute aus“, Safety-Link),
+ *    rechts „Ereignisse der Nacht“ und Mond & Planeten kurz,
+ * 5. eingeklappt: „Nacht im Detail“ (Stundentabelle Astro-Wetter) und die Sichtbarkeit von Mond & Planeten.
+ * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
-import { sky } from '@nina-pm/engine';
+import { sky as skyNs } from '@nina-pm/engine';
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { forecastApi, tonightApi, type SiteView, type TonightRig } from '../../api/client';
@@ -27,16 +25,16 @@ import { NightEvents } from '../../components/night-events';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
-import { SiteTime } from '../../components/SiteTime';
 import { WeatherChart } from '../../components/WeatherChart';
 import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
-import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
+import { useNightPlan } from '../simulator/use-night-plan';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
+import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
 import styles from './tonight.module.css';
 import { TonightLines } from './TonightLines';
-import { useSkySatellites } from './sky-satellites';
+import { KpiTiles, TonightTimeline, Verdict } from './TonightOverview';
 
 export const TONIGHT_PATH = '/heute-nacht';
 export const TONIGHT_KEY = ['tonight'] as const;
@@ -44,19 +42,17 @@ export const TONIGHT_KEY = ['tonight'] as const;
 export function TonightPage() {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
+  const now = Math.floor(useNow().getTime() / 1000);
   const tonight = useQuery({
     queryKey: TONIGHT_KEY,
     queryFn: () => tonightApi.get(),
     // Die aktuelle Nacht wechselt am Ende des Nachtfensters; NINA meldet sich laufend.
     refetchInterval: 5 * 60_000,
   });
-  const filters = useEquipmentList('filters');
   const equipmentRigs = useEquipmentList('rigs');
   const sites = useEquipmentList('sites');
   const telescopes = useEquipmentList('telescopes');
   const cameras = useEquipmentList('cameras');
-  const colorOf = (short: string) =>
-    (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
   const rigs = tonight.data?.rigs ?? [];
   const rigOptions: RigOption[] = rigs.map((r) => {
     const e = (equipmentRigs.data ?? []).find((x) => x.id === r.rigId);
@@ -112,129 +108,104 @@ export function TonightPage() {
             <span className={styles.muted}>
               {rig.siteName} · {t('tonight.night', { night: formatNightKey(rig.night) })}
             </span>
+            <Verdict rig={rig} nowUtc={now} />
           </section>
-          {site ? (
-            <section className={styles.card} aria-label={t('moonDark.title')}>
-              <div className={styles.cardBody}>
-                <SiteMoonDarkness site={site} night={rig.night} current={rig.night} />
-              </div>
-            </section>
-          ) : null}
-          <RigCard key={rig.rigId} rig={rig} colorOf={colorOf} />
-          {site ? <NightDetail site={site} night={rig.night} /> : null}
-          {site ? <MoonAndPlanets site={site} rig={rig} /> : null}
-          {site ? <SkyEvents site={site} rig={rig} /> : null}
+          {site ? <Night key={rig.rigId} rig={rig} site={site} now={now} /> : null}
         </>
       )}
     </div>
   );
 }
 
-/** „Nacht im Detail“: Stundentabelle aus Astro-Wetter (AP-23) für die Nacht des Rigs, ← → wie auf der Wetterseite. */
+/** Alles unterhalb der Kontextleiste für das gewählte Rig. */
+function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: number }) {
+  const { t } = useTranslation();
+  const filters = useEquipmentList('filters');
+  const colorOf = (short: string) =>
+    (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
+  const sky = useNightSky(site, rig);
+  const plan = useNightPlan(rig.rigId, rig.night);
+  const timelineId = useId();
+  return (
+    <>
+      <KpiTiles rig={rig} sky={sky} plan={plan} />
+      <section className={styles.card} aria-labelledby={timelineId}>
+        <div className={styles.cardHead}>
+          <h2 id={timelineId} className={styles.cardTitle}>
+            {t('tonight.timeline')}
+          </h2>
+        </div>
+        <div className={styles.cardBody}>
+          <TonightTimeline rig={rig} sky={sky} plan={plan} nowUtc={now} />
+        </div>
+      </section>
+      <div className={styles.split}>
+        <RigCard rig={rig} colorOf={colorOf} />
+        <div className={styles.side}>
+          <SkyEvents site={site} sky={sky} />
+          <PlanetsShort sky={sky} timeZone={site.timeZone} />
+        </div>
+      </div>
+      <Fold title={t('tonight.detail')}>
+        <NightDetail site={site} night={rig.night} />
+      </Fold>
+      <Fold title={t('tonight.bodiesDetail')}>
+        <MoonAndPlanets site={site} sky={sky} now={now} />
+      </Fold>
+    </>
+  );
+}
+
+/** Eingeklappter Abschnitt (details/summary) – Diagramme für wer tiefer schauen will. */
+function Fold({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className={styles.fold} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className={styles.foldSummary}>{title}</summary>
+      {open ? <div className={styles.foldBody}>{children}</div> : null}
+    </details>
+  );
+}
+
+/** „Nacht im Detail“: Stundentabelle aus Astro-Wetter (AP-23), ← → wie auf der Wetterseite. */
 function NightDetail({ site, night }: { site: SiteView; night: string }) {
   const { t } = useTranslation();
-  const headingId = useId();
   const now = useNow();
   const weather = useSiteWeather(site.id);
   const [selected, setSelected] = useState<string | null>(null);
   const view = weather.data;
+  if (weather.isError)
+    return (
+      <ProblemMessage code={problemCode(weather.error)} onRetry={() => void weather.refetch()} />
+    );
+  if (!view)
+    return (
+      <p className={styles.muted} role="status">
+        {t('common.loading')}
+      </p>
+    );
+  if (view.status !== 'ready') return <p className={styles.muted}>{t('tonight.weatherNone')}</p>;
   return (
-    <section className={styles.card} aria-labelledby={headingId}>
-      <div className={styles.cardHead}>
-        <h2 id={headingId} className={styles.cardTitle}>
-          {t('tonight.detail')}
-        </h2>
-      </div>
-      <div className={styles.cardBody}>
-        {weather.isError ? (
-          <ProblemMessage
-            code={problemCode(weather.error)}
-            onRetry={() => void weather.refetch()}
-          />
-        ) : !view ? (
-          <p className={styles.muted} role="status">
-            {t('common.loading')}
-          </p>
-        ) : view.status !== 'ready' ? (
-          <p className={styles.muted}>{t('tonight.weatherNone')}</p>
-        ) : (
-          <WeatherChart
-            {...chartProps(view, now)}
-            detailOnly
-            selectedNight={selected ?? night}
-            onSelectNight={setSelected}
-          />
-        )}
-      </div>
-    </section>
+    <WeatherChart
+      {...chartProps(view, now)}
+      detailOnly
+      selectedNight={selected ?? night}
+      onSelectNight={setSelected}
+    />
   );
 }
 
-/**
- * „Mond & Planeten“ (Vorlage Beobachtungsplaner): Proben alle 10 min von einer Stunde vor Beginn bis eine Stunde
- * nach Ende des Nachtfensters (auf volle Stunden); Spalte „jetzt“ in der Nacht zur aktuellen Zeit, sonst 30 min
- * nach Beginn der Dunkelheit.
- */
-/** Fenster von „Mond & Planeten“ und „Ereignisse der Nacht“: eine Stunde vor bis eine Stunde nach dem Nachtfenster. */
-function eventWindow(rig: TonightRig): { from: number; to: number } | null {
-  if (!rig.nightWindow) return null;
-  const from = Date.parse(rig.nightWindow.startUtc) / 1000;
-  const to = Date.parse(rig.nightWindow.endUtc) / 1000;
-  return {
-    from: Math.floor((from - 3600) / 3600) * 3600,
-    to: Math.ceil((to + 3600) / 3600) * 3600,
-  };
-}
-
-/** Grenzgröße der Schätzung „Erwartet“ (Vorlage: Standard 6,0 mag). */
-const LIMITING_MAG = 6;
-
-/**
- * „Ereignisse der Nacht“: Überflüge (Bahndaten `catalog/sky/satellites.json`), Meteorströme, Zentrum der
- * Milchstraße und die nächsten Finsternisse – alles aus der Engine, Proben alle 10 min wie die Vorlage.
- */
-function SkyEvents({ site, rig }: { site: SiteView; rig: TonightRig }) {
+/** „Ereignisse der Nacht“ (rechte Spalte): Gruppen aufklappbar mit erster Zeile im Kopf. */
+function SkyEvents({ site, sky }: { site: SiteView; sky: NightSky }) {
   const { t, i18n } = useTranslation();
   const headingId = useId();
-  const satellites = useSkySatellites();
-  const geo = useMemo(
-    () => ({ latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }),
-    [site.latitudeDeg, site.longitudeDeg],
-  );
-  const win = eventWindow(rig);
-  const from = win?.from ?? null;
-  const to = win?.to ?? null;
-  const night = useMemo(() => {
-    if (from === null || to === null) return null;
-    const samples = sky.eventSamples(geo, from, to);
-    const galactic = sky.galacticCentre(samples, geo);
-    const mid = samples[Math.floor(samples.length / 2)];
-    return {
-      showers: sky.showersTonight(samples, geo).map((s) => ({
-        tonight: s,
-        rate: sky.meteorRate(s.shower, samples, geo, LIMITING_MAG),
-      })),
-      moonIllumPct: mid?.moonIllumPct ?? 0,
-      galactic,
-      season: galactic ? sky.galacticSeason(galactic.monthsHours) : null,
-      eclipses: sky.nextEclipses(geo, from),
-    };
-  }, [geo, from, to]);
-  const passes = useMemo(() => {
-    if (!satellites.data || from === null || to === null) return null;
-    return sky.satellitePassesForNight(satellites.data.satellites, from, to, {
-      ...geo,
-      elevationM: site.elevationM,
-    });
-  }, [satellites.data, geo, site.elevationM, from, to]);
-  const generated = satellites.data ? Date.parse(satellites.data.generated) : null;
   return (
     <section className={styles.card} aria-labelledby={headingId}>
       <div className={styles.cardHead}>
         <h2 id={headingId} className={styles.cardTitle}>
           {t('events.title')}
         </h2>
-        {generated !== null ? (
+        {sky.satellitesGenerated !== null ? (
           <span className={styles.muted}>
             {t('events.data', {
               date: new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
@@ -242,25 +213,25 @@ function SkyEvents({ site, rig }: { site: SiteView; rig: TonightRig }) {
                 month: '2-digit',
                 year: 'numeric',
                 timeZone: site.timeZone,
-              }).format(generated),
+              }).format(sky.satellitesGenerated),
             })}
           </span>
         ) : null}
       </div>
       <div className={styles.cardBody}>
-        {!night || from === null ? (
+        {!sky.window ? (
           <p className={styles.muted}>{t('tonight.noWindow')}</p>
         ) : (
           <NightEvents
             timeZone={site.timeZone}
-            nightUtc={from}
-            passes={passes}
-            showers={night.showers}
-            moonIllumPct={night.moonIllumPct}
+            nightUtc={sky.window.from}
+            passes={sky.passes}
+            showers={sky.showers}
+            moonIllumPct={sky.moonIllumPct}
             limitingMag={LIMITING_MAG}
-            galactic={night.galactic}
-            season={night.season}
-            eclipses={night.eclipses}
+            galactic={sky.galactic}
+            season={sky.season}
+            eclipses={sky.eclipses}
           />
         )}
       </div>
@@ -268,27 +239,19 @@ function SkyEvents({ site, rig }: { site: SiteView; rig: TonightRig }) {
   );
 }
 
-function MoonAndPlanets({ site, rig }: { site: SiteView; rig: TonightRig }) {
-  const { t } = useTranslation();
+/** Mond & Planeten kurz: je Körper, der nachts 10° erreicht, die beste Höhe mit Uhrzeit. */
+function PlanetsShort({ sky, timeZone }: { sky: NightSky; timeZone: string }) {
+  const { t, i18n } = useTranslation();
   const headingId = useId();
-  const now = Math.floor(useNow().getTime() / 1000);
-  const geo = useMemo(
-    () => ({ latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }),
-    [site.latitudeDeg, site.longitudeDeg],
-  );
-  const from = rig.nightWindow ? Date.parse(rig.nightWindow.startUtc) / 1000 : null;
-  const to = rig.nightWindow ? Date.parse(rig.nightWindow.endUtc) / 1000 : null;
-  const rows = useMemo(() => {
-    if (from === null || to === null) return [];
-    const start = Math.floor((from - 3600) / 3600) * 3600;
-    const end = Math.ceil((to + 3600) / 3600) * 3600;
-    return sky.nightBodySamples(geo, start, end);
-  }, [geo, from, to]);
-  const first = rows[0];
-  const last = rows[rows.length - 1];
-  const inNight = first !== undefined && last !== undefined && now >= first.t && now <= last.t;
-  const darkFrom = rig.dark ? Date.parse(rig.dark.fromUtc) / 1000 : (from ?? now);
-  const at = inNight ? now : Math.floor((darkFrom + 1800) / 300) * 300;
+  const n = (x: number) => x.toLocaleString(i18n.language, { maximumFractionDigits: 0 });
+  const clock = new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : 'de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  });
+  const best = skyNs.NIGHT_BODIES.map((id) => ({ id, b: skyNs.bestBodySample(sky.bodies, id) }))
+    .filter((x) => (x.b?.sample.altDeg ?? 0) >= 10)
+    .sort((a, b) => (b.b?.sample.altDeg ?? 0) - (a.b?.sample.altDeg ?? 0));
   return (
     <section className={styles.card} aria-labelledby={headingId}>
       <div className={styles.cardHead}>
@@ -297,22 +260,45 @@ function MoonAndPlanets({ site, rig }: { site: SiteView; rig: TonightRig }) {
         </h2>
       </div>
       <div className={styles.cardBody}>
-        {rows.length > 1 ? (
-          <NightBodies
-            rows={rows}
-            site={geo}
-            timeZone={site.timeZone}
-            atUtc={at}
-            atIsNow={inNight}
-          />
+        {best.length === 0 ? (
+          <p className={styles.muted}>{t('tonight.bodiesNone')}</p>
         ) : (
-          <p className={styles.muted}>{t('tonight.noWindow')}</p>
+          <ul className={styles.bodyList}>
+            {best.map(({ id, b }) => (
+              <li key={id} data-body={id}>
+                <span className={styles.bodyDot} aria-hidden />
+                <span>{t(`bodies.name.${id}`)}</span>
+                <span className={styles.muted}>
+                  {t('tonight.bodyBest', {
+                    alt: n(b?.sample.altDeg ?? 0),
+                    time: clock.format((b?.t ?? 0) * 1000),
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </section>
   );
 }
 
+/** Sichtbarkeit von Mond & Planeten (eingeklappt): Karten und Balken der Vorlage. */
+function MoonAndPlanets({ site, sky, now }: { site: SiteView; sky: NightSky; now: number }) {
+  const { t } = useTranslation();
+  const rows = sky.bodies;
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  if (!first || !last || rows.length < 2)
+    return <p className={styles.muted}>{t('tonight.noWindow')}</p>;
+  const inNight = now >= first.t && now <= last.t;
+  const at = inNight ? now : Math.floor((first.t + 3 * 3600) / 300) * 300;
+  return (
+    <NightBodies rows={rows} site={sky.geo} timeZone={site.timeZone} atUtc={at} atIsNow={inNight} />
+  );
+}
+
+/** Plan der Nacht: geplante Projekte aus der Prognose (AP-33) mit „nur heute aus“, Safety-Link, Prognose rechnen. */
 function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) => string }) {
   const { t, i18n } = useTranslation();
   const headingId = useId();
@@ -329,7 +315,6 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
   useEffect(() => {
     if (done) void client.invalidateQueries({ queryKey: TONIGHT_KEY });
   }, [done, client]);
-  const zone = rig.siteTimeZone;
   const columns: DataColumn<TonightRig['projects'][number]>[] = [
     {
       id: 'name',
@@ -371,39 +356,18 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
         <h2 id={headingId} className={styles.cardTitle}>
           {t('tonight.planTitle')}
         </h2>
+        {rig.weatherSafetyUrl ? (
+          <a
+            className={styles.more}
+            href={rig.weatherSafetyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('tonight.safety')}
+          </a>
+        ) : null}
       </div>
       <div className={styles.cardBody}>
-        <dl className={styles.facts}>
-          <div>
-            <dt>{t('tonight.nina')}</dt>
-            <dd>
-              {rig.instances.length === 0
-                ? t('tonight.ninaNone')
-                : rig.instances.map((i, k) => (
-                    <span key={i.id}>
-                      {k > 0 ? ' · ' : ''}
-                      {i.name}:{' '}
-                      {i.lastSeenAt ? (
-                        <>
-                          {t('tonight.ninaSeen')}{' '}
-                          <SiteTime atUtc={i.lastSeenAt} siteTimeZone={zone} withDate />
-                        </>
-                      ) : (
-                        t('tonight.ninaNever')
-                      )}
-                    </span>
-                  ))}
-            </dd>
-          </div>
-        </dl>
-        {rig.weatherSafetyUrl ? (
-          <p>
-            <a href={rig.weatherSafetyUrl} target="_blank" rel="noopener noreferrer">
-              {t('tonight.safety')}
-            </a>
-          </p>
-        ) : null}
-        <h3 className={styles.subTitle}>{t('tonight.planned')}</h3>
         {run.error ? <ProblemMessage code={problemCode(run.error)} /> : null}
         {job.failed ? <ProblemMessage code={job.errorCode ?? 'internal.error'} /> : null}
         {job.running ? (
