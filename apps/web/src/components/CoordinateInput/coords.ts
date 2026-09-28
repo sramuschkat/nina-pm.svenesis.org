@@ -27,17 +27,24 @@ export const COORD_EXAMPLE: Readonly<Record<CoordKind, string>> = {
 
 const round6 = (x: number) => Math.round(x * 1e6) / 1e6;
 
-/** Sexagesimal: Teile durch Leerzeichen, `:` oder Einheitenzeichen getrennt; Vorzeichen vorn. */
+/**
+ * Sexagesimal: Teile durch Leerzeichen, `:` oder Einheitenzeichen getrennt; Vorzeichen vorn. Zwischen Minuten
+ * und Sekunden ist ein Trenner Pflicht – „12 345“ wurde sonst still als 12°34′05″ gelesen (Prüfung 28.09.2026).
+ */
 const SEXAGESIMAL =
-  /^([+\-−])?\s*(\d{1,3})\s*(?:[h°:\s]\s*)(\d{1,2})\s*(?:[m′':\s]\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*[s″"]?)?$/i;
+  /^([+\-−])?\s*(\d{1,3})\s*(?:[h°:\s]\s*)(\d{1,2})\s*(?:(?:[m′':\s]\s*)(\d{1,2}(?:[.,]\d+)?)\s*[s″"]?|[m′'])?$/i;
 const DECIMAL = /^([+\-−])?\s*(\d{1,3}(?:[.,]\d+)?)\s*°?$/;
+/** Nur Stunden („12h“, „5,5 h“) – für RA. */
+const HOURS = /^(\d{1,2}(?:[.,]\d+)?)\s*h$/i;
 
 export function parseCoordinate(kind: CoordKind, input: string): ParseResult {
   const text = input.trim().replace(/\s+/g, ' ');
   if (text === '') return { ok: true, valueDeg: null };
   let value: number | undefined;
   const sex = SEXAGESIMAL.exec(text);
-  if (sex && (sex[3] !== undefined || /[h:]/i.test(text))) {
+  const hours = kind === 'ra' ? HOURS.exec(text) : null;
+  if (hours) value = Number((hours[1] ?? '').replace(',', '.')) * 15;
+  else if (sex && (sex[3] !== undefined || /[h:]/i.test(text))) {
     const sign = sex[1] === '-' || sex[1] === '−' ? -1 : 1;
     const a = Number(sex[2]);
     const b = Number(sex[3] ?? 0);
@@ -70,7 +77,11 @@ export function formatCoordinate(
   format: CoordFormat,
 ): string {
   if (valueDeg === null) return '';
-  if (format === 'decimal') return String(round6(valueDeg));
+  if (format === 'decimal') {
+    const v = round6(valueDeg);
+    // 359,9999999 rundet sonst auf „360“ (Prüfung 28.09.2026).
+    return String(kind === 'ra' && v >= 360 ? 0 : v + 0);
+  }
   if (kind === 'ra') {
     let totalS = Math.round(((((valueDeg % 360) + 360) % 360) / 15) * 3600 * 10) / 10;
     if (totalS >= 86400) totalS -= 86400;
@@ -79,8 +90,9 @@ export function formatCoordinate(
     const s = totalS - h * 3600 - m * 60;
     return `${pad(h)}h ${pad(m)}m ${s.toFixed(1).padStart(4, '0')}s`;
   }
-  const sign = valueDeg < 0 ? '−' : kind === 'dec' ? '+' : '';
   const totalS = Math.round(Math.abs(valueDeg) * 3600);
+  // Kein „−00° 00′ 00″“ für winzige negative Werte (Prüfung 28.09.2026).
+  const sign = valueDeg < 0 && totalS > 0 ? '−' : kind === 'dec' ? '+' : '';
   const d = Math.floor(totalS / 3600);
   const m = Math.floor((totalS - d * 3600) / 60);
   const s = totalS - d * 3600 - m * 60;

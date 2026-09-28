@@ -248,3 +248,15 @@ describe('Ausgabe', () => {
     expect(cands.length).toBeGreaterThan(800);
   });
 });
+
+describe('Sternbild der Sharpless-Zeilen (Astronomie-Prüfung 28.09.2026)', () => {
+  it('jede Sharpless-Zeile hat ein Sternbild aus den IAU-Grenzen (vorher null → Filter fand sie nie)', () => {
+    const sh = build.rows.filter((r) => r.primaryId.startsWith('Sh2-'));
+    expect(sh.length).toBeGreaterThan(200);
+    expect(sh.filter((r) => r.constellation === null)).toEqual([]);
+    expect(byId.get('Sh2-101')?.constellation).toBe('Cyg'); // Tulpennebel
+    expect(byId.get('Sh2-240')?.constellation).toBe('Tau'); // Simeis 147
+    expect(byId.get('Sh2-308')?.constellation).toBe('CMa');
+    expect(byId.get('Sh2-2')?.constellation).toBe('Sco');
+  });
+});

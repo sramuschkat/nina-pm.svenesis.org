@@ -12,6 +12,7 @@
  * - Aliase des Auszugs, die selbst eine OpenNGC-Zeile sind (IC 4703 → M 16), führen die beiden Zeilen
  *   zusammen (§3 Nr. 3, T-KAT-07) statt verworfen zu werden.
  */
+import { sky } from '@nina-pm/engine';
 import {
   designationPrefix,
   designationRank,
@@ -78,6 +79,8 @@ export interface CatalogInput {
   readonly version: string;
   /** Abrufdatum `YYYY-MM-DD`. */
   readonly fetchedAt: string;
+  /** Sternbildgrenzen (IAU, J2000-Ecken) für Zeilen ohne gültiges Sternbild, z. B. Sharpless (28.09.2026). */
+  readonly constellationBounds?: readonly sky.ConstellationBound[];
 }
 
 /** Die 88 IAU-Sternbilder (Kürzel). OpenNGC teilt Serpens in `Se1`/`Se2` – beides ist `Ser`. */
@@ -259,6 +262,13 @@ const arcmin = (a: { raDeg: number; decDeg: number }, b: { raDeg: number; decDeg
 export function buildCatalog(input: CatalogInput): CatalogBuild {
   const warnings: string[] = [];
   const warn = (w: string) => warnings.push(w);
+  // Sternbild aus den IAU-Grenzen (wie die Sternkarte, `sky.constellationAt`).
+  const lookup = (ra: number, dec: number): string | null => {
+    const c = input.constellationBounds
+      ? sky.constellationAt(input.constellationBounds, ra, dec)
+      : null;
+    return c && (IAU_CONSTELLATIONS as readonly string[]).includes(c) ? c : null;
+  };
   const ngc = parseCsv(input.ngcCsv, 'NGC.csv');
   const addendum = parseCsv(input.addendumCsv, 'addendum.csv');
   const rows = new Map<string, Mutable>();
@@ -295,8 +305,11 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
     let constellation: string | null =
       rec.Const === 'Se1' || rec.Const === 'Se2' ? 'Ser' : (rec.Const ?? null);
     if (!(IAU_CONSTELLATIONS as readonly string[]).includes(constellation ?? '')) {
-      warn(`${primaryId}: Sternbild ${String(rec.Const)} unbekannt → null`);
-      constellation = null;
+      const found = lookup(raToDeg(rec.RA ?? ''), decToDeg(rec.Dec ?? ''));
+      warn(
+        `${primaryId}: Sternbild ${String(rec.Const)} unbekannt → ${found ?? 'null'}${found ? ' (IAU-Grenzen)' : ''}`,
+      );
+      constellation = found;
     }
     let major = num(rec.MajAx ?? '');
     let minor = num(rec.MinAx ?? '');
@@ -458,7 +471,7 @@ export function buildCatalog(input: CatalogInput): CatalogBuild {
       primaryId: id,
       names: [...(ids ?? []).map(normalizeDesignation), ...(common ? [common] : [])],
       objectType: type,
-      constellation: null,
+      constellation: lookup(ra, dec),
       raDeg: ra,
       decDeg: dec,
       magV: null,

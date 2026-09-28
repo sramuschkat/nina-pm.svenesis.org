@@ -2,7 +2,9 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { sky as engineSky } from '@nina-pm/engine';
 import type { CatalogInput } from './build';
+import { buildSkyData } from './sky';
 
 export const catalogData = fileURLToPath(
   new URL('../../../packages/catalog-data/', import.meta.url),
@@ -39,5 +41,8 @@ export function readCatalogInput(): CatalogInput {
     curatedJs: read('js/dso-catalog.js'),
     version: meta.version,
     fetchedAt: meta.fetchedAt,
+    constellationBounds: engineSky.constellationBounds(
+      buildSkyData(read('js/star-catalog.js')).bounds,
+    ),
   };
 }

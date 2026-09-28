@@ -19,6 +19,11 @@ export interface SkyData {
   readonly bounds: readonly (readonly [string, readonly number[]])[];
   /** `[IAU, ra°, dec°, Rang 1–3, Name de, Name lat, Name en]`. */
   readonly labels: readonly (readonly (string | number)[])[];
+  /**
+   * Eigenbewegung je Stern in der Reihenfolge von `stars`: `[μα·cos δ, μδ]` in mas/Jahr (Hipparcos New Reduction,
+   * van Leeuwen 2007) – die Karte bewegt die Sterne von 2000 zur Nacht (Astronomie-Prüfung 28.09.2026).
+   */
+  readonly motion: readonly number[];
   /** Milchstraße in fünf Helligkeitsstufen auf einem 0,5°-Raster, lauflängencodiert (a–f + Länge). */
   readonly milkyWay: {
     readonly w: number;
@@ -34,6 +39,8 @@ interface SvSky {
   bounds: [string, number[]][];
   labels: (string | number)[][];
   milkyWay: SkyData['milkyWay'];
+  /** Drei Zahlen je Stern: μα·cos δ, μδ (mas/Jahr), Parallaxe (mas). */
+  motion?: number[];
 }
 
 export function buildSkyData(starCatalogJs: string): SkyData {
@@ -52,6 +59,14 @@ export function buildSkyData(starCatalogJs: string): SkyData {
     lines: sky.lines,
     bounds: sky.bounds,
     labels: sky.labels,
+    motion: (() => {
+      const m = sky.motion ?? [];
+      if (m.length !== sky.stars.length * 3)
+        throw new Error(
+          `star-catalog.js: motion hat ${String(m.length)} statt ${String(sky.stars.length * 3)} Werte`,
+        );
+      return sky.stars.flatMap((_, i) => [m[i * 3] ?? 0, m[i * 3 + 1] ?? 0]);
+    })(),
     milkyWay: sky.milkyWay,
   };
 }
@@ -71,6 +86,7 @@ export function skyJson(d: SkyData): string {
     `  "lines": {\n${lines}\n  },`,
     `  "bounds": [\n${rows(d.bounds)}\n  ],`,
     `  "labels": [\n${rows(d.labels)}\n  ],`,
+    `  "motion": ${JSON.stringify(d.motion)},`,
     `  "milkyWay": ${JSON.stringify(d.milkyWay)}`,
     '}',
     '',

@@ -462,6 +462,9 @@ importers:
 
   tools/catalog-import:
     dependencies:
+      '@nina-pm/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@nina-pm/infra':
         specifier: workspace:*
         version: link:../../infra

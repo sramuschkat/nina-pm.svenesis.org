@@ -2870,7 +2870,7 @@ export const en: Messages = {
     rotationPinned: 'Rotation saved as the rig default.',
     rotationLocked: 'Without a rotator the rig’s camera angle applies ({{deg}}°).',
     rotationMismatch:
-      'Differs from the rig’s camera angle ({{deg}}°) – without a rotator NINA images at {{deg}}°.',
+      'Differs from the rig’s camera angle ({{deg}}°) – without a rotator NINA images at {{deg}}°. The map shows the frame at the camera angle and the chosen angle dashed; it is only used once pinned.',
     cols: 'Panels across',
     rows: 'Panels down',
     overlap: 'Overlap (%)',

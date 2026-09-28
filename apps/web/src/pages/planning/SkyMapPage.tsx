@@ -17,7 +17,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
-import { daysFromKey, keyFromDays, sky } from '@nina-pm/engine';
+import { apparentAltitudeDeg, daysFromKey, keyFromDays, sky } from '@nina-pm/engine';
 import {
   catalogApi,
   equipmentApi,
@@ -218,7 +218,10 @@ export function SkyMapPage() {
     ? {
         raDeg: state.fra,
         decDeg: state.fdec,
-        paDeg: rotationLocked ? cameraAngle : pa,
+        // Ohne Rotator nimmt NINA im Kamerawinkel auf, und „Ins Projekt übernehmen“ speichert ihn (NT-30) – also
+        // zeigt die Karte das Bildfeld so; ein abweichend gewählter Winkel erscheint gestrichelt (`ghost`,
+        // Astronomie-Prüfung 28.09.2026: vorher sah ein Admin den gewählten Winkel, gespeichert wurde ein anderer).
+        paDeg: rig.hasRotator ? pa : cameraAngle,
         fovWidthDeg: rig.derived.fovWidthDeg,
         fovHeightDeg: rig.derived.fovHeightDeg,
         cols: state.cols,
@@ -570,6 +573,7 @@ export function SkyMapPage() {
     projects: projectFrames,
     frame,
     compare,
+    ghost: frame && rotationMismatch ? { ...frame, paDeg: pa } : null,
     selectedId: selected?.kind === 'dso' || selected?.kind === 'project' ? selected.item.id : null,
     selectedVec,
     names: state.names,
@@ -1686,7 +1690,9 @@ function InfoCard({
   const rd = sky.vecToRadec(vec);
   const conAbbr = bright ? constellationAt(bright.bounds, rd.raDeg, rd.decDeg) : null;
   const conLabel = bright?.labels.find((l) => l.abbr === conAbbr);
-  const hor = scene ? toAltAz(scene.observer.toHorizon, vec) : null;
+  // Scheinbare Höhe wie Planung und Zeitleiste (Astronomie-Prüfung 28.09.2026; vorher geometrisch).
+  const geo = scene ? toAltAz(scene.observer.toHorizon, vec) : null;
+  const hor = geo ? { ...geo, altDeg: apparentAltitudeDeg(geo.altDeg) } : null;
   const target = vec;
   const q = new URLSearchParams({ ra: String(rd.raDeg), dec: String(rd.decDeg) });
   if (selected.kind === 'dso') q.set('objekt', selected.item.primaryId);
