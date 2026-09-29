@@ -1,0 +1,20 @@
+# Transit-Fixtures (TK 9.1, transit.md §4): ExoClock-Ephemeriden (BJD_TDB, Stand 29.09.2026), Koordinaten ICRS/J2000.
+# Ein Ziel nahe der Ekliptik (WASP-12 b, β = +6,4°, Rømer-Spanne 16,5 min) und eines mit |β| > 60° (TrES-3 b).
+- id: hat-p-17b
+  ra: 324.5363796
+  dec: 30.4887347
+  t0: 2457168.694753
+  period: 10.33853486
+  durationH: 4.04
+- id: wasp-12b
+  ra: 97.6366525
+  dec: 29.6722961
+  t0: 2457368.4973
+  period: 1.091418859
+  durationH: 3.0
+- id: tres-3b
+  ra: 268.0292438
+  dec: 37.5461769
+  t0: 2457657.754796
+  period: 1.306186314
+  durationH: 1.36
