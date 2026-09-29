@@ -97,6 +97,11 @@ export function heliocentricAu(id: PlanetId, t: number): Vec3 {
   return heliocentric(ELEMENTS[id], t);
 }
 
+/** Heliozentrischer Ort des Erde-Mond-Schwerpunkts, ekliptikal J2000 in AE, zu `t` Jahrhunderten (TDB). */
+export function heliocentricEarthAu(t: number): Vec3 {
+  return heliocentric(EARTH, t);
+}
+
 export interface PlanetPlace {
   /** Geozentrisch, äquatorial J2000 (Einheitsvektor) – für die Karte im J2000-Rahmen. */
   readonly j2000: Vec3;

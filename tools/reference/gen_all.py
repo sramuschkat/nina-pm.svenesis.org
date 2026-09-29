@@ -3,9 +3,11 @@ import gen_exo_epochs
 import gen_season
 import gen_sun_moon
 import gen_targets
+import gen_transits
 
 if __name__ == "__main__":
     gen_sun_moon.main()
     gen_targets.main()
     gen_season.main()
     gen_exo_epochs.main()
+    gen_transits.main()

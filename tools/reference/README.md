@@ -6,6 +6,7 @@ Python läuft **nie produktiv**. Die Skripte erzeugen Fixtures für `packages/en
 - `gen_targets.py` – Zielhöhen je 15 min (geometrisch und scheinbar über Saemundsson), erster oberer Meridiandurchgang; Nächte 2026, 1995 und 2045.
 - `gen_season.py` – Saison je Ziel und Standort über 365 Nächte, mit Polartag/-nacht und der Mittag-bis-Mittag-Begrenzung des Nachtfensters (night.md §3).
 - `gen_exo_epochs.py` – Katalog-Epochen → BJD_TDB (transit.md §1, AP-40): TAI−UTC und TDB−UTC zur Epoche, Sonnenversatz BJD − HJD (`light_travel_time` baryzentrisch minus heliozentrisch, de432s) für Epochen 1999–2030 und Ziele über die ganze Sphäre.
+- `gen_transits.py` – Transitmitten BJD_TDB → UTC am Standort Starfront (transit.md §4, AP-41): HAT-P-17 b, WASP-12 b und TrES-3 b aus `transits.yaml`, je sieben Epochen von Januar 2026 bis Januar 2027, Umkehrung über `light_travel_time(kind='barycentric')`; dazu Sonnen- und Zielhöhe zur Mitte.
 - Standorte (`sites.yaml`) seit der Astronomie-Prüfung 28.09.2026 auch in hohen Breiten: Tromsø 69,6° N, Longyearbyen 78,2° N, Casey 66,3° S.
 - Konventionen wie die Engine: UT1 = UTC, Höhe 0 m (AST-N13), Refraktion geometrisch aus astropy plus **Saemundsson** (AST-D30), Mondbeleuchtung aus der **geozentrischen** Elongation.
 

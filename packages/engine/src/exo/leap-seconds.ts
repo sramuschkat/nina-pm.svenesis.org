@@ -7,7 +7,7 @@
  */
 
 /** [JD (UTC, 0 h) ab dem der Wert gilt, TAI − UTC in s] – aufsteigend. */
-const LEAP_TABLE: readonly (readonly [number, number])[] = [
+export const LEAP_TABLE: readonly (readonly [number, number])[] = [
   [2441317.5, 10], // 1972-01-01
   [2441499.5, 11], // 1972-07-01
   [2441683.5, 12], // 1973-01-01

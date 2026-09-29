@@ -403,10 +403,11 @@ describe('tM-Verfahren einheitlich (WS-24)', () => {
     }
   });
 
-  it('tM wird nur über meridianTransitUtc bestimmt (ein Aufrufer im Plan)', () => {
+  it('tM wird nur über meridianTransitUtc bestimmt (ein Aufrufer im Plan, einer in der Transitsuche)', () => {
     const users = files.filter((f) =>
       /meridianTransitUtc\(/.test(readFileSync(new URL(f, srcDir), 'utf8')),
     );
-    expect(users.sort()).toEqual(['astro/target.ts', 'plan/plan-night.ts']);
+    // exo/transit.ts: Meridian-Markierung der Transitsuche (FA-EXO-11) mit demselben Verfahren (AP-41).
+    expect(users.sort()).toEqual(['astro/target.ts', 'exo/transit.ts', 'plan/plan-night.ts']);
   });
 });
