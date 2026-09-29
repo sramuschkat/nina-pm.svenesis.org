@@ -16,7 +16,7 @@ export interface MaintenanceDeps {
   readonly forecastSiteNights?: () => Promise<number>;
   /** Zähler-Abgleich je Standort und Nacht nach dem lokalen Mittag (AP-15, NT-08, `tick-hourly`). */
   readonly reconcileSiteNights?: () => Promise<number>;
-  /** Astro-Wetter je Standort aktiver Mandanten → `weather_cache` (AP-23, `tick-hourly`). */
+  /** Astro-Wetter je Standort aktiver Mandanten → `weather_cache` (AP-23, `tick-5min`, je Ort alle 15 min). */
   readonly weather?: () => Promise<number>;
   /** Fehlende Vorschaubilder der Projekte → Jobs `thumbnail` (AP-25, `tick-hourly`). */
   readonly thumbnails?: () => Promise<number>;
@@ -29,10 +29,11 @@ export interface MaintenanceDeps {
  * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
- * verwaiste Sessions und legt fällige Session-Jobs an (AP-15). `tick-hourly` holt danach das Astro-Wetter
- * je Standort (AP-23) und fehlende Vorschaubilder (AP-25) – zuletzt und mit Zeitbudget
- * (`HOURLY_FETCH_BUDGET_MS`), damit langsame externe Dienste die Aufgaben je Standort nicht verdrängen
- * (28.09.2026). `daily` holt außerdem die Bahndaten für „Ereignisse der Nacht“ (27.09.2026).
+ * verwaiste Sessions und legt fällige Session-Jobs an (AP-15); danach holt er das Astro-Wetter je Standort
+ * alle 15 min (AP-23, seit 29.09.2026 statt stündlich) mit eigenem Zeitbudget (`WEATHER_TICK_BUDGET_MS`).
+ * `tick-hourly` holt zuletzt fehlende Vorschaubilder (AP-25) mit Zeitbudget (`HOURLY_FETCH_BUDGET_MS`), damit
+ * langsame externe Dienste die Aufgaben je Standort nicht verdrängen (28.09.2026). `daily` holt außerdem die
+ * Bahndaten für „Ereignisse der Nacht“ (27.09.2026).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
@@ -40,6 +41,9 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
       { name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) },
       ...(maintenance?.sessions
         ? [{ name: 'sessions', run: async () => void (await maintenance.sessions?.()) }]
+        : []),
+      ...(maintenance?.weather
+        ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
         : []),
     ],
     'tick-hourly': [
@@ -75,9 +79,6 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
               run: async () => void (await maintenance.reconcileSiteNights?.()),
             },
           ]
-        : []),
-      ...(maintenance?.weather
-        ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]
         : []),
       ...(maintenance?.thumbnails
         ? [{ name: 'thumbnails', run: async () => void (await maintenance.thumbnails?.()) }]

@@ -170,7 +170,7 @@ const jobs: JobRunnerDeps = {
     }),
   },
 };
-// `tick-hourly` lokal: beim Start und dann stündlich das Wetter je Standort holen.
+// Wie `tick-5min`: beim Start und dann alle 5 min; je Ort höchstens ein Abruf je Viertelstunde.
 const localWeatherTick = () =>
   weatherTick(
     {
@@ -186,7 +186,7 @@ const localWeatherTick = () =>
     }),
   );
 void localWeatherTick();
-setInterval(() => void localWeatherTick(), 3_600_000).unref();
+setInterval(() => void localWeatherTick(), 5 * 60_000).unref();
 const services: ApiServices = {
   repositories: (ctx) => ({
     job: new JobRepository(db, ctx),

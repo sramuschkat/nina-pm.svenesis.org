@@ -97,8 +97,8 @@ export const dedupeKeys = {
   /** Mehrnacht-Prognose je Standort einmal je Nacht (TK 13, AP-33) bzw. auf Anforderung. */
   forecastSiteNight: (siteId: string, night: string) => `forecast:${siteId}:${night}`,
   forecastSiteManual: (siteId: string) => `forecast:${siteId}:manual`,
-  /** Stündlicher Wetterlauf je Standort (TK 13); `hour` = `YYYY-MM-DDTHH` in UTC. */
-  weatherSiteHour: (siteId: string, hour: string) => `weather:${siteId}:${hour}`,
+  /** Wetterlauf je Standort alle 15 min (TK 13, Entscheidung Sven 29.09.2026); `slot` = `YYYY-MM-DDTHH:MM` (UTC, Viertelstunde). */
+  weatherSiteSlot: (siteId: string, slot: string) => `weather:${siteId}:${slot}`,
   /** Vorschaubild des Projekt-Bildfelds (AP-25). */
   thumbnail: (projectId: string) => `thumbnail:${projectId}`,
   sessionClose: (sessionId: string) => `session_close:${sessionId}`,

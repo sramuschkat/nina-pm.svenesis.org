@@ -39,6 +39,7 @@ Es gibt **keinen** Ordner `refs/` und kein `fetch-nina-refs.ps1` mehr. Vom Ziel-
 `NinaPm.Nina.Ui` baut ebenfalls ohne Windows. Nur die Adapter-Tests **ausführen** und das Plugin **laufen lassen** bleiben Windows vorbehalten.
 
 ## Folgen
+- **Versionsabgleich erledigt:** Sven hat am 28.09.2026 in der Windows-VM (H-14) die Dateiversion von `NINA.Sequencer.dll` geprüft: 3.2.0.9001 = `NinaVersion`.
 - **TK 10.1, 10.5, 18** (`docs/concept/Technisches_Konzept_Svenesis-NINA-PM.md`): Referenz-Assemblies durch NuGet ersetzt; Snippet mit `Directory.Build.targets`; Tabelle „ohne Windows“ mit `NinaPm.Nina.Ui` = ja; `plugin.yml` ohne Auftrag `refs`. Als Spec-Ergänzung gekennzeichnet.
 - **`CLAUDE.md`** (Umgebung, Befehle, Regel 13), **`START.md`** (Plugin-Abschnitt), `docs/specs/nina/execution.md` (Aufteilung), `docs/ops/human-tasks.md` (H-14 ohne DLL-Kopie), `docs/work-packages/AP-S2c.md` und `AP-16a.md`, `apps/nina-plugin/README.md`, `THIRD_PARTY_NOTICES.md`, `.gitignore`.
 - **H-14** wird für AP-S2c nicht mehr gebraucht, weiter aber für AP-S2b und die Laufzeit (NINA 3.2 mit Simulatoren, z. B. in einer Windows-11-VM auf dem Mac).

@@ -3155,7 +3155,7 @@ export const en: Messages = {
   weatherPage: {
     title: 'Weather forecast',
     intro:
-      'Astro weather per site over 7 days, hourly from Open-Meteo (fetched by the server every hour).',
+      'Astro weather per site over 7 days, hourly from Open-Meteo (fetched by the server every 15 minutes).',
     site: 'Site or rig',
     sites: 'Sites',
     rigs: 'Rigs',
