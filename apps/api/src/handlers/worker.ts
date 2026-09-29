@@ -20,7 +20,7 @@ import { s3TenantUsageReader } from '../files/tenant-files';
 import { lambdaDatabase } from '../lib/database';
 import { emitDsqlRetries } from '../lib/metrics';
 import { logger } from '../lib/logger';
-import { catalogRefreshHandler } from '../worker/catalog';
+import { catalogRefreshHandler, enqueueExoCatalog, exoCatalogTick } from '../worker/catalog';
 import { dispatch } from '../worker/dispatch';
 import { effortJobHandler, effortSiteTick } from '../worker/effort';
 import { effortDbDeps } from '../worker/effort-db';
@@ -123,7 +123,11 @@ const jobs: JobRunnerDeps = {
     session_close: sessionCloseHandler(sessionJobs),
     session_report: sessionReportHandler(sessionJobs),
     reconcile: reconcileJobHandler(sessionOps),
-    catalog_refresh: catalogRefreshHandler({ db: async () => (await lambdaDatabase()).db }),
+    catalog_refresh: catalogRefreshHandler({
+      db: async () => (await lambdaDatabase()).db,
+      fetchText: async (url, timeoutMs) =>
+        new TextDecoder().decode((await http.getBytes(url, { timeoutMs })).bytes),
+    }),
     weather: weatherJobHandler(weather),
     thumbnail: thumbnailJobHandler(thumbnails),
     multi_sim: multiSimJobHandler(multiSim),
@@ -214,6 +218,14 @@ const maintenanceFor = (startedAt: number) => ({
     });
     logger.info('sky_satellites', { count });
     return count;
+  },
+  exoCatalogsDaily: async () => {
+    const db = (await lambdaDatabase()).db;
+    return exoCatalogTick({ enqueue: (c) => enqueueExoCatalog(db, c) }, jobs, ['exoclock']);
+  },
+  exoCatalogsWeekly: async () => {
+    const db = (await lambdaDatabase()).db;
+    return exoCatalogTick({ enqueue: (c) => enqueueExoCatalog(db, c) }, jobs, ['nasa', 'toi']);
   },
   measureStorage: async () => {
     const db = (await lambdaDatabase()).db;

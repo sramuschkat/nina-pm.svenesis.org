@@ -2837,6 +2837,16 @@ export const de = {
       refreshStarted: 'Import gestartet – der Stand aktualisiert sich nach Abschluss.',
       refreshHint:
         'Importiert die mit dem Deploy ausgelieferte Katalogdatei nach dso_object. Bestehende Zeilen behalten ihre ID.',
+      exo: {
+        title: 'Exoplaneten-Kataloge',
+        hint: 'ExoClock wird täglich, NASA Exoplanet Archive und TESS TOI werden wöchentlich geholt. NASA und TOI übernehmen nur Planeten, die der Amateur-Vorfilter zulässt (Stern ≤ 14 mag, Tiefe ≥ 3 mmag). Schlägt ein Abruf fehl, bleibt der bisherige Stand.',
+        catalog: 'Katalog',
+        rows: 'Planeten',
+        unknownTimeSystem: 'Zeitsystem unsicher',
+        names: { exoclock: 'ExoClock', nasa: 'NASA Exoplanet Archive', toi: 'TESS TOI' },
+        refresh: 'Neu laden',
+        refreshLabel: '{{name}} neu laden',
+      },
     },
   },
   skymap: {

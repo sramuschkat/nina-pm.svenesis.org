@@ -2829,6 +2829,16 @@ export const en: Messages = {
       refreshStarted: 'Import started – the status updates once it has finished.',
       refreshHint:
         'Imports the catalogue file shipped with the deploy into dso_object. Existing rows keep their ID.',
+      exo: {
+        title: 'Exoplanet catalogues',
+        hint: 'ExoClock is fetched daily, the NASA Exoplanet Archive and TESS TOI weekly. NASA and TOI only keep planets that pass the amateur prefilter (star ≤ 14 mag, depth ≥ 3 mmag). If a fetch fails, the previous state is kept.',
+        catalog: 'Catalogue',
+        rows: 'Planets',
+        unknownTimeSystem: 'Time system uncertain',
+        names: { exoclock: 'ExoClock', nasa: 'NASA Exoplanet Archive', toi: 'TESS TOI' },
+        refresh: 'Reload',
+        refreshLabel: 'Reload {{name}}',
+      },
     },
   },
   skymap: {

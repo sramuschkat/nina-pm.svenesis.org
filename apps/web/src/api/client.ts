@@ -649,5 +649,7 @@ export const catalogApi = {
       signal ? { signal } : {},
     ),
   status: () => apiFetch<CatalogStatus>('/api/system/v1/catalogs'),
-  refresh: () => apiFetch<{ jobId: string }>('/api/system/v1/catalogs/dso/refresh', json('POST')),
+  /** Neu importieren (Job `catalog_refresh`): Objektkatalog oder Exoplaneten-Katalog (AP-40). */
+  refresh: (catalog: 'dso' | 'exoclock' | 'nasa' | 'toi' = 'dso') =>
+    apiFetch<{ jobId: string }>(`/api/system/v1/catalogs/${catalog}/refresh`, json('POST')),
 };

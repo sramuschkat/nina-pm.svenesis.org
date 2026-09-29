@@ -112,6 +112,7 @@ components:
             - transit.window_overlap
             - transit.ephemeris_stale
             - exo.epoch_out_of_range
+            - catalog.source_failed
             - transit.result_time_system
             - validation.min_time_too_small
             - project.status_transition_invalid
@@ -10011,8 +10012,72 @@ components:
             - lastImportAt
             - sources
             - lastJob
+        exo:
+          type: array
+          items:
+            type: object
+            properties:
+              catalog:
+                type: string
+                enum:
+                  - exoclock
+                  - nasa
+                  - toi
+              rows:
+                type: integer
+              unknownTimeSystem:
+                type: integer
+              lastImportAt:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              lastJob:
+                type:
+                  - object
+                  - "null"
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: UUID
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - running
+                      - done
+                      - failed
+                  error:
+                    type:
+                      - string
+                      - "null"
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                  finishedAt:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                    example: 2026-09-18T13:00:00Z
+                required:
+                  - id
+                  - status
+                  - error
+                  - createdAt
+                  - finishedAt
+            required:
+              - catalog
+              - rows
+              - unknownTimeSystem
+              - lastImportAt
+              - lastJob
       required:
         - dso
+        - exo
     NinaBootstrap:
       type: object
       properties:
@@ -13906,6 +13971,7 @@ components:
           type: string
           enum:
             - maintenanceBanner
+            - exoPrefilter
         value: {}
         updatedAt:
           type:
@@ -21860,7 +21926,7 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
   /api/system/v1/catalogs:
     get:
-      summary: Stand der Kataloge (Objektkatalog aus OpenNGC)
+      summary: Stand der Kataloge (Objektkatalog aus OpenNGC, Exoplaneten-Kataloge)
       tags:
         - system
       description: "Aktion: `system.manage` · FA-FRM-01, S-82"
@@ -21887,17 +21953,29 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-  /api/system/v1/catalogs/dso/refresh:
+  /api/system/v1/catalogs/{catalog}/refresh:
     post:
-      summary: Objektkatalog neu importieren (Job catalog_refresh)
+      summary: Katalog neu importieren (Job catalog_refresh)
       tags:
         - system
-      description: "Aktion: `system.manage` · FA-FRM-01, S-82, TK 13"
+      description: "Aktion: `system.manage` · FA-FRM-01, FA-EXO-04, S-82, TK 13"
       x-npm-action: system.manage
       x-npm-requirements:
         - FA-FRM-01
+        - FA-EXO-04
         - S-82
         - TK 13
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - dso
+              - exoclock
+              - nasa
+              - toi
+          required: true
+          name: catalog
+          in: path
       responses:
         "202":
           description: Job angelegt
@@ -21913,6 +21991,12 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
           description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Unbekannter Katalog
           content:
             application/problem+json:
               schema:
@@ -23000,6 +23084,7 @@ paths:
             type: string
             enum:
               - maintenanceBanner
+              - exoPrefilter
           required: true
           name: key
           in: path
@@ -23035,6 +23120,7 @@ paths:
             type: string
             enum:
               - maintenanceBanner
+              - exoPrefilter
           required: true
           name: key
           in: path

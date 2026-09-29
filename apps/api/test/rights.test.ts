@@ -1023,7 +1023,7 @@ function systemExamples(): Record<string, Example> {
     'GET /api/system/v1/tenants': { url: '/api/system/v1/tenants' },
     'GET /api/system/v1/catalogs': { url: '/api/system/v1/catalogs' },
     // Offener Job wird wiederverwendet (Deduplizierung), der Invoker ist im Test ein No-op.
-    'POST /api/system/v1/catalogs/dso/refresh': {
+    'POST /api/system/v1/catalogs/{catalog}/refresh': {
       url: '/api/system/v1/catalogs/dso/refresh',
       method: 'POST',
       okStatus: 202,

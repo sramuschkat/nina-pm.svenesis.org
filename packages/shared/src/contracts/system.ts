@@ -55,9 +55,39 @@ export const MaintenanceBanner = z
   .meta({ id: 'MaintenanceBanner' });
 export type MaintenanceBanner = z.infer<typeof MaintenanceBanner>;
 
+/**
+ * Amateur-Vorfilter beim Import der Exoplaneten-Kataloge (FA-EXO-31, AP-40), `system_setting.exoPrefilter`.
+ * Ein Planet gilt als erreichbar, wenn der Wirtsstern höchstens `maxStarMag` hell ist (V, sonst Gaia G, TESS T bzw.
+ * R bei ExoClock), der Transit mindestens `minDepthMmag` tief ist und die Deklination im Band liegt. Die
+ * Höhe am Standort prüft erst die Transitsuche je Rig (FA-EXO-05) – der Katalog ist systemweit.
+ */
+export const ExoPrefilter = z
+  .object({
+    maxStarMag: z.number().min(5).max(20),
+    minDepthMmag: z.number().min(0).max(100),
+    decMinDeg: z.number().min(-90).max(90),
+    decMaxDeg: z.number().min(-90).max(90),
+  })
+  .strict()
+  .refine((f) => f.decMinDeg < f.decMaxDeg, {
+    message: 'decMinDeg muss kleiner als decMaxDeg sein',
+    path: ['decMinDeg'],
+  })
+  .meta({ id: 'ExoPrefilter' });
+export type ExoPrefilter = z.infer<typeof ExoPrefilter>;
+
+/** Vorgabe ohne gespeicherte Einstellung: ≤ 14 mag, ≥ 3 mmag, ganze Sphäre (FA-EXO-31). */
+export const EXO_PREFILTER_DEFAULT: ExoPrefilter = {
+  maxStarMag: 14,
+  minDepthMmag: 3,
+  decMinDeg: -90,
+  decMaxDeg: 90,
+};
+
 /** Wert je Schlüssel – ein Schema je `systemSettingKeys`-Eintrag. */
 export const SYSTEM_SETTING_SCHEMAS = {
   maintenanceBanner: MaintenanceBanner,
+  exoPrefilter: ExoPrefilter,
 } as const satisfies Record<(typeof systemSettingKeys)[number], z.ZodType>;
 
 export const SystemSettingView = z

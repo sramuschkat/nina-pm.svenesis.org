@@ -150,6 +150,8 @@ export async function dsoCatalogStatus(db: Kysely<Database>): Promise<DsoCatalog
     .select(['id', 'status', 'error', 'createdAt', 'finishedAt'])
     .where('kind', '=', 'catalog_refresh')
     .where('tenantId', 'is', null)
+    // Seit AP-40 teilen sich die Kataloge die Job-Art; der Objektkatalog hat den Schlüssel `catalog_refresh:dso`.
+    .where('dedupeKey', '=', 'catalog_refresh:dso')
     .orderBy('createdAt', 'desc')
     .limit(1)
     .executeTakeFirst();

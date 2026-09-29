@@ -22,6 +22,10 @@ export interface MaintenanceDeps {
   readonly thumbnails?: () => Promise<number>;
   /** Bahndaten der Raumstationen und des Hubble-Teleskops → `catalog/sky/` (Ereignisse der Nacht, `daily`). */
   readonly skySatellites?: () => Promise<number>;
+  /** Exoplaneten-Katalog ExoClock (AP-40, `daily`, FA-EXO-04 Richtwert 1 Tag). */
+  readonly exoCatalogsDaily?: () => Promise<number>;
+  /** NASA Exoplanet Archive und TESS TOI (AP-40, `weekly`, FA-EXO-04 Richtwert 7 Tage). */
+  readonly exoCatalogsWeekly?: () => Promise<number>;
 }
 
 /**
@@ -33,7 +37,8 @@ export interface MaintenanceDeps {
  * alle 15 min (AP-23, seit 29.09.2026 statt stündlich) mit eigenem Zeitbudget (`WEATHER_TICK_BUDGET_MS`).
  * `tick-hourly` holt zuletzt fehlende Vorschaubilder (AP-25) mit Zeitbudget (`HOURLY_FETCH_BUDGET_MS`), damit
  * langsame externe Dienste die Aufgaben je Standort nicht verdrängen (28.09.2026). `daily` holt außerdem die
- * Bahndaten für „Ereignisse der Nacht“ (27.09.2026).
+ * Bahndaten für „Ereignisse der Nacht“ (27.09.2026) und den Exoplaneten-Katalog ExoClock; `weekly` holt NASA
+ * und TESS TOI (AP-40).
  */
 export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): TickTasks {
   return {
@@ -106,9 +111,24 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
                 },
               ]
             : []),
+          ...(maintenance.exoCatalogsDaily
+            ? [
+                {
+                  name: 'exo_catalogs_daily',
+                  run: async () => void (await maintenance.exoCatalogsDaily?.()),
+                },
+              ]
+            : []),
         ]
       : [],
-    weekly: [],
+    weekly: maintenance?.exoCatalogsWeekly
+      ? [
+          {
+            name: 'exo_catalogs_weekly',
+            run: async () => void (await maintenance.exoCatalogsWeekly?.()),
+          },
+        ]
+      : [],
   };
 }
 

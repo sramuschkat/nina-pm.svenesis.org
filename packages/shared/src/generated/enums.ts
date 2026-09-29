@@ -173,6 +173,15 @@ export type NotificationKind = (typeof notificationKinds)[number];
 export const catalogs = ["dso","exoclock","nasa","toi"] as const;
 export type Catalog = (typeof catalogs)[number];
 
+export const exoTimeSystemSources = ["bjd_tdb","bjd_utc","hjd_utc","jd_utc","btjd","bkjd","unknown"] as const;
+export type ExoTimeSystemSource = (typeof exoTimeSystemSources)[number];
+
+export const exoDepthUnits = ["percent","ppm","mmag"] as const;
+export type ExoDepthUnit = (typeof exoDepthUnits)[number];
+
+export const exoPriorities = ["alert","high","medium","low"] as const;
+export type ExoPriority = (typeof exoPriorities)[number];
+
 export const dsoObjectTypes = ["G","GPair","GTrpl","GGroup","OCl","GCl","Cl+N","PN","HII","DrkN","EmN","Neb","RfN","SNR","*","**","*Ass","Nova","Dup","NonEx","Other"] as const;
 export type DsoObjectType = (typeof dsoObjectTypes)[number];
 
@@ -300,7 +309,7 @@ export type BlockedReason = (typeof blockedReasons)[number];
 export const tenantSettingsKeys = ["tenantTimezone","userCorrections","exoUserLockNeedsAdmin","exoUserMaxOpenLocks","autoReactivateOnRemaining","autoReadyToProcess","adminSelfApproval","approvalDeadlineDays","defaultLanguage"] as const;
 export type TenantSettingsKey = (typeof tenantSettingsKeys)[number];
 
-export const systemSettingKeys = ["maintenanceBanner"] as const;
+export const systemSettingKeys = ["maintenanceBanner","exoPrefilter"] as const;
 export type SystemSettingKey = (typeof systemSettingKeys)[number];
 
 export const uploadPurposes = ["transit_result","tenant_import","plan_log"] as const;

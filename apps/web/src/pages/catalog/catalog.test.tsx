@@ -81,7 +81,8 @@ vi.mock('../../api/client', async (importOriginal) => {
             );
       },
       status: () => Promise.resolve(state.status),
-      refresh: () => state.refresh() as Promise<unknown>,
+      refresh: (catalog?: string) =>
+        (catalog === undefined ? state.refresh() : state.refresh(catalog)) as Promise<unknown>,
     },
   };
 });
@@ -699,6 +700,11 @@ describe('S-82 Kataloge', () => {
       },
       ...over,
     },
+    exo: [
+      { catalog: 'exoclock', rows: 776, unknownTimeSystem: 0, lastImportAt: null, lastJob: null },
+      { catalog: 'nasa', rows: 702, unknownTimeSystem: 24, lastImportAt: null, lastJob: null },
+      { catalog: 'toi', rows: 1800, unknownTimeSystem: 0, lastImportAt: null, lastJob: null },
+    ],
   });
   const renderPanel = () =>
     render(
@@ -731,5 +737,38 @@ describe('S-82 Kataloge', () => {
     state.status = status({ rows: 13000 });
     renderPanel();
     expect(await screen.findByText('weicht von der Katalogdatei ab')).toBeInTheDocument();
+  });
+
+  it('Exoplaneten-Kataloge: Planeten, unsicheres Zeitsystem, Fehler, Neu laden je Katalog (AP-40)', async () => {
+    const s = status();
+    state.status = {
+      ...s,
+      exo: s.exo.map((e) =>
+        e.catalog === 'toi'
+          ? {
+              ...e,
+              lastJob: {
+                id: ID(72),
+                status: 'failed' as const,
+                error: 'catalog.source_failed',
+                createdAt: '2026-09-27T04:30:00Z',
+                finishedAt: '2026-09-27T04:31:00Z',
+              },
+            }
+          : e,
+      ),
+    };
+    state.refresh.mockResolvedValue({ jobId: ID(73) });
+    renderPanel();
+    expect(
+      await screen.findByRole('heading', { name: 'Exoplaneten-Kataloge' }),
+    ).toBeInTheDocument();
+    const nasa = screen.getByRole('row', { name: /NASA Exoplanet Archive/ });
+    expect(nasa).toHaveTextContent('702');
+    expect(nasa).toHaveTextContent('24');
+    expect(screen.getByRole('row', { name: /TESS TOI/ })).toHaveTextContent('fehlgeschlagen');
+    fireEvent.click(screen.getByRole('button', { name: 'NASA Exoplanet Archive neu laden' }));
+    await waitFor(() => expect(state.refresh).toHaveBeenCalledWith('nasa'));
+    await expectNoSeriousA11y();
   });
 });

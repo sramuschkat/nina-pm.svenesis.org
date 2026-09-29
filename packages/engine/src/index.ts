@@ -5,6 +5,7 @@
  */
 export * from './astro';
 export * from './effort';
+export * from './exo';
 export * from './geometry';
 export * from './plan';
 export * from './visibility';
