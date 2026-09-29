@@ -16,6 +16,8 @@
     <AssemblyTitle>NINA-PM Probe</AssemblyTitle>
     <Company>Svenesis</Company>
     <Product>NINA-PM Probe</Product>
+    <!-- Kurzbeschreibung in NINAs Plugin-Liste (PluginBase liest AssemblyDescription). -->
+    <Description>Spike AP-S2b: prüft Trigger-Walk, Bildzuordnung, Belichtungsabbruch, Auslesemodus und Flip-Erkennung für NINA-PM. Kein Produktiv-Plugin.</Description>
     <!-- Ausgabe direkt in bin/<Konfiguration>/, NINA lädt sie so aus dem Plugin-Ordner (TK 10.5). -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
@@ -30,6 +32,13 @@
     <PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />
     <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" ExcludeAssets="runtime" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Plugin-ID: NINAs PluginBase liest sie aus dem Guid-Attribut der Assembly, nicht aus AssemblyMetadata „Identifier“.
+         Fehlt es, bricht NINA beim Manifest ab und meldet das nur auf Trace-Stufe (28.09.2026, VM-Test). -->
+    <AssemblyAttribute Include="System.Runtime.InteropServices.GuidAttribute">
+      <_Parameter1>7f3c2a91-5b4e-4d8a-9c61-2e0f4b7d8a15</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup>
     <!-- Plugin-Manifest (von PluginBase gelesen). -->
