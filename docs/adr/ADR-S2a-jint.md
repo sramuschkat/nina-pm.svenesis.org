@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | vorgeschlagen (Empfehlung von Sven zu bestätigen) |
+| Status | **angenommen** (Sven, 28.09.2026) |
 | Datum | 2026-09-28 |
 | Arbeitspaket | AP-S2a |
 | Anforderungen | TK 10.4 (Offline), TK 10.2 (`EngineHost`: eigener Thread, Timeout), rules/engine.md Nr. 7 und 10 |

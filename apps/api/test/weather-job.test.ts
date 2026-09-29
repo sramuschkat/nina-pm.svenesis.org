@@ -18,6 +18,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   runWeather,
   weatherJobHandler,
+  weatherSlot,
   weatherTick,
   type WeatherPayload,
 } from '../src/weather/job';
@@ -173,20 +174,29 @@ describe('runWeather', () => {
     }
   });
 
-  it('höchstens ein Lauf je Ort und Stunde', async () => {
+  it('höchstens ein Lauf je Ort und Viertelstunde (Entscheidung Sven 29.09.2026)', async () => {
     const http = fakeOpenMeteo(responses());
     await runWeather(deps(http), site, s.clock.now());
-    s.clock.advance(30 * 60_000);
+    s.clock.advance(10 * 60_000);
     expect((await runWeather(deps(http), site, s.clock.now())).outcome).toBe('fresh');
     expect(http.urls).toHaveLength(3);
-    s.clock.advance(30 * 60_000);
+    s.clock.advance(5 * 60_000);
     expect((await runWeather(deps(http), site, s.clock.now())).outcome).toBe('written');
     expect(http.urls).toHaveLength(6);
     expect(await rows()).toHaveLength(1); // gleicher Modellsatz → Upsert
   });
 });
 
-describe('tick-hourly und Job-Handler', () => {
+describe('weatherSlot', () => {
+  it('Viertelstunde in UTC', () => {
+    expect(weatherSlot(new Date('2026-09-29T14:00:00Z'))).toBe('2026-09-29T14:00');
+    expect(weatherSlot(new Date('2026-09-29T14:14:59Z'))).toBe('2026-09-29T14:00');
+    expect(weatherSlot(new Date('2026-09-29T14:15:00Z'))).toBe('2026-09-29T14:15');
+    expect(weatherSlot(new Date('2026-09-29T14:59:59Z'))).toBe('2026-09-29T14:45');
+  });
+});
+
+describe('tick-5min und Job-Handler', () => {
   async function tenantWithSite(key: string, over: Partial<typeof SITE> = {}) {
     const tenantId = await s.seed.tenant(key);
     const eq = s.services.repositories({ tenantId }).equipment();
@@ -194,7 +204,7 @@ describe('tick-hourly und Job-Handler', () => {
     return { tenantId, siteId: st.id };
   }
 
-  it('je Ort ein Job, gleiche Orte zweier Mandanten teilen sich den Lauf; zweiter Tick ist ein No-op', async () => {
+  it('je Ort ein Job, gleiche Orte zweier Mandanten teilen sich den Lauf; Ticks derselben Viertelstunde sind No-ops', async () => {
     const a = await tenantWithSite('alpha');
     const b = await tenantWithSite('beta');
     const c = await tenantWithSite('gamma', {
@@ -233,14 +243,20 @@ describe('tick-hourly und Job-Handler', () => {
       ).rows as { dedupe_key: string; status: string }[],
     };
     expect(keys.rows.map((r) => r.status)).toEqual(['done', 'done']);
+    const slot = weatherSlot(s.clock.now());
     const first = [a, b].filter((t) =>
-      keys.rows.some((r) => r.dedupe_key === `weather:${t.siteId}:2026-09-24T10`),
+      keys.rows.some((r) => r.dedupe_key === `weather:${t.siteId}:${slot}`),
     );
     expect(first).toHaveLength(1);
-    expect(keys.rows.map((r) => r.dedupe_key)).toContain(`weather:${c.siteId}:2026-09-24T10`);
-    // Derselbe Tick in derselben Stunde: keine neuen Jobs, keine Abrufe.
+    expect(keys.rows.map((r) => r.dedupe_key)).toContain(`weather:${c.siteId}:${slot}`);
+    // Derselbe Tick in derselben Viertelstunde: keine neuen Jobs, keine Abrufe.
     expect(await weatherTick(tick, jobs, s.clock.now())).toBe(0);
     expect(http.urls).toHaveLength(6);
+    // Nächste Viertelstunde (tick-5min, 15 min später): beide Orte werden neu geholt.
+    s.clock.advance(15 * 60_000);
+    expect(weatherSlot(s.clock.now())).not.toBe(slot);
+    expect(await weatherTick(tick, jobs, s.clock.now())).toBe(2);
+    expect(http.urls).toHaveLength(12);
   });
 });
 

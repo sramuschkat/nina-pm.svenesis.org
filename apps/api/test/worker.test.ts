@@ -1,6 +1,6 @@
 import type { EnqueueInput, EnqueueResult } from '@nina-pm/db';
 import { describe, expect, it, vi } from 'vitest';
-import { weatherTick } from '../src/weather/job';
+import { WEATHER_TICK_BUDGET_MS, weatherTick } from '../src/weather/job';
 import { dispatch, TICKS, type DispatchDeps, type TickTasks } from '../src/worker/dispatch';
 import { HOURLY_FETCH_BUDGET_MS, type JobRunnerDeps } from '../src/worker/jobs';
 import { tickTasks } from '../src/worker/tasks';
@@ -113,7 +113,7 @@ describe('Worker-Dispatcher', () => {
     );
   });
 
-  it('tick-hourly: erst die Aufgaben je Standort, dann Wetter und Vorschaubilder', async () => {
+  it('tick-5min holt das Wetter nach Jobs und Sessions; tick-hourly erst die Aufgaben je Standort, dann Vorschaubilder', async () => {
     const n = () => Promise.resolve(0);
     const tasks = tickTasks(
       { queue: () => Promise.reject(new Error('nicht benutzt')) },
@@ -125,14 +125,15 @@ describe('Worker-Dispatcher', () => {
         effortSiteNights: n,
         forecastSiteNights: n,
         reconcileSiteNights: n,
+        sessions: n,
       },
     );
+    expect(tasks['tick-5min'].map((t) => t.name)).toEqual(['job_pickup', 'sessions', 'weather']);
     expect(tasks['tick-hourly'].map((t) => t.name)).toEqual([
       'submission_expiry',
       'effort_site_nights',
       'forecast_site_nights',
       'reconcile_site_nights',
-      'weather',
       'thumbnails',
     ]);
   });
@@ -178,6 +179,10 @@ describe('Zeitbudget der Abrufe im tick-hourly (Lambda-Timeout 15 min)', () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
+  it('Wetter im tick-5min: 3 Minuten, damit der Lauf vor dem nächsten Tick endet', () => {
+    expect(WEATHER_TICK_BUDGET_MS).toBe(3 * MIN);
+  });
+
   it('Wetter: nach dem Budget kein neuer Ort', async () => {
     const clock = { t: 0 };
     const enqueue = slowEnqueue(clock);
@@ -198,9 +203,9 @@ describe('Zeitbudget der Abrufe im tick-hourly (Lambda-Timeout 15 min)', () => {
       new Date('2026-09-28T12:00:00Z'),
       { startedAt: 0, clock: () => clock.t },
     );
+    // 0 min → s10, 5 min > 3 min → Schluss; die übrigen Orte holt der nächste Tick.
     expect(enqueue.mock.calls.map((c) => (c[1].input as { siteId: string }).siteId)).toEqual([
       's10',
-      's20',
     ]);
   });
 });

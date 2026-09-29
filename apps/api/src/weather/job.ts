@@ -2,8 +2,9 @@
  * Job `weather` (TK 13, WS-13/WS-16; FA-WET-07): je Standort und Lauf drei Abrufe in einem `Promise.all`,
  * Stundenaufbereitung, Bewertung nach specs/engine/weather.md und eine Zeile `weather_cache`. Nur der
  * Hauptabruf ist Pflicht – fällt er aus, endet der Lauf **ohne** Schreiben und der letzte Stand bleibt
- * gültig. Höchstens ein Lauf je Ort und Stunde (Prüfung gegen `fetched_at`, gleiche Orte mehrerer
- * Mandanten teilen sich die Zeile); `tick-hourly` legt je Standort `weather:<siteId>:<Stunde>` an.
+ * gültig. Höchstens ein Lauf je Ort und Viertelstunde (Prüfung gegen `fetched_at`, gleiche Orte mehrerer
+ * Mandanten teilen sich die Zeile); `tick-5min` legt je Standort `weather:<siteId>:<Viertelstunde>` an
+ * (alle 15 min statt stündlich seit 29.09.2026, Entscheidung Sven: HRRR rechnet stündlich neu).
  */
 import { moonAt, weatherScores, type WeatherNight, type WeatherScoredHour } from '@nina-pm/engine';
 import {
@@ -30,10 +31,24 @@ import { weatherNightTable, type WeatherSiteGeo } from './nights';
 import { hourlyOf, modelChain, modelSet, weatherUrls } from './open-meteo';
 import { prepareHours, type Cmp3Source, type PreparedHour } from './prepare';
 
-/** Mindestabstand zweier Läufe je Ort; knapp unter 60 min, damit der Stundentakt nicht an Sekunden scheitert. */
-export const WEATHER_MIN_INTERVAL_MS = 55 * 60_000;
-/** Gültigkeit einer Zeile (TK 14: 60 min je Standort). */
-export const WEATHER_TTL_MS = 60 * 60_000;
+/** Takt der Abrufe je Standort (TK 13/14, Entscheidung Sven 29.09.2026). */
+export const WEATHER_INTERVAL_MS = 15 * 60_000;
+/** Mindestabstand zweier Läufe je Ort; knapp unter dem Takt, damit er nicht an Sekunden scheitert. */
+export const WEATHER_MIN_INTERVAL_MS = 14 * 60_000;
+/** Gültigkeit einer Zeile = ein Takt. */
+export const WEATHER_TTL_MS = WEATHER_INTERVAL_MS;
+/**
+ * Zeitbudget je `tick-5min`-Lauf für das Wetter: danach startet kein neuer Abruf, damit der Lauf vor dem
+ * nächsten Tick endet; die übrigen Orte holt der nächste Lauf (Muster wie `HOURLY_FETCH_BUDGET_MS`).
+ */
+export const WEATHER_TICK_BUDGET_MS = 3 * 60_000;
+
+/** Viertelstunde eines Zeitpunkts als `YYYY-MM-DDTHH:MM` (UTC), Minute 00/15/30/45. */
+export function weatherSlot(now: Date): string {
+  const iso = isoUtc(now);
+  const quarter = Math.floor(Number(iso.slice(14, 16)) / 15) * 15;
+  return `${iso.slice(0, 13)}:${String(quarter).padStart(2, '0')}`;
+}
 
 export type WeatherPayloadHour = PreparedHour & WeatherScoredHour;
 
@@ -82,7 +97,7 @@ export async function runWeather(
   const chain = modelChain(Number(lat), Number(lon));
   const urls = weatherUrls(lat, lon);
   const [main, aerosol, compare] = await Promise.all([
-    // Hauptabruf: 429/5xx beenden den Lauf ohne Wiederholung in derselben Stunde (TK 13).
+    // Hauptabruf: 429/5xx beenden den Lauf ohne Wiederholung in derselben Viertelstunde (TK 13).
     deps.http.getJson(urls.main, { retryOnStatus: false }).catch((error: unknown) => {
       logger.warn('weather_main_failed', {
         lat,
@@ -168,9 +183,10 @@ export interface WeatherTickDeps {
 }
 
 /**
- * `tick-hourly`: je Standort aktiver Mandanten `weather:<siteId>:<Stunde>` anlegen und sofort ausführen –
- * der Reihe nach, damit nicht alle Aufrufe gleichzeitig starten; derselbe Ort nur einmal je Lauf. Nach dem
- * Zeitbudget des Laufs (`HOURLY_FETCH_BUDGET_MS`) kein neuer Abruf; der nächste Lauf holt die übrigen Orte.
+ * `tick-5min`: je Standort aktiver Mandanten `weather:<siteId>:<Viertelstunde>` anlegen und sofort ausführen –
+ * der Reihe nach, damit nicht alle Aufrufe gleichzeitig starten; derselbe Ort nur einmal je Lauf. Die übrigen
+ * Ticks derselben Viertelstunde sind No-ops (`runDone`). Nach dem Zeitbudget (`WEATHER_TICK_BUDGET_MS`) kein
+ * neuer Abruf; der nächste Lauf holt die übrigen Orte.
  */
 export async function weatherTick(
   deps: WeatherTickDeps,
@@ -178,8 +194,8 @@ export async function weatherTick(
   now: Date,
   budget?: TickBudget,
 ): Promise<number> {
-  const exhausted = budgetExhausted(budget);
-  const hour = isoUtc(now).slice(0, 13);
+  const exhausted = budgetExhausted(budget, WEATHER_TICK_BUDGET_MS);
+  const slot = weatherSlot(now);
   const seen = new Set<string>();
   const sites = await deps.sites();
   let runs = 0;
@@ -192,7 +208,7 @@ export async function weatherTick(
     if (seen.has(place)) continue;
     seen.add(place);
     try {
-      const key = dedupeKeys.weatherSiteHour(site.siteId, hour);
+      const key = dedupeKeys.weatherSiteSlot(site.siteId, slot);
       if (await deps.runDone(site.tenantId, key)) continue;
       const job = await deps.enqueue(site.tenantId, {
         kind: 'weather',

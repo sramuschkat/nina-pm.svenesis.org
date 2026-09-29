@@ -3165,7 +3165,7 @@ export const de = {
   weatherPage: {
     title: 'Wettervorhersage',
     intro:
-      'Astro-Wetter je Standort über 7 Tage, stündlich aus Open-Meteo (serverseitig, stündlich aktualisiert).',
+      'Astro-Wetter je Standort über 7 Tage, stündlich aus Open-Meteo (serverseitig, alle 15 Minuten aktualisiert).',
     site: 'Standort oder Rig',
     sites: 'Standorte',
     rigs: 'Rigs',
