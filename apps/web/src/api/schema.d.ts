@@ -10720,7 +10720,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Stand der Kataloge (Objektkatalog aus OpenNGC)
+         * Stand der Kataloge (Objektkatalog aus OpenNGC, Exoplaneten-Kataloge)
          * @description Aktion: `system.manage` · FA-FRM-01, S-82
          */
         get: {
@@ -10769,7 +10769,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/system/v1/catalogs/dso/refresh": {
+    "/api/system/v1/catalogs/{catalog}/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -10779,14 +10779,16 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Objektkatalog neu importieren (Job catalog_refresh)
-         * @description Aktion: `system.manage` · FA-FRM-01, S-82, TK 13
+         * Katalog neu importieren (Job catalog_refresh)
+         * @description Aktion: `system.manage` · FA-FRM-01, FA-EXO-04, S-82, TK 13
          */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    catalog: "dso" | "exoclock" | "nasa" | "toi";
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -10811,6 +10813,15 @@ export interface paths {
                 };
                 /** @description Keine Berechtigung */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unbekannter Katalog */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12373,7 +12384,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "maintenanceBanner";
+                    key: "maintenanceBanner" | "exoPrefilter";
                 };
                 cookie?: never;
             };
@@ -12417,7 +12428,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "maintenanceBanner";
+                    key: "maintenanceBanner" | "exoPrefilter";
                 };
                 cookie?: never;
             };
@@ -12562,7 +12573,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "request.too_large" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.not_rejectable" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "request.too_large" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "catalog.source_failed" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.not_rejectable" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
             requestId?: string;
             errors?: {
                 path: string;
@@ -16829,6 +16840,37 @@ export interface components {
                     finishedAt: string | null;
                 } | null;
             };
+            exo: {
+                /** @enum {string} */
+                catalog: "exoclock" | "nasa" | "toi";
+                rows: number;
+                unknownTimeSystem: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastImportAt: string | null;
+                lastJob: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    id: string;
+                    /** @enum {string} */
+                    status: "pending" | "running" | "done" | "failed";
+                    error: string | null;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    createdAt: string;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    finishedAt: string | null;
+                } | null;
+            }[];
         };
         NinaBootstrap: {
             /** @enum {string} */
@@ -18503,7 +18545,7 @@ export interface components {
         };
         SystemSettingView: {
             /** @enum {string} */
-            key: "maintenanceBanner";
+            key: "maintenanceBanner" | "exoPrefilter";
             value?: unknown;
             /**
              * Format: date-time

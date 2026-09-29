@@ -114,7 +114,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-40](AP-40.md) | Exoplaneten-Kataloge | M | AP-17 | – | ☐ |
+| [AP-40](AP-40.md) | Exoplaneten-Kataloge | M | AP-17 | – | ◐ |
 | [AP-41](AP-41.md) | Transitrechnung | M | AP-40, AP-08b | – | ☐ |
 | [AP-42](AP-42.md) | Exoplaneten-Bildschirm S-22 | M | AP-41 | – | ☐ |
 | [AP-43](AP-43.md) | Exoplaneten-Projekt und Transit-Beobachtungen | L | AP-42, AP-12c | – | ☐ |

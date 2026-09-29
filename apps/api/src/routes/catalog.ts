@@ -2,12 +2,14 @@
  * Objektkatalog (AP-20; FA-FRM-01, FA-FRM-15, S-21, S-82):
  * - `GET /web/v1/dso` (`catalog.read`): Suche und Filter im Speicher (Katalog ≤ 10 min alt).
  * - `GET /system/v1/catalogs` (`system.manage`): Stand – Version, Quellzeilen, Zeilen, letzter Job.
- * - `POST /system/v1/catalogs/dso/refresh` (`system.manage`): Job `catalog_refresh` → `202 {jobId}`.
+ * - `POST /system/v1/catalogs/{catalog}/refresh` (`system.manage`): Job `catalog_refresh` → `202 {jobId}` –
+ *   `dso` aus `packages/catalog-data`, `exoclock`/`nasa`/`toi` von der Quelle (AP-40, FA-EXO-04).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { dsoCatalogStatus, enqueueSystemJob, readDsoCatalog } from '@nina-pm/db';
+import { dsoCatalogStatus, enqueueSystemJob, exoCatalogStatus, readDsoCatalog } from '@nina-pm/db';
 import meta from '@nina-pm/catalog-data/openngc/catalog-meta.json' with { type: 'json' };
 import {
+  CatalogParam,
   CatalogStatus,
   DsoList,
   DsoQuery,
@@ -22,6 +24,7 @@ import { requireTenant } from './tenant';
 import { buildNightTable, siteNights } from '../lib/night-table';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
+import { enqueueExoCatalog } from '../exo/job';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 
@@ -71,20 +74,25 @@ export const catalogStatusRoute = defineRoute(
   {
     method: 'get',
     path: '/api/system/v1/catalogs',
-    summary: 'Stand der Kataloge (Objektkatalog aus OpenNGC)',
+    summary: 'Stand der Kataloge (Objektkatalog aus OpenNGC, Exoplaneten-Kataloge)',
     tags: ['system'],
     responses: { 200: { description: 'Stand', ...json(CatalogStatus) }, ...denied },
   },
 );
 
 export const catalogRefreshRoute = defineRoute(
-  { action: 'system.manage', requirements: ['FA-FRM-01', 'S-82', 'TK 13'] },
+  { action: 'system.manage', requirements: ['FA-FRM-01', 'FA-EXO-04', 'S-82', 'TK 13'] },
   {
     method: 'post',
-    path: '/api/system/v1/catalogs/dso/refresh',
-    summary: 'Objektkatalog neu importieren (Job catalog_refresh)',
+    path: '/api/system/v1/catalogs/{catalog}/refresh',
+    summary: 'Katalog neu importieren (Job catalog_refresh)',
     tags: ['system'],
-    responses: { 202: { description: 'Job angelegt', ...json(JobAccepted) }, ...denied },
+    request: { params: CatalogParam },
+    responses: {
+      202: { description: 'Job angelegt', ...json(JobAccepted) },
+      ...denied,
+      422: problemContent('Unbekannter Katalog'),
+    },
   },
 );
 
@@ -172,6 +180,7 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
   app.openapi(catalogStatusRoute, async (c) => {
     const svc = await services();
     const s = await dsoCatalogStatus(svc.db);
+    const exo = await exoCatalogStatus(svc.db);
     c.header('cache-control', 'no-store');
     return c.json(
       {
@@ -196,6 +205,21 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
               }
             : null,
         },
+        exo: exo.map((e) => ({
+          catalog: e.catalog,
+          rows: e.rows,
+          unknownTimeSystem: e.unknownTimeSystem,
+          lastImportAt: isoUtcOrNull(e.lastImportAt),
+          lastJob: e.lastJob
+            ? {
+                id: e.lastJob.id,
+                status: e.lastJob.status as 'pending' | 'running' | 'done' | 'failed',
+                error: e.lastJob.error,
+                createdAt: isoUtc(e.lastJob.createdAt),
+                finishedAt: isoUtcOrNull(e.lastJob.finishedAt),
+              }
+            : null,
+        })),
       },
       200,
     );
@@ -205,10 +229,15 @@ export function catalogRoutes(services: () => Promise<ApiServices>) {
     const svc = await services();
     const auth = c.get('auth');
     if (!auth || auth.ctx !== 'system') throw new ProblemError('permission.denied');
-    const job = await enqueueSystemJob(svc.db, {
-      kind: 'catalog_refresh',
-      dedupeKey: 'catalog_refresh:dso',
-    });
+    const { catalog } = c.req.valid('param');
+    const job =
+      catalog === 'dso'
+        ? await enqueueSystemJob(svc.db, {
+            kind: 'catalog_refresh',
+            dedupeKey: 'catalog_refresh:dso',
+            input: { catalog },
+          })
+        : await enqueueExoCatalog(svc.db, catalog);
     if (job.created) await svc.jobInvoker.invoke(job.jobId);
     return c.json({ jobId: job.jobId }, 202);
   });

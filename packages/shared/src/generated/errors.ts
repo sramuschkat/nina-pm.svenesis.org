@@ -58,6 +58,7 @@ export const ERRORS = {
   "transit.window_overlap": { http: 409, i18nKey: "errors.transit.windowOverlap", titleDe: "Transitfenster überlappt eine andere Festlegung", titleEn: "Transit window overlaps another lock" },
   "transit.ephemeris_stale": { http: 409, i18nKey: "errors.transit.ephemerisStale", titleDe: "Die Ephemeride ist zu unsicher für eine Festlegung", titleEn: "The ephemeris is too uncertain for a lock" },
   "exo.epoch_out_of_range": { http: 422, i18nKey: "errors.exo.epochOutOfRange", titleDe: "Die Katalog-Epoche liegt außerhalb des erwarteten Bereichs", titleEn: "The catalogue epoch is outside the expected range" },
+  "catalog.source_failed": { http: 502, i18nKey: "errors.catalog.sourceFailed", titleDe: "Die Katalogquelle lieferte keine brauchbaren Daten – der bisherige Stand bleibt", titleEn: "The catalogue source returned no usable data – the previous state is kept" },
   "transit.result_time_system": { http: 422, i18nKey: "errors.transit.resultTimeSystem", titleDe: "Die Ergebnisdatei nennt ein anderes Zeitsystem als BJD_TDB", titleEn: "The result file uses a time system other than BJD_TDB" },
   "validation.min_time_too_small": { http: 422, i18nKey: "errors.validation.minTimeTooSmall", titleDe: "Mindestzeit kleiner als eine Belichtung", titleEn: "Minimum time shorter than one exposure" },
   "project.status_transition_invalid": { http: 409, i18nKey: "errors.project.statusTransitionInvalid", titleDe: "Statuswechsel nicht erlaubt", titleEn: "Status change not allowed" },

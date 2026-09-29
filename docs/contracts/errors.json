@@ -401,6 +401,13 @@
    "titleEn": "The catalogue epoch is outside the expected range"
   },
   {
+   "code": "catalog.source_failed",
+   "http": 502,
+   "i18nKey": "errors.catalog.sourceFailed",
+   "titleDe": "Die Katalogquelle lieferte keine brauchbaren Daten – der bisherige Stand bleibt",
+   "titleEn": "The catalogue source returned no usable data – the previous state is kept"
+  },
+  {
    "code": "transit.result_time_system",
    "http": 422,
    "i18nKey": "errors.transit.resultTimeSystem",

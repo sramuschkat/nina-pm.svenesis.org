@@ -198,6 +198,20 @@ export {
   type DsoCatalogStatus,
 } from './repositories/dso';
 export {
+  EXO_BATCH_SIZE,
+  EXO_CATALOGS,
+  exoCatalogCount,
+  exoCatalogDedupeKey,
+  exoCatalogStatus,
+  exoPrefilterSetting,
+  readExoCatalog,
+  replaceExoCatalog,
+  type ExoCatalog,
+  type ExoCatalogRow,
+  type ExoCatalogStatus,
+  type ExoReplaceResult,
+} from './repositories/exo-catalog';
+export {
   latestWeather,
   saveWeather,
   weatherCoord,

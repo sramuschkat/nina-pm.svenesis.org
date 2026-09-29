@@ -2,7 +2,8 @@
  * S-82 Kataloge (FA-SU-08, AP-20): Stand des Objektkatalogs – OpenNGC-Version und Abrufdatum,
  * Quellzeilen (`NGC.csv` + `addendum.csv`), erwartete Zeilen laut Katalogdatei gegen die Zeilen in
  * `dso_object`, letzter Import und letzter Job; *Neu importieren* legt den Job `catalog_refresh` an.
- * Exoplaneten-Kataloge folgen mit R4.
+ * Exoplaneten-Kataloge (AP-40, FA-EXO-04): je Katalog Planeten, davon mit unsicherem Zeitsystem, letzter Import,
+ * letzter Job und *Neu laden*.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -17,6 +18,14 @@ import { problemCode } from '../admin/shared';
 
 export const CATALOG_STATUS_KEY = ['system', 'catalogs'] as const;
 
+type ExoCatalogName = 'exoclock' | 'nasa' | 'toi';
+type JobInfo = {
+  status: 'pending' | 'running' | 'done' | 'failed';
+  error: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+} | null;
+
 export function CatalogPanel() {
   const { t, i18n } = useTranslation();
   const client = useQueryClient();
@@ -26,7 +35,9 @@ export function CatalogPanel() {
     queryFn: () => catalogApi.status(),
     // Solange ein Import läuft, den Stand nachladen.
     refetchInterval: (q) =>
-      q.state.data?.dso.lastJob && ['pending', 'running'].includes(q.state.data.dso.lastJob.status)
+      [q.state.data?.dso.lastJob, ...(q.state.data?.exo ?? []).map((e) => e.lastJob)].some(
+        (j) => j && ['pending', 'running'].includes(j.status),
+      )
         ? 5000
         : false,
   });
@@ -35,10 +46,34 @@ export function CatalogPanel() {
     onSuccess: () => setStarted(true),
     onSettled: () => client.invalidateQueries({ queryKey: CATALOG_STATUS_KEY }),
   });
+  const refreshExo = useMutation({
+    mutationFn: (catalog: ExoCatalogName) => catalogApi.refresh(catalog),
+    onSettled: () => client.invalidateQueries({ queryKey: CATALOG_STATUS_KEY }),
+  });
   const when = (iso: string | null) =>
     iso ? formatDateTime(iso, SYSTEM_TIMEZONE, i18n.language) : t('catalog.status.none');
   const fmt = (n: number) => new Intl.NumberFormat(i18n.language).format(n);
   const Refresh = actionIcons.refresh;
+  const jobCell = (job: JobInfo) =>
+    job ? (
+      <>
+        <span
+          className={
+            job.status === 'failed'
+              ? styles.pillDanger
+              : job.status === 'done'
+                ? styles.pillOk
+                : styles.pill
+          }
+        >
+          {t(`catalog.status.jobStatus.${job.status}`)}
+        </span>{' '}
+        {when(job.finishedAt ?? job.createdAt)}
+        {job.error ? <span className={styles.muted}> · {job.error}</span> : null}
+      </>
+    ) : (
+      t('catalog.status.none')
+    );
   const d = status.data?.dso;
   return (
     <section className={styles.panel} aria-labelledby="catalog-status">
@@ -88,29 +123,7 @@ export function CatalogPanel() {
             <dt>{t('catalog.status.lastImport')}</dt>
             <dd>{when(d.lastImportAt)}</dd>
             <dt>{t('catalog.status.lastJob')}</dt>
-            <dd>
-              {d.lastJob ? (
-                <>
-                  <span
-                    className={
-                      d.lastJob.status === 'failed'
-                        ? styles.pillDanger
-                        : d.lastJob.status === 'done'
-                          ? styles.pillOk
-                          : styles.pill
-                    }
-                  >
-                    {t(`catalog.status.jobStatus.${d.lastJob.status}`)}
-                  </span>{' '}
-                  {when(d.lastJob.finishedAt ?? d.lastJob.createdAt)}
-                  {d.lastJob.error ? (
-                    <span className={styles.muted}> · {d.lastJob.error}</span>
-                  ) : null}
-                </>
-              ) : (
-                t('catalog.status.none')
-              )}
-            </dd>
+            <dd>{jobCell(d.lastJob)}</dd>
           </dl>
           <p className={styles.muted}>{t('catalog.status.refreshHint')}</p>
           <div className={styles.actions}>
@@ -133,6 +146,67 @@ export function CatalogPanel() {
             ) : null}
           </div>
           {refresh.isError ? <ProblemMessage code={problemCode(refresh.error)} /> : null}
+
+          <h3>{t('catalog.status.exo.title')}</h3>
+          <p className={styles.muted}>{t('catalog.status.exo.hint')}</p>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">{t('catalog.status.exo.catalog')}</th>
+                  <th scope="col">{t('catalog.status.exo.rows')}</th>
+                  <th scope="col">{t('catalog.status.exo.unknownTimeSystem')}</th>
+                  <th scope="col">{t('catalog.status.lastImport')}</th>
+                  <th scope="col">{t('catalog.status.lastJob')}</th>
+                  {/* Sichtbarer Titel: ein absolut positionierter `visually-hidden`-Text entkäme dem
+                      Scroll-Container und verbreiterte die Seite bei 768 px (E2E system-admin). */}
+                  <th scope="col">{t('catalog.status.exo.action')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(status.data.exo ?? []).map((e) => {
+                  const name = t(`catalog.status.exo.names.${e.catalog}`);
+                  const busy =
+                    (refreshExo.isPending && refreshExo.variables === e.catalog) ||
+                    (e.lastJob !== null && ['pending', 'running'].includes(e.lastJob.status));
+                  return (
+                    <tr key={e.catalog}>
+                      <th scope="row">{name}</th>
+                      <td>
+                        {e.rows === 0 ? (
+                          <span className={styles.pillWarn}>{t('catalog.status.notImported')}</span>
+                        ) : (
+                          fmt(e.rows)
+                        )}
+                      </td>
+                      <td>
+                        {e.unknownTimeSystem > 0 ? (
+                          <span className={styles.pillWarn}>{fmt(e.unknownTimeSystem)}</span>
+                        ) : (
+                          fmt(0)
+                        )}
+                      </td>
+                      <td>{when(e.lastImportAt)}</td>
+                      <td>{jobCell(e.lastJob)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.button}
+                          disabled={busy}
+                          aria-label={t('catalog.status.exo.refreshLabel', { name })}
+                          onClick={() => refreshExo.mutate(e.catalog)}
+                        >
+                          <Refresh size={ICON_SIZE.button} aria-hidden />
+                          {t('catalog.status.exo.refresh')}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {refreshExo.isError ? <ProblemMessage code={problemCode(refreshExo.error)} /> : null}
         </>
       )}
     </section>

@@ -438,6 +438,26 @@
   "nasa",
   "toi"
  ],
+ "exoTimeSystemSources": [
+  "bjd_tdb",
+  "bjd_utc",
+  "hjd_utc",
+  "jd_utc",
+  "btjd",
+  "bkjd",
+  "unknown"
+ ],
+ "exoDepthUnits": [
+  "percent",
+  "ppm",
+  "mmag"
+ ],
+ "exoPriorities": [
+  "alert",
+  "high",
+  "medium",
+  "low"
+ ],
  "dsoObjectTypes": [
   "G",
   "GPair",
@@ -688,7 +708,8 @@
   "defaultLanguage"
  ],
  "systemSettingKeys": [
-  "maintenanceBanner"
+  "maintenanceBanner",
+  "exoPrefilter"
  ],
  "uploadPurposes": [
   "transit_result",

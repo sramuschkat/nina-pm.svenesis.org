@@ -19,6 +19,21 @@ Verbindlich für AP-41 (Rechnung) und AP-44 (Reservierung, Plugin-Transitblock: 
   - `HJD_UTC` → zusätzlich **Heliozentrum → Baryzentrum**: `+ (r⃗_Sonne,bary(T0) · n̂)/c`. Größe 0,15 … **4,6 Lichtsekunden** (Maximum bei Konjunktion der vier Riesenplaneten 5,0 s).
   - `JD_UTC` / `JD` → **volle Rømer-Korrektur**: `+ (r⃗_Erde,bary(T0) · n̂)/c`, also bis **±8,5 min** – nicht der 5-s-Sonnenversatz. JD_UTC ist eine geo-/topozentrische Zeit, kein heliozentrisches Maß; wer hier den HJD-Zweig nimmt, verfehlt das Transitfenster.
   - Unbekanntes System → `timeSystemSource = 'unknown'`, Fensterpuffer **+ 10 min** und Kennzeichen „Zeitsystem unsicher" in S-22/S-31. Die frühere Angabe + 2 min deckte nur eine Verwechslung von BJD/HJD bzw. UTC/TDB (≤ 74 s) ab, nicht eine Epoche, die in Wahrheit `JD_UTC` ist (Rømer bis ±8,5 min + 69 s; Astronomie-Prüfung 28.09.2026).
+  - **Zuordnung der Quellangaben (verbindlich, Spec-Ergänzung 29.09.2026, AP-40, Entscheidung Sven).** Geprüft am 29.09.2026 gegen das NASA-Archiv (`pscomppars`, 4.739 transitierende Planeten) und ExoClock (776 Planeten, alle `BJD_TDB`): Für Planeten in beiden Katalogen wurde die NASA-Epoche mit der ExoClock-Ephemeride auf dieselbe Epochennummer gebracht und die Differenz verglichen.
+
+    | `pl_tranmid_systemref` | Planeten gesamt / nach Vorfilter | gemeinsam mit ExoClock | Median NASA − ExoClock | Zuordnung |
+    |---|---|---|---|---|
+    | `BJD-TDB`, `BJD` | 746 + 2.403 / 327 + 276 | 388 | 0,00 min | `bjd_tdb` |
+    | `BJD-TT` | 1 / 1 | – | – | `bjd_tdb` (TT − TDB < 2 ms) |
+    | `BJD-UTC` | 41 / 24 | 27 zusammen mit HJD/HJD-UTC | + 1,1 min (= UTC → TDB) | `bjd_utc` |
+    | `HJD`, `HJD-UTC` | 85 + 24 / 27 + 23 | (s. o.) | (s. o.) | `hjd_utc` |
+    | `JD` | 1.383 / 21 | 7 | + 0,05 min, **kein** Rømer-Versatz | `unknown` |
+    | `HJD-TDB`, leer, sonstige | 1 + 55 / 1 + 3 | – | – | `unknown` |
+
+    **`JD` ist im NASA-Archiv keine topozentrische JD_UTC**, sondern in aller Regel BJD: Die volle Rømer-Korrektur (bis ±8,5 min) würde diese Epochen also erst falsch machen. Deshalb gilt `JD` als **unbekannt**: Epoche unverändert, Puffer + 10 min, Kennzeichen „Zeitsystem unsicher“. Der Puffer deckt auch den ungünstigsten Fall ab, dass eine Epoche doch JD_UTC ist (8,5 min + 69 s = 9,7 min). Der Zweig `JD_UTC` oben bleibt für eine Quelle, die das System ausdrücklich so angibt. Bisher gibt es keine; `normalizeEpoch` behandelt `jd_utc` bis dahin wie `unknown`.
+
+    `HJD-TDB` (ein Planet) ist eine untypische Kombination und wird ebenfalls als unbekannt geführt. ExoClock: `ephem_mid_time_format` mit derselben Tabelle. TOI: `Epoch (BJD)` = `bjd_tdb` bzw. `btjd` unter 2 400 000. Rohwert (`t0_raw`) und Quellangabe (`time_system_raw`) werden mitgespeichert (Migration 0010).
+  - **Sonnenversatz für `hjd_utc` (verbindlich, AP-40).** `r⃗_Sonne,bary = −Σ mᵢ·r⃗ᵢ / (M☉ + Σ mᵢ)` über Jupiter, Saturn, Uranus und Neptun: Kepler-Bahnen nach JPL Tabelle 1 (`sky/planets.ts`), Massenverhältnisse M☉/mᵢ = 1047,3486 / 3497,9018 / 22 902,98 / 19 412,26. Der Vektor wird ekliptikal J2000 → äquatorial gedreht, `n̂` kommt aus ICRS (AST-T6). Gegen astropy (`light_travel_time` baryzentrisch − heliozentrisch, de432s; `tools/reference/gen_exo_epochs.py`, 108 Fälle 1999–2030) liegt der Fehler bei **≤ 6,3 ms**, Testgrenze 20 ms. `TDB − UTC` enthält zusätzlich `TDB − TT ≈ 1,657 ms · sin g`; gegen astropy ≤ 1 ms.
 - **Schaltsekunden zur Epoche (verbindlich, AST-T7).** `TAI − UTC` wird **zum Zeitpunkt von `T0`** als Stufenfunktion über **Datum** gelesen, nicht über Jahr. Vollständige Tabelle ab 1999 (frühere Epochen über die IANA-Datei, ab 1972-01-01 = 10 s):
 
   | gültig ab | TAI−UTC |

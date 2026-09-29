@@ -4,7 +4,7 @@
  * Stand des Katalogs für S-82.
  */
 import { z } from 'zod';
-import { dsoCatalogPrefixes, dsoObjectTypes, twilight } from '../generated/enums';
+import { catalogs, dsoCatalogPrefixes, dsoObjectTypes, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
 export const DSO_TYPE_GROUPS = [
@@ -165,8 +165,29 @@ export const CatalogStatus = z
         })
         .nullable(),
     }),
+    /** Exoplaneten-Kataloge (AP-40): Zeilen, davon mit unsicherem Zeitsystem, letzter Import und Job. */
+    exo: z.array(
+      z.object({
+        catalog: z.enum(['exoclock', 'nasa', 'toi']),
+        rows: z.number().int(),
+        unknownTimeSystem: z.number().int(),
+        lastImportAt: UtcInstant.nullable(),
+        lastJob: z
+          .object({
+            id: Uuid,
+            status: z.enum(['pending', 'running', 'done', 'failed']),
+            error: z.string().nullable(),
+            createdAt: UtcInstant,
+            finishedAt: UtcInstant.nullable(),
+          })
+          .nullable(),
+      }),
+    ),
   })
   .meta({ id: 'CatalogStatus' });
+
+/** Pfadparameter für *Neu laden* je Katalog (S-82). */
+export const CatalogParam = z.object({ catalog: z.enum(catalogs) });
 export type CatalogStatus = z.infer<typeof CatalogStatus>;
 
 /** Himmelsausschnitt für das Katalog-Overlay der Sternkarte (FA-FRM-09, S-20). */

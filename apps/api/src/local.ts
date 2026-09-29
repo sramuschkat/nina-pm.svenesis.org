@@ -153,7 +153,14 @@ const jobs: JobRunnerDeps = {
     session_close: sessionCloseHandler(localSessionJobs),
     session_report: sessionReportHandler(localSessionJobs),
     reconcile: reconcileJobHandler({ db: () => Promise.resolve(db) }),
-    catalog_refresh: catalogRefreshHandler({ db: () => Promise.resolve(db) }),
+    // Exoplaneten-Kataloge (AP-40) lokal nur über *Neu laden* in S-82, dann mit echten Abrufen.
+    catalog_refresh: catalogRefreshHandler({
+      db: () => Promise.resolve(db),
+      fetchText: async (url, timeoutMs) =>
+        new TextDecoder().decode(
+          (await httpClient({ version: 'local' }).getBytes(url, { timeoutMs })).bytes,
+        ),
+    }),
     thumbnail: localThumbnailHandler,
     multi_sim: multiSimJobHandler(localMultiSim),
     impact: impactJobHandler(localMultiSim),

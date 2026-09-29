@@ -89,6 +89,14 @@ function heliocentric(el: Elements, t: number): Vec3 {
   ];
 }
 
+/**
+ * Heliozentrischer Ort eines Planeten, ekliptikal J2000 in AE, zu `t` Jahrhunderten (TDB) seit J2000 – für den
+ * Sonnenversatz zum Baryzentrum (`exo/epoch.ts`, transit.md §1).
+ */
+export function heliocentricAu(id: PlanetId, t: number): Vec3 {
+  return heliocentric(ELEMENTS[id], t);
+}
+
 export interface PlanetPlace {
   /** Geozentrisch, äquatorial J2000 (Einheitsvektor) – für die Karte im J2000-Rahmen. */
   readonly j2000: Vec3;

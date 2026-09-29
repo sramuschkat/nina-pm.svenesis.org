@@ -421,4 +421,32 @@ describe('S-82 Kataloge', () => {
     ).json()) as { dso: { lastJob: { id: string; status: string } | null } };
     expect(status.dso.lastJob).toMatchObject({ id: a.jobId, status: 'pending' });
   });
+
+  it('Exoplaneten-Kataloge: eigener Job je Katalog, Stand je Katalog (AP-40)', async () => {
+    const nasa = await s.request('/api/system/v1/catalogs/nasa/refresh', {
+      method: 'POST',
+      cookies: systemCookies,
+    });
+    expect(nasa.status).toBe(202);
+    const { jobId } = (await nasa.json()) as { jobId: string };
+    const status = (await (
+      await s.request('/api/system/v1/catalogs', { cookies: systemCookies })
+    ).json()) as {
+      dso: { lastJob: { id: string } | null };
+      exo: { catalog: string; rows: number; lastJob: { id: string } | null }[];
+    };
+    expect(status.exo.map((e) => e.catalog)).toEqual(['exoclock', 'nasa', 'toi']);
+    expect(status.exo.find((e) => e.catalog === 'nasa')?.lastJob?.id).toBe(jobId);
+    expect(status.exo.find((e) => e.catalog === 'exoclock')?.lastJob).toBeNull();
+    // Der Objektkatalog zeigt weiter nur seinen eigenen Job.
+    expect(status.dso.lastJob?.id).not.toBe(jobId);
+  });
+
+  it('unbekannter Katalog → 422', async () => {
+    const res = await s.request('/api/system/v1/catalogs/gaia/refresh', {
+      method: 'POST',
+      cookies: systemCookies,
+    });
+    expect(res.status).toBe(422);
+  });
 });

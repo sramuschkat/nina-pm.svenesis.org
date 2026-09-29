@@ -820,9 +820,65 @@ export interface DsoObjectTable {
   updatedAt: Timestamp;
 }
 
+/** Exoplaneten-Katalog (Schema 1.x, AP-40); Spalten ab `timeSystemSource` aus Migration 0010 (nullbar). */
+export interface ExoCatalogEntryTable {
+  id: Generated<string>;
+  catalog: 'exoclock' | 'nasa' | 'toi';
+  planet: string;
+  star: string;
+  disposition: string | null;
+  raDeg: number;
+  decDeg: number;
+  magVJohnson: number | null;
+  magRCousins: number | null;
+  magSdssG: number | null;
+  magGaiaG: number | null;
+  magTess: number | null;
+  magBandUsed: string | null;
+  teffK: number | null;
+  distancePc: number | null;
+  t0BjdTdb: number;
+  t0SigmaD: number | null;
+  periodD: number;
+  periodSigmaD: number | null;
+  durationH: number | null;
+  durationEstimated: Generated<boolean>;
+  depthMmag: number | null;
+  rpOverRs: number | null;
+  aOverRs: number | null;
+  inclinationDeg: number | null;
+  planetRadiusRe: number | null;
+  eqTempK: number | null;
+  exoclockPriority: string | null;
+  oMinusCMin: number | null;
+  minApertureMm: number | null;
+  minApertureEstimated: Generated<boolean>;
+  amateurReachable: Generated<boolean>;
+  fetchedAt: Timestamp;
+  timeSystemSource: string | null;
+  timeSystemRaw: string | null;
+  t0Raw: number | null;
+  depthRaw: number | null;
+  depthUnit: string | null;
+  depthEstimated: Generated<boolean | null>;
+  ticId: string | null;
+}
+
+/** Exoplaneten-Projekt (Migration 0004); bisher nur die Spalten, die der Katalogimport braucht (AP-40). */
+export interface ExoProjectTable {
+  projectId: string;
+  tenantId: string;
+  planet: string;
+  star: string;
+  catalog: string;
+  catalogEntryId: string | null;
+}
+
 export interface Database {
   tenant: TenantTable;
   dsoObject: DsoObjectTable;
+  exoCatalogEntry: ExoCatalogEntryTable;
+  exoProject: ExoProjectTable;
   weatherCache: WeatherCacheTable;
   identity: IdentityTable;
   superUser: SuperUserTable;
