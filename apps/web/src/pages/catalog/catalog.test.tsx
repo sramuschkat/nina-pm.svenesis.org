@@ -589,15 +589,22 @@ describe('S-21 Objektbrowser', () => {
     renderPage();
     await screen.findByText('M 31');
     const row = screen.getByRole('link', { name: 'M 31 in der Sternkarte' }).closest('tr');
-    const link = await within(row as HTMLElement).findByRole('link', {
-      name: 'Wikipedia-Artikel zu M 31',
-    });
+    // Der Website-Auszug (Wikipedia-Titel) lädt nachträglich – unter CI-Last länger als 1 s.
+    const link = await within(row as HTMLElement).findByRole(
+      'link',
+      { name: 'Wikipedia-Artikel zu M 31' },
+      { timeout: 5000 },
+    );
     expect(link).toHaveAttribute('href', 'https://de.wikipedia.org/wiki/Andromedagalaxie');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     cleanup();
     renderPage('/planung/objekte?reiter=alle&ansicht=galerie');
-    const card = await screen.findByRole('link', { name: 'Wikipedia-Artikel zu M 31' });
+    const card = await screen.findByRole(
+      'link',
+      { name: 'Wikipedia-Artikel zu M 31' },
+      { timeout: 5000 },
+    );
     expect(card).toHaveTextContent('Wikipedia');
     expect(card).toHaveAttribute('href', 'https://de.wikipedia.org/wiki/Andromedagalaxie');
   });

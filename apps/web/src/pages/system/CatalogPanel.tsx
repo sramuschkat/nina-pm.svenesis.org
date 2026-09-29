@@ -158,9 +158,9 @@ export function CatalogPanel() {
                   <th scope="col">{t('catalog.status.exo.unknownTimeSystem')}</th>
                   <th scope="col">{t('catalog.status.lastImport')}</th>
                   <th scope="col">{t('catalog.status.lastJob')}</th>
-                  <th scope="col">
-                    <span className="visually-hidden">{t('catalog.status.exo.refresh')}</span>
-                  </th>
+                  {/* Sichtbarer Titel: ein absolut positionierter `visually-hidden`-Text entkäme dem
+                      Scroll-Container und verbreiterte die Seite bei 768 px (E2E system-admin). */}
+                  <th scope="col">{t('catalog.status.exo.action')}</th>
                 </tr>
               </thead>
               <tbody>

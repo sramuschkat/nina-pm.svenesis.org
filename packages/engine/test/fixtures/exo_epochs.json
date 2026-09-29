@@ -1190,11 +1190,11 @@
   }
  ],
  "meta": {
-  "astropy": "6.0.1",
+  "astropy": "6.1.4",
   "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
   "generator": "tools/reference/exo_epochs",
   "leapSecondsExpire": "2027-06-28 00:00:00.000",
-  "numpy": "1.26.4",
+  "numpy": "2.1.3",
   "refraction": "geometrisch (pressure = 0); scheinbar \u00fcber Saemundsson wie die Engine (AST-D30)",
   "ut1": "UT1 = UTC (iers_degraded_accuracy = ignore), wie die Engine"
  }

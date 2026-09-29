@@ -2845,6 +2845,7 @@ export const de = {
         unknownTimeSystem: 'Zeitsystem unsicher',
         names: { exoclock: 'ExoClock', nasa: 'NASA Exoplanet Archive', toi: 'TESS TOI' },
         refresh: 'Neu laden',
+        action: 'Aktion',
         refreshLabel: '{{name}} neu laden',
       },
     },

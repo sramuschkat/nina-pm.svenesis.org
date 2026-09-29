@@ -2837,6 +2837,7 @@ export const en: Messages = {
         unknownTimeSystem: 'Time system uncertain',
         names: { exoclock: 'ExoClock', nasa: 'NASA Exoplanet Archive', toi: 'TESS TOI' },
         refresh: 'Reload',
+        action: 'Action',
         refreshLabel: 'Reload {{name}}',
       },
     },
