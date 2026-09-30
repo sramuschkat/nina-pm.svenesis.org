@@ -86,7 +86,8 @@
   --npm-sky-meridian: rgba(240, 240, 240, 0.4);
   --npm-sky-heatmap: rgba(229, 72, 77, 0.22);
   --npm-sky-sun: #f6c85f;
-  --npm-sky-day: rgba(92, 142, 212, 0.55);
+  --npm-sky-day: #4a86c8;
+  --npm-sky-day-horizon: #a9cbea;
   --npm-sky-moon: #e8ecf2;
   --npm-sky-planet: #f7b267;
   --npm-sky-frame: #ff4fd8;

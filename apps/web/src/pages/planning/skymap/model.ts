@@ -67,6 +67,8 @@ export const DEFAULT_OVERLAYS: readonly Overlay[] = [
   'horizon',
   'minAlt',
   'sun',
+  // Taghimmel standardmäßig an (Wunsch Sven 30.09.2026): am Tag heller Himmel, Sterne treten zurück.
+  'daySky',
   'moon',
   'planets',
 ];
