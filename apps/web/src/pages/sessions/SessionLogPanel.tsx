@@ -23,6 +23,7 @@ import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
 import { problemCode } from '../admin/shared';
 import styles from './sessions.module.css';
+import { MemberAvatarFor } from '../../lib/member';
 
 type NumberField = Exclude<SessionLogField, 'startTime' | 'endTime' | 'cloudsNote'>;
 
@@ -176,7 +177,8 @@ function SessionLogForm({
       }}
     >
       <h2 id="session-log-title">{t('sessions.log.title')}</h2>
-      <p className={styles.muted}>
+      <p className={`${styles.muted} ${styles.byLine}`}>
+        {view.saved ? <MemberAvatarFor id={view.updatedBy} /> : null}
         {view.saved
           ? t('sessions.log.savedBy', {
               name: view.updatedByName ?? t('sessions.log.unknownUser'),

@@ -16,6 +16,7 @@ import { problemCode } from '../equipment/shared';
 import { ChangeRequestDiffTable } from './ChangeRequestDiff';
 import { ImpactPanel } from './ImpactPanel';
 import styles from './projects.module.css';
+import { Person } from '../../lib/member';
 
 export function ChangeRequestDecision({
   item,
@@ -64,13 +65,15 @@ export function ChangeRequestDecision({
       <h2 id={ids.title}>{t('changeRequests.decisionTitle', { name: item.name })}</h2>
       <dl className={styles.cardFacts}>
         <dt>{t('queue.col.creator')}</dt>
-        <dd>{item.createdByName}</dd>
-        <dt>{t('queue.col.votes')}</dt>
         <dd>
+          <Person id={item.createdBy} name={item.createdByName} />
+        </dd>
+        <dt>{t('queue.col.votes')}</dt>
+        <dd className={styles.voterList}>
           {item.votes.count}
-          {item.votes.voters.length > 0
-            ? ` (${item.votes.voters.map((v) => v.displayName).join(', ')})`
-            : ''}
+          {item.votes.voters.map((v) => (
+            <Person key={v.memberId} id={v.memberId} name={v.displayName} />
+          ))}
         </dd>
         {item.requestComment ? (
           <>

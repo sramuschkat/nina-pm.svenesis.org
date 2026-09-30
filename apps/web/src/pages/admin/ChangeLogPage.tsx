@@ -14,6 +14,7 @@ import styles from './admin.module.css';
 import { AdminLayout } from './AdminLayout';
 import { AuditTable } from './AuditTable';
 import { DateTime, problemCode } from './shared';
+import { Person } from '../../lib/member';
 
 const ENTITIES = ['app_user', 'invitation', 'tenant'] as const;
 
@@ -167,7 +168,7 @@ function ChangeTable({
       header: t('admin.log.col.actor'),
       sortValue: actorText,
       priority: 2,
-      cell: actorText,
+      cell: (e) => (e.actorId ? <Person id={e.actorId} name={actorText(e)} /> : actorText(e)),
     },
     { id: 'object', header: t('admin.log.col.object'), sortValue: objectText, cell: objectText },
     {

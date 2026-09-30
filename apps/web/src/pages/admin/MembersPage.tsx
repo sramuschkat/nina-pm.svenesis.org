@@ -29,6 +29,7 @@ import styles from './admin.module.css';
 import { AdminLayout } from './AdminLayout';
 import local from './members.module.css';
 import { DateTime, InvitationLinkBox, newId, problemCode, useConfirm } from './shared';
+import { Person } from '../../lib/member';
 
 const MEMBERS_KEY = ['members'] as const;
 const INVITATIONS_KEY = ['invitations'] as const;
@@ -381,7 +382,7 @@ function MemberTable({
       sortValue: (m) => m.displayName,
       cell: (m) => (
         <button type="button" className={styles.rowButton} onClick={() => onSelect(m.id)}>
-          {m.displayName}
+          <Person id={m.id} name={m.displayName} />
         </button>
       ),
     },
@@ -505,7 +506,9 @@ function MemberDetail({ member, onRemoved }: { member: Member; onRemoved: () => 
   return (
     <section className={styles.panel} aria-labelledby="member-detail">
       <div className={styles.head}>
-        <h2 id="member-detail">{member.displayName}</h2>
+        <h2 id="member-detail">
+          <Person id={member.id} name={member.displayName} size="md" />
+        </h2>
         <RolePill role={member.role} />
       </div>
       <p className={styles.muted}>@{member.discordUsername}</p>

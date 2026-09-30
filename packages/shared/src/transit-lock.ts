@@ -19,6 +19,8 @@ export interface RigObservation {
   readonly id: string;
   readonly projectId: string;
   readonly projectName: string;
+  /** Ersteller des Projekts (`app_user.id`) – Bild neben dem Namen im Hinweis (30.09.2026). */
+  readonly createdBy: string | null;
   readonly createdByName: string;
   readonly planet: string;
   readonly epoch: number;

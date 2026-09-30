@@ -172,6 +172,26 @@ export const MemberView = z
   })
   .meta({ id: 'MemberView' });
 
+/**
+ * Eintrag im Mitgliederverzeichnis (`GET /members/directory`, `member.directory`, 30.09.2026): Name und
+ * Discord-Bild für die Anzeige von Personen in Listen (Ersteller, Einreicher, Stimmen, Verlauf …). Auch
+ * deaktivierte und entfernte Mitglieder, damit ältere Einträge ihr Bild behalten. `avatarUrl` fertig vom Server
+ * (`cdn.discordapp.com`, 64 px); `null` ohne Discord-Bild.
+ */
+export const MemberDirectoryEntry = z
+  .object({
+    id: Uuid,
+    displayName: z.string(),
+    avatarUrl: z.string().nullable(),
+    status: z.enum(memberStatuses),
+  })
+  .meta({ id: 'MemberDirectoryEntry' });
+export type MemberDirectoryEntry = z.infer<typeof MemberDirectoryEntry>;
+
+export const MemberDirectory = z
+  .object({ items: z.array(MemberDirectoryEntry) })
+  .meta({ id: 'MemberDirectory' });
+
 export const MemberPatch = z
   .object({
     displayName: z.string().trim().min(1).max(80).optional(),

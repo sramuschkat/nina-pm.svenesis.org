@@ -130,6 +130,7 @@ const request = (over: Partial<ChangeRequestView> = {}): ChangeRequestView => ({
   createdAt: '2026-09-26T10:00:00Z',
   updatedAt: '2026-09-26T10:00:00Z',
   decidedAt: null,
+  decidedBy: null,
   decidedByName: null,
   decisionComment: null,
   ...over,

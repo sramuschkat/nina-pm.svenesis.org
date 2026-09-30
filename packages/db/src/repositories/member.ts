@@ -200,6 +200,20 @@ export class MemberRepository extends TenantRepo {
     });
   }
 
+  /**
+   * Mitgliederverzeichnis (30.09.2026): alle Mitglieder des Mandanten – auch deaktivierte und entfernte – mit
+   * Discord-ID und Avatar-Kennzeichen für die Bild-Adresse. Nur Anzeige, keine Rollen oder Status-Details.
+   */
+  async directory() {
+    return this.db
+      .selectFrom('appUser as m')
+      .innerJoin('identity as i', 'i.id', 'm.identityId')
+      .select(['m.id', 'm.displayName', 'm.status', 'i.discordUserId', 'i.avatarHash'])
+      .where('m.tenantId', '=', this.ctx.tenantId)
+      .orderBy('m.displayName')
+      .execute();
+  }
+
   async listInvitations() {
     const rows = await this.db
       .selectFrom('invitation as v')

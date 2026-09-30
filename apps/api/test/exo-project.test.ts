@@ -172,6 +172,7 @@ describe('POST /api/web/v1/exo/projects (FA-EXO-15)', () => {
       {
         projectId: r.body.projectId,
         name: 'HAT-P-17b',
+        createdBy: expect.any(String),
         createdByName: 'Mitglied',
         rigName: expect.any(String),
       },

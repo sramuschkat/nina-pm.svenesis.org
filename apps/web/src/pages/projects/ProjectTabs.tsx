@@ -27,6 +27,7 @@ import { ExoTransitTab } from '../exo/ExoTransitTab';
 import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
+import { Person } from '../../lib/member';
 
 type ChartTab = 'transit' | 'night' | 'season' | 'weather';
 
@@ -347,7 +348,7 @@ export function NotesTab({
           {notes.data.map((n) => (
             <li key={n.id}>
               <span className={styles.noteMeta}>
-                {n.authorName} · {when(n.createdAt)}
+                <Person id={n.userId} name={n.authorName} /> · {when(n.createdAt)}
               </span>
               <Markdown>{n.bodyMd}</Markdown>
             </li>
@@ -418,7 +419,7 @@ export function HistoryTab({ projectId }: { projectId: string }) {
       sortValue: (r) => r.h.userName,
       // In der schmalen rechten Spalte (AP-26f) fällt der Name vor dem Kommentar weg.
       priority: 3,
-      cell: (r) => r.h.userName ?? '–',
+      cell: (r) => (r.h.userName ? <Person id={r.h.userId} name={r.h.userName} /> : '–'),
     },
     {
       id: 'what',

@@ -65,6 +65,7 @@ export interface ChangeLogRow {
   id: string;
   entity: string;
   entityId: string;
+  actorId: string | null;
   actorName: string | null;
   subjectName: string | null;
   action: string;
@@ -100,6 +101,7 @@ export class AuditRepository extends TenantRepo {
         'l.id',
         'l.entity',
         'l.entityId',
+        'a.id as actorId',
         'a.displayName as actorName',
         's.displayName as subjectName',
         'l.action',
@@ -118,6 +120,7 @@ export class AuditRepository extends TenantRepo {
       .execute();
     const items = rows.slice(0, page.limit).map((r) => ({
       ...r,
+      actorId: r.actorId ?? null,
       actorName: r.actorName ?? null,
       subjectName: r.subjectName ?? null,
       diff: parseJson(r.diff),

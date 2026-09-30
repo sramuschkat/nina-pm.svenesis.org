@@ -52,6 +52,7 @@ import { ChangeRequestDecision } from './ChangeRequestDecision';
 import { TransitDecision, transitWindowText } from './TransitDecision';
 import { ImpactPanel } from './ImpactPanel';
 import styles from './projects.module.css';
+import { Person } from '../../lib/member';
 
 const QUEUE_KEY = ['projects', 'queue'] as const;
 type QueueKindTab = 'all' | 'project' | 'change-request' | 'transit' | 'mine';
@@ -430,7 +431,7 @@ function QueueTable({
       sortValue: sortBy('creator'),
       priority: 3,
       nowrap: true,
-      cell: (q) => q.createdByName,
+      cell: (q) => <Person id={q.createdBy} name={q.createdByName} />,
     },
     {
       id: 'rig',
@@ -641,13 +642,15 @@ function DecisionPanel({
       <h2 id="decision-title">{t('queue.decisionTitle', { name: item.name })}</h2>
       <dl className={styles.cardFacts}>
         <dt>{t('queue.col.creator')}</dt>
-        <dd>{item.createdByName}</dd>
-        <dt>{t('queue.col.votes')}</dt>
         <dd>
+          <Person id={item.createdBy} name={item.createdByName} />
+        </dd>
+        <dt>{t('queue.col.votes')}</dt>
+        <dd className={styles.voterList}>
           {item.votes.count}
-          {item.votes.voters.length > 0
-            ? ` (${item.votes.voters.map((v) => v.displayName).join(', ')})`
-            : ''}
+          {item.votes.voters.map((v) => (
+            <Person key={v.memberId} id={v.memberId} name={v.displayName} />
+          ))}
         </dd>
         {item.transit ? (
           <>

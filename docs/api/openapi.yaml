@@ -726,6 +726,39 @@ components:
       required:
         - url
         - expiresAt
+    MemberDirectory:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberDirectoryEntry"
+      required:
+        - items
+    MemberDirectoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        displayName:
+          type: string
+        avatarUrl:
+          type:
+            - string
+            - "null"
+        status:
+          type: string
+          enum:
+            - active
+            - disabled
+            - removed
+      required:
+        - id
+        - displayName
+        - avatarUrl
+        - status
     MemberView:
       type: object
       properties:
@@ -1270,6 +1303,11 @@ components:
         entityId:
           type: string
           format: uuid
+        actorId:
+          type:
+            - string
+            - "null"
+          format: uuid
         actorName:
           type:
             - string
@@ -1291,6 +1329,7 @@ components:
         - id
         - entity
         - entityId
+        - actorId
         - actorName
         - subjectName
         - action
@@ -6412,6 +6451,12 @@ components:
             - "null"
           format: date-time
           example: 2026-09-18T13:00:00Z
+        decidedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         decidedByName:
           type:
             - string
@@ -6436,6 +6481,7 @@ components:
         - createdAt
         - updatedAt
         - decidedAt
+        - decidedBy
         - decidedByName
         - decisionComment
     ChangeRequestInput:
@@ -9511,6 +9557,12 @@ components:
             - "null"
           format: date-time
           example: 2026-09-18T13:00:00Z
+        updatedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         updatedByName:
           type:
             - string
@@ -9524,6 +9576,7 @@ components:
         - forecast
         - nina
         - updatedAt
+        - updatedBy
         - updatedByName
     SessionLogValues:
       type: object
@@ -10896,6 +10949,10 @@ components:
                 description: UUID
               name:
                 type: string
+              createdBy:
+                type: string
+                format: uuid
+                description: UUID
               createdByName:
                 type: string
               rigName:
@@ -10905,6 +10962,7 @@ components:
             required:
               - projectId
               - name
+              - createdBy
               - createdByName
               - rigName
         rig:
@@ -11195,6 +11253,12 @@ components:
           description: UUID
         projectName:
           type: string
+        createdBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         createdByName:
           type: string
         windowStartUtc:
@@ -11209,6 +11273,7 @@ components:
         - kind
         - projectId
         - projectName
+        - createdBy
         - createdByName
         - windowStartUtc
         - windowEndUtc
@@ -15833,6 +15898,35 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: Objekt nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/members/directory:
+    get:
+      summary: "Mitgliederverzeichnis: Name und Discord-Bild aller Mitglieder (Anzeige)"
+      tags:
+        - members
+      description: "Aktion: `member.directory` · FA-BEN-04, FA-WEB-04"
+      x-npm-action: member.directory
+      x-npm-requirements:
+        - FA-BEN-04
+        - FA-WEB-04
+      responses:
+        "200":
+          description: Verzeichnis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberDirectory"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
           content:
             application/problem+json:
               schema:

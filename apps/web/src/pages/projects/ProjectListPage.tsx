@@ -62,6 +62,7 @@ import { ProjectsLayout } from './ProjectsLayout';
 import { ProjectImage, ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
 import { StatusChips } from './StatusChips';
+import { Person } from '../../lib/member';
 
 type View = 'list' | 'cards' | 'detail';
 const LIST_KEY = ['projects', 'list'] as const;
@@ -743,7 +744,7 @@ function ProjectTable({
       sortValue: (p) => p.createdByName,
       priority: 3,
       nowrap: true,
-      cell: (p) => p.createdByName,
+      cell: (p) => <Person id={p.createdBy} name={p.createdByName} />,
     },
     {
       // „Zuletzt geändert“ (vorher Spalte der Entwürfe-Liste S-34) in Mandantenzeit mit Kürzel.
@@ -1169,7 +1170,7 @@ function DeletedView() {
               header: t('projectList.col.creator'),
               sortValue: (p) => p.createdByName,
               priority: 3,
-              cell: (p) => p.createdByName,
+              cell: (p) => <Person id={p.createdBy} name={p.createdByName} />,
             },
             {
               id: 'actions',

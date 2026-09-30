@@ -74,6 +74,7 @@ export function changeRequestView(
     createdAt: isoUtc(new Date(r.row.createdAt)),
     updatedAt: isoUtc(new Date(r.row.updatedAt)),
     decidedAt: isoUtcOrNull(r.row.decidedAt),
+    decidedBy: r.row.decidedBy,
     decidedByName: r.decidedByName,
     decisionComment: r.row.decisionComment,
   };

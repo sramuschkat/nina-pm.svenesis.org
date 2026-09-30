@@ -25,6 +25,7 @@ const obs = (over: Partial<RigObservation>): RigObservation => ({
   id: 'o1',
   projectId: 'p1',
   projectName: 'HAT-P-17b',
+  createdBy: null,
   createdByName: 'Bea',
   planet: 'HAT-P-17b',
   epoch: 402,
