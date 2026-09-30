@@ -214,15 +214,26 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: 2px;
+  padding: var(--npm-space-1) var(--npm-space-3);
+  background: var(--npm-sky-clock-bg);
+  box-shadow: var(--npm-sky-chrome-shadow);
 }
+/* Uhrzeiten groß und kräftig (Wunsch Sven 30.09.2026): Standortzeit am größten, die Zeit des Geräts darunter. */
 .clockMain {
+  font-size: var(--npm-font-h1);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.clockDevice {
+  font-size: var(--npm-font-h2);
   font-weight: 600;
+  line-height: 1.2;
 }
 /* Runde Knopfleiste rechts in der Karte (Vorlage `.op-map-ctrl`). */
 .mapCtrl {
   position: absolute;
-  top: 5.2rem;
+  top: 7.4rem;
   right: var(--npm-space-2);
   z-index: 2;
   display: flex;

@@ -132,6 +132,10 @@ test('S-20: gleiche Kontextleiste wie der Objektbrowser; Mond und Dunkelheit, Kl
   await expect(context.locator('input[type="date"]')).toHaveCount(0);
   await expect(context.getByRole('button', { name: 'Heute Nacht' })).toBeVisible();
   const clock = context.getByLabel('Uhrzeit');
+  // Mond und Dunkelheit startet eingeklappt (30.09.2026).
+  const moonToggle = page.getByRole('button', { name: 'Mond und Dunkelheit' });
+  await expect(moonToggle).toHaveAttribute('aria-expanded', 'false');
+  await moonToggle.click();
   const strip = page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ });
   await expect(strip).toBeVisible();
   const box = await strip.boundingBox();
