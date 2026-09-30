@@ -347,7 +347,7 @@ Notation: **FA-‹Bereich›-‹Nr›** · Priorität M/S/K/W
 | FA-FRM-08 | Overlays: äquatoriales und Alt/Az-Gitter, Ekliptik, galaktische Ebene, Horizontlinie (0°) und Mindesthöhe, Meridian, Zenit, Mond/Sonne/Planeten, Sichtbarkeits-Heatmap (Höhen-Schwelle). | S |
 | FA-FRM-09 | Katalog-Overlays mit Dichteregler und Winkelgrößen-Kreisen. | S |
 | FA-FRM-10 | Projekt-Overlay: Bildfelder aller Projekte, farbig nach Status, anklickbar. | S |
-| FA-FRM-11 | Zeitsteuerung: Datum/Uhrzeit, Sprünge (±10 min, ±1 h, ±1 d), „Jetzt", Echtzeitlauf; 24-h-Zeitleiste mit Dämmerungsbändern, Zielhöhe, Mindesthöhe, Mondhöhe und Mond-Ziel-Abstand. | M |
+| FA-FRM-11 | Zeitsteuerung: Datum/Uhrzeit, Sprünge (±10 min, ±1 h, ±1 d), „Jetzt", **Zeitraffer** mit wählbarer Geschwindigkeit (Echtzeit, 1 min/s, **10 min/s** Standard, 1 h/s; hält am Ende des Nachtfensters – Spec-Ergänzung 30.09.2026, bisher nur Echtzeitlauf); 24-h-Zeitleiste mit Dämmerungsbändern, Zielhöhe, Mindesthöhe, Mondhöhe und Mond-Ziel-Abstand. | M |
 | FA-FRM-12 | Aktion „Projekt anlegen" übernimmt Koordinaten, Rotation, Mosaik und Rig. | M |
 | FA-FRM-13 | **Zielvorschläge** (Bewertungslogik aus dem Svenesis-Beobachtungsplaner, Kopie): Rangliste der lohnendsten Objekte einer Nacht für ein Rig, bewertet nach Zeit in großer Höhe während der Dunkelheit, Mond, Helligkeit und Füllung des Bildfelds; für die Helligkeit dürfen V- und B-Wert und bei Flächenobjekten die **Flächenhelligkeit** aus OpenNGC genutzt werden (auch für die Filterempfehlung und die Einschätzung der Sichtbarkeit; eine Regel des Schedulers ist das nicht); Filter nach Anzeigegruppe (Galaxien, Nebel, Sternhaufen); Übernahme in Framing oder direkt als Projekt. | S |
 | FA-FRM-14 | Recherche-Links je Objekt (SIMBAD, Wikipedia, AstroBin). | K |

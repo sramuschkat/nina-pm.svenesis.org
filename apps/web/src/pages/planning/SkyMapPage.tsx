@@ -94,6 +94,28 @@ const FRAME_COLORS = {
   'project-submitted': 'submitted',
 } as const;
 const FRAME_COLOR_KEY = 'npm.skymap.frameColor';
+const SPEED_KEY = 'npm.skymap.speed';
+/**
+ * Zeitraffer (FA-FRM-11, Spec-Ergänzung 30.09.2026): Sekunden Himmelszeit je Sekunde – Echtzeit, 1 min/s,
+ * 10 min/s (Standard, eine Nacht in gut einer Minute), 1 h/s.
+ */
+export const PLAY_SPEEDS = [1, 60, 600, 3600] as const;
+export const DEFAULT_PLAY_SPEED = 600;
+/** Schritt beim Abspielen: Echtzeit sekündlich, Zeitraffer fünfmal je Sekunde (flüssig, ohne Last). */
+export const playTickMs = (speed: number) => (speed === 1 ? 1000 : 200);
+
+/** Nächster Zeitpunkt beim Abspielen; am Ende des Nachtfensters bleibt die Zeit dort stehen (`stop`). */
+export function playStep(
+  t: number,
+  speed: number,
+  tickMs: number,
+  endUtc: number | undefined,
+): { t: number; stop: boolean } {
+  const next = Math.round(t + (speed * tickMs) / 1000);
+  return endUtc !== undefined && next >= endUtc
+    ? { t: endUtc, stop: true }
+    : { t: next, stop: false };
+}
 /** Rückfrage vor „Ins Projekt übernehmen“, wenn das Mosaik um mehr als diesen Faktor wächst … */
 const GROWTH_FACTOR_CONFIRM = 4;
 /** … oder danach mehr Belichtungszeilen (Panels × Zeilen je Panel) entstehen. */
@@ -269,17 +291,37 @@ export function SkyMapPage() {
   // ---- Zeit ------------------------------------------------------------------------------------
   const [clock, setClock] = useState(() => Date.now() / 1000);
   const [playing, setPlaying] = useState(false);
-  useEffect(() => {
-    // „Jetzt“ läuft mit (alle 30 s); Abspielen schreitet sekündlich voran (Echtzeitlauf, FA-FRM-11).
-    const id = window.setInterval(
-      () => {
-        if (playing) update({ t: (state.t ?? Date.now() / 1000) + 1 });
-        else setClock(Date.now() / 1000);
-      },
-      playing ? 1000 : 30_000,
-    );
-    return () => window.clearInterval(id);
+  const [speed, setSpeed] = useState<number>(() => {
+    const v = Number(readLocal(SPEED_KEY));
+    return (PLAY_SPEEDS as readonly number[]).includes(v) ? v : DEFAULT_PLAY_SPEED;
   });
+  useEffect(() => writeLocal(SPEED_KEY, String(speed)), [speed]);
+  // Nachtfenster des Streifens „Mond und Dunkelheit“ – dort endet der Zeitraffer (wird unten gesetzt).
+  const nightWindowRef = useRef<{ fromUtc: number; toUtc: number } | null>(null);
+  // „Jetzt“ läuft mit (alle 30 s); Abspielen schreitet mit der gewählten Geschwindigkeit voran (FA-FRM-11) und
+  // hält am Ende des Nachtfensters. Der Taktgeber läuft durch (nur Abspielen/Geschwindigkeit starten ihn neu) und
+  // ruft jeweils den aktuellen Schritt auf – sonst setzte jedes Neuzeichnen der Karte den Takt zurück.
+  const tickRef = useRef<() => void>(() => undefined);
+  tickRef.current = () => {
+    if (!playing) {
+      setClock(Date.now() / 1000);
+      return;
+    }
+    // Auf der zuletzt gesetzten Zeit aufbauen (`pending`), nicht auf der des letzten Renderns.
+    const current = pending.current ? stateFromParams(pending.current).t : state.t;
+    const step = playStep(
+      current ?? Date.now() / 1000,
+      speed,
+      playTickMs(speed),
+      nightWindowRef.current?.toUtc,
+    );
+    update({ t: step.t });
+    if (step.stop) setPlaying(false);
+  };
+  useEffect(() => {
+    const id = window.setInterval(() => tickRef.current(), playing ? playTickMs(speed) : 30_000);
+    return () => window.clearInterval(id);
+  }, [playing, speed]);
   const time = state.t ?? clock;
   const zone = site?.timeZone ?? 'UTC';
   const devZone = useMemo(deviceZone, []);
@@ -710,6 +752,7 @@ export function SkyMapPage() {
       return null;
     }
   }, [site, nights.data, nightKey]);
+  nightWindowRef.current = moonData?.window ?? null;
 
   return (
     <div className={styles.page}>
@@ -997,12 +1040,29 @@ export function SkyMapPage() {
                 className={styles.button}
                 aria-pressed={playing}
                 onClick={() => {
-                  if (!playing && state.t === null) update({ t: time });
+                  if (!playing) {
+                    // Am Ende der Nacht beginnt der Lauf wieder am Anfang des Nachtfensters.
+                    const w = moonData?.window;
+                    const start = w && time >= w.toUtc ? w.fromUtc : time;
+                    if (state.t === null || start !== time) update({ t: start });
+                  }
                   setPlaying(!playing);
                 }}
               >
                 {playing ? t('skymap.time.pause') : t('skymap.time.play')}
               </button>
+              <select
+                className={styles.speedSelect}
+                aria-label={t('skymap.time.speed')}
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+              >
+                {PLAY_SPEEDS.map((v) => (
+                  <option key={v} value={v}>
+                    {t(`skymap.time.speeds.${String(v)}`)}
+                  </option>
+                ))}
+              </select>
               <button type="button" className={styles.button} onClick={() => shift(600)}>
                 {t('skymap.time.plusTen')}
               </button>
@@ -1013,7 +1073,14 @@ export function SkyMapPage() {
                 {t('skymap.time.plusDay')}
               </button>
               {scene ? (
-                <span className={styles.moonInfo}>
+                <span
+                  className={styles.moonInfo}
+                  title={t('skymap.time.moonInfo', {
+                    alt: num(scene.moonAltDeg, 0),
+                    sep: num(scene.moonSepDeg, 0),
+                    pct: num(scene.moonIllumPct, 0),
+                  })}
+                >
                   {t('skymap.time.moonInfo', {
                     alt: num(scene.moonAltDeg, 0),
                     sep: num(scene.moonSepDeg, 0),

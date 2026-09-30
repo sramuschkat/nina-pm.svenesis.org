@@ -5,13 +5,13 @@
  * *Neues Projekt* und *Ins Projekt übernehmen*, Reiter der Seitenleiste, Zeitsprünge in der URL; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
-import { SkyMapPage } from './SkyMapPage';
+import { playStep, SkyMapPage } from './SkyMapPage';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -429,6 +429,33 @@ describe('S-20 Sternkarte', () => {
     expect(screen.getByLabelText('Uhrzeit')).toHaveValue('16:00');
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt' }));
     expect(where().get('t')).toBeNull();
+  });
+
+  it('Zeitraffer (FA-FRM-11, 30.09.2026): Standard 10 min/s, Geschwindigkeit wählbar, Anhalten', async () => {
+    renderPage();
+    const play = await screen.findByRole('button', { name: 'Abspielen' });
+    const speed = screen.getByRole('combobox', { name: 'Geschwindigkeit des Zeitraffers' });
+    expect(speed).toHaveValue('600');
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(play);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(where().get('t')).toBe(String(1797368400 + 600));
+      fireEvent.change(speed, { target: { value: '3600' } });
+      act(() => vi.advanceTimersByTime(1000));
+      expect(where().get('t')).toBe(String(1797368400 + 600 + 3600));
+      fireEvent.click(screen.getByRole('button', { name: 'Anhalten' }));
+      act(() => vi.advanceTimersByTime(2000));
+      expect(where().get('t')).toBe(String(1797368400 + 600 + 3600));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Zeitraffer hält am Ende des Nachtfensters', () => {
+    expect(playStep(1000, 600, 200, 5000)).toEqual({ t: 1120, stop: false });
+    expect(playStep(4950, 600, 200, 5000)).toEqual({ t: 5000, stop: true });
+    expect(playStep(1000, 1, 1000, undefined)).toEqual({ t: 1001, stop: false });
   });
 
   it('Uhrzeit nach Mitternacht bleibt in der angezeigten Nacht (P1-13)', async () => {

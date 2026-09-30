@@ -3370,6 +3370,8 @@ export const en: Messages = {
       plusHour: '+1 h',
       plusDay: '+1 d',
       play: 'Play',
+      speed: 'Time-lapse speed',
+      speeds: { '1': 'Real time', '60': '1 min/s', '600': '10 min/s', '3600': '1 h/s' },
       pause: 'Pause',
       now: 'Now',
       moonInfo: 'Moon {{alt}}° · {{sep}}° away · {{pct}} %',

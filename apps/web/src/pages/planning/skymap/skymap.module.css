@@ -401,7 +401,26 @@
   align-items: center;
   gap: var(--npm-space-1);
 }
+/* Geschwindigkeit des Zeitraffers neben „Abspielen“ (FA-FRM-11, 30.09.2026).
+   Eigene Regeln statt `composes: input` – dessen `width: 100%` bräche die Zeile um. */
+.speedSelect {
+  flex: 0 0 auto;
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-size: var(--npm-font-field);
+}
+/* Mond-Angabe am Zeilenende schrumpft (Auslassung, voller Text im Tooltip), statt die Zeile umzubrechen – sonst
+   würde die Karte niedriger (Zeitraffer-Auswahl, 30.09.2026). */
 .moonInfo {
+  flex: 1 1 0;
+  min-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 /* Seitenbereich mit Reitern *Bildfeld & Mosaik* und *Ebenen* (AP-26f, einklappbar AP-26i). */

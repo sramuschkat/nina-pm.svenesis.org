@@ -3380,6 +3380,8 @@ export const de = {
       plusHour: '+1 h',
       plusDay: '+1 d',
       play: 'Abspielen',
+      speed: 'Geschwindigkeit des Zeitraffers',
+      speeds: { '1': 'Echtzeit', '60': '1 min/s', '600': '10 min/s', '3600': '1 h/s' },
       pause: 'Anhalten',
       now: 'Jetzt',
       moonInfo: 'Mond {{alt}}° · {{sep}}° Abstand · {{pct}} %',
