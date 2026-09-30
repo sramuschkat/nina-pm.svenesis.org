@@ -20,6 +20,11 @@ test('S-22: Transits der Nacht, aufgeklappte Zeile mit Zeitleiste und Zieldetail
   await expect(page.getByRole('heading', { level: 1, name: 'Exoplaneten' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '3 Transits' })).toBeVisible();
   await expect(page.getByText(/^Katalogstand: ExoClock/)).toBeVisible();
+  // Mond und Dunkelheit wie im Objektbrowser, standardmäßig eingeklappt (30.09.2026).
+  await expect(page.getByRole('button', { name: 'Mond und Dunkelheit' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
   const table = page.getByRole('table', { name: 'Exoplaneten' });
   for (const planet of ['TrES-3b', 'WASP-12b', 'Qatar-1b'])
     await expect(table.getByRole('row').filter({ hasText: planet })).toHaveCount(1);

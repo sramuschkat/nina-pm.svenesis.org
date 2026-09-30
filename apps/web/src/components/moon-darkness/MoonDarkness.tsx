@@ -119,6 +119,7 @@ export function MoonDarkness({
   nowUtc,
   cursorUtc,
   onCursorChange,
+  defaultOpen = true,
 }: {
   data: MoonDarknessData;
   night: string;
@@ -130,9 +131,11 @@ export function MoonDarkness({
   cursorUtc?: number;
   /** Klick in den Streifen stellt die Uhrzeit (auf 5 min gerundet). */
   onCursorChange?: (atUtc: number) => void;
+  /** Anfangs aufgeklappt (Sternkarte); Objektbrowser und Exoplaneten starten eingeklappt (Wunsch Sven 30.09.2026). */
+  defaultOpen?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(defaultOpen);
   const bodyId = useId();
   const canvas = useRef<HTMLCanvasElement>(null);
   const device = deviceZone();

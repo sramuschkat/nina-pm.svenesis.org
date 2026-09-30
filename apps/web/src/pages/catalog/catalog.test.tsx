@@ -411,12 +411,13 @@ describe('S-21 Objektbrowser', () => {
     expect(
       screen.getByRole('button', { name: 'Nacht ab dem Abend des Di., 20.10.2026' }),
     ).toHaveAttribute('aria-expanded', 'false');
-    // „Mond und Dunkelheit“: Kopf mit Phase, Beleuchtung und Mondalter; Streifen mit Zeiten in Standortzeit.
-    expect(await screen.findByRole('button', { name: 'Mond und Dunkelheit' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    // „Mond und Dunkelheit“: eingeklappt (30.09.2026), Kopf mit Phase, Beleuchtung und Mondalter; aufgeklappt der
+    // Streifen mit Zeiten in Standortzeit.
+    const moonToggle = await screen.findByRole('button', { name: 'Mond und Dunkelheit' });
+    expect(moonToggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText(/% beleuchtet · \d+,\d Tage nach Neumond/)).toBeInTheDocument();
+    fireEvent.click(moonToggle);
+    expect(moonToggle).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getByRole('img', { name: /Mond und Dunkelheit der Nacht 20\.\/21\.10\.:/ }),
     ).toHaveAccessibleName(/astronomisch dunkel.*Zeiten in CDT/);
