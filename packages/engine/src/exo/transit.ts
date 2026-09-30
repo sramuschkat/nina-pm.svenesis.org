@@ -31,6 +31,11 @@ const SLOT_S = 300;
 export const MIN_BUFFER_MIN = 5;
 /** Schwelle „Baseline in der Dämmerung“: Exoplaneten-Projekte planen mit astronomischer Dämmerung (transit.md §2). */
 export const TRANSIT_DARK_DEG = -18;
+/**
+ * Prüfspanne der Filter „Start/Ende …“ und „Flip ausblenden“: Ingress − 1 h bis Egress + 1 h – die Empfehlung aus
+ * FA-EXO-19 (Baseline-Standard von ExoClock und ETD). Abgleich mit Astro PM 29.09./01.10.2026 deckungsgleich.
+ */
+export const CHECK_MARGIN_S = 3600;
 
 export interface TransitEphemeris {
   /** Epoche BJD_TDB (nach `normalizeEpoch`). */
@@ -94,8 +99,9 @@ export interface TransitEvent {
   readonly startUsable: boolean;
   readonly endUsable: boolean;
   /**
-   * Für die Filter „Start/Ende dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05, S-22): geprüft an **Ingress
-   * und Egress**, nicht an den Fenstergrenzen (Spec-Ergänzung 30.09.2026, Entscheidung Sven, wie Astro PM).
+   * Für die Filter „Start/Ende dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05, S-22): geprüft an
+   * **Ingress − 1 h** und **Egress + 1 h** (`CHECK_MARGIN_S`, Empfehlung FA-EXO-19; Spec-Ergänzung 30.09.2026,
+   * Entscheidung Sven nach Abgleich mit Astro PM).
    */
   readonly startDark: boolean;
   readonly endDark: boolean;
@@ -106,8 +112,8 @@ export interface TransitEvent {
   /** Obere Kulmination in der Nacht (FA-EXO-11) und ob sie im Fenster (inkl. Baseline) liegt – Markierung rot. */
   readonly meridianUtc: number | null;
   readonly meridianInWindow: boolean;
-  /** Kulmination zwischen Ingress und Egress – Filter „Transits mit Flip ausblenden“ (Entscheidung Sven 30.09.2026). */
-  readonly meridianInTransit: boolean;
+  /** Kulmination zwischen Ingress − 1 h und Egress + 1 h – Filter „Transits mit Flip ausblenden“. */
+  readonly meridianNearTransit: boolean;
   /** Scheinbare Höhe zur Mitte, Grad (6 Stellen). */
   readonly altAtCenterDeg: number;
   /** Scheinbare Höhe bei Ingress und Egress, Grad (FA-EXO-13 „Kontaktzeiten mit Höhen“). */
@@ -290,14 +296,17 @@ function event(
     fullyObservable: slots > 0 && usable === slots,
     startUsable: ok(startUtc),
     endUsable: ok(endUtc),
-    startDark: dark(ingressUtc),
-    endDark: dark(egressUtc),
-    startAboveMinAlt: high(ingressUtc),
-    endAboveMinAlt: high(egressUtc),
+    startDark: dark(ingressUtc - CHECK_MARGIN_S),
+    endDark: dark(egressUtc + CHECK_MARGIN_S),
+    startAboveMinAlt: high(ingressUtc - CHECK_MARGIN_S),
+    endAboveMinAlt: high(egressUtc + CHECK_MARGIN_S),
     baselineInTwilight: twilight,
     meridianUtc: meridian,
     meridianInWindow: meridian !== null && meridian >= startUtc && meridian <= endUtc,
-    meridianInTransit: meridian !== null && meridian >= ingressUtc && meridian <= egressUtc,
+    meridianNearTransit:
+      meridian !== null &&
+      meridian >= ingressUtc - CHECK_MARGIN_S &&
+      meridian <= egressUtc + CHECK_MARGIN_S,
     altAtCenterDeg: q(alt(tcUtc), 1e6),
     altAtIngressDeg: q(alt(unixFromJd(ingressJd)), 1e6),
     altAtEgressDeg: q(alt(unixFromJd(egressJd)), 1e6),

@@ -339,16 +339,16 @@ describe('Ultrakurzperiode und Beobachtbarkeit im Fenster', () => {
     expect(ev.usableFraction).toBeGreaterThanOrEqual(0);
     expect(ev.usableFraction).toBeLessThanOrEqual(1);
     expect(ev.fullyObservable).toBe(ev.usableFraction === 1);
-    // „Start/Ende“ der Filter = Ingress/Egress (Entscheidung Sven 30.09.2026)
+    // „Start/Ende“ der Filter = Ingress − 1 h / Egress + 1 h (Entscheidung Sven 30.09.2026, FA-EXO-19)
     const at0 = (u: number) =>
       targetAt({ raJ2000Deg: HAT.raDeg, decJ2000Deg: HAT.decDeg }, u, SITE).altDeg;
-    expect(ev.startDark).toBe(sunAt(ev.ingressUtc, SITE).altDeg < -12);
-    expect(ev.endDark).toBe(sunAt(ev.egressUtc, SITE).altDeg < -12);
-    expect(ev.startAboveMinAlt).toBe(at0(ev.ingressUtc) >= 30);
-    expect(ev.endAboveMinAlt).toBe(at0(ev.egressUtc) >= 30);
+    expect(ev.startDark).toBe(sunAt(ev.ingressUtc - 3600, SITE).altDeg < -12);
+    expect(ev.endDark).toBe(sunAt(ev.egressUtc + 3600, SITE).altDeg < -12);
+    expect(ev.startAboveMinAlt).toBe(at0(ev.ingressUtc - 3600) >= 30);
+    expect(ev.endAboveMinAlt).toBe(at0(ev.egressUtc + 3600) >= 30);
     if (ev.meridianUtc !== null)
-      expect(ev.meridianInTransit).toBe(
-        ev.meridianUtc >= ev.ingressUtc && ev.meridianUtc <= ev.egressUtc,
+      expect(ev.meridianNearTransit).toBe(
+        ev.meridianUtc >= ev.ingressUtc - 3600 && ev.meridianUtc <= ev.egressUtc + 3600,
       );
     // Kontakt-Höhen gegen die Höhenfunktion der Engine
     const at = (t: number) =>

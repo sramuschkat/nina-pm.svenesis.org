@@ -147,8 +147,9 @@ Rechnung in `packages/engine/src/exo/classify.ts`, Anzeige in S-22.
 - **Zusammenführen (FA-EXO-03):** Der führende Eintrag (ExoClock → NASA → TOI) liefert Ephemeride, Tiefe und Priorität. Fehlen ihm Radius, Entfernung, Teff oder TIC-Kennung, kommen sie aus den nachrangigen Einträgen desselben Planeten.
 - **Suche:** Dämmerungsgrenze nautisch (§2), Mindesthöhe aus dem Filter (Standard 30°), Nachtfenster nach FK 8.1. Filter (Priorität, Helligkeit, Tiefe, Schalter) wirken in der Oberfläche und werden je Benutzer gespeichert (`user_preference` `exo.search`).
 - **Filter der Suche (Spec-Ergänzung 30.09.2026, Entscheidung Sven nach Abgleich mit Astro PM):**
-  - „Start/Ende nautisch dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05) prüfen **Ingress und Egress**, nicht die Fenstergrenzen mit Baseline. Ob die Baseline nutzbar ist, zeigen der Anteil nutzbarer Zeit und der Hinweis *Baseline in der Dämmerung*.
-  - „Transits mit Meridian-Flip ausblenden“ blendet nur aus, wenn die Kulmination **zwischen Ingress und Egress** liegt. Liegt sie nur in der Baseline, bleibt der Transit sichtbar und wird rot markiert (FA-EXO-11: Flip im Beobachtungsfenster).
+  - „Start/Ende nautisch dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05) prüfen **Ingress − 1 h und Egress + 1 h**, die Aufnahmespanne aus FA-EXO-19 (Baseline-Standard von ExoClock und ETD), nicht die Fenstergrenzen mit Puffer und dauerabhängiger Baseline. Der Anteil nutzbarer Zeit und der Hinweis *Baseline in der Dämmerung* gelten weiter für das ganze Fenster.
+  - „Transits mit Meridian-Flip ausblenden“ blendet aus, wenn die Kulmination **zwischen Ingress − 1 h und Egress + 1 h** liegt. Liegt sie nur im weiteren Fenster, bleibt der Transit sichtbar und wird rot markiert (FA-EXO-11).
+  - Abgleich mit Astro PM (Starfront, 29.09. und 01.10.2026): Die Spanne ± 1 h trifft beide Listen. Die Lesart „nur Ingress/Egress“ (Zwischenstand #147) zeigte am 01.10. 45 statt 12 Transits. Einziger Rest ist der Katalogstand: Astro PM kennt TOIs ab etwa 2025 nicht.
   - TOI-Kandidaten mit Disposition **APC** werden beim Import verworfen und gezählt, wie FP/FA. FA-EXO-02 nennt nur PC, CP und KP.
   - Abgleich 29./30.09.2026, Starfront, gleiche Filter:
     - Transitzeiten wie Astro PM auf die Minute.
