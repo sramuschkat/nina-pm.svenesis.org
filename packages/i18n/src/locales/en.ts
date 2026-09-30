@@ -2859,10 +2859,10 @@ export const en: Messages = {
       minDepth: 'Min. depth',
       minAlt: 'Min. altitude',
       observableOnly: 'Observable only',
-      startEndDark: 'Start and end nautically dark',
-      startEndAboveMinAlt: 'Start and end above minimum altitude',
+      startEndDark: 'Ingress and egress nautically dark',
+      startEndAboveMinAlt: 'Ingress and egress above minimum altitude',
       showFlip: 'Show meridian flip',
-      hideFlip: 'Hide transits with meridian flip',
+      hideFlip: 'Hide transits with a meridian flip between ingress and egress',
     },
     priorityFilter: {
       all: 'All priorities',

@@ -51,7 +51,8 @@ export function applyExoFilters(
     if (s.startEndDark && !(t.transit.startDark && t.transit.endDark)) return false;
     if (s.startEndAboveMinAlt && !(t.transit.startAboveMinAlt && t.transit.endAboveMinAlt))
       return false;
-    if (s.hideFlip && t.transit.meridianInWindow) return false;
+    // Nur ein Flip zwischen Ingress und Egress blendet aus (Entscheidung Sven 30.09.2026); im Fenster wird markiert.
+    if (s.hideFlip && t.transit.meridianInTransit) return false;
     return true;
   });
 }

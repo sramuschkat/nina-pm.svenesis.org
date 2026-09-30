@@ -20,6 +20,7 @@ export type SkipReason =
   | 'no_period'
   | 'epoch_out_of_range'
   | 'false_positive'
+  | 'ambiguous'
   | 'prefilter'
   | 'duplicate';
 

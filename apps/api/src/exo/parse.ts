@@ -7,7 +7,7 @@
  * - **NASA** `pscomppars` (TAP, CSV): Epoche `pl_tranmid` im System `pl_tranmid_systemref`, Tiefe `pl_trandep`
  *   (Prozent), `tic_id` als `TIC 123`. Nur Planeten, die den Vorfilter erfüllen (FA-EXO-31).
  * - **TESS TOI** (ExoFOP, CSV): `Epoch (BJD)` als volles BJD_TDB (unter 2 400 000 ⇒ BTJD), Tiefe `Depth (ppm)`,
- *   RA/Dec sexagesimal. FP/FA werden verworfen und gezählt (AST-D5); Vorfilter wie NASA.
+ *   RA/Dec sexagesimal. FP/FA werden verworfen und gezählt (AST-D5), ebenso APC (FA-EXO-02); Vorfilter wie NASA.
  */
 import type { ExoPrefilter } from '@nina-pm/shared';
 import { parseCsv } from './csv';
@@ -221,6 +221,12 @@ export function parseToi(csv: string, prefilter: ExoPrefilter): ParseResult {
     const disp = ((r['TFOPWG Disposition'] ?? '') || (r['TESS Disposition'] ?? '')).toUpperCase();
     if (disp === 'FP' || disp === 'FA') {
       out.skip('false_positive');
+      continue;
+    }
+    // FA-EXO-02 nennt nur Kandidaten (PC), bestätigte (CP) und bekannte (KP); APC ist mehrdeutig (Entscheidung
+    // Sven 30.09.2026).
+    if (disp === 'APC') {
+      out.skip('ambiguous');
       continue;
     }
     const ra = raDeg(r.RA ?? '');
