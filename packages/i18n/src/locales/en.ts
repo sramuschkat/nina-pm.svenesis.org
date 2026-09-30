@@ -307,7 +307,8 @@ export const en: Messages = {
       lines: 'Exposure plan',
       remaining: 'remaining {{need}} · tonight {{tonight}}',
       moon: 'Moon: {{name}}',
-      moonTitle: 'Moon avoidance “{{name}}”: up to {{sep}}° from the Moon, width {{width}} days around full moon',
+      moonTitle:
+        'Moon avoidance “{{name}}”: up to {{sep}}° from the Moon, width {{width}} days around full moon',
       moonTitleDown: 'Moon avoidance “{{name}}”: only while the Moon is below the horizon',
       enabled: '{{filter}} active',
       flip: 'Flip {{time}} ({{min}} min)',

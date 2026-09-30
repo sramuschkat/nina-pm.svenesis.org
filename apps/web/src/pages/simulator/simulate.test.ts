@@ -92,7 +92,9 @@ describe('simulate', () => {
     expect(row).toBeDefined();
     const t = ((k: string) => (k === 'moonProfile.strict' ? 'Streng' : k)) as never;
     if (row) {
-      expect(cell({ ...row, moonProfile: 'moonProfile.strict' }, 'profile', t, 'UTC')).toBe('Streng');
+      expect(cell({ ...row, moonProfile: 'moonProfile.strict' }, 'profile', t, 'UTC')).toBe(
+        'Streng',
+      );
       expect(cell({ ...row, moonProfile: 'Eigenes' }, 'profile', t, 'UTC')).toBe('Eigenes');
     }
   });

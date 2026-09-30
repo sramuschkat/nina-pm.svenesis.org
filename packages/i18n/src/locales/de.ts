@@ -307,7 +307,8 @@ export const de = {
       lines: 'Belichtungsplan',
       remaining: 'verbleibend {{need}} · heute {{tonight}}',
       moon: 'Mond: {{name}}',
-      moonTitle: 'Mondvermeidung „{{name}}“: bis {{sep}}° Abstand zum Mond, Breite {{width}} Tage um Vollmond',
+      moonTitle:
+        'Mondvermeidung „{{name}}“: bis {{sep}}° Abstand zum Mond, Breite {{width}} Tage um Vollmond',
       moonTitleDown: 'Mondvermeidung „{{name}}“: nur bei Mond unter dem Horizont',
       enabled: '{{filter}} aktiv',
       flip: 'Flip {{time}} ({{min}} min)',
