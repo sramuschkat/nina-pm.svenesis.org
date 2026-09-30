@@ -167,7 +167,7 @@ export const discordEventKeys = {
   ]
 } as const;
 
-export const notificationKinds = ["submission.new","submission.withdrawn","submission.edited_by_admin","approval.approved","approval.returned","approval.rejected","approval.expired","deadline.near","change_request.new","change_request.decided","vote.subject_changed","vote.subject_resubmitted","project.completed","transit.confirmation_needed","role.changed","owner.reassigned","alert.rig_busy","alert.session_no_heartbeat","alert.plugin_dead_letters","alert.nina_settings_mismatch","alert.discord_channel_failed"] as const;
+export const notificationKinds = ["submission.new","submission.withdrawn","submission.edited_by_admin","approval.approved","approval.returned","approval.rejected","approval.expired","deadline.near","change_request.new","change_request.decided","vote.subject_changed","vote.subject_resubmitted","project.completed","transit.confirmation_needed","transit.confirmed","transit.declined","transit.expired","role.changed","owner.reassigned","alert.rig_busy","alert.session_no_heartbeat","alert.plugin_dead_letters","alert.nina_settings_mismatch","alert.discord_channel_failed"] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 
 export const catalogs = ["dso","exoclock","nasa","toi"] as const;

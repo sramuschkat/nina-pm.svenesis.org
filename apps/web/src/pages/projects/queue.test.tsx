@@ -50,6 +50,8 @@ const state = vi.hoisted(() => ({
   approve: vi.fn(),
   returnToUser: vi.fn(),
   reject: vi.fn(),
+  confirm: vi.fn(),
+  decline: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -81,6 +83,10 @@ vi.mock('../../api/client', () => ({
     approve: (...a: unknown[]) => state.approve(...a) as Promise<unknown>,
     returnToUser: (...a: unknown[]) => state.returnToUser(...a) as Promise<unknown>,
     reject: (...a: unknown[]) => state.reject(...a) as Promise<unknown>,
+  },
+  exoApi: {
+    confirm: (...a: unknown[]) => state.confirm(...a) as Promise<unknown>,
+    decline: (...a: unknown[]) => state.decline(...a) as Promise<unknown>,
   },
 }));
 
@@ -162,7 +168,15 @@ const renderPage = () =>
 beforeEach(() => {
   state.me = me('owner');
   state.queue = [];
-  for (const fn of [state.vote, state.approve, state.returnToUser, state.reject]) fn.mockReset();
+  for (const fn of [
+    state.vote,
+    state.approve,
+    state.returnToUser,
+    state.reject,
+    state.confirm,
+    state.decline,
+  ])
+    fn.mockReset();
 });
 
 describe('Modell', () => {
@@ -225,6 +239,86 @@ describe('S-33 (Komponente)', () => {
     await waitFor(() =>
       expect(state.reject).toHaveBeenCalledWith(ID(101), 'Außerhalb der Saison', 7),
     );
+  });
+
+  it('Transit-Bestätigung (AP-43): eigener Reiter, ohne Stimme, Festlegen und Ablehnen mit Begründung', async () => {
+    const transit = {
+      observationId: ID(700),
+      planet: 'HAT-P-17b',
+      epoch: 402,
+      night: '2026-10-10',
+      midUtc: '2026-10-11T06:45:00Z',
+      windowStartUtc: '2026-10-11T03:39:00Z',
+      windowEndUtc: '2026-10-11T09:51:00Z',
+      deadlineUtc: '2026-10-11T03:21:00Z',
+      rigName: 'Rig A',
+      timeZone: 'America/Chicago',
+      plannedCount: 350,
+    };
+    state.queue = [
+      item(1),
+      item(2, {
+        kind: 'transit',
+        id: ID(700),
+        name: 'HAT-P-17b',
+        projectType: 'exoplanet',
+        submitterRank: null,
+        transit,
+      }),
+    ];
+    state.confirm.mockResolvedValue(undefined);
+    state.decline.mockResolvedValue(undefined);
+    renderPage();
+    fireEvent.click(await screen.findByRole('tab', { name: /Transit-Bestätigungen \(1\)/ }));
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    expect(table).toHaveTextContent('Transit HAT-P-17b · 10./11.10. · 22:39–04:51 CDT');
+    expect(within(table).queryByRole('button', { name: 'Für „HAT-P-17b“ stimmen' })).toBeNull();
+    fireEvent.click(within(table).getByRole('button', { name: 'Entscheiden' }));
+    const panel = screen.getByRole('region', { name: 'Transit bestätigen: HAT-P-17b (HAT-P-17b)' });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Festlegen' }));
+    await waitFor(() => expect(state.confirm).toHaveBeenCalledWith(ID(700)));
+  });
+
+  it('Transit-Bestätigung ablehnen nur mit Begründung über den Bestätigungsdialog', async () => {
+    state.queue = [
+      item(2, {
+        kind: 'transit',
+        id: ID(700),
+        name: 'HAT-P-17b',
+        projectType: 'exoplanet',
+        submitterRank: null,
+        transit: {
+          observationId: ID(700),
+          planet: 'HAT-P-17b',
+          epoch: 402,
+          night: '2026-10-10',
+          midUtc: '2026-10-11T06:45:00Z',
+          windowStartUtc: '2026-10-11T03:39:00Z',
+          windowEndUtc: '2026-10-11T09:51:00Z',
+          deadlineUtc: '2026-10-11T03:21:00Z',
+          rigName: 'Rig A',
+          timeZone: 'America/Chicago',
+          plannedCount: 350,
+        },
+      }),
+    ];
+    state.decline.mockResolvedValue(undefined);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Entscheiden' }));
+    const panel = screen.getByRole('region', { name: /Transit bestätigen/ });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Ablehnen' }));
+    expect(
+      within(panel).getByText('Zum Zurückgeben oder Ablehnen ist ein Kommentar Pflicht.'),
+    ).toBeInTheDocument();
+    fireEvent.change(within(panel).getByLabelText('Kommentar'), {
+      target: { value: 'Nacht belegt' },
+    });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Ablehnen' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ablehnen' }));
+    await waitFor(() => expect(state.decline).toHaveBeenCalledWith(ID(700), 'Nacht belegt'));
+    await expectNoSeriousA11y();
   });
 
   it('Admin: Freigeben sendet Rig, Position, Status und Kommentar mit Version', async () => {

@@ -66,6 +66,9 @@ export interface TransitSearch {
   readonly unconfirmedRigFilters?: readonly RigFilter[];
   /** Kennwerte für die Belichtungsempfehlung (transit.md §6). */
   readonly exposureRig: ExposureRig;
+  /** Baseline je Seite (Projekt-Einstellung, FA-EXO-19); ohne Angabe 60 min (transit.md §2). */
+  readonly baselineBeforeMin?: number;
+  readonly baselineAfterMin?: number;
   readonly myProjects: ReadonlyMap<string, number>;
 }
 
@@ -118,6 +121,8 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
         twilightDeg: s.twilightDeg,
         minAltDeg: s.minAltDeg,
         k: s.k,
+        ...(s.baselineBeforeMin !== undefined ? { baselineBeforeMin: s.baselineBeforeMin } : {}),
+        ...(s.baselineAfterMin !== undefined ? { baselineAfterMin: s.baselineAfterMin } : {}),
       },
       sky,
     );

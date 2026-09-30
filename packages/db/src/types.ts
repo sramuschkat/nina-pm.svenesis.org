@@ -761,17 +761,34 @@ export interface FlatCombinationTable {
   darkFlatsTaken: Generated<number>;
 }
 
-/** Tabelle `transit_observation` (Migration 0004, FA-EXO-18/20); nur die im Ingest gelesenen Spalten. */
+/** Tabelle `transit_observation` (Migration 0004, FA-EXO-18…21, transit.md §8). */
 export interface TransitObservationTable {
   id: Generated<string>;
   tenantId: string;
   projectId: string;
-  status: Generated<string>;
+  ephemerisId: string;
+  epoch: number;
+  night: DateKey;
+  ingressUtc: Timestamp;
+  midUtc: Timestamp;
+  egressUtc: Timestamp;
   windowStartUtc: Timestamp;
   windowEndUtc: Timestamp;
-  lockedAt: Timestamp | null;
+  baselineBeforeMin: number;
+  baselineAfterMin: number;
+  bufferMin: number;
+  sessionId: string | null;
+  status: Generated<string>;
   primaryObservationId: string | null;
+  confirmDeadlineUtc: Timestamp | null;
+  lockedBy: string | null;
+  lockedAt: Timestamp | null;
+  plannedCount: Generated<number>;
   acquiredCount: Generated<number>;
+  rejectedCount: Generated<number>;
+  coverage: Json | null;
+  usable: boolean | null;
+  createdAt: Timestamp;
 }
 
 /** Tabelle `command` (Migration 0005, TK 7.6 `commands`). */

@@ -15,6 +15,7 @@ import { AuditRepository } from './audit';
 import { EquipmentRepository } from './equipment';
 import { ProjectRepository } from './project';
 import { ExoProjectRepository } from './exo-project';
+import { TransitRepository } from './transit';
 import { ApprovalRepository } from './approval';
 import { EffortRepository } from './effort';
 import { SimulationRepository } from './simulation';
@@ -48,6 +49,7 @@ export interface OpenDatabase {
     sessionLog: () => SessionLogRepository;
     changeRequests: () => ChangeRequestRepository;
     exoProjects: () => ExoProjectRepository;
+    transits: () => TransitRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -82,6 +84,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       sessionLog: () => new SessionLogRepository(db, ctx),
       changeRequests: () => new ChangeRequestRepository(db, ctx),
       exoProjects: () => new ExoProjectRepository(db, ctx),
+      transits: () => new TransitRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

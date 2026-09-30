@@ -9,7 +9,7 @@
  * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
  * im Entscheidungsbereich als Job `impact` (AP-32a, `ImpactPanel`).
  */
-import type { SeasonBar } from '@nina-pm/shared';
+import { formatNightKey, type SeasonBar } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,12 +46,13 @@ import {
 } from './queue-model';
 import { ProjectThumb } from './ProjectImage';
 import { ChangeRequestDecision } from './ChangeRequestDecision';
+import { TransitDecision, transitWindowText } from './TransitDecision';
 import { ImpactPanel } from './ImpactPanel';
 import styles from './projects.module.css';
 
 const QUEUE_KEY = ['projects', 'queue'] as const;
-type QueueKindTab = 'all' | 'project' | 'change-request';
-const QUEUE_KIND_TABS: readonly QueueKindTab[] = ['all', 'project', 'change-request'];
+type QueueKindTab = 'all' | 'project' | 'change-request' | 'transit';
+const QUEUE_KIND_TABS: readonly QueueKindTab[] = ['all', 'project', 'change-request', 'transit'];
 
 export function QueuePage() {
   const { t } = useTranslation();
@@ -71,8 +72,15 @@ export function QueuePage() {
   const effortLabel = (k: string) =>
     k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`);
   const vote = useMutation({
-    mutationFn: ({ id, on, kind }: { id: string; on: boolean; kind: QueueItem['kind'] }) =>
-      approvalApi.vote(id, on, kind),
+    mutationFn: ({
+      id,
+      on,
+      kind,
+    }: {
+      id: string;
+      on: boolean;
+      kind: 'project' | 'change-request';
+    }) => approvalApi.vote(id, on, kind),
     onSuccess: () => client.invalidateQueries({ queryKey: QUEUE_KEY }),
   });
   const zone = me?.tenant?.timeZone ?? 'UTC';
@@ -207,7 +215,9 @@ export function QueuePage() {
                       canDecide={canDecide}
                       selected={selected}
                       onSelect={setSelected}
-                      onVote={(q, on) => vote.mutate({ id: q.id, on, kind: q.kind })}
+                      onVote={(q, on) => {
+                        if (q.kind !== 'transit') vote.mutate({ id: q.id, on, kind: q.kind });
+                      }}
                       voting={vote.isPending}
                       visibility={visibilityById}
                     />
@@ -216,7 +226,19 @@ export function QueuePage() {
               ),
             }}
           />
-          {canDecide && current?.kind === 'change-request' ? (
+          {canDecide && current?.kind === 'transit' ? (
+            <TransitDecision
+              key={current.id}
+              item={current}
+              own={current.createdBy === me?.member?.id}
+              zone={zone}
+              onDone={() => {
+                setSelected(null);
+                void client.invalidateQueries({ queryKey: ['projects'] });
+                void client.invalidateQueries({ queryKey: ['exo-project'] });
+              }}
+            />
+          ) : canDecide && current?.kind === 'change-request' ? (
             <ChangeRequestDecision
               key={current.id}
               item={current}
@@ -301,6 +323,18 @@ function QueueTable({
           {q.kind === 'change-request' ? (
             <span className={styles.flag}>{t('changeRequests.badge')}</span>
           ) : null}
+          {q.kind === 'transit' ? (
+            <span className={styles.flag}>{t('queue.transit.badge')}</span>
+          ) : null}
+          {q.transit ? (
+            <span className={styles.subline}>
+              {t('queue.transit.line', {
+                planet: q.transit.planet,
+                night: formatNightKey(q.transit.night),
+                window: transitWindowText(q.transit),
+              })}
+            </span>
+          ) : null}
           {q.votes.mineChangedSince ? (
             <span className={styles.flag}>{t('queue.changedSinceVote')}</span>
           ) : null}
@@ -312,6 +346,8 @@ function QueueTable({
       header: t('queue.col.votes'),
       sortValue: sortBy('votes'),
       cell: (q) => {
+        // Transit-Bestätigungen haben keine Stimmen (FA-FRG-04).
+        if (q.kind === 'transit') return '–';
         const own = q.createdBy === meId;
         return (
           <span className={styles.voteCell}>
@@ -597,6 +633,18 @@ function DecisionPanel({
             ? ` (${item.votes.voters.map((v) => v.displayName).join(', ')})`
             : ''}
         </dd>
+        {item.transit ? (
+          <>
+            <dt>{t('queue.transit.wish')}</dt>
+            <dd>
+              {t('queue.transit.line', {
+                planet: item.transit.planet,
+                night: formatNightKey(item.transit.night),
+                window: transitWindowText(item.transit),
+              })}
+            </dd>
+          </>
+        ) : null}
         {item.requestComment ? (
           <>
             <dt>{t('approvalFlow.reason')}</dt>

@@ -501,6 +501,45 @@ export class ProjectRepository extends TenantRepo {
   }
 
   /**
+   * Transit-Einstellungen (FA-EXO-19/20, transit.md §8): Baseline, Puffer k, Autofokus/Zentrieren im Fenster,
+   * Defokus-Hinweis. Wirkt auf Vorhersage und neue Festlegungen; Version +1, Verlauf.
+   */
+  patchExoplanet(
+    projectId: string,
+    patch: {
+      readonly baselineBeforeMin?: number | undefined;
+      readonly baselineAfterMin?: number | undefined;
+      readonly bufferSigma?: number | undefined;
+      readonly allowAutofocus?: boolean | undefined;
+      readonly allowRecenter?: boolean | undefined;
+      readonly defocusHint?: string | null | undefined;
+    },
+    now: Date,
+  ): Promise<ProjectDetail> {
+    return this.tx(
+      async (trx) => {
+        const p = await this.row(projectId, trx);
+        if (!p || p.projectType !== 'exoplanet') throw notFound();
+        const set = Object.fromEntries(
+          Object.entries(patch).filter(([, v]) => v !== undefined),
+        ) as Record<string, unknown>;
+        if (Object.keys(set).length > 0) {
+          await trx
+            .updateTable('exoProject')
+            .set(set)
+            .where('tenantId', '=', this.tenantId)
+            .where('projectId', '=', projectId)
+            .execute();
+          await this.touch(trx, p, now);
+          await this.log(trx, projectId, 'update', { target: 'exoplanet', ...set }, now);
+        }
+        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
+      },
+      [{ table: 'project', id: projectId }],
+    );
+  }
+
+  /**
    * Neuere Katalog-Ephemeride übernehmen (FA-EXO-16): die bisherige bleibt als Historie (`is_active = false`),
    * Katalogbezug und Momentaufnahme folgen dem Katalog. Erhöht die Version (Aufwand neu, Auslieferung).
    */

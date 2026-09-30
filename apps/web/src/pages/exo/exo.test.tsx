@@ -35,6 +35,10 @@ const state = vi.hoisted(() => ({
   created: [] as unknown[],
   exoProject: null as unknown,
   refreshed: 0,
+  locked: [] as number[],
+  unlocked: [] as string[],
+  patched: [] as unknown[],
+  observation: null as unknown,
 }));
 
 vi.mock('../planning/skymap/sky-data', () => ({
@@ -93,6 +97,11 @@ vi.mock('../../api/client', () => ({
                 ]
               : [],
       }),
+    weather: () =>
+      Promise.resolve({
+        nights: [{ night: '2026-10-10', ratingIndex: 3, nightMean: 80 }],
+        hours: [],
+      }),
     nights: () =>
       Promise.resolve({
         currentNight: '2026-10-10',
@@ -115,6 +124,32 @@ vi.mock('../../api/client', () => ({
       });
     },
     project: () => Promise.resolve(state.exoProject),
+    lock: (_id: string, epoch: number) => {
+      state.locked.push(epoch);
+      const d = state.exoProject as { upcoming: Record<string, unknown>[] };
+      state.exoProject = {
+        ...d,
+        observations: [state.observation],
+        openCount: 1,
+        upcoming: d.upcoming.map((u) => ({ ...u, observationId: ID(830) })),
+      };
+      return Promise.resolve(state.exoProject);
+    },
+    unlock: (_id: string, observationId: string) => {
+      state.unlocked.push(observationId);
+      const d = state.exoProject as Record<string, unknown>;
+      state.exoProject = {
+        ...d,
+        observations: [{ ...(state.observation as object), status: 'cancelled' }],
+        openCount: 0,
+      };
+      return Promise.resolve(state.exoProject);
+    },
+    patch: (_id: string, body: Record<string, unknown>) => {
+      state.patched.push(body);
+      state.exoProject = { ...(state.exoProject as object), ...body };
+      return Promise.resolve(state.exoProject);
+    },
     refreshEphemeris: () => {
       state.refreshed += 1;
       const d = state.exoProject as { ephemeris: unknown; catalogUpdate: unknown };
@@ -490,8 +525,48 @@ const exoDetail = () => ({
   twilight: 'nautical',
   fromNight: '2026-09-30',
   nights: 60,
-  upcoming: [{ night: '2026-10-10', item: transit() }],
+  upcoming: [
+    {
+      night: '2026-10-10',
+      item: transit(),
+      deadlineUtc: '2026-10-11T02:23:26Z',
+      conflict: null,
+      observationId: null,
+    },
+  ],
+  observations: [] as unknown[],
+  allowAutofocus: false,
+  allowRecenter: true,
+  defocusHint: null,
+  lockMode: 'wish',
+  lockBlockedReason: null,
+  openCount: 0,
+  maxOpen: 3,
+  suggestedEpoch: 180,
 });
+
+const observation = {
+  id: ID(830),
+  status: 'requested',
+  epoch: 180,
+  night: '2026-10-10',
+  ingressUtc: '2026-10-11T04:44:26Z',
+  midUtc: '2026-10-11T06:45:26Z',
+  egressUtc: '2026-10-11T08:46:26Z',
+  windowStartUtc: '2026-10-11T02:39:26Z',
+  windowEndUtc: '2099-10-11T10:51:26Z',
+  baselineBeforeMin: 60,
+  baselineAfterMin: 60,
+  bufferMin: 5,
+  confirmDeadlineUtc: '2026-10-11T02:21:26Z',
+  lockedAt: null,
+  lockedByName: null,
+  plannedCount: 350,
+  acquiredCount: 0,
+  sessionId: null,
+  primaryObservationId: null,
+  createdAt: '2026-09-30T10:00:00Z',
+};
 
 const renderTab = (canUpdate = true) =>
   render(
@@ -507,7 +582,68 @@ const renderTab = (canUpdate = true) =>
 describe('Reiter Exoplanet-Transit (FA-EXO-15…17)', () => {
   beforeEach(() => {
     state.exoProject = exoDetail();
+    state.observation = observation;
     state.refreshed = 0;
+    state.locked = [];
+    state.unlocked = [];
+    state.patched = [];
+  });
+
+  it('Wünschen, Beobachtung mit Frist, Aufheben mit Bestätigung, Einstellungen (AP-43)', async () => {
+    renderTab();
+    const obs = await screen.findByRole('region', { name: 'Beobachtungen' });
+    expect(
+      within(obs).getByText('Noch keine Transits gewünscht oder festgelegt.'),
+    ).toBeInTheDocument();
+    const up = screen.getByRole('region', { name: 'Kommende beobachtbare Transits' });
+    expect(within(up).getByText('Vorschlag: nächster beobachtbarer Transit')).toBeInTheDocument();
+    expect(await within(up).findByText('Gut')).toBeInTheDocument();
+    fireEvent.click(
+      within(up).getByRole('button', { name: 'Wünschen: Transit der Nacht 10./11.10.' }),
+    );
+    await waitFor(() => expect(state.locked).toEqual([180]));
+    expect(await within(obs).findByText('Gewünscht')).toBeInTheDocument();
+    fireEvent.click(
+      within(obs).getByRole('button', { name: 'Transit der Nacht 10./11.10. aufheben' }),
+    );
+    const dialog = await screen.findByRole('alertdialog', { name: 'Transit aufheben?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Aufheben' }));
+    await waitFor(() => expect(state.unlocked).toEqual([ID(830)]));
+    fireEvent.click(screen.getByText('Transit-Einstellungen'));
+    fireEvent.change(screen.getByLabelText('Baseline vor Ingress (min)'), {
+      target: { value: '30' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
+    await waitFor(() => expect(state.patched[0]).toMatchObject({ baselineBeforeMin: 30 }));
+    await expectNoSeriousA11y();
+  });
+
+  it('Belegung verhindert Festlegen; nach der Freigabe ohne festgelegten Transit nicht planbar', async () => {
+    const d = exoDetail();
+    state.exoProject = {
+      ...d,
+      lockMode: 'request',
+      upcoming: d.upcoming.map((u) => ({
+        ...u,
+        conflict: {
+          kind: 'overlap',
+          projectId: ID(840),
+          projectName: 'WASP-12b',
+          createdByName: 'Bea',
+          windowStartUtc: '2026-10-11T02:00:00Z',
+          windowEndUtc: '2026-10-11T08:00:00Z',
+        },
+      })),
+    };
+    renderTab();
+    const up = await screen.findByRole('region', { name: 'Kommende beobachtbare Transits' });
+    expect(within(up).getByText('Belegt: WASP-12b (Bea)')).toBeInTheDocument();
+    expect(
+      within(up).getByRole('button', { name: 'Zur Bestätigung: Transit der Nacht 10./11.10.' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText('Ohne festgelegten Transit ist das Projekt nicht planbar.'),
+    ).toBeInTheDocument();
   });
 
   it('Ephemeride, Angebot mit Übernahme, Historie, fremde Projekte, kommende Transits', async () => {

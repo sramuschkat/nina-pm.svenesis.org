@@ -104,9 +104,25 @@ export const PlanChip = z.object({
   moonProfileId: Uuid.nullable(),
 });
 
+/** Transit-Bestätigung (FA-EXO-18) bzw. Wunsch eines eingereichten Exoplaneten-Projekts (FA-FRG-04/09). */
+export const QueueTransit = z.object({
+  observationId: Uuid,
+  planet: z.string(),
+  epoch: z.number().int(),
+  night: NightKey,
+  midUtc: UtcInstant,
+  windowStartUtc: UtcInstant,
+  windowEndUtc: UtcInstant,
+  deadlineUtc: UtcInstant.nullable(),
+  rigName: z.string().nullable(),
+  timeZone: z.string().nullable(),
+  plannedCount: z.number().int(),
+});
+
 export const QueueItem = z
   .object({
-    kind: QueueKind,
+    /** `transit` = Transit-Bestätigung (FA-EXO-18); ohne Stimmen und Rang. */
+    kind: z.enum(['project', 'change-request', 'transit']),
     id: Uuid,
     projectId: Uuid,
     name: z.string(),
@@ -149,6 +165,8 @@ export const QueueItem = z
     version: z.number().int(),
     /** Nur bei Änderungsanträgen (AP-32b): Vorschlag, Gegenüberstellung, Projektversion. */
     changeRequest: ChangeRequestInfo.nullable(),
+    /** Bei Transit-Bestätigungen und eingereichten Exoplaneten-Projekten (AP-43). */
+    transit: QueueTransit.nullable(),
   })
   .meta({ id: 'QueueItem' });
 export type QueueItem = z.infer<typeof QueueItem>;
