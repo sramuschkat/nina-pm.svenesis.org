@@ -244,3 +244,9 @@
   stroke: var(--npm-chart-target);
   stroke-width: 2;
 }
+
+/* Links im Text nicht nur über die Farbe erkennbar (axe `link-in-text-block`). */
+.starField figcaption a,
+.links a {
+  text-decoration: underline;
+}

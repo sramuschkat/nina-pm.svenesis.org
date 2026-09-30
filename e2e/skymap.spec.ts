@@ -162,7 +162,8 @@ test('S-20: Rundblick wie die Vorlage – Sternbild beim Überfahren, Infokarte 
     await page.mouse.move(box.x + (box.width * i) / 12, box.y + box.height * 0.4);
     hovered = await map.getAttribute('data-hover');
   }
-  expect(hovered).toMatch(/^[A-Z][a-z]{1,2}$/);
+  // IAU-Kürzel, auch mit zweitem Großbuchstaben (CMi, UMa, CVn, CrB …) – welches, hängt von der Uhrzeit ab.
+  expect(hovered).toMatch(/^[A-Z][A-Za-z]{1,2}$/);
 
   // Zur nächsten Himmelsrichtung drehen und lateinische Namen.
   await page.getByRole('button', { name: 'Zur nächsten Himmelsrichtung drehen' }).click();
