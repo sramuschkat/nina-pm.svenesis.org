@@ -296,7 +296,7 @@ describe('S-02 Heute Nacht', () => {
     await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('nacht=2026-09-20'));
     await waitFor(() => expect(state.nights).toContain('2026-09-20'));
     expect(
-      await screen.findByText(/Künftige Nacht: Plan aus dem heutigen Projektstand/),
+      await screen.findByText(/Vorschau: So sähe der Plan aus, wenn bis dahin nichts mehr passiert/),
     ).toBeInTheDocument();
     expect(screen.getByText('NINA-Status nur für die laufende Nacht')).toBeInTheDocument();
     expect(screen.getByText(/dunkel \d\d:\d\d–\d\d:\d\d CDT/)).toBeInTheDocument();
