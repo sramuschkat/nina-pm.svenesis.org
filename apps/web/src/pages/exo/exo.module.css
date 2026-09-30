@@ -329,3 +329,38 @@
 .skyTarget {
   stroke: var(--npm-chart-flux);
 }
+
+/* Reiter *Exoplanet-Transit* im Projekt-Editor (FA-EXO-17). */
+.projectTab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+.projectTab p {
+  margin: 0;
+}
+.update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-warning-bg);
+  color: var(--npm-text);
+}
+.history {
+  margin: var(--npm-space-1) 0 0;
+  padding-left: var(--npm-space-4);
+  color: var(--npm-text-light);
+}
+/* Text in Textfarbe (Kontrast), nur das Symbol in der Meridian-Farbe des Diagramms. */
+.flipText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.flipText svg {
+  color: var(--npm-chart-meridian);
+}

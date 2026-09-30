@@ -3,11 +3,12 @@
  * NASA) am Standort Starfront, Nacht 10./11.10.2026 (Transitmitte 06:45Z, beobachtbar). GT81 mit 81 mm Öffnung
  * und bestätigtem Rotfilter ohne photometrisches Band.
  */
-import { replaceExoCatalog, type ExoCatalogRow } from '@nina-pm/db';
+import { replaceExoCatalog } from '@nina-pm/db';
 import { COOKIE_NAMES, type ExoTransitList } from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { clearExoCatalogCache } from '../src/exo/search';
 import { CAMERA, filterInput, rigInput, SCHEDULER, SITE, TELESCOPE } from './support/equipment';
+import { HAT } from './support/exo';
 import { createStack, type Stack } from './support/stack';
 
 let s: Stack;
@@ -15,46 +16,6 @@ let cookies: Record<string, string>;
 let rigId: string;
 let redId: string;
 let unconfirmedRigId: string;
-
-const HAT: ExoCatalogRow = {
-  planet: 'HAT-P-17b',
-  star: 'HAT-P-17',
-  disposition: null,
-  raDeg: 324.5363796,
-  decDeg: 30.4887347,
-  magVJohnson: 10.38,
-  magRCousins: 10.24,
-  magSdssG: null,
-  magGaiaG: 10.274,
-  magTess: null,
-  magBandUsed: 'V',
-  teffK: 5246,
-  distancePc: null,
-  t0BjdTdb: 2457168.694753,
-  t0SigmaD: 5.2e-5,
-  periodD: 10.33853486,
-  periodSigmaD: 4e-7,
-  durationH: 4.04,
-  durationEstimated: false,
-  depthMmag: 20.37,
-  depthRaw: 20.37,
-  depthUnit: 'mmag',
-  depthEstimated: false,
-  rpOverRs: 0.1238,
-  aOverRs: 22.6,
-  inclinationDeg: 89.2,
-  planetRadiusRe: null,
-  eqTempK: null,
-  exoclockPriority: 'medium',
-  oMinusCMin: 1,
-  minApertureMm: 127,
-  minApertureEstimated: false,
-  amateurReachable: true,
-  timeSystemSource: 'bjd_tdb',
-  timeSystemRaw: 'BJD_TDB',
-  t0Raw: 2457168.694753,
-  ticId: null,
-};
 
 beforeAll(async () => {
   s = await createStack();

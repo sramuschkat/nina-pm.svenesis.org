@@ -194,3 +194,25 @@ Rechnung in `packages/engine/src/exo/exposure.ts` (`exposureAdvice`), Kennwerte 
   - Rundung nach unten: 0,5 s unter 10 s, 5 s unter 60 s, sonst 10 s.
 - **Gültigkeit:** Richtwert für die Planung, keine Kalibrierung. Der Nullpunkt ist theoretisch; Wolken, Mond und Abweichungen der Kameradaten gehen nicht ein. Die Belichtungszeile eines Transit-Projekts (FA-EXO-20) bleibt frei wählbar.
 - **Tests** (`packages/engine/test/exposure.spec.ts`): erf, Spitzenanteil, Luftmasse, Bortle und Rundung; je ein Fall für `max_exposure`, `saturation`, `defocus` (mit Variante im Fokus), `defocus_limit` und `ingress`; größere Öffnung → bessere Genauigkeit.
+
+## 7. Exoplaneten-Projekt aus der Suche (FA-EXO-15…17, AP-42 Teil 2, Spec-Ergänzung 30.09.2026)
+Rechnung und Speichern in `apps/api/src/exo/project.ts`, `apps/api/src/routes/exo.ts` und `ProjectRepository.createExoplanet`/`replaceEphemeris`; Anzeige im Reiter *Exoplanet-Transit* (`apps/web/src/pages/exo/ExoTransitTab.tsx`).
+- **Anlegen** `POST /api/web/v1/exo/projects` (`project.create`): Der Client nennt Katalog und Planet der Ergebniszeile, Rig, Dämmerungsgrenze und Mindesthöhe des Suchfilters (FA-EXO-05) sowie die empfohlene Belichtung (FA-EXO-14a). Den Katalogeintrag liest der Server selbst, zusammengeführt wie in der Suche (§5, ohne APC).
+  - **Eindeutig je Planet, Rig und Ersteller (OP-22):** Gibt es ein eigenes, nicht gelöschtes Exoplaneten-Projekt zu Planet und Rig (Rig oder Wunsch-Rig), antwortet die Route `200 {projectId, created: false}`; die Oberfläche öffnet es.
+  - **Projekt:** Typ `exoplanet`, Entwurf mit Wunsch-Rig. Name = Planet, Ziel = Wirtsstern (Typ `exoplanet`), Katalognamen Planet, Stern und TIC, Koordinaten J2000 des Sterns. Bedingungen: Vorgaben mit Mindesthöhe und Dämmerung aus dem Suchfilter, Mondvermeidung aus (FA-EXO-20: Mondabstand nur Hinweis).
+  - **Panel** am Wirtsstern und genau **eine Transit-Zeile**, wenn ein bestätigter Filter passt (FA-EXO-08). Belichtung aus der Empfehlung, sonst 60 s; Mondmodus *keine*; *Geplant* 0, weil der Richtwert erst mit der Festlegung entsteht (FA-EXO-20, AP-43).
+  - **`exo_project`:** Planet, Stern, Katalog, Katalogzeile, Puffer 1 σ und die Katalogzeile als Momentaufnahme (`catalog_snapshot`, mit den aufgefüllten Kenndaten aus §5).
+  - **`ephemeris`:** aktive Ephemeride des führenden Eintrags: T₀ ± σ, P ± σ, Dauer, Quellzeitsystem, O−C, Tiefe, Rp/R★, Quelle = Katalog, Stand = Abrufdatum.
+- **Reiter** `GET /api/web/v1/projects/{id}/exo` (`project.read`, fremde Entwürfe 403, Deep-Sky 404):
+  - Ephemeride und Historie.
+  - **Katalog-Angebot:** Führt der Katalog für diesen Planeten eine andere Ephemeride (T₀ oder P weicht um mehr als 1e-7 d ab), wird sie angeboten. Angezeigt werden ΔP in Sekunden und die nächste Transitmitte nach der neuen Ephemeride sowie deren Verschiebung gegenüber der Mitte derselben Epoche nach der alten.
+  - Gesucht wird der Planet über Katalog und Name im führenden oder in einem nachrangigen Eintrag, sonst über den Namensschlüssel. So bleibt der Bezug erhalten, wenn der führende Katalog wechselt (z. B. TOI → ExoClock).
+  - **Übernehmen** `POST …/ephemeris/refresh` (`project.update`): die bisherige Ephemeride wird inaktiv (Historie), die neue aktiv; Katalogbezug und Momentaufnahme folgen; Projektversion +1 (Aufwand, Auslieferung). Ohne Änderung entsteht keine neue Zeile.
+- **Kommende Transits (FA-EXO-16/17):**
+  - Horizont: 60 Nächte ab der laufenden Nacht des Standorts.
+  - Gerechnet wird aus Momentaufnahme und **aktiver** Ephemeride, ohne Katalogabruf, mit derselben Suche wie S-22. Es gelten die Dämmerungsgrenze und die Mindesthöhe des Projekts sowie der Puffer (k = `buffer_sigma`, gerundet auf 1…3). So sind Belichtung, Filter und Zeitleiste gleich.
+  - Gezeigt werden nur beobachtbare Transits (AST-T19), jede Epoche einmal.
+  - Ohne Rig gibt es keine Vorhersage (Hinweis).
+  - Projekte anderer Mitglieder zum selben Planeten erscheinen als Hinweis mit Link, Ersteller und Rig.
+- **Offen (AP-43):** Transit festlegen, Richtwert *Geplant*, Wetterbewertung in der Liste (FA-EXO-17 „soweit vorhanden“), Ephemeridenalter als Sperre (FA-EXO-16a) bei der Festlegung.
+- **Tests:** `apps/api/test/exo-project.test.ts`; Rechte-Tabelle; Web `exo.test.tsx`; E2E `exoplanets.spec.ts`.

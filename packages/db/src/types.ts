@@ -864,7 +864,7 @@ export interface ExoCatalogEntryTable {
   ticId: string | null;
 }
 
-/** Exoplaneten-Projekt (Migration 0004); bisher nur die Spalten, die der Katalogimport braucht (AP-40). */
+/** Exoplaneten-Projekt (Migration 0004), 1:1 zu `project` mit `project_type = 'exoplanet'` (FA-EXO-15). */
 export interface ExoProjectTable {
   projectId: string;
   tenantId: string;
@@ -872,6 +872,41 @@ export interface ExoProjectTable {
   star: string;
   catalog: string;
   catalogEntryId: string | null;
+  baselineBeforeMin: Generated<number>;
+  baselineAfterMin: Generated<number>;
+  bufferSigma: Generated<number>;
+  allowAutofocus: Generated<boolean>;
+  allowRecenter: Generated<boolean>;
+  defocusHint: string | null;
+  /** Katalogzeile beim Anlegen (Kenndaten für Suche, Karte und Belichtung). */
+  catalogSnapshot: Json;
+}
+
+/**
+ * Ephemeride je Projekt (Migration 0004, FA-EXO-16). Die Spalten `o_minus_c_*` haben zwei Großbuchstaben
+ * hintereinander im TS-Namen; gelesen und geschrieben wird deshalb über `exoDb` (exo-catalog.ts).
+ */
+export interface EphemerisTable {
+  id: Generated<string>;
+  tenantId: string;
+  projectId: string;
+  t0BjdTdb: number;
+  t0SigmaD: number | null;
+  periodD: number;
+  periodSigmaD: number | null;
+  durationH: number | null;
+  durationEstimated: Generated<boolean>;
+  timeSystemSource: Generated<string>;
+  oMinusCMin: number | null;
+  oMinusCSigmaMin: number | null;
+  oMinusCEpoch: number | null;
+  oMinusCSourceId: string | null;
+  depthMmag: number | null;
+  rpOverRs: number | null;
+  source: string;
+  sourceDate: DateKey | null;
+  isActive: Generated<boolean>;
+  createdAt: Timestamp;
 }
 
 export interface Database {
@@ -879,6 +914,7 @@ export interface Database {
   dsoObject: DsoObjectTable;
   exoCatalogEntry: ExoCatalogEntryTable;
   exoProject: ExoProjectTable;
+  ephemeris: EphemerisTable;
   weatherCache: WeatherCacheTable;
   identity: IdentityTable;
   superUser: SuperUserTable;

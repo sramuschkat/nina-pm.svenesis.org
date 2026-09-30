@@ -953,6 +953,7 @@ export const en: Messages = {
     },
     tabs: {
       changes: 'Change requests',
+      transit: 'Exoplanet transit',
       night: 'Night chart',
       season: 'Season chart',
       weather: 'Weather',
@@ -2921,7 +2922,8 @@ export const en: Messages = {
     action: {
       framing: 'Open {{name}} in the sky map',
       project: 'Project',
-      projectLater: 'Create exoplanet project – coming soon',
+      projectCreate: 'Create or open the exoplanet project for {{name}}',
+      projectFailed: 'Project could not be created.',
     },
     timeSystemUncertain:
       'Time system of the catalogue epoch uncertain – the window is 10 min wider on each side.',
@@ -3044,6 +3046,35 @@ export const en: Messages = {
           'a suitable filter in the filter wheel (band Rc, Ic or lum, or broadband red from 590 nm centre wavelength)',
         magnitude: 'the star magnitude',
         depth: 'the transit depth',
+      },
+    },
+    project: {
+      loading: 'Loading exoplanet data …',
+      ephemerisTitle: 'Ephemeris',
+      ephemerisValue:
+        'T₀ = {{t0}} BJD_TDB · P = {{period}} d · duration {{duration}} h · source {{source}}, as of {{date}}',
+      updateOffer:
+        'Newer catalogue data ({{source}}, {{date}}): {{period}}, next mid-transit {{next}} ({{shift}} min against the stored ephemeris).',
+      periodSame: 'P unchanged',
+      periodDelta: 'P {{delta}} s',
+      updateApply: 'Apply ephemeris',
+      updateNoRight: 'The creator (while in draft) or an admin can apply it.',
+      history: 'Earlier ephemerides ({{count}})',
+      others: 'Other projects for {{planet}}:',
+      otherBy: 'by {{name}}',
+      otherByOn: 'by {{name}}, {{rig}}',
+      noRig: 'No prediction without a rig – please choose one.',
+      upcomingTitle: 'Upcoming observable transits',
+      upcomingScope: '{{nights}} nights · {{rig}} · min. altitude {{minAlt}}° · {{twilight}}',
+      upcomingNone: 'No observable transits in the next {{nights}} nights.',
+      flipInWindow: 'Flip in window',
+      col: {
+        night: 'Night',
+        mid: 'Mid-transit',
+        window: 'Observing window',
+        alt: 'Alt. at mid',
+        moon: 'Moon',
+        meridian: 'Meridian',
       },
     },
     estimated: 'estimated',

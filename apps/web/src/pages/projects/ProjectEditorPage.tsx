@@ -1095,7 +1095,11 @@ function Editor({
         </div>
 
         <aside className={styles.editorSide} aria-label={t('projectEditor.sideLabel')}>
-          <ChartArea draft={draft} site={site} />
+          <ChartArea
+            draft={draft}
+            site={site}
+            exo={saved?.projectType === 'exoplanet' ? { projectId: saved.id, canUpdate } : null}
+          />
           <section className={styles.area} aria-label={t('projectEditor.tabs.imageNotes')}>
             {imagePanel}
           </section>

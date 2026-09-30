@@ -58,7 +58,7 @@ export interface ExoCatalogRow {
  * `mag_r_cousins`, `o_minus_c_min`). Der Standard-`CamelCasePlugin` machte daraus `mag_vjohnson`; für diese
  * Tabelle schreiben wir deshalb mit `underscoreBetweenUppercaseLetters` (die übrigen Spalten ändern sich nicht).
  */
-function exoDb(db: Kysely<Database>): Kysely<Database> {
+export function exoDb(db: Kysely<Database>): Kysely<Database> {
   return db
     .withoutPlugins()
     .withPlugin(new CamelCasePlugin({ underscoreBetweenUppercaseLetters: true }));

@@ -19,6 +19,7 @@ import {
   effectiveTenantSettings,
   imageScale,
   LINE_LOCKED_FIELDS,
+  LineCreate as LineCreateSchema,
   missingForActivation,
   ProblemError,
   projectProgress,
@@ -34,6 +35,7 @@ import { withTx } from '../tx';
 import type { Database, ExposureLineTable, ProjectPanelTable, ProjectTable } from '../types';
 import { TenantRepo } from './base';
 import { EquipmentRepository, type FilterWheelEntry } from './equipment';
+import { exoDb } from './exo-catalog';
 import { insertNotifications } from './notification';
 import { lockSubmitters, nextSubmitterRank, renumberRanks } from './ranks';
 
@@ -54,6 +56,38 @@ export interface ProjectDetail {
   readonly overshootPct: number;
   /** `primary_id` des verknüpften Katalogobjekts (Katalogbild, AP-20); `null` ohne Verknüpfung. */
   readonly dsoPrimaryId: string | null;
+}
+
+/** Ephemeride zum Speichern am Projekt (FA-EXO-16, Tabelle `ephemeris`). */
+export interface EphemerisInsert {
+  readonly t0BjdTdb: number;
+  readonly t0SigmaD: number | null;
+  readonly periodD: number;
+  readonly periodSigmaD: number | null;
+  readonly durationH: number | null;
+  readonly durationEstimated: boolean;
+  readonly timeSystemSource: string;
+  readonly oMinusCMin: number | null;
+  readonly depthMmag: number | null;
+  readonly rpOverRs: number | null;
+  /** Katalog der Ephemeride. */
+  readonly source: string;
+  /** Katalogstand als Datum (JJJJ-MM-TT). */
+  readonly sourceDate: string | null;
+}
+
+/** Exoplaneten-Teil beim Anlegen aus der Transitsuche (FA-EXO-15). */
+export interface ExoProjectInsert {
+  readonly planet: string;
+  readonly star: string;
+  readonly catalog: string;
+  readonly catalogEntryId: string | null;
+  readonly bufferSigma: number;
+  /** Katalogzeile (zusammengeführt) als Momentaufnahme. */
+  readonly catalogSnapshot: unknown;
+  readonly ephemeris: EphemerisInsert;
+  /** Transit-Zeile mit dem abgebildeten Filter (FA-EXO-08); `null` ohne passenden Filter. */
+  readonly line: { readonly filterId: string; readonly exposureS: number } | null;
 }
 
 export interface ProjectMeta {
@@ -355,45 +389,170 @@ export class ProjectRepository extends TenantRepo {
     return this.tx(async (trx) => {
       const existing = await this.row(input.id, trx, true);
       if (existing) return this.idempotentReplay(trx, existing, memberId);
-      await this.checkRig(trx, input.rigId);
-      await this.checkDso(trx, input.dsoObjectId);
-      await trx
-        .insertInto('project')
-        .values({
-          id: input.id,
-          tenantId: this.tenantId,
-          createdBy: memberId,
-          name: input.name,
-          requestedRigId: input.rigId,
-          targetName: input.targetName,
-          targetType: input.targetType,
-          dsoObjectId: input.dsoObjectId,
-          catalogNames: input.catalogNames,
-          descriptionMd: input.descriptionMd,
-          raDeg: input.raDeg,
-          decDeg: input.decDeg,
-          rotationDeg: input.rotationDeg,
-          startDate: input.startDate,
-          dueDate: input.dueDate,
-          requestPeriodFrom: input.requestPeriodFrom,
-          requestPeriodTo: input.requestPeriodTo,
-          requestComment: input.requestComment,
-          ...input.conditions,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .execute();
-      if (input.raDeg !== null && input.decDeg !== null)
-        await this.insertPanel(trx, input.id, 0, {
-          label: 'Main',
-          raDeg: input.raDeg,
-          decDeg: input.decDeg,
-          rotationDeg: input.rotationDeg,
-          notes: '',
-        });
-      await this.log(trx, input.id, 'create', { name: input.name }, now);
+      await this.insertProject(trx, input, memberId, 'deep_sky', now);
       return this.detailOf(trx, (await this.row(input.id, trx)) as ProjectRow);
     });
+  }
+
+  private async insertProject(
+    trx: Tx,
+    input: ProjectCreate,
+    memberId: string,
+    projectType: 'deep_sky' | 'exoplanet',
+    now: Date,
+  ) {
+    await this.checkRig(trx, input.rigId);
+    await this.checkDso(trx, input.dsoObjectId);
+    await trx
+      .insertInto('project')
+      .values({
+        id: input.id,
+        tenantId: this.tenantId,
+        createdBy: memberId,
+        name: input.name,
+        projectType,
+        requestedRigId: input.rigId,
+        targetName: input.targetName,
+        targetType: input.targetType,
+        dsoObjectId: input.dsoObjectId,
+        catalogNames: input.catalogNames,
+        descriptionMd: input.descriptionMd,
+        raDeg: input.raDeg,
+        decDeg: input.decDeg,
+        rotationDeg: input.rotationDeg,
+        startDate: input.startDate,
+        dueDate: input.dueDate,
+        requestPeriodFrom: input.requestPeriodFrom,
+        requestPeriodTo: input.requestPeriodTo,
+        requestComment: input.requestComment,
+        ...input.conditions,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .execute();
+    if (input.raDeg !== null && input.decDeg !== null)
+      await this.insertPanel(trx, input.id, 0, {
+        label: 'Main',
+        raDeg: input.raDeg,
+        decDeg: input.decDeg,
+        rotationDeg: input.rotationDeg,
+        notes: '',
+      });
+    await this.log(trx, input.id, 'create', { name: input.name }, now);
+  }
+
+  /**
+   * Exoplaneten-Projekt aus der Transitsuche (FA-EXO-15/16): Projekt vom Typ `exoplanet` mit Wunsch-Rig, Panel am
+   * Wirtsstern, `exo_project`, aktive Ephemeride und – wenn ein bestätigter Filter passt – genau eine Transit-Zeile
+   * (FA-EXO-20; *Geplant* setzt erst die Festlegung, AP-43). Eine Transaktion; idempotent über die Projekt-ID.
+   */
+  createExoplanet(input: ProjectCreate, exo: ExoProjectInsert, now: Date): Promise<ProjectDetail> {
+    const memberId = this.ctx.memberId;
+    if (!memberId) throw new ProblemError('permission.denied');
+    return this.tx(async (trx) => {
+      const existing = await this.row(input.id, trx, true);
+      if (existing) return this.idempotentReplay(trx, existing, memberId);
+      await this.insertProject(trx, input, memberId, 'exoplanet', now);
+      await trx
+        .insertInto('exoProject')
+        .values({
+          projectId: input.id,
+          tenantId: this.tenantId,
+          planet: exo.planet,
+          star: exo.star,
+          catalog: exo.catalog,
+          catalogEntryId: exo.catalogEntryId,
+          bufferSigma: exo.bufferSigma,
+          catalogSnapshot: json(exo.catalogSnapshot),
+        })
+        .execute();
+      await this.insertEphemeris(trx, input.id, exo.ephemeris);
+      if (exo.line) {
+        const panel = await trx
+          .selectFrom('projectPanel')
+          .select('id')
+          .where('tenantId', '=', this.tenantId)
+          .where('projectId', '=', input.id)
+          .executeTakeFirst();
+        if (panel)
+          await this.addLineIn(
+            trx,
+            input.id,
+            LineCreateSchema.parse({
+              id: crypto.randomUUID(),
+              panelId: panel.id,
+              filterId: exo.line.filterId,
+              exposureS: exo.line.exposureS,
+              plannedCount: 0,
+              moonMode: 'none',
+            }),
+            now,
+          );
+      }
+      return this.detailOf(trx, (await this.row(input.id, trx)) as ProjectRow);
+    });
+  }
+
+  private async insertEphemeris(trx: Tx, projectId: string, e: EphemerisInsert) {
+    await exoDb(trx)
+      .insertInto('ephemeris')
+      .values({ tenantId: this.tenantId, projectId, ...e, isActive: true })
+      .execute();
+  }
+
+  /**
+   * Neuere Katalog-Ephemeride übernehmen (FA-EXO-16): die bisherige bleibt als Historie (`is_active = false`),
+   * Katalogbezug und Momentaufnahme folgen dem Katalog. Erhöht die Version (Aufwand neu, Auslieferung).
+   */
+  replaceEphemeris(
+    projectId: string,
+    update: {
+      readonly catalog: string;
+      readonly catalogEntryId: string | null;
+      readonly catalogSnapshot: unknown;
+      readonly ephemeris: EphemerisInsert;
+    },
+    now: Date,
+  ): Promise<ProjectDetail> {
+    return this.tx(
+      async (trx) => {
+        const p = await this.row(projectId, trx);
+        if (!p || p.projectType !== 'exoplanet') throw notFound();
+        await exoDb(trx)
+          .updateTable('ephemeris')
+          .set({ isActive: false })
+          .where('tenantId', '=', this.tenantId)
+          .where('projectId', '=', projectId)
+          .where('isActive', '=', true)
+          .execute();
+        await this.insertEphemeris(trx, projectId, update.ephemeris);
+        await trx
+          .updateTable('exoProject')
+          .set({
+            catalog: update.catalog,
+            catalogEntryId: update.catalogEntryId,
+            catalogSnapshot: json(update.catalogSnapshot),
+          })
+          .where('tenantId', '=', this.tenantId)
+          .where('projectId', '=', projectId)
+          .execute();
+        await this.touch(trx, p, now);
+        await this.log(
+          trx,
+          projectId,
+          'update',
+          {
+            target: 'ephemeris',
+            source: update.ephemeris.source,
+            t0BjdTdb: update.ephemeris.t0BjdTdb,
+            periodD: update.ephemeris.periodD,
+          },
+          now,
+        );
+        return this.detailOf(trx, (await this.row(projectId, trx)) as ProjectRow);
+      },
+      [{ table: 'project', id: projectId }],
+    );
   }
 
   private async insertPanel(

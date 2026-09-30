@@ -7,14 +7,12 @@
  * - Aufgeklappte Zeile (Wunsch Sven 30.09.2026): Zeitleiste der Nacht mit Beobachtungsfenster, Kontakten und
  *   Lichtkurve (FA-EXO-10…12), darunter die Karten Sternfeld, Himmelsposition und die Reiter *Zieldetails* /
  *   *Meine Beobachtungen* (FA-EXO-13/14).
- * Die Aktion *Projekt* (FA-EXO-15) folgt im zweiten Teil von AP-42.
+ * - Aktion *Projekt* (FA-EXO-15): Exoplaneten-Projekt anlegen bzw. das eigene öffnen (OP-22), dann der Editor.
  */
-import { meridianTransitUtc, moonAt, sunAt, targetAt } from '@nina-pm/engine';
-import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   api,
   equipmentApi,
@@ -23,31 +21,31 @@ import {
   type ExoTransitList,
   type ExoTransitView,
 } from '../../api/client';
-import { useAuth } from '../../auth';
+import { useAuth, useCan } from '../../auth';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterBar, FilterCheck } from '../../components/FilterBar';
 import { ICON_SIZE, actionIcons, areaIcons, uiIcons } from '../../components/icons';
-import { NightChart } from '../../components/night-chart';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import type { RigOption } from '../../components/RigSelect';
 import { Tabs } from '../../components/Tabs';
-import { nightChartFromEngine } from '../../lib/night-chart-data';
-import { problemCode } from '../admin/shared';
+import { newId, problemCode } from '../admin/shared';
 import { NumberInput, Select } from '../catalog/fields';
 import catalogStyles from '../catalog/catalog.module.css';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
+import { PROJECT_PATHS } from '../projects/ProjectEditorPage';
 import { skyMapHref } from '../planning/skymap/model';
 import {
   applyExoFilters,
+  EXO_CATALOG_LABELS,
   EXO_SEARCH_DEFAULTS,
   lightYears,
   paramsFromUrl,
   researchLinks,
-  transitFlux,
+  siteClock,
   depthFraction,
   urlFromParams,
   type ExoUrl,
@@ -56,24 +54,16 @@ import { ExposureCard } from './ExposureCard';
 import { HelpTip } from './HelpTip';
 import { SkyPosition } from './SkyPosition';
 import { StarField } from './StarField';
+import { TransitTimeline } from './TransitTimeline';
 import styles from './exo.module.css';
 
 export { EXO_PATH } from './model';
 
 const CATALOGS = ['exoclock', 'nasa', 'toi'] as const;
-const CATALOG_NAMES: Record<(typeof CATALOGS)[number], string> = {
-  exoclock: 'ExoClock',
-  nasa: 'NASA',
-  toi: 'TESS TOI',
-};
-
-const unix = (iso: string) => Date.parse(iso) / 1000;
+const CATALOG_NAMES = EXO_CATALOG_LABELS;
 
 /** „21:08 CDT“ in der Zone des Standorts (rules/ui.md). */
-function useClock(timeZone: string | null) {
-  return (iso: string | null) =>
-    iso && timeZone ? `${formatZonedTime(iso, timeZone)} ${formatTzAbbr(iso, timeZone)}` : '–';
-}
+const useClock = siteClock;
 
 export function ExoplanetsPage() {
   const { t } = useTranslation();
@@ -607,14 +597,7 @@ function ResultTable({
           >
             <areaIcons.planning size={ICON_SIZE.table} aria-hidden />
           </Link>
-          <button
-            type="button"
-            className={styles.projectButton}
-            disabled
-            title={t('exo.action.projectLater')}
-          >
-            {t('exo.action.project')}
-          </button>
+          <ProjectButton x={x} data={data} />
         </span>
       ),
     },
@@ -629,6 +612,51 @@ function ResultTable({
       defaultSort={{ id: 'mid', dir: 'asc' }}
       renderDetail={(x) => <TransitDetail x={x} data={data} showFlip={showFlip} />}
     />
+  );
+}
+
+/**
+ * *Projekt* (FA-EXO-15): legt das Exoplaneten-Projekt für Planet und Rig an bzw. öffnet das eigene (OP-22) und
+ * springt in den Editor. Dämmerung und Mindesthöhe kommen aus dem Suchfilter (FA-EXO-05), die Belichtung der
+ * Transit-Zeile aus der Empfehlung (FA-EXO-14a).
+ */
+function ProjectButton({ x, data }: { x: ExoTransitView; data: ExoTransitList }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const canCreate = useCan('project.create');
+  const create = useMutation({
+    mutationFn: () =>
+      exoApi.createProject({
+        id: newId(),
+        rigId: data.rig.id,
+        catalog: x.catalog,
+        planet: x.planet,
+        twilight: data.twilight,
+        minAltDeg: data.minAltDeg,
+        exposureS: x.exposure.status === 'ok' ? x.exposure.exposureS : null,
+      }),
+    onSuccess: (r) => void navigate(PROJECT_PATHS.edit(r.projectId)),
+  });
+  if (!canCreate) return null;
+  const label = t('exo.action.projectCreate', { name: x.planet });
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.projectButton}
+        aria-label={label}
+        title={label}
+        disabled={create.isPending}
+        onClick={() => create.mutate()}
+      >
+        {t('exo.action.project')}
+      </button>
+      {create.isError ? (
+        <span className={styles.warn} role="alert">
+          {t('exo.action.projectFailed')}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -664,88 +692,7 @@ function TransitDetail({
   const fmt = useNumber();
   const tz = data.site.timeZone;
   const clock = useClock(tz);
-  const nights = useQuery({
-    queryKey: ['site-nights', data.site.id, 'from', data.night],
-    queryFn: () => equipmentApi.nights(data.site.id, 2, data.night),
-    staleTime: 60 * 60 * 1000,
-  });
   const depthPct = x.depthMmag === null ? null : depthFraction(x.depthMmag) * 100;
-  const chart = useMemo(() => {
-    if (!nights.data) return null;
-    const built = nightChartFromEngine({
-      site: { latDeg: data.site.latDeg, lonDeg: data.site.lonDeg },
-      night: data.night,
-      timeZoneTransitions: nights.data.timeZoneTransitions.map((z) => ({
-        atUtc: unix(z.atUtc),
-        utcOffsetMinutes: z.utcOffsetMinutes,
-      })),
-      timeZone: tz,
-      targets: [
-        {
-          id: x.key,
-          label: x.planet,
-          color: 'var(--npm-chart-curve)',
-          target: { raJ2000Deg: x.raDeg, decJ2000Deg: x.decDeg },
-        },
-      ],
-      minAltDeg: data.minAltDeg,
-      twilight: data.twilight,
-      transitLabel: t('exo.timeline.meridian'),
-    });
-    // Mittag bis Mittag (FK 14.3 S-22): Höhen von Ziel, Mond und Sonne im 5-min-Raster über den ganzen Tag.
-    const from = built.ctx.times.noonStartUtc;
-    const to = built.ctx.times.noonEndUtc;
-    const site = { latDeg: data.site.latDeg, lonDeg: data.site.lonDeg };
-    const target = { raJ2000Deg: x.raDeg, decJ2000Deg: x.decDeg };
-    const grid: number[] = [];
-    for (let at = from; at <= to; at += 300) grid.push(at);
-    const primary = built.props.series?.[0];
-    const base = {
-      ...built.props,
-      window: { startUtc: from, endUtc: to },
-      sun: grid.map((at) => ({ atUtc: at, altDeg: sunAt(at, site).altDeg })),
-      series: primary
-        ? [
-            {
-              ...primary,
-              points: grid.map((at) => ({ atUtc: at, altDeg: targetAt(target, at, site).altDeg })),
-            },
-          ]
-        : [],
-      moon: built.props.moon
-        ? {
-            ...built.props.moon,
-            points: grid.map((at) => ({ atUtc: at, altDeg: moonAt(at, site).altDeg })),
-          }
-        : undefined,
-      markers: (() => {
-        const tm = meridianTransitUtc(target, site, from, to);
-        return tm === null
-          ? []
-          : [{ atUtc: tm, kind: 'transit' as const, label: t('exo.timeline.meridian') }];
-      })(),
-    };
-    const now = Date.now() / 1000;
-    return {
-      ...base,
-      markers: [
-        ...(showFlip ? (base.markers ?? []) : []),
-        ...(base.window && now >= base.window.startUtc && now <= base.window.endUtc
-          ? [{ atUtc: now, kind: 'now' as const, label: t('exo.timeline.now') }]
-          : []),
-      ],
-      transit: {
-        windowStartUtc: unix(x.transit.windowStartUtc),
-        windowEndUtc: unix(x.transit.windowEndUtc),
-        ingressUtc: unix(x.transit.ingressUtc),
-        midUtc: unix(x.transit.tcUtc),
-        egressUtc: unix(x.transit.egressUtc),
-        flux: transitFlux(x),
-        depthLabel: x.depthMmag === null ? '' : `−${fmt(x.depthMmag, 1)} mmag`,
-        depthPctLabel: depthPct === null ? '' : `−${fmt(depthPct, 2)} %`,
-      },
-    };
-  }, [nights.data, data, x, tz, t, showFlip, fmt, depthPct]);
   const [tab, setTab] = useState<'details' | 'mine'>('details');
   const coords = `${formatCoordinate('ra', x.raDeg, 'sexagesimal')} · ${formatCoordinate(
     'dec',
@@ -861,27 +808,14 @@ function TransitDetail({
       {x.transit.baselineInTwilight ? (
         <p className={styles.muted}>{t('exo.baselineInTwilight')}</p>
       ) : null}
-      <section className={styles.card} aria-label={t('exo.timelineTitle', { name: x.planet })}>
-        <h3 className={styles.cardTitle}>
-          {t('exo.timelineTitle', { name: x.planet })}
-          <span className={styles.muted}>
-            {' '}
-            · {t('exo.timelineNight', { night: data.night, site: data.site.name })}
-          </span>
-        </h3>
-        {chart ? (
-          <NightChart
-            {...chart}
-            minAltDeg={data.minAltDeg}
-            timeZone={tz}
-            bands={false}
-            crop={false}
-            height={320}
-          />
-        ) : (
-          <NightChart window={null} timeZone={tz} state={nights.isError ? 'error' : 'loading'} />
-        )}
-      </section>
+      <TransitTimeline
+        x={x}
+        site={data.site}
+        night={data.night}
+        minAltDeg={data.minAltDeg}
+        twilight={data.twilight}
+        showFlip={showFlip}
+      />
       <div className={styles.cards}>
         <section className={styles.card} aria-label={t('exo.starField.title', { star: x.star })}>
           <div className={styles.cardHead}>

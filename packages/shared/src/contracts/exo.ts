@@ -233,3 +233,123 @@ export const EXO_SEARCH_DEFAULTS: ExoSearchSettings = {
   showFlip: true,
   hideFlip: false,
 };
+
+// ---- Exoplaneten-Projekt (AP-42 Teil 2; FA-EXO-15/16/17) ----------------------------------------------
+
+/**
+ * `POST /api/web/v1/exo/projects`: Projekt aus einer Ergebniszeile der Suche (FA-EXO-15). Der Server liest den
+ * Katalogeintrag selbst (Ephemeride, Kenndaten) und traut dem Client nur Planet, Rig und Suchfilter.
+ * Eindeutig je Planet, Rig und Ersteller (OP-22): Gibt es das eigene Projekt schon, kommt es zurück (`created: false`).
+ */
+export const ExoProjectCreate = z
+  .object({
+    /** Client-ID des neuen Projekts; Wiederholung mit derselben ID ist idempotent (rules/api.md). */
+    id: Uuid,
+    rigId: Uuid,
+    catalog: z.enum(EXO_CATALOG_NAMES),
+    planet: z.string().trim().min(1).max(120),
+    /** Dämmerungsgrenze und Mindesthöhe aus dem Suchfilter (FA-EXO-05). */
+    twilight: z.enum(twilight).default('nautical'),
+    minAltDeg: z.number().min(0).max(90).default(30),
+    /** Vorbelegung der Transit-Zeile aus der Belichtungsempfehlung (FA-EXO-14a); sonst 60 s. */
+    exposureS: z.number().positive().max(3600).nullable().default(null),
+  })
+  .strict()
+  .meta({ id: 'ExoProjectCreate' });
+export type ExoProjectCreate = z.infer<typeof ExoProjectCreate>;
+
+export const ExoProjectCreated = z
+  .object({ projectId: Uuid, created: z.boolean() })
+  .meta({ id: 'ExoProjectCreated' });
+export type ExoProjectCreated = z.infer<typeof ExoProjectCreated>;
+
+/** Am Projekt gespeicherte Ephemeride (FA-EXO-16); die aktive rechnet, die übrigen sind Historie. */
+export const ExoEphemerisView = z
+  .object({
+    id: Uuid,
+    t0BjdTdb: z.number(),
+    t0SigmaD: z.number().nullable(),
+    periodD: z.number(),
+    periodSigmaD: z.number().nullable(),
+    durationH: z.number().nullable(),
+    durationEstimated: z.boolean(),
+    timeSystemSource: z.string(),
+    ocMin: z.number().nullable(),
+    depthMmag: z.number().nullable(),
+    rpOverRs: z.number().nullable(),
+    /** Katalog, aus dem die Ephemeride stammt. */
+    source: z.string(),
+    /** Katalogstand (Abrufdatum). */
+    sourceDate: NightKey.nullable(),
+    active: z.boolean(),
+    createdAt: UtcInstant,
+  })
+  .meta({ id: 'ExoEphemerisView' });
+export type ExoEphemerisView = z.infer<typeof ExoEphemerisView>;
+
+/**
+ * Neuerer Katalogstand als Angebot (FA-EXO-16): Änderung von T₀ und P und deren Wirkung auf die nächste
+ * Transitmitte. `null`, wenn der Katalog dieselbe Ephemeride führt oder den Planeten nicht mehr kennt.
+ */
+export const ExoEphemerisUpdate = z
+  .object({
+    catalog: z.enum(EXO_CATALOG_NAMES),
+    t0BjdTdb: z.number(),
+    t0SigmaD: z.number().nullable(),
+    periodD: z.number(),
+    periodSigmaD: z.number().nullable(),
+    fetchedAt: UtcInstant,
+    /** P neu − P alt in Sekunden. */
+    periodDeltaS: z.number(),
+    /** Nächste Transitmitte nach der neuen Ephemeride und ihre Verschiebung gegenüber der alten (min). */
+    nextMidUtc: UtcInstant,
+    nextMidShiftMin: z.number(),
+  })
+  .meta({ id: 'ExoEphemerisUpdate' });
+export type ExoEphemerisUpdate = z.infer<typeof ExoEphemerisUpdate>;
+
+/** `GET /api/web/v1/projects/{id}/exo`: Reiter *Exoplanet-Transit* im Projekt-Editor (FA-EXO-15…17). */
+export const ExoProjectDetail = z
+  .object({
+    projectId: Uuid,
+    planet: z.string(),
+    star: z.string(),
+    catalog: z.enum(EXO_CATALOG_NAMES),
+    baselineBeforeMin: z.number().int(),
+    baselineAfterMin: z.number().int(),
+    /** Puffer in σ (FA-EXO-12). */
+    bufferSigma: z.number(),
+    ephemeris: ExoEphemerisView,
+    /** Frühere Ephemeriden, neueste zuerst. */
+    history: z.array(ExoEphemerisView),
+    catalogUpdate: ExoEphemerisUpdate.nullable(),
+    /** Exoplaneten-Projekte anderer Mitglieder zum selben Planeten (FA-EXO-15, Hinweis mit Link). */
+    others: z.array(
+      z.object({
+        projectId: Uuid,
+        name: z.string(),
+        createdByName: z.string(),
+        rigName: z.string().nullable(),
+      }),
+    ),
+    /** Rig des Projekts (bzw. Wunsch-Rig); ohne Rig keine Vorhersage. */
+    rig: z.object({ id: Uuid, name: z.string(), apertureMm: z.number().nullable() }).nullable(),
+    site: z
+      .object({
+        id: Uuid,
+        name: z.string(),
+        timeZone: z.string(),
+        latDeg: z.number(),
+        lonDeg: z.number(),
+      })
+      .nullable(),
+    minAltDeg: z.number(),
+    twilight: z.enum(twilight),
+    /** Erste Nacht der Vorhersage (laufende Nacht) und Zahl der Nächte. */
+    fromNight: NightKey.nullable(),
+    nights: z.number().int(),
+    /** Beobachtbare Transits der nächsten Nächte aus der gespeicherten Ephemeride (FA-EXO-17), je mit Nacht. */
+    upcoming: z.array(z.object({ night: NightKey, item: ExoTransitView })),
+  })
+  .meta({ id: 'ExoProjectDetail' });
+export type ExoProjectDetail = z.infer<typeof ExoProjectDetail>;

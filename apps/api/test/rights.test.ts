@@ -13,7 +13,10 @@ import {
   type ResourceMeta,
 } from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { replaceExoCatalog, readExoCatalog } from '@nina-pm/db';
 import { ROUTES } from '../src/app';
+import { ephemerisOf, findMerged, mergedCatalog, snapshotOf } from '../src/exo/project';
+import { clearExoCatalogCache } from '../src/exo/search';
 import { resolveSessionState } from '../src/auth/session';
 import { seedPersonas, type Persona, type PersonaWorld } from './support/personas';
 import {
@@ -25,6 +28,7 @@ import {
   SITE,
   TELESCOPE,
 } from './support/equipment';
+import { HAT } from './support/exo';
 import { createStack, type Stack } from './support/stack';
 
 interface Example {
@@ -432,6 +436,52 @@ async function projectExamples(): Promise<Record<string, Example>> {
     now,
   );
   const line = withLine.panels[0]?.lines[0]?.id as string;
+  // Exoplaneten (AP-42 Teil 2): Katalogzeile HAT-P-17 b, Owner-Entwurf auf dem Projekt-Rig; angelegt wird in
+  // den Beispielen auf einem eigenen Rig, das `reset` wieder leert.
+  await replaceExoCatalog(stack.pg.db, 'exoclock', [HAT], now);
+  clearExoCatalogCache();
+  const hat = findMerged(mergedCatalog(await readExoCatalog(stack.pg.db)), 'exoclock', 'HAT-P-17b');
+  if (!hat) throw new Error('HAT-P-17b fehlt');
+  const exoDraft = await projects.createExoplanet(
+    {
+      ...base,
+      id: crypto.randomUUID(),
+      name: 'HAT-P-17b',
+      targetName: 'HAT-P-17',
+      raDeg: hat.raDeg,
+      decDeg: hat.decDeg,
+    },
+    {
+      planet: hat.planet,
+      star: hat.star,
+      catalog: hat.catalog,
+      catalogEntryId: hat.id,
+      bufferSigma: 1,
+      catalogSnapshot: snapshotOf(hat),
+      ephemeris: ephemerisOf(hat),
+      line: null,
+    },
+    now,
+  );
+  const E = exoDraft.project.id;
+  const exoRig = await eq.createRig(
+    crypto.randomUUID(),
+    { ...rigInput(site.id, telescope.id, camera.id), name: 'Exo-Rig' },
+    now,
+  );
+  const clearExoRig = async () => {
+    const ids = (
+      await admin().query(
+        "SELECT id FROM project WHERE requested_rig_id = $1 AND project_type = 'exoplanet'",
+        [exoRig.id],
+      )
+    ).rows.map((r) => (r as { id: string }).id);
+    if (ids.length === 0) return;
+    for (const table of ['ephemeris', 'exo_project', 'exposure_line', 'project_panel'])
+      await admin().query(`DELETE FROM ${table} WHERE project_id = ANY($1)`, [ids]);
+    await admin().query('DELETE FROM change_log WHERE entity_id = ANY($1)', [ids]);
+    await admin().query('DELETE FROM project WHERE id = ANY($1)', [ids]);
+  };
   await admin().query(
     "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
     [Q],
@@ -468,6 +518,26 @@ async function projectExamples(): Promise<Record<string, Example>> {
       okStatus: 201,
     },
     [`GET ${P}/{id}`]: { url: `${P}/${D}`, resource: draftRes },
+    'POST /api/web/v1/exo/projects': {
+      url: '/api/web/v1/exo/projects',
+      method: 'POST',
+      body: () => ({
+        id: crypto.randomUUID(),
+        rigId: exoRig.id,
+        catalog: 'exoclock',
+        planet: 'HAT-P-17b',
+      }),
+      reset: clearExoRig,
+      okStatus: 201,
+      // Rig eines anderen Mandanten: unsichtbar.
+      expect: { 'fremder Mandant (Admin)': 404 },
+    },
+    [`GET ${P}/{id}/exo`]: { url: `${P}/${E}/exo`, resource: draftRes },
+    [`POST ${P}/{id}/ephemeris/refresh`]: {
+      url: `${P}/${E}/ephemeris/refresh`,
+      method: 'POST',
+      resource: draftRes,
+    },
     [`PATCH ${P}/{id}`]: {
       url: `${P}/${D}`,
       method: 'PATCH',
