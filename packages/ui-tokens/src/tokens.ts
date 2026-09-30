@@ -253,6 +253,8 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-selected': '#5ce1e6',
   /** Hinterlegung der Ecktexte über dem Himmel und deren Schrift. */
   'sky-chrome-bg': 'rgba(11, 17, 25, 0.66)',
+  /** Uhrzeit-Kasten der Sternkarte: kräftiger hinterlegt als die übrigen Ecktexte (Wunsch Sven 30.09.2026). */
+  'sky-clock-bg': 'rgba(11, 17, 25, 0.88)',
   'sky-chrome-text': '#e4e9ef',
   /** Schatten der Knopfleiste und der Infokarte über dem Himmel. */
   'sky-chrome-shadow': '0 2px 12px rgba(0, 0, 0, 0.45)',

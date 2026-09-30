@@ -774,6 +774,7 @@ export function SkyMapPage() {
               setPlaying(false);
               update({ t: at });
             }}
+            defaultOpen={false}
           />
         </section>
       ) : null}
@@ -861,7 +862,7 @@ export function SkyMapPage() {
                 })}
               </span>
               {site && devZone !== zone ? (
-                <span>
+                <span className={styles.clockDevice}>
                   {t('skymap.clock.device', {
                     time: zonedParts(time, devZone).time,
                     zone: formatTzAbbr(new Date(time * 1000), devZone),
