@@ -65,6 +65,42 @@ describe('NightChart', () => {
     await expectNoSeriousA11y();
   });
 
+  it('Transit (S-22): Lichtkurve als Legendeneintrag, ohne Transit keiner; axe', async () => {
+    const { unmount } = render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('hat', 'HAT-P-17b')]}
+        timeZone="America/Chicago"
+        transit={{
+          windowStartUtc: START + 3 * H,
+          windowEndUtc: START + 9 * H,
+          ingressUtc: START + 4 * H,
+          midUtc: START + 6 * H,
+          egressUtc: START + 8 * H,
+          flux: [
+            { atUtc: START + 4 * H, rel: 0 },
+            { atUtc: START + 4.3 * H, rel: -0.0186 },
+            { atUtc: START + 7.7 * H, rel: -0.0186 },
+            { atUtc: START + 8 * H, rel: 0 },
+          ],
+          depthLabel: '−20,4 mmag',
+          depthPctLabel: '−1,86 %',
+        }}
+      />,
+    );
+    expect(screen.getByText('Relative Helligkeit')).toBeInTheDocument();
+    await expectNoSeriousA11y();
+    unmount();
+    render(
+      <NightChart
+        window={{ startUtc: START, endUtc: END }}
+        series={[series('hat', 'HAT-P-17b')]}
+        timeZone="America/Chicago"
+      />,
+    );
+    expect(screen.queryByText('Relative Helligkeit')).toBeNull();
+  });
+
   it('Tastatur: → tastet 5-min-Schritte ab, Wert per aria-live; Enter meldet den Zeitpunkt', () => {
     const selected: number[] = [];
     render(

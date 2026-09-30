@@ -191,7 +191,7 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
           baselineInTwilight: ev.baselineInTwilight,
           meridianUtc: ev.meridianUtc === null ? null : iso(ev.meridianUtc),
           meridianInWindow: ev.meridianInWindow,
-          meridianInTransit: ev.meridianInTransit,
+          meridianNearTransit: ev.meridianNearTransit,
           altAtIngressDeg: round(ev.altAtIngressDeg, 2),
           altAtCenterDeg: round(ev.altAtCenterDeg, 2),
           altAtEgressDeg: round(ev.altAtEgressDeg, 2),

@@ -5,6 +5,23 @@
  */
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 
+/**
+ * Transit im Nachtdiagramm (S-22, AP-42): Beobachtungsfenster als Fläche mit Start/Ende, Kontakte und die
+ * schematische relative Helligkeit als gelbe Linie mit Prozentachse rechts (FA-EXO-10).
+ */
+export interface TransitOverlay {
+  readonly windowStartUtc: number;
+  readonly windowEndUtc: number;
+  readonly ingressUtc: number;
+  readonly midUtc: number;
+  readonly egressUtc: number;
+  /** Relative Helligkeit je Zeitpunkt: 0 außerhalb, negativ im Transit (Anteil, z. B. −0,0062). */
+  readonly flux: readonly { readonly atUtc: number; readonly rel: number }[];
+  /** Beschriftung an der Linie („−6,7 mmag“) und rechts an der Achse („−0,62 %“). */
+  readonly depthLabel: string;
+  readonly depthPctLabel: string;
+}
+
 export interface AltPoint {
   /** Unix-Sekunden (UTC). */
   readonly atUtc: number;

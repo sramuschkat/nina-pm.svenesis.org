@@ -34,22 +34,8 @@
   color: var(--npm-text-light);
 }
 
-.planetButton {
+.planet {
   white-space: nowrap;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--npm-link);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-}
-.planetButton:hover {
-  text-decoration: underline;
-}
-.planetButton[aria-pressed='true'] {
-  color: var(--npm-text);
 }
 
 .flip {
@@ -87,8 +73,11 @@
 }
 
 .detail {
-  composes: panel from '../admin/admin.module.css';
+  display: flex;
+  flex-direction: column;
   gap: var(--npm-space-3);
+  padding: var(--npm-space-3) 0;
+  min-width: 0;
 }
 .warn {
   margin: 0;
@@ -97,69 +86,87 @@
   background: var(--npm-warning-bg);
   color: var(--npm-warning);
 }
-
-.timelineRow {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
-  gap: var(--npm-space-4);
-  align-items: start;
-}
-.timeline {
+.card {
+  composes: panel from '../admin/admin.module.css';
+  gap: var(--npm-space-2);
   min-width: 0;
 }
-.bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 320px) minmax(0, 240px) minmax(0, 1fr);
-  gap: var(--npm-space-4);
-  align-items: start;
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
 }
-@media (max-width: 1200px) {
-  .timelineRow {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .bottom {
+.cardTitle {
+  margin: 0;
+  font-size: var(--npm-font-base);
+  font-weight: 600;
+}
+.cards {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 360px) minmax(0, 1fr);
+  gap: var(--npm-space-3);
+  align-items: stretch;
+}
+@media (max-width: 1400px) {
+  .cards {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .tabs {
+  .detailsCard {
     grid-column: 1 / -1;
   }
 }
-
-.tabs {
-  min-width: 0;
+.smallButton {
+  composes: button from '../admin/admin.module.css';
+  text-decoration: none;
 }
 .tabBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
   padding-top: var(--npm-space-3);
 }
-.tabBody h3 {
-  margin: var(--npm-space-3) 0 var(--npm-space-1);
-  font-size: var(--npm-font-h3);
+.tabBody p {
+  margin: 0;
+}
+.detailsHead {
+  font-size: var(--npm-font-base);
 }
 .facts {
   display: grid;
-  gap: var(--npm-space-2);
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--npm-space-2) var(--npm-space-4);
   margin: 0;
 }
-.facts div {
+.fact {
   display: grid;
-  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
-  gap: var(--npm-space-3);
+  grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+  gap: var(--npm-space-2);
 }
-.facts dt {
+.fact dt {
   color: var(--npm-text-light);
 }
-.facts dd {
+.fact dd {
+  display: flex;
+  align-items: baseline;
+  gap: var(--npm-space-1);
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.explain {
-  display: block;
+.help {
+  flex-shrink: 0;
+  align-self: center;
   color: var(--npm-text-light);
-  font-size: var(--npm-font-small);
+  cursor: help;
+}
+.research {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2);
 }
 
-.lightCurve,
-.starField,
 .skyPosition {
   margin: 0;
   display: flex;
@@ -168,27 +175,9 @@
   min-width: 0;
   font-size: var(--npm-font-small);
 }
-.lightCurve,
-.skyPosition {
-  max-width: 360px;
-}
-.lightCurve svg,
 .skyPosition svg {
   width: 100%;
   height: auto;
-}
-.lcTransit {
-  fill: var(--npm-chart-recommended);
-  opacity: 0.25;
-}
-.lcCurve {
-  fill: none;
-  stroke: var(--npm-chart-curve);
-  stroke-width: 2;
-}
-.lcLabel {
-  fill: var(--npm-text-light);
-  font-size: 10px;
 }
 .skyName {
   fill: var(--npm-chart-label);
@@ -198,7 +187,6 @@
 .starFieldFrame {
   position: relative;
   width: 100%;
-  max-width: 320px;
   aspect-ratio: 1;
   border-radius: var(--npm-radius);
   overflow: hidden;
@@ -246,7 +234,14 @@
 }
 
 /* Links im Text nicht nur über die Farbe erkennbar (axe `link-in-text-block`). */
-.starField figcaption a,
 .links a {
   text-decoration: underline;
+}
+.skyTargetName {
+  fill: var(--npm-chart-flux);
+  font-size: 10px;
+  font-weight: 600;
+}
+.skyTarget {
+  stroke: var(--npm-chart-flux);
 }

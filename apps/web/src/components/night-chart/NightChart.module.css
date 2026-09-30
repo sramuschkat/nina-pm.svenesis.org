@@ -273,3 +273,12 @@
   padding-left: var(--npm-space-1);
   color: var(--npm-text);
 }
+
+/* Transit (S-22): Lichtkurve in der Legende */
+.keyFlux {
+  display: inline-block;
+  width: 16px;
+  height: 0;
+  border-top: 3px solid var(--npm-chart-flux);
+  vertical-align: middle;
+}

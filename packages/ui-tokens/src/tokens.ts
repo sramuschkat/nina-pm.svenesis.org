@@ -176,6 +176,9 @@ export const CHART: Readonly<Record<string, string>> = {
   'chart-dark-edge': 'rgba(143, 209, 158, 0.75)',
   'chart-now': '#e5484d',
   'chart-meridian': '#c9a3ff',
+  /** Transitsuche S-22 (AP-42): relative Helligkeit (Lichtkurve) und Beobachtungsfenster im Nachtdiagramm. */
+  'chart-flux': '#f5c518',
+  'chart-window': 'rgba(64, 160, 255, 0.16)',
   'chart-best': '#8fb3ff',
   'chart-moon-label': '#f5c26b',
   /** „Mond und Dunkelheit“ (Planung): Mondhöhe als gelbe Linie wie im Beobachtungsplaner, Kennzeichen über dem

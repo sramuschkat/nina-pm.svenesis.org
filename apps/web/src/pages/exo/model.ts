@@ -1,6 +1,6 @@
 /**
- * S-22 Exoplaneten (AP-42): URL-Zustand (Rig, Nacht, gewählter Transit), Filter der Transitsuche (FA-EXO-05) als
- * reine Funktion und Recherche-Links (FA-EXO-09). Die Filter gelten in der Oberfläche; die Transits der Nacht
+ * S-22 Exoplaneten (AP-42): URL-Zustand (Rig, Nacht), Filter der Transitsuche (FA-EXO-05) als reine Funktion,
+ * Recherche-Links (FA-EXO-09) und die schematische Lichtkurve (FA-EXO-10). Die Filter gelten in der Oberfläche; die Transits der Nacht
  * rechnet der Server einmal je Rig, Nacht, Katalogauswahl und Mindesthöhe.
  */
 import type { ExoSearchSettings, ExoTransitView } from '../../api/client';
@@ -13,14 +13,11 @@ export { EXO_SEARCH_DEFAULTS } from '@nina-pm/shared';
 export interface ExoUrl {
   readonly rig: string;
   readonly night: string;
-  /** Schlüssel des gewählten Transits (`<catalog>:<planet>:<n>`). */
-  readonly sel: string;
 }
 
 export const urlFromParams = (p: URLSearchParams): ExoUrl => ({
   rig: p.get('rig') ?? '',
   night: /^\d{4}-\d{2}-\d{2}$/.test(p.get('night') ?? '') ? (p.get('night') as string) : '',
-  sel: p.get('sel') ?? '',
 });
 
 export const paramsFromUrl = (u: ExoUrl): URLSearchParams =>
@@ -51,8 +48,8 @@ export function applyExoFilters(
     if (s.startEndDark && !(t.transit.startDark && t.transit.endDark)) return false;
     if (s.startEndAboveMinAlt && !(t.transit.startAboveMinAlt && t.transit.endAboveMinAlt))
       return false;
-    // Nur ein Flip zwischen Ingress und Egress blendet aus (Entscheidung Sven 30.09.2026); im Fenster wird markiert.
-    if (s.hideFlip && t.transit.meridianInTransit) return false;
+    // Flip zwischen Ingress − 1 h und Egress + 1 h blendet aus (FA-EXO-19, Entscheidung Sven 30.09.2026).
+    if (s.hideFlip && t.transit.meridianNearTransit) return false;
     return true;
   });
 }
@@ -86,4 +83,41 @@ export function researchLinks(t: ExoTransitView): { name: string; href: string }
     href: `https://simbad.cds.unistra.fr/simbad/sim-id?Ident=${encodeURIComponent(t.star)}`,
   });
   return links;
+}
+
+/** Anteil von T23 an T14 (flacher Boden); 0 = V-Form (streifend, b > 1 − k); ohne Geometrie 0,8. */
+export function flatFraction(k: number | null, aOverRs: number | null, incDeg: number | null) {
+  if (k === null || aOverRs === null || incDeg === null) return 0.8;
+  const b = aOverRs * Math.cos((incDeg * Math.PI) / 180);
+  const outer = (1 + k) ** 2 - b * b;
+  const inner = (1 - k) ** 2 - b * b;
+  if (!(outer > 0) || !(inner > 0)) return 0;
+  return Math.sqrt(inner / outer);
+}
+
+/** Tiefe als Anteil aus mmag: `1 − 10^(−mmag/2500)`. */
+export const depthFraction = (mmag: number) => 1 - 10 ** (-mmag / 2500);
+
+/**
+ * Schematische relative Helligkeit (FA-EXO-10): 0 vor dem Ingress und nach dem Egress, linearer Ein- und Austritt,
+ * flacher Boden zwischen 2. und 3. Kontakt (streifend: V-Form). Stützpunkte an den Kontakten.
+ */
+export function transitFlux(t: ExoTransitView): { atUtc: number; rel: number }[] {
+  const ingress = Date.parse(t.transit.ingressUtc) / 1000;
+  const egress = Date.parse(t.transit.egressUtc) / 1000;
+  const depth = t.depthMmag === null ? 0 : depthFraction(t.depthMmag);
+  const flat = flatFraction(t.rpOverRs, t.aOverRs, t.inclinationDeg);
+  const edge = ((1 - flat) / 2) * (egress - ingress);
+  return flat > 0
+    ? [
+        { atUtc: ingress, rel: 0 },
+        { atUtc: ingress + edge, rel: -depth },
+        { atUtc: egress - edge, rel: -depth },
+        { atUtc: egress, rel: 0 },
+      ]
+    : [
+        { atUtc: ingress, rel: 0 },
+        { atUtc: (ingress + egress) / 2, rel: -depth },
+        { atUtc: egress, rel: 0 },
+      ];
 }

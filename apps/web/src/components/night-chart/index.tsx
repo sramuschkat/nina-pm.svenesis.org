@@ -44,6 +44,7 @@ import {
   type TimelineBlock,
   type Interval,
   type NightMarker,
+  type TransitOverlay,
   type TwilightSpan,
 } from './model';
 import styles from './NightChart.module.css';
@@ -55,6 +56,7 @@ export type {
   Interval,
   NightMarker,
   TimelineBlock,
+  TransitOverlay,
   TwilightSpan,
 } from './model';
 
@@ -119,6 +121,11 @@ export interface NightChartProps {
    * daneben (bei schmalem Container darunter), `none` ohne Legende.
    */
   legend?: 'top' | 'side' | 'none';
+  /**
+   * Transit (S-22, AP-42): Beobachtungsfenster als Fläche mit Start/Ende am Fuß, Kontakte und die relative
+   * Helligkeit als gelbe Linie mit Prozentachse rechts (FA-EXO-10).
+   */
+  transit?: TransitOverlay;
 }
 
 const MAX_SERIES = 12;
@@ -180,6 +187,7 @@ export function NightChart(props: NightChartProps) {
     minAltDeg,
     timeZone,
     twilight,
+    transit,
   } = props;
   const plan = props.variant === 'plan';
   const showBands = props.bands !== false && !plan;
@@ -498,6 +506,63 @@ export function NightChart(props: NightChartProps) {
         );
       }
     }
+    // Transit (S-22): Fenster als Fläche, Start/Ende gestrichelt, Kontakte fein; Lichtkurve gelb auf Höhe 60°
+    // mit Prozentachse rechts, Uhrzeiten am Fuß über den Dämmerungskürzeln.
+    if (transit) {
+      const flux = c('chart-flux');
+      const x0 = x(transit.windowStartUtc);
+      ctx.fillStyle = c('chart-window');
+      ctx.fillRect(x0, plotT, Math.max(1, x(transit.windowEndUtc) - x0), plotH);
+      vline(transit.windowStartUtc, c('chart-axis-strong'), [4, 3]);
+      vline(transit.windowEndUtc, c('chart-axis-strong'), [4, 3]);
+      for (const at of [transit.ingressUtc, transit.egressUtc])
+        vline(at, 'rgba(245, 197, 24, 0.45)', [2, 3]);
+      const minRel = Math.min(0, ...transit.flux.map((p) => p.rel));
+      const yBase = Math.round(y(60)) + 0.5;
+      const dip = Math.max(18, plotH * 0.08);
+      const yFlux = (rel: number) => (minRel < 0 ? yBase + (rel / minRel) * dip : yBase);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(PAD.left, plotT, plotW, plotH);
+      ctx.clip();
+      ctx.strokeStyle = flux;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, yBase);
+      for (const p of transit.flux) ctx.lineTo(x(p.atUtc), yFlux(p.rel));
+      ctx.lineTo(PAD.left + plotW, yBase);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.restore();
+      ctx.font = font(11, '600 ');
+      ctx.fillStyle = flux;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'center';
+      ctx.fillText(transit.depthLabel, x(transit.midUtc), yBase + dip + 4);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('0 %', PAD.left + plotW - 4, yBase - 2);
+      ctx.textBaseline = 'top';
+      ctx.fillText(transit.depthPctLabel, PAD.left + plotW - 4, yBase + dip + 2);
+      ctx.font = font(11, '600 ');
+      ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'center';
+      const foot = plotB - 18;
+      ctx.fillStyle = c('chart-axis-strong');
+      ctx.fillText(
+        t('nightChart.windowStart', { time: hm(transit.windowStartUtc, timeZone) }),
+        x(transit.windowStartUtc),
+        foot - 14,
+      );
+      ctx.fillText(
+        t('nightChart.windowEnd', { time: hm(transit.windowEndUtc, timeZone) }),
+        x(transit.windowEndUtc),
+        foot - 14,
+      );
+      ctx.fillStyle = flux;
+      for (const at of [transit.ingressUtc, transit.midUtc, transit.egressUtc])
+        ctx.fillText(hm(at, timeZone), x(at), foot);
+    }
     // Marken: Meridian violett gestrichelt mit Kasten, Uhrzeit rot mit Kasten, sonstige blau
     let row = 1;
     for (const m of markers) {
@@ -676,6 +741,7 @@ export function NightChart(props: NightChartProps) {
     best,
     plan,
     props.highlightBlockIds,
+    transit,
     t,
     appearance,
   ]);
@@ -823,6 +889,12 @@ export function NightChart(props: NightChartProps) {
           <span className={styles.legendKey}>
             <span className={styles.keyNow} />
             {t('nightChart.key.now')}
+          </span>
+        ) : null}
+        {transit ? (
+          <span className={styles.legendKey}>
+            <span className={styles.keyFlux} />
+            {t('nightChart.key.flux')}
           </span>
         ) : null}
         {best && !plan ? (

@@ -19,6 +19,8 @@
   --npm-chart-dark-edge: rgba(143, 209, 158, 0.75);
   --npm-chart-now: #e5484d;
   --npm-chart-meridian: #c9a3ff;
+  --npm-chart-flux: #f5c518;
+  --npm-chart-window: rgba(64, 160, 255, 0.16);
   --npm-chart-best: #8fb3ff;
   --npm-chart-moon-label: #f5c26b;
   --npm-chart-moon-line: #f5d76e;

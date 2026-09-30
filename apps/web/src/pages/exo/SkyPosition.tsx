@@ -129,7 +129,15 @@ export function SkyPosition({
             </text>
           ))}
         </g>
+        {/* Ziel als Fadenkreuz mit Namen (Vorlage 30.09.2026) */}
         <circle cx={SIZE / 2} cy={SIZE / 2} r={6} className={styles.skyTarget} />
+        <path
+          d={`M${String(SIZE / 2 - 12)},${String(SIZE / 2)}h8M${String(SIZE / 2 + 4)},${String(SIZE / 2)}h8M${String(SIZE / 2)},${String(SIZE / 2 - 12)}v8M${String(SIZE / 2)},${String(SIZE / 2 + 4)}v8`}
+          className={styles.skyTarget}
+        />
+        <text x={SIZE / 2 + 10} y={SIZE / 2 + 16} className={styles.skyTargetName}>
+          {label}
+        </text>
         <text x={SIZE / 2} y={12} className={styles.skyName} textAnchor="middle">
           {t('exo.skyPosition.north')}
         </text>

@@ -4,10 +4,12 @@
  * - Filterleiste (FA-EXO-05): Kataloge, Priorität, max. Helligkeit, min. Tiefe, min. Höhe, Schalter; je Benutzer
  *   gespeichert (Einstellung `exo.search`). Trefferzahl im Kopf, *Transits suchen* rechnet neu.
  * - Ergebnistabelle (FA-EXO-06…09), sortierbar, Standard nach Transitmitte.
- * - Zeitleiste der Nacht für den gewählten Transit (FA-EXO-10…12) mit Lichtkurve, darunter Sternfeld,
- *   Himmelsposition und die Reiter *Zieldetails* / *Meine Beobachtungen* (FA-EXO-13/14).
+ * - Aufgeklappte Zeile (Wunsch Sven 30.09.2026): Zeitleiste der Nacht mit Beobachtungsfenster, Kontakten und
+ *   Lichtkurve (FA-EXO-10…12), darunter die Karten Sternfeld, Himmelsposition und die Reiter *Zieldetails* /
+ *   *Meine Beobachtungen* (FA-EXO-13/14).
  * Die Aktion *Projekt* (FA-EXO-15) folgt im zweiten Teil von AP-42.
  */
+import { meridianTransitUtc, moonAt, sunAt, targetAt } from '@nina-pm/engine';
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -22,6 +24,7 @@ import {
   type ExoTransitView,
 } from '../../api/client';
 import { useAuth } from '../../auth';
+import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterBar, FilterCheck } from '../../components/FilterBar';
 import { ICON_SIZE, actionIcons, areaIcons, uiIcons } from '../../components/icons';
@@ -38,13 +41,14 @@ import { useEquipmentList, useNumber } from '../equipment/shared';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { skyMapHref } from '../planning/skymap/model';
-import { LightCurve } from './LightCurve';
 import {
   applyExoFilters,
   EXO_SEARCH_DEFAULTS,
   lightYears,
   paramsFromUrl,
   researchLinks,
+  transitFlux,
+  depthFraction,
   urlFromParams,
   type ExoUrl,
 } from './model';
@@ -77,7 +81,7 @@ export function ExoplanetsPage() {
   const url = useMemo(() => urlFromParams(params), [params]);
   const setUrl = (patch: Partial<ExoUrl>) =>
     setParams(paramsFromUrl({ ...url, ...patch }), { replace: true });
-  const ids = { results: useId(), details: useId() };
+  const ids = { results: useId() };
 
   // Filter je Benutzer (FA-EXO-05): gespeicherter Stand, lokale Änderungen sofort, Speichern verzögert.
   const prefKey = ['me', 'preferences', me?.tenant?.id];
@@ -156,13 +160,6 @@ export function ExoplanetsPage() {
   });
   const data = search.data;
   const items = useMemo(() => (data ? applyExoFilters(data.items, current) : []), [data, current]);
-  // Ohne Auswahl der früheste Transit der Nacht (Standardsortierung nach Transitmitte, FA-EXO-06).
-  const earliest = items.reduce<ExoTransitView | null>(
-    (a, b) => (a === null || b.transit.tcUtc < a.transit.tcUtc ? b : a),
-    null,
-  );
-  const selected = items.find((x) => x.key === url.sel) ?? earliest;
-
   const chips = [
     ...(current.priority !== 'all'
       ? [
@@ -185,13 +182,13 @@ export function ExoplanetsPage() {
       <PlanningContext
         rigs={rigOptions}
         rigId={rigId}
-        onRigChange={(v) => setUrl({ rig: v ?? '', night: '', sel: '' })}
+        onRigChange={(v) => setUrl({ rig: v ?? '', night: '' })}
         site={site}
         siteGeo={siteGeo}
         night={night}
         today={nights.data?.currentNight ?? null}
-        onNightChange={(v) => setUrl({ night: v, sel: '' })}
-        onTonight={() => setUrl({ night: '', sel: '' })}
+        onNightChange={(v) => setUrl({ night: v })}
+        onTonight={() => setUrl({ night: '' })}
         empty={
           rigs.isSuccess && rigList.length === 0 ? (
             <p className={catalogStyles.muted}>{t('exo.noRig')}</p>
@@ -334,25 +331,10 @@ export function ExoplanetsPage() {
           ) : items.length === 0 ? (
             <p className={`${catalogStyles.muted} ${catalogStyles.state}`}>{t('exo.empty')}</p>
           ) : (
-            <ResultTable
-              items={items}
-              data={data as ExoTransitList}
-              showFlip={current.showFlip}
-              selectedKey={selected?.key ?? null}
-              onSelect={(key) => setUrl({ sel: key })}
-            />
+            <ResultTable items={items} data={data as ExoTransitList} showFlip={current.showFlip} />
           )}
         </div>
       </section>
-
-      {selected && data ? (
-        <TransitDetail
-          t14={selected}
-          data={data}
-          labelledBy={ids.details}
-          showFlip={current.showFlip}
-        />
-      ) : null}
     </div>
   );
 }
@@ -390,14 +372,10 @@ function ResultTable({
   items,
   data,
   showFlip,
-  selectedKey,
-  onSelect,
 }: {
   items: ExoTransitView[];
   data: ExoTransitList;
   showFlip: boolean;
-  selectedKey: string | null;
-  onSelect: (key: string) => void;
 }) {
   const { t } = useTranslation();
   const fmt = useNumber();
@@ -420,16 +398,7 @@ function ResultTable({
       header: t('exo.col.planet'),
       nowrap: true,
       sortValue: (x) => x.planet,
-      cell: (x) => (
-        <button
-          type="button"
-          className={styles.planetButton}
-          aria-pressed={x.key === selectedKey}
-          onClick={() => onSelect(x.key)}
-        >
-          {x.planet}
-        </button>
-      ),
+      cell: (x) => <strong className={styles.planet}>{x.planet}</strong>,
     },
     {
       id: 'catalog',
@@ -656,24 +625,47 @@ function ResultTable({
       rowLabel={(x) => x.planet}
       label={t('exo.title')}
       defaultSort={{ id: 'mid', dir: 'asc' }}
-      rowProps={(x) => ({ 'data-selected': x.key === selectedKey })}
+      renderDetail={(x) => <TransitDetail x={x} data={data} showFlip={showFlip} />}
     />
   );
 }
 
-/** Zeitleiste, Lichtkurve, Sternfeld, Himmelsposition, Zieldetails und Meine Beobachtungen (FA-EXO-10…14). */
+/** Kennwert mit Erklärung als Hilfesymbol (FA-EXO-13: „mit kurzer Erklärung je Größe“). */
+function Fact({ label, value, why }: { label: string; value: string; why: string }) {
+  return (
+    <div className={styles.fact}>
+      <dt>{label}</dt>
+      <dd>
+        <uiIcons.help
+          className={styles.help}
+          size={ICON_SIZE.table}
+          role="img"
+          aria-label={why}
+          focusable="false"
+        >
+          <title>{why}</title>
+        </uiIcons.help>
+        <span>{value}</span>
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Aufgeklappte Zeile (Wunsch Sven 30.09.2026): Zeitleiste der ganzen Nacht mit Fenster, Kontakten, Meridian und
+ * Lichtkurve (FA-EXO-10…12); darunter Sternfeld, Himmelsposition und die Reiter *Zieldetails* /
+ * *Meine Beobachtungen* (FA-EXO-13/14).
+ */
 function TransitDetail({
-  t14: x,
+  x,
   data,
-  labelledBy,
   showFlip,
 }: {
-  t14: ExoTransitView;
+  x: ExoTransitView;
   data: ExoTransitList;
-  labelledBy: string;
   showFlip: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fmt = useNumber();
   const tz = data.site.timeZone;
   const clock = useClock(tz);
@@ -682,9 +674,10 @@ function TransitDetail({
     queryFn: () => equipmentApi.nights(data.site.id, 2, data.night),
     staleTime: 60 * 60 * 1000,
   });
+  const depthPct = x.depthMmag === null ? null : depthFraction(x.depthMmag) * 100;
   const chart = useMemo(() => {
     if (!nights.data) return null;
-    const base = nightChartFromEngine({
+    const built = nightChartFromEngine({
       site: { latDeg: data.site.latDeg, lonDeg: data.site.lonDeg },
       night: data.night,
       timeZoneTransitions: nights.data.timeZoneTransitions.map((z) => ({
@@ -703,70 +696,140 @@ function TransitDetail({
       minAltDeg: data.minAltDeg,
       twilight: data.twilight,
       transitLabel: t('exo.timeline.meridian'),
-    }).props;
+    });
+    // Mittag bis Mittag (FK 14.3 S-22): Höhen von Ziel, Mond und Sonne im 5-min-Raster über den ganzen Tag.
+    const from = built.ctx.times.noonStartUtc;
+    const to = built.ctx.times.noonEndUtc;
+    const site = { latDeg: data.site.latDeg, lonDeg: data.site.lonDeg };
+    const target = { raJ2000Deg: x.raDeg, decJ2000Deg: x.decDeg };
+    const grid: number[] = [];
+    for (let at = from; at <= to; at += 300) grid.push(at);
+    const primary = built.props.series?.[0];
+    const base = {
+      ...built.props,
+      window: { startUtc: from, endUtc: to },
+      sun: grid.map((at) => ({ atUtc: at, altDeg: sunAt(at, site).altDeg })),
+      series: primary
+        ? [
+            {
+              ...primary,
+              points: grid.map((at) => ({ atUtc: at, altDeg: targetAt(target, at, site).altDeg })),
+            },
+          ]
+        : [],
+      moon: built.props.moon
+        ? {
+            ...built.props.moon,
+            points: grid.map((at) => ({ atUtc: at, altDeg: moonAt(at, site).altDeg })),
+          }
+        : undefined,
+      markers: (() => {
+        const tm = meridianTransitUtc(target, site, from, to);
+        return tm === null
+          ? []
+          : [{ atUtc: tm, kind: 'transit' as const, label: t('exo.timeline.meridian') }];
+      })(),
+    };
     const now = Date.now() / 1000;
     return {
       ...base,
       markers: [
         ...(showFlip ? (base.markers ?? []) : []),
-        {
-          atUtc: unix(x.transit.ingressUtc),
-          kind: 'custom' as const,
-          label: t('exo.timeline.ingress'),
-        },
-        { atUtc: unix(x.transit.tcUtc), kind: 'custom' as const, label: t('exo.timeline.mid') },
-        {
-          atUtc: unix(x.transit.egressUtc),
-          kind: 'custom' as const,
-          label: t('exo.timeline.egress'),
-        },
         ...(base.window && now >= base.window.startUtc && now <= base.window.endUtc
           ? [{ atUtc: now, kind: 'now' as const, label: t('exo.timeline.now') }]
           : []),
       ],
-      blocks: [
-        {
-          id: x.key,
-          fromUtc: unix(x.transit.windowStartUtc),
-          toUtc: unix(x.transit.windowEndUtc),
-          label: t('exo.timeline.window', { name: x.planet }),
-          kind: 'transit' as const,
-        },
-      ],
+      transit: {
+        windowStartUtc: unix(x.transit.windowStartUtc),
+        windowEndUtc: unix(x.transit.windowEndUtc),
+        ingressUtc: unix(x.transit.ingressUtc),
+        midUtc: unix(x.transit.tcUtc),
+        egressUtc: unix(x.transit.egressUtc),
+        flux: transitFlux(x),
+        depthLabel: x.depthMmag === null ? '' : `−${fmt(x.depthMmag, 1)} mmag`,
+        depthPctLabel: depthPct === null ? '' : `−${fmt(depthPct, 2)} %`,
+      },
     };
-  }, [nights.data, data, x, tz, t, showFlip]);
+  }, [nights.data, data, x, tz, t, showFlip, fmt, depthPct]);
   const [tab, setTab] = useState<'details' | 'mine'>('details');
-  const sigmaMin = x.transit.sigmaS / 60;
+  const coords = `${formatCoordinate('ra', x.raDeg, 'sexagesimal')} · ${formatCoordinate(
+    'dec',
+    x.decDeg,
+    'sexagesimal',
+  )}`;
   const facts: [string, string, string][] = [
-    [t('exo.fact.coords'), `${fmt(x.raDeg, 4)}° / ${fmt(x.decDeg, 4)}°`, t('exo.explain.coords')],
+    [
+      t('exo.fact.catalog'),
+      `${CATALOG_NAMES[x.catalog]}${x.disposition ? ` (${x.disposition})` : ''}${
+        x.alsoIn.length ? ` · ${x.alsoIn.map((c) => CATALOG_NAMES[c]).join(', ')}` : ''
+      }`,
+      t('exo.explain.catalog'),
+    ],
+    [t('exo.fact.coords'), coords, t('exo.explain.coords')],
+    [
+      t('exo.fact.distance'),
+      x.distancePc === null
+        ? '–'
+        : `${fmt(lightYears(x.distancePc), 0)} Lj (${fmt(x.distancePc, 0)} pc)`,
+      t('exo.explain.distance'),
+    ],
     [
       t('exo.fact.mag'),
-      x.mag === null ? '–' : `${fmt(x.mag, 2)} ${x.magBand ?? ''}`,
+      x.mag === null ? '–' : `${x.magBand ?? ''} ${fmt(x.mag, 2)}`,
       t('exo.explain.mag'),
     ],
     [
       t('exo.fact.depth'),
       x.depthMmag === null
         ? '–'
-        : `${fmt(x.depthMmag, 2)} mmag${x.depthEstimated ? ` (${t('exo.estimated')})` : ''}`,
+        : `${fmt(x.depthMmag, 1)} mmag${depthPct === null ? '' : ` (${fmt(depthPct, 2)} %)`}${
+            x.depthEstimated ? ` · ${t('exo.estimated')}` : ''
+          }`,
       t('exo.explain.depth'),
     ],
-    [t('exo.fact.duration'), `${fmt(x.durationH, 2)} h`, t('exo.explain.duration')],
+    [t('exo.fact.rpRs'), x.rpOverRs === null ? '–' : fmt(x.rpOverRs, 4), t('exo.explain.rpRs')],
+    [
+      t('exo.fact.type'),
+      x.sizeClass
+        ? `${t(`exo.size.${x.sizeClass}`)}${x.radiusRe === null ? '' : ` · ${fmt(x.radiusRe, 2)} R⊕`}`
+        : '–',
+      t('exo.explain.type'),
+    ],
+    [
+      t('exo.fact.spectral'),
+      x.spectralClass ? `${x.spectralClass} · ${fmt(x.teffK ?? 0, 0)} K` : '–',
+      t('exo.explain.spectral'),
+    ],
+    [
+      t('exo.fact.duration'),
+      `${fmt(x.durationH, 2)} h${x.durationEstimated ? ` · ${t('exo.estimated')}` : ''}`,
+      t('exo.explain.duration'),
+    ],
     [t('exo.fact.period'), `${fmt(x.periodD, 5)} d`, t('exo.explain.period')],
     [
-      t('exo.fact.contacts'),
-      `${clock(x.transit.ingressUtc)} (${fmt(x.transit.altAtIngressDeg, 0)}°) · ${clock(
-        x.transit.tcUtc,
-      )} (${fmt(x.transit.altAtCenterDeg, 0)}°) · ${clock(x.transit.egressUtc)} (${fmt(
-        x.transit.altAtEgressDeg,
-        0,
-      )}°)`,
+      t('exo.fact.ingress'),
+      `${clock(x.transit.ingressUtc)} · ${fmt(x.transit.altAtIngressDeg, 0)}°`,
       t('exo.explain.contacts'),
+    ],
+    [
+      t('exo.fact.mid'),
+      `${clock(x.transit.tcUtc)} · ${fmt(x.transit.altAtCenterDeg, 0)}°`,
+      t('exo.explain.contacts'),
+    ],
+    [
+      t('exo.fact.egress'),
+      `${clock(x.transit.egressUtc)} · ${fmt(x.transit.altAtEgressDeg, 0)}°`,
+      t('exo.explain.contacts'),
+    ],
+    [
+      t('exo.fact.window'),
+      `${clock(x.transit.windowStartUtc)} – ${clock(x.transit.windowEndUtc)}`,
+      t('exo.explain.window'),
     ],
     [
       t('exo.fact.uncertainty'),
       t('exo.uncertaintyValue', {
-        sigma: fmt(sigmaMin, 1),
+        sigma: fmt(x.transit.sigmaS / 60, 1),
         buffer: fmt(x.transit.bufferS / 60, 0),
         age: t(`exo.ephemerisAge.${x.transit.ephemerisAge}`),
       }),
@@ -780,7 +843,7 @@ function TransitDetail({
     [
       t('exo.fact.aperture'),
       x.aperture
-        ? `${fmt(x.aperture.requiredMm, 0)} mm${x.aperture.estimated ? ' (est)' : ''}${
+        ? `${fmt(x.aperture.requiredMm, 0)} mm${x.aperture.estimated ? ' est' : ''}${
             data.rig.apertureMm
               ? ` · ${t('exo.rigAperture', { mm: fmt(data.rig.apertureMm, 0) })}`
               : ''
@@ -788,18 +851,12 @@ function TransitDetail({
         : '–',
       t('exo.explain.aperture'),
     ],
-    [
-      t('exo.fact.spectral'),
-      x.spectralClass ? `${x.spectralClass} · ${fmt(x.teffK ?? 0, 0)} K` : '–',
-      t('exo.explain.spectral'),
-    ],
-    [t('exo.fact.rpRs'), x.rpOverRs === null ? '–' : fmt(x.rpOverRs, 4), t('exo.explain.rpRs')],
   ];
+  const source = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(
+    new Date(x.fetchedAt),
+  );
   return (
-    <section className={styles.detail} aria-labelledby={labelledBy}>
-      <h2 id={labelledBy} className={catalogStyles.resultTitle}>
-        {t('exo.detailTitle', { name: x.planet })}
-      </h2>
+    <div className={styles.detail}>
       {x.transit.timeSystemUncertain ? (
         <p className={styles.warn}>{t('exo.timeSystemUncertain')}</p>
       ) : null}
@@ -807,32 +864,47 @@ function TransitDetail({
         <p className={styles.warn}>{t(`exo.ephemerisAgeHint.${x.transit.ephemerisAge}`)}</p>
       ) : null}
       {x.transit.baselineInTwilight ? (
-        <p className={catalogStyles.muted}>{t('exo.baselineInTwilight')}</p>
+        <p className={styles.muted}>{t('exo.baselineInTwilight')}</p>
       ) : null}
-      <div className={styles.timelineRow}>
-        <div className={styles.timeline}>
-          {chart ? (
-            <NightChart {...chart} minAltDeg={data.minAltDeg} timeZone={tz} />
-          ) : (
-            <NightChart window={null} timeZone={tz} state={nights.isError ? 'error' : 'loading'} />
-          )}
-        </div>
-        <LightCurve
-          depthMmag={x.depthMmag}
-          durationH={x.durationH}
-          rpOverRs={x.rpOverRs}
-          aOverRs={x.aOverRs}
-          inclinationDeg={x.inclinationDeg}
-          baselineBeforeMin={x.transit.baselineBeforeMin}
-          baselineAfterMin={x.transit.baselineAfterMin}
-          ingressLabel={clock(x.transit.ingressUtc)}
-          egressLabel={clock(x.transit.egressUtc)}
-        />
-      </div>
-      <div className={styles.bottom}>
-        <StarField raDeg={x.raDeg} decDeg={x.decDeg} star={x.star} rigId={data.rig.id} />
-        <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
-        <div className={styles.tabs}>
+      <section className={styles.card} aria-label={t('exo.timelineTitle', { name: x.planet })}>
+        <h3 className={styles.cardTitle}>
+          {t('exo.timelineTitle', { name: x.planet })}
+          <span className={styles.muted}>
+            {' '}
+            · {t('exo.timelineNight', { night: data.night, site: data.site.name })}
+          </span>
+        </h3>
+        {chart ? (
+          <NightChart
+            {...chart}
+            minAltDeg={data.minAltDeg}
+            timeZone={tz}
+            bands={false}
+            crop={false}
+            height={320}
+          />
+        ) : (
+          <NightChart window={null} timeZone={tz} state={nights.isError ? 'error' : 'loading'} />
+        )}
+      </section>
+      <div className={styles.cards}>
+        <section className={styles.card} aria-label={t('exo.starField.title', { star: x.star })}>
+          <div className={styles.cardHead}>
+            <h3 className={styles.cardTitle}>{t('exo.starField.title', { star: x.star })}</h3>
+            <Link
+              className={styles.smallButton}
+              to={skyMapHref({ ra: x.raDeg, dec: x.decDeg, rig: data.rig.id, fov: 2 })}
+            >
+              {t('exo.starField.openFraming')}
+            </Link>
+          </div>
+          <StarField raDeg={x.raDeg} decDeg={x.decDeg} star={x.star} />
+        </section>
+        <section className={styles.card} aria-label={t('exo.skyPosition.title', { star: x.star })}>
+          <h3 className={styles.cardTitle}>{t('exo.skyPosition.title', { star: x.star })}</h3>
+          <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
+        </section>
+        <section className={`${styles.card} ${styles.detailsCard}`}>
           <Tabs<'details' | 'mine'>
             label={t('exo.tabsLabel', { name: x.planet })}
             value={tab}
@@ -844,19 +916,17 @@ function TransitDetail({
             panels={{
               details: (
                 <div className={styles.tabBody}>
+                  <p className={styles.detailsHead}>
+                    <strong>{x.planet}</strong>
+                    {x.ticId ? <span className={styles.muted}> (TIC {x.ticId})</span> : null}
+                  </p>
                   <dl className={styles.facts}>
-                    {facts.map(([k, v, why]) => (
-                      <div key={k}>
-                        <dt>{k}</dt>
-                        <dd>
-                          {v}
-                          <span className={styles.explain}>{why}</span>
-                        </dd>
-                      </div>
+                    {facts.map(([label, value, why]) => (
+                      <Fact key={label} label={label} value={value} why={why} />
                     ))}
                   </dl>
-                  <h3>{t('exo.filterTitle')}</h3>
                   <p>
+                    <span className={styles.muted}>{t('exo.filterTitle')}: </span>
                     {t(`exo.filterReason.${x.filter.band}`)}{' '}
                     {x.filter.choice
                       ? t(`exo.filterChoice.${x.filter.choice.match}`, {
@@ -864,24 +934,28 @@ function TransitDetail({
                         })
                       : t('exo.filterNone')}
                   </p>
-                  <h3>{t('exo.researchTitle')}</h3>
-                  <p className={styles.links}>
+                  <p className={styles.research}>
+                    <span className={styles.muted}>{t('exo.researchTitle')}: </span>
                     {researchLinks(x).map((l) => (
-                      <a key={l.name} href={l.href} target="_blank" rel="noopener noreferrer">
+                      <a
+                        key={l.name}
+                        className={styles.smallButton}
+                        href={l.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {l.name}
                       </a>
                     ))}
                   </p>
-                  <h3>{t('exo.ephemerisTitle')}</h3>
-                  <p className={catalogStyles.muted}>
+                  <p className={styles.muted}>
                     {t('exo.ephemerisSource', {
                       catalog: CATALOG_NAMES[x.catalog],
                       t0: fmt(x.t0BjdTdb, 5),
                       system: x.timeSystemSource,
-                      date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-                        new Date(x.fetchedAt),
-                      ),
-                    })}
+                      date: source,
+                    })}{' '}
+                    · {t('exo.starField.caption')}
                   </p>
                 </div>
               ),
@@ -896,8 +970,8 @@ function TransitDetail({
               ),
             }}
           />
-        </div>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }

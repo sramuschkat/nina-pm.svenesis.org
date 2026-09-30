@@ -11,9 +11,10 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ExoTransitList, ExoTransitView, Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { ExoplanetsPage } from './ExoplanetsPage';
-import { flatFraction } from './LightCurve';
 import {
   applyExoFilters,
+  flatFraction,
+  transitFlux,
   EXO_SEARCH_DEFAULTS,
   paramsFromUrl,
   researchLinks,
@@ -180,7 +181,7 @@ function transit(over: Partial<ExoTransitView> & { tc?: string } = {}): ExoTrans
       baselineInTwilight: false,
       meridianUtc: '2026-10-11T01:30:00Z',
       meridianInWindow: false,
-      meridianInTransit: false,
+      meridianNearTransit: false,
       altAtIngressDeg: 58,
       altAtCenterDeg: 41.7,
       altAtEgressDeg: 22,
@@ -229,7 +230,7 @@ const unobservable = transit({
     ...transit().transit,
     observable: false,
     meridianInWindow: true,
-    meridianInTransit: true,
+    meridianNearTransit: true,
   },
 });
 
@@ -287,7 +288,7 @@ describe('Filter der Transitsuche (FA-EXO-05)', () => {
     const baselineFlip = transit({
       key: 'x:baseline-flip:1',
       planet: 'Baseline-Flip',
-      transit: { ...transit().transit, meridianInWindow: true, meridianInTransit: false },
+      transit: { ...transit().transit, meridianInWindow: true, meridianNearTransit: false },
     });
     expect(applyExoFilters([baselineFlip], { ...off, hideFlip: true })).toHaveLength(1);
   });
@@ -304,7 +305,7 @@ describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
   });
 
   it('URL: Rig, Nacht und Auswahl hin und zurück', () => {
-    const u = { rig: ID(1), night: '2026-10-10', sel: 'exoclock:X:1' };
+    const u = { rig: ID(1), night: '2026-10-10' };
     expect(urlFromParams(paramsFromUrl(u))).toEqual(u);
     expect(urlFromParams(new URLSearchParams('night=kaputt')).night).toBe('');
   });
@@ -315,6 +316,17 @@ describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
     expect(flatFraction(0.163, 6.0, 82.0)).toBeCloseTo(0.071, 3);
     expect(flatFraction(0.16, 6.0, 81.0)).toBe(0);
     expect(flatFraction(null, null, null)).toBe(0.8);
+  });
+
+  it('Lichtkurve: 0 außerhalb, Boden = Tiefe als Anteil, Stützpunkte an den Kontakten', () => {
+    const f = transitFlux(transit());
+    expect(f[0]).toEqual({ atUtc: Date.parse(transit().transit.ingressUtc) / 1000, rel: 0 });
+    expect(f.at(-1)?.rel).toBe(0);
+    expect(Math.min(...f.map((p) => p.rel))).toBeCloseTo(-(1 - 10 ** (-20.37 / 2500)), 9);
+    // streifend: V-Form mit drei Punkten
+    expect(transitFlux(transit({ rpOverRs: 0.16, aOverRs: 6, inclinationDeg: 81 }))).toHaveLength(
+      3,
+    );
   });
 
   it('Himmelsposition: Mitte in der Bildmitte, Osten links, außerhalb 30° unsichtbar', () => {
@@ -365,7 +377,7 @@ const renderPage = (path = '/planung/exoplaneten') =>
   );
 
 describe('S-22 Seite', () => {
-  it('Rig, laufende Nacht, Trefferzahl, Standard nach Transitmitte, Zeitleiste des ersten Transits', async () => {
+  it('Rig, laufende Nacht, Trefferzahl, Standard nach Transitmitte; Projekt gesperrt', async () => {
     renderPage();
     expect(await screen.findByRole('heading', { name: '2 Transits' })).toBeInTheDocument();
     expect(state.queries[0]).toMatchObject({
@@ -375,37 +387,34 @@ describe('S-22 Seite', () => {
       minAltDeg: 30,
     });
     const table = screen.getByRole('table', { name: 'Exoplaneten' });
-    const planets = within(table)
-      .getAllByRole('button', { pressed: false })
-      .concat(within(table).getAllByRole('button', { pressed: true }))
-      .map((b) => b.textContent);
-    expect(planets).toContain('WASP-12b');
-    // Katalogstand nur als Datum (Aktualisieren in S-82)
+    const rows = within(table).getAllByRole('row').slice(1);
+    // WASP-12 b (02:33Z) vor HAT-P-17 b (06:45Z)
+    expect(rows[0]).toHaveTextContent('WASP-12b');
     expect(screen.getByText(/Katalogstand: ExoClock/)).toBeInTheDocument();
-    // Erster Transit nach Mitte: WASP-12 b (02:33Z) vor HAT-P-17 b (06:45Z)
-    expect(
-      await screen.findByRole('heading', { name: 'Transit von WASP-12b' }),
-    ).toBeInTheDocument();
     // *Projekt* (FA-EXO-15) folgt im zweiten Teil: je Zeile sichtbar, aber gesperrt.
     for (const b of screen.getAllByRole('button', { name: 'Projekt', hidden: true }))
       expect(b).toBeDisabled();
   });
 
-  it('Auswahl eines Planeten: URL und Detail; Zieldetails mit Filterbegründung', async () => {
+  it('Zeile aufklappen: Zeitleiste, Sternfeld, Himmelsposition, Zieldetails inline', async () => {
     renderPage();
     await screen.findByRole('heading', { name: '2 Transits' });
-    fireEvent.click(screen.getByRole('button', { name: 'HAT-P-17b' }));
-    await waitFor(() =>
-      expect(screen.getByTestId('where')).toHaveTextContent('sel=exoclock%3AHAT-P-17b'),
-    );
-    expect(
-      await screen.findByRole('heading', { name: 'Transit von HAT-P-17b' }),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu HAT-P-17b' }));
+    const timeline = await screen.findByRole('region', {
+      name: 'HAT-P-17b – Nacht und Transit',
+    });
+    expect(timeline).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Sternfeld (DSS2) – HAT-P-17' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Himmelsposition – HAT-P-17' })).toBeInTheDocument();
     expect(screen.getByText(/RED als Ersatzfilter/)).toBeInTheDocument();
-    const detail = screen.getByRole('region', { name: 'Transit von HAT-P-17b' });
-    expect(within(detail).getByRole('link', { name: 'SIMBAD' })).toHaveAttribute(
+    expect(screen.getByText('(TIC 266593143)')).toBeInTheDocument();
+    // Erklärung je Größe als Hilfesymbol (FA-EXO-13)
+    expect(
+      screen.getByRole('img', { name: /Helligkeitsabfall während des Transits/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'In Framing öffnen' })).toHaveAttribute(
       'href',
-      expect.stringContaining('HAT-P-17'),
+      expect.stringContaining('/planung/sternkarte'),
     );
   });
 
@@ -436,9 +445,11 @@ describe('S-22 Seite', () => {
     await expectNoSeriousA11y();
   });
 
-  it('mit Treffern barrierefrei', async () => {
+  it('mit aufgeklappter Zeile barrierefrei', async () => {
     renderPage();
-    await screen.findByRole('heading', { name: 'Transit von WASP-12b' });
+    await screen.findByRole('heading', { name: '2 Transits' });
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu WASP-12b' }));
+    await screen.findByRole('region', { name: 'WASP-12b – Nacht und Transit' });
     await expectNoSeriousA11y();
   });
 });
