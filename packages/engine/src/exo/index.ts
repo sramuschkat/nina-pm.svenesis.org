@@ -3,5 +3,6 @@ export * from './barycentric';
 export * from './classify';
 export * from './depth';
 export * from './epoch';
+export * from './exposure';
 export * from './leap-seconds';
 export * from './transit';

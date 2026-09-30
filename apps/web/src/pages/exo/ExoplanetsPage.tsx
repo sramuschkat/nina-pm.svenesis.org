@@ -52,6 +52,8 @@ import {
   urlFromParams,
   type ExoUrl,
 } from './model';
+import { ExposureCard } from './ExposureCard';
+import { HelpTip } from './HelpTip';
 import { SkyPosition } from './SkyPosition';
 import { StarField } from './StarField';
 import styles from './exo.module.css';
@@ -632,19 +634,12 @@ function ResultTable({
 
 /** Kennwert mit Erklärung als Hilfesymbol (FA-EXO-13: „mit kurzer Erklärung je Größe“). */
 function Fact({ label, value, why }: { label: string; value: string; why: string }) {
+  const { t } = useTranslation();
   return (
     <div className={styles.fact}>
       <dt>{label}</dt>
       <dd>
-        <uiIcons.help
-          className={styles.help}
-          size={ICON_SIZE.table}
-          role="img"
-          aria-label={why}
-          focusable="false"
-        >
-          <title>{why}</title>
-        </uiIcons.help>
+        <HelpTip label={t('exo.explainLabel', { name: label })} text={why} />
         <span>{value}</span>
       </dd>
     </div>
@@ -904,6 +899,7 @@ function TransitDetail({
           <h3 className={styles.cardTitle}>{t('exo.skyPosition.title', { star: x.star })}</h3>
           <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
         </section>
+        <ExposureCard exposure={x.exposure} star={x.star} />
         <section className={`${styles.card} ${styles.detailsCard}`}>
           <Tabs<'details' | 'mine'>
             label={t('exo.tabsLabel', { name: x.planet })}

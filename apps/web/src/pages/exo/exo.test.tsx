@@ -193,6 +193,30 @@ function transit(over: Partial<ExoTransitView> & { tc?: string } = {}): ExoTrans
       band: 'Rc',
       choice: { filterId: ID(700), shortName: 'RED', match: 'substitute' },
     },
+    exposure: {
+      status: 'ok',
+      exposureS: 30,
+      fwhmArcsec: 5.5,
+      peakPct: 50,
+      framesInWindow: 596,
+      precisionMmag: 6.1,
+      transitSnr: 12.7,
+      filterShortName: 'RED',
+      gain: 100,
+      defocus: true,
+      limitedBy: 'defocus',
+      inFocus: {
+        exposureS: 7.5,
+        fwhmArcsec: 3,
+        peakPct: 48,
+        framesInWindow: 1400,
+        precisionMmag: 11.2,
+        transitSnr: 11.4,
+      },
+      skyMagArcsec2: 20.7,
+      bortle: 2,
+      airmass: 1.5,
+    },
     myProjects: 0,
   };
   const rest: Partial<ExoTransitView> & { tc?: string } = { ...over };
@@ -209,6 +233,7 @@ const wasp = transit({
   mag: 11.6,
   depthMmag: 17.8,
   tc: '2026-10-11T02:33:00Z',
+  exposure: { status: 'missing', missing: ['camera_noise', 'camera_saturation'] },
 });
 const faint = transit({
   key: 'toi:TOI-7711.01:1',
@@ -408,9 +433,22 @@ describe('S-22 Seite', () => {
     expect(screen.getByRole('region', { name: 'Himmelsposition – HAT-P-17' })).toBeInTheDocument();
     expect(screen.getByText(/RED als Ersatzfilter/)).toBeInTheDocument();
     expect(screen.getByText('(TIC 266593143)')).toBeInTheDocument();
-    // Erklärung je Größe als Hilfesymbol (FA-EXO-13)
+    // Erklärung je Größe als Hilfe-Tooltip (FA-EXO-13): bei Fokus sichtbar, Escape schließt
+    const help = screen.getByRole('button', { name: 'Erklärung: Tiefe' });
+    expect(help).toHaveAccessibleDescription(/Helligkeitsabfall während des Transits/);
+    fireEvent.focus(help);
+    expect(screen.getByRole('tooltip')).toHaveTextContent(/Helligkeitsabfall/);
+    fireEvent.keyDown(help, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    // Belichtung (FA-EXO-14a): Empfehlung mit Defokus und Variante im Fokus
+    const exposure = screen.getByRole('region', { name: 'Belichtung – HAT-P-17' });
+    expect(within(exposure).getByText('Belichtung · RED · Gain 100')).toBeInTheDocument();
+    expect(within(exposure).getByText('30 s')).toBeInTheDocument();
+    expect(within(exposure).getByText('Leicht defokussieren auf ≈ 5,5″ FWHM')).toBeInTheDocument();
+    expect(within(exposure).getByText('≈ 12,7 σ (gut)')).toBeInTheDocument();
+    expect(within(exposure).getByText('Ohne Defokus (im Fokus, 3″)')).toBeInTheDocument();
     expect(
-      screen.getByRole('img', { name: /Helligkeitsabfall während des Transits/ }),
+      within(exposure).getByText('7,5 s · ≈ 1.400 Aufnahmen · 11,2 mmag · Transit ≈ 11,4 σ'),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'In Framing öffnen' })).toHaveAttribute(
       'href',
@@ -450,6 +488,11 @@ describe('S-22 Seite', () => {
     await screen.findByRole('heading', { name: '2 Transits' });
     fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu WASP-12b' }));
     await screen.findByRole('region', { name: 'WASP-12b – Nacht und Transit' });
+    expect(
+      screen.getByText(
+        'Keine Empfehlung – es fehlen: Ausleserauschen der Kamera, Full Well oder e⁻/ADU der Kamera.',
+      ),
+    ).toBeInTheDocument();
     await expectNoSeriousA11y();
   });
 });

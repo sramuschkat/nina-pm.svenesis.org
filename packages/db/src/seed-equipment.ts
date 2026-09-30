@@ -154,7 +154,14 @@ export async function seedEquipment(
       isColor: c.mono === false,
       defaultGain: presets[0]?.gain ?? null,
       defaultOffset: presets[0]?.offset ?? null,
-      gainModes: presets.map((p) => ({ name: p.name, gain: p.gain })),
+      // Rauschmodell je Gain (FA-KAM-03) für die Belichtungsempfehlung (transit.md §6).
+      gainModes: presets.map((p) => ({
+        name: p.name,
+        gain: p.gain,
+        readNoiseE: p.readNoiseE ?? null,
+        fullWellE: p.fullWellE ?? null,
+        ePerAdu: p.ePerAdu ?? null,
+      })),
       readoutModes,
       defaultReadoutMode: readoutModes[0],
     });
