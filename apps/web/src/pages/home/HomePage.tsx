@@ -40,6 +40,7 @@ import { nightKeyIn } from '../projects/queue-model';
 import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
 import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
+import { MemberAvatarFor } from '../../lib/member';
 
 /** Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste und Sessions: ein Cache, keine Doppelabrufe. */
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -447,7 +448,10 @@ function QueueRow({
     <li className={styles.queueRow}>
       <span className={styles.rowMain}>
         <Link to={`/projekte/${q.projectId}`}>{q.name}</Link>
-        <span className={styles.muted}>{t('home.queue.by', { name: q.createdByName })}</span>
+        <span className={`${styles.muted} ${styles.byLine}`}>
+          <MemberAvatarFor id={q.createdBy} />
+          {t('home.queue.by', { name: q.createdByName })}
+        </span>
       </span>
       <EffortChip effort={q.effort} size="sm" />
       {q.kind === 'transit' ? (

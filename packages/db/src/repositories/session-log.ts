@@ -36,6 +36,7 @@ export interface SessionLogContext {
     readonly values: SessionLogView['values'];
     readonly sources: Record<string, string | null>;
     readonly updatedAt: string;
+    readonly updatedBy: string | null;
     readonly updatedByName: string | null;
   } | null;
   readonly version: string;
@@ -90,6 +91,7 @@ export class SessionLogRepository extends TenantRepo {
         'l.moonIlluminationPct',
         'l.valueSources',
         'l.updatedAt',
+        'l.updatedBy',
         'u.displayName as updatedByName',
       ])
       .where('s.tenantId', '=', this.ctx.tenantId)
@@ -116,6 +118,7 @@ export class SessionLogRepository extends TenantRepo {
             },
             sources: parseJson<Record<string, string | null>>(row.valueSources ?? {}) ?? {},
             updatedAt: iso(row.updatedAt) as string,
+            updatedBy: row.updatedBy ?? null,
             updatedByName: row.updatedByName ?? null,
           };
     return {

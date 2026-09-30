@@ -1141,3 +1141,18 @@ tr[data-dragging='true'] {
 .kindPanel {
   padding: 0;
 }
+
+/* Satz mit Bild der Person davor („von …“, „gespeichert von …“; MemberName, 30.09.2026). */
+.byLine {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+/* Stimmen in der Entscheidung: Anzahl, dann je Person Bild und Name. */
+.voterList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-3);
+}

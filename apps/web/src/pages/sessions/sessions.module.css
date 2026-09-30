@@ -360,3 +360,11 @@
 .note {
   composes: note from '../equipment/equipment.module.css';
 }
+
+/* Satz mit Bild der Person davor („von …“, „gespeichert von …“; MemberName, 30.09.2026). */
+.byLine {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1);
+}

@@ -861,6 +861,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/members/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mitgliederverzeichnis: Name und Discord-Bild aller Mitglieder (Anzeige)
+         * @description Aktion: `member.directory` · FA-BEN-04, FA-WEB-04
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Verzeichnis */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MemberDirectory"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/members": {
         parameters: {
             query?: never;
@@ -13653,6 +13710,20 @@ export interface components {
              */
             expiresAt: string;
         };
+        MemberDirectory: {
+            items: components["schemas"]["MemberDirectoryEntry"][];
+        };
+        MemberDirectoryEntry: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            displayName: string;
+            avatarUrl: string | null;
+            /** @enum {string} */
+            status: "active" | "disabled" | "removed";
+        };
         MemberView: {
             /**
              * Format: uuid
@@ -13883,6 +13954,8 @@ export interface components {
             entity: string;
             /** Format: uuid */
             entityId: string;
+            /** Format: uuid */
+            actorId: string | null;
             actorName: string | null;
             subjectName: string | null;
             action: string;
@@ -16197,6 +16270,11 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             decidedAt: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            decidedBy: string | null;
             decidedByName: string | null;
             decisionComment: string | null;
         };
@@ -17497,6 +17575,11 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             updatedAt: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            updatedBy: string | null;
             updatedByName: string | null;
         };
         SessionLogValues: {
@@ -18005,6 +18088,11 @@ export interface components {
                  */
                 projectId: string;
                 name: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                createdBy: string;
                 createdByName: string;
                 rigName: string | null;
             }[];
@@ -18126,6 +18214,11 @@ export interface components {
              */
             projectId: string;
             projectName: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string | null;
             createdByName: string;
             /**
              * Format: date-time

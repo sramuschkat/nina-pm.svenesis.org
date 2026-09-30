@@ -12,6 +12,7 @@ import {
   InvitationCreated,
   InvitationView,
   MemberPatch,
+  MemberDirectory,
   MemberView,
   OwnerTransferRequest,
   ProblemError,
@@ -59,6 +60,34 @@ async function members(
   const svc = await services();
   const { auth, tenant } = requireTenant(c);
   return { repo: svc.repositories(tenant).member, auth, svc };
+}
+
+export const memberDirectoryRoute = defineRoute(
+  { action: 'member.directory', requirements: ['FA-BEN-04', 'FA-WEB-04'] },
+  {
+    method: 'get',
+    path: '/api/web/v1/members/directory',
+    summary: 'Mitgliederverzeichnis: Name und Discord-Bild aller Mitglieder (Anzeige)',
+    tags: ['members'],
+    responses: {
+      200: {
+        description: 'Verzeichnis',
+        content: { 'application/json': { schema: MemberDirectory } },
+      },
+      401: errors[401],
+      403: errors[403],
+    },
+  },
+);
+
+/**
+ * Bild-Adresse bei Discord (wie oben rechts im Benutzermenü). Nur wohlgeformte Werte – Discord-ID aus Ziffern,
+ * Avatar-Kennzeichen hex mit optionalem `a_` –, sonst kein Bild.
+ */
+export function discordAvatarUrl(discordUserId: string, avatarHash: string | null): string | null {
+  if (!avatarHash || !/^\d{5,25}$/.test(discordUserId) || !/^(a_)?[0-9a-f]{32}$/.test(avatarHash))
+    return null;
+  return `https://cdn.discordapp.com/avatars/${discordUserId}/${avatarHash}.png?size=64`;
 }
 
 export const listMembersRoute = defineRoute(
@@ -258,6 +287,7 @@ export const revokeInvitationRoute = defineRoute(
 );
 
 export const MEMBER_ROUTES = [
+  memberDirectoryRoute,
   listMembersRoute,
   patchMemberRoute,
   deleteMemberRoute,
@@ -273,6 +303,22 @@ export const MEMBER_ROUTES = [
 
 export function webMemberRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
+
+  app.openapi(memberDirectoryRoute, async (c) => {
+    const { repo } = await members(services, c);
+    const rows = await repo.directory();
+    return c.json(
+      {
+        items: rows.map((m) => ({
+          id: m.id,
+          displayName: m.displayName,
+          avatarUrl: discordAvatarUrl(m.discordUserId, m.avatarHash),
+          status: m.status,
+        })),
+      },
+      200,
+    );
+  });
 
   app.openapi(listMembersRoute, async (c) => {
     const { repo } = await members(services, c);

@@ -19,6 +19,7 @@ export type ChangeLogEntry = Schemas['ChangeLogEntry'];
 export type SessionList = Schemas['SessionList'];
 export type Invitation = Schemas['InvitationView'];
 export type SystemMember = Schemas['SystemMemberView'];
+export type MemberDirectoryEntry = Schemas['MemberDirectoryEntry'];
 export type SuperUser = Schemas['SuperUserView'];
 export type SystemAuditEntry = Schemas['SystemAuditEntry'];
 export type SystemAuditList = Schemas['SystemAuditList'];
@@ -122,6 +123,8 @@ export const systemApi = {
 
 /** Mitglieder und Einladungen im Mandanten (S-70, TK 7.2). */
 export const memberApi = {
+  /** Name und Discord-Bild aller Mitglieder (Anzeige, jedes Mitglied; 30.09.2026). */
+  directory: () => apiFetch<{ items: MemberDirectoryEntry[] }>('/api/web/v1/members/directory'),
   list: () => apiFetch<{ members: Member[] }>('/api/web/v1/members'),
   patch: (id: string, body: { displayName?: string; status?: 'active' | 'disabled' }) =>
     apiFetch<undefined>(`/api/web/v1/members/${id}`, json('PATCH', body)),

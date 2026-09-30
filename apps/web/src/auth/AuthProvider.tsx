@@ -77,6 +77,11 @@ export function useAuth(): AuthValue {
   return ctx;
 }
 
+/** Wie `useAuth`, aber `null` außerhalb von `AuthProvider` (Anzeige-Bausteine wie `MemberName`). */
+export function useOptionalAuth(): AuthValue | null {
+  return useContext(AuthCtx);
+}
+
 /** Nur zum Ein-/Ausblenden (TK 5.5); die API prüft immer selbst. */
 export function useCan(action: Action, resource?: ResourceMeta): boolean {
   const { context } = useAuth();

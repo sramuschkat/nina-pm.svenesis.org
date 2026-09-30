@@ -14,6 +14,7 @@ import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage'
 import { formatDateTime } from '../../lib/time';
 import { problemCode } from '../equipment/shared';
 import styles from './projects.module.css';
+import { Person } from '../../lib/member';
 
 /** „22:39–04:51 CDT“ in Standortzeit (NT-03). */
 export function transitWindowText(t: NonNullable<QueueItem['transit']>): string {
@@ -55,7 +56,9 @@ export function TransitDecision({
       </h2>
       <dl className={styles.cardFacts}>
         <dt>{t('queue.col.creator')}</dt>
-        <dd>{item.createdByName}</dd>
+        <dd>
+          <Person id={item.createdBy} name={item.createdByName} />
+        </dd>
         <dt>{t('queue.transit.night')}</dt>
         <dd>
           {formatNightKey(tr.night)} · {transitWindowText(tr)}

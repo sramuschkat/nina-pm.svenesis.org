@@ -123,6 +123,8 @@ export const ChangeRequestView = ChangeRequestInfo.extend({
   createdAt: UtcInstant,
   updatedAt: UtcInstant,
   decidedAt: UtcInstant.nullable(),
+  /** Entscheider (`app_user.id`) für das Bild neben dem Namen (Mitgliederverzeichnis, 30.09.2026). */
+  decidedBy: Uuid.nullable(),
   decidedByName: z.string().nullable(),
   decisionComment: z.string().nullable(),
 }).meta({ id: 'ChangeRequestView' });

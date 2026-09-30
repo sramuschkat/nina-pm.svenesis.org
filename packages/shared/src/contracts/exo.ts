@@ -344,6 +344,8 @@ export const ExoTransitConflict = z
     kind: z.enum(['overlap', 'share_mismatch', 'share']),
     projectId: Uuid,
     projectName: z.string(),
+    /** Ersteller (`app_user.id`) für das Bild neben dem Namen (30.09.2026). */
+    createdBy: Uuid.nullable(),
     createdByName: z.string(),
     windowStartUtc: UtcInstant,
     windowEndUtc: UtcInstant,
@@ -398,6 +400,7 @@ export const ExoProjectDetail = z
       z.object({
         projectId: Uuid,
         name: z.string(),
+        createdBy: Uuid,
         createdByName: z.string(),
         rigName: z.string().nullable(),
       }),

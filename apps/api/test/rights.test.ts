@@ -166,6 +166,7 @@ function memberExamples(): Record<string, Example> {
   const m = world.members;
   const onlyOwner = { Admin: 403 };
   return {
+    'GET /api/web/v1/members/directory': { url: '/api/web/v1/members/directory' },
     'GET /api/web/v1/members': { url: '/api/web/v1/members' },
     'PATCH /api/web/v1/members/{id}': {
       url: `/api/web/v1/members/${m.user2}`,

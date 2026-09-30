@@ -94,6 +94,8 @@ export const SessionLogView = z
       seeingArcsec: SessionLogStat.nullable(),
     }),
     updatedAt: UtcInstant.nullable(),
+    /** Zuletzt gespeichert von (`app_user.id`) – Bild neben dem Namen (30.09.2026). */
+    updatedBy: Uuid.nullable(),
     updatedByName: z.string().nullable(),
   })
   .meta({ id: 'SessionLogView' });

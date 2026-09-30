@@ -72,6 +72,38 @@ const code = async (res: Response) => {
 const row = async (sql: string, params: unknown[] = []) =>
   (await s.pg.admin.query(sql, params)).rows[0];
 
+describe('Mitgliederverzeichnis (30.09.2026)', () => {
+  it('jedes Mitglied liest Name und Bild-Adresse aller Mitglieder des Mandanten, auch deaktivierte', async () => {
+    await s.pg.admin.query('UPDATE identity SET avatar_hash = $1 WHERE id = $2', [
+      'a_0123456789abcdef0123456789abcdef',
+      t.owner.identityId,
+    ]);
+    await s.pg.admin.query("UPDATE identity SET avatar_hash = 'kaputt' WHERE id = $1", [
+      t.admin.identityId,
+    ]);
+    const res = await as(t.user, '/api/web/v1/members/directory');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: { id: string; avatarUrl: string | null; status: string }[];
+    };
+    expect(body.items).toHaveLength(5);
+    const byId = new Map(body.items.map((i) => [i.id, i]));
+    expect(byId.get(t.owner.memberId)?.avatarUrl).toMatch(
+      /^https:\/\/cdn\.discordapp\.com\/avatars\/\d+\/a_0123456789abcdef0123456789abcdef\.png\?size=64$/,
+    );
+    // Ungültiges Kennzeichen → kein Bild; deaktiviertes Mitglied bleibt im Verzeichnis.
+    expect(byId.get(t.admin.memberId)?.avatarUrl).toBeNull();
+    expect(byId.get(t.disabled.memberId)?.status).toBe('disabled');
+    // Keine Rollen, keine Discord-Namen im Verzeichnis.
+    expect(Object.keys(body.items[0] ?? {}).sort()).toEqual([
+      'avatarUrl',
+      'displayName',
+      'id',
+      'status',
+    ]);
+  });
+});
+
 describe('Owner-Invarianten (TK 5.5, FA-BEN-08)', () => {
   it('Admin versucht den Owner herabzustufen, zu deaktivieren, zu entfernen → 409 member.owner_protected', async () => {
     const o = t.owner.memberId;

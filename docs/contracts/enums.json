@@ -39,6 +39,7 @@
   "transit.result.import",
   "project.note.write",
   "project.history.read",
+  "member.directory",
   "member.manage",
   "member.admin.manage",
   "member.leave",

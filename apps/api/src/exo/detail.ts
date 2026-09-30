@@ -206,6 +206,7 @@ export async function exoDetail(
               kind: conflict.kind,
               projectId: w.projectId,
               projectName: w.projectName,
+              createdBy: w.createdBy,
               createdByName: w.createdByName,
               windowStartUtc: iso(new Date(w.windowStartMs)),
               windowEndUtc: iso(new Date(w.windowEndMs)),

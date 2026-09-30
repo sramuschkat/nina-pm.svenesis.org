@@ -111,6 +111,7 @@ const logView = (): SessionLogView => ({
     seeingArcsec: null,
   },
   updatedAt: null,
+  updatedBy: null,
   updatedByName: null,
 });
 

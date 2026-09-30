@@ -126,6 +126,7 @@ export function sessionLogView(ctx: SessionLogContext): SessionLogView {
       values: prefill.values,
       sources: prefill.sources,
       updatedAt: null,
+      updatedBy: null,
       updatedByName: null,
     };
   }
@@ -142,6 +143,7 @@ export function sessionLogView(ctx: SessionLogContext): SessionLogView {
     values: log.values,
     sources,
     updatedAt: log.updatedAt,
+    updatedBy: log.updatedBy,
     updatedByName: log.updatedByName,
   };
 }

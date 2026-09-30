@@ -46,6 +46,8 @@ const MEMBER_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'nina.instance.read',
   'session.read',
   'notification.read',
+  // Mitgliederverzeichnis: Name und Discord-Bild aller Mitglieder (30.09.2026, Datenschutz ergänzt).
+  'member.directory',
   'me.preferences',
   'me.favorites',
 ]);

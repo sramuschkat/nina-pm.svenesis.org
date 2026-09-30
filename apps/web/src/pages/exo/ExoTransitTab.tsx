@@ -33,6 +33,7 @@ import { useSiteWeather } from '../weather/WeatherPage';
 import { EXO_CATALOG_LABELS, siteClock } from './model';
 import { TransitTimeline } from './TransitTimeline';
 import styles from './exo.module.css';
+import { MemberAvatarFor } from '../../lib/member';
 
 type Upcoming = ExoProjectDetail['upcoming'][number];
 
@@ -140,7 +141,10 @@ export function ExoTransitTab({
             <span className={styles.suggest}>{t('exo.project.suggested')}</span>
           ) : null}
           {r.conflict ? (
-            <span className={r.conflict.kind === 'share' ? styles.shareText : styles.conflictText}>
+            <span
+              className={`${r.conflict.kind === 'share' ? styles.shareText : styles.conflictText} ${styles.byLine}`}
+            >
+              <MemberAvatarFor id={r.conflict.createdBy} />
               {t(`exo.project.conflict.${r.conflict.kind}`, {
                 name: r.conflict.projectName,
                 by: r.conflict.createdByName,
@@ -349,6 +353,7 @@ export function ExoTransitTab({
               <span key={o.projectId}>
                 {i > 0 ? ', ' : ''}
                 <Link to={`/projekte/${o.projectId}`}>{o.name}</Link>{' '}
+                <MemberAvatarFor id={o.createdBy} size={16} />{' '}
                 <span className={styles.muted}>
                   (
                   {o.rigName

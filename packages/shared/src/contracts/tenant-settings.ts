@@ -85,6 +85,8 @@ export const ChangeLogEntry = z
     id: z.uuid(),
     entity: z.string(),
     entityId: z.uuid(),
+    /** Handelndes Mitglied (`app_user.id`) – Bild neben dem Namen (30.09.2026); `null` = System. */
+    actorId: z.uuid().nullable(),
     /** Anzeigename des handelnden Mitglieds; `null` = System bzw. ehemaliges Mitglied ohne Namen. */
     actorName: z.string().nullable(),
     /** Anzeigename des betroffenen Mitglieds bei `entity = 'app_user'`. */

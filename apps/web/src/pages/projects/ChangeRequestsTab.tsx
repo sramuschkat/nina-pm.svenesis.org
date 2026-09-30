@@ -20,6 +20,7 @@ import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList } from '../equipment/shared';
 import { ChangeRequestDiffTable } from './ChangeRequestDiff';
 import styles from './projects.module.css';
+import { MemberAvatarFor } from '../../lib/member';
 
 type Line = ProjectView['panels'][number]['lines'][number];
 type Twilight = ProjectView['conditions']['twilight'];
@@ -231,14 +232,16 @@ function ChangeRequestCard({
         <span className={r.status === 'open' ? styles.pillWarn : styles.pill}>
           {t(`changeRequests.status.${r.status}`)}
         </span>
-        <span>
+        <span className={styles.byLine}>
+          <MemberAvatarFor id={r.requestedBy} />
           {t('changeRequests.by', {
             name: r.requestedByName,
             at: formatDateTime(r.createdAt, zone, i18n.language),
           })}
         </span>
         {r.decidedAt ? (
-          <span className={styles.muted}>
+          <span className={`${styles.muted} ${styles.byLine}`}>
+            <MemberAvatarFor id={r.decidedBy} />
             {t('changeRequests.decidedBy', {
               name: r.decidedByName ?? '–',
               at: formatDateTime(r.decidedAt, zone, i18n.language),

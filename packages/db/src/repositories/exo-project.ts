@@ -15,6 +15,7 @@ export type EphemerisRow = Selectable<EphemerisTable>;
 export interface ExoProjectOther {
   readonly projectId: string;
   readonly name: string;
+  readonly createdBy: string;
   readonly createdByName: string;
   readonly rigName: string | null;
 }
@@ -106,6 +107,7 @@ export class ExoProjectRepository extends TenantRepo {
       .select([
         'project.id as projectId',
         'project.name',
+        'project.createdBy',
         'appUser.displayName as createdByName',
         'rig.name as rigName',
       ])
@@ -119,6 +121,7 @@ export class ExoProjectRepository extends TenantRepo {
     return rows.map((r) => ({
       projectId: r.projectId,
       name: r.name,
+      createdBy: r.createdBy,
       createdByName: r.createdByName ?? '',
       rigName: r.rigName ?? null,
     }));

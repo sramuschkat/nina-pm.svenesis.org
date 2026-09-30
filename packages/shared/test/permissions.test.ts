@@ -31,8 +31,8 @@ const superUser = ctx({
 });
 
 describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
-  it('kennt genau die 44 Aktionen aus enums.json', () => {
-    expect(ACTIONS).toHaveLength(44);
+  it('kennt genau die 45 Aktionen aus enums.json', () => {
+    expect(ACTIONS).toHaveLength(45);
   });
 
   it('nina.sync gilt nur mit Rig-Token, nie für eine Web-Sitzung (TK 5.6, SV-08)', () => {
@@ -148,6 +148,12 @@ describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
           targetMemberId: 'x',
         }),
       ).toBe(false);
+    });
+
+    it('member.directory: jedes Mitglied liest Name und Bild der anderen; System-Kontext nicht', () => {
+      expect(can(user, 'member.directory')).toBe(true);
+      expect(can(owner, 'member.directory')).toBe(true);
+      expect(can(superUser, 'member.directory')).toBe(false);
     });
 
     it('member.leave: jedes Mitglied (Owner → 409 member.owner_cannot_leave im Repository)', () => {

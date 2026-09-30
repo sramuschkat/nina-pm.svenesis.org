@@ -1,7 +1,8 @@
 /**
  * Datenschutz und Quellen (FA-WEB-04, TK 11.3) als Markdown je Sprache – Anzeige über `react-markdown`
  * ohne HTML. Rechtliche Durchsicht H-17 freigegeben (Sven, 25.09.2026); danach ergänzt: Absatz
- * „Öffentliche Vorschaubilder“ (SEC-28, AP-17).
+ * „Öffentliche Vorschaubilder“ (SEC-28, AP-17) und der Satz zur Sichtbarkeit von Anzeigename und
+ * Discord-Profilbild im Mandanten (Entscheidung Sven 30.09.2026, Mitgliederverzeichnis).
  */
 import type { Language } from './index';
 
@@ -12,7 +13,7 @@ Sven Ramuschkat, Kontaktdaten im [Impressum der Website](https://www.svenesis.or
 
 ## Anmeldung über Discord (Drittland USA)
 
-Die Anmeldung erfolgt ausschließlich über Discord (Discord Inc., USA). NINA-PM erhält dabei deine Discord-User-ID, den Benutzernamen, den Anzeigenamen, das Avatar-Kennzeichen und die Angabe, ob die Zwei-Faktor-Authentifizierung aktiv ist. Das Zugriffstoken von Discord wird nicht gespeichert. Rechtsgrundlage ist die Nutzung der Anwendung, zu der du dich anmeldest (Art. 6 Abs. 1 lit. b DSGVO).
+Die Anmeldung erfolgt ausschließlich über Discord (Discord Inc., USA). NINA-PM erhält dabei deine Discord-User-ID, den Benutzernamen, den Anzeigenamen, das Avatar-Kennzeichen und die Angabe, ob die Zwei-Faktor-Authentifizierung aktiv ist. Das Zugriffstoken von Discord wird nicht gespeichert. Andere Mitglieder deines Mandanten sehen deinen Anzeigenamen und dein Discord-Profilbild. Rechtsgrundlage ist die Nutzung der Anwendung, zu der du dich anmeldest (Art. 6 Abs. 1 lit. b DSGVO).
 
 ## Hosting (AWS)
 
@@ -44,7 +45,7 @@ Sven Ramuschkat, contact details in the [website imprint](https://www.svenesis.o
 
 ## Sign-in with Discord (third country USA)
 
-You sign in exclusively with Discord (Discord Inc., USA). NINA-PM receives your Discord user ID, user name, display name, avatar hash and whether two-factor authentication is active. The Discord access token is not stored. The legal basis is the use of the application you sign in to (Art. 6(1)(b) GDPR).
+You sign in exclusively with Discord (Discord Inc., USA). NINA-PM receives your Discord user ID, user name, display name, avatar hash and whether two-factor authentication is active. The Discord access token is not stored. Other members of your tenant see your display name and your Discord profile picture. The legal basis is the use of the application you sign in to (Art. 6(1)(b) GDPR).
 
 ## Hosting (AWS)
 
