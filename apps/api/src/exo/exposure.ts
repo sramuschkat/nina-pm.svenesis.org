@@ -116,6 +116,8 @@ function view(p: ExposurePoint) {
 export interface ExposureTarget {
   readonly band: TransitBand;
   readonly choice: FilterChoice | null;
+  /** `false` = Filter eines unbestätigten Platzes (Ersatz, transit.md §6). */
+  readonly filterConfirmed?: boolean;
   readonly magR: number | null;
   readonly magV: number | null;
   readonly mag: number | null;
@@ -173,6 +175,7 @@ export function exposureFor(x: ExposureTarget, rig: ExposureRig): ExoExposure {
     status: 'ok',
     ...view(a),
     filterShortName: x.choice.shortName,
+    filterConfirmed: x.filterConfirmed ?? true,
     gain: rig.gain,
     defocus: a.defocus,
     limitedBy: a.limitedBy,

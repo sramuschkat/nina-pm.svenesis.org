@@ -62,6 +62,8 @@ export interface TransitSearch {
   readonly rigApertureMm: number | null;
   /** Filter der bestätigten Filterradbelegung. */
   readonly rigFilters: readonly RigFilter[];
+  /** Web-Filter unbestätigter Plätze – nur für die Belichtungsempfehlung, wenn kein bestätigter passt. */
+  readonly unconfirmedRigFilters?: readonly RigFilter[];
   /** Kennwerte für die Belichtungsempfehlung (transit.md §6). */
   readonly exposureRig: ExposureRig;
   readonly myProjects: ReadonlyMap<string, number>;
@@ -133,6 +135,7 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
       e.minApertureMm ?? estimatedApertureMm(e.magRCousins ?? mag, e.depthMmag, e.durationH);
     const band = recommendedBand(teffK, mag);
     const choice = mapBandToRig(band, s.rigFilters);
+    const exposureChoice = choice ?? mapBandToRig(band, s.unconfirmedRigFilters ?? []);
     for (const ev of events) {
       const moon = moonAt(ev.tcUtc, s.site);
       const place = targetApparent(
@@ -213,7 +216,8 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
         exposure: exposureFor(
           {
             band,
-            choice,
+            choice: exposureChoice,
+            filterConfirmed: choice !== null,
             magR: e.magRCousins,
             magV: e.magVJohnson,
             mag,

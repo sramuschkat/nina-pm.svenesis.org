@@ -11,6 +11,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ExoTransitList, ExoTransitView, Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { ExoplanetsPage } from './ExoplanetsPage';
+import { ExposureCard } from './ExposureCard';
 import {
   applyExoFilters,
   flatFraction,
@@ -202,6 +203,7 @@ function transit(over: Partial<ExoTransitView> & { tc?: string } = {}): ExoTrans
       precisionMmag: 6.1,
       transitSnr: 12.7,
       filterShortName: 'RED',
+      filterConfirmed: true,
       gain: 100,
       defocus: true,
       limitedBy: 'defocus',
@@ -401,6 +403,23 @@ const renderPage = (path = '/planung/exoplaneten') =>
     </QueryClientProvider>,
   );
 
+describe('Belichtungskarte (transit.md §6)', () => {
+  it('Filter eines unbestätigten Platzes: Empfehlung vorläufig mit Hinweis', () => {
+    const base = transit().exposure;
+    if (base.status !== 'ok') throw new Error('Fixture');
+    render(
+      <ExposureCard
+        exposure={{ ...base, filterConfirmed: false, defocus: false, inFocus: null }}
+        star="HAT-P-17"
+      />,
+    );
+    expect(
+      screen.getByText(/Vorläufig: RED ist im Filterrad noch nicht bestätigt/),
+    ).toBeInTheDocument();
+    expect(screen.getByText('30 s')).toBeInTheDocument();
+  });
+});
+
 describe('S-22 Seite', () => {
   it('Rig, laufende Nacht, Trefferzahl, Standard nach Transitmitte; Projekt gesperrt', async () => {
     renderPage();
@@ -447,6 +466,7 @@ describe('S-22 Seite', () => {
     expect(within(exposure).getByText('Leicht defokussieren auf ≈ 5,5″ FWHM')).toBeInTheDocument();
     expect(within(exposure).getByText('≈ 12,7 σ (gut)')).toBeInTheDocument();
     expect(within(exposure).getByText('Ohne Defokus (im Fokus, 3″)')).toBeInTheDocument();
+    expect(within(exposure).queryByText(/Vorläufig/)).toBeNull();
     expect(
       within(exposure).getByText('7,5 s · ≈ 1.400 Aufnahmen · 11,2 mmag · Transit ≈ 11,4 σ'),
     ).toBeInTheDocument();

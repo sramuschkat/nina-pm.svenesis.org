@@ -84,19 +84,28 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
       })),
     });
 
-    // Bestätigte Filterradbelegung (FA-RIG-14): Platz mit Filter und bestätigtem NINA-Namen.
+    // Bestätigte Filterradbelegung (FA-RIG-14): Platz mit Filter und bestätigtem NINA-Namen. Für die
+    // Belichtungsempfehlung ersatzweise die Web-Filter unbestätigter Plätze (transit.md §6).
     const filters = await equipment.filters();
-    const rigFilters: RigFilter[] = rig.filterWheel
-      .filter((s) => s.filterId !== null && s.ninaFilterName !== null && s.ninaConfirmedAt !== null)
-      .map((s) => filters.find((f) => f.id === s.filterId))
-      .filter((f): f is NonNullable<typeof f> => f !== undefined)
-      .map((f) => ({
-        id: f.id,
-        shortName: f.shortName,
-        photometricBand: f.photometricBand,
-        filterType: f.filterType,
-        centerWavelengthNm: f.centerWavelengthNm === null ? null : Number(f.centerWavelengthNm),
-      }));
+    const toRigFilter = (f: (typeof filters)[number]): RigFilter => ({
+      id: f.id,
+      shortName: f.shortName,
+      photometricBand: f.photometricBand,
+      filterType: f.filterType,
+      centerWavelengthNm: f.centerWavelengthNm === null ? null : Number(f.centerWavelengthNm),
+    });
+    const slotFilters = (confirmed: boolean) =>
+      rig.filterWheel
+        .filter(
+          (s) =>
+            s.filterId !== null &&
+            (s.ninaFilterName !== null && s.ninaConfirmedAt !== null) === confirmed,
+        )
+        .map((s) => filters.find((f) => f.id === s.filterId))
+        .filter((f): f is NonNullable<typeof f> => f !== undefined)
+        .map(toRigFilter);
+    const rigFilters = slotFilters(true);
+    const unconfirmedRigFilters = slotFilters(false);
 
     const catalogs = (query.catalogs?.split(',') ?? [...EXO_CATALOG_NAMES]) as ExoCatalog[];
     const entries = await cachedExoCatalog(() => readExoCatalog(svc.db), svc.now().getTime());
@@ -115,6 +124,7 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
           ? null
           : Number(telescope.apertureMm),
       rigFilters,
+      unconfirmedRigFilters,
       exposureRig: exposureRig({
         telescope,
         camera,

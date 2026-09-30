@@ -17150,6 +17150,7 @@ export interface components {
                 /** @enum {string} */
                 status: "ok";
                 filterShortName: string;
+                filterConfirmed: boolean;
                 gain: number | null;
                 defocus: boolean;
                 /** @enum {string} */

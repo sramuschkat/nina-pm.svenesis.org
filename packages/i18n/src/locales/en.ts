@@ -3011,6 +3011,8 @@ export const en: Messages = {
       peak: 'Star peak',
       peakValue: '≈ {{pct}} %',
       grade: { good: 'good', marginal: 'marginal', weak: 'weak' },
+      filterUnconfirmed:
+        'Provisional: {{filter}} is not yet confirmed in the filter wheel (rig → filter wheel, after NINA first reports).',
       defocusTo: 'Defocus slightly to ≈ {{fwhm}}″ FWHM',
       limitedBy: {
         saturation: 'Limited by saturation: longer exposures would leave the linear range.',
@@ -3038,7 +3040,8 @@ export const en: Messages = {
         telescope: 'telescope aperture or focal length',
         camera_noise: 'camera read noise',
         camera_saturation: 'camera full well or e⁻/ADU',
-        filter: 'a suitable filter in the confirmed filter wheel',
+        filter:
+          'a suitable filter in the filter wheel (band Rc, Ic or lum, or broadband red from 590 nm centre wavelength)',
         magnitude: 'the star magnitude',
         depth: 'the transit depth',
       },

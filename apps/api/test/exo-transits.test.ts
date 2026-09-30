@@ -14,6 +14,7 @@ let s: Stack;
 let cookies: Record<string, string>;
 let rigId: string;
 let redId: string;
+let unconfirmedRigId: string;
 
 const HAT: ExoCatalogRow = {
   planet: 'HAT-P-17b',
@@ -85,6 +86,18 @@ beforeAll(async () => {
     { slots: [{ position: 1, filterId: red.id, ninaFilterName: 'Red' }] },
     now,
   );
+  // Zweites Rig: Filter am Platz, aber ohne NINA-Bestätigung (noch keine Meldung des Plugins)
+  const rig2 = await eq.createRig(
+    crypto.randomUUID(),
+    { ...rigInput(site.id, telescope.id, camera.id), name: 'Ohne NINA' },
+    now,
+  );
+  unconfirmedRigId = rig2.id;
+  await eq.putFilterWheel(
+    rig2.id,
+    { slots: [{ position: 1, filterId: red.id, ninaFilterName: null }] },
+    now,
+  );
   await replaceExoCatalog(s.pg.db, 'exoclock', [HAT], now);
   await replaceExoCatalog(
     s.pg.db,
@@ -152,11 +165,27 @@ describe('GET /api/web/v1/exo/transits (S-22)', () => {
       choice: { filterId: redId, shortName: 'RED', match: 'substitute' },
     });
     // Belichtung (FA-EXO-14a): Ersatzfilter RED, NINA-Standard-Gain, Spitze höchstens 50 %
-    expect(t.exposure).toMatchObject({ status: 'ok', filterShortName: 'RED', gain: null });
+    expect(t.exposure).toMatchObject({
+      status: 'ok',
+      filterShortName: 'RED',
+      filterConfirmed: true,
+      gain: null,
+    });
     if (t.exposure.status !== 'ok') throw new Error('Belichtung fehlt');
     expect(t.exposure.exposureS).toBeGreaterThan(0);
     expect(t.exposure.peakPct).toBeLessThanOrEqual(50);
     expect(t.exposure.framesInWindow).toBeGreaterThan(0);
+  });
+
+  it('unbestätigter Platz: keine Filterwahl (FA-EXO-08), Belichtung vorläufig mit dessen Filter', async () => {
+    const r = await get(`rigId=${unconfirmedRigId}&night=2026-10-10&catalogs=exoclock`);
+    const t = r.body.items[0];
+    expect(t?.filter.choice).toBeNull();
+    expect(t?.exposure).toMatchObject({
+      status: 'ok',
+      filterShortName: 'RED',
+      filterConfirmed: false,
+    });
   });
 
   it('nur NASA: eigener Eintrag mit geschätzter Öffnung („est“), Größenklasse aus dem Radius', async () => {
