@@ -601,6 +601,9 @@ export type DsoList = Schemas['DsoList'];
 export type ExoTransitView = Schemas['ExoTransitView'];
 export type ExoTransitList = Schemas['ExoTransitList'];
 export type ExoSearchSettings = Schemas['ExoSearchSettings'];
+export type ExoProjectDetail = Schemas['ExoProjectDetail'];
+export type ExoProjectCreated = Schemas['ExoProjectCreated'];
+export type ExoEphemerisView = Schemas['ExoEphemerisView'];
 export type DsoNight = Schemas['DsoNight'];
 export type CatalogStatus = Schemas['CatalogStatus'];
 export type DsoMarker = Schemas['DsoMarker'];
@@ -655,6 +658,21 @@ export const exoApi = {
         minAltDeg: String(q.minAltDeg),
       }).toString()}`,
     ),
+  /** Projekt aus einer Ergebniszeile anlegen bzw. das eigene öffnen (FA-EXO-15, OP-22). */
+  createProject: (body: {
+    id: string;
+    rigId: string;
+    catalog: string;
+    planet: string;
+    twilight: string;
+    minAltDeg: number;
+    exposureS: number | null;
+  }) => apiFetch<ExoProjectCreated>(`${V1}/exo/projects`, json('POST', body)),
+  /** Reiter *Exoplanet-Transit* (FA-EXO-16/17). */
+  project: (projectId: string) => apiFetch<ExoProjectDetail>(`${V1}/projects/${projectId}/exo`),
+  /** Neuere Katalog-Ephemeride übernehmen (FA-EXO-16). */
+  refreshEphemeris: (projectId: string) =>
+    apiFetch<ExoProjectDetail>(`${V1}/projects/${projectId}/ephemeris/refresh`, json('POST')),
 };
 
 /** Objektkatalog (AP-20, S-21, Katalogsuche im Editor, S-82). */

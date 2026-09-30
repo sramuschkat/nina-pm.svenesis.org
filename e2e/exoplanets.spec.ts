@@ -62,3 +62,41 @@ test('S-22 bei 768 und 2400 px ohne horizontales Scrollen', async ({ page }) => 
     expect(await overflow(page), `${String(width)} px`).toBeLessThanOrEqual(0);
   }
 });
+
+test('S-22 → Projekt (FA-EXO-15/17): anlegen, Reiter Exoplanet-Transit, erneut öffnen statt doppelt', async ({
+  page,
+}) => {
+  await page.setViewportSize(WIDE);
+  await testLogin(page, 'user1');
+  await page.goto('/planung/exoplaneten?night=2026-10-06');
+  await expect(page.getByRole('heading', { name: '3 Transits' })).toBeVisible();
+  const project = page.getByRole('button', {
+    name: 'Exoplaneten-Projekt für Qatar-1b anlegen bzw. öffnen',
+  });
+  await project.click();
+  await expect(page).toHaveURL(/\/projekte\/[0-9a-f-]{36}$/);
+  const url = page.url();
+  await expect(page.getByRole('tab', { name: 'Exoplanet-Transit' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('region', { name: 'Ephemeride' })).toContainText('Quelle ExoClock');
+  await expect(page.getByRole('region', { name: 'Kommende beobachtbare Transits' })).toBeVisible();
+  const result = await new AxeBuilder({ page }).analyze();
+  expect(
+    result.violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+      .map((v) => v.id),
+  ).toEqual([]);
+
+  // Eindeutig je Planet, Rig und Ersteller (OP-22): derselbe Knopf öffnet dasselbe Projekt.
+  await page.goto('/planung/exoplaneten?night=2026-10-06');
+  await project.click();
+  await expect(page).toHaveURL(url);
+
+  for (const width of [768, 2400]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole('region', { name: 'Ephemeride' })).toBeVisible();
+    expect(await overflow(page), `${String(width)} px`).toBeLessThanOrEqual(0);
+  }
+});

@@ -3,7 +3,8 @@
  * in der Reiterleiste, Standortzeit), *Saisondiagramm* (AP-24) und *Wetter* des Standorts (FA-WET-05,
  * AP-23) – Vorschau des Entwurfs, Koordinaten und Bedingungen live; Engine im Browser mit der
  * Nacht-Tabelle des Standorts (NT-02). Dazu *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
- * *Freigabe-Verlauf* (FA-BER-03), die der Editor unter *Bild & Notizen* zeigt.
+ * *Freigabe-Verlauf* (FA-BER-03), die der Editor unter *Bild & Notizen* zeigt. Exoplaneten-Projekte haben
+ * zusätzlich den Reiter *Exoplanet-Transit* (FA-EXO-17, AP-42) und öffnen mit ihm.
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
@@ -22,11 +23,12 @@ import { nightChartFromEngine } from '../../lib/night-chart-data';
 import { problemCode } from '../equipment/shared';
 import { useSiteWeather } from '../weather/WeatherPage';
 import { weatherHref } from '../weather/model';
+import { ExoTransitTab } from '../exo/ExoTransitTab';
 import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 
-type ChartTab = 'night' | 'season' | 'weather';
+type ChartTab = 'transit' | 'night' | 'season' | 'weather';
 
 /** Zeile des Freigabe-Verlaufs mit stabilem Schlüssel. */
 interface HistoryRow {
@@ -34,9 +36,18 @@ interface HistoryRow {
   key: string;
 }
 
-export function ChartArea({ draft, site }: { draft: ProjectDraft; site: SiteView | null }) {
+export function ChartArea({
+  draft,
+  site,
+  exo = null,
+}: {
+  draft: ProjectDraft;
+  site: SiteView | null;
+  /** Gespeichertes Exoplaneten-Projekt: Reiter *Exoplanet-Transit* (FA-EXO-17). */
+  exo?: { projectId: string; canUpdate: boolean } | null;
+}) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<ChartTab>('night');
+  const [tab, setTab] = useState<ChartTab>(exo ? 'transit' : 'night');
   const nights = useQuery({
     queryKey: ['site-nights', site?.id],
     queryFn: () => equipmentApi.nights(site?.id ?? '', 60),
@@ -91,6 +102,7 @@ export function ChartArea({ draft, site }: { draft: ProjectDraft; site: SiteView
         value={tab}
         onChange={setTab}
         tabs={[
+          ...(exo ? [{ key: 'transit' as const, label: t('projectEditor.tabs.transit') }] : []),
           { key: 'night', label: t('projectEditor.tabs.night') },
           { key: 'season', label: t('projectEditor.tabs.season') },
           { key: 'weather', label: t('projectEditor.tabs.weather') },
@@ -98,6 +110,11 @@ export function ChartArea({ draft, site }: { draft: ProjectDraft; site: SiteView
         toolbar={nightNav}
         panelClassName={styles.areaMiddle}
         panels={{
+          ...(exo
+            ? {
+                transit: <ExoTransitTab projectId={exo.projectId} canUpdate={exo.canUpdate} />,
+              }
+            : {}),
           night: ready ? (
             <NightTab draft={draft} site={site} night={night} nights={nights} />
           ) : (

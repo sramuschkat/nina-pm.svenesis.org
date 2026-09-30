@@ -10920,6 +10920,241 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/exo/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exoplaneten-Projekt aus der Transitsuche anlegen bzw. das eigene öffnen
+         * @description Aktion: `project.create` · FA-EXO-15, FA-EXO-16, FA-EXO-05, OP-22
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExoProjectCreate"];
+                };
+            };
+            responses: {
+                /** @description Eigenes Projekt existiert bereits */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectCreated"];
+                    };
+                };
+                /** @description Angelegt */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectCreated"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Rig oder Planet nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.in_use */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/exo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exoplanet-Transit eines Projekts: Ephemeride, Angebot, kommende Transits
+         * @description Aktion: `project.read` · FA-EXO-15, FA-EXO-16, FA-EXO-17
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Exoplaneten-Teil */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt nicht gefunden oder kein Exoplaneten-Projekt */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/ephemeris/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Neuere Katalog-Ephemeride übernehmen (frühere bleibt als Historie)
+         * @description Aktion: `project.update` · FA-EXO-16
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Exoplaneten-Teil nach der Übernahme */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt nicht gefunden oder Planet nicht mehr im Katalog */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nina/v1/bootstrap": {
         parameters: {
             query?: never;
@@ -17173,6 +17408,151 @@ export interface components {
             };
             myProjects: number;
         };
+        ExoProjectCreated: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            created: boolean;
+        };
+        ExoProjectCreate: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            rigId: string;
+            /** @enum {string} */
+            catalog: "exoclock" | "nasa" | "toi";
+            planet: string;
+            /**
+             * @default nautical
+             * @enum {string}
+             */
+            twilight: "astronomical" | "nautical" | "civil";
+            /** @default 30 */
+            minAltDeg: number;
+            /** @default null */
+            exposureS: number | null;
+        };
+        ExoProjectDetail: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            planet: string;
+            star: string;
+            /** @enum {string} */
+            catalog: "exoclock" | "nasa" | "toi";
+            baselineBeforeMin: number;
+            baselineAfterMin: number;
+            bufferSigma: number;
+            ephemeris: components["schemas"]["ExoEphemerisView"];
+            history: components["schemas"]["ExoEphemerisView"][];
+            catalogUpdate: components["schemas"]["ExoEphemerisUpdate"];
+            others: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                name: string;
+                createdByName: string;
+                rigName: string | null;
+            }[];
+            rig: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                apertureMm: number | null;
+            } | null;
+            site: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                timeZone: string;
+                latDeg: number;
+                lonDeg: number;
+            } | null;
+            minAltDeg: number;
+            /** @enum {string} */
+            twilight: "astronomical" | "nautical" | "civil";
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            fromNight: string | null;
+            nights: number;
+            upcoming: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                item: components["schemas"]["ExoTransitView"];
+            }[];
+        };
+        ExoEphemerisView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            t0BjdTdb: number;
+            t0SigmaD: number | null;
+            periodD: number;
+            periodSigmaD: number | null;
+            durationH: number | null;
+            durationEstimated: boolean;
+            timeSystemSource: string;
+            ocMin: number | null;
+            depthMmag: number | null;
+            rpOverRs: number | null;
+            source: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            sourceDate: string | null;
+            active: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        ExoEphemerisUpdate: {
+            /** @enum {string} */
+            catalog: "exoclock" | "nasa" | "toi";
+            t0BjdTdb: number;
+            t0SigmaD: number | null;
+            periodD: number;
+            periodSigmaD: number | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fetchedAt: string;
+            periodDeltaS: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            nextMidUtc: string;
+            nextMidShiftMin: number;
+        } | null;
         NinaBootstrap: {
             /** @enum {string} */
             apiVersion: "1";

@@ -957,6 +957,7 @@ export const de = {
     },
     tabs: {
       changes: 'Änderungsanträge',
+      transit: 'Exoplanet-Transit',
       night: 'Nachtdiagramm',
       season: 'Saisondiagramm',
       weather: 'Wetter',
@@ -2930,7 +2931,8 @@ export const de = {
     action: {
       framing: '{{name}} in der Sternkarte öffnen',
       project: 'Projekt',
-      projectLater: 'Exoplaneten-Projekt anlegen – folgt in Kürze',
+      projectCreate: 'Exoplaneten-Projekt für {{name}} anlegen bzw. öffnen',
+      projectFailed: 'Projekt konnte nicht angelegt werden.',
     },
     timeSystemUncertain:
       'Zeitsystem der Katalog-Epoche unsicher – das Fenster ist je Seite 10 min breiter.',
@@ -3054,6 +3056,35 @@ export const de = {
           'ein passender Filter im Filterrad (Band Rc, Ic oder lum bzw. Breitband-Rot ab 590 nm Zentralwellenlänge)',
         magnitude: 'die Sternhelligkeit',
         depth: 'die Transittiefe',
+      },
+    },
+    project: {
+      loading: 'Exoplaneten-Daten werden geladen …',
+      ephemerisTitle: 'Ephemeride',
+      ephemerisValue:
+        'T₀ = {{t0}} BJD_TDB · P = {{period}} d · Dauer {{duration}} h · Quelle {{source}}, Stand {{date}}',
+      updateOffer:
+        'Neuerer Katalogstand ({{source}}, {{date}}): {{period}}, nächste Mitte {{next}} ({{shift}} min gegenüber der gespeicherten Ephemeride).',
+      periodSame: 'P unverändert',
+      periodDelta: 'P {{delta}} s',
+      updateApply: 'Ephemeride übernehmen',
+      updateNoRight: 'Übernehmen kann der Ersteller im Entwurf bzw. ein Admin.',
+      history: 'Frühere Ephemeriden ({{count}})',
+      others: 'Weitere Projekte zu {{planet}}:',
+      otherBy: 'von {{name}}',
+      otherByOn: 'von {{name}}, {{rig}}',
+      noRig: 'Ohne Rig keine Vorhersage – bitte ein Rig wählen.',
+      upcomingTitle: 'Kommende beobachtbare Transits',
+      upcomingScope: '{{nights}} Nächte · {{rig}} · Mindesthöhe {{minAlt}}° · {{twilight}}',
+      upcomingNone: 'Keine beobachtbaren Transits in den nächsten {{nights}} Nächten.',
+      flipInWindow: 'Flip im Fenster',
+      col: {
+        night: 'Nacht',
+        mid: 'Mitte',
+        window: 'Beobachtungsfenster',
+        alt: 'Höhe Mitte',
+        moon: 'Mond',
+        meridian: 'Meridian',
       },
     },
     estimated: 'geschätzt',

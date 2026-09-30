@@ -227,6 +227,13 @@ export {
   type ThumbnailCandidate,
 } from './repositories/thumbnail';
 export {
+  ExoProjectRepository,
+  type EphemerisRow,
+  type ExoProjectOther,
+  type ExoProjectRow,
+} from './repositories/exo-project';
+export { type EphemerisInsert, type ExoProjectInsert } from './repositories/project';
+export {
   ChangeRequestRepository,
   type ChangeRequestRecord,
   type ChangeRequestRow,

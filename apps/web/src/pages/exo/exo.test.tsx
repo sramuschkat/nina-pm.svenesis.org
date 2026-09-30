@@ -11,6 +11,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ExoTransitList, ExoTransitView, Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { ExoplanetsPage } from './ExoplanetsPage';
+import { ExoTransitTab } from './ExoTransitTab';
 import { ExposureCard } from './ExposureCard';
 import {
   applyExoFilters,
@@ -31,6 +32,9 @@ const state = vi.hoisted(() => ({
   list: null as unknown,
   queries: [] as unknown[],
   saved: vi.fn(),
+  created: [] as unknown[],
+  exoProject: null as unknown,
+  refreshed: 0,
 }));
 
 vi.mock('../planning/skymap/sky-data', () => ({
@@ -102,6 +106,20 @@ vi.mock('../../api/client', () => ({
     transits: (q: unknown) => {
       state.queries.push(q);
       return Promise.resolve(state.list);
+    },
+    createProject: (body: unknown) => {
+      state.created.push(body);
+      return Promise.resolve({
+        projectId: '00000000-0000-4000-8000-000000000800',
+        created: true,
+      });
+    },
+    project: () => Promise.resolve(state.exoProject),
+    refreshEphemeris: () => {
+      state.refreshed += 1;
+      const d = state.exoProject as { ephemeris: unknown; catalogUpdate: unknown };
+      state.exoProject = { ...d, catalogUpdate: null, history: [d.ephemeris] };
+      return Promise.resolve(state.exoProject);
     },
   },
 }));
@@ -397,6 +415,7 @@ const renderPage = (path = '/planung/exoplaneten') =>
                 </>
               }
             />
+            <Route path="/projekte/:id" element={<Where />} />
           </Routes>
         </AuthProvider>
       </MemoryRouter>
@@ -420,8 +439,120 @@ describe('Belichtungskarte (transit.md §6)', () => {
   });
 });
 
+const ephemeris = {
+  id: ID(810),
+  t0BjdTdb: 2457168.694753,
+  t0SigmaD: 0.000052,
+  periodD: 10.33853486,
+  periodSigmaD: 4e-7,
+  durationH: 4.04,
+  durationEstimated: false,
+  timeSystemSource: 'bjd_tdb',
+  ocMin: 1,
+  depthMmag: 20.37,
+  rpOverRs: 0.1238,
+  source: 'exoclock',
+  sourceDate: '2026-09-30',
+  active: true,
+  createdAt: '2026-09-30T10:00:00Z',
+};
+const exoDetail = () => ({
+  projectId: ID(800),
+  planet: 'HAT-P-17b',
+  star: 'HAT-P-17',
+  catalog: 'exoclock',
+  baselineBeforeMin: 60,
+  baselineAfterMin: 60,
+  bufferSigma: 1,
+  ephemeris,
+  history: [],
+  catalogUpdate: {
+    catalog: 'exoclock',
+    t0BjdTdb: 2457168.696142,
+    t0SigmaD: 0.00005,
+    periodD: 10.33853486,
+    periodSigmaD: 4e-7,
+    fetchedAt: '2026-10-01T03:00:00Z',
+    periodDeltaS: 0,
+    nextMidUtc: '2026-10-11T06:47:26Z',
+    nextMidShiftMin: 2,
+  },
+  others: [{ projectId: ID(820), name: 'HAT-P-17b', createdByName: 'Bea', rigName: 'Rig B' }],
+  rig: { id: ID(500), name: 'Starfront GT81', apertureMm: 81 },
+  site: {
+    id: ID(600),
+    name: 'Starfront',
+    timeZone: 'America/Chicago',
+    latDeg: 31.5471,
+    lonDeg: -99.3823,
+  },
+  minAltDeg: 30,
+  twilight: 'nautical',
+  fromNight: '2026-09-30',
+  nights: 60,
+  upcoming: [{ night: '2026-10-10', item: transit() }],
+});
+
+const renderTab = (canUpdate = true) =>
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter>
+        <ExoTransitTab projectId={ID(800)} canUpdate={canUpdate} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
+describe('Reiter Exoplanet-Transit (FA-EXO-15…17)', () => {
+  beforeEach(() => {
+    state.exoProject = exoDetail();
+    state.refreshed = 0;
+  });
+
+  it('Ephemeride, Angebot mit Übernahme, Historie, fremde Projekte, kommende Transits', async () => {
+    renderTab();
+    const eph = await screen.findByRole('region', { name: 'Ephemeride' });
+    expect(eph).toHaveTextContent('P = 10,3385349 ± 0,00000040 d');
+    expect(eph).toHaveTextContent('Quelle ExoClock');
+    expect(within(eph).getByRole('status')).toHaveTextContent(
+      'nächste Mitte 11.10.2026 01:47 CDT (+2,0 min gegenüber der gespeicherten Ephemeride)',
+    );
+    expect(within(eph).getByRole('link', { name: 'HAT-P-17b' })).toHaveAttribute(
+      'href',
+      `/projekte/${ID(820)}`,
+    );
+    expect(eph).toHaveTextContent('(von Bea, Rig B)');
+    fireEvent.click(within(eph).getByRole('button', { name: 'Ephemeride übernehmen' }));
+    await waitFor(() => expect(state.refreshed).toBe(1));
+    expect(await within(eph).findByText('Frühere Ephemeriden (1)')).toBeInTheDocument();
+    expect(within(eph).queryByRole('status')).toBeNull();
+
+    const up = screen.getByRole('region', { name: 'Kommende beobachtbare Transits' });
+    expect(up).toHaveTextContent(
+      '60 Nächte · Starfront GT81 · Mindesthöhe 30° · Nautische Dämmerung',
+    );
+    expect(within(up).getAllByRole('row')).toHaveLength(2);
+    expect(up).toHaveTextContent('10./11.10.');
+    await expectNoSeriousA11y();
+  });
+
+  it('ohne Recht kein Übernehmen, ohne Rig keine Vorhersage', async () => {
+    state.exoProject = { ...exoDetail(), rig: null, site: null, upcoming: [] };
+    renderTab(false);
+    await screen.findByRole('region', { name: 'Ephemeride' });
+    expect(screen.queryByRole('button', { name: 'Ephemeride übernehmen' })).toBeNull();
+    expect(
+      screen.getByText('Übernehmen kann der Ersteller im Entwurf bzw. ein Admin.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Ohne Rig keine Vorhersage – bitte ein Rig wählen.'),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('S-22 Seite', () => {
-  it('Rig, laufende Nacht, Trefferzahl, Standard nach Transitmitte; Projekt gesperrt', async () => {
+  it('Rig, laufende Nacht, Trefferzahl, Standard nach Transitmitte', async () => {
     renderPage();
     expect(await screen.findByRole('heading', { name: '2 Transits' })).toBeInTheDocument();
     expect(state.queries[0]).toMatchObject({
@@ -435,9 +566,28 @@ describe('S-22 Seite', () => {
     // WASP-12 b (02:33Z) vor HAT-P-17 b (06:45Z)
     expect(rows[0]).toHaveTextContent('WASP-12b');
     expect(screen.getByText(/Katalogstand: ExoClock/)).toBeInTheDocument();
-    // *Projekt* (FA-EXO-15) folgt im zweiten Teil: je Zeile sichtbar, aber gesperrt.
-    for (const b of screen.getAllByRole('button', { name: 'Projekt', hidden: true }))
-      expect(b).toBeDisabled();
+  });
+
+  it('Projekt (FA-EXO-15): legt mit Suchfilter und Belichtung an und öffnet den Editor', async () => {
+    state.created = [];
+    renderPage();
+    await screen.findByRole('heading', { name: '2 Transits' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Exoplaneten-Projekt für HAT-P-17b anlegen bzw. öffnen' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('where')).toHaveTextContent(
+        '/projekte/00000000-0000-4000-8000-000000000800',
+      ),
+    );
+    expect(state.created[0]).toMatchObject({
+      rigId: ID(500),
+      catalog: 'exoclock',
+      planet: 'HAT-P-17b',
+      twilight: 'nautical',
+      minAltDeg: 30,
+      exposureS: 30,
+    });
   });
 
   it('Zeile aufklappen: Zeitleiste, Sternfeld, Himmelsposition, Zieldetails inline', async () => {

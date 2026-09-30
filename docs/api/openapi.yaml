@@ -10675,6 +10675,322 @@ components:
         - filter
         - exposure
         - myProjects
+    ExoProjectCreated:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        created:
+          type: boolean
+      required:
+        - projectId
+        - created
+    ExoProjectCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        rigId:
+          type: string
+          format: uuid
+          description: UUID
+        catalog:
+          type: string
+          enum:
+            - exoclock
+            - nasa
+            - toi
+        planet:
+          type: string
+          minLength: 1
+          maxLength: 120
+        twilight:
+          type: string
+          enum:
+            - astronomical
+            - nautical
+            - civil
+          default: nautical
+        minAltDeg:
+          type: number
+          minimum: 0
+          maximum: 90
+          default: 30
+        exposureS:
+          type:
+            - number
+            - "null"
+          exclusiveMinimum: 0
+          maximum: 3600
+          default: null
+      required:
+        - id
+        - rigId
+        - catalog
+        - planet
+      additionalProperties: false
+    ExoProjectDetail:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        planet:
+          type: string
+        star:
+          type: string
+        catalog:
+          type: string
+          enum:
+            - exoclock
+            - nasa
+            - toi
+        baselineBeforeMin:
+          type: integer
+        baselineAfterMin:
+          type: integer
+        bufferSigma:
+          type: number
+        ephemeris:
+          $ref: "#/components/schemas/ExoEphemerisView"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExoEphemerisView"
+        catalogUpdate:
+          $ref: "#/components/schemas/ExoEphemerisUpdate"
+        others:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+                description: UUID
+              name:
+                type: string
+              createdByName:
+                type: string
+              rigName:
+                type:
+                  - string
+                  - "null"
+            required:
+              - projectId
+              - name
+              - createdByName
+              - rigName
+        rig:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+            apertureMm:
+              type:
+                - number
+                - "null"
+          required:
+            - id
+            - name
+            - apertureMm
+        site:
+          type:
+            - object
+            - "null"
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+            timeZone:
+              type: string
+            latDeg:
+              type: number
+            lonDeg:
+              type: number
+          required:
+            - id
+            - name
+            - timeZone
+            - latDeg
+            - lonDeg
+        minAltDeg:
+          type: number
+        twilight:
+          type: string
+          enum:
+            - astronomical
+            - nautical
+            - civil
+        fromNight:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        nights:
+          type: integer
+        upcoming:
+          type: array
+          items:
+            type: object
+            properties:
+              night:
+                type: string
+                format: date
+                example: 2026-09-18
+              item:
+                $ref: "#/components/schemas/ExoTransitView"
+            required:
+              - night
+              - item
+      required:
+        - projectId
+        - planet
+        - star
+        - catalog
+        - baselineBeforeMin
+        - baselineAfterMin
+        - bufferSigma
+        - ephemeris
+        - history
+        - catalogUpdate
+        - others
+        - rig
+        - site
+        - minAltDeg
+        - twilight
+        - fromNight
+        - nights
+        - upcoming
+    ExoEphemerisView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        t0BjdTdb:
+          type: number
+        t0SigmaD:
+          type:
+            - number
+            - "null"
+        periodD:
+          type: number
+        periodSigmaD:
+          type:
+            - number
+            - "null"
+        durationH:
+          type:
+            - number
+            - "null"
+        durationEstimated:
+          type: boolean
+        timeSystemSource:
+          type: string
+        ocMin:
+          type:
+            - number
+            - "null"
+        depthMmag:
+          type:
+            - number
+            - "null"
+        rpOverRs:
+          type:
+            - number
+            - "null"
+        source:
+          type: string
+        sourceDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: 2026-09-18
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - t0BjdTdb
+        - t0SigmaD
+        - periodD
+        - periodSigmaD
+        - durationH
+        - durationEstimated
+        - timeSystemSource
+        - ocMin
+        - depthMmag
+        - rpOverRs
+        - source
+        - sourceDate
+        - active
+        - createdAt
+    ExoEphemerisUpdate:
+      type:
+        - object
+        - "null"
+      properties:
+        catalog:
+          type: string
+          enum:
+            - exoclock
+            - nasa
+            - toi
+        t0BjdTdb:
+          type: number
+        t0SigmaD:
+          type:
+            - number
+            - "null"
+        periodD:
+          type: number
+        periodSigmaD:
+          type:
+            - number
+            - "null"
+        fetchedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        periodDeltaS:
+          type: number
+        nextMidUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nextMidShiftMin:
+          type: number
+      required:
+        - catalog
+        - t0BjdTdb
+        - t0SigmaD
+        - periodD
+        - periodSigmaD
+        - fetchedAt
+        - periodDeltaS
+        - nextMidUtc
+        - nextMidShiftMin
     NinaBootstrap:
       type: object
       properties:
@@ -22697,6 +23013,155 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/exo/projects:
+    post:
+      summary: Exoplaneten-Projekt aus der Transitsuche anlegen bzw. das eigene öffnen
+      tags:
+        - exo
+      description: "Aktion: `project.create` · FA-EXO-15, FA-EXO-16, FA-EXO-05, OP-22"
+      x-npm-action: project.create
+      x-npm-requirements:
+        - FA-EXO-15
+        - FA-EXO-16
+        - FA-EXO-05
+        - OP-22
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExoProjectCreate"
+      responses:
+        "200":
+          description: Eigenes Projekt existiert bereits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectCreated"
+        "201":
+          description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Rig oder Planet nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: resource.in_use
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/exo:
+    get:
+      summary: "Exoplanet-Transit eines Projekts: Ephemeride, Angebot, kommende Transits"
+      tags:
+        - exo
+      description: "Aktion: `project.read` · FA-EXO-15, FA-EXO-16, FA-EXO-17"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-EXO-15
+        - FA-EXO-16
+        - FA-EXO-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Exoplaneten-Teil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt nicht gefunden oder kein Exoplaneten-Projekt
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/ephemeris/refresh:
+    post:
+      summary: Neuere Katalog-Ephemeride übernehmen (frühere bleibt als Historie)
+      tags:
+        - exo
+      description: "Aktion: `project.update` · FA-EXO-16"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-EXO-16
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Exoplaneten-Teil nach der Übernahme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt nicht gefunden oder Planet nicht mehr im Katalog
           content:
             application/problem+json:
               schema:

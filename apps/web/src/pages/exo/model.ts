@@ -3,9 +3,21 @@
  * Recherche-Links (FA-EXO-09) und die schematische Lichtkurve (FA-EXO-10). Die Filter gelten in der Oberfläche; die Transits der Nacht
  * rechnet der Server einmal je Rig, Nacht, Katalogauswahl und Mindesthöhe.
  */
+import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import type { ExoSearchSettings, ExoTransitView } from '../../api/client';
 
 export const EXO_PATH = '/planung/exoplaneten';
+
+/** Anzeigenamen der Kataloge (Eigennamen, nicht übersetzt). */
+export const EXO_CATALOG_LABELS: Record<string, string> = {
+  exoclock: 'ExoClock',
+  nasa: 'NASA',
+  toi: 'TESS TOI',
+};
+
+/** Uhrzeit in Standortzeit mit Kürzel (NT-03), `–` ohne Wert. */
+export const siteClock = (timeZone: string | null) => (iso: string | null) =>
+  iso && timeZone ? `${formatZonedTime(iso, timeZone)} ${formatTzAbbr(iso, timeZone)}` : '–';
 
 /** Vorgaben der Filter (FA-EXO-05; ExoClock ist der Standardkatalog, FA-EXO-02). */
 export { EXO_SEARCH_DEFAULTS } from '@nina-pm/shared';
