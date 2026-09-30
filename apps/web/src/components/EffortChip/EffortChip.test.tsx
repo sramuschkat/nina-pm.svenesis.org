@@ -43,6 +43,15 @@ describe('EffortChip (FA-PRJ-23)', () => {
     expect(chip).toHaveTextContent('ca. 4 Nächte · wird aktualisiert');
   });
 
+  it('Tabellengröße sm: veraltet nur als Symbol, Text im Tooltip und im zugänglichen Namen', () => {
+    render(<EffortChip effort={{ ...base, tag: 'multi_night', nights: 4 }} stale size="sm" />);
+    const chip = screen.getByText('ca. 4 Nächte');
+    expect(chip).toHaveTextContent(/^ca\. 4 Nächte$/);
+    expect(chip.getAttribute('title')).toMatch(/^wird aktualisiert\n/);
+    expect(chip).toHaveAccessibleName(/ca\. 4 Nächte · wird aktualisiert/);
+    expect(chip.querySelector('svg')).not.toBeNull();
+  });
+
   it('nicht machbar rot mit Anteil und begrenzendem Faktor', () => {
     render(
       <EffortChip

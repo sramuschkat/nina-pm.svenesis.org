@@ -305,15 +305,23 @@
   align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  max-width: 22rem;
 }
+/* Kommentar der Freigabe trägt nichts zur Spaltenbreite bei (width: 0 + min-width: 100 %): so breit wie das
+   Status-Badge, Rest mit „…“, voller Text im Tooltip und in der Detailzeile. Vorher bis 22 rem breit – die
+   Tabelle blendete dann andere Spalten aus (30.09.2026). */
 .decisionNote {
-  max-width: 100%;
+  width: 0;
+  min-width: 100%;
   overflow: hidden;
   color: var(--npm-text-light);
   font-size: var(--npm-font-small);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.decisionFull {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: pre-wrap;
 }
 .groupSelect {
   display: inline-flex;

@@ -173,6 +173,55 @@ describe('DataTable', () => {
     expect(screen.queryByRole('term')).not.toBeInTheDocument();
   });
 
+  it('renderDetail mit null: nur Zeilen mit eigenem Inhalt aufklappbar (30.09.2026)', () => {
+    render(
+      <DataTable
+        columns={COLUMNS}
+        rows={ROWS}
+        rowKey={(r) => r.id}
+        label="Objekte"
+        rowLabel={(r) => r.name}
+        renderDetail={(r) => (r.id === 'b' ? <p>Kommentar {r.name}</p> : null)}
+      />,
+    );
+    expect(screen.getAllByRole('button', { name: /^Weitere Angaben zu/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu M 31' }));
+    expect(screen.getByText('Kommentar M 31')).toBeInTheDocument();
+  });
+
+  it('neue Zeilen: Spalten wieder einblenden; mit stableColumns bleiben sie ausgeblendet', () => {
+    // Zeilen mit Notiz „breit“ machen jede Spalte 200 px breit, sonst 140 px; Container 450 px.
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(450);
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.tagName !== 'TABLE') return 450;
+      const cols = this.querySelectorAll('thead th:not([class*=detailCol])').length;
+      return cols * ((this.textContent ?? '').includes('breit') ? 200 : 140);
+    });
+    const wide = [...ROWS, { id: 'e', name: 'IC 1396', mag: 3.5, rig: 'A', note: 'breit' }];
+    const narrow = ROWS.slice(0, 3);
+    const table = (rows: Row[], stable: boolean) => (
+      <DataTable
+        columns={COLUMNS}
+        rows={rows}
+        rowKey={(r) => r.id}
+        label="Objekte"
+        rowLabel={(r) => r.name}
+        stableColumns={stable}
+      />
+    );
+    const { rerender, unmount } = render(table(wide, false));
+    expect(screen.queryByRole('columnheader', { name: 'Notiz' })).not.toBeInTheDocument();
+    rerender(table(narrow, false));
+    expect(screen.getByRole('columnheader', { name: 'Notiz' })).toBeInTheDocument();
+    unmount();
+    const stable = render(table(wide, true));
+    expect(screen.queryByRole('columnheader', { name: 'Notiz' })).not.toBeInTheDocument();
+    stable.rerender(table(narrow, true));
+    expect(screen.queryByRole('columnheader', { name: 'Notiz' })).not.toBeInTheDocument();
+  });
+
   it('Tastatur: Spaltenkopf und Detailzeile mit Tab und Enter/Leertaste', async () => {
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(450);
     vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
