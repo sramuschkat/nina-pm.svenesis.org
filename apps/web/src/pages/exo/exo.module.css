@@ -1,0 +1,246 @@
+/* S-22 Exoplaneten (AP-42): Farben, Abstände und Schrift nur über Tokens (rules/ui.md). */
+.muted {
+  composes: muted from '../admin/admin.module.css';
+}
+
+.searchButton {
+  composes: buttonPrimary from '../admin/admin.module.css';
+  margin: var(--npm-space-2) var(--npm-space-4);
+}
+
+.catalogs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.priority {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.prio_alert {
+  color: var(--npm-prio-alert);
+}
+.prio_high {
+  color: var(--npm-prio-high);
+}
+.prio_medium {
+  color: var(--npm-prio-medium);
+}
+.prio_low {
+  color: var(--npm-text-light);
+}
+
+.planetButton {
+  white-space: nowrap;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--npm-link);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.planetButton:hover {
+  text-decoration: underline;
+}
+.planetButton[aria-pressed='true'] {
+  color: var(--npm-text);
+}
+
+.flip {
+  vertical-align: text-bottom;
+  margin-left: var(--npm-space-1);
+  color: var(--npm-chart-meridian);
+}
+
+.fit_ok {
+  color: var(--npm-success);
+}
+.fit_close {
+  color: var(--npm-warning);
+}
+.fit_insufficient {
+  color: var(--npm-danger);
+}
+
+.links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--npm-space-2);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+.iconLink {
+  composes: iconButton from '../catalog/catalog.module.css';
+}
+.projectButton {
+  composes: button from '../admin/admin.module.css';
+}
+
+.detail {
+  composes: panel from '../admin/admin.module.css';
+  gap: var(--npm-space-3);
+}
+.warn {
+  margin: 0;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border-radius: var(--npm-radius);
+  background: var(--npm-warning-bg);
+  color: var(--npm-warning);
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+.timeline {
+  min-width: 0;
+}
+.bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 240px) minmax(0, 1fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .timelineRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bottom {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .tabs {
+    grid-column: 1 / -1;
+  }
+}
+
+.tabs {
+  min-width: 0;
+}
+.tabBody {
+  padding-top: var(--npm-space-3);
+}
+.tabBody h3 {
+  margin: var(--npm-space-3) 0 var(--npm-space-1);
+  font-size: var(--npm-font-h3);
+}
+.facts {
+  display: grid;
+  gap: var(--npm-space-2);
+  margin: 0;
+}
+.facts div {
+  display: grid;
+  grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  gap: var(--npm-space-3);
+}
+.facts dt {
+  color: var(--npm-text-light);
+}
+.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.explain {
+  display: block;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+
+.lightCurve,
+.starField,
+.skyPosition {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+  font-size: var(--npm-font-small);
+}
+.lightCurve,
+.skyPosition {
+  max-width: 360px;
+}
+.lightCurve svg,
+.skyPosition svg {
+  width: 100%;
+  height: auto;
+}
+.lcTransit {
+  fill: var(--npm-chart-recommended);
+  opacity: 0.25;
+}
+.lcCurve {
+  fill: none;
+  stroke: var(--npm-chart-curve);
+  stroke-width: 2;
+}
+.lcLabel {
+  fill: var(--npm-text-light);
+  font-size: 10px;
+}
+.skyName {
+  fill: var(--npm-chart-label);
+  font-size: 10px;
+}
+
+.starFieldFrame {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1;
+  border-radius: var(--npm-radius);
+  overflow: hidden;
+  background: var(--npm-chart-sky-night);
+}
+.starFieldFrame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.starFieldFrame p {
+  margin: 0;
+  padding: var(--npm-space-3);
+}
+.starFieldMark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.starFieldMark circle {
+  fill: none;
+  stroke: var(--npm-chart-target);
+  stroke-width: 0.8;
+}
+
+.skyDisc {
+  fill: var(--npm-chart-sky-night);
+  stroke: var(--npm-chart-frame);
+}
+.skyLine {
+  fill: none;
+  stroke: var(--npm-chart-axis);
+  stroke-width: 0.8;
+}
+.skyStar {
+  fill: var(--npm-chart-label);
+}
+.skyTarget {
+  fill: none;
+  stroke: var(--npm-chart-target);
+  stroke-width: 2;
+}

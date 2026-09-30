@@ -22,7 +22,7 @@ import { catalogOfInput, exoCatalogTick } from '../src/worker/catalog';
 import type { JobRunnerDeps } from '../src/worker/jobs';
 
 const fixture = (name: string) =>
-  readFileSync(fileURLToPath(new URL(`./fixtures/exo/${name}`, import.meta.url)), 'utf8');
+  readFileSync(fileURLToPath(new URL(`../src/exo/samples/${name}`, import.meta.url)), 'utf8');
 const EXOCLOCK = fixture('exoclock-sample.json');
 const NASA = fixture('nasa-sample.csv');
 const TOI = fixture('toi-sample.csv');

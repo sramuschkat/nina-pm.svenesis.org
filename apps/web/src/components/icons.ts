@@ -32,9 +32,10 @@ import {
   Crown,
   Download,
   ExternalLink,
+  FlipHorizontal2,
   FolderKanban,
-  LayoutDashboard,
   GripVertical,
+  LayoutDashboard,
   Loader,
   Lock,
   LockOpen,
@@ -171,6 +172,8 @@ export const uiIcons = {
   /** Seitenbereich rechts ein-/ausklappen (Sternkarte, AP-26i). */
   panelClose: PanelRightClose,
   panelOpen: PanelRightOpen,
+  /** Meridian-Flip im Transitfenster (Transitsuche S-22, AP-42). */
+  meridianFlip: FlipHorizontal2,
 } as const;
 
 /** Gruppen von „Ereignisse der Nacht“ (Heute Nacht; Vorlage ⌁ ✧ ✺ ◑). */

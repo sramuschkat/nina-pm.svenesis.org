@@ -1611,7 +1611,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    key: "ui.theme" | "ui.density" | "ui.navCollapsed" | "project.defaultConditions";
+                    key: "ui.theme" | "ui.density" | "ui.navCollapsed" | "project.defaultConditions" | "exo.search";
                 };
                 cookie?: never;
             };
@@ -10837,6 +10837,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/exo/transits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Transitsuche je Rig und Nacht (S-22)
+         * @description Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, S-22
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUID */
+                    rigId: string;
+                    night?: string;
+                    catalogs?: string;
+                    minAltDeg?: number | null;
+                    twilight?: "astronomical" | "nautical" | "civil";
+                    k?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Transits der Nacht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoTransitList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Rig nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nina/v1/bootstrap": {
         parameters: {
             query?: never;
@@ -12981,6 +13064,20 @@ export interface components {
                 moonMaxAltDeg: number;
                 moonMaxIlluminationPct: number;
             };
+            "exo.search"?: components["schemas"]["ExoSearchSettings"];
+        };
+        ExoSearchSettings: {
+            catalogs: ("exoclock" | "nasa" | "toi")[];
+            /** @enum {string} */
+            priority: "all" | "alert" | "high" | "medium";
+            maxMag: number;
+            minDepthMmag: number;
+            minAltDeg: number;
+            observableOnly: boolean;
+            startEndDark: boolean;
+            startEndAboveMinAlt: boolean;
+            showFlip: boolean;
+            hideFlip: boolean;
         };
         PreferenceValue: {
             value?: unknown;
@@ -16871,6 +16968,178 @@ export interface components {
                     finishedAt: string | null;
                 } | null;
             }[];
+        };
+        ExoTransitList: {
+            rig: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                apertureMm: number | null;
+            };
+            site: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                id: string;
+                name: string;
+                timeZone: string;
+                latDeg: number;
+                lonDeg: number;
+            };
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            currentNight: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            nightStartUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            nightEndUtc: string;
+            minAltDeg: number;
+            /** @enum {string} */
+            twilight: "astronomical" | "nautical" | "civil";
+            catalogs: {
+                /** @enum {string} */
+                catalog: "exoclock" | "nasa" | "toi";
+                rows: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                fetchedAt: string | null;
+            }[];
+            items: components["schemas"]["ExoTransitView"][];
+        };
+        ExoTransitView: {
+            key: string;
+            planet: string;
+            star: string;
+            /** @enum {string} */
+            catalog: "exoclock" | "nasa" | "toi";
+            alsoIn: ("exoclock" | "nasa" | "toi")[];
+            disposition: string | null;
+            /** @enum {string|null} */
+            priority: "alert" | "high" | "medium" | "low" | null;
+            ticId: string | null;
+            raDeg: number;
+            decDeg: number;
+            /** @enum {string|null} */
+            sizeClass: "terrestrial" | "super_earth" | "sub_neptune" | "neptune" | "gas_giant" | null;
+            radiusRe: number | null;
+            distancePc: number | null;
+            teffK: number | null;
+            /** @enum {string|null} */
+            spectralClass: "O" | "B" | "A" | "F" | "G" | "K" | "M" | null;
+            mag: number | null;
+            magBand: string | null;
+            depthMmag: number | null;
+            depthEstimated: boolean;
+            durationH: number;
+            durationEstimated: boolean;
+            periodD: number;
+            rpOverRs: number | null;
+            aOverRs: number | null;
+            inclinationDeg: number | null;
+            ocMin: number | null;
+            timeSystemSource: string;
+            t0BjdTdb: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fetchedAt: string;
+            transit: {
+                n: number;
+                tcBjdTdb: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                tcUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                ingressUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                egressUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowStartUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowEndUtc: string;
+                sigmaS: number;
+                bufferS: number;
+                baselineBeforeMin: number;
+                baselineAfterMin: number;
+                ocAppliedMin: number | null;
+                timeSystemUncertain: boolean;
+                /** @enum {string} */
+                ephemerisAge: "ok" | "uncertain" | "stale";
+                observable: boolean;
+                usableFraction: number;
+                fullyObservable: boolean;
+                startDark: boolean;
+                endDark: boolean;
+                startAboveMinAlt: boolean;
+                endAboveMinAlt: boolean;
+                baselineInTwilight: boolean;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                meridianUtc: string | null;
+                meridianInWindow: boolean;
+                altAtIngressDeg: number;
+                altAtCenterDeg: number;
+                altAtEgressDeg: number;
+                moonSepDeg: number;
+                moonIllumPct: number;
+            };
+            aperture: {
+                requiredMm: number;
+                estimated: boolean;
+                /** @enum {string|null} */
+                fit: "ok" | "close" | "insufficient" | null;
+            } | null;
+            filter: {
+                /** @enum {string} */
+                band: "Rc" | "Ic" | "lum";
+                choice: {
+                    /**
+                     * Format: uuid
+                     * @description UUID
+                     */
+                    filterId: string;
+                    shortName: string;
+                    /** @enum {string} */
+                    match: "same_band" | "substitute" | "lum";
+                } | null;
+            };
+            myProjects: number;
         };
         NinaBootstrap: {
             /** @enum {string} */

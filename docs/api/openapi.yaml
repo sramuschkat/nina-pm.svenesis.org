@@ -1010,6 +1010,61 @@ components:
             - moonMaxAltDeg
             - moonMaxIlluminationPct
           additionalProperties: false
+        exo.search:
+          $ref: "#/components/schemas/ExoSearchSettings"
+    ExoSearchSettings:
+      type: object
+      properties:
+        catalogs:
+          type: array
+          items:
+            type: string
+            enum:
+              - exoclock
+              - nasa
+              - toi
+          minItems: 1
+        priority:
+          type: string
+          enum:
+            - all
+            - alert
+            - high
+            - medium
+        maxMag:
+          type: number
+          minimum: 5
+          maximum: 20
+        minDepthMmag:
+          type: number
+          minimum: 0
+          maximum: 100
+        minAltDeg:
+          type: number
+          minimum: 0
+          maximum: 90
+        observableOnly:
+          type: boolean
+        startEndDark:
+          type: boolean
+        startEndAboveMinAlt:
+          type: boolean
+        showFlip:
+          type: boolean
+        hideFlip:
+          type: boolean
+      required:
+        - catalogs
+        - priority
+        - maxMag
+        - minDepthMmag
+        - minAltDeg
+        - observableOnly
+        - startEndDark
+        - startEndAboveMinAlt
+        - showFlip
+        - hideFlip
+      additionalProperties: false
     PreferenceValue:
       type: object
       properties:
@@ -10078,6 +10133,436 @@ components:
       required:
         - dso
         - exo
+    ExoTransitList:
+      type: object
+      properties:
+        rig:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+            apertureMm:
+              type:
+                - number
+                - "null"
+          required:
+            - id
+            - name
+            - apertureMm
+        site:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: UUID
+            name:
+              type: string
+            timeZone:
+              type: string
+            latDeg:
+              type: number
+            lonDeg:
+              type: number
+          required:
+            - id
+            - name
+            - timeZone
+            - latDeg
+            - lonDeg
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        currentNight:
+          type: string
+          format: date
+          example: 2026-09-18
+        nightStartUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        nightEndUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        minAltDeg:
+          type: number
+        twilight:
+          type: string
+          enum:
+            - astronomical
+            - nautical
+            - civil
+        catalogs:
+          type: array
+          items:
+            type: object
+            properties:
+              catalog:
+                type: string
+                enum:
+                  - exoclock
+                  - nasa
+                  - toi
+              rows:
+                type: integer
+              fetchedAt:
+                type:
+                  - string
+                  - "null"
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - catalog
+              - rows
+              - fetchedAt
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExoTransitView"
+      required:
+        - rig
+        - site
+        - night
+        - currentNight
+        - nightStartUtc
+        - nightEndUtc
+        - minAltDeg
+        - twilight
+        - catalogs
+        - items
+    ExoTransitView:
+      type: object
+      properties:
+        key:
+          type: string
+        planet:
+          type: string
+        star:
+          type: string
+        catalog:
+          type: string
+          enum:
+            - exoclock
+            - nasa
+            - toi
+        alsoIn:
+          type: array
+          items:
+            type: string
+            enum:
+              - exoclock
+              - nasa
+              - toi
+        disposition:
+          type:
+            - string
+            - "null"
+        priority:
+          type:
+            - string
+            - "null"
+          enum:
+            - alert
+            - high
+            - medium
+            - low
+            - null
+        ticId:
+          type:
+            - string
+            - "null"
+        raDeg:
+          type: number
+        decDeg:
+          type: number
+        sizeClass:
+          type:
+            - string
+            - "null"
+          enum:
+            - terrestrial
+            - super_earth
+            - sub_neptune
+            - neptune
+            - gas_giant
+            - null
+        radiusRe:
+          type:
+            - number
+            - "null"
+        distancePc:
+          type:
+            - number
+            - "null"
+        teffK:
+          type:
+            - number
+            - "null"
+        spectralClass:
+          type:
+            - string
+            - "null"
+          enum:
+            - O
+            - B
+            - A
+            - F
+            - G
+            - K
+            - M
+            - null
+        mag:
+          type:
+            - number
+            - "null"
+        magBand:
+          type:
+            - string
+            - "null"
+        depthMmag:
+          type:
+            - number
+            - "null"
+        depthEstimated:
+          type: boolean
+        durationH:
+          type: number
+        durationEstimated:
+          type: boolean
+        periodD:
+          type: number
+        rpOverRs:
+          type:
+            - number
+            - "null"
+        aOverRs:
+          type:
+            - number
+            - "null"
+        inclinationDeg:
+          type:
+            - number
+            - "null"
+        ocMin:
+          type:
+            - number
+            - "null"
+        timeSystemSource:
+          type: string
+        t0BjdTdb:
+          type: number
+        fetchedAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        transit:
+          type: object
+          properties:
+            n:
+              type: integer
+            tcBjdTdb:
+              type: number
+            tcUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            ingressUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            egressUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            windowStartUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            windowEndUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            sigmaS:
+              type: number
+            bufferS:
+              type: number
+            baselineBeforeMin:
+              type: number
+            baselineAfterMin:
+              type: number
+            ocAppliedMin:
+              type:
+                - number
+                - "null"
+            timeSystemUncertain:
+              type: boolean
+            ephemerisAge:
+              type: string
+              enum:
+                - ok
+                - uncertain
+                - stale
+            observable:
+              type: boolean
+            usableFraction:
+              type: number
+            fullyObservable:
+              type: boolean
+            startDark:
+              type: boolean
+            endDark:
+              type: boolean
+            startAboveMinAlt:
+              type: boolean
+            endAboveMinAlt:
+              type: boolean
+            baselineInTwilight:
+              type: boolean
+            meridianUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            meridianInWindow:
+              type: boolean
+            altAtIngressDeg:
+              type: number
+            altAtCenterDeg:
+              type: number
+            altAtEgressDeg:
+              type: number
+            moonSepDeg:
+              type: number
+            moonIllumPct:
+              type: number
+          required:
+            - n
+            - tcBjdTdb
+            - tcUtc
+            - ingressUtc
+            - egressUtc
+            - windowStartUtc
+            - windowEndUtc
+            - sigmaS
+            - bufferS
+            - baselineBeforeMin
+            - baselineAfterMin
+            - ocAppliedMin
+            - timeSystemUncertain
+            - ephemerisAge
+            - observable
+            - usableFraction
+            - fullyObservable
+            - startDark
+            - endDark
+            - startAboveMinAlt
+            - endAboveMinAlt
+            - baselineInTwilight
+            - meridianUtc
+            - meridianInWindow
+            - altAtIngressDeg
+            - altAtCenterDeg
+            - altAtEgressDeg
+            - moonSepDeg
+            - moonIllumPct
+        aperture:
+          type:
+            - object
+            - "null"
+          properties:
+            requiredMm:
+              type: number
+            estimated:
+              type: boolean
+            fit:
+              type:
+                - string
+                - "null"
+              enum:
+                - ok
+                - close
+                - insufficient
+                - null
+          required:
+            - requiredMm
+            - estimated
+            - fit
+        filter:
+          type: object
+          properties:
+            band:
+              type: string
+              enum:
+                - Rc
+                - Ic
+                - lum
+            choice:
+              type:
+                - object
+                - "null"
+              properties:
+                filterId:
+                  type: string
+                  format: uuid
+                  description: UUID
+                shortName:
+                  type: string
+                match:
+                  type: string
+                  enum:
+                    - same_band
+                    - substitute
+                    - lum
+              required:
+                - filterId
+                - shortName
+                - match
+          required:
+            - band
+            - choice
+        myProjects:
+          type: integer
+      required:
+        - key
+        - planet
+        - star
+        - catalog
+        - alsoIn
+        - disposition
+        - priority
+        - ticId
+        - raDeg
+        - decDeg
+        - sizeClass
+        - radiusRe
+        - distancePc
+        - teffK
+        - spectralClass
+        - mag
+        - magBand
+        - depthMmag
+        - depthEstimated
+        - durationH
+        - durationEstimated
+        - periodD
+        - rpOverRs
+        - aOverRs
+        - inclinationDeg
+        - ocMin
+        - timeSystemSource
+        - t0BjdTdb
+        - fetchedAt
+        - transit
+        - aperture
+        - filter
+        - myProjects
     NinaBootstrap:
       type: object
       properties:
@@ -15023,6 +15508,7 @@ paths:
               - ui.density
               - ui.navCollapsed
               - project.defaultConditions
+              - exo.search
           required: true
           name: key
           in: path
@@ -21997,6 +22483,107 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "422":
           description: Unbekannter Katalog
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/exo/transits:
+    get:
+      summary: Transitsuche je Rig und Nacht (S-22)
+      tags:
+        - exo
+      description: "Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, S-22"
+      x-npm-action: catalog.read
+      x-npm-requirements:
+        - FA-EXO-01
+        - FA-EXO-02
+        - FA-EXO-03
+        - FA-EXO-05
+        - FA-EXO-06
+        - FA-EXO-07
+        - FA-EXO-08
+        - FA-EXO-10
+        - FA-EXO-11
+        - FA-EXO-12
+        - FA-EXO-13
+        - S-22
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: night
+          in: query
+        - schema:
+            type: string
+            pattern: ^(exoclock|nasa|toi)(,(exoclock|nasa|toi))*$
+          required: false
+          name: catalogs
+          in: query
+        - schema:
+            type:
+              - number
+              - "null"
+            minimum: 0
+            maximum: 90
+            default: 30
+          required: false
+          name: minAltDeg
+          in: query
+        - schema:
+            type: string
+            enum:
+              - astronomical
+              - nautical
+              - civil
+            default: nautical
+          required: false
+          name: twilight
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 3
+            default: 1
+          required: false
+          name: k
+          in: query
+      responses:
+        "200":
+          description: Transits der Nacht
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoTransitList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Rig nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
           content:
             application/problem+json:
               schema:

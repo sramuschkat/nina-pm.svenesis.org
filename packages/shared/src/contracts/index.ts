@@ -24,5 +24,6 @@ export * from './simulation';
 export * from './sessions';
 export * from './session-log';
 export * from './catalog';
+export * from './exo';
 export * from './weather';
 export * as nina from './nina';

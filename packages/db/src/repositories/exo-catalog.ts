@@ -279,3 +279,22 @@ export async function exoPrefilterSetting(db: Kysely<Database>): Promise<unknown
     .executeTakeFirst();
   return row?.value ?? null;
 }
+
+/** Eigene Exoplaneten-Projekte je Planet (Spalte „Meine Beob.“ in S-22); mandanten- und benutzergebunden. */
+export async function myExoProjectCounts(
+  db: Kysely<Database>,
+  tenantId: string,
+  userId: string,
+): Promise<Map<string, number>> {
+  const rows = await db
+    .selectFrom('exoProject')
+    .innerJoin('project', 'project.id', 'exoProject.projectId')
+    .select(['exoProject.planet', (eb) => eb.fn.countAll<number>().as('n')])
+    .where('exoProject.tenantId', '=', tenantId)
+    .where('project.tenantId', '=', tenantId)
+    .where('project.createdBy', '=', userId)
+    .where('project.deletedAt', 'is', null)
+    .groupBy('exoProject.planet')
+    .execute();
+  return new Map(rows.map((r) => [r.planet, Number(r.n)]));
+}
