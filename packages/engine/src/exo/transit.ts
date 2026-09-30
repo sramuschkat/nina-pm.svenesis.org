@@ -6,7 +6,8 @@
  *   `[nachtBeginn − halbeBreite, nachtEnde + halbeBreite]` liegt – bei Ultrakurzperioden mehrere je Nacht.
  * - `σ = |n|·σP + σT0 + ocSigmaMin/1440`, Puffer `max(k·σ, 5 min)`; `ocMin` verschiebt die Mitte nur bei
  *   `|ocMin| > 3·ocSigmaMin` (AST-T4).
- * - Baseline je Seite `clamp(round(30·T14[h]), 30, 120)` min (AST-T13), bei unsicherer Ephemeride mindestens `k·σ`.
+ * - Baseline je Seite fest 60 min (FA-EXO-19; Spec-Ergänzung 30.09.2026 statt der dauerabhängigen AST-T13), bei unsicherer
+ *   Ephemeride mindestens `k·σ`.
  * - Ephemeridenalter (AST-T9): `ok` / `uncertain` (Warnung) / `stale` (`409 transit.ephemeris_stale`).
  * - Zeitsystem `unknown`: Fenster je Seite 10 min breiter.
  * - Beobachtbar (AST-T19): Sonne (geometrisch) unter der Dämmerungsgrenze und scheinbare Höhe ≥ Mindesthöhe an
@@ -18,7 +19,7 @@ import { norm180 } from '../astro/angles';
 import { altAz, apparentAltitudeDeg, type Site } from '../astro/horizon';
 import { jdFromUnix, jdeFromUnix, unixFromJd } from '../astro/time';
 import { meridianTransitUtc, targetApparent } from '../astro/target';
-import { q, roundHalfAwayFromZero } from '../round';
+import { q } from '../round';
 import { bjdTdbToJdUtc, jdUtcToBjdTdb } from './barycentric';
 import { UNKNOWN_TIME_SYSTEM_BUFFER_MIN, type ExoTimeSystem } from './epoch';
 import { createTransitSkyCache, type TransitSkyCache } from './sky-cache';
@@ -64,7 +65,7 @@ export interface TransitSearchInput {
   readonly minAltDeg: number;
   /** Puffer in σ (FA-EXO-12), Standard 1. */
   readonly k?: 1 | 2 | 3;
-  /** Baseline je Seite in Minuten; ohne Angabe dauerabhängig (AST-T13). */
+  /** Baseline je Seite in Minuten; ohne Angabe `DEFAULT_BASELINE_MIN`. */
   readonly baselineBeforeMin?: number;
   readonly baselineAfterMin?: number;
 }
@@ -122,10 +123,11 @@ export interface TransitEvent {
   readonly leapTableExpired: boolean;
 }
 
-/** Baseline je Seite in Minuten: T14/2, mindestens 30, höchstens 120 (AST-T13). */
-export function defaultBaselineMin(durationH: number): number {
-  return Math.min(120, Math.max(30, roundHalfAwayFromZero(30 * durationH)));
-}
+/**
+ * Baseline je Seite in Minuten: fest 60 (FA-EXO-19 „Ingress − 1 h bis Egress + 1 h“, Baseline-Standard von ExoClock
+ * und ETD; Entscheidung Sven 30.09.2026 nach Abgleich mit Astro PM – ersetzt die dauerabhängige AST-T13).
+ */
+export const DEFAULT_BASELINE_MIN = 60;
 
 /** 1σ der Mitte in Tagen bei Epoche `n` (transit.md §2); fehlende Fehler zählen 0. */
 export function transitSigmaD(e: TransitEphemeris, n: number): number {
@@ -184,8 +186,8 @@ export function predictTransits(
   const k = input.k ?? 1;
   const unknown = e.timeSystem === 'unknown' || e.timeSystem === 'jd_utc';
   const unknownD = unknown ? UNKNOWN_TIME_SYSTEM_BUFFER_MIN / 1440 : 0;
-  const baseBefore = input.baselineBeforeMin ?? defaultBaselineMin(e.durationH);
-  const baseAfter = input.baselineAfterMin ?? defaultBaselineMin(e.durationH);
+  const baseBefore = input.baselineBeforeMin ?? DEFAULT_BASELINE_MIN;
+  const baseAfter = input.baselineAfterMin ?? DEFAULT_BASELINE_MIN;
   const extraD = Math.max(baseBefore, baseAfter) / 1440 + unknownD;
 
   const fromJd = jdFromUnix(input.nightStartUtc);

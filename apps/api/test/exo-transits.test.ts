@@ -142,7 +142,7 @@ describe('GET /api/web/v1/exo/transits (S-22)', () => {
     );
     expect(t.transit.observable).toBe(true);
     expect(t.transit.ephemerisAge).toBe('ok');
-    expect(t.transit.baselineBeforeMin).toBe(120);
+    expect(t.transit.baselineBeforeMin).toBe(60);
     expect(t.transit.moonSepDeg).toBeGreaterThan(0);
     // ExoClock 5″ = 127 mm gegen 81 mm (64 %) → rot
     expect(t.aperture).toEqual({ requiredMm: 127, estimated: false, fit: 'insufficient' });
