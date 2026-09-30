@@ -8,6 +8,8 @@
  * *Freigeben* (Rig, Position je Rig, Status, Termine, Kommentar), *Zurückgeben*, *Ablehnen*
  * (Bestätigungsdialog); Spalte „Sichtbarkeit 4 Wochen“ als Mini-Balken (AP-24). Auswirkungsvorschau
  * im Entscheidungsbereich als Job `impact` (AP-32a, `ImpactPanel`).
+ * Reiter *Meine Rangfolge* (seit 30.09.2026, vorher in „Meine Objekte“): eigene Einreichungen ordnen und
+ * zurückziehen (FA-FRG-15, `SubmissionRanking`).
  */
 import { formatNightKey, type SeasonBar } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +36,7 @@ import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useMoonProfileLabel, useNumber } from '../equipment/shared';
 import { EFFORT_FILTERS } from './list-model';
 import { ProjectsLayout } from './ProjectsLayout';
+import { SubmissionRanking } from './SubmissionRanking';
 import { useQueueVisibility, VisibilityBars } from './VisibilityWeeks';
 import {
   NO_QUEUE_FILTERS,
@@ -51,8 +54,14 @@ import { ImpactPanel } from './ImpactPanel';
 import styles from './projects.module.css';
 
 const QUEUE_KEY = ['projects', 'queue'] as const;
-type QueueKindTab = 'all' | 'project' | 'change-request' | 'transit';
-const QUEUE_KIND_TABS: readonly QueueKindTab[] = ['all', 'project', 'change-request', 'transit'];
+type QueueKindTab = 'all' | 'project' | 'change-request' | 'transit' | 'mine';
+const QUEUE_KIND_TABS: readonly QueueKindTab[] = [
+  'all',
+  'project',
+  'change-request',
+  'transit',
+  'mine',
+];
 
 export function QueuePage() {
   const { t } = useTranslation();
@@ -92,6 +101,12 @@ export function QueuePage() {
     () => filterQueue(all, f).filter((q) => kind === 'all' || q.kind === kind),
     [all, f, kind],
   );
+  // Eigene Einreichungen nach Rang (Transit-Bestätigungen haben keinen Rang beim Einreicher, FA-FRG-04).
+  const own = all
+    .filter((q) => q.createdBy === me?.member?.id && q.kind !== 'transit')
+    .sort((a, b) => (a.submitterRank?.rank ?? 0) - (b.submitterRank?.rank ?? 0));
+  const tabCount = (k: QueueKindTab) =>
+    k === 'all' ? all.length : k === 'mine' ? own.length : all.filter((q) => q.kind === k).length;
   const current = (queue.data ?? []).find((q) => q.id === selected) ?? null;
   const visibility = useQueueVisibility(items, rigs.data ?? [], sites.data ?? []);
   const visibilityById = useMemo(
@@ -113,117 +128,118 @@ export function QueuePage() {
             onChange={setKind}
             tabs={QUEUE_KIND_TABS.map((k) => ({
               key: k,
-              label: `${t(`queue.kind.${k}`)} (${String(
-                k === 'all' ? all.length : all.filter((q) => q.kind === k).length,
-              )})`,
+              label: `${t(`queue.kind.${k}`)} (${String(tabCount(k))})`,
             }))}
             panelClassName={styles.kindPanel}
             panels={{
-              [kind]: (
-                <div className={styles.listCard}>
-                  <FilterBar
-                    label={t('projectList.filters')}
-                    className={styles.listBar}
-                    search={{
-                      value: f.query,
-                      onChange: (query) => setF({ ...f, query }),
-                      label: t('projectList.search'),
-                      placeholder: t('queue.searchPlaceholder'),
-                      maxLength: 80,
-                    }}
-                    chips={[
-                      ...(f.withoutMyVote
-                        ? [
-                            {
-                              id: 'withoutMyVote',
-                              label: t('queue.filter.withoutMyVote'),
-                              onRemove: () => setF({ ...f, withoutMyVote: false }),
-                            },
-                          ]
-                        : []),
-                      ...(f.changedSinceMyVote
-                        ? [
-                            {
-                              id: 'changedSinceMyVote',
-                              label: t('queue.filter.changed'),
-                              onRemove: () => setF({ ...f, changedSinceMyVote: false }),
-                            },
-                          ]
-                        : []),
-                      ...(f.effort
-                        ? [
-                            {
-                              id: 'effort',
-                              label: t('filterBar.chip', {
-                                label: t('projectList.filter.effort'),
-                                value: effortLabel(f.effort),
-                              }),
-                              onRemove: () => setF({ ...f, effort: '' }),
-                            },
-                          ]
-                        : []),
-                    ]}
-                    panel={
-                      <>
-                        <FilterCheck
-                          label={t('queue.filter.withoutMyVote')}
-                          checked={f.withoutMyVote}
-                          onChange={(on) => setF({ ...f, withoutMyVote: on })}
-                        />
-                        <FilterCheck
-                          label={t('queue.filter.changed')}
-                          checked={f.changedSinceMyVote}
-                          onChange={(on) => setF({ ...f, changedSinceMyVote: on })}
-                        />
-                        <FilterField label={t('projectList.filter.effort')} htmlFor={effortId}>
-                          <select
-                            id={effortId}
-                            className={styles.input}
-                            value={f.effort}
-                            onChange={(e) => setF({ ...f, effort: e.target.value })}
-                          >
-                            <option value="">{t('projectList.all')}</option>
-                            {EFFORT_FILTERS.map((k) => (
-                              <option key={k} value={k}>
-                                {effortLabel(k)}
-                              </option>
-                            ))}
-                          </select>
-                        </FilterField>
-                      </>
-                    }
-                    onReset={() => setF(NO_QUEUE_FILTERS)}
-                    count={t('queue.count', { n: items.length, total: queue.data.length })}
-                  />
-                  {vote.error ? (
-                    <div className={styles.listBody}>
-                      <ProblemMessage code={problemCode(vote.error)} />
-                    </div>
-                  ) : null}
-                  {queue.data.length === 0 ? (
-                    <div className={styles.listBody}>
-                      <p className={styles.note}>{t('queue.empty')}</p>
-                    </div>
-                  ) : (
-                    <QueueTable
-                      items={items}
-                      rigs={rigs.data ?? []}
-                      filters={filters.data ?? []}
-                      zone={zone}
-                      today={today}
-                      meId={me?.member?.id ?? ''}
-                      canDecide={canDecide}
-                      selected={selected}
-                      onSelect={setSelected}
-                      onVote={(q, on) => {
-                        if (q.kind !== 'transit') vote.mutate({ id: q.id, on, kind: q.kind });
+              [kind]:
+                kind === 'mine' ? (
+                  <SubmissionRanking entries={own} loading={false} />
+                ) : (
+                  <div className={styles.listCard}>
+                    <FilterBar
+                      label={t('projectList.filters')}
+                      className={styles.listBar}
+                      search={{
+                        value: f.query,
+                        onChange: (query) => setF({ ...f, query }),
+                        label: t('projectList.search'),
+                        placeholder: t('queue.searchPlaceholder'),
+                        maxLength: 80,
                       }}
-                      voting={vote.isPending}
-                      visibility={visibilityById}
+                      chips={[
+                        ...(f.withoutMyVote
+                          ? [
+                              {
+                                id: 'withoutMyVote',
+                                label: t('queue.filter.withoutMyVote'),
+                                onRemove: () => setF({ ...f, withoutMyVote: false }),
+                              },
+                            ]
+                          : []),
+                        ...(f.changedSinceMyVote
+                          ? [
+                              {
+                                id: 'changedSinceMyVote',
+                                label: t('queue.filter.changed'),
+                                onRemove: () => setF({ ...f, changedSinceMyVote: false }),
+                              },
+                            ]
+                          : []),
+                        ...(f.effort
+                          ? [
+                              {
+                                id: 'effort',
+                                label: t('filterBar.chip', {
+                                  label: t('projectList.filter.effort'),
+                                  value: effortLabel(f.effort),
+                                }),
+                                onRemove: () => setF({ ...f, effort: '' }),
+                              },
+                            ]
+                          : []),
+                      ]}
+                      panel={
+                        <>
+                          <FilterCheck
+                            label={t('queue.filter.withoutMyVote')}
+                            checked={f.withoutMyVote}
+                            onChange={(on) => setF({ ...f, withoutMyVote: on })}
+                          />
+                          <FilterCheck
+                            label={t('queue.filter.changed')}
+                            checked={f.changedSinceMyVote}
+                            onChange={(on) => setF({ ...f, changedSinceMyVote: on })}
+                          />
+                          <FilterField label={t('projectList.filter.effort')} htmlFor={effortId}>
+                            <select
+                              id={effortId}
+                              className={styles.input}
+                              value={f.effort}
+                              onChange={(e) => setF({ ...f, effort: e.target.value })}
+                            >
+                              <option value="">{t('projectList.all')}</option>
+                              {EFFORT_FILTERS.map((k) => (
+                                <option key={k} value={k}>
+                                  {effortLabel(k)}
+                                </option>
+                              ))}
+                            </select>
+                          </FilterField>
+                        </>
+                      }
+                      onReset={() => setF(NO_QUEUE_FILTERS)}
+                      count={t('queue.count', { n: items.length, total: queue.data.length })}
                     />
-                  )}
-                </div>
-              ),
+                    {vote.error ? (
+                      <div className={styles.listBody}>
+                        <ProblemMessage code={problemCode(vote.error)} />
+                      </div>
+                    ) : null}
+                    {queue.data.length === 0 ? (
+                      <div className={styles.listBody}>
+                        <p className={styles.note}>{t('queue.empty')}</p>
+                      </div>
+                    ) : (
+                      <QueueTable
+                        items={items}
+                        rigs={rigs.data ?? []}
+                        filters={filters.data ?? []}
+                        zone={zone}
+                        today={today}
+                        meId={me?.member?.id ?? ''}
+                        canDecide={canDecide}
+                        selected={selected}
+                        onSelect={setSelected}
+                        onVote={(q, on) => {
+                          if (q.kind !== 'transit') vote.mutate({ id: q.id, on, kind: q.kind });
+                        }}
+                        voting={vote.isPending}
+                        visibility={visibilityById}
+                      />
+                    )}
+                  </div>
+                ),
             }}
           />
           {canDecide && current?.kind === 'transit' ? (

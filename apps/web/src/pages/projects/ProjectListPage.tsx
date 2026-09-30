@@ -1,16 +1,19 @@
 /**
  * S-30 Projektliste (FK 14.3, FA-PRJ-13/14/15/16/19; AP-11c): Filterleiste (FilterBar, AP-26c: Suche,
- * Chips; aufklappbar Rig, Objekttyp, Ersteller, Freigabestatus, Projektstatus, Favoriten, Aufwand), Ansichten
- * Liste/Karten/Detail, Gruppen je Rig mit Kopfzeile und Zählern je Status, Priorität per Ziehen bzw.
- * Pfeilen (nur Admin, freigegebene Projekte), Projektkarte mit Reitern *Zielinfo* und *Höhenkurve*, Plan je
- * Filter und Fortschritt; *Löschen* über `ConfirmDialog`. Umschalter *Papierkorb* (Admin/Owner) mit
- * Löschzeitpunkt in Mandantenzeit, Rig, Ersteller und *Wiederherstellen* ohne Dialog (E4).
+ * Schalter *Alle / Meine*, Chips; aufklappbar Rig, Objekttyp, Ersteller, Favoriten, Aufwand), darunter die
+ * **Status-Chips mit Anzahl** (Freigabe- und Projektstatus, Mehrfachauswahl), Ansichten Liste/Karten/Detail,
+ * Gruppierung je Rig (Kopfzeile, Zähler, Priorität per Ziehen bzw. Pfeilen – nur Admin, freigegebene
+ * Projekte), je Status oder ohne; Projektkarte mit Reitern *Zielinfo* und *Höhenkurve*, Plan je Filter und
+ * Fortschritt; *Löschen* über `ConfirmDialog`. Umschalter *Papierkorb* (Admin/Owner) mit Löschzeitpunkt in
+ * Mandantenzeit, Rig, Ersteller und *Wiederherstellen* ohne Dialog (E4).
+ * Seit 30.09.2026 ersetzt die Liste „Meine Objekte“ (S-32, Schalter *Meine*) und „Entwürfe“ (S-34, Chips
+ * *Entwurf* und *Zurückgegeben*); Status, *Meine* und Gruppierung stehen in der Adresse.
  */
-import { approvalStatuses, formatTzAbbr, projectStatuses } from '@nina-pm/shared';
+import { formatTzAbbr } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useId, useMemo, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   equipmentApi,
   projectsApi,
@@ -34,6 +37,7 @@ import { EffortChip } from '../../components/EffortChip';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Tabs } from '../../components/Tabs';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
+import { formatDateTime } from '../../lib/time';
 import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import {
   EFFORT_FILTERS,
@@ -42,14 +46,22 @@ import {
   filterOptions,
   filterProjects,
   groupByRig,
+  groupByStatus,
+  LIFECYCLE_STATUSES,
+  lifecycleStatus,
+  listStateFromParams,
   movedPosition,
   priorityRank,
+  statusCounts,
+  statusKind,
+  type GroupBy,
   type ListFilters,
 } from './list-model';
 import { engineMoonProfile } from './model';
 import { ProjectsLayout } from './ProjectsLayout';
 import { ProjectImage, ProjectThumb } from './ProjectImage';
 import styles from './projects.module.css';
+import { StatusChips } from './StatusChips';
 
 type View = 'list' | 'cards' | 'detail';
 const LIST_KEY = ['projects', 'list'] as const;
@@ -61,10 +73,33 @@ const DELETED_KEY = ['projects', 'deleted'] as const;
  */
 export function ProjectListPage() {
   const { t } = useTranslation();
+  const { me } = useAuth();
+  const meId = me?.member?.id ?? '';
   const canAdmin = useCan('project.status');
   const [trash, setTrash] = useState(false);
-  const [filters, setFilters] = useState<ListFilters>(NO_FILTERS);
+  const [local, setLocal] = useState<ListFilters>(NO_FILTERS);
   const [view, setView] = useState<View>('list');
+  // Status, *Meine* und Gruppierung aus der Adresse (Links, Weiterleitung alter Seiten).
+  const [params, setParams] = useSearchParams();
+  const url = listStateFromParams(params);
+  const setUrl = (patch: { status?: string[]; mine?: boolean; groupBy?: GroupBy }) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        const put = (key: string, value: string | null) =>
+          value ? next.set(key, value) : next.delete(key);
+        if (patch.status) put('status', patch.status.join(','));
+        if (patch.mine !== undefined) put('meine', patch.mine ? '1' : null);
+        if (patch.groupBy)
+          put(
+            'gruppe',
+            patch.groupBy === 'rig' ? null : patch.groupBy === 'none' ? 'keine' : 'status',
+          );
+        return next;
+      },
+      { replace: true },
+    );
+  const filters: ListFilters = { ...local, statuses: url.statuses, mine: url.mine };
   const list = useQuery({
     queryKey: LIST_KEY,
     queryFn: async () => (await projectsApi.list()).items,
@@ -72,17 +107,17 @@ export function ProjectListPage() {
   const rigs = useEquipmentList('rigs');
   const items = list.data ?? [];
   const options = useMemo(() => filterOptions(items), [items]);
-  const shown = filterProjects(items, filters);
+  const shown = filterProjects(items, filters, meId);
+  const counts = statusCounts(items, filters, meId);
   const showTrash = canAdmin && trash;
   const set = <K extends keyof ListFilters>(key: K, value: ListFilters[K]) =>
-    setFilters((f) => ({ ...f, [key]: value }));
+    setLocal((f) => ({ ...f, [key]: value }));
   const ids = {
     rig: useId(),
     type: useId(),
     creator: useId(),
-    approval: useId(),
-    status: useId(),
     effort: useId(),
+    group: useId(),
   };
   const effortLabel = (k: string) =>
     k === 'done' || k === 'none' ? t(`effort.filter.${k}`) : t(`status.effort.${k}`);
@@ -109,18 +144,6 @@ export function ProjectListPage() {
           ),
         ]
       : []),
-    ...(filters.approvalStatus
-      ? [
-          chip(
-            'approvalStatus',
-            t('projectList.filter.approval'),
-            t(`status.approval.${filters.approvalStatus}`),
-          ),
-        ]
-      : []),
-    ...(filters.status
-      ? [chip('status', t('projectList.filter.status'), t(`status.project.${filters.status}`))]
-      : []),
     ...(filters.effort
       ? [chip('effort', t('projectList.filter.effort'), effortLabel(filters.effort))]
       : []),
@@ -137,7 +160,7 @@ export function ProjectListPage() {
   const select = (
     id: string,
     label: string,
-    key: 'rigId' | 'targetType' | 'createdBy' | 'approvalStatus' | 'status' | 'effort',
+    key: 'rigId' | 'targetType' | 'createdBy' | 'effort',
     opts: readonly (readonly [string, string])[],
   ) => (
     <FilterField label={label} htmlFor={id}>
@@ -175,18 +198,6 @@ export function ProjectListPage() {
         options.creators.map((c) => [c.id, c.name] as const),
       )}
       {select(
-        ids.approval,
-        t('projectList.filter.approval'),
-        'approvalStatus',
-        approvalStatuses.map((s) => [s, t(`status.approval.${s}`)] as const),
-      )}
-      {select(
-        ids.status,
-        t('projectList.filter.status'),
-        'status',
-        projectStatuses.map((s) => [s, t(`status.project.${s}`)] as const),
-      )}
-      {select(
         ids.effort,
         t('projectList.filter.effort'),
         'effort',
@@ -198,6 +209,39 @@ export function ProjectListPage() {
         onChange={(on) => set('favorites', on)}
       />
     </>
+  );
+  const whoSwitch = (
+    <div className={styles.segmented} role="radiogroup" aria-label={t('projectList.who.label')}>
+      {([false, true] as const).map((mine) => (
+        <button
+          key={String(mine)}
+          type="button"
+          role="radio"
+          aria-checked={url.mine === mine}
+          className={url.mine === mine ? styles.segmentActive : styles.segment}
+          onClick={() => setUrl({ mine })}
+        >
+          {t(mine ? 'projectList.who.mine' : 'projectList.who.all')}
+        </button>
+      ))}
+    </div>
+  );
+  const groupSelect = (
+    <label className={styles.groupSelect} htmlFor={ids.group}>
+      <span>{t('projectList.groupBy.label')}</span>
+      <select
+        id={ids.group}
+        className={styles.input}
+        value={url.groupBy}
+        onChange={(e) => setUrl({ groupBy: e.target.value as GroupBy })}
+      >
+        {(['rig', 'status', 'none'] as const).map((g) => (
+          <option key={g} value={g}>
+            {t(`projectList.groupBy.${g}`)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
   const viewSwitch = (
     <div className={styles.segmented} role="radiogroup" aria-label={t('projectList.viewLabel')}>
@@ -231,10 +275,19 @@ export function ProjectListPage() {
                   placeholder: t('projectList.searchPlaceholder'),
                   maxLength: 80,
                 },
+                inline: whoSwitch,
                 chips,
                 panel,
-                onReset: () => setFilters(NO_FILTERS),
-                view: viewSwitch,
+                onReset: () => {
+                  setLocal(NO_FILTERS);
+                  setUrl({ status: [] });
+                },
+                view: (
+                  <>
+                    {groupSelect}
+                    {viewSwitch}
+                  </>
+                ),
                 ...(list.data
                   ? { count: t('projectList.count', { n: shown.length, total: items.length }) }
                   : {}),
@@ -253,7 +306,17 @@ export function ProjectListPage() {
         {showTrash ? (
           <DeletedView />
         ) : (
-          <ActiveView list={list} items={items} shown={shown} view={view} />
+          <>
+            {list.data ? (
+              <StatusChips
+                total={counts.total}
+                counts={counts.byStatus}
+                selected={url.statuses}
+                onChange={(status) => setUrl({ status })}
+              />
+            ) : null}
+            <ActiveView list={list} items={items} shown={shown} view={view} groupBy={url.groupBy} />
+          </>
         )}
       </div>
     </ProjectsLayout>
@@ -262,16 +325,26 @@ export function ProjectListPage() {
 
 // ---- Liste --------------------------------------------------------------------------------------
 
+/** Gruppe der Liste: je Rig (`key` = Rig), je Status (`key` = Status) oder eine ohne Kopf (`all`). */
+interface ListGroup {
+  readonly key: string;
+  readonly items: ProjectListItem[];
+  /** Zähler je Status in der Kopfzeile (nur je Rig). */
+  readonly counts: readonly { key: string; kind: 'project' | 'approval'; n: number }[];
+}
+
 function ActiveView({
   list,
   items,
   shown,
   view,
+  groupBy,
 }: {
   list: UseQueryResult<ProjectListItem[]>;
   items: readonly ProjectListItem[];
   shown: ProjectListItem[];
   view: View;
+  groupBy: GroupBy;
 }) {
   const { t } = useTranslation();
   const client = useQueryClient();
@@ -302,9 +375,24 @@ function ActiveView({
   });
 
   const rigOrder = (rigs.data ?? []).map((r) => r.id);
-  const groups = groupByRig(shown, rigOrder);
-  // Ungefilterte Gruppen: Priorität und Verschieben rechnen absolut (der Server kennt keine Filter).
-  const allGroups = groupByRig(items, rigOrder);
+  const groups: ListGroup[] =
+    groupBy === 'rig'
+      ? groupByRig(shown, rigOrder).map((g) => ({ key: g.rigId, items: g.items, counts: g.counts }))
+      : groupBy === 'status'
+        ? groupByStatus(shown).map((g) => ({ ...g, counts: [] }))
+        : [
+            {
+              key: 'all',
+              items: [...shown].sort((a, b) => a.name.localeCompare(b.name)),
+              counts: [],
+            },
+          ];
+  // Ungefilterte Gruppen je Rig: Priorität und Verschieben rechnen absolut (der Server kennt keine Filter).
+  const allGroups: ListGroup[] = groupByRig(items, rigOrder).map((g) => ({
+    key: g.rigId,
+    items: g.items,
+    counts: g.counts,
+  }));
 
   if (list.isError)
     return (
@@ -333,6 +421,9 @@ function ActiveView({
     return [site, tel, cam].filter(Boolean).join(' · ');
   };
   const rigLabel = (rigId: string) => [rigName(rigId), rigMeta(rigId)].filter(Boolean).join(' · ');
+  const statusName = (status: string) => t(`status.${statusKind(status)}.${status}`);
+  const groupName = (key: string) => (groupBy === 'status' ? statusName(key) : rigName(key));
+  const groupMeta = (key: string) => (groupBy === 'rig' ? rigMeta(key) : '');
   const errors = [favorite.error, priority.error].filter((e) => e !== null);
 
   return (
@@ -358,8 +449,9 @@ function ActiveView({
             <ProjectTable
               groups={groups}
               allGroups={allGroups}
-              groupName={rigName}
-              groupMeta={rigMeta}
+              groupBy={groupBy}
+              groupName={groupName}
+              groupMeta={groupMeta}
               filters={filtersList.data ?? []}
               onFavorite={(id, on) => favorite.mutate({ id, on })}
               onDelete={setRemove}
@@ -372,16 +464,32 @@ function ActiveView({
           ) : (
             <div className={styles.listBody}>
               {groups.map((g) => (
-                <section key={g.rigId} className={styles.group} aria-label={rigLabel(g.rigId)}>
-                  <div className={styles.groupHead}>
-                    <h2>{rigName(g.rigId)}</h2>
-                    <span className={styles.muted}>{rigMeta(g.rigId)}</span>
-                    <span className={styles.groupCounts}>
-                      {g.counts
-                        .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
-                        .join(' · ')}
-                    </span>
-                  </div>
+                <section
+                  key={g.key}
+                  className={styles.group}
+                  aria-label={
+                    groupBy === 'rig'
+                      ? rigLabel(g.key)
+                      : groupBy === 'status'
+                        ? statusName(g.key)
+                        : t('projectList.title')
+                  }
+                >
+                  {groupBy === 'none' ? null : (
+                    <div className={styles.groupHead}>
+                      <h2>{groupName(g.key)}</h2>
+                      <span className={styles.muted}>
+                        {groupBy === 'rig'
+                          ? rigMeta(g.key)
+                          : t('projectList.groupCount', { n: g.items.length })}
+                      </span>
+                      <span className={styles.groupCounts}>
+                        {g.counts
+                          .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
+                          .join(' · ')}
+                      </span>
+                    </div>
+                  )}
                   <div className={view === 'cards' ? styles.cards : styles.detailCards}>
                     {g.items.map((p) => (
                       <ProjectCard
@@ -403,7 +511,7 @@ function ActiveView({
           )}
         </>
       )}
-      {canAdmin && view === 'list' && shown.length > 0 ? (
+      {canAdmin && view === 'list' && groupBy === 'rig' && shown.length > 0 ? (
         <p className={styles.listFoot}>{t('projectList.priorityHint')}</p>
       ) : null}
       <ConfirmDialog
@@ -470,6 +578,7 @@ export function FilterPlan({
 function ProjectTable({
   groups,
   allGroups,
+  groupBy,
   groupName,
   groupMeta,
   filters,
@@ -478,11 +587,12 @@ function ProjectTable({
   onMove,
   onDropAt,
 }: {
-  groups: ReturnType<typeof groupByRig>;
-  /** Dieselben Gruppen ohne Filter – Grundlage der (absoluten) Priorität. */
-  allGroups: ReturnType<typeof groupByRig>;
-  groupName: (rigId: string) => string;
-  groupMeta: (rigId: string) => string;
+  groups: readonly ListGroup[];
+  /** Gruppen je Rig ohne Filter – Grundlage der (absoluten) Priorität. */
+  allGroups: readonly ListGroup[];
+  groupBy: GroupBy;
+  groupName: (key: string) => string;
+  groupMeta: (key: string) => string;
   filters: readonly FilterView[];
   onFavorite: (id: string, on: boolean) => void;
   onDelete: (p: ProjectListItem) => void;
@@ -494,20 +604,25 @@ function ProjectTable({
   ) => void;
   onDropAt: (id: string, position: number) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const canAdmin = useCan('project.status');
+  const { me } = useAuth();
+  const zone = me?.tenant?.timeZone ?? 'UTC';
   const canFavorite = useCan('me.favorites');
   const [dragId, setDragId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState | null>(null);
-  const groupOf = (p: ProjectListItem) => p.rigId ?? NO_RIG;
-  const byGroup = new Map(groups.map((g) => [g.rigId, g]));
-  const allByGroup = new Map(allGroups.map((g) => [g.rigId, g]));
+  // Priorität gilt je Rig: Pfeile, Ziehen und Spalte nur bei Gruppierung je Rig.
+  const byRig = groupBy === 'rig';
+  const groupOf = (p: ProjectListItem) =>
+    byRig ? (p.rigId ?? NO_RIG) : groupBy === 'status' ? lifecycleStatus(p) : 'all';
+  const byGroup = new Map(groups.map((g) => [g.key, g]));
+  const allByGroup = new Map(allGroups.map((g) => [g.key, g]));
   const itemsOf = (p: ProjectListItem) => byGroup.get(groupOf(p))?.items ?? [];
   const allItemsOf = (p: ProjectListItem) => allByGroup.get(groupOf(p))?.items ?? itemsOf(p);
   const approvedOf = (p: ProjectListItem) =>
     itemsOf(p).filter((x) => x.approvalStatus === 'approved');
   // Priorität lässt sich nur in der Standard-Reihenfolge ändern.
-  const reorder = canAdmin && sort === null;
+  const reorder = canAdmin && byRig && sort === null;
   const onDrop = (e: DragEvent, target: ProjectListItem) => {
     e.preventDefault();
     const approved = approvedOf(target);
@@ -558,7 +673,7 @@ function ProjectTable({
     },
   };
   const columns: DataColumn<ProjectListItem>[] = [
-    ...(canAdmin ? [priorityColumn] : []),
+    ...(canAdmin && byRig ? [priorityColumn] : []),
     {
       id: 'image',
       header: t('catalog.col.image'),
@@ -579,15 +694,16 @@ function ProjectTable({
     {
       id: 'status',
       header: t('projectList.col.status'),
-      sortValue: (p) => `${p.approvalStatus}:${p.status ?? ''}`,
-      cell: (p) => (
-        <span className={styles.badgesInline}>
-          {p.status ? <StatusBadge kind="project" value={p.status} size="sm" /> : null}
-          {p.approvalStatus !== 'approved' ? (
-            <StatusBadge kind="approval" value={p.approvalStatus} size="sm" />
-          ) : null}
-        </span>
-      ),
+      sortValue: (p) => LIFECYCLE_STATUSES.indexOf(lifecycleStatus(p) as never),
+      cell: (p) => {
+        const s = lifecycleStatus(p);
+        return (
+          <span className={styles.statusCell}>
+            <StatusBadge kind={statusKind(s)} value={s} size="sm" />
+            {s === 'returned' || s === 'rejected' ? <DecisionNote projectId={p.id} /> : null}
+          </span>
+        );
+      },
     },
     {
       id: 'effort',
@@ -630,6 +746,15 @@ function ProjectTable({
       cell: (p) => p.createdByName,
     },
     {
+      // „Zuletzt geändert“ (vorher Spalte der Entwürfe-Liste S-34) in Mandantenzeit mit Kürzel.
+      id: 'updatedAt',
+      header: t('projectList.col.updatedAt'),
+      sortValue: (p) => p.updatedAt,
+      priority: 4,
+      nowrap: true,
+      cell: (p) => formatDateTime(p.updatedAt, zone, i18n.language),
+    },
+    {
       id: 'coordinates',
       header: t('projectList.col.coordinates'),
       sortValue: (p) => p.raDeg,
@@ -668,20 +793,28 @@ function ProjectTable({
       label={t('projectList.title')}
       sort={sort}
       onSortChange={setSort}
-      groups={{
-        key: groupOf,
-        header: (key) => (
-          <span className={styles.groupHeadInline}>
-            <strong>{groupName(key)}</strong>
-            {groupMeta(key) ? <span className={styles.groupMeta}>{groupMeta(key)}</span> : null}
-            <span className={styles.groupCounts}>
-              {(byGroup.get(key)?.counts ?? [])
-                .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
-                .join(' · ')}
-            </span>
-          </span>
-        ),
-      }}
+      {...(groupBy === 'none'
+        ? {}
+        : {
+            groups: {
+              key: groupOf,
+              header: (key: string) => (
+                <span className={styles.groupHeadInline}>
+                  <strong>{groupName(key)}</strong>
+                  {groupMeta(key) ? (
+                    <span className={styles.groupMeta}>{groupMeta(key)}</span>
+                  ) : null}
+                  <span className={styles.groupCounts}>
+                    {byRig
+                      ? (byGroup.get(key)?.counts ?? [])
+                          .map((c) => `${String(c.n)} ${t(`status.${c.kind}.${c.key}`)}`)
+                          .join(' · ')
+                      : t('projectList.groupCount', { n: byGroup.get(key)?.items.length ?? 0 })}
+                  </span>
+                </span>
+              ),
+            },
+          })}
       rowProps={(p) => {
         const draggable = reorder && p.approvalStatus === 'approved';
         return {
@@ -694,6 +827,31 @@ function ProjectTable({
         };
       }}
     />
+  );
+}
+
+/**
+ * Letzter Kommentar der Freigabe bei zurückgegebenen bzw. abgelehnten Projekten (vorher auf den Karten von
+ * „Meine Objekte“, FA-FRG-13): aus dem Verlauf, gekürzt, voller Text im Tooltip.
+ */
+function DecisionNote({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
+  const history = useQuery({
+    queryKey: ['project-history', projectId],
+    queryFn: async () => (await projectsApi.history(projectId)).items,
+  });
+  const decision = (history.data ?? []).find(
+    (h) => h.kind === 'approval' && ['returned', 'rejected', 'expired'].includes(h.action),
+  );
+  if (!decision) return null;
+  const text =
+    decision.action === 'expired'
+      ? t('myObjects.expired')
+      : t('myObjects.comment', { comment: decision.comment ?? '' });
+  return (
+    <span className={styles.decisionNote} title={text}>
+      {text}
+    </span>
   );
 }
 
@@ -714,10 +872,13 @@ function RowActions({
   onDelete: (p: ProjectListItem) => void;
 }) {
   const { t } = useTranslation();
-  const canDelete = useCan('project.delete', {
-    createdBy: project.createdBy,
-    approvalStatus: project.approvalStatus,
-  });
+  const navigate = useNavigate();
+  const resource = { createdBy: project.createdBy, approvalStatus: project.approvalStatus };
+  const canDelete = useCan('project.delete', resource);
+  // Einreichen (vorher auf den Karten von „Meine Objekte“): öffnet den Dialog im Projekt-Editor.
+  const canSubmit =
+    useCan('project.submit', resource) &&
+    (project.approvalStatus === 'draft' || project.approvalStatus === 'returned');
   const Star = actionIcons.favorite;
   return (
     <span className={styles.rowActions}>
@@ -739,8 +900,18 @@ function RowActions({
       <ActionMenu
         label={t('projectList.moreFor', { name: project.name })}
         size="sm"
-        items={
-          canDelete
+        items={[
+          ...(canSubmit
+            ? [
+                {
+                  key: 'submit',
+                  label: t('approvalFlow.submit'),
+                  icon: <actionIcons.submit size={ICON_SIZE.table} aria-hidden />,
+                  onSelect: () => void navigate(`/projekte/${project.id}?einreichen=1`),
+                },
+              ]
+            : []),
+          ...(canDelete
             ? [
                 {
                   key: 'delete',
@@ -750,8 +921,8 @@ function RowActions({
                   onSelect: () => onDelete(project),
                 },
               ]
-            : []
-        }
+            : []),
+        ]}
       />
     </span>
   );
