@@ -20,11 +20,12 @@ test('S-22: Transits der Nacht, Auswahl mit Zeitleiste und Zieldetails', async (
   await expect(page.getByText(/^Katalogstand: ExoClock/)).toBeVisible();
   const table = page.getByRole('table', { name: 'Exoplaneten' });
   for (const planet of ['TrES-3b', 'WASP-12b', 'Qatar-1b'])
-    await expect(table.getByRole('button', { name: planet })).toBeVisible();
+    // exakt: bei ausgeblendeten Spalten heißt der Aufklappknopf „Weitere Angaben zu <Planet>“
+    await expect(table.getByRole('button', { name: planet, exact: true })).toBeVisible();
   // Früheste Transitmitte ist vorausgewählt
   await expect(page.getByRole('heading', { name: 'Transit von TrES-3b' })).toBeVisible();
 
-  await table.getByRole('button', { name: 'WASP-12b' }).click();
+  await table.getByRole('button', { name: 'WASP-12b', exact: true }).click();
   await expect(page).toHaveURL(/sel=exoclock%3AWASP-12b/);
   const detail = page.getByRole('region', { name: 'Transit von WASP-12b' });
   await expect(detail.getByRole('img', { name: /Schematische Lichtkurve/ })).toBeVisible();
