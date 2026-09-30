@@ -2607,7 +2607,7 @@ export const en: Messages = {
     timeline: 'Timeline of the night',
     bodiesDetail: 'Moon and planets – visibility',
     futureNote:
-      'Future night: plan from today’s project state – frames and changes until then are not included yet; “off tonight only” applies to the current night only.',
+      'Preview: this is the plan as it would look if nothing changes until then. Frames from the nights before and later project changes are not included yet. Switching filters off (“Off tonight only”) is only possible for the current night.',
     calendar: {
       label: 'Choose night (moon calendar, 7 nights)',
       tonight: 'Tonight',

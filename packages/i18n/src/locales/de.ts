@@ -2615,7 +2615,7 @@ export const de = {
     timeline: 'Zeitleiste der Nacht',
     bodiesDetail: 'Mond und Planeten – Sichtbarkeit',
     futureNote:
-      'Künftige Nacht: Plan aus dem heutigen Projektstand – bis dahin eingehende Aufnahmen und Änderungen fehlen noch; „nur heute aus“ gilt nur für die laufende Nacht.',
+      'Vorschau: So sähe der Plan aus, wenn bis dahin nichts mehr passiert. Aufnahmen der Nächte davor und spätere Änderungen an Projekten fehlen noch. Filter ausschalten („Nur heute aus“) geht nur in der laufenden Nacht.',
     calendar: {
       label: 'Nacht wählen (Mondkalender, 7 Nächte)',
       tonight: 'Heute Nacht',
