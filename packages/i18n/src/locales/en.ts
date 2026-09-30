@@ -1198,6 +1198,11 @@ export const en: Messages = {
     reason: 'Reason / comment',
     incomplete: 'Still missing for submission:',
     saveFirst: 'Save the changes first.',
+    selfApprove: 'Approve & activate',
+    selfApproveHint:
+      'Admin objects without queue: approve directly (project rig, status active, priority at the end).',
+    selfApproveNeedsRig: 'Choose a rig before approving.',
+    selfApproveIncomplete: 'Approval still needs:',
     missing: {
       name: 'Name',
       rigId: 'Rig',
