@@ -10432,6 +10432,8 @@ components:
               example: 2026-09-18T13:00:00Z
             meridianInWindow:
               type: boolean
+            meridianInTransit:
+              type: boolean
             altAtIngressDeg:
               type: number
             altAtCenterDeg:
@@ -10467,6 +10469,7 @@ components:
             - baselineInTwilight
             - meridianUtc
             - meridianInWindow
+            - meridianInTransit
             - altAtIngressDeg
             - altAtCenterDeg
             - altAtEgressDeg

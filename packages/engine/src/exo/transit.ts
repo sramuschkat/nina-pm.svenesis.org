@@ -93,16 +93,21 @@ export interface TransitEvent {
   /** Fensterbeginn bzw. -ende nutzbar (Filter „Start/Ende in Dunkelheit und über Mindesthöhe“, FA-EXO-05). */
   readonly startUsable: boolean;
   readonly endUsable: boolean;
-  /** Getrennt für die Filter „Start/Ende dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05, S-22). */
+  /**
+   * Für die Filter „Start/Ende dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05, S-22): geprüft an **Ingress
+   * und Egress**, nicht an den Fenstergrenzen (Spec-Ergänzung 30.09.2026, Entscheidung Sven, wie Astro PM).
+   */
   readonly startDark: boolean;
   readonly endDark: boolean;
   readonly startAboveMinAlt: boolean;
   readonly endAboveMinAlt: boolean;
   /** Ein nutzbarer Slot hat die Sonne zwischen −18° und der Dämmerungsgrenze („Baseline in der Dämmerung“). */
   readonly baselineInTwilight: boolean;
-  /** Obere Kulmination in der Nacht (FA-EXO-11) und ob sie im Fenster liegt. */
+  /** Obere Kulmination in der Nacht (FA-EXO-11) und ob sie im Fenster (inkl. Baseline) liegt – Markierung rot. */
   readonly meridianUtc: number | null;
   readonly meridianInWindow: boolean;
+  /** Kulmination zwischen Ingress und Egress – Filter „Transits mit Flip ausblenden“ (Entscheidung Sven 30.09.2026). */
+  readonly meridianInTransit: boolean;
   /** Scheinbare Höhe zur Mitte, Grad (6 Stellen). */
   readonly altAtCenterDeg: number;
   /** Scheinbare Höhe bei Ingress und Egress, Grad (FA-EXO-13 „Kontaktzeiten mit Höhen“). */
@@ -221,6 +226,8 @@ function event(
   const startUtc = Math.floor(unixFromJd(startJd));
   const endUtc = Math.ceil(unixFromJd(endJd));
   const tcUtc = unixFromJd(g.tcUtcJd);
+  const ingressUtc = unixFromJd(ingressJd);
+  const egressUtc = unixFromJd(egressJd);
 
   // Scheinbarer Ort einmal zur Mitte (ändert sich über ein Fenster um < 0,01″).
   const place = targetApparent({ raJ2000Deg: e.raDeg, decJ2000Deg: e.decDeg }, jdeFromUnix(tcUtc));
@@ -283,13 +290,14 @@ function event(
     fullyObservable: slots > 0 && usable === slots,
     startUsable: ok(startUtc),
     endUsable: ok(endUtc),
-    startDark: dark(startUtc),
-    endDark: dark(endUtc),
-    startAboveMinAlt: high(startUtc),
-    endAboveMinAlt: high(endUtc),
+    startDark: dark(ingressUtc),
+    endDark: dark(egressUtc),
+    startAboveMinAlt: high(ingressUtc),
+    endAboveMinAlt: high(egressUtc),
     baselineInTwilight: twilight,
     meridianUtc: meridian,
     meridianInWindow: meridian !== null && meridian >= startUtc && meridian <= endUtc,
+    meridianInTransit: meridian !== null && meridian >= ingressUtc && meridian <= egressUtc,
     altAtCenterDeg: q(alt(tcUtc), 1e6),
     altAtIngressDeg: q(alt(unixFromJd(ingressJd)), 1e6),
     altAtEgressDeg: q(alt(unixFromJd(egressJd)), 1e6),

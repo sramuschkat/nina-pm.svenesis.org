@@ -2867,10 +2867,10 @@ export const de = {
       minDepth: 'Min. Tiefe',
       minAlt: 'Min. Höhe',
       observableOnly: 'Nur beobachtbare',
-      startEndDark: 'Start und Ende nautisch dunkel',
-      startEndAboveMinAlt: 'Start und Ende über Mindesthöhe',
+      startEndDark: 'Ingress und Egress nautisch dunkel',
+      startEndAboveMinAlt: 'Ingress und Egress über Mindesthöhe',
       showFlip: 'Meridian-Flip zeigen',
-      hideFlip: 'Transits mit Meridian-Flip ausblenden',
+      hideFlip: 'Transits mit Meridian-Flip zwischen Ingress und Egress ausblenden',
     },
     priorityFilter: {
       all: 'Alle Prioritäten',

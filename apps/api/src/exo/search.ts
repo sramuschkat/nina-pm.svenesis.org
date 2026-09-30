@@ -84,7 +84,11 @@ function magnitude(e: StoredExoEntry): number | null {
 
 export function searchTransits(s: TransitSearch): ExoTransitView[] {
   const wanted = new Set<string>(s.catalogs);
-  const merged = mergeExoEntries(s.entries.filter((e) => wanted.has(e.catalog)));
+  // APC (mehrdeutige TOI-Kandidaten) gehören nicht zur Suche (FA-EXO-02: PC, CP, KP); der Import verwirft sie seit
+  // 30.09.2026, ältere Katalogstände können sie bis zum nächsten wöchentlichen Abruf noch enthalten.
+  const merged = mergeExoEntries(
+    s.entries.filter((e) => wanted.has(e.catalog) && e.disposition !== 'APC'),
+  );
   const sky = createTransitSkyCache(s.site);
   const out: ExoTransitView[] = [];
   for (const e of merged) {
@@ -187,6 +191,7 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
           baselineInTwilight: ev.baselineInTwilight,
           meridianUtc: ev.meridianUtc === null ? null : iso(ev.meridianUtc),
           meridianInWindow: ev.meridianInWindow,
+          meridianInTransit: ev.meridianInTransit,
           altAtIngressDeg: round(ev.altAtIngressDeg, 2),
           altAtCenterDeg: round(ev.altAtCenterDeg, 2),
           altAtEgressDeg: round(ev.altAtEgressDeg, 2),

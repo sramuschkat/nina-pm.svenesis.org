@@ -83,13 +83,17 @@ export const ExoTransitView = z
       observable: z.boolean(),
       usableFraction: z.number(),
       fullyObservable: z.boolean(),
+      /** An Ingress bzw. Egress (Filter „Start/Ende …“, Entscheidung Sven 30.09.2026). */
       startDark: z.boolean(),
       endDark: z.boolean(),
       startAboveMinAlt: z.boolean(),
       endAboveMinAlt: z.boolean(),
       baselineInTwilight: z.boolean(),
       meridianUtc: UtcInstant.nullable(),
+      /** Kulmination im Fenster inkl. Baseline (rote Markierung, FA-EXO-11). */
       meridianInWindow: z.boolean(),
+      /** Kulmination zwischen Ingress und Egress (Filter „Transits mit Flip ausblenden“). */
+      meridianInTransit: z.boolean(),
       altAtIngressDeg: z.number(),
       altAtCenterDeg: z.number(),
       altAtEgressDeg: z.number(),

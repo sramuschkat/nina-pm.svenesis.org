@@ -205,9 +205,9 @@ describe('NASA pscomppars', () => {
 describe('TESS TOI', () => {
   const r = parseToi(TOI, F);
 
-  it('FP/FA verworfen und gezählt, Vorfilter auf TESS-Helligkeit und Tiefe', () => {
-    expect(r.rows.map((x) => x.planet)).toEqual(['TOI-101.01', 'TOI-121.01', 'TOI-7711.01']);
-    expect(r.skipped).toEqual({ prefilter: 2, false_positive: 3 });
+  it('FP/FA und APC verworfen und gezählt, Vorfilter auf TESS-Helligkeit und Tiefe', () => {
+    expect(r.rows.map((x) => x.planet)).toEqual(['TOI-101.01', 'TOI-7711.01']);
+    expect(r.skipped).toEqual({ prefilter: 2, false_positive: 3, ambiguous: 1 });
   });
 
   it('RA/Dec sexagesimal, volles BJD, ppm → mmag, Stern über TIC', () => {

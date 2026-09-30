@@ -146,3 +146,13 @@ Rechnung in `packages/engine/src/exo/classify.ts`, Anzeige in S-22.
 - **Spektralklasse** aus Teff (Harvard): O ≥ 30 000 · B ≥ 10 000 · A ≥ 7 500 · F ≥ 6 000 · G ≥ 5 200 · K ≥ 3 700 · M darunter.
 - **Zusammenführen (FA-EXO-03):** Der führende Eintrag (ExoClock → NASA → TOI) liefert Ephemeride, Tiefe und Priorität. Fehlen ihm Radius, Entfernung, Teff oder TIC-Kennung, kommen sie aus den nachrangigen Einträgen desselben Planeten.
 - **Suche:** Dämmerungsgrenze nautisch (§2), Mindesthöhe aus dem Filter (Standard 30°), Nachtfenster nach FK 8.1. Filter (Priorität, Helligkeit, Tiefe, Schalter) wirken in der Oberfläche und werden je Benutzer gespeichert (`user_preference` `exo.search`).
+- **Filter der Suche (Spec-Ergänzung 30.09.2026, Entscheidung Sven nach Abgleich mit Astro PM):**
+  - „Start/Ende nautisch dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05) prüfen **Ingress und Egress**, nicht die Fenstergrenzen mit Baseline. Ob die Baseline nutzbar ist, zeigen der Anteil nutzbarer Zeit und der Hinweis *Baseline in der Dämmerung*.
+  - „Transits mit Meridian-Flip ausblenden“ blendet nur aus, wenn die Kulmination **zwischen Ingress und Egress** liegt. Liegt sie nur in der Baseline, bleibt der Transit sichtbar und wird rot markiert (FA-EXO-11: Flip im Beobachtungsfenster).
+  - TOI-Kandidaten mit Disposition **APC** werden beim Import verworfen und gezählt, wie FP/FA. FA-EXO-02 nennt nur PC, CP und KP.
+  - Abgleich 29./30.09.2026, Starfront, gleiche Filter:
+    - Transitzeiten wie Astro PM auf die Minute.
+    - Der Mondabstand von Astro PM liegt rund 10° über astropy; unserer stimmt auf 0,1°.
+    - Dubletten (TOI-1518.01 = TOI-1518b, TOI-3791.01 = WASP-194 b) zeigen wir einmal.
+    - Transits mit großer Unsicherheit (z. B. TOI-5329.01, 0,69 h, Fenster 10 h) sind bei uns nach AST-T19 nicht beobachtbar.
+

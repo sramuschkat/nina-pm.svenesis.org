@@ -17113,6 +17113,7 @@ export interface components {
                  */
                 meridianUtc: string | null;
                 meridianInWindow: boolean;
+                meridianInTransit: boolean;
                 altAtIngressDeg: number;
                 altAtCenterDeg: number;
                 altAtEgressDeg: number;

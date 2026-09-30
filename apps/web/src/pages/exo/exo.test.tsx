@@ -180,6 +180,7 @@ function transit(over: Partial<ExoTransitView> & { tc?: string } = {}): ExoTrans
       baselineInTwilight: false,
       meridianUtc: '2026-10-11T01:30:00Z',
       meridianInWindow: false,
+      meridianInTransit: false,
       altAtIngressDeg: 58,
       altAtCenterDeg: 41.7,
       altAtEgressDeg: 22,
@@ -224,7 +225,12 @@ const unobservable = transit({
   key: 'exoclock:TrES-3b:1',
   planet: 'TrES-3b',
   tc: '2026-10-10T17:16:00Z',
-  transit: { ...transit().transit, observable: false, meridianInWindow: true },
+  transit: {
+    ...transit().transit,
+    observable: false,
+    meridianInWindow: true,
+    meridianInTransit: true,
+  },
 });
 
 const list = (items: ExoTransitView[]): ExoTransitList => ({
@@ -277,6 +283,13 @@ describe('Filter der Transitsuche (FA-EXO-05)', () => {
       'TrES-3b',
     );
     expect(applyExoFilters(all, { ...off, startEndDark: true })).toHaveLength(0);
+    // Flip nur in der Baseline (im Fenster, nicht im Transit): bleibt sichtbar und wird nur markiert
+    const baselineFlip = transit({
+      key: 'x:baseline-flip:1',
+      planet: 'Baseline-Flip',
+      transit: { ...transit().transit, meridianInWindow: true, meridianInTransit: false },
+    });
+    expect(applyExoFilters([baselineFlip], { ...off, hideFlip: true })).toHaveLength(1);
   });
 });
 

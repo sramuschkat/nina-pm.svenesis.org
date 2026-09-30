@@ -339,8 +339,17 @@ describe('Ultrakurzperiode und Beobachtbarkeit im Fenster', () => {
     expect(ev.usableFraction).toBeGreaterThanOrEqual(0);
     expect(ev.usableFraction).toBeLessThanOrEqual(1);
     expect(ev.fullyObservable).toBe(ev.usableFraction === 1);
-    expect(ev.startUsable).toBe(ev.startDark && ev.startAboveMinAlt);
-    expect(ev.endUsable).toBe(ev.endDark && ev.endAboveMinAlt);
+    // „Start/Ende“ der Filter = Ingress/Egress (Entscheidung Sven 30.09.2026)
+    const at0 = (u: number) =>
+      targetAt({ raJ2000Deg: HAT.raDeg, decJ2000Deg: HAT.decDeg }, u, SITE).altDeg;
+    expect(ev.startDark).toBe(sunAt(ev.ingressUtc, SITE).altDeg < -12);
+    expect(ev.endDark).toBe(sunAt(ev.egressUtc, SITE).altDeg < -12);
+    expect(ev.startAboveMinAlt).toBe(at0(ev.ingressUtc) >= 30);
+    expect(ev.endAboveMinAlt).toBe(at0(ev.egressUtc) >= 30);
+    if (ev.meridianUtc !== null)
+      expect(ev.meridianInTransit).toBe(
+        ev.meridianUtc >= ev.ingressUtc && ev.meridianUtc <= ev.egressUtc,
+      );
     // Kontakt-Höhen gegen die Höhenfunktion der Engine
     const at = (t: number) =>
       targetAt({ raJ2000Deg: HAT.raDeg, decJ2000Deg: HAT.decDeg }, t, SITE).altDeg;
