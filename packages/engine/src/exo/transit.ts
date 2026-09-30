@@ -157,7 +157,9 @@ function geometry(e: TransitEphemeris, n: number, k: number, extraD: number): Ge
     tcUtcJd: utc.jdUtc,
     sigmaD,
     bufferD,
-    halfD: e.durationH / 48 + bufferD + extraD,
+    // Suchbereich der Kandidaten: Puffer höchstens T14 – darüber ist die Ephemeride ohnehin „stale“, und ein
+    // Puffer von Tagen machte aus jedem Umlauf der Umgebung einen Kandidaten (Fehler prod 30.09.2026).
+    halfD: e.durationH / 48 + Math.min(bufferD, e.durationH / 24) + extraD,
     leapTableExpired: utc.leapTableExpired,
   };
 }
@@ -235,15 +237,19 @@ function event(
   const kSigmaS = k * g.sigmaD * DAY_S;
   const observable = ok(tcUtc - kSigmaS) && ok(tcUtc) && ok(tcUtc + kSigmaS);
 
-  // Slots auf dem 300-s-Raster, die das Fenster schneiden; Test an Beginn und Ende (A-26).
+  // Slots auf dem 300-s-Raster, die das Fenster schneiden; Test an Beginn und Ende (A-26). Geprüft wird nur
+  // innerhalb des Nachtfensters (FK 8.1): davor und danach steht die Sonne über der bürgerlichen Dämmerung, die
+  // Slots zählen dort als nicht nutzbar. Sonst prüfte ein Fenster mit großer Unsicherheit (Tage bis Jahre)
+  // Millionen Slots (Fehler prod 30.09.2026).
   const first = Math.floor(startUtc / SLOT_S) * SLOT_S;
-  let slots = 0;
+  const slots = Math.ceil((endUtc - first) / SLOT_S);
+  const from = Math.max(first, Math.floor(input.nightStartUtc / SLOT_S) * SLOT_S);
+  const to = Math.min(endUtc, input.nightEndUtc);
   let usable = 0;
   let twilight = false;
-  let prevOk = ok(first);
-  for (let s = first; s < endUtc; s += SLOT_S) {
+  let prevOk = ok(from);
+  for (let s = from; s < to; s += SLOT_S) {
     const nextOk = ok(s + SLOT_S);
-    slots += 1;
     if (prevOk && nextOk) {
       usable += 1;
       if (cache.sunAltDeg(s) >= TRANSIT_DARK_DEG || cache.sunAltDeg(s + SLOT_S) >= TRANSIT_DARK_DEG)

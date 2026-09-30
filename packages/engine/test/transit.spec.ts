@@ -281,6 +281,32 @@ describe('Ephemeridenalter (AST-T9)', () => {
   });
 });
 
+describe('Sehr unsichere Ephemeride (Fehler prod 30.09.2026)', () => {
+  it('Puffer von Tagen: wenige Kandidaten, schnell, „stale“, Anteil nur über die Nacht geprüft', () => {
+    const vague: TransitEphemeris = {
+      ...HAT,
+      periodD: 1.2,
+      t0BjdTdb: 2457000.5,
+      t0SigmaD: 0.01,
+      // σ nach ~3000 Umläufen ≈ 30 Tage
+      periodSigmaD: 0.01,
+      durationH: 2,
+    };
+    const started = performance.now();
+    const ev = predictTransits(around(vague, HAT_TC));
+    expect(performance.now() - started).toBeLessThan(2000);
+    // Suchbereich ±(T14/2 + höchstens T14 + Baseline) um die Nacht: nicht jeder Umlauf der Umgebung
+    expect(ev.length).toBeGreaterThan(0);
+    expect(ev.length).toBeLessThanOrEqual(25);
+    for (const x of ev) {
+      expect(x.ephemerisAge).toBe('stale');
+      expect(x.usableFraction).toBeGreaterThanOrEqual(0);
+      expect(x.usableFraction).toBeLessThan(0.1);
+      expect(x.windowEndUtc - x.windowStartUtc).toBeGreaterThan(30 * 86400);
+    }
+  });
+});
+
 describe('Ultrakurzperiode und Beobachtbarkeit im Fenster', () => {
   it('P = 0,3 d: mehrere Transits in einer Nacht, alle gefunden', () => {
     const usp = { ...HAT, periodD: 0.3, durationH: 1 };
