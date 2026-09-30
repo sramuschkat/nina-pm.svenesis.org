@@ -15,7 +15,12 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { replaceExoCatalog, readExoCatalog } from '@nina-pm/db';
 import { ROUTES } from '../src/app';
-import { ephemerisOf, findMerged, mergedCatalog, snapshotOf } from '../src/exo/project';
+import {
+  ephemerisOf as ephemerisOf2,
+  findMerged,
+  mergedCatalog,
+  snapshotOf,
+} from '../src/exo/project';
 import { clearExoCatalogCache } from '../src/exo/search';
 import { resolveSessionState } from '../src/auth/session';
 import { seedPersonas, type Persona, type PersonaWorld } from './support/personas';
@@ -458,12 +463,108 @@ async function projectExamples(): Promise<Record<string, Example>> {
       catalogEntryId: hat.id,
       bufferSigma: 1,
       catalogSnapshot: snapshotOf(hat),
-      ephemeris: ephemerisOf(hat),
+      ephemeris: ephemerisOf2(hat),
       line: null,
     },
     now,
   );
   const E = exoDraft.project.id;
+  // AP-43: Transit-Zeile, ein Wunsch (Epoche 402 = 11.10.2026) und ein freigegebenes Projekt mit Bestätigung.
+  await projects.addLine(
+    E,
+    {
+      id: crypto.randomUUID(),
+      panelId: exoDraft.panels[0]?.id as string,
+      filterId: filter.id,
+      exposureS: 60,
+      plannedCount: 0,
+      gain: null,
+      offsetAdu: null,
+      binning: 1,
+      readoutMode: null,
+      moonMode: 'none',
+      moonProfileId: null,
+      enabled: true,
+      notes: '',
+    },
+    now,
+  );
+  const observation = (projectId: string, epoch: number) => ({
+    projectId,
+    ephemerisId: '',
+    epoch,
+    night: '2026-10-10',
+    ingressUtc: new Date('2026-10-11T04:44:00Z'),
+    midUtc: new Date('2026-10-11T06:45:00Z'),
+    egressUtc: new Date('2026-10-11T08:46:00Z'),
+    windowStartUtc: new Date('2026-10-11T03:39:00Z'),
+    windowEndUtc: new Date('2026-10-11T09:51:00Z'),
+    baselineBeforeMin: 60,
+    baselineAfterMin: 60,
+    bufferMin: 5,
+    plannedCount: 350,
+    confirmDeadlineUtc: new Date('2026-10-11T03:21:00Z'),
+  });
+  const ephemerisOf = async (projectId: string) =>
+    (await repos.exoProjects().ephemerides(projectId))[0]?.id as string;
+  const wishId = await repos.transits().lock(
+    {
+      observation: { ...observation(E, 402), ephemerisId: await ephemerisOf(E) },
+      rigId: rig.id,
+      planet: hat.planet,
+      mode: 'wish',
+      maxOpen: null,
+      line: null,
+    },
+    now,
+  );
+  const exoApproved = await projects.createExoplanet(
+    {
+      ...base,
+      id: crypto.randomUUID(),
+      name: 'HAT-P-17b B',
+      targetName: 'HAT-P-17',
+      raDeg: hat.raDeg,
+      decDeg: hat.decDeg,
+    },
+    {
+      planet: hat.planet,
+      star: hat.star,
+      catalog: hat.catalog,
+      catalogEntryId: hat.id,
+      bufferSigma: 1,
+      catalogSnapshot: snapshotOf(hat),
+      ephemeris: ephemerisOf2(hat),
+      line: { filterId: filter.id, exposureS: 60 },
+    },
+    now,
+  );
+  const EA = exoApproved.project.id;
+  await admin().query(
+    "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
+    [EA],
+  );
+  const confirmId = await repos.transits().lock(
+    {
+      observation: { ...observation(EA, 404), ephemerisId: await ephemerisOf(EA) },
+      rigId: rig.id,
+      planet: hat.planet,
+      mode: 'request',
+      maxOpen: null,
+      line: null,
+    },
+    now,
+  );
+  const reopen = (id: string) => () =>
+    admin().query(
+      "UPDATE transit_observation SET status = 'requested', locked_at = NULL, locked_by = NULL WHERE id = $1",
+      [id],
+    );
+  const approvedRes: ResourceMeta = {
+    tenantId: world.tenantA,
+    createdBy: world.members.owner,
+    approvalStatus: 'approved',
+  };
   const exoRig = await eq.createRig(
     crypto.randomUUID(),
     { ...rigInput(site.id, telescope.id, camera.id), name: 'Exo-Rig' },
@@ -537,6 +638,39 @@ async function projectExamples(): Promise<Record<string, Example>> {
       url: `${P}/${E}/ephemeris/refresh`,
       method: 'POST',
       resource: draftRes,
+    },
+    [`POST ${P}/{id}/exo/lock`]: {
+      url: `${P}/${E}/exo/lock`,
+      method: 'POST',
+      body: { epoch: 402 },
+      resource: draftRes,
+    },
+    [`DELETE ${P}/{id}/exo/lock/{observationId}`]: {
+      url: `${P}/${E}/exo/lock/${wishId}`,
+      method: 'DELETE',
+      resource: draftRes,
+      reset: reopen(wishId),
+    },
+    [`PATCH ${P}/{id}/exo`]: {
+      url: `${P}/${E}/exo`,
+      method: 'PATCH',
+      body: { allowRecenter: true },
+      resource: draftRes,
+    },
+    'POST /api/web/v1/transit-observations/{id}/confirm': {
+      url: `/api/web/v1/transit-observations/${confirmId}/confirm`,
+      method: 'POST',
+      resource: approvedRes,
+      reset: reopen(confirmId),
+      okStatus: 204,
+    },
+    'POST /api/web/v1/transit-observations/{id}/decline': {
+      url: `/api/web/v1/transit-observations/${confirmId}/decline`,
+      method: 'POST',
+      body: { comment: 'Nacht belegt' },
+      resource: approvedRes,
+      reset: reopen(confirmId),
+      okStatus: 204,
     },
     [`PATCH ${P}/{id}`]: {
       url: `${P}/${D}`,

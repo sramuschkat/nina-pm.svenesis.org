@@ -55,6 +55,17 @@ describe('Worker-Dispatcher', () => {
     expect(expireSubmissions).toHaveBeenCalledOnce();
   });
 
+  it('tick-5min schließt Transit-Beobachtungen ab bzw. lässt Fristen verfallen (AP-43)', async () => {
+    const settleTransits = vi.fn(() => Promise.resolve({ expired: 1, observed: 0, missed: 0 }));
+    const tasks = tickTasks(
+      { queue: () => Promise.reject(new Error('nicht benutzt')) },
+      { cleanupInvitations: () => Promise.resolve(0), settleTransits },
+    );
+    // job_pickup scheitert hier (keine Queue); die übrigen Aufgaben laufen unabhängig weiter.
+    await dispatch({ tick: 'tick-5min' }, deps(tasks)).catch(() => undefined);
+    expect(settleTransits).toHaveBeenCalledOnce();
+  });
+
   it('führt {jobId} über den Job-Runner aus', async () => {
     const runJob = vi.fn(() => Promise.resolve('done'));
     expect(await dispatch({ jobId: '0199-job' }, deps(empty, runJob))).toEqual({

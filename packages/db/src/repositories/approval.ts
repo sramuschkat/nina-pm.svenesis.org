@@ -25,6 +25,7 @@ import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 import { insertNotifications } from './notification';
+import { cancelWishes, lockWishesOnApprove } from './transit';
 import { nextSubmitterRank, openRequests, renumberRanks } from './ranks';
 import { ProjectRepository, type ProjectDetail, type ProjectRow } from './project';
 
@@ -402,6 +403,16 @@ export class ApprovalRepository extends TenantRepo {
         now,
       );
       await renumberRanks(trx, this.tenantId, p.createdBy);
+      // Exoplaneten: der gewünschte Transit wird festgelegt (transit.md §8, FA-EXO-18).
+      if (p.projectType === 'exoplanet')
+        await lockWishesOnApprove(
+          trx,
+          this.tenantId,
+          id,
+          input.rigId,
+          this.ctx.memberId ?? null,
+          now,
+        );
       await this.event(
         trx,
         id,
@@ -428,6 +439,7 @@ export class ApprovalRepository extends TenantRepo {
       if (p.approvalStatus !== 'submitted') throw notAllowed(p.approvalStatus, to);
       const votes = await voteSnapshot(trx, this.tenantId, id);
       await this.update(trx, p, { approvalStatus: to, submitterRank: null }, now);
+      if (to === 'rejected') await cancelWishes(trx, this.tenantId, id);
       await renumberRanks(trx, this.tenantId, p.createdBy);
       await this.event(trx, id, to, { votes, rank: p.submitterRank }, comment, now);
       await this.notify(

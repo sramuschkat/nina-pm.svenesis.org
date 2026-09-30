@@ -21,28 +21,26 @@ import {
   can,
   DEFAULT_CONDITIONS,
   EXO_CATALOG_NAMES,
+  effectiveTenantSettings,
+  ExoLockCreate,
+  ExoObservationDecline,
   ExoProjectCreate,
   ExoProjectCreated,
   ExoProjectDetail,
+  ExoProjectPatch,
   ExoTransitList,
   ExoTransitQuery,
   ProblemError,
   ProjectCreate,
+  transitDeadlineMs,
+  transitPlannedFrames,
   Uuid,
   type Action,
   type AuthContext,
-  type ExoTransitView,
 } from '@nina-pm/shared';
 import { nightWindows, rigTransitContext } from '../exo/context';
-import {
-  catalogUpdate,
-  entryFromProject,
-  ephemerisOf,
-  ephemerisView,
-  findMerged,
-  mergedCatalog,
-  snapshotOf,
-} from '../exo/project';
+import { exoDetail, loadExoProject, lockModeFor, upcomingTransits } from '../exo/detail';
+import { catalogUpdate, ephemerisOf, findMerged, mergedCatalog, snapshotOf } from '../exo/project';
 import { cachedExoCatalog, searchTransits } from '../exo/search';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
@@ -57,9 +55,6 @@ const json = <S extends z.ZodType>(schema: S) => ({
 });
 
 const idParam = z.object({ id: Uuid });
-
-/** Nächte der Vorhersage im Reiter *Exoplanet-Transit* (FA-EXO-17; Entscheidung 30.09.2026: 60 Nächte). */
-export const EXO_UPCOMING_NIGHTS = 60;
 
 export const exoTransitsRoute = defineRoute(
   {
@@ -150,11 +145,107 @@ export const refreshEphemerisRoute = defineRoute(
   },
 );
 
+const observationParams = z.object({ id: Uuid, observationId: Uuid });
+const transitProblems = {
+  401: problemContent('Nicht angemeldet'),
+  403: problemContent('Keine Berechtigung'),
+  404: problemContent('Projekt bzw. Beobachtung nicht gefunden'),
+  409: problemContent(
+    'transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale',
+  ),
+  422: problemContent('Ungültige Anfrage'),
+};
+
+export const lockTransitRoute = defineRoute(
+  {
+    action: 'transit.lock',
+    requirements: ['FA-EXO-18', 'FA-EXO-19', 'FA-EXO-20', 'FA-EXO-33', 'FA-FRG-09'],
+  },
+  {
+    method: 'post',
+    path: '/api/web/v1/projects/{id}/exo/lock',
+    summary: 'Transit festlegen bzw. wünschen (vor der Freigabe, mit Bestätigung)',
+    tags: ['exo'],
+    request: { params: idParam, body: { ...json(ExoLockCreate), required: true } },
+    responses: {
+      200: { description: 'Exoplaneten-Teil nach dem Festlegen', ...json(ExoProjectDetail) },
+      ...transitProblems,
+    },
+  },
+);
+
+export const unlockTransitRoute = defineRoute(
+  { action: 'transit.lock', requirements: ['FA-EXO-18', 'FA-EXO-21', 'FA-EXO-33'] },
+  {
+    method: 'delete',
+    path: '/api/web/v1/projects/{id}/exo/lock/{observationId}',
+    summary: 'Festlegung aufheben (storniert)',
+    tags: ['exo'],
+    request: { params: observationParams },
+    responses: {
+      200: { description: 'Exoplaneten-Teil nach dem Aufheben', ...json(ExoProjectDetail) },
+      ...transitProblems,
+    },
+  },
+);
+
+export const patchExoProjectRoute = defineRoute(
+  { action: 'project.update', requirements: ['FA-EXO-19', 'FA-EXO-20'] },
+  {
+    method: 'patch',
+    path: '/api/web/v1/projects/{id}/exo',
+    summary: 'Transit-Einstellungen: Baseline, Puffer, Autofokus/Zentrieren, Defokus-Hinweis',
+    tags: ['exo'],
+    request: { params: idParam, body: { ...json(ExoProjectPatch), required: true } },
+    responses: {
+      200: { description: 'Exoplaneten-Teil', ...json(ExoProjectDetail) },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('Keine Berechtigung'),
+      404: problemContent('Projekt nicht gefunden oder kein Exoplaneten-Projekt'),
+      422: problemContent('Ungültige Anfrage'),
+    },
+  },
+);
+
+const decisionParams = z.object({ id: Uuid });
+
+export const confirmTransitRoute = defineRoute(
+  { action: 'queue.decide', requirements: ['FA-EXO-18', 'FA-FRG-04'] },
+  {
+    method: 'post',
+    path: '/api/web/v1/transit-observations/{id}/confirm',
+    summary: 'Transit-Bestätigung: festlegen (Warteschlange)',
+    tags: ['exo'],
+    request: { params: decisionParams },
+    responses: { 204: { description: 'Festgelegt' }, ...transitProblems },
+  },
+);
+
+export const declineTransitRoute = defineRoute(
+  { action: 'queue.decide', requirements: ['FA-EXO-18', 'FA-FRG-04'] },
+  {
+    method: 'post',
+    path: '/api/web/v1/transit-observations/{id}/decline',
+    summary: 'Transit-Bestätigung ablehnen (storniert, mit Begründung)',
+    tags: ['exo'],
+    request: {
+      params: decisionParams,
+      body: { ...json(ExoObservationDecline), required: true },
+    },
+    responses: { 204: { description: 'Abgelehnt' }, ...transitProblems },
+  },
+);
+
 export const EXO_ROUTES = [
   exoTransitsRoute,
   createExoProjectRoute,
   exoProjectRoute,
   refreshEphemerisRoute,
+  lockTransitRoute,
+  unlockTransitRoute,
+  patchExoProjectRoute,
+  confirmTransitRoute,
+  declineTransitRoute,
 ] as const;
 
 export function exoRoutes(services: () => Promise<ApiServices>) {
@@ -302,111 +393,13 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
     return c.json({ projectId: d.project.id, created: true }, 201);
   });
 
-  /** Exoplaneten-Teil eines Projekts inkl. Vorhersage (FA-EXO-17). */
-  const exoDetail = async (
-    svc: ApiServices,
-    tenant: ReturnType<typeof requireTenant>['tenant'],
-    memberId: string,
-    projectId: string,
-  ): Promise<ExoProjectDetail> => {
-    const repos = svc.repositories(tenant);
-    const d = await repos.projects().detail(projectId);
-    if (!d || d.project.projectType !== 'exoplanet') throw new ProblemError('resource.not_found');
-    const exoRepo = repos.exoProjects();
-    const exo = await exoRepo.exoProject(projectId);
-    const ephemerides = await exoRepo.ephemerides(projectId);
-    const active = ephemerides.find((e) => e.isActive) ?? ephemerides[0];
-    if (!exo || !active) throw new ProblemError('resource.not_found');
-
-    const p = d.project;
-    const rigId = p.rigId ?? p.requestedRigId;
-    const rc = rigId ? await rigTransitContext(repos.equipment(), rigId) : undefined;
-    const entry = entryFromProject(exo.catalogSnapshot, active);
-    const k = Math.min(3, Math.max(1, Math.round(exo.bufferSigma))) as 1 | 2 | 3;
-    const twilight = p.twilight as ExoProjectDetail['twilight'];
-    const minAltDeg = Number(p.minAltitudeDeg);
-
-    let upcoming: { night: string; item: ExoTransitView }[] = [];
-    let fromNight: string | null = null;
-    if (rc && entry) {
-      fromNight = siteNights(rc.site, svc.now(), undefined, 2).currentNight;
-      const myProjects = await myExoProjectCounts(svc.db, tenant.tenantId, memberId);
-      for (const w of nightWindows(rc.site, fromNight, EXO_UPCOMING_NIGHTS)) {
-        const items = searchTransits({
-          entries: [entry],
-          catalogs: [entry.catalog],
-          site: { latDeg: rc.site.latitudeDeg, lonDeg: rc.site.longitudeDeg },
-          nightStartUtc: w.startUtc,
-          nightEndUtc: w.endUtc,
-          minAltDeg,
-          twilightDeg: TWILIGHT_DEG[twilight],
-          k,
-          rigApertureMm: rc.apertureMm,
-          rigFilters: rc.rigFilters,
-          unconfirmedRigFilters: rc.unconfirmedRigFilters,
-          exposureRig: rc.exposureRig,
-          myProjects,
-        });
-        upcoming.push(
-          ...items.filter((x) => x.transit.observable).map((item) => ({ night: w.night, item })),
-        );
-      }
-      // Dieselbe Epoche kann in zwei Nachtfenstern liegen (Fenster über Mittag): einmal zeigen.
-      const seen = new Set<number>();
-      upcoming = upcoming.filter((x) => {
-        if (seen.has(x.item.transit.n)) return false;
-        seen.add(x.item.transit.n);
-        return true;
-      });
-    }
-
-    const entries = await cachedExoCatalog(() => readExoCatalog(svc.db), svc.now().getTime());
-    const current = findMerged(mergedCatalog(entries), exo.catalog, exo.planet);
-    return {
-      projectId,
-      planet: exo.planet,
-      star: exo.star,
-      catalog: exo.catalog as ExoProjectDetail['catalog'],
-      baselineBeforeMin: Number(exo.baselineBeforeMin),
-      baselineAfterMin: Number(exo.baselineAfterMin),
-      bufferSigma: exo.bufferSigma,
-      ephemeris: ephemerisView(active),
-      history: ephemerides.filter((e) => e.id !== active.id).map(ephemerisView),
-      catalogUpdate: current
-        ? catalogUpdate(
-            active,
-            current,
-            Number(p.raDeg ?? current.raDeg),
-            Number(p.decDeg ?? current.decDeg),
-            svc.now().getTime() / 1000,
-          )
-        : null,
-      others: await exoRepo.others(exo.planet, projectId),
-      rig: rc ? { id: rc.rig.id, name: rc.rig.name, apertureMm: rc.apertureMm } : null,
-      site: rc
-        ? {
-            id: rc.site.id,
-            name: rc.site.name,
-            timeZone: rc.site.timeZone,
-            latDeg: rc.site.latitudeDeg,
-            lonDeg: rc.site.longitudeDeg,
-          }
-        : null,
-      minAltDeg,
-      twilight,
-      fromNight,
-      nights: EXO_UPCOMING_NIGHTS,
-      upcoming,
-    };
-  };
-
   app.openapi(exoProjectRoute, async (c) => {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
     const { id } = c.req.valid('param');
     await authorized(svc.repositories(tenant).projects(), auth, id, 'project.read');
     c.header('cache-control', 'no-store');
-    return c.json(await exoDetail(svc, tenant, auth.memberId as string, id), 200);
+    return c.json(await exoDetail(svc, tenant, auth, id), 200);
   });
 
   app.openapi(refreshEphemerisRoute, async (c) => {
@@ -436,7 +429,161 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
       await scheduleProjectJobs(svc, repos, id);
     }
     c.header('cache-control', 'no-store');
-    return c.json(await exoDetail(svc, tenant, auth.memberId as string, id), 200);
+    return c.json(await exoDetail(svc, tenant, auth, id), 200);
+  });
+
+  /**
+   * Festlegen am Objekt prüfen (transit.md §8): freigegeben → `transit.lock` (Grenze offener Beobachtungen prüft
+   * das Repository als 409), sonst `project.update` (Wunsch vor der Freigabe). Fremde/gelöschte Projekte 404.
+   */
+  const lockContext = async (
+    svc: ApiServices,
+    tenant: ReturnType<typeof requireTenant>['tenant'],
+    auth: AuthContext,
+    id: string,
+  ) => {
+    const repos = svc.repositories(tenant);
+    const meta = await repos.projects().meta(id);
+    if (!meta) throw new ProblemError('resource.not_found');
+    const x = await loadExoProject(svc, tenant, id);
+    const settings = effectiveTenantSettings((await repos.tenant().current())?.settings);
+    const { mode, blocked } = lockModeFor(auth, x, settings);
+    if (!mode) {
+      if (blocked === 'no_right' || blocked === 'submitted')
+        throw new ProblemError('permission.denied');
+      throw new ProblemError('transit.lock_not_allowed', [
+        { path: 'id', message: blocked ?? 'nicht festlegbar' },
+      ]);
+    }
+    return { repos, x, mode, settings };
+  };
+
+  app.openapi(lockTransitRoute, async (c) => {
+    const svc = await services();
+    const { auth, tenant } = requireTenant(c);
+    const { id } = c.req.valid('param');
+    const { epoch } = c.req.valid('json');
+    const { repos, x, mode, settings } = await lockContext(svc, tenant, auth, id);
+    const rc = x.rc as NonNullable<typeof x.rc>;
+    const line = x.line as NonNullable<typeof x.line>;
+    const { upcoming } = await upcomingTransits(svc, tenant, auth.memberId as string, x);
+    const u = upcoming.find((t) => t.item.transit.n === epoch);
+    if (!u)
+      throw new ProblemError('validation.failed', [
+        { path: 'epoch', message: 'kein beobachtbarer Transit in den nächsten Nächten' },
+      ]);
+    const t = u.item.transit;
+    if (t.ephemerisAge === 'stale') throw new ProblemError('transit.ephemeris_stale');
+    const now = svc.now();
+    const windowStart = new Date(t.windowStartUtc);
+    const windowEnd = new Date(t.windowEndUtc);
+    const deadline = new Date(
+      transitDeadlineMs(windowStart.getTime(), rc.rig.overhead.slewCenterS),
+    );
+    const admin = can(auth, 'project.status');
+    if (!admin && now > deadline) throw new ProblemError('transit.deadline_passed');
+    await repos.transits().lock(
+      {
+        observation: {
+          projectId: id,
+          ephemerisId: x.active.id,
+          epoch,
+          night: u.night,
+          ingressUtc: new Date(t.ingressUtc),
+          midUtc: new Date(t.tcUtc),
+          egressUtc: new Date(t.egressUtc),
+          windowStartUtc: windowStart,
+          windowEndUtc: windowEnd,
+          baselineBeforeMin: t.baselineBeforeMin,
+          baselineAfterMin: t.baselineAfterMin,
+          bufferMin: t.bufferS / 60,
+          plannedCount: transitPlannedFrames(
+            windowStart.getTime(),
+            windowEnd.getTime(),
+            line.line.exposureS,
+            rc.rig.overhead.downloadS,
+          ),
+          confirmDeadlineUtc: deadline,
+        },
+        rigId: rc.rig.id,
+        planet: x.exo.planet,
+        mode: mode as NonNullable<typeof mode>,
+        maxOpen: admin || mode === 'wish' ? null : settings.exoUserMaxOpenLocks,
+        line: line.line,
+      },
+      now,
+    );
+    await scheduleProjectJobs(svc, repos, id);
+    c.header('cache-control', 'no-store');
+    return c.json(await exoDetail(svc, tenant, auth, id), 200);
+  });
+
+  app.openapi(unlockTransitRoute, async (c) => {
+    const svc = await services();
+    const { auth, tenant } = requireTenant(c);
+    const { id, observationId } = c.req.valid('param');
+    const repos = svc.repositories(tenant);
+    const meta = await repos.projects().meta(id);
+    if (!meta) throw new ProblemError('resource.not_found');
+    const res = {
+      tenantId: auth.tenantId ?? undefined,
+      createdBy: meta.createdBy,
+      approvalStatus: meta.approvalStatus as never,
+    };
+    const allowed =
+      meta.approvalStatus === 'approved'
+        ? can(auth, 'transit.lock', { ...res, openLocks: 0 })
+        : can(auth, 'project.update', res);
+    if (!allowed) throw new ProblemError('permission.denied');
+    await repos.transits().cancel(id, observationId, svc.now());
+    await scheduleProjectJobs(svc, repos, id);
+    c.header('cache-control', 'no-store');
+    return c.json(await exoDetail(svc, tenant, auth, id), 200);
+  });
+
+  app.openapi(patchExoProjectRoute, async (c) => {
+    const svc = await services();
+    const { auth, tenant } = requireTenant(c);
+    const { id } = c.req.valid('param');
+    const repos = svc.repositories(tenant);
+    await authorized(repos.projects(), auth, id, 'project.update');
+    await repos.projects().patchExoplanet(id, c.req.valid('json'), svc.now());
+    c.header('cache-control', 'no-store');
+    return c.json(await exoDetail(svc, tenant, auth, id), 200);
+  });
+
+  /** Warteschlange: Ersteller der Beobachtung ermitteln und `queue.decide` am Objekt prüfen (nicht eigene). */
+  const decideTransit = async (
+    c: Parameters<Parameters<typeof app.openapi>[1]>[0],
+    decision: 'confirm' | 'decline',
+    comment: string | null,
+  ) => {
+    const svc = await services();
+    const { auth, tenant } = requireTenant(c);
+    const { id } = c.req.param() as { id: string };
+    const repos = svc.repositories(tenant);
+    const o = await repos.transits().observation(id);
+    if (!o) throw new ProblemError('resource.not_found');
+    const meta = await repos.projects().meta(o.projectId);
+    if (!meta) throw new ProblemError('resource.not_found');
+    const res = {
+      tenantId: auth.tenantId ?? undefined,
+      createdBy: meta.createdBy,
+      approvalStatus: meta.approvalStatus as never,
+    };
+    if (!can(auth, 'queue.decide', res)) throw new ProblemError('permission.denied');
+    const r = await repos.transits().decide(id, decision, comment, svc.now());
+    await scheduleProjectJobs(svc, repos, r.projectId);
+  };
+
+  app.openapi(confirmTransitRoute, async (c) => {
+    await decideTransit(c, 'confirm', null);
+    return c.body(null, 204);
+  });
+
+  app.openapi(declineTransitRoute, async (c) => {
+    await decideTransit(c, 'decline', c.req.valid('json').comment);
+    return c.body(null, 204);
   });
 
   return app;

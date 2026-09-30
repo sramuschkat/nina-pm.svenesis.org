@@ -195,7 +195,7 @@ Rechnung in `packages/engine/src/exo/exposure.ts` (`exposureAdvice`), Kennwerte 
 - **Gültigkeit:** Richtwert für die Planung, keine Kalibrierung. Der Nullpunkt ist theoretisch; Wolken, Mond und Abweichungen der Kameradaten gehen nicht ein. Die Belichtungszeile eines Transit-Projekts (FA-EXO-20) bleibt frei wählbar.
 - **Tests** (`packages/engine/test/exposure.spec.ts`): erf, Spitzenanteil, Luftmasse, Bortle und Rundung; je ein Fall für `max_exposure`, `saturation`, `defocus` (mit Variante im Fokus), `defocus_limit` und `ingress`; größere Öffnung → bessere Genauigkeit.
 
-## 7. Exoplaneten-Projekt aus der Suche (FA-EXO-15…17, AP-42 Teil 2, Spec-Ergänzung 30.09.2026)
+## 7. Exoplaneten-Projekt aus der Suche (FA-EXO-15…17, AP-42 Teil 2, Spec-Ergänzung 30.09.2026, freigegeben 30.09.2026: 60 Nächte, Routen wie umgesetzt)
 Rechnung und Speichern in `apps/api/src/exo/project.ts`, `apps/api/src/routes/exo.ts` und `ProjectRepository.createExoplanet`/`replaceEphemeris`; Anzeige im Reiter *Exoplanet-Transit* (`apps/web/src/pages/exo/ExoTransitTab.tsx`).
 - **Anlegen** `POST /api/web/v1/exo/projects` (`project.create`): Der Client nennt Katalog und Planet der Ergebniszeile, Rig, Dämmerungsgrenze und Mindesthöhe des Suchfilters (FA-EXO-05) sowie die empfohlene Belichtung (FA-EXO-14a). Den Katalogeintrag liest der Server selbst, zusammengeführt wie in der Suche (§5, ohne APC).
   - **Eindeutig je Planet, Rig und Ersteller (OP-22):** Gibt es ein eigenes, nicht gelöschtes Exoplaneten-Projekt zu Planet und Rig (Rig oder Wunsch-Rig), antwortet die Route `200 {projectId, created: false}`; die Oberfläche öffnet es.
@@ -216,3 +216,34 @@ Rechnung und Speichern in `apps/api/src/exo/project.ts`, `apps/api/src/routes/ex
   - Projekte anderer Mitglieder zum selben Planeten erscheinen als Hinweis mit Link, Ersteller und Rig.
 - **Offen (AP-43):** Transit festlegen, Richtwert *Geplant*, Wetterbewertung in der Liste (FA-EXO-17 „soweit vorhanden“), Ephemeridenalter als Sperre (FA-EXO-16a) bei der Festlegung.
 - **Tests:** `apps/api/test/exo-project.test.ts`; Rechte-Tabelle; Web `exo.test.tsx`; E2E `exoplanets.spec.ts`.
+
+## 8. Transit-Beobachtungen festlegen (FA-EXO-18…21, 30, 33, 34; FA-FRG-04/09; AP-43, Spec-Ergänzung 30.09.2026)
+Umsetzung in `apps/api/src/exo/lock.ts`, `apps/api/src/routes/exo.ts`, `packages/db/src/repositories/transit.ts` und im Reiter *Exoplanet-Transit*. Entscheidungen Sven 30.09.2026: vor der Freigabe **genau ein** gewünschter Transit; der Hinweis auf verdrängte reguläre Blöcke (FA-EXO-18) kommt mit AP-44.
+- **Wählbar** ist ein beobachtbarer Transit aus der Vorhersage des Reiters (§7: 60 Nächte, Projektbedingungen, Baseline und Puffer des Projekts). Das Fenster wird beim Festlegen gespeichert (Ingress/Mitte/Egress, Fenster, Baseline, Puffer, Nacht, Epoche, aktive Ephemeride). Nicht festlegbar (`409 transit.lock_not_allowed`): ohne Rig, ohne aktive Zeile mit Filter (FA-EXO-08/20), Projekt *Abgeschlossen*/*Archiviert* oder *Unfertig* (FA-EXO-34). Ephemeride zu alt (FA-EXO-16a) → `409 transit.ephemeris_stale`. Unbekannte Epoche → `422 validation.failed`.
+- **Status** (FA-EXO-18):
+  - Projekt nicht freigegeben (Entwurf, zurückgegeben; Ersteller oder Admin, Recht `project.update`): Beobachtung *gewünscht*. Es gibt höchstens einen Wunsch; ein neuer ersetzt den bisherigen (→ *storniert*).
+  - Freigegeben, Admin: sofort *festgelegt* (`locked_at`, `locked_by`).
+  - Freigegeben, Ersteller (`transit.lock`): *festgelegt*. Mit der Mandanteneinstellung `exoUserLockNeedsAdmin` (Standard an) bleibt sie stattdessen *gewünscht* und erscheint als **Transit-Bestätigung** in der Warteschlange; die Admins werden benachrichtigt (`transit.confirmation_needed`).
+  - Offene Beobachtungen (*gewünscht*/*festgelegt*, Fensterende in der Zukunft) je Projekt höchstens `exoUserMaxOpenLocks` (Standard 3) für den Ersteller, sonst `409 transit.too_many_open`. Admins sind ausgenommen.
+- **Frist** (FA-FRG-09) = Fensterbeginn − (Slew/Zentrieren des Rigs + 60 s) − 15 min. Nach der Frist lehnt die Route das Festlegen durch den Ersteller mit `409 transit.deadline_passed` ab; Admins dürfen immer.
+- **Konflikte auf dem Rig** (FA-EXO-33): Verglichen wird mit *festgelegten* und in der Warteschlange *gewünschten* Beobachtungen freigegebener Projekte desselben Rigs. Wünsche aus Entwürfen belegen nichts.
+  - Überlappende Fenster → `409 transit.window_overlap`; `errors[]` nennt die belegende Beobachtung (Projekt, Ersteller, Fenster).
+  - **Ausnahme – dasselbe Ereignis:** gleicher Planet und gleiche Epoche mit gleicher Transit-Zeile (Filter, Belichtung, Gain, Offset, Binning, Auslesemodus). Dann wird die Beobachtung mit der früheren Festlegung verknüpft (`primary_observation_id`); NINA belichtet einmal.
+  - Gleiches Ereignis mit abweichender Zeile → `409 transit.share_mismatch`.
+  - Der Reiter zeigt Konflikte schon in der Liste (Belegung mit Projekt und Ersteller).
+  - Die Prüfung läuft erneut bei Freigabe und Bestätigung. Zur Serialisierung sperrt die Transaktion die Rig-Zeile (`guard`).
+- **Freigabe** eines Exoplaneten-Projekts: Der Wunsch mit Fensterende in der Zukunft wird *festgelegt* (Freigebender, `locked_at` = jetzt; Konflikt → `409 transit.window_overlap`), vergangene werden *storniert*. *Ablehnen* storniert den Wunsch; *Zurückgeben* lässt ihn stehen.
+- **Bestätigen / Ablehnen** (`queue.decide`, nicht für eigene Objekte): `POST /api/web/v1/transit-observations/{id}/confirm` → *festgelegt*, `…/decline {comment}` → *storniert*. Beides benachrichtigt den Ersteller (`transit.confirmed`, `transit.declined`).
+- **Aufheben:** `DELETE /api/web/v1/projects/{id}/exo/lock/{observationId}` (Ersteller wie beim Festlegen, Admin) → *storniert*, solange das Fensterende nicht erreicht ist. War sie primär, wird die nächstfrühere verknüpfte Beobachtung primär.
+- **Warteschlange** (FA-FRG-04): Art `transit` mit Planet, Nacht, Fenster, Frist, Rig, Ersteller und Transit-Zeile, ohne Stimmen und Rang. Sortierung: Fristen unter 24 h zuerst (alle Arten), dann wie bisher.
+- **Verfall und Abschluss** (Zeitplan `tick-5min`, `settleTransits`):
+  - Gewünscht und Frist verstrichen:
+    - freigegebenes Projekt → *storniert*, Ersteller benachrichtigt (`transit.expired`);
+    - eingereichtes Projekt → Beobachtung *storniert*, Projekt *zurückgegeben* mit Vermerk „Frist verpasst“ (`approval.expired`);
+    - Entwurf → *storniert* ohne Benachrichtigung.
+  - Festgelegt und Fensterende erreicht → *beobachtet* (mit Session und Anzahl der Aufnahmen) bzw. *verpasst*.
+  - *Verpasst* mit später nachgemeldeten Aufnahmen (≤ 14 Tage) → *beobachtet* (FA-EXO-21). Verknüpfte Beobachtungen folgen ihrer primären.
+- **Richtwert *Geplant*** (FA-EXO-20): ⌊Fensterdauer / (Belichtung + Download)⌋ der aktiven Zeile, gespeichert an der Beobachtung. Die Zeile übernimmt den Wert der nächsten offenen Beobachtung, damit Einreichen und Freigabe die Vollständigkeit erfüllen.
+- **Einstellungen** (FA-EXO-19/20), `PATCH /api/web/v1/projects/{id}/exo` (`project.update`): Baseline vor/nach (0–240 min), Puffer k (1–3), Autofokus im Fenster erlaubt, Zentrieren nach Drift erlaubt, Defokus-Hinweis. Sie wirken auf Vorhersage und neue Festlegungen; bestehende Beobachtungen behalten ihr Fenster.
+- **Vorschlag** (FA-EXO-30): Hat das Projekt keine offene Beobachtung und ist es nicht *Abgeschlossen* (FA-EXO-34), schlägt der Reiter den nächsten beobachtbaren, konfliktfreien Transit vor, mit der Wetterbewertung der Nacht, soweit eine Prognose vorliegt.
+- **Nicht in AP-43:** Auslieferung an NINA und Planung (`hasLockedTransit`, Transitblock) sowie der Hinweis auf verdrängte Blöcke – AP-44. Abdeckungskennzahlen und Ampel (FA-EXO-27/28), CSV und Ergebnisimport – AP-45.

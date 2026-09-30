@@ -227,6 +227,16 @@ export {
   type ThumbnailCandidate,
 } from './repositories/thumbnail';
 export {
+  settleTransits,
+  TransitRepository,
+  transitLine,
+  type LockInput,
+  type ObservationInsert,
+  type ObservationRow,
+  type PendingConfirmation,
+  type SettleResult,
+} from './repositories/transit';
+export {
   ExoProjectRepository,
   type EphemerisRow,
   type ExoProjectOther,

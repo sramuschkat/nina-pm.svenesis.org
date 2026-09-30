@@ -8,7 +8,7 @@
  * (`202 {jobId}`, dedupliziert je Gegenstand, höchstens 3 offene Jobs je Mitglied).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import type { ChangeRequestRecord, ProjectDetail, QueueEntry } from '@nina-pm/db';
+import type { ChangeRequestRecord, ObservationRow, ProjectDetail, QueueEntry } from '@nina-pm/db';
 import {
   applyChangeRequest,
   ApproveInput,
@@ -33,7 +33,7 @@ import {
 } from '@nina-pm/shared';
 import type { Context } from 'hono';
 import type { ApiEnv } from '../lib/env';
-import { isoUtcOrNull } from '../lib/format';
+import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { requireTenant } from './tenant';
@@ -258,9 +258,12 @@ export const APPROVAL_ROUTES = [
 
 // ---- Ansichten ------------------------------------------------------------------------------------
 
+type QueueTransitInfo = NonNullable<z.output<typeof QueueItem>['transit']>;
+
 function queueItem(
   e: QueueEntry,
   suggestedPriorityPosition: number | null,
+  transit: QueueTransitInfo | null = null,
 ): z.output<typeof QueueItem> {
   const p = e.detail.project;
   const active = e.detail.panels.flatMap((panel) => panel.lines).filter((l) => l.enabled);
@@ -277,7 +280,11 @@ function queueItem(
     createdBy: p.createdBy,
     createdByName: e.createdByName,
     submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
-    expiresAt: e.expiresAt ? e.expiresAt.toISOString() : null,
+    // Frist: früheste von Freigabefrist und Transit-Frist (FA-FRG-09).
+    expiresAt: earliest(
+      e.expiresAt ? e.expiresAt.toISOString() : null,
+      transit?.deadlineUtc ?? null,
+    ),
     requestedRigId: p.requestedRigId ?? p.rigId,
     target: p.raDeg !== null && p.decDeg !== null ? { raDeg: p.raDeg, decDeg: p.decDeg } : null,
     conditions: {
@@ -310,7 +317,23 @@ function queueItem(
     suggestedPriorityPosition,
     version: p.version,
     changeRequest: null,
+    transit,
   };
+}
+
+const earliest = (a: string | null, b: string | null) =>
+  a === null ? b : b === null ? a : Date.parse(a) <= Date.parse(b) ? a : b;
+
+/** Fristen unter 24 h zuerst (FA-FRG-04), dann Stimmen, Rang beim Einreicher, Einreichungszeit. */
+export function queueOrder(nowMs: number) {
+  const urgent = (q: z.output<typeof QueueItem>) =>
+    q.expiresAt !== null && Date.parse(q.expiresAt) - nowMs < 86_400_000;
+  return (a: z.output<typeof QueueItem>, b: z.output<typeof QueueItem>) =>
+    Number(urgent(b)) - Number(urgent(a)) ||
+    (urgent(a) && urgent(b) ? (a.expiresAt ?? '').localeCompare(b.expiresAt ?? '') : 0) ||
+    b.votes.count - a.votes.count ||
+    (a.submitterRank?.rank ?? 999) - (b.submitterRank?.rank ?? 999) ||
+    (a.submittedAt ?? '').localeCompare(b.submittedAt ?? '');
 }
 
 /**
@@ -513,12 +536,92 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
       requests.ranks(open),
       Promise.all(open.map((r) => x.projects.detail(r.row.projectId))),
     ]);
+    // Transits (AP-43): Wunsch eingereichter Exoplaneten-Projekte und Transit-Bestätigungen (FA-EXO-18).
+    const repos = x.svc.repositories(requireTenant(c).tenant);
+    const equipment = repos.equipment();
+    const rigInfo = new Map<string, { name: string; timeZone: string | null }>();
+    const rigOf = async (rigId: string | null) => {
+      if (!rigId) return { name: null, timeZone: null };
+      if (!rigInfo.has(rigId)) {
+        const rig = await equipment.rig(rigId);
+        const site = rig?.siteId ? await equipment.site(rig.siteId) : undefined;
+        rigInfo.set(rigId, { name: rig?.name ?? '', timeZone: site?.timeZone ?? null });
+      }
+      return rigInfo.get(rigId) as { name: string; timeZone: string | null };
+    };
+    const transitOf = async (
+      o: ObservationRow,
+      planet: string,
+      rigId: string | null,
+    ): Promise<QueueTransitInfo> => {
+      const rig = await rigOf(rigId);
+      return {
+        observationId: o.id,
+        planet,
+        epoch: o.epoch,
+        night: String(o.night).slice(0, 10),
+        midUtc: isoUtc(new Date(o.midUtc)),
+        windowStartUtc: isoUtc(new Date(o.windowStartUtc)),
+        windowEndUtc: isoUtc(new Date(o.windowEndUtc)),
+        deadlineUtc: isoUtcOrNull(o.confirmDeadlineUtc ? new Date(o.confirmDeadlineUtc) : null),
+        rigName: rig.name,
+        timeZone: rig.timeZone,
+        plannedCount: o.plannedCount,
+      };
+    };
+    const exoEntries = entries.filter((e) => e.detail.project.projectType === 'exoplanet');
+    const wishes = await repos.transits().wishes(exoEntries.map((e) => e.detail.project.id));
+    const planets = new Map(
+      await Promise.all(
+        exoEntries.map(
+          async (e) =>
+            [
+              e.detail.project.id,
+              (await repos.exoProjects().exoProject(e.detail.project.id))?.planet ?? '',
+            ] as const,
+        ),
+      ),
+    );
+    const wishInfo = new Map<string, QueueTransitInfo>();
+    for (const w of wishes) {
+      const e = exoEntries.find((x2) => x2.detail.project.id === w.projectId);
+      if (e)
+        wishInfo.set(
+          w.projectId,
+          await transitOf(
+            w,
+            planets.get(w.projectId) ?? '',
+            e.detail.project.requestedRigId ?? e.detail.project.rigId,
+          ),
+        );
+    }
+    const pending = await repos.transits().pendingConfirmations();
+    const noVotes = { count: 0, voters: [], mine: false, mineChangedSince: false };
+    const transitItems: z.output<typeof QueueItem>[] = [];
+    for (const t of pending) {
+      const detail = await x.projects.detail(t.observation.projectId);
+      if (!detail) continue;
+      const base = queueItem(
+        {
+          detail,
+          createdByName: t.createdByName,
+          submittedAt: new Date(t.observation.createdAt),
+          expiresAt: null,
+          votes: noVotes,
+          rank: null,
+        },
+        null,
+        await transitOf(t.observation, t.planet, t.rigId),
+      );
+      transitItems.push({ ...base, kind: 'transit', id: t.observation.id });
+    }
     const items = [
       ...entries.map((e) => {
         const rig = e.detail.project.requestedRigId ?? e.detail.project.rigId;
         return queueItem(
           e,
           admin && rig ? suggestPriorityPosition(e.votes.count, peers.get(rig) ?? []) : null,
+          wishInfo.get(e.detail.project.id) ?? null,
         );
       }),
       ...open.flatMap((r, i) => {
@@ -534,12 +637,8 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
             ]
           : [];
       }),
-    ].sort(
-      (a, b) =>
-        b.votes.count - a.votes.count ||
-        (a.submitterRank?.rank ?? 999) - (b.submitterRank?.rank ?? 999) ||
-        (a.submittedAt ?? '').localeCompare(b.submittedAt ?? ''),
-    );
+      ...transitItems,
+    ].sort(queueOrder(x.svc.now().getTime()));
     c.header('cache-control', 'no-store');
     return c.json({ items }, 200);
   });

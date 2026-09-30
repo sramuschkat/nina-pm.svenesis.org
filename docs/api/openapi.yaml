@@ -1110,6 +1110,9 @@ components:
             - vote.subject_resubmitted
             - project.completed
             - transit.confirmation_needed
+            - transit.confirmed
+            - transit.declined
+            - transit.expired
             - role.changed
             - owner.reassigned
             - alert.rig_busy
@@ -5935,6 +5938,7 @@ components:
           enum:
             - project
             - change-request
+            - transit
         id:
           type: string
           format: uuid
@@ -6129,6 +6133,63 @@ components:
           type: integer
         changeRequest:
           $ref: "#/components/schemas/ChangeRequestInfo"
+        transit:
+          type:
+            - object
+            - "null"
+          properties:
+            observationId:
+              type: string
+              format: uuid
+              description: UUID
+            planet:
+              type: string
+            epoch:
+              type: integer
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+            midUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            windowStartUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            windowEndUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            deadlineUtc:
+              type:
+                - string
+                - "null"
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            rigName:
+              type:
+                - string
+                - "null"
+            timeZone:
+              type:
+                - string
+                - "null"
+            plannedCount:
+              type: integer
+          required:
+            - observationId
+            - planet
+            - epoch
+            - night
+            - midUtc
+            - windowStartUtc
+            - windowEndUtc
+            - deadlineUtc
+            - rigName
+            - timeZone
+            - plannedCount
       required:
         - kind
         - id
@@ -6160,6 +6221,7 @@ components:
         - suggestedPriorityPosition
         - version
         - changeRequest
+        - transit
     QueueVotes:
       type: object
       properties:
@@ -10855,9 +10917,66 @@ components:
                 example: 2026-09-18
               item:
                 $ref: "#/components/schemas/ExoTransitView"
+              deadlineUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              conflict:
+                $ref: "#/components/schemas/ExoTransitConflict"
+              observationId:
+                type:
+                  - string
+                  - "null"
+                format: uuid
+                description: UUID
             required:
               - night
               - item
+              - deadlineUtc
+              - conflict
+              - observationId
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExoObservationView"
+        allowAutofocus:
+          type: boolean
+        allowRecenter:
+          type: boolean
+        defocusHint:
+          type:
+            - string
+            - "null"
+        lockMode:
+          type:
+            - string
+            - "null"
+          enum:
+            - wish
+            - request
+            - lock
+            - null
+        lockBlockedReason:
+          type:
+            - string
+            - "null"
+          enum:
+            - no_rig
+            - no_line
+            - project_closed
+            - no_right
+            - submitted
+            - null
+        openCount:
+          type: integer
+        maxOpen:
+          type:
+            - integer
+            - "null"
+        suggestedEpoch:
+          type:
+            - integer
+            - "null"
       required:
         - projectId
         - planet
@@ -10877,6 +10996,15 @@ components:
         - fromNight
         - nights
         - upcoming
+        - observations
+        - allowAutofocus
+        - allowRecenter
+        - defocusHint
+        - lockMode
+        - lockBlockedReason
+        - openCount
+        - maxOpen
+        - suggestedEpoch
     ExoEphemerisView:
       type: object
       properties:
@@ -10991,6 +11119,187 @@ components:
         - periodDeltaS
         - nextMidUtc
         - nextMidShiftMin
+    ExoTransitConflict:
+      type:
+        - object
+        - "null"
+      properties:
+        kind:
+          type: string
+          enum:
+            - overlap
+            - share_mismatch
+            - share
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        createdByName:
+          type: string
+        windowStartUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        windowEndUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - kind
+        - projectId
+        - projectName
+        - createdByName
+        - windowStartUtc
+        - windowEndUtc
+    ExoObservationView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID
+        status:
+          type: string
+          enum:
+            - requested
+            - locked
+            - observed
+            - missed
+            - cancelled
+        epoch:
+          type: integer
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        ingressUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        midUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        egressUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        windowStartUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        windowEndUtc:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        baselineBeforeMin:
+          type: integer
+        baselineAfterMin:
+          type: integer
+        bufferMin:
+          type: number
+        confirmDeadlineUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        lockedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        lockedByName:
+          type:
+            - string
+            - "null"
+        plannedCount:
+          type: integer
+        acquiredCount:
+          type: integer
+        sessionId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        primaryObservationId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        createdAt:
+          type: string
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - id
+        - status
+        - epoch
+        - night
+        - ingressUtc
+        - midUtc
+        - egressUtc
+        - windowStartUtc
+        - windowEndUtc
+        - baselineBeforeMin
+        - baselineAfterMin
+        - bufferMin
+        - confirmDeadlineUtc
+        - lockedAt
+        - lockedByName
+        - plannedCount
+        - acquiredCount
+        - sessionId
+        - primaryObservationId
+        - createdAt
+    ExoLockCreate:
+      type: object
+      properties:
+        epoch:
+          type: integer
+      required:
+        - epoch
+      additionalProperties: false
+    ExoProjectPatch:
+      type: object
+      properties:
+        baselineBeforeMin:
+          type: integer
+          minimum: 0
+          maximum: 240
+        baselineAfterMin:
+          type: integer
+          minimum: 0
+          maximum: 240
+        bufferSigma:
+          type: integer
+          minimum: 1
+          maximum: 3
+        allowAutofocus:
+          type: boolean
+        allowRecenter:
+          type: boolean
+        defocusHint:
+          type:
+            - string
+            - "null"
+          maxLength: 200
+      additionalProperties: false
+    ExoObservationDecline:
+      type: object
+      properties:
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - comment
+      additionalProperties: false
     NinaBootstrap:
       type: object
       properties:
@@ -23123,6 +23432,61 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+    patch:
+      summary: "Transit-Einstellungen: Baseline, Puffer, Autofokus/Zentrieren, Defokus-Hinweis"
+      tags:
+        - exo
+      description: "Aktion: `project.update` · FA-EXO-19, FA-EXO-20"
+      x-npm-action: project.update
+      x-npm-requirements:
+        - FA-EXO-19
+        - FA-EXO-20
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExoProjectPatch"
+      responses:
+        "200":
+          description: Exoplaneten-Teil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt nicht gefunden oder kein Exoplaneten-Projekt
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/projects/{id}/ephemeris/refresh:
     post:
       summary: Neuere Katalog-Ephemeride übernehmen (frühere bleibt als Historie)
@@ -23162,6 +23526,246 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: Projekt nicht gefunden oder Planet nicht mehr im Katalog
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/exo/lock:
+    post:
+      summary: Transit festlegen bzw. wünschen (vor der Freigabe, mit Bestätigung)
+      tags:
+        - exo
+      description: "Aktion: `transit.lock` · FA-EXO-18, FA-EXO-19, FA-EXO-20, FA-EXO-33, FA-FRG-09"
+      x-npm-action: transit.lock
+      x-npm-requirements:
+        - FA-EXO-18
+        - FA-EXO-19
+        - FA-EXO-20
+        - FA-EXO-33
+        - FA-FRG-09
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExoLockCreate"
+      responses:
+        "200":
+          description: Exoplaneten-Teil nach dem Festlegen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt bzw. Beobachtung nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/exo/lock/{observationId}:
+    delete:
+      summary: Festlegung aufheben (storniert)
+      tags:
+        - exo
+      description: "Aktion: `transit.lock` · FA-EXO-18, FA-EXO-21, FA-EXO-33"
+      x-npm-action: transit.lock
+      x-npm-requirements:
+        - FA-EXO-18
+        - FA-EXO-21
+        - FA-EXO-33
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: observationId
+          in: path
+      responses:
+        "200":
+          description: Exoplaneten-Teil nach dem Aufheben
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExoProjectDetail"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt bzw. Beobachtung nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/transit-observations/{id}/confirm:
+    post:
+      summary: "Transit-Bestätigung: festlegen (Warteschlange)"
+      tags:
+        - exo
+      description: "Aktion: `queue.decide` · FA-EXO-18, FA-FRG-04"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-EXO-18
+        - FA-FRG-04
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      responses:
+        "204":
+          description: Festgelegt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt bzw. Beobachtung nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/transit-observations/{id}/decline:
+    post:
+      summary: Transit-Bestätigung ablehnen (storniert, mit Begründung)
+      tags:
+        - exo
+      description: "Aktion: `queue.decide` · FA-EXO-18, FA-FRG-04"
+      x-npm-action: queue.decide
+      x-npm-requirements:
+        - FA-EXO-18
+        - FA-FRG-04
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExoObservationDecline"
+      responses:
+        "204":
+          description: Abgelehnt
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Projekt bzw. Beobachtung nicht gefunden
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: Ungültige Anfrage
           content:
             application/problem+json:
               schema:

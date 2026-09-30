@@ -10,6 +10,11 @@ export interface MaintenanceDeps {
   readonly expireSubmissions?: () => Promise<number>;
   /** Aufwand-Kennzeichen je Standort und Nacht nach dem lokalen Mittag (AP-13e, NT-08, `tick-hourly`). */
   readonly effortSiteNights?: () => Promise<number>;
+  /**
+   * Transit-Beobachtungen (AP-43, transit.md §8, `tick-5min`): Frist verstrichen → storniert bzw. Projekt
+   * zurückgegeben; Fensterende erreicht → beobachtet/verpasst.
+   */
+  readonly settleTransits?: () => Promise<unknown>;
   /** Verwaiste Sessions, Metrik `StaleRunningSessions`, fällige Session-Jobs (AP-15, `tick-5min`). */
   readonly sessions?: () => Promise<unknown>;
   /** Mehrnacht-Prognose je Standort und Nacht nach dem lokalen Mittag (AP-33, NT-08, `tick-hourly`). */
@@ -33,7 +38,8 @@ export interface MaintenanceDeps {
  * `daily` räumt abgelaufene Einladungen auf und misst den Speicherbedarf je Mandant (AP-07d),
  * `tick-hourly` lässt überfällige Einreichungen verfallen (AP-12a) und startet je Standort einmal je Nacht
  * die Aufwand-Kennzeichen (AP-13e, NT-08) und den Zähler-Abgleich (AP-15); `tick-5min` markiert
- * verwaiste Sessions und legt fällige Session-Jobs an (AP-15); danach holt er das Astro-Wetter je Standort
+ * verwaiste Sessions und legt fällige Session-Jobs an (AP-15), schließt Transit-Beobachtungen ab bzw. lässt
+ * Transit-Fristen verfallen (AP-43); danach holt er das Astro-Wetter je Standort
  * alle 15 min (AP-23, seit 29.09.2026 statt stündlich) mit eigenem Zeitbudget (`WEATHER_TICK_BUDGET_MS`).
  * `tick-hourly` holt zuletzt fehlende Vorschaubilder (AP-25) mit Zeitbudget (`HOURLY_FETCH_BUDGET_MS`), damit
  * langsame externe Dienste die Aufgaben je Standort nicht verdrängen (28.09.2026). `daily` holt außerdem die
@@ -46,6 +52,9 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
       { name: 'job_pickup', run: async () => void (await pickupStaleJobs(jobs)) },
       ...(maintenance?.sessions
         ? [{ name: 'sessions', run: async () => void (await maintenance.sessions?.()) }]
+        : []),
+      ...(maintenance?.settleTransits
+        ? [{ name: 'transits', run: async () => void (await maintenance.settleTransits?.()) }]
         : []),
       ...(maintenance?.weather
         ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]

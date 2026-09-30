@@ -4,6 +4,7 @@ import {
   deleteExpiredInvitations,
   EquipmentRepository,
   expireSubmissions,
+  settleTransits,
   JobRepository,
   latestWeather,
   projectsWithoutThumbnail,
@@ -190,6 +191,11 @@ const maintenanceFor = (startedAt: number) => ({
     const runs = await effortSiteTick(effort, jobs, new Date());
     logger.info('effort_site_nights', { runs });
     return runs;
+  },
+  settleTransits: async () => {
+    const result = await settleTransits((await lambdaDatabase()).db, new Date());
+    logger.info('transits', { ...result });
+    return result;
   },
   expireSubmissions: async () => {
     const expired = await expireSubmissions((await lambdaDatabase()).db, new Date());

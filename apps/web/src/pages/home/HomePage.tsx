@@ -385,8 +385,15 @@ function QueueCard() {
   });
   // Stimme wie in S-33 (FA-FRG-14): gleicher Aufruf, gleicher Cache; eigene Objekte gesperrt.
   const vote = useMutation({
-    mutationFn: ({ id, on, kind }: { id: string; on: boolean; kind: QueueItem['kind'] }) =>
-      approvalApi.vote(id, on, kind),
+    mutationFn: ({
+      id,
+      on,
+      kind,
+    }: {
+      id: string;
+      on: boolean;
+      kind: 'project' | 'change-request';
+    }) => approvalApi.vote(id, on, kind),
     onSuccess: () => client.invalidateQueries({ queryKey: QUEUE_KEY }),
   });
   const meId = me?.member?.id ?? '';
@@ -410,7 +417,9 @@ function QueueCard() {
                   item={q}
                   own={q.createdBy === meId}
                   voting={vote.isPending}
-                  onVote={(on) => vote.mutate({ id: q.id, on, kind: q.kind })}
+                  onVote={(on) => {
+                    if (q.kind !== 'transit') vote.mutate({ id: q.id, on, kind: q.kind });
+                  }}
                 />
               ))}
             </ul>
@@ -441,22 +450,30 @@ function QueueRow({
         <span className={styles.muted}>{t('home.queue.by', { name: q.createdByName })}</span>
       </span>
       <EffortChip effort={q.effort} size="sm" />
-      <span className={styles.voteCell}>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-pressed={q.votes.mine}
-          aria-label={
-            own ? t('queue.voteOwn', { name: q.name }) : t('queue.voteFor', { name: q.name })
-          }
-          title={own ? t('queue.voteOwnHint') : undefined}
-          disabled={own || voting}
-          onClick={() => onVote(!q.votes.mine)}
-        >
-          <Vote size={ICON_SIZE.table} aria-hidden fill={q.votes.mine ? 'currentColor' : 'none'} />
-        </button>
-        <span>{q.votes.count}</span>
-      </span>
+      {q.kind === 'transit' ? (
+        <span className={styles.muted}>{t('queue.transit.badge')}</span>
+      ) : (
+        <span className={styles.voteCell}>
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-pressed={q.votes.mine}
+            aria-label={
+              own ? t('queue.voteOwn', { name: q.name }) : t('queue.voteFor', { name: q.name })
+            }
+            title={own ? t('queue.voteOwnHint') : undefined}
+            disabled={own || voting}
+            onClick={() => onVote(!q.votes.mine)}
+          >
+            <Vote
+              size={ICON_SIZE.table}
+              aria-hidden
+              fill={q.votes.mine ? 'currentColor' : 'none'}
+            />
+          </button>
+          <span>{q.votes.count}</span>
+        </span>
+      )}
     </li>
   );
 }

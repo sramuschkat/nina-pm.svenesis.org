@@ -11083,7 +11083,73 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Transit-Einstellungen: Baseline, Puffer, Autofokus/Zentrieren, Defokus-Hinweis
+         * @description Aktion: `project.update` · FA-EXO-19, FA-EXO-20
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExoProjectPatch"];
+                };
+            };
+            responses: {
+                /** @description Exoplaneten-Teil */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt nicht gefunden oder kein Exoplaneten-Projekt */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/web/v1/projects/{id}/ephemeris/refresh": {
@@ -11140,6 +11206,360 @@ export interface paths {
                 };
                 /** @description Projekt nicht gefunden oder Planet nicht mehr im Katalog */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/exo/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transit festlegen bzw. wünschen (vor der Freigabe, mit Bestätigung)
+         * @description Aktion: `transit.lock` · FA-EXO-18, FA-EXO-19, FA-EXO-20, FA-EXO-33, FA-FRG-09
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExoLockCreate"];
+                };
+            };
+            responses: {
+                /** @description Exoplaneten-Teil nach dem Festlegen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt bzw. Beobachtung nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/exo/lock/{observationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Festlegung aufheben (storniert)
+         * @description Aktion: `transit.lock` · FA-EXO-18, FA-EXO-21, FA-EXO-33
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    observationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Exoplaneten-Teil nach dem Aufheben */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExoProjectDetail"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt bzw. Beobachtung nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/transit-observations/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transit-Bestätigung: festlegen (Warteschlange)
+         * @description Aktion: `queue.decide` · FA-EXO-18, FA-FRG-04
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Festgelegt */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt bzw. Beobachtung nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/transit-observations/{id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transit-Bestätigung ablehnen (storniert, mit Begründung)
+         * @description Aktion: `queue.decide` · FA-EXO-18, FA-FRG-04
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExoObservationDecline"];
+                };
+            };
+            responses: {
+                /** @description Abgelehnt */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Projekt bzw. Beobachtung nicht gefunden */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description transit.lock_not_allowed, transit.too_many_open, transit.window_overlap, transit.share_mismatch, transit.deadline_passed, transit.ephemeris_stale */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Ungültige Anfrage */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13329,7 +13749,7 @@ export interface components {
              */
             id: string;
             /** @enum {string} */
-            kind: "submission.new" | "submission.withdrawn" | "submission.edited_by_admin" | "approval.approved" | "approval.returned" | "approval.rejected" | "approval.expired" | "deadline.near" | "change_request.new" | "change_request.decided" | "vote.subject_changed" | "vote.subject_resubmitted" | "project.completed" | "transit.confirmation_needed" | "role.changed" | "owner.reassigned" | "alert.rig_busy" | "alert.session_no_heartbeat" | "alert.plugin_dead_letters" | "alert.nina_settings_mismatch" | "alert.discord_channel_failed";
+            kind: "submission.new" | "submission.withdrawn" | "submission.edited_by_admin" | "approval.approved" | "approval.returned" | "approval.rejected" | "approval.expired" | "deadline.near" | "change_request.new" | "change_request.decided" | "vote.subject_changed" | "vote.subject_resubmitted" | "project.completed" | "transit.confirmation_needed" | "transit.confirmed" | "transit.declined" | "transit.expired" | "role.changed" | "owner.reassigned" | "alert.rig_busy" | "alert.session_no_heartbeat" | "alert.plugin_dead_letters" | "alert.nina_settings_mismatch" | "alert.discord_channel_failed";
             payload: {
                 [key: string]: unknown;
             };
@@ -15475,7 +15895,7 @@ export interface components {
         };
         QueueItem: {
             /** @enum {string} */
-            kind: "project" | "change-request";
+            kind: "project" | "change-request" | "transit";
             /**
              * Format: uuid
              * @description UUID
@@ -15577,6 +15997,43 @@ export interface components {
             suggestedPriorityPosition: number | null;
             version: number;
             changeRequest: components["schemas"]["ChangeRequestInfo"];
+            transit: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                observationId: string;
+                planet: string;
+                epoch: number;
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                midUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowStartUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowEndUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                deadlineUtc: string | null;
+                rigName: string | null;
+                timeZone: string | null;
+                plannedCount: number;
+            } | null;
         };
         QueueVotes: {
             count: number;
@@ -17502,7 +17959,29 @@ export interface components {
                  */
                 night: string;
                 item: components["schemas"]["ExoTransitView"];
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                deadlineUtc: string;
+                conflict: components["schemas"]["ExoTransitConflict"];
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                observationId: string | null;
             }[];
+            observations: components["schemas"]["ExoObservationView"][];
+            allowAutofocus: boolean;
+            allowRecenter: boolean;
+            defocusHint: string | null;
+            /** @enum {string|null} */
+            lockMode: "wish" | "request" | "lock" | null;
+            /** @enum {string|null} */
+            lockBlockedReason: "no_rig" | "no_line" | "project_closed" | "no_right" | "submitted" | null;
+            openCount: number;
+            maxOpen: number | null;
+            suggestedEpoch: number | null;
         };
         ExoEphemerisView: {
             /**
@@ -17553,6 +18032,112 @@ export interface components {
             nextMidUtc: string;
             nextMidShiftMin: number;
         } | null;
+        ExoTransitConflict: {
+            /** @enum {string} */
+            kind: "overlap" | "share_mismatch" | "share";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            projectName: string;
+            createdByName: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            windowStartUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            windowEndUtc: string;
+        } | null;
+        ExoObservationView: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /** @enum {string} */
+            status: "requested" | "locked" | "observed" | "missed" | "cancelled";
+            epoch: number;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            ingressUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            midUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            egressUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            windowStartUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            windowEndUtc: string;
+            baselineBeforeMin: number;
+            baselineAfterMin: number;
+            bufferMin: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            confirmDeadlineUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            lockedAt: string | null;
+            lockedByName: string | null;
+            plannedCount: number;
+            acquiredCount: number;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            sessionId: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            primaryObservationId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            createdAt: string;
+        };
+        ExoLockCreate: {
+            epoch: number;
+        };
+        ExoProjectPatch: {
+            baselineBeforeMin?: number;
+            baselineAfterMin?: number;
+            bufferSigma?: number;
+            allowAutofocus?: boolean;
+            allowRecenter?: boolean;
+            defocusHint?: string | null;
+        };
+        ExoObservationDecline: {
+            comment: string;
+        };
         NinaBootstrap: {
             /** @enum {string} */
             apiVersion: "1";

@@ -15,6 +15,7 @@ import type {
   SessionLogRepository,
   ChangeRequestRepository,
   ExoProjectRepository,
+  TransitRepository,
   NinaPrincipal,
   Job,
   MemberRepository,
@@ -53,6 +54,7 @@ export interface ApiRepositories {
   sessionLog(): SessionLogRepository;
   changeRequests(): ChangeRequestRepository;
   exoProjects(): ExoProjectRepository;
+  transits(): TransitRepository;
   tenant(): TenantRepository;
 }
 

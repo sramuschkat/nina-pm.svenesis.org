@@ -4,7 +4,7 @@
  * (`predictTransits`, transit.md §2). Gefiltert wird in der Oberfläche (FA-EXO-05), damit Schalter sofort wirken.
  */
 import { z } from 'zod';
-import { twilight } from '../generated/enums';
+import { transitObservationStatuses, twilight } from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
 export const EXO_CATALOG_NAMES = ['exoclock', 'nasa', 'toi'] as const;
@@ -308,6 +308,76 @@ export const ExoEphemerisUpdate = z
   .meta({ id: 'ExoEphemerisUpdate' });
 export type ExoEphemerisUpdate = z.infer<typeof ExoEphemerisUpdate>;
 
+/** Transit-Beobachtung eines Projekts (FA-EXO-18…21, transit.md §8). */
+export const ExoObservationView = z
+  .object({
+    id: Uuid,
+    status: z.enum(transitObservationStatuses),
+    epoch: z.number().int(),
+    night: NightKey,
+    ingressUtc: UtcInstant,
+    midUtc: UtcInstant,
+    egressUtc: UtcInstant,
+    windowStartUtc: UtcInstant,
+    windowEndUtc: UtcInstant,
+    baselineBeforeMin: z.number().int(),
+    baselineAfterMin: z.number().int(),
+    bufferMin: z.number(),
+    /** Frist (FA-FRG-09); `null` bei festgelegten ohne Bestätigung. */
+    confirmDeadlineUtc: UtcInstant.nullable(),
+    lockedAt: UtcInstant.nullable(),
+    lockedByName: z.string().nullable(),
+    /** Richtwert *Geplant* (FA-EXO-20) und gezählte Aufnahmen. */
+    plannedCount: z.number().int(),
+    acquiredCount: z.number().int(),
+    sessionId: Uuid.nullable(),
+    /** Verknüpft mit der Beobachtung eines anderen Mitglieds (dasselbe Ereignis, FA-EXO-33a). */
+    primaryObservationId: Uuid.nullable(),
+    createdAt: UtcInstant,
+  })
+  .meta({ id: 'ExoObservationView' });
+export type ExoObservationView = z.infer<typeof ExoObservationView>;
+
+/** Belegung, die ein Festlegen verhindert bzw. verknüpft (FA-EXO-33) – als Hinweis in der Liste. */
+export const ExoTransitConflict = z
+  .object({
+    kind: z.enum(['overlap', 'share_mismatch', 'share']),
+    projectId: Uuid,
+    projectName: z.string(),
+    createdByName: z.string(),
+    windowStartUtc: UtcInstant,
+    windowEndUtc: UtcInstant,
+  })
+  .meta({ id: 'ExoTransitConflict' });
+export type ExoTransitConflict = z.infer<typeof ExoTransitConflict>;
+
+/** `POST /api/web/v1/projects/{id}/exo/lock`: Transit aus der Vorhersage festlegen bzw. wünschen (FA-EXO-18). */
+export const ExoLockCreate = z
+  .object({ epoch: z.number().int() })
+  .strict()
+  .meta({ id: 'ExoLockCreate' });
+export type ExoLockCreate = z.infer<typeof ExoLockCreate>;
+
+/** `PATCH /api/web/v1/projects/{id}/exo`: Einstellungen für Vorhersage und neue Festlegungen (FA-EXO-19/20). */
+export const ExoProjectPatch = z
+  .object({
+    baselineBeforeMin: z.number().int().min(0).max(240).optional(),
+    baselineAfterMin: z.number().int().min(0).max(240).optional(),
+    bufferSigma: z.number().int().min(1).max(3).optional(),
+    allowAutofocus: z.boolean().optional(),
+    allowRecenter: z.boolean().optional(),
+    defocusHint: z.string().trim().max(200).nullable().optional(),
+  })
+  .strict()
+  .meta({ id: 'ExoProjectPatch' });
+export type ExoProjectPatch = z.infer<typeof ExoProjectPatch>;
+
+/** `POST /api/web/v1/transit-observations/{id}/decline`: Begründung für den Ersteller. */
+export const ExoObservationDecline = z
+  .object({ comment: z.string().trim().min(1).max(2000) })
+  .strict()
+  .meta({ id: 'ExoObservationDecline' });
+
 /** `GET /api/web/v1/projects/{id}/exo`: Reiter *Exoplanet-Transit* im Projekt-Editor (FA-EXO-15…17). */
 export const ExoProjectDetail = z
   .object({
@@ -349,7 +419,37 @@ export const ExoProjectDetail = z
     fromNight: NightKey.nullable(),
     nights: z.number().int(),
     /** Beobachtbare Transits der nächsten Nächte aus der gespeicherten Ephemeride (FA-EXO-17), je mit Nacht. */
-    upcoming: z.array(z.object({ night: NightKey, item: ExoTransitView })),
+    upcoming: z.array(
+      z.object({
+        night: NightKey,
+        item: ExoTransitView,
+        /** Frist dieses Transits (FA-FRG-09). */
+        deadlineUtc: UtcInstant,
+        /** Belegung auf dem Rig (FA-EXO-33); `share` = würde verknüpft. */
+        conflict: ExoTransitConflict.nullable(),
+        /** Offene eigene Beobachtung zu dieser Epoche. */
+        observationId: Uuid.nullable(),
+      }),
+    ),
+    /** Beobachtungen des Projekts, neueste Nacht zuerst (FA-EXO-18/21). */
+    observations: z.array(ExoObservationView),
+    /** Autofokus/Zentrieren im Fenster erlaubt, Defokus-Hinweis (FA-EXO-20). */
+    allowAutofocus: z.boolean(),
+    allowRecenter: z.boolean(),
+    defocusHint: z.string().nullable(),
+    /**
+     * Was *Festlegen* für den Aufrufer bewirkt (transit.md §8): `wish` vor der Freigabe, `request` Bestätigung nötig,
+     * `lock` sofort; `null` = nicht erlaubt (Grund in `lockBlockedReason`).
+     */
+    lockMode: z.enum(['wish', 'request', 'lock']).nullable(),
+    lockBlockedReason: z
+      .enum(['no_rig', 'no_line', 'project_closed', 'no_right', 'submitted'])
+      .nullable(),
+    /** Offene Beobachtungen und Obergrenze für den Ersteller (`null` = Admin, keine Grenze). */
+    openCount: z.number().int(),
+    maxOpen: z.number().int().nullable(),
+    /** Vorschlag des nächsten beobachtbaren, konfliktfreien Transits (FA-EXO-30), sonst `null`. */
+    suggestedEpoch: z.number().int().nullable(),
   })
   .meta({ id: 'ExoProjectDetail' });
 export type ExoProjectDetail = z.infer<typeof ExoProjectDetail>;

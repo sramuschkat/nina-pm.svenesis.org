@@ -364,3 +364,48 @@
 .flipText svg {
   color: var(--npm-chart-meridian);
 }
+
+/* Festlegen (AP-43): Vorschlag, Belegung, Einstellungen. */
+.nowrap {
+  white-space: nowrap;
+}
+.suggest,
+.conflictText,
+.shareText {
+  display: block;
+  font-size: var(--npm-font-label);
+  white-space: normal;
+}
+.suggest {
+  color: var(--npm-success);
+  font-weight: 600;
+}
+.conflictText {
+  color: var(--npm-danger);
+}
+.shareText {
+  color: var(--npm-text-light);
+}
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) 0;
+}
+.settingsField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.settingsInput {
+  composes: input from '../admin/admin.module.css';
+}
+.settingsWide {
+  grid-column: 1 / -1;
+}
+.settingsCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+}

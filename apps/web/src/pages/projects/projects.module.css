@@ -222,6 +222,12 @@
   gap: var(--npm-space-1);
   white-space: nowrap;
 }
+.subline {
+  display: block;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  white-space: normal;
+}
 .flag {
   display: inline-block;
   margin-left: var(--npm-space-1);

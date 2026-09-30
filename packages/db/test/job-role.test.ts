@@ -26,6 +26,7 @@ import {
   replaceForecast,
   saveWeather,
   sessionsDueForClose,
+  settleTransits,
   setProjectThumbnail,
   setReportStatus,
   siteNightRunDone,
@@ -166,6 +167,39 @@ describe('worker unter der Rolle app_job (TK 6.2)', () => {
       [CR],
     );
     expect(request?.submitter_rank).toBe(1);
+  });
+
+  it('settleTransits: Frist verstrichen → storniert mit Benachrichtigung, Fensterende → verpasst (AP-43)', async () => {
+    const EPH = '00000000-0000-7000-8000-00000000a0e1';
+    const O1 = '00000000-0000-7000-8000-00000000a0e2';
+    const O2 = '00000000-0000-7000-8000-00000000a0e3';
+    await asAdmin(
+      `INSERT INTO ephemeris (id, tenant_id, project_id, t0_bjd_tdb, period_d, source) VALUES ($1, $2, $3, 2457168.7, 10.3, 'exoclock')`,
+      [EPH, T, P2],
+    );
+    const obs = `INSERT INTO transit_observation (id, tenant_id, project_id, ephemeris_id, epoch, night, ingress_utc, mid_utc, egress_utc,
+      window_start_utc, window_end_utc, baseline_before_min, baseline_after_min, buffer_min, status, confirm_deadline_utc)
+      VALUES ($1, $2, $3, $4, $5, '2026-09-27', $6, $6, $6, $6, $6, 60, 60, 5, $7, $8)`;
+    await asAdmin(obs, [O1, T, P2, EPH, 1, '2026-09-28T05:00:00Z', 'locked', null]);
+    await asAdmin(obs, [
+      O2,
+      T,
+      P2,
+      EPH,
+      2,
+      '2026-09-29T05:00:00Z',
+      'requested',
+      '2026-09-28T04:00:00Z',
+    ]);
+    expect(await settleTransits(pg.db, now)).toEqual({ expired: 1, observed: 0, missed: 1 });
+    const rows = await asAdmin<{ id: string; status: string }>(
+      'SELECT id, status FROM transit_observation WHERE tenant_id = $1 ORDER BY id',
+      [T],
+    );
+    expect(rows).toEqual([
+      { id: O1, status: 'missed' },
+      { id: O2, status: 'cancelled' },
+    ]);
   });
 
   it('app_job ändert an change_request nur den Rang', async () => {

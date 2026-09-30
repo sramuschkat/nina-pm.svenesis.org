@@ -604,6 +604,8 @@ export type ExoSearchSettings = Schemas['ExoSearchSettings'];
 export type ExoProjectDetail = Schemas['ExoProjectDetail'];
 export type ExoProjectCreated = Schemas['ExoProjectCreated'];
 export type ExoEphemerisView = Schemas['ExoEphemerisView'];
+export type ExoObservationView = Schemas['ExoObservationView'];
+export type ExoProjectPatch = Schemas['ExoProjectPatch'];
 export type DsoNight = Schemas['DsoNight'];
 export type CatalogStatus = Schemas['CatalogStatus'];
 export type DsoMarker = Schemas['DsoMarker'];
@@ -673,6 +675,26 @@ export const exoApi = {
   /** Neuere Katalog-Ephemeride übernehmen (FA-EXO-16). */
   refreshEphemeris: (projectId: string) =>
     apiFetch<ExoProjectDetail>(`${V1}/projects/${projectId}/ephemeris/refresh`, json('POST')),
+  /** Transit festlegen bzw. wünschen (FA-EXO-18, transit.md §8). */
+  lock: (projectId: string, epoch: number) =>
+    apiFetch<ExoProjectDetail>(`${V1}/projects/${projectId}/exo/lock`, json('POST', { epoch })),
+  /** Festlegung aufheben (→ storniert). */
+  unlock: (projectId: string, observationId: string) =>
+    apiFetch<ExoProjectDetail>(
+      `${V1}/projects/${projectId}/exo/lock/${observationId}`,
+      json('DELETE'),
+    ),
+  /** Transit-Einstellungen (FA-EXO-19/20). */
+  patch: (projectId: string, body: ExoProjectPatch) =>
+    apiFetch<ExoProjectDetail>(`${V1}/projects/${projectId}/exo`, json('PATCH', body)),
+  /** Transit-Bestätigung in der Warteschlange (FA-EXO-18): festlegen bzw. ablehnen. */
+  confirm: (observationId: string) =>
+    apiFetch<undefined>(`${V1}/transit-observations/${observationId}/confirm`, json('POST')),
+  decline: (observationId: string, comment: string) =>
+    apiFetch<undefined>(
+      `${V1}/transit-observations/${observationId}/decline`,
+      json('POST', { comment }),
+    ),
 };
 
 /** Objektkatalog (AP-20, S-21, Katalogsuche im Editor, S-82). */

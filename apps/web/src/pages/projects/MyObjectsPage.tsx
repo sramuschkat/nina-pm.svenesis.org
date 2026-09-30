@@ -60,7 +60,8 @@ export function MyObjectsPage() {
   const [tab, setTab] = useState<ApprovalStatus | null>(null);
   const active: ApprovalStatus = tab ?? (counts.submitted > 0 ? 'submitted' : 'draft');
   const own = (queue.data ?? [])
-    .filter((q) => q.createdBy === me?.member?.id)
+    // Transit-Bestätigungen haben keinen Rang beim Einreicher (FA-FRG-04).
+    .filter((q) => q.createdBy === me?.member?.id && q.kind !== 'transit')
     .sort((a, b) => (a.submitterRank?.rank ?? 0) - (b.submitterRank?.rank ?? 0));
 
   return (
@@ -114,7 +115,15 @@ function RankedList({
   const kindOf = new Map(entries.map((e) => [e.id, e.kind]));
   const ranking = useMutation({
     mutationFn: (order: string[]) =>
-      approvalApi.ranking(order.map((id) => ({ kind: kindOf.get(id) ?? 'project', id }))),
+      approvalApi.ranking(
+        order.map((id) => {
+          const k = kindOf.get(id);
+          return {
+            kind: k === 'change-request' ? ('change-request' as const) : ('project' as const),
+            id,
+          };
+        }),
+      ),
     onSuccess: refresh,
   });
   // Offene Änderungsanträge (AP-32b) teilen sich die Rangfolge; Zurückziehen über den Antrag.
