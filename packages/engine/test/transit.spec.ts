@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import {
   bjdTdbToJdUtc,
   createTransitSkyCache,
-  defaultBaselineMin,
+  DEFAULT_BASELINE_MIN,
   ephemerisAge,
   jdFromUnix,
   jdUtcToBjdTdb,
@@ -190,22 +190,19 @@ const HAT_TC = (fixture.cases.find((c) => c.id === 'hat-p-17b@2026-09-18') as Ca
 describe('Fenster, Puffer, O−C, Baseline (transit.md §2)', () => {
   const t = HAT_TC;
 
-  it('Baseline dauerabhängig: 1,36 h → 41 min, 4,04 h → 120 min, 6 h → 120 min, kurz → 30 min', () => {
-    expect(defaultBaselineMin(1.36)).toBe(41);
-    expect(defaultBaselineMin(4.04)).toBe(120);
-    expect(defaultBaselineMin(6)).toBe(120);
-    expect(defaultBaselineMin(0.5)).toBe(30);
+  it('Baseline fest 60 min je Seite (FA-EXO-19, Entscheidung Sven 30.09.2026)', () => {
+    expect(DEFAULT_BASELINE_MIN).toBe(60);
   });
 
   it('Fenster = Kontakte ± Puffer ± Baseline; Puffer-Untergrenze 5 min', () => {
     const [ev] = predictTransits(around(HAT, t));
     if (!ev) throw new Error('kein Transit');
     expect(ev.bufferS).toBe(300);
-    expect(ev.baselineBeforeMin).toBe(120);
+    expect(ev.baselineBeforeMin).toBe(60);
     expect(ev.egressUtc - ev.ingressUtc).toBeCloseTo(4.04 * 3600, -1);
-    expect(ev.ingressUtc - ev.windowStartUtc).toBeGreaterThanOrEqual(300 + 7200);
-    expect(ev.ingressUtc - ev.windowStartUtc).toBeLessThanOrEqual(300 + 7200 + 1);
-    expect(ev.windowEndUtc - ev.egressUtc).toBeGreaterThanOrEqual(300 + 7200);
+    expect(ev.ingressUtc - ev.windowStartUtc).toBeGreaterThanOrEqual(300 + 3600);
+    expect(ev.ingressUtc - ev.windowStartUtc).toBeLessThanOrEqual(300 + 3600 + 1);
+    expect(ev.windowEndUtc - ev.egressUtc).toBeGreaterThanOrEqual(300 + 3600);
   });
 
   it('σ wächst linear mit |n| und enthält ocSigmaMin', () => {
