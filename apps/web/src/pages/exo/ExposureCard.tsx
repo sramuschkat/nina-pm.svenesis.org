@@ -1,7 +1,8 @@
 /**
  * Karte *Belichtung* der aufgeklappten Zeile (FA-EXO-14a, transit.md §6): Empfehlung als große Zahl mit vier
  * Kennwerten, bei hellen Sternen Defokus-Hinweis und zusätzlich die kurze Belichtung im Fokus (Wunsch Sven
- * 30.09.2026: beides zeigen). Gerechnet wird in der API; die Karte formatiert nur.
+ * 30.09.2026: beides zeigen). Ohne bestätigten Filterradplatz rechnet die API mit dem Web-Filter des Platzes
+ * und die Karte weist darauf hin. Gerechnet wird in der API; die Karte formatiert nur.
  */
 import type { ExoExposure } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
@@ -91,6 +92,11 @@ export function ExposureCard({ exposure, star }: { exposure: ExoExposure; star: 
           })}
         />
       </div>
+      {x.filterConfirmed ? null : (
+        <p className={styles.exposureUnconfirmed}>
+          {t('exo.exposure.filterUnconfirmed', { filter: x.filterShortName })}
+        </p>
+      )}
       <p className={styles.exposureValue}>{seconds(x.exposureS)}</p>
       {x.defocus ? (
         <p className={styles.exposureDefocus}>

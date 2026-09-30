@@ -73,6 +73,17 @@ describe('exposureFor', () => {
     expect(e.peakPct).toBeLessThanOrEqual(50);
   });
 
+  it('Filter eines unbestätigten Platzes wird als solcher gemeldet', () => {
+    const confirmed = exposureFor(target, rig);
+    const provisional = exposureFor({ ...target, filterConfirmed: false }, rig);
+    expect(confirmed).toMatchObject({ status: 'ok', filterConfirmed: true });
+    expect(provisional).toMatchObject({
+      status: 'ok',
+      filterConfirmed: false,
+      filterShortName: 'R',
+    });
+  });
+
   it('fehlende Angaben werden genannt statt geschätzt', () => {
     const bare = exposureRig({
       telescope: undefined,

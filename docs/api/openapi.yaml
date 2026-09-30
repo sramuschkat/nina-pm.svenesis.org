@@ -10552,6 +10552,8 @@ components:
                     - ok
                 filterShortName:
                   type: string
+                filterConfirmed:
+                  type: boolean
                 gain:
                   type:
                     - integer
@@ -10607,6 +10609,7 @@ components:
                 - transitSnr
                 - status
                 - filterShortName
+                - filterConfirmed
                 - gain
                 - defocus
                 - limitedBy

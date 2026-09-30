@@ -128,6 +128,13 @@
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
+.exposureUnconfirmed {
+  padding: var(--npm-space-1) var(--npm-space-2);
+  border-radius: var(--npm-radius);
+  background: var(--npm-warning-bg);
+  color: var(--npm-warning);
+  font-size: var(--npm-font-small);
+}
 .exposureDefocus {
   margin: 0;
   color: var(--npm-warning);

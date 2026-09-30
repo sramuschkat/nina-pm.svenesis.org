@@ -3020,6 +3020,8 @@ export const de = {
       peak: 'Stern-Spitze',
       peakValue: '≈ {{pct}} %',
       grade: { good: 'gut', marginal: 'knapp', weak: 'schwach' },
+      filterUnconfirmed:
+        'Vorläufig: {{filter}} ist im Filterrad noch nicht bestätigt (Rig → Filterradbelegung, nach der ersten NINA-Meldung).',
       defocusTo: 'Leicht defokussieren auf ≈ {{fwhm}}″ FWHM',
       limitedBy: {
         saturation:
@@ -3048,7 +3050,8 @@ export const de = {
         telescope: 'Öffnung oder Brennweite des Teleskops',
         camera_noise: 'Ausleserauschen der Kamera',
         camera_saturation: 'Full Well oder e⁻/ADU der Kamera',
-        filter: 'ein passender Filter in der bestätigten Filterradbelegung',
+        filter:
+          'ein passender Filter im Filterrad (Band Rc, Ic oder lum bzw. Breitband-Rot ab 590 nm Zentralwellenlänge)',
         magnitude: 'die Sternhelligkeit',
         depth: 'die Transittiefe',
       },

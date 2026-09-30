@@ -53,6 +53,8 @@ export const ExoExposure = z.discriminatedUnion('status', [
   ExoExposurePoint.extend({
     status: z.literal('ok'),
     filterShortName: z.string(),
+    /** `false` = Web-Filter eines noch nicht bestätigten Filterradplatzes (Ersatz, transit.md §6). */
+    filterConfirmed: z.boolean(),
     /** Standard-Gain der Kamera; `null` = NINA-Standard. */
     gain: z.number().int().nullable(),
     defocus: z.boolean(),
