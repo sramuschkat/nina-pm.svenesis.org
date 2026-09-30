@@ -306,8 +306,10 @@ export const en: Messages = {
       moonSep: 'Moon distance',
       lines: 'Exposure plan',
       remaining: 'remaining {{need}} · tonight {{tonight}}',
-      la: 'LA',
-      laTitle: 'Moon avoidance',
+      moon: 'Moon: {{name}}',
+      moonTitle:
+        'Moon avoidance “{{name}}”: up to {{sep}}° from the Moon, width {{width}} days around full moon',
+      moonTitleDown: 'Moon avoidance “{{name}}”: only while the Moon is below the horizon',
       enabled: '{{filter}} active',
       flip: 'Flip {{time}} ({{min}} min)',
       flipInWindow: 'Flip in the transit window {{time}}',
@@ -355,7 +357,7 @@ export const en: Messages = {
       moonOk: 'Moon ok',
       required: 'required',
       dark: 'dark',
-      la: 'LA',
+      la: 'Moon avoidance',
       profile: 'Moon profile',
     },
     cmd: {

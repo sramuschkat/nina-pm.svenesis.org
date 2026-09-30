@@ -306,8 +306,10 @@ export const de = {
       moonSep: 'Mondabstand',
       lines: 'Belichtungsplan',
       remaining: 'verbleibend {{need}} · heute {{tonight}}',
-      la: 'LA',
-      laTitle: 'Mondvermeidung',
+      moon: 'Mond: {{name}}',
+      moonTitle:
+        'Mondvermeidung „{{name}}“: bis {{sep}}° Abstand zum Mond, Breite {{width}} Tage um Vollmond',
+      moonTitleDown: 'Mondvermeidung „{{name}}“: nur bei Mond unter dem Horizont',
       enabled: '{{filter}} aktiv',
       flip: 'Flip {{time}} ({{min}} min)',
       flipInWindow: 'Flip im Transitfenster {{time}}',
@@ -355,7 +357,7 @@ export const de = {
       moonOk: 'Mond ok',
       required: 'gefordert',
       dark: 'dunkel',
-      la: 'LA',
+      la: 'Mondvermeidung',
       profile: 'Mondprofil',
     },
     cmd: {
