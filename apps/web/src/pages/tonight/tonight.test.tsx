@@ -304,7 +304,8 @@ describe('S-02 Heute Nacht', () => {
     // zurück zur laufenden Nacht: Parameter entfällt
     fireEvent.click(within(cal).getAllByRole('button')[0] as HTMLElement);
     await waitFor(() => expect(screen.getByTestId('where')).not.toHaveTextContent('nacht='));
-  });
+    // Lokal ≈ 1 s (Mondphasen für 7 Nächte, zweite Prognose); im CI-Shard unter Last 5,3 s (30.09.2026) – daher 20 s.
+  }, 20_000);
 
   it('Rig aus der URL: anderes Rig zeigt dessen Standort', async () => {
     const v = view();
