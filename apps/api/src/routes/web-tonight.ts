@@ -1,9 +1,10 @@
 /**
  * „Heute Nacht“ S-02 (AP-35; FA-FOL-06, FA-FOL-05; TK 7.2 „Auswertung“):
- * - `GET /web/v1/tonight?rigId=` (`project.read`): je Rig die **aktuelle Nacht** des Standorts (`currentNight`,
- *   NT-01 – nach Ende des Nachtfensters schon die folgende) mit Nachtfenster, Dunkelheit, Mond, Wetter der Nacht
- *   (Farbband), geplanten Projekten mit erwarteten Frames aus der gespeicherten Prognose (AP-33) und den
- *   NINA-Instanzen. Die Nacht rechnet der Server, nie der Browser.
+ * - `GET /web/v1/tonight?rigId=&night=` (`project.read`): je Rig die **aktuelle Nacht** des Standorts
+ *   (`currentNight`, NT-01 – nach Ende des Nachtfensters schon die folgende) bzw. eine gewählte der folgenden sechs
+ *   Nächte (Wunsch Sven 30.09.2026, so weit reicht das Astro-Wetter) mit Nachtfenster, Dunkelheit, Mond, Wetter der
+ *   Nacht (Farbband), geplanten Projekten mit erwarteten Frames aus der gespeicherten Prognose (AP-33), den
+ *   NINA-Instanzen und dem Mondkalender der sieben Nächte. Die Nacht rechnet der Server, nie der Browser.
  * - `PUT /web/v1/projects/{id}/lines/{lineId}/tonight {disabled}` (`project.status`, Admin): Zeile **nur für die
  *   kommende Nacht** ab- bzw. wieder einschalten (FA-FOL-05). Die Nacht ist die aktuelle Nacht des Rig-Standorts
  *   des Projekts; ab dem nächsten lokalen Mittag plant die Zeile von selbst wieder mit.
@@ -17,6 +18,7 @@ import {
   LineTonightInput,
   ProblemError,
   ProjectView,
+  TONIGHT_NIGHTS,
   TonightQuery,
   TonightView,
   tonightProjects,
@@ -24,7 +26,7 @@ import {
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
-import { siteNights } from '../lib/night-table';
+import { buildNightTable, siteNights } from '../lib/night-table';
 import { weatherNightTable } from '../weather/nights';
 import { weatherView } from '../weather/view';
 import { defineRoute, problemContent } from './define';
@@ -43,6 +45,16 @@ const errors = {
   422: problemContent('validation.failed'),
 };
 const iso = (unix: number) => isoUtc(new Date(unix * 1000));
+
+/** Astronomisch dunkle Stunden mit Mond unter −0,833° (10-min-Raster, Konvention der Wetter-Nächte). */
+function moonlessHours(fromUtc: number, toUtc: number, geo: { latDeg: number; lonDeg: number }) {
+  const step = 600;
+  let free = 0;
+  for (let t = fromUtc; t < toUtc; t += step)
+    if (moonAt(Math.min(t + step / 2, toUtc), geo).altDeg < -0.833)
+      free += Math.min(step, toUtc - t);
+  return Math.round((free / 3600) * 10) / 10;
+}
 
 export const tonightRoute = defineRoute(
   { action: 'project.read', requirements: ['FA-FOL-06', 'S-02', 'NT-01'] },
@@ -79,7 +91,7 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
   app.openapi(tonightRoute, async (c) => {
     const svc = await services();
     const { auth, tenant } = requireTenant(c);
-    const { rigId } = c.req.valid('query');
+    const { rigId, night: wantedNight } = c.req.valid('query');
     const repos = svc.repositories(tenant);
     const eq = repos.equipment();
     const [rigs, sites, instances, list] = await Promise.all([
@@ -104,12 +116,23 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
       if (rigId && rig.id !== rigId) continue;
       const site = siteOf.get(rig.siteId);
       if (!site) continue;
-      const row = currentNightRow(siteNights(site, now, undefined, 2), isoUtc(now));
+      const current = currentNightRow(siteNights(site, now, undefined, 2), isoUtc(now)).night;
+      const table = buildNightTable(site, current, TONIGHT_NIGHTS);
+      const row = wantedNight
+        ? table.nights.find((n) => n.night === wantedNight)
+        : table.nights.find((n) => n.night === current);
+      if (!row)
+        throw new ProblemError('validation.failed', [
+          { path: 'night', message: `Nacht ${current} bis +${String(TONIGHT_NIGHTS - 1)}` },
+        ]);
       const night = row.night;
-      const frame =
-        weatherNightTable(site, now, Math.floor(Date.parse(row.noonEndUtc) / 1000)).nights.find(
-          (n) => n.night === night,
-        ) ?? null;
+      const lastNight = table.nights[table.nights.length - 1];
+      const frames = weatherNightTable(
+        site,
+        now,
+        Math.floor(Date.parse(lastNight?.noonEndUtc ?? row.noonEndUtc) / 1000),
+      ).nights;
+      const frame = frames.find((n) => n.night === night) ?? null;
       const geo = { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg };
       const dark = frame?.dark ?? null;
       const noonStart = Date.parse(row.noonStartUtc) / 1000;
@@ -119,9 +142,9 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
         latestWeather(svc.db, site.latitudeDeg, site.longitudeDeg),
         forecastNights(svc.db, tenant.tenantId, rig.id),
       ]);
+      const wv = entry ? weatherView(site, entry, now) : null;
       let weather: View['rigs'][number]['weather'] = null;
-      if (entry && frame) {
-        const wv = weatherView(site, entry, now);
+      if (wv && frame) {
         const n = wv.nights.find((x) => x.night === night);
         if (n) {
           const from = frame.nightWindow.startUtc * 1000;
@@ -156,6 +179,23 @@ export function webTonightRoutes(services: () => Promise<ApiServices>) {
         siteTimeZone: site.timeZone,
         weatherSafetyUrl: site.weatherSafetyUrl,
         night,
+        currentNight: current,
+        calendar: table.nights.map((n) => {
+          const f = frames.find((x) => x.night === n.night);
+          const w = wv?.nights.find((x) => x.night === n.night);
+          const d = f?.dark ?? null;
+          const m = d ? (d.fromUtc + d.toUtc) / 2 : Date.parse(n.noonStartUtc) / 1000 + 43200;
+          const illum = moonAt(m, geo).illumPct;
+          return {
+            night: n.night,
+            darkHours: d ? Math.round(((d.toUtc - d.fromUtc) / 3600) * 10) / 10 : 0,
+            moonlessDarkHours: d ? moonlessHours(d.fromUtc, d.toUtc, geo) : 0,
+            moonIllumPct: quantize(illum, 10),
+            waxing: moonAt(m + 21600, geo).illumPct > illum,
+            ratingIndex: w?.ratingIndex ?? null,
+            nightMean: w?.nightMean ?? null,
+          };
+        }),
         nightWindow: frame
           ? { startUtc: iso(frame.nightWindow.startUtc), endUtc: iso(frame.nightWindow.endUtc) }
           : null,

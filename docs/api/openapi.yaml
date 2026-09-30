@@ -7894,6 +7894,14 @@ components:
           type: string
           format: date
           example: 2026-09-18
+        currentNight:
+          type: string
+          format: date
+          example: 2026-09-18
+        calendar:
+          type: array
+          items:
+            $ref: "#/components/schemas/TonightCalendarNight"
         nightWindow:
           type:
             - object
@@ -7991,6 +7999,8 @@ components:
         - siteTimeZone
         - weatherSafetyUrl
         - night
+        - currentNight
+        - calendar
         - nightWindow
         - dark
         - darkHours
@@ -8000,6 +8010,45 @@ components:
         - projects
         - idleProjects
         - instances
+    TonightCalendarNight:
+      type: object
+      properties:
+        night:
+          type: string
+          format: date
+          example: 2026-09-18
+        darkHours:
+          type: number
+          minimum: 0
+        moonlessDarkHours:
+          type: number
+          minimum: 0
+        moonIllumPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        waxing:
+          type: boolean
+        ratingIndex:
+          type:
+            - integer
+            - "null"
+          minimum: 0
+          maximum: 4
+        nightMean:
+          type:
+            - number
+            - "null"
+          minimum: 0
+          maximum: 1
+      required:
+        - night
+        - darkHours
+        - moonlessDarkHours
+        - moonIllumPct
+        - waxing
+        - ratingIndex
+        - nightMean
     TonightWeather:
       type:
         - object
@@ -21765,6 +21814,13 @@ paths:
           required: false
           description: UUID
           name: rigId
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: night
           in: query
       responses:
         "200":

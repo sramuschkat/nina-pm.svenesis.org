@@ -9068,6 +9068,7 @@ export interface paths {
                 query?: {
                     /** @description UUID */
                     rigId?: string;
+                    night?: string;
                 };
                 header?: never;
                 path?: never;
@@ -16765,6 +16766,12 @@ export interface components {
              * @example 2026-09-18
              */
             night: string;
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            currentNight: string;
+            calendar: components["schemas"]["TonightCalendarNight"][];
             nightWindow: {
                 /**
                  * Format: date-time
@@ -16814,6 +16821,19 @@ export interface components {
             projects: components["schemas"]["TonightProject"][];
             idleProjects: number;
             instances: components["schemas"]["TonightInstance"][];
+        };
+        TonightCalendarNight: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            darkHours: number;
+            moonlessDarkHours: number;
+            moonIllumPct: number;
+            waxing: boolean;
+            ratingIndex: number | null;
+            nightMean: number | null;
         };
         TonightWeather: {
             nightMean: number | null;

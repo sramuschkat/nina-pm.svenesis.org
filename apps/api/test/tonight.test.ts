@@ -27,6 +27,14 @@ type Body = Record<string, unknown>;
 interface Rig {
   rigId: string;
   night: string;
+  currentNight: string;
+  calendar: {
+    night: string;
+    darkHours: number;
+    moonlessDarkHours: number;
+    moonIllumPct: number;
+    waxing: boolean;
+  }[];
   darkHours: number;
   nightWindow: { startUtc: string; endUtc: string } | null;
   moon: { illumPct: number };
@@ -162,6 +170,39 @@ describe('Heute Nacht (S-02, AP-35)', () => {
     expect(r.moon.illumPct).toBeGreaterThan(0);
     expect(r.instances.map((i) => i.name)).toEqual(['PC']);
     expect(r.forecast.covered).toBe(false);
+  });
+
+  it('Nachtwahl (30.09.2026): laufende Nacht bis +6 mit Mondkalender; außerhalb 422', async () => {
+    const t = await setup();
+    s.clock.set(new Date('2026-09-18T18:00:00Z'));
+    const now = await t.tonight();
+    expect(now.currentNight).toBe('2026-09-18');
+    expect(now.calendar.map((c) => c.night)).toEqual([
+      '2026-09-18',
+      '2026-09-19',
+      '2026-09-20',
+      '2026-09-21',
+      '2026-09-22',
+      '2026-09-23',
+      '2026-09-24',
+    ]);
+    for (const c of now.calendar) {
+      expect(c.darkHours).toBeGreaterThan(8);
+      expect(c.moonlessDarkHours).toBeGreaterThanOrEqual(0);
+      expect(c.moonlessDarkHours).toBeLessThanOrEqual(c.darkHours);
+    }
+    // Mond am 18.09.2026 zunehmend (Neumond 11.09.), Beleuchtung steigt über die Woche.
+    expect(now.calendar[0]?.waxing).toBe(true);
+    expect(now.calendar[6]?.moonIllumPct).toBeGreaterThan(now.calendar[0]?.moonIllumPct ?? 100);
+
+    const later = await t.web(`/tonight?rigId=${t.rig.id}&night=2026-09-21`);
+    expect(later.status).toBe(200);
+    const rig = (later.body.rigs as Rig[])[0] as Rig;
+    expect(rig).toMatchObject({ night: '2026-09-21', currentNight: '2026-09-18' });
+    // Nachtfenster der gewählten Nacht: Abend des 21.09. in Starfront (um 19:00 CDT).
+    expect(rig.nightWindow?.startUtc.slice(0, 13)).toMatch(/^2026-09-2(1T23|2T00)$/);
+    expect((await t.web(`/tonight?rigId=${t.rig.id}&night=2026-09-25`)).status).toBe(422);
+    expect((await t.web(`/tonight?rigId=${t.rig.id}&night=2026-09-17`)).status).toBe(422);
   });
 
   it('FA-FOL-05: Zeile nur heute aus – fehlt in Plan und Zielen dieser Nacht, ab der nächsten wieder aktiv', async () => {

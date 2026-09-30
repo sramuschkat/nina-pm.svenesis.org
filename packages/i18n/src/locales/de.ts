@@ -2614,6 +2614,16 @@ export const de = {
   tonight: {
     timeline: 'Zeitleiste der Nacht',
     bodiesDetail: 'Mond und Planeten – Sichtbarkeit',
+    futureNote:
+      'Künftige Nacht: Plan aus dem heutigen Projektstand – bis dahin eingehende Aufnahmen und Änderungen fehlen noch; „nur heute aus“ gilt nur für die laufende Nacht.',
+    calendar: {
+      label: 'Nacht wählen (Mondkalender, 7 Nächte)',
+      tonight: 'Heute Nacht',
+      free: '{{h}} h ohne Mond',
+      noWeather: 'keine Vorhersage',
+      nightAria:
+        'Nacht {{night}}: Mond {{illum}} %, {{free}} h dunkel ohne Mond, Wetter {{weather}}',
+    },
     verdict: {
       rating: '{{rating}} {{pct}} %',
       noWeather: 'noch keine Vorhersage',
@@ -2621,6 +2631,7 @@ export const de = {
       darkIn: 'dunkel in {{h}} h {{m}} min',
       darkUntil: 'dunkel bis {{time}}',
       darkOver: 'Dunkelheit vorbei',
+      darkFromTo: 'dunkel {{from}}–{{to}}',
     },
     kpi: {
       label: 'Kennzahlen der Nacht',
@@ -2644,6 +2655,7 @@ export const de = {
       ninaNone: 'keine NINA-Instanz',
       ninaSeen: 'NINA zuletzt {{time}}',
       ninaNever: 'NINA noch nie gesehen',
+      ninaOnlyTonight: 'NINA-Status nur für die laufende Nacht',
     },
     lane: {
       sky: 'Himmel',
