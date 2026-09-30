@@ -28,6 +28,48 @@ export const ExoTransitQuery = z.object({
 });
 export type ExoTransitQuery = z.infer<typeof ExoTransitQuery>;
 
+const ExoExposurePoint = z.object({
+  exposureS: z.number(),
+  fwhmArcsec: z.number(),
+  /** Spitzenpixel in Prozent der Sättigung (Full Well bzw. ADC-Bereich). */
+  peakPct: z.number(),
+  framesInWindow: z.number().int(),
+  precisionMmag: z.number(),
+  transitSnr: z.number(),
+});
+
+/** Warum keine Empfehlung möglich ist: fehlende Angaben an Teleskop, Kamera, Filterwahl oder Katalog. */
+export const EXO_EXPOSURE_MISSING = [
+  'telescope',
+  'camera_noise',
+  'camera_saturation',
+  'filter',
+  'magnitude',
+  'depth',
+] as const;
+
+/** Belichtungsempfehlung für das Rig (transit.md §6, Spec-Ergänzung 30.09.2026). */
+export const ExoExposure = z.discriminatedUnion('status', [
+  ExoExposurePoint.extend({
+    status: z.literal('ok'),
+    filterShortName: z.string(),
+    /** Standard-Gain der Kamera; `null` = NINA-Standard. */
+    gain: z.number().int().nullable(),
+    defocus: z.boolean(),
+    limitedBy: z.enum(['saturation', 'ingress', 'max_exposure', 'defocus', 'defocus_limit']),
+    /** Variante im Fokus (3″), wenn die Empfehlung defokussiert. */
+    inFocus: ExoExposurePoint.nullable(),
+    skyMagArcsec2: z.number(),
+    bortle: z.number().nullable(),
+    airmass: z.number(),
+  }),
+  z.object({
+    status: z.literal('missing'),
+    missing: z.array(z.enum(EXO_EXPOSURE_MISSING)).min(1),
+  }),
+]);
+export type ExoExposure = z.infer<typeof ExoExposure>;
+
 export const ExoTransitView = z
   .object({
     /** `<catalog>:<planet>:<n>` – eindeutig je Nacht. */
@@ -121,6 +163,8 @@ export const ExoTransitView = z
         })
         .nullable(),
     }),
+    /** Belichtungsempfehlung für das Rig (transit.md §6). */
+    exposure: ExoExposure,
     /** Eigene Exoplaneten-Projekte zu diesem Planeten (Spalte „Meine Beob.“). */
     myProjects: z.number().int(),
   })

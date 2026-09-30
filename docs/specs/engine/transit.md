@@ -157,3 +157,39 @@ Rechnung in `packages/engine/src/exo/classify.ts`, Anzeige in S-22.
     - Dubletten (TOI-1518.01 = TOI-1518b, TOI-3791.01 = WASP-194 b) zeigen wir einmal.
     - Transits mit großer Unsicherheit (z. B. TOI-5329.01, 0,69 h, Fenster 10 h) sind bei uns nach AST-T19 nicht beobachtbar.
 
+
+## 6. Belichtungsempfehlung (FA-EXO-14a, Spec-Ergänzung 30.09.2026, Wunsch Sven)
+Rechnung in `packages/engine/src/exo/exposure.ts` (`exposureAdvice`), Kennwerte des Rigs in `apps/api/src/exo/exposure.ts`, Anzeige als Karte *Belichtung* in der aufgeklappten Zeile von S-22. Kompakt statt Rechnerseite: eine Zahl, vier Kennwerte, bei Bedarf Defokus-Hinweis und die Variante im Fokus.
+- **Eingaben:**
+  - Filter der Filterwahl (§5) mit Bandbreite und Transmission (sonst 90 %).
+  - Band für den Nullpunkt: gleiches Band → Rc bzw. Ic; Breitband-Ersatz → Rc; Luminanz/Clear → `lum`.
+  - Sternhelligkeit: R für Rc/Ic, V für `lum`, sonst die verwendete Helligkeit.
+  - Teleskop: Öffnung, Obstruktion (Anteil am Durchmesser), Brennweite × Reducer.
+  - Kamera am Standard-Gain: Werte des passenden Gain-Modus vor den Kamerawerten. Sättigung = min(Full Well, (2^Bits − 1) · e⁻/ADU). Dazu Ausleserauschen, QE und Dunkelstrom (bei gekühlter Kamera halbiert je 6 °C unter 20 °C).
+  - Standort: Höhe ü. NN; Himmel aus der Bortle-Klasse, ohne Angabe Klasse 4.
+  - Download-Zeit aus dem Aufwand des Rigs.
+  - Fehlt Teleskop, Ausleserauschen, Sättigung, Filterwahl, Helligkeit oder Tiefe, gibt es keine Empfehlung, sondern die Liste der fehlenden Angaben (`status: 'missing'`).
+- **Modell:**
+  - Photonen bei 0 mag (s⁻¹ cm⁻² Å⁻¹, Bessell 1998): V 996 · Rc 702 · Ic 452 · lum 1000 (über V).
+  - Ersatzbandbreiten: V 88 · Rc 138 · Ic 149 · lum 300 nm.
+  - Durchlass: Optik 0,7 × Filter × QE.
+  - Extinktion (mag je Luftmasse): V 0,20 · Rc 0,13 · Ic 0,08 · lum 0,20. Luftmasse `1/sin h` mit h ≥ 10°. Für die Sättigung zählt der höchste Stand im Fenster (Kontakte, bei Kulmination im Fenster `90° − |φ − δ|`), für die Genauigkeit die Höhe zur Mitte.
+  - Himmel in V je Bortle 1…9: 21,85 · 21,6 · 21,4 · 20,9 · 20,2 · 19,5 · 18,9 · 18,4 · 17,8 mag/″². Im Band heller um V−R 0,9 bzw. V−I 1,9. Mond nicht berücksichtigt.
+  - Stern als Gauß-Profil, mittig auf einem Pixel; Anteil im hellsten Pixel `erf(0,5/(√2·σ_px))²`.
+  - Seeing im Fokus 3″ FWHM.
+  - Spitzenpixel = (Stern · Anteil + Himmel + Dunkelstrom) · t, höchstens **50 %** der Sättigung.
+  - Photometrie-Blende mit Radius 1,5 · FWHM.
+  - Rauschen je Aufnahme: `√(S + n_pix·(Himmel·t + Dunkel·t + RN²) + (σ_sz·S)²)`.
+  - Szintillation nach Young (1967) mit Faktor 1,5 (Osborn 2015): `σ_sz = 1,5 · 0,09 · D[cm]^(−2/3) · X^1,75 · e^(−h/8000 m) / √(2t)`.
+  - Genauigkeit in mmag = 1085,7 · Rauschen/S.
+  - Aufnahmen im Fenster = ⌊Fenster / (t + Download)⌋. Davon im Transit ⌊T14 / (t + Download)⌋, mindestens 1; der Rest ist Baseline.
+  - Transit-SNR = Tiefe (Bruch) / (σ · √(1/n_in + 1/n_out)). Einstufung ≥ 10 *gut*, ≥ 5 *knapp*, darunter *schwach*.
+- **Wahl der Belichtung:**
+  - Obergrenze = min(180 s, Ingress/4). Ingress ≈ T14 · k/(1+k) mit k = Rp/R★, sonst √Tiefe. Damit fallen mindestens vier Aufnahmen in den Ingress.
+  - Untergrenze = min(30 s, Obergrenze).
+  - Erlaubt die Sättigung im Fokus mindestens die Untergrenze: t = min(Sättigungszeit, Obergrenze). Grund `saturation`, `ingress` bzw. `max_exposure`.
+  - Sonst **Defokus**: t = Untergrenze mit der kleinsten FWHM ≤ 20″, bei der die Spitze 50 % nicht überschreitet (Halbierung, aufgerundet auf 0,5″; Grund `defocus`). Reicht auch 20″ nicht, gilt die Sättigungszeit bei 20″ (Grund `defocus_limit`).
+  - In beiden Defokus-Fällen zusätzlich die **Variante im Fokus** (`inFocus`): Sättigungszeit bei 3″ mit eigener Genauigkeit und eigenem SNR (Wunsch Sven: beide zeigen).
+  - Rundung nach unten: 0,5 s unter 10 s, 5 s unter 60 s, sonst 10 s.
+- **Gültigkeit:** Richtwert für die Planung, keine Kalibrierung. Der Nullpunkt ist theoretisch; Wolken, Mond und Abweichungen der Kameradaten gehen nicht ein. Die Belichtungszeile eines Transit-Projekts (FA-EXO-20) bleibt frei wählbar.
+- **Tests** (`packages/engine/test/exposure.spec.ts`): erf, Spitzenanteil, Luftmasse, Bortle und Rundung; je ein Fall für `max_exposure`, `saturation`, `defocus` (mit Variante im Fokus), `defocus_limit` und `ingress`; größere Öffnung → bessere Genauigkeit.

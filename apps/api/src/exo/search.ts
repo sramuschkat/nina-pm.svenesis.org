@@ -23,6 +23,7 @@ import {
   type Site,
 } from '@nina-pm/engine';
 import type { ExoTransitView } from '@nina-pm/shared';
+import { exposureFor, type ExposureRig } from './exposure';
 import { mergeExoEntries } from './merge';
 
 export type StoredExoEntry = ExoCatalogRow & {
@@ -61,6 +62,8 @@ export interface TransitSearch {
   readonly rigApertureMm: number | null;
   /** Filter der bestätigten Filterradbelegung. */
   readonly rigFilters: readonly RigFilter[];
+  /** Kennwerte für die Belichtungsempfehlung (transit.md §6). */
+  readonly exposureRig: ExposureRig;
   readonly myProjects: ReadonlyMap<string, number>;
 }
 
@@ -207,6 +210,28 @@ export function searchTransits(s: TransitSearch): ExoTransitView[] {
                 fit: s.rigApertureMm === null ? null : apertureFit(required, s.rigApertureMm),
               },
         filter: { band, choice },
+        exposure: exposureFor(
+          {
+            band,
+            choice,
+            magR: e.magRCousins,
+            magV: e.magVJohnson,
+            mag,
+            depthMmag: e.depthMmag,
+            durationH: e.durationH,
+            rpOverRs: e.rpOverRs,
+            windowS: ev.windowEndUtc - ev.windowStartUtc,
+            // Höchster Stand im Fenster: Kontakte, bei Kulmination im Fenster deren Höhe (ohne Refraktion).
+            altMaxDeg: Math.max(
+              ev.altAtIngressDeg,
+              ev.altAtCenterDeg,
+              ev.altAtEgressDeg,
+              ev.meridianInWindow ? 90 - Math.abs(s.site.latDeg - e.decDeg) : -90,
+            ),
+            altMidDeg: ev.altAtCenterDeg,
+          },
+          s.exposureRig,
+        ),
         myProjects: s.myProjects.get(e.planet) ?? 0,
       });
     }

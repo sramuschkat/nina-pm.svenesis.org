@@ -10846,7 +10846,7 @@ export interface paths {
         };
         /**
          * Transitsuche je Rig und Nacht (S-22)
-         * @description Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, S-22
+         * @description Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, FA-EXO-14a, S-22
          */
         get: {
             parameters: {
@@ -17139,6 +17139,36 @@ export interface components {
                     /** @enum {string} */
                     match: "same_band" | "substitute" | "lum";
                 } | null;
+            };
+            exposure: {
+                exposureS: number;
+                fwhmArcsec: number;
+                peakPct: number;
+                framesInWindow: number;
+                precisionMmag: number;
+                transitSnr: number;
+                /** @enum {string} */
+                status: "ok";
+                filterShortName: string;
+                gain: number | null;
+                defocus: boolean;
+                /** @enum {string} */
+                limitedBy: "saturation" | "ingress" | "max_exposure" | "defocus" | "defocus_limit";
+                inFocus: {
+                    exposureS: number;
+                    fwhmArcsec: number;
+                    peakPct: number;
+                    framesInWindow: number;
+                    precisionMmag: number;
+                    transitSnr: number;
+                } | null;
+                skyMagArcsec2: number;
+                bortle: number | null;
+                airmass: number;
+            } | {
+                /** @enum {string} */
+                status: "missing";
+                missing: ("telescope" | "camera_noise" | "camera_saturation" | "filter" | "magnitude" | "depth")[];
             };
             myProjects: number;
         };

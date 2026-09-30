@@ -117,7 +117,10 @@
         {
           "name": "Unity",
           "gain": 100,
-          "offset": 50
+          "offset": 50,
+          "readNoiseE": 1.5,
+          "fullWellE": 51000,
+          "ePerAdu": 1.0
         }
       ],
       "readoutModes": [
@@ -136,7 +139,10 @@
         {
           "name": "HCG",
           "gain": 100,
-          "offset": 30
+          "offset": 30,
+          "readNoiseE": 1.5,
+          "fullWellE": 51000,
+          "ePerAdu": 1.0
         }
       ],
       "readoutModes": [

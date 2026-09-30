@@ -103,19 +103,62 @@
   font-size: var(--npm-font-base);
   font-weight: 600;
 }
+/* Sternfeld · Himmelsposition · Belichtung · Zieldetails (FA-EXO-14/14a). */
 .cards {
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 340px) minmax(0, 340px) minmax(0, 320px) minmax(0, 1fr);
   gap: var(--npm-space-3);
   align-items: stretch;
 }
-@media (max-width: 1400px) {
+@media (max-width: 1600px) {
   .cards {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+}
+@media (max-width: 1100px) {
+  .exposureCard,
   .detailsCard {
     grid-column: 1 / -1;
   }
+}
+.exposureValue {
+  margin: 0;
+  font-size: var(--npm-font-h1);
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.exposureDefocus {
+  margin: 0;
+  color: var(--npm-warning);
+  font-weight: 600;
+}
+.exposureFacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  margin: 0;
+}
+/* Kennwerte zweispaltig: Bezeichnung links, Hilfe und Wert rechtsbündig (Werte brechen nicht um). */
+.exposureFacts .fact {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.exposureFacts .fact dd {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.exposureCard > p {
+  margin: 0;
+}
+.exposureAlt {
+  padding-top: var(--npm-space-2);
+  border-top: 1px solid var(--npm-border);
+}
+.exposureAlt p {
+  margin: 0;
+}
+.exposureAltTitle {
+  font-weight: 600;
 }
 .smallButton {
   composes: button from '../admin/admin.module.css';
@@ -154,11 +197,45 @@
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.help {
+.helpTip {
+  display: inline-flex;
   flex-shrink: 0;
   align-self: center;
+}
+.helpButton {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
   color: var(--npm-text-light);
   cursor: help;
+}
+.helpButton:hover,
+.helpButton[aria-expanded='true'] {
+  color: var(--npm-link);
+}
+.helpButton:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+/* Lage per JS am Knopf, im Fenster gehalten (HelpTip.tsx). */
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  padding: var(--npm-space-2) var(--npm-space-3);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  box-shadow: var(--npm-shadow);
+  font-size: var(--npm-font-small);
+  font-weight: 400;
+  line-height: 1.4;
+  white-space: normal;
+}
+.tooltip[hidden] {
+  display: none;
 }
 .research {
   display: flex;

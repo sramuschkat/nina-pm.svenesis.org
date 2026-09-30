@@ -10530,6 +10530,111 @@ components:
           required:
             - band
             - choice
+        exposure:
+          oneOf:
+            - type: object
+              properties:
+                exposureS:
+                  type: number
+                fwhmArcsec:
+                  type: number
+                peakPct:
+                  type: number
+                framesInWindow:
+                  type: integer
+                precisionMmag:
+                  type: number
+                transitSnr:
+                  type: number
+                status:
+                  type: string
+                  enum:
+                    - ok
+                filterShortName:
+                  type: string
+                gain:
+                  type:
+                    - integer
+                    - "null"
+                defocus:
+                  type: boolean
+                limitedBy:
+                  type: string
+                  enum:
+                    - saturation
+                    - ingress
+                    - max_exposure
+                    - defocus
+                    - defocus_limit
+                inFocus:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    exposureS:
+                      type: number
+                    fwhmArcsec:
+                      type: number
+                    peakPct:
+                      type: number
+                    framesInWindow:
+                      type: integer
+                    precisionMmag:
+                      type: number
+                    transitSnr:
+                      type: number
+                  required:
+                    - exposureS
+                    - fwhmArcsec
+                    - peakPct
+                    - framesInWindow
+                    - precisionMmag
+                    - transitSnr
+                skyMagArcsec2:
+                  type: number
+                bortle:
+                  type:
+                    - number
+                    - "null"
+                airmass:
+                  type: number
+              required:
+                - exposureS
+                - fwhmArcsec
+                - peakPct
+                - framesInWindow
+                - precisionMmag
+                - transitSnr
+                - status
+                - filterShortName
+                - gain
+                - defocus
+                - limitedBy
+                - inFocus
+                - skyMagArcsec2
+                - bortle
+                - airmass
+            - type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - missing
+                missing:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - telescope
+                      - camera_noise
+                      - camera_saturation
+                      - filter
+                      - magnitude
+                      - depth
+                  minItems: 1
+              required:
+                - status
+                - missing
         myProjects:
           type: integer
       required:
@@ -10565,6 +10670,7 @@ components:
         - transit
         - aperture
         - filter
+        - exposure
         - myProjects
     NinaBootstrap:
       type: object
@@ -22495,7 +22601,7 @@ paths:
       summary: Transitsuche je Rig und Nacht (S-22)
       tags:
         - exo
-      description: "Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, S-22"
+      description: "Aktion: `catalog.read` · FA-EXO-01, FA-EXO-02, FA-EXO-03, FA-EXO-05, FA-EXO-06, FA-EXO-07, FA-EXO-08, FA-EXO-10, FA-EXO-11, FA-EXO-12, FA-EXO-13, FA-EXO-14a, S-22"
       x-npm-action: catalog.read
       x-npm-requirements:
         - FA-EXO-01
@@ -22509,6 +22615,7 @@ paths:
         - FA-EXO-11
         - FA-EXO-12
         - FA-EXO-13
+        - FA-EXO-14a
         - S-22
       parameters:
         - schema:

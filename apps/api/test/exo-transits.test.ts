@@ -151,6 +151,12 @@ describe('GET /api/web/v1/exo/transits (S-22)', () => {
       band: 'Rc',
       choice: { filterId: redId, shortName: 'RED', match: 'substitute' },
     });
+    // Belichtung (FA-EXO-14a): Ersatzfilter RED, NINA-Standard-Gain, Spitze höchstens 50 %
+    expect(t.exposure).toMatchObject({ status: 'ok', filterShortName: 'RED', gain: null });
+    if (t.exposure.status !== 'ok') throw new Error('Belichtung fehlt');
+    expect(t.exposure.exposureS).toBeGreaterThan(0);
+    expect(t.exposure.peakPct).toBeLessThanOrEqual(50);
+    expect(t.exposure.framesInWindow).toBeGreaterThan(0);
   });
 
   it('nur NASA: eigener Eintrag mit geschätzter Öffnung („est“), Größenklasse aus dem Radius', async () => {

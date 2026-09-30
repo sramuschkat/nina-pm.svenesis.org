@@ -7,6 +7,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { exoCatalogStatus, myExoProjectCounts, readExoCatalog, type ExoCatalog } from '@nina-pm/db';
 import { nightTimes, TWILIGHT_DEG, type RigFilter } from '@nina-pm/engine';
 import { EXO_CATALOG_NAMES, ExoTransitList, ExoTransitQuery, ProblemError } from '@nina-pm/shared';
+import { exposureRig } from '../exo/exposure';
 import { cachedExoCatalog, searchTransits } from '../exo/search';
 import type { ApiEnv } from '../lib/env';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
@@ -34,6 +35,7 @@ export const exoTransitsRoute = defineRoute(
       'FA-EXO-11',
       'FA-EXO-12',
       'FA-EXO-13',
+      'FA-EXO-14a',
       'S-22',
     ],
   },
@@ -68,6 +70,7 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
     const site = rig.siteId ? await equipment.site(rig.siteId) : undefined;
     if (!site) throw new ProblemError('resource.not_found');
     const telescope = rig.telescopeId ? await equipment.telescope(rig.telescopeId) : undefined;
+    const camera = rig.cameraId ? await equipment.camera(rig.cameraId) : undefined;
 
     const nights = siteNights(site, svc.now(), undefined, 2);
     const night = query.night ?? nights.currentNight;
@@ -112,6 +115,13 @@ export function exoRoutes(services: () => Promise<ApiServices>) {
           ? null
           : Number(telescope.apertureMm),
       rigFilters,
+      exposureRig: exposureRig({
+        telescope,
+        camera,
+        site,
+        downloadS: rig.overhead.downloadS,
+        filters,
+      }),
       myProjects: await myExoProjectCounts(svc.db, tenant.tenantId, auth.memberId as string),
     });
 
