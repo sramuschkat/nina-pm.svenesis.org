@@ -1,6 +1,8 @@
 /**
- * AP-12b: S-32 Meine Objekte und S-34 Entwürfe gegen den lokalen Stack: User reicht ein (Formular mit
- * Wunschangaben), ordnet die Rangfolge und zieht zurück; Admin sieht Entwürfe, User nicht; axe; 768/2400 px.
+ * Projektansichten gegen den lokalen Stack (seit 30.09.2026; vorher AP-12b S-32 Meine Objekte und S-34
+ * Entwürfe): Projektliste mit Schalter *Meine* und Status-Chips, *Einreichen* aus dem Zeilenmenü, Rangfolge
+ * unter *Meine Rangfolge* in der Warteschlange und Zurückziehen; alte Adressen leiten weiter; Admin sieht
+ * Entwürfe anderer über die Chips, User nicht; axe; 768/2400 px.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -43,7 +45,9 @@ async function submitViaApi(page: Page, id: string) {
   expect(res.status()).toBe(200);
 }
 
-test('S-32: User reicht ein, ordnet die Rangfolge und zieht zurück', async ({ page }) => {
+test('Meine Projekte: Einreichen aus dem Zeilenmenü, Rangfolge in der Warteschlange, Zurückziehen', async ({
+  page,
+}) => {
   await testLogin(page, 'user1');
   const stamp = String(Date.now());
   const first = `E2E-Rang-A ${stamp}`;
@@ -51,19 +55,26 @@ test('S-32: User reicht ein, ordnet die Rangfolge und zieht zurück', async ({ p
   await completeProject(page, first);
   const secondId = await completeProject(page, second);
 
+  // Alte Adresse „Meine Objekte“ → Projektliste mit Schalter *Meine*.
   await page.goto('/projekte/meine-objekte');
-  await expect(page.getByRole('heading', { level: 1, name: 'Meine Objekte' })).toBeVisible();
-  await page.getByRole('tab', { name: /^Entwurf/ }).click();
-  const card = page.getByRole('article', { name: first });
-  await card.getByRole('button', { name: 'Einreichen' }).click();
+  await expect(page).toHaveURL(/\/projekte\?meine=1$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Projekte' })).toBeVisible();
+  await expect(
+    page.getByRole('radiogroup', { name: 'Wessen Projekte' }).getByRole('radio', { name: 'Meine' }),
+  ).toHaveAttribute('aria-checked', 'true');
+  const chips = page.getByRole('group', { name: 'Status' });
+  await chips.getByRole('button', { name: /^Entwurf/ }).click();
+  await expect(page).toHaveURL(/status=draft/);
+  await page.getByRole('button', { name: `Weitere Aktionen zu ${first}` }).click();
+  await page.getByRole('menuitem', { name: 'Einreichen' }).click();
   const form = page.getByRole('form', { name: `„${first}“ einreichen` });
   await form.getByLabel('Begründung / Kommentar').fill('Gern im Oktober');
   await form.getByRole('button', { name: 'Einreichen' }).click();
-  await expect(card).toHaveCount(0);
+  await expect(form).toHaveCount(0);
   await submitViaApi(page, secondId);
 
-  await page.reload();
-  await page.getByRole('tab', { name: /^Eingereicht/ }).click();
+  await page.goto('/projekte/warteschlange');
+  await page.getByRole('tab', { name: /^Meine Rangfolge/ }).click();
   const list = page.getByRole('list', { name: 'Rangfolge deiner eingereichten Objekte' });
   const mine = list.getByRole('listitem').filter({ hasText: stamp });
   await expect(mine).toHaveText([new RegExp(first), new RegExp(second)]);
@@ -78,33 +89,44 @@ test('S-32: User reicht ein, ordnet die Rangfolge und zieht zurück', async ({ p
 
   await mine.filter({ hasText: first }).getByRole('button', { name: 'Zurückziehen' }).click();
   await expect(list.getByRole('listitem').filter({ hasText: first })).toHaveCount(0);
-  await page.getByRole('tab', { name: /^Entwurf/ }).click();
-  await expect(page.getByRole('article', { name: first })).toBeVisible();
+  await page.goto('/projekte?meine=1&status=draft');
+  await expect(page.getByRole('link', { name: first })).toBeVisible();
 });
 
-test('S-34: Admin sieht Entwürfe anderer, User nicht', async ({ page, browser }) => {
+test('Entwürfe: Admin sieht Entwürfe anderer über die Chips, User nicht', async ({
+  page,
+  browser,
+}) => {
   await testLogin(page, 'user1');
   const name = `E2E-Entwurf ${String(Date.now())}`;
   await completeProject(page, name);
   await page.goto('/projekte');
   await expect(page.getByRole('link', { name: 'Entwürfe' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Meine Objekte' })).toHaveCount(0);
 
   const owner = await (await browser.newContext()).newPage();
   await testLogin(owner, 'owner');
+  // Alte Adresse „Entwürfe“ → Chips *Entwurf* und *Zurückgegeben*.
   await owner.goto('/projekte/entwuerfe');
-  await expect(owner.getByRole('heading', { level: 1, name: 'Entwürfe' })).toBeVisible();
+  await expect(owner).toHaveURL(/status=draft(%2C|,)returned/);
+  const chips = owner.getByRole('group', { name: 'Status' });
+  await expect(chips.getByRole('button', { name: /^Entwurf/ })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await expect(owner.getByRole('row').filter({ hasText: name })).toBeVisible();
 });
 
+const PATHS = ['/projekte?meine=1', '/projekte?status=draft,returned&gruppe=status'];
+
 for (const theme of ['light', 'dark'] as const) {
-  test(`S-32/S-34 a11y ${theme}`, async ({ page }) => {
+  test(`Projektansichten a11y ${theme}`, async ({ page }) => {
     await page.addInitScript((t) => window.localStorage.setItem('npm.theme', t), theme);
     await testLogin(page, 'owner');
-    const id = await completeProject(page, `E2E-a11y-Mein ${theme} ${String(Date.now())}`);
-    await submitViaApi(page, id);
-    for (const path of ['/projekte/meine-objekte', '/projekte/entwuerfe']) {
+    await completeProject(page, `E2E-a11y-Mein ${theme} ${String(Date.now())}`);
+    for (const path of PATHS) {
       await page.goto(path);
-      await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
+      await expect(page.getByRole('group', { name: 'Status' })).toBeVisible();
       const result = await new AxeBuilder({ page }).analyze();
       const serious = result.violations.filter(
         (v) => v.impact === 'serious' || v.impact === 'critical',
@@ -119,17 +141,13 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 for (const width of [768, 2400]) {
-  test(`S-32/S-34 bei ${String(width)} px ohne horizontales Scrollen`, async ({ page }) => {
+  test(`Projektansichten bei ${String(width)} px ohne horizontales Scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     await testLogin(page, 'owner');
-    const id = await completeProject(
-      page,
-      `E2E-Breite-Mein ${String(width)} ${String(Date.now())}`,
-    );
-    await submitViaApi(page, id);
-    for (const path of ['/projekte/meine-objekte', '/projekte/entwuerfe']) {
+    await completeProject(page, `E2E-Breite-Mein ${String(width)} ${String(Date.now())}`);
+    for (const path of PATHS) {
       await page.goto(path);
-      await expect(page.getByRole('status').filter({ hasText: 'Wird geladen' })).toHaveCount(0);
+      await expect(page.getByRole('group', { name: 'Status' })).toBeVisible();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );

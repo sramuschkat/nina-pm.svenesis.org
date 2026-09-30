@@ -63,7 +63,7 @@
   gap: var(--npm-space-3);
   min-width: 0;
 }
-/* Inhalt der Reiter in Projektliste, Projektkarte und Meine Objekte (Tabs, AP-26b) */
+/* Inhalt der Reiter in Projektliste und Projektkarte (Tabs, AP-26b) */
 .tabPanel {
   composes: stack;
   padding-top: var(--npm-space-3);
@@ -297,6 +297,109 @@
   font-size: var(--npm-font-small);
 }
 /* Ansicht: weicher Umschalter (aktive Wahl als Karte auf neutraler Fläche). */
+/* Status-Chips mit Anzahl (S-30, Wunsch Sven 30.09.2026): Zeile unter der Filterleiste; gewählte Chips
+   getönt, Chips mit 0 gedämpft. Punktfarbe wie StatusBadge (data-tone). */
+.statusCell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  max-width: 22rem;
+}
+.decisionNote {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.groupSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+}
+.groupSelect select {
+  width: auto;
+}
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-4);
+  padding: var(--npm-space-2) var(--npm-space-4);
+  border-bottom: 1px solid var(--npm-border);
+}
+.statusGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1);
+}
+.statusGroupLabel {
+  margin-right: var(--npm-space-1);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: calc(var(--npm-row-h) - 6px);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border-strong);
+  border-radius: 999px;
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.statusChip:hover {
+  border-color: var(--npm-link);
+}
+.statusChip:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.statusChip[aria-pressed='true'] {
+  border-color: var(--npm-link);
+  background: var(--npm-info-bg);
+  font-weight: 600;
+}
+.statusChipEmpty {
+  color: var(--npm-text-light);
+}
+.statusCount {
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
+.statusChip[aria-pressed='true'] .statusCount {
+  color: var(--npm-text);
+}
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--npm-text-light);
+  flex-shrink: 0;
+}
+[data-tone='info'] > .statusDot {
+  background: var(--npm-info);
+}
+[data-tone='success'] > .statusDot {
+  background: var(--npm-success);
+}
+[data-tone='warning'] > .statusDot {
+  background: var(--npm-warning);
+}
+[data-tone='danger'] > .statusDot {
+  background: var(--npm-danger);
+}
 .segmented {
   display: inline-flex;
   gap: 2px;
@@ -488,23 +591,7 @@ tr[data-dragging='true'] {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- S-32 Meine Objekte, S-34 Entwürfe ---- */
-.objectCard {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
-  gap: var(--npm-space-3);
-  padding: var(--npm-space-4);
-  border: 1px solid var(--npm-border);
-  border-radius: var(--npm-radius-card);
-  background: var(--npm-white);
-  box-shadow: var(--npm-shadow);
-  min-width: 0;
-}
-@media (max-width: 900px) {
-  .objectCard {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+/* ---- Rangfolge der eigenen Einreichungen (Warteschlange, *Meine Rangfolge*) ---- */
 .rankList {
   display: flex;
   flex-direction: column;
@@ -668,12 +755,6 @@ tr[data-dragging='true'] {
 }
 .visBarShort {
   opacity: 0.35;
-}
-.badgesInline {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--npm-space-1);
 }
 .progressCell {
   display: inline-flex;

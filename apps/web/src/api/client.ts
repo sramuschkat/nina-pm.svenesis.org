@@ -413,7 +413,6 @@ export const approvalApi = {
   /** Rangfolge der eigenen Einreichungen und offenen Änderungsanträge (FA-FRG-15, AP-32b). */
   ranking: (items: readonly { kind: 'project' | 'change-request'; id: string }[]) =>
     apiFetch<undefined>(`${V1}/me/submission-ranking`, json('PUT', { items })),
-  drafts: () => apiFetch<{ items: ProjectListItem[] }>(`${V1}/drafts`),
 };
 
 export type ProjectReport = Schemas['ProjectReport'];

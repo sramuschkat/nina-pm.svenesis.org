@@ -2,7 +2,8 @@
 /**
  * S-33 Warteschlange (AP-12c): Filter, Sortierung, abgelaufener Zeitraum; Stimme (eigenes Objekt
  * gesperrt), Admin-Entscheidung (Freigeben mit Position, Zurückgeben nur mit Kommentar, Ablehnen über
- * ConfirmDialog), User ohne Entscheiden; axe.
+ * ConfirmDialog), User ohne Entscheiden; Reiter *Meine Rangfolge* (seit 30.09.2026, vorher „Meine Objekte“):
+ * Pfeil schickt die vollständige Reihenfolge, Frist mit Kürzel, Zurückziehen mit Version; axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -12,6 +13,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, QueueItem } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { QueuePage } from './QueuePage';
+import { reorder } from './SubmissionRanking';
 import { sortRows } from '../../components/DataTable';
 import {
   NO_QUEUE_FILTERS,
@@ -52,6 +54,8 @@ const state = vi.hoisted(() => ({
   reject: vi.fn(),
   confirm: vi.fn(),
   decline: vi.fn(),
+  ranking: vi.fn(),
+  withdraw: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -83,7 +87,10 @@ vi.mock('../../api/client', () => ({
     approve: (...a: unknown[]) => state.approve(...a) as Promise<unknown>,
     returnToUser: (...a: unknown[]) => state.returnToUser(...a) as Promise<unknown>,
     reject: (...a: unknown[]) => state.reject(...a) as Promise<unknown>,
+    ranking: (...a: unknown[]) => state.ranking(...a) as Promise<unknown>,
+    withdraw: (...a: unknown[]) => state.withdraw(...a) as Promise<unknown>,
   },
+  changeRequestsApi: { withdraw: () => Promise.resolve({}) },
   exoApi: {
     confirm: (...a: unknown[]) => state.confirm(...a) as Promise<unknown>,
     decline: (...a: unknown[]) => state.decline(...a) as Promise<unknown>,
@@ -175,8 +182,74 @@ beforeEach(() => {
     state.reject,
     state.confirm,
     state.decline,
+    state.ranking,
+    state.withdraw,
   ])
     fn.mockReset();
+});
+
+describe('Meine Rangfolge (FA-FRG-15)', () => {
+  it('reorder verschiebt an die neue Stelle, die übrigen rücken nach', () => {
+    expect(reorder(['a', 'b', 'c'], 'c', 0)).toEqual(['c', 'a', 'b']);
+    expect(reorder(['a', 'b', 'c'], 'a', 5)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('eigene Einreichungen nach Rang; Pfeil schickt die vollständige Reihenfolge; Frist mit Kürzel; axe', async () => {
+    state.me = me('user');
+    const voters = [
+      { memberId: ID(7), displayName: 'Zoe', changedSinceVote: false },
+      { memberId: ID(8), displayName: 'Max', changedSinceVote: false },
+    ];
+    state.queue = [
+      item(2, {
+        name: 'Zweites',
+        createdBy: ME,
+        submitterRank: { rank: 2, of: 2 },
+        votes: { count: 0, voters: [], mine: false, mineChangedSince: false },
+      }),
+      item(1, {
+        name: 'Erstes',
+        createdBy: ME,
+        expiresAt: '2026-10-01T10:00:00Z',
+        submitterRank: { rank: 1, of: 2 },
+        votes: { count: 2, voters, mine: false, mineChangedSince: false },
+      }),
+      item(3, { name: 'Fremdes' }),
+    ];
+    state.ranking.mockResolvedValue(undefined);
+    renderPage();
+    const tab = await screen.findByRole('tab', { name: 'Meine Rangfolge (2)' });
+    fireEvent.click(tab);
+    const list = await screen.findByRole('list', {
+      name: 'Rangfolge deiner eingereichten Objekte',
+    });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows.map((r) => within(r).getByRole('link').textContent)).toEqual(['Erstes', 'Zweites']);
+    expect(rows[0]).toHaveTextContent(/Frist .*MESZ/);
+    expect(rows[1]).toHaveTextContent('ohne Frist');
+    expect(within(rows[0] as HTMLElement).getByText('Stimmen: 2')).toHaveAttribute(
+      'title',
+      'Zoe, Max',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '„Zweites“ nach oben' }));
+    await waitFor(() =>
+      expect(state.ranking).toHaveBeenCalledWith([
+        { kind: 'project', id: ID(102) },
+        { kind: 'project', id: ID(101) },
+      ]),
+    );
+    await expectNoSeriousA11y();
+  });
+
+  it('Zurückziehen mit Version', async () => {
+    state.me = me('user');
+    state.queue = [item(1, { name: 'Eingereicht', createdBy: ME })];
+    state.withdraw.mockResolvedValue({});
+    renderPage();
+    fireEvent.click(await screen.findByRole('tab', { name: 'Meine Rangfolge (1)' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Zurückziehen' }));
+    await waitFor(() => expect(state.withdraw).toHaveBeenCalledWith(ID(101), 7));
+  });
 });
 
 describe('Modell', () => {

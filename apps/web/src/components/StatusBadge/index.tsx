@@ -41,6 +41,11 @@ const TONES: Readonly<Record<StatusKind, Readonly<Record<string, Tone>>>> = {
   },
 };
 
+/** Farbton eines Status (auch für Status-Chips der Projektliste, 30.09.2026). */
+export function statusTone(kind: StatusKind, value: string): Tone {
+  return TONES[kind][value] ?? 'neutral';
+}
+
 export interface StatusBadgeProps {
   kind: StatusKind;
   value: string | null;
@@ -54,7 +59,7 @@ export function StatusBadge({ kind, value, size = 'md', withTooltip }: StatusBad
   const key = `status.${kind}.${value}`;
   const known = i18n.exists(key);
   const text = known ? t(key) : value;
-  const tone: Tone = TONES[kind][value] ?? 'neutral';
+  const tone = statusTone(kind, value);
   return (
     <span
       className={`${styles.badge} ${styles[tone]} ${size === 'sm' ? styles.sm : ''}`}

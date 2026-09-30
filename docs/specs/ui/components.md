@@ -34,7 +34,7 @@ Verbindlich für AP-06a, AP-06b, AP-10, AP-13e, AP-13f, AP-23, AP-24, AP-25, AP-
 
 | | |
 |---|---|
-| Zweck | Fortschritt „x/y × t“ (Projektkarte, Editor, NINA-Auslieferung, Meine Objekte) |
+| Zweck | Fortschritt „x/y × t“ (Projektkarte, Editor, NINA-Auslieferung, Meine Rangfolge) |
 | Eigenschaften | `acquired: number` · `planned: number` · `rejected?: number` · `bonus?: number` · `exposureS?: number` · `showLabel?: boolean` · `size?: 'sm' \| 'md'` |
 | Zustände | `planned = 0` → `empty` („kein Plan“); sonst `ready` |
 | Darstellung | drei Segmente in einem Balken: akzeptiert (Akzentfarbe), verworfen (gedämpft, schräg gestreift), Bonus (heller Akzent). Label `22/60 × 300 s · 33 %` |
@@ -123,7 +123,7 @@ Der Baustein zeichnet ausschließlich, was die Engine schon gerechnet hat. **Er 
 
 | | |
 |---|---|
-| Einsatz | S-30 Liste und Karten, S-31 Kopf (live), S-32, S-33 (FA-PRJ-23) |
+| Einsatz | S-30 Liste und Karten, S-31 Kopf (live), S-33 (FA-PRJ-23) |
 | Eigenschaften | `effort: EffortView \| null` · `stale?: boolean` · `state?: 'loading' \| 'empty' \| 'error' \| 'ready'` · `size?: 'sm' \| 'md'` · `live?: boolean` · `onRetry?: () => void` |
 | Verhalten | Text über `effort.*`: „1 Nacht“ (grün), „ca. n Nächte“ (blau), „nicht machbar (x %)“ (rot), „Transit · vollständig / teilweise (x %)“ (violett, Token `--npm-violet`), „fertig“ (`tag = null`); `stale` hängt „wird aktualisiert“ an. Tooltip (`title` und zugänglicher Name): Schätzungshinweis, benötigte Stunden, beste Nacht je Mondstufe, begrenzender Faktor, frühestes Ende, Zeitraum – Nächte als Doppeldatum. Fokussierbar mit Fokusring |
 | Zustände | `empty` = noch nicht berechnet („Schätzung folgt“ bzw. „wird aktualisiert“), `loading` (Skelett), `error` mit *Erneut versuchen*, `ready` |
@@ -225,7 +225,7 @@ Seltene oder folgenreiche Aktionen, z. B. *Löschen* im Seitenkopf oder Zeilenak
 
 ### 2.16 `ThumbPreview` (Vorschaubild mit großer Fassung, AP-26h)
 
-Kleines Vorschaubild in Listen und Tabellen (Projektliste, Meine Objekte, Warteschlange, Entwürfe, Objektbrowser). Wunsch Sven vom 26.09.2026.
+Kleines Vorschaubild in Listen und Tabellen (Projektliste, Warteschlange, Objektbrowser). Wunsch Sven vom 26.09.2026.
 
 | | |
 |---|---|
@@ -272,7 +272,7 @@ Mehrere Spuren auf **einer** Zeitachse in Standortzeit (volle Stunden, ab 17 Stu
 | Gelöscht (Papierkorb) · Wiederherstellen · Warnung im `ConfirmDialog` | `trash` · `archive-restore` · `triangle-alert` |
 | Sperren · Entsperren · Einladen · Owner übertragen · Hinzufügen · Mandant wechseln · Abmelden (Verwaltung, AP-07a…c) | `lock` · `lock-open` · `user-plus` · `crown` · `plus` · `arrow-left-right` · `log-out` |
 | Favorit · Zurück · vorige/nächste Nacht · externer Link (Projekt-Editor, AP-11b) | `star` · `arrow-left` · `chevron-left`/`chevron-right` · `external-link` |
-| Ziehen (Rangfolge S-32, Priorität S-30, AP-12b) | `grip-vertical` |
+| Ziehen (Meine Rangfolge S-33, Priorität S-30, AP-12b) | `grip-vertical` |
 | Stimme (Warteschlange S-33, AP-12c) | `thumbs-up` |
 | Saison eines Objekts (Objektbrowser, AP-26d) | `calendar-range` |
 | Datumswahl der Nacht mit Mondkalender (Planung) | `calendar-days` |

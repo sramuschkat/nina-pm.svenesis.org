@@ -301,7 +301,9 @@ function Editor({
   const canFavorite = useCan('me.favorites');
   const canSubmit = useCan('project.submit', resource);
   const canWithdraw = useCan('project.withdraw', resource);
-  const [submitting, setSubmitting] = useState(false);
+  // `?einreichen=1` (⋯-Menü der Projektliste, 30.09.2026) öffnet den Dialog *Einreichen* direkt.
+  const [params] = useSearchParams();
+  const [submitting, setSubmitting] = useState(params.get('einreichen') === '1');
   // Admin-Objekte ohne Warteschlange (FA-PRJ-18, FA-FRG-10): der Admin gibt eigene Entwürfe direkt frei.
   const ownDraft =
     saved !== null &&

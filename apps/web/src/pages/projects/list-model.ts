@@ -1,9 +1,29 @@
 /**
  * Reine Hilfen der Projektliste S-30 (AP-11c; FK 14.3, FA-PRJ-14/16/19): Filter (Suche, Rig, Objekttyp,
- * Ersteller, Freigabestatus, Projektstatus, Favoriten, Aufwand), Gruppen je Rig mit Zählern je Status und die
+ * Ersteller, Status, Alle/Meine, Favoriten, Aufwand), Gruppen je Rig bzw. je Status mit Zählern und die
  * Reihenfolge (freigegebene Projekte nach Priorität, danach die übrigen nach Name).
+ * Seit 30.09.2026 (Wunsch Sven) **ein** Status über die ganze Lebensdauer: vor der Freigabe der
+ * Freigabestatus, danach der Projektstatus – gefiltert über Status-Chips mit Anzahl (Mehrfachauswahl).
  */
+import { projectStatuses } from '@nina-pm/shared';
 import type { ProjectListItem } from '../../api/client';
+
+/** Status vor der Freigabe (Freigabestatus ohne „Freigegeben“). */
+export const PRE_APPROVAL_STATUSES = ['draft', 'submitted', 'returned', 'rejected'] as const;
+/** Alle Status in Anzeigereihenfolge: erst vor der Freigabe, dann die Projektstatus. */
+export const LIFECYCLE_STATUSES = [...PRE_APPROVAL_STATUSES, ...projectStatuses] as const;
+
+/** Status eines Projekts über die ganze Lebensdauer. */
+export function lifecycleStatus(p: Pick<ProjectListItem, 'approvalStatus' | 'status'>): string {
+  return p.approvalStatus === 'approved' ? (p.status ?? 'approved') : p.approvalStatus;
+}
+
+/** Art des Status für Übersetzung und Farbe (`status.approval.*` bzw. `status.project.*`). */
+export function statusKind(status: string): 'approval' | 'project' {
+  return (PRE_APPROVAL_STATUSES as readonly string[]).includes(status) || status === 'approved'
+    ? 'approval'
+    : 'project';
+}
 
 export interface ListFilters {
   /** Suche in Name, Zielname und Katalognamen (Filterleiste, AP-26c). */
@@ -11,8 +31,10 @@ export interface ListFilters {
   readonly rigId: string;
   readonly targetType: string;
   readonly createdBy: string;
-  readonly approvalStatus: string;
-  readonly status: string;
+  /** Gewählte Status-Chips (`lifecycleStatus`); leer = alle. */
+  readonly statuses: readonly string[];
+  /** Schalter *Meine*: nur eigene Projekte (ersetzt „Meine Objekte“, 30.09.2026). */
+  readonly mine: boolean;
   readonly favorites: boolean;
   /** Aufwand-Kennzeichen (FA-PRJ-14/23): `effortTags`, `done` (fertig) oder `none` (noch nicht berechnet). */
   readonly effort: string;
@@ -39,8 +61,8 @@ export const NO_FILTERS: ListFilters = {
   rigId: '',
   targetType: '',
   createdBy: '',
-  approvalStatus: '',
-  status: '',
+  statuses: [],
+  mine: false,
   favorites: false,
   effort: '',
 };
@@ -54,9 +76,11 @@ export function matchesQuery(query: string, ...fields: readonly (string | null)[
   return !q || fields.some((x) => (x ?? '').toLowerCase().includes(q));
 }
 
+/** `meId`: Mitglied für den Schalter *Meine*. */
 export function filterProjects(
   items: readonly ProjectListItem[],
   f: ListFilters,
+  meId = '',
 ): ProjectListItem[] {
   return items.filter(
     (p) =>
@@ -64,11 +88,63 @@ export function filterProjects(
       (!f.rigId || (p.rigId ?? NO_RIG) === f.rigId) &&
       (!f.targetType || (p.targetType ?? '') === f.targetType) &&
       (!f.createdBy || p.createdBy === f.createdBy) &&
-      (!f.approvalStatus || p.approvalStatus === f.approvalStatus) &&
-      (!f.status || p.status === f.status) &&
+      (f.statuses.length === 0 || f.statuses.includes(lifecycleStatus(p))) &&
+      (!f.mine || p.createdBy === meId) &&
       (!f.favorites || p.favorite) &&
       (!f.effort || effortKey(p.effort) === f.effort),
   );
+}
+
+/**
+ * Anzahl je Status für die Chips: mit allen übrigen Filtern (Suche, Meine, Rig …), aber **ohne** die
+ * Statusauswahl – sonst zeigten nicht gewählte Chips immer 0.
+ */
+export function statusCounts(
+  items: readonly ProjectListItem[],
+  f: ListFilters,
+  meId = '',
+): { total: number; byStatus: Readonly<Record<string, number>> } {
+  const base = filterProjects(items, { ...f, statuses: [] }, meId);
+  const byStatus: Record<string, number> = {};
+  for (const p of base) {
+    const s = lifecycleStatus(p);
+    byStatus[s] = (byStatus[s] ?? 0) + 1;
+  }
+  return { total: base.length, byStatus };
+}
+
+/** Gruppierung der Liste (Umschalter, URL `gruppe`). */
+export const GROUP_BY = ['rig', 'status', 'none'] as const;
+export type GroupBy = (typeof GROUP_BY)[number];
+
+/** Gruppen je Status in der Reihenfolge der Chips; innerhalb wie je Rig (Priorität, dann Name). */
+export function groupByStatus(
+  items: readonly ProjectListItem[],
+): { key: string; items: ProjectListItem[] }[] {
+  const by = new Map<string, ProjectListItem[]>();
+  for (const p of items) {
+    const s = lifecycleStatus(p);
+    by.set(s, [...(by.get(s) ?? []), p]);
+  }
+  const order = [
+    ...LIFECYCLE_STATUSES.filter((s) => by.has(s)),
+    ...[...by.keys()].filter((s) => !(LIFECYCLE_STATUSES as readonly string[]).includes(s)),
+  ];
+  return order.map((key) => ({ key, items: sortInGroup(by.get(key) ?? []) }));
+}
+
+/** Zustand der Adresse: `status=draft,returned`, `meine=1`, `gruppe=status` (Links, Weiterleitungen). */
+export function listStateFromParams(params: URLSearchParams): {
+  statuses: string[];
+  mine: boolean;
+  groupBy: GroupBy;
+} {
+  const statuses = (params.get('status') ?? '')
+    .split(',')
+    .filter((s) => (LIFECYCLE_STATUSES as readonly string[]).includes(s));
+  const g = params.get('gruppe');
+  const groupBy: GroupBy = g === 'status' ? 'status' : g === 'keine' ? 'none' : 'rig';
+  return { statuses, mine: params.get('meine') === '1', groupBy };
 }
 
 /** Auswahlwerte der Filter aus der geladenen Liste. */
@@ -120,8 +196,8 @@ export function groupByRig(
     const list = sortInGroup(by.get(rigId) ?? []);
     const counts = new Map<string, { key: string; kind: 'project' | 'approval'; n: number }>();
     for (const p of list) {
-      const kind = p.status ? 'project' : 'approval';
-      const key = p.status ?? p.approvalStatus;
+      const key = lifecycleStatus(p);
+      const kind = statusKind(key);
       const c = counts.get(`${kind}:${key}`);
       counts.set(`${kind}:${key}`, { key, kind, n: (c?.n ?? 0) + 1 });
     }

@@ -72,7 +72,7 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | &nbsp;&nbsp;&nbsp;&nbsp;S-22 Exoplaneten | 1345–1351 |
 | &nbsp;&nbsp;&nbsp;&nbsp;S-30 Projektliste *(je Status)* | 1352–1354 |
 | &nbsp;&nbsp;&nbsp;&nbsp;S-31 Projekt-Editor | 1355–1394 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(User)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(Admin)* | 1395–1399 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(entfällt)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(entfällt)* | 1395–1399 |
 | &nbsp;&nbsp;&nbsp;&nbsp;S-40 Nacht-Simulator | 1400–1445 |
 | &nbsp;&nbsp;&nbsp;&nbsp;S-41 An NINA ausgeliefert *(Cloud Targets)* | 1446–1448 |
 | &nbsp;&nbsp;&nbsp;&nbsp;S-42 NINA-Instanzen & Tokens *(Admin)* | 1449–1451 |

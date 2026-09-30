@@ -2,13 +2,15 @@
 /**
  * S-30 Projektliste (AP-11c): Filter (Filterleiste mit Chips, AP-26c), Gruppen je Rig mit Zählern,
  * Priorität (Position unter den freigegebenen Projekten), Rechte (Papierkorb nur Admin), Löschen im
- * Zeilenmenü ⋯ (AP-26d) über `ConfirmDialog`, Wiederherstellen ohne Dialog, axe.
+ * Zeilenmenü ⋯ (AP-26d) über `ConfirmDialog`, Wiederherstellen ohne Dialog, axe. Seit 30.09.2026: Status-Chips
+ * mit Anzahl (Mehrfachauswahl, Adresse), Schalter *Alle / Meine*, Gruppierung je Status bzw. ohne, Kommentar der
+ * Freigabe bei zurückgegebenen Projekten, *Einreichen* im Zeilenmenü (vorher „Meine Objekte“/„Entwürfe“).
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me, ProjectListItem } from '../../api/client';
@@ -19,8 +21,12 @@ import {
   filterOptions,
   filterProjects,
   groupByRig,
+  groupByStatus,
+  lifecycleStatus,
+  listStateFromParams,
   movedPosition,
   priorityRank,
+  statusCounts,
 } from './list-model';
 import { ProjectListPage } from './ProjectListPage';
 
@@ -32,6 +38,7 @@ const state = vi.hoisted(() => ({
   restore: vi.fn(),
   priority: vi.fn(),
   favorite: vi.fn(),
+  history: [] as unknown[],
 }));
 
 vi.mock('../../api/client', () => ({
@@ -62,6 +69,7 @@ vi.mock('../../api/client', () => ({
     restore: (...a: unknown[]) => state.restore(...a) as Promise<unknown>,
     priority: (...a: unknown[]) => state.priority(...a) as Promise<unknown>,
     favorite: (...a: unknown[]) => state.favorite(...a) as Promise<unknown>,
+    history: () => Promise.resolve({ items: state.history }),
   },
 }));
 
@@ -150,15 +158,22 @@ function AfterAuth({ children }: { children: ReactNode }) {
   return me === undefined ? null : children;
 }
 
-function renderPage() {
+/** Aktuelle Adresse (Suche und Pfad) für Prüfungen der URL. */
+function Where() {
+  const loc = useLocation();
+  return <span data-testid="where">{`${loc.pathname}${loc.search}`}</span>;
+}
+
+function renderPage(path = '/projekte') {
   return render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
           <AfterAuth>
             <ProjectListPage />
+            <Where />
           </AfterAuth>
         </AuthProvider>
       </MemoryRouter>
@@ -170,6 +185,7 @@ beforeEach(() => {
   state.me = me('owner');
   state.items = [];
   state.deleted = [];
+  state.history = [];
   for (const fn of [state.remove, state.restore, state.priority, state.favorite]) fn.mockReset();
 });
 
@@ -184,7 +200,9 @@ describe('Modell (FA-PRJ-13/14/19)', () => {
     expect(filterProjects(all, { ...NO_FILTERS, createdBy: ID(9) }).map((p) => p.id)).toEqual([
       c.id,
     ]);
-    expect(filterProjects(all, { ...NO_FILTERS, approvalStatus: 'approved' })).toHaveLength(2);
+    expect(filterProjects(all, { ...NO_FILTERS, statuses: ['active'] })).toHaveLength(2);
+    expect(filterProjects(all, { ...NO_FILTERS, statuses: ['active', 'draft'] })).toHaveLength(4);
+    expect(filterProjects(all, { ...NO_FILTERS, mine: true }, ID(9))).toEqual([c]);
     expect(filterProjects(all, { ...NO_FILTERS, favorites: true })).toEqual([d]);
     expect(filterProjects(all, { ...NO_FILTERS, rigId: NO_RIG })).toEqual([d]);
     expect(filterOptions(all)).toEqual({
@@ -204,6 +222,31 @@ describe('Modell (FA-PRJ-13/14/19)', () => {
       { key: 'active', kind: 'project', n: 2 },
       { key: 'draft', kind: 'approval', n: 1 },
     ]);
+  });
+
+  it('Status über die Lebensdauer; Anzahl ohne Statusauswahl; Gruppen je Status; Adresse', () => {
+    expect(lifecycleStatus(a)).toBe('active');
+    expect(lifecycleStatus(c)).toBe('draft');
+    expect(lifecycleStatus(item(8, { approvalStatus: 'returned', status: 'planning' }))).toBe(
+      'returned',
+    );
+    const counts = statusCounts([a, b, c, d], { ...NO_FILTERS, statuses: ['draft'] });
+    expect(counts).toEqual({ total: 4, byStatus: { active: 2, draft: 2 } });
+    expect(statusCounts([a, b, c, d], { ...NO_FILTERS, mine: true }, ID(9)).total).toBe(1);
+    expect(groupByStatus([c, a, b]).map((g) => [g.key, g.items.map((p) => p.name)])).toEqual([
+      ['draft', ['Entwurf']],
+      ['active', ['A-Ziel', 'B-Ziel']],
+    ]);
+    expect(
+      listStateFromParams(
+        new URLSearchParams('status=draft,returned,unsinn&meine=1&gruppe=status'),
+      ),
+    ).toEqual({ statuses: ['draft', 'returned'], mine: true, groupBy: 'status' });
+    expect(listStateFromParams(new URLSearchParams(''))).toEqual({
+      statuses: [],
+      mine: false,
+      groupBy: 'rig',
+    });
   });
 
   it('Verschieben ergibt die Position unter den freigegebenen Projekten', () => {
@@ -434,5 +477,102 @@ describe('S-30 (Komponente)', () => {
     expect(screen.queryByRole('button', { name: 'Papierkorb' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Priorität' })).not.toBeInTheDocument();
     expect(screen.getAllByText('Eingereicht').length).toBeGreaterThan(0);
+  });
+});
+
+describe('Status-Chips, Alle/Meine, Gruppierung (30.09.2026)', () => {
+  const mix = () => [
+    item(1, { approvalStatus: 'approved', status: 'active', priority: 1, name: 'Aktiv A' }),
+    item(2, { approvalStatus: 'approved', status: 'on_hold', priority: 2, name: 'Pause B' }),
+    item(3, { name: 'Entwurf C', createdBy: ID(9), createdByName: 'Zoe' }),
+    item(4, { approvalStatus: 'returned', name: 'Zurück D' }),
+  ];
+  const chips = () => screen.getByRole('group', { name: 'Status' });
+  const chip = (name: RegExp) => within(chips()).getByRole('button', { name });
+  const links = () =>
+    screen
+      .getAllByRole('link')
+      .map((l) => l.textContent)
+      .filter((x) => /^(Aktiv A|Pause B|Entwurf C|Zurück D)$/.test(x ?? ''));
+
+  it('Chips mit Anzahl; Mehrfachauswahl; *Alle* setzt zurück; Auswahl in der Adresse; axe', async () => {
+    state.items = mix();
+    renderPage();
+    await screen.findByRole('link', { name: 'Aktiv A' });
+    expect(chip(/^Alle/)).toHaveTextContent('Alle4');
+    expect(chip(/^Alle/)).toHaveAttribute('aria-pressed', 'true');
+    expect(chip(/^Entwurf/)).toHaveTextContent('Entwurf1');
+    expect(chip(/^Abgeschlossen/)).toHaveTextContent('Abgeschlossen0');
+    fireEvent.click(chip(/^Entwurf/));
+    expect(chip(/^Entwurf/)).toHaveAttribute('aria-pressed', 'true');
+    expect(chip(/^Alle/)).toHaveAttribute('aria-pressed', 'false');
+    expect(links()).toEqual(['Entwurf C']);
+    fireEvent.click(chip(/^Zurückgegeben/));
+    expect(links().sort()).toEqual(['Entwurf C', 'Zurück D']);
+    expect(screen.getByTestId('where')).toHaveTextContent('status=draft%2Creturned');
+    // Anzahl der übrigen Chips bleibt sichtbar (ohne Statusauswahl gezählt).
+    expect(chip(/^Aktiv/)).toHaveTextContent('Aktiv1');
+    await expectNoSeriousA11y();
+    fireEvent.click(chip(/^Alle/));
+    expect(links()).toHaveLength(4);
+  });
+
+  it('alte Adresse „Entwürfe“: ?status=draft,returned wählt beide Chips vor', async () => {
+    state.items = mix();
+    renderPage('/projekte?status=draft,returned');
+    await screen.findByRole('link', { name: 'Entwurf C' });
+    expect(chip(/^Entwurf/)).toHaveAttribute('aria-pressed', 'true');
+    expect(chip(/^Zurückgegeben/)).toHaveAttribute('aria-pressed', 'true');
+    expect(links().sort()).toEqual(['Entwurf C', 'Zurück D']);
+  });
+
+  it('Schalter *Meine* zeigt nur eigene Projekte, die Anzahl folgt', async () => {
+    state.items = mix();
+    renderPage();
+    await screen.findByRole('link', { name: 'Entwurf C' });
+    const who = screen.getByRole('radiogroup', { name: 'Wessen Projekte' });
+    fireEvent.click(within(who).getByRole('radio', { name: 'Meine' }));
+    expect(within(who).getByRole('radio', { name: 'Meine' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.queryByRole('link', { name: 'Entwurf C' })).not.toBeInTheDocument();
+    expect(chip(/^Alle/)).toHaveTextContent('Alle3');
+    expect(chip(/^Entwurf/)).toHaveTextContent('Entwurf0');
+    expect(screen.getByTestId('where')).toHaveTextContent('meine=1');
+  });
+
+  it('Gruppieren je Status: Kopf je Status mit Anzahl, keine Prioritätsspalte; ohne Gruppen', async () => {
+    state.items = mix();
+    renderPage();
+    await screen.findByRole('link', { name: 'Aktiv A' });
+    expect(screen.getByRole('columnheader', { name: 'Priorität' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Gruppieren'), { target: { value: 'status' } });
+    expect(screen.getByRole('columnheader', { name: /Entwurf.*Anzahl: 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /Pausiert/ })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Priorität' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /nach oben/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('gruppe=status');
+    fireEvent.change(screen.getByLabelText('Gruppieren'), { target: { value: 'none' } });
+    expect(screen.queryByRole('columnheader', { name: /Rig A|Entwurf/ })).not.toBeInTheDocument();
+    expect(links()).toEqual(['Aktiv A', 'Entwurf C', 'Pause B', 'Zurück D']);
+  });
+
+  it('zurückgegeben: Kommentar der Freigabe unter dem Status; ⋯ *Einreichen* öffnet den Editor', async () => {
+    const user = userEvent.setup();
+    state.me = me('user');
+    state.items = [item(4, { approvalStatus: 'returned', name: 'Zurück D' })];
+    state.history = [
+      { kind: 'approval', action: 'returned', comment: 'Bitte Belichtungszeit prüfen' },
+    ];
+    renderPage();
+    expect(
+      await screen.findByText('Kommentar der Freigabe: Bitte Belichtungszeit prüfen'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen zu Zurück D' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Einreichen' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('where')).toHaveTextContent(`/projekte/${ID(104)}?einreichen=1`),
+    );
   });
 });

@@ -34,8 +34,6 @@ import { SitesPage } from '../pages/equipment/SitesPage';
 import { TelescopesPage } from '../pages/equipment/TelescopesPage';
 import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { ProjectListPage } from '../pages/projects/ProjectListPage';
-import { MyObjectsPage } from '../pages/projects/MyObjectsPage';
-import { DraftsPage } from '../pages/projects/DraftsPage';
 import { QueuePage } from '../pages/projects/QueuePage';
 import { DeliveryPage } from '../pages/nina/DeliveryPage';
 import { InstancesPage } from '../pages/nina/InstancesPage';
@@ -161,11 +159,18 @@ export function createRouter() {
           children: [
             { index: true, element: <HomePage /> },
             { path: 'heute-nacht', element: <TonightPage /> },
-            { path: 'meine-objekte', element: <Navigate to="/projekte/meine-objekte" replace /> },
+            // „Meine Objekte“ und „Entwürfe“ sind seit 30.09.2026 Ansichten der Projektliste.
+            { path: 'meine-objekte', element: <Navigate to="/projekte?meine=1" replace /> },
             { path: 'projekte', element: <ProjectListPage /> },
             { path: 'projekte/neu', element: <ProjectEditorPage /> },
-            { path: 'projekte/meine-objekte', element: <MyObjectsPage /> },
-            { path: 'projekte/entwuerfe', element: <DraftsPage /> },
+            {
+              path: 'projekte/meine-objekte',
+              element: <Navigate to="/projekte?meine=1" replace />,
+            },
+            {
+              path: 'projekte/entwuerfe',
+              element: <Navigate to="/projekte?status=draft,returned" replace />,
+            },
             { path: 'projekte/warteschlange', element: <QueuePage /> },
             { path: 'projekte/:id', element: <ProjectEditorPage /> },
             {
