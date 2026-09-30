@@ -17003,6 +17003,11 @@ export interface components {
              */
             projectId: string;
             name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
             priority: number | null;
             frames: number;
             hours: number;
@@ -17214,6 +17219,11 @@ export interface components {
             targetName: string | null;
             /** @enum {string} */
             projectType: "deep_sky" | "exoplanet";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
             /** @enum {string} */
             status: "planning" | "active" | "on_hold" | "ready_to_process" | "unfinished" | "completed" | "archived";
             priority: number;

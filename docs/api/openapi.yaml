@@ -8180,6 +8180,10 @@ components:
           description: UUID
         name:
           type: string
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
         priority:
           type:
             - integer
@@ -8197,6 +8201,7 @@ components:
       required:
         - projectId
         - name
+        - createdBy
         - priority
         - frames
         - hours
@@ -8663,6 +8668,10 @@ components:
           enum:
             - deep_sky
             - exoplanet
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
         status:
           type: string
           enum:
@@ -8739,6 +8748,7 @@ components:
         - name
         - targetName
         - projectType
+        - createdBy
         - status
         - priority
         - version

@@ -17,12 +17,14 @@ import {
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { FilterChip } from '../../components/FilterChip';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
 import { StatusBadge } from '../../components/StatusBadge';
+import { Person } from '../../lib/member';
 import { formatDateTime } from '../../lib/time';
 import { problemCode, useConfirm } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
@@ -242,6 +244,10 @@ function DeliveryCard({ card }: { card: Card }) {
   const canRemove = useCan('project.status');
   const { item, rig } = card;
   const zone = me?.tenant?.timeZone ?? 'Europe/Berlin';
+  // Filterfarben für die Filter-Chips (wie Projektliste und Simulator, 30.09.2026).
+  const filterList = useEquipmentList('filters');
+  const colorOf = (id: string | null) =>
+    (filterList.data ?? []).find((f) => f.id === id)?.colorHex ?? '#888888';
   const remove = useConfirm(async () => {
     await projectsApi.setStatus(item.id, 'on_hold');
     await client.invalidateQueries({ queryKey: ['nina-delivery'] });
@@ -271,6 +277,9 @@ function DeliveryCard({ card }: { card: Card }) {
           <span>{t('nina.delivery.rotation', { deg: item.rotationDeg.toFixed(1) })}</span>
         ) : null}
         <span>{t('nina.delivery.rigName', { name: rig.rigName })}</span>
+        <span className={styles.creator}>
+          {t('nina.delivery.creator')} <Person id={item.createdBy} />
+        </span>
         <span>
           {t('nina.delivery.updated', { at: formatDateTime(item.updatedAt, zone, i18n.language) })}
         </span>
@@ -279,7 +288,7 @@ function DeliveryCard({ card }: { card: Card }) {
         {item.filters.map((f) => (
           <div key={f.filterId ?? f.filterShortName} className={styles.filterRow}>
             <dt>
-              {f.filterShortName}
+              <FilterChip shortName={f.filterShortName} color={colorOf(f.filterId)} size="sm" />
               {f.ninaFilterName === null ? (
                 <>
                   {' '}

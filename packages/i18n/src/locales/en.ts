@@ -306,6 +306,7 @@ export const en: Messages = {
     unallocated: 'Not allocated',
     noReason: 'no diagnostic reason',
     card: {
+      creator: 'Created by',
       pick: 'Select target – highlight its blocks in the night plan',
       window: 'Time window',
       hours: 'Allocated',
@@ -880,6 +881,7 @@ export const en: Messages = {
     },
   },
   projectEditor: {
+    creator: 'Created by',
     weatherTile: 'Night {{night}}: {{rating}} – show in the night chart',
     weatherMoon: 'Moon {{pct}} %',
     new: 'New project',
@@ -1909,6 +1911,7 @@ export const en: Messages = {
       settingsFetched: 'Settings',
     },
     delivery: {
+      creator: 'Created by',
       title: 'Delivered to NINA',
       info: 'NINA receives these targets on its next plan build: approved, active, with planning need and on a rig with “Deliver to NINA”. It is the same list the plugin fetches.',
       filterSite: 'Site',
@@ -2691,7 +2694,13 @@ export const en: Messages = {
     computing: 'Calculating forecast …',
     noProjects: 'No projects are planned for this night.',
     idle: '{{n}} more active projects without frames this night.',
-    col: { project: 'Project', frames: 'Expected frames', hours: 'Hours', lines: 'Rows' },
+    col: {
+      project: 'Project',
+      creator: 'Created by',
+      frames: 'Expected frames',
+      hours: 'Hours',
+      lines: 'Rows',
+    },
     lineFrames: '{{frames}} frames',
     offTonight: 'off tonight',
     turnOff: 'Off tonight only',

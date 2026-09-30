@@ -156,6 +156,7 @@ const view = (): TonightView => ({
         {
           projectId: ID(10),
           name: 'NGC 281',
+          createdBy: ID(3),
           priority: 1,
           frames: 24,
           hours: 2.1,
@@ -238,6 +239,7 @@ describe('S-02 Heute Nacht', () => {
     ])
       expect(card.textContent).not.toContain(gone);
     const table = within(card).getByRole('table', { name: 'Geplante Projekte am Rig Rig A' });
+    expect(within(table).getByRole('columnheader', { name: 'Ersteller' })).toBeTruthy();
     const row = within(table).getByRole('row', { name: /NGC 281/ });
     expect(row.textContent).toContain('24');
     expect(row.textContent).toContain('2,1 h');

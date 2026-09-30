@@ -25,7 +25,7 @@ import {
 import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
-import { FilterChip } from '../../components/FilterChip';
+import { chipBackground, chipTextColor, FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -532,14 +532,31 @@ function columnsFor(
                 <FilterChip shortName={name} color={filter?.colorHex ?? '#888888'} size="sm" />
               </span>
             ) : (
+              // Auswahl in der Filterfarbe wie der Filter-Chip (Wunsch Sven 30.09.2026); Kontrast wie
+              // `FilterChip` (≥ 4,5:1). Die Optionen tragen ihre Farbe, soweit der Browser das zeigt.
               <select
-                className={styles.input}
+                className={`${styles.input} ${styles.filterSelect}`}
                 aria-label={t('projectEditor.plan.filterFor', { filter: name })}
                 value={line.filterId ?? ''}
                 onChange={(e) => patch(line, { filterId: e.target.value })}
+                style={
+                  filter
+                    ? {
+                        background: chipBackground(filter.colorHex),
+                        color: chipTextColor(filter.colorHex),
+                      }
+                    : undefined
+                }
               >
                 {filters.map((f) => (
-                  <option key={f.id} value={f.id}>
+                  <option
+                    key={f.id}
+                    value={f.id}
+                    style={{
+                      background: chipBackground(f.colorHex),
+                      color: chipTextColor(f.colorHex),
+                    }}
+                  >
                     {f.shortName}
                   </option>
                 ))}

@@ -22,6 +22,8 @@ export const NinaDeliveryItem = z
     name: Text,
     targetName: Text.nullable(),
     projectType: z.enum(projectTypes),
+    /** Ersteller (`app_user.id`) – Bild und Name auf der Karte (30.09.2026). */
+    createdBy: Uuid,
     status: z.enum(projectStatuses),
     priority: z.number().int(),
     version: z.number().int().min(1),

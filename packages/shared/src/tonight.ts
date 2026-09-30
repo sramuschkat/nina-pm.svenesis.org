@@ -69,6 +69,7 @@ export function tonightProjects(
     planned.push({
       projectId: p.id,
       name: p.name,
+      createdBy: p.createdBy,
       priority: p.priority,
       frames,
       hours: round2(stored?.projectHours[p.id] ?? 0),

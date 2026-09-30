@@ -49,6 +49,8 @@ export const TonightProject = z
   .object({
     projectId: Uuid,
     name: z.string(),
+    /** Ersteller (`app_user.id`) – Bild und Name in der Tabelle (30.09.2026). */
+    createdBy: Uuid,
     priority: z.number().int().nullable(),
     /** Erwartete Frames der Nacht (ungewichtet, Simulation der Prognose). */
     frames: z.number().int().min(0),

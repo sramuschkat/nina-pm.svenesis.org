@@ -163,6 +163,7 @@ describe('S-40 Nacht-Simulator', () => {
       .find((a) => a.getAttribute('aria-label') !== 'Nicht zugeteilt');
     expect(card).toBeDefined();
     expect(within(card as HTMLElement).getByText('Zeitfenster')).toBeInTheDocument();
+    expect(within(card as HTMLElement).getByText('Ersteller')).toBeInTheDocument();
     // Kartentitel wählt das Ziel (Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben).
     const pick = within(card as HTMLElement).getByRole('button', { pressed: false });
     fireEvent.click(pick);
