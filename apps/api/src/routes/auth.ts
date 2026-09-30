@@ -13,6 +13,7 @@ import {
   InvitationPreview,
   InvitationPreviewRequest,
   MeResponse,
+  ViewAsRequest,
   OAUTH_COOKIE_TTL_SECONDS,
   ProblemError,
   safeNext,
@@ -170,6 +171,28 @@ export const contextRoute = defineRoute(
   },
 );
 
+export const viewAsRoute = defineRoute(
+  { action: 'public', session: 'required', requirements: ['security-auth.md', 'SV-03'] },
+  {
+    method: 'post',
+    path: '/api/auth/view-as',
+    summary:
+      'Rollenansicht „Als User ansehen“ ein-/ausschalten (nur Admin/Owner, nur Herabstufung, je Sitzung)',
+    tags: ['auth'],
+    request: {
+      body: { content: { 'application/json': { schema: ViewAsRequest } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'Kontext mit neuer wirksamer Rolle',
+        content: { 'application/json': { schema: MeResponse } },
+      },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('permission.denied'),
+    },
+  },
+);
+
 export const logoutRoute = defineRoute(
   { action: 'public', requirements: ['TK 5.3', 'FA-LOG-06'] },
   {
@@ -243,6 +266,7 @@ export const AUTH_ROUTES = [
   invitationClaimRoute,
   invitationPreviewRoute,
   contextRoute,
+  viewAsRoute,
   logoutRoute,
   meRoute,
   sessionsRoute,
@@ -404,6 +428,30 @@ export function authRoutes(services: () => Promise<ApiServices>) {
       await repo.setContext(auth.sessionId, auth.identityId, 'tenant', tenant.id);
       await repo.touchMemberLogin(member.id, svc.now());
     }
+    const state = await resolveSessionState(
+      repo,
+      readCookie(c.req.header('cookie'), COOKIE_NAMES.session),
+      svc.now(),
+    );
+    if (!state.auth) throw new ProblemError('auth.unauthenticated');
+    noStore(c);
+    return c.json(await buildMe(repo, state.auth), 200);
+  });
+
+  // Rollenansicht (30.09.2026): nur im Mandanten und nur mit gespeicherter Rolle Admin/Owner **mit 2FA** –
+  // maßgeblich ist die gespeicherte Rolle, nicht die wirksame (die ist in der Ansicht schon `user`). Ohne 2FA
+  // wirkt ein Admin ohnehin als User und verhält sich auch hier wie einer (SV-03). Nie mehr Rechte als
+  // gespeichert: `session.ts` wertet `acting_role` nur als Herabstufung aus.
+  app.openapi(viewAsRoute, async (c) => {
+    const svc = await services();
+    const auth = requireAuth(c);
+    const { asUser } = c.req.valid('json');
+    const repo = svc.auth;
+    if (auth.ctx !== 'tenant' || !auth.tenantId) throw new ProblemError('permission.denied');
+    const member = await repo.memberOf(auth.identityId, auth.tenantId);
+    if (!auth.mfa || member?.status !== 'active' || member.role !== 'admin')
+      throw new ProblemError('permission.denied');
+    await repo.setActingRole(auth.sessionId, auth.identityId, asUser ? 'user' : null);
     const state = await resolveSessionState(
       repo,
       readCookie(c.req.header('cookie'), COOKIE_NAMES.session),

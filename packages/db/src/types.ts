@@ -74,6 +74,8 @@ export interface AuthSessionTable {
   createdAt: Timestamp;
   lastSeenAt: Timestamp;
   expiresAt: Timestamp;
+  /** Rollenansicht (0011): `'user'` = Sitzung wirkt mit User-Rechten; NULL = eigene Rolle. */
+  actingRole: string | null;
 }
 
 export interface InvitationTable {

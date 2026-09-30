@@ -39,6 +39,7 @@ describe('Problem Details (TK 7.1)', () => {
         isSuperUser: false,
         mfa: true,
         mfaRequired: false,
+        viewAsUser: false,
       }),
     });
     const res = await app.request('/api/web/v1/jobs/keine-uuid', { headers: viaCloudFront });
@@ -69,6 +70,7 @@ describe('Problem Details (TK 7.1)', () => {
         isSuperUser: false,
         mfa: true,
         mfaRequired: false,
+        viewAsUser: false,
       }),
       services: () => Promise.reject(leak),
     });

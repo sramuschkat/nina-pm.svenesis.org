@@ -31,10 +31,12 @@ export function toAuthContext(me: Me): AuthContext {
     tenantId: me.tenant?.id ?? null,
     memberId: me.member?.id ?? null,
     role: me.member?.effectiveRole ?? null,
-    isOwner: me.member?.role === 'owner',
+    // Rollenansicht „Als User ansehen“: kein Owner, Rolle kommt schon als `user` vom Server.
+    isOwner: me.member?.role === 'owner' && !me.member.viewAsUser,
     isSuperUser: me.isSuperUser,
     mfa: me.identity.mfa,
     mfaRequired: me.mfaRequired,
+    viewAsUser: me.member?.viewAsUser ?? false,
   };
 }
 

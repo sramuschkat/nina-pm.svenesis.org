@@ -2,7 +2,8 @@
 /**
  * Rechteanzeige (AP-06a): Administration nur mit member.manage; Hinweis bei mfaRequired statt stiller
  * Ausblendung (SV-03). Rahmen (AP-26c): eine Kopfleiste mit Menü *Svenesis.org*; unter 1024 px
- * Navigation eingeklappt, aufgeklappt als Überlagerung (Esc und Klick daneben schließen).
+ * Navigation eingeklappt, aufgeklappt als Überlagerung (Esc und Klick daneben schließen). Rollenansicht
+ * „Als User ansehen“ (30.09.2026): Menüeintrag nur für Admin/Owner mit 2FA, Hinweis mit *Zurück*.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -15,10 +16,11 @@ import { AppearanceProvider } from '../app/theme';
 import { AuthProvider } from '../auth';
 import { Shell } from './Shell';
 
-const me = vi.hoisted(() => ({ current: null as unknown }));
+const me = vi.hoisted(() => ({ current: null as unknown, viewAs: vi.fn() }));
 vi.mock('../api/client', () => ({
   api: {
     me: () => Promise.resolve(me.current),
+    viewAs: (asUser: boolean) => me.viewAs(asUser) as Promise<unknown>,
     notifications: () =>
       Promise.resolve({
         items: [
@@ -212,4 +214,50 @@ describe('Rahmen (AP-26c)', () => {
     fireEvent.click(scrim);
     expect(nav().className).not.toMatch(/Overlay/);
   });
+});
+
+describe('Rollenansicht „Als User ansehen“ (30.09.2026)', () => {
+  const asUserView = (): Me => {
+    const m = member('owner', 'user', true);
+    return { ...m, member: m.member ? { ...m.member, viewAsUser: true } : null };
+  };
+
+  it('Owner mit 2FA: Menüeintrag schaltet um; danach User-Rechte, Hinweis mit Zurück; axe', async () => {
+    const user = userEvent.setup();
+    me.viewAs.mockImplementation((asUser: boolean) => {
+      me.current = asUser ? asUserView() : member('owner', 'admin', true);
+      return Promise.resolve(me.current);
+    });
+    await renderShell(member('owner', 'admin', true));
+    expect(within(nav()).getByRole('link', { name: 'Administration' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Benutzermenü' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Als User ansehen' }));
+    expect(me.viewAs).toHaveBeenCalledWith(true);
+    const banner = await screen.findByText(
+      /Rollenansicht: Du siehst und handelst mit User-Rechten/,
+    );
+    expect(banner).toHaveTextContent('(Owner)');
+    expect(within(nav()).queryByRole('link', { name: 'Administration' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Benutzermenü' })).toHaveTextContent(
+      '(User-Ansicht)',
+    );
+    await expectNoSeriousA11y();
+    await user.click(screen.getByRole('button', { name: 'Zurück zur Owner-Ansicht' }));
+    expect(me.viewAs).toHaveBeenLastCalledWith(false);
+    expect(await within(nav()).findByRole('link', { name: 'Administration' })).toBeInTheDocument();
+    expect(screen.queryByText(/Rollenansicht:/)).toBeNull();
+  });
+
+  for (const [label, value] of [
+    ['User', () => member('user', 'user', true)],
+    ['Admin ohne 2FA', () => member('admin', 'user', false)],
+  ] as const) {
+    it(`${label}: kein Menüeintrag`, async () => {
+      const user = userEvent.setup();
+      await renderShell(value());
+      await user.click(screen.getByRole('button', { name: 'Benutzermenü' }));
+      await screen.findByRole('menuitem', { name: 'Abmelden' });
+      expect(screen.queryByRole('menuitem', { name: 'Als User ansehen' })).toBeNull();
+    });
+  }
 });

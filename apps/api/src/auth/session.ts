@@ -35,6 +35,7 @@ export function toSessionState(row: SessionRow): SessionState {
     role: null,
     isOwner: false,
     mfaRequired: base.isSuperUser && !row.mfaEnabled,
+    viewAsUser: false,
   };
   if (row.identityStatus === 'blocked') return { auth: null, row, denial: 'auth.identity_blocked' };
 
@@ -57,6 +58,9 @@ export function toSessionState(row: SessionRow): SessionState {
       row.tenantStatus === 'active'
     ) {
       const admin = row.memberRole === 'admin';
+      // Rollenansicht „Als User ansehen“ (30.09.2026): nur für Admins/Owner, nur Herabstufung – User-Rechte,
+      // kein Owner, kein 2FA-Hinweis. Für gespeicherte User ist der Wert wirkungslos.
+      const viewAsUser = admin && row.actingRole === 'user';
       return {
         auth: {
           ...base,
@@ -64,9 +68,10 @@ export function toSessionState(row: SessionRow): SessionState {
           tenantId: row.tenantId,
           memberId: row.memberId,
           // Ohne 2FA wirkt ein Admin oder Owner als User; die gespeicherte Rolle bleibt (SV-03).
-          role: admin && row.mfaEnabled ? 'admin' : 'user',
-          isOwner: row.ownerMemberId === row.memberId,
-          mfaRequired: admin && !row.mfaEnabled,
+          role: admin && row.mfaEnabled && !viewAsUser ? 'admin' : 'user',
+          isOwner: row.ownerMemberId === row.memberId && !viewAsUser,
+          mfaRequired: admin && !row.mfaEnabled && !viewAsUser,
+          viewAsUser,
         },
         row,
       };

@@ -36,6 +36,8 @@ export interface SessionRow {
   readonly tenantStatus: 'active' | 'locked' | null;
   readonly ownerMemberId: string | null;
   readonly superUserStatus: 'active' | 'disabled' | null;
+  /** Rollenansicht der Sitzung (Migration 0011): `'user'` bzw. NULL = eigene Rolle. */
+  readonly actingRole: string | null;
 }
 
 export interface DiscordProfile {
@@ -117,6 +119,7 @@ export class AuthRepository {
         't.status as tenantStatus',
         't.ownerMemberId',
         'su.status as superUserStatus',
+        's.actingRole',
       ])
       .where('s.sessionHash', '=', sessionHash)
       .executeTakeFirst();
@@ -284,9 +287,24 @@ export class AuthRepository {
     context: 'tenant' | 'system' | 'select',
     tenantId: string | null,
   ): Promise<void> {
+    // Kontextwechsel beendet die Rollenansicht („Als User ansehen“ gilt nur im gewählten Mandanten).
     await this.db
       .updateTable('authSession')
-      .set({ context, tenantId })
+      .set({ context, tenantId, actingRole: null })
+      .where('id', '=', sessionId)
+      .where('identityId', '=', identityId)
+      .execute();
+  }
+
+  /** Rollenansicht der eigenen Sitzung setzen (`'user'`) bzw. beenden (`null`). */
+  async setActingRole(
+    sessionId: string,
+    identityId: string,
+    actingRole: 'user' | null,
+  ): Promise<void> {
+    await this.db
+      .updateTable('authSession')
+      .set({ actingRole })
       .where('id', '=', sessionId)
       .where('identityId', '=', identityId)
       .execute();

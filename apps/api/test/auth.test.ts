@@ -358,6 +358,82 @@ describe('2FA, Sperren, System-Kontext (SV-03, FA-SU-02, DAT5-8)', () => {
     });
   });
 
+  it('Rollenansicht: Admin schaltet auf User-Rechte und zurück; Kontextwechsel beendet sie', async () => {
+    const { profile } = await tenantWithMember('admin', true);
+    const { sid } = await s.login(profile);
+    const drafts = () => s.request('/api/web/v1/drafts', { cookies: sidCookie(sid) });
+    expect((await drafts()).status).toBe(200);
+    const on = await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: true },
+      cookies: sidCookie(sid),
+    });
+    expect(await on.json()).toMatchObject({
+      member: { role: 'admin', effectiveRole: 'user', viewAsUser: true },
+      mfaRequired: false,
+    });
+    // Serverseitig wirksam: Admin-Route verweigert, /auth/me bleibt in der Ansicht.
+    expect(await (await drafts()).json()).toMatchObject({
+      status: 403,
+      code: 'permission.denied',
+    });
+    expect(await (await me(sid)).json()).toMatchObject({
+      member: { effectiveRole: 'user', viewAsUser: true },
+    });
+    const off = await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: false },
+      cookies: sidCookie(sid),
+    });
+    expect(await off.json()).toMatchObject({
+      member: { effectiveRole: 'admin', viewAsUser: false },
+    });
+    expect((await drafts()).status).toBe(200);
+    // Erneut an, dann Mandant neu wählen → Ansicht aus.
+    await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: true },
+      cookies: sidCookie(sid),
+    });
+    const ctx = await s.request('/api/auth/context', {
+      method: 'POST',
+      body: { tenantKey: 'sternwarte' },
+      cookies: sidCookie(sid),
+    });
+    expect(await ctx.json()).toMatchObject({
+      member: { effectiveRole: 'admin', viewAsUser: false },
+    });
+  });
+
+  it('Rollenansicht: Owner wirkt als User ohne Owner-Rechte; User darf nicht umschalten', async () => {
+    const { profile, tenantId, memberId } = await tenantWithMember('admin', true);
+    await s.seed.owner(tenantId, memberId);
+    const { sid } = await s.login(profile);
+    const on = await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: true },
+      cookies: sidCookie(sid),
+    });
+    expect(await on.json()).toMatchObject({
+      member: { role: 'owner', effectiveRole: 'user', viewAsUser: true },
+    });
+    const user = await tenantWithMember('user', true, 'andere');
+    const u = await s.login(user.profile);
+    const denied = await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: true },
+      cookies: sidCookie(u.sid),
+    });
+    expect(await denied.json()).toMatchObject({ status: 403, code: 'permission.denied' });
+    // Unbekannte Felder und Werte: 422 (strikt).
+    const bad = await s.request('/api/auth/view-as', {
+      method: 'POST',
+      body: { asUser: true, role: 'admin' },
+      cookies: sidCookie(sid),
+    });
+    expect(bad.status).toBe(422);
+  });
+
   it('Super-User-Bootstrap: gelistete Discord-ID mit 2FA → super_user + system_audit; ohne 2FA nicht', async () => {
     const withMfa = discordProfile({ mfaEnabled: true });
     const noMfa = discordProfile({ mfaEnabled: false });

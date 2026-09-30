@@ -37,6 +37,9 @@ export const api = {
   me: () => quiet<Me>('/api/auth/me'),
   setContext: (body: { tenantKey: string } | { system: true }) =>
     apiFetch<Me>('/api/auth/context', { method: 'POST', json: body }),
+  /** Rollenansicht „Als User ansehen“ ein-/ausschalten (nur Admin/Owner mit 2FA, je Sitzung). */
+  viewAs: (asUser: boolean) =>
+    apiFetch<Me>('/api/auth/view-as', { method: 'POST', json: { asUser } }),
   logout: () => apiFetch<undefined>('/api/auth/logout', { method: 'POST' }),
   logoutEverywhere: () => apiFetch<undefined>('/api/auth/sessions', { method: 'DELETE' }),
   previewInvitation: (token: string) =>
