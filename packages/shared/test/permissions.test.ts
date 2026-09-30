@@ -14,6 +14,7 @@ const ctx = (over: Partial<AuthContext> = {}): AuthContext => ({
   isSuperUser: false,
   mfa: true,
   mfaRequired: false,
+  viewAsUser: false,
   ...over,
 });
 const owner = ctx({ role: 'admin', isOwner: true, memberId: 'm-owner' });

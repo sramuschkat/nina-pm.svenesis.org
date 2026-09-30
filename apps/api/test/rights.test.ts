@@ -105,6 +105,21 @@ beforeAll(async () => {
       body: { system: true },
       expect: notSuper,
     },
+    // Rollenansicht: nur Admin/Owner mit 2FA im Mandanten; `asUser: false` lässt den Zustand unverändert.
+    'POST /api/auth/view-as': {
+      url: '/api/auth/view-as',
+      method: 'POST',
+      body: { asUser: false },
+      expect: {
+        Owner: 200,
+        Admin: 200,
+        'Admin ohne 2FA': 403,
+        User: 403,
+        'User 2': 403,
+        'fremder Mandant (Admin)': 200,
+        'Super User im System-Kontext': 403,
+      },
+    },
     'POST /api/auth/logout': { url: '/api/auth/logout', method: 'POST', okStatus: 204 },
     'GET /api/auth/me': { url: '/api/auth/me' },
     'GET /api/auth/sessions': { url: '/api/auth/sessions' },

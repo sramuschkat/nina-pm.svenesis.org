@@ -362,6 +362,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/view-as": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rollenansicht „Als User ansehen“ ein-/ausschalten (nur Admin/Owner, nur Herabstufung, je Sitzung)
+         * @description Aktion: `public` (mit Sitzung) · security-auth.md, SV-03
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ViewAsRequest"];
+                };
+            };
+            responses: {
+                /** @description Kontext mit neuer wirksamer Rolle */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MeResponse"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description permission.denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -13371,6 +13432,7 @@ export interface components {
                 role: "owner" | "admin" | "user";
                 /** @enum {string} */
                 effectiveRole: "admin" | "user";
+                viewAsUser?: boolean;
             } | null;
             isSuperUser: boolean;
             mfaRequired: boolean;
@@ -13386,6 +13448,9 @@ export interface components {
         } | {
             /** @enum {boolean} */
             system: true;
+        };
+        ViewAsRequest: {
+            asUser: boolean;
         };
         SessionList: {
             sessions: components["schemas"]["SessionView"][];

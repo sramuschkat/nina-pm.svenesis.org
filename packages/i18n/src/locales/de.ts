@@ -42,6 +42,13 @@ export const de = {
       'Alle deine Anmeldesitzungen auf allen Geräten werden sofort beendet, auch diese.',
     logoutEverywhereConfirm: 'Sitzungen beenden',
     mfaBanner: 'Admin-Rechte ruhen, bis Discord-2FA aktiv ist – danach neu anmelden.',
+    viewAs: {
+      enter: 'Als User ansehen',
+      leave: 'Zurück zur {{role}}-Ansicht',
+      banner:
+        'Rollenansicht: Du siehst und handelst mit User-Rechten. Deine gespeicherte Rolle ({{role}}) bleibt unverändert.',
+      roleLabel: 'User-Ansicht',
+    },
     role: { owner: 'Owner', admin: 'Admin', user: 'User', system: 'Super User' },
   },
   nav: {

@@ -32,6 +32,7 @@ export async function buildMe(repo: AuthRepository, auth: AuthContext): Promise<
             displayName: current.displayName,
             role: current.isOwner ? 'owner' : current.role,
             effectiveRole: auth.role,
+            viewAsUser: auth.viewAsUser,
           }
         : null,
     isSuperUser: auth.isSuperUser,

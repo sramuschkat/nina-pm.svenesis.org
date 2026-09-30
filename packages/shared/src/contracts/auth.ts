@@ -63,8 +63,12 @@ export const MeResponse = z
         displayName: z.string(),
         /** Gespeicherte Rolle (`owner`, `admin`, `user`). */
         role: z.enum(roles),
-        /** Wirksame Rolle: ohne 2FA `user` (SV-03). */
+        /** Wirksame Rolle: ohne 2FA `user` (SV-03), in der Rollenansicht `user`. */
         effectiveRole: z.enum(['admin', 'user']),
+        /**
+         * Rollenansicht „Als User ansehen“ aktiv (nur Admins/Owner, je Sitzung; 30.09.2026). Fehlt = aus.
+         */
+        viewAsUser: z.boolean().optional(),
       })
       .nullable(),
     isSuperUser: z.boolean(),
@@ -75,6 +79,13 @@ export const MeResponse = z
   })
   .meta({ id: 'MeResponse' });
 export type MeResponse = z.infer<typeof MeResponse>;
+
+/** Rollenansicht umschalten (`POST /auth/view-as`): `asUser: true` = mit User-Rechten, `false` = zurück. */
+export const ViewAsRequest = z
+  .object({ asUser: z.boolean() })
+  .strict()
+  .meta({ id: 'ViewAsRequest' });
+export type ViewAsRequest = z.infer<typeof ViewAsRequest>;
 
 export const ContextRequest = z
   .union([

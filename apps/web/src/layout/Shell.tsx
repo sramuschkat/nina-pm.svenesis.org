@@ -3,12 +3,13 @@
  * Menü *Svenesis.org* mit den Website-Links, Glocke, Theme, Benutzer, DE/EN), einklappbare linke
  * Navigation – unter 1024 px nur Symbole, per Knopf als Überlagerung aufklappbar –, Arbeitsbereich
  * **ohne Breitenobergrenze**, App-Fußleiste mit Dichte-Schalter, Svenesis-Fuß. Textseiten behalten den
- * Website-Kopf (`TextLayout`).
+ * Website-Kopf (`TextLayout`). Rollenansicht „Als User ansehen“ (30.09.2026): Eintrag im Benutzermenü für
+ * Admins/Owner mit 2FA, Hinweisbalken mit *Zurück* solange sie aktiv ist.
  */
 import { ENGINE_VERSION } from '@nina-pm/engine';
 import { DENSITIES, type Density } from '@nina-pm/ui-tokens';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
@@ -71,6 +72,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <AppBar />
       <MaintenanceBanner />
       <MfaBanner />
+      <ViewAsBanner />
       <div className={styles.work}>
         <SideNav
           collapsed={narrow ? !overlay : collapsed}
@@ -101,9 +103,49 @@ function MfaBanner() {
   );
 }
 
+/**
+ * Rollenansicht umschalten: Server setzt die Sitzung um, danach `/auth/me` und alle fachlichen Daten neu
+ * laden (Listen und Rechte hängen an der wirksamen Rolle).
+ */
+function useViewAs() {
+  const { refresh } = useAuth();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (asUser: boolean) => api.viewAs(asUser),
+    onSuccess: async () => {
+      await refresh();
+      await client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'auth' });
+    },
+  });
+}
+
+/** Hinweis mit *Zurück*, solange die Rollenansicht „Als User ansehen“ aktiv ist. */
+function ViewAsBanner() {
+  const { t } = useTranslation();
+  const { me } = useAuth();
+  const viewAs = useViewAs();
+  if (!me?.member?.viewAsUser) return null;
+  const role = t(`appBar.role.${me.member.role}`);
+  return (
+    <div className={styles.viewAsBanner} role="status">
+      <uiIcons.user size={ICON_SIZE.button} aria-hidden />
+      <span>{t('appBar.viewAs.banner', { role })}</span>
+      <button
+        type="button"
+        className={styles.viewAsBack}
+        disabled={viewAs.isPending}
+        onClick={() => viewAs.mutate(false)}
+      >
+        {t('appBar.viewAs.leave', { role })}
+      </button>
+    </div>
+  );
+}
+
 function AppBar() {
   const { t, i18n } = useTranslation();
   const { me, refresh } = useAuth();
+  const viewAs = useViewAs();
   const { theme, setTheme, density, setDensity } = useAppearance();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -115,9 +157,14 @@ function AppBar() {
   const roleLabel =
     me.context === 'system'
       ? t('appBar.role.system')
-      : me.member
-        ? t(`appBar.role.${me.member.role}`)
-        : '';
+      : me.member?.viewAsUser
+        ? t('appBar.viewAs.roleLabel')
+        : me.member
+          ? t(`appBar.role.${me.member.role}`)
+          : '';
+  // Rollenansicht nur für gespeicherte Admins/Owner mit 2FA im Mandanten (Server prüft dasselbe).
+  const canViewAs =
+    me.context === 'tenant' && !!me.member && me.member.role !== 'user' && me.identity.mfa;
   const canSwitch = me.memberships.length > 1 || me.isSuperUser;
   const ThemeIcon = theme === 'dark' ? uiIcons.themeLight : uiIcons.themeDark;
   const UserIcon = uiIcons.user;
@@ -205,6 +252,17 @@ function AppBar() {
             >
               {t('appBar.sessions')}
             </DropdownMenu.Item>
+            {canViewAs && me.member ? (
+              <DropdownMenu.Item
+                className={styles.menuItem}
+                disabled={viewAs.isPending}
+                onSelect={() => viewAs.mutate(!me.member?.viewAsUser)}
+              >
+                {me.member.viewAsUser
+                  ? t('appBar.viewAs.leave', { role: t(`appBar.role.${me.member.role}`) })
+                  : t('appBar.viewAs.enter')}
+              </DropdownMenu.Item>
+            ) : null}
             {me.context === 'tenant' && me.member && me.member.role !== 'owner' ? (
               <DropdownMenu.Item
                 className={styles.menuItem}

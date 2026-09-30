@@ -13,6 +13,11 @@ export interface AuthContext {
   isSuperUser: boolean;
   mfa: boolean;
   mfaRequired: boolean;
+  /**
+   * Rollenansicht „Als User ansehen“ (30.09.2026): die Sitzung wirkt im Mandanten mit User-Rechten, obwohl die
+   * gespeicherte Rolle Admin bzw. Owner ist. Nur Herabstufung; `role` ist dann `'user'`, `isOwner` `false`.
+   */
+  viewAsUser: boolean;
 }
 
 /** Sitzungsdauer (TK 5.3): gleitend 14 Tage Inaktivität, höchstens 30 Tage ab Anmeldung. */

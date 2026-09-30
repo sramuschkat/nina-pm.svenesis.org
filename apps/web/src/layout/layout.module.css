@@ -385,6 +385,32 @@
   border-bottom: 1px solid var(--npm-border);
 }
 
+/* Rollenansicht „Als User ansehen“ (30.09.2026): deutlich, solange aktiv, mit *Zurück*. */
+.viewAsBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-2) var(--npm-space-3);
+  padding: var(--npm-space-2) var(--npm-space-5);
+  background: var(--npm-info-bg);
+  color: var(--npm-text);
+  border-bottom: 1px solid var(--npm-border);
+}
+.viewAsBack {
+  min-height: calc(var(--npm-row-h) - 6px);
+  padding: 0 var(--npm-space-3);
+  border: 1px solid var(--npm-link);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-link);
+  font-weight: 600;
+  cursor: pointer;
+}
+.viewAsBack:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+
 /* ---------- Arbeitsbereich: volle Fensterbreite, kein max-width ---------- */
 .work {
   flex: 1;

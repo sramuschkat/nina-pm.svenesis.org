@@ -257,6 +257,8 @@ components:
               enum:
                 - admin
                 - user
+            viewAsUser:
+              type: boolean
           required:
             - id
             - displayName
@@ -312,6 +314,14 @@ components:
           required:
             - system
           additionalProperties: false
+    ViewAsRequest:
+      type: object
+      properties:
+        asUser:
+          type: boolean
+      required:
+        - asUser
+      additionalProperties: false
     SessionList:
       type: object
       properties:
@@ -15521,6 +15531,42 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: tenant.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/auth/view-as:
+    post:
+      summary: Rollenansicht „Als User ansehen“ ein-/ausschalten (nur Admin/Owner, nur Herabstufung, je Sitzung)
+      tags:
+        - auth
+      description: "Aktion: `public` (mit Sitzung) · security-auth.md, SV-03"
+      x-npm-action: public
+      x-npm-session: required
+      x-npm-requirements:
+        - security-auth.md
+        - SV-03
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ViewAsRequest"
+      responses:
+        "200":
+          description: Kontext mit neuer wirksamer Rolle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: permission.denied
           content:
             application/problem+json:
               schema:

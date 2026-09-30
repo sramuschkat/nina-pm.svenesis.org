@@ -44,6 +44,13 @@ export const en: Messages = {
       'All your sign-in sessions on all devices end immediately, including this one.',
     logoutEverywhereConfirm: 'End sessions',
     mfaBanner: 'Admin rights are paused until Discord 2FA is active – then sign in again.',
+    viewAs: {
+      enter: 'View as user',
+      leave: 'Back to {{role}} view',
+      banner:
+        'Role view: you see and act with user rights. Your stored role ({{role}}) is unchanged.',
+      roleLabel: 'User view',
+    },
     role: { owner: 'Owner', admin: 'Admin', user: 'User', system: 'Super user' },
   },
   nav: {
