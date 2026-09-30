@@ -219,3 +219,81 @@
 .foldBody {
   padding: 0 var(--npm-space-4) var(--npm-space-4);
 }
+
+/* Nachtwahl als Mondkalender (7 Nächte, 30.09.2026). */
+.calendar {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.calendarList {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--npm-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 1100px) {
+  .calendarList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.calendarNight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--npm-space-1);
+  width: 100%;
+  min-width: 0;
+  padding: var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.calendarNight:hover {
+  border-color: var(--npm-border-strong);
+}
+.calendarNight[aria-pressed='true'] {
+  border-color: var(--npm-accent);
+  background: var(--npm-selected-bg);
+  box-shadow: inset 0 0 0 1px var(--npm-accent);
+}
+.calendarNight:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
+}
+.calendarDate {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.calendarMoon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  font-variant-numeric: tabular-nums;
+}
+.calendarFree {
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}
+.ratingGood {
+  composes: pillOk from '../admin/admin.module.css';
+}
+.ratingMid {
+  composes: pillWarn from '../admin/admin.module.css';
+}
+.ratingBad {
+  composes: pillDanger from '../admin/admin.module.css';
+}
+.ratingNone {
+  composes: pill from '../admin/admin.module.css';
+}
+.futureNote {
+  margin: 0;
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+}

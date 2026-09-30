@@ -2,6 +2,8 @@
  * S-02 „Heute Nacht“ (FK 14.3; FA-FOL-06, FA-FOL-05; AP-35; Umbau 27./28.09.2026 nach Entwurf Sven): zuerst das
  * **Rig** wählen – damit steht der Standort fest –, dann für die **aktuelle Nacht** des Standorts
  * (`GET /web/v1/tonight`, vom Server nach NT-01 – nie aus dem Browserdatum):
+ * 0. Nachtwahl als Mondkalender: laufende Nacht und die folgenden sechs (`?nacht=`, 30.09.2026 – so weit reicht
+ *    das Astro-Wetter); künftige Nächte zeigen den Plan aus dem heutigen Projektstand, NINA nur die laufende,
  * 1. Kopf mit Einschätzung und Countdown,
  * 2. vier Kennzahlen (Dunkel, Mond, Wetter, Plan/NINA) – die Zahlen stehen nur hier,
  * 3. Zeitleiste der Nacht auf einer Achse: Himmel, Wetter, Mond, Plan (Simulation im Browser wie der
@@ -33,6 +35,7 @@ import { useNightPlan } from '../simulator/use-night-plan';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
 import styles from './tonight.module.css';
+import { MoonCalendar } from './MoonCalendar';
 import { TonightLines } from './TonightLines';
 import { KpiTiles, TonightTimeline, Verdict } from './TonightOverview';
 
@@ -75,6 +78,22 @@ export function TonightPage() {
     rigs[0] ??
     null;
   const site = (sites.data ?? []).find((s) => s.id === rig?.siteId) ?? null;
+  // Gewählte Nacht (Mondkalender); die laufende Nacht kommt aus der Übersicht.
+  const wantedNight = params.get('nacht');
+  const future = rig !== null && wantedNight !== null && wantedNight !== rig.currentNight;
+  const selectedQuery = useQuery({
+    queryKey: [...TONIGHT_KEY, rig?.rigId ?? '', wantedNight ?? ''],
+    queryFn: () => tonightApi.get(rig?.rigId, wantedNight ?? undefined),
+    enabled: future,
+    refetchInterval: 5 * 60_000,
+  });
+  const shown = future ? (selectedQuery.data?.rigs[0] ?? null) : rig;
+  const setNight = (night: string) => {
+    const next = new URLSearchParams(params);
+    if (rig && night !== rig.currentNight) next.set('nacht', night);
+    else next.delete('nacht');
+    setParams(next, { replace: true });
+  };
   const contextId = useId();
   return (
     <div className={styles.page}>
@@ -106,11 +125,31 @@ export function TonightPage() {
               />
             </div>
             <span className={styles.muted}>
-              {rig.siteName} · {t('tonight.night', { night: formatNightKey(rig.night) })}
+              {rig.siteName} ·{' '}
+              {t('tonight.night', { night: formatNightKey(shown?.night ?? rig.night) })}
             </span>
-            <Verdict rig={rig} nowUtc={now} />
+            {shown ? <Verdict rig={shown} nowUtc={now} /> : null}
+            {site ? (
+              <MoonCalendar
+                rig={rig}
+                geo={{ latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg }}
+                selected={shown?.night ?? rig.night}
+                onSelect={setNight}
+              />
+            ) : null}
           </section>
-          {site ? <Night key={rig.rigId} rig={rig} site={site} now={now} /> : null}
+          {future && selectedQuery.isError ? (
+            <ProblemMessage
+              code={problemCode(selectedQuery.error)}
+              onRetry={() => setNight(rig.currentNight)}
+            />
+          ) : !shown ? (
+            <p className={styles.muted} role="status">
+              {t('common.loading')}
+            </p>
+          ) : site ? (
+            <Night key={`${shown.rigId}-${shown.night}`} rig={shown} site={site} now={now} />
+          ) : null}
         </>
       )}
     </div>
@@ -126,8 +165,10 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
   const sky = useNightSky(site, rig);
   const plan = useNightPlan(rig.rigId, rig.night);
   const timelineId = useId();
+  const current = rig.night === rig.currentNight;
   return (
     <>
+      {current ? null : <p className={styles.futureNote}>{t('tonight.futureNote')}</p>}
       <KpiTiles rig={rig} sky={sky} plan={plan} />
       <section className={styles.card} aria-labelledby={timelineId}>
         <div className={styles.cardHead}>
@@ -300,6 +341,7 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
           lines={p.lines}
           colorOf={colorOf}
           onChanged={() => run.mutate()}
+          readOnly={rig.night !== rig.currentNight}
         />
       ),
     },

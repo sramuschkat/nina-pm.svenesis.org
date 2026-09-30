@@ -47,6 +47,12 @@ export function Verdict({ rig, nowUtc }: { rig: TonightRig; nowUtc: number }) {
       : t('tonight.verdict.noWeather');
   let clock: string;
   if (!rig.dark) clock = t('tonight.verdict.noDark');
+  else if (rig.night !== rig.currentNight)
+    // Künftige Nacht (Nachtwahl): Zeitraum der Dunkelheit statt Countdown.
+    clock = t('tonight.verdict.darkFromTo', {
+      from: formatZonedTime(rig.dark.fromUtc, zone),
+      to: `${formatZonedTime(rig.dark.toUtc, zone)} ${formatTzAbbr(rig.dark.toUtc, zone)}`,
+    });
   else {
     const from = unix(rig.dark.fromUtc);
     const to = unix(rig.dark.toUtc);
@@ -99,11 +105,13 @@ export function KpiTiles({
     .sort()
     .pop();
   const nina =
-    rig.instances.length === 0
-      ? t('tonight.kpi.ninaNone')
-      : lastSeen
-        ? t('tonight.kpi.ninaSeen', { time: `${hm(lastSeen)} ${abbr(lastSeen)}` })
-        : t('tonight.kpi.ninaNever');
+    rig.night !== rig.currentNight
+      ? t('tonight.kpi.ninaOnlyTonight')
+      : rig.instances.length === 0
+        ? t('tonight.kpi.ninaNone')
+        : lastSeen
+          ? t('tonight.kpi.ninaSeen', { time: `${hm(lastSeen)} ${abbr(lastSeen)}` })
+          : t('tonight.kpi.ninaNever');
   return (
     <ul className={styles.kpis} aria-label={t('tonight.kpi.label')}>
       <li className={styles.kpi}>

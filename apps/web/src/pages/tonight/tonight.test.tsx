@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   view: null as unknown,
   run: vi.fn(),
   setLine: vi.fn(),
+  nights: [] as (string | null)[],
 }));
 
 vi.mock('../../api/client', () => ({
@@ -64,7 +65,15 @@ vi.mock('../../api/client', () => ({
     get: () => Promise.reject(new Error('nicht gebraucht')),
   },
   tonightApi: {
-    get: () => Promise.resolve(state.view),
+    get: (_rigId?: string, night?: string) => {
+      state.nights.push(night ?? null);
+      if (!night) return Promise.resolve(state.view);
+      const v = state.view as TonightView;
+      return Promise.resolve({
+        ...v,
+        rigs: v.rigs.map((r) => ({ ...r, night, weather: null })),
+      });
+    },
     setLine: (...a: unknown[]) => state.setLine(...a) as Promise<unknown>,
   },
   forecastApi: { run: (...a: unknown[]) => state.run(...a) as Promise<unknown> },
@@ -107,6 +116,16 @@ const view = (): TonightView => ({
       siteTimeZone: 'America/Chicago',
       weatherSafetyUrl: 'https://example.org/safety',
       night: '2026-09-18',
+      currentNight: '2026-09-18',
+      calendar: Array.from({ length: 7 }, (_, i) => ({
+        night: `2026-09-${String(18 + i)}`,
+        darkHours: 9.5,
+        moonlessDarkHours: 4 + i * 0.5,
+        moonIllumPct: 48 + i * 7,
+        waxing: true,
+        ratingIndex: i < 5 ? 3 : null,
+        nightMean: i < 5 ? 0.72 : null,
+      })),
       nightWindow: { startUtc: '2026-09-19T00:00:00Z', endUtc: '2026-09-19T13:00:00Z' },
       dark: { fromUtc: '2026-09-19T01:10:00Z', toUtc: '2026-09-19T10:40:00Z' },
       darkHours: 9.5,
@@ -173,6 +192,7 @@ beforeEach(() => {
   state.view = view();
   state.run.mockReset();
   state.setLine.mockReset();
+  state.nights = [];
 });
 
 describe('S-02 Heute Nacht', () => {
@@ -260,6 +280,30 @@ describe('S-02 Heute Nacht', () => {
       screen.queryByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),
     ).toBeNull();
     await expectNoSeriousA11y();
+  });
+
+  it('Nachtwahl (Mondkalender, 7 Nächte): künftige Nacht mit Hinweis, Dunkelzeitraum, ohne NINA und Umschalter', async () => {
+    wrap();
+    const cal = await screen.findByRole('navigation', {
+      name: 'Nacht wählen (Mondkalender, 7 Nächte)',
+    });
+    const nights = within(cal).getAllByRole('button');
+    expect(nights).toHaveLength(7);
+    expect(nights[0]).toHaveAttribute('aria-pressed', 'true');
+    expect(nights[0]).toHaveTextContent('Heute Nacht');
+    expect(nights[6]).toHaveTextContent('keine Vorhersage');
+    fireEvent.click(nights[2] as HTMLElement);
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('nacht=2026-09-20'));
+    await waitFor(() => expect(state.nights).toContain('2026-09-20'));
+    expect(
+      await screen.findByText(/Künftige Nacht: Plan aus dem heutigen Projektstand/),
+    ).toBeInTheDocument();
+    expect(screen.getByText('NINA-Status nur für die laufende Nacht')).toBeInTheDocument();
+    expect(screen.getByText(/dunkel \d\d:\d\d–\d\d:\d\d CDT/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /nur heute aus|heute aus/i })).toBeNull();
+    // zurück zur laufenden Nacht: Parameter entfällt
+    fireEvent.click(within(cal).getAllByRole('button')[0] as HTMLElement);
+    await waitFor(() => expect(screen.getByTestId('where')).not.toHaveTextContent('nacht='));
   });
 
   it('Rig aus der URL: anderes Rig zeigt dessen Standort', async () => {

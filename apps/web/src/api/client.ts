@@ -449,8 +449,14 @@ export type TonightLine = Schemas['TonightLine'];
  * ab- bzw. wieder einschalten (FA-FOL-05, Admin).
  */
 export const tonightApi = {
-  get: (rigId?: string) =>
-    apiFetch<TonightView>(`${V1}/tonight${rigId ? `?rigId=${encodeURIComponent(rigId)}` : ''}`),
+  /** Ohne `night` die laufende Nacht; mit `night` eine der folgenden sechs (Nachtwahl, 30.09.2026). */
+  get: (rigId?: string, night?: string) => {
+    const q = new URLSearchParams({
+      ...(rigId ? { rigId } : {}),
+      ...(night ? { night } : {}),
+    }).toString();
+    return apiFetch<TonightView>(`${V1}/tonight${q ? `?${q}` : ''}`);
+  },
   setLine: (projectId: string, lineId: string, disabled: boolean) =>
     apiFetch<ProjectView>(
       `${V1}/projects/${projectId}/lines/${lineId}/tonight`,

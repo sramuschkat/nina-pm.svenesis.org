@@ -8,7 +8,31 @@ import { z } from 'zod';
 import { NightKey, UtcInstant, Uuid } from './common';
 import { WeatherBestWindow } from './weather';
 
-export const TonightQuery = z.object({ rigId: Uuid.optional() }).meta({ id: 'TonightQuery' });
+/** Nächte der Auswahl ab der laufenden Nacht (Wunsch Sven 30.09.2026: so weit reicht das Astro-Wetter, FA-WET-01). */
+export const TONIGHT_NIGHTS = 7;
+
+export const TonightQuery = z
+  .object({
+    rigId: Uuid.optional(),
+    /** Gewählte Nacht (laufende Nacht bis +6); ohne Angabe die laufende Nacht (NT-01). */
+    night: NightKey.optional(),
+  })
+  .meta({ id: 'TonightQuery' });
+
+/** Nacht im Mondkalender der Auswahlleiste: Mond, mondfreie Dunkelheit, Wetterbewertung (falls vorhanden). */
+export const TonightCalendarNight = z
+  .object({
+    night: NightKey,
+    darkHours: z.number().min(0),
+    /** Astronomisch dunkle Stunden mit Mond unter dem Horizont (−0,833°). */
+    moonlessDarkHours: z.number().min(0),
+    moonIllumPct: z.number().min(0).max(100),
+    /** Mond zunehmend (true) bzw. abnehmend – für das Symbol. */
+    waxing: z.boolean(),
+    ratingIndex: z.number().int().min(0).max(4).nullable(),
+    nightMean: z.number().min(0).max(1).nullable(),
+  })
+  .meta({ id: 'TonightCalendarNight' });
 
 /** Zeile eines geplanten Projekts: erwartete Frames heute Nacht und ob sie nur für diese Nacht aus ist. */
 export const TonightLine = z
@@ -73,6 +97,10 @@ export const TonightRig = z
     /** Link zur Safety-/Wetterseite der Sternwarte (`site.weather_safety_url`). */
     weatherSafetyUrl: z.string().nullable(),
     night: NightKey,
+    /** Laufende Nacht des Standorts (NT-01); weicht `night` ab, ist eine künftige Nacht gewählt. */
+    currentNight: NightKey,
+    /** Mondkalender der Auswahl: laufende Nacht und die folgenden (insgesamt `TONIGHT_NIGHTS`). */
+    calendar: z.array(TonightCalendarNight),
     nightWindow: z.object({ startUtc: UtcInstant, endUtc: UtcInstant }).nullable(),
     /** Astronomische Dunkelheit; `null` = Polartag. */
     dark: z.object({ fromUtc: UtcInstant, toUtc: UtcInstant }).nullable(),

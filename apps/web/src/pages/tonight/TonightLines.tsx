@@ -17,11 +17,14 @@ export function TonightLines({
   lines,
   colorOf,
   onChanged,
+  readOnly = false,
 }: {
   projectId: string;
   lines: readonly TonightLine[];
   colorOf: (filter: string) => string;
   onChanged: () => void;
+  /** Künftige Nacht (Nachtwahl): „nur heute aus“ gilt nur für die laufende Nacht. */
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const canAct = useCan('project.status');
@@ -49,7 +52,7 @@ export function TonightLines({
             {l.disabledTonight ? (
               <span className={styles.offBadge}>{t('tonight.offTonight')}</span>
             ) : null}
-            {canAct ? (
+            {canAct && !readOnly ? (
               <button
                 type="button"
                 className={styles.lineButton}

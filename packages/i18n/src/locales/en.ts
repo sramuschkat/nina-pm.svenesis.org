@@ -2606,6 +2606,16 @@ export const en: Messages = {
   tonight: {
     timeline: 'Timeline of the night',
     bodiesDetail: 'Moon and planets – visibility',
+    futureNote:
+      'Future night: plan from today’s project state – frames and changes until then are not included yet; “off tonight only” applies to the current night only.',
+    calendar: {
+      label: 'Choose night (moon calendar, 7 nights)',
+      tonight: 'Tonight',
+      free: '{{h}} h without moon',
+      noWeather: 'no forecast',
+      nightAria:
+        'Night {{night}}: moon {{illum}} %, {{free}} h dark without moon, weather {{weather}}',
+    },
     verdict: {
       rating: '{{rating}} {{pct}} %',
       noWeather: 'no forecast yet',
@@ -2613,6 +2623,7 @@ export const en: Messages = {
       darkIn: 'dark in {{h}} h {{m}} min',
       darkUntil: 'dark until {{time}}',
       darkOver: 'darkness over',
+      darkFromTo: 'dark {{from}}–{{to}}',
     },
     kpi: {
       label: 'Key figures of the night',
@@ -2636,6 +2647,7 @@ export const en: Messages = {
       ninaNone: 'no NINA instance',
       ninaSeen: 'NINA last seen {{time}}',
       ninaNever: 'NINA never seen',
+      ninaOnlyTonight: 'NINA status only for the current night',
     },
     lane: {
       sky: 'Sky',
