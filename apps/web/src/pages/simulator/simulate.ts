@@ -43,7 +43,7 @@ export interface SimulationRequest {
   readonly selection: 'plannable' | 'given';
   /** Filterfarben je Kurzname (Filterbalken, Farbchips). */
   readonly filterColors: Readonly<Record<string, string>>;
-  /** Anzeigenamen der Mondprofile (Protokoll). */
+  /** Namen der Mondprofile (Protokoll, Zielkarten); mitgelieferte als `moonProfile.<key>`. */
   readonly moonProfileNames: Readonly<Record<string, string>>;
 }
 
@@ -67,7 +67,13 @@ export interface TargetCard {
     readonly exposureS: number;
     readonly need: number;
     readonly tonight: number;
-    readonly la: boolean;
+    /** Mondprofil der Zeile (roher Name, übersetzt in der Oberfläche); `null` ohne Mondvermeidung. */
+    readonly moon: {
+      readonly name: string;
+      readonly separationDeg: number;
+      readonly widthDays: number;
+      readonly mustBeDown: boolean;
+    } | null;
     readonly enabled: boolean;
   }[];
   readonly checks: {
@@ -165,6 +171,17 @@ export function simulate(req: SimulationRequest): SimulationResult {
   const names = new Map(req.projects.map((p) => [p.id, p.name]));
   const color = new Map(projects.map((p, i) => [p.id, colorOf(i)]));
   const profiles = new Map<string, PlanMoonProfile>(input.moonProfiles.map((p) => [p.id, p]));
+  const moonOf = (id: string | null) => {
+    const p = id ? profiles.get(id) : undefined;
+    return p
+      ? {
+          name: req.moonProfileNames[p.id] ?? p.id,
+          separationDeg: p.separationDeg,
+          widthDays: p.widthDays,
+          mustBeDown: p.moonMustBeDown,
+        }
+      : null;
+  };
   const lineOf = new Map(
     projects.flatMap((p) =>
       p.panels.flatMap((panel) =>
@@ -369,7 +386,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
           exposureS: l.exposureS,
           need: lineNeed(l, overshoot),
           tonight: tonight.get(l.id) ?? 0,
-          la: l.moonProfileId !== null,
+          moon: moonOf(l.moonProfileId),
           enabled: l.enabled,
         })),
       ),

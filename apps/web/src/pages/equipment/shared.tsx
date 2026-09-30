@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage, problemI18nKey } from '../../components/ProblemMessage';
+import { moonProfileLabel } from '../../lib/moon-profile-label';
 import styles from './equipment.module.css';
 import { SectionTabs, newId, problemCode } from '../admin/shared';
 
@@ -878,6 +879,5 @@ export function useFieldError(errors: FieldErrors) {
 /** Anzeigename eines Mondprofils: mitgelieferte Profile heißen `moonProfile.<key>` (moon.md, FA-MON-02). */
 export function useMoonProfileLabel() {
   const { t } = useTranslation();
-  return (name: string) =>
-    name.startsWith('moonProfile.') ? t(`moonProfile.${name.slice('moonProfile.'.length)}`) : name;
+  return (name: string) => moonProfileLabel(t, name);
 }

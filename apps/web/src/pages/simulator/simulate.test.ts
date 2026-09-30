@@ -14,7 +14,9 @@ import {
   projects,
   rig,
   STARFRONT,
+  STRICT,
 } from '../../../../../packages/shared/test/fixtures/plan';
+import { cell } from './protocol';
 import { simulate, type SimulationRequest } from './simulate';
 
 const request = (over: Partial<SimulationRequest> = {}): SimulationRequest => ({
@@ -71,5 +73,27 @@ describe('simulate', () => {
     // Entwurf ohne Panel kann nicht geplant werden und fehlt auch mit `given`.
     const given = simulate(request({ selection: 'given' }));
     expect(given.cards.map((c) => c.projectId)).not.toContain(DRAFT);
+  });
+
+  it('Zielkarte nennt das Mondprofil der Zeile (Name, Abstand, Breite) statt „LA“; Protokoll übersetzt Namen', () => {
+    const r = simulate(request({ moonProfileNames: { [STRICT]: 'moonProfile.strict' } }));
+    const lines = r.cards.flatMap((c) => c.lines);
+    const withMoon = lines.filter((l) => l.moon !== null);
+    expect(withMoon.length).toBeGreaterThan(0);
+    expect(withMoon[0]?.moon).toEqual({
+      name: 'moonProfile.strict',
+      separationDeg: 90,
+      widthDays: 8,
+      mustBeDown: false,
+    });
+    expect(lines.some((l) => l.moon === null)).toBe(true);
+    // Protokollspalte „Mondprofil“: mitgelieferte Profile übersetzt, eigene unverändert.
+    const row = r.protocol[0];
+    expect(row).toBeDefined();
+    const t = ((k: string) => (k === 'moonProfile.strict' ? 'Streng' : k)) as never;
+    if (row) {
+      expect(cell({ ...row, moonProfile: 'moonProfile.strict' }, 'profile', t, 'UTC')).toBe('Streng');
+      expect(cell({ ...row, moonProfile: 'Eigenes' }, 'profile', t, 'UTC')).toBe('Eigenes');
+    }
   });
 });

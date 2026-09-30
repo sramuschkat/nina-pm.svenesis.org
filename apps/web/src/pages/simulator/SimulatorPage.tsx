@@ -52,6 +52,7 @@ import type {
   SimulationResult,
   TargetCard,
 } from './simulate';
+import { moonProfileLabel } from '../../lib/moon-profile-label';
 import { useUniformWidth } from '../../lib/use-uniform-width';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
@@ -741,10 +742,21 @@ function TargetCardView({
             <span className={styles.muted}>
               {t('simulator.card.remaining', { need: l.need, tonight: l.tonight })}
             </span>
-            {l.la ? (
-              <abbr className={styles.tag} title={t('simulator.card.laTitle')}>
-                {t('simulator.card.la')}
-              </abbr>
+            {l.moon ? (
+              <span
+                className={styles.tag}
+                title={
+                  l.moon.mustBeDown
+                    ? t('simulator.card.moonTitleDown', { name: moonProfileLabel(t, l.moon.name) })
+                    : t('simulator.card.moonTitle', {
+                        name: moonProfileLabel(t, l.moon.name),
+                        sep: l.moon.separationDeg.toLocaleString(i18n.language),
+                        width: l.moon.widthDays.toLocaleString(i18n.language),
+                      })
+                }
+              >
+                {t('simulator.card.moon', { name: moonProfileLabel(t, l.moon.name) })}
+              </span>
             ) : null}
             {canToggle ? (
               <label className={styles.check}>

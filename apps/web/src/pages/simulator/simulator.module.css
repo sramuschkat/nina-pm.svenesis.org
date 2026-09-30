@@ -195,6 +195,7 @@
 }
 .tag {
   display: inline-block;
+  white-space: nowrap;
   padding: 0 var(--npm-space-1);
   border: 1px solid var(--npm-violet);
   border-radius: var(--npm-radius);

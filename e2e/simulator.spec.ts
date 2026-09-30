@@ -82,6 +82,27 @@ async function setup(admin: Page, user: Page) {
       })
     ).status(),
   ).toBe(201);
+  // Zweite Zeile mit mitgeliefertem Mondprofil: Zielkarte nennt es übersetzt („Mond: Entspannt“, 30.09.2026).
+  const profiles = await json<{ items: { id: string; name: string }[] }>(
+    user,
+    '/api/web/v1/moon-profiles',
+  );
+  expect(
+    (
+      await user.request.post(`/api/web/v1/projects/${projectId}/lines`, {
+        headers: csrf,
+        data: {
+          id: crypto.randomUUID(),
+          panelId: panel,
+          filterId: filters.items.find((f) => f.shortName === 'OIII')?.id,
+          exposureS: 300,
+          plannedCount: 20,
+          moonMode: 'profile',
+          moonProfileId: profiles.items.find((m) => m.name === 'moonProfile.relaxed')?.id,
+        },
+      })
+    ).status(),
+  ).toBe(201);
   expect(
     (
       await user.request.post(`/api/web/v1/projects/${projectId}/submit`, {
@@ -145,6 +166,12 @@ test('S-40: Plan für die Seed-Daten, Blockzeiten in CDT, Hash = Node-Lauf', asy
   await expect(card).toBeVisible();
   // Browser in Europe/Berlin, Standort in Chicago: Zeiten in Standortzeit mit Kürzel CDT.
   await expect(card).toContainText(/\d\d:\d\d CDT – \d\d:\d\d CDT/);
+  // Mondprofil der Zeile mit Namen statt Kürzel „LA“; Tooltip nennt Abstand und Breite.
+  const moonTag = card.getByText('Mond: Entspannt');
+  await expect(moonTag).toBeVisible();
+  await expect(moonTag).toHaveAttribute('title', /^Mondvermeidung „Entspannt“: bis \d+° Abstand/);
+  await expect(card.getByText('LA', { exact: true })).toHaveCount(0);
+  await card.screenshot({ path: 'test-results/simulator-card-moon.png' });
   await expect(admin.getByRole('cell', { name: /CDT$/ }).first()).toBeVisible();
   expect(await hash.textContent()).toBe(`Plan-Hash ${await nodeHash(admin, s)}`);
 

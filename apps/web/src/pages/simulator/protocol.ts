@@ -4,6 +4,7 @@
  */
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
 import type { TFunction } from 'i18next';
+import { moonProfileLabel } from '../../lib/moon-profile-label';
 import type { ProtocolRow } from './simulate';
 
 export const PROTOCOL_COLUMNS = [
@@ -96,7 +97,7 @@ export function cell(
     case 'la':
       return yesNo(row.la);
     case 'profile':
-      return row.moonProfile;
+      return moonProfileLabel(t, row.moonProfile);
   }
 }
 
