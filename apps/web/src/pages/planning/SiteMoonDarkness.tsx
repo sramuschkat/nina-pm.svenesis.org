@@ -1,4 +1,7 @@
-/** „Mond und Dunkelheit“ eines Standorts (Objektbrowser, Heute Nacht): Nacht-Grenzen aus der Tabelle des Servers (NT-02). */
+/**
+ * „Mond und Dunkelheit“ eines Standorts (Objektbrowser, Exoplaneten): Nacht-Grenzen aus der Tabelle des Servers
+ * (NT-02). Standardmäßig eingeklappt (Wunsch Sven 30.09.2026) – die Kopfzeile nennt Phase und Dunkelheit.
+ */
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { equipmentApi, type SiteView } from '../../api/client';
@@ -38,6 +41,7 @@ export function SiteMoonDarkness({
       timeZone={site.timeZone}
       southern={site.latitudeDeg < 0}
       nowUtc={night === current ? Math.floor(Date.now() / 1000) : undefined}
+      defaultOpen={false}
     />
   );
 }

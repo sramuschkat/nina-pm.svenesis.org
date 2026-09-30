@@ -136,7 +136,10 @@ test('Planung öffnet den Objektbrowser; Mond und Dunkelheit, Datumswahl mit Mon
   await expect(page).toHaveURL(/\/planung\/objekte/);
   const tabs = page.getByRole('navigation', { name: /Planung/ }).getByRole('link');
   await expect(tabs.first()).toHaveText('Objektbrowser');
-  await expect(page.getByRole('button', { name: 'Mond und Dunkelheit' })).toBeVisible();
+  // Standardmäßig eingeklappt (30.09.2026); aufgeklappt der Streifen.
+  const moonToggle = page.getByRole('button', { name: 'Mond und Dunkelheit' });
+  await expect(moonToggle).toHaveAttribute('aria-expanded', 'false');
+  await moonToggle.click();
   await expect(page.getByRole('img', { name: /Mond und Dunkelheit der Nacht/ })).toBeVisible();
   // Nur der eigene Mondkalender, kein Datumsfeld des Browsers.
   await expect(page.locator('input[type="date"]')).toHaveCount(0);

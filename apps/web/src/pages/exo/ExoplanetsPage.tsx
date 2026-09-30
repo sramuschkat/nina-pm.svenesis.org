@@ -36,6 +36,7 @@ import catalogStyles from '../catalog/catalog.module.css';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
+import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
 import { PROJECT_PATHS } from '../projects/ProjectEditorPage';
 import { skyMapHref } from '../planning/skymap/model';
 import {
@@ -187,6 +188,12 @@ export function ExoplanetsPage() {
           ) : null
         }
       />
+
+      {site && night ? (
+        <section className={catalogStyles.moonDark} aria-label={t('moonDark.title')}>
+          <SiteMoonDarkness site={site} night={night} current={nights.data?.currentNight ?? null} />
+        </section>
+      ) : null}
 
       <section className={catalogStyles.results} aria-labelledby={ids.results}>
         <div className={catalogStyles.resultHead}>
