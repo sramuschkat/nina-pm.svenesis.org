@@ -93,6 +93,11 @@ export interface TransitEvent {
   /** Fensterbeginn bzw. -ende nutzbar (Filter „Start/Ende in Dunkelheit und über Mindesthöhe“, FA-EXO-05). */
   readonly startUsable: boolean;
   readonly endUsable: boolean;
+  /** Getrennt für die Filter „Start/Ende dunkel“ und „Start/Ende über Mindesthöhe“ (FA-EXO-05, S-22). */
+  readonly startDark: boolean;
+  readonly endDark: boolean;
+  readonly startAboveMinAlt: boolean;
+  readonly endAboveMinAlt: boolean;
   /** Ein nutzbarer Slot hat die Sonne zwischen −18° und der Dämmerungsgrenze („Baseline in der Dämmerung“). */
   readonly baselineInTwilight: boolean;
   /** Obere Kulmination in der Nacht (FA-EXO-11) und ob sie im Fenster liegt. */
@@ -100,6 +105,9 @@ export interface TransitEvent {
   readonly meridianInWindow: boolean;
   /** Scheinbare Höhe zur Mitte, Grad (6 Stellen). */
   readonly altAtCenterDeg: number;
+  /** Scheinbare Höhe bei Ingress und Egress, Grad (FA-EXO-13 „Kontaktzeiten mit Höhen“). */
+  readonly altAtIngressDeg: number;
+  readonly altAtEgressDeg: number;
   readonly leapTableExpired: boolean;
 }
 
@@ -220,7 +228,9 @@ function event(
     );
   const sunLimit = q(input.twilightDeg, 1e6);
   const minAlt = q(input.minAltDeg, 1e6);
-  const ok = (t: number) => q(cache.sunAltDeg(t), 1e6) < sunLimit && q(alt(t), 1e6) >= minAlt;
+  const dark = (t: number) => q(cache.sunAltDeg(t), 1e6) < sunLimit;
+  const high = (t: number) => q(alt(t), 1e6) >= minAlt;
+  const ok = (t: number) => dark(t) && high(t);
 
   const kSigmaS = k * g.sigmaD * DAY_S;
   const observable = ok(tcUtc - kSigmaS) && ok(tcUtc) && ok(tcUtc + kSigmaS);
@@ -267,10 +277,16 @@ function event(
     fullyObservable: slots > 0 && usable === slots,
     startUsable: ok(startUtc),
     endUsable: ok(endUtc),
+    startDark: dark(startUtc),
+    endDark: dark(endUtc),
+    startAboveMinAlt: high(startUtc),
+    endAboveMinAlt: high(endUtc),
     baselineInTwilight: twilight,
     meridianUtc: meridian,
     meridianInWindow: meridian !== null && meridian >= startUtc && meridian <= endUtc,
     altAtCenterDeg: q(alt(tcUtc), 1e6),
+    altAtIngressDeg: q(alt(unixFromJd(ingressJd)), 1e6),
+    altAtEgressDeg: q(alt(unixFromJd(egressJd)), 1e6),
     leapTableExpired: g.leapTableExpired,
   };
 }

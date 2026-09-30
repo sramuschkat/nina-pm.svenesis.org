@@ -45,7 +45,7 @@ export const api = {
     quiet<InvitationClaim>('/api/auth/invitation/claim', { method: 'POST', json: { token } }),
   preferences: () => apiFetch<Preferences>('/api/web/v1/me/preferences'),
   setPreference: (
-    key: 'ui.theme' | 'ui.density' | 'ui.navCollapsed' | 'project.defaultConditions',
+    key: 'ui.theme' | 'ui.density' | 'ui.navCollapsed' | 'project.defaultConditions' | 'exo.search',
     value: unknown,
   ) => apiFetch<undefined>(`/api/web/v1/me/preferences/${key}`, { method: 'PUT', json: { value } }),
   notifications: (limit = 50) =>
@@ -598,6 +598,9 @@ export const sessionLogApi = {
 
 export type DsoView = Schemas['DsoView'];
 export type DsoList = Schemas['DsoList'];
+export type ExoTransitView = Schemas['ExoTransitView'];
+export type ExoTransitList = Schemas['ExoTransitList'];
+export type ExoSearchSettings = Schemas['ExoSearchSettings'];
 export type DsoNight = Schemas['DsoNight'];
 export type CatalogStatus = Schemas['CatalogStatus'];
 export type DsoMarker = Schemas['DsoMarker'];
@@ -635,6 +638,24 @@ export function dsoSearchParams(s: DsoSearch): string {
       p.set(k, String(v));
   return p.toString();
 }
+
+/** Transitsuche S-22 (AP-42): Transits je Rig und Nacht. */
+export const exoApi = {
+  transits: (q: {
+    rigId: string;
+    night?: string | null;
+    catalogs: readonly string[];
+    minAltDeg: number;
+  }) =>
+    apiFetch<ExoTransitList>(
+      `${V1}/exo/transits?${new URLSearchParams({
+        rigId: q.rigId,
+        ...(q.night ? { night: q.night } : {}),
+        catalogs: [...q.catalogs].sort().join(','),
+        minAltDeg: String(q.minAltDeg),
+      }).toString()}`,
+    ),
+};
 
 /** Objektkatalog (AP-20, S-21, Katalogsuche im Editor, S-82). */
 export const catalogApi = {

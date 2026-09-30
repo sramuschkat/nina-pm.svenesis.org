@@ -204,6 +204,7 @@ export {
   exoCatalogDedupeKey,
   exoCatalogStatus,
   exoPrefilterSetting,
+  myExoProjectCounts,
   readExoCatalog,
   replaceExoCatalog,
   type ExoCatalog,

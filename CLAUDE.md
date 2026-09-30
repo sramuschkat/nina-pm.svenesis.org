@@ -33,7 +33,7 @@ Web-App (React/TS) + AWS-Backend (CDK, Lambda/TS, API Gateway, Aurora DSQL, S3) 
 |---|---|---|
 | Lint, Typecheck, Unit-/Engine-Tests | ja | ja |
 | PostgreSQL 16 (Repository-Tests, Seed) | nur mit Docker; fehlt Docker, entfällt der lokale Lauf | ja (Service-Container) |
-| Playwright-E2E | nur mit installierten Browsern | ja |
+| Playwright-E2E | ja – ohne passenden Playwright-Browser mit dem installierten Google Chrome: `PW_CHANNEL=chrome pnpm e2e <spec>` | ja |
 | .NET 8: `NinaPm.Core` + `NinaPm.Core.Tests`, Jint-Parität, Orakel | ja, mit SDK und NuGet-Zugang – auch auf macOS und Linux | ja (`plugin.yml`, `oracle.yml`) |
 | .NET 8: `NinaPm.Nina`, `NinaPm.Nina.Tests` und `NinaPm.Nina.Ui` **bauen** | ja, gegen die NuGet-Pakete `NINA.*` (TK 10.5, ADR-S2c, keine `-p:`-Schalter nötig) | ja (Auftrag `cross-build`) |
 | .NET 8: Adapter-Tests **ausführen** | nein – nur Windows | ja (`plugin.yml` auf `windows-latest`) |

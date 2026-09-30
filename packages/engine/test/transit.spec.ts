@@ -313,6 +313,13 @@ describe('Ultrakurzperiode und Beobachtbarkeit im Fenster', () => {
     expect(ev.usableFraction).toBeGreaterThanOrEqual(0);
     expect(ev.usableFraction).toBeLessThanOrEqual(1);
     expect(ev.fullyObservable).toBe(ev.usableFraction === 1);
+    expect(ev.startUsable).toBe(ev.startDark && ev.startAboveMinAlt);
+    expect(ev.endUsable).toBe(ev.endDark && ev.endAboveMinAlt);
+    // Kontakt-Höhen gegen die Höhenfunktion der Engine
+    const at = (t: number) =>
+      targetAt({ raJ2000Deg: HAT.raDeg, decJ2000Deg: HAT.decDeg }, t, SITE).altDeg;
+    expect(Math.abs(ev.altAtIngressDeg - at(ev.ingressUtc))).toBeLessThan(0.01);
+    expect(Math.abs(ev.altAtEgressDeg - at(ev.egressUtc))).toBeLessThan(0.01);
     if (ev.meridianUtc !== null)
       expect(ev.meridianInWindow).toBe(
         ev.meridianUtc >= ev.windowStartUtc && ev.meridianUtc <= ev.windowEndUtc,

@@ -128,3 +128,21 @@ fenster = [ingress − puffer − baselineVorMin/1440 ; egress + puffer + baseli
 - Zeitsystem: HJD_UTC-Epoche (2008) → nach Normalisierung stimmt die Mitte auf ±1 s; BTJD-Wert ohne Offset wird erkannt und korrigiert; ein MJD-artiger Wert wird **abgelehnt** (`422 exo.epoch_out_of_range`) statt geraten; `unknown` → Fenster je Seite 10 min breiter.
 - Ultrakurzperiode `P = 0,3 d`: zwei Transitfenster in einer Nacht, beide gefunden.
 - Reservierung: Soll-Plan „Transit-Sperre".
+
+## 5. Einordnung in der Transitsuche (Spec-Ergänzung 30.09.2026, AP-42, Entscheidungen Sven)
+Rechnung in `packages/engine/src/exo/classify.ts`, Anzeige in S-22.
+- **Benötigte Öffnung (FA-EXO-07):** ExoClock-Wert, wenn vorhanden. Sonst eigene Schätzung „est“, angepasst an die 646 ExoClock-Planeten über der 5″-Untergrenze (Stand 30.09.2026):
+  `log10(Zoll) = 0,7364 + 0,1074·mag − 0,8967·log10(Tiefe[mmag]) − 0,3333·log10(T14[h])`, mindestens 5″ = 127 mm. `mag` ist R, sonst die verwendete Helligkeit (V, Gaia G, TESS T); ohne T14 gelten 2 h. Über alle 776 ExoClock-Planeten liegen 85 % innerhalb ±25 % und 99 % innerhalb ±50 % des ExoClock-Werts.
+  Farbe gegen die Öffnung des Rigs: grün, wenn sie reicht; gelb bei ≥ 80 %; rot darunter.
+- **Filterempfehlung (FA-EXO-08):**
+  - Band: Standard Rc; Ic, wenn Teff < 4000 K („sehr rot“); Luminanz/Clear, wenn der Stern schwächer als 13 mag ist.
+  - Abbildung auf die **bestätigte** Filterradbelegung, in dieser Reihenfolge; Schmalband nie:
+    1. gleiches photometrisches Band;
+    2. sonst Breitband-Rot für Rc/Ic bzw. Breitband-Grün für V als *Ersatzfilter*, erkannt über Filtertyp `broadband` und die Zentralwellenlänge (Rot ≥ 590 nm, Grün 490–590 nm);
+    3. sonst Band `lum`/`clear`;
+    4. sonst nicht festlegbar.
+  - Mehrere Treffer: Kurzname ordinal.
+- **Größenklasse (FA-EXO-06)** aus dem Radius in R⊕: < 1,25 erdähnlich · < 2 Super-Erde · < 4 Sub-Neptun · < 6 neptunartig · sonst Gasriese.
+- **Spektralklasse** aus Teff (Harvard): O ≥ 30 000 · B ≥ 10 000 · A ≥ 7 500 · F ≥ 6 000 · G ≥ 5 200 · K ≥ 3 700 · M darunter.
+- **Zusammenführen (FA-EXO-03):** Der führende Eintrag (ExoClock → NASA → TOI) liefert Ephemeride, Tiefe und Priorität. Fehlen ihm Radius, Entfernung, Teff oder TIC-Kennung, kommen sie aus den nachrangigen Einträgen desselben Planeten.
+- **Suche:** Dämmerungsgrenze nautisch (§2), Mindesthöhe aus dem Filter (Standard 30°), Nachtfenster nach FK 8.1. Filter (Priorität, Helligkeit, Tiefe, Schalter) wirken in der Oberfläche und werden je Benutzer gespeichert (`user_preference` `exo.search`).

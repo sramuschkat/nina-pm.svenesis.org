@@ -735,6 +735,11 @@ async function projectExamples(): Promise<Record<string, Example>> {
       'GET /api/web/v1/sessions': { url: '/api/web/v1/sessions' },
       'GET /api/web/v1/dso': { url: '/api/web/v1/dso?q=M%2031' },
       'GET /api/web/v1/dso/region': { url: '/api/web/v1/dso/region?ra=10&dec=41&radius=2' },
+      'GET /api/web/v1/exo/transits': {
+        url: `/api/web/v1/exo/transits?rigId=${common.rigId}&night=2026-10-10`,
+        // Rig eines anderen Mandanten: unsichtbar (Mandantentrennung), wie `GET /forecast`.
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'GET /api/web/v1/sessions/{id}': {
         url: `/api/web/v1/sessions/${sessionId}`,
         expect: { 'fremder Mandant (Admin)': 404 },

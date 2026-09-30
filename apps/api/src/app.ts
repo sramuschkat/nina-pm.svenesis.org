@@ -42,6 +42,7 @@ import { NINA_OPS_ROUTES, webNinaOpsRoutes } from './routes/web-nina-ops';
 import { SESSION_ROUTES, webSessionRoutes } from './routes/web-sessions';
 import { SESSION_LOG_ROUTES, webSessionLogRoutes } from './routes/web-session-log';
 import { CATALOG_ROUTES, catalogRoutes } from './routes/catalog';
+import { EXO_ROUTES, exoRoutes } from './routes/exo';
 import { NINA_SYNC_ROUTES, ninaSyncRoutes } from './routes/nina/sync';
 import { NINA_SESSION_ROUTES, ninaSessionRoutes } from './routes/nina/sessions';
 
@@ -82,6 +83,7 @@ export const ROUTES = [
   ...SESSION_ROUTES,
   ...SESSION_LOG_ROUTES,
   ...CATALOG_ROUTES,
+  ...EXO_ROUTES,
   ...SYSTEM_ROUTES,
 ] as const;
 
@@ -160,6 +162,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webSessionRoutes(services));
   app.route('/', webSessionLogRoutes(services));
   app.route('/', catalogRoutes(services));
+  app.route('/', exoRoutes(services));
   app.route('/', ninaSyncRoutes(services));
   app.route('/', ninaSessionRoutes(services));
   app.route('/', systemRoutes(services));

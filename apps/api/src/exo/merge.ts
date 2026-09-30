@@ -16,6 +16,8 @@ export interface MergeableEntry {
 export type MergedEntry<T extends MergeableEntry> = T & {
   /** Übrige Kataloge, in denen derselbe Planet steht (für „Katalog“ und Recherche-Links, FA-EXO-06/09). */
   readonly alsoIn: readonly MergeableEntry['catalog'][];
+  /** Die nachrangigen Einträge desselben Planeten (Kenndaten auffüllen, die dem führenden fehlen). */
+  readonly others: readonly T[];
 };
 
 const RANK: Record<MergeableEntry['catalog'], number> = { exoclock: 0, nasa: 1, toi: 2 };
@@ -32,7 +34,13 @@ export function mergeExoEntries<T extends MergeableEntry>(entries: readonly T[])
     (a, b) =>
       RANK[a.catalog] - RANK[b.catalog] || (a.planet < b.planet ? -1 : a.planet > b.planet ? 1 : 0),
   );
-  const groups: { lead: T; tic: string | null; period: number; also: Set<T['catalog']> }[] = [];
+  const groups: {
+    lead: T;
+    tic: string | null;
+    period: number;
+    also: Set<T['catalog']>;
+    others: T[];
+  }[] = [];
   const byName = new Map<string, (typeof groups)[number]>();
   for (const e of sorted) {
     const key = planetKey(e.planet);
@@ -43,16 +51,24 @@ export function mergeExoEntries<T extends MergeableEntry>(entries: readonly T[])
       );
     if (group) {
       if (group.lead.catalog !== e.catalog) group.also.add(e.catalog);
+      group.others.push(e);
       group.tic ??= e.ticId;
       if (e.catalog !== 'toi') byName.set(key, group);
       continue;
     }
-    const created = { lead: e, tic: e.ticId, period: e.periodD, also: new Set<T['catalog']>() };
+    const created = {
+      lead: e,
+      tic: e.ticId,
+      period: e.periodD,
+      also: new Set<T['catalog']>(),
+      others: [] as T[],
+    };
     groups.push(created);
     if (e.catalog !== 'toi') byName.set(key, created);
   }
   return groups.map((g) => ({
     ...g.lead,
     alsoIn: [...g.also].sort((a, b) => RANK[a] - RANK[b]),
+    others: g.others,
   }));
 }

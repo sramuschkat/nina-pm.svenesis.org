@@ -149,6 +149,9 @@
   --npm-muted: #6b7785;
   --npm-skeleton: #e9ecef;
   --npm-violet: #6a3fb5;
+  --npm-prio-alert: #b3261e;
+  --npm-prio-high: #b54708;
+  --npm-prio-medium: #7d6200;
   --npm-today: #e67e22;
   --npm-star: #b9770e;
   --npm-row-h: 32px;
@@ -205,6 +208,9 @@
   --npm-muted: #8b98a5;
   --npm-skeleton: #243647;
   --npm-violet: #c3a6f5;
+  --npm-prio-alert: #f28b82;
+  --npm-prio-high: #f6a45c;
+  --npm-prio-medium: #e3c65a;
   --npm-today: #f39c12;
   --npm-star: #f5b041;
   --npm-shadow: none;

@@ -52,6 +52,10 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     skeleton: '#e9ecef',
     /** Aufwand-Kennzeichen „Transit“ (FA-PRJ-23: violett). */
     violet: '#6a3fb5',
+    /** ExoClock-Priorität (FA-EXO-06: Alert rot, High orange, Medium gold; AA auf Weiß). */
+    'prio-alert': '#b3261e',
+    'prio-high': '#b54708',
+    'prio-medium': '#7d6200',
     /** Mondkalender: heutige Nacht (Rahmen) und die besten Nächte (Stern). */
     today: '#e67e22',
     star: '#b9770e',
@@ -90,6 +94,9 @@ export const COLORS: Readonly<Record<Theme, Readonly<Record<string, string>>>> =
     muted: '#8b98a5',
     skeleton: '#243647',
     violet: '#c3a6f5',
+    'prio-alert': '#f28b82',
+    'prio-high': '#f6a45c',
+    'prio-medium': '#e3c65a',
     today: '#f39c12',
     star: '#f5b041',
   },

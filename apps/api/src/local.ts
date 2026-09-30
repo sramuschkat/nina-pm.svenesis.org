@@ -70,6 +70,7 @@ import {
 } from './worker/session-jobs';
 import { JOB_HANDLERS, runJob, type JobRunnerDeps } from './worker/jobs';
 import { catalogRefreshHandler, importCatalog } from './worker/catalog';
+import { importExoSamples } from './exo/samples';
 import { reconcileJobHandler } from './worker/session-ops';
 import { httpClient } from './lib/http-client';
 import { weatherJobHandler, weatherTick } from './weather/job';
@@ -109,6 +110,11 @@ const db = await database();
 if (!(await db.selectFrom('dsoObject').select('id').limit(1).executeTakeFirst())) {
   await importCatalog(db, new Date());
   logger.info('local_catalog', { imported: true });
+}
+// Exoplaneten-Kataloge (AP-42): lokal die Auszüge aus `exo/samples`, solange die Tabelle leer ist; echte
+// Abrufe über *Neu laden* in S-82.
+if (!(await db.selectFrom('exoCatalogEntry').select('id').limit(1).executeTakeFirst())) {
+  logger.info('local_exo_catalog', { rows: await importExoSamples(db, new Date()) });
 }
 // Testuhr je Anfrage (nur AUTH_TEST_MODE, Cookie `npm_test_now`): E2E prüfen „Heute Nacht“ zu festen Zeiten,
 // ohne die Uhr anderer Anfragen zu verstellen.
