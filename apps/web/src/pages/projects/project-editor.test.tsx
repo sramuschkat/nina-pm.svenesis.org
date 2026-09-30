@@ -20,7 +20,13 @@ const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')
 const { state, open, pending } = vi.hoisted(() => {
   const pending = () => new Promise(() => undefined);
   return {
-    state: { me: null as unknown, project: null as unknown, patch: vi.fn() },
+    state: {
+      me: null as unknown,
+      project: null as unknown,
+      patch: vi.fn(),
+      approve: vi.fn(),
+      selfApproval: true,
+    },
     pending,
     open: (impl: Record<string, unknown>) =>
       new Proxy(impl, { get: (target, key: string) => target[key] ?? pending }),
@@ -37,7 +43,10 @@ vi.mock('../../api/client', async (importOriginal) => {
       patch: (...a: unknown[]) => state.patch(...a) as Promise<unknown>,
     }),
     equipmentApi: open({ list: () => Promise.resolve({ items: [] }) }),
-    approvalApi: open({}),
+    approvalApi: open({ approve: (...a: unknown[]) => state.approve(...a) as Promise<unknown> }),
+    tenantApi: open({
+      settings: () => Promise.resolve({ settings: { adminSelfApproval: state.selfApproval } }),
+    }),
     catalogApi: open({}),
     changeRequestsApi: open({}),
     tonightApi: open({}),
@@ -139,6 +148,8 @@ beforeEach(() => {
   state.me = me;
   state.project = project();
   state.patch.mockReset();
+  state.approve.mockReset();
+  state.selfApproval = true;
 });
 
 const newClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -175,4 +186,30 @@ it('fremde Änderung am selben Feld: Konflikthinweis, gespeichert wird mit der a
   fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
   await waitFor(() => expect(state.patch).toHaveBeenCalledTimes(1));
   expect(state.patch.mock.calls[0]?.slice(1)).toEqual([{ targetType: 'Emissionsnebel' }, 3]);
+});
+
+it('Admin gibt den eigenen Entwurf direkt frei (FA-PRJ-18, FA-FRG-10): Rig des Projekts, Status aktiv, Version', async () => {
+  state.project = project({ rigId: ID(20) });
+  state.approve.mockResolvedValue(
+    project({ rigId: ID(20), approvalStatus: 'approved', status: 'active', version: 4 }),
+  );
+  renderEditor(newClient());
+  const button = await screen.findByRole('button', { name: 'Freigeben & aktivieren' });
+  expect(screen.queryByRole('button', { name: 'Einreichen' })).not.toBeInTheDocument();
+  fireEvent.click(button);
+  await waitFor(() =>
+    expect(state.approve).toHaveBeenCalledWith(ID(10), { rigId: ID(20), status: 'active' }, 3),
+  );
+});
+
+it('ohne „Admin-Objekte ohne Warteschlange“ bleibt Einreichen; ohne Rig ist Freigeben gesperrt', async () => {
+  state.selfApproval = false;
+  const first = renderEditor(newClient());
+  expect(await screen.findByRole('button', { name: 'Einreichen' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Freigeben & aktivieren' })).not.toBeInTheDocument();
+  first.unmount();
+  state.selfApproval = true;
+  state.project = project({ rigId: null });
+  renderEditor(newClient());
+  expect(await screen.findByRole('button', { name: 'Freigeben & aktivieren' })).toBeDisabled();
 });

@@ -1202,6 +1202,11 @@ export const de = {
     reason: 'Begründung / Kommentar',
     incomplete: 'Für das Einreichen fehlt noch:',
     saveFirst: 'Erst die Änderungen speichern.',
+    selfApprove: 'Freigeben & aktivieren',
+    selfApproveHint:
+      'Admin-Objekte ohne Warteschlange: direkt freigeben (Rig des Projekts, Status Aktiv, Priorität am Ende).',
+    selfApproveNeedsRig: 'Für die Freigabe erst ein Rig wählen.',
+    selfApproveIncomplete: 'Für die Freigabe fehlt noch:',
     missing: {
       name: 'Name',
       rigId: 'Rig',

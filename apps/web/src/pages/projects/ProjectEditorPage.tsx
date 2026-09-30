@@ -28,6 +28,7 @@ import {
   catalogApi,
   equipmentApi,
   projectsApi,
+  tenantApi,
   type DsoView,
   type ProjectView,
   type RigView,
@@ -301,6 +302,38 @@ function Editor({
   const canSubmit = useCan('project.submit', resource);
   const canWithdraw = useCan('project.withdraw', resource);
   const [submitting, setSubmitting] = useState(false);
+  // Admin-Objekte ohne Warteschlange (FA-PRJ-18, FA-FRG-10): der Admin gibt eigene Entwürfe direkt frei.
+  const ownDraft =
+    saved !== null &&
+    saved !== undefined &&
+    saved.createdBy === me?.member?.id &&
+    (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned');
+  const tenantSettings = useQuery({
+    queryKey: ['tenant', 'settings'],
+    queryFn: () => tenantApi.settings(),
+    enabled: canStatus && ownDraft,
+    staleTime: 5 * 60 * 1000,
+  });
+  const canSelfApprove =
+    canStatus && ownDraft && tenantSettings.data?.settings.adminSelfApproval === true;
+  const selfApprove = useMutation({
+    mutationFn: () =>
+      approvalApi.approve(
+        saved?.id ?? '',
+        { rigId: saved?.rigId ?? '', status: 'active' },
+        saved?.version ?? 0,
+      ),
+    onSuccess: (view) => {
+      onSaved(view);
+      void client.invalidateQueries({ queryKey: ['exo-project', view.id] });
+      void client.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+  const selfApproveMissing =
+    selfApprove.error instanceof ApiError &&
+    selfApprove.error.problem.code === 'approval.incomplete'
+      ? (selfApprove.error.problem.errors ?? []).map((x) => x.path)
+      : [];
   // „Geändert seit deiner Stimme“ gilt als gesehen, sobald das Objekt geöffnet ist (FA-FRG-14).
   const savedId = saved?.id;
   const ackNeeded = saved?.approvalStatus === 'submitted' && saved.createdBy !== me?.member?.id;
@@ -913,8 +946,27 @@ function Editor({
         }
         actions={
           <>
+            {saved && canSelfApprove ? (
+              <button
+                type="button"
+                className={styles.buttonPrimary}
+                disabled={dirty || !saved.rigId || selfApprove.isPending}
+                title={
+                  dirty
+                    ? t('approvalFlow.saveFirst')
+                    : !saved.rigId
+                      ? t('approvalFlow.selfApproveNeedsRig')
+                      : t('approvalFlow.selfApproveHint')
+                }
+                onClick={() => selfApprove.mutate()}
+              >
+                <actionIcons.approve size={ICON_SIZE.button} aria-hidden />
+                {t('approvalFlow.selfApprove')}
+              </button>
+            ) : null}
             {saved &&
             canSubmit &&
+            !canSelfApprove &&
             (saved.approvalStatus === 'draft' || saved.approvalStatus === 'returned') ? (
               <button
                 type="button"
@@ -1019,6 +1071,18 @@ function Editor({
           }}
           onCancel={() => setSubmitting(false)}
         />
+      ) : null}
+      {selfApproveMissing.length > 0 ? (
+        <div className={styles.warning} role="alert">
+          <p>{t('approvalFlow.selfApproveIncomplete')}</p>
+          <ul>
+            {selfApproveMissing.map((m) => (
+              <li key={m}>{t(`approvalFlow.missing.${m}`)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : selfApprove.error ? (
+        <ProblemMessage code={problemCode(selfApprove.error)} />
       ) : null}
       {[status.error, favorite.error, duplicate.error, withdraw.error].map((e, i) =>
         e ? <ProblemMessage key={i} code={problemCode(e)} /> : null,
