@@ -264,7 +264,9 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-meridian': 'rgba(240, 240, 240, 0.4)',
   'sky-heatmap': 'rgba(229, 72, 77, 0.22)',
   'sky-sun': '#f6c85f',
-  'sky-day': 'rgba(92, 142, 212, 0.55)',
+  /** Taghimmel (Sternkarte): Zenit und Horizont, Deckkraft folgt der Sonnenhöhe (render.ts `daylight`). */
+  'sky-day': '#4a86c8',
+  'sky-day-horizon': '#a9cbea',
   'sky-moon': '#e8ecf2',
   'sky-planet': '#f7b267',
   'sky-frame': '#ff4fd8',

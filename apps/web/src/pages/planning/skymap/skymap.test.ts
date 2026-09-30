@@ -13,6 +13,7 @@ import { effectiveRotation, projectCategory } from '../SkyMapPage';
 import { constellationAt } from './constellation';
 import { hillAlt, LANDSCAPE_MAX_DEG, landscapeAlt, TREES } from './landscape';
 import {
+  DEFAULT_OVERLAYS,
   DEFAULT_STATE,
   OVERVIEW_ALT,
   OVERVIEW_FOV,
@@ -28,6 +29,8 @@ import {
   behindLand,
   colorParts,
   constellationName,
+  dayStarLimit,
+  daylight,
   drawSky,
   formatDecLabel,
   formatRaLabel,
@@ -601,5 +604,26 @@ describe('Sternkarte: Winkel, Uhrzeit in der Nacht, Ziel für Neues Projekt (28.
     expect(newProjectCoords({ raDeg: 1, decDeg: 2 }, null, size)).toEqual({ raDeg: 1, decDeg: 2 });
     // Ohne Rig kein Bildfeld: immer das Objekt.
     expect(newProjectCoords({ raDeg: 83.83, decDeg: -5.39 }, m42, null)).toEqual(m42);
+  });
+});
+
+describe('Taghimmel (Wunsch Sven 30.09.2026)', () => {
+  it('Tageslicht: Nacht ab −12°, voller Tag ab +4°, dazwischen stetig steigend', () => {
+    expect(daylight(-18)).toBe(0);
+    expect(daylight(-12)).toBe(0);
+    expect(daylight(4)).toBe(1);
+    expect(daylight(30)).toBe(1);
+    expect(daylight(-4)).toBeCloseTo(0.5, 6);
+    expect(daylight(-6)).toBeLessThan(daylight(-2));
+  });
+
+  it('Sterngrenze: nachts unverändert, am Tag nur die hellsten (≤ 1 mag)', () => {
+    expect(dayStarLimit(6, 0)).toBe(6);
+    expect(dayStarLimit(6, 1)).toBe(1);
+    expect(dayStarLimit(6, 0.5)).toBe(3.5);
+  });
+
+  it('Taghimmel ist standardmäßig an', () => {
+    expect(DEFAULT_OVERLAYS).toContain('daySky');
   });
 });

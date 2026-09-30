@@ -162,6 +162,7 @@ export function readColors(el: Element): Colors {
     'heatmap',
     'sun',
     'day',
+    'day-horizon',
     'moon',
     'planet',
     'frame',
@@ -337,6 +338,67 @@ export function twilightClass(sunAltDeg: number): 0 | 1 | 2 | 3 | 4 {
   if (sunAltDeg > -12) return 2;
   if (sunAltDeg > -18) return 3;
   return 4;
+}
+
+/**
+ * Tageslicht 0 (Sonne ≤ −12°, ab nautischer Dämmerung dunkel) bis 1 (Sonne ≥ +4°), weich übergehend
+ * (Smoothstep). Steuert Taghimmel, Sterngrenze und das Ausblenden der Katalogobjekte (Wunsch Sven 30.09.2026).
+ */
+export function daylight(sunAltDeg: number): number {
+  const t = clamp((sunAltDeg + 12) / 16, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/** Grenzgröße der Sterne am Tag: zur Orientierung bleiben bei vollem Tag nur die hellsten (≤ 1 mag). */
+export function dayStarLimit(limit: number, day: number): number {
+  return limit - day * Math.max(0, limit - 1);
+}
+
+/**
+ * Taghimmel über den Himmelsfotos: Verlauf vom Horizont (`sky-day-horizon`, heller) zum Zenit (`sky-day`)
+ * entlang der Blickrichtung, Deckkraft = Tageslicht. Ohne darstellbare Stützpunkte eine gleichmäßige Fläche.
+ */
+function paintDaySky(
+  ctx: CanvasRenderingContext2D,
+  view: sky.SkyView,
+  obs: Observer,
+  colors: Colors,
+  day: number,
+) {
+  const zenith = obs.toHorizon[2] as Vec;
+  const c = view.center;
+  const k = sky.dot(zenith, c);
+  // Horizontpunkt und 60°-Punkt unter bzw. über der Bildmitte (gleiches Azimut).
+  const flat: Vec = [c[0] - k * zenith[0], c[1] - k * zenith[1], c[2] - k * zenith[2]];
+  const n = Math.hypot(flat[0], flat[1], flat[2]);
+  const at = (altDeg: number): Vec | null => {
+    if (n < 1e-6) return null;
+    const cosA = Math.cos(altDeg * DEG);
+    const sinA = Math.sin(altDeg * DEG);
+    return [
+      (flat[0] / n) * cosA + zenith[0] * sinA,
+      (flat[1] / n) * cosA + zenith[1] * sinA,
+      (flat[2] / n) * cosA + zenith[2] * sinA,
+    ];
+  };
+  const h0 = at(0);
+  const h1 = at(60);
+  const p0 = h0 ? sky.project(view, h0) : null;
+  const p1 = h1 ? sky.project(view, h1) : null;
+  const top = colors.day ?? '#4a86c8';
+  const low = colors['day-horizon'] ?? '#a9cbea';
+  let fill: string | CanvasGradient = top;
+  if (p0 && p1 && Math.hypot(p1.x - p0.x, p1.y - p0.y) > 1) {
+    const g = ctx.createLinearGradient(p0.x, p0.y, p1.x, p1.y);
+    g.addColorStop(0, low);
+    g.addColorStop(1, top);
+    fill = g;
+  }
+  ctx.save();
+  ctx.globalAlpha = day;
+  ctx.fillStyle = fill;
+  ctx.fillRect(0, 0, view.width, view.height);
+  ctx.restore();
 }
 
 const CELL = 4;
@@ -976,15 +1038,10 @@ export function drawSky(
   const up = observer ? (v: Vec) => !behindLand(observer.toHorizon, v) : null;
   ctx.fillStyle = colors.bg ?? '#000';
   ctx.fillRect(0, 0, view.width, view.height);
-  // Taghimmel: Grund aufhellen, solange die Sonne über −6° steht.
-  const sunAlt = observer?.sunAltDeg ?? -90;
-  if (overlays.has('daySky') && sunAlt > -6) {
-    ctx.globalAlpha = Math.min(1, (sunAlt + 6) / 12);
-    ctx.fillStyle = colors.day ?? '#5c8ed4';
-    ctx.fillRect(0, 0, view.width, view.height);
-    ctx.globalAlpha = 1;
-  }
   drawPhotos();
+  // Taghimmel (Standard an): nach der Sonnenhöhe über den Fotos, damit sie am Tag verblassen.
+  const day = overlays.has('daySky') && observer ? daylight(observer.sunAltDeg) : 0;
+  if (observer && day > 0) paintDaySky(ctx, view, observer, colors, day);
   let mwSpot: { x: number; y: number } | null = null;
   if (overlays.has('milkyWay') && input.bright && (!input.photosShown || view.fovDeg > 40))
     mwSpot = paintMilkyWay(
@@ -1030,11 +1087,14 @@ export function drawSky(
           for (const part of c.parts) constellationLine(ctx, view, part, c.abbr, hits.verts, up);
         }
     }
-    const limit = starLimitMag(view.fovDeg);
+    const limit = dayStarLimit(starLimitMag(view.fovDeg), day);
     drawStars(ctx, view, input.bright.stars, limit, colors.star ?? '#fff', hits.stars);
     if (input.faint && limit > 6) drawStars(ctx, view, input.faint, limit, colors.star ?? '#fff');
   }
   if (observer) drawObserver(ctx, view, observer, overlays, colors, input.zenithLabel);
+  // Katalogobjekte treten am Tag zurück (das gewählte bleibt beschriftet).
+  ctx.save();
+  ctx.globalAlpha = 1 - 0.85 * day;
   const dsoLabels = overlays.has('dso')
     ? drawDso(
         ctx,
@@ -1046,6 +1106,7 @@ export function drawSky(
         overlays.has('horizon') ? observer : null,
       )
     : [];
+  ctx.restore();
   for (const p of input.projects) {
     if (!input.projectOverlays.has(p.category)) continue;
     drawFrame(ctx, view, p.frame, colors[`project-${p.category}`] ?? '#aaa', {
@@ -1107,8 +1168,9 @@ export function drawSky(
   drawBodies(ctx, view, input, colors, labels, hits.bodies);
   for (const d of dsoLabels.filter((x) => x.selected))
     labels.put(d.txt, d.x, d.y, colors['dso-label'] ?? '#aaa', `600 11px ${FONT}`, 'left', true);
-  for (const d of dsoLabels.filter((x) => !x.selected))
-    labels.put(d.txt, d.x, d.y, colors['dso-label'] ?? '#aaa', `11px ${FONT}`);
+  if (day < 0.5)
+    for (const d of dsoLabels.filter((x) => !x.selected))
+      labels.put(d.txt, d.x, d.y, colors['dso-label'] ?? '#aaa', `11px ${FONT}`);
   if (input.bright && overlays.has('starNames'))
     starNameLabels(
       view,
