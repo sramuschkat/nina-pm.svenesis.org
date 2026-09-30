@@ -56,6 +56,7 @@ import { moonProfileLabel } from '../../lib/moon-profile-label';
 import { useUniformWidth } from '../../lib/use-uniform-width';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
+import { Person } from '../../lib/member';
 
 const EDITABLE_OWN = new Set(['draft', 'submitted', 'returned']);
 const hm = (atUtc: string, tz: string) =>
@@ -708,6 +709,10 @@ function TargetCardView({
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
       </h3>
       <dl className={styles.facts}>
+        <dt>{t('simulator.card.creator')}</dt>
+        <dd>
+          <Person id={card.createdBy} />
+        </dd>
         <dt>{t('simulator.card.window')}</dt>
         <dd>
           {card.fromUtc && card.toUtc ? `${hm(card.fromUtc, tz)} – ${hm(card.toUtc, tz)}` : '–'}

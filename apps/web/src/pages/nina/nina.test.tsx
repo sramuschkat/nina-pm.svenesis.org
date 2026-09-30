@@ -153,6 +153,7 @@ const item = (n: number, over: Partial<NinaRigDelivery['items'][number]> = {}) =
   name: `Ziel ${String(n)}`,
   targetName: null,
   projectType: 'deep_sky' as const,
+  createdBy: ID(3),
   status: 'active' as const,
   priority: n,
   version: 3,
@@ -374,6 +375,9 @@ describe('S-41 An NINA ausgeliefert', () => {
     expect(within(card).getByText('Rotation 12.5°')).toBeTruthy();
     expect(within(card).getByText('Rig Rig A')).toBeTruthy();
     expect(within(card).getByText('ohne NINA-Filter')).toBeTruthy();
+    // Filter als farbige Chips, Ersteller mit Bild bzw. Symbol (30.09.2026).
+    expect(within(card).getByText('Ha')).toBeTruthy();
+    expect(within(card).getByText(/^Ersteller/)).toBeTruthy();
     expect(screen.getByText('Mosaik mit 4 Panels')).toBeTruthy();
     expect(screen.getByText('An NINA ausliefern ist für Rig B ausgeschaltet.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Rig Rig A · Nacht 18./19.09.' })).toBeTruthy();

@@ -196,3 +196,10 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Ersteller auf der Karte „An NINA ausgeliefert“ (Bild und Name, 30.09.2026). */
+.creator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}

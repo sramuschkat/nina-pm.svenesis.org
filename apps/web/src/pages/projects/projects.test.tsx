@@ -378,6 +378,16 @@ describe('Modell (FA-PRJ-20/21, FA-BPL-03/05)', () => {
 });
 
 describe('Belichtungsplan (Komponente)', () => {
+  it('Filter-Auswahl der Zeile in der Filterfarbe mit lesbarer Schrift (30.09.2026)', () => {
+    plan(project([line(1, 'Ha'), line(2, 'OIII')]));
+    const ha = screen.getByLabelText('Filter der Zeile Ha');
+    expect(ha.style.background).toBe('rgb(198, 40, 40)');
+    expect(ha.style.color).toBe('rgb(255, 255, 255)');
+    // #00897B erreicht mit keiner Schrift 4,5:1 → abgedunkelt wie der Filter-Chip.
+    const oiii = screen.getByLabelText('Filter der Zeile OIII');
+    expect(oiii.style.background).not.toBe('rgb(0, 137, 123)');
+  });
+
   it('Schnelleingabe: Stunden → Anzahl, Hinzufügen ruft die Route mit Kamera-Standards', async () => {
     state.addLine.mockResolvedValue(project([line(1, 'Ha')]));
     plan(project([]));

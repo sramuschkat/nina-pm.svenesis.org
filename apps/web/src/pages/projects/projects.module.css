@@ -1156,3 +1156,16 @@ tr[data-dragging='true'] {
   align-items: center;
   gap: var(--npm-space-1) var(--npm-space-3);
 }
+
+/* Filter-Auswahl im Belichtungsplan in der Filterfarbe (Farben inline aus `chipBackground`/`chipTextColor`). */
+.filterSelect {
+  font-weight: 600;
+  border-color: transparent;
+}
+
+/* Ersteller im Kopf des Projekt-Editors: Beschriftung, Bild, Name. */
+.headCreator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+}

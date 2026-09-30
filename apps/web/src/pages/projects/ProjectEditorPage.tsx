@@ -85,6 +85,7 @@ import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
 import { ProjectImage } from './ProjectImage';
 import styles from './projects.module.css';
+import { Person } from '../../lib/member';
 
 export const PROJECT_PATHS = {
   list: '/projekte',
@@ -915,6 +916,13 @@ function Editor({
               ) : null}
               {dirty && saved ? (
                 <span className={styles.dirty}>{t('projectEditor.unsaved')}</span>
+              ) : null}
+              {saved ? (
+                // Ersteller mit Bild (Wunsch Sven 30.09.2026).
+                <span className={styles.headCreator}>
+                  <span className={styles.muted}>{t('projectEditor.creator')}</span>
+                  <Person id={saved.createdBy} />
+                </span>
               ) : null}
             </span>
             <span className={styles.metaGroup}>

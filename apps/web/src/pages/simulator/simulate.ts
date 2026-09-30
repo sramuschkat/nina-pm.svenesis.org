@@ -51,6 +51,8 @@ export type Check = 'ok' | 'fail' | 'warn' | 'none';
 
 export interface TargetCard {
   readonly projectId: string;
+  /** Ersteller (`app_user.id`) – Bild und Name auf der Zielkarte (30.09.2026). */
+  readonly createdBy: string | null;
   readonly name: string;
   readonly color: string;
   readonly allocatedS: number;
@@ -169,6 +171,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
   const site = { latDeg: req.site.latitudeDeg, lonDeg: req.site.longitudeDeg };
   const projects = input.projects;
   const names = new Map(req.projects.map((p) => [p.id, p.name]));
+  const creators = new Map(req.projects.map((p) => [p.id, p.createdBy]));
   const color = new Map(projects.map((p, i) => [p.id, colorOf(i)]));
   const profiles = new Map<string, PlanMoonProfile>(input.moonProfiles.map((p) => [p.id, p]));
   const moonOf = (id: string | null) => {
@@ -369,6 +372,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
     const transit = own.some((b) => b.kind === 'transit');
     cards.push({
       projectId: p.id,
+      createdBy: creators.get(p.id) ?? null,
       name: names.get(p.id) ?? p.id,
       color: color.get(p.id) ?? colorOf(0),
       allocatedS,

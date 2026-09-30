@@ -38,6 +38,7 @@ import styles from './tonight.module.css';
 import { MoonCalendar } from './MoonCalendar';
 import { TonightLines } from './TonightLines';
 import { KpiTiles, TonightTimeline, Verdict } from './TonightOverview';
+import { Person } from '../../lib/member';
 
 export const TONIGHT_PATH = '/heute-nacht';
 export const TONIGHT_KEY = ['tonight'] as const;
@@ -316,6 +317,13 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
       header: t('tonight.col.project'),
       sortValue: (p) => p.name,
       cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
+    },
+    {
+      // Ersteller mit Bild (Wunsch Sven 30.09.2026); Name aus dem Mitgliederverzeichnis.
+      id: 'creator',
+      header: t('tonight.col.creator'),
+      priority: 3,
+      cell: (p) => <Person id={p.createdBy} />,
     },
     {
       id: 'frames',

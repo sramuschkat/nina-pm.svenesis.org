@@ -306,6 +306,7 @@ export const de = {
     unallocated: 'Nicht zugeteilt',
     noReason: 'ohne Diagnosegrund',
     card: {
+      creator: 'Ersteller',
       pick: 'Ziel wählen – seine Blöcke im Nachtplan hervorheben',
       window: 'Zeitfenster',
       hours: 'Zugeteilt',
@@ -883,6 +884,7 @@ export const de = {
     },
   },
   projectEditor: {
+    creator: 'Ersteller',
     weatherTile: 'Nacht {{night}}: {{rating}} – im Nachtdiagramm zeigen',
     weatherMoon: 'Mond {{pct}} %',
     new: 'Neues Projekt',
@@ -1916,6 +1918,7 @@ export const de = {
       settingsFetched: 'Einstellungen',
     },
     delivery: {
+      creator: 'Ersteller',
       title: 'An NINA ausgeliefert',
       info: 'Diese Ziele erhält NINA beim nächsten Planaufbau: freigegeben, aktiv, mit Planungsbedarf und am Rig mit „An NINA ausliefern“. Die Liste ist dieselbe, die das Plugin abruft.',
       filterSite: 'Standort',
@@ -2699,7 +2702,13 @@ export const de = {
     computing: 'Prognose wird berechnet …',
     noProjects: 'Für diese Nacht sind keine Projekte geplant.',
     idle: '{{n}} weitere aktive Projekte ohne Frames in dieser Nacht.',
-    col: { project: 'Projekt', frames: 'Erwartete Frames', hours: 'Stunden', lines: 'Zeilen' },
+    col: {
+      project: 'Projekt',
+      creator: 'Ersteller',
+      frames: 'Erwartete Frames',
+      hours: 'Stunden',
+      lines: 'Zeilen',
+    },
     lineFrames: '{{frames}} Frames',
     offTonight: 'heute aus',
     turnOff: 'Nur heute aus',

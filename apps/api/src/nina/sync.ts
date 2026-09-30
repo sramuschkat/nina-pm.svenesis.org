@@ -274,6 +274,7 @@ export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDeli
         name: pv.name,
         targetName: pv.targetName,
         projectType: x.project.projectType as 'deep_sky' | 'exoplanet',
+        createdBy: pv.createdBy,
         status: pv.status ?? 'active',
         priority: pv.priority,
         version: pv.version,
