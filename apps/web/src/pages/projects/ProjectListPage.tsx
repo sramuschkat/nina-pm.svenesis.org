@@ -815,6 +815,13 @@ function ProjectTable({
               ),
             },
           })}
+      // Gleiche Spalten über alle Status-Chips und Filter (neu gerechnet nur bei neuer Breite).
+      stableColumns
+      // Kommentar der Freigabe vollständig in der Detailzeile (in der Statusspalte gekürzt).
+      renderDetail={(p) => {
+        const s = lifecycleStatus(p);
+        return s === 'returned' || s === 'rejected' ? <DecisionNote projectId={p.id} full /> : null;
+      }}
       rowProps={(p) => {
         const draggable = reorder && p.approvalStatus === 'approved';
         return {
@@ -834,7 +841,7 @@ function ProjectTable({
  * Letzter Kommentar der Freigabe bei zurückgegebenen bzw. abgelehnten Projekten (vorher auf den Karten von
  * „Meine Objekte“, FA-FRG-13): aus dem Verlauf, gekürzt, voller Text im Tooltip.
  */
-function DecisionNote({ projectId }: { projectId: string }) {
+function DecisionNote({ projectId, full = false }: { projectId: string; full?: boolean }) {
   const { t } = useTranslation();
   const history = useQuery({
     queryKey: ['project-history', projectId],
@@ -849,7 +856,10 @@ function DecisionNote({ projectId }: { projectId: string }) {
       ? t('myObjects.expired')
       : t('myObjects.comment', { comment: decision.comment ?? '' });
   return (
-    <span className={styles.decisionNote} title={text}>
+    <span
+      className={full ? styles.decisionFull : styles.decisionNote}
+      title={full ? undefined : text}
+    >
       {text}
     </span>
   );

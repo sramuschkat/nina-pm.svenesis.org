@@ -8,6 +8,7 @@ import type { EffortView } from '@nina-pm/shared';
 import { formatNightKey } from '@nina-pm/shared';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { actionIcons } from '../icons';
 import styles from './EffortChip.module.css';
 
 type Tone = 'success' | 'info' | 'danger' | 'violet' | 'muted';
@@ -140,17 +141,24 @@ export function EffortChip({ effort, stale, state, size = 'md', live, onRetry }:
     .join('\n');
   const tone: Tone = effort.tag === null ? 'muted' : (TONES[effort.tag] ?? 'muted');
   const full = stale ? `${label} · ${t('effort.stale')}` : label;
+  // In Tabellen (`sm`) nur ein Symbol statt „· wird aktualisiert“: der Text machte die Spalte ~100 px
+  // breiter und blendete in der Projektliste andere Spalten aus (30.09.2026); er steht im Tooltip.
+  const compactStale = stale && size === 'sm';
   return (
     <span
       className={`${cls} ${styles[tone]}`}
       data-tone={tone}
       // Fokussierbar, damit der Tooltip auch per Tastatur erreichbar ist (components.md §1).
       tabIndex={0}
-      title={tip}
+      title={compactStale ? `${t('effort.stale')}\n${tip}` : tip}
       aria-label={`${t('effort.label')}: ${full}. ${tip.replace(/\n/g, ' ')}`}
     >
       {label}
-      {stale ? <span className={styles.stale}> · {t('effort.stale')}</span> : null}
+      {compactStale ? (
+        <actionIcons.refresh size={12} aria-hidden className={styles.staleIcon} />
+      ) : stale ? (
+        <span className={styles.stale}> · {t('effort.stale')}</span>
+      ) : null}
     </span>
   );
 }

@@ -72,9 +72,15 @@ export interface DataTableProps<T> {
   readonly className?: string;
   /**
    * Eigener Inhalt der Detailzeile (AP-26e, z. B. Nachtdiagramm im Objektbrowser): die Zeile ist dann
-   * immer aufklappbar und zeigt ihn unter den ausgeblendeten Spalten.
+   * aufklappbar und zeigt ihn unter den ausgeblendeten Spalten. `null` = für diese Zeile kein eigener Inhalt
+   * (aufklappbar nur, wenn Spalten ausgeblendet sind; 30.09.2026).
    */
   readonly renderDetail?: (row: T) => ReactNode;
+  /**
+   * Spalten beim Wechsel der Zeilen (Filter) nicht wieder einblenden, nur bei neuer Breite oder anderen
+   * Spalten: gleiche Spalten über alle Filter (Projektliste, 30.09.2026). Ausblenden wirkt weiterhin sofort.
+   */
+  readonly stableColumns?: boolean;
 }
 
 export function DataTable<T>(props: DataTableProps<T>) {
@@ -94,7 +100,11 @@ export function DataTable<T>(props: DataTableProps<T>) {
   const hiddenIds = useMemo(() => new Set(order.slice(0, hidden)), [order, hidden]);
   const visible = columns.filter((c) => !hiddenIds.has(c.id));
   const hiddenCols = columns.filter((c) => hiddenIds.has(c.id));
-  const detail = hiddenCols.length > 0 || props.renderDetail !== undefined;
+  const ownDetail = (row: T) => props.renderDetail?.(row) ?? null;
+  const detail = hiddenCols.length > 0 || rows.some((r) => ownDetail(r) !== null);
+  // Zeilenmenge als Schlüssel: bei jedem Filterwechsel neu ausblenden, nicht nur bei anderer Anzahl –
+  // sonst blieben Spalten weg, für die wieder Platz ist (30.09.2026).
+  const rowsKey = useMemo(() => rows.map(rowKey).join('|'), [rows, rowKey]);
 
   // Container beobachten: bei neuer Breite wieder alle Spalten zeigen und neu ausblenden.
   useLayoutEffect(() => {
@@ -107,7 +117,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
   useLayoutEffect(() => {
     setHidden(0);
     setSqueezed(false);
-  }, [width, rows.length, columns.length]);
+  }, [width, props.stableColumns ? '' : rowsKey, columns.length]);
   // Solange die Tabelle breiter ist als der Container, die nächste Spalte ausblenden (vor dem Zeichnen);
   // reicht das nicht, Umbruch zulassen.
   useLayoutEffect(() => {
@@ -233,24 +243,27 @@ export function DataTable<T>(props: DataTableProps<T>) {
               ) : null}
               {g.rows.map((row) => {
                 const key = rowKey(row);
-                const expanded = detail && open.has(key);
+                const expandable = hiddenCols.length > 0 || ownDetail(row) !== null;
+                const expanded = expandable && open.has(key);
                 const Toggle = expanded ? uiIcons.detailOpen : uiIcons.detailClosed;
                 return (
                   <Fragment key={key}>
                     <tr {...(props.rowProps?.(row) ?? {})}>
                       {detail ? (
                         <td className={styles.detailCol}>
-                          <button
-                            type="button"
-                            className={styles.detailButton}
-                            aria-expanded={expanded}
-                            aria-label={t('dataTable.detailsOf', {
-                              row: props.rowLabel?.(row) ?? key,
-                            })}
-                            onClick={() => toggle(key)}
-                          >
-                            <Toggle size={ICON_SIZE.table} aria-hidden />
-                          </button>
+                          {expandable ? (
+                            <button
+                              type="button"
+                              className={styles.detailButton}
+                              aria-expanded={expanded}
+                              aria-label={t('dataTable.detailsOf', {
+                                row: props.rowLabel?.(row) ?? key,
+                              })}
+                              onClick={() => toggle(key)}
+                            >
+                              <Toggle size={ICON_SIZE.table} aria-hidden />
+                            </button>
+                          ) : null}
                         </td>
                       ) : null}
                       {visible.map((c) => (
@@ -272,7 +285,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                               ))}
                             </dl>
                           ) : null}
-                          {props.renderDetail?.(row)}
+                          {ownDetail(row)}
                         </td>
                       </tr>
                     ) : null}

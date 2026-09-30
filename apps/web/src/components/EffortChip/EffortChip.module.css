@@ -44,6 +44,10 @@
   color: var(--npm-text-light);
   font-weight: 400;
 }
+.staleIcon {
+  color: var(--npm-text-light);
+  flex-shrink: 0;
+}
 .skeleton {
   color: var(--npm-text-light);
   background: var(--npm-skeleton);
