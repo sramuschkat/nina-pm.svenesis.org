@@ -48,6 +48,48 @@ test('S-22: Transits der Nacht, aufgeklappte Zeile mit Zeitleiste und Zieldetail
     /\/planung\/sternkarte\?/,
   );
 
+  // Anordnung (Wunsch Sven 01.10.2026), gemessen: Sternfeld und Himmelsposition oben gleich, Bilder gleich hoch
+  // angesetzt; Titel auf einer Linie mit dem Reiter „Zieldetails“; breit Belichtung unter den Bildern, Zieldetails
+  // rechts, bei 1280 px Belichtung rechts neben den Bildern und Zieldetails darunter.
+  const region = async (name: string) => {
+    const b = await page.getByRole('region', { name }).boundingBox();
+    if (!b) throw new Error(name);
+    return b;
+  };
+  const top = async (l: ReturnType<Page['locator']>) =>
+    Math.round((await l.boundingBox())?.y ?? -1);
+  for (const width of [WIDE.width, 1280]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const field = await region('Sternfeld (DSS2) – WASP-12');
+    const sky = await region('Himmelsposition – WASP-12');
+    const fieldImg = await page
+      .getByRole('img', { name: 'Sternfeld um WASP-12 (DSS2, 0,5°)' })
+      .boundingBox();
+    const skyImg = await page
+      .getByRole('img', { name: 'Himmelsposition von WASP-12' })
+      .boundingBox();
+    const exposure = await region('Belichtung – WASP-12');
+    const tab = page.getByRole('tab', { name: 'Zieldetails' });
+    const details = (await tab.locator('xpath=ancestor::section[1]').boundingBox()) ?? field;
+    expect(Math.round(sky.y), `${String(width)} px Karte`).toBe(Math.round(field.y));
+    expect(Math.round(skyImg?.y ?? 0), `${String(width)} px Bild`).toBe(
+      Math.round(fieldImg?.y ?? -1),
+    );
+    if (width === WIDE.width) {
+      const fieldTitle = page.getByRole('heading', { name: 'Sternfeld (DSS2) – WASP-12' });
+      expect(
+        Math.abs((await top(fieldTitle)) - (await top(tab))),
+        `${String(width)} px Titel`,
+      ).toBeLessThanOrEqual(1);
+      expect(exposure.y).toBeGreaterThan(field.y + field.height);
+      expect(details.x).toBeGreaterThan(sky.x + sky.width);
+    } else {
+      expect(exposure.x).toBeGreaterThan(sky.x + sky.width);
+      expect(details.y).toBeGreaterThan(field.y + field.height);
+    }
+  }
+  await page.setViewportSize(WIDE);
+
   const result = await new AxeBuilder({ page }).analyze();
   const serious = result.violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
