@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **angenommen** (Sven, 28.09.2026) |
+| Status | **angenommen** (Sven, 28.09.2026) · **überholt** (Sven, 01.10.2026): das Plugin plant nicht mehr selbst, siehe Nachtrag |
 | Datum | 2026-09-28 |
 | Arbeitspaket | AP-S2a |
 | Anforderungen | TK 10.4 (Offline), TK 10.2 (`EngineHost`: eigener Thread, Timeout), rules/engine.md Nr. 7 und 10 |
@@ -79,3 +79,11 @@ Jint bleibt die Offline-Engine. `EngineHost` in `NinaPm.Core` (AP-16b) setzt:
 - **Andere JS-Engine (ClearScript/V8):** schneller, aber nativer Code je Plattform, mehr Größe und ein anderer Lizenz- und Update-Pfad. Abgelehnt, solange Jint reicht.
 - **Port der Engine nach C#:** doppelte Implementierung; die Parität wäre nicht mehr per Hash gegen dieselbe Quelle gesichert. Abgelehnt.
 - **`LimitMemory` als Schutz:** abgelehnt, weil es Allokation statt Belegung misst (oben).
+
+## Nachtrag 01.10.2026 – Offline-Planung entfällt
+Entscheidung Sven: Das Plugin plant **nie selbst**. Es holt den Plan der Nacht vom Server, speichert ihn in `ninapm.db` und arbeitet ihn bei einem Verbindungsausfall oder im Offline-Modus weiter ab (Block nach Uhrzeit, Meldungen in die Outbox, nach der Rückkehr neu planen mit `reason: resume`). Damit entfallen `EngineHost`, Plugin-eigene `nightPlanId`, `PATCH {offline: true, offlinePlan}` als FIFO-Barriere und der Offline-Betrieb über mehrere Nächte (`execution.md` §6/§8, TK 10.4, FA-NIN-04/15).
+
+Grund: Für eine Sternwarte mit Internet betrifft ein Ausfall nur kurze Zeit in einer Nacht; der gespeicherte Plan genügt. Die eigene Planung hätte den Bau des `PlanInput` im Plugin, die Hash-Parität und die Nachmeldung eigener Pläne verlangt.
+
+Die Messwerte oben bleiben als Befund stehen. Bundle `engine.iife.js` und der Paritätstest Node ↔ Jint (AP-08c) bleiben im Repository und in `plugin.yml`, damit die Option später ohne Neuarbeit wieder offensteht; zur Laufzeit lädt das Plugin kein Jint.
+
