@@ -1,0 +1,52 @@
+{
+  "protocol": "P-13",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.2",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Lauf A, globale Trigger Meridian Flip, AF nach Zeit (1 min), Dither after Exposures: TRIGGER_SUPPRESSED type=AutofocusAfterTimeTrigger und type=DitherAfterExposures, kein TRIGGER type=AutofocusAfterTimeTrigger. Typnamen der installierten NINA 3.2: AutofocusAfterTimeTrigger, DitherAfterExposures, MeridianFlipTrigger (wie execution.md §5, NIN5-3)."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "Belichtung 2 (120 s) nach 20 s über den eigenen Token abgebrochen (probe_abort 17:20:59, aborted in derselben Sekunde, kein Fallback); Belichtung 3 startet sofort, alle übrigen gespeichert und zugeordnet."
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "note": "READOUT mode=set name=Default index=0 – einziger Modus der Alpaca Camera Sim (readoutmodes = [\"Default\"]); Name → Index und SetReadoutModeForNormalImages ohne Fehler."
+    },
+    {
+      "n": 4,
+      "ok": true,
+      "note": "Lauf A: TRIGGER type=MeridianFlipTrigger 17:27:00, NINA „Mount side of pier is currently pierWest, and target is pierEast“, FLIP pierBefore=west pierAfter=east durationS=91 (inkl. 30 s Settle; ARM-VM, kein Messwert)."
+    },
+    {
+      "n": 5,
+      "ok": true,
+      "note": "Lauf B (Pier-Seite ignorieren, 10 × 60 s): nach jedem TRIGGER type=MeridianFlipTrigger nur FLIP_UNDETECTED, kein FLIP. NINA flippte zweimal (17:45:28 und 17:48:00), weil der Sky Simulator nach dem ersten Flip wieder pierWest meldete."
+    }
+  ],
+  "logCheck": {
+    "status": "pass",
+    "missing": [],
+    "unexpected": []
+  },
+  "deviations": [
+    "Lauf A wiederholt: Erster Versuch ohne Flip, weil der Sky Simulator nach einer Uhrkorrektur der VM 6 h falsche Sternzeit meldete (LST 17,04 h statt 11,03 h); nach Neustart des Simulators korrekt. Unterdrückung, Auslesemodus und Abbruch waren auch im ersten Versuch richtig.",
+    "Lauf B zuerst mit 4 × 60 s (Vorgabe README): Block endet vor dem Flip (Flip 1 min nach Meridian, J2000-Ziel gut 1 min nach dem scheinbaren Meridian); im Log als Block 01a0f885 ohne Flip. README auf 10 × 60 s korrigiert, zweiter Lauf B = Block 01a0f88a.",
+    "Auslesemodus: Kamera bietet nur „Default“ (Index 0) – Name → Index nur trivial geprüft.",
+    "Doppelflip in Lauf B ist ein Simulator-Effekt (Pier-Seite nach dem Flip wieder West); Folge für AP-16f: mehrere Flips je Block sauber melden.",
+    "PHD2 lief zeitweise mit (StarLost/LockPositionLost aus nina-app.log gefiltert)."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log"
+  ]
+}

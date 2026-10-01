@@ -1,0 +1,40 @@
+{
+  "protocol": "P-02",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.1",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "20 × 5 s LUMINANCE; je Belichtung eine UUID v7 vor der Belichtung, Image.Id 1–20 fortlaufend."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "20/20 CAPTURE result=saved, jede Aufnahme-ID und jeder Dateiname genau einmal, Reihenfolge 0001–0020 passend. NINA speichert verschränkt (Bild n während n+1 belichtet); Bild 20 kam 1,8 s nach BLOCK_END und wurde dank probe-0.1.1 noch zugeordnet."
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "note": "FITS-Header als Text (fits-header.txt): OBJECT=NINA-PM Probe, OBJCTRA/OBJCTDEC = Probe-Ziel, OBJCTROT=30.0 = eingestellter PA (NINA: planned rotation), PIERSIDE=West, ROTATOR=0.0 (mechanisch, Probe dreht nicht)."
+    }
+  ],
+  "logCheck": {
+    "status": "pass",
+    "missing": [],
+    "unexpected": []
+  },
+  "deviations": [
+    "FITS-Header als Text statt Screenshot (gleicher Inhalt).",
+    "Testrechner: Windows 11 ARM64 (VMware), NINA x64 emuliert – keine Zeitmessungen."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log",
+    "fits-header.txt"
+  ]
+}

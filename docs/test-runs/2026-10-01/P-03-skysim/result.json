@@ -1,0 +1,40 @@
+{
+  "protocol": "P-03",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.1",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "no_go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": false,
+      "note": "Kamera „Camera Sky Simulator for ALPACA“ liefert jede Belichtung nach ~1,5 s, unabhängig von der Belichtungszeit (30 s angefordert). Belichtung 2 war nach 10 s längst fertig → kein Abbruch, kein probe_abort."
+    },
+    {
+      "n": 2,
+      "ok": false,
+      "note": "nicht prüfbar"
+    },
+    {
+      "n": 3,
+      "ok": false,
+      "note": "nicht prüfbar"
+    }
+  ],
+  "logCheck": {
+    "status": "fail",
+    "missing": [
+      "CAPTURE result=aborted"
+    ],
+    "unexpected": []
+  },
+  "deviations": [
+    "Testaufbau: Sky-Simulator-Kamera ignoriert die Belichtungszeit; P-03, P-01 und P-13 brauchen eine Kamera, die die Belichtungszeit einhält (z. B. Alpaca Camera Sim / OmniSim). Wiederholung offen."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "protocol": "P-01",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.1",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Globale Trigger Meridian Flip, AF nach Zeit (30 min), AF nach Filterwechsel, Center after Drift (in NINA deaktiviert); Kamera Alpaca Camera Sim (OmniSim), übrige Geräte Sky Simulator. Filter LUMINANCE×5, RED×5 im Wechsel (3 Filterwechsel statt 19, damit AF nicht 19-mal läuft)."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "20/20 CAPTURE result=saved; 30 TRIGGER-Zeilen zwischen den Belichtungen, Kontext = Probe-Container (CenterAfterDriftTrigger nach Belichtung, AutofocusAfterFilterChange vor dem Wechsel, MeridianFlipTrigger vor Belichtung 12)."
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "note": "NINA-Log: „Current target coordinates RA 16:38:30 Dec 20°“ = Probe-Ziel, „Mount side of pier is currently pierWest, and target is pierEast“; kein „No target information available for flip“. FLIP pierBefore=west pierAfter=east durationS=87.8 (inkl. 30 s Settle und Guider-Wiederaufnahme; ARM-VM, kein Messwert)."
+    },
+    {
+      "n": 4,
+      "ok": true,
+      "note": "AutofocusAfterFilterChange genau 3× (vor Belichtung 6 RED, 11 LUMINANCE, 16 RED). AF nach Zeit (30 min) im 23-min-Block erwartungsgemäß nicht ausgelöst. AF selbst scheitert mit der OmniSim-Kamera (keine Sterne) – NINA protokolliert „Failed: Trigger“, Run wirft aber keine Ausnahme (siehe Abweichungen)."
+    },
+    {
+      "n": 5,
+      "ok": true,
+      "note": "sequence.png: Probe-Container mit den Lauf-Werten, globale Trigger (AF nach Filterwechsel mit Fehlerkreuz, Center after Drift deaktiviert), Elapsed 22,43 min."
+    }
+  ],
+  "logCheck": {
+    "status": "pass",
+    "missing": [],
+    "unexpected": []
+  },
+  "deviations": [
+    "Filterfolge LUMINANCE×5/RED×5 statt LUMINANCE,RED (weniger AF-Läufe mit der sternlosen Simulatorkamera).",
+    "Center after Drift war in NINA deaktiviert (sequence.png). Die Probe (0.1.1) hat deaktivierte Trigger nicht übersprungen: ShouldTrigger wurde ausgewertet (Drift 9595′, OmniSim-Bild zeigt immer M42) und Run aufgerufen, Run kehrte sofort zurück. probe-0.1.2 überspringt Trigger mit Status DISABLED.",
+    "Befund für AP-16: ISequenceTrigger.Run wirft bei fehlgeschlagener Anweisung keine Ausnahme (NINA loggt „Failed: Trigger … failed to exectue“ und setzt ContinueOnError fort). Der Container muss den Status des Triggers nach Run prüfen, um trigger_failed zu melden; die Probe meldete deshalb keine WARNING.",
+    "PHD2 lief mit (StarLost-Warnungen im NINA-Log, hier herausgefiltert); der Flip nahm das Guiding wieder auf.",
+    "Testrechner Windows 11 ARM64 (VMware) – Flip-Dauer kein Messwert."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log",
+    "sequence.png"
+  ]
+}

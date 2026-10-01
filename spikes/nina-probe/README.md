@@ -17,7 +17,7 @@ Was geprüft wird (execution.md §2, §4.3, §4.5, §4.6, §5):
    - **In der VM bauen:** `git pull` im geklonten Repository, dann `dotnet build -c Debug spikes\nina-probe`. Die Debug-Ausgabe landet direkt im Plugin-Ordner.
 2. `NinaPm.Probe.dll` nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\NINA-PM Probe\` kopieren (Ordner anlegen), NINA neu starten.
 3. NINA **ganz** beenden (`Get-Process NINA` darf nichts mehr liefern) und neu starten: Plugins lädt NINA nur beim Start.
-4. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.0** stehen. Fehlt es, steht der Grund nur auf Log-Stufe *Trace* im NINA-Log (`Select-String -Pattern "Probe"`).
+4. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.2** stehen. Fehlt es, steht der Grund nur auf Log-Stufe *Trace* im NINA-Log (`Select-String -Pattern "Probe"`).
 
 **Vor jedem Protokoll** die Begleitdatei `%LOCALAPPDATA%\NINA\NinaPmProbe\nina-pm.log` löschen oder umbenennen. Das Plugin schreibt jede `NINA-PM |`-Zeile zusätzlich dorthin; die Datei ist später dein `nina.log`.
 
@@ -34,7 +34,7 @@ Meridian-Flip in NINA 3: Einen globalen Schalter gibt es nicht. Aktiv ist der Fl
 
 | Parameter | P-01 | P-02 | P-03 | P-13 Lauf A | P-13 Lauf B |
 |---|---|---|---|---|---|
-| Belichtungen × s | 20 × 60 | 20 × 5 | 5 × 30 | 6 × 120 | 4 × 60 |
+| Belichtungen × s | 20 × 60 | 20 × 5 | 5 × 30 | 6 × 120 | 10 × 60 |
 | Filter | `L,R` (exakt wie im Profil) | `L` | `L` | `L` | `L` |
 | Meridian in min | 10 | 120 | 120 | 5 | 5 |
 | Dec ° / PA ° | 20 / 30 | 20 / 30 | 20 / 30 | 20 / 30 | 20 / 30 |
@@ -43,6 +43,8 @@ Meridian-Flip in NINA 3: Einen globalen Schalter gibt es nicht. Aktiv ist der Fl
 | AF unterdrücken | aus | aus | aus | **an** | aus |
 | Pier-Seite ignorieren | aus | aus | aus | aus | **an** |
 | Globale Trigger | Meridian Flip, AF nach Zeit (30 min), AF nach Filterwechsel, Center after Drift | keine | keine | Meridian Flip, AF nach Zeit (**1 min**), zusätzlich *Dither after Exposures* | Meridian Flip |
+
+Der Block muss über den Flip hinaus laufen: NINA flippt erst *Minutes after meridian* (1 min) nach dem Meridian, und das Ziel liegt in J2000, der Meridian gilt für die scheinbare RA (NT-35, 2026 gut 1 min später). P-13 Lauf B hatte deshalb mit 4 × 60 s zu kurz gedauert (Lauf 01.10.2026) und hat jetzt 10 × 60 s.
 
 Den Namen des Auslesemodus zeigt NINA unter *Ausrüstung → Kamera*. Ist der Name falsch, erscheint `READOUT_MODE_NOT_FOUND` und die Belichtungen werden übersprungen, wie im Produktiv-Plugin vorgesehen.
 
@@ -69,7 +71,7 @@ pnpm test-run:check --init P-13 docs/test-runs/2026-09-29/P-13
 Das legt `result.json` mit den Schritten des Protokolls an. Dann:
 1. `nina-pm.log` als `nina.log` in den Ordner kopieren, dazu Screenshots (`*.png`): P-01 Sequenzansicht, P-02 FITS-Header mit Zielname und Positionswinkel.
 2. In `result.json` eintragen:
-   - `pluginVersion` `probe-0.1.0`;
+   - `pluginVersion` `probe-0.1.2`;
    - `ninaVersion`, z. B. `3.2.0.9001` aus *Hilfe → Über*;
    - je Schritt `ok` und `note`;
    - `result` `go`/`no_go`, Abweichungen und Artefakte.
