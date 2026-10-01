@@ -22,7 +22,8 @@ public static class Texts
     public static string TokenMissing => T("Noch kein Token gespeichert", "No token stored yet");
     public static string SaveAndConnect => T("Speichern & Verbindung testen", "Save & test connection");
     public static string TestConnection => T("Verbindung testen", "Test connection");
-    public static string TestMode => T("Testbetrieb (nur mit lokalem Test-Server)", "Test mode (local test server only)");
+    public static string TestMode => T("Testbetrieb", "Test mode");
+    public static string TestModeHint => T("nur mit lokalem Test-Server", "local test server only");
     public static string Status => T("Status", "Status");
     public static string Tenant => T("Mandant", "Tenant");
     public static string Instance => T("NINA-Instanz", "NINA instance");

@@ -27,13 +27,28 @@
                 <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.ServerUrl}" />
                 <TextBox Grid.Row="0" Grid.Column="1" Margin="0,2" Text="{Binding ServerUrl, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.Token}" />
-                <PasswordBox Grid.Row="1" Grid.Column="1" Margin="0,2" options:PasswordBoxBinding.Password="{Binding TokenInput, Mode=TwoWay}" />
+                <PasswordBox
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Margin="0,2"
+                    options:PasswordBoxBinding.Attach="True"
+                    options:PasswordBoxBinding.Password="{Binding TokenInput, Mode=TwoWay}" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,4" Opacity="0.7" Text="{Binding TokenState}" />
-                <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,2" Content="{x:Static ui:Texts.TestMode}" IsChecked="{Binding TestMode}" />
+                <!--  NINAs Stil zeigt eine CheckBox als Schalter ohne Content: Beschriftung daher als eigene Zeile.  -->
+                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.TestMode}" />
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
+                    <CheckBox VerticalAlignment="Center" IsChecked="{Binding TestMode}" />
+                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.TestModeHint}" />
+                </StackPanel>
             </Grid>
             <StackPanel Margin="0,5" Orientation="Horizontal">
-                <Button Padding="10,4" Command="{Binding SaveAndTestCommand}" Content="{x:Static ui:Texts.SaveAndConnect}" />
-                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding TestCommand}" Content="{x:Static ui:Texts.TestConnection}" />
+                <!--  Schriftfarbe aus NINAs Thema (ButtonForegroundBrush); ohne sie schwarz auf dunklem Grund.  -->
+                <Button Padding="10,4" Command="{Binding SaveAndTestCommand}">
+                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SaveAndConnect}" />
+                </Button>
+                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding TestCommand}">
+                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.TestConnection}" />
+                </Button>
             </StackPanel>
             <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
