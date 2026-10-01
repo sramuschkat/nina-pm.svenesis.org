@@ -105,7 +105,7 @@ SecureStrings verwenden den AWS-verwalteten Schlüssel **`alias/aws/ssm`** (SV-1
 | Routen `POST /api/auth/invitation/claim`, `POST /api/auth/invitations/preview` | je 5 rps / Burst 10 | Einladungen (anonym erreichbar) |
 | übrige Auth-Routen (`/auth/me`, `/auth/context`, `/auth/logout`, `/auth/sessions`) | Stage-Drosselung | laufen über `ANY /api/{proxy+}`; eine eigene Auth-Drossel würde normale Seitenaufrufe bremsen |
 | Route `GET /api/health` | 5 rps / Burst 10 | **einzige** Health-Route: öffentlich, **ohne** DB-Ping (SV-07), Ziel des Route-53-Health-Checks über CloudFront (braucht ≈ 0,05 rps); überall derselbe Wert (SV-19) |
-| Reservierte Parallelität `api` | **20** | begrenzt Kosten und DSQL-Verbindungen (Pool 2 je Container ⇒ höchstens 40) |
+| Reservierte Parallelität `api` | **50** (bis 30.09.2026: 20) | begrenzt Kosten und DSQL-Verbindungen (Pool 2 je Container ⇒ höchstens 100); 20 reichten nicht – ein Seitenaufruf mit Kaltstarts belegte bis zu 20 Instanzen (Alarm `nina-pm-api-5xx-rate` 30.09.2026). Konto-Kontingent 400, davon nach Reservierung 345 frei (≥ 100, geprüft 01.10.2026) |
 | Reservierte Parallelität `worker` | **5** | Jobs sind idempotent und dürfen nachlaufen |
 | Zugriffsprotokoll HTTP API | JSON mit `requestId`, `routeKey`, `status`, `integrationLatency`, `ip` (auf /24 bzw. /48 gekürzt) | Nachvollziehbarkeit von Lastspitzen und Direktaufrufen |
 
@@ -181,6 +181,6 @@ Content-Security-Policy: default-src 'none'; sandbox; frame-ancestors 'none'; ba
 5. Beide Projekt-Buckets haben `BlockPublicAcls`, `BlockPublicPolicy`, `IgnorePublicAcls`, `RestrictPublicBuckets` auf `true` und Versionierung eingeschaltet; der Web-Bucket ist nur über CloudFront mit OAC lesbar.
 6. Jedes der vier CloudFront-Behaviors hat eine Response-Headers-Policy; `npm-html` enthält `style-src` mit `'unsafe-inline'` und `script-src` **ohne** `'unsafe-inline'`; `npm-api-static` enthält eine CSP mit `default-src 'none'`.
 7. Website-Schutz: die Route-53-Konstrukte legen ausschließlich Einträge mit dem Präfix `nina-pm` an; das Template referenziert die Website-Distribution `E2L6Q80SD8XPT0` nicht.
-8. Drosselung von Stage und Routen nach §9 gesetzt; `api` und `worker` haben `reservedConcurrentExecutions` 20 bzw. 5.
+8. Drosselung von Stage und Routen nach §9 gesetzt; `api` und `worker` haben `reservedConcurrentExecutions` 50 bzw. 5.
 9. Keine Lambda setzt die Umgebungsvariable `AUTH_TEST_MODE`.
 10. Der DSQL-Cluster hat Löschschutz und `DeletionPolicy: Retain`; der Daten-Bucket hat `DeletionPolicy: Retain`.

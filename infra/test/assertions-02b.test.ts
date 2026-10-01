@@ -235,12 +235,12 @@ describe('Assertion 8 und Routen: Drosselung nach iam.md §9', () => {
     expect(routeKeys.some((k) => k.includes('/api/auth/{proxy+}'))).toBe(false);
   });
 
-  it('reservierte Parallelität api 20, worker 5, ops-cli keine', () => {
+  it('reservierte Parallelität api 50, worker 5, ops-cli keine', () => {
     const fn = (name: string) =>
       all
         .flatMap((tpl) => resources(tpl, 'AWS::Lambda::Function'))
         .find(([, f]) => f.Properties.FunctionName === name)?.[1];
-    expect(fn(config.lambdas.api.functionName)?.Properties.ReservedConcurrentExecutions).toBe(20);
+    expect(fn(config.lambdas.api.functionName)?.Properties.ReservedConcurrentExecutions).toBe(50);
     expect(fn(config.lambdas.worker.functionName)?.Properties.ReservedConcurrentExecutions).toBe(5);
     expect(
       fn(config.lambdas.opsCli.functionName)?.Properties.ReservedConcurrentExecutions,
