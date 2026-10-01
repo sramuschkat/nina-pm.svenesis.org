@@ -84,6 +84,8 @@ export const ForecastProject = z
   .object({
     projectId: Uuid,
     name: z.string(),
+    /** Ersteller (`app_user.id`) – neben dem Projektnamen angezeigt (01.10.2026). */
+    createdBy: Uuid,
     priority: z.number().int(),
     status: z.string().nullable(),
     need: z.array(ForecastFilterNeed),
@@ -114,6 +116,8 @@ export const ForecastResume = z
   .object({
     projectId: Uuid,
     name: z.string(),
+    /** Ersteller (`app_user.id`), 01.10.2026. */
+    createdBy: Uuid,
     status: z.string(),
     needFrames: z.number().int().min(0),
     target: z.object({ raDeg: z.number(), decDeg: z.number() }).nullable(),

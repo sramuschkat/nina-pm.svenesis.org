@@ -40,7 +40,7 @@ import { nightKeyIn } from '../projects/queue-model';
 import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
 import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
-import { MemberAvatarFor } from '../../lib/member';
+import { MemberAvatarFor, Person } from '../../lib/member';
 
 /** Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste und Sessions: ein Cache, keine Doppelabrufe. */
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -506,6 +506,13 @@ function ProjectsCard() {
           {p.name}
         </Link>
       ),
+    },
+    {
+      // Ersteller mit Bild (Wunsch Sven 01.10.2026).
+      id: 'creator',
+      header: t('projectList.col.creator'),
+      priority: 3,
+      cell: (p) => <Person id={p.createdBy} name={p.createdByName} />,
     },
     {
       id: 'progress',

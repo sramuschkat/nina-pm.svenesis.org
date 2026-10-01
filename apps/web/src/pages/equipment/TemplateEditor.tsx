@@ -10,6 +10,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ExposureTemplateView } from '../../api/client';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { chipBackground, chipTextColor } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons } from '../../components/icons';
 import styles from './equipment.module.css';
 import {
@@ -180,23 +181,34 @@ export function TemplateEditor({ canWrite }: { canWrite: boolean }) {
     {
       id: 'filter',
       header: t('equipment.templates.col.filter'),
-      cell: ({ l, i }) => (
-        <select
-          className={styles.input}
-          aria-label={`${t('equipment.templates.col.filter')} ${String(i + 1)}`}
-          value={l.filterId}
-          disabled={disabled}
-          aria-invalid={invalid(i, 'filterId')}
-          onChange={(e) => setLine(i, { filterId: e.target.value })}
-        >
-          <option value="">–</option>
-          {(filters.data ?? []).map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.shortName}
-            </option>
-          ))}
-        </select>
-      ),
+      cell: ({ l, i }) => {
+        // In der Filterfarbe wie der Filter-Chip (Wunsch Sven 01.10.2026; Kontrast ≥ 4,5:1).
+        const color = (filters.data ?? []).find((f) => f.id === l.filterId)?.colorHex;
+        return (
+          <select
+            className={`${styles.input} ${color ? styles.filterSelect : ''}`}
+            aria-label={`${t('equipment.templates.col.filter')} ${String(i + 1)}`}
+            value={l.filterId}
+            disabled={disabled}
+            aria-invalid={invalid(i, 'filterId')}
+            onChange={(e) => setLine(i, { filterId: e.target.value })}
+            style={
+              color ? { background: chipBackground(color), color: chipTextColor(color) } : undefined
+            }
+          >
+            <option value="">–</option>
+            {(filters.data ?? []).map((f) => (
+              <option
+                key={f.id}
+                value={f.id}
+                style={{ background: chipBackground(f.colorHex), color: chipTextColor(f.colorHex) }}
+              >
+                {f.shortName}
+              </option>
+            ))}
+          </select>
+        );
+      },
     },
     numberColumn('exposure', 'exposureS', t('equipment.templates.col.exposure')),
     numberColumn('count', 'plannedCount', t('equipment.templates.col.count')),

@@ -73,6 +73,8 @@ export const ReportProject = z
   .object({
     projectId: Uuid,
     name: z.string(),
+    /** Ersteller (`app_user.id`) – neben dem Projektnamen angezeigt (01.10.2026). */
+    createdBy: Uuid,
     projectType: z.enum(['deep_sky', 'exoplanet']),
     targetName: z.string().nullable(),
     rigId: Uuid.nullable(),

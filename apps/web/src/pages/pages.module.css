@@ -30,12 +30,6 @@
   flex-direction: column;
   gap: var(--npm-space-2);
 }
-.draft {
-  background: var(--npm-warning-bg);
-  border-left: 4px solid var(--npm-warning);
-  padding: var(--npm-space-2) var(--npm-space-4);
-  border-radius: 0 var(--npm-radius) var(--npm-radius) 0;
-}
 .contentBox,
 .panel {
   background: var(--npm-white);

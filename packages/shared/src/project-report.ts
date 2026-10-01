@@ -149,6 +149,7 @@ export function projectReport(input: {
     return {
       projectId: p.id,
       name: p.name,
+      createdBy: p.createdBy,
       projectType: p.projectType,
       targetName: p.targetName,
       rigId: p.rigId,

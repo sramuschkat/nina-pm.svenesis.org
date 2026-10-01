@@ -22,6 +22,20 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
+  // Mitgliederverzeichnis: Ersteller neben dem Projektnamen (01.10.2026).
+  memberApi: {
+    directory: () =>
+      Promise.resolve({
+        items: [
+          {
+            id: '00000000-0000-4000-8000-000000000003',
+            displayName: 'Uta',
+            avatarUrl: null,
+            status: 'active',
+          },
+        ],
+      }),
+  },
   equipmentApi: {
     list: (kind: string) =>
       Promise.resolve({
@@ -70,6 +84,7 @@ const report = (): ProjectReport => ({
     {
       projectId: ID(10),
       name: 'NGC 7000',
+      createdBy: ID(3),
       projectType: 'deep_sky',
       targetName: 'NGC 7000',
       rigId: ID(1),
@@ -213,7 +228,9 @@ describe('S-63 Projektbericht', () => {
     });
     const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
     wrap();
-    await screen.findByRole('table', { name: 'Übersicht' });
+    const overview = await screen.findByRole('table', { name: 'Übersicht' });
+    // Ersteller aus dem Mitgliederverzeichnis (Tabelle und CSV, 01.10.2026).
+    await within(overview).findByText('Uta');
     fireEvent.click(screen.getByRole('button', { name: 'CSV exportieren' }));
     expect(names).toEqual(['projektbericht-2026-09-01-2026-09-26.csv']);
     // Snapshot der CSV (Summen je Filter, Verlauf je Nacht; BOM und CRLF für Excel).
@@ -221,11 +238,11 @@ describe('S-63 Projektbericht', () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(new TextDecoder().decode(bytes).split('\r\n')).toMatchInlineSnapshot(`
       [
-        "section;project;rig;status;filter;night;planned;accepted;remaining;acquired;rejected;integrationH;cumulativeH",
-        "total;NGC 7000;Rig A;active;OIII;;40;36;4;;;3;",
-        "total;NGC 7000;Rig A;active;L;;40;8;32;;;0.67;",
-        "night;NGC 7000;Rig A;active;OIII;2026-09-12;;16;;18;2;1.33;3",
-        "night;NGC 7000;Rig A;active;L;2026-09-12;;8;;8;0;0.67;0.67",
+        "section;project;projectCreator;rig;status;filter;night;planned;accepted;remaining;acquired;rejected;integrationH;cumulativeH",
+        "total;NGC 7000;Uta;Rig A;active;OIII;;40;36;4;;;3;",
+        "total;NGC 7000;Uta;Rig A;active;L;;40;8;32;;;0.67;",
+        "night;NGC 7000;Uta;Rig A;active;OIII;2026-09-12;;16;;18;2;1.33;3",
+        "night;NGC 7000;Uta;Rig A;active;L;2026-09-12;;8;;8;0;0.67;0.67",
         "",
       ]
     `);

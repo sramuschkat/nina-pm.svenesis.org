@@ -26,6 +26,20 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
+  // Mitgliederverzeichnis: Ersteller neben dem Projektnamen (01.10.2026).
+  memberApi: {
+    directory: () =>
+      Promise.resolve({
+        items: [
+          {
+            id: '00000000-0000-4000-8000-000000000003',
+            displayName: 'Uta',
+            avatarUrl: null,
+            status: 'active',
+          },
+        ],
+      }),
+  },
   equipmentApi: {
     list: (kind: string) =>
       Promise.resolve({
@@ -122,6 +136,7 @@ const view = (): ForecastView => ({
     {
       projectId: ID(10),
       name: 'NGC 281',
+      createdBy: ID(3),
       priority: 2,
       status: 'active',
       need: [{ filter: 'Ha', frames: 17, hours: 1.56 }],

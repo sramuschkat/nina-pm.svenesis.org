@@ -50,6 +50,12 @@ export function Person({
   );
 }
 
+/** Name zu einer Mitglieds-ID für reinen Text (Auswahllisten, CSV); `''` ohne Eintrag. */
+export function useMemberNames(): (id: string | null | undefined) => string {
+  const directory = useMemberDirectory();
+  return (id) => (id ? (directory.get(id)?.displayName ?? '') : '');
+}
+
 /** Nur das Bild eines Mitglieds (z. B. vor einem Satz „eingereicht von … am …“). */
 export function MemberAvatarFor({
   id,

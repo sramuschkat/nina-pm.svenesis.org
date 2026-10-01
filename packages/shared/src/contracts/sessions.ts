@@ -93,6 +93,8 @@ export const NightSessionCapture = z
     frameType: z.enum(['light', 'flat', 'dark_flat']),
     projectId: Uuid.nullable(),
     projectName: z.string().nullable(),
+    /** Ersteller des Projekts (`app_user.id`) – neben dem Projektnamen angezeigt (01.10.2026). */
+    projectCreatedBy: Uuid.nullable(),
     exposureLineId: Uuid.nullable(),
     assignment: z.enum(captureAssignments),
     filterShortName: z.string(),

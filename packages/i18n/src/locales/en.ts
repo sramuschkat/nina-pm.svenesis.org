@@ -161,7 +161,6 @@ export const en: Messages = {
   legal: {
     privacyTitle: 'NINA-PM privacy',
     sourcesTitle: 'Sources & licences',
-    draftNote: 'Draft – legal review before go-live (FA-WEB-04).',
   },
   confirm: {
     working: 'Working …',
@@ -306,6 +305,7 @@ export const en: Messages = {
     unallocated: 'Not allocated',
     noReason: 'no diagnostic reason',
     card: {
+      open: 'Open “{{name}}”',
       creator: 'Created by',
       pick: 'Select target – highlight its blocks in the night plan',
       window: 'Time window',
@@ -1953,6 +1953,7 @@ export const en: Messages = {
     onlyUnreviewed: 'Unreviewed only',
     empty: 'No sessions yet.',
     col: {
+      creator: 'Created by',
       night: 'Night',
       rig: 'Rig',
       status: 'Status',

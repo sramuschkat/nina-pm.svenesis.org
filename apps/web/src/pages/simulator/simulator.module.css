@@ -140,6 +140,20 @@
 }
 .card[data-selected='true'] {
   border-color: var(--card-color, var(--npm-accent));
+  /* Gewählt deutlich sichtbar (01.10.2026): Ring in Zielfarbe statt nur Randfarbe. */
+  box-shadow: 0 0 0 2px var(--card-color, var(--npm-accent));
+}
+.card[data-selected='true'] .cardPick {
+  text-decoration: underline;
+}
+.cardOpen {
+  display: inline-flex;
+  align-items: center;
+  color: var(--npm-link);
+}
+.cardOpen:focus-visible {
+  outline: var(--npm-focus-ring);
+  outline-offset: 2px;
 }
 .card h3 {
   margin: 0 0 var(--npm-space-1);

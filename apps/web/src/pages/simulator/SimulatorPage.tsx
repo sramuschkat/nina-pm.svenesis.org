@@ -15,7 +15,7 @@ import { formatTzAbbr, formatZonedTime, formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import {
   equipmentApi,
   projectsApi,
@@ -471,7 +471,15 @@ export function SimulatorPage() {
                     key={c.projectId}
                     card={c}
                     selected={picked === c.projectId}
-                    onSelect={() => setPicked(picked === c.projectId ? null : c.projectId)}
+                    onSelect={() => {
+                      const next = picked === c.projectId ? null : c.projectId;
+                      setPicked(next);
+                      // Wirkung sichtbar machen: der Nachtplan liegt unter den Karten (01.10.2026).
+                      if (next)
+                        document
+                          .getElementById(`${ids.settings}-plan`)
+                          ?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+                    }}
                     tz={tz}
                     hasRotator={rig?.hasRotator ?? false}
                     canToggle={canToggle}
@@ -706,6 +714,14 @@ function TargetCardView({
           <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
           {card.name}
         </button>
+        <Link
+          className={styles.cardOpen}
+          to={`/projekte/${card.projectId}`}
+          aria-label={t('simulator.card.open', { name: card.name })}
+          title={t('simulator.card.open', { name: card.name })}
+        >
+          <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+        </Link>
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
       </h3>
       <dl className={styles.facts}>

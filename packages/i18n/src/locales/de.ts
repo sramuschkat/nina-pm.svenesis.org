@@ -161,7 +161,6 @@ export const de = {
   legal: {
     privacyTitle: 'Datenschutz NINA-PM',
     sourcesTitle: 'Quellen & Lizenzen',
-    draftNote: 'Entwurf – rechtliche Durchsicht vor dem Go-live (FA-WEB-04).',
   },
   confirm: {
     working: 'Wird ausgeführt …',
@@ -306,6 +305,7 @@ export const de = {
     unallocated: 'Nicht zugeteilt',
     noReason: 'ohne Diagnosegrund',
     card: {
+      open: '„{{name}}“ öffnen',
       creator: 'Ersteller',
       pick: 'Ziel wählen – seine Blöcke im Nachtplan hervorheben',
       window: 'Zeitfenster',
@@ -1960,6 +1960,7 @@ export const de = {
     onlyUnreviewed: 'Nur ungeprüfte',
     empty: 'Noch keine Sessions.',
     col: {
+      creator: 'Ersteller',
       night: 'Nacht',
       rig: 'Rig',
       status: 'Status',

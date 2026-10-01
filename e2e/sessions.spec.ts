@@ -131,9 +131,9 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await admin.getByRole('button', { name: 'Korrektur speichern' }).click();
   await expect(admin.getByText('Korrektur gespeichert.')).toBeVisible();
   const row = admin.getByRole('table', { name: 'Soll/Ist' }).getByRole('row').nth(1);
-  // Spalten: Projekt, Filter, Soll, Ist, Verworfen, Akzeptiert, …
-  await expect(row.getByRole('cell').nth(4)).toHaveText('1');
-  await expect(row.getByRole('cell').nth(5)).toHaveText('3');
+  // Spalten: Projekt, Ersteller (seit 01.10.2026), Filter, Soll, Ist, Verworfen, Akzeptiert, …
+  await expect(row.getByRole('cell').nth(5)).toHaveText('1');
+  await expect(row.getByRole('cell').nth(6)).toHaveText('3');
 });
 
 test('AF-08: Projekt abschließen – verschwindet aus „An NINA ausgeliefert“, bleibt in der Projektliste', async ({

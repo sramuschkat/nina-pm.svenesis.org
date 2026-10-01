@@ -573,3 +573,9 @@ fieldset.inline {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Filter-Auswahl der Vorlagenzeile in der Filterfarbe (Farben inline aus chipBackground/chipTextColor). */
+.filterSelect {
+  font-weight: 600;
+  border-color: transparent;
+}

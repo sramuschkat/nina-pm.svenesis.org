@@ -16830,6 +16830,11 @@ export interface components {
              */
             projectId: string;
             name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
             priority: number;
             status: string | null;
             need: components["schemas"]["ForecastFilterNeed"][];
@@ -16901,6 +16906,11 @@ export interface components {
              */
             projectId: string;
             name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
             status: string;
             needFrames: number;
             target: {
@@ -16944,6 +16954,11 @@ export interface components {
              */
             projectId: string;
             name: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            createdBy: string;
             /** @enum {string} */
             projectType: "deep_sky" | "exoplanet";
             targetName: string | null;
@@ -17553,6 +17568,11 @@ export interface components {
              */
             projectId: string | null;
             projectName: string | null;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectCreatedBy: string | null;
             /**
              * Format: uuid
              * @description UUID

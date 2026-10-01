@@ -372,6 +372,8 @@ describe('Startseite (Mandant)', () => {
     ).toBeInTheDocument();
     expect(within(projects).getByRole('columnheader', { name: 'Rig B' })).toBeInTheDocument();
     expect(within(projects).getAllByRole('table')).toHaveLength(1);
+    // Ersteller mit Bild neben dem Projekt (01.10.2026).
+    expect(within(projects).getByRole('columnheader', { name: 'Ersteller' })).toBeInTheDocument();
     expect(within(projects).getByRole('link', { name: 'Projekt 1' })).toHaveAttribute(
       'href',
       `/projekte/${ID(201)}`,

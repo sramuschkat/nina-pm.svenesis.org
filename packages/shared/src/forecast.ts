@@ -221,6 +221,7 @@ export function forecastView(input: ForecastInput): View {
     return {
       projectId: p.id,
       name: p.name,
+      createdBy: p.createdBy,
       priority: p.priority,
       status: p.status,
       need,
@@ -247,6 +248,7 @@ export function forecastView(input: ForecastInput): View {
     .map((p) => ({
       projectId: p.id,
       name: p.name,
+      createdBy: p.createdBy,
       status: p.status ?? '',
       needFrames: needLines(p).reduce((s, l) => s + l.need, 0),
       target: p.raDeg !== null && p.decDeg !== null ? { raDeg: p.raDeg, decDeg: p.decDeg } : null,

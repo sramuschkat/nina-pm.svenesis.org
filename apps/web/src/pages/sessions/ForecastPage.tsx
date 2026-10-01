@@ -28,6 +28,7 @@ import { formatDateTime } from '../../lib/time';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { useQueueVisibility, VisibilityBars } from '../projects/VisibilityWeeks';
+import { Person } from '../../lib/member';
 import { TonightLines } from '../tonight/TonightLines';
 import styles from './sessions.module.css';
 import { EvaluationTabs } from './SessionsPage';
@@ -161,6 +162,13 @@ function ForecastBody({
       cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
     },
     {
+      // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
+      id: 'creator',
+      header: t('sessions.col.creator'),
+      priority: 3,
+      cell: (p) => <Person id={p.createdBy} />,
+    },
+    {
       id: 'need',
       header: t('forecast.col.need'),
       sortValue: (p) => p.needHours,
@@ -253,7 +261,12 @@ function CandidateMatrix({ view }: { view: ForecastView }) {
           <tbody>
             {view.projects.map((p) => (
               <tr key={p.projectId}>
-                <th scope="row">{p.name}</th>
+                <th scope="row">
+                  <span className={styles.projectWithCreator}>
+                    {p.name}
+                    <Person id={p.createdBy} />
+                  </span>
+                </th>
                 {nights.map((x) => {
                   const c = p.candidates.find((k) => k.night === x.night);
                   if (!c) return <td key={x.night}>–</td>;
@@ -346,7 +359,10 @@ function TonightSection({ view, onChanged }: { view: ForecastView; onChanged: ()
       <ul className={styles.plainList}>
         {projects.map((p) => (
           <li key={p.projectId} className={styles.suggestion}>
-            <strong>{p.name}</strong>
+            <span className={styles.projectWithCreator}>
+              <strong>{p.name}</strong>
+              <Person id={p.createdBy} />
+            </span>
             <TonightLines
               projectId={p.projectId}
               lines={p.lines}
@@ -389,7 +405,10 @@ function Suggestions({
       <ul className={styles.plainList}>
         {projects.map((p) => (
           <li key={p.projectId} className={styles.suggestion}>
-            <strong>{p.name}</strong>{' '}
+            <span className={styles.projectWithCreator}>
+              <strong>{p.name}</strong>
+              <Person id={p.createdBy} />
+            </span>{' '}
             <span className={styles.muted}>
               {p.seasonWarning
                 ? t('forecast.seasonWarning', {
@@ -473,7 +492,10 @@ function Resume({
           const weeks = visibility.weeks[i] ?? null;
           return (
             <li key={r.projectId} className={styles.suggestion}>
-              <Link to={`/projekte/${r.projectId}`}>{r.name}</Link>{' '}
+              <span className={styles.projectWithCreator}>
+                <Link to={`/projekte/${r.projectId}`}>{r.name}</Link>
+                <Person id={r.createdBy} />
+              </span>{' '}
               <span className={styles.muted}>
                 {t('forecast.resumeLine', {
                   status: t(`status.project.${r.status}`),
