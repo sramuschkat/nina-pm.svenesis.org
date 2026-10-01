@@ -1,0 +1,42 @@
+{
+  "protocol": "P-02",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.0",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "no_go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "20 × 5 s LUMINANCE; je Belichtung eine UUID v7 vor der Belichtung, Image.Id 1–20 fortlaufend."
+    },
+    {
+      "n": 2,
+      "ok": false,
+      "note": "Bild 1–18: Aufnahme-ID und Dateiname je genau einmal und richtig zugeordnet, auch verschränkt (NINA speichert Bild n, während n+1 belichtet). Bild 19 und 20 wurden 0,3 s bzw. 2 s nach BLOCK_END gespeichert; der Probe-Container hatte den ImageSaved-Handler schon gelöst → keine CAPTURE-Zeile. Probe-Fehler, in probe-0.1.1 behoben (Handler bis alle offenen Aufnahmen gespeichert/abgelaufen)."
+    },
+    {
+      "n": 3,
+      "ok": false,
+      "note": "FITS-Header-Screenshot nicht abgelegt."
+    }
+  ],
+  "logCheck": {
+    "status": "fail",
+    "missing": [
+      "CAPTURE result=saved (mindestens 20×), gefunden 18×"
+    ],
+    "unexpected": []
+  },
+  "deviations": [
+    "Probe-Fehler: letzte Bilder nach Blockende ohne Zuordnung (behoben in probe-0.1.1, Wiederholung P-02).",
+    "Testrechner: Windows 11 ARM64 (VMware), NINA x64 emuliert – keine Zeitmessungen.",
+    "Zusätzlich geladene Plugins: Astro PM 1.6.3, Dither Statistics, Phd2 Tools, Sequencer+."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log"
+  ]
+}

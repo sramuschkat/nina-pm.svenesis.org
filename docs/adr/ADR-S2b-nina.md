@@ -43,7 +43,7 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | Punkt | Protokoll / Versuch | Ergebnis |
 |---|---|---|
 | Trigger-Walk mit Kontext = Container, Flip mit Zielkoordinaten, AF-Zählung | P-01 | offen |
-| Zuordnung `ImageSaved` bei schneller Folge, FITS-Header (Zielname, PA) | P-02 | offen |
+| Zuordnung `ImageSaved` bei schneller Folge, FITS-Header (Zielname, PA) | P-02 | **Lauf 1 (01.10.2026, probe-0.1.0): no-go wegen Probe-Fehler.** Zuordnung über `Image.Id` stimmt für Bild 1–18, auch verschränkt: NINA speichert Bild *n* im Hintergrund, während *n+1* schon belichtet. Bild 19 und 20 wurden 0,3 s bzw. 2 s **nach** `BLOCK_END` gespeichert; der Container hatte den `ImageSaved`-Handler im `finally` schon gelöst → keine `CAPTURE`-Zeile. probe-0.1.1 hält den Handler, bis alle offenen Aufnahmen gespeichert oder abgelaufen sind; Wiederholung offen. FITS-Screenshot offen. `docs/test-runs/2026-10-01/P-02-probe-0.1.0/` |
 | Abbruch über eigenen Token < 5 s | P-03, P-13 (2) | offen |
 | Typfilter AF/Dither, Auslesemodus per Name, Flip `west → east`, Pier-Seite unbekannt → nur `FLIP_UNDETECTED` | P-13 | offen |
 | Positionswinkel-Konvention im FITS-Header | P-02 Screenshot | offen |
@@ -62,7 +62,8 @@ Offen bis zu den Laufzeitergebnissen. Vorgesehen: Gehen P-01…P-03 und P-13 dur
 ## Folgen
 - `execution.md` §5: Beispielcode an NINA 3.2 anpassen (`ShouldTrigger` synchron, `Run` statt `Execute`); gleiche Stelle in `ops/plugin-test-protocol.md` P-13.
 - `ops/plugin-test-protocol.md`: Betriebszeile `TRIGGER` und Schlüssel `night` ergänzt (Spec-Ergänzung in diesem PR); P-13 (3) mit einem Auslesemodus, den die Kamera anbietet.
-- Messwerte für AP-16f (Flip-Dauer) gelten nur auf x64 (TK 10.5), die VM liefert nur die Funktion.
+- Messwerte für AP-16f (Flip-Dauer) gelten nur auf x64 (TK 10.5), die VM liefert nur die Funktion. Der Testrechner vom 01.10.2026 ist ebenfalls Windows 11 **ARM64** (VMware, NINA x64 emuliert): keine Zeitmessungen.
+- **Aus P-02 (Spec-Ergänzung `execution.md` §4.3, mit der Abnahme):** Die Zuordnung `Image.Id → captureId` und der `ImageSaved`-Handler leben **nicht** im Block. Gespeichert wird im Hintergrund, die letzten Bilder eines Blocks kommen nach dessen Ende. Der Handler bleibt angehängt, bis keine Aufnahme mehr offen ist (gespeichert oder nach 120 s `failed`); das Blockende wartet nicht darauf. In `NinaPm.Nina` (AP-16e) gehört die Zuordnung in den sitzungsweiten Dienst, nicht in den Container.
 
 ## Alternativen
 - `SequenceContainer.RunTriggers` wie im Original: abgelehnt. Es ist alles-oder-nichts, eine Typfilterung ist damit nicht möglich (NT-23, NIN-12).

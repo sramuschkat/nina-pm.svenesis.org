@@ -51,6 +51,13 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
 
     /// <summary><c>Image.Id → Aufnahme-ID</c> bis <c>ImageSaved</c> oder Zeitüberschreitung (§4.3).</summary>
     private readonly ConcurrentDictionary<int, string> pending = new();
+    /// <summary>
+    /// <c>ImageSaved</c>-Handler bleibt über das Blockende hinaus angehängt, bis alle offenen Aufnahmen gespeichert
+    /// oder abgelaufen sind: NINA speichert im Hintergrund, die letzten Bilder kommen erst nach <c>BLOCK_END</c>
+    /// (P-02 in der VM, 01.10.2026: Bild 19 und 20 0,3 s bzw. 2 s nach Blockende, vorher ohne <c>CAPTURE</c>-Zeile).
+    /// </summary>
+    private int handlerAttached;
+    private volatile bool blockRunning;
     private readonly HashSet<string> suppressedLogged = new(StringComparer.Ordinal);
     private short? readoutIndexLogged;
 
@@ -189,7 +196,8 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
             await telescope.SlewToCoordinatesAsync(Target.InputCoordinates.Coordinates, token);
 
         ProbeLog.Event("BLOCK_START", ("id", blockId), ("atUtc", ProbeLog.Iso(DateTime.UtcNow)));
-        imageSave.ImageSaved += OnImageSaved;
+        blockRunning = true;
+        if (Interlocked.Exchange(ref handlerAttached, 1) == 0) imageSave.ImageSaved += OnImageSaved;
         var filterList = Filters.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         ISequenceItem? previous = null;
         try
@@ -238,8 +246,16 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
         }
         finally
         {
-            imageSave.ImageSaved -= OnImageSaved;
+            blockRunning = false;
+            ReleaseHandlerIfDrained();
         }
+    }
+
+    /// <summary>Handler erst lösen, wenn der Block vorbei ist und keine Aufnahme mehr auf <c>ImageSaved</c> wartet.</summary>
+    private void ReleaseHandlerIfDrained()
+    {
+        if (!blockRunning && pending.IsEmpty && Interlocked.Exchange(ref handlerAttached, 0) == 1)
+            imageSave.ImageSaved -= OnImageSaved;
     }
 
     /// <summary>Belichtung mit eigenem Abbruch-Token (§2, §5): bricht nur diese Belichtung ab, nicht die Sequenz.</summary>
@@ -444,6 +460,7 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
         {
             ProbeLog.Event("CAPTURE", ("id", captureId), ("result", "failed"), ("atUtc", ProbeLog.Iso(DateTime.UtcNow)));
             ProbeLog.Event("WARNING", ("code", "image_not_saved"), ("id", captureId));
+            ReleaseHandlerIfDrained();
         }
     });
 
@@ -453,6 +470,7 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
         if (imageId is null || !pending.TryRemove(imageId.Value, out var captureId)) return;
         var file = e.PathToImage is null ? "" : Path.GetFileName(e.PathToImage.LocalPath);
         ProbeLog.Event("CAPTURE", ("id", captureId), ("result", "saved"), ("file", file), ("atUtc", ProbeLog.Iso(DateTime.UtcNow)));
+        ReleaseHandlerIfDrained();
     }
 
     public override string ToString() => $"NINA-PM Probe ({ExposureCount} × {ExposureSeconds} s)";
