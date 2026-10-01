@@ -2,6 +2,8 @@ using Newtonsoft.Json;
 using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Logging;
+using NinaPm.Core.Planning;
+using NinaPm.Core.Time;
 using Xunit;
 
 namespace NinaPm.Core.Tests;
@@ -53,6 +55,24 @@ public sealed class TestServerIntegrationTests
         Assert.False(r.Ok);
         Assert.Equal(401, r.Status);
         Assert.Equal("nina.token_invalid", r.Code);
+    }
+
+    [Fact]
+    public async Task PlanService_bestimmt_dieselbe_Nacht_wie_der_Server()
+    {
+        if (Url is null) return;
+        using var api = Api();
+        var sink = new ListSink();
+        var bootstrap = await api.Client.ApiNinaV1BootstrapAsync();
+        // Uhr des Plugins = Serverzeit (NT-05); der Server nimmt nur die aktuelle oder folgende Nacht an (NT-01).
+        var service = new PlanService(new NinaPlanApi(api.Client), new FixedClock(bootstrap.ServerTimeUtc), new NinaPmLog(sink));
+        var input = new PlanRequestInput(NinaPlanRequestReason.Initial, null, null, null, new TonightLog().ToContract(null, initial: true), []);
+
+        var r = await service.RequestAsync(bootstrap, input, CancellationToken.None);
+
+        Assert.True(r.Ok, string.Join("\n", sink.Lines));
+        Assert.Equal(NightCalendar.CurrentNight(NightCalendar.FromBootstrap(bootstrap), bootstrap.ServerTimeUtc), r.Plan!.Night);
+        Assert.Contains(sink.Lines, l => l.StartsWith("I NINA-PM | PLAN reason=initial plan=", StringComparison.Ordinal));
     }
 
     [Fact]

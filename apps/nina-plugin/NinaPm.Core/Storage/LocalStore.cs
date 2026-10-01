@@ -162,6 +162,31 @@ public sealed class LocalStore : IDisposable
             "ON CONFLICT (key) DO UPDATE SET value = excluded.value, etag = excluded.etag, updated_utc = excluded.updated_utc",
             null, ("$key", key), ("$value", value), ("$etag", etag), ("$now", UtcText.Format(clock.UtcNow)));
 
+    // ---- outbox ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Meldung in die Outbox (FIFO je Session, execution.md §8). <paramref name="kind"/> aus <see cref="OutboxKinds"/>,
+    /// <paramref name="payload"/> das JSON genau einer Meldung. Senden, Backoff und Dead-Letter folgen mit AP-16g.
+    /// </summary>
+    public long EnqueueOutbox(string kind, string payload, Guid? sessionId, Guid? nightPlanId)
+    {
+        var now = UtcText.Format(clock.UtcNow);
+        return (long)Scalar(
+            "INSERT INTO outbox (session_id, night_plan_id, kind, payload, created_utc, next_attempt_utc) " +
+            "VALUES ($session, $plan, $kind, $payload, $now, $now) RETURNING id",
+            ("$session", sessionId?.ToString()), ("$plan", nightPlanId?.ToString()), ("$kind", kind), ("$payload", payload), ("$now", now))!;
+    }
+
+    /// <summary>Noch nicht mit 2xx quittierte Meldungen einer Art in FIFO-Reihenfolge (Dead-Letter liegt getrennt).</summary>
+    public IReadOnlyList<string> OutboxPayloads(string kind)
+    {
+        using var cmd = Command("SELECT payload FROM outbox WHERE kind = $kind ORDER BY id", null, ("$kind", kind));
+        using var r = cmd.ExecuteReader();
+        var list = new List<string>();
+        while (r.Read()) list.Add(r.GetString(0));
+        return list;
+    }
+
     // ---- intern ---------------------------------------------------------------------------------------
 
     internal IReadOnlyList<string> TableNames()
@@ -200,6 +225,15 @@ public sealed class LocalStore : IDisposable
 /// <summary>Zwischengespeicherte Antwort (Bootstrap, Targets, letzter Plan) mit ETag und Zeitpunkt.</summary>
 public sealed record CacheEntry(string Value, string? Etag, DateTimeOffset UpdatedUtc);
 
+/// <summary>Arten der Outbox-Einträge (execution.md §8).</summary>
+public static class OutboxKinds
+{
+    public const string Session = "session";
+    public const string Capture = "capture";
+    public const string Event = "event";
+    public const string SessionPatch = "session_patch";
+}
+
 /// <summary>Schlüssel der Tabelle <c>state</c> (execution.md §8: Session, Plan, Blockindex, tonight).</summary>
 public static class StateKeys
 {
@@ -208,4 +242,7 @@ public static class StateKeys
     public const string BlockIndex = "blockIndex";
     public const string Night = "night";
     public const string Tonight = "tonight";
+    public const string TargetsEtag = "targetsEtag";
+    public const string SettingsVersion = "settingsVersion";
+    public const string PlanBlockedUntil = "planBlockedUntil";
 }
