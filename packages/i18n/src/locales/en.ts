@@ -3083,6 +3083,7 @@ export const en: Messages = {
       inFocusTitle: 'Without defocus (in focus, 3″)',
       pointLine: '{{exposure}} · ≈ {{n}} frames · {{mmag}} mmag · transit ≈ {{snr}} σ',
       bortleUnknown: 'unknown, assumed 4',
+      openCalculator: 'Open in calculator',
       explain: {
         model:
           'Guide value for the rig’s filter and default gain: peak pixel at most 50 % of saturation, at most 180 s, at least four frames in ingress; below 30 s the star is defocused. Assumptions: seeing 3″, sky {{sky}} mag/″² (Bortle {{bortle}}), airmass {{airmass}} at mid-transit, no moon, optics 70 % throughput, theoretical zero point.',
@@ -3207,6 +3208,105 @@ export const en: Messages = {
       none: 'No own observations of this planet yet.',
     },
   },
+  calc: {
+    title: 'Calculator',
+    equipment: 'Equipment',
+    equipmentHint:
+      'Prefilled from rig, camera (default gain), telescope, site and filter. Changes apply only here in the calculator.',
+    reset: 'Reset from rig',
+    noRig: 'No rig yet – enter values by hand.',
+    rig: 'Rig',
+    filter: 'Filter',
+    filterNone: 'no filter defined',
+    band: 'Model band',
+    bandName: { lum: 'Luminance', V: 'V', Rc: 'Rc', Ic: 'Ic' },
+    group: {
+      optics: 'Optics',
+      camera: 'Camera',
+      filter: 'Filter',
+      sky: 'Sky and site',
+    },
+    field: {
+      apertureMm: 'Aperture',
+      obstructionPct: 'Obstruction',
+      focalLengthMm: 'Focal length (effective)',
+      pixelSizeUm: 'Pixel size',
+      widthPx: 'Width',
+      heightPx: 'Height',
+      readNoiseE: 'Read noise',
+      saturationE: 'Saturation',
+      qePct: 'QE',
+      darkES: 'Dark current',
+      bandwidthNm: 'Bandwidth',
+      transmissionPct: 'Transmission',
+      skyMag: 'Sky brightness (V)',
+      elevationM: 'Elevation',
+      downloadS: 'Download',
+      swampFactor: 'Background at least',
+      seeingArcsec: 'Seeing (FWHM)',
+      mag: 'Star magnitude in band',
+      depthMmag: 'Transit depth',
+      durationH: 'Transit duration T14',
+      rpOverRs: 'Radius ratio (optional)',
+      windowH: 'Observation window',
+      altMaxDeg: 'Highest altitude in window',
+      altMidDeg: 'Altitude at mid-transit',
+    },
+    skyHint:
+      'Default from the site’s Bortle class {{bortle}}. An SQM reading makes the result more accurate.',
+    skyHintDefault:
+      'The site has no Bortle class – calculated with class 4. Enter an SQM reading here.',
+    missing: 'This calculation needs: {{list}}.',
+    invalid: 'Please check: {{list}}.',
+    resultsLabel: 'Results',
+    tabsLabel: 'Calculator',
+    tab: { exposure: 'Exposure', sampling: 'Sampling', exo: 'Exoplanet star' },
+    exposure: {
+      intro:
+        'How long does a single exposure have to be so that read noise hardly matters against the sky background? Beyond that, longer subs gain little for the same total time.',
+      minSub: 'Shortest sub exposure',
+      minSubHint:
+        'From here the background (sky and dark current) swamps the read noise: at least {{factor}} × RN² = {{e}} e⁻ per pixel.',
+      background:
+        'Sky {{sky}} e⁻/px/s ({{mag}} mag/″², band {{band}}) · dark current {{dark}} e⁻/px/s · scale {{scale}}″/px',
+      table: 'Efficiency by exposure time',
+      col: {
+        exposure: 'Exposure',
+        background: 'Background per pixel',
+        efficiency: 'Efficiency',
+        noise: 'Noise penalty',
+        saturation: 'Share of saturation',
+      },
+      recommended: 'shortest',
+      explain:
+        'Efficiency: share of the SNR² a camera without read noise would reach in the same total time. Noise penalty: how much read noise adds to the background noise. Same model as the exoplanet exposure advice (optics 70 % throughput, theoretical zero point, no moon).',
+    },
+    sampling: {
+      intro:
+        'Does the image scale match the seeing? A star should cover about 1.5 to 3.5 pixels FWHM.',
+      recommended: 'Recommended binning',
+      binValue: '{{bin}}×{{bin}}',
+      table: 'Sampling by binning',
+      col: {
+        binning: 'Binning',
+        scale: 'Scale',
+        fwhm: 'FWHM',
+        grade: 'Rating',
+        fov: 'Field of view',
+      },
+      grade: { under: 'undersampled', ok: 'matched', over: 'oversampled' },
+      fovValue: '{{w}}′ × {{h}}′',
+      explain:
+        'Below 1.5 px FWHM stars look blocky and detail is lost; above 3.5 px the light spreads over more pixels than needed (more noise per pixel, smaller field per amount of data). Binning combines pixels in software; the field of view stays the same.',
+    },
+    exo: {
+      intro:
+        'Exposure for transit photometry of a star against saturation – the same calculation as the *Exposure* card in the exoplanet search, here with values of your choice.',
+      fromSearch:
+        'Values taken from the transit search for {{star}}. Changes apply only here in the calculator.',
+      starUnknown: 'Star',
+    },
+  },
   skymap: {
     chartsLabel: 'Altitude and season chart',
     newProjectWith: 'New project with {{name}}',
@@ -3220,7 +3320,12 @@ export const en: Messages = {
     },
     title: 'Sky map',
     tabsLabel: 'Planning areas',
-    tab: { skymap: 'Sky map', objects: 'Object browser', exoplanets: 'Exoplanets' },
+    tab: {
+      skymap: 'Sky map',
+      objects: 'Object browser',
+      exoplanets: 'Exoplanets',
+      calculator: 'Calculator',
+    },
     mapLabel: 'Sky map with the rig’s field of view',
     mapDescription:
       'View centre {{ra}} {{dec}}, field {{fov}}. Frame at {{fra}} {{fdec}}, rotation {{rot}}°. Drag to pan, drag inside the frame to move it; arrow keys pan, plus and minus zoom.',

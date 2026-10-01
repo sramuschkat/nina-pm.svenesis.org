@@ -3,7 +3,7 @@
  * und die Liste fehlender Angaben.
  */
 import { describe, expect, it } from 'vitest';
-import { exposureFor, exposureRig, type ExposureTarget } from '../src/exo/exposure';
+import { exposureFor, exposureRig, type ExposureTarget } from '@nina-pm/shared';
 
 const camera = {
   pixelSizeUm: 3.76,

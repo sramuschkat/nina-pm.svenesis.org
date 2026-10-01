@@ -282,7 +282,8 @@ describe('S-02 Heute Nacht', () => {
       screen.queryByRole('heading', { name: /Ungeprüfte Sessions|Offene Warteschlange/ }),
     ).toBeNull();
     await expectNoSeriousA11y();
-  });
+    // Unter Last (voller Testlauf, 01.10.2026) 5,3 s – wie der Nachbar-Test 20 s.
+  }, 20_000);
 
   it('Nachtwahl (Mondkalender, 7 Nächte): künftige Nacht mit Hinweis, Dunkelzeitraum, ohne NINA und Umschalter', async () => {
     wrap();

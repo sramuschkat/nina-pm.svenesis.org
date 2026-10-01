@@ -159,7 +159,7 @@ Rechnung in `packages/engine/src/exo/classify.ts`, Anzeige in S-22.
 
 
 ## 6. Belichtungsempfehlung (FA-EXO-14a, Spec-Ergänzung 30.09.2026, Wunsch Sven; Annahmen freigegeben 30.09.2026)
-Rechnung in `packages/engine/src/exo/exposure.ts` (`exposureAdvice`), Kennwerte des Rigs in `apps/api/src/exo/exposure.ts`, Anzeige als Karte *Belichtung* in der aufgeklappten Zeile von S-22. Kompakt statt Rechnerseite: eine Zahl, vier Kennwerte, bei Bedarf Defokus-Hinweis und die Variante im Fokus.
+Rechnung in `packages/engine/src/exo/exposure.ts` (`exposureAdvice`), Kennwerte des Rigs und Antwortform in `packages/shared/src/exo-exposure.ts` (bis 01.10.2026 in der API; der Rechner S-23 nutzt sie mit, `calculator.md` §5), Anzeige als Karte *Belichtung* in der aufgeklappten Zeile von S-22. Kompakt statt Rechnerseite: eine Zahl, vier Kennwerte, bei Bedarf Defokus-Hinweis und die Variante im Fokus; *Im Rechner öffnen* führt in den Reiter *Exoplanet-Stern* von S-23.
 - **Eingaben:**
   - Filter der Filterwahl (§5) mit Bandbreite und Transmission (sonst 90 %).
   - **Ersatz ohne Bestätigung (Entscheidung Sven 30.09.2026):** Passt kein bestätigter Platz, rechnet die Empfehlung mit derselben Regel über die Web-Filter der **unbestätigten** Plätze (Filter zugeordnet, NINA-Name fehlt oder unbestätigt) und meldet `filterConfirmed: false`; die Karte zeigt „Vorläufig: … noch nicht bestätigt“. Filterwahl der Suche (FA-EXO-08), Projektanlage und Planung bleiben bei der bestätigten Belegung.

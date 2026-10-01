@@ -23,7 +23,7 @@ import {
   type Site,
 } from '@nina-pm/engine';
 import type { ExoTransitView } from '@nina-pm/shared';
-import { exposureFor, type ExposureRig } from './exposure';
+import { exposureFor, type ExposureRig } from '@nina-pm/shared';
 import { mergeExoEntries } from './merge';
 
 export type StoredExoEntry = ExoCatalogRow & {

@@ -1,0 +1,126 @@
+/* S-23 Rechner (AP-61): Farben, Abstände und Schrift nur über Tokens (rules/ui.md); volle Breite, ab 1024 px
+   Ausrüstung links und Reiter rechts, darunter untereinander. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr) minmax(0, 2fr);
+  gap: var(--npm-space-4);
+  align-items: start;
+}
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.equipment,
+.results {
+  composes: panel from '../admin/admin.module.css';
+  gap: var(--npm-space-3);
+  min-width: 0;
+}
+
+.equipmentHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--npm-space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--npm-font-h3);
+}
+
+.reset {
+  composes: button from '../admin/admin.module.css';
+}
+
+.muted {
+  composes: muted from '../admin/admin.module.css';
+  margin: 0;
+}
+
+.missing {
+  margin: 0;
+  color: var(--npm-warning);
+}
+
+.group {
+  composes: fieldset from '../admin/admin.module.css';
+  display: grid;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+
+.legend {
+  font-weight: 600;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--npm-space-2) var(--npm-space-3);
+}
+
+.panelBody {
+  display: grid;
+  gap: var(--npm-space-3);
+  padding-top: var(--npm-space-3);
+  min-width: 0;
+}
+
+.headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--npm-space-3);
+}
+.headlineLabel {
+  color: var(--npm-text-light);
+}
+.headlineValue {
+  font-size: var(--npm-font-h2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  composes: tableWrap from '../admin/admin.module.css';
+}
+.table {
+  composes: table from '../admin/admin.module.css';
+}
+.num {
+  composes: num from '../admin/admin.module.css';
+  white-space: nowrap;
+}
+.table th[scope='row'] {
+  white-space: nowrap;
+}
+.caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: var(--npm-space-1);
+}
+
+.recommended {
+  background: var(--npm-selected-bg);
+}
+
+.badge {
+  composes: pill from '../admin/admin.module.css';
+  margin-left: var(--npm-space-2);
+}
+
+.grade_ok {
+  color: var(--npm-success);
+}
+.grade_under,
+.grade_over {
+  color: var(--npm-warning);
+}

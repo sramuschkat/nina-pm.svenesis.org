@@ -3093,6 +3093,7 @@ export const de = {
       inFocusTitle: 'Ohne Defokus (im Fokus, 3″)',
       pointLine: '{{exposure}} · ≈ {{n}} Aufnahmen · {{mmag}} mmag · Transit ≈ {{snr}} σ',
       bortleUnknown: 'unbekannt, gerechnet mit 4',
+      openCalculator: 'Im Rechner öffnen',
       explain: {
         model:
           'Richtwert für Filter und Standard-Gain des Rigs: Spitzenpixel höchstens 50 % der Sättigung, höchstens 180 s, mindestens vier Aufnahmen im Ingress; unter 30 s wird defokussiert. Annahmen: Seeing 3″, Himmel {{sky}} mag/″² (Bortle {{bortle}}), Luftmasse {{airmass}} zur Mitte, ohne Mond, Optik 70 % Durchlass, theoretischer Nullpunkt.',
@@ -3217,6 +3218,105 @@ export const de = {
       none: 'Noch keine eigenen Beobachtungen dieses Planeten.',
     },
   },
+  calc: {
+    title: 'Rechner',
+    equipment: 'Ausrüstung',
+    equipmentHint:
+      'Vorbelegt aus Rig, Kamera (Standard-Gain), Teleskop, Standort und Filter. Änderungen gelten nur hier im Rechner.',
+    reset: 'Aus Rig zurücksetzen',
+    noRig: 'Kein Rig angelegt – Werte von Hand eintragen.',
+    rig: 'Rig',
+    filter: 'Filter',
+    filterNone: 'kein Filter angelegt',
+    band: 'Band des Modells',
+    bandName: { lum: 'Luminanz', V: 'V', Rc: 'Rc', Ic: 'Ic' },
+    group: {
+      optics: 'Optik',
+      camera: 'Kamera',
+      filter: 'Filter',
+      sky: 'Himmel und Standort',
+    },
+    field: {
+      apertureMm: 'Öffnung',
+      obstructionPct: 'Obstruktion',
+      focalLengthMm: 'Brennweite (wirksam)',
+      pixelSizeUm: 'Pixelgröße',
+      widthPx: 'Breite',
+      heightPx: 'Höhe',
+      readNoiseE: 'Ausleserauschen',
+      saturationE: 'Sättigung',
+      qePct: 'QE',
+      darkES: 'Dunkelstrom',
+      bandwidthNm: 'Bandbreite',
+      transmissionPct: 'Transmission',
+      skyMag: 'Himmelshelligkeit (V)',
+      elevationM: 'Höhe ü. NN',
+      downloadS: 'Download',
+      swampFactor: 'Hintergrund mindestens',
+      seeingArcsec: 'Seeing (FWHM)',
+      mag: 'Sternhelligkeit im Band',
+      depthMmag: 'Transittiefe',
+      durationH: 'Transitdauer T14',
+      rpOverRs: 'Radienverhältnis (optional)',
+      windowH: 'Beobachtungsfenster',
+      altMaxDeg: 'Höchste Höhe im Fenster',
+      altMidDeg: 'Höhe zur Mitte',
+    },
+    skyHint:
+      'Standard aus Bortle {{bortle}} des Standorts. Mit einem SQM-Messwert wird die Rechnung genauer.',
+    skyHintDefault:
+      'Der Standort hat keine Bortle-Klasse – gerechnet mit Klasse 4. Einen SQM-Messwert hier eintragen.',
+    missing: 'Für diese Rechnung fehlen: {{list}}.',
+    invalid: 'Bitte prüfen: {{list}}.',
+    resultsLabel: 'Ergebnisse',
+    tabsLabel: 'Rechner',
+    tab: { exposure: 'Belichtung', sampling: 'Sampling', exo: 'Exoplanet-Stern' },
+    exposure: {
+      intro:
+        'Wie lang muss eine Einzelbelichtung mindestens sein, damit das Ausleserauschen gegenüber dem Himmelshintergrund kaum noch zählt? Längere Belichtungen bringen bei gleicher Gesamtzeit dann nur noch wenig.',
+      minSub: 'Kürzeste Einzelbelichtung',
+      minSubHint:
+        'Ab hier überdeckt der Hintergrund (Himmel und Dunkelstrom) das Ausleserauschen: mindestens {{factor}} × RN² = {{e}} e⁻ je Pixel.',
+      background:
+        'Himmel {{sky}} e⁻/px/s ({{mag}} mag/″², Band {{band}}) · Dunkelstrom {{dark}} e⁻/px/s · Maßstab {{scale}}″/px',
+      table: 'Effizienz je Belichtungszeit',
+      col: {
+        exposure: 'Belichtung',
+        background: 'Hintergrund je Pixel',
+        efficiency: 'Effizienz',
+        noise: 'Rauschzuschlag',
+        saturation: 'Anteil der Sättigung',
+      },
+      recommended: 'kürzeste',
+      explain:
+        'Effizienz: Anteil des SNR², den eine Kamera ohne Ausleserauschen in derselben Gesamtzeit erreichte. Rauschzuschlag: um so viel erhöht das Ausleserauschen das Rauschen des Hintergrunds. Modell wie die Belichtungsempfehlung der Exoplaneten (Optik 70 % Durchlass, theoretischer Nullpunkt, ohne Mond).',
+    },
+    sampling: {
+      intro:
+        'Passt der Abbildungsmaßstab zum Seeing? Ein Stern sollte etwa 1,5 bis 3,5 Pixel FWHM haben.',
+      recommended: 'Empfohlenes Binning',
+      binValue: '{{bin}}×{{bin}}',
+      table: 'Sampling je Binning',
+      col: {
+        binning: 'Binning',
+        scale: 'Maßstab',
+        fwhm: 'FWHM',
+        grade: 'Einstufung',
+        fov: 'Bildfeld',
+      },
+      grade: { under: 'unterabgetastet', ok: 'passend', over: 'überabgetastet' },
+      fovValue: '{{w}}′ × {{h}}′',
+      explain:
+        'Unter 1,5 px FWHM wirken Sterne eckig und Details gehen verloren; über 3,5 px verteilt sich das Licht auf mehr Pixel als nötig (mehr Rauschen je Pixel, kleineres Bildfeld je Datenmenge). Binning fasst Pixel per Software zusammen; das Bildfeld bleibt gleich.',
+    },
+    exo: {
+      intro:
+        'Belichtung für die Transit-Photometrie eines Sterns gegen Sättigung – dieselbe Rechnung wie die Karte *Belichtung* in der Exoplaneten-Suche, hier mit frei wählbaren Werten.',
+      fromSearch:
+        'Werte aus der Transitsuche für {{star}} übernommen. Änderungen gelten nur hier im Rechner.',
+      starUnknown: 'Stern',
+    },
+  },
   skymap: {
     chartsLabel: 'Höhen- und Saisondiagramm',
     newProjectWith: 'Neues Projekt mit {{name}}',
@@ -3230,7 +3330,12 @@ export const de = {
     },
     title: 'Sternkarte',
     tabsLabel: 'Planungsbereiche',
-    tab: { skymap: 'Sternkarte', objects: 'Objektbrowser', exoplanets: 'Exoplaneten' },
+    tab: {
+      skymap: 'Sternkarte',
+      objects: 'Objektbrowser',
+      exoplanets: 'Exoplaneten',
+      calculator: 'Rechner',
+    },
     mapLabel: 'Sternkarte mit Bildfeld des Rigs',
     mapDescription:
       'Blickmitte {{ra}} {{dec}}, Sichtfeld {{fov}}. Bildfeld bei {{fra}} {{fdec}}, Rotation {{rot}}°. Ziehen verschiebt die Ansicht, Ziehen im Bildfeld das Bildfeld; Pfeiltasten schwenken, Plus und Minus zoomen.',

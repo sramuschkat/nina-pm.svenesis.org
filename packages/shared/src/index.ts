@@ -25,3 +25,4 @@ export * from './demo-evaluation';
 export * from './project-report';
 export * from './sky-satellites';
 export * from './transit-lock';
+export * from './exo-exposure';

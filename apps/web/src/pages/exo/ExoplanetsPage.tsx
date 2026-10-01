@@ -37,6 +37,7 @@ import { useEquipmentList, useNumber } from '../equipment/shared';
 import { PlanningContext } from '../planning/PlanningContext';
 import { PlanningTabs } from '../planning/PlanningTabs';
 import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
+import { exoCalculatorHref } from '../calculator/model';
 import { PROJECT_PATHS } from '../projects/ProjectEditorPage';
 import { skyMapHref } from '../planning/skymap/model';
 import {
@@ -840,7 +841,31 @@ function TransitDetail({
           <h3 className={styles.cardTitle}>{t('exo.skyPosition.title', { star: x.star })}</h3>
           <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
         </section>
-        <ExposureCard exposure={x.exposure} star={x.star} />
+        <ExposureCard
+          exposure={x.exposure}
+          star={x.star}
+          // Auch ohne Empfehlung (z. B. kein passender Filter): Rechner mit den Katalogwerten (AP-61).
+          calculatorHref={exoCalculatorHref({
+            rigId: data.rig.id,
+            filterId: x.filter.choice?.filterId ?? null,
+            star: x.star,
+            band: x.exposure.status === 'ok' ? x.exposure.band : x.filter.band,
+            mag: x.exposure.status === 'ok' ? x.exposure.mag : x.mag,
+            depthMmag: x.depthMmag,
+            durationH: x.durationH,
+            rpOverRs: x.rpOverRs,
+            windowS:
+              (Date.parse(x.transit.windowEndUtc) - Date.parse(x.transit.windowStartUtc)) / 1000,
+            // Wie die API (transit.md §6): Kontakte, bei Kulmination im Fenster deren Höhe.
+            altMaxDeg: Math.max(
+              x.transit.altAtIngressDeg,
+              x.transit.altAtCenterDeg,
+              x.transit.altAtEgressDeg,
+              x.transit.meridianInWindow ? 90 - Math.abs(data.site.latDeg - x.decDeg) : -90,
+            ),
+            altMidDeg: x.transit.altAtCenterDeg,
+          })}
+        />
         <section className={`${styles.card} ${styles.detailsCard}`}>
           <Tabs<'details' | 'mine'>
             label={t('exo.tabsLabel', { name: x.planet })}
