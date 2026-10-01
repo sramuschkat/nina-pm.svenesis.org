@@ -43,6 +43,7 @@ Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Gro�
 | `reason` | Grund aus `blockSkipReasons`/`blockEndReasons`/`blockedReasons`/`planReasons` | `BLOCK_END`, `BLOCK_SKIPPED`, `BLOCKED`, `PLAN` |
 | `state` | Zustandsname (`held`, `unreachable`, `lost`, `offline`, `running`, `paused`, `idle`, …) | `LEASE`, `HEARTBEAT` |
 | `status` | HTTP-Status oder Sessionstatus | `API`, `SESSION` |
+| `call` | aufgerufener Endpunkt der NINA-API (`bootstrap`, `targets`, `plan`, `sessions`, `captures`, `events`, `heartbeat`) | `API` |
 | `result` | `saved` / `aborted` / `failed` | `CAPTURE` |
 | `file` | Dateiname ohne Pfad (in `"…"`) | `CAPTURE`, `COPY` |
 | `filter`, `short` | Filtername bzw. Kurzname | `FILTER_NOT_FOUND`, `CAPTURE` |
@@ -54,7 +55,7 @@ Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Gro�
 | `source` | `server` / `offline` | `PLAN` |
 | `etag` | `targetsEtag` (in `"…"`) | `TARGETS` |
 | `atUtc`, `untilUtc` | Zeitpunkte in `…Z` | beliebig |
-| `code` | Unterfall aus `enums.json`/`errors.json` | `WARNING`, `ERROR`, `API` |
+| `code` | Unterfall aus `enums.json`/`errors.json`; bei `API status=0` (keine HTTP-Antwort) `network` oder `timeout` | `WARNING`, `ERROR`, `API` |
 | `night` | Nacht-Schlüssel `JJJJ-MM-TT` | `PLAN` (P-29) |
 
   Feste Schreibweisen: **`READOUT mode=set name="High Gain Mode" index=0`** (nicht `READOUT set …`) und **`CAPTURE id=… result=saved file="…"`** für die Zuordnung nach `ImageSaved` (es gibt kein Ereignis `ImageSaved` in der Grammatik).

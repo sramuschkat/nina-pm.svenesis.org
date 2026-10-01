@@ -151,8 +151,15 @@ describe('Prüfung eines Laufs', () => {
     );
   });
 
-  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13', () => {
-    expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual(['P-01', 'P-02', 'P-03', 'P-13']);
+  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04', () => {
+    expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual([
+      'P-01',
+      'P-02',
+      'P-03',
+      'P-04',
+      'P-13',
+    ]);
+    expect(EXPECTATIONS.protocols['P-04']?.package).toBe('AP-16a');
   });
 
   it('--init legt eine Vorlage mit der Schrittzahl des Protokolls an', () => {

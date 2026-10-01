@@ -1,0 +1,36 @@
+{
+  "protocol": "P-04",
+  "date": "2026-10-01",
+  "pluginVersion": "0.1.0 (#181, Lauf 36916614643)",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": "one-night",
+  "result": "go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Test-Server auf dem Mac (http://192.168.178.106:8787/api, private Adresse → lokal), Token npm_test: „Connected to the test server“, Mandant Test-Server, Instanz Test-Instanz 1, Rig Test-Rig · Starfront (Test), Standort-Abgleich 0,0 km; Token verschlüsselt gespeichert, Feld danach leer. Log 14:54:06 API status=200 call=bootstrap."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "Token npm_falsch: Log 14:55:13 WARNING API status=401 code=nina.token_invalid call=bootstrap. Anzeige „Token ungültig oder widerrufen“ laut Adapter-Test OptionsTests (Zuordnung 401 → Texts.TokenInvalid); kein eigener Screenshot."
+    }
+  ],
+  "logCheck": {
+    "status": "pass",
+    "missing": [],
+    "unexpected": []
+  },
+  "deviations": [
+    "Server-URL zeigt auf den Mac im lokalen Netz statt auf localhost (Protokoll seit #180 zulässig).",
+    "Erster Versuch mit Plugin aus #179 scheiterte an der Token-Eingabe (PasswordBox-Bindung) – behoben in #181; dieser Lauf mit dem Build aus #181.",
+    "Kein Screenshot für Schritt 2 (falsches Token); Nachweis über Log und Adapter-Test.",
+    "Testrechner: Windows 11 ARM64 (VMware), NINA-Ortszeit CDT."
+  ],
+  "artifacts": [
+    "nina.log",
+    "options-connected.webp"
+  ]
+}
