@@ -10,7 +10,7 @@ public sealed class TokenProtectorTests
     [Fact]
     public void Rundreise_ohne_Klartext()
     {
-        const string token = "npm_0123456789abcdefghijABCDEFGHIJklmnopqrstu";
+        var token = "npm_" + new string('x', 40); // Testwert, kein Geheimnis
         var stored = protector.Protect(token);
         Assert.DoesNotContain("npm_", stored, StringComparison.Ordinal);
         Assert.Equal(token, protector.Unprotect(stored));

@@ -98,9 +98,18 @@ public sealed class LocalStore : IDisposable
         }.ToString());
         connection.Open();
         var store = new LocalStore(connection, clock);
-        store.Execute("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
-        store.Migrate();
-        return store;
+        try
+        {
+            store.Execute("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
+            store.Migrate();
+            return store;
+        }
+        catch
+        {
+            // Unter Windows bliebe die Datei sonst gesperrt (z. B. bei einer neueren Schemaversion).
+            store.Dispose();
+            throw;
+        }
     }
 
     public int SchemaVersion => Convert.ToInt32(Scalar("PRAGMA user_version"));
