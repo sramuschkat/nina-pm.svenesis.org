@@ -43,10 +43,10 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | Punkt | Protokoll / Versuch | Ergebnis |
 |---|---|---|
 | Trigger-Walk mit Kontext = Container, Flip mit Zielkoordinaten, AF-Zählung | P-01 | offen |
-| Zuordnung `ImageSaved` bei schneller Folge, FITS-Header (Zielname, PA) | P-02 | **Lauf 1 (01.10.2026, probe-0.1.0): no-go wegen Probe-Fehler.** Zuordnung über `Image.Id` stimmt für Bild 1–18, auch verschränkt: NINA speichert Bild *n* im Hintergrund, während *n+1* schon belichtet. Bild 19 und 20 wurden 0,3 s bzw. 2 s **nach** `BLOCK_END` gespeichert; der Container hatte den `ImageSaved`-Handler im `finally` schon gelöst → keine `CAPTURE`-Zeile. probe-0.1.1 hält den Handler, bis alle offenen Aufnahmen gespeichert oder abgelaufen sind; Wiederholung offen. FITS-Screenshot offen. `docs/test-runs/2026-10-01/P-02-probe-0.1.0/` |
+| Zuordnung `ImageSaved` bei schneller Folge, FITS-Header (Zielname, PA) | P-02 | **✔ go (01.10.2026, probe-0.1.1).** 20/20 `CAPTURE result=saved`, jede Aufnahme-ID und jeder Dateiname genau einmal. NINA speichert im Hintergrund verschränkt (Bild *n*, während *n+1* belichtet); Bild 20 kam 1,8 s **nach** `BLOCK_END`. Lauf 1 mit probe-0.1.0 fiel deshalb durch (18/20, Handler im `finally` gelöst) – probe-0.1.1 hält den Handler, bis keine Aufnahme mehr offen ist. `docs/test-runs/2026-10-01/P-02/`, Lauf 1 unter `…/P-02-probe-0.1.0/` |
 | Abbruch über eigenen Token < 5 s | P-03, P-13 (2) | offen |
 | Typfilter AF/Dither, Auslesemodus per Name, Flip `west → east`, Pier-Seite unbekannt → nur `FLIP_UNDETECTED` | P-13 | offen |
-| Positionswinkel-Konvention im FITS-Header | P-02 Screenshot | offen |
+| Positionswinkel-Konvention im FITS-Header | P-02 FITS-Header | **✔ Übergabe:** Der gesetzte Ziel-PA (30°) steht unverändert als `OBJCTROT = 30.0` („planned rotation“) im Header, `OBJECT`/`OBJCTRA`/`OBJCTDEC` = Probe-Ziel, `PIERSIDE = 'West'`, `ROTATOR = 0.0` (mechanisch, die Probe dreht nicht). Die Bildorientierung selbst (Plate-Solve mit Rotator) prüft P-13/AP-16f |
 | Versionsabgleich `NINA.Sequencer.dll` = 3.2.0.9001 (aus AP-S2c verschoben) | `windows-vm.md` Schritt 5 | ✔ Sven 28.09.2026, VM: `FileVersion` 3.2.0.9001 = `NinaVersion` |
 | Kommandozeile `--profileid`/`--sequencefile`/`--runsequence`/`--exitaftersequence` (Kurzformen?), Start über die Aufgabenplanung | README Probe §5 | offen |
 | *Loop While Safe* unterbricht → `interrupted`, Stopp → `user_skip` (§4.6) | README Probe §5 | offen |
