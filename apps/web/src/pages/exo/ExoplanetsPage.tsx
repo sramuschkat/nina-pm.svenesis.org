@@ -825,19 +825,23 @@ function TransitDetail({
         showFlip={showFlip}
       />
       <div className={styles.cards}>
-        <section className={styles.card} aria-label={t('exo.starField.title', { star: x.star })}>
-          <div className={styles.cardHead}>
-            <h3 className={styles.cardTitle}>{t('exo.starField.title', { star: x.star })}</h3>
-            <Link
-              className={styles.smallButton}
-              to={skyMapHref({ ra: x.raDeg, dec: x.decDeg, rig: data.rig.id, fov: 2 })}
-            >
+        {/* Titel, Bild, Fußzeile – Sternfeld und Himmelsposition stehen auf gleicher Höhe (Wunsch Sven 01.10.2026). */}
+        <section
+          className={`${styles.card} ${styles.fieldCard}`}
+          aria-label={t('exo.starField.title', { star: x.star })}
+        >
+          <h3 className={styles.cardTitle}>{t('exo.starField.title', { star: x.star })}</h3>
+          <StarField raDeg={x.raDeg} decDeg={x.decDeg} star={x.star} />
+          <p className={styles.cardFoot}>
+            <Link to={skyMapHref({ ra: x.raDeg, dec: x.decDeg, rig: data.rig.id, fov: 2 })}>
               {t('exo.starField.openFraming')}
             </Link>
-          </div>
-          <StarField raDeg={x.raDeg} decDeg={x.decDeg} star={x.star} />
+          </p>
         </section>
-        <section className={styles.card} aria-label={t('exo.skyPosition.title', { star: x.star })}>
+        <section
+          className={`${styles.card} ${styles.skyCard}`}
+          aria-label={t('exo.skyPosition.title', { star: x.star })}
+        >
           <h3 className={styles.cardTitle}>{t('exo.skyPosition.title', { star: x.star })}</h3>
           <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
         </section>

@@ -103,23 +103,57 @@
   font-size: var(--npm-font-base);
   font-weight: 600;
 }
-/* Sternfeld · Himmelsposition · Belichtung · Zieldetails (FA-EXO-14/14a). */
+/* Sternfeld · Himmelsposition · Belichtung · Zieldetails (FA-EXO-14/14a). Anordnung (Wunsch Sven 01.10.2026):
+   die beiden Bilder nebeneinander auf gleicher Höhe (Titel, Bild, Fußzeile), breit Belichtung darunter über beide
+   und Zieldetails rechts über die ganze Höhe; Karten wachsen nicht auf die Höhe der Nachbarn. */
 .cards {
   display: grid;
-  grid-template-columns: minmax(0, 340px) minmax(0, 340px) minmax(0, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 340px) minmax(0, 340px) minmax(0, 1fr);
+  grid-template-areas:
+    'field sky details'
+    'exposure exposure details';
   gap: var(--npm-space-3);
-  align-items: stretch;
+  align-items: start;
 }
-@media (max-width: 1600px) {
+/* Bereiche nur in diesem Raster – die Belichtungskarte steht auch im Rechner S-23 (eigenes Raster). */
+.cards > .fieldCard {
+  grid-area: field;
+}
+.cards > .skyCard {
+  grid-area: sky;
+}
+.cards > .exposureCard {
+  grid-area: exposure;
+}
+.cards > .detailsCard {
+  grid-area: details;
+}
+/* Mittlere Breite: Bilder bleiben klein, Belichtung rechts daneben, Zieldetails darunter über die volle Breite. */
+@media (max-width: 1400px) {
+  .cards {
+    grid-template-areas:
+      'field sky exposure'
+      'details details details';
+  }
+}
+@media (max-width: 1000px) {
   .cards {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'field sky'
+      'exposure exposure'
+      'details details';
   }
 }
-@media (max-width: 1100px) {
-  .exposureCard,
-  .detailsCard {
-    grid-column: 1 / -1;
-  }
+.cardFoot {
+  margin: 0;
+  font-size: var(--npm-font-small);
+}
+/* Titel so hoch wie die Reiterleiste der Zieldetails: Titeltexte und Reiter stehen auf einer Linie. */
+.cards .cardTitle {
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--npm-row-h) + 8px);
 }
 .exposureValue {
   margin: 0;
