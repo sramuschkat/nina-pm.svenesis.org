@@ -24,7 +24,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
-    <!-- Eigene Abhängigkeiten (Jint, Microsoft.Data.Sqlite, Polly) gehören in den Plugin-Ordner (TK 10.5). -->
+    <!-- Eigene Abhängigkeiten (Microsoft.Data.Sqlite, Polly) gehören in den Plugin-Ordner (TK 10.5). -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(OS)' == 'Windows_NT'">

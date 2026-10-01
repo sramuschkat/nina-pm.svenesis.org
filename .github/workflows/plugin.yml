@@ -53,7 +53,7 @@ concurrency:
 
 env:
   # Eigene Abhängigkeiten im Plugin-Ordner (TK 10.1, 10.5) – alles andere bringt NINA mit.
-  PLUGIN_DEPS: Jint,Acornima,Microsoft.Data.Sqlite,SQLitePCLRaw.batteries_v2,SQLitePCLRaw.core,SQLitePCLRaw.provider.e_sqlite3,e_sqlite3,Polly,Polly.Core
+  PLUGIN_DEPS: Microsoft.Data.Sqlite,SQLitePCLRaw.batteries_v2,SQLitePCLRaw.core,SQLitePCLRaw.provider.e_sqlite3,e_sqlite3,Polly,Polly.Core
 
 jobs:
   # Sichert die Entwicklung ohne Windows: bricht dieser Auftrag, ist der lokale Arbeitsablauf auf macOS/Linux kaputt.

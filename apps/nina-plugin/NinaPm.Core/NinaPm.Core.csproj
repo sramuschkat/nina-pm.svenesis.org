@@ -14,8 +14,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Eigene Abhängigkeiten, mitgeliefert (TK 10.1). Jint: EngineHost offline (AP-16b), Version wie die Paritätstests. -->
-    <PackageReference Include="Jint" Version="4.16.4" />
+    <!-- Eigene Abhängigkeiten, mitgeliefert (TK 10.1). Kein Jint: das Plugin plant nicht selbst (execution.md §8); Jint nur in den Paritätstests. -->
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
     <PackageReference Include="Polly" Version="8.8.0" />
     <!-- Bringt NINA mit: nur zum Übersetzen, nie in die Ausgabe (TK 10.5; zwei Versionen im Prozess = Ladefehler). -->
