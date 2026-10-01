@@ -66,6 +66,13 @@
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: var(--npm-space-2) var(--npm-space-3);
 }
+/* Zweizeilige Beschriftungen: Feld unten im Raster, damit die Eingaben einer Reihe auf einer Linie stehen
+   (Wunsch Sven 01.10.2026). */
+.inputs > * {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
 
 .panelBody {
   display: grid;

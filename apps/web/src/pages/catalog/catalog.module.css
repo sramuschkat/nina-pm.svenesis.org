@@ -360,3 +360,9 @@
   background: var(--npm-white);
   min-width: 0;
 }
+
+/* Auswahl in Filterfarbe (Rechner S-23, wie die Belichtungsvorlagen). */
+.colorSelect {
+  font-weight: 600;
+  border-color: transparent;
+}
