@@ -1,0 +1,39 @@
+{
+  "protocol": "P-03",
+  "date": "2026-10-01",
+  "pluginVersion": "probe-0.1.1",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": null,
+  "result": "go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Kamera Alpaca Camera Sim (OmniSim), 5 × 30 s LUMINANCE. Belichtung 2 (Start 09:34:42.86) nach 10 s über den eigenen Abbruch-Token beendet: WARNING code=probe_abort 09:34:52.844."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "CAPTURE result=aborted 09:34:52.865 – 21 ms nach dem Abbruch; kein probe_abort_fallback (AbortExposure der Kamera nicht nötig). Für die abgebrochene Belichtung keine Datei und keine Image.Id."
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "note": "Belichtung 3 startet 09:34:52.911 (46 ms später), Belichtungen 3–5 gespeichert und zugeordnet; Bild 5 nach BLOCK_END zugeordnet (probe-0.1.1)."
+    }
+  ],
+  "logCheck": {
+    "status": "pass",
+    "missing": [],
+    "unexpected": []
+  },
+  "deviations": [
+    "Kamera für diesen Lauf: Alpaca Camera Sim (OmniSim) statt Sky-Simulator-Kamera, die die Belichtungszeit ignoriert (Lauf P-03-skysim).",
+    "Testrechner: Windows 11 ARM64 (VMware) – Zeiten nur als Größenordnung."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app.log"
+  ]
+}
