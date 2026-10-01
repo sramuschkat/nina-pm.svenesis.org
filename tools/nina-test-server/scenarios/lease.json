@@ -1,0 +1,26 @@
+{
+  "name": "lease",
+  "description": "Zwei registrierte Instanzen desselben Rigs (npm_test, npm_test2), drei Blöcke",
+  "protocols": ["P-09", "P-10", "P-17", "P-18", "P-20"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["R", "G", "B"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["Ha"],
+      "exposureS": 60,
+      "project": "ngc7000"
+    }
+  ],
+  "extraInstances": 1
+}

@@ -1,0 +1,15 @@
+{
+  "name": "safety",
+  "description": "Ein Block à 30 min mit 60-s-Belichtungen; Dunkelheit endet nach 45 min",
+  "protocols": ["P-25"],
+  "blocks": [
+    {
+      "durationMin": 30,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    }
+  ],
+  "darknessEndInMin": 45,
+  "sessionEndInMin": 60
+}

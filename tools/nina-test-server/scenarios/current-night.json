@@ -1,0 +1,20 @@
+{
+  "name": "current-night",
+  "description": "Echte Nachttabelle Starfront (America/Chicago); Blöcke ab Beginn der astronomischen Dunkelheit",
+  "protocols": ["P-29", "P-36"],
+  "blocks": [
+    {
+      "durationMin": 60,
+      "filters": ["L", "R", "G", "B"],
+      "exposureS": 120,
+      "project": "m31"
+    },
+    {
+      "durationMin": 60,
+      "filters": ["Ha"],
+      "exposureS": 300,
+      "project": "ngc7000"
+    }
+  ],
+  "realNight": true
+}

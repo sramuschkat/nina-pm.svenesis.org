@@ -1,0 +1,21 @@
+{
+  "name": "delay",
+  "description": "Block 1 begann laut Plan vor 6 min (Ablauf startet 6 min im Verzug → SKIPPED_TIMEAWARE); Block 2 mit Flip",
+  "protocols": ["P-21"],
+  "blocks": [
+    {
+      "startInMin": -6,
+      "durationMin": 20,
+      "filters": ["L", "R", "G"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 20,
+      "filters": ["L", "Ha"],
+      "exposureS": 60,
+      "meridianInMin": 24,
+      "project": "ngc7000"
+    }
+  ]
+}

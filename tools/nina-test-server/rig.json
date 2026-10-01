@@ -1,0 +1,19 @@
+{
+  "$comment": "Rig des Test-Servers: Standort Starfront (wie das Rig in Texas) und die Filterradbelegung des NINA-Profils auf dem Testrechner. ninaFilterName muss exakt dem Namen im NINA-Profil entsprechen (NT-E1).",
+  "site": {
+    "name": "Starfront (Test)",
+    "latDeg": 31.5471,
+    "lonDeg": -99.3823,
+    "elevationM": 450,
+    "timeZone": "America/Chicago"
+  },
+  "filters": [
+    { "position": 1, "shortName": "L", "name": "Luminance", "ninaFilterName": "LUMINANCE" },
+    { "position": 2, "shortName": "R", "name": "Red", "ninaFilterName": "RED" },
+    { "position": 3, "shortName": "G", "name": "Green", "ninaFilterName": "GREEN" },
+    { "position": 4, "shortName": "B", "name": "Blue", "ninaFilterName": "BLUE" },
+    { "position": 5, "shortName": "Ha", "name": "H-alpha", "ninaFilterName": "HA" },
+    { "position": 6, "shortName": "SII", "name": "S-II", "ninaFilterName": "SII" },
+    { "position": 7, "shortName": "OIII", "name": "O-III", "ninaFilterName": "OIII" }
+  ]
+}

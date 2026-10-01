@@ -1,0 +1,18 @@
+{
+  "name": "night-end",
+  "description": "Dunkelheit endet in 20 min, Nachtende 30 min später, Flats aus, Belichtungen 300 s",
+  "protocols": ["P-22", "P-31"],
+  "blocks": [
+    {
+      "durationMin": 18,
+      "filters": ["L"],
+      "exposureS": 300,
+      "project": "m31"
+    }
+  ],
+  "darknessEndInMin": 20,
+  "sessionEndInMin": 50,
+  "flats": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "mosaic-flip",
+  "description": "2×1-Mosaik: Meridian von Panel 1 im ersten Block, Panel 2 folgt direkt",
+  "protocols": ["P-26"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "panel": 0,
+      "meridianInMin": 8,
+      "rotationDeg": 20,
+      "project": "mosaik"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "panel": 1,
+      "meridianInMin": 6,
+      "rotationDeg": 20,
+      "project": "mosaik"
+    }
+  ]
+}

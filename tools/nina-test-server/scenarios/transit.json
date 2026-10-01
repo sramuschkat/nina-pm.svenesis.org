@@ -1,0 +1,22 @@
+{
+  "name": "transit",
+  "description": "Vorlauf-Block mit einer 300-s-Belichtung bis kurz vor dem Transit-Vorlauf; Transitfenster ab jetzt + 10 min, 20 min lang",
+  "protocols": ["P-14", "P-28"],
+  "blocks": [
+    {
+      "startInMin": 0.5,
+      "durationMin": 7,
+      "filters": ["L"],
+      "exposureS": 300,
+      "project": "m31"
+    },
+    {
+      "kind": "transit",
+      "startInMin": 10,
+      "durationMin": 20,
+      "filters": ["R"],
+      "exposureS": 30,
+      "project": "wasp-12"
+    }
+  ]
+}
