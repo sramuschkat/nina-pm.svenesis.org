@@ -93,45 +93,62 @@ async function projectWithLine(t: Awaited<ReturnType<typeof setup>>) {
   return pid;
 }
 
+// Zwei bzw. drei volle Aufwandsrechnungen (Engine über die Saison) je Test: lokal etwa 2 s, im CI unter Last
+// bis 5,2 s (01.10.2026) – über der Standardgrenze von 5 s.
+const SLOW = 30_000;
+
 describe('Aufwand-Kennzeichen (Datenbank)', () => {
-  it('Speichern legt den Job an; der Job rechnet, speichert und setzt effort_stale zurück', async () => {
-    const t = await setup();
-    const pid = await projectWithLine(t);
-    const jobs = await s.pg.admin.query('SELECT status FROM job WHERE dedupe_key = $1', [
-      `effort:${pid}`,
-    ]);
-    // Anlegen und Zeile hinzufügen: ein offener Job (Deduplizierung über dedupe_active).
-    expect(jobs.rows.map((r) => (r as { status: string }).status)).toEqual(['pending']);
+  it(
+    'Speichern legt den Job an; der Job rechnet, speichert und setzt effort_stale zurück',
+    async () => {
+      const t = await setup();
+      const pid = await projectWithLine(t);
+      const jobs = await s.pg.admin.query('SELECT status FROM job WHERE dedupe_key = $1', [
+        `effort:${pid}`,
+      ]);
+      // Anlegen und Zeile hinzufügen: ein offener Job (Deduplizierung über dedupe_active).
+      expect(jobs.rows.map((r) => (r as { status: string }).status)).toEqual(['pending']);
 
-    const before = await t.call(`/projects/${pid}`);
-    expect([before.body.effortStale, before.body.effort]).toEqual([true, null]);
-    const effort = new EffortRepository(s.pg.db, { tenantId: t.tenantId });
-    expect(await effort.candidates(t.site.id, s.clock.now())).toEqual([pid]);
+      const before = await t.call(`/projects/${pid}`);
+      expect([before.body.effortStale, before.body.effort]).toEqual([true, null]);
+      const effort = new EffortRepository(s.pg.db, { tenantId: t.tenantId });
+      expect(await effort.candidates(t.site.id, s.clock.now())).toEqual([pid]);
 
-    const r = await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
-    expect(r.outcome).toBe('saved');
-    const after = await t.call(`/projects/${pid}`);
-    expect(after.body.effortStale).toBe(false);
-    expect(after.body.effort?.tag).toBe(r.view?.tag);
-    expect(after.body.effort?.stride).toBe(3);
-    expect(await effort.candidates(t.site.id, s.clock.now())).toEqual([]);
+      const r = await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
+      expect(r.outcome).toBe('saved');
+      const after = await t.call(`/projects/${pid}`);
+      expect(after.body.effortStale).toBe(false);
+      expect(after.body.effort?.tag).toBe(r.view?.tag);
+      expect(after.body.effort?.stride).toBe(3);
+      expect(await effort.candidates(t.site.id, s.clock.now())).toEqual([]);
 
-    const again = await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
-    expect(again.outcome).toBe('unchanged');
-  });
+      const again = await runProjectEffort(
+        t.deps,
+        t.tenantId,
+        pid,
+        new Date('2026-09-18T18:00:00Z'),
+      );
+      expect(again.outcome).toBe('unchanged');
+    },
+    SLOW,
+  );
 
-  it('Rig-Settings und Mondprofil ändern → effort_stale wieder gesetzt', async () => {
-    const t = await setup();
-    const pid = await projectWithLine(t);
-    await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
-    expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(false);
+  it(
+    'Rig-Settings und Mondprofil ändern → effort_stale wieder gesetzt',
+    async () => {
+      const t = await setup();
+      const pid = await projectWithLine(t);
+      await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
+      expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(false);
 
-    await t.eq.updateScheduler(t.rig.id, { ...SCHEDULER, overshootPct: 10 }, s.clock.now());
-    expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(true);
+      await t.eq.updateScheduler(t.rig.id, { ...SCHEDULER, overshootPct: 10 }, s.clock.now());
+      expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(true);
 
-    await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
-    expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(false);
-    await t.eq.updateMoonProfile(t.moon.id, { ...MOON, separationDeg: 90 }, s.clock.now());
-    expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(true);
-  });
+      await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
+      expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(false);
+      await t.eq.updateMoonProfile(t.moon.id, { ...MOON, separationDeg: 90 }, s.clock.now());
+      expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(true);
+    },
+    SLOW,
+  );
 });

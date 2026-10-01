@@ -18,4 +18,6 @@ Standard ist der CI-Job `reference.yml` (Artefakt `reference-fixtures`; die Fixt
 cd tools/reference && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && python gen_all.py
 ```
 
+**Parallel:** `gen_sun_moon.py` und `gen_season.py` rechnen jede Nacht in einem eigenen Prozess (`parallel_map` in `common.py`, so viele wie Kerne); die Ergebnisse kommen in der ursprünglichen Reihenfolge zurück, die Fixtures bleiben byte-gleich. `REFERENCE_WORKERS=1` rechnet seriell.
+
 **Ephemeride:** `kernels/de432s.bsp` liegt im Repository (Prüfsumme `kernels/SHA256SUMS`, Herkunft in `kernels/README.md`); der Generator prüft sie und lädt sie aus der Datei – kein Netzzugriff zur Laufzeit (TK 9.1, AST-T11).

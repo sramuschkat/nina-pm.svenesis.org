@@ -11,6 +11,8 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -135,7 +137,9 @@ def write(name: str, payload) -> None:
             "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
             "ut1": "UT1 = UTC (iers_degraded_accuracy = ignore), wie die Engine",
             "refraction": "geometrisch (pressure = 0); scheinbar über Saemundsson wie die Engine (AST-D30)",
-            "leapSecondsExpire": str(iers.LeapSeconds.auto_open().expires),
+            # Ausdrücklich ISO: `str(expires)` hängt davon ab, ob astropy im Prozess schon Zeiten umgerechnet hat –
+            # seit `parallel_map` rechnen nur die Unterprozesse („2027-06-28“ statt „2027-06-28 00:00:00.000“).
+            "leapSecondsExpire": Time(str(iers.LeapSeconds.auto_open().expires)).iso,
         },
         **payload,
     }
@@ -148,3 +152,15 @@ def angular_sep(ra1, dec1, ra2, dec2):
     x2, y2, z2 = math.cos(r(dec2)) * math.cos(r(ra2)), math.cos(r(dec2)) * math.sin(r(ra2)), math.sin(r(dec2))
     cx, cy, cz = y1 * z2 - z1 * y2, z1 * x2 - x1 * z2, x1 * y2 - y1 * x2
     return math.degrees(math.atan2(math.sqrt(cx * cx + cy * cy + cz * cz), x1 * x2 + y1 * y2 + z1 * z2))
+
+
+def parallel_map(fn, items):
+    """`fn` über `items` in eigenen Prozessen, Ergebnisse in der Reihenfolge von `items` – die Fixtures bleiben
+    byte-gleich zum seriellen Lauf. Jede Nacht wird unabhängig gerechnet; der CI-Runner hat 4 vCPU.
+    `REFERENCE_WORKERS=1` rechnet seriell (Fehlersuche). `fn` muss auf Modulebene stehen (pickle)."""
+    items = list(items)
+    workers = int(os.environ.get("REFERENCE_WORKERS", "0")) or os.cpu_count() or 1
+    if workers <= 1 or len(items) <= 1:
+        return [fn(x) for x in items]
+    with ProcessPoolExecutor(max_workers=min(workers, len(items))) as pool:
+        return list(pool.map(fn, items, chunksize=max(1, len(items) // (workers * 8))))

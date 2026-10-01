@@ -10,7 +10,7 @@ import numpy as np
 from astropy import units as u
 from astropy.coordinates import AltAz, TETE, get_body
 
-from common import apparent, bisect, crossings, load_yaml, location, night_bounds, to_time, transitions, write
+from common import apparent, bisect, crossings, load_yaml, location, night_bounds, parallel_map, to_time, transitions, write
 
 LEVELS = {"sun": -0.8333, "civil": -6.0, "nautical": -12.0, "astronomical": -18.0, "flats8": -8.0, "flats2": -2.0}
 MONTHLY = [f"2026-{m:02d}-15" for m in range(1, 13)]
@@ -105,16 +105,20 @@ def night_entry(site, night):
     }
 
 
+def night_task(task):
+    """Eine Nacht eines Standorts – unabhängig von den anderen, daher parallel (`parallel_map`)."""
+    site, night = task
+    entry = night_entry(site, night)
+    print(site["id"], night, flush=True)
+    return entry
+
+
 def main():
     sites = load_yaml("sites.yaml")
-    out_sites, nights = [], []
-    for site in sites:
-        out_sites.append({**site, "timeZoneTransitions": transitions(site)})
-        for night in MONTHLY + EXTRA.get(site["id"], []):
-            nights.append(night_entry(site, night))
-            print(site["id"], night, flush=True)
+    out_sites = [{**site, "timeZoneTransitions": transitions(site)} for site in sites]
+    tasks = [(site, night) for site in sites for night in MONTHLY + EXTRA.get(site["id"], [])]
+    nights = parallel_map(night_task, tasks)
     write("sun_moon.json", {"sites": out_sites, "nights": nights})
-
 
 if __name__ == "__main__":
     main()
