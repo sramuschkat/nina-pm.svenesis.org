@@ -26,11 +26,13 @@ on:
 permissions:
   contents: read
 
-# In PRs ersetzt ein neuer Push den laufenden Lauf. Auf `main` läuft jeder Push vollständig: Landen zwei PRs
-# kurz nacheinander, würde ein Abbruch den ersten Lauf rot melden („Shards: cancelled“).
+# Ein neuer Push ersetzt den laufenden Lauf – in PRs wie auf `main`. Landen mehrere PRs nacheinander, zählt für
+# den Deploy nur der letzte Stand (tools/deploy/src/ci-gate.ts); überlappende Läufe mit je 15 Jobs warteten
+# sonst minutenlang auf freie Runner (20 je Repo). Die Sammeljobs laufen mit `!cancelled()`, damit ein
+# abgebrochener Lauf grau („cancelled“) endet statt rot.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -147,7 +149,7 @@ jobs:
   test:
     name: test
     needs: test-shard
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -204,12 +206,30 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      # Systembibliotheken (Schriften, mesa; etwa 60 MB) aus dem apt-Cache statt vom Ubuntu-Mirror: der brauchte
+      # an manchen Tagen 7–8 min dafür (30.09.2026). Schlüssel wechselt wöchentlich, damit Sicherheits-Updates
+      # nachkommen; ältere Pakete aus `restore-keys` lädt apt nur dort nach, wo sich die Version geändert hat.
+      - id: week
+        name: Kalenderwoche
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}-${{ steps.week.outputs.week }}
+          restore-keys: playwright-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}-
+      - name: Systembibliotheken für Chromium (apt-Cache)
+        run: |
+          mkdir -p ~/.cache/playwright-apt
+          printf 'APT::Keep-Downloaded-Packages "true";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99keep-downloaded >/dev/null
+          sudo rm -f /etc/apt/apt.conf.d/docker-clean
+          sudo cp ~/.cache/playwright-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+          pnpm exec playwright install-deps chromium
+          cp /var/cache/apt/archives/*.deb ~/.cache/playwright-apt/ 2>/dev/null || true
+          echo "apt-Cache: $(ls ~/.cache/playwright-apt | wc -l) Pakete"
       - name: Chromium installieren (nur ohne Cache)
         if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Systembibliotheken für Chromium (mit Cache)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: pnpm exec playwright install chromium
       - run: pnpm e2e --shard=${{ matrix.shard }}/6
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -223,7 +243,7 @@ jobs:
   e2e:
     name: e2e + a11y (Playwright, lokaler Stack)
     needs: e2e-shard
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
