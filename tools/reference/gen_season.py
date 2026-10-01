@@ -19,7 +19,7 @@ import numpy as np
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord, get_body
 
-from common import apparent, load_yaml, location, night_bounds, to_time, write
+from common import apparent, load_yaml, location, night_bounds, parallel_map, to_time, write
 
 LIMITS = {"civil": -6.0, "nautical": -12.0, "astronomical": -18.0}
 PAUSE = 30
@@ -103,26 +103,32 @@ def season(nights, min_time):
     )
 
 
+def night_task(task):
+    """Eine Nacht eines Falls – unabhängig von den anderen, daher parallel (`parallel_map`)."""
+    site, tgt, case, night = task
+    coord = SkyCoord(ra=tgt["ra"] * u.deg, dec=tgt["dec"] * u.deg, frame="icrs")
+    usable, longest = night_usable(site, location(site), coord, case, night)
+    return {"night": night, "usableSec": usable, "longestRunSec": longest}
+
+
 def main():
     sites = {s["id"]: s for s in load_yaml("sites.yaml")}
     targets = {t["id"]: t for t in load_yaml("targets.yaml")}
-    out = []
+    tasks = []
     for case in CASES:
-        site = sites[case["site"]]
-        tgt = targets[case["target"]]
-        loc = location(site)
-        coord = SkyCoord(ra=tgt["ra"] * u.deg, dec=tgt["dec"] * u.deg, frame="icrs")
         first = dt.date.fromisoformat(case["from"])
-        nights = []
         for i in range(365):
             night = (first + dt.timedelta(days=i)).isoformat()
-            usable, longest = night_usable(site, loc, coord, case, night)
-            nights.append({"night": night, "usableSec": usable, "longestRunSec": longest})
+            tasks.append((sites[case["site"]], targets[case["target"]], case, night))
+    results = parallel_map(night_task, tasks)
+    out = []
+    for k, case in enumerate(CASES):
+        tgt = targets[case["target"]]
+        nights = results[k * 365 : (k + 1) * 365]
         status, start, end = season(nights, case["minTimeSec"])
         out.append({**case, "raJ2000Deg": tgt["ra"], "decJ2000Deg": tgt["dec"], "status": status, "seasonStart": start, "seasonEnd": end, "nights": nights})
         print(case["id"], status, start, end, flush=True)
     write("season.json", {"cases": out})
-
 
 if __name__ == "__main__":
     main()

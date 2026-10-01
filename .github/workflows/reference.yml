@@ -17,7 +17,8 @@ permissions:
 jobs:
   reference:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Nächte parallel auf allen Kernen (tools/reference/common.py `parallel_map`): bisher etwa 16 min.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

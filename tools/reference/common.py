@@ -11,6 +11,8 @@ import datetime as dt
 import hashlib
 import json
 import math
+import os
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -148,3 +150,15 @@ def angular_sep(ra1, dec1, ra2, dec2):
     x2, y2, z2 = math.cos(r(dec2)) * math.cos(r(ra2)), math.cos(r(dec2)) * math.sin(r(ra2)), math.sin(r(dec2))
     cx, cy, cz = y1 * z2 - z1 * y2, z1 * x2 - x1 * z2, x1 * y2 - y1 * x2
     return math.degrees(math.atan2(math.sqrt(cx * cx + cy * cy + cz * cz), x1 * x2 + y1 * y2 + z1 * z2))
+
+
+def parallel_map(fn, items):
+    """`fn` über `items` in eigenen Prozessen, Ergebnisse in der Reihenfolge von `items` – die Fixtures bleiben
+    byte-gleich zum seriellen Lauf. Jede Nacht wird unabhängig gerechnet; der CI-Runner hat 4 vCPU.
+    `REFERENCE_WORKERS=1` rechnet seriell (Fehlersuche). `fn` muss auf Modulebene stehen (pickle)."""
+    items = list(items)
+    workers = int(os.environ.get("REFERENCE_WORKERS", "0")) or os.cpu_count() or 1
+    if workers <= 1 or len(items) <= 1:
+        return [fn(x) for x in items]
+    with ProcessPoolExecutor(max_workers=min(workers, len(items))) as pool:
+        return list(pool.map(fn, items, chunksize=max(1, len(items) // (workers * 8))))
