@@ -1,6 +1,7 @@
 /**
  * Himmelsposition (FA-EXO-14): kleine Sternkarte um den Wirtsstern – stereografisch, Norden oben, Osten links,
- * Radius 30°. Sternbildlinien, helle Sterne (≤ 4,5 mag) und Sternbildnamen aus den Daten der Sternkarte
+ * 30° bis zur Mitte jeder Kante. Quadratisch mit abgerundeten Ecken wie das Sternfeld daneben (Wunsch Sven
+ * 01.10.2026, vorher rund); die Ecken reichen bis ≈ 42°. Sternbildlinien, helle Sterne (≤ 4,5 mag) und Sternbildnamen aus den Daten der Sternkarte
  * (`loadBrightSky`, eigener Chunk). Farben über Tokens der Diagramme.
  */
 import { useEffect, useId, useState } from 'react';
@@ -9,7 +10,12 @@ import { loadBrightSky, unit, type BrightSky } from '../planning/skymap/sky-data
 import styles from './exo.module.css';
 
 const SIZE = 240;
+/** Abstand Mitte → Kantenmitte. */
 const RADIUS_DEG = 30;
+/** Abstand Mitte → Ecke bei stereografischer Projektion: 2·atan(√2·tan(15°)) ≈ 41,6°. */
+const CORNER_DEG = 42;
+/** Eckenradius in Bildeinheiten (≈ `--npm-radius` bei üblicher Breite). */
+const CORNER_R = 8;
 
 type Vec = readonly [number, number, number];
 
@@ -23,7 +29,7 @@ export function projector(raDeg: number, decDeg: number) {
     -Math.sin(r(decDeg)) * Math.sin(r(raDeg)),
     Math.cos(r(decDeg)),
   ];
-  const limit = Math.cos(r(RADIUS_DEG));
+  const limit = Math.cos(r(CORNER_DEG));
   const scale = SIZE / 2 / (2 * Math.tan(r(RADIUS_DEG) / 2));
   return (v: Vec): [number, number] | null => {
     const z = v[0] * c[0] + v[1] * c[1] + v[2] * c[2];
@@ -106,10 +112,17 @@ export function SkyPosition({
       >
         <defs>
           <clipPath id={clipId}>
-            <circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 2 - 1} />
+            <rect x={0} y={0} width={SIZE} height={SIZE} rx={CORNER_R} />
           </clipPath>
         </defs>
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 2 - 1} className={styles.skyDisc} />
+        <rect
+          x={0.5}
+          y={0.5}
+          width={SIZE - 1}
+          height={SIZE - 1}
+          rx={CORNER_R}
+          className={styles.skyDisc}
+        />
         <g clipPath={`url(#${clipId})`}>
           {lines.map((d, i) => (
             <path key={`l${String(i)}`} d={d} className={styles.skyLine} />

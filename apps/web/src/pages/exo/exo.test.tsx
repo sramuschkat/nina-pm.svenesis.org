@@ -409,7 +409,7 @@ describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
     );
   });
 
-  it('Himmelsposition: Mitte in der Bildmitte, Osten links, außerhalb 30° unsichtbar', () => {
+  it('Himmelsposition: Mitte in der Bildmitte, Osten links; 30° bis zur Kante, über 42° unsichtbar', () => {
     const p = projector(100, 20);
     const unit = (ra: number, dec: number) => {
       const r = (d: number) => (d * Math.PI) / 180;
@@ -424,7 +424,10 @@ describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
     expect(mid?.[1]).toBeCloseTo(120, 9);
     const east = p(unit(110, 20));
     expect(east?.[0]).toBeLessThan(120);
-    expect(p(unit(100, 60))).toBeNull();
+    // 30° nördlich liegt auf der oberen Kante, 40° außerhalb des Quadrats (abgeschnitten), 46° gar nicht.
+    expect(p(unit(100, 50))?.[1]).toBeCloseTo(0, 6);
+    expect(p(unit(100, 60))?.[1]).toBeLessThan(0);
+    expect(p(unit(100, 66))).toBeNull();
   });
 });
 
