@@ -46,6 +46,7 @@ export const KEYS: ReadonlySet<string> = new Set([
   'reason',
   'state',
   'status',
+  'call',
   'result',
   'file',
   'filter',

@@ -94,6 +94,30 @@
         }
       ]
     },
+    "P-04": {
+      "package": "AP-16a",
+      "steps": [
+        "Server-URL und Token npm_test des Test-Servers eingetragen, Verbindung getestet: Mandant, Rig und Standort-Abgleich angezeigt (Screenshot)",
+        "Falsches Token: Anzeige „ungültig“"
+      ],
+      "require": [
+        {
+          "event": "API",
+          "where": {
+            "status": "200",
+            "call": "bootstrap"
+          }
+        },
+        {
+          "event": "API",
+          "where": {
+            "status": "401",
+            "code": "nina.token_invalid",
+            "call": "bootstrap"
+          }
+        }
+      ]
+    },
     "P-13": {
       "package": "AP-S2b",
       "steps": [
