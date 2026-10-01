@@ -12,7 +12,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>NinaPm.Probe</AssemblyName>
     <RootNamespace>NinaPm.Probe</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <AssemblyTitle>NINA-PM Probe</AssemblyTitle>
     <Company>Svenesis</Company>
     <Product>NINA-PM Probe</Product>

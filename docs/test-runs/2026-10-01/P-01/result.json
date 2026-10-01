@@ -10,7 +10,7 @@
     {
       "n": 1,
       "ok": true,
-      "note": "Globale Trigger Meridian Flip, AF nach Zeit (30 min), AF nach Filterwechsel, Center after Drift; Kamera Alpaca Camera Sim (OmniSim), übrige Geräte Sky Simulator. Filter LUMINANCE×5, RED×5 im Wechsel (3 Filterwechsel statt 19, damit AF nicht 19-mal läuft)."
+      "note": "Globale Trigger Meridian Flip, AF nach Zeit (30 min), AF nach Filterwechsel, Center after Drift (in NINA deaktiviert); Kamera Alpaca Camera Sim (OmniSim), übrige Geräte Sky Simulator. Filter LUMINANCE×5, RED×5 im Wechsel (3 Filterwechsel statt 19, damit AF nicht 19-mal läuft)."
     },
     {
       "n": 2,
@@ -29,8 +29,8 @@
     },
     {
       "n": 5,
-      "ok": false,
-      "note": "Screenshot der Sequenzansicht nicht abgelegt; Ablauf vollständig aus nina.log/nina-app.log belegt."
+      "ok": true,
+      "note": "sequence.png: Probe-Container mit den Lauf-Werten, globale Trigger (AF nach Filterwechsel mit Fehlerkreuz, Center after Drift deaktiviert), Elapsed 22,43 min."
     }
   ],
   "logCheck": {
@@ -40,13 +40,14 @@
   },
   "deviations": [
     "Filterfolge LUMINANCE×5/RED×5 statt LUMINANCE,RED (weniger AF-Läufe mit der sternlosen Simulatorkamera).",
-    "Center after Drift: OmniSim-Bild zeigt immer M42 → Drift 9595′, Trigger feuert nach jeder Belichtung, Run endet nach 0 s ohne Zentrieren. Belegt nur den Aufruf über den Walk.",
+    "Center after Drift war in NINA deaktiviert (sequence.png). Die Probe (0.1.1) hat deaktivierte Trigger nicht übersprungen: ShouldTrigger wurde ausgewertet (Drift 9595′, OmniSim-Bild zeigt immer M42) und Run aufgerufen, Run kehrte sofort zurück. probe-0.1.2 überspringt Trigger mit Status DISABLED.",
     "Befund für AP-16: ISequenceTrigger.Run wirft bei fehlgeschlagener Anweisung keine Ausnahme (NINA loggt „Failed: Trigger … failed to exectue“ und setzt ContinueOnError fort). Der Container muss den Status des Triggers nach Run prüfen, um trigger_failed zu melden; die Probe meldete deshalb keine WARNING.",
     "PHD2 lief mit (StarLost-Warnungen im NINA-Log, hier herausgefiltert); der Flip nahm das Guiding wieder auf.",
     "Testrechner Windows 11 ARM64 (VMware) – Flip-Dauer kein Messwert."
   ],
   "artifacts": [
     "nina.log",
-    "nina-app.log"
+    "nina-app.log",
+    "sequence.png"
   ]
 }

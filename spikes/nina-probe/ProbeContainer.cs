@@ -312,6 +312,9 @@ public sealed class ProbeContainer : SequenceContainer, IDeepSkyObjectContainer
             if (c is not SequenceContainer container) continue;
             foreach (var trigger in container.GetTriggersSnapshot())
             {
+                // Deaktivierte Trigger überspringt NINA selbst; der eigene Walk muss das auch (P-01 01.10.2026:
+                // deaktiviertes Center After Drift wurde geprüft und aufgerufen, Run kehrte sofort zurück).
+                if (trigger.Status == SequenceEntityStatus.DISABLED) continue;
                 var type = trigger.GetType().Name;
                 if (type.Contains("dither", StringComparison.OrdinalIgnoreCase)
                     || (SuppressAutofocus && type.Contains("autofocus", StringComparison.OrdinalIgnoreCase)))

@@ -17,7 +17,7 @@ Was geprüft wird (execution.md §2, §4.3, §4.5, §4.6, §5):
    - **In der VM bauen:** `git pull` im geklonten Repository, dann `dotnet build -c Debug spikes\nina-probe`. Die Debug-Ausgabe landet direkt im Plugin-Ordner.
 2. `NinaPm.Probe.dll` nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\NINA-PM Probe\` kopieren (Ordner anlegen), NINA neu starten.
 3. NINA **ganz** beenden (`Get-Process NINA` darf nichts mehr liefern) und neu starten: Plugins lädt NINA nur beim Start.
-4. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.1** stehen. Fehlt es, steht der Grund nur auf Log-Stufe *Trace* im NINA-Log (`Select-String -Pattern "Probe"`).
+4. Unter *Plugins → Installiert* muss **NINA-PM Probe 0.1.2** stehen. Fehlt es, steht der Grund nur auf Log-Stufe *Trace* im NINA-Log (`Select-String -Pattern "Probe"`).
 
 **Vor jedem Protokoll** die Begleitdatei `%LOCALAPPDATA%\NINA\NinaPmProbe\nina-pm.log` löschen oder umbenennen. Das Plugin schreibt jede `NINA-PM |`-Zeile zusätzlich dorthin; die Datei ist später dein `nina.log`.
 
@@ -69,7 +69,7 @@ pnpm test-run:check --init P-13 docs/test-runs/2026-09-29/P-13
 Das legt `result.json` mit den Schritten des Protokolls an. Dann:
 1. `nina-pm.log` als `nina.log` in den Ordner kopieren, dazu Screenshots (`*.png`): P-01 Sequenzansicht, P-02 FITS-Header mit Zielname und Positionswinkel.
 2. In `result.json` eintragen:
-   - `pluginVersion` `probe-0.1.1`;
+   - `pluginVersion` `probe-0.1.2`;
    - `ninaVersion`, z. B. `3.2.0.9001` aus *Hilfe → Über*;
    - je Schritt `ok` und `note`;
    - `result` `go`/`no_go`, Abweichungen und Artefakte.
