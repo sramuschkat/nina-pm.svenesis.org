@@ -6,3 +6,4 @@ Anforderungen: AP-16a, FA-NIN-01, SV-08 · Befund P-04 (Sven, Windows-VM gegen d
 - Testbetrieb: NINAs Stil zeigt die CheckBox als Schalter ohne Text – Beschriftung „Testbetrieb“ jetzt links, Hinweis „nur mit lokalem Test-Server“ daneben.
 - Schaltflächen mit NINAs `ButtonForegroundBrush` (vorher schwarze Schrift auf dunklem Grund).
 - CLAUDE.md: Aufruf von `tools/nina-build-check.sh` mit `--allow` und Release-Build.
+- Adapter-Tests mit WPF-Objekten laufen nacheinander (eigene xUnit-Collection); `dotnet test --blame-hang-timeout 2m` im Windows-Auftrag, damit ein hängender Test schnell mit Namen abbricht.

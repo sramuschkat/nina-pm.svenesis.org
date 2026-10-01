@@ -9,6 +9,7 @@ namespace NinaPm.Nina.Tests;
 /// Plugin-Manifest (ADR-S2b): NINA liest die Plugin-ID aus dem Guid-Attribut, Name/Autor/Beschreibung aus den
 /// Assembly-Attributen; MinimumApplicationVersion = NinaVersion. Die Optionsseite liegt unter <c>NINA-PM_Options</c>.
 /// </summary>
+[Collection(WpfCollection.Name)]
 public sealed class ManifestTests
 {
     private static readonly Assembly Plugin = typeof(NinaPmPlugin).Assembly;
@@ -44,6 +45,16 @@ public sealed class ManifestTests
         var resources = new NinaPmResources();
         Assert.IsType<DataTemplate>(resources["NINA-PM_Options"]);
     });
+}
+
+/// <summary>
+/// Tests mit WPF-Objekten laufen nacheinander: gleichzeitige WPF-Initialisierung auf mehreren STA-Threads kann sich
+/// gegenseitig blockieren.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class WpfCollection
+{
+    public const string Name = "WPF";
 }
 
 /// <summary>XAML braucht einen STA-Thread; xUnit läuft im MTA.</summary>

@@ -96,7 +96,8 @@ jobs:
       - name: Kern-Tests
         run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests --filter "FullyQualifiedName!~Parity"
       - name: Adapter-Tests (nur unter Windows ausführbar)
-        run: dotnet test -c Release apps/nina-plugin/NinaPm.Nina.Tests
+        # Hängt ein Test (z. B. WPF auf STA-Threads), bricht er nach 2 min mit seinem Namen ab statt nach dem Job-Limit.
+        run: dotnet test -c Release apps/nina-plugin/NinaPm.Nina.Tests --blame-hang-timeout 2m
       - name: Plugin veröffentlichen (win-x64, ohne eigene Laufzeit)
         run: dotnet publish -c Release -r win-x64 --self-contained false apps/nina-plugin/NinaPm.Nina -o out/Svenesis.NinaPm
       - name: Inhalt prüfen (TK 10.5)

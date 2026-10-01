@@ -10,6 +10,7 @@ namespace NinaPm.Nina.Tests;
 /// Token-Eingabe der Optionsseite (P-04): Tippen in die PasswordBox erreicht die gebundene Eigenschaft, auch wenn
 /// diese beim Öffnen leer ist und leer bleibt; Leeren nach dem Speichern leert die Box.
 /// </summary>
+[Collection(WpfCollection.Name)]
 public sealed class PasswordBoxBindingTests
 {
     private sealed class Holder : INotifyPropertyChanged
