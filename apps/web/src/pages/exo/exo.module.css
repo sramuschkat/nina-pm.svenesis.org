@@ -417,3 +417,9 @@
   align-items: center;
   gap: var(--npm-space-1);
 }
+
+/* „Im Rechner öffnen“ rechts im Kopf der Belichtungskarte (AP-61). */
+.calculatorLink {
+  margin-left: auto;
+  font-size: var(--npm-font-small);
+}

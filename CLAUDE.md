@@ -14,7 +14,7 @@ Web-App (React/TS) + AWS-Backend (CDK, Lambda/TS, API Gateway, Aurora DSQL, S3) 
 | Bereich | Datei |
 |---|---|
 | Regeln (immer gültig) | `docs/rules/dsql.md`, `engine.md`, `security-auth.md`, `api.md`, `ui.md`, `testing.md` |
-| Engine-Specs | `docs/specs/engine/allocation.md` (Algorithmus nach Astro-PM-Plugin, Abweichungen §10), `moon.md`, `sort-chain.md`, `flip-rotation.md`, `transit.md`, `effort.md`, `geometry.md`, `night.md`, `canonical-json.md` |
+| Engine-Specs | `docs/specs/engine/allocation.md` (Algorithmus nach Astro-PM-Plugin, Abweichungen §10), `moon.md`, `sort-chain.md`, `flip-rotation.md`, `transit.md`, `effort.md`, `geometry.md`, `night.md`, `canonical-json.md`, `calculator.md` (Rechner S-23) |
 | Plugin-Ausführung | `docs/specs/nina/execution.md` (Muster nach Astro-PM-Plugin; Neuplanung, Transit, Lease, Offline, Flats, Test-Server) |
 | Infrastruktur / IAM | `docs/specs/infra/iam.md` (eine Rolle je Lambda über **CDK-Grants**, Tabelle Rolle → Ressource → Grant; Drosselung, CloudFront-Header). **Keine `*`-Ressourcen auf DSQL, S3, SSM, Lambda-Invoke; keine Managed Policies an Lambda-Rollen außer `AWSLambdaBasicExecutionRole`** (SV-13) – braucht eine Lambda mehr, Tabelle in `iam.md` im selben PR ergänzen |
 | Oberfläche | `docs/specs/ui/components.md` (Verträge der zehn Bausteine, Symbole, Abstände); Arbeitsseiten ohne Breitenobergrenze, Mindestbreite 768 px, **zwei** Themes (`light`/`dark`, kein Rotlicht), Dichte-Schalter `compact`/`normal`/`wide` |

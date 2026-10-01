@@ -64,6 +64,9 @@ export const ExoExposure = z.discriminatedUnion('status', [
     skyMagArcsec2: z.number(),
     bortle: z.number().nullable(),
     airmass: z.number(),
+    /** Band des Modells und die darin verwendete Sternhelligkeit (für „Im Rechner öffnen“, AP-61). */
+    band: z.enum(['V', 'Rc', 'Ic', 'lum']),
+    mag: z.number(),
   }),
   z.object({
     status: z.literal('missing'),

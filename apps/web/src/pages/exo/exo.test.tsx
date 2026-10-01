@@ -271,6 +271,8 @@ function transit(over: Partial<ExoTransitView> & { tc?: string } = {}): ExoTrans
       skyMagArcsec2: 20.7,
       bortle: 2,
       airmass: 1.5,
+      band: 'Rc',
+      mag: 11.2,
     },
     myProjects: 0,
   };

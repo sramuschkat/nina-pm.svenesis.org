@@ -2,10 +2,12 @@
  * Karte *Belichtung* der aufgeklappten Zeile (FA-EXO-14a, transit.md §6): Empfehlung als große Zahl mit vier
  * Kennwerten, bei hellen Sternen Defokus-Hinweis und zusätzlich die kurze Belichtung im Fokus (Wunsch Sven
  * 30.09.2026: beides zeigen). Ohne bestätigten Filterradplatz rechnet die API mit dem Web-Filter des Platzes
- * und die Karte weist darauf hin. Gerechnet wird in der API; die Karte formatiert nur.
+ * und die Karte weist darauf hin. Gerechnet wird in der API; die Karte formatiert nur. Dieselbe Karte zeigt der
+ * Rechner S-23 (AP-61, Modus *Exoplanet-Stern*); aus S-22 öffnet „Im Rechner öffnen“ ihn mit den Werten des Transits.
  */
 import type { ExoExposure } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { useNumber } from '../equipment/shared';
 import { HelpTip } from './HelpTip';
 import styles from './exo.module.css';
@@ -19,16 +21,34 @@ export function snrGrade(snr: number): 'good' | 'marginal' | 'weak' {
 }
 const GRADE_CLASS = { good: 'fit_ok', marginal: 'fit_close', weak: 'fit_insufficient' } as const;
 
-export function ExposureCard({ exposure, star }: { exposure: ExoExposure; star: string }) {
+export function ExposureCard({
+  exposure,
+  star,
+  calculatorHref,
+}: {
+  exposure: ExoExposure;
+  star: string;
+  /** Aktion *Rechner* (FA-EXO-14): Reiter *Exoplanet-Stern* mit den Werten dieses Transits. */
+  calculatorHref?: string;
+}) {
   const { t } = useTranslation();
   const fmt = useNumber();
   const seconds = (s: number) => `${fmt(s, s < 10 && s % 1 !== 0 ? 1 : 0)} s`;
   const title = t('exo.exposure.title', { star });
 
+  const calculator = calculatorHref ? (
+    <Link className={styles.calculatorLink} to={calculatorHref}>
+      {t('exo.exposure.openCalculator')}
+    </Link>
+  ) : null;
+
   if (exposure.status === 'missing') {
     return (
       <section className={`${styles.card} ${styles.exposureCard}`} aria-label={title}>
-        <h3 className={styles.cardTitle}>{t('exo.exposure.heading')}</h3>
+        <div className={styles.cardHead}>
+          <h3 className={styles.cardTitle}>{t('exo.exposure.heading')}</h3>
+          {calculator}
+        </div>
         <p className={styles.muted}>
           {t('exo.exposure.missing', {
             list: exposure.missing.map((m) => t(`exo.exposure.missingItem.${m}`)).join(', '),
@@ -91,6 +111,7 @@ export function ExposureCard({ exposure, star }: { exposure: ExoExposure; star: 
             airmass: fmt(x.airmass, 2),
           })}
         />
+        {calculator}
       </div>
       {x.filterConfirmed ? null : (
         <p className={styles.exposureUnconfirmed}>

@@ -46,6 +46,7 @@ import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { SkyMapPage } from '../pages/planning/SkyMapPage';
+import { CalculatorPage } from '../pages/calculator/CalculatorPage';
 import { ExoplanetsPage } from '../pages/exo/ExoplanetsPage';
 import { WeatherPage } from '../pages/weather/WeatherPage';
 import { AppearanceProvider } from './theme';
@@ -181,6 +182,7 @@ export function createRouter() {
                 { path: 'objekte', element: <ObjectBrowserPage /> },
                 { path: 'sternkarte', element: <SkyMapPage /> },
                 { path: 'exoplaneten', element: <ExoplanetsPage /> },
+                { path: 'rechner', element: <CalculatorPage /> },
               ],
             },
             {

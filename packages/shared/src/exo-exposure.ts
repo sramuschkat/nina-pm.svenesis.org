@@ -1,17 +1,19 @@
 /**
  * Belichtungsempfehlung je Transit (transit.md §6): Kennwerte von Teleskop, Kamera, Standort und Filter des Rigs
  * einmal je Anfrage sammeln, je Transit `exposureAdvice` der Engine rufen. Fehlen Angaben, nennt die Antwort sie
- * (`status: 'missing'`), statt mit Annahmen zu rechnen.
+ * (`status: 'missing'`), statt mit Annahmen zu rechnen. Liegt in `shared` (bis 01.10.2026 in der API), weil der
+ * Rechner S-23 (AP-61, Modus *Exoplanet-Stern*) dieselbe Rechnung im Browser ausführt.
  */
 import {
   exposureAdvice,
   skyMagForBortle,
+  type ExposureAdvice,
   type ExposureBand,
   type ExposurePoint,
   type FilterChoice,
   type TransitBand,
 } from '@nina-pm/engine';
-import type { ExoExposure } from '@nina-pm/shared';
+import type { ExoExposure } from './contracts';
 
 type Num = number | string | null | undefined;
 const num = (v: Num): number | null => (v === null || v === undefined ? null : Number(v));
@@ -171,17 +173,44 @@ export function exposureFor(x: ExposureTarget, rig: ExposureRig): ExoExposure {
     elevationM: rig.elevationM,
     downloadS: rig.downloadS,
   });
-  return {
-    status: 'ok',
-    ...view(a),
+  return exposureResult(a, {
+    band,
+    mag,
     filterShortName: x.choice.shortName,
     filterConfirmed: x.filterConfirmed ?? true,
     gain: rig.gain,
+    bortle: rig.bortle,
+  });
+}
+
+/**
+ * Antwortform einer Empfehlung (gerundet wie die Karte *Belichtung* sie zeigt) – gemeinsam für die Transitsuche
+ * und den Rechner S-23 (Modus *Exoplanet-Stern*, AP-61).
+ */
+export function exposureResult(
+  a: ExposureAdvice,
+  x: {
+    band: ExposureBand;
+    mag: number;
+    filterShortName: string;
+    filterConfirmed: boolean;
+    gain: number | null;
+    bortle: number | null;
+  },
+): Extract<ExoExposure, { status: 'ok' }> {
+  return {
+    status: 'ok',
+    ...view(a),
+    filterShortName: x.filterShortName,
+    filterConfirmed: x.filterConfirmed,
+    gain: x.gain,
     defocus: a.defocus,
     limitedBy: a.limitedBy,
     inFocus: a.inFocus === null ? null : view(a.inFocus),
     skyMagArcsec2: round(a.skyMagArcsec2, 2),
-    bortle: rig.bortle,
+    bortle: x.bortle,
     airmass: round(a.airmass, 2),
+    band: x.band,
+    mag: x.mag,
   };
 }

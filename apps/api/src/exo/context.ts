@@ -6,7 +6,7 @@
 import type { EquipmentRepository } from '@nina-pm/db';
 import { nightTimes, type RigFilter } from '@nina-pm/engine';
 import { buildNightTable } from '../lib/night-table';
-import { exposureRig, type ExposureRig } from './exposure';
+import { exposureRig, type ExposureRig } from '@nina-pm/shared';
 
 type Equipment = Pick<EquipmentRepository, 'rig' | 'site' | 'telescope' | 'camera' | 'filters'>;
 export type RigRow = NonNullable<Awaited<ReturnType<EquipmentRepository['rig']>>>;

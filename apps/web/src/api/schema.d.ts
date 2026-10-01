@@ -18202,6 +18202,9 @@ export interface components {
                 skyMagArcsec2: number;
                 bortle: number | null;
                 airmass: number;
+                /** @enum {string} */
+                band: "V" | "Rc" | "Ic" | "lum";
+                mag: number;
             } | {
                 /** @enum {string} */
                 status: "missing";

@@ -10849,6 +10849,15 @@ components:
                     - "null"
                 airmass:
                   type: number
+                band:
+                  type: string
+                  enum:
+                    - V
+                    - Rc
+                    - Ic
+                    - lum
+                mag:
+                  type: number
               required:
                 - exposureS
                 - fwhmArcsec
@@ -10866,6 +10875,8 @@ components:
                 - skyMagArcsec2
                 - bortle
                 - airmass
+                - band
+                - mag
             - type: object
               properties:
                 status:
