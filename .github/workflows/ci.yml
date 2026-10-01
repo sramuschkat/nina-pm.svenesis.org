@@ -217,14 +217,24 @@ jobs:
           path: ~/.cache/playwright-apt
           key: playwright-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}-${{ steps.week.outputs.week }}
           restore-keys: playwright-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.pw.outputs.version }}-
+      # Hängende Spiegel (01.10.2026: `apt-get update` stand 20 min bei `noble-security InRelease`, Shard wurde
+      # abgebrochen): kurze Netz-Timeouts mit Wiederholung, zwei Versuche und eine Obergrenze für den Schritt.
       - name: Systembibliotheken für Chromium (apt-Cache)
+        timeout-minutes: 10
         run: |
           mkdir -p ~/.cache/playwright-apt
           printf 'APT::Keep-Downloaded-Packages "true";\nBinary::apt::APT::Keep-Downloaded-Packages "true";\n' \
             | sudo tee /etc/apt/apt.conf.d/99keep-downloaded >/dev/null
+          printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99net-timeouts >/dev/null
           sudo rm -f /etc/apt/apt.conf.d/docker-clean
           sudo cp ~/.cache/playwright-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
-          pnpm exec playwright install-deps chromium
+          # Bis zu zwei Versuche à 4 min; ein hängender Spiegel kostet so höchstens einen Versuch.
+          for attempt in 1 2; do
+            timeout 240 pnpm exec playwright install-deps chromium && break
+            [ "$attempt" = 2 ] && exit 1
+            echo "install-deps: Versuch $attempt abgebrochen, neuer Versuch"
+          done
           cp /var/cache/apt/archives/*.deb ~/.cache/playwright-apt/ 2>/dev/null || true
           echo "apt-Cache: $(ls ~/.cache/playwright-apt | wc -l) Pakete"
       - name: Chromium installieren (nur ohne Cache)
