@@ -215,10 +215,78 @@ const V1 = '/api/web/v1';
 const ifMatch = (version: number | undefined) =>
   version === undefined ? {} : { headers: { 'If-Match': `"${String(version)}"` } };
 
+export type EquipmentBundle = Schemas['EquipmentBundle'];
+
+/**
+ * Bündeln gleichzeitiger Abrufe (01.10.2026): Ein Seitenaufruf schickte bis zu 19 Anfragen auf einmal, jede
+ * belegte eine eigene Lambda-Instanz (Alarm 5xx 30.09.2026). Gleichzeitige Stammdaten-Listen teilen sich einen
+ * Aufruf `GET /equipment`; Einzelabrufe von Projekten im selben Moment gehen gesammelt an
+ * `GET /project-details`. Cache-Schlüssel und Invalidierung der Seiten bleiben unverändert.
+ */
+const BUNDLE_KEY: Partial<Record<EquipmentKind, keyof EquipmentBundle>> = {
+  sites: 'sites',
+  telescopes: 'telescopes',
+  cameras: 'cameras',
+  filters: 'filters',
+  'moon-profiles': 'moonProfiles',
+  rigs: 'rigs',
+};
+let bundleInFlight: Promise<EquipmentBundle> | null = null;
+/** Ein Aufruf für alle gleichzeitig laufenden Stammdaten-Listen; danach wieder frisch. */
+function loadEquipmentBundle(): Promise<EquipmentBundle> {
+  bundleInFlight ??= apiFetch<EquipmentBundle>(`${V1}/equipment`).finally(() => {
+    bundleInFlight = null;
+  });
+  return bundleInFlight;
+}
+
+const PROJECT_BATCH_MAX = 50;
+interface ProjectWaiter {
+  resolve: (p: ProjectView) => void;
+  reject: (e: unknown) => void;
+}
+let projectQueue = new Map<string, ProjectWaiter[]>();
+const singleProject = (id: string) => apiFetch<ProjectView>(`${V1}/projects/${id}`);
+/** Gesammelte Einzelabrufe eines Moments: einer allein wie bisher, sonst `GET /project-details`. */
+function flushProjects() {
+  const queue = projectQueue;
+  projectQueue = new Map<string, ProjectWaiter[]>();
+  const ids = [...queue.keys()];
+  const settle = (id: string, p: Promise<ProjectView>) => {
+    for (const w of queue.get(id) ?? []) p.then(w.resolve, w.reject);
+  };
+  if (ids.length === 1) {
+    settle(ids[0] as string, singleProject(ids[0] as string));
+    return;
+  }
+  for (let i = 0; i < ids.length; i += PROJECT_BATCH_MAX) {
+    const chunk = ids.slice(i, i + PROJECT_BATCH_MAX);
+    const batch = apiFetch<{ items: ProjectView[] }>(
+      `${V1}/project-details?ids=${chunk.join(',')}`,
+    );
+    for (const id of chunk)
+      settle(
+        id,
+        // Fehlt ein Projekt (nicht lesbar, unbekannt), liefert der Einzelabruf den richtigen Fehler.
+        batch.then((r) => r.items.find((p) => p.id === id) ?? singleProject(id)),
+      );
+  }
+}
+function batchedProject(id: string): Promise<ProjectView> {
+  return new Promise((resolve, reject) => {
+    if (projectQueue.size === 0) setTimeout(flushProjects, 0);
+    projectQueue.set(id, [...(projectQueue.get(id) ?? []), { resolve, reject }]);
+  });
+}
+
 /** Ausrüstung (S-10…S-15, AP-09a): CRUD je Objektart, Scheduler, Filterrad, Nacht-Tabelle. */
 export const equipmentApi = {
-  list: <K extends EquipmentKind>(kind: K, query = '') =>
-    apiFetch<{ items: EquipmentKinds[K][] }>(`${V1}/${kind}${query}`),
+  list: <K extends EquipmentKind>(kind: K, query = ''): Promise<{ items: EquipmentKinds[K][] }> => {
+    const key = BUNDLE_KEY[kind];
+    if (key && !query)
+      return loadEquipmentBundle().then((b) => ({ items: b[key] as EquipmentKinds[K][] }));
+    return apiFetch<{ items: EquipmentKinds[K][] }>(`${V1}/${kind}${query}`);
+  },
   create: <K extends EquipmentKind>(kind: K, body: object & { id: string }) =>
     apiFetch<EquipmentKinds[K]>(`${V1}/${kind}`, json('POST', body)),
   update: <K extends EquipmentKind>(kind: K, id: string, body: object) =>
@@ -263,7 +331,7 @@ export type ProjectConditionsView = ProjectView['conditions'];
 /** Projekte (S-31, AP-11a/b): Projekt mit Panels und Zeilen; Änderungen am Projekt mit `If-Match`. */
 export const projectsApi = {
   list: (query = '') => apiFetch<{ items: ProjectListItem[] }>(`${V1}/projects${query}`),
-  get: (id: string) => apiFetch<ProjectView>(`${V1}/projects/${id}`),
+  get: (id: string) => batchedProject(id),
   create: (body: object & { id: string }) =>
     apiFetch<ProjectView>(`${V1}/projects`, json('POST', body)),
   /** Teiländerung mit `If-Match: "<version>"` (412 `resource.version_conflict`). */

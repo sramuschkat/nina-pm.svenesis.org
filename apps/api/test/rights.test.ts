@@ -349,6 +349,7 @@ async function equipmentExamples(): Promise<Record<string, Example>> {
       }),
       true,
     ),
+    'GET /api/web/v1/equipment': { url: '/api/web/v1/equipment' },
     'PUT /api/web/v1/rigs/{id}/scheduler-settings': {
       url: `/api/web/v1/rigs/${rig.id}/scheduler-settings`,
       method: 'PUT',
@@ -635,6 +636,8 @@ async function projectExamples(): Promise<Record<string, Example>> {
       okStatus: 201,
     },
     [`GET ${P}/{id}`]: { url: `${P}/${D}`, resource: draftRes },
+    // Sammelabruf: nicht lesbare bzw. fremde Projekte fehlen in `items`, der Aufruf selbst ist 200.
+    'GET /api/web/v1/project-details': { url: `/api/web/v1/project-details?ids=${D},${Q}` },
     'POST /api/web/v1/exo/projects': {
       url: '/api/web/v1/exo/projects',
       method: 'POST',

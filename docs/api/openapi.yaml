@@ -3683,6 +3683,40 @@ components:
         - telescopeId
         - cameraId
       additionalProperties: false
+    EquipmentBundle:
+      type: object
+      properties:
+        sites:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteView"
+        telescopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TelescopeView"
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/CameraView"
+        filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/FilterView"
+        moonProfiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/MoonProfileView"
+        rigs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RigView"
+      required:
+        - sites
+        - telescopes
+        - cameras
+        - filters
+        - moonProfiles
+        - rigs
     FilterWheelView:
       type: object
       properties:
@@ -5358,6 +5392,15 @@ components:
         - id
         - name
       additionalProperties: false
+    ProjectDetailsList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectView"
+      required:
+        - items
     ProjectPatch:
       type: object
       properties:
@@ -18736,6 +18779,35 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/equipment:
+    get:
+      summary: Standorte, Teleskope, Kameras, Filter, Mondprofile und Rigs in einem Aufruf
+      tags:
+        - equipment
+      description: "Aktion: `equipment.read` · TK 7.2, SV-06"
+      x-npm-action: equipment.read
+      x-npm-requirements:
+        - TK 7.2
+        - SV-06
+      responses:
+        "200":
+          description: Stammdaten
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EquipmentBundle"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/rigs/{id}/scheduler-settings:
     put:
       summary: Scheduler-Einstellungen des Rigs (erhöht settingsVersion)
@@ -19328,6 +19400,56 @@ paths:
       responses:
         "204":
           description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/project-details:
+    get:
+      summary: Mehrere Projekte mit Panels, Zeilen und Zählern (höchstens 50)
+      tags:
+        - projects
+      description: "Aktion: `project.read` · FA-PRJ-10, SV-06"
+      x-npm-action: project.read
+      x-npm-requirements:
+        - FA-PRJ-10
+        - SV-06
+      parameters:
+        - schema:
+            type: string
+            pattern: ^[0-9a-f-]{36}(,[0-9a-f-]{36}){0,49}$/i
+            description: Kommagetrennte Projekt-IDs, höchstens 50
+          required: true
+          description: Kommagetrennte Projekt-IDs, höchstens 50
+          name: ids
+          in: query
+      responses:
+        "200":
+          description: Projekte
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetailsList"
         "401":
           description: Nicht angemeldet
           content:

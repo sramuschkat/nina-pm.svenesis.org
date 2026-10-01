@@ -193,6 +193,36 @@ describe('Rechte (FA-PRJ-18, FK 6.14)', () => {
   });
 });
 
+describe('Sammelabruf GET /project-details (01.10.2026)', () => {
+  it('liefert wie der Einzelabruf; fremde Entwürfe und unbekannte IDs fehlen; höchstens 50', async () => {
+    const t = await setup();
+    const mine = await t.call('/projects', {
+      method: 'POST',
+      as: 'user',
+      body: { id: id(), name: 'Meins' },
+    });
+    const admins = await t.call('/projects', {
+      method: 'POST',
+      body: { id: id(), name: 'Admins' },
+    });
+    const a = mine.body.id as string;
+    const b = admins.body.id as string;
+    const unknown = id();
+    const asUser = await t.call(`/project-details?ids=${a},${b},${unknown},${a}`, { as: 'user' });
+    expect(asUser.status).toBe(200);
+    const items = (asUser.body as unknown as { items: { id: string }[] }).items;
+    // Fremder Entwurf (Admin) ist für den User nicht lesbar, unbekannte ID fehlt, Doppelte nur einmal.
+    expect(items.map((p) => p.id)).toEqual([a]);
+    expect(items[0]).toEqual((await t.call(`/projects/${a}`, { as: 'user' })).body);
+    const asAdmin = await t.call(`/project-details?ids=${a},${b}`);
+    expect((asAdmin.body as unknown as { items: { id: string }[] }).items.map((p) => p.id)).toEqual(
+      [a, b],
+    );
+    const tooMany = Array.from({ length: 51 }, () => id()).join(',');
+    expect((await t.call(`/project-details?ids=${tooMany}`)).status).toBe(422);
+  });
+});
+
 describe('Teiländerungen', () => {
   it('ein Patch ändert nur die genannten Felder (Bedingungen, Panel, Zeile)', async () => {
     const t = await setup();

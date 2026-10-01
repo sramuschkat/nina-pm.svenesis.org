@@ -30,6 +30,8 @@ import {
   ProjectListQuery,
   ProjectPatch,
   projectProgress,
+  ProjectDetailsList,
+  ProjectDetailsQuery,
   ProjectView,
   RigCheckView,
   StatusChange,
@@ -271,6 +273,22 @@ export const getProjectRoute = defineRoute(
     tags: ['projects'],
     request: { params: idParam },
     responses: { 200: { description: 'Projekt', ...json(ProjectView) }, ...errors },
+  },
+);
+
+/**
+ * Mehrere Projekte in einem Aufruf (01.10.2026): wie `GET /projects/{id}` je ID; nicht lesbare oder unbekannte
+ * fehlen in `items` (kein Fehler für den ganzen Aufruf). Eigener Pfad, weil `/projects/{id}` sonst greift.
+ */
+export const projectDetailsRoute = defineRoute(
+  { action: 'project.read', requirements: ['FA-PRJ-10', 'SV-06'] },
+  {
+    method: 'get',
+    path: `${BASE}/project-details`,
+    summary: 'Mehrere Projekte mit Panels, Zeilen und Zählern (höchstens 50)',
+    tags: ['projects'],
+    request: { query: ProjectDetailsQuery },
+    responses: { 200: { description: 'Projekte', ...json(ProjectDetailsList) }, ...errors },
   },
 );
 
@@ -584,6 +602,7 @@ export const PROJECT_ROUTES = [
   listProjectsRoute,
   createProjectRoute,
   getProjectRoute,
+  projectDetailsRoute,
   patchProjectRoute,
   deleteProjectRoute,
   restoreProjectRoute,
@@ -690,6 +709,29 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     const v = await view(repo, id);
     c.header('etag', `"${String(v.version)}"`);
     return c.json(v, 200);
+  });
+
+  app.openapi(projectDetailsRoute, async (c) => {
+    const { repo, auth } = await ctx(c);
+    const ids = [...new Set(c.req.valid('query').ids.toLowerCase().split(','))];
+    const items = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          await authorized(repo, auth, id, 'project.read');
+          return await view(repo, id);
+        } catch (e) {
+          // Unbekannt oder nicht lesbar: weglassen wie ein 404/403 im Einzelabruf.
+          if (
+            e instanceof ProblemError &&
+            (e.code === 'resource.not_found' || e.code === 'permission.denied')
+          )
+            return null;
+          throw e;
+        }
+      }),
+    );
+    c.header('cache-control', 'no-store');
+    return c.json({ items: items.filter((v) => v !== null) }, 200);
   });
 
   app.openapi(patchProjectRoute, async (c) => {

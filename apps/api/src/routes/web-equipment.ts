@@ -20,6 +20,7 @@ import {
   CameraView,
   ExposureTemplateCreate,
   ExposureTemplateInput,
+  EquipmentBundle,
   ExposureTemplateView,
   FilterCreate,
   FilterInput,
@@ -419,7 +420,20 @@ const all = [
   rigRoutes,
 ];
 
+/** Stammdaten in einem Aufruf (01.10.2026): weniger parallele Anfragen je Seitenaufruf. */
+export const equipmentBundleRoute = defineRoute(
+  { action: 'equipment.read', requirements: ['TK 7.2', 'SV-06'] },
+  {
+    method: 'get',
+    path: `${BASE}/equipment`,
+    summary: 'Standorte, Teleskope, Kameras, Filter, Mondprofile und Rigs in einem Aufruf',
+    tags: ['equipment'],
+    responses: { 200: { description: 'Stammdaten', ...json(EquipmentBundle) }, ...read },
+  },
+);
+
 export const EQUIPMENT_ROUTES = [
+  equipmentBundleRoute,
   ...all.flatMap((r) => [r.list, r.get, r.create, r.update, r.remove]),
   schedulerSettingsRoute,
   getFilterWheelRoute,
@@ -578,6 +592,37 @@ export function webEquipmentRoutes(services: () => Promise<ApiServices>) {
     update: (r, id, input, now, version) => r.updateRig(id, input, now, version),
     remove: (r, id, now) => r.deleteRig(id, now),
     view: async (row, repo) => (await rigContext(repo))(row),
+  });
+
+  app.openapi(equipmentBundleRoute, async (c) => {
+    const { repo } = await repoOf(c);
+    const [sites, telescopes, cameras, filters, moonProfiles, rigs] = await Promise.all([
+      repo.sites(),
+      repo.telescopes(),
+      repo.cameras(),
+      repo.filters(),
+      repo.moonProfiles(),
+      repo.rigs(),
+    ]);
+    // Teleskope und Kameras nur einmal laden (die Einzelliste lädt sie je Rig).
+    const rigOf = (row: RigRow) =>
+      rigView(
+        row,
+        telescopes.find((t) => t.id === row.telescopeId),
+        cameras.find((k) => k.id === row.cameraId),
+      );
+    c.header('cache-control', 'no-store');
+    return c.json(
+      {
+        sites: sites.map((r) => pick(SiteView, r)),
+        telescopes: telescopes.map(telescopeView),
+        cameras: cameras.map(cameraView),
+        filters: filters.map((r) => pick(FilterView, r)),
+        moonProfiles: moonProfiles.map(moonProfileView),
+        rigs: rigs.map(rigOf),
+      },
+      200,
+    );
   });
 
   app.openapi(schedulerSettingsRoute, async (c) => {

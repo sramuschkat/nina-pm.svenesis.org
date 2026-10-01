@@ -536,3 +536,20 @@ export const SiteNightsView = z
     ),
   })
   .meta({ id: 'SiteNightsView' });
+
+/**
+ * Stammdaten in einem Aufruf (`GET /web/v1/equipment`, `equipment.read`; 01.10.2026): die sechs Listen, die fast
+ * jede Seite braucht. Vorher je Liste ein Aufruf – ein Seitenaufruf belegte so bis zu 20 Lambda-Instanzen
+ * (Alarm 5xx 30.09.2026). Der Web-Client bündelt gleichzeitige `list(kind)` hierauf.
+ */
+export const EquipmentBundle = z
+  .object({
+    sites: z.array(SiteView),
+    telescopes: z.array(TelescopeView),
+    cameras: z.array(CameraView),
+    filters: z.array(FilterView),
+    moonProfiles: z.array(MoonProfileView),
+    rigs: z.array(RigView),
+  })
+  .meta({ id: 'EquipmentBundle' });
+export type EquipmentBundle = z.infer<typeof EquipmentBundle>;
