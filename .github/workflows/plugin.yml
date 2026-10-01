@@ -19,6 +19,8 @@ on:
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-test-server/**'
+      - 'packages/shared/src/contracts/nina/**'
+      - 'docs/contracts/nina/**'
       - 'tools/nina-build-check.sh'
       - 'tools/nina-banned-api-check.sh'
       - 'tools/nina-zip-check.sh'
@@ -34,6 +36,8 @@ on:
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-test-server/**'
+      - 'packages/shared/src/contracts/nina/**'
+      - 'docs/contracts/nina/**'
       - 'tools/nina-build-check.sh'
       - 'tools/nina-banned-api-check.sh'
       - 'tools/nina-zip-check.sh'
@@ -138,8 +142,11 @@ jobs:
         run: |
           zip -r "nina-pm-$TAG.zip" Svenesis.NinaPm
           assets=("nina-pm-$TAG.zip")
-          if [ -d apps/nina-plugin/NinaPm.Nina/Samples ]; then
-            zip -j "nina-pm-sequences-$TAG.zip" apps/nina-plugin/NinaPm.Nina/Samples/*.json
+          shopt -s nullglob
+          sequences=(apps/nina-plugin/NinaPm.Nina/Samples/*.json)
+          # Sequenzen kommen mit AP-16c/AP-50/AP-52; ohne *.json kein leeres ZIP.
+          if (( ${#sequences[@]} )); then
+            zip -j "nina-pm-sequences-$TAG.zip" "${sequences[@]}"
             assets+=("nina-pm-sequences-$TAG.zip")
           fi
           gh release create "$TAG" "${assets[@]}" --title "NINA-PM Plugin $TAG" --notes "Siehe docs/CHANGELOG.md."
@@ -164,8 +171,21 @@ jobs:
         run: pnpm engine:bundle
       - name: Erwartung mit Node (500 Pläne)
         run: pnpm engine:parity --count 500 --seed 1
-      - name: Parität unter Jint
+      # AP-16a: ApiClient gegen den NINA-Test-Server (TestServerIntegrationTests) – der Server prüft jede Anfrage
+      # mit den zod-Verträgen; ohne NINA_TEST_SERVER_URL kehren die Tests sofort zurück.
+      - name: NINA-Test-Server starten (Szenario one-night)
+        run: |
+          pnpm nina-test-server --scenario one-night --port 8787 --host 127.0.0.1 > nina-test-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://127.0.0.1:8787/test/report && exit 0; sleep 1; done
+          cat nina-test-server.log; exit 1
+      - name: Parität unter Jint und ApiClient gegen den Test-Server
+        env:
+          NINA_TEST_SERVER_URL: http://127.0.0.1:8787/api
         run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests
+      - name: Test-Server wurde wirklich aufgerufen
+        run: |
+          curl -sf http://127.0.0.1:8787/test/report > report.json
+          node -e "const r=require('./report.json'); const ok=r.sessions.some(s=>s.status==='completed') && r.captures.length>0 && r.heartbeats.count>0; console.log(JSON.stringify({plans:r.plans.length,sessions:r.sessions.length,captures:r.captures.length,heartbeats:r.heartbeats.count})); process.exit(ok?0:1)"
 
   # AP-S2a (TK 10.4): Laufzeit von planNight unter Jint auf dem x64-Runner – Messwert, keine Abnahmegrenze.
   # Ergebnis als Artefakt jint-runtime (docs/adr/ADR-S2a-jint.md).

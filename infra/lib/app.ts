@@ -10,6 +10,7 @@ import { DataStack } from './data-stack';
 import { EdgeStack } from './edge-stack';
 import { JobsStack } from './jobs-stack';
 import { MigrateStack } from './migrate-stack';
+import { NINA_SEQUENCES_DIR, ninaPluginVersion } from './nina-sequences';
 import { OpsStack } from './ops-stack';
 import { WebStack } from './web-stack';
 
@@ -60,6 +61,7 @@ export function buildApp(app: App) {
     buildId,
     httpApi: api.httpApi,
     webDistPath,
+    ninaSequences: { path: NINA_SEQUENCES_DIR, pluginVersion: ninaPluginVersion() },
   });
   const ops = new OpsStack(app, 'NinaPm-Ops', {
     env,

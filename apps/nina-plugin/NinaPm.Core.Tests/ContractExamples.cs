@@ -6,7 +6,7 @@ namespace NinaPm.Core.Tests;
 
 /// <summary>
 /// Beispiele aus <c>docs/contracts/nina/</c> mit ergänzten Kurz-IDs (<c>a91f…</c> → feste UUID, <c>sha256:9c1e…</c> →
-/// gültiger Hash) – dieselbe Regel wie <c>packages/shared/test/nina-contracts.test.ts</c>.
+/// gültiger Hash), Ersetzung wie in <c>tools/nina-test-server/src/examples.ts</c>.
 /// </summary>
 public static class ContractExamples
 {
@@ -34,12 +34,16 @@ public static class ContractExamples
         }
     }
 
+    /// <summary>
+    /// Feste UUID (v4-Form) wie <c>uuidFor</c> in <c>tools/nina-test-server/src/examples.ts</c>: Versions- und
+    /// Variantenbits im Hex-Text gesetzt. <c>new Guid(byte[])</c> legte die ersten drei Gruppen in umgekehrter
+    /// Bytefolge ab – die Bits landeten an der falschen Stelle und zod lehnte die ID ab.
+    /// </summary>
     private static Guid UuidFor(string shortId)
     {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(shortId));
-        hash[6] = (byte)((hash[6] & 0x0F) | 0x40);
-        hash[8] = (byte)((hash[8] & 0x3F) | 0x80);
-        return new Guid(hash.AsSpan(0, 16));
+        var h = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(shortId))).ToLowerInvariant();
+        var variant = ((Convert.ToInt32(h[16].ToString(), 16) & 0x3) | 0x8).ToString("x");
+        return Guid.Parse($"{h[..8]}-{h[8..12]}-4{h[13..16]}-{variant}{h[17..20]}-{h[20..32]}");
     }
 
     public static string RepoRoot()

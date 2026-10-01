@@ -24,6 +24,8 @@ export interface EdgeStackProps extends StackProps {
   readonly buildId: string;
   /** HTTP API aus NinaPm-Api als Origin für /api/* (AP-02b). */
   readonly httpApi: apigw.IHttpApi;
+  /** Beispielsequenzen (FA-NIN-25): Repository-Ordner und Plugin-Version für den Zielpfad (AP-16a). */
+  readonly ninaSequences: { readonly path: string; readonly pluginVersion: string };
 }
 
 const fromHere = (path: string) => fileURLToPath(new URL(path, import.meta.url));
@@ -212,5 +214,17 @@ export class EdgeStack extends Stack {
     });
     // index.html erst nach den Chunks, auf die sie verweist.
     spaIndex.node.addDependency(spaAssets);
+
+    // Beispielsequenzen (FA-NIN-25, TK 4.1/12, AP-16a): nur *.json aus dem Repository-Ordner nach
+    // downloads/nina-sequences/<pluginVersion>/. prune: false – Sequenzen älterer Plugin-Versionen bleiben abrufbar;
+    // die SPA-Deployments oben schreiben nie unter downloads/ (Quelle ist apps/web/dist).
+    new s3deploy.BucketDeployment(this, 'NinaSequences', {
+      sources: [s3deploy.Source.asset(props.ninaSequences.path, { exclude: ['*', '!*.json'] })],
+      destinationBucket: webBucket,
+      destinationKeyPrefix: `downloads/nina-sequences/${props.ninaSequences.pluginVersion}/`,
+      prune: false,
+      cacheControl: [s3deploy.CacheControl.fromString('public, max-age=3600')],
+      logGroup: deploymentLogs,
+    });
   }
 }
