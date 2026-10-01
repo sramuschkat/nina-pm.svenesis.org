@@ -1,0 +1,15 @@
+{
+  "name": "@nina-pm/nina-test-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NINA-Test-Server: NINA-API mit Plänen relativ zu „jetzt“ für die Plugin-Protokolle tagsüber (AP-16a, execution.md §9)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nina-pm/engine": "workspace:*",
+    "@nina-pm/shared": "workspace:*",
+    "zod": "4.6.5"
+  }
+}

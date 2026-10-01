@@ -1,0 +1,22 @@
+{
+  "name": "transit-flip",
+  "description": "Transitfenster ab jetzt + 10 min, 25 min lang; Meridian + afterMin im Fenster",
+  "protocols": ["P-27"],
+  "blocks": [
+    {
+      "durationMin": 5,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "kind": "transit",
+      "startInMin": 10,
+      "durationMin": 25,
+      "filters": ["R"],
+      "exposureS": 30,
+      "meridianInMin": 18,
+      "project": "wasp-12"
+    }
+  ]
+}

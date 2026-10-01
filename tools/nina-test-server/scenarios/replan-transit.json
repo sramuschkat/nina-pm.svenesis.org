@@ -1,0 +1,21 @@
+{
+  "name": "replan-transit",
+  "description": "Ein langer Block; Transit (Fenster ab jetzt + 15 min) erst nach lock_transit im Plan",
+  "protocols": ["P-15b"],
+  "blocks": [
+    {
+      "durationMin": 45,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "kind": "transit",
+      "startInMin": 15,
+      "durationMin": 20,
+      "filters": ["R"],
+      "exposureS": 30,
+      "project": "replan-transit"
+    }
+  ]
+}

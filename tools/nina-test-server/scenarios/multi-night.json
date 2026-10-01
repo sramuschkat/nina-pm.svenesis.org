@@ -1,0 +1,16 @@
+{
+  "name": "multi-night",
+  "description": "Kurze Nacht heute, Folgenacht planbar (gleiche Blöcke 24 h später; für die zweite Nacht die Windows-Uhr vorstellen)",
+  "protocols": ["P-23"],
+  "blocks": [
+    {
+      "durationMin": 10,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    }
+  ],
+  "darknessEndInMin": 15,
+  "sessionEndInMin": 25,
+  "multiNight": true
+}

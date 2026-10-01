@@ -1,0 +1,28 @@
+{
+  "name": "flats",
+  "description": "Zwei Ziele mit PA 0° und 45° (L/Ha), eines mit Flip; Dunkelheit endet in 40 min, Flats vom Panel",
+  "protocols": ["P-12", "P-33", "P-35"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L", "Ha"],
+      "exposureS": 60,
+      "rotationDeg": 0,
+      "meridianInMin": 8,
+      "project": "m31"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["L", "Ha"],
+      "exposureS": 60,
+      "rotationDeg": 45,
+      "project": "ngc7000"
+    }
+  ],
+  "darknessEndInMin": 40,
+  "sessionEndInMin": 90,
+  "flats": {
+    "enabled": true,
+    "source": "panel"
+  }
+}

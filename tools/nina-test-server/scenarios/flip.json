@@ -1,0 +1,15 @@
+{
+  "name": "flip",
+  "description": "Ein Block à 20 min, Meridian nach 8 min (Flip im Block)",
+  "protocols": ["P-07", "P-08"],
+  "blocks": [
+    {
+      "durationMin": 20,
+      "filters": ["L", "R"],
+      "exposureS": 60,
+      "meridianInMin": 8,
+      "rotationDeg": 30,
+      "project": "m31"
+    }
+  ]
+}

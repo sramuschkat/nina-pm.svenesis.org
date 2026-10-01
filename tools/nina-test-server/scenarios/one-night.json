@@ -1,0 +1,21 @@
+{
+  "name": "one-night",
+  "description": "Zwei Projekte, je ein Block à 20 min (L/R/G/B bzw. Ha/OIII), Plan-Dither nach jeder 3. Belichtung",
+  "protocols": ["P-04", "P-05", "P-28"],
+  "blocks": [
+    {
+      "durationMin": 20,
+      "filters": ["L", "R", "G", "B"],
+      "exposureS": 60,
+      "project": "m31",
+      "ditherEvery": 3
+    },
+    {
+      "durationMin": 20,
+      "filters": ["Ha", "OIII"],
+      "exposureS": 60,
+      "project": "ngc7000",
+      "ditherEvery": 3
+    }
+  ]
+}

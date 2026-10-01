@@ -1,0 +1,25 @@
+{
+  "name": "replan",
+  "description": "Drei Blöcke; im laufenden Block Projekt pausieren (a) oder ein anderes ändern (c)",
+  "protocols": ["P-06", "P-15"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["Ha"],
+      "exposureS": 60,
+      "project": "ngc7000"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["R", "G", "B"],
+      "exposureS": 60,
+      "project": "m31"
+    }
+  ]
+}
