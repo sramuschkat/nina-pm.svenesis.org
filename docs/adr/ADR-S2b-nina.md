@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Entwurf**: Befunde aus den NINA-3.2-Assemblies eingetragen; Laufzeit (P-01…P-03, P-13, Kommandozeile, Safety) offen bis zu Svens Läufen in der VM (H-14, H-15) |
+| Status | **Vorgeschlagen: Go** (01.10.2026) – alle Laufzeitpunkte geprüft (P-01, P-02, P-03, P-13, Kommandozeile, Safety); Abnahme durch Sven offen |
 | Datum | 2026-09-28 |
 | Arbeitspaket | AP-S2b |
 | Anforderungen | TK 10.1, 10.3, OT-08, OT-22, NT-45, NIN5-1, NIN5-3 |
@@ -48,16 +48,17 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | Typfilter AF/Dither, Auslesemodus per Name, Flip `west → east`, Pier-Seite unbekannt → nur `FLIP_UNDETECTED` | P-13 | **✔ go (01.10.2026, probe-0.1.2).** Lauf A: `TRIGGER_SUPPRESSED` für `AutofocusAfterTimeTrigger` und `DitherAfterExposures` (Laufzeit-Typnamen = NIN5-3-Liste), kein AF-Lauf; `READOUT mode=set name=Default index=0` (Kamera kennt nur diesen Modus); `FLIP pierBefore=west pierAfter=east`. Lauf B (Pier-Seite ignoriert, 10 × 60 s – mit 4 × 60 s endete der Block vor dem Flip): nach jedem Flip-Trigger nur `FLIP_UNDETECTED`, kein `FLIP`; NINA flippte zweimal, weil der Sky Simulator danach wieder `pierWest` meldete → AP-16f muss mehrere Flips je Block melden. Erster Versuch A ohne Flip: Simulator-Sternzeit nach Uhrkorrektur der VM 6 h falsch. `docs/test-runs/2026-10-01/P-13/` |
 | Positionswinkel-Konvention im FITS-Header | P-02 FITS-Header | **✔ Übergabe:** Der gesetzte Ziel-PA (30°) steht unverändert als `OBJCTROT = 30.0` („planned rotation“) im Header, `OBJECT`/`OBJCTRA`/`OBJCTDEC` = Probe-Ziel, `PIERSIDE = 'West'`, `ROTATOR = 0.0` (mechanisch, die Probe dreht nicht). Die Bildorientierung selbst (Plate-Solve mit Rotator) prüft P-13/AP-16f |
 | Versionsabgleich `NINA.Sequencer.dll` = 3.2.0.9001 (aus AP-S2c verschoben) | `windows-vm.md` Schritt 5 | ✔ Sven 28.09.2026, VM: `FileVersion` 3.2.0.9001 = `NinaVersion` |
-| Kommandozeile `--profileid`/`--sequencefile`/`--runsequence`/`--exitaftersequence` (Kurzformen?), Start über die Aufgabenplanung | README Probe §5 | offen |
-| *Loop While Safe* unterbricht → `interrupted`, Stopp → `user_skip` (§4.6) | README Probe §5 | offen |
+| Kommandozeile `--profileid`/`--sequencefile`/`--runsequence`/`--exitaftersequence` (Kurzformen?), Start über die Aufgabenplanung | README Probe §5 | **✔ (01.10.2026).** Lange Schalter und Kurzformen `-p`/`-s`/`-r`/`-x` laufen in NINA 3.2: Start mit Profil und Sequenz, Sequenz läuft, NINA beendet sich. Aufgabenplanung: *Program/script* **in Anführungszeichen** (Pfad mit Leerzeichen und `'N'`), *Start in* = NINA-Ordner, *Run only when user is logged on* – sonst startet nichts. `docs/test-runs/2026-10-01/ap-s2b-notes.md` |
+| *Loop While Safe* unterbricht → `interrupted`, Stopp → `user_skip` (§4.6) | README Probe §5 | **✔ (01.10.2026).** Safety Monitor während einer Belichtung getrennt: NINA unterbricht nach ≈ 3,8 s (Prüftakt), Probe meldet `aborted`, `BLOCK_END reason=interrupted`, `SAFETY_PAUSE`. Stopp von Hand bei sicherem Monitor: `BLOCK_END reason=user_skip`. „Verbunden, aber unsicher“ (OmniSim ohne Schalter) folgt in P-25. `docs/test-runs/2026-10-01/safety/` |
 
 ## Entscheidung
-Offen bis zu den Laufzeitergebnissen. Vorgesehen: Gehen P-01…P-03 und P-13 durch, übernehmen AP-16c…16h die Muster aus `spikes/nina-probe` in `NinaPm.Nina`:
-- den Trigger-Walk mit `ShouldTrigger`/`Run` und Kontext = Container;
-- die Zuordnung über `Image.Id` vor `Enqueue`;
+**Go (vorgeschlagen, 01.10.2026).** P-01, P-02, P-03 und P-13 sind bestanden, Kommandozeilenstart und Safety-Unterbrechung bestätigt. AP-16c…16h übernehmen die Muster aus `spikes/nina-probe` in `NinaPm.Nina`:
+- den Trigger-Walk mit `ShouldTrigger`/`Run` und Kontext = Container – deaktivierte Trigger überspringen, Fehlschlag über den Status nach `Run` erkennen;
+- die Zuordnung über `Image.Id` vor `Enqueue`, sitzungsweit statt im Block;
 - die Abbruch-Token;
 - den Auslesemodus per Name;
-- die Flip-Erkennung über die Pier-Seite.
+- die Flip-Erkennung über die Pier-Seite, mehrere Flips je Block möglich;
+- den Start über die Aufgabenplanung mit den oben genannten Einstellungen.
 
 ## Folgen
 - `execution.md` §5: Beispielcode an NINA 3.2 anpassen (`ShouldTrigger` synchron, `Run` statt `Execute`); gleiche Stelle in `ops/plugin-test-protocol.md` P-13.
