@@ -42,7 +42,7 @@ export const config = {
     nina: { rate: 20, burst: 40 },
     sensitive: { rate: 5, burst: 10 },
   },
-  reservedConcurrency: { api: 20, worker: 5 },
+  reservedConcurrency: { api: 50, worker: 5 }, // api 50 statt 20 seit 01.10.2026 (Seitenaufruf belegte bis zu 20)
   /** SSM-Parameternamen (iam.md §8). */
   ssm: {
     cookieSecret: '/nina-pm/oauth/cookie-secret',

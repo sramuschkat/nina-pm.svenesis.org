@@ -23,7 +23,7 @@ Jeder Punkt mit Nachweis (Link auf CI-Lauf, Ausgabe von `pnpm deploy:prod`, Scre
 ## Sicherheit
 - ☑ CDK-Assertions aus `specs/infra/iam.md` §12 grün (Rollen nur mit den CDK-Grants aus §2–§5, kein `*` auf DSQL/S3/SSM/Invoke, `api` ruft nur `worker` auf, `worker` liest keine Auth-Geheimnisse; SV-13, SV-18) – *CI: `infra/test/assertions*.test.ts`, Nr. 1–10*
 - ☑ Direktaufruf der `execute-api`-Adresse liefert 403 (Smoke-Test) – *Smoke nach jedem Deploy*
-- ☑ Reservierte Parallelität auf `api` (20) und `worker` (5) gesetzt – *CI: Assertion 8; Prüfung prod: `get-function-concurrency`*
+- ☑ Reservierte Parallelität auf `api` (50, bis 30.09.2026: 20) und `worker` (5) gesetzt – *CI: Assertion 8; Prüfung prod: `get-function-concurrency`*
 - ☑ CSP-Abnahme: Radix-Menü und -Dialog hinter produktiven Headern ohne CSP-Verstoß in der Konsole – *CI: `e2e/ui.spec.ts` (`collectCspViolations`)*
 - ☑ Uploads als presigned **POST**; ein Upload über der Größengrenze wird von S3 abgelehnt – *CI: `apps/api/test/upload-ticket.test.ts` (`content-length-range`, `eq $key`)*
 - ☑ CSRF: schreibende Route ohne `X-NPM-Request` → 403 `auth.csrf_missing`, ebenso anonym `POST /api/auth/invitation/claim` und `/api/auth/invitations/preview` (SV-04) – *CI: `apps/api/test/csrf.test.ts`, `e2e/smoke.spec.ts`; Prüfung prod: beide anonymen Routen*
