@@ -55,6 +55,15 @@ test('S-23: Reiter Rechner, Belichtung, Sampling und Exoplanet-Stern', async ({ 
   await expect(page.getByLabel(/^Transittiefe/)).not.toHaveValue('');
   await expect(page.getByRole('region', { name: 'Belichtung – WASP-12' })).toBeVisible();
   await expect(page.getByText('Transit-SNR')).toBeVisible();
+  // Eingaben einer Reihe auf einer Linie, auch bei zweizeiliger Beschriftung (Wunsch Sven 01.10.2026).
+  // Bei 1280 px brechen die Beschriftungen um.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const tops = await Promise.all(
+    [/^Sternhelligkeit/, /^Transittiefe/, /^Transitdauer/].map(async (l) =>
+      Math.round((await page.getByLabel(l).boundingBox())?.y ?? -1),
+    ),
+  );
+  expect(new Set(tops).size, tops.join(',')).toBe(1);
   expect(await serious(page)).toEqual([]);
 });
 

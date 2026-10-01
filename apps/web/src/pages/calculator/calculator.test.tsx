@@ -73,6 +73,7 @@ vi.mock('../../api/client', () => ({
                         {
                           id: ID(5),
                           shortName: 'L',
+                          colorHex: '#9e9e9e',
                           filterType: 'luminance',
                           photometricBand: 'none',
                           centerWavelengthNm: null,
@@ -82,6 +83,7 @@ vi.mock('../../api/client', () => ({
                         {
                           id: ID(6),
                           shortName: 'Ha',
+                          colorHex: '#c62828',
                           filterType: 'narrowband',
                           photometricBand: 'none',
                           centerWavelengthNm: 656.3,
@@ -145,7 +147,13 @@ describe('S-23 Rechner', () => {
     fireEvent.click(reset);
     await waitFor(() => expect(value(/^Ausleserauschen/)).toBe('1.5'));
 
-    fireEvent.change(screen.getByLabelText('Filter'), { target: { value: ID(6) } });
+    // Filterauswahl in der Filterfarbe (Wunsch Sven 01.10.2026)
+    const select = screen.getByLabelText('Filter') as HTMLSelectElement;
+    expect(select.style.background).not.toBe('');
+    expect(
+      (select.querySelector(`option[value="${ID(6)}"]`) as HTMLOptionElement).style.background,
+    ).not.toBe('');
+    fireEvent.change(select, { target: { value: ID(6) } });
     await waitFor(() => expect(value(/^Bandbreite/)).toBe('7'));
     expect((screen.getByLabelText('Band des Modells') as HTMLSelectElement).value).toBe('Rc');
     expect(screen.getByText('Kürzeste Einzelbelichtung').nextSibling?.textContent).toBe('680 s');

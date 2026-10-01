@@ -373,6 +373,7 @@ export function CalculatorPage() {
                   : filterList.map((f) => [f.id, f.shortName] as const)
               }
               onChange={(v) => setUrl({ filter: v, band: null })}
+              colors={Object.fromEntries(filterList.map((f) => [f.id, f.colorHex]))}
             />
             <Select
               id={`${id}-band`}
