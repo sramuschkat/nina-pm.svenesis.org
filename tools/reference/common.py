@@ -137,7 +137,9 @@ def write(name: str, payload) -> None:
             "ephemeris": "de432s (jplephem, tools/reference/kernels/de432s.bsp)",
             "ut1": "UT1 = UTC (iers_degraded_accuracy = ignore), wie die Engine",
             "refraction": "geometrisch (pressure = 0); scheinbar über Saemundsson wie die Engine (AST-D30)",
-            "leapSecondsExpire": str(iers.LeapSeconds.auto_open().expires),
+            # Ausdrücklich ISO: `str(expires)` hängt davon ab, ob astropy im Prozess schon Zeiten umgerechnet hat –
+            # seit `parallel_map` rechnen nur die Unterprozesse („2027-06-28“ statt „2027-06-28 00:00:00.000“).
+            "leapSecondsExpire": Time(str(iers.LeapSeconds.auto_open().expires)).iso,
         },
         **payload,
     }
