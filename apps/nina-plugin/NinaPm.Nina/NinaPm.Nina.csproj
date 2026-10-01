@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    NINA-Adapter (TK 10.1, 10.2, 10.5): Plugin-Manifest, MEF-Export, Adapter auf NINAs Mediatoren – ohne eigene
+    XAML-Datei (Regel 13), ohne Windows kompilierbar (NuGet NINA.*), läuft nur in NINA unter Windows.
+    AP-16a: Manifest, Optionen mit *Verbindung testen*, Token-Schutz per DPAPI, Log-Senke, Adapter-Gerüst.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>NinaPm.Nina</RootNamespace>
+    <AssemblyName>NinaPm.Nina</AssemblyName>
+    <Version>0.1.0</Version>
+    <!-- Plugin-Manifest: PluginBase liest Name, Autor und Kurzbeschreibung aus diesen Attributen (ADR-S2b). -->
+    <AssemblyTitle>NINA-PM</AssemblyTitle>
+    <Product>NINA-PM</Product>
+    <Company>Svenesis</Company>
+    <Description>Plant Astrofotografie-Projekte auf nina-pm.svenesis.org und führt sie in NINA aus.</Description>
+    <Copyright>Svenesis</Copyright>
+    <!-- TK 10.5: Ausgabe ohne Unterordner, ohne deps.json/runtimeconfig.json – sonst findet NINA das Plugin nicht. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    <!-- Eigene Abhängigkeiten (Jint, Microsoft.Data.Sqlite, Polly) gehören in den Plugin-Ordner (TK 10.5). -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(OS)' == 'Windows_NT'">
+    <OutputPath>$(LOCALAPPDATA)\NINA\Plugins\3.0.0\Svenesis.NinaPm\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Nur zum Übersetzen, NINA bringt alles mit (ADR-S2c, TK 10.5). -->
+    <PackageReference Include="NINA.Plugin" Version="$(NinaVersion)" IncludeAssets="compile" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NinaPm.Core/NinaPm.Core.csproj" />
+    <ProjectReference Include="../NinaPm.Nina.Ui/NinaPm.Nina.Ui.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="../BannedSymbols.txt" />
+    <InternalsVisibleTo Include="NinaPm.Nina.Tests" />
+    <!-- Plugin-ID: NINAs PluginBase liest sie aus dem Guid-Attribut (ADR-S2b; fehlt es, lädt NINA das Plugin nicht). -->
+    <AssemblyAttribute Include="System.Runtime.InteropServices.GuidAttribute">
+      <_Parameter1>4b8e6c1d-2f7a-4e39-9d55-0c1a7e3b9f42</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyMetadata Include="Identifier" Value="4b8e6c1d-2f7a-4e39-9d55-0c1a7e3b9f42" />
+    <AssemblyMetadata Include="Name" Value="NINA-PM" />
+    <AssemblyMetadata Include="Author" Value="Svenesis" />
+    <AssemblyMetadata Include="Description" Value="Plant Astrofotografie-Projekte auf nina-pm.svenesis.org und führt sie in NINA aus." />
+    <AssemblyMetadata Include="License" Value="Proprietary" />
+    <AssemblyMetadata Include="Homepage" Value="https://nina-pm.svenesis.org" />
+    <AssemblyMetadata Include="Repository" Value="https://github.com/sramuschkat/nina-pm.svenesis.org" />
+    <!-- TK 10.5: NINA lädt das Plugin nicht in einer älteren Version. -->
+    <AssemblyMetadata Include="MinimumApplicationVersion" Value="$(NinaVersion)" />
+  </ItemGroup>
+  <!--
+    Natives SQLite (e_sqlite3.dll) neben die Plugin-Assembly: ohne deps.json sucht .NET nur dort, nicht unter
+    runtimes/win-x64/native/ (TK 10.5). Für andere Plattformen braucht das Plugin keine nativen Dateien.
+  -->
+  <Target Name="CopySqliteNativeFlat" AfterTargets="Build" Condition="Exists('$(OutDir)runtimes/win-x64/native/e_sqlite3.dll')">
+    <Copy SourceFiles="$(OutDir)runtimes/win-x64/native/e_sqlite3.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <RemoveDir Directories="$(OutDir)runtimes" />
+  </Target>
+</Project>

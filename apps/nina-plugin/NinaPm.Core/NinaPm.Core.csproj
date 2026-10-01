@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Plattformneutraler Kern des NINA-Plugins (TK 10.1, 10.2, 10.5): ohne NINA-Bezug, baut und testet auf macOS, Linux
+    und Windows. AP-16a: Abstraktionen, Uhr, Log-Grammatik, Optionen, ApiClient (NSwag aus docs/api/openapi.nina.json),
+    LocalStore (SQLite). Ausgeliefert im Plugin-Ordner neben NinaPm.Nina.dll.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>NinaPm.Core</RootNamespace>
+    <AssemblyName>NinaPm.Core</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Eigene Abhängigkeiten, mitgeliefert (TK 10.1). Jint: EngineHost offline (AP-16b), Version wie die Paritätstests. -->
+    <PackageReference Include="Jint" Version="4.16.4" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
+    <PackageReference Include="Polly" Version="8.8.0" />
+    <!-- Bringt NINA mit: nur zum Übersetzen, nie in die Ausgabe (TK 10.5; zwei Versionen im Prozess = Ladefehler). -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" ExcludeAssets="runtime" />
+    <!-- Zeit nur über IClock (NT-05): verbotene APIs brechen den Build. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="NSwag.MSBuild" Version="14.7.1" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="../BannedSymbols.txt" />
+    <InternalsVisibleTo Include="NinaPm.Core.Tests" />
+  </ItemGroup>
+
+  <!--
+    ApiClient aus dem NINA-Ausschnitt der OpenAPI (AP-16a, TK 10.1): beim Build nach obj/ erzeugt, nicht eingecheckt.
+    format: date-time → DateTimeOffset, format: date → string (NT-05), Newtonsoft (NINA bringt es mit).
+  -->
+  <PropertyGroup>
+    <NinaOpenApi>$(MSBuildThisFileDirectory)../../../docs/api/openapi.nina.json</NinaOpenApi>
+    <NinaApiClientFile>$(BaseIntermediateOutputPath)generated/NinaApiClient.g.cs</NinaApiClientFile>
+  </PropertyGroup>
+  <Target Name="GenerateNinaApiClient" BeforeTargets="CoreCompile" Inputs="$(NinaOpenApi);$(MSBuildThisFileFullPath)" Outputs="$(NinaApiClientFile)">
+    <Exec Command="$(NSwagExe_Net80) openapi2csclient /input:&quot;$(NinaOpenApi)&quot; /output:&quot;$(NinaApiClientFile)&quot; /namespace:NinaPm.Core.Api.Generated /className:NinaApiClient /operationGenerationMode:SingleClientFromPathSegments /generateClientInterfaces:true /jsonLibrary:NewtonsoftJson /dateTimeType:System.DateTimeOffset /dateType:string /timeType:string /arrayType:System.Collections.Generic.List /arrayInstanceType:System.Collections.Generic.List /arrayBaseType:System.Collections.Generic.List /generateNullableReferenceTypes:true /generateOptionalPropertiesAsNullable:true /useBaseUrl:true /injectHttpClient:true /disposeHttpClient:false /exceptionClass:NinaApiException /generateUpdateJsonSerializerSettingsMethod:true /classStyle:Poco /generateDtoTypes:true /requiredPropertiesMustBeDefined:false" />
+  </Target>
+  <!-- Engine-Version für X-NPM-Engine-Version (TK 7.6) aus packages/engine/src/version.ts – eine Quelle. -->
+  <PropertyGroup>
+    <EngineVersionTs>$(MSBuildThisFileDirectory)../../../packages/engine/src/version.ts</EngineVersionTs>
+    <EngineVersionFile>$(BaseIntermediateOutputPath)generated/EngineVersion.g.cs</EngineVersionFile>
+  </PropertyGroup>
+  <Target Name="GenerateEngineVersion" BeforeTargets="CoreCompile">
+    <ReadLinesFromFile File="$(EngineVersionTs)">
+      <Output TaskParameter="Lines" ItemName="_EngineVersionLines" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <_EngineVersionText>@(_EngineVersionLines)</_EngineVersionText>
+      <NinaPmEngineVersion>$([System.Text.RegularExpressions.Regex]::Match($(_EngineVersionText), "ENGINE_VERSION = '([^']+)'").Groups[1].Value)</NinaPmEngineVersion>
+    </PropertyGroup>
+    <Error Condition="'$(NinaPmEngineVersion)' == ''" Text="ENGINE_VERSION nicht gefunden in $(EngineVersionTs)" />
+    <WriteLinesToFile File="$(EngineVersionFile)" Overwrite="true" WriteOnlyWhenDifferent="true" Lines="// &lt;auto-generated /&gt;;namespace NinaPm.Core%3B;/// &lt;summary&gt;ENGINE_VERSION aus packages/engine/src/version.ts (beim Build übernommen).&lt;/summary&gt;;public static class EngineVersionInfo { public const string Version = &quot;$(NinaPmEngineVersion)&quot;%3B }" />
+    <ItemGroup>
+      <Compile Remove="$(EngineVersionFile)" />
+      <Compile Include="$(EngineVersionFile)" />
+      <FileWrites Include="$(EngineVersionFile)" />
+    </ItemGroup>
+  </Target>
+  <Target Name="IncludeNinaApiClient" AfterTargets="GenerateNinaApiClient" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="$(NinaApiClientFile)" />
+      <Compile Include="$(NinaApiClientFile)" />
+      <FileWrites Include="$(NinaApiClientFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

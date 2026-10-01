@@ -1,31 +1,42 @@
 name: plugin
 
-# NINA-Plugin (TK 18, 10.5). AP-S2c: Build-Nachweis an den Projekten unter spikes/nina-build/; AP-16a zieht die Aufträge
-# auf die echte Lösung (apps/nina-plugin) und ergänzt Adapter-Tests, ZIP und Release beim Tag plugin-v*.
+# NINA-Plugin (TK 18, 10.5, AP-16a): die Lösung apps/nina-plugin/NinaPm.sln.
+# - cross-build (ubuntu-latest): Kern bauen und testen, Adapter, Adapter-Tests und Ansichten bauen – ohne -p:-Schalter;
+#   Paket- und Ausgabeprüfung, Zeitregel (DateTime.Now bricht den Build), keine XAML-Datei im Adapter.
+#   Bricht dieser Auftrag, ist die Entwicklung ohne Windows kaputt.
+# - build (windows-latest): Kern- und Adapter-Tests ausführen, Plugin veröffentlichen (win-x64), Inhalt prüfen, ZIP.
+# - release (nur Tag plugin-v*): ZIP und Beispielsequenzen als GitHub-Release-Asset. Kein AWS-Zugang (E1) –
+#   die Beispielsequenzen kommen mit dem nächsten lokalen `pnpm deploy:prod` nach S3 (TK 4.1, 12).
 # Übersetzt wird gegen die NuGet-Pakete NINA.* in der Version aus apps/nina-plugin/Directory.Build.props (ADR-S2c).
-# AP-08c: engine-parity prüft die Engine unter Jint gegen Node (auch bei jeder Änderung in packages/engine).
 
 on:
   pull_request:
     paths:
       - 'apps/nina-plugin/**'
-      - 'spikes/nina-build/**'
+      - 'docs/api/openapi.nina.json'
       - 'spikes/nina-probe/**'
       - 'spikes/jint-runtime/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
+      - 'tools/nina-test-server/**'
       - 'tools/nina-build-check.sh'
+      - 'tools/nina-banned-api-check.sh'
+      - 'tools/nina-zip-check.sh'
       - '.github/workflows/plugin.yml'
   push:
     branches: [main]
+    tags: ['plugin-v*']
     paths:
       - 'apps/nina-plugin/**'
-      - 'spikes/nina-build/**'
+      - 'docs/api/openapi.nina.json'
       - 'spikes/nina-probe/**'
       - 'spikes/jint-runtime/**'
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
+      - 'tools/nina-test-server/**'
       - 'tools/nina-build-check.sh'
+      - 'tools/nina-banned-api-check.sh'
+      - 'tools/nina-zip-check.sh'
       - '.github/workflows/plugin.yml'
   workflow_dispatch:
 
@@ -36,50 +47,67 @@ concurrency:
   group: plugin-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Eigene Abhängigkeiten im Plugin-Ordner (TK 10.1, 10.5) – alles andere bringt NINA mit.
+  PLUGIN_DEPS: Jint,Acornima,Microsoft.Data.Sqlite,SQLitePCLRaw.batteries_v2,SQLitePCLRaw.core,SQLitePCLRaw.provider.e_sqlite3,e_sqlite3,Polly,Polly.Core
+
 jobs:
   # Sichert die Entwicklung ohne Windows: bricht dieser Auftrag, ist der lokale Arbeitsablauf auf macOS/Linux kaputt.
   cross-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-      # Ohne zusätzliche -p:-Schalter: Directory.Build.props/.targets genügen (TK 10.5).
-      - name: Kern bauen und testen
-        run: dotnet test -c Release spikes/nina-build/Core.Tests
-      - name: Adapter mit UseWPF, ohne XAML (b)
-        run: dotnet build -c Release spikes/nina-build/Adapter
-      - name: Adapter ohne UseWPF (c)
-        run: dotnet build -c Release spikes/nina-build/AdapterNoWpf
-      - name: Ansichten mit XAML (d)
-        run: dotnet build -c Release spikes/nina-build/Ui
-      - name: Probe-Plugin AP-S2b (mit XAML)
-        run: dotnet build -c Release spikes/nina-probe
-      - name: NINA-Version, Ausgabe und keine DLL im Git
-        run: |
-          tools/nina-build-check.sh spikes/nina-build
-          tools/nina-build-check.sh spikes/nina-probe
-
-  # Derselbe Build auf Windows; AP-16a ergänzt hier Adapter-Tests, dotnet publish und die ZIP.
-  build:
-    runs-on: windows-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      # Paritätstests (Jint ↔ Node) brauchen das Engine-Bundle und laufen im Auftrag engine-parity.
       - name: Kern bauen und testen
-        run: dotnet test -c Release spikes/nina-build/Core.Tests
-      - name: Adapter und Ansichten bauen
+        run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests --filter "FullyQualifiedName!~Parity"
+      - name: Adapter, Adapter-Tests und Ansichten bauen (ohne -p:-Schalter)
         run: |
-          dotnet build -c Release spikes/nina-build/Adapter
-          dotnet build -c Release spikes/nina-build/AdapterNoWpf
-          dotnet build -c Release spikes/nina-build/Ui
-      # AP-S2b: Probe-Plugin für die Protokolle P-01…P-03, P-13 – Inhalt nach
-      # %LOCALAPPDATA%\NINA\Plugins\3.0.0\NINA-PM Probe\ entpacken (spikes/nina-probe/README.md).
+          dotnet build -c Release apps/nina-plugin/NinaPm.Nina
+          dotnet build -c Release apps/nina-plugin/NinaPm.Nina.Tests
+          dotnet build -c Release apps/nina-plugin/NinaPm.Nina.Ui
+      - name: Keine XAML-Datei im Adapter (Regel 13)
+        run: |
+          found=$(find apps/nina-plugin/NinaPm.Nina -name '*.xaml' -not -path '*/bin/*' -not -path '*/obj/*')
+          [ -z "$found" ] || { echo "XAML in NinaPm.Nina: $found"; exit 1; }
+      - name: NINA-Version, Ausgabe und keine DLL im Git
+        run: tools/nina-build-check.sh --allow "$PLUGIN_DEPS" apps/nina-plugin
+      - name: Zeitregel – DateTime.Now bricht den Build (NT-05)
+        run: tools/nina-banned-api-check.sh
+      - name: Probe-Plugin AP-S2b bauen
+        run: |
+          dotnet build -c Release spikes/nina-probe
+          tools/nina-build-check.sh spikes/nina-probe
+
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Kern-Tests
+        run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests --filter "FullyQualifiedName!~Parity"
+      - name: Adapter-Tests (nur unter Windows ausführbar)
+        run: dotnet test -c Release apps/nina-plugin/NinaPm.Nina.Tests
+      - name: Plugin veröffentlichen (win-x64, ohne eigene Laufzeit)
+        run: dotnet publish -c Release -r win-x64 --self-contained false apps/nina-plugin/NinaPm.Nina -o out/Svenesis.NinaPm
+      - name: Inhalt prüfen (TK 10.5)
+        run: tools/nina-zip-check.sh out/Svenesis.NinaPm
+      # Inhalt nach %LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm\ entpacken (TK 10.5).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nina-pm-plugin
+          path: out/Svenesis.NinaPm/
+          retention-days: 30
+      # AP-S2b: Probe-Plugin für die Protokolle P-01…P-03, P-13 (spikes/nina-probe/README.md).
       - name: Probe-Plugin bauen
         run: dotnet build -c Release spikes/nina-probe
       - uses: actions/upload-artifact@v4
@@ -87,6 +115,33 @@ jobs:
           name: nina-pm-probe
           path: spikes/nina-probe/bin/Release/NinaPm.Probe.dll
           retention-days: 30
+
+  # Nur beim Tag plugin-v* (setzt Sven): ZIP und Beispielsequenzen als Release-Asset (TK 18, E1).
+  release:
+    if: startsWith(github.ref, 'refs/tags/plugin-v')
+    needs: [cross-build, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: nina-pm-plugin
+          path: Svenesis.NinaPm
+      - name: ZIP und Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          zip -r "nina-pm-$TAG.zip" Svenesis.NinaPm
+          assets=("nina-pm-$TAG.zip")
+          if [ -d apps/nina-plugin/NinaPm.Nina/Samples ]; then
+            zip -j "nina-pm-sequences-$TAG.zip" apps/nina-plugin/NinaPm.Nina/Samples/*.json
+            assets+=("nina-pm-sequences-$TAG.zip")
+          fi
+          gh release create "$TAG" "${assets[@]}" --title "NINA-PM Plugin $TAG" --notes "Siehe docs/CHANGELOG.md."
 
   # AP-08c (rules/engine.md Nr. 7, canonical-json.md): Engine-Bundle unter Jint rechnet dieselben Hashes wie Node –
   # feste Testvektoren und 500 zufällige PlanInput. Bricht dieser Auftrag, würde das Plugin offline anders planen.
