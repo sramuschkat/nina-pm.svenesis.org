@@ -11,6 +11,7 @@ import datetime as dt
 import hashlib
 import json
 import math
+import multiprocessing
 import os
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -157,10 +158,15 @@ def angular_sep(ra1, dec1, ra2, dec2):
 def parallel_map(fn, items):
     """`fn` über `items` in eigenen Prozessen, Ergebnisse in der Reihenfolge von `items` – die Fixtures bleiben
     byte-gleich zum seriellen Lauf. Jede Nacht wird unabhängig gerechnet; der CI-Runner hat 4 vCPU.
-    `REFERENCE_WORKERS=1` rechnet seriell (Fehlersuche). `fn` muss auf Modulebene stehen (pickle)."""
+    `REFERENCE_WORKERS=1` rechnet seriell (Fehlersuche). `fn` muss auf Modulebene stehen (pickle).
+
+    Start über **spawn**, nicht fork: der Elternprozess hat `de432s.bsp` beim Import geöffnet; geforkte Kinder
+    teilten sich Dateizeiger und Leseposition, gleichzeitiges Lesen lieferte Bytes von der falschen Stelle
+    (`cannot reshape array …`, Lauf 36857872571). Mit spawn importiert jeder Prozess `common.py` neu und
+    öffnet die Ephemeride selbst."""
     items = list(items)
     workers = int(os.environ.get("REFERENCE_WORKERS", "0")) or os.cpu_count() or 1
     if workers <= 1 or len(items) <= 1:
         return [fn(x) for x in items]
-    with ProcessPoolExecutor(max_workers=min(workers, len(items))) as pool:
+    with ProcessPoolExecutor(max_workers=min(workers, len(items)), mp_context=multiprocessing.get_context("spawn")) as pool:
         return list(pool.map(fn, items, chunksize=max(1, len(items) // (workers * 8))))
