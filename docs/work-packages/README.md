@@ -97,11 +97,11 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-S2b](AP-S2b.md) | Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent) | S | AP-01 | H-14, H-15 | ◐ |
+| [AP-S2b](AP-S2b.md) | Spike NINA-Laufzeit: Stellen ohne Vorbild prüfen (Mensch + Agent) | S | AP-01 | H-14, H-15 | ☑ 01.10.2026 |
 | [AP-S2c](AP-S2c.md) | Spike Build: Adapter ohne Windows bauen (Mensch + Agent) | S | AP-01 | – (ADR-S2c) | ☑ 28.09.2026 |
 | [AP-08c](AP-08c.md) | Engine-Bundle und Jint-Parität | S | AP-08b, AP-S2c | – | ☑ 28.09.2026 |
 | [AP-S2a](AP-S2a.md) | Spike Jint-Laufzeit | S | AP-08c | – | ☑ 28.09.2026 |
-| [AP-16a](AP-16a.md) | Plugin: Lösung, Core, Kopplung, NINA-Test-Server | M | AP-S2b, AP-S2c, AP-08c, AP-14a | H-14, H-15 | ☐ |
+| [AP-16a](AP-16a.md) | Plugin: Lösung, Core, Kopplung, NINA-Test-Server | M | AP-S2b, AP-S2c, AP-08c, AP-14a | H-14, H-15 | ◐ |
 | [AP-16b](AP-16b.md) | Plugin Core: Planung, Neuplanung, Offline-Plan | M | AP-16a, AP-S2a, AP-13d | H-15 | ☐ |
 | [AP-16c](AP-16c.md) | Plugin Adapter: Container, interne Items, Blockablauf | L | AP-16b, AP-14b | H-14, H-15 | ☐ |
 | [AP-16d](AP-16d.md) | Plugin Adapter: Trigger-Walk, Filter und Auslesemodus, Neuplanung im Block | M | AP-16c | H-15 | ☐ |
@@ -136,6 +136,6 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
 | [AP-60](AP-60.md) | Discord-Kanäle und Nachtbericht | M | AP-15 | H-21 | ☐ |
-| [AP-61](AP-61.md) | Belichtungs-/Sampling-Rechner | S | AP-09b | – | ◐ |
+| [AP-61](AP-61.md) | Belichtungs-/Sampling-Rechner | S | AP-09b | – | ☑ 01.10.2026 |
 | [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ☐ |
 | [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ |

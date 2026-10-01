@@ -6,6 +6,7 @@
 #      Ausgenommen NINA.Accord.*: NINAs Abspaltung von Accord.NET mit eigener Versionsnummer.
 #   3. Die Ausgabe dieser Projekte (bin/<Konfiguration>/) enthält nur DLLs eigener Projekte und der mit --allow
 #      genannten eigenen Abhängigkeiten (z. B. Jint, Polly). NINA-Assemblies und was NINA mitbringt, gehören nicht hinein.
+#      Testprojekte (*.Tests) sind davon ausgenommen – sie laufen mit NINA-Assemblies und werden nie ausgeliefert.
 #
 # Aufruf (nach dem Build): tools/nina-build-check.sh [--config Release] [--allow Jint,Polly] <ordner>
 set -euo pipefail
@@ -50,7 +51,13 @@ for p in $projects; do
     [[ -z "$id" || "$version" == "$want" ]] || err "$name: $id $version statt $want"
   done <<< "$versions"
 
-  # 3. Ausgabe nur mit eigenen DLLs
+  # 3. Ausgabe nur mit eigenen DLLs – nicht bei Testprojekten (*.Tests): der Test-Host braucht NINA zur Laufzeit,
+  #    ausgeliefert werden sie nie.
+  if [[ "$name" == *.Tests ]]; then
+    [[ $fail -eq 1 ]] || echo "✓ $name: NINA $want, $(echo "$versions" | wc -l | tr -d ' ') Pakete (Testprojekt, Ausgabe nicht geprüft)"
+    [[ $before -eq 0 ]] || fail=1
+    continue
+  fi
   out="$(dirname "$p")/bin/$config"
   [[ -d "$out" ]] || { err "$name: $out fehlt (vorher mit -c $config bauen)"; continue; }
   while IFS= read -r dll; do

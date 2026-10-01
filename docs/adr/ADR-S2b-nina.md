@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Vorgeschlagen: Go** (01.10.2026) – alle Laufzeitpunkte geprüft (P-01, P-02, P-03, P-13, Kommandozeile, Safety); Abnahme durch Sven offen |
+| Status | **Angenommen: Go** (01.10.2026, Abnahme Sven) – alle Laufzeitpunkte geprüft (P-01, P-02, P-03, P-13, Kommandozeile, Safety) |
 | Datum | 2026-09-28 |
 | Arbeitspaket | AP-S2b |
 | Anforderungen | TK 10.1, 10.3, OT-08, OT-22, NT-45, NIN5-1, NIN5-3 |
@@ -52,7 +52,7 @@ Probe-Plugin: `spikes/nina-probe` (Anleitung dort). Übersetzt wird gegen NuGet 
 | *Loop While Safe* unterbricht → `interrupted`, Stopp → `user_skip` (§4.6) | README Probe §5 | **✔ (01.10.2026).** Safety Monitor während einer Belichtung getrennt: NINA unterbricht nach ≈ 3,8 s (Prüftakt), Probe meldet `aborted`, `BLOCK_END reason=interrupted`, `SAFETY_PAUSE`. Stopp von Hand bei sicherem Monitor: `BLOCK_END reason=user_skip`. „Verbunden, aber unsicher“ (OmniSim ohne Schalter) folgt in P-25. `docs/test-runs/2026-10-01/safety/` |
 
 ## Entscheidung
-**Go (vorgeschlagen, 01.10.2026).** P-01, P-02, P-03 und P-13 sind bestanden, Kommandozeilenstart und Safety-Unterbrechung bestätigt. AP-16c…16h übernehmen die Muster aus `spikes/nina-probe` in `NinaPm.Nina`:
+**Go (angenommen von Sven am 01.10.2026).** P-01, P-02, P-03 und P-13 sind bestanden, Kommandozeilenstart und Safety-Unterbrechung bestätigt. AP-16c…16h übernehmen die Muster aus `spikes/nina-probe` in `NinaPm.Nina`:
 - den Trigger-Walk mit `ShouldTrigger`/`Run` und Kontext = Container – deaktivierte Trigger überspringen, Fehlschlag über den Status nach `Run` erkennen;
 - die Zuordnung über `Image.Id` vor `Enqueue`, sitzungsweit statt im Block;
 - die Abbruch-Token;

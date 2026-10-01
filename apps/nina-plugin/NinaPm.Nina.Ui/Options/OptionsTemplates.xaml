@@ -1,0 +1,63 @@
+<ResourceDictionary
+    x:Class="NinaPm.Nina.Ui.Options.OptionsTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:NinaPm.Nina.Ui"
+    xmlns:options="clr-namespace:NinaPm.Nina.Ui.Options">
+    <!--
+        Optionsseite (FA-NIN-01, AP-16a, P-04): NINA sucht die Vorlage unter "<Plugin-Name>_Options"; DataContext ist
+        das Plugin-Objekt aus NinaPm.Nina (Bindungen nur über Namen). Das Token geht über eine PasswordBox und wird nie
+        angezeigt (SV-08).
+    -->
+    <DataTemplate x:Key="NINA-PM_Options">
+        <StackPanel Margin="5" Orientation="Vertical">
+            <TextBlock Margin="0,0,0,10" MaxWidth="700" HorizontalAlignment="Left" Text="{x:Static ui:Texts.Intro}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,0,0,5" FontWeight="Bold" Text="{x:Static ui:Texts.ConnectionHeader}" />
+            <Grid Margin="0,0,0,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="420" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.ServerUrl}" />
+                <TextBox Grid.Row="0" Grid.Column="1" Margin="0,2" Text="{Binding ServerUrl, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.Token}" />
+                <PasswordBox Grid.Row="1" Grid.Column="1" Margin="0,2" options:PasswordBoxBinding.Password="{Binding TokenInput, Mode=TwoWay}" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,4" Opacity="0.7" Text="{Binding TokenState}" />
+                <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,2" Content="{x:Static ui:Texts.TestMode}" IsChecked="{Binding TestMode}" />
+            </Grid>
+            <StackPanel Margin="0,5" Orientation="Horizontal">
+                <Button Padding="10,4" Command="{Binding SaveAndTestCommand}" Content="{x:Static ui:Texts.SaveAndConnect}" />
+                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding TestCommand}" Content="{x:Static ui:Texts.TestConnection}" />
+            </StackPanel>
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static ui:Texts.Status}" />
+                <TextBlock Grid.Row="0" Grid.Column="1" FontWeight="Bold" Text="{Binding ConnectionStatus}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static ui:Texts.Tenant}" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TenantName}" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Static ui:Texts.Instance}" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InstanceName}" />
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{x:Static ui:Texts.Rig}" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding RigName}" />
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{x:Static ui:Texts.Site}" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SiteCheck}" TextWrapping="Wrap" />
+            </Grid>
+        </StackPanel>
+    </DataTemplate>
+</ResourceDictionary>

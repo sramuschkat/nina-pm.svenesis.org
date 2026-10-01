@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Tests des plattformneutralen Plugin-Kerns (TK 10.1/10.5): net8.0, läuft auf macOS, Linux und Windows.
-    AP-08c legt das Projekt mit dem Paritätstest Node ↔ Jint an; AP-16a ergänzt NinaPm.Core und dessen Tests.
+    AP-08c legt das Projekt mit dem Paritätstest Node ↔ Jint an; AP-16a ergänzt NinaPm.Core und dessen Tests
+    (LocalStore, JSON-Rundreise, Log-Grammatik, Optionen, Verbindungstest). Newtonsoft hier mit Laufzeit: der Kern
+    nimmt es nur zum Übersetzen (NINA bringt es mit), der Test-Host braucht es.
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -14,8 +16,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Jint" Version="4.16.4" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NinaPm.Core/NinaPm.Core.csproj" />
   </ItemGroup>
 </Project>

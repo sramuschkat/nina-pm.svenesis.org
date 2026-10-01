@@ -1,0 +1,8 @@
+P:System.DateTime.Now;Zeit nur über IClock, in UTC (NT-05, execution.md §2)
+P:System.DateTime.Today;Zeit nur über IClock; Nacht-Schlüssel aus bootstrap.nights[] (NT-05)
+P:System.DateTime.UtcNow;Zeit nur über IClock (NT-05) – einzige Ausnahme SystemClock
+P:System.DateTimeOffset.Now;Zeit nur über IClock, in UTC (NT-05)
+P:System.DateTimeOffset.UtcNow;Zeit nur über IClock (NT-05) – einzige Ausnahme SystemClock
+P:System.TimeZoneInfo.Local;PC-Zeitzone ist nicht die Standortzeit (NT-06) – einzige Ausnahme der SiteCheck-Hinweis pc_timezone_differs
+M:System.DateTime.ToLocalTime;PC-Zeitzone ist nicht die Standortzeit (NT-06)
+M:System.DateTimeOffset.ToLocalTime;PC-Zeitzone ist nicht die Standortzeit (NT-06)

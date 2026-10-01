@@ -1,0 +1,4268 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Svenesis NINA-PM – NINA-API",
+    "version": "1",
+    "description": "NINA-Ausschnitt aus docs/api/openapi.yaml als OpenAPI 3.0.3 für den Plugin-Client (NSwag). Generiert – nicht von Hand ändern."
+  },
+  "servers": [
+    {
+      "url": "https://nina-pm.svenesis.org"
+    }
+  ],
+  "paths": {
+    "/api/nina/v1/bootstrap": {
+      "get": {
+        "summary": "Rig, Einstellungen, Mondprofile, Nacht-Tabelle ab der Mittagsnacht",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SIM-09, NT-02, NT-05, NT-E1, NT-E2, NT-40",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-02",
+          "FA-SIM-09",
+          "NT-02",
+          "NT-05",
+          "NT-E1",
+          "NT-E2",
+          "NT-40"
+        ],
+        "responses": {
+          "200": {
+            "description": "Bootstrap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaBootstrap"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/targets": {
+      "get": {
+        "summary": "Auslieferbare Projekte des Rigs (ETag ohne Zähler aus Meldungen)",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-02, FA-SYN-03, NT-E1, NT-19",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-02",
+          "FA-SYN-03",
+          "NT-E1",
+          "NT-19"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "required": false,
+            "name": "if-none-match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ziele",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaTargets"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unverändert"
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/plan": {
+      "post": {
+        "summary": "Nachtplan vom Server (gleiche Engine und Eingaben wie der Simulator)",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SIM-05, FA-SYN-03, NT-01, NT-20, M4, M7",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SIM-05",
+          "FA-SYN-03",
+          "NT-01",
+          "NT-20",
+          "M4",
+          "M7"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nachtplan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "nina.night_invalid | engine.input_invalid | validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/sessions": {
+      "post": {
+        "summary": "Session anlegen (idempotent je Rig) mit Lease; offline ohne Lease",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-06, FA-RIG-06, NT-01, NT-09, NT-47, SEC-53",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-06",
+          "FA-RIG-06",
+          "NT-01",
+          "NT-09",
+          "NT-47",
+          "SEC-53"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaSessionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bereits angelegt (idempotent)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaSessionCreated"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Angelegt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaSessionCreated"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "session.rig_busy | engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "nina.night_invalid | validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/sessions/{sessionId}": {
+      "patch": {
+        "summary": "Session beenden, fortsetzen oder Offline-Plan nachmelden",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-NIN-13, NT-11, NT-15, NT-47, M6, NIN5-7, NIN5-14, SEC-53",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-NIN-13",
+          "NT-11",
+          "NT-15",
+          "NT-47",
+          "M6",
+          "NIN5-7",
+          "NIN5-14",
+          "SEC-53"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID"
+            },
+            "required": true,
+            "description": "UUID",
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaSessionPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaSessionPatched"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "session.closed | session.rig_busy | engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/sessions/{sessionId}/captures": {
+      "post": {
+        "summary": "Aufnahmemeldungen (≤ 500, idempotent) mit Status je Meldung",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-04, FA-SYN-05, FA-NIN-17, NT-10, NT-14, NT-E2, NT-E3, SEC-53",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-04",
+          "FA-SYN-05",
+          "FA-NIN-17",
+          "NT-10",
+          "NT-14",
+          "NT-E2",
+          "NT-E3",
+          "SEC-53"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID"
+            },
+            "required": true,
+            "description": "UUID",
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaCaptureBatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status je Meldung",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaCaptureResults"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "session.unknown | session.closed | engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "capture.batch_too_large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/sessions/{sessionId}/events": {
+      "post": {
+        "summary": "Ereignisse (≤ 200, idempotent)",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-06, SEC-52, SEC-53",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-06",
+          "SEC-52",
+          "SEC-53"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID"
+            },
+            "required": true,
+            "description": "UUID",
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaEventBatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Angenommen",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaEventResults"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "resource.not_found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "session.unknown | session.closed | engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "event.batch_too_large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/nina/v1/heartbeat": {
+      "post": {
+        "summary": "Heartbeat: Zustand, NINA-Einstellungen, Lease verlängern bzw. zurückholen",
+        "tags": [
+          "nina"
+        ],
+        "description": "Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-SYN-07, FA-RIG-06, FA-NIN-04, NT-05, NT-17, NT-22, M5, M6",
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-SYN-07",
+          "FA-RIG-06",
+          "FA-NIN-04",
+          "NT-05",
+          "NT-17",
+          "NT-22",
+          "M5",
+          "M6"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NinaHeartbeat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Antwort",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaHeartbeatResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "NinaBootstrap": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "serverTimeUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "server": {
+            "type": "object",
+            "properties": {
+              "engineVersion": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+              },
+              "minPluginVersion": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+              }
+            },
+            "required": [
+              "engineVersion",
+              "minPluginVersion"
+            ]
+          },
+          "instance": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "UUID"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "tenant": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "timeZone": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "key",
+              "name",
+              "timeZone"
+            ]
+          },
+          "rig": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "description": "UUID"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "settingsVersion": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "site": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "latDeg": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lonDeg": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "elevationM": {
+                    "type": "number"
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "name",
+                  "latDeg",
+                  "lonDeg",
+                  "elevationM",
+                  "timeZone"
+                ]
+              },
+              "telescope": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "apertureMm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "focalLengthMm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "reducerFactor": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  }
+                },
+                "required": [
+                  "name",
+                  "apertureMm",
+                  "focalLengthMm",
+                  "reducerFactor"
+                ]
+              },
+              "camera": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "pixelSizeUm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "widthPx": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "heightPx": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "defaultGain": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "defaultOffset": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "readoutModes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "index": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "name": {
+                          "type": "string",
+                          "maxLength": 256
+                        }
+                      },
+                      "required": [
+                        "index",
+                        "name"
+                      ]
+                    },
+                    "maxItems": 64
+                  },
+                  "binning": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxItems": 16
+                  },
+                  "setpointC": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "toleranceC": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "name",
+                  "pixelSizeUm",
+                  "widthPx",
+                  "heightPx",
+                  "defaultGain",
+                  "defaultOffset",
+                  "readoutModes",
+                  "binning",
+                  "setpointC",
+                  "toleranceC"
+                ]
+              },
+              "rotator": {
+                "type": "object",
+                "properties": {
+                  "present": {
+                    "type": "boolean"
+                  },
+                  "defaultRotationDeg": {
+                    "type": "number",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 360,
+                    "exclusiveMaximum": true
+                  },
+                  "toleranceDeg": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "skipOnMismatch": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "present",
+                  "defaultRotationDeg",
+                  "toleranceDeg",
+                  "skipOnMismatch"
+                ]
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "shortName": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
+                    "name": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
+                    "color": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "ninaFilterName": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 256
+                    }
+                  },
+                  "required": [
+                    "shortName",
+                    "name",
+                    "color",
+                    "position",
+                    "ninaFilterName"
+                  ]
+                },
+                "maxItems": 64
+              },
+              "scheduler": {
+                "type": "object",
+                "properties": {
+                  "strategy": {
+                    "type": "string",
+                    "enum": [
+                      "proportional",
+                      "manual_priority"
+                    ]
+                  },
+                  "playback": {
+                    "type": "string",
+                    "enum": [
+                      "time_aware",
+                      "sequential"
+                    ]
+                  },
+                  "sortChain": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "lowest_peak_altitude",
+                        "setting_soonest",
+                        "most_remaining",
+                        "constrained",
+                        "most_moon_limited",
+                        "mosaic_grouping",
+                        "card_order",
+                        "due_soonest"
+                      ]
+                    },
+                    "maxItems": 16
+                  },
+                  "bonus": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  "mosaicPanelsIndependent": {
+                    "type": "boolean"
+                  },
+                  "dither": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "every": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "every"
+                    ]
+                  },
+                  "filterSwitch": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "every": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "tolerancePct": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "every",
+                      "tolerancePct"
+                    ]
+                  },
+                  "flats": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "panel",
+                          "sky"
+                        ]
+                      },
+                      "fullSet": {
+                        "type": "boolean"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "darkFlats": {
+                        "type": "object",
+                        "properties": {
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "nullable": true,
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "enabled",
+                          "count"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "source",
+                      "fullSet",
+                      "count",
+                      "darkFlats"
+                    ]
+                  },
+                  "meridianFlip": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "afterMin": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "maxAfterMin": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "pauseBeforeMin": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "durationS": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "afterMin",
+                      "maxAfterMin",
+                      "pauseBeforeMin",
+                      "durationS"
+                    ]
+                  },
+                  "overhead": {
+                    "type": "object",
+                    "properties": {
+                      "slewCenterS": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "filterChangeS": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "ditherSettleS": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "afEveryMin": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "afDurationS": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "downloadS": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "slewCenterS",
+                      "filterChangeS",
+                      "ditherSettleS",
+                      "afEveryMin",
+                      "afDurationS",
+                      "downloadS"
+                    ]
+                  },
+                  "overshootPct": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "strategy",
+                  "playback",
+                  "sortChain",
+                  "bonus",
+                  "mosaicPanelsIndependent",
+                  "dither",
+                  "filterSwitch",
+                  "flats",
+                  "meridianFlip",
+                  "overhead",
+                  "overshootPct"
+                ]
+              },
+              "leaseMinutes": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "settingsVersion",
+              "site",
+              "telescope",
+              "camera",
+              "rotator",
+              "filters",
+              "scheduler",
+              "leaseMinutes"
+            ]
+          },
+          "moonProfiles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "separationDeg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 180
+                },
+                "widthDays": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "relax": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "minAltDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "maxAltDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "maxIlluminationPct": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "moonMustBeDown": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "separationDeg",
+                "widthDays",
+                "relax",
+                "minAltDeg",
+                "maxAltDeg",
+                "maxIlluminationPct",
+                "moonMustBeDown"
+              ]
+            },
+            "maxItems": 200
+          },
+          "tzdataVersion": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "nights": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "night": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-09-18"
+                },
+                "noonStartUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "noonEndUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "nightWindowEndUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                }
+              },
+              "required": [
+                "night",
+                "noonStartUtc",
+                "noonEndUtc",
+                "nightWindowEndUtc"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 400
+          },
+          "timeZoneTransitions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "atUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "utcOffsetMinutes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "atUtc",
+                "utcOffsetMinutes"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "apiVersion",
+          "serverTimeUtc",
+          "server",
+          "instance",
+          "tenant",
+          "rig",
+          "moonProfiles",
+          "tzdataVersion",
+          "nights",
+          "timeZoneTransitions"
+        ]
+      },
+      "NinaCaptureBatch": {
+        "type": "object",
+        "properties": {
+          "captures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "capturedAtUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "exposureMidUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "night": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-09-18"
+                },
+                "nightPlanId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "filterShortName": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "filterActual": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "exposureS": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "gain": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "offset": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "binning": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "readoutMode": {
+                  "type": "string",
+                  "nullable": true,
+                  "maxLength": 256
+                },
+                "readoutModeIndex": {
+                  "type": "integer",
+                  "nullable": true,
+                  "minimum": 0
+                },
+                "rotatorMechDeg": {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                "temperatureDeviation": {
+                  "type": "boolean"
+                },
+                "result": {
+                  "type": "string",
+                  "enum": [
+                    "saved",
+                    "aborted",
+                    "failed"
+                  ]
+                },
+                "fileName": {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                "metrics": {
+                  "type": "object",
+                  "properties": {
+                    "hfr": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "stars": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "meanAdu": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "sensorTempC": {
+                      "type": "number"
+                    },
+                    "setPointC": {
+                      "type": "number"
+                    },
+                    "guidingRmsArcsec": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "altitudeDeg": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "airmass": {
+                      "type": "number",
+                      "minimum": 1,
+                      "maximum": 40
+                    },
+                    "focusPosition": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "frameType": {
+                  "type": "string",
+                  "enum": [
+                    "light",
+                    "flat",
+                    "dark_flat"
+                  ]
+                },
+                "blockId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "projectId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "panelId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "exposureLineId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "assignment": {
+                  "type": "string",
+                  "enum": [
+                    "unassigned"
+                  ]
+                },
+                "transitObservationId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "raDeg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 360,
+                  "exclusiveMaximum": true
+                },
+                "decDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "rotationDeg": {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                "pierSide": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    "east",
+                    "west",
+                    null
+                  ]
+                },
+                "bonus": {
+                  "type": "boolean"
+                },
+                "projectIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID"
+                  },
+                  "maxItems": 50
+                },
+                "flatsPlanned": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "darkFlatsPlanned": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "capturedAtUtc",
+                "exposureMidUtc",
+                "night",
+                "nightPlanId",
+                "filterShortName",
+                "filterActual",
+                "exposureS",
+                "gain",
+                "offset",
+                "binning",
+                "readoutMode",
+                "readoutModeIndex",
+                "rotatorMechDeg",
+                "temperatureDeviation",
+                "result",
+                "frameType"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "captures"
+        ],
+        "additionalProperties": false
+      },
+      "NinaCaptureResults": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "accepted",
+                    "duplicate",
+                    "archived",
+                    "unassigned",
+                    "rejected_invalid"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "results"
+        ]
+      },
+      "NinaEventBatch": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "occurredAtUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "plan_built",
+                    "plan_rebuilt",
+                    "block_start",
+                    "block_end",
+                    "block_skipped",
+                    "center_failed",
+                    "safety_pause",
+                    "safety_resume",
+                    "transit_start",
+                    "transit_end",
+                    "af",
+                    "flip",
+                    "flats_start",
+                    "flats_end",
+                    "rotation_mismatch",
+                    "lease_conflict",
+                    "lease_lost",
+                    "flip_settings_mismatch",
+                    "filter_not_found",
+                    "readout_mode_not_found",
+                    "trigger_suppressed",
+                    "offline_start",
+                    "offline_end",
+                    "warning",
+                    "error",
+                    "session_end",
+                    "lease_regained",
+                    "rotation_unknown",
+                    "flip_undetected",
+                    "skipped_timeaware",
+                    "past_mismatch"
+                  ]
+                },
+                "code": {
+                  "type": "string",
+                  "nullable": true,
+                  "maxLength": 256
+                },
+                "message": {
+                  "type": "string"
+                },
+                "nightPlanId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "blockId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "projectId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "durationS": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "data": {
+                  "type": "object",
+                  "nullable": true,
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "id",
+                "occurredAtUtc",
+                "kind"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "additionalProperties": false
+      },
+      "NinaEventResults": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "duplicate": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "accepted",
+          "duplicate"
+        ]
+      },
+      "NinaHeartbeat": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "idle",
+              "paused",
+              "flats",
+              "offline",
+              "blocked"
+            ]
+          },
+          "blockedReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "lease_lost",
+              "rig_busy",
+              "token_invalid",
+              "clock_skew",
+              "plan_failed",
+              "engine_incompatible",
+              "tenant_locked",
+              null
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "blockId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "pluginVersion": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+          },
+          "engineVersion": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+          },
+          "profileLocation": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "latDeg": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lonDeg": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              }
+            },
+            "required": [
+              "latDeg",
+              "lonDeg"
+            ]
+          },
+          "cameraReadoutModes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "index",
+                "name"
+              ]
+            },
+            "maxItems": 64
+          },
+          "meridianFlip": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "triggerPresent": {
+                "type": "boolean"
+              },
+              "useSideOfPier": {
+                "type": "boolean"
+              },
+              "recenter": {
+                "type": "boolean"
+              },
+              "autoFocusAfterFlip": {
+                "type": "boolean"
+              },
+              "settleTimeS": {
+                "type": "number",
+                "minimum": 0
+              },
+              "pauseBeforeMin": {
+                "type": "number",
+                "minimum": 0
+              },
+              "afterMin": {
+                "type": "number",
+                "minimum": 0
+              },
+              "maxAfterMin": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "triggerPresent",
+              "useSideOfPier",
+              "recenter",
+              "autoFocusAfterFlip",
+              "settleTimeS",
+              "pauseBeforeMin",
+              "afterMin",
+              "maxAfterMin"
+            ]
+          },
+          "rotator": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "connected": {
+                "type": "boolean"
+              },
+              "rangeType": {
+                "type": "string",
+                "enum": [
+                  "FULL",
+                  "HALF",
+                  "QUARTER"
+                ]
+              },
+              "rangeStartMechanicalDeg": {
+                "type": "number",
+                "minimum": -360,
+                "maximum": 360
+              },
+              "reverse": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "connected",
+              "rangeType",
+              "rangeStartMechanicalDeg",
+              "reverse"
+            ]
+          },
+          "plateSolve": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "rotationToleranceDeg": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "rotationToleranceDeg"
+            ]
+          },
+          "mount": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "equatorialSystem": {
+                "type": "string",
+                "enum": [
+                  "J2000",
+                  "JNOW",
+                  "B1950",
+                  "J2050"
+                ]
+              },
+              "siteLatDeg": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "siteLonDeg": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "siderealTimeDeltaS": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "equatorialSystem",
+              "siteLatDeg",
+              "siteLonDeg",
+              "siderealTimeDeltaS"
+            ]
+          },
+          "sequenceTriggers": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "autofocus": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "maxItems": 32
+              },
+              "autofocusAfterTimeMin": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0
+              },
+              "dither": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "maxItems": 32
+              }
+            },
+            "required": [
+              "autofocus",
+              "autofocusAfterTimeMin",
+              "dither"
+            ]
+          },
+          "camera": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "temperatureC": {
+                "type": "number",
+                "nullable": true
+              },
+              "setPointC": {
+                "type": "number",
+                "nullable": true
+              },
+              "coolerOn": {
+                "type": "boolean"
+              },
+              "coolerPowerPct": {
+                "type": "number",
+                "nullable": true,
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "temperatureC",
+              "setPointC",
+              "coolerOn",
+              "coolerPowerPct"
+            ]
+          },
+          "lastMeasuredRotationDeg": {
+            "type": "number",
+            "nullable": true,
+            "minimum": -360,
+            "maximum": 360
+          },
+          "filterWheel": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "focusOffset": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "position",
+                "name",
+                "focusOffset"
+              ]
+            },
+            "maxItems": 64
+          },
+          "outboxPending": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deadLetters": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "settingsVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offlineUntil": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "ackedCommandIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "state",
+          "pluginVersion",
+          "engineVersion"
+        ]
+      },
+      "NinaHeartbeatResponse": {
+        "type": "object",
+        "properties": {
+          "serverTimeUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "lease": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "untilUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "leaseLost": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "untilUtc",
+              "leaseLost"
+            ]
+          },
+          "settingsVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "targetsEtag": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "command": {
+                  "type": "string",
+                  "enum": [
+                    "refresh_targets",
+                    "reset_plan"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "command"
+              ]
+            },
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "serverTimeUtc",
+          "lease",
+          "settingsVersion",
+          "targetsEtag",
+          "commands"
+        ]
+      },
+      "NinaPlanRequest": {
+        "type": "object",
+        "properties": {
+          "night": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-18"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "initial",
+              "refresh",
+              "resume",
+              "reset"
+            ]
+          },
+          "startAtUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "sessionId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "pendingCaptures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "exposureLineId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "transitObservationId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "captureIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID"
+                  },
+                  "maxItems": 500
+                }
+              },
+              "required": [
+                "exposureLineId",
+                "captureIds"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 500,
+            "default": []
+          },
+          "targetsEtag": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "tonight": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "pastBlocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unitId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "fromUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "toUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    }
+                  },
+                  "required": [
+                    "unitId",
+                    "fromUtc",
+                    "toUtc"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "exposedSecByUnit": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "lastAutofocusUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "filterCycle": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "unitId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "lineId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "subsOnLine": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "unitId",
+                    "lineId",
+                    "subsOnLine"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "flipDoneByPanel": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              "currentUnitId": {
+                "type": "string",
+                "nullable": true,
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "night",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "NinaPlanResponse": {
+        "type": "object",
+        "properties": {
+          "nightPlanId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "engineVersion": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+          },
+          "inputHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{1,64}$"
+          },
+          "outputHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{1,64}$"
+          },
+          "night": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-18"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "startAtUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "nightWindow": {
+            "type": "object",
+            "properties": {
+              "startUtc": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "endUtc": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              }
+            },
+            "required": [
+              "startUtc",
+              "endUtc"
+            ]
+          },
+          "darkness": {
+            "type": "object",
+            "properties": {
+              "civilStartUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "civilEndUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "nauticalStartUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "nauticalEndUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "astronomicalStartUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "astronomicalEndUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              }
+            },
+            "required": [
+              "civilStartUtc",
+              "civilEndUtc",
+              "nauticalStartUtc",
+              "nauticalEndUtc",
+              "astronomicalStartUtc",
+              "astronomicalEndUtc"
+            ]
+          },
+          "darknessEndUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "flatsNotBeforeUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "flatsNotAfterUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "sessionEndUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "regular",
+                    "transit"
+                  ]
+                },
+                "projectId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "panelId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "transitObservationId": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "startUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "endUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "twilightEndUtc": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "raDeg": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 360,
+                  "exclusiveMaximum": true
+                },
+                "decDeg": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "rotationDeg": {
+                  "type": "number",
+                  "minimum": -360,
+                  "maximum": 360
+                },
+                "rotationMode": {
+                  "type": "string",
+                  "enum": [
+                    "rotator",
+                    "fixed_camera"
+                  ]
+                },
+                "meridianFlip": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "waitStartUtc": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "plannedUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "durationS": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "inTransitWindow": {
+                      "type": "boolean"
+                    },
+                    "planned": {
+                      "type": "boolean"
+                    },
+                    "gapStartUtc": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "gapDurationS": {
+                      "type": "number",
+                      "nullable": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "waitStartUtc",
+                    "plannedUtc",
+                    "durationS",
+                    "inTransitWindow",
+                    "planned",
+                    "gapStartUtc",
+                    "gapDurationS"
+                  ],
+                  "additionalProperties": false
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "seq": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "cmd": {
+                        "type": "string",
+                        "enum": [
+                          "slew_center",
+                          "slew_center_rotate",
+                          "filter",
+                          "expose",
+                          "expose_series",
+                          "dither",
+                          "autofocus_hint",
+                          "wait",
+                          "meridian_flip",
+                          "end"
+                        ]
+                      },
+                      "atUtc": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-18T13:00:00Z"
+                      },
+                      "durationS": {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      "filter": {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      "exposureLineId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID"
+                      },
+                      "exposureS": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      },
+                      "gain": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "offset": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "binning": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "readoutMode": {
+                        "type": "string",
+                        "nullable": true,
+                        "maxLength": 256
+                      },
+                      "readoutModeIndex": {
+                        "type": "integer",
+                        "nullable": true,
+                        "minimum": 0
+                      },
+                      "bonus": {
+                        "type": "boolean"
+                      },
+                      "lastOfNight": {
+                        "type": "boolean"
+                      },
+                      "untilUtc": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-09-18T13:00:00Z"
+                      }
+                    },
+                    "required": [
+                      "seq",
+                      "cmd",
+                      "atUtc"
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 2000
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "projectId",
+                "panelId",
+                "startUtc",
+                "endUtc",
+                "twilightEndUtc",
+                "raDeg",
+                "decDeg",
+                "rotationDeg",
+                "rotationMode",
+                "meridianFlip",
+                "entries"
+              ]
+            },
+            "maxItems": 200
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "targets": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "plannedFrames": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "required": [
+              "targets",
+              "plannedFrames"
+            ]
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "panelId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "lineId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "start_date",
+                    "not_visible",
+                    "below_min_time",
+                    "moon_blocked",
+                    "prefiltered",
+                    "outranked",
+                    "no_need",
+                    "transit_conflict",
+                    "flip_in_transit",
+                    "filter_not_found",
+                    "rotation_mismatch"
+                  ]
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "projectId",
+                "reason"
+              ]
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "idle_gap",
+                    "la_unsafe",
+                    "total_min",
+                    "no_alloc",
+                    "la_miss",
+                    "filter_stuck",
+                    "past_mismatch",
+                    "panel_rotation_mismatch",
+                    "twilight_grazing"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "warn",
+                    "error"
+                  ]
+                },
+                "unitId": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "atUtc": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-18T13:00:00Z"
+                },
+                "durationS": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "code",
+                "level"
+              ]
+            }
+          }
+        },
+        "required": [
+          "nightPlanId",
+          "engineVersion",
+          "inputHash",
+          "night",
+          "revision",
+          "startAtUtc",
+          "nightWindow",
+          "darkness",
+          "darknessEndUtc",
+          "flatsNotBeforeUtc",
+          "flatsNotAfterUtc",
+          "sessionEndUtc",
+          "blocks",
+          "summary",
+          "diagnostics",
+          "warnings"
+        ]
+      },
+      "NinaSessionCreate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "night": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-18"
+          },
+          "nightPlanId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "startedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "offline": {
+            "type": "boolean",
+            "default": false
+          },
+          "offlinePlan": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "nightPlanId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "UUID"
+              },
+              "inputHash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{1,64}$"
+              },
+              "engineVersion": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "regular",
+                        "transit"
+                      ]
+                    },
+                    "projectId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "panelId": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "transitObservationId": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "startUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "endUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "twilightEndUtc": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "raDeg": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 360,
+                      "exclusiveMaximum": true
+                    },
+                    "decDeg": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "rotationDeg": {
+                      "type": "number",
+                      "minimum": -360,
+                      "maximum": 360
+                    },
+                    "rotationMode": {
+                      "type": "string",
+                      "enum": [
+                        "rotator",
+                        "fixed_camera"
+                      ]
+                    },
+                    "meridianFlip": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "waitStartUtc": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "plannedUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "durationS": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "inTransitWindow": {
+                          "type": "boolean"
+                        },
+                        "planned": {
+                          "type": "boolean"
+                        },
+                        "gapStartUtc": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "gapDurationS": {
+                          "type": "number",
+                          "nullable": true,
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "waitStartUtc",
+                        "plannedUtc",
+                        "durationS",
+                        "inTransitWindow",
+                        "planned",
+                        "gapStartUtc",
+                        "gapDurationS"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "cmd": {
+                            "type": "string",
+                            "enum": [
+                              "slew_center",
+                              "slew_center_rotate",
+                              "filter",
+                              "expose",
+                              "expose_series",
+                              "dither",
+                              "autofocus_hint",
+                              "wait",
+                              "meridian_flip",
+                              "end"
+                            ]
+                          },
+                          "atUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "durationS": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "filter": {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          "exposureLineId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "UUID"
+                          },
+                          "exposureS": {
+                            "type": "number",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                          },
+                          "gain": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "offset": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "binning": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "readoutMode": {
+                            "type": "string",
+                            "nullable": true,
+                            "maxLength": 256
+                          },
+                          "readoutModeIndex": {
+                            "type": "integer",
+                            "nullable": true,
+                            "minimum": 0
+                          },
+                          "bonus": {
+                            "type": "boolean"
+                          },
+                          "lastOfNight": {
+                            "type": "boolean"
+                          },
+                          "untilUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2026-09-18T13:00:00Z"
+                          }
+                        },
+                        "required": [
+                          "seq",
+                          "cmd",
+                          "atUtc"
+                        ]
+                      },
+                      "minItems": 1,
+                      "maxItems": 2000
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "projectId",
+                    "panelId",
+                    "startUtc",
+                    "endUtc",
+                    "twilightEndUtc",
+                    "raDeg",
+                    "decDeg",
+                    "rotationDeg",
+                    "rotationMode",
+                    "meridianFlip"
+                  ]
+                },
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "nightPlanId",
+              "inputHash",
+              "engineVersion",
+              "blocks"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "night",
+          "nightPlanId",
+          "startedAtUtc"
+        ],
+        "additionalProperties": false
+      },
+      "NinaSessionCreated": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "lease": {
+            "type": "object",
+            "properties": {
+              "untilUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              }
+            },
+            "required": [
+              "untilUtc"
+            ]
+          },
+          "planLogUploadUrl": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "planLogUploadFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "sessionId",
+          "lease",
+          "planLogUploadUrl"
+        ]
+      },
+      "NinaSessionPatch": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "aborted"
+            ]
+          },
+          "endedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "resumedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "outboxPending": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ninaConditions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "avg": {
+                  "type": "number"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "offline": {
+            "type": "boolean"
+          },
+          "offlinePlan": {
+            "type": "object",
+            "properties": {
+              "nightPlanId": {
+                "type": "string",
+                "format": "uuid",
+                "description": "UUID"
+              },
+              "inputHash": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{1,64}$"
+              },
+              "engineVersion": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+              },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "regular",
+                        "transit"
+                      ]
+                    },
+                    "projectId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "panelId": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "transitObservationId": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "uuid",
+                      "description": "UUID"
+                    },
+                    "startUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "endUtc": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "twilightEndUtc": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time",
+                      "example": "2026-09-18T13:00:00Z"
+                    },
+                    "raDeg": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 360,
+                      "exclusiveMaximum": true
+                    },
+                    "decDeg": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "rotationDeg": {
+                      "type": "number",
+                      "minimum": -360,
+                      "maximum": 360
+                    },
+                    "rotationMode": {
+                      "type": "string",
+                      "enum": [
+                        "rotator",
+                        "fixed_camera"
+                      ]
+                    },
+                    "meridianFlip": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "waitStartUtc": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "plannedUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "durationS": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "inTransitWindow": {
+                          "type": "boolean"
+                        },
+                        "planned": {
+                          "type": "boolean"
+                        },
+                        "gapStartUtc": {
+                          "type": "string",
+                          "nullable": true,
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "gapDurationS": {
+                          "type": "number",
+                          "nullable": true,
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "waitStartUtc",
+                        "plannedUtc",
+                        "durationS",
+                        "inTransitWindow",
+                        "planned",
+                        "gapStartUtc",
+                        "gapDurationS"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "seq": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "cmd": {
+                            "type": "string",
+                            "enum": [
+                              "slew_center",
+                              "slew_center_rotate",
+                              "filter",
+                              "expose",
+                              "expose_series",
+                              "dither",
+                              "autofocus_hint",
+                              "wait",
+                              "meridian_flip",
+                              "end"
+                            ]
+                          },
+                          "atUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2026-09-18T13:00:00Z"
+                          },
+                          "durationS": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "filter": {
+                            "type": "string",
+                            "maxLength": 256
+                          },
+                          "exposureLineId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "UUID"
+                          },
+                          "exposureS": {
+                            "type": "number",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                          },
+                          "gain": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "offset": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "binning": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "readoutMode": {
+                            "type": "string",
+                            "nullable": true,
+                            "maxLength": 256
+                          },
+                          "readoutModeIndex": {
+                            "type": "integer",
+                            "nullable": true,
+                            "minimum": 0
+                          },
+                          "bonus": {
+                            "type": "boolean"
+                          },
+                          "lastOfNight": {
+                            "type": "boolean"
+                          },
+                          "untilUtc": {
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2026-09-18T13:00:00Z"
+                          }
+                        },
+                        "required": [
+                          "seq",
+                          "cmd",
+                          "atUtc"
+                        ]
+                      },
+                      "minItems": 1,
+                      "maxItems": 2000
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "projectId",
+                    "panelId",
+                    "startUtc",
+                    "endUtc",
+                    "twilightEndUtc",
+                    "raDeg",
+                    "decDeg",
+                    "rotationDeg",
+                    "rotationMode",
+                    "meridianFlip"
+                  ]
+                },
+                "maxItems": 200
+              }
+            },
+            "required": [
+              "nightPlanId",
+              "inputHash",
+              "engineVersion",
+              "blocks"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "NinaSessionPatched": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "aborted",
+              "stale"
+            ]
+          },
+          "lease": {
+            "type": "object",
+            "properties": {
+              "untilUtc": {
+                "type": "string",
+                "nullable": true,
+                "format": "date-time",
+                "example": "2026-09-18T13:00:00Z"
+              },
+              "leaseLost": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "untilUtc",
+              "leaseLost"
+            ]
+          },
+          "nightPlanId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "reportStatus": {
+            "type": "string",
+            "enum": [
+              "none",
+              "pending",
+              "sent",
+              "failed",
+              "skipped"
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "lease",
+          "nightPlanId",
+          "reportStatus"
+        ]
+      },
+      "NinaTargets": {
+        "type": "object",
+        "properties": {
+          "rigId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "UUID"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                "target": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 256
+                    },
+                    "objectType": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 256
+                    },
+                    "catalogNames": {
+                      "type": "string",
+                      "maxLength": 2000
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "objectType"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "planning",
+                    "active",
+                    "on_hold",
+                    "ready_to_process",
+                    "unfinished",
+                    "completed",
+                    "archived"
+                  ]
+                },
+                "priority": {
+                  "type": "integer"
+                },
+                "startDate": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "date",
+                  "example": "2026-09-18"
+                },
+                "dueDate": {
+                  "type": "string",
+                  "nullable": true,
+                  "format": "date",
+                  "example": "2026-09-18"
+                },
+                "conditions": {
+                  "type": "object",
+                  "properties": {
+                    "minAltitudeDeg": {
+                      "type": "number",
+                      "minimum": -90,
+                      "maximum": 90
+                    },
+                    "minTimeOnTargetH": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 24
+                    },
+                    "twilight": {
+                      "type": "string",
+                      "enum": [
+                        "astronomical",
+                        "nautical",
+                        "civil"
+                      ]
+                    },
+                    "moonDefault": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "separationDeg": {
+                          "type": "number"
+                        },
+                        "widthDays": {
+                          "type": "number"
+                        },
+                        "relax": {
+                          "type": "number"
+                        },
+                        "minAltDeg": {
+                          "type": "number"
+                        },
+                        "maxAltDeg": {
+                          "type": "number"
+                        },
+                        "maxIlluminationPct": {
+                          "type": "number"
+                        },
+                        "moonMustBeDown": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "minAltitudeDeg",
+                    "minTimeOnTargetH",
+                    "twilight"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "deep_sky",
+                    "exoplanet"
+                  ]
+                },
+                "mosaic": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "rows": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "columns": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "overlapPct": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100
+                    }
+                  },
+                  "required": [
+                    "rows",
+                    "columns",
+                    "overlapPct"
+                  ]
+                },
+                "panels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "UUID"
+                      },
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "label": {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      "raDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 360,
+                        "exclusiveMaximum": true
+                      },
+                      "decDeg": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "rotationDeg": {
+                        "type": "number",
+                        "minimum": -360,
+                        "maximum": 360
+                      },
+                      "lines": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "description": "UUID"
+                            },
+                            "filter": {
+                              "type": "string",
+                              "maxLength": 256
+                            },
+                            "ninaFilterName": {
+                              "type": "string",
+                              "nullable": true,
+                              "maxLength": 256
+                            },
+                            "exposureS": {
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "gain": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "offset": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "binning": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "readoutMode": {
+                              "type": "string",
+                              "nullable": true,
+                              "maxLength": 256
+                            },
+                            "readoutModeIndex": {
+                              "type": "integer",
+                              "nullable": true,
+                              "minimum": 0
+                            },
+                            "moon": {
+                              "type": "object",
+                              "properties": {
+                                "mode": {
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "project_default",
+                                    "profile"
+                                  ]
+                                },
+                                "profileId": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "description": "UUID"
+                                }
+                              },
+                              "required": [
+                                "mode"
+                              ]
+                            },
+                            "order": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "counts": {
+                              "type": "object",
+                              "properties": {
+                                "planned": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "acquired": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "rejected": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "accepted": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "remaining": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "planningNeed": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "bonus": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                },
+                                "bonusRejected": {
+                                  "type": "integer",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "planned",
+                                "acquired",
+                                "rejected",
+                                "accepted",
+                                "remaining",
+                                "planningNeed",
+                                "bonus",
+                                "bonusRejected"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "filter",
+                            "ninaFilterName",
+                            "exposureS",
+                            "gain",
+                            "offset",
+                            "binning",
+                            "readoutMode",
+                            "readoutModeIndex",
+                            "moon",
+                            "order",
+                            "enabled",
+                            "counts"
+                          ]
+                        },
+                        "maxItems": 100
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "index",
+                      "label",
+                      "raDeg",
+                      "decDeg",
+                      "rotationDeg",
+                      "lines"
+                    ]
+                  },
+                  "minItems": 1,
+                  "maxItems": 64
+                },
+                "exoplanet": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "planet": {
+                      "type": "string",
+                      "maxLength": 256
+                    },
+                    "ephemeris": {
+                      "type": "object",
+                      "properties": {
+                        "t0BjdTdb": {
+                          "type": "number"
+                        },
+                        "t0SigmaD": {
+                          "type": "number",
+                          "nullable": true,
+                          "minimum": 0
+                        },
+                        "periodD": {
+                          "type": "number",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        },
+                        "periodSigmaD": {
+                          "type": "number",
+                          "nullable": true,
+                          "minimum": 0
+                        },
+                        "durationH": {
+                          "type": "number",
+                          "minimum": 0,
+                          "exclusiveMinimum": true
+                        }
+                      },
+                      "required": [
+                        "t0BjdTdb",
+                        "t0SigmaD",
+                        "periodD",
+                        "periodSigmaD",
+                        "durationH"
+                      ]
+                    },
+                    "observation": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "description": "UUID"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "requested",
+                            "locked",
+                            "observed",
+                            "missed",
+                            "cancelled"
+                          ]
+                        },
+                        "epoch": {
+                          "type": "integer"
+                        },
+                        "night": {
+                          "type": "string",
+                          "format": "date",
+                          "example": "2026-09-18"
+                        },
+                        "ingressUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "midUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "egressUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "windowStartUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "windowEndUtc": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-18T13:00:00Z"
+                        },
+                        "allowAutofocus": {
+                          "type": "boolean"
+                        },
+                        "allowRecenter": {
+                          "type": "boolean"
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "planned": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "acquired": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "rejected": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "planned",
+                            "acquired",
+                            "rejected"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "epoch",
+                        "night",
+                        "ingressUtc",
+                        "midUtc",
+                        "egressUtc",
+                        "windowStartUtc",
+                        "windowEndUtc",
+                        "allowAutofocus",
+                        "allowRecenter",
+                        "counts"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "planet",
+                    "ephemeris",
+                    "observation"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "name",
+                "target",
+                "status",
+                "priority",
+                "conditions",
+                "type",
+                "panels"
+              ]
+            },
+            "maxItems": 500
+          },
+          "mosaicPanelsIndependent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rigId",
+          "generatedAtUtc",
+          "projects",
+          "mosaicPanelsIndependent"
+        ]
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "validation.failed",
+              "auth.unauthenticated",
+              "auth.no_membership",
+              "auth.identity_blocked",
+              "auth.mfa_required",
+              "auth.csrf_missing",
+              "auth.rate_limited",
+              "permission.denied",
+              "tenant.not_found",
+              "tenant.locked",
+              "resource.not_found",
+              "resource.version_conflict",
+              "resource.in_use",
+              "resource.read_only",
+              "invitation.invalid",
+              "invitation.expired",
+              "invitation.already_member",
+              "member.owner_protected",
+              "super_user.last_protected",
+              "member.cannot_change_self",
+              "member.owner_cannot_leave",
+              "owner_transfer.target_invalid",
+              "approval.not_allowed",
+              "approval.own_object",
+              "approval.incomplete",
+              "approval.rig_conflict",
+              "vote.own_object",
+              "vote.closed",
+              "ranking.incomplete",
+              "change_request.conflict",
+              "change_request.not_open",
+              "transit.lock_not_allowed",
+              "transit.deadline_passed",
+              "rig.sort_chain_invalid",
+              "rig.flip_settings_invalid",
+              "discord.webhook_invalid",
+              "discord.test_failed",
+              "job.not_found",
+              "request.too_large",
+              "file.too_large",
+              "file.type_not_allowed",
+              "nina.token_invalid",
+              "engine.incompatible",
+              "session.rig_busy",
+              "session.unknown",
+              "session.closed",
+              "capture.batch_too_large",
+              "event.batch_too_large",
+              "plan.targets_etag_mismatch",
+              "canonical.non_finite",
+              "system.maintenance",
+              "internal.error",
+              "transit.share_mismatch",
+              "transit.too_many_open",
+              "transit.window_overlap",
+              "transit.ephemeris_stale",
+              "exo.epoch_out_of_range",
+              "catalog.source_failed",
+              "transit.result_time_system",
+              "validation.min_time_too_small",
+              "project.status_transition_invalid",
+              "rig.change_has_captures",
+              "correction.conflict",
+              "site_night.has_session",
+              "capture.not_rejectable",
+              "capture.assign_mismatch",
+              "line.locked_by_captures",
+              "nina.night_invalid",
+              "engine.input_invalid"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "ninaToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Sync-Token `npm_…` der NINA-Instanz (an genau ein Rig gebunden, widerrufbar)."
+      }
+    }
+  }
+}
