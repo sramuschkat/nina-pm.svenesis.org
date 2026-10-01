@@ -163,6 +163,33 @@ describe('CRUD und Rechte (FA-STO, FA-TEL, FA-KAM, FA-RIG-01)', () => {
   });
 });
 
+describe('Stammdaten in einem Aufruf (01.10.2026)', () => {
+  it('GET /equipment liefert die sechs Listen wie die Einzelrouten; User liest mit', async () => {
+    const t = await setup();
+    const { rig, site, telescope, camera } = await withRig(t);
+    const bundle = await t.call('/equipment', { as: 'user' });
+    expect(bundle.status).toBe(200);
+    const body = bundle.body as Record<string, { id: string }[]>;
+    expect(Object.keys(body).sort()).toEqual([
+      'cameras',
+      'filters',
+      'moonProfiles',
+      'rigs',
+      'sites',
+      'telescopes',
+    ]);
+    // Gleiche Ansicht wie die Einzelliste (Rig mit abgeleiteten Werten aus Teleskop und Kamera).
+    const rigs = (await t.call('/rigs')).body as { items: unknown[] };
+    expect(body.rigs).toEqual(rigs.items);
+    expect(body.sites?.map((x) => x.id)).toEqual([site.id]);
+    expect(body.telescopes?.map((x) => x.id)).toEqual([telescope.id]);
+    expect(body.cameras?.map((x) => x.id)).toEqual([camera.id]);
+    expect(body.rigs?.map((x) => x.id)).toEqual([rig.id]);
+    const moon = (await t.call('/moon-profiles')).body as { items: unknown[] };
+    expect(body.moonProfiles).toEqual(moon.items);
+  });
+});
+
 describe('Löschsperren (FA-RIG-13)', () => {
   it('Standort, Teleskop und Kamera eines Rigs → 409 resource.in_use mit Verwendern', async () => {
     const t = await setup();

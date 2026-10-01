@@ -4831,6 +4831,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/equipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Standorte, Teleskope, Kameras, Filter, Mondprofile und Rigs in einem Aufruf
+         * @description Aktion: `equipment.read` · TK 7.2, SV-06
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stammdaten */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EquipmentBundle"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/rigs/{id}/scheduler-settings": {
         parameters: {
             query?: never;
@@ -5584,6 +5641,84 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/web/v1/project-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mehrere Projekte mit Panels, Zeilen und Zählern (höchstens 50)
+         * @description Aktion: `project.read` · FA-PRJ-10, SV-06
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Kommagetrennte Projekt-IDs, höchstens 50 */
+                    ids: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Projekte */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectDetailsList"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/web/v1/projects/{id}/restore": {
@@ -15014,6 +15149,14 @@ export interface components {
             /** @default  */
             notes: string;
         };
+        EquipmentBundle: {
+            sites: components["schemas"]["SiteView"][];
+            telescopes: components["schemas"]["TelescopeView"][];
+            cameras: components["schemas"]["CameraView"][];
+            filters: components["schemas"]["FilterView"][];
+            moonProfiles: components["schemas"]["MoonProfileView"][];
+            rigs: components["schemas"]["RigView"][];
+        };
         FilterWheelView: {
             slots: {
                 position: number;
@@ -15732,6 +15875,9 @@ export interface components {
                 /** @default 60 */
                 moonMaxIlluminationPct: number;
             };
+        };
+        ProjectDetailsList: {
+            items: components["schemas"]["ProjectView"][];
         };
         ProjectPatch: {
             name?: string;

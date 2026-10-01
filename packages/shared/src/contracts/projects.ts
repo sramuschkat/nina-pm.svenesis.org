@@ -409,6 +409,23 @@ export const FilterPlanSummary = z
   })
   .meta({ id: 'FilterPlanSummary' });
 
+/**
+ * Mehrere Projekte in einem Aufruf (`GET /web/v1/project-details?ids=…`, höchstens 50; 01.10.2026): wie
+ * `GET /projects/{id}` je Projekt, nicht lesbare oder unbekannte IDs fehlen in `items`. Der Web-Client bündelt
+ * gleichzeitige Einzelabrufe hierauf („Heute Nacht“ und Simulator laden jedes geplante Projekt).
+ */
+export const ProjectDetailsQuery = z
+  .object({
+    ids: z
+      .string()
+      .regex(/^[0-9a-f-]{36}(,[0-9a-f-]{36}){0,49}$/i)
+      .meta({ description: 'Kommagetrennte Projekt-IDs, höchstens 50' }),
+  })
+  .meta({ id: 'ProjectDetailsQuery' });
+export const ProjectDetailsList = z
+  .object({ items: z.array(ProjectView) })
+  .meta({ id: 'ProjectDetailsList' });
+
 export const ProjectListItem = ProjectView.omit({ panels: true, descriptionMd: true })
   .extend({
     /** Anzeigename des Erstellers im Mandanten (Filter „Ersteller“, Ansicht „Gelöscht“). */
