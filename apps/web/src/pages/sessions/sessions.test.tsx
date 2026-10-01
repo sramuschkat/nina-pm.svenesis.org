@@ -29,6 +29,26 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
+  // Mitgliederverzeichnis: Ersteller neben dem Projektnamen (01.10.2026).
+  memberApi: {
+    directory: () =>
+      Promise.resolve({
+        items: [
+          {
+            id: '00000000-0000-4000-8000-000000000003',
+            displayName: 'Uta',
+            avatarUrl: null,
+            status: 'active',
+          },
+          {
+            id: '00000000-0000-4000-8000-000000000092',
+            displayName: 'Uta',
+            avatarUrl: null,
+            status: 'active',
+          },
+        ],
+      }),
+  },
   equipmentApi: {
     list: () => Promise.resolve({ items: [{ id: ID(500), name: 'Rig A' }] }),
   },
@@ -121,6 +141,7 @@ const detail = (): NightSessionDetail => ({
       frameType: 'light',
       projectId: ID(10),
       projectName: 'NGC 281',
+      projectCreatedBy: ID(3),
       exposureLineId: ID(20),
       assignment: 'assigned',
       filterShortName: 'Ha',
@@ -143,6 +164,7 @@ const detail = (): NightSessionDetail => ({
       frameType: 'light',
       projectId: null,
       projectName: null,
+      projectCreatedBy: null,
       exposureLineId: null,
       assignment: 'unassigned',
       filterShortName: 'Ha',
@@ -278,11 +300,12 @@ describe('S-61 Session-Detail', () => {
     expect(await screen.findByRole('heading', { name: '17./18.09. · Rig A' })).toBeTruthy();
     const table = screen.getByRole('table', { name: 'Soll/Ist' });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
+    await within(row).findByText('Uta');
     expect(
       within(row)
         .getAllByRole('cell')
         .map((c) => c.textContent),
-    ).toEqual(['NGC 281', 'Ha', '17', '16', '1', '15', '1.3 h', '0', '0', 'Korrektur']);
+    ).toEqual(['NGC 281', 'Uta', 'Ha', '17', '16', '1', '15', '1.3 h', '0', '0', 'Korrektur']);
     fireEvent.click(within(row).getByRole('button', { name: 'Korrektur' }));
     const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
     expect(input.min).toBe('1');

@@ -382,11 +382,13 @@ export function NightChart(props: NightChartProps) {
         const on = props.highlightBlockIds
           ? props.highlightBlockIds.includes(b.id)
           : cursor !== null && cursor >= b.fromUtc && cursor < b.toUtc;
+        // Mit gewähltem Ziel (Simulator-Zielkarte) treten die übrigen Blöcke deutlich zurück (01.10.2026).
+        const dim = props.highlightBlockIds !== undefined && !on;
         ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
         ctx.strokeStyle = ctx.fillStyle;
-        ctx.globalAlpha = on ? 0.42 : 0.2;
+        ctx.globalAlpha = on ? 0.5 : dim ? 0.06 : 0.2;
         ctx.fillRect(x0, plotT, w, plotH);
-        ctx.globalAlpha = on ? 1 : 0.6;
+        ctx.globalAlpha = on ? 1 : dim ? 0.2 : 0.6;
         ctx.lineWidth = on ? 2 : 1;
         ctx.strokeRect(x0 + 0.5, plotT + 0.5, w - 1, plotH - 1);
         ctx.globalAlpha = 1;
@@ -400,6 +402,7 @@ export function NightChart(props: NightChartProps) {
           ctx.fillStyle = c('chart-curve');
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
+          if (dim) ctx.globalAlpha = 0.35;
           ctx.fillText(b.label, x0 + 5, plotT + 5);
           ctx.restore();
         }

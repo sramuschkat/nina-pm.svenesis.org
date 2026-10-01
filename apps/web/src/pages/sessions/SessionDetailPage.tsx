@@ -30,6 +30,7 @@ import { SessionKpisPanel } from './SessionKpisPanel';
 import { SessionLogPanel } from './SessionLogPanel';
 import styles from './sessions.module.css';
 import { SESSIONS_PATH, SessionTime, hours } from './SessionsPage';
+import { Person, useMemberNames } from '../../lib/member';
 
 type Tab = 'plan' | 'captures' | 'events' | 'flats' | 'log' | 'kpis';
 /** Reihenfolge nach FK 14.3 (S-61). */
@@ -201,6 +202,13 @@ function PlanTable({
       cell: (r) => r.projectName,
     },
     {
+      // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
+      id: 'creator',
+      header: t('sessions.col.creator'),
+      priority: 2,
+      cell: (r) => <Person id={r.projectCreatedBy} />,
+    },
+    {
       id: 'filter',
       header: t('sessions.plan.col.filter'),
       sortValue: (r) => r.filterShortName,
@@ -318,6 +326,7 @@ function CorrectionForm({
   onDone: () => void;
 }) {
   const { t } = useTranslation();
+  const nameOf = useMemberNames();
   const client = useQueryClient();
   const [lineId, setLineId] = useState(initialLine);
   const row = rows.find((r) => r.exposureLineId === lineId) ?? rows[0];
@@ -365,7 +374,9 @@ function CorrectionForm({
           >
             {rows.map((r) => (
               <option key={r.exposureLineId} value={r.exposureLineId}>
-                {r.projectName} · {r.filterShortName}
+                {r.projectName}
+                {nameOf(r.projectCreatedBy) ? ` (${nameOf(r.projectCreatedBy)})` : ''} ·{' '}
+                {r.filterShortName}
               </option>
             ))}
           </select>
@@ -476,6 +487,7 @@ function Captures({
   onChanged: () => Promise<unknown>;
 }) {
   const { t } = useTranslation();
+  const nameOf = useMemberNames();
   const zone = detail.session.siteTimeZone;
   const [rejecting, setRejecting] = useState<NightSessionCapture | null>(null);
   const list = detail.captures.filter((c) =>
@@ -512,6 +524,12 @@ function Captures({
       sortValue: (c) => c.projectName,
       priority: 2,
       cell: (c) => c.projectName ?? '–',
+    },
+    {
+      id: 'creator',
+      header: t('sessions.col.creator'),
+      priority: 3,
+      cell: (c) => (c.projectCreatedBy ? <Person id={c.projectCreatedBy} /> : '–'),
     },
     {
       id: 'filter',
@@ -585,7 +603,7 @@ function Captures({
           type="button"
           className={styles.button}
           disabled={list.length === 0}
-          onClick={() => downloadCsv(detail, list, zone)}
+          onClick={() => downloadCsv(detail, list, zone, nameOf)}
         >
           {t('sessions.captures.csv')}
         </button>
@@ -672,6 +690,7 @@ function RejectForm({
   onChanged: () => Promise<unknown>;
 }) {
   const { t } = useTranslation();
+  const nameOf = useMemberNames();
   const [reason, setReason] = useState('');
   const save = useMutation({
     mutationFn: () => sessionsApi.reject(capture.id, true, reason || null),
@@ -691,7 +710,8 @@ function RejectForm({
     >
       <h2 id="reject-title">{t('sessions.captures.rejectTitle')}</h2>
       <p className={styles.muted}>
-        <SiteTime atUtc={capture.capturedAt} siteTimeZone={zone} /> · {capture.projectName ?? '–'} ·{' '}
+        <SiteTime atUtc={capture.capturedAt} siteTimeZone={zone} /> · {capture.projectName ?? '–'}
+        {nameOf(capture.projectCreatedBy) ? ` (${nameOf(capture.projectCreatedBy)})` : ''} ·{' '}
         {capture.filterShortName} · {t('sessions.captures.seconds', { s: capture.exposureS })}
         {capture.isBonus ? ` · ${t('sessions.captures.bonus')}` : ''}
       </p>
@@ -731,6 +751,7 @@ function downloadCsv(
   detail: NightSessionDetail,
   list: readonly NightSessionCapture[],
   zone: string,
+  nameOf: (id: string | null) => string,
 ) {
   const local = new Intl.DateTimeFormat('sv-SE', {
     timeZone: zone,
@@ -750,6 +771,7 @@ function downloadCsv(
     'capturedAtSite',
     'frameType',
     'project',
+    'projectCreator',
     'filter',
     'filterActual',
     'exposureS',
@@ -771,6 +793,7 @@ function downloadCsv(
       local.format(new Date(Date.parse(c.capturedAt))),
       c.frameType,
       c.projectName,
+      nameOf(c.projectCreatedBy),
       c.filterShortName,
       c.filterActual,
       c.exposureS,
@@ -811,6 +834,7 @@ function AssignPanel({
   onChanged: () => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
+  const nameOf = useMemberNames();
   const canAssign = useCan('session.review');
   const zone = detail.session.siteTimeZone;
   const [choice, setChoice] = useState<Record<string, string>>({});
@@ -846,7 +870,9 @@ function AssignPanel({
                   <option value="">{t('sessions.captures.chooseLine')}</option>
                   {detail.rows.map((r) => (
                     <option key={r.exposureLineId} value={r.exposureLineId}>
-                      {r.projectName} · {r.filterShortName}
+                      {r.projectName}
+                      {nameOf(r.projectCreatedBy) ? ` (${nameOf(r.projectCreatedBy)})` : ''} ·{' '}
+                      {r.filterShortName}
                     </option>
                   ))}
                 </select>

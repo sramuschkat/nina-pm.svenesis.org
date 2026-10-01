@@ -22,6 +22,7 @@ import { useEquipmentList } from '../equipment/shared';
 import { nightKeyIn } from '../projects/queue-model';
 import styles from './sessions.module.css';
 import { EvaluationTabs, SESSIONS_PATH } from './SessionsPage';
+import { Person, useMemberNames } from '../../lib/member';
 
 export const PROJECT_REPORT_PATH = '/auswertung/projektbericht';
 
@@ -32,6 +33,7 @@ const hours = (s: number) => s / 3600;
 
 export function ProjectReportPage() {
   const { t } = useTranslation();
+  const nameOf = useMemberNames();
   const { me } = useAuth();
   const zone = me?.tenant?.timeZone ?? 'UTC';
   const today = nightKeyIn(Date.now(), zone);
@@ -75,7 +77,7 @@ export function ProjectReportPage() {
               type="button"
               className={styles.button}
               disabled={!report.data}
-              onClick={() => report.data && downloadReportCsv(report.data)}
+              onClick={() => report.data && downloadReportCsv(report.data, nameOf)}
             >
               {t('report.csv')}
             </button>
@@ -197,6 +199,13 @@ function ReportBody({ report }: { report: ProjectReport }) {
       cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
     },
     {
+      // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
+      id: 'creator',
+      header: t('sessions.col.creator'),
+      priority: 3,
+      cell: (p) => <Person id={p.createdBy} />,
+    },
+    {
       id: 'rig',
       header: t('report.col.rig'),
       sortValue: (p) => p.rigName,
@@ -279,7 +288,10 @@ function ProjectSection({ project: p }: { project: ReportProject }) {
     <details className={styles.reportSection}>
       <summary>
         <h2 className={styles.reportHeading}>
-          {p.name}
+          {p.name}{' '}
+          <span className={styles.reportCreator}>
+            <Person id={p.createdBy} />
+          </span>
           <span className={styles.muted}>
             {' '}
             · {p.rigName ?? '–'} · {n(p.percentDone)} % ·{' '}
@@ -506,7 +518,7 @@ function ProgressChart({
 }
 
 /** CSV des Berichts: Summen je Projekt und Filter sowie Verlauf je Nacht. */
-function downloadReportCsv(report: ProjectReport) {
+function downloadReportCsv(report: ProjectReport, nameOf: (id: string) => string) {
   const cell = (v: string | number | null) => {
     const text = v === null ? '' : String(v);
     return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -514,6 +526,7 @@ function downloadReportCsv(report: ProjectReport) {
   const head = [
     'section',
     'project',
+    'projectCreator',
     'rig',
     'status',
     'filter',
@@ -533,6 +546,7 @@ function downloadReportCsv(report: ProjectReport) {
       rows.push([
         'total',
         p.name,
+        nameOf(p.createdBy),
         p.rigName,
         p.status,
         f.filter,
@@ -550,6 +564,7 @@ function downloadReportCsv(report: ProjectReport) {
         rows.push([
           'night',
           p.name,
+          nameOf(p.createdBy),
           p.rigName,
           p.status,
           f.filter,

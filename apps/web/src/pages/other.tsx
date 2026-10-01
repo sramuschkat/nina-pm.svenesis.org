@@ -13,7 +13,6 @@ export function PrivacyPage() {
   return (
     <TextLayout crumbs={[{ label: t('legal.privacyTitle') }]}>
       <h1>{t('legal.privacyTitle')}</h1>
-      <p className={styles.draft}>{t('legal.draftNote')}</p>
       <div className={styles.contentBox}>
         <Markdown>{privacyMarkdown[lang(i18n.language)]}</Markdown>
       </div>

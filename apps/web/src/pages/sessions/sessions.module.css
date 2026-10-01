@@ -368,3 +368,22 @@
   align-items: center;
   gap: var(--npm-space-1);
 }
+
+/* Projektname mit Ersteller (Bild und Name) dahinter (Wunsch Sven 01.10.2026). */
+.projectWithCreator {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-2);
+}
+.projectWithCreator > :last-child {
+  color: var(--npm-text-light);
+  font-weight: 400;
+}
+
+/* Ersteller in der Überschrift eines Projekts im Bericht: normale Schrift, gedämpft. */
+.reportCreator {
+  font-size: var(--npm-font-small);
+  font-weight: 400;
+  color: var(--npm-text-light);
+}

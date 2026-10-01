@@ -7421,6 +7421,10 @@ components:
           description: UUID
         name:
           type: string
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
         priority:
           type: integer
         status:
@@ -7476,6 +7480,7 @@ components:
       required:
         - projectId
         - name
+        - createdBy
         - priority
         - status
         - need
@@ -7608,6 +7613,10 @@ components:
           description: UUID
         name:
           type: string
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
         status:
           type: string
         needFrames:
@@ -7645,6 +7654,7 @@ components:
       required:
         - projectId
         - name
+        - createdBy
         - status
         - needFrames
         - target
@@ -7702,6 +7712,10 @@ components:
           description: UUID
         name:
           type: string
+        createdBy:
+          type: string
+          format: uuid
+          description: UUID
         projectType:
           type: string
           enum:
@@ -7791,6 +7805,7 @@ components:
       required:
         - projectId
         - name
+        - createdBy
         - projectType
         - targetName
         - rigId
@@ -9123,6 +9138,12 @@ components:
           type:
             - string
             - "null"
+        projectCreatedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
         exposureLineId:
           type:
             - string
@@ -9191,6 +9212,7 @@ components:
         - frameType
         - projectId
         - projectName
+        - projectCreatedBy
         - exposureLineId
         - assignment
         - filterShortName

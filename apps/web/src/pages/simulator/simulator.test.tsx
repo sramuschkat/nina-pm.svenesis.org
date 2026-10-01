@@ -166,6 +166,11 @@ describe('S-40 Nacht-Simulator', () => {
     expect(within(card as HTMLElement).getByText('Ersteller')).toBeInTheDocument();
     // Kartentitel wählt das Ziel (Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben).
     const pick = within(card as HTMLElement).getByRole('button', { pressed: false });
+    // Neben dem Namen ein eigener Link zum Projekt (01.10.2026).
+    const name = card?.getAttribute('aria-label') ?? '';
+    expect(
+      within(card as HTMLElement).getByRole('link', { name: `„${name}“ öffnen` }),
+    ).toHaveAttribute('href', expect.stringMatching(/^\/projekte\/[0-9a-f-]{36}$/));
     fireEvent.click(pick);
     expect(pick).toHaveAttribute('aria-pressed', 'true');
     expect(card).toHaveAttribute('data-selected', 'true');

@@ -484,6 +484,12 @@ describe('Listen-/Detail-Muster (AP-26b)', () => {
     ).toBeInTheDocument();
     fireEvent.click(within(templates).getByRole('button', { name: 'Neue Vorlage' }));
     expect(within(templates).getByRole('form', { name: 'Vorlage bearbeiten' })).toBeInTheDocument();
+    // Filter der Zeile in der Filterfarbe wie der Filter-Chip (01.10.2026).
+    fireEvent.click(within(templates).getByRole('button', { name: 'Filter hinzufügen' }));
+    const select = within(templates).getByLabelText('Filter 1');
+    expect(select).toHaveValue(ID(40));
+    expect(select.style.background).toBe('rgb(204, 0, 0)');
+    expect(select.style.color).toBe('rgb(255, 255, 255)');
   });
 });
 
