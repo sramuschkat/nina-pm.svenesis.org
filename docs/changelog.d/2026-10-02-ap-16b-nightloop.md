@@ -1,0 +1,9 @@
+### AP-16b (Teil 2): gespeicherter Plan, Nachtschleife, Playback (2026-10-02)
+
+Anforderungen: AP-16b, FA-NIN-05/06/12/15, NT-11, NT-13, NT-17, NT-18, NIN-6, NIN5-2 · Entscheidung Sven 01.10.2026 (kein Jint-Offline-Plan)
+
+- **`PlanStore`**: jeder Server-Plan liegt mit Nacht, Targets-ETag und `settingsVersion` in `ninapm.db` (`cache.plan`) und gilt nur für seine Nacht; nach Neustart oder Ausfall läuft er ab dem ersten Block mit `endUtc > now` weiter.
+- **`NightLoop`** (Zustandsmaschine, simulierte Zeit): Ablauf je Aufruf nach `execution.md` §2 – veraltete Session zurücksetzen → Plan holen (`initial`/`resume`) → auf Blockstart warten bzw. Block ausführen; leerer Plan/alle Blöcke vorbei vor `darknessEndUtc` → alle 5 min neu planen (Sperre ab dem Versuch, nur Benutzerabbruch und *Zurücksetzen* heben sie auf), danach Nachtende statt `plan_failed`; Nachtende Flats (ab `flatsNotBeforeUtc`, ab `sessionEndUtc` `skipped`) → Abschluss-`PATCH` (entfällt ohne Session) → `nightFinished` → erst im nächsten Aufruf `false`; gesperrte Zustände mit 60-s-Takt, nicht behebbare beenden zuerst den laufenden Block (`HasBlocksRemaining` bleibt `true`, solange ein Block oder Flats laufen); `clock_skew` mit Austritt ≤ 5 s und Ende nach 10 Versuchen; Heartbeat-Zustand nach NT-17.
+- **`Playback`**: zeitgeführt/sequenziell, verpasste Belichtungen (`skipped_timeaware`, > 3 → Neuplanung), harter Blockschluss, Nachtende-Kulanz nur mit `lastOfNight` bis `min(darknessEndUtc, block.twilightEndUtc)` (Grund `night_end`).
+- **Spec-Korrektur (Vorschlag, bitte bestätigen):** zeitgeführt nach der Planuhr `now − offset` statt `atUtc ≤ now + offset` (`execution.md` §4.2, TK 10.3 Nr. 7) – mit dem Verzug als positivem Offset hätte die alte Formel bei Verzug mehr Belichtungen verworfen. Der Offset selbst wird ab AP-16f gemessen.
+- Titel AP-16b: „gespeicherter Plan“ statt „Offline-Plan“.
