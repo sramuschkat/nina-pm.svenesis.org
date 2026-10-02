@@ -11,6 +11,7 @@ import { apparentAltitudeDeg, sky } from '@nina-pm/engine';
 import { describe, expect, it } from 'vitest';
 import { effectiveRotation, projectCategory } from '../SkyMapPage';
 import { constellationAt } from './constellation';
+import { cellTransform } from './hips';
 import { hillAlt, LANDSCAPE_MAX_DEG, landscapeAlt, TREES } from './landscape';
 import {
   DEFAULT_OVERLAYS,
@@ -456,6 +457,48 @@ describe('Überfahren, Anklicken, Horizont (Vorlage sky-map.js)', () => {
     // Unter dem Horizont bleibt es bei der dunkelsten Stufe; ohne Schwelle ebenso.
     expect(heatColor(top, bottom, -5, 30)).toEqual([196, 52, 44, 0.5]);
     expect(heatColor(top, bottom, 10, 0)).toEqual([196, 52, 44, 0.5]);
+  });
+});
+
+describe('Himmelsfotos ohne Clip (Safari, 02.10.2026)', () => {
+  const at = (m: readonly number[], u: number, v: number) => [
+    (m[0] as number) * u + (m[2] as number) * v + (m[4] as number),
+    (m[1] as number) * u + (m[3] as number) * v + (m[5] as number),
+  ];
+
+  it('Parallelogramm: Zellabbildung trifft alle vier Ecken exakt', () => {
+    // u → x mit Faktor 2, v → y mit Faktor 3, verschoben; p11 liegt genau auf der Abbildung.
+    const p = (u: number, v: number) => ({ u, v, x: 10 + 2 * u, y: 20 + 3 * v });
+    const t = cellTransform(p(0, 0), p(64, 0), p(0, 64), p(64, 64));
+    expect(t).not.toBeNull();
+    for (const [u, v] of [
+      [0, 0],
+      [64, 0],
+      [0, 64],
+      [64, 64],
+    ] as const) {
+      const [x, y] = at(t?.m ?? [], u, v);
+      expect(x).toBeCloseTo(10 + 2 * u, 9);
+      expect(y).toBeCloseTo(20 + 3 * v, 9);
+    }
+    // Rand ≈ 1,2 Bildschirmpixel: Maßstab √(2·3) Pixel je Bildpunkt.
+    expect(t?.marginTexel).toBeCloseTo(1.2 / Math.sqrt(6), 9);
+  });
+
+  it('verzerrte Zelle: Fehler an jeder Ecke höchstens die halbe Abweichung der vierten Ecke', () => {
+    const p = (u: number, v: number, dx = 0) => ({ u, v, x: u + dx, y: v });
+    // p11 liegt 4 px neben dem Parallelogramm aus den drei anderen Ecken.
+    const corners = [p(0, 0), p(64, 0), p(0, 64), p(64, 64, 4)] as const;
+    const t = cellTransform(...corners);
+    for (const c of corners) {
+      const [x, y] = at(t?.m ?? [], c.u, c.v);
+      expect(Math.hypot((x as number) - c.x, (y as number) - c.y)).toBeLessThanOrEqual(2 + 1e-9);
+    }
+  });
+
+  it('entartete Zelle (alle Bildpunkte auf einer Linie) wird übersprungen', () => {
+    const p = (u: number) => ({ u, v: 0, x: u, y: 0 });
+    expect(cellTransform(p(0), p(1), p(2), p(3))).toBeNull();
   });
 });
 
