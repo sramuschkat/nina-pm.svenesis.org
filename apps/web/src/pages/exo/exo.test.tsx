@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * S-22 Exoplaneten (AP-42): Filter (FA-EXO-05), Recherche-Links (FA-EXO-09), Lichtkurve und Himmelsposition,
+ * S-22 Exoplaneten (AP-42): Filter (FA-EXO-05), Recherche-Links (FA-EXO-09), Lichtkurve und Himmelslage,
  * Seite mit Tabelle, Auswahl, Zeitleiste und gespeicherten Filtern; A11y ohne ernste Verstöße.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ExoTransitList, ExoTransitView, Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
@@ -22,7 +22,6 @@ import {
   researchLinks,
   urlFromParams,
 } from './model';
-import { projector } from './SkyPosition';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -339,6 +338,15 @@ const list = (items: ExoTransitView[]): ExoTransitList => ({
   items,
 });
 
+// Sternkarte der Himmelslage (`SkyCanvas`) im Test-DOM: kein Canvas-Kontext, kein ResizeObserver.
+beforeAll(() => {
+  HTMLCanvasElement.prototype.getContext = (() => null) as never;
+  globalThis.ResizeObserver ??= class {
+    observe = () => undefined;
+    unobserve = () => undefined;
+    disconnect = () => undefined;
+  } as unknown as typeof ResizeObserver;
+});
 beforeEach(() => {
   state.me = me;
   state.prefs = {};
@@ -376,7 +384,7 @@ describe('Filter der Transitsuche (FA-EXO-05)', () => {
   });
 });
 
-describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
+describe('Recherche-Links, URL, Lichtkurve', () => {
   it('ExoClock + NASA + SIMBAD; TOI mit ExoFOP über die TIC', () => {
     expect(researchLinks(transit()).map((l) => l.name)).toEqual(['NASA', 'ExoClock', 'SIMBAD']);
     const toi = researchLinks({ ...faint, ticId: '1309019' });
@@ -409,27 +417,6 @@ describe('Recherche-Links, URL, Lichtkurve, Himmelsposition', () => {
     expect(transitFlux(transit({ rpOverRs: 0.16, aOverRs: 6, inclinationDeg: 81 }))).toHaveLength(
       3,
     );
-  });
-
-  it('Himmelsposition: Mitte in der Bildmitte, Osten links; 30° bis zur Kante, über 42° unsichtbar', () => {
-    const p = projector(100, 20);
-    const unit = (ra: number, dec: number) => {
-      const r = (d: number) => (d * Math.PI) / 180;
-      return [
-        Math.cos(r(dec)) * Math.cos(r(ra)),
-        Math.cos(r(dec)) * Math.sin(r(ra)),
-        Math.sin(r(dec)),
-      ] as const;
-    };
-    const mid = p(unit(100, 20));
-    expect(mid?.[0]).toBeCloseTo(120, 9);
-    expect(mid?.[1]).toBeCloseTo(120, 9);
-    const east = p(unit(110, 20));
-    expect(east?.[0]).toBeLessThan(120);
-    // 30° nördlich liegt auf der oberen Kante, 40° außerhalb des Quadrats (abgeschnitten), 46° gar nicht.
-    expect(p(unit(100, 50))?.[1]).toBeCloseTo(0, 6);
-    expect(p(unit(100, 60))?.[1]).toBeLessThan(0);
-    expect(p(unit(100, 66))).toBeNull();
   });
 });
 
@@ -731,7 +718,7 @@ describe('S-22 Seite', () => {
     });
   });
 
-  it('Zeile aufklappen: Zeitleiste, Sternfeld, Himmelsposition, Zieldetails inline', async () => {
+  it('Zeile aufklappen: Zeitleiste, Sternfeld, Himmelslage, Zieldetails inline', async () => {
     renderPage();
     await screen.findByRole('heading', { name: '2 Transits' });
     fireEvent.click(screen.getByRole('button', { name: 'Weitere Angaben zu HAT-P-17b' }));
@@ -740,7 +727,7 @@ describe('S-22 Seite', () => {
     });
     expect(timeline).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Sternfeld (DSS2) – HAT-P-17' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Himmelsposition – HAT-P-17' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Himmelslage – HAT-P-17' })).toBeInTheDocument();
     expect(screen.getByText(/RED als Ersatzfilter/)).toBeInTheDocument();
     expect(screen.getByText('(TIC 266593143)')).toBeInTheDocument();
     // Erklärung je Größe als Hilfe-Tooltip (FA-EXO-13): bei Fokus sichtbar, Escape schließt

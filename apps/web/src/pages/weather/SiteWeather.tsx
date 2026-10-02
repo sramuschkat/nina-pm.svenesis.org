@@ -1,6 +1,7 @@
 /**
  * Astro-Wetter eines Standorts (FA-WET-05, AP-23): im Reiter *Wetter* des Projekt-Editors als volle
- * Grafik, in der Standort-Übersicht als kompaktes Farbband; der Link führt zur Wettervorhersage S-50.
+ * Grafik, in der Standort-Übersicht und in der Übersicht S-02 als kompaktes Farbband; der Link führt zur
+ * Wettervorhersage S-50 (in der Übersicht einmal im Kartenkopf statt je Standort).
  */
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -15,10 +16,12 @@ export function SiteWeather({
   siteId,
   siteName,
   compact = false,
+  link = true,
 }: {
   siteId: string;
   siteName: string;
   compact?: boolean;
+  link?: boolean;
 }) {
   const { t } = useTranslation();
   const weather = useSiteWeather(siteId);
@@ -49,11 +52,13 @@ export function SiteWeather({
           state="loading"
         />
       )}
-      <div>
-        <Link className={styles.button} to={weatherHref(siteId)}>
-          {t('weatherPage.openFull')}
-        </Link>
-      </div>
+      {link ? (
+        <div>
+          <Link className={styles.button} to={weatherHref(siteId)}>
+            {t('weatherPage.openFull')}
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

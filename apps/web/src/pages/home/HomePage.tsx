@@ -2,8 +2,9 @@
  * Startseite (FK 14.3 S-02; AP-26c, Stilsystem AP-26d): im Mandanten eine Übersicht mit Seitenkopf
  * (*Übersicht*, Mandant und Datum in Mandantenzeit, Hauptaktion *Neues Projekt*), einer Zeile Kennzahlen
  * (aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht) und zwei Spalten: links
- * *Aktive Projekte* je Rig als Tabelle und *Letzte Sessions*, rechts *Warteschlange* (Stimme wie S-33)
- * und *Wetter heute Nacht* (Farbband der kommenden bzw. laufenden Nacht je Standort mit bestem Fenster).
+ * *Aktive Projekte* je Rig als Tabelle, rechts *Warteschlange* (Stimme wie S-33) und *Letzte Sessions*;
+ * darunter über die volle Breite *Wetter (7 Tage)* je Standort als kompaktes Farbband wie in Ausrüstung →
+ * Standorte (Wunsch Sven 02.10.2026).
  * Kennzahlen und Karten nutzen dieselben Abfragen (ein Cache), haben Lade-, Leer- und Fehlerzustand und
  * erscheinen nur mit dem Recht der Zielseite. Im System-Kontext bleibt der Hinweis zur Verwaltung.
  */
@@ -38,6 +39,8 @@ import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
 import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
+import { WEATHER_PATH } from '../weather/model';
+import { SiteWeather } from '../weather/SiteWeather';
 import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
 import { MemberAvatarFor, Person } from '../../lib/member';
@@ -124,6 +127,7 @@ function TenantHome() {
           {canSessions ? <SessionsCard /> : null}
         </div>
       </div>
+      {canWeather ? <WeatherCard /> : null}
     </div>
   );
 }
@@ -366,6 +370,30 @@ function Card({
       </div>
       {children}
     </section>
+  );
+}
+
+/** 7-Tage-Wetter je Standort in Kurzform (gleiche Abfrage wie Standorte und Kennzahl: ein Cache). */
+function WeatherCard() {
+  const { t } = useTranslation();
+  const sites = useEquipmentList('sites');
+  const list = sites.data ?? [];
+  return (
+    <Card title={t('home.weather.title')} to={WEATHER_PATH} more={t('home.weather.more')}>
+      <div className={styles.cardBody}>
+        {sites.isPending ? (
+          <Skeleton />
+        ) : sites.isError ? (
+          <ProblemMessage code={problemCode(sites.error)} onRetry={() => void sites.refetch()} />
+        ) : list.length === 0 ? (
+          <p className={styles.muted}>{t('home.weather.empty')}</p>
+        ) : (
+          list.map((site) => (
+            <SiteWeather key={site.id} siteId={site.id} siteName={site.name} compact link={false} />
+          ))
+        )}
+      </div>
+    </Card>
   );
 }
 

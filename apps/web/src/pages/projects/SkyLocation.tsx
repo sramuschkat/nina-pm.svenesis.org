@@ -2,7 +2,8 @@
  * *Himmelslage* im Projekt-Editor S-31 (AP-26b): kleine Übersichtskarte um das Ziel mit Sternbildern,
  * Milchstraße und dem Bildfeld des Rigs als Zielmarke. Zeichnet mit der Sternkarte (S-20, `SkyCanvas`),
  * ohne Fotos, Katalog und Himmelskörper; Ziehen und Zoomen verändern nur diese Ansicht. Die volle
- * Sternkarte öffnet der Link im Reiter *Ziel*.
+ * Sternkarte öffnet der Link im Reiter *Ziel*. Dieselbe Ansicht steht im Objektbrowser (Reiter neben Höhen- und
+ * Saisondiagramm) und bei den Exoplaneten (Wunsch Sven 02.10.2026).
  */
 import { sky } from '@nina-pm/engine';
 import { useEffect, useState } from 'react';
@@ -29,6 +30,8 @@ export function SkyLocation({
   rotationDeg,
   fov,
   name,
+  hint,
+  frameClassName,
 }: {
   raDeg: number | null;
   decDeg: number | null;
@@ -36,6 +39,10 @@ export function SkyLocation({
   /** Bildfeld des Rigs (Grad); ohne Rig nur die Zielmarke. */
   fov: { widthDeg: number; heightDeg: number } | null;
   name: string;
+  /** Hinweis unter der Karte; Standard: Projekt-Hinweis mit Verweis auf Ausrichten und Mosaik. */
+  hint?: string;
+  /** Zusätzliche Klasse für den Rahmen der Karte (Größe), z. B. quadratisch neben dem Sternfeld. */
+  frameClassName?: string;
 }) {
   const { t, i18n } = useTranslation();
   const [bright, setBright] = useState<BrightSky | null>(null);
@@ -72,7 +79,7 @@ export function SkyLocation({
   const fovDeg = view?.fovDeg ?? START_FOV;
   return (
     <div className={styles.skyLocation}>
-      <div className={styles.skyCanvas}>
+      <div className={frameClassName ? `${styles.skyCanvas} ${frameClassName}` : styles.skyCanvas}>
         <SkyCanvas
           input={{
             overlays: OVERLAYS,
@@ -113,7 +120,7 @@ export function SkyLocation({
           onPick={() => undefined}
         />
       </div>
-      <p className={styles.muted}>{t('projectEditor.sky.hint')}</p>
+      <p className={styles.muted}>{hint ?? t('projectEditor.sky.hint')}</p>
     </div>
   );
 }

@@ -49,6 +49,7 @@ import type { RigOption } from '../../components/RigSelect';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList, useNumber } from '../equipment/shared';
 import { SeasonPanel } from '../projects/SeasonPanel';
+import { SkyLocation } from '../projects/SkyLocation';
 import {
   aliasesOf,
   CATALOG_PATH,
@@ -847,6 +848,7 @@ function ResultTable({
                     site={row.site as SiteView}
                     night={row.night as string}
                     minAlt={row.minAlt}
+                    rigFov={row.rigFov}
                   />
                 )
               : undefined
@@ -865,17 +867,20 @@ function ResultTable({
 /**
  * Nachtdiagramm eines Objekts in der aufgeklappten Zeile (AP-26e, Wunsch Sven 26.09.2026): Rig-Standort und
  * Nacht der Kontextleiste, Kennwerte daneben; Engine im Browser mit der Zonentabelle der Nacht (NT-02).
+ * Dritter Reiter *Himmelslage* wie im Projekt-Editor, Rahmen = Bildfeld des Rigs (Wunsch Sven 02.10.2026).
  */
 function ObjectNight({
   o,
   site,
   night,
   minAlt,
+  rigFov,
 }: {
   o: DsoView;
   site: SiteView;
   night: string;
   minAlt: number;
+  rigFov: RowProps['rigFov'];
 }) {
   const { t } = useTranslation();
   const nights = useQuery({
@@ -906,17 +911,18 @@ function ObjectNight({
       transitLabel: '',
     }).props;
   }, [nights.data, site, night, o, minAlt]);
-  // Höhen- und Saisondiagramm als Reiter nebeneinander (AP-26j, Wunsch Sven 26.09.2026).
-  const [tab, setTab] = useState<'altitude' | 'season'>('altitude');
+  // Höhen- und Saisondiagramm als Reiter nebeneinander (AP-26j, Wunsch Sven 26.09.2026), dazu die Himmelslage.
+  const [tab, setTab] = useState<'altitude' | 'season' | 'sky'>('altitude');
   return (
     <div className={styles.objectNight}>
-      <Tabs<'altitude' | 'season'>
+      <Tabs<'altitude' | 'season' | 'sky'>
         label={t('catalog.chartsOf', { name: o.displayName })}
         value={tab}
         onChange={setTab}
         tabs={[
           { key: 'altitude', label: t('nightChart.tabs.altitude') },
           { key: 'season', label: t('nightChart.tabs.season') },
+          { key: 'sky', label: t('nightChart.tabs.sky') },
         ]}
         panelClassName={styles.objectNightPanel}
         panels={{
@@ -940,6 +946,16 @@ function ObjectNight({
               site={site}
               target={{ raDeg: o.raDeg, decDeg: o.decDeg }}
               conditions={{ minAltitudeDeg: minAlt, ...BROWSER_SEASON }}
+            />
+          ),
+          sky: (
+            <SkyLocation
+              raDeg={o.raDeg}
+              decDeg={o.decDeg}
+              rotationDeg={0}
+              fov={rigFov ? { widthDeg: rigFov[0], heightDeg: rigFov[1] } : null}
+              name={o.displayName}
+              hint={t('projectEditor.sky.hintView')}
             />
           ),
         }}

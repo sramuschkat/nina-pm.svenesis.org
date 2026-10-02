@@ -104,6 +104,11 @@ export const de = {
       empty: 'Keine aktiven Projekte.',
       more: 'Zur Projektliste',
     },
+    weather: {
+      title: 'Wetter (7 Tage)',
+      empty: 'Noch kein Standort angelegt.',
+      more: 'Zur Wettervorhersage',
+    },
     sessions: {
       title: 'Letzte Sessions',
       empty: 'Noch keine Sessions.',
@@ -822,6 +827,7 @@ export const de = {
     tabs: {
       altitude: 'Höhendiagramm',
       season: 'Saisondiagramm',
+      sky: 'Himmelslage',
     },
     label: 'Nachtdiagramm, Zeiten in Standortzeit ({{zone}})',
     empty: 'Keine Nacht mit Dunkelheit bzw. kein Ziel über dem Horizont.',
@@ -917,6 +923,7 @@ export const de = {
         'Sternkarte um das Ziel bei RA {{ra}}, Dec {{dec}}, Sichtfeld {{fov}}°; der Rahmen zeigt das Bildfeld des Rigs.',
       hint: 'Ziehen verschiebt die Ansicht, Mausrad oder +/− zoomen. Ausrichten und Mosaik in der Sternkarte.',
       needsCoordinates: 'Trage Koordinaten ein, um die Himmelslage zu sehen.',
+      hintView: 'Ziehen verschiebt die Ansicht, Mausrad oder +/− zoomen.',
     },
     target: 'Ziel',
     conditions: 'Bedingungen',
@@ -3011,13 +3018,8 @@ export const de = {
       openFraming: 'In Framing öffnen',
       failed: 'Sternfeld nicht verfügbar.',
     },
-    skyPosition: {
-      title: 'Himmelsposition – {{star}}',
-      label: 'Himmelsposition von {{name}}',
-      caption: 'Himmelsposition (60°, Norden oben, Osten links)',
-      failed: 'Sternbilder nicht verfügbar.',
-      north: 'N',
-      east: 'O',
+    skyLocation: {
+      title: 'Himmelslage – {{star}}',
     },
     timelineTitle: '{{name}} – Nacht und Transit',
     timelineNight: 'Nacht ab dem Abend des {{night}}, {{site}}',
