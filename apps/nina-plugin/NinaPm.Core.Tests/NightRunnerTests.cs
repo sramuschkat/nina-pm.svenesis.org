@@ -104,6 +104,55 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Abgearbeiteter_Block_laeuft_nicht_noch_einmal_auch_vor_seinem_Ende()
+    {
+        // Lauf 02.10.2026: Sky-Simulator-Kamera ignoriert die Belichtungszeit, der Block war nach 1,5 min durch und
+        // startete danach 1703-mal neu. Jetzt: einmal je Plan, danach Warten auf den nächsten Block.
+        nina.ExposureScale = 0.02;
+        nina.DownloadS = 1;
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan + Session
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+
+        await runner.RunOnceAsync(default); // regulärer Block, nach wenigen Minuten durch
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T08:00:00Z")); // Blockende wäre 09:20:01
+        var starts = sink.Lines.Count(l => l.Contains("BLOCK_START"));
+        var plans = api.Plans.Count;
+
+        // Neustart ohne Verbindung: gespeicherter Plan, der Block ist darin erledigt und läuft nicht noch einmal.
+        api.Offline = true;
+        var restarted = Runner();
+        await restarted.RunOnceAsync(default); // resume scheitert → gespeicherter Plan
+        await restarted.RunOnceAsync(default);
+        await restarted.RunOnceAsync(default);
+        Assert.Equal(starts, sink.Lines.Count(l => l.Contains("BLOCK_START")));
+
+        // Wieder online: kein offener Block mehr in diesem Plan → neu planen (refresh) statt Wiederholung.
+        api.Offline = false;
+        clock.Advance(TimeSpan.FromMinutes(6)); // 5-min-Sperre der fehlgeschlagenen Versuche vorbei
+        await runner.RunOnceAsync(default);
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Fehler_im_Block_beendet_ihn_mit_error_ohne_Wiederholung()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.FailAtExposure = 2;
+
+        await runner.RunOnceAsync(default); // kein Wurf nach außen
+
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=error", StringComparison.Ordinal));
+        Assert.Contains(sink.Lines, l => l.Contains("ERROR code=block_failed"));
+        var starts = sink.Lines.Count(l => l.Contains("BLOCK_START"));
+        await runner.RunOnceAsync(default);
+        Assert.Equal(starts, sink.Lines.Count(l => l.Contains("BLOCK_START")));
+    }
+
+    [Fact]
     public async Task Gesperrter_Zustand_wartet_60_s_statt_sofort_zurueckzukehren()
     {
         var runner = Runner();

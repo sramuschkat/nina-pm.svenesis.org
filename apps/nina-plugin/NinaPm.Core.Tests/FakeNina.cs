@@ -16,6 +16,9 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     public bool SkipSlew { get; set; }
     public double DownloadS { get; set; } = 3;
 
+    /// <summary>Anteil der Belichtungszeit, den die Kamera wirklich braucht (Sky-Simulator-Kamera: fast 0).</summary>
+    public double ExposureScale { get; set; } = 1;
+
     /// <summary>Bricht während der n-ten Belichtung (1-basiert) ab: wirft wie NINA mit abgebrochenem Token.</summary>
     public int CancelAtExposure { get; set; }
     public CancellationTokenSource Sequence { get; } = new();
@@ -71,16 +74,20 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
         return Task.CompletedTask;
     }
 
+    /// <summary>Wirft bei der n-ten Belichtung einen NINA-Fehler (kein Abbruch).</summary>
+    public int FailAtExposure { get; set; }
+
     public Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, CancellationToken token)
     {
         exposures++;
+        if (exposures == FailAtExposure) throw new InvalidOperationException("Kamera meldet Fehler");
         Calls.Add($"expose:{entry.Seq}@{UtcText.Format(clock.UtcNow)}");
         if (exposures == CancelAtExposure)
         {
             Sequence.Cancel();
             token.ThrowIfCancellationRequested();
         }
-        clock.Advance(TimeSpan.FromSeconds((entry.ExposureS ?? 0) + DownloadS));
+        clock.Advance(TimeSpan.FromSeconds((entry.ExposureS ?? 0) * ExposureScale + DownloadS));
         return Task.FromResult(ExposureResult.Saved);
     }
 

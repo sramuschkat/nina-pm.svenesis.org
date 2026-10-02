@@ -248,4 +248,5 @@ public static class StateKeys
     public const string TargetsEtag = "targetsEtag";
     public const string SettingsVersion = "settingsVersion";
     public const string PlanBlockedUntil = "planBlockedUntil";
+    public const string DoneBlocks = "doneBlocks";
 }
