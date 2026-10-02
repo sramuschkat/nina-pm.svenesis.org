@@ -9,6 +9,7 @@ import { SPECTRUM_STOPS } from '@nina-pm/ui-tokens';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FilterView } from '../../api/client';
+import { parseColor } from '../../lib/color';
 import { contrastRatio, FilterChip } from '../../components/FilterChip';
 import styles from './equipment.module.css';
 import { useNumber } from './shared';
@@ -64,11 +65,10 @@ const hex2 = (n: number) =>
     .toString(16)
     .padStart(2, '0');
 const toHex = (c: Rgb) => `#${hex2(c[0])}${hex2(c[1])}${hex2(c[2])}`;
-const parse = (hex: string): Rgb | null => {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m?.[1]) return null;
-  const v = parseInt(m[1], 16);
-  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+// Auch `#fff` – so kommt `--npm-white` des hellen Themes aus dem Build (vorher keine Kontrastanpassung).
+const parse = (color: string): Rgb | null => {
+  const c = parseColor(color);
+  return c ? [c[0], c[1], c[2]] : null;
 };
 
 /**

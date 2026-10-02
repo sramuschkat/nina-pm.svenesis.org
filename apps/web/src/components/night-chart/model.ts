@@ -4,6 +4,7 @@
  * Werte der Textalternative.
  */
 import { formatTzAbbr, formatZonedTime } from '@nina-pm/shared';
+import { parseColor } from '../../lib/color';
 
 /**
  * Transit im Nachtdiagramm (S-22, AP-42): Beobachtungsfenster als Fläche mit Start/Ende, Kontakte und die
@@ -363,21 +364,9 @@ export function bestTime(
 export const moonAlpha = (illuminationPct: number) =>
   0.18 + (0.4 * Math.max(0, Math.min(100, illuminationPct))) / 100;
 
-/** Relative Helligkeit einer Farbe `#rgb`/`#rrggbb`/`rgb(…)` (0–1) für die Textfarbe auf Filterbalken. */
+/** Relative Helligkeit einer Farbe (`#rgb` … `#rrggbbaa`, `rgb(…)`; `parseColor`) (0–1) für die Textfarbe auf Filterbalken. */
 export function luminance(color: string): number | null {
-  let rgb: number[] | null = null;
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
-  if (hex?.[1]) {
-    const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
-    rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-  } else {
-    const m = /^rgba?\(([^)]+)\)$/.exec(color.trim());
-    if (m?.[1])
-      rgb = m[1]
-        .split(',')
-        .slice(0, 3)
-        .map((v) => Number(v.trim()));
-  }
+  const rgb = parseColor(color)?.slice(0, 3) ?? null;
   if (!rgb || rgb.some((v) => Number.isNaN(v))) return null;
   const lin = rgb.map((v) => {
     const c = v / 255;
