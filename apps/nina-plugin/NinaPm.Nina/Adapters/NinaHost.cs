@@ -157,6 +157,9 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// </summary>
     public async Task<CenterResult> SlewCenterAsync(Blocks block, CancellationToken token)
     {
+        if (!await EnsureUnparkedAsync(m.Telescope, () => Runtime?.Log.Warning("WARNING", ("code", "mount_unparked"), ("block", block.Id)),
+                Progress ?? new Progress<ApplicationStatus>(), token))
+            return new CenterResult(false, "unpark failed");
         var coords = new InputCoordinates(Coordinates(block));
         var rotate = block.RotationMode == BlocksRotationMode.Rotator && m.Rotator.GetInfo().Connected;
         if (block.RotationMode == BlocksRotationMode.Rotator && !rotate)
@@ -183,6 +186,22 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
             Logger.Warning($"NINA-PM: Zentrieren fehlgeschlagen: {ex.Message}");
             return new CenterResult(false, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Vor dem Slew entparken, wenn die Montierung geparkt ist (execution.md §4.6, P-25-Lauf 02.10.2026): NINA prüft die
+    /// Schleifenbedingungen nach jeder Anweisung (<c>SequentialStrategy.CanContinue</c>) und überspringt
+    /// <em>Unpark Scope</em> im Sicherungscontainer, sobald <em>Loop While Unsafe</em> falsch wird – der Zielcontainer
+    /// startete mit geparkter Montierung („Telescope is parked“). Der Zielcontainer läuft nur, wenn
+    /// <em>Loop While Safe</em> sicher meldet. <c>false</c>, wenn das Entparken scheitert.
+    /// </summary>
+    internal static async Task<bool> EnsureUnparkedAsync(ITelescopeMediator telescope, Action warn, IProgress<ApplicationStatus> progress,
+        CancellationToken token)
+    {
+        var info = telescope.GetInfo();
+        if (!info.Connected || !info.AtPark) return true;
+        warn();
+        return await telescope.UnparkTelescope(progress, token).ConfigureAwait(false);
     }
 
     public Task BeforeTargetChangeAsync(CancellationToken token) => Task.CompletedTask; // Trigger-Sets FA-NIN-16: AP-16h

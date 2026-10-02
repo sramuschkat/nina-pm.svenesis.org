@@ -52,6 +52,27 @@ public sealed class SequencerTests
         Assert.Equal(expected, Interruption.Classify(ownCancel: false, state));
     }
 
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    public async Task Vor_dem_Slew_entparken_wenn_geparkt(bool connected, bool atPark, bool unparks)
+    {
+        // P-25-Lauf 02.10.2026: NINA übersprang Unpark Scope im Sicherungscontainer, der Slew scheiterte („parked“).
+        var telescope = new Mock<ITelescopeMediator>();
+        telescope.Setup(t => t.GetInfo()).Returns(new NINA.Equipment.Equipment.MyTelescope.TelescopeInfo { Connected = connected, AtPark = atPark });
+        telescope.Setup(t => t.UnparkTelescope(It.IsAny<IProgress<NINA.Core.Model.ApplicationStatus>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var warned = 0;
+
+        var ok = await NinaHost.EnsureUnparkedAsync(telescope.Object, () => warned++, new Progress<NINA.Core.Model.ApplicationStatus>(), default);
+
+        Assert.True(ok);
+        Assert.Equal(unparks ? 1 : 0, warned);
+        telescope.Verify(t => t.UnparkTelescope(It.IsAny<IProgress<NINA.Core.Model.ApplicationStatus>>(), It.IsAny<CancellationToken>()),
+            unparks ? Times.Once() : Times.Never());
+    }
+
     [Fact]
     public void Ansichten_je_Typ_und_Mini_Ansichten_je_Schluessel() => Sta.Run(() =>
     {
