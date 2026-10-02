@@ -229,11 +229,20 @@ jobs:
             | sudo tee /etc/apt/apt.conf.d/99net-timeouts >/dev/null
           sudo rm -f /etc/apt/apt.conf.d/docker-clean
           sudo cp ~/.cache/playwright-apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
-          # Bis zu zwei Versuche à 4 min; ein hängender Spiegel kostet so höchstens einen Versuch.
+          # Bis zu zwei Versuche à 4 min; ein hängender Spiegel kostet so höchstens einen Versuch. `timeout` beendet
+          # nur pnpm – der per sudo gestartete apt-get lief weiter und hielt die Sperre, der zweite Versuch scheiterte
+          # dann sofort (`Could not get lock /var/lib/apt/lists/lock`, CI #454, 02.10.2026). Deshalb vor dem neuen
+          # Versuch apt beenden, auf die Sperren warten und einen unterbrochenen dpkg-Lauf abschließen.
           for attempt in 1 2; do
             timeout 240 pnpm exec playwright install-deps chromium && break
             [ "$attempt" = 2 ] && exit 1
             echo "install-deps: Versuch $attempt abgebrochen, neuer Versuch"
+            sudo pkill -TERM -x apt-get || true
+            for _ in $(seq 1 30); do
+              sudo fuser /var/lib/apt/lists/lock /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1 || break
+              sleep 2
+            done
+            sudo dpkg --configure -a || true
           done
           cp /var/cache/apt/archives/*.deb ~/.cache/playwright-apt/ 2>/dev/null || true
           echo "apt-Cache: $(ls ~/.cache/playwright-apt | wc -l) Pakete"
