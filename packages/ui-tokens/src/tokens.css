@@ -84,8 +84,9 @@
   --npm-sky-dso: #8fd3a8;
   --npm-sky-dso-label: rgba(170, 225, 190, 0.9);
   --npm-sky-min-alt: #e5484d;
-  --npm-sky-meridian: rgba(240, 240, 240, 0.4);
-  --npm-sky-heatmap: rgba(229, 72, 77, 0.22);
+  --npm-sky-meridian: rgba(201, 163, 255, 0.9);
+  --npm-sky-heatmap-top: rgba(255, 190, 110, 0.12);
+  --npm-sky-heatmap-bottom: rgba(196, 52, 44, 0.5);
   --npm-sky-sun: #f6c85f;
   --npm-sky-day: #4a86c8;
   --npm-sky-day-horizon: #a9cbea;

@@ -5,6 +5,9 @@
  * heraus), Pfeiltasten schwenken, Klick wählt ein Objekt. Wie in der Vorlage (`sky-map.js`) hebt das
  * Überfahren das nächste Sternbild hervor und nennt es samt Stern oben links; ein Tipp ins Leere tut dasselbe
  * auf Touch-Geräten. Der Fokuswert (Blickmitte, Sichtfeld) steht per `aria-live` als Text daneben.
+ * Safari (Wunsch Sven 02.10.2026, Karte träge bis starr): Zeichenfläche nur bei Größenänderung neu anlegen,
+ * Farben einmal lesen (die `--npm-sky-*` hängen nicht vom Theme ab), Ziehen und Mausrad höchstens einmal je
+ * Frame an die Seite melden (Mausrad-Schritte werden dabei aufsummiert).
  */
 import { sky } from '@nina-pm/engine';
 import {
@@ -25,6 +28,7 @@ import {
   hitFrame,
   hitStar,
   readColors,
+  type Colors,
   type FrameSpec,
   type HitIndex,
   type RenderInput,
@@ -72,6 +76,11 @@ export function SkyCanvas(props: SkyCanvasProps) {
   const latest = useRef(props);
   latest.current = props;
   const hits = useRef<HitIndex>(EMPTY_HITS);
+  const colors = useRef<Colors | null>(null);
+  /** Ansichtsänderung aus Ziehen bzw. Mausrad, gesammelt bis zum nächsten Frame. */
+  const viewFrame = useRef<number | null>(null);
+  const pendingMove = useRef<(() => void) | null>(null);
+  const wheel = useRef<{ factor: number; x: number; y: number } | null>(null);
   /** Überfahrenes Sternbild und überfahrener Stern (Index in `bright.stars`). */
   const [hover, setHover] = useState<{ con: string | null; star: number | null } | null>(null);
 
@@ -96,8 +105,23 @@ export function SkyCanvas(props: SkyCanvasProps) {
     return () => {
       ro.disconnect();
       if (frameRequest.current !== null) cancelAnimationFrame(frameRequest.current);
+      if (viewFrame.current !== null) cancelAnimationFrame(viewFrame.current);
     };
   }, []);
+
+  /** Meldet die zuletzt angesammelte Ansichtsänderung im nächsten Frame (Ziehen absolut, Mausrad summiert). */
+  const scheduleView = () => {
+    if (viewFrame.current !== null) return;
+    viewFrame.current = requestAnimationFrame(() => {
+      viewFrame.current = null;
+      const move = pendingMove.current;
+      pendingMove.current = null;
+      move?.();
+      const w = wheel.current;
+      wheel.current = null;
+      if (w) zoomRef.current(w.factor, w.x, w.y);
+    });
+  };
 
   const view =
     size.w > 0 && size.h > 0
@@ -108,23 +132,33 @@ export function SkyCanvas(props: SkyCanvasProps) {
     const c = canvas.current;
     if (!c || !view) return;
     const dpr = window.devicePixelRatio || 1;
-    c.width = Math.round(view.width * dpr);
-    c.height = Math.round(view.height * dpr);
+    const w = Math.round(view.width * dpr);
+    const h = Math.round(view.height * dpr);
+    // Neu anlegen nur bei Größenänderung – das Setzen von `width` kostet je Bild (Safari besonders).
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
+    }
     const ctx = c.getContext('2d');
     if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    // Zustand der vorigen Zeichnung (Strichart, Deckkraft …) nicht übernehmen.
+    ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const colors = readColors(c);
+    colors.current ??= readColors(c);
     const survey = props.survey;
     let status = { shown: 0, pending: 0 };
     hits.current = drawSky(
       ctx,
       { ...props.input, view, photosShown: survey !== null, hoverCon: hover?.con ?? null },
-      colors,
+      colors.current,
       () => {
         if (survey && hips.current)
           status = hips.current.draw(ctx, view, survey, dpr, props.photoAlpha);
       },
     );
+    ctx.restore();
     props.onPhotoStatus?.(status);
     // Zeichnet bei jeder Eingabe neu; `tick` zählt nachgeladene Kacheln.
   }, [view?.width, view?.height, props, tick, hover]);
@@ -170,19 +204,22 @@ export function SkyCanvas(props: SkyCanvasProps) {
     if (!d.moved && Math.hypot(x - d.startX, y - d.startY) < 3) return;
     if (!d.moved && hover) setHover(null);
     d.moved = true;
-    if (d.mode === 'frame')
-      latest.current.onFrameMove(sky.unproject(d.view, x + d.offX, y + d.offY));
-    else
-      latest.current.onView(
-        sky.normalize(
-          sky.unproject(
-            d.view,
-            d.view.width / 2 - (x - d.startX),
-            d.view.height / 2 - (y - d.startY),
-          ),
-        ),
-        latest.current.fovDeg,
-      );
+    // Absolut zur Ansicht beim Greifen: Zwischenschritte innerhalb eines Frames dürfen entfallen.
+    pendingMove.current =
+      d.mode === 'frame'
+        ? () => latest.current.onFrameMove(sky.unproject(d.view, x + d.offX, y + d.offY))
+        : () =>
+            latest.current.onView(
+              sky.normalize(
+                sky.unproject(
+                  d.view,
+                  d.view.width / 2 - (x - d.startX),
+                  d.view.height / 2 - (y - d.startY),
+                ),
+              ),
+              latest.current.fovDeg,
+            );
+    scheduleView();
   };
 
   const onPointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -218,13 +255,18 @@ export function SkyCanvas(props: SkyCanvasProps) {
   // Mausrad nativ und nicht passiv – sonst scrollt die Seite beim Zoomen mit.
   const zoomRef = useRef(zoomAt);
   zoomRef.current = zoomAt;
+  const scheduleRef = useRef(scheduleView);
+  scheduleRef.current = scheduleView;
   useEffect(() => {
     const c = canvas.current;
     if (!c) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const r = c.getBoundingClientRect();
-      zoomRef.current(Math.exp(e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+      // Trackpads (Safari) senden viele kleine Schritte: aufsummieren, einmal je Frame zoomen.
+      const factor = (wheel.current?.factor ?? 1) * Math.exp(e.deltaY * 0.0015);
+      wheel.current = { factor, x: e.clientX - r.left, y: e.clientY - r.top };
+      scheduleRef.current();
     };
     c.addEventListener('wheel', onWheel, { passive: false });
     return () => c.removeEventListener('wheel', onWheel);
