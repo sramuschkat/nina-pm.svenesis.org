@@ -2204,6 +2204,9 @@ export const en: Messages = {
     perNight: 'Exposed hours per night',
     perProject: 'Projects over the period',
     nightAria: '{{night}}: {{hours}} h exposed of {{dark}} h darkness',
+    nightAriaWeather:
+      '{{night}}: {{hours}} h exposed of {{dark}} h darkness, weather {{rating}}, weight {{w}}',
+    forecastRange: 'The forecast covers 7 nights; the remaining nights are unweighted.',
     hours: '{{h}} h',
     weight: 'weight {{w}}',
     noForecast: 'no forecast',

@@ -445,6 +445,7 @@ export function SimulatorPage() {
           rigId={rig.id}
           nightFrom={night}
           withDrafts={withDrafts}
+          site={site ? { id: site.id, name: site.name } : null}
         />
       ) : null}
 

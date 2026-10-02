@@ -19,9 +19,11 @@ const state = vi.hoisted(() => ({
   impact: vi.fn(),
   jobStatus: 'running' as string,
   result: null as unknown,
+  weather: vi.fn(),
 }));
 
 vi.mock('../../api/client', () => ({
+  equipmentApi: { weather: (...a: unknown[]) => state.weather(...a) as Promise<unknown> },
   simulationApi: { multi: (...a: unknown[]) => state.multi(...a) as Promise<unknown> },
   approvalApi: { impact: (...a: unknown[]) => state.impact(...a) as Promise<unknown> },
   jobsApi: {
@@ -129,7 +131,37 @@ const wrap = (ui: React.ReactNode) =>
     </QueryClientProvider>,
   );
 
+/** Vorhersage des Standorts: erste Nacht „Mittel 50 %“, zweite ohne Vorhersage. */
+const forecast = {
+  siteId: ID(600),
+  timeZone: 'America/Chicago',
+  status: 'ready',
+  hours: [],
+  nights: [
+    {
+      night: '2026-09-26',
+      darkFromUtc: '2026-09-27T01:05:00Z',
+      darkToUtc: '2026-09-27T10:05:00Z',
+      nightMean: 0.5,
+      ratingIndex: 2,
+      coveredSec: 0,
+      darknessSec: 32400,
+      coverage: 0,
+      moonlessSec: 0,
+      bestWindow: null,
+      aerosolMissing: false,
+      seeingIncomplete: false,
+      moonIllumPct: 40,
+      moonEvents: [],
+    },
+  ],
+  nightWindows: [],
+  darkWindows: [],
+};
+
 beforeEach(() => {
+  state.weather.mockReset();
+  state.weather.mockResolvedValue(forecast);
   state.multi.mockReset();
   state.impact.mockReset();
   state.jobStatus = 'running';
@@ -139,9 +171,23 @@ beforeEach(() => {
 describe('S-40 Mehrnacht', () => {
   it('startet den Job mit den Einstellungen, zeigt Status und dann Nächte und Projekte; axe', async () => {
     state.multi.mockResolvedValue({ jobId: ID(99) });
-    wrap(<MultiNightPanel rigId={ID(1)} nightFrom="2026-09-26" withDrafts />);
+    wrap(
+      <MultiNightPanel
+        rigId={ID(1)}
+        nightFrom="2026-09-26"
+        withDrafts
+        site={{ id: ID(600), name: 'Starfront' }}
+      />,
+    );
     fireEvent.change(screen.getByLabelText('Zeitraum'), { target: { value: '14' } });
+    expect(screen.queryByText('Wetter am Standort Starfront')).toBeNull();
     fireEvent.click(screen.getByLabelText('Mit Wetter gewichten'));
+    // Mit Wetter: 7-Tage-Farbband des Standorts wie in Ausrüstung → Standorte (Wunsch Sven 02.10.2026).
+    expect(await screen.findByText('Wetter am Standort Starfront')).toBeTruthy();
+    expect(
+      screen.getByText('Die Vorhersage reicht 7 Nächte; die übrigen Nächte zählen ungewichtet.'),
+    ).toBeTruthy();
+    expect(state.weather).toHaveBeenCalledWith(ID(600));
     fireEvent.click(screen.getByRole('button', { name: 'Mehrnacht berechnen' }));
     await waitFor(() =>
       expect(state.multi).toHaveBeenCalledWith({
@@ -163,6 +209,10 @@ describe('S-40 Mehrnacht', () => {
     const items = within(strip).getAllByRole('listitem');
     expect(items).toHaveLength(2);
     expect(within(items[0] as HTMLElement).getByText('Gewicht 0,5')).toBeTruthy();
+    expect(within(items[0] as HTMLElement).getByText('Mittel 50 %')).toBeTruthy();
+    expect(items[0]).toHaveAccessibleName(
+      '26./27.09.: 3,2 h belichtet von 8 h Dunkelheit, Wetter Mittel 50 %, Gewicht 0,5',
+    );
     expect(within(items[1] as HTMLElement).getByText('ohne Vorhersage')).toBeTruthy();
     const table = screen.getByRole('table', { name: 'Projekte über den Zeitraum' });
     const row = within(table).getByRole('row', { name: /NGC 281/ });
@@ -174,7 +224,7 @@ describe('S-40 Mehrnacht', () => {
   it('fehlgeschlagener Job zeigt die Fehlermeldung', async () => {
     state.multi.mockResolvedValue({ jobId: ID(98) });
     state.jobStatus = 'failed';
-    wrap(<MultiNightPanel rigId={ID(1)} nightFrom="2026-09-26" withDrafts={false} />);
+    wrap(<MultiNightPanel rigId={ID(1)} nightFrom="2026-09-26" withDrafts={false} site={null} />);
     fireEvent.click(screen.getByRole('button', { name: 'Mehrnacht berechnen' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
   });

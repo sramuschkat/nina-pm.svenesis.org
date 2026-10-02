@@ -402,6 +402,12 @@ describe('Startseite (Mandant)', () => {
     // Wetter (7 Tage) je Standort in Kurzform wie in Ausrüstung → Standorte (Wunsch Sven 02.10.2026);
     // ein Link zur Wettervorhersage im Kartenkopf, keiner je Standort.
     const weather = await card('Wetter (7 Tage)');
+    // Direkt unter den Kennzahlen, vor den Spalten (Wunsch Sven 02.10.2026).
+    expect(kpis.compareDocumentPosition(weather) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      weather.compareDocumentPosition(await card('Aktive Projekte')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(await within(weather).findByText('Wetter am Standort Starfront')).toBeInTheDocument();
     expect(within(weather).getAllByRole('link', { name: 'Zur Wettervorhersage' })).toHaveLength(1);
     expect(within(weather).getByRole('link', { name: 'Zur Wettervorhersage' })).toHaveAttribute(

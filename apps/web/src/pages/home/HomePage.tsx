@@ -2,9 +2,9 @@
  * Startseite (FK 14.3 S-02; AP-26c, Stilsystem AP-26d): im Mandanten eine Übersicht mit Seitenkopf
  * (*Übersicht*, Mandant und Datum in Mandantenzeit, Hauptaktion *Neues Projekt*), einer Zeile Kennzahlen
  * (aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht) und zwei Spalten: links
- * *Aktive Projekte* je Rig als Tabelle, rechts *Warteschlange* (Stimme wie S-33) und *Letzte Sessions*;
- * darunter über die volle Breite *Wetter (7 Tage)* je Standort als kompaktes Farbband wie in Ausrüstung →
- * Standorte (Wunsch Sven 02.10.2026).
+ * *Aktive Projekte* je Rig als Tabelle, rechts *Warteschlange* (Stimme wie S-33) und *Letzte Sessions*.
+ * Direkt unter den Kennzahlen über die volle Breite *Wetter (7 Tage)* je Standort als kompaktes Farbband wie in
+ * Ausrüstung → Standorte (Wunsch Sven 02.10.2026).
  * Kennzahlen und Karten nutzen dieselben Abfragen (ein Cache), haben Lade-, Leer- und Fehlerzustand und
  * erscheinen nur mit dem Recht der Zielseite. Im System-Kontext bleibt der Hinweis zur Verwaltung.
  */
@@ -120,6 +120,7 @@ function TenantHome() {
           {canWeather ? <GoodNightTile now={now} /> : null}
         </ul>
       ) : null}
+      {canWeather ? <WeatherCard /> : null}
       <div className={styles.columns}>
         <div className={styles.column}>{canProjects ? <ProjectsCard /> : null}</div>
         <div className={styles.column}>
@@ -127,7 +128,6 @@ function TenantHome() {
           {canSessions ? <SessionsCard /> : null}
         </div>
       </div>
-      {canWeather ? <WeatherCard /> : null}
     </div>
   );
 }

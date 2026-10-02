@@ -2212,6 +2212,9 @@ export const de = {
     perNight: 'Belichtete Stunden je Nacht',
     perProject: 'Projekte über den Zeitraum',
     nightAria: '{{night}}: {{hours}} h belichtet von {{dark}} h Dunkelheit',
+    nightAriaWeather:
+      '{{night}}: {{hours}} h belichtet von {{dark}} h Dunkelheit, Wetter {{rating}}, Gewicht {{w}}',
+    forecastRange: 'Die Vorhersage reicht 7 Nächte; die übrigen Nächte zählen ungewichtet.',
     hours: '{{h}} h',
     weight: 'Gewicht {{w}}',
     noForecast: 'ohne Vorhersage',

@@ -416,3 +416,9 @@
   width: 100%;
   background: var(--npm-accent);
 }
+/* Nachtbewertung der Vorhersage (Farbe wie im Wetter-Farbband), nur mit Wettergewichtung. */
+.nightRating {
+  width: 1.5rem;
+  height: 0.375rem;
+  border-radius: var(--npm-radius);
+}
