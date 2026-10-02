@@ -91,8 +91,19 @@ public sealed class SequencerTests
 
     private sealed class FakeAutofocusAfterTimeTrigger : CountingTrigger;
 
+    /// <summary>Profil nur mit Standort (Breite/Länge 0, kein Horizont) – mehr liest der Container im Konstruktor nicht.</summary>
+    private static NINA.Profile.Interfaces.IProfileService Profile()
+    {
+        var astro = new Mock<NINA.Profile.Interfaces.IAstrometrySettings>();
+        var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
+        profile.SetupGet(p => p.AstrometrySettings).Returns(astro.Object);
+        var service = new Mock<NINA.Profile.Interfaces.IProfileService>();
+        service.SetupGet(s => s.ActiveProfile).Returns(profile.Object);
+        return service.Object;
+    }
+
     private static NinaPmContainer NewContainer() => new(
-        new Mock<NINA.Profile.Interfaces.IProfileService> { DefaultValue = DefaultValue.Mock }.Object,
+        Profile(),
         Mock.Of<ITelescopeMediator>(), Mock.Of<IImagingMediator>(), Mock.Of<ICameraMediator>(), Mock.Of<IFilterWheelMediator>(),
         Mock.Of<IRotatorMediator>(), Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
         Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
