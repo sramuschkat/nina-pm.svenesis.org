@@ -443,6 +443,10 @@ describe('Überfahren, Anklicken, Horizont (Vorlage sky-map.js)', () => {
     expect(constellationName(l, 'latin', 'de')).toBe('Ursa Major');
     expect(colorParts('rgba(205, 215, 255, 0.3)')).toEqual([205, 215, 255, 0.3]);
     expect(colorParts('#5ce1e6')).toEqual([92, 225, 230, 1]);
+    // So liefert der Build die Tokens (Minifier): vorher deckendes Grau für Heatmap, Schimmer, Milchstraße.
+    expect(colorParts('#ffbe6e1f')).toEqual([255, 190, 110, 0.122]);
+    expect(colorParts('#788cb433')).toEqual([120, 140, 180, 0.2]);
+    expect(colorParts('var(--fehlt)')).toEqual([136, 136, 136, 1]);
   });
 
   it('Heatmap als Verlauf: an der Schwelle hell und zart, zum Horizont dunkler und kräftiger (02.10.2026)', () => {

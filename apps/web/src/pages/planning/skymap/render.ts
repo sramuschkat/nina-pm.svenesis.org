@@ -12,6 +12,7 @@
  */
 import { mosaicPanels, offsetToSky, refractionArcmin, sky } from '@nina-pm/engine';
 import type { DsoMarker } from '../../../api/client';
+import { parseColor } from '../../../lib/color';
 import { landscapeAlt } from './landscape';
 import { milkyWayAt, type BrightSky, type MilkyWayGrid, type StarField } from './sky-data';
 
@@ -299,20 +300,12 @@ function drawEqLabels(ctx: CanvasRenderingContext2D, view: sky.SkyView, color: s
   }
 }
 
-/** Farbe `rgb(…)`/`rgba(…)`/`#rrggbb` → Kanäle 0–255 und Deckkraft 0–1 (für Bildpunkte im Offscreen-Bild). */
+/**
+ * Farbe → Kanäle 0–255 und Deckkraft 0–1 (für Bildpunkte im Offscreen-Bild). Über `parseColor`, damit auch die
+ * vom Minifier erzeugten Formen (`#rrggbbaa`, `#rgb`) gelesen werden; Unbekanntes bleibt neutral grau.
+ */
 export function colorParts(c: string): [number, number, number, number] {
-  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.trim());
-  if (hex)
-    return [
-      parseInt(hex[1] ?? '0', 16),
-      parseInt(hex[2] ?? '0', 16),
-      parseInt(hex[3] ?? '0', 16),
-      1,
-    ];
-  const m = /rgba?\(([^)]+)\)/.exec(c);
-  if (!m) return [136, 136, 136, 1];
-  const [r = 136, g = 136, b = 136, a = 1] = (m[1] ?? '').split(',').map((x) => Number(x.trim()));
-  return [r, g, b, a];
+  return parseColor(c) ?? [136, 136, 136, 1];
 }
 
 /**
