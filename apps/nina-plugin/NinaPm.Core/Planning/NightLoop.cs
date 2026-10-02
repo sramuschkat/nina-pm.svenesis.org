@@ -178,6 +178,9 @@ public sealed class NightLoop
 
     // ---- Ereignisse ---------------------------------------------------------------------------------------
 
+    /// <summary>Sperre aktiv (5 min ab dem letzten Abruf): auch die Neuplanung vor einem Block wartet (§3.2).</summary>
+    public bool PlanLocked(DateTimeOffset now) => planLockUntil is { } until && now < until;
+
     /// <summary>Vor jedem Planabruf: Sperre setzen (Zeitstempel **vor** dem Versuch, execution.md §2).</summary>
     public void PlanAttempt(DateTimeOffset now) => planLockUntil = now + PlanLock;
 

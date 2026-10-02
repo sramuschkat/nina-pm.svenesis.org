@@ -34,7 +34,13 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// <summary>Verzug für das zeitgeführte Playback; misst AP-16f, bis dahin 0.</summary>
     public Func<TimeSpan> Offset { get; init; } = () => TimeSpan.Zero;
 
-    public async Task<BlockOutcome> RunAsync(Blocks block, DateTimeOffset? darknessEndUtc, CancellationToken token)
+    /// <summary>
+    /// Ein Block. <paramref name="inBlockCheck"/> (execution.md §3.2) läuft alle 15 min vor einer Belichtung mit dem
+    /// anstehenden Eintrag; liefert er einen Grund (<c>target_removed</c>, <c>transit_interrupt</c>), endet der Block nach
+    /// der laufenden Belichtung mit diesem Grund.
+    /// </summary>
+    public async Task<BlockOutcome> RunAsync(Blocks block, DateTimeOffset? darknessEndUtc, CancellationToken token,
+        Func<Entries, CancellationToken, Task<string?>>? inBlockCheck = null)
     {
         var skip = PreCheck(block);
         if (skip is not null) return Skip(block, skip);
@@ -52,7 +58,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         await host.BeforeTargetChangeAsync(token).ConfigureAwait(false);
         await host.StartGuidingAsync(token).ConfigureAwait(false);
 
-        var (reason, exposures, skipped) = await EntriesAsync(block, darknessEndUtc, token).ConfigureAwait(false);
+        var (reason, exposures, skipped) = await EntriesAsync(block, darknessEndUtc, inBlockCheck, token).ConfigureAwait(false);
 
         await host.AfterTargetChangeAsync(token).ConfigureAwait(false);
         log.Event("BLOCK_END", ("id", block.Id), ("reason", reason));
@@ -96,9 +102,11 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// Einträge zwischen zwei Belichtungen werden in Planreihenfolge ausgeführt. <c>wait</c> endet spätestens beim
     /// folgenden <c>meridian_flip</c>; <c>autofocus_hint</c> und Slew-Einträge sind Zeitmarken.
     /// </summary>
-    private async Task<(string Reason, int Exposures, int Skipped)> EntriesAsync(Blocks block, DateTimeOffset? darknessEndUtc, CancellationToken token)
+    private async Task<(string Reason, int Exposures, int Skipped)> EntriesAsync(Blocks block, DateTimeOffset? darknessEndUtc,
+        Func<Entries, CancellationToken, Task<string?>>? inBlockCheck, CancellationToken token)
     {
         var entries = block.Entries;
+        var lastCheck = clock.UtcNow;
         var cursor = -1;
         var exposures = 0;
         var skippedTotal = 0;
@@ -126,6 +134,12 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 await host.DelayAsync(step.WaitUntilUtc!.Value, token).ConfigureAwait(false);
                 cursor = target - 1;
                 continue;
+            }
+            if (inBlockCheck is not null && ReplanPolicy.InBlockCheckDue(lastCheck, clock.UtcNow))
+            {
+                lastCheck = clock.UtcNow;
+                var end = await inBlockCheck(entries[target], token).ConfigureAwait(false);
+                if (end is not null) return (end, exposures, skippedTotal);
             }
             var result = await host.ExposeAsync(block, entries[target], token).ConfigureAwait(false);
             if (result == ExposureResult.Saved) exposures++;

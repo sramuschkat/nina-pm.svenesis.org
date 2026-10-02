@@ -36,6 +36,10 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     public void OnInterrupted() => Interruptions++;
 
+    public List<NinaTargets?> PlansBuilt { get; } = [];
+
+    public void PlanBuilt(NinaTargets? targets) => PlansBuilt.Add(targets);
+
     public bool IsViableNow(Blocks block) => Viable;
 
     public void SetTarget(Blocks block) => Calls.Add("target");

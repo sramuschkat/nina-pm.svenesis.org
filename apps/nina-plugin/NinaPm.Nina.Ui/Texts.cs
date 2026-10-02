@@ -12,6 +12,10 @@ public static class Texts
 
     private static string T(string de, string en) => De ? de : en;
 
+    public static string BeforeExposureHint => T("Läuft vor jeder NINA-PM-Belichtung", "Runs before each NINA-PM exposure");
+    public static string AfterExposureHint => T("Läuft nach jeder NINA-PM-Belichtung", "Runs after each NINA-PM exposure");
+    public static string DropInstructionsHint => T("Anweisungen hierher ziehen …", "Drag instructions here …");
+
     public static string Intro => T(
         "NINA-PM plant deine Projekte auf dem Server und führt sie in NINA aus. Server-URL und Sync-Token stehen in der Web-App unter Rig → NINA-Instanzen.",
         "NINA-PM plans your projects on the server and runs them in NINA. Server URL and sync token are shown in the web app under Rig → NINA instances.");

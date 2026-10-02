@@ -22,6 +22,8 @@ public sealed class NinaPmResources : ResourceDictionary
         ["NinaPm.Container"] = typeof(NinaPmContainer),
         ["NinaPm.NightLoopCondition"] = typeof(NightLoopCondition),
         ["NinaPm.SafetyWait"] = typeof(SafetyWaitInstruction),
+        ["NinaPm.BeforeExposureTrigger"] = typeof(BeforeExposureTrigger),
+        ["NinaPm.AfterExposureTrigger"] = typeof(AfterExposureTrigger),
     };
 
     public NinaPmResources()

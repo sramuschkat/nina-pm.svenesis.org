@@ -36,6 +36,13 @@ public interface INightHost
 
     /// <summary>Safety-Unterbrechung: der nächste Block slewt und zentriert immer neu (NT-16).</summary>
     void OnInterrupted();
+
+    /// <summary>
+    /// Nach einem Planaufbau online (§4.3/§4.4): Sequenz und Profil prüfen – vorhandener Dither-Trigger
+    /// (<c>nina_dither_trigger_present</c>, einmal je Nacht), NINA-Filternamen aus <paramref name="targets"/>, die im
+    /// Profil fehlen (<c>filter_wheel_changed</c>).
+    /// </summary>
+    void PlanBuilt(NinaTargets? targets);
 }
 
 /// <summary>
@@ -222,6 +229,8 @@ public sealed class NightRunner(
                 await blockHost.DelayAsync(step.WaitUntilUtc ?? clock.UtcNow + NightLoop.BlockedWait, token).ConfigureAwait(false);
                 return;
             case NightAction.RunBlock:
+                if (await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
+                    return;
                 await RunBlockAsync(executor, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false);
                 return;
             case NightAction.CompleteSession:
@@ -240,13 +249,14 @@ public sealed class NightRunner(
 
     // ---- Plan und Session -----------------------------------------------------------------------------
 
-    private async Task FetchPlanAsync(NinaBootstrap b, string night, NinaPlanRequestReason reason, StoredPlan? stored, CancellationToken token)
+    private async Task FetchPlanAsync(NinaBootstrap b, string night, NinaPlanRequestReason reason, StoredPlan? stored, CancellationToken token,
+        DateTimeOffset? startAtUtc = null)
     {
         Loop.PlanAttempt(clock.UtcNow);
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
         var initial = reason == NinaPlanRequestReason.Initial;
-        var input = new PlanRequestInput(reason, initial ? null : clock.UtcNow, SessionId, etag,
+        var input = new PlanRequestInput(reason, initial ? null : startAtUtc ?? clock.UtcNow, SessionId, etag,
             tonight.ToContract(nightHost.LastAutofocusUtc, initial), PlanService.PendingFromOutbox(store.OutboxPayloads(OutboxKinds.Capture)));
         var outcome = await planService.RequestAsync(b, input, token).ConfigureAwait(false);
         bootstrap = outcome.Bootstrap;
@@ -254,9 +264,14 @@ public sealed class NightRunner(
         if (outcome.Ok)
         {
             var plan = outcome.Plan!;
+            // Planwechsel (§3.2): Ereignis plan_rebuilt mit alter und neuer nightPlanId.
+            if (stored is not null && stored.Plan.NightPlanId != plan.NightPlanId)
+                log.Event("PLAN_REBUILT", ("id", stored.Plan.NightPlanId), ("plan", plan.NightPlanId),
+                    ("reason", reason.ToString().ToLowerInvariant()));
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
             store.SetState(StateKeys.DoneBlocks, null);
             Loop.PlanReceived();
+            nightHost.PlanBuilt(Targets);
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             return;
         }
@@ -272,6 +287,50 @@ public sealed class NightRunner(
     }
 
     private static int SettingsVersion(NinaBootstrap b) => b.Rig.SettingsVersion;
+
+    // ---- Neuplanung (execution.md §3.2, FA-SYN-03) --------------------------------------------------------
+
+    /// <summary>
+    /// Vor jedem Block: neue Ziele (ETag), gestiegene <c>settingsVersion</c> oder Verzug &gt; 10 min → <c>refresh</c> mit
+    /// <c>startAtUtc = max(now, geplanter Blockstart)</c>; der Block läuft dann aus dem neuen Plan. Nicht während der
+    /// 5-min-Sperre – sonst plante das Plugin bei einem Server, der den Verzug nicht auflösen kann oder nicht erreichbar
+    /// ist, vor jedem Aufruf neu.
+    /// </summary>
+    private async Task<bool> RefreshBeforeBlockAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
+    {
+        if (Loop.PlanLocked(clock.UtcNow)) return false;
+        var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
+        var block = stored.Plan.Blocks[index];
+        var decision = ReplanPolicy.BeforeBlock(stored.TargetsEtag, etag, stored.SettingsVersion, SettingsVersion(b),
+            ReplanPolicy.PlannedStart(block), clock.UtcNow);
+        if (!decision.Refresh) return false;
+        log.Note($"Neuplanung vor Block {block.Id}: {decision.Cause}");
+        await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, decision.StartAtUtc).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// Im Block alle 15 min (§3.2): <c>GET /targets</c>; bei neuem ETag Fall (a) Projekt/Panel/Zeile entfällt →
+    /// <c>target_removed</c>, (b) neuer <c>locked</c> Transit vor Blockende → <c>transit_interrupt</c> (Ablauf AP-44),
+    /// (c) übrige Änderung → Block läuft weiter, die Neuplanung vor dem nächsten Block sieht das neue ETag.
+    /// </summary>
+    private async Task<string?> InBlockCheckAsync(Blocks block, Entries next, CancellationToken token)
+    {
+        var previous = Targets;
+        var previousEtag = store.GetCache(TargetsCacheKey)?.Etag;
+        var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
+        var current = Targets;
+        if (previous is null || current is null || etag is null || etag == previousEtag) return null;
+        var leadS = (bootstrap?.Rig.Scheduler.Overhead.SlewCenterS ?? 0) + 60;
+        var running = new RunningBlock(block.ProjectId, block.PanelId ?? Guid.Empty, next.ExposureLineId, block.EndUtc,
+            block.TransitObservationId);
+        return ReplanPolicy.InBlock(previous, current, running, leadS) switch
+        {
+            InBlockCase.TargetRemoved => "target_removed",
+            InBlockCase.TransitInterrupt => "transit_interrupt",
+            _ => null,
+        };
+    }
 
     /// <summary>
     /// <c>GET /targets</c> mit dem ETag des Caches (execution.md §3.1, NT-19); neue Ziele landen in <c>cache.targets</c>.
@@ -370,8 +429,11 @@ public sealed class NightRunner(
         tonight.Save(store);
         try
         {
-            var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token).ConfigureAwait(false);
+            var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token,
+                (next, t) => InBlockCheckAsync(block, next, t)).ConfigureAwait(false);
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
+            // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
+            if (outcome.Reason is "target_removed" or "transit_interrupt") forcedPlan = NinaPlanRequestReason.Refresh;
             // Gelaufen oder übersprungen: in diesem Plan nicht noch einmal (Unterbrechung → neuer Plan, §4.6).
             MarkDone(stored, block.Id);
         }

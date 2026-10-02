@@ -39,6 +39,8 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private ISequenceItem? previousItem;
     private (Guid ProjectId, Guid? PanelId, DateTimeOffset EndUtc)? lastCentered;
     private bool interruptedSinceCenter;
+    /// <summary>Hinweise höchstens 1×/12 h je Schlüssel (filter_not_found je Filter, readout_mode_not_found je Modus, §4.3/§4.4).</summary>
+    private readonly HintThrottle hints = new(HintThrottle.TwelveHours);
 
     /// <summary>Container, der gerade ausgeführt wird (setzt <see cref="NinaPmContainer.Execute"/>).</summary>
     public NinaPmContainer? Container { get; set; }
@@ -76,6 +78,26 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     }
 
     public void OnInterrupted() => interruptedSinceCenter = true;
+
+    /// <summary>
+    /// Nach dem Planaufbau (execution.md §4.3 NT-23, §4.4): Dither-Trigger in den Vorfahren → einmal je Nacht
+    /// <c>warning nina_dither_trigger_present</c> (der Walk unterdrückt ihn ohnehin); bestätigte NINA-Filternamen, die
+    /// im Profil fehlen → <c>warning filter_wheel_changed</c> je Name höchstens 1×/12 h.
+    /// </summary>
+    public void PlanBuilt(NinaTargets? targets)
+    {
+        var now = clock.UtcNow;
+        var dither = AncestorTriggers().FirstOrDefault(t => t.GetType().Name.Contains("dither", StringComparison.OrdinalIgnoreCase));
+        if (dither is not null && hints.ShouldEmit("nina_dither_trigger_present", now))
+            Runtime?.Log.Warning("WARNING", ("code", "nina_dither_trigger_present"), ("type", dither.GetType().Name));
+        foreach (var name in FilterResolver.MissingInProfile(targets, ProfileFilterNames()))
+            if (hints.ShouldEmit($"filter_wheel_changed:{name}", now))
+                Runtime?.Log.Warning("WARNING", ("code", "filter_wheel_changed"), ("filter", name));
+    }
+
+    /// <summary>Filternamen des aktiven NINA-Profils in Rad-Reihenfolge (leer ohne Filterrad).</summary>
+    private List<string> ProfileFilterNames() =>
+        m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters?.Select(f => f.Name).ToList() ?? [];
 
     // ---- IBlockHost: Vorbereitung -----------------------------------------------------------------------
 
@@ -203,22 +225,30 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     // ---- IBlockHost: Einträge -----------------------------------------------------------------------------
 
     /// <summary>
-    /// Filter über den bestätigten <c>ninaFilterName</c> der Rig-Filter (Bootstrap), exakt wie im NINA-Profil (§4.4,
-    /// NT-E1); kein Präfix, nie ein anderer Filter. Fehlt er, wird die folgende Belichtung übersprungen (Feinheiten AP-16d).
+    /// Filter über den bestätigten <c>ninaFilterName</c> (Zeile in <c>targets</c>, sonst Rig-Filter im Bootstrap), exakt
+    /// wie im NINA-Profil (§4.4, NT-E1, <see cref="FilterResolver"/>); nie ein anderer Filter. Nicht gefunden → die
+    /// folgende Belichtung wird übersprungen, <c>FILTER_NOT_FOUND</c> höchstens 1×/12 h je Filter. Ohne Filterrad kein
+    /// Wechsel.
     /// </summary>
     public async Task ChangeFilterAsync(Entries entry, CancellationToken token)
     {
         currentFilter = null;
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
-        if (filters is null || filters.Count == 0 || entry.Filter is null) return;
-        var nina = Runtime?.Runner.Bootstrap?.Rig.Filters.FirstOrDefault(f => f.ShortName == entry.Filter)?.NinaFilterName;
-        currentFilter = nina is null ? null : filters.FirstOrDefault(f => string.Equals(f.Name, nina, StringComparison.Ordinal));
-        if (currentFilter is null)
+        var nina = FilterResolver.NinaNameFor(entry, Runtime?.Runner.Targets, Runtime?.Runner.Bootstrap);
+        var r = FilterResolver.Resolve(nina, ProfileFilterNames());
+        switch (r.Kind)
         {
-            Runtime?.Log.Event("FILTER_NOT_FOUND", ("filter", nina ?? ""), ("short", entry.Filter));
-            return;
+            case FilterResolutionKind.NoWheel:
+                return;
+            case FilterResolutionKind.NotFound:
+                if (hints.ShouldEmit($"filter_not_found:{nina ?? entry.Filter}", clock.UtcNow))
+                    Runtime?.Log.Event("FILTER_NOT_FOUND", ("filter", nina ?? ""), ("short", entry.Filter ?? ""));
+                return;
+            default:
+                currentFilter = filters![r.Index];
+                await m.FilterWheel.ChangeFilter(currentFilter, token, Progress ?? new Progress<ApplicationStatus>());
+                return;
         }
-        await m.FilterWheel.ChangeFilter(currentFilter, token, Progress ?? new Progress<ApplicationStatus>());
     }
 
     public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, CancellationToken token)
@@ -245,20 +275,26 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         return item.Captured ? ExposureResult.Saved : ExposureResult.Failed;
     }
 
-    /// <summary>Auslesemodus per Name → Index (§4.3, NT-37); genau ein Modus → diesen; sonst Belichtung überspringen.</summary>
+    /// <summary>
+    /// Auslesemodus per Name → Index (§4.3, NT-37, <see cref="ReadoutResolver"/>); genau ein Modus → diesen; nie über
+    /// den Index. Nicht gefunden → Belichtung überspringen, <c>READOUT_MODE_NOT_FOUND</c> höchstens 1×/12 h je Modus.
+    /// Vor jeder Belichtung neu gesetzt, weil die Einstellung in NINA dauerhaft wirkt.
+    /// </summary>
     private bool ApplyReadoutMode(Entries entry)
     {
-        if (string.IsNullOrEmpty(entry.ReadoutMode)) return true;
-        var modes = m.Camera.GetInfo().ReadoutModes?.ToList() ?? [];
-        var index = modes.FindIndex(x => string.Equals(x, entry.ReadoutMode, StringComparison.OrdinalIgnoreCase));
-        if (index < 0 && modes.Count == 1) index = 0;
-        if (index < 0)
+        var r = ReadoutResolver.Resolve(entry.ReadoutMode, m.Camera.GetInfo().ReadoutModes?.ToList());
+        switch (r.Kind)
         {
-            Runtime?.Log.Event("READOUT_MODE_NOT_FOUND", ("name", entry.ReadoutMode));
-            return false;
+            case ReadoutResolutionKind.Unchanged:
+                return true;
+            case ReadoutResolutionKind.NotFound:
+                if (hints.ShouldEmit($"readout_mode_not_found:{entry.ReadoutMode}", clock.UtcNow))
+                    Runtime?.Log.Event("READOUT_MODE_NOT_FOUND", ("name", entry.ReadoutMode));
+                return false;
+            default:
+                m.Camera.SetReadoutModeForNormalImages((short)r.Index);
+                return true;
         }
-        m.Camera.SetReadoutModeForNormalImages((short)index);
-        return true;
     }
 
     public async Task DitherAsync(CancellationToken token)

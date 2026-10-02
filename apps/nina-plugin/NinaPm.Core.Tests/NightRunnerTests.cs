@@ -48,6 +48,8 @@ public sealed class NightRunnerTests : IDisposable
         public List<NinaSessionCreate> Created { get; } = [];
         public List<(Guid Id, NinaSessionPatch Patch)> Patches { get; } = [];
         public Func<NinaSessionCreate, NinaSessionCreated>? OnCreate { get; set; }
+        /// <summary>Eigene Antwort auf <c>GET /targets</c> (ETag des Aufrufers → Ziele oder 304, neues ETag).</summary>
+        public Func<string?, (NinaTargets?, string?)>? OnTargets { get; set; }
 
         public Task<NinaBootstrap> BootstrapAsync(CancellationToken token) =>
             Offline ? throw new HttpRequestException("offline") : Task.FromResult(Example<NinaBootstrap>("bootstrap.response"));
@@ -66,7 +68,8 @@ public sealed class NightRunnerTests : IDisposable
         public Task<(NinaTargets? Targets, string? Etag)> TargetsAsync(string? etag, CancellationToken token) =>
             Offline
                 ? throw new HttpRequestException("offline")
-                : Task.FromResult<(NinaTargets?, string?)>(etag == "\"t-9b41\"" ? (null, etag) : (Example<NinaTargets>("targets.response"), "\"t-9b41\""));
+                : Task.FromResult(OnTargets?.Invoke(etag)
+                    ?? (etag == "\"t-9b41\"" ? (null, etag) : (Example<NinaTargets>("targets.response"), "\"t-9b41\"")));
 
         public Task<NinaSessionCreated> CreateAsync(NinaSessionCreate body, CancellationToken token)
         {
@@ -177,6 +180,104 @@ public sealed class NightRunnerTests : IDisposable
         // Zähler beginnt neu.
         for (var i = 1; i < NightRunner.LoopGuardCalls; i++) await runner.RunOnceAsync(default);
         Assert.Equal(start + NightRunner.LoopGuardWait, clock.UtcNow);
+    }
+
+    // ---- Neuplanung vor und im Block (AP-16d, execution.md §3.2, FA-SYN-03) -----------------------------------
+
+    /// <summary>Antwort auf <c>GET /targets</c> mit festen Zielen unter <paramref name="etag"/> (304 bei gleichem ETag).</summary>
+    private static (NinaTargets?, string?) Serve(string? callerEtag, NinaTargets targets, string etag) =>
+        callerEtag == etag ? (null, callerEtag) : (targets, etag);
+
+    [Fact]
+    public async Task Neue_Ziele_vor_dem_Block_refresh_ab_Blockstart_danach_laeuft_der_Block()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan 01:00, Sperre bis 01:05
+        Assert.Single(nina.PlansBuilt);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z"); // regulärer Block beginnt
+        var changed = Example<NinaTargets>("targets.response");
+        api.OnTargets = e => Serve(e, changed, "\"t-2\"");
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.Equal(UtcText.Parse("2026-09-18T07:35:00Z"), api.Plans[^1].StartAtUtc);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("BLOCK_START"));
+        Assert.Contains(sink.Lines, l => l.Contains("PLAN_REBUILT") && l.Contains("reason=refresh"));
+
+        // Keine Änderung mehr (ETag des neuen Plans = aktuelles) → kein neuer Plan, der Block startet.
+        nina.ExposureScale = 0.02;
+        await runner.RunOnceAsync(default);
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_START"));
+    }
+
+    [Fact]
+    public async Task Verzug_ueber_10_min_refresh_ab_jetzt_ohne_Dauerschleife()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:50:00Z"); // 15 min hinter dem Blockstart 07:35
+
+        await runner.RunOnceAsync(default);
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Equal(UtcText.Parse("2026-09-18T07:50:00Z"), api.Plans[^1].StartAtUtc);
+
+        // Der Server liefert denselben (weiter verspäteten) Block: während der 5-min-Sperre nicht noch einmal planen.
+        nina.ExposureScale = 0.02;
+        await runner.RunOnceAsync(default);
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_START"));
+    }
+
+    [Fact]
+    public async Task Im_Block_Projekt_pausiert_Fall_a_target_removed_und_sofort_refresh()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var block = PlanStore.Load(store, "2026-09-17")!.Plan.Blocks[1];
+        var original = Example<NinaTargets>("targets.response");
+        var paused = Example<NinaTargets>("targets.response");
+        paused.Projects.First(p => p.Id == block.ProjectId).Status = ProjectsStatus.On_hold;
+        // Ab 07:55 ist das Projekt pausiert (neues ETag); vorher die ursprünglichen Ziele.
+        api.OnTargets = e => clock.UtcNow >= UtcText.Parse("2026-09-18T07:55:00Z")
+            ? Serve(e, paused, "\"t-3\"")
+            : Serve(e, original, "\"t-9b41\"");
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=target_removed", StringComparison.Ordinal));
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T08:20:00Z")); // nicht bis Blockende 09:20 weiterbelichtet
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default); // sofort, trotz Sperre
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.Equal(clock.UtcNow, api.Plans[^1].StartAtUtc);
+    }
+
+    [Fact]
+    public async Task Im_Block_andere_Aenderung_Fall_c_Block_laeuft_weiter()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var block = PlanStore.Load(store, "2026-09-17")!.Plan.Blocks[1];
+        var original = Example<NinaTargets>("targets.response");
+        var other = Example<NinaTargets>("targets.response");
+        other.Projects.First(p => p.Id != block.ProjectId).Status = ProjectsStatus.On_hold; // anderes Projekt
+        api.OnTargets = e => clock.UtcNow >= UtcText.Parse("2026-09-18T07:55:00Z")
+            ? Serve(e, other, "\"t-4\"")
+            : Serve(e, original, "\"t-9b41\"");
+        nina.ExposureScale = 0.2;
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+
+        await runner.RunOnceAsync(default);
+
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("reason=target_removed"));
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.Contains("reason=completed"));
+        Assert.Single(api.Plans); // im Block kein neuer Plan; das neue ETag sieht die Neuplanung vor dem nächsten Block
     }
 
     [Fact]
