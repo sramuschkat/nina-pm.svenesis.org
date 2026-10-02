@@ -32,7 +32,7 @@ FA-NIN-05…12
 - [ ] Kern-Test: `blocked` wartet 60 s statt sofort zurückzukehren
 - [ ] Kern-Test Nachtende-Kulanz: eine Belichtung, die nach `darknessEndUtc` enden würde, beginnt nicht (`block_end` Grund `night_end`); bei `null` gilt `blockEnd`
 - [ ] Adapter-Test: Interrupt durch `SafetyMonitorCondition` → `interrupted`/`safety_pause`, Benutzerabbruch → `PATCH` `aborted` und aufgehobene Sperre
-- [ ] Kern-Test *Warten bis sicher oder Nachtende* (H2): unsicher bis `darknessEndUtc` → Flats `skipped`, `PATCH completed`, Nachtschleife `false`; sicher vor dem Nachtende → sofortiges Ende ohne Abschluss; kein Safety-Monitor → kein Warten
+- [ ] Kern-Test *Warten bis sicher oder Nachtende* (H2): unsicher bis `darknessEndUtc` → Flats `skipped`, `PATCH completed`, Nachtschleife `false`; sicher vor dem Nachtende → sofortiges Ende ohne Abschluss; Safety-Monitor getrennt → Warten wie unsicher (kein Park/Unpark im Takt, Entscheidung Sven 02.10.2026)
 - [ ] Unit-Test `Coordinates`: `raDeg = 198,069` → RA 13,2046 h
 - [ ] CI grün, `docs/CHANGELOG.md` ergänzt, AP- und Anforderungs-IDs im PR
 

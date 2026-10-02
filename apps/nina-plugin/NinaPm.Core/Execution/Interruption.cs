@@ -31,8 +31,6 @@ public enum SafetyWaitResult
     /// </summary>
     CloseNight,
 
-    /// <summary>Kein Safety-Monitor verbunden: nicht warten, <c>safety_monitor_not_connected</c> melden.</summary>
-    NotConnected,
 }
 
 public static class Interruption
@@ -51,13 +49,14 @@ public static class Interruption
 
     /// <summary>
     /// Ein Takt von <em>Warten bis sicher oder Nachtende</em> (H2): Nachtende = <c>darknessEndUtc ?? sessionEndUtc</c>
-    /// des gespeicherten Plans, ohne Plan <c>nightWindowEndUtc</c> der aktuellen Nacht. Sicher hat Vorrang vor dem
-    /// Nachtende (dann gilt der normale Weg mit Flats, §2).
+    /// des gespeicherten Plans, ohne Plan <c>nightWindowEndUtc</c> der aktuellen Nacht. Sicher (verbunden und sicher)
+    /// hat Vorrang vor dem Nachtende (dann gilt der normale Weg mit Flats, §2). Ein **getrennter** Monitor zählt wie
+    /// unsicher: NINAs <em>Loop While Unsafe</em> hält ihn ebenfalls für unsicher – kehrte die Anweisung sofort zurück,
+    /// parkte und entparkte NINA im Takt (P-25-Lauf 02.10.2026: 13 × Park in 2,5 min).
     /// </summary>
     public static SafetyWaitResult SafetyWaitStep(DateTimeOffset now, DateTimeOffset nightEndUtc, bool monitorConnected, bool monitorSafe)
     {
-        if (!monitorConnected) return SafetyWaitResult.NotConnected;
-        if (monitorSafe) return SafetyWaitResult.Safe;
+        if (monitorConnected && monitorSafe) return SafetyWaitResult.Safe;
         return now >= nightEndUtc ? SafetyWaitResult.CloseNight : SafetyWaitResult.Wait;
     }
 }

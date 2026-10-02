@@ -403,7 +403,10 @@ public sealed class NightRunnerTests : IDisposable
     [InlineData("2026-09-18T09:00:00Z", true, true, SafetyWaitResult.Safe)]
     [InlineData("2026-09-18T11:30:42Z", true, false, SafetyWaitResult.CloseNight)]
     [InlineData("2026-09-18T11:30:42Z", true, true, SafetyWaitResult.Safe)]
-    [InlineData("2026-09-18T09:00:00Z", false, false, SafetyWaitResult.NotConnected)]
+    // Getrennt zählt wie unsicher: warten bzw. am Nachtende abschließen, nie sofort zurück (Park/Unpark im Takt, 02.10.2026).
+    [InlineData("2026-09-18T09:00:00Z", false, false, SafetyWaitResult.Wait)]
+    [InlineData("2026-09-18T09:00:00Z", false, true, SafetyWaitResult.Wait)]
+    [InlineData("2026-09-18T11:30:42Z", false, false, SafetyWaitResult.CloseNight)]
     public void Warten_bis_sicher_oder_Nachtende(string now, bool connected, bool safe, SafetyWaitResult expected) =>
         Assert.Equal(expected, Interruption.SafetyWaitStep(UtcText.Parse(now), UtcText.Parse("2026-09-18T11:30:42Z"), connected, safe));
 
