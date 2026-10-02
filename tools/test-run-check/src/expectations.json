@@ -243,7 +243,7 @@
         "Nach 5 min wieder sicher: SAFETY_RESUME, PLAN reason=resume mit neuer plan=…, erneuter Slew mit Zentrieren",
         "Benutzer-Stopp: SESSION status=aborted, danach HEARTBEAT idle ohne session; Neustart legt eine neue Session an",
         "Unsicher bis Nachtende: bei darknessEndUtc (± 1 min) SESSION completed ohne SAFETY_RESUME, kein Unpark Scope, danach Ende-Bereich",
-        "Getrennter Safety-Monitor: WARNING code=safety_monitor_not_connected, kein endloses Warten"
+        "Getrennter Safety-Monitor: WARNING code=safety_monitor_not_connected, Montierung bleibt geparkt (kein Park/Unpark im Takt), nach Wiederverbinden und sicher Wiederaufnahme"
       ],
       "require": [
         {
