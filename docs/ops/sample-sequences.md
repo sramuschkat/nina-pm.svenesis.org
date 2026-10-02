@@ -26,20 +26,34 @@ verbunden. NINA-Namen auf Englisch (Kategorie in Klammern).
      Minuten (M7), *Restore Guiding* (Guider). Optional *Autofocus After HFR Increase*, *Center After Drift*.
      **Kein** *Dither after Exposures* (das Dithern steuert der Plan, NT-23). In den NINA-Optionen beim Meridian-Flip
      *Recenter* **aus** (NT-22).
-   - Anweisung: *NINA-PM Instructions* (NINA-PM).
+   - Anweisungen, in dieser Reihenfolge:
+     1. **Wiederherstellen** – Park-Variante: *Unpark Scope* (Telescope); Home-Variante: *Set Tracking* (Telescope) →
+        *Sidereal*. Rig-abhängig dazu z. B. Strom an (*Set Switch Value*), *Open Cover*, kurze Wartezeiten
+        (*Wait for Time Span*). Läuft einmal zu Nachtbeginn und nach jeder Safety-Pause.
+     2. Ein *Sequential Instruction Set*, Name „Blöcke“, Bedingung *NINA-PM Night Loop*, darin *NINA-PM Instructions*
+        (NINA-PM). Es wiederholt nur den Block-Aufruf – stünde *NINA-PM Instructions* direkt in „Ziel“, liefe die
+        Wiederherstellung vor jedem Block.
 3. Darunter, ebenfalls in „NINA-PM Nacht“, ein *Sequential Instruction Set*, Name „Sicherung“:
    - Bedingungen: *Loop While Unsafe* (Safety Monitor) **und** *NINA-PM Night Loop*.
-   - Anweisungen: *Stop Guiding* → *Park Scope* → *NINA-PM Wait until Safe or Night End* → *Unpark Scope*.
-     Nicht NINAs *Wait until Safe* (wartet ohne Frist, H2).
+   - Anweisungen: *Stop Guiding* → **Sichern** – Park-Variante *Park Scope*; Home-Variante *Find Home* → *Set Tracking*
+     → *Stopped*; rig-abhängig z. B. *Close Cover*, Strom aus → *NINA-PM Wait until Safe or Night End* als **letzte**
+     Anweisung. Nicht NINAs *Wait until Safe* (wartet ohne Frist, H2).
+   - **Nichts** hinter *NINA-PM Wait until Safe or Night End*: NINA prüft die Bedingungen nach jeder Anweisung und
+     überspringt den Rest, sobald es sicher ist – ein *Unpark Scope* dort liefe nie (P-25-Lauf 02.10.2026).
 
-**Sequence End Area:** *Stop Guiding* → *Park Scope* → *Warm Camera*.
+**Sequence End Area:** *Stop Guiding* → *Park Scope* (Home-Variante: *Find Home* → *Set Tracking* → *Stopped*) →
+*Warm Camera*.
+
+Park oder Home: Home für Rigs, die nie geparkt werden (z. B. Remote-Standorte wie Starfront). Nach Home schaltet
+NINAs Slew die Nachführung beim nächsten Ziel selbst wieder ein; *Set Tracking* → *Sidereal* in „Ziel“ macht es
+ausdrücklich.
 
 Speichern: *Save Sequence As* → `one-night-safety.json`.
 
 ## 2. „Eine Nacht ohne Safety“ – `one-night.json`
 
-Wie 1, aber im Container „Ziel“ **ohne** *Loop While Safe* und **ohne** den Container „Sicherung“ (H2). Speichern als
-`one-night.json`.
+Wie 1, aber im Container „Ziel“ **ohne** *Loop While Safe* und **ohne** den Container „Sicherung“ (H2); die
+Wiederherstellung am Anfang von „Ziel“ und der Container „Blöcke“ bleiben. Speichern als `one-night.json`.
 
 ## 3. Vor dem Einchecken
 
