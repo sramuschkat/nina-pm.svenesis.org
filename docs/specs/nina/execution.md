@@ -82,8 +82,11 @@ Die Sequenz „Mehrere Nächte“ legt die äußere Schleife zusätzlich in *NIN
 | vor jedem Block | `GET /targets` liefert neues ETag **oder** Bootstrap `settingsVersion` gestiegen **oder** Blockstart liegt > 10 min hinter Plan (geplanter Blockstart = `startUtc`, bei Transitblöcken `min(atUtc)` der Einträge, NT-25) | `POST /plan {reason: refresh, startAtUtc = max(now, geplanter Blockstart), tonight}` |
 | im Block alle 15 min | neues ETag | Fall a/b/c unten |
 | nach Neustart/Unterbrechung (§4.6) | immer | `reason: resume`; **Blockindex aus dem neuen Plan** (erster Block mit `endUtc > now`), nicht aus `ninapm.db` (NT-18); `sessionId` aus `ninapm.db` bleibt (NIN-8), `nightPlanId` = ID des **neuen** Plans (jede Aufnahme trägt die ID des Plans, nach dem sie belichtet wurde) |
+| Start ohne Session in `ninapm.db` (z. B. nach Benutzer-Stopp, NT-15) | immer, solange die Nacht läuft | `reason: initial` – **auch wenn** für die Nacht noch ein gespeicherter Plan liegt; der Plan legt eine **neue** Session an (`POST /sessions`). Ohne Verbindung gilt der gespeicherte Plan. |
 | *Zurücksetzen* | Benutzer | `reason: reset`, Blockindex 0 |
 Sonst gilt der bestehende Plan unverändert (Hysterese).
+
+> **Spec-Ergänzung (AP-16c, 02.10.2026, Sven):** Zeile „Start ohne Session“. Lauf am Windows-Rechner: nach einem Benutzer-Stopp und Neustart von NINA lag der Plan der Nacht noch in `ninapm.db`; der erste Abruf trug `refresh`, und bei offenen Blöcken im gespeicherten Plan hätte das Plugin gar nicht geplant und damit keine neue Session angelegt. `resume` gilt nur mit Session.
 
 **Im laufenden Block** (Vergleich alter/neuer `targets`):
 - (a) aktuelles Projekt/Panel/aktuelle Zeile entfällt (pausiert, abgeschaltet, gelöscht, fertig durch Korrektur, Auslieferung aus) → laufende Belichtung zu Ende, Block beenden (`block_end` Grund `target_removed`), neu planen mit `startAtUtc = now`.

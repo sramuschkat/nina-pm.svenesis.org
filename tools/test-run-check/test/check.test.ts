@@ -145,21 +145,28 @@ describe('Prüfung eines Laufs', () => {
   });
 
   it('Protokoll ohne Erwartungen wird klar gemeldet', () => {
-    const { outcome } = run(result('P-05', 3), P13_LOG);
+    const { outcome } = run(result('P-06', 3), P13_LOG);
     expect(outcome.schemaErrors).toContain(
-      'keine Erwartungen für P-05 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
+      'keine Erwartungen für P-06 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
     );
   });
 
-  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04', () => {
+  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25 und P-31', () => {
     expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual([
       'P-01',
       'P-02',
       'P-03',
       'P-04',
+      'P-05',
       'P-13',
+      'P-25',
+      'P-31',
     ]);
     expect(EXPECTATIONS.protocols['P-04']?.package).toBe('AP-16a');
+    for (const p of ['P-05', 'P-25', 'P-31'])
+      expect(EXPECTATIONS.protocols[p]?.package).toBe('AP-16c');
+    // Schrittzahl wie die Protokolltabelle (ops/plugin-test-protocol.md).
+    expect(EXPECTATIONS.protocols['P-25']?.steps).toHaveLength(6);
   });
 
   it('--init legt eine Vorlage mit der Schrittzahl des Protokolls an', () => {

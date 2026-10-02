@@ -362,6 +362,27 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Neustart_ohne_Session_mit_gespeichertem_Plan_plant_initial_und_legt_neue_Session_an()
+    {
+        // Lauf 02.10.2026: Benutzer-Stopp am Mittag, NINA neu gestartet – der Plan der Nacht lag noch in ninapm.db.
+        // Vorher: Grund refresh bzw. bei offenen Blöcken gar kein Abruf und Blöcke ohne Session.
+        var first = Runner();
+        await first.RunOnceAsync(default);
+        var oldSession = Assert.Single(api.Created).Id;
+        first.UserStopped();
+        Assert.Null(first.SessionId);
+        Assert.NotNull(PlanStore.Load(store, "2026-09-17")); // Plan mit offenen Blöcken bleibt gespeichert
+
+        var restarted = Runner();
+        await restarted.RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Initial, api.Plans[^1].Reason);
+        Assert.Null(api.Plans[^1].SessionId);
+        Assert.Equal(2, api.Created.Count);
+        Assert.NotEqual(oldSession, restarted.SessionId);
+    }
+
+    [Fact]
     public async Task Unsicher_bis_Nachtende_schliesst_die_Nacht_ohne_Wiederaufnahme()
     {
         var runner = Runner();

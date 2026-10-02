@@ -65,8 +65,10 @@ public sealed class NightRunner(
 
     /// <summary>
     /// Plan beim nächsten Aufruf erzwingen: <c>resume</c> beim ersten Aufruf mit Session aus <c>ninapm.db</c> und nach
-    /// einer Unterbrechung (§3.2, §4.6); <c>initial</c> nach einem Benutzer-Stopp (neue Session, NT-15). Ohne Verbindung
-    /// gilt danach der gespeicherte Plan.
+    /// einer Unterbrechung (§3.2, §4.6); <c>initial</c> nach einem Benutzer-Stopp (neue Session, NT-15) und beim ersten
+    /// Aufruf **ohne** Session – auch wenn für die Nacht noch ein gespeicherter Plan liegt (Sven 02.10.2026: vorher
+    /// <c>refresh</c> bzw. bei offenen Blöcken gar kein Abruf und damit keine neue Session). Ohne Verbindung gilt danach
+    /// der gespeicherte Plan.
     /// </summary>
     private NinaPlanRequestReason? forcedPlan = NinaPlanRequestReason.Resume;
     private bool interrupted;
@@ -189,14 +191,15 @@ public sealed class NightRunner(
         var stateNight = store.GetState(StateKeys.Night);
         var stale = stateNight is not null && NightCalendar.IsSessionStale(stateNight, nights, clock.UtcNow, null);
         var hasSession = SessionId is not null && !stale;
+        // Ohne Session gibt es nichts wiederaufzunehmen: neue Session, erster Plan der Session (§3.2).
+        if (forcedPlan == NinaPlanRequestReason.Resume && !hasSession) forcedPlan = NinaPlanRequestReason.Initial;
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: false, FlatsPending: false, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
             DoneBlocks: DoneBlocks(stored));
 
-        // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp (initial) online neu planen, solange die
-        // Nacht läuft; offline gilt danach der gespeicherte Plan.
-        var forced = forcedPlan is { } f && !stale && Loop.Blocked is null && !Loop.NightFinished
-            && (f == NinaPlanRequestReason.Initial || hasSession)
+        // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
+        // neu planen, solange die Nacht läuft; offline gilt danach der gespeicherte Plan.
+        var forced = forcedPlan is not null && !stale && Loop.Blocked is null && !Loop.NightFinished
             && clock.UtcNow < (stored?.Plan is { } sp ? sp.DarknessEndUtc ?? sp.SessionEndUtc : row.NightWindowEndUtc);
         var step = forced ? new NightStep(NightAction.FetchPlan, Reason: forcedPlan) : Loop.Decide(context);
         forcedPlan = null;

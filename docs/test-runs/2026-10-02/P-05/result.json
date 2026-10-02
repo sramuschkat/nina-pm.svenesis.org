@@ -1,0 +1,53 @@
+{
+  "protocol": "P-05",
+  "date": "2026-10-02",
+  "pluginVersion": "0.1.0 (#192, Lauf 37027806068)",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": "one-night",
+  "result": "no_go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Testkopie test-one-night der Beispielsequenz „Eine Nacht“ (Wait if Sun Altitude, Cool Camera, Run Autofocus deaktiviert), Szenario one-night mit 2 Projekten (m31 L/R/G/B, ngc7000 Ha/OIII), Test-Server auf dem Mac (Start 15:40:39Z). Geräte: Sky-Simulator-Kamera und -Montierung, PHD2-Simulator, OmniSim-Safety-Monitor, Rotator getrennt."
+    },
+    {
+      "n": 2,
+      "ok": true,
+      "note": "Block 1 (m31) 15:42:46–15:45:46Z, Block 2 (ngc7000) ab 16:04:06Z; je Plan jeder Block höchstens einmal (6 BLOCK_START, 6 BLOCK_END reason=completed). Letzter Lauf von Block 2 endet 16:22:39Z vor dem Blockende 16:23:39Z (harter Blockschluss, nächste Belichtung passte nicht). Danach leerer Plan, Neuplanung exakt alle 5 min (16:27–17:22Z), keine Dauerschleife (vorher 834 Pläne in 61 s, behoben in #192)."
+    },
+    {
+      "n": 3,
+      "ok": false,
+      "note": "Im NINA-Log 74 × CAPTURE result=saved mit eindeutiger ID und Datei; im Test-Server-Report captures: [] – die Aufnahme-Meldung (POST captures) folgt mit AP-16e. Zähler im Web (S-61) damit noch nicht prüfbar."
+    },
+    {
+      "n": 4,
+      "ok": false,
+      "note": "Kein OUTBOX-Ereignis im Log – Outbox-Meldung folgt mit AP-16g. Abschluss-PATCH der Session meldet outboxPending: 0 (Report patches, Log SESSION status=completed pending=0)."
+    }
+  ],
+  "logCheck": {
+    "status": "fail",
+    "missing": [
+      "OUTBOX pending=0"
+    ],
+    "unexpected": []
+  },
+  "deviations": [
+    "Teil-Lauf für AP-16c: Ablauf, Blöcke und Nachtende geprüft; Aufnahme-Meldung (Schritt 3) und Outbox (Schritt 4) gehören zu AP-16e/AP-16g – P-05 vollständig erst danach.",
+    "Sky-Simulator-Kamera ignoriert die Belichtungszeit: Blöcke waren nach wenigen Minuten abgearbeitet; der Test-Server berücksichtigt tonight beim Neuplanen nicht und lieferte Block 2 in jedem Neuplan erneut (5 Läufe, je Plan einer).",
+    "Erster Plan mit reason=refresh statt initial: nach Benutzer-Stopp am Vormittag lag der Plan der Nacht noch in ninapm.db; Spec-Ergänzung execution.md §3.2 und Korrektur im selben PR (Start ohne Session → initial).",
+    "Nachtende ohne Flats im selben Lauf: 17:23:39Z (= darknessEndUtc des Szenarios) SESSION status=completed pending=0, dann SESSION status=finished; NINA-Ende-Bereich Stop Guiding → Park Scope (12:24:04 Ortszeit) → Warm Camera, „Advanced Sequence finished“ 12:24:29 Ortszeit (nina-app-night-end.log). Entspricht sinngemäß P-31 Schritt 2 (aber Szenario one-night statt night-end, ohne Heartbeat) – P-31 bekommt einen eigenen Lauf.",
+    "Heartbeat (AP-16e) noch nicht vorhanden: heartbeats.count = 0.",
+    "Warnungen nur vom Simulator: rotator_unavailable (Rotator getrennt), PHD2-Settle-Timeouts, Sky-Simulator-Zieltemperatur beim Aufwärmen.",
+    "Testrechner: Windows 11 ARM64 (VMware), NINA-Ortszeit CDT (UTC−5)."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app-night-end.log",
+    "test-server-report.json",
+    "sequence-end.webp"
+  ]
+}
