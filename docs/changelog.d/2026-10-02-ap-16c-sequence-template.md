@@ -1,0 +1,3 @@
+### AP-16c – Sequenzvorlage: Wiederherstellung am Anfang von „Ziel“, Park- oder Home-Variante
+
+- Vorlage (`execution.md` §1, FK, TK, Briefs AP-16c/AP-16h, `sample-sequences.md`, P-25): Der Zielcontainer stellt die Montierung zuerst wieder her (*Unpark Scope* bzw. Home-Variante *Set Tracking Sidereal*, rig-abhängig Strom/Abdeckung) und enthält dann den Container „Blöcke“ mit *NINA-PM-Anweisungen*; die Sicherung endet mit *NINA-PM Warten bis sicher oder Nachtende* (Park bzw. *Find Home* + *Set Tracking Stopped* davor). Anlass: NINA überspringt nach „sicher“ alles hinter der Warte-Anweisung – *Unpark Scope* am Ende der Sicherung lief nie (P-25-Lauf). Lösung über die Vorlage, kein Plugin-Code (Entscheidung Sven; #202 geschlossen). Home-Variante nach Svens Starfront-Sequenz.
