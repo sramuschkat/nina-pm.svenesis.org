@@ -1,0 +1,3 @@
+### Sternkarte – Himmelsfotos in Safari flüssig
+
+- Die Himmelsfotos (HiPS) wurden je Rasterzelle als zwei Dreiecke mit `clip()` gezeichnet – rund 6.000 geclippte `drawImage` je Bild. WebKit rastert das auf der CPU: gemessen mit Playwright-WebKit 26.6 je Bild 914 ms (90°), 734 ms (40°), 200 ms (10°); Chrome 33 ms. Jetzt: Kacheln einmal als `ImageBitmap` dekodiert, je Zelle ein `drawImage` ohne Clip (Mittel der beiden Dreiecks-Abbildungen, etwa ein Pixel Überlappung), Raster nach einem Budget von rund 600 Zellen je Bild. WebKit danach 33 ms bei 90°/40°/10°, Chrome unverändert; Abweichung zum bisherigen Bild ≤ 0,03 % der Pixel.
