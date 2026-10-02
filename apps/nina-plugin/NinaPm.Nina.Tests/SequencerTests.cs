@@ -153,11 +153,12 @@ public sealed class SequencerTests
     public void Heartbeat_Filterrad_NINA_Platz_0_wird_Platz_1_Geraete_getrennt_ohne_Montierung_und_Kamera()
     {
         var wheel = new Mock<NINA.Profile.Interfaces.IFilterWheelSettings>();
-        wheel.SetupGet(w => w.FilterWheelFilters).Returns(new NINA.Core.Utility.ObserveAllCollection<NINA.Core.Model.Equipment.FilterInfo>
-        {
+        // Listen-Konstruktor: Add/InsertItem bräuchte NINAs UI-Synchronisationskontext (im Test nicht vorhanden).
+        wheel.SetupGet(w => w.FilterWheelFilters).Returns(new NINA.Core.Utility.ObserveAllCollection<NINA.Core.Model.Equipment.FilterInfo>(
+        [
             new("L", 0, 0),
             new("Ha 3nm", 15, 1),
-        });
+        ]));
         var flip = new Mock<NINA.Profile.Interfaces.IMeridianFlipSettings>();
         flip.SetupGet(f => f.Recenter).Returns(true);
         var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
