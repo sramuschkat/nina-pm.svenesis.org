@@ -11,6 +11,7 @@ using NinaPm.Core.Api;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Options;
 using NinaPm.Nina.Adapters;
+using NinaPm.Nina.Sequencer;
 using NinaPm.Nina.Ui;
 
 namespace NinaPm.Nina;
@@ -27,15 +28,30 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     private readonly ITokenProtector protector;
     private readonly NinaPmLog log = new(NinaLogSink.Instance);
     private PluginOptionsAccessor accessor;
+    private readonly NinaMediators? mediators;
 
+    /// <summary>
+    /// MEF: NINAs Mediatoren schon beim Laden, damit Laufzeit und Heartbeat unabhängig von der Sequenz laufen, sobald
+    /// Server-URL und Token eingetragen sind (execution.md §6, AP-16e).
+    /// </summary>
     [ImportingConstructor]
-    public NinaPmPlugin(IProfileService profileService) : this(profileService, new DpapiTokenProtector())
+    public NinaPmPlugin(IProfileService profileService, NINA.Equipment.Interfaces.Mediator.ITelescopeMediator telescope,
+        NINA.Equipment.Interfaces.Mediator.IImagingMediator imaging, NINA.Equipment.Interfaces.Mediator.ICameraMediator camera,
+        NINA.Equipment.Interfaces.Mediator.IFilterWheelMediator filterWheel, NINA.Equipment.Interfaces.Mediator.IRotatorMediator rotator,
+        NINA.Equipment.Interfaces.Mediator.IGuiderMediator guider, NINA.Equipment.Interfaces.Mediator.IDomeMediator dome,
+        NINA.Equipment.Interfaces.IDomeFollower domeFollower, NINA.PlateSolving.Interfaces.IPlateSolverFactory plateSolverFactory,
+        NINA.Core.Utility.WindowService.IWindowServiceFactory windowServiceFactory,
+        NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator imageSave, NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM imageHistory,
+        NINA.Equipment.Interfaces.Mediator.ISafetyMonitorMediator safetyMonitor)
+        : this(profileService, new DpapiTokenProtector(), new NinaMediators(profileService, telescope, imaging, camera, filterWheel,
+            rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor))
     {
     }
 
-    internal NinaPmPlugin(IProfileService profileService, ITokenProtector protector)
+    internal NinaPmPlugin(IProfileService profileService, ITokenProtector protector, NinaMediators? mediators = null)
     {
         this.profileService = profileService;
+        this.mediators = mediators;
         this.protector = protector;
         accessor = new PluginOptionsAccessor(profileService, Guid.Parse(Identifier));
         profileService.ProfileChanged += (_, _) =>
@@ -47,6 +63,25 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         TestCommand = new RelayCommand(() => TestAsync(CancellationToken.None));
         SaveAndTestCommand = new RelayCommand(() => SaveAndTestAsync(CancellationToken.None));
         ResetStatus();
+        profileService.ProfileChanged += (_, _) => StartRuntime();
+        StartRuntime();
+    }
+
+    /// <summary>Laufzeit (und damit den Heartbeat) im Hintergrund anlegen bzw. für geänderte Optionen neu aufbauen.</summary>
+    private void StartRuntime()
+    {
+        if (mediators is not { } m) return;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                NinaPmRuntime.Ensure(profileService, () => new NinaHost(m));
+            }
+            catch (Exception ex)
+            {
+                NINA.Core.Utility.Logger.Warning($"NINA-PM: Laufzeit nicht gestartet: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>Plugin-Version für <c>X-NPM-Plugin-Version</c>.</summary>
@@ -108,6 +143,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
             RaisePropertyChanged(nameof(TokenState));
         }
         await TestAsync(token);
+        StartRuntime();
     }
 
     internal async Task TestAsync(CancellationToken token)

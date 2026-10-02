@@ -81,8 +81,17 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     /// <summary>Wirft bei der n-ten Belichtung einen NINA-Fehler (kein Abbruch).</summary>
     public int FailAtExposure { get; set; }
 
-    public Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, CancellationToken token)
+    /// <summary>Kühlung, die <see cref="ReadCooling"/> liefert (Standard: an, ohne Messwert).</summary>
+    public CameraCooling Cooling { get; set; } = new(true, null);
+
+    public CameraCooling ReadCooling() => Cooling;
+
+    /// <summary><c>temperatureDeviation</c> je Belichtung in Reihenfolge.</summary>
+    public List<bool> Deviations { get; } = [];
+
+    public Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
+        Deviations.Add(temperatureDeviation);
         exposures++;
         if (exposures == FailAtExposure) throw new InvalidOperationException("Kamera meldet Fehler");
         Calls.Add($"expose:{entry.Seq}@{UtcText.Format(clock.UtcNow)}");

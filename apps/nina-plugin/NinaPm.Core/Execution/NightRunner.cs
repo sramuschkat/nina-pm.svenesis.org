@@ -3,17 +3,25 @@ using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
+using NinaPm.Core.Reporting;
+using NinaPm.Core.Session;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
 
 namespace NinaPm.Core.Execution;
 
-/// <summary>Session-Aufrufe der NINA-API (TK 7.3); Lease und Outbox folgen mit AP-16e/AP-16g.</summary>
+/// <summary>Session-Aufrufe der NINA-API (TK 7.3): Session, Meldungen (Outbox, AP-16e) und Heartbeat.</summary>
 public interface ISessionApi
 {
     Task<NinaSessionCreated> CreateAsync(NinaSessionCreate body, CancellationToken token);
 
     Task<NinaSessionPatched> PatchAsync(Guid sessionId, NinaSessionPatch body, CancellationToken token);
+
+    Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token);
+
+    Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token);
+
+    Task<NinaHeartbeatResponse> HeartbeatAsync(NinaHeartbeat body, CancellationToken token);
 }
 
 /// <summary><see cref="ISessionApi"/> über den generierten Client.</summary>
@@ -23,6 +31,14 @@ public sealed class NinaSessionApi(NinaApiClient client) : ISessionApi
 
     public Task<NinaSessionPatched> PatchAsync(Guid sessionId, NinaSessionPatch body, CancellationToken token) =>
         client.ApiNinaV1SessionsPatchAsync(sessionId, body, token);
+
+    public Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token) =>
+        client.ApiNinaV1SessionsCapturesAsync(sessionId, body, token);
+
+    public Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token) =>
+        client.ApiNinaV1SessionsEventsAsync(sessionId, body, token);
+
+    public Task<NinaHeartbeatResponse> HeartbeatAsync(NinaHeartbeat body, CancellationToken token) => client.ApiNinaV1HeartbeatAsync(body, token);
 }
 
 /// <summary>Was die Nachtschleife außerhalb des Blocks von NINA braucht (vom Adapter gelesen).</summary>
@@ -69,6 +85,7 @@ public sealed class NightRunner(
     private readonly PlanService planService = new(planApi, clock, log);
     private NinaBootstrap? bootstrap;
     private Blocks? runningBlock;
+    private bool bootstrapReload;
 
     /// <summary>
     /// Plan beim nächsten Aufruf erzwingen: <c>resume</c> beim ersten Aufruf mit Session aus <c>ninapm.db</c> und nach
@@ -81,6 +98,16 @@ public sealed class NightRunner(
     private bool interrupted;
 
     public NightLoop Loop { get; } = new();
+
+    /// <summary>Lease aus Sicht des Plugins (execution.md §6).</summary>
+    public LeaseStateMachine Lease { get; } = new();
+
+    /// <summary>Plan, nach dem gerade belichtet wird (Nacht, <c>nightPlanId</c>) – Pflicht in jeder Meldung (NIN5-14).</summary>
+    public (string Night, Guid NightPlanId)? ExecutingPlan { get; private set; }
+
+    public Guid? RunningBlockId => runningBlock?.Id;
+
+    public int OutboxPending => store.OutboxCount();
 
     public BlockExecutor Executor { get; init; } = null!;
 
@@ -367,6 +394,7 @@ public sealed class NightRunner(
             return;
         }
         var id = Uuid7.New(clock);
+        Lease.SessionPostSent();
         try
         {
             await sessionApi.CreateAsync(new NinaSessionCreate
@@ -379,13 +407,15 @@ public sealed class NightRunner(
             }, token).ConfigureAwait(false);
             store.SetState(StateKeys.SessionId, id.ToString());
             store.SetState(StateKeys.Night, plan.Night);
+            Lease.SessionCreated();
             log.Event("SESSION", ("session", id), ("status", "running"), ("night", plan.Night));
+            log.Event("LEASE", ("state", "held"));
         }
         catch (NinaApiException ex)
         {
             var code = NinaApi.ProblemCode(ex.Response);
             log.Warning("API", ("status", ex.StatusCode), ("code", code), ("call", "sessions"));
-            if (ex.StatusCode == 409 && code == "session.rig_busy") Loop.Block(NinaHeartbeatBlockedReason.Rig_busy, clock.UtcNow);
+            if (ex.StatusCode == 409 && code == "session.rig_busy") ApplyLease(Lease.RigBusy());
         }
         catch (HttpRequestException)
         {
@@ -422,6 +452,7 @@ public sealed class NightRunner(
         var block = stored.Plan.Blocks[index];
         store.SetState(StateKeys.BlockIndex, index.ToString(System.Globalization.CultureInfo.InvariantCulture));
         runningBlock = block;
+        ExecutingPlan = (stored.Plan.Night, stored.Plan.NightPlanId);
         var unit = UnitId(block);
         var startedAt = clock.UtcNow;
         var tonight = TonightLog.Load(store);
@@ -429,8 +460,14 @@ public sealed class NightRunner(
         tonight.Save(store);
         try
         {
-            var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token,
-                (next, t) => InBlockCheckAsync(block, next, t)).ConfigureAwait(false);
+            var camera = bootstrap?.Rig.Camera;
+            var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token, new BlockRunOptions(
+                (next, t) => InBlockCheckAsync(block, next, t),
+                camera?.SetpointC is { } setpoint ? new CoolingTarget(setpoint, camera.ToleranceC) : null,
+                b => ReportEvent(EventsKind.Warning, "camera_temperature", b.Id),
+                // Lease verloren bzw. Rig belegt (§6, P-10/P-17): laufende Belichtung zu Ende, dann block_end lease_lost.
+                () => Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null))
+                .ConfigureAwait(false);
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             if (outcome.Reason is "target_removed" or "transit_interrupt") forcedPlan = NinaPlanRequestReason.Refresh;
@@ -490,6 +527,88 @@ public sealed class NightRunner(
     }
 
     /// <summary>Gespeicherte Light-Aufnahme (nach <c>ImageSaved</c>): Sekunden und Filterzyklus der Einheit fortschreiben.</summary>
+    // ---- Meldungen (AP-16e, execution.md §4.3, contracts/nina/README.md) --------------------------------
+
+    /// <summary>
+    /// Aufnahme melden: in die Outbox (FIFO je Session); ohne Session wird nicht gemeldet (AP-16g meldet offline
+    /// angelegte Sessions nach). <c>saved</c> zählt zusätzlich in <c>tonight</c>.
+    /// </summary>
+    public void ReportCapture(CaptureFacts facts, CapturesResult result, string? fileName)
+    {
+        if (result == CapturesResult.Saved) ExposureSaved(facts.Block, facts.Entry);
+        if (SessionId is not { } session) return;
+        var capture = CaptureMapper.Build(facts, result, fileName);
+        store.EnqueueOutbox(OutboxKinds.Capture, JsonConvert.SerializeObject(capture, NinaJson.Settings()), session, facts.NightPlanId);
+    }
+
+    /// <summary>Ereignis melden (<c>sessionEventKinds</c>; bei <c>warning</c> ein Code aus <c>pluginWarningCodes</c>).</summary>
+    public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null)
+    {
+        if (SessionId is not { } session) return;
+        var planId = ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
+        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId };
+        store.EnqueueOutbox(OutboxKinds.Event, JsonConvert.SerializeObject(e, NinaJson.Settings()), session, planId);
+    }
+
+    // ---- Heartbeat und Lease (AP-16e, execution.md §6) -------------------------------------------------
+
+    /// <summary>
+    /// Heartbeat beantwortet: Uhrabgleich (NT-05, Laufzeit halbiert), Lease (nur mit Session), gestiegene
+    /// <c>settingsVersion</c> → Bootstrap neu laden (die Neuplanung vor dem nächsten Block sieht sie, §3.2).
+    /// </summary>
+    public void HeartbeatAnswered(NinaHeartbeatResponse response, DateTimeOffset sentUtc)
+    {
+        var now = clock.UtcNow;
+        var serverNow = response.ServerTimeUtc + (now - sentUtc) / 2;
+        Loop.ClockChecked(serverNow - now, now);
+        if (SessionId is not null) ApplyLease(Lease.HeartbeatAnswered(response.Lease?.LeaseLost ?? false));
+        if (bootstrap is not null && response.SettingsVersion > SettingsVersion(bootstrap)) bootstrapReload = true;
+    }
+
+    /// <summary>Heartbeat ohne Serverantwort (Netzfehler, Timeout, 5xx).</summary>
+    public void HeartbeatUnanswered() => ApplyLease(Lease.HeartbeatUnanswered());
+
+    /// <summary><c>409 session.rig_busy</c> auf einen Session- oder Heartbeat-Aufruf: eine andere Instanz hält das Rig.</summary>
+    public void LeaseRigBusy() => ApplyLease(Lease.RigBusy());
+
+    /// <summary>Wirkung eines Lease-Übergangs: gesperrter Zustand, Ereignis, Log (execution.md §6 Tabelle).</summary>
+    private void ApplyLease(LeaseEffect effect)
+    {
+        var now = clock.UtcNow;
+        switch (effect)
+        {
+            case LeaseEffect.LeaseLost:
+                Loop.Block(NinaHeartbeatBlockedReason.Lease_lost, now);
+                log.Event("LEASE", ("state", "lost"));
+                log.Event("LEASE_LOST", ("atUtc", now));
+                log.Event("BLOCKED", ("reason", "lease_lost"));
+                ReportEvent(EventsKind.Lease_lost, null, runningBlock?.Id);
+                break;
+            case LeaseEffect.LeaseRegained:
+                if (Loop.Blocked == NinaHeartbeatBlockedReason.Lease_lost) Loop.Unblock();
+                store.SetState(StateKeys.DoneBlocks, null);
+                log.Event("LEASE", ("state", "held"));
+                log.Event("LEASE_REGAINED", ("atUtc", now));
+                ReportEvent(EventsKind.Lease_regained, null);
+                break;
+            case LeaseEffect.OfflineStart:
+                log.Event("LEASE", ("state", "unreachable"));
+                log.Event("OFFLINE_START", ("atUtc", now));
+                ReportEvent(EventsKind.Offline_start, null);
+                break;
+            case LeaseEffect.OfflineEnd:
+                log.Event("LEASE", ("state", "held"));
+                log.Event("OFFLINE_END", ("atUtc", now));
+                ReportEvent(EventsKind.Offline_end, null);
+                break;
+            case LeaseEffect.RigBusy:
+                Loop.Block(NinaHeartbeatBlockedReason.Rig_busy, now);
+                log.Event("LEASE", ("state", "none"));
+                log.Event("BLOCKED", ("reason", "rig_busy"));
+                break;
+        }
+    }
+
     public void ExposureSaved(Blocks block, Entries entry)
     {
         if (entry.ExposureLineId is not { } line) return;
@@ -565,10 +684,12 @@ public sealed class NightRunner(
 
     private async Task<NinaBootstrap?> EnsureBootstrapAsync(CancellationToken token)
     {
-        if (bootstrap is not null && !NightCalendar.NeedsReload(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow)) return bootstrap;
+        if (bootstrap is not null && !bootstrapReload && !NightCalendar.NeedsReload(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow))
+            return bootstrap;
         try
         {
             bootstrap = await planApi.BootstrapAsync(token).ConfigureAwait(false);
+            bootstrapReload = false;
             log.Event("API", ("status", 200), ("call", "bootstrap"));
             store.PutCache(BootstrapCacheKey, JsonConvert.SerializeObject(bootstrap, NinaJson.Settings()), null);
             return bootstrap;

@@ -146,4 +146,49 @@ public sealed class SequencerTests
         Assert.False(after.ShouldTriggerAfter(other, exposure));
         Assert.False(after.ShouldTrigger(other, exposure));
     }
+
+    // ---- AP-16e: Heartbeat-Einstellungen (execution.md §4.4/§6) ----------------------------------------------
+
+    [Fact]
+    public void Heartbeat_Filterrad_NINA_Platz_0_wird_Platz_1_Geraete_getrennt_ohne_Montierung_und_Kamera()
+    {
+        var wheel = new Mock<NINA.Profile.Interfaces.IFilterWheelSettings>();
+        wheel.SetupGet(w => w.FilterWheelFilters).Returns(new NINA.Core.Utility.ObserveAllCollection<NINA.Core.Model.Equipment.FilterInfo>
+        {
+            new("L", 0, 0),
+            new("Ha 3nm", 15, 1),
+        });
+        var flip = new Mock<NINA.Profile.Interfaces.IMeridianFlipSettings>();
+        flip.SetupGet(f => f.Recenter).Returns(true);
+        var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
+        profile.SetupGet(p => p.FilterWheelSettings).Returns(wheel.Object);
+        profile.SetupGet(p => p.MeridianFlipSettings).Returns(flip.Object);
+        profile.SetupGet(p => p.RotatorSettings).Returns(Mock.Of<NINA.Profile.Interfaces.IRotatorSettings>());
+        profile.SetupGet(p => p.AstrometrySettings).Returns(Mock.Of<NINA.Profile.Interfaces.IAstrometrySettings>());
+        profile.SetupGet(p => p.PlateSolveSettings).Returns(Mock.Of<NINA.Profile.Interfaces.IPlateSolveSettings>());
+        var service = new Mock<NINA.Profile.Interfaces.IProfileService>();
+        service.SetupGet(x => x.ActiveProfile).Returns(profile.Object);
+        var telescope = new Mock<ITelescopeMediator>();
+        telescope.Setup(t => t.GetInfo()).Returns(new NINA.Equipment.Equipment.MyTelescope.TelescopeInfo { Connected = false });
+        var camera = new Mock<ICameraMediator>();
+        camera.Setup(c => c.GetInfo()).Returns(new NINA.Equipment.Equipment.MyCamera.CameraInfo { Connected = false });
+        var rotator = new Mock<IRotatorMediator>();
+        rotator.Setup(r => r.GetInfo()).Returns(new NINA.Equipment.Equipment.MyRotator.RotatorInfo { Connected = false });
+        var m = new NinaMediators(service.Object, telescope.Object, Mock.Of<IImagingMediator>(), camera.Object, Mock.Of<IFilterWheelMediator>(),
+            rotator.Object, Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
+            Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
+            Mock.Of<NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator>(), Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(),
+            Mock.Of<ISafetyMonitorMediator>());
+
+        var hb = new NinaSettingsSource(m, () => []).Snapshot();
+
+        Assert.Equal([(1, "L"), (2, "Ha 3nm")], hb.FilterWheel!.Select(f => (f.Position, f.Name)));
+        Assert.Equal(15, hb.FilterWheel![1].FocusOffset);
+        Assert.True(hb.MeridianFlip!.Recenter);
+        Assert.False(hb.MeridianFlip.TriggerPresent);
+        Assert.Null(hb.SequenceTriggers!.AutofocusAfterTimeMin); // ohne Trigger: Server plant mit afEveryMin = 0
+        Assert.Null(hb.Mount);
+        Assert.Null(hb.Camera);
+        Assert.False(hb.Rotator!.Connected);
+    }
 }

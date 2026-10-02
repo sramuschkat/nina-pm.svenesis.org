@@ -206,6 +206,38 @@
         }
       ]
     },
+    "P-10": {
+      "package": "AP-16e",
+      "steps": [
+        "Szenario lease, während eines Blocks Test-Server-Aktion rig_busy (ersatzweise zweite NINA-Instanz desselben Rigs)",
+        "API status=409 code=session.rig_busy, Warnung, zweite Instanz nur Simulation",
+        "Laufende Belichtung und Block zuerst beendet (BLOCK_END reason=lease_lost), BLOCKED reason=rig_busy",
+        "Erst der nächste Aufruf ohne laufenden Block beendet die Nachtschleife (NIN5-2)"
+      ],
+      "require": [
+        {
+          "event": "API",
+          "where": {
+            "status": "409",
+            "code": "session.rig_busy"
+          }
+        },
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "rig_busy"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
     "P-13": {
       "package": "AP-S2b",
       "steps": [
@@ -298,6 +330,47 @@
         }
       ]
     },
+    "P-17": {
+      "package": "AP-16e",
+      "steps": [
+        "Szenario lease, während eines Blocks Test-Server-Aktion lease_release",
+        "Nächster Heartbeat leaseLost=true: laufende Belichtung zu Ende, LEASE state=lost, BLOCKED reason=lease_lost, 60-s-Wartetakt, keine neuen Blöcke",
+        "Nach clear erster erfolgreicher Heartbeat: LEASE state=held, LEASE_REGAINED, Blockliste neu aus dem Plan",
+        "Neustart derselben Instanz ohne fremde Session: LEASE state=held (eigene Session fortgesetzt)"
+      ],
+      "require": [
+        {
+          "event": "LEASE",
+          "where": {
+            "state": "lost"
+          }
+        },
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "lease_lost"
+          }
+        },
+        {
+          "event": "LEASE",
+          "where": {
+            "state": "held"
+          },
+          "min": 2
+        },
+        {
+          "event": "LEASE_REGAINED"
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
     "P-19": {
       "package": "AP-16d",
       "steps": [
@@ -315,6 +388,41 @@
         {
           "event": "READOUT_MODE_NOT_FOUND",
           "has": ["name"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-22": {
+      "package": "AP-16e",
+      "steps": [
+        "Szenario night-end (darknessEndUtc in 15 min, Flats aus), Lauf normal beenden mit gefüllter Outbox (kurz vor dem Ende drop_responses)",
+        "Letzte Belichtung endet bis darknessEndUtc, SESSION status=completed pending=n, Ende-Bereich vor sessionEndUtc, kein PATCH running danach",
+        "Nach dem Nachsenden OUTBOX pending=0",
+        "Zweiter Lauf: NINA vor dem Ende hart beenden – Server markiert die Session nach 10 min ohne Heartbeat als verwaist; späte Meldungen nach Neustart angenommen"
+      ],
+      "require": [
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "completed"
+          }
+        },
+        {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        },
+        {
+          "event": "HEARTBEAT",
+          "has": ["state"]
         }
       ],
       "forbid": [
@@ -499,6 +607,37 @@
         {
           "event": "FILTER_NOT_FOUND",
           "has": ["filter", "short"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-34": {
+      "package": "AP-16e",
+      "steps": [
+        "Kamera-Simulator Sollwert −10 °C, Rig camera.setpointC = −10, toleranceC = 1; während eines Blocks Sollwert der Kamera auf 0 °C",
+        "Weiter belichtet; genau ein WARNING code=camera_temperature je Block",
+        "Betroffene Aufnahmen mit temperatureDeviation: true, metrics.sensorTempC/setPointC gesetzt (Test-Report)",
+        "Heartbeat camera {temperatureC, setPointC, coolerOn, coolerPowerPct}"
+      ],
+      "require": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "camera_temperature"
+          }
+        },
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "saved"
+          }
         }
       ],
       "forbid": [
