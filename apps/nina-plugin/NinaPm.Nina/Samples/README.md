@@ -18,4 +18,6 @@ Auslieferung (AP-16a, TK 4.1/12):
   `https://nina-pm.svenesis.org/downloads/nina-sequences/<Plugin-Version>/<Datei>`.
 - **GitHub-Release:** beim Tag `plugin-v*` packt `plugin.yml` sie als `nina-pm-sequences-<Tag>.zip` dazu.
 
+Bauanleitung (in NINA zusammenstellen und exportieren): `docs/ops/sample-sequences.md`.
+
 Diese README wird nicht ausgeliefert.
