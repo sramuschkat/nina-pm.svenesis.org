@@ -118,6 +118,66 @@
         }
       ]
     },
+    "P-05": {
+      "package": "AP-16c",
+      "steps": [
+        "Beispielsequenz „Eine Nacht“ (Testkopie) gestartet, Szenario one-night, 2 Projekte aktiv",
+        "Blöcke laut Plan: Blockstart und -ende je Block, harter Blockschluss, kein Block doppelt im selben Plan",
+        "Aufnahmen im Test-Server-Protokoll (GET /test/report) bzw. im Web (S-61), Zähler korrekt",
+        "Outbox leer am Ende (OUTBOX pending=0)"
+      ],
+      "require": [
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        {
+          "event": "PLAN",
+          "has": ["plan", "night"]
+        },
+        {
+          "event": "BLOCK_START",
+          "min": 2
+        },
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "completed"
+          },
+          "min": 2
+        },
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "saved"
+          },
+          "has": ["id", "file"]
+        },
+        {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        },
+        {
+          "event": "ERROR",
+          "where": {
+            "code": "block_failed"
+          }
+        }
+      ],
+      "checks": ["uniqueCaptures"]
+    },
     "P-13": {
       "package": "AP-S2b",
       "steps": [
@@ -171,6 +231,124 @@
           "event": "TRIGGER",
           "where": {
             "type": "AutofocusAfterTimeTrigger"
+          }
+        }
+      ]
+    },
+    "P-25": {
+      "package": "AP-16c",
+      "steps": [
+        "Sequenz „Eine Nacht mit Safety“ (Testkopie) gestartet, Szenario safety",
+        "Safety-Monitor während einer laufenden Belichtung unsicher: CAPTURE aborted, BLOCK_END interrupted, SAFETY_PAUSE, HEARTBEAT paused, NINA parkt im Sicherungscontainer, kein SESSION aborted",
+        "Nach 5 min wieder sicher: SAFETY_RESUME, PLAN reason=resume mit neuer plan=…, erneuter Slew mit Zentrieren",
+        "Benutzer-Stopp: SESSION status=aborted, danach HEARTBEAT idle ohne session; Neustart legt eine neue Session an",
+        "Unsicher bis Nachtende: bei darknessEndUtc (± 1 min) SESSION completed ohne SAFETY_RESUME, kein Unpark Scope, danach Ende-Bereich",
+        "Getrennter Safety-Monitor: WARNING code=safety_monitor_not_connected, kein endloses Warten"
+      ],
+      "require": [
+        {
+          "event": "CAPTURE",
+          "where": {
+            "result": "aborted"
+          }
+        },
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "interrupted"
+          }
+        },
+        {
+          "event": "SAFETY_PAUSE"
+        },
+        {
+          "event": "SAFETY_RESUME"
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "resume"
+          }
+        },
+        {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "paused"
+          }
+        },
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "aborted"
+          }
+        },
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "finished",
+            "reason": "unsafe"
+          }
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "safety_monitor_not_connected"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-31": {
+      "package": "AP-16c",
+      "steps": [
+        "Szenario night-end (Flats aus, darknessEndUtc in 20 min, 300-s-Belichtungen): letzte Belichtung endet bis darknessEndUtc, sonst BLOCK_END reason=night_end; Park Scope spätestens darknessEndUtc + 3 min",
+        "Leerer Plan ab 10 min vor darknessEndUtc (alle Projekte pausiert): bis dahin HEARTBEAT idle und Neuplanung alle 5 min; danach kein BLOCKED plan_failed, sondern SESSION completed und Ende"
+      ],
+      "require": [
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "completed"
+          }
+        },
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "finished"
+          }
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "refresh"
+          },
+          "min": 2
+        },
+        {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "idle"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "plan_failed"
+          }
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
           }
         }
       ]
