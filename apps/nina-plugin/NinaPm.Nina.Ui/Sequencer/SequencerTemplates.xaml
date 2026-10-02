@@ -4,7 +4,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="clr-namespace:NinaPm.Nina.Ui"
     xmlns:view="clr-namespace:NINA.View.Sequencer;assembly=NINA.Sequencer"
-    xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer">
+    xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer"
+    xmlns:behaviors="clr-namespace:NINA.Sequencer.Behaviors;assembly=NINA.Sequencer"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors">
     <!--
         Ansichten der Sequenz-Bausteine (execution.md §1). Ohne DataType, weil diese Assembly die Typen aus NinaPm.Nina
         nicht kennt (NinaPm.Nina referenziert NinaPm.Nina.Ui); NinaPmResources ordnet die Schlüssel "NinaPm.*" den Typen
@@ -46,6 +48,58 @@
     </DataTemplate>
 
     <DataTemplate x:Key="NinaPm.Nina.Sequencer.NinaPmContainer_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+    <!-- Trigger-Sets vor/nach jeder Belichtung (FA-NIN-16); Box nach dem Astro-PM-Plugin (Views/SequenceTemplates.xaml, Commit 5dd621d, MIT). -->
+    <DataTemplate x:Key="NinaPm.BeforeExposureTrigger">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <StackPanel Margin="0,2" Orientation="Vertical">
+                    <TextBlock Margin="0,0,0,4" Opacity="0.6" FontStyle="Italic" Text="{x:Static ui:Texts.BeforeExposureHint}" />
+                    <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid Background="{StaticResource BackgroundBrush}" DataContext="{Binding TriggerRunner}">
+                            <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
+                                       Text="{x:Static ui:Texts.DropInstructionsHint}"
+                                       Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                            <i:Interaction.Behaviors>
+                                <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
+                                <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />
+                            </i:Interaction.Behaviors>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.BeforeExposureTrigger_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.AfterExposureTrigger">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <StackPanel Margin="0,2" Orientation="Vertical">
+                    <TextBlock Margin="0,0,0,4" Opacity="0.6" FontStyle="Italic" Text="{x:Static ui:Texts.AfterExposureHint}" />
+                    <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid Background="{StaticResource BackgroundBrush}" DataContext="{Binding TriggerRunner}">
+                            <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
+                                       Text="{x:Static ui:Texts.DropInstructionsHint}"
+                                       Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                            <i:Interaction.Behaviors>
+                                <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
+                                <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />
+                            </i:Interaction.Behaviors>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.AfterExposureTrigger_Mini">
         <mini:MiniSequenceItem />
     </DataTemplate>
 </ResourceDictionary>

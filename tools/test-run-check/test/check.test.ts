@@ -145,22 +145,27 @@ describe('Prüfung eines Laufs', () => {
   });
 
   it('Protokoll ohne Erwartungen wird klar gemeldet', () => {
-    const { outcome } = run(result('P-06', 3), P13_LOG);
+    const { outcome } = run(result('P-07', 3), P13_LOG);
     expect(outcome.schemaErrors).toContain(
-      'keine Erwartungen für P-06 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
+      'keine Erwartungen für P-07 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
     );
   });
 
-  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25 und P-31', () => {
+  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25, P-31, AP-16d P-06, P-15, P-19, P-28, P-32', () => {
     expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual([
       'P-01',
       'P-02',
       'P-03',
       'P-04',
       'P-05',
+      'P-06',
       'P-13',
+      'P-15',
+      'P-19',
       'P-25',
+      'P-28',
       'P-31',
+      'P-32',
     ]);
     expect(EXPECTATIONS.protocols['P-04']?.package).toBe('AP-16a');
     for (const p of ['P-05', 'P-25', 'P-31'])

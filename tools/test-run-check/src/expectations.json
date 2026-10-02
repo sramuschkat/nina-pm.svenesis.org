@@ -178,6 +178,34 @@
       ],
       "checks": ["uniqueCaptures"]
     },
+    "P-06": {
+      "package": "AP-16d",
+      "steps": [
+        "Während Block 1 im Test-Server bzw. Web Projekt 2 pausiert (neues ETag)",
+        "Block 2 nicht mehr Projekt 2; Neuplanung vor dem Block mit Ereignis plan_rebuilt",
+        "Lauf ohne Änderung: kein neuer Plan (Hysterese)"
+      ],
+      "require": [
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "refresh"
+          }
+        },
+        {
+          "event": "PLAN_REBUILT",
+          "has": ["id", "plan"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
     "P-13": {
       "package": "AP-S2b",
       "steps": [
@@ -231,6 +259,69 @@
           "event": "TRIGGER",
           "where": {
             "type": "AutofocusAfterTimeTrigger"
+          }
+        }
+      ]
+    },
+    "P-15": {
+      "package": "AP-16d",
+      "steps": [
+        "(a) Im laufenden Block das aktuelle Projekt pausiert: Belichtung zu Ende, BLOCK_END reason=target_removed, neuer Plan ab jetzt",
+        "(c) Anderes Projekt geändert: Block läuft unverändert, neuer Plan ab dem nächsten Block, kein zusätzlicher Slew bei gleichem Panel",
+        "Lauf ohne Änderung: kein neuer Plan (Hysterese)"
+      ],
+      "require": [
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "target_removed"
+          }
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "refresh"
+          },
+          "min": 2
+        },
+        {
+          "event": "PLAN_REBUILT",
+          "has": ["id", "plan"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-19": {
+      "package": "AP-16d",
+      "steps": [
+        "Zeile mit ninaFilterName OIII, der im Filterrad fehlt: FILTER_NOT_FOUND short=OIII, Zeile übersprungen",
+        "Zeile mit ninaFilterName Ha bei Profilname Ha 3nm: FILTER_NOT_FOUND short=Ha, kein Präfix-Treffer, nie mit anderem Filter belichtet",
+        "Unbekannter Auslesemodus: READOUT_MODE_NOT_FOUND, Belichtung übersprungen, kein Rückfall auf readoutModeIndex",
+        "Kamera mit genau einem Modus: es wird belichtet",
+        "Hinweise je Filter bzw. Modus höchstens einmal (12 h)"
+      ],
+      "require": [
+        {
+          "event": "FILTER_NOT_FOUND",
+          "has": ["filter", "short"]
+        },
+        {
+          "event": "READOUT_MODE_NOT_FOUND",
+          "has": ["name"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
           }
         }
       ]
@@ -305,6 +396,43 @@
         }
       ]
     },
+    "P-28": {
+      "package": "AP-16d",
+      "steps": [
+        "Globaler Trigger Dither after Exposures (jede Belichtung) aktiv, Szenario one-night mit Plan-Dither alle 3 Belichtungen",
+        "Beim Planaufbau WARNING code=nina_dither_trigger_present",
+        "TRIGGER_SUPPRESSED type=DitherAfterExposures je Block, gedithert nur laut Plan (Guider-Log)",
+        "Zweiter Lauf im Szenario transit: kein Dither"
+      ],
+      "require": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "nina_dither_trigger_present"
+          }
+        },
+        {
+          "event": "TRIGGER_SUPPRESSED",
+          "where": {
+            "type": "DitherAfterExposures"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "TRIGGER",
+          "where": {
+            "type": "DitherAfterExposures"
+          }
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
     "P-31": {
       "package": "AP-16c",
       "steps": [
@@ -345,6 +473,35 @@
             "reason": "plan_failed"
           }
         },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-32": {
+      "package": "AP-16d",
+      "steps": [
+        "Im NINA-Profil zwei Filternamen getauscht bzw. einen umbenannt (oder Test-Server-Aktion filter_wheel_changed)",
+        "Heartbeat filterWheel zeigt die neuen Namen, im Test-Report Alarmcode filter_wheel_changed (Heartbeat ab AP-16e)",
+        "Beim Planaufbau WARNING code=filter_wheel_changed",
+        "Betroffene Zeilen FILTER_NOT_FOUND, nie mit dem Filter am alten Platz belichtet"
+      ],
+      "require": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "filter_wheel_changed"
+          }
+        },
+        {
+          "event": "FILTER_NOT_FOUND",
+          "has": ["filter", "short"]
+        }
+      ],
+      "forbid": [
         {
           "event": "WARNING",
           "where": {
