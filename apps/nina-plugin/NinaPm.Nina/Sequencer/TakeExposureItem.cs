@@ -11,6 +11,7 @@ using NINA.Sequencer.SequenceItem;
 using NINA.WPF.Base.Interfaces.ViewModel;
 using NINA.WPF.Base.Interfaces.Mediator;
 using NinaPm.Core.Api.Generated;
+using NinaPm.Core.Reporting;
 using NinaPm.Nina.Adapters;
 
 namespace NinaPm.Nina.Sequencer;
@@ -30,14 +31,17 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
     private readonly Blocks block;
     private readonly Entries entry;
     private readonly FilterInfo? filter;
+    private readonly bool temperatureDeviation;
 
-    public TakeExposureItem(NinaHost host, NinaMediators m, Blocks block, Entries entry, FilterInfo? filter, Guid captureId)
+    public TakeExposureItem(NinaHost host, NinaMediators m, Blocks block, Entries entry, FilterInfo? filter, Guid captureId,
+        bool temperatureDeviation)
     {
         this.host = host;
         this.m = m;
         this.block = block;
         this.entry = entry;
         this.filter = filter;
+        this.temperatureDeviation = temperatureDeviation;
         CaptureId = captureId;
         ExposureTime = entry.ExposureS ?? 0;
         // Gain/Offset null → −1 = NINA-Standard (NT-38).
@@ -52,6 +56,12 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
 
     /// <summary>NINA hat das Bild aufgenommen und zum Speichern eingereiht.</summary>
     public bool Captured { get; private set; }
+
+    /// <summary>
+    /// Fakten der Aufnahme für die Meldung (AP-16e): vor der Belichtung mit vorläufigen Zeiten (für <c>aborted</c>),
+    /// nach <c>CaptureImage</c> mit <c>ExposureStart</c>/<c>ExposureMidPoint</c> aus NINAs Metadaten (NT-10).
+    /// </summary>
+    public CaptureFacts? Facts { get; private set; }
 
     public double ExposureTime { get; set; }
     public int Gain { get; set; }
@@ -68,12 +78,22 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
         var sequence = new CaptureSequence(ExposureTime, "LIGHT", filter, Binning, 1) { Gain = Gain, Offset = Offset };
         progress?.Report(new ApplicationStatus { Source = "NINA-PM", Status = $"{target.TargetName} {entry.Filter} {ExposureTime} s" });
 
+        Facts = host.CaptureFactsFor(CaptureId, block, entry, filter, temperatureDeviation, ExposureTime);
         var exposure = await m.Imaging.CaptureImage(sequence, token, progress, target.TargetName);
         if (exposure is null) return;
         var imageId = exposure.MetaData.Image.Id;
         // Bildhistorie: sonst zählen „AF nach n Belichtungen“ und „AF nach HFR-Anstieg“ nicht (NIN-19).
         m.ImageHistory.Add(imageId, "LIGHT");
-        host.RegisterPending(imageId, CaptureId, block, entry);
+        if (Facts is not null)
+        {
+            var start = exposure.MetaData.Image.ExposureStart is var s && s != default ? Utc(s) : Facts.CapturedAtUtc;
+            Facts = Facts with
+            {
+                CapturedAtUtc = start,
+                ExposureMidUtc = exposure.MetaData.Image.ExposureMidPoint is var mid && mid != default ? Utc(mid) : start.AddSeconds(ExposureTime / 2),
+            };
+            host.RegisterPending(imageId, Facts);
+        }
 
         var imageData = await exposure.ToImageData(progress, token);
         var prepare = m.Imaging.PrepareImage(imageData, new PrepareImageParameters(true, true), token);
@@ -84,6 +104,9 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
         await m.ImageSave.Enqueue(imageData, prepare, progress, token);
         Captured = true;
     }
+
+    /// <summary>NINA setzt die Belichtungszeiten in UTC (execution.md §4.3).</summary>
+    private static DateTimeOffset Utc(DateTime t) => new(DateTime.SpecifyKind(t, DateTimeKind.Utc));
 
     public override object Clone() => throw new NotSupportedException("internes Element, wird nicht geklont");
 

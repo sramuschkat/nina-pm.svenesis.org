@@ -15,6 +15,7 @@ using NINA.WPF.Base.Interfaces.Mediator;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Execution;
 using NinaPm.Core.Planning;
+using NinaPm.Core.Reporting;
 using NinaPm.Core.Time;
 using NinaPm.Nina.Sequencer;
 
@@ -33,7 +34,8 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(10);
 
     private readonly IClock clock = SystemClock.Instance;
-    private readonly ConcurrentDictionary<int, (Guid CaptureId, Blocks Block, Entries Entry)> pending = new();
+    /// <summary>Zuordnung <c>Image.Id → Aufnahme</c> (Kern, AP-16e).</summary>
+    private readonly CaptureRegistry captures = new();
     private int handlerAttached;
     private NINA.Core.Model.Equipment.FilterInfo? currentFilter;
     private ISequenceItem? previousItem;
@@ -41,6 +43,13 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private bool interruptedSinceCenter;
     /// <summary>Hinweise höchstens 1×/12 h je Schlüssel (filter_not_found je Filter, readout_mode_not_found je Modus, §4.3/§4.4).</summary>
     private readonly HintThrottle hints = new(HintThrottle.TwelveHours);
+
+    /// <summary>NINAs Mediatoren (Heartbeat-Einstellungen, AP-16e).</summary>
+    internal NinaMediators Mediators => m;
+
+    /// <summary>Trigger der Vorfahren des zuletzt laufenden Containers; ohne Container keine (Heartbeat, §6).</summary>
+    internal IEnumerable<NINA.Sequencer.Trigger.ISequenceTrigger> CurrentTriggers() =>
+        Container is null ? [] : AncestorTriggers().ToList();
 
     /// <summary>Container, der gerade ausgeführt wird (setzt <see cref="NinaPmContainer.Execute"/>).</summary>
     public NinaPmContainer? Container { get; set; }
@@ -251,13 +260,43 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
     }
 
-    public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, CancellationToken token)
+    /// <summary>Kühlung jetzt (NT-E2); ohne verbundene Kamera „aus“ und ohne Messwert.</summary>
+    public CameraCooling ReadCooling()
+    {
+        var c = m.Camera.GetInfo();
+        return c.Connected
+            ? new CameraCooling(c.CoolerOn, double.IsFinite(c.Temperature) ? c.Temperature : null)
+            : new CameraCooling(false, null);
+    }
+
+    /// <summary>
+    /// Fakten einer Aufnahme vor der Belichtung (AP-16e, execution.md §4.3): Plan, nach dem belichtet wird, die an NINA
+    /// übergebenen Werte, Pier-Seite nach fester ASCOM-Zuordnung (NT-34), gemessener mechanischer Rotatorwinkel (ohne
+    /// Rotator 0). Zeiten vorläufig (jetzt), bis NINAs Metadaten vorliegen. Ohne laufenden Plan <c>null</c>.
+    /// </summary>
+    internal CaptureFacts? CaptureFactsFor(Guid captureId, Blocks block, Entries entry, NINA.Core.Model.Equipment.FilterInfo? filter,
+        bool temperatureDeviation, double exposureS)
+    {
+        if (Runtime?.Runner.ExecutingPlan is not { } plan) return null;
+        var now = clock.UtcNow;
+        var rotator = m.Rotator.GetInfo();
+        var telescope = m.Telescope.GetInfo();
+        var readout = ReadoutResolver.Resolve(entry.ReadoutMode, m.Camera.GetInfo().ReadoutModes?.ToList());
+        return new CaptureFacts(captureId, plan.Night, plan.NightPlanId, block, entry, now, now.AddSeconds(exposureS / 2),
+            filter?.Name ?? entry.Filter ?? "", exposureS, entry.Gain, entry.Offset, entry.Binning ?? 1,
+            entry.ReadoutMode, readout.Kind == ReadoutResolutionKind.Found ? readout.Index : null,
+            rotator.Connected && float.IsFinite(rotator.MechanicalPosition) ? rotator.MechanicalPosition : 0,
+            telescope.Connected ? CaptureMapper.PierSide(telescope.SideOfPier.ToString()) : null,
+            temperatureDeviation, null);
+    }
+
+    public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
         if (filters is { Count: > 0 } && currentFilter is null) return ExposureResult.Skipped;
         if (!ApplyReadoutMode(entry)) return ExposureResult.Skipped;
 
-        var item = new TakeExposureItem(this, m, block, entry, currentFilter, Uuid7.New(clock));
+        var item = new TakeExposureItem(this, m, block, entry, currentFilter, Uuid7.New(clock), temperatureDeviation);
         item.AttachNewParent(Box);
         var progress = Progress ?? new Progress<ApplicationStatus>();
         await TriggerWalker.RunAsync(Box, after: false, previousItem, item, progress, Runtime, token);
@@ -268,6 +307,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         catch (OperationCanceledException)
         {
             Runtime?.Log.Event("CAPTURE", ("id", item.CaptureId), ("result", "aborted"), ("atUtc", clock.UtcNow));
+            if (item.Facts is { } facts) Runtime?.Runner.ReportCapture(facts, CapturesResult.Aborted, null);
             throw;
         }
         await TriggerWalker.RunAsync(Box, after: true, item, item, progress, Runtime, token);
@@ -333,35 +373,54 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
                     yield return t;
     }
 
-    /// <summary>Zuordnung <c>Image.Id → Aufnahme</c> vor <c>Enqueue</c>; ein globaler Handler, gelöst erst, wenn nichts mehr aussteht.</summary>
-    internal void RegisterPending(int imageId, Guid captureId, Blocks block, Entries entry)
+    /// <summary>
+    /// Zuordnung <c>Image.Id → Aufnahme</c> vor <c>Enqueue</c> (§4.3); ein globaler Handler, gelöst erst, wenn nichts
+    /// mehr aussteht. Nach 120 s ohne <c>ImageSaved</c> → <c>failed</c> und <c>warning image_not_saved</c>.
+    /// </summary>
+    internal void RegisterPending(int imageId, CaptureFacts facts)
     {
-        pending[imageId] = (captureId, block, entry);
+        captures.Register(imageId, facts, clock.UtcNow);
         if (Interlocked.Exchange(ref handlerAttached, 1) == 0) m.ImageSave.ImageSaved += OnImageSaved;
         _ = Task.Run(async () =>
         {
-            await Task.Delay(SaveTimeout);
-            if (pending.TryRemove(imageId, out var p))
+            await Task.Delay(CaptureRegistry.SaveTimeout + TimeSpan.FromSeconds(1));
+            foreach (var f in captures.Expire(clock.UtcNow))
             {
-                Runtime?.Log.Event("CAPTURE", ("id", p.CaptureId), ("result", "failed"), ("atUtc", clock.UtcNow));
-                Runtime?.Log.Warning("WARNING", ("code", "image_not_saved"), ("id", p.CaptureId));
-                ReleaseIfDrained();
+                Runtime?.Log.Event("CAPTURE", ("id", f.CaptureId), ("result", "failed"), ("atUtc", clock.UtcNow));
+                Runtime?.Log.Warning("WARNING", ("code", "image_not_saved"), ("id", f.CaptureId));
+                Runtime?.Runner.ReportCapture(f, CapturesResult.Failed, null);
+                Runtime?.Runner.ReportEvent(EventsKind.Warning, "image_not_saved", f.Block.Id);
             }
+            ReleaseIfDrained();
         });
     }
 
+    /// <summary>
+    /// <c>ImageSaved</c> mit bekannter ID → <c>saved</c>, Dateiname ohne Pfad; Messwerte aus dem Ereignis (NIN5-10):
+    /// HFR und Sterne der Sterndetektion, Mittelwert der Statistik, Sensortemperatur und Sollwert – fehlende Werte
+    /// werden weggelassen, nie als 0 gemeldet.
+    /// </summary>
     private void OnImageSaved(object? sender, ImageSavedEventArgs e)
     {
         var imageId = e.MetaData?.Image?.Id;
-        if (imageId is null || !pending.TryRemove(imageId.Value, out var p)) return;
+        if (imageId is null || captures.Saved(imageId.Value) is not { } facts) return;
         var file = e.PathToImage is null ? "" : Path.GetFileName(e.PathToImage.LocalPath);
-        Runtime?.Log.Event("CAPTURE", ("id", p.CaptureId), ("result", "saved"), ("file", file), ("atUtc", clock.UtcNow));
-        Runtime?.Runner.ExposureSaved(p.Block, p.Entry);
+        var star = e.StarDetectionAnalysis;
+        var metrics = new Metrics
+        {
+            Hfr = star is not null && double.IsFinite(star.HFR) && star.HFR > 0 ? star.HFR : null,
+            Stars = star is not null && star.DetectedStars > 0 ? star.DetectedStars : null,
+            MeanAdu = e.Statistics is { } st && double.IsFinite(st.Mean) ? st.Mean : null,
+            SensorTempC = e.MetaData?.Camera is { } cam && double.IsFinite(cam.Temperature) ? cam.Temperature : null,
+            SetPointC = e.MetaData?.Camera is { } cam2 && double.IsFinite(cam2.SetPoint) ? cam2.SetPoint : null,
+        };
+        Runtime?.Log.Event("CAPTURE", ("id", facts.CaptureId), ("result", "saved"), ("file", file), ("atUtc", clock.UtcNow));
+        Runtime?.Runner.ReportCapture(facts with { Metrics = metrics }, CapturesResult.Saved, file);
         ReleaseIfDrained();
     }
 
     private void ReleaseIfDrained()
     {
-        if (pending.IsEmpty && Interlocked.Exchange(ref handlerAttached, 0) == 1) m.ImageSave.ImageSaved -= OnImageSaved;
+        if (captures.Pending == 0 && Interlocked.Exchange(ref handlerAttached, 0) == 1) m.ImageSave.ImageSaved -= OnImageSaved;
     }
 }

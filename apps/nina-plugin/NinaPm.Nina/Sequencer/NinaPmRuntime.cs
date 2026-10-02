@@ -6,6 +6,7 @@ using NinaPm.Core.Execution;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Options;
 using NinaPm.Core.Planning;
+using NinaPm.Core.Session;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
 using NinaPm.Nina.Adapters;
@@ -16,7 +17,8 @@ namespace NinaPm.Nina.Sequencer;
 /// Eine Laufzeit je NINA-Prozess für die Sequenz-Bausteine (execution.md §1): <c>ninapm.db</c>, API-Zugang aus den
 /// Plugin-Optionen des aktiven Profils, <see cref="NightRunner"/> mit dem NINA-Adapter. Container, Bedingung
 /// <em>Nachtschleife</em> und Anweisung <em>Warten bis sicher oder Nachtende</em> teilen sie. Neu aufgebaut, wenn sich
-/// Server-URL oder Token ändern.
+/// Server-URL oder Token ändern. Der Heartbeat läuft im Hintergrund, solange die Laufzeit besteht – unabhängig von der
+/// Sequenz (execution.md §6, AP-16e); nach jedem Takt sendet die Outbox.
 /// </summary>
 internal sealed class NinaPmRuntime : IDisposable
 {
@@ -24,6 +26,7 @@ internal sealed class NinaPmRuntime : IDisposable
     private static NinaPmRuntime? current;
 
     private readonly NinaApi api;
+    private readonly CancellationTokenSource heartbeatStop = new();
 
     private NinaPmRuntime(PluginOptions options, Uri apiBase, string token, NinaHost host)
     {
@@ -33,11 +36,49 @@ internal sealed class NinaPmRuntime : IDisposable
         Log = new NinaPmLog(NinaLogSink.Instance);
         Store = LocalStore.Open(LocalStore.DefaultPath(), clock);
         api = new NinaApi(apiBase, token, NinaPmPlugin.PluginVersion);
-        Runner = new NightRunner(new NinaPlanApi(api.Client), new NinaSessionApi(api.Client), Store, host, host, clock, Log)
+        var sessionApi = new NinaSessionApi(api.Client);
+        Runner = new NightRunner(new NinaPlanApi(api.Client), sessionApi, Store, host, host, clock, Log)
         {
             Executor = new BlockExecutor(host, clock, Log) { Mode = PlaybackModeSequential },
         };
         host.Runtime = this;
+        Outbox = new OutboxSender(Store, sessionApi, Log);
+        Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
+            clock, Log, NinaPmPlugin.PluginVersion);
+        _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
+    }
+
+    public OutboxSender Outbox { get; }
+
+    public HeartbeatService Heartbeat { get; }
+
+    /// <summary>60-s-Takt; ein Fehler beendet den Takt nie (TickAsync wirft nicht, hier nur zur Sicherheit).</summary>
+    private async Task HeartbeatLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await Heartbeat.TickAsync(token).ConfigureAwait(false);
+                await Task.Delay(HeartbeatService.Interval, token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                NINA.Core.Utility.Logger.Warning($"NINA-PM: Heartbeat: {ex.Message}");
+                try
+                {
+                    await Task.Delay(HeartbeatService.Interval, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
+        }
     }
 
     // AP-16c: Playback sequenziell (Brief); zeitgeführt mit gemessenem Verzug folgt mit AP-16f.
@@ -107,7 +148,9 @@ internal sealed class NinaPmRuntime : IDisposable
 
     public void Dispose()
     {
+        heartbeatStop.Cancel();
         api.Dispose();
         Store.Dispose();
+        heartbeatStop.Dispose();
     }
 }

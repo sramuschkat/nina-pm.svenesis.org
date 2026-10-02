@@ -14,6 +14,33 @@ public sealed record BlockOutcome(bool Started, string Reason, int Exposures, in
     public bool NeedsReplan => Playback.NeedsReplan(SkippedTimeAware);
 }
 
+/// <summary>Soll der Kamera (Rig <c>camera.setpointC</c>, <c>toleranceC</c>; NT-E2).</summary>
+public sealed record CoolingTarget(double SetpointC, double ToleranceC);
+
+/// <summary>
+/// Kühlung nur prüfen und warnen (NT-E2, §4.1 Nr. 3): abweichend, wenn der Kühler aus ist oder
+/// <c>|Temperatur − Soll| &gt; Toleranz</c>; ohne Soll bzw. ohne Messwert keine Abweichung.
+/// </summary>
+public static class CoolingCheck
+{
+    public static bool Deviates(CoolingTarget? target, CameraCooling reading)
+    {
+        if (target is null) return false;
+        if (!reading.CoolerOn) return true;
+        return reading.TemperatureC is { } t && !double.IsNaN(t) && Math.Abs(t - target.SetpointC) > target.ToleranceC;
+    }
+}
+
+/// <summary>
+/// Zusätze für einen Block: Prüfung im Block alle 15 min (§3.2), Kühlungs-Soll mit Warnung höchstens einmal je Block
+/// (NT-E2) und ein Abbruchgrund vor jeder Belichtung (z. B. <c>lease_lost</c>, §6).
+/// </summary>
+public sealed record BlockRunOptions(
+    Func<Entries, CancellationToken, Task<string?>>? InBlockCheck = null,
+    CoolingTarget? Cooling = null,
+    Action<Blocks>? TemperatureWarning = null,
+    Func<string?>? StopReason = null);
+
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
 /// <see cref="IBlockHost"/>: Vorprüfungen (vorbei, ohne Belichtung, nicht machbar), Warten auf den Blockstart, Ziel
@@ -40,8 +67,21 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// der laufenden Belichtung mit diesem Grund.
     /// </summary>
     public async Task<BlockOutcome> RunAsync(Blocks block, DateTimeOffset? darknessEndUtc, CancellationToken token,
-        Func<Entries, CancellationToken, Task<string?>>? inBlockCheck = null)
+        BlockRunOptions? options = null)
     {
+        options ??= new BlockRunOptions();
+        var temperatureWarned = false;
+        bool CheckCooling()
+        {
+            var deviates = CoolingCheck.Deviates(options.Cooling, host.ReadCooling());
+            if (deviates && !temperatureWarned)
+            {
+                temperatureWarned = true;
+                log.Warning("WARNING", ("code", "camera_temperature"), ("block", block.Id));
+                options.TemperatureWarning?.Invoke(block);
+            }
+            return deviates;
+        }
         var skip = PreCheck(block);
         if (skip is not null) return Skip(block, skip);
 
@@ -55,10 +95,11 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             return Skip(block, "center_failed");
 
         log.Event("BLOCK_START", ("id", block.Id), ("atUtc", clock.UtcNow));
+        CheckCooling();
         await host.BeforeTargetChangeAsync(token).ConfigureAwait(false);
         await host.StartGuidingAsync(token).ConfigureAwait(false);
 
-        var (reason, exposures, skipped) = await EntriesAsync(block, darknessEndUtc, inBlockCheck, token).ConfigureAwait(false);
+        var (reason, exposures, skipped) = await EntriesAsync(block, darknessEndUtc, options, CheckCooling, token).ConfigureAwait(false);
 
         await host.AfterTargetChangeAsync(token).ConfigureAwait(false);
         log.Event("BLOCK_END", ("id", block.Id), ("reason", reason));
@@ -103,8 +144,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// folgenden <c>meridian_flip</c>; <c>autofocus_hint</c> und Slew-Einträge sind Zeitmarken.
     /// </summary>
     private async Task<(string Reason, int Exposures, int Skipped)> EntriesAsync(Blocks block, DateTimeOffset? darknessEndUtc,
-        Func<Entries, CancellationToken, Task<string?>>? inBlockCheck, CancellationToken token)
+        BlockRunOptions options, Func<bool> checkCooling, CancellationToken token)
     {
+        var inBlockCheck = options.InBlockCheck;
         var entries = block.Entries;
         var lastCheck = clock.UtcNow;
         var cursor = -1;
@@ -135,13 +177,15 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 cursor = target - 1;
                 continue;
             }
+            if (options.StopReason?.Invoke() is { } stop) return (stop, exposures, skippedTotal);
             if (inBlockCheck is not null && ReplanPolicy.InBlockCheckDue(lastCheck, clock.UtcNow))
             {
                 lastCheck = clock.UtcNow;
                 var end = await inBlockCheck(entries[target], token).ConfigureAwait(false);
                 if (end is not null) return (end, exposures, skippedTotal);
             }
-            var result = await host.ExposeAsync(block, entries[target], token).ConfigureAwait(false);
+            var deviation = checkCooling();
+            var result = await host.ExposeAsync(block, entries[target], deviation, token).ConfigureAwait(false);
             if (result == ExposureResult.Saved) exposures++;
             cursor = target;
         }

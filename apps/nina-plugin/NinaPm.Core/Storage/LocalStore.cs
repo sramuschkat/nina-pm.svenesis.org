@@ -74,6 +74,12 @@ public sealed class LocalStore : IDisposable
     private readonly SqliteConnection connection;
     private readonly IClock clock;
 
+    /// <summary>
+    /// Eine Verbindung für Sequenz und Heartbeat-Takt (AP-16e): <c>SqliteConnection</c> ist nicht threadsicher, jeder
+    /// Zugriff läuft unter dieser Sperre (Transaktionen und Lesevorgänge als Ganzes; die Sperre ist wiedereintrittsfähig).
+    /// </summary>
+    private readonly object gate = new();
+
     private LocalStore(SqliteConnection connection, IClock clock)
     {
         this.connection = connection;
@@ -117,6 +123,11 @@ public sealed class LocalStore : IDisposable
     /// <summary>Wendet alle fehlenden Migrationen an, jede in einer eigenen Transaktion.</summary>
     public void Migrate()
     {
+        lock (gate) MigrateLocked();
+    }
+
+    private void MigrateLocked()
+    {
         var version = SchemaVersion;
         if (version > LatestVersion)
             throw new InvalidOperationException(
@@ -150,6 +161,11 @@ public sealed class LocalStore : IDisposable
 
     public CacheEntry? GetCache(string key)
     {
+        lock (gate) return GetCacheLocked(key);
+    }
+
+    private CacheEntry? GetCacheLocked(string key)
+    {
         using var cmd = Command("SELECT value, etag, updated_utc FROM cache WHERE key = $key", null, ("$key", key));
         using var r = cmd.ExecuteReader();
         if (!r.Read()) return null;
@@ -180,11 +196,51 @@ public sealed class LocalStore : IDisposable
     /// <summary>Noch nicht mit 2xx quittierte Meldungen einer Art in FIFO-Reihenfolge (Dead-Letter liegt getrennt).</summary>
     public IReadOnlyList<string> OutboxPayloads(string kind)
     {
+        lock (gate) return OutboxPayloadsLocked(kind);
+    }
+
+    private List<string> OutboxPayloadsLocked(string kind)
+    {
         using var cmd = Command("SELECT payload FROM outbox WHERE kind = $kind ORDER BY id", null, ("$kind", kind));
         using var r = cmd.ExecuteReader();
         var list = new List<string>();
         while (r.Read()) list.Add(r.GetString(0));
         return list;
+    }
+
+    /// <summary>Die ältesten Einträge in FIFO-Reihenfolge (höchstens <paramref name="max"/>) zum Senden (AP-16e).</summary>
+    public IReadOnlyList<OutboxEntry> OutboxPeek(int max)
+    {
+        lock (gate) return OutboxPeekLocked(max);
+    }
+
+    private List<OutboxEntry> OutboxPeekLocked(int max)
+    {
+        using var cmd = Command("SELECT id, kind, session_id, payload FROM outbox ORDER BY id LIMIT $max", null, ("$max", max));
+        using var r = cmd.ExecuteReader();
+        var list = new List<OutboxEntry>();
+        while (r.Read())
+            list.Add(new OutboxEntry(r.GetInt64(0), r.GetString(1), r.IsDBNull(2) ? null : Guid.Parse(r.GetString(2)), r.GetString(3)));
+        return list;
+    }
+
+    /// <summary>Mit 2xx quittierte Einträge entfernen und in <c>sent_history</c> festhalten (eine Transaktion).</summary>
+    public void OutboxAcknowledge(IReadOnlyList<OutboxEntry> entries)
+    {
+        lock (gate) OutboxAcknowledgeLocked(entries);
+    }
+
+    private void OutboxAcknowledgeLocked(IReadOnlyList<OutboxEntry> entries)
+    {
+        using var tx = connection.BeginTransaction();
+        var now = UtcText.Format(clock.UtcNow);
+        foreach (var e in entries)
+        {
+            Execute("INSERT INTO sent_history (kind, session_id, payload, sent_utc) VALUES ($kind, $session, $payload, $now)", tx,
+                ("$kind", e.Kind), ("$session", e.SessionId?.ToString()), ("$payload", e.Payload), ("$now", now));
+            Execute("DELETE FROM outbox WHERE id = $id", tx, ("$id", e.Id));
+        }
+        tx.Commit();
     }
 
     /// <summary>Anzahl noch nicht quittierter Meldungen (<c>outboxPending</c> im Abschluss-<c>PATCH</c>, NIN5-7).</summary>
@@ -193,6 +249,11 @@ public sealed class LocalStore : IDisposable
     // ---- intern ---------------------------------------------------------------------------------------
 
     internal IReadOnlyList<string> TableNames()
+    {
+        lock (gate) return TableNamesLocked();
+    }
+
+    private List<string> TableNamesLocked()
     {
         using var cmd = Command("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
         using var r = cmd.ExecuteReader();
@@ -203,14 +264,20 @@ public sealed class LocalStore : IDisposable
 
     internal object? Scalar(string sql, params (string Name, object? Value)[] parameters)
     {
-        using var cmd = Command(sql, null, parameters);
-        return cmd.ExecuteScalar();
+        lock (gate)
+        {
+            using var cmd = Command(sql, null, parameters);
+            return cmd.ExecuteScalar();
+        }
     }
 
     private void Execute(string sql, SqliteTransaction? tx = null, params (string Name, object? Value)[] parameters)
     {
-        using var cmd = Command(sql, tx, parameters);
-        cmd.ExecuteNonQuery();
+        lock (gate)
+        {
+            using var cmd = Command(sql, tx, parameters);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     private SqliteCommand Command(string sql, SqliteTransaction? tx = null, params (string Name, object? Value)[] parameters)
@@ -222,8 +289,14 @@ public sealed class LocalStore : IDisposable
         return cmd;
     }
 
-    public void Dispose() => connection.Dispose();
+    public void Dispose()
+    {
+        lock (gate) connection.Dispose();
+    }
 }
+
+/// <summary>Ein Eintrag der Outbox (FIFO über <see cref="Id"/>).</summary>
+public sealed record OutboxEntry(long Id, string Kind, Guid? SessionId, string Payload);
 
 /// <summary>Zwischengespeicherte Antwort (Bootstrap, Targets, letzter Plan) mit ETag und Zeitpunkt.</summary>
 public sealed record CacheEntry(string Value, string? Etag, DateTimeOffset UpdatedUtc);

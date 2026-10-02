@@ -13,6 +13,9 @@ public enum ExposureResult
     Skipped,
 }
 
+/// <summary>Kühlung der Kamera jetzt (NT-E2): Kühler an und Sensortemperatur (<c>null</c> = unbekannt).</summary>
+public sealed record CameraCooling(bool CoolerOn, double? TemperatureC);
+
 /// <summary>Ergebnis eines Zentrier-Versuchs (§4.1 Nr. 5).</summary>
 public sealed record CenterResult(bool Success, string? Error = null);
 
@@ -48,8 +51,14 @@ public interface IBlockHost
 
     Task ChangeFilterAsync(Entries entry, CancellationToken token);
 
-    /// <summary>Interne Belichtung (<c>IExposureItem</c>), Gain/Offset <c>null</c> → <c>-1</c> (NT-38).</summary>
-    Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, CancellationToken token);
+    /// <summary>
+    /// Interne Belichtung (<c>IExposureItem</c>), Gain/Offset <c>null</c> → <c>-1</c> (NT-38); die Aufnahme wird mit
+    /// <paramref name="temperatureDeviation"/> gemeldet (NT-E2).
+    /// </summary>
+    Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token);
+
+    /// <summary>Kühlung jetzt (Kühler an, Sensortemperatur) für die Prüfung vor Blockstart und vor jeder Belichtung.</summary>
+    CameraCooling ReadCooling();
 
     Task DitherAsync(CancellationToken token);
 

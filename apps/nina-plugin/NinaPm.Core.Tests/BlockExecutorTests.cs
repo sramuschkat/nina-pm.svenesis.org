@@ -182,4 +182,47 @@ public sealed class BlockExecutorTests
         await executor.RunAsync(block, null, default);
         Assert.Contains("delay:2026-09-18T07:47:58.000Z", nina.Calls);
     }
+
+    // ---- Kühlung nur warnen (AP-16e, NT-E2) ----------------------------------------------------------------
+
+    [Fact]
+    public async Task Kuehlung_abweichend_genau_eine_Warnung_je_Block_alle_Aufnahmen_markiert()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Cooling = new CameraCooling(true, -6.0); // Soll −10 °C, Toleranz 1 °C
+        var warnings = 0;
+
+        var outcome = await executor.RunAsync(Regular(), T("2026-09-18T11:30:42Z"), default,
+            new BlockRunOptions(Cooling: new CoolingTarget(-10, 1), TemperatureWarning: _ => warnings++));
+
+        Assert.Equal(17, outcome.Exposures); // weiter belichten
+        Assert.All(nina.Deviations, Assert.True);
+        Assert.Equal(1, warnings);
+        Assert.Single(sink.Lines, l => l.Contains("WARNING code=camera_temperature"));
+    }
+
+    [Theory]
+    [InlineData(true, -10.6, false)]
+    [InlineData(true, null, false)] // ohne Messwert keine Abweichung
+    [InlineData(false, -10.0, true)] // Kühler aus
+    public async Task Kuehlung_in_Toleranz_bzw_Kuehler_aus(bool coolerOn, double? temperature, bool deviates)
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Cooling = new CameraCooling(coolerOn, temperature);
+
+        await executor.RunAsync(Regular(), T("2026-09-18T11:30:42Z"), default, new BlockRunOptions(Cooling: new CoolingTarget(-10, 1)));
+
+        Assert.All(nina.Deviations, d => Assert.Equal(deviates, d));
+        Assert.Equal(deviates ? 1 : 0, sink.Lines.Count(l => l.Contains("camera_temperature")));
+    }
+
+    [Fact]
+    public async Task Ohne_Soll_keine_Pruefung()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Cooling = new CameraCooling(false, 20);
+        await executor.RunAsync(Regular(), T("2026-09-18T11:30:42Z"), default);
+        Assert.All(nina.Deviations, Assert.False);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("camera_temperature"));
+    }
 }

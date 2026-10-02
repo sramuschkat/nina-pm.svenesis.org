@@ -4,6 +4,8 @@ using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Execution;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
+using NinaPm.Core.Reporting;
+using NinaPm.Core.Session;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
 using Xunit;
@@ -29,6 +31,7 @@ public sealed class NightRunnerTests : IDisposable
     {
         nina = new FakeNina(clock);
         store = LocalStore.Open(Path.Combine(dir.FullName, "ninapm.db"), clock);
+        api.Now = () => clock.UtcNow;
     }
 
     public void Dispose()
@@ -81,6 +84,41 @@ public sealed class NightRunnerTests : IDisposable
         {
             Patches.Add((sessionId, body));
             return Task.FromResult(new NinaSessionPatched { SessionId = sessionId });
+        }
+
+        /// <summary>Meldungen (captures/events) scheitern mit Netzfehler, solange gesetzt.</summary>
+        public bool ReportsFail { get; set; }
+        public List<(Guid Session, NinaCaptureBatch Batch)> CaptureBatches { get; } = [];
+        public List<(Guid Session, NinaEventBatch Batch)> EventBatches { get; } = [];
+        public List<NinaHeartbeat> Heartbeats { get; } = [];
+        /// <summary>Antwort auf den Heartbeat; Standard: Serverzeit = Testuhr, Lease gehalten.</summary>
+        public Func<NinaHeartbeat, NinaHeartbeatResponse>? OnHeartbeat { get; set; }
+
+        public Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token)
+        {
+            if (Offline || ReportsFail) throw new HttpRequestException("offline");
+            CaptureBatches.Add((sessionId, body));
+            return Task.CompletedTask;
+        }
+
+        public Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token)
+        {
+            if (Offline || ReportsFail) throw new HttpRequestException("offline");
+            EventBatches.Add((sessionId, body));
+            return Task.CompletedTask;
+        }
+
+        public Task<NinaHeartbeatResponse> HeartbeatAsync(NinaHeartbeat body, CancellationToken token)
+        {
+            if (Offline) throw new HttpRequestException("offline");
+            Heartbeats.Add(body);
+            return Task.FromResult(OnHeartbeat?.Invoke(body) ?? new NinaHeartbeatResponse
+            {
+                ServerTimeUtc = Now?.Invoke() ?? DateTimeOffset.UnixEpoch,
+                Lease = new Lease { LeaseLost = false },
+                SettingsVersion = 0,
+                TargetsEtag = "\"t-9b41\"",
+            });
         }
     }
 
@@ -278,6 +316,130 @@ public sealed class NightRunnerTests : IDisposable
         Assert.DoesNotContain(sink.Lines, l => l.Contains("reason=target_removed"));
         Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.Contains("reason=completed"));
         Assert.Single(api.Plans); // im Block kein neuer Plan; das neue ETag sieht die Neuplanung vor dem nächsten Block
+    }
+
+    // ---- Heartbeat, Lease, Outbox, Meldungen (AP-16e, execution.md §4.3/§6) ------------------------------------
+
+    private sealed class NoSettings : INinaSettingsSource
+    {
+        public NinaHeartbeat Snapshot() => new();
+    }
+
+    private HeartbeatService Heartbeat(NightRunner runner) =>
+        new(api, runner, new NoSettings(), new OutboxSender(store, api, new NinaPmLog(sink)), clock, new NinaPmLog(sink), "0.2.0");
+
+    private CaptureFacts Facts(NightRunner runner, int n)
+    {
+        var plan = PlanStore.Load(store, "2026-09-17")!.Plan;
+        var block = plan.Blocks[1];
+        var entry = block.Entries.First(e => e.Cmd == EntriesCmd.Expose);
+        var start = UtcText.Parse("2026-09-18T07:42:40Z").AddMinutes(5 * n);
+        return new CaptureFacts(Guid.NewGuid(), plan.Night, plan.NightPlanId, block, entry, start, start.AddSeconds(150),
+            "Ha 3nm", 300, null, null, 1, null, null, 0, CapturesPierSide.West, false, null);
+    }
+
+    [Fact]
+    public async Task Heartbeat_meldet_Zustand_und_Session_unabhaengig_von_der_Sequenz()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await hb.TickAsync(default); // vor dem ersten Aufruf: ohne Session
+        await runner.RunOnceAsync(default); // Plan + Session
+        await hb.TickAsync(default);
+
+        Assert.Null(api.Heartbeats[0].SessionId);
+        Assert.Equal(NinaHeartbeatState.Idle, api.Heartbeats[1].State); // wartet auf den Block
+        Assert.Equal(runner.SessionId, api.Heartbeats[1].SessionId);
+        Assert.Equal("0.2.0", api.Heartbeats[1].PluginVersion);
+        Assert.Equal(LeaseState.Held, runner.Lease.State);
+        Assert.Contains(sink.Lines, l => l.Contains("HEARTBEAT state=idle"));
+    }
+
+    [Fact]
+    public async Task LeaseLost_sperrt_neue_Bloecke_leaseLost_false_holt_die_Lease_zurueck()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        var lost = true;
+        api.OnHeartbeat = _ => new NinaHeartbeatResponse
+        {
+            ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = lost }, SettingsVersion = 0, TargetsEtag = "\"t-9b41\"",
+        };
+
+        await hb.TickAsync(default);
+        Assert.Equal(NinaHeartbeatBlockedReason.Lease_lost, runner.Loop.Blocked);
+        Assert.Contains(api.EventBatches.SelectMany(b => b.Batch.Events), e => e.Kind == EventsKind.Lease_lost);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        await runner.RunOnceAsync(default); // gesperrt: 60 s warten statt Block
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("BLOCK_START"));
+
+        lost = false;
+        await hb.TickAsync(default);
+        Assert.Null(runner.Loop.Blocked);
+        Assert.Equal(LeaseState.Held, runner.Lease.State);
+        Assert.Contains(api.EventBatches.SelectMany(b => b.Batch.Events), e => e.Kind == EventsKind.Lease_regained);
+    }
+
+    [Fact]
+    public async Task Drei_Heartbeats_ohne_Antwort_unreachable_Ereignisse_in_Reihenfolge_nachgesendet()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        api.Offline = true;
+        for (var i = 0; i < 3; i++) await hb.TickAsync(default);
+        Assert.Equal(LeaseState.Unreachable, runner.Lease.State);
+        Assert.Null(runner.Loop.Blocked); // Blöcke laufen weiter
+        Assert.Contains(sink.Lines, l => l.Contains("LEASE state=unreachable"));
+
+        api.Offline = false;
+        await hb.TickAsync(default);
+        Assert.Equal(LeaseState.Held, runner.Lease.State);
+        var kinds = api.EventBatches.SelectMany(b => b.Batch.Events).Select(e => e.Kind).ToList();
+        Assert.Equal([EventsKind.Offline_start, EventsKind.Offline_end], kinds);
+    }
+
+    [Fact]
+    public async Task Aufnahmen_in_der_Outbox_FIFO_scheitern_nie_endgueltig_OUTBOX_pending_0()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        var first = Facts(runner, 0);
+        var second = Facts(runner, 1);
+        runner.ReportCapture(first, CapturesResult.Saved, "a.fits");
+        runner.ReportCapture(second, CapturesResult.Failed, null);
+        api.ReportsFail = true;
+
+        await hb.TickAsync(default);
+        Assert.Empty(api.CaptureBatches);
+        Assert.Equal(2, runner.OutboxPending);
+
+        api.ReportsFail = false;
+        await hb.TickAsync(default);
+        Assert.Equal(2, api.Heartbeats[^1].OutboxPending); // Stand beim Senden des Heartbeats
+        var batch = Assert.Single(api.CaptureBatches);
+        Assert.Equal(runner.SessionId, batch.Session);
+        Assert.Equal([first.CaptureId, second.CaptureId], batch.Batch.Captures.Select(c => c.Id));
+        Assert.Equal(first.ExposureMidUtc, batch.Batch.Captures[0].ExposureMidUtc);
+        Assert.Equal((CapturesResult.Saved, "a.fits"), (batch.Batch.Captures[0].Result, batch.Batch.Captures[0].FileName));
+        Assert.Equal(0, runner.OutboxPending);
+        Assert.Contains(sink.Lines, l => l.Contains("OUTBOX pending=0"));
+    }
+
+    [Fact]
+    public async Task Uhrabweichung_ueber_60_s_aus_der_Heartbeat_Antwort_sperrt()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        api.OnHeartbeat = _ => new NinaHeartbeatResponse
+        {
+            ServerTimeUtc = clock.UtcNow.AddMinutes(2), Lease = new Lease { LeaseLost = false }, SettingsVersion = 0, TargetsEtag = "x",
+        };
+        await hb.TickAsync(default);
+        Assert.Equal(NinaHeartbeatBlockedReason.Clock_skew, runner.Loop.Blocked);
     }
 
     [Fact]
