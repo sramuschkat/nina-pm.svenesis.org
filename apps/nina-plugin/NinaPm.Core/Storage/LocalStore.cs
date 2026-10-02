@@ -187,6 +187,9 @@ public sealed class LocalStore : IDisposable
         return list;
     }
 
+    /// <summary>Anzahl noch nicht quittierter Meldungen (<c>outboxPending</c> im Abschluss-<c>PATCH</c>, NIN5-7).</summary>
+    public int OutboxCount() => Convert.ToInt32(Scalar("SELECT COUNT(*) FROM outbox"));
+
     // ---- intern ---------------------------------------------------------------------------------------
 
     internal IReadOnlyList<string> TableNames()
