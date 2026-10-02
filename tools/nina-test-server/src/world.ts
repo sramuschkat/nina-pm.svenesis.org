@@ -63,14 +63,35 @@ export class TestWorld {
 
   // ---- Nacht-Tabelle ------------------------------------------------------------------------------
 
+  /**
+   * Nacht-Tabelle. `current-night` (P-29): echte Tabelle des Standorts. Alle anderen Szenarien laufen relativ zum
+   * Serverstart; ihre Nächte liegen deshalb um die Bezugszeit (Mittag = Bezugszeit ± 12 h, je Nacht + 24 h) und das
+   * Nachtfenster der ersten endet frühestens 1 h nach dem Nachtende des Szenarios – sonst wechselte `currentNight`
+   * mitten im Test, sobald das echte Nachtfenster endet (Lauf 02.10.2026: 13:05Z, neue Session mitten im Block).
+   * Nacht-Schlüssel und `timeZoneTransitions` bleiben die echten.
+   */
   nightTable() {
     const site = {
       latitudeDeg: this.rig.site.latDeg,
       longitudeDeg: this.rig.site.lonDeg,
       timeZone: this.rig.site.timeZone,
     };
-    const noon = noonNightKey(site.timeZone, this.serverTimeS() * 1000);
-    return buildNightTable(site, noon, 60);
+    if (this.scenario.realNight) {
+      return buildNightTable(site, noonNightKey(site.timeZone, this.serverTimeS() * 1000), 60);
+    }
+    const table = buildNightTable(site, noonNightKey(site.timeZone, this.epochS * 1000), 60);
+    const span = this.sessionEndS() - this.epochS + 3600;
+    const nights = table.nights.map((n, i) => {
+      const noonStart = this.epochS - 12 * 3600 + i * 86_400;
+      const windowEnd = Math.min(noonStart + 86_400, noonStart + 12 * 3600 + span);
+      return {
+        ...n,
+        noonStartUtc: iso(noonStart),
+        noonEndUtc: iso(noonStart + 86_400),
+        nightWindowEndUtc: iso(windowEnd),
+      };
+    });
+    return { ...table, nights };
   }
 
   /** Aktuelle und folgende Nacht (NT-01): nur diese nimmt der Server bei Plan und Session an. */

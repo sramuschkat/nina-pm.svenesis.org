@@ -294,6 +294,26 @@ describe('Session, Meldungen und Heartbeat', () => {
   });
 });
 
+describe('Nacht-Tabelle der relativen Szenarien', () => {
+  it('die Nacht wechselt nicht mitten im Test, auch wenn das echte Nachtfenster endet', async () => {
+    // Start 12:54Z (07:54 CDT): das echte Nachtfenster von 2026-10-01 endet 13:05Z.
+    const start = Date.parse('2026-10-02T12:54:27Z') / 1000;
+    const t = setup('one-night', start);
+    const before = t.server.world.validNights()[0] as string;
+    t.advance(60);
+    expect(t.server.world.validNights()[0]).toBe(before);
+    const b = await t.ok('GET', `${P}/bootstrap`);
+    const nights = b.nights as Json[];
+    const current = nights[0] as Json;
+    expect(Date.parse(current.noonStartUtc as string) / 1000).toBe(start - 12 * 3600);
+    expect(Date.parse(current.nightWindowEndUtc as string) / 1000).toBeGreaterThan(
+      Date.parse(
+        ((await t.ok('POST', `${P}/plan`, planRequest(before))) as Json).sessionEndUtc as string,
+      ) / 1000,
+    );
+  });
+});
+
 describe('Pläne der Szenarien', () => {
   it('Blöcke beginnen 2 min nach dem Start, je 1 min Abstand', async () => {
     const t = setup('one-night');
