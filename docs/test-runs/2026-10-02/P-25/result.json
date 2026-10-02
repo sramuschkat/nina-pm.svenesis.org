@@ -1,0 +1,65 @@
+{
+  "protocol": "P-25",
+  "date": "2026-10-02",
+  "pluginVersion": "0.1.0 (#201, Lauf 37047307055)",
+  "ninaVersion": "3.2.0.9001",
+  "server": "nina_test_server",
+  "scenario": "safety",
+  "result": "no_go",
+  "steps": [
+    {
+      "n": 1,
+      "ok": true,
+      "note": "Testkopie von „Eine Nacht mit Safety“ nach der neuen Vorlage (#203, Home-Variante): „Ziel“ [Loop While Safe + NINA-PM Night Loop] mit Set Tracking Sidereal und Container „Blöcke“; „Sicherung“ [Loop While Unsafe + NINA-PM Night Loop]: Stop Guiding → Find Home → Set Tracking Stopped → NINA-PM Wait until Safe or Night End. Szenario safety, Test-Server-Start 19:12:29Z. OmniSim-Safety-Monitor, Sky-Simulator-Kamera/-Montierung."
+    },
+    {
+      "n": 2,
+      "ok": false,
+      "note": "A1 14:19:43 (VM, 19:19:43Z): unsicher → NINA trennt den Monitor → SAFETY_PAUSE, Sicherung: Stop Guiding, Find Home (Sky-Simulator ohne Home – NINA ContinueOnError), Set Tracking Stopped, Warte-Anweisung wartet ruhig (WARNING safety_monitor_not_connected, kein Park/Unpark im Takt), kein SESSION aborted. Nicht belegt: CAPTURE aborted und BLOCK_END interrupted – der Block war mit der Sky-Simulator-Kamera jeweils schon nach ~1 min fertig, keine Belichtung lief; HEARTBEAT paused folgt mit AP-16e."
+    },
+    {
+      "n": 3,
+      "ok": true,
+      "note": "A2 14:21:42: sicher + verbunden → Set Tracking Sidereal am Anfang von „Ziel“ → SAFETY_RESUME → PLAN reason=resume (neue plan=d0d92244…) → BLOCK_START 19:21:54Z nach Slew und Zentrieren (kein center_failed, kein „Telescope is parked“)."
+    },
+    {
+      "n": 4,
+      "ok": true,
+      "note": "B 14:23:40: Benutzer-Stopp → SESSION status=aborted pending=0 (Report patches aborted 19:23:40Z); Neustart 14:24:46 → PLAN reason=initial + neue Session 01a0fe13… (Report: zwei Sessions). HEARTBEAT idle folgt mit AP-16e."
+    },
+    {
+      "n": 5,
+      "ok": false,
+      "note": "Lauf „unsicher bis Nachtende“ nicht gefahren (Sven hat nach dem dritten Unsicher-Wechsel 14:29:43 abgebrochen). Abdeckung: Kern-Test Unsicher_bis_Nachtende_schliesst_die_Nacht_ohne_Wiederaufnahme; Verlassen der Container und Ende-Bereich nach dem Nachtende im P-05-Lauf desselben Tages gesehen."
+    },
+    {
+      "n": 6,
+      "ok": true,
+      "note": "D 14:26:02–14:28:07: Monitor getrennt (OmniSim trennt beim Umschalten ohnehin) → Sicherung, Warte-Anweisung wartet, keine Wiederholung von Home/Tracking im Takt; nach Verbinden und sicher 14:28:09 SAFETY_RESUME, PLAN resume, BLOCK_START 19:28:16Z."
+    }
+  ],
+  "logCheck": {
+    "status": "fail",
+    "missing": [
+      "CAPTURE result=aborted",
+      "BLOCK_END reason=interrupted",
+      "HEARTBEAT state=paused",
+      "SESSION status=finished reason=unsafe"
+    ],
+    "unexpected": []
+  },
+  "deviations": [
+    "Teil-Lauf: Schritt 5 (unsicher bis Nachtende) nicht gefahren; Abbruch während einer Belichtung mit der Sky-Simulator-Kamera nicht erreichbar (Belichtungszeit wird ignoriert). Belichtungsabbruch in NINA ist durch P-03 (AP-S2b) belegt.",
+    "Heartbeat (HEARTBEAT paused/idle) folgt mit AP-16e; heartbeats.count = 0.",
+    "Sky-Simulator-Montierung kann kein Find Home („does not have a home location capability“) – NINA setzte fort (ContinueOnError); am Starfront-Rig vorhanden.",
+    "Erster Start (14:14): Montierung vom vorigen Versuch noch geparkt, Unpark Scope fehlte in der Start-Area der Testkopie → center_failed, Benutzer-Stopp, manuell entparkt (14:14:51), PATCH der alten Session 409 (Test-Server neu gestartet). Danach regulär.",
+    "Set Tracking Sidereal lief nach jedem Block – in der Testkopie vermutlich in „Blöcke“ statt davor; harmlos ohne Wartezeiten, beim Neubau der Beispielsequenz beachten.",
+    "OmniSim trennt den Safety-Monitor bei jedem Umschalten; nach jedem Umschalten in NINA neu verbunden.",
+    "Testrechner: Windows 11 ARM64 (VMware), NINA-Ortszeit CDT (UTC−5)."
+  ],
+  "artifacts": [
+    "nina.log",
+    "nina-app-safety.log",
+    "test-server-report.json"
+  ]
+}
