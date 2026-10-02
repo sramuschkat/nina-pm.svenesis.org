@@ -158,7 +158,8 @@ public sealed class NightRunner(
         var stale = stateNight is not null && NightCalendar.IsSessionStale(stateNight, nights, clock.UtcNow, null);
         var hasSession = SessionId is not null && !stale;
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
-            FlatsEnabled: false, FlatsPending: false, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession);
+            FlatsEnabled: false, FlatsPending: false, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
+            DoneBlocks: DoneBlocks(stored));
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp (initial) online neu planen, solange die
         // Nacht läuft; offline gilt danach der gespeicherte Plan.
@@ -171,7 +172,7 @@ public sealed class NightRunner(
         switch (step.Action)
         {
             case NightAction.ResetStaleSession:
-                foreach (var key in new[] { StateKeys.SessionId, StateKeys.NightPlanId, StateKeys.BlockIndex, StateKeys.Night })
+                foreach (var key in new[] { StateKeys.SessionId, StateKeys.NightPlanId, StateKeys.BlockIndex, StateKeys.Night, StateKeys.DoneBlocks })
                     store.SetState(key, null);
                 TonightLog.Clear(store);
                 Loop.NewNight();
@@ -219,6 +220,7 @@ public sealed class NightRunner(
         {
             var plan = outcome.Plan!;
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
+            store.SetState(StateKeys.DoneBlocks, null);
             Loop.PlanReceived(plan.Blocks.Count > 0);
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             return;
@@ -335,6 +337,8 @@ public sealed class NightRunner(
         {
             var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token).ConfigureAwait(false);
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
+            // Gelaufen oder übersprungen: in diesem Plan nicht noch einmal (Unterbrechung → neuer Plan, §4.6).
+            MarkDone(stored, block.Id);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -343,11 +347,41 @@ public sealed class NightRunner(
             cancelHandled = true;
             throw;
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Unbehandelter Fehler im Block (§4.1, Grund error): Block beenden und als erledigt markieren, damit NINA
+            // den Container nicht in eine Fehlerschleife über denselben Block schickt; die Nacht läuft weiter.
+            log.Event("BLOCK_END", ("id", block.Id), ("reason", "error"));
+            log.Warning("ERROR", ("code", "block_failed"), ("block", block.Id));
+            log.Note($"Block {block.Id}: {ex.GetType().Name}: {ex.Message}");
+            RecordBlockEnd(unit, startedAt);
+            MarkDone(stored, block.Id);
+        }
         finally
         {
             runningBlock = null;
         }
     }
+
+    // ---- erledigte Blöcke je Plan ------------------------------------------------------------------------
+
+    /// <summary>Erledigte Blöcke des gespeicherten Plans (<c>state.doneBlocks</c>: <c>nightPlanId</c> + IDs, übersteht Neustarts).</summary>
+    private HashSet<Guid> DoneBlocks(StoredPlan? stored)
+    {
+        var json = store.GetState(StateKeys.DoneBlocks);
+        if (stored is null || json is null) return [];
+        var done = JsonConvert.DeserializeObject<DoneBlocksState>(json);
+        return done?.NightPlanId == stored.Plan.NightPlanId ? [.. done.Blocks] : [];
+    }
+
+    private void MarkDone(StoredPlan stored, Guid blockId)
+    {
+        var done = DoneBlocks(stored);
+        done.Add(blockId);
+        store.SetState(StateKeys.DoneBlocks, JsonConvert.SerializeObject(new DoneBlocksState(stored.Plan.NightPlanId, [.. done])));
+    }
+
+    private sealed record DoneBlocksState(Guid NightPlanId, List<Guid> Blocks);
 
     // ---- tonight (allocation.md §5.3) -----------------------------------------------------------------
 

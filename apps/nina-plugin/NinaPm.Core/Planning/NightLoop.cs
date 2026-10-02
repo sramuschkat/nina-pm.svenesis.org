@@ -55,7 +55,13 @@ public sealed record NightContext(
     bool FlatsEnabled,
     bool FlatsPending,
     /// <summary>Erster Aufruf nach einem Neustart mit Session aus <c>ninapm.db</c> → <c>reason: resume</c>.</summary>
-    bool Resuming = false);
+    bool Resuming = false,
+    /// <summary>
+    /// Blöcke des gespeicherten Plans, die schon ausgeführt oder übersprungen wurden. Ein Block läuft je Plan höchstens
+    /// einmal – auch wenn seine Einträge vor <c>endUtc</c> abgearbeitet sind (Lauf 02.10.2026: Block 1703-mal neu
+    /// gestartet, kurz vor dem Ende in Dauerschleife).
+    /// </summary>
+    IReadOnlySet<Guid>? DoneBlocks = null);
 
 /// <summary>
 /// Nachtschleife als Zustandsmaschine (NT-11, NIN-6, NIN5-2, execution.md §2, TK 10.3 Nr. 3/10) – reine Logik ohne NINA:
@@ -128,7 +134,7 @@ public sealed class NightLoop
 
         if (plan is null) return FetchOrIdle(c, c.Resuming ? NinaPlanRequestReason.Resume : NinaPlanRequestReason.Initial);
 
-        var index = ReplanPolicy.NextBlockIndex(plan.Blocks, c.Now);
+        var index = NextOpenBlock(plan.Blocks, c.Now, c.DoneBlocks);
         // Leerer Plan bzw. alle Blöcke vorbei, Nacht läuft noch: alle 5 min neu planen (Heartbeat idle).
         if (index < 0) return FetchOrIdle(c, NinaPlanRequestReason.Refresh, nightEnd);
 
@@ -137,6 +143,14 @@ public sealed class NightLoop
         return start > c.Now
             ? new NightStep(NightAction.WaitForBlock, index, start)
             : new NightStep(NightAction.RunBlock, index);
+    }
+
+    /// <summary>Erster Block mit <c>endUtc &gt; now</c>, der in diesem Plan noch nicht gelaufen ist; -1 ohne.</summary>
+    public static int NextOpenBlock(IReadOnlyList<Blocks> blocks, DateTimeOffset now, IReadOnlySet<Guid>? done)
+    {
+        for (var i = 0; i < blocks.Count; i++)
+            if (blocks[i].EndUtc > now && (done is null || !done.Contains(blocks[i].Id))) return i;
+        return -1;
     }
 
     private NightStep FetchOrIdle(NightContext c, NinaPlanRequestReason reason, DateTimeOffset? notAfter = null)

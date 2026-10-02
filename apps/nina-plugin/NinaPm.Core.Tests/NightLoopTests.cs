@@ -87,6 +87,21 @@ public sealed class NightLoopTests
     }
 
     [Fact]
+    public void Erledigte_Bloecke_werden_uebersprungen()
+    {
+        var plan = Stored();
+        var transit = plan.Plan.Blocks[0].Id;
+        var regular = plan.Plan.Blocks[1].Id;
+        var loop = new NightLoop();
+
+        var next = loop.Decide(At("2026-09-18T03:00:00Z", plan) with { DoneBlocks = new HashSet<Guid> { transit } });
+        Assert.Equal((NightAction.WaitForBlock, 1), (next.Action, next.BlockIndex));
+
+        var refresh = loop.Decide(At("2026-09-18T08:00:00Z", plan) with { DoneBlocks = new HashSet<Guid> { transit, regular } });
+        Assert.Equal((NightAction.FetchPlan, NinaPlanRequestReason.Refresh), (refresh.Action, refresh.Reason));
+    }
+
+    [Fact]
     public void Alle_Bloecke_vorbei_vor_Dunkelheitsende_alle_5_Minuten_neu_planen_danach_Nachtende()
     {
         var loop = new NightLoop();
