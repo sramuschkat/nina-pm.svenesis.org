@@ -33,6 +33,9 @@ public interface INightHost
 
     /// <summary>Letzter Autofokus aus NINAs AF-Historie in UTC (NT-24, M7), <c>null</c> ohne AF.</summary>
     DateTimeOffset? LastAutofocusUtc { get; }
+
+    /// <summary>Safety-Unterbrechung: der nächste Block slewt und zentriert immer neu (NT-16).</summary>
+    void OnInterrupted();
 }
 
 /// <summary>
@@ -53,6 +56,7 @@ public sealed class NightRunner(
     NinaPmLog log)
 {
     public const string BootstrapCacheKey = "bootstrap";
+    public const string TargetsCacheKey = "targets";
     public static readonly TimeSpan BootstrapMaxAge = TimeSpan.FromDays(7);
 
     private readonly PlanService planService = new(planApi, clock, log);
@@ -80,7 +84,46 @@ public sealed class NightRunner(
 
     public Guid? SessionId => Guid.TryParse(store.GetState(StateKeys.SessionId), out var id) ? id : null;
 
+    /// <summary>Zuletzt geladener Bootstrap (Nacht-Tabelle, Rig, Filterzuordnung).</summary>
+    public NinaBootstrap? Bootstrap => bootstrap;
+
+    /// <summary>Zuletzt geladene Ziele (Projektnamen, Panels) aus <c>cache.targets</c>.</summary>
+    public NinaTargets? Targets
+    {
+        get
+        {
+            var entry = store.GetCache(TargetsCacheKey);
+            return entry is null ? null : JsonConvert.DeserializeObject<NinaTargets>(entry.Value, NinaJson.Settings());
+        }
+    }
+
     public async Task RunOnceAsync(CancellationToken token)
+    {
+        cancelHandled = false;
+        try
+        {
+            await StepAsync(token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested && !cancelHandled)
+        {
+            // Abbruch außerhalb eines Blocks (Warten auf Blockstart, Sperre, gesperrter Zustand): gleiche Einordnung (§4.6).
+            if (Interruption.Classify(ownCancel: false, nightHost.ReadSafety()) == CancelKind.Interrupt)
+            {
+                log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
+                interrupted = true;
+                nightHost.OnInterrupted();
+            }
+            else if (SessionId is not null)
+            {
+                UserStopped();
+            }
+            throw;
+        }
+    }
+
+    private bool cancelHandled;
+
+    private async Task StepAsync(CancellationToken token)
     {
         var executor = Executor ?? new BlockExecutor(blockHost, clock, log);
         if (interrupted)
@@ -164,9 +207,10 @@ public sealed class NightRunner(
     private async Task FetchPlanAsync(NinaBootstrap b, string night, NinaPlanRequestReason reason, StoredPlan? stored, CancellationToken token)
     {
         Loop.PlanAttempt(clock.UtcNow);
+        var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
         var initial = reason == NinaPlanRequestReason.Initial;
-        var input = new PlanRequestInput(reason, initial ? null : clock.UtcNow, SessionId, stored?.TargetsEtag,
+        var input = new PlanRequestInput(reason, initial ? null : clock.UtcNow, SessionId, etag,
             tonight.ToContract(nightHost.LastAutofocusUtc, initial), PlanService.PendingFromOutbox(store.OutboxPayloads(OutboxKinds.Capture)));
         var outcome = await planService.RequestAsync(b, input, token).ConfigureAwait(false);
         bootstrap = outcome.Bootstrap;
@@ -174,7 +218,7 @@ public sealed class NightRunner(
         if (outcome.Ok)
         {
             var plan = outcome.Plan!;
-            PlanStore.Save(store, new StoredPlan(plan.Night, stored?.TargetsEtag, SettingsVersion(outcome.Bootstrap), plan));
+            PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
             Loop.PlanReceived(plan.Blocks.Count > 0);
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             return;
@@ -191,6 +235,32 @@ public sealed class NightRunner(
     }
 
     private static int SettingsVersion(NinaBootstrap b) => b.Rig.SettingsVersion;
+
+    /// <summary>
+    /// <c>GET /targets</c> mit dem ETag des Caches (execution.md §3.1, NT-19); neue Ziele landen in <c>cache.targets</c>.
+    /// Ohne Verbindung bleibt der Cache, der Planaufbau entscheidet dann über offline (§8).
+    /// </summary>
+    private async Task<string?> RefreshTargetsAsync(CancellationToken token)
+    {
+        var cached = store.GetCache(TargetsCacheKey);
+        try
+        {
+            var (targets, etag) = await planApi.TargetsAsync(cached?.Etag, token).ConfigureAwait(false);
+            log.Event("API", ("status", targets is null ? 304 : 200), ("call", "targets"));
+            if (targets is not null) store.PutCache(TargetsCacheKey, JsonConvert.SerializeObject(targets, NinaJson.Settings()), etag);
+            if (targets is not null || etag != cached?.Etag) log.Event("TARGETS", ("etag", etag ?? ""));
+            return etag;
+        }
+        catch (NinaApiException ex)
+        {
+            log.Warning("API", ("status", ex.StatusCode), ("code", NinaApi.ProblemCode(ex.Response)), ("call", "targets"));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !token.IsCancellationRequested)
+        {
+            log.Warning("API", ("status", 0), ("code", "network"), ("call", "targets"));
+        }
+        return cached?.Etag;
+    }
 
     /// <summary><c>POST /sessions</c> nach dem ersten Plan (Lease, §6); <c>409 session.rig_busy</c> → nur Simulation.</summary>
     private async Task EnsureSessionAsync(NinaPlanResponse plan, CancellationToken token)
@@ -256,19 +326,54 @@ public sealed class NightRunner(
         var block = stored.Plan.Blocks[index];
         store.SetState(StateKeys.BlockIndex, index.ToString(System.Globalization.CultureInfo.InvariantCulture));
         runningBlock = block;
+        var unit = UnitId(block);
+        var startedAt = clock.UtcNow;
+        var tonight = TonightLog.Load(store);
+        tonight.BlockStarted(unit);
+        tonight.Save(store);
         try
         {
-            await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token).ConfigureAwait(false);
+            var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token).ConfigureAwait(false);
+            if (outcome.Started) RecordBlockEnd(unit, startedAt);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
+            RecordBlockEnd(unit, startedAt);
             HandleCancel(block);
+            cancelHandled = true;
             throw;
         }
         finally
         {
             runningBlock = null;
         }
+    }
+
+    // ---- tonight (allocation.md §5.3) -----------------------------------------------------------------
+
+    private void RecordBlockEnd(string unit, DateTimeOffset startedAt)
+    {
+        var tonight = TonightLog.Load(store);
+        tonight.BlockFinished(unit, startedAt, clock.UtcNow);
+        tonight.Save(store);
+    }
+
+    /// <summary>Gespeicherte Light-Aufnahme (nach <c>ImageSaved</c>): Sekunden und Filterzyklus der Einheit fortschreiben.</summary>
+    public void ExposureSaved(Blocks block, Entries entry)
+    {
+        if (entry.ExposureLineId is not { } line) return;
+        var tonight = TonightLog.Load(store);
+        tonight.ExposureSaved(UnitId(block), line, entry.ExposureS ?? 0);
+        tonight.Save(store);
+    }
+
+    /// <summary>Einheiten-ID des Blocks (ENG5-14) aus Targets (Panelzahl, Panel-Index) und Mosaik-Einstellung.</summary>
+    public string UnitId(Blocks block)
+    {
+        var targets = Targets;
+        var project = targets?.Projects.FirstOrDefault(p => p.Id == block.ProjectId);
+        var panel = project?.Panels.FirstOrDefault(p => p.Id == block.PanelId);
+        return TonightLog.UnitId(block.ProjectId, panel?.Index ?? 0, project?.Panels.Count ?? 1, targets?.MosaicPanelsIndependent ?? false);
     }
 
     /// <summary>§4.6: Unterbrechung oder Benutzer-Stopp (eigene Abbrüche kommen mit AP-16d/AP-44).</summary>
@@ -280,6 +385,7 @@ public sealed class NightRunner(
             log.Event("BLOCK_END", ("id", block.Id), ("reason", "interrupted"));
             log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
             interrupted = true;
+            nightHost.OnInterrupted();
             return;
         }
         log.Event("BLOCK_END", ("id", block.Id), ("reason", "user_skip"));

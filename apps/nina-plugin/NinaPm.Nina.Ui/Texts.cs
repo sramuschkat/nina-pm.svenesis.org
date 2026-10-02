@@ -47,4 +47,15 @@ public static class Texts
         $"Profil-Standort {km:0} km vom Rig-Standort entfernt – NINA-Profil prüfen.",
         $"Profile location is {km:0} km from the rig site – check the NINA profile.");
     public static string SiteUnknown => T("Profil-Standort unbekannt", "Profile location unknown");
+
+    // ---- Sequenz-Bausteine (execution.md §1) ----
+    public static string ContainerHint => T(
+        "Führt den NINA-PM-Plan aus: je Aufruf ein Block. Bedingungen an den umgebenden Container hängen.",
+        "Runs the NINA-PM plan: one block per call. Put conditions on the surrounding container.");
+    public static string NightLoopHint => T(
+        "Wahr bis zum Nachtende der NINA-PM-Nacht.",
+        "True until the NINA-PM night ends.");
+    public static string SafetyWaitHint => T(
+        "Wartet bis sicher, höchstens bis zum Nachtende; danach wird die Nacht abgeschlossen.",
+        "Waits until safe, at most until the night end; then the night is closed.");
 }

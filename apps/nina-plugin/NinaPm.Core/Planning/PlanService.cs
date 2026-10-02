@@ -12,6 +12,9 @@ public interface IPlanApi
     Task<NinaBootstrap> BootstrapAsync(CancellationToken token);
 
     Task<NinaPlanResponse> PlanAsync(NinaPlanRequest request, CancellationToken token);
+
+    /// <summary><c>GET /targets</c> mit <c>If-None-Match</c>; <c>null</c> bei <c>304</c> (unverändert).</summary>
+    Task<(NinaTargets? Targets, string? Etag)> TargetsAsync(string? etag, CancellationToken token);
 }
 
 /// <summary><see cref="IPlanApi"/> über den generierten Client.</summary>
@@ -20,6 +23,19 @@ public sealed class NinaPlanApi(NinaApiClient client) : IPlanApi
     public Task<NinaBootstrap> BootstrapAsync(CancellationToken token) => client.ApiNinaV1BootstrapAsync(token);
 
     public Task<NinaPlanResponse> PlanAsync(NinaPlanRequest request, CancellationToken token) => client.ApiNinaV1PlanAsync(request, token);
+
+    public async Task<(NinaTargets? Targets, string? Etag)> TargetsAsync(string? etag, CancellationToken token)
+    {
+        try
+        {
+            var targets = await client.ApiNinaV1TargetsAsync(etag, token).ConfigureAwait(false);
+            return (targets, client.LastEtag ?? etag);
+        }
+        catch (NinaApiException ex) when (ex.StatusCode == 304)
+        {
+            return (null, etag);
+        }
+    }
 }
 
 /// <summary>Eingaben je Planaufbau (execution.md §3.1/§3.2).</summary>

@@ -36,6 +36,9 @@ public sealed class PlanServiceTests
             Requests.Add(request);
             return Task.FromResult(PlanReplies.Dequeue()(request));
         }
+
+        public Task<(NinaTargets? Targets, string? Etag)> TargetsAsync(string? etag, CancellationToken token) =>
+            Task.FromResult<(NinaTargets?, string?)>((Example<NinaTargets>("targets.response"), "\"t-9b41\""));
     }
 
     private static NinaApiException Problem(int status, string code) =>

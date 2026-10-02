@@ -1,0 +1,51 @@
+<ResourceDictionary
+    x:Class="NinaPm.Nina.Ui.Sequencer.SequencerTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:NinaPm.Nina.Ui"
+    xmlns:view="clr-namespace:NINA.View.Sequencer;assembly=NINA.Sequencer"
+    xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer">
+    <!--
+        Ansichten der Sequenz-Bausteine (execution.md §1). Ohne DataType, weil diese Assembly die Typen aus NinaPm.Nina
+        nicht kennt (NinaPm.Nina referenziert NinaPm.Nina.Ui); NinaPmResources ordnet die Schlüssel "NinaPm.*" den Typen
+        zu (DataTemplateKey). Die Mini-Ansichten sucht NINA selbst über den Schlüssel "<voller Typname>_Mini".
+    -->
+    <DataTemplate x:Key="NinaPm.Container">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <TextBlock VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.ContainerHint}" />
+            </view:SequenceBlockView.SequenceItemContent>
+            <view:SequenceBlockView.SequenceItemProgressContent>
+                <TextBlock VerticalAlignment="Center" Text="{Binding Target.TargetName}" />
+            </view:SequenceBlockView.SequenceItemProgressContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.NightLoopCondition">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <TextBlock VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.NightLoopHint}" />
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.NightLoopCondition_Mini">
+        <mini:MiniCondition />
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.SafetyWait">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <TextBlock VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.SafetyWaitHint}" />
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.SafetyWaitInstruction_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.NinaPmContainer_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+</ResourceDictionary>

@@ -38,5 +38,11 @@ namespace NinaPm.Core.Api.Generated
     {
         static partial void UpdateJsonSerializerSettings(JsonSerializerSettings settings) =>
             NinaPm.Core.Api.NinaJson.Configure(settings);
+
+        /// <summary>ETag der letzten Antwort (<c>GET /targets</c>, NT-19); NSwag reicht Kopfzeilen sonst nicht durch.</summary>
+        public string? LastEtag { get; private set; }
+
+        partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response) =>
+            LastEtag = response.Headers.ETag?.ToString();
     }
 }
