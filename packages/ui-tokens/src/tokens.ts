@@ -263,8 +263,14 @@ export const SKY: Readonly<Record<string, string>> = {
   'sky-dso': '#8fd3a8',
   'sky-dso-label': 'rgba(170, 225, 190, 0.9)',
   'sky-min-alt': '#e5484d',
-  'sky-meridian': 'rgba(240, 240, 240, 0.4)',
-  'sky-heatmap': 'rgba(229, 72, 77, 0.22)',
+  /** Meridian kräftig im Violett des Nachtdiagramms (`chart-meridian`), vorher zu schwach (Wunsch Sven 02.10.2026). */
+  'sky-meridian': 'rgba(201, 163, 255, 0.9)',
+  /**
+   * Heatmap unter der Höhen-Schwelle als Verlauf statt einer grau wirkenden Fläche (Wunsch Sven 02.10.2026): an der
+   * Schwelle hell und zart, zum Horizont dunkler und kräftiger (render.ts `paintGround`).
+   */
+  'sky-heatmap-top': 'rgba(255, 190, 110, 0.12)',
+  'sky-heatmap-bottom': 'rgba(196, 52, 44, 0.5)',
   'sky-sun': '#f6c85f',
   /** Taghimmel (Sternkarte): Zenit und Horizont, Deckkraft folgt der Sonnenhöhe (render.ts `daylight`). */
   'sky-day': '#4a86c8',

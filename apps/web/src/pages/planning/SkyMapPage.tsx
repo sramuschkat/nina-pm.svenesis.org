@@ -197,7 +197,13 @@ export function SkyMapPage() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'en' ? 'en' : 'de';
   const [params, setParams] = useSearchParams();
-  const state = useMemo(() => stateFromParams(params), [params]);
+  // Ziehen und Zoomen ändern die Ansicht zuerst nur hier; in die Adresse erst nach kurzer Ruhe. Safari wirft nach
+  // ~100 `history.replaceState` in kurzer Zeit einen SecurityError – die Karte blieb dann stehen, und jedes
+  // Mausereignis lief durch den Router (Wunsch Sven 02.10.2026: Sternkarte in Safari träge, reagiert nicht).
+  const [live, setLive] = useState<Partial<SkyMapState> | null>(null);
+  const liveRef = useRef<Partial<SkyMapState> | null>(null);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const state = useMemo(() => ({ ...stateFromParams(params), ...live }), [params, live]);
   const projectParam = params.get('projekt');
   const objectParam = params.get('objekt');
   // Auf der zuletzt gesetzten Adresse aufbauen, nicht auf der des letzten Renderns: zwei schnelle Änderungen
@@ -205,20 +211,50 @@ export function SkyMapPage() {
   // dafür nicht – React Router übergibt als `prev` die Adresse des letzten Renderns; seit die Karte teurer zeichnet
   // (Landschaft, Milchstraße), ging so im E2E-Test „Mosaik 2×2“ die erste Änderung verloren (28.09.2026).
   const pending = useRef<URLSearchParams | null>(null);
-  // Sobald eine Adresse gerendert ist, gilt wieder sie (auch nach Zurück-Taste oder Links von außen).
+  // Sobald eine Adresse gerendert ist, gilt wieder sie (auch nach Zurück-Taste oder Links von außen) – außer
+  // die Ansicht wird gerade noch gezogen (Schreiben steht aus).
   useEffect(() => {
     pending.current = null;
+    if (flushTimer.current === null) {
+      liveRef.current = null;
+      setLive(null);
+    }
   }, [params]);
+  useEffect(
+    () => () => {
+      if (flushTimer.current !== null) clearTimeout(flushTimer.current);
+    },
+    [],
+  );
   const update = (patch: Partial<SkyMapState>) => {
+    if (flushTimer.current !== null) {
+      clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    }
     const extra: Record<string, string> = {};
     if (projectParam) extra.projekt = projectParam;
     if (objectParam) extra.objekt = objectParam;
     const next = paramsFromState(
-      { ...stateFromParams(pending.current ?? params), ...patch },
+      { ...stateFromParams(pending.current ?? params), ...liveRef.current, ...patch },
       extra,
     );
+    // Bis die neue Adresse gerendert ist, zeigt die lokale Ansicht schon den neuen Stand.
+    if (liveRef.current) {
+      liveRef.current = { ...liveRef.current, ...patch };
+      setLive(liveRef.current);
+    }
     pending.current = next;
     setParams(next, { replace: true });
+  };
+  /** Ansicht beim Ziehen/Zoomen: sofort lokal, in die Adresse 400 ms nach der letzten Änderung. */
+  const updateView = (patch: Partial<SkyMapState>) => {
+    liveRef.current = { ...liveRef.current, ...patch };
+    setLive(liveRef.current);
+    if (flushTimer.current !== null) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(() => {
+      flushTimer.current = null;
+      update({});
+    }, 400);
   };
   const num = useNumber();
   const ids = { map: useId() };
@@ -880,10 +916,10 @@ export function SkyMapPage() {
                 fdec: formatCoordinate('dec', state.fdec, 'sexagesimal'),
                 rot: num(frame?.paDeg ?? 0, 1),
               })}
-              onView={(c, fov) => update(viewPatch(c, fov))}
+              onView={(c, fov) => updateView(viewPatch(c, fov))}
               onFrameMove={(c) => {
                 const r = sky.vecToRadec(c);
-                update({ fra: r.raDeg, fdec: r.decDeg });
+                updateView({ fra: r.raDeg, fdec: r.decDeg });
               }}
               onPick={onPick}
               onPhotoStatus={(s) => {

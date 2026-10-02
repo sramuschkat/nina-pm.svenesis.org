@@ -159,7 +159,8 @@ export function readColors(el: Element): Colors {
     'horizon-glow',
     'min-alt',
     'meridian',
-    'heatmap',
+    'heatmap-top',
+    'heatmap-bottom',
     'sun',
     'day',
     'day-horizon',
@@ -314,18 +315,44 @@ export function colorParts(c: string): [number, number, number, number] {
   return [r, g, b, a];
 }
 
+/**
+ * Farbe der Heatmap bei der Höhe `altDeg` unter der Schwelle `thresholdDeg`: an der Schwelle `top`, am Horizont
+ * `bottom`, dazwischen linear (Kanäle gerundet, Deckkraft 0…1).
+ */
+export function heatColor(
+  top: readonly [number, number, number, number],
+  bottom: readonly [number, number, number, number],
+  altDeg: number,
+  thresholdDeg: number,
+): [number, number, number, number] {
+  const f = thresholdDeg > 0 ? clamp(1 - altDeg / thresholdDeg, 0, 1) : 1;
+  const mix = (i: 0 | 1 | 2 | 3) => top[i] + (bottom[i] - top[i]) * f;
+  return [Math.round(mix(0)), Math.round(mix(1)), Math.round(mix(2)), mix(3)];
+}
+
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** Zeichenfläche für ein grobes Bild (4-px-Zellen), das weich hochskaliert wird; ohne DOM `null`. */
 let scratch: HTMLCanvasElement | null = null;
+let scratchImg: ImageData | null = null;
+/**
+ * Kleines Zwischenbild für die Zellen-Ebenen (Milchstraße, Boden). Größe und `ImageData` bleiben, solange sich die
+ * Ansicht nicht ändert – jedes Setzen von `width` legt die Fläche neu an, das kostete in Safari je Bild spürbar
+ * (Sternkarte träge, Wunsch Sven 02.10.2026). Die Pixel werden je Aufruf geleert.
+ */
 function scratchImage(w: number, h: number) {
   if (typeof document === 'undefined') return null;
   scratch ??= document.createElement('canvas');
-  scratch.width = w;
-  scratch.height = h;
+  if (scratch.width !== w || scratch.height !== h) {
+    scratch.width = w;
+    scratch.height = h;
+    scratchImg = null;
+  }
   const c = scratch.getContext('2d');
   if (!c) return null;
-  return { canvas: scratch, ctx: c, img: c.createImageData(w, h) };
+  if (scratchImg) scratchImg.data.fill(0);
+  else scratchImg = c.createImageData(w, h);
+  return { canvas: scratch, ctx: c, img: scratchImg };
 }
 
 /** Höhe (Grad) eines J2000-Vektors über dem Horizont. */
@@ -469,7 +496,10 @@ function paintMilkyWay(
   return fade * dim >= 0.5 ? spot : null;
 }
 
-/** Boden unter dem Horizont (deckend, weiche Kante) und Heatmap unter der Höhen-Schwelle. */
+/**
+ * Boden unter dem Horizont (deckend, weiche Kante) und Heatmap unter der Höhen-Schwelle: Verlauf von
+ * `heatmap-top` an der Schwelle (hell, zart) nach `heatmap-bottom` am Horizont (dunkler, kräftiger).
+ */
 function paintGround(
   ctx: CanvasRenderingContext2D,
   view: sky.SkyView,
@@ -484,7 +514,9 @@ function paintGround(
   const gh = Math.ceil(view.height / CELL);
   const s = scratchImage(gw, gh);
   const [gr, gg, gb, ga] = colorParts(colors.ground ?? 'rgba(28,25,22,0.8)');
-  const [hr, hg, hb, ha] = colorParts(colors.heatmap ?? 'rgba(229,72,77,0.22)');
+  const heatTop = colorParts(colors['heatmap-top'] ?? 'rgba(255,190,110,0.12)');
+  const heatBottom = colorParts(colors['heatmap-bottom'] ?? 'rgba(196,52,44,0.5)');
+  const heatAt = (alt: number) => heatColor(heatTop, heatBottom, alt, obs.heatAltDeg);
   // Aufhellung über dem Horizont (Dunst), damit sich die Landschaft vom Nachthimmel abhebt.
   const [lr, lg, lb, la] = colorParts(colors['horizon-glow'] ?? 'rgba(120,140,180,0.18)');
   const GLOW_DEG = 10;
@@ -494,8 +526,10 @@ function paintGround(
       for (let x = 0; x < view.width; x += 12) {
         const alt = altOf(obs.toHorizon, sky.unproject(view, x + 6, y + 6));
         if (alt < 0 && ground) ctx.fillStyle = colors.ground ?? '#222';
-        else if (heat && alt < obs.heatAltDeg) ctx.fillStyle = colors.heatmap ?? '#a33';
-        else continue;
+        else if (heat && alt < obs.heatAltDeg) {
+          const [r, g, b, a] = heatAt(alt);
+          ctx.fillStyle = `rgba(${String(r)},${String(g)},${String(b)},${String(a)})`;
+        } else continue;
         ctx.fillRect(x, y, 12, 12);
       }
     return;
@@ -511,10 +545,11 @@ function paintGround(
         px[o + 2] = gb;
         px[o + 3] = Math.round(ga * 255);
       } else if (heat && alt < obs.heatAltDeg) {
-        px[o] = hr;
-        px[o + 1] = hg;
-        px[o + 2] = hb;
-        px[o + 3] = Math.round(ha * 255);
+        const [r, g, b, a] = heatAt(alt);
+        px[o] = r;
+        px[o + 1] = g;
+        px[o + 2] = b;
+        px[o + 3] = Math.round(a * 255);
       } else if (ground && alt >= 0 && alt < GLOW_DEG) {
         px[o] = lr;
         px[o + 1] = lg;
@@ -849,9 +884,10 @@ function drawObserver(
     ctx.setLineDash([]);
   }
   if (overlays.has('meridian')) {
+    // Kräftiger als die Gitter (Wunsch Sven 02.10.2026): eigene Farbe, 1,5 px, längere Striche.
     ctx.strokeStyle = colors.meridian ?? '#ccc';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([2, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 5]);
     // Meridian = Großkreis Nord – Zenit – Süd: im Horizontrahmen (Ost, Nord, Zenit) Länge 90° (Nordhälfte) und
     // 270° (Südhälfte). Vorher Länge 0° – das war die halbe Ost-West-Linie durch den Ostpunkt (Prüfung 28.09.2026).
     polyline(ctx, view, frameCircle(H, null, 90, 180));

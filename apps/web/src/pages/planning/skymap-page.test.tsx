@@ -237,6 +237,43 @@ describe('S-20 Sternkarte', () => {
     expect(state.regions[1]?.q.radius).toBeLessThan(state.regions[0]?.q.radius ?? 0);
   });
 
+  it('Schwenken ändert die Ansicht sofort, die Adresse erst nach 400 ms Ruhe (Safari, 02.10.2026)', async () => {
+    // Zeichenfläche mit Größe, damit die Karte eine Ansicht hat.
+    const before = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(private readonly cb: ResizeObserverCallback) {}
+      observe = (el: Element) =>
+        this.cb(
+          [{ target: el, contentRect: { width: 800, height: 600 } } as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        );
+      unobserve = () => undefined;
+      disconnect = () => undefined;
+    } as unknown as typeof ResizeObserver;
+    try {
+      renderPage();
+      const map = await screen.findByRole('img', { name: 'Sternkarte mit Bildfeld des Rigs' });
+      const ra = where().get('ra');
+      const focus = () => screen.getByText(/^Blickmitte/).textContent;
+      const shown = focus();
+      vi.useFakeTimers();
+      try {
+        for (let i = 0; i < 3; i += 1) fireEvent.keyDown(map, { key: 'ArrowRight' });
+        // Ansicht folgt sofort (Fokustext), die Adresse noch nicht.
+        expect(focus()).not.toBe(shown);
+        expect(where().get('ra')).toBe(ra);
+        act(() => vi.advanceTimersByTime(399));
+        expect(where().get('ra')).toBe(ra);
+        act(() => vi.advanceTimersByTime(1));
+        expect(where().get('ra')).not.toBe(ra);
+      } finally {
+        vi.useRealTimers();
+      }
+    } finally {
+      globalThis.ResizeObserver = before;
+    }
+  });
+
   it('Seitengerüst (AP-26d): genau ein h1, keine Brotkrumen, Planungsreiter unter dem Titel', async () => {
     renderPage();
     const h1 = await screen.findByRole('heading', { level: 1, name: 'Sternkarte' });

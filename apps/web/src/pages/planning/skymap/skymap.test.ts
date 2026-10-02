@@ -28,6 +28,7 @@ import {
 import {
   behindLand,
   colorParts,
+  heatColor,
   constellationName,
   dayStarLimit,
   daylight,
@@ -442,6 +443,19 @@ describe('Überfahren, Anklicken, Horizont (Vorlage sky-map.js)', () => {
     expect(constellationName(l, 'latin', 'de')).toBe('Ursa Major');
     expect(colorParts('rgba(205, 215, 255, 0.3)')).toEqual([205, 215, 255, 0.3]);
     expect(colorParts('#5ce1e6')).toEqual([92, 225, 230, 1]);
+  });
+
+  it('Heatmap als Verlauf: an der Schwelle hell und zart, zum Horizont dunkler und kräftiger (02.10.2026)', () => {
+    const top = [255, 190, 110, 0.12] as const;
+    const bottom = [196, 52, 44, 0.5] as const;
+    expect(heatColor(top, bottom, 30, 30)).toEqual([255, 190, 110, 0.12]);
+    expect(heatColor(top, bottom, 0, 30)).toEqual([196, 52, 44, 0.5]);
+    const mid = heatColor(top, bottom, 15, 30);
+    expect(mid.slice(0, 3)).toEqual([226, 121, 77]);
+    expect(mid[3]).toBeCloseTo(0.31, 9);
+    // Unter dem Horizont bleibt es bei der dunkelsten Stufe; ohne Schwelle ebenso.
+    expect(heatColor(top, bottom, -5, 30)).toEqual([196, 52, 44, 0.5]);
+    expect(heatColor(top, bottom, 10, 0)).toEqual([196, 52, 44, 0.5]);
   });
 });
 
