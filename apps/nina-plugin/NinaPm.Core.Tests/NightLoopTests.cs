@@ -54,9 +54,24 @@ public sealed class NightLoopTests
 
         Assert.Equal(NightAction.FetchPlan, loop.Decide(At("2026-09-18T01:05:00Z", null)).Action);
         loop.PlanAttempt(T("2026-09-18T01:05:00Z"));
-        loop.PlanReceived(hasBlocks: true);
+        loop.PlanReceived();
         Assert.Null(loop.Blocked);
         Assert.Equal(NinaHeartbeatState.Idle, loop.HeartbeatState(false, false, false, false));
+    }
+
+    [Fact]
+    public void Plan_mit_Bloecken_hebt_die_Sperre_nicht_auf()
+    {
+        var loop = new NightLoop();
+        var plan = Stored();
+        var regular = plan.Plan.Blocks[1].Id;
+        loop.PlanAttempt(T("2026-09-18T09:19:30Z"));
+        loop.PlanReceived();
+
+        // Block im neuen Plan sofort erledigt (keine Belichtung passt mehr): kein neuer Abruf vor Ablauf der Sperre.
+        var idle = loop.Decide(At("2026-09-18T09:19:31Z", plan) with { DoneBlocks = new HashSet<Guid> { regular } });
+        Assert.Equal((NightAction.Idle, T("2026-09-18T09:24:30Z")), (idle.Action, idle.WaitUntilUtc));
+        Assert.Equal(NightAction.FetchPlan, loop.Decide(At("2026-09-18T09:24:30Z", plan)).Action);
     }
 
     [Fact]
@@ -110,7 +125,7 @@ public sealed class NightLoopTests
         Assert.Equal((NightAction.FetchPlan, NinaPlanRequestReason.Refresh), (refresh.Action, refresh.Reason));
 
         loop.PlanAttempt(T("2026-09-18T10:00:00Z"));
-        loop.PlanReceived(hasBlocks: false); // leerer Plan: Sperre bleibt, kein plan_failed
+        loop.PlanReceived(); // leerer Plan: Sperre bleibt, kein plan_failed
         var idle = loop.Decide(At("2026-09-18T10:02:00Z", plan));
         Assert.Equal((NightAction.Idle, T("2026-09-18T10:05:00Z")), (idle.Action, idle.WaitUntilUtc));
         Assert.Equal(NinaHeartbeatState.Idle, loop.HeartbeatState(false, false, false, false));

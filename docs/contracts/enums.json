@@ -606,7 +606,8 @@
   "image_not_saved",
   "rotator_range_quarter",
   "safety_monitor_not_connected",
-  "sequence_template_deviation"
+  "sequence_template_deviation",
+  "loop_guard"
  ],
  "ninaSettingsMismatchCodes": [
   "flip_trigger_missing",
