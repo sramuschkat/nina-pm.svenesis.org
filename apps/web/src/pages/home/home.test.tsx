@@ -399,6 +399,16 @@ describe('Startseite (Mandant)', () => {
       '/auswertung/sessions',
     );
 
+    // Wetter (7 Tage) je Standort in Kurzform wie in Ausrüstung → Standorte (Wunsch Sven 02.10.2026);
+    // ein Link zur Wettervorhersage im Kartenkopf, keiner je Standort.
+    const weather = await card('Wetter (7 Tage)');
+    expect(await within(weather).findByText('Wetter am Standort Starfront')).toBeInTheDocument();
+    expect(within(weather).getAllByRole('link', { name: 'Zur Wettervorhersage' })).toHaveLength(1);
+    expect(within(weather).getByRole('link', { name: 'Zur Wettervorhersage' })).toHaveAttribute(
+      'href',
+      '/wetter',
+    );
+
     await expectNoSeriousA11y();
   });
 
@@ -412,6 +422,9 @@ describe('Startseite (Mandant)', () => {
     ).toBeInTheDocument();
     expect(
       await within(await card('Letzte Sessions')).findByText('Noch keine Sessions.'),
+    ).toBeInTheDocument();
+    expect(
+      await within(await card('Wetter (7 Tage)')).findByText('Noch kein Standort angelegt.'),
     ).toBeInTheDocument();
     // Kennzahlen ohne Daten: Nullwerte, keine gute Nacht in Sicht.
     const kpis = screen.getByRole('list', { name: 'Kennzahlen' });

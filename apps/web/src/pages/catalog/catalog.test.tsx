@@ -7,7 +7,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { CatalogStatus, DsoList, DsoSearch, DsoView, Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
@@ -180,6 +180,15 @@ const renderPage = (path = '/planung/objekte?reiter=alle') =>
     </QueryClientProvider>,
   );
 
+// Sternkarte der Himmelslage (`SkyCanvas`) im Test-DOM: kein Canvas-Kontext, kein ResizeObserver.
+beforeAll(() => {
+  HTMLCanvasElement.prototype.getContext = (() => null) as never;
+  globalThis.ResizeObserver ??= class {
+    observe = () => undefined;
+    unobserve = () => undefined;
+    disconnect = () => undefined;
+  } as unknown as typeof ResizeObserver;
+});
 beforeEach(() => {
   state.me = me('user');
   state.rigs = [];
@@ -567,6 +576,9 @@ describe('S-21 Objektbrowser', () => {
       'aria-selected',
       'true',
     );
+    // Dritter Reiter: Himmelslage wie im Projekt-Editor (Wunsch Sven 02.10.2026).
+    fireEvent.click(within(charts).getByRole('tab', { name: 'Himmelslage' }));
+    expect(screen.getByRole('img', { name: 'Himmelslage von M 31' })).toBeInTheDocument();
     await expectNoSeriousA11y();
   });
 

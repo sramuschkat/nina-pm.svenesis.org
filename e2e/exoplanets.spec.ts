@@ -1,7 +1,7 @@
 /**
  * AP-42: S-22 Exoplaneten – Transitsuche am Seed-Rig (Demo-Sternwarte, 51° N) in der Nacht 06./07.10.2026 mit
  * den Katalogauszügen, die der lokale Stack beim Start lädt (`apps/api/src/exo/samples`). Drei beobachtbare
- * ExoClock-Transits (TrES-3 b, WASP-12 b, Qatar-1 b); aufgeklappte Zeile mit Zeitleiste, Sternfeld, Himmelsposition
+ * ExoClock-Transits (TrES-3 b, WASP-12 b, Qatar-1 b); aufgeklappte Zeile mit Zeitleiste, Sternfeld, Himmelslage
  * Belichtung und Zieldetails mit Hilfe-Tooltip; axe ohne ernste Verstöße; 768/2400 px ohne horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
@@ -33,7 +33,7 @@ test('S-22: Transits der Nacht, aufgeklappte Zeile mit Zeitleiste und Zieldetail
   await table.getByRole('button', { name: 'Weitere Angaben zu WASP-12b' }).click();
   await expect(page.getByRole('region', { name: 'WASP-12b – Nacht und Transit' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Sternfeld (DSS2) – WASP-12' })).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Himmelsposition von WASP-12' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Himmelslage von WASP-12' })).toBeVisible();
   await expect(page.getByText('Empfohlener Filter:')).toBeVisible();
   // Belichtung (FA-EXO-14a): Karte sichtbar; ohne passenden Filter nennt sie die fehlende Angabe
   await expect(page.getByRole('region', { name: 'Belichtung – WASP-12' })).toBeVisible();
@@ -48,7 +48,7 @@ test('S-22: Transits der Nacht, aufgeklappte Zeile mit Zeitleiste und Zieldetail
     /\/planung\/sternkarte\?/,
   );
 
-  // Anordnung (Wunsch Sven 01.10.2026), gemessen: Sternfeld und Himmelsposition oben gleich, Bilder gleich hoch
+  // Anordnung (Wunsch Sven 01.10.2026), gemessen: Sternfeld und Himmelslage oben gleich, Bilder gleich hoch
   // angesetzt; Titel auf einer Linie mit dem Reiter „Zieldetails“; breit Belichtung unter den Bildern, Zieldetails
   // rechts, bei 1280 px Belichtung rechts neben den Bildern und Zieldetails darunter.
   const region = async (name: string) => {
@@ -61,13 +61,11 @@ test('S-22: Transits der Nacht, aufgeklappte Zeile mit Zeitleiste und Zieldetail
   for (const width of [WIDE.width, 1280]) {
     await page.setViewportSize({ width, height: 1000 });
     const field = await region('Sternfeld (DSS2) – WASP-12');
-    const sky = await region('Himmelsposition – WASP-12');
+    const sky = await region('Himmelslage – WASP-12');
     const fieldImg = await page
       .getByRole('img', { name: 'Sternfeld um WASP-12 (DSS2, 0,5°)' })
       .boundingBox();
-    const skyImg = await page
-      .getByRole('img', { name: 'Himmelsposition von WASP-12' })
-      .boundingBox();
+    const skyImg = await page.getByRole('img', { name: 'Himmelslage von WASP-12' }).boundingBox();
     const exposure = await region('Belichtung – WASP-12');
     const tab = page.getByRole('tab', { name: 'Zieldetails' });
     const details = (await tab.locator('xpath=ancestor::section[1]').boundingBox()) ?? field;

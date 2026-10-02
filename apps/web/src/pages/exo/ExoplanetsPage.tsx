@@ -5,7 +5,7 @@
  *   gespeichert (Einstellung `exo.search`). Trefferzahl im Kopf, *Transits suchen* rechnet neu.
  * - Ergebnistabelle (FA-EXO-06…09), sortierbar, Standard nach Transitmitte.
  * - Aufgeklappte Zeile (Wunsch Sven 30.09.2026): Zeitleiste der Nacht mit Beobachtungsfenster, Kontakten und
- *   Lichtkurve (FA-EXO-10…12), darunter die Karten Sternfeld, Himmelsposition und die Reiter *Zieldetails* /
+ *   Lichtkurve (FA-EXO-10…12), darunter die Karten Sternfeld, Himmelslage und die Reiter *Zieldetails* /
  *   *Meine Beobachtungen* (FA-EXO-13/14).
  * - Aktion *Projekt* (FA-EXO-15): Exoplaneten-Projekt anlegen bzw. das eigene öffnen (OP-22), dann der Editor.
  */
@@ -39,6 +39,7 @@ import { PlanningTabs } from '../planning/PlanningTabs';
 import { SiteMoonDarkness } from '../planning/SiteMoonDarkness';
 import { exoCalculatorHref } from '../calculator/model';
 import { PROJECT_PATHS } from '../projects/ProjectEditorPage';
+import { SkyLocation } from '../projects/SkyLocation';
 import { skyMapHref } from '../planning/skymap/model';
 import {
   applyExoFilters,
@@ -54,7 +55,6 @@ import {
 } from './model';
 import { ExposureCard } from './ExposureCard';
 import { HelpTip } from './HelpTip';
-import { SkyPosition } from './SkyPosition';
 import { StarField } from './StarField';
 import { TransitTimeline } from './TransitTimeline';
 import styles from './exo.module.css';
@@ -331,7 +331,16 @@ export function ExoplanetsPage() {
           ) : items.length === 0 ? (
             <p className={`${catalogStyles.muted} ${catalogStyles.state}`}>{t('exo.empty')}</p>
           ) : (
-            <ResultTable items={items} data={data as ExoTransitList} showFlip={current.showFlip} />
+            <ResultTable
+              items={items}
+              data={data as ExoTransitList}
+              showFlip={current.showFlip}
+              rigFov={
+                rig
+                  ? { widthDeg: rig.derived.fovWidthDeg, heightDeg: rig.derived.fovHeightDeg }
+                  : null
+              }
+            />
           )}
         </div>
       </section>
@@ -368,14 +377,19 @@ function Priority({ value }: { value: ExoTransitView['priority'] }) {
   );
 }
 
+/** Bildfeld des gewählten Rigs (Grad) für den Rahmen in der Himmelslage; ohne Rig nur die Zielmarke. */
+type RigFov = { widthDeg: number; heightDeg: number } | null;
+
 function ResultTable({
   items,
   data,
   showFlip,
+  rigFov,
 }: {
   items: ExoTransitView[];
   data: ExoTransitList;
   showFlip: boolean;
+  rigFov: RigFov;
 }) {
   const { t } = useTranslation();
   const fmt = useNumber();
@@ -618,7 +632,7 @@ function ResultTable({
       rowLabel={(x) => x.planet}
       label={t('exo.title')}
       defaultSort={{ id: 'mid', dir: 'asc' }}
-      renderDetail={(x) => <TransitDetail x={x} data={data} showFlip={showFlip} />}
+      renderDetail={(x) => <TransitDetail x={x} data={data} showFlip={showFlip} rigFov={rigFov} />}
     />
   );
 }
@@ -684,17 +698,19 @@ function Fact({ label, value, why }: { label: string; value: string; why: string
 
 /**
  * Aufgeklappte Zeile (Wunsch Sven 30.09.2026): Zeitleiste der ganzen Nacht mit Fenster, Kontakten, Meridian und
- * Lichtkurve (FA-EXO-10…12); darunter Sternfeld, Himmelsposition und die Reiter *Zieldetails* /
+ * Lichtkurve (FA-EXO-10…12); darunter Sternfeld, Himmelslage und die Reiter *Zieldetails* /
  * *Meine Beobachtungen* (FA-EXO-13/14).
  */
 function TransitDetail({
   x,
   data,
   showFlip,
+  rigFov,
 }: {
   x: ExoTransitView;
   data: ExoTransitList;
   showFlip: boolean;
+  rigFov: RigFov;
 }) {
   const { t, i18n } = useTranslation();
   const fmt = useNumber();
@@ -825,7 +841,8 @@ function TransitDetail({
         showFlip={showFlip}
       />
       <div className={styles.cards}>
-        {/* Titel, Bild, Fußzeile – Sternfeld und Himmelsposition stehen auf gleicher Höhe (Wunsch Sven 01.10.2026). */}
+        {/* Titel, Bild, Fußzeile – Sternfeld und Himmelslage stehen auf gleicher Höhe (Wunsch Sven 01.10.2026);
+            Himmelslage wie im Projekt-Editor statt der früheren Himmelsposition (Wunsch Sven 02.10.2026). */}
         <section
           className={`${styles.card} ${styles.fieldCard}`}
           aria-label={t('exo.starField.title', { star: x.star })}
@@ -840,10 +857,18 @@ function TransitDetail({
         </section>
         <section
           className={`${styles.card} ${styles.skyCard}`}
-          aria-label={t('exo.skyPosition.title', { star: x.star })}
+          aria-label={t('exo.skyLocation.title', { star: x.star })}
         >
-          <h3 className={styles.cardTitle}>{t('exo.skyPosition.title', { star: x.star })}</h3>
-          <SkyPosition raDeg={x.raDeg} decDeg={x.decDeg} label={x.star} />
+          <h3 className={styles.cardTitle}>{t('exo.skyLocation.title', { star: x.star })}</h3>
+          <SkyLocation
+            raDeg={x.raDeg}
+            decDeg={x.decDeg}
+            rotationDeg={0}
+            fov={rigFov}
+            name={x.star}
+            hint={t('projectEditor.sky.hintView')}
+            frameClassName={styles.skyFrame}
+          />
         </section>
         <ExposureCard
           exposure={x.exposure}

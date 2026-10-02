@@ -106,6 +106,11 @@ export const en: Messages = {
       empty: 'No active projects.',
       more: 'To the project list',
     },
+    weather: {
+      title: 'Weather (7 days)',
+      empty: 'No site yet.',
+      more: 'Open weather forecast',
+    },
     sessions: {
       title: 'Recent sessions',
       empty: 'No sessions yet.',
@@ -819,6 +824,7 @@ export const en: Messages = {
     tabs: {
       altitude: 'Altitude chart',
       season: 'Season chart',
+      sky: 'Sky location',
     },
     label: 'Night chart, times in site time ({{zone}})',
     empty: 'No night with darkness or no target above the horizon.',
@@ -913,6 +919,7 @@ export const en: Messages = {
         'Sky map around the target at RA {{ra}}, Dec {{dec}}, field of view {{fov}}°; the frame shows the rig’s field.',
       hint: 'Drag to pan, mouse wheel or +/− to zoom. Align and build mosaics in the sky map.',
       needsCoordinates: 'Enter coordinates to see the sky location.',
+      hintView: 'Drag to pan, mouse wheel or +/− to zoom.',
     },
     target: 'Target',
     conditions: 'Conditions',
@@ -3002,13 +3009,8 @@ export const en: Messages = {
       openFraming: 'Open in framing',
       failed: 'Star field not available.',
     },
-    skyPosition: {
+    skyLocation: {
       title: 'Sky location – {{star}}',
-      label: 'Sky position of {{name}}',
-      caption: 'Sky position (60°, north up, east left)',
-      failed: 'Constellations not available.',
-      north: 'N',
-      east: 'E',
     },
     timelineTitle: '{{name}} – night and transit',
     timelineNight: 'night of {{night}}, {{site}}',
