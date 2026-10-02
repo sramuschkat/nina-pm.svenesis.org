@@ -29,6 +29,10 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     public SafetyState ReadSafety() => Safety;
 
+    public int Interruptions { get; private set; }
+
+    public void OnInterrupted() => Interruptions++;
+
     public bool IsViableNow(Blocks block) => Viable;
 
     public void SetTarget(Blocks block) => Calls.Add("target");

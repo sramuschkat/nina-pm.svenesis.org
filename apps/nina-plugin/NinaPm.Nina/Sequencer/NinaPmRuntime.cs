@@ -1,0 +1,113 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
+using NINA.Profile.Interfaces;
+using NinaPm.Core.Api;
+using NinaPm.Core.Execution;
+using NinaPm.Core.Logging;
+using NinaPm.Core.Options;
+using NinaPm.Core.Planning;
+using NinaPm.Core.Storage;
+using NinaPm.Core.Time;
+using NinaPm.Nina.Adapters;
+
+namespace NinaPm.Nina.Sequencer;
+
+/// <summary>
+/// Eine Laufzeit je NINA-Prozess für die Sequenz-Bausteine (execution.md §1): <c>ninapm.db</c>, API-Zugang aus den
+/// Plugin-Optionen des aktiven Profils, <see cref="NightRunner"/> mit dem NINA-Adapter. Container, Bedingung
+/// <em>Nachtschleife</em> und Anweisung <em>Warten bis sicher oder Nachtende</em> teilen sie. Neu aufgebaut, wenn sich
+/// Server-URL oder Token ändern.
+/// </summary>
+internal sealed class NinaPmRuntime : IDisposable
+{
+    private static readonly object Gate = new();
+    private static NinaPmRuntime? current;
+
+    private readonly NinaApi api;
+
+    private NinaPmRuntime(PluginOptions options, Uri apiBase, string token, NinaHost host)
+    {
+        Options = options;
+        Host = host;
+        var clock = SystemClock.Instance;
+        Log = new NinaPmLog(NinaLogSink.Instance);
+        Store = LocalStore.Open(LocalStore.DefaultPath(), clock);
+        api = new NinaApi(apiBase, token, NinaPmPlugin.PluginVersion);
+        Runner = new NightRunner(new NinaPlanApi(api.Client), new NinaSessionApi(api.Client), Store, host, host, clock, Log)
+        {
+            Executor = new BlockExecutor(host, clock, Log) { Mode = PlaybackModeSequential },
+        };
+        host.Runtime = this;
+    }
+
+    // AP-16c: Playback sequenziell (Brief); zeitgeführt mit gemessenem Verzug folgt mit AP-16f.
+    private const PlaybackMode PlaybackModeSequential = PlaybackMode.Sequential;
+
+    public static NinaPmRuntime? Current
+    {
+        get
+        {
+            lock (Gate) return current;
+        }
+    }
+
+    public PluginOptions Options { get; }
+
+    public NinaHost Host { get; }
+
+    public NinaPmLog Log { get; }
+
+    public LocalStore Store { get; }
+
+    public NightRunner Runner { get; }
+
+    /// <summary>Testbetrieb nur mit allen drei Bedingungen (NIN-17): Schalter, lokale URL, Antwort mit <c>X-NPM-Test: 1</c>.</summary>
+    public bool TestModeActive => Options.TestMode && Options.IsLocalServer && api.LastResponseWasTestServer;
+
+    /// <summary>Laufzeit für die aktuellen Optionen holen oder neu aufbauen; <c>null</c>, wenn URL oder Token fehlen.</summary>
+    public static NinaPmRuntime? Ensure(IProfileService profileService, Func<NinaHost> hostFactory)
+    {
+        var options = ReadOptions(profileService);
+        lock (Gate)
+        {
+            if (current is not null && current.Options.ServerUrl == options.ServerUrl && current.Options.ProtectedToken == options.ProtectedToken
+                && current.Options.TestMode == options.TestMode)
+                return current;
+            current?.Dispose();
+            current = null;
+            if (options.ApiBase is not { } apiBase || options.ProtectedToken.Length == 0) return null;
+            var token = new DpapiTokenProtector().Unprotect(options.ProtectedToken);
+            if (token is null) return null;
+            current = new NinaPmRuntime(options, apiBase, token, hostFactory());
+            return current;
+        }
+    }
+
+    /// <summary>Server-URL und Token eingetragen (Bedingung <em>Nachtschleife</em> vor dem ersten Container-Aufruf).</summary>
+    public static bool IsConfigured(IProfileService profileService)
+    {
+        var o = ReadOptions(profileService);
+        return o.ApiBase is not null && o.ProtectedToken.Length > 0;
+    }
+
+    private static PluginOptions ReadOptions(IProfileService profileService)
+    {
+        var accessor = new NINA.Profile.PluginOptionsAccessor(profileService, PluginId);
+        return new PluginOptions
+        {
+            ServerUrl = accessor.GetValueString(nameof(PluginOptions.ServerUrl), PluginOptions.DefaultServerUrl),
+            ProtectedToken = accessor.GetValueString(nameof(PluginOptions.ProtectedToken), ""),
+            TestMode = accessor.GetValueBoolean(nameof(PluginOptions.TestMode), false),
+        };
+    }
+
+    /// <summary>Plugin-ID aus dem Manifest (Guid-Attribut der Assembly, ADR-S2b).</summary>
+    public static Guid PluginId { get; } =
+        Guid.Parse(typeof(NinaPmRuntime).Assembly.GetCustomAttribute<GuidAttribute>()!.Value);
+
+    public void Dispose()
+    {
+        api.Dispose();
+        Store.Dispose();
+    }
+}

@@ -60,6 +60,11 @@ public sealed class NightRunnerTests : IDisposable
             return Task.FromResult(p);
         }
 
+        public Task<(NinaTargets? Targets, string? Etag)> TargetsAsync(string? etag, CancellationToken token) =>
+            Offline
+                ? throw new HttpRequestException("offline")
+                : Task.FromResult<(NinaTargets?, string?)>(etag == "\"t-9b41\"" ? (null, etag) : (Example<NinaTargets>("targets.response"), "\"t-9b41\""));
+
         public Task<NinaSessionCreated> CreateAsync(NinaSessionCreate body, CancellationToken token)
         {
             Created.Add(body);
@@ -87,6 +92,10 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Equal(session.Id, runner.SessionId);
         Assert.NotNull(PlanStore.Load(store, "2026-09-17"));
         Assert.True(runner.HasBlocksRemaining);
+        // Ziele vor dem Plan abgerufen (§3.1), ETag im Plan und im gespeicherten Plan.
+        Assert.Equal("\"t-9b41\"", plan.TargetsEtag);
+        Assert.Equal("\"t-9b41\"", PlanStore.Load(store, "2026-09-17")!.TargetsEtag);
+        Assert.Equal(2, runner.Targets!.Projects.Count);
 
         // Zweiter Aufruf: auf den Transitblock warten (Vorlauf 02:05:30), Heartbeat idle.
         await runner.RunOnceAsync(default);
@@ -151,6 +160,7 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=interrupted", StringComparison.Ordinal));
         Assert.Contains(sink.Lines, l => l.Contains("SAFETY_PAUSE"));
         Assert.Equal(NinaHeartbeatState.Paused, runner.HeartbeatState(false));
+        Assert.Equal(1, nina.Interruptions);
         Assert.Empty(api.Patches); // Session und Lease bleiben
 
         await runner.RunOnceAsync(default);
@@ -183,6 +193,35 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Benutzer_Stopp_beim_Warten_auf_den_Block_PATCH_aborted()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        nina.Sequence.Cancel();
+        nina.Safety = new SafetyState(true, true, MonitorSafe: true);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunOnceAsync(nina.Sequence.Token));
+
+        Assert.Equal(NinaSessionPatchStatus.Aborted, Assert.Single(api.Patches).Patch.Status);
+        Assert.Null(runner.SessionId);
+    }
+
+    [Fact]
+    public async Task Unterbrechung_beim_Warten_auf_den_Block_SAFETY_PAUSE_ohne_PATCH()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        nina.Sequence.Cancel();
+        nina.Safety = new SafetyState(true, true, MonitorSafe: false);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunOnceAsync(nina.Sequence.Token));
+
+        Assert.Empty(api.Patches);
+        Assert.Contains(sink.Lines, l => l.Contains("SAFETY_PAUSE"));
+        Assert.Equal(NinaHeartbeatState.Paused, runner.HeartbeatState(false));
+    }
+
+    [Fact]
     public async Task Start_ohne_Verbindung_und_ohne_gespeicherten_Plan_keine_Bloecke()
     {
         api.Offline = true;
@@ -210,6 +249,9 @@ public sealed class NightRunnerTests : IDisposable
 
         Assert.Contains(nina.Calls, c => c.StartsWith("expose:", StringComparison.Ordinal));
         Assert.Equal("1", store.GetState(StateKeys.BlockIndex));
+        // tonight: der ausgeführte Block steht als vergangener Block der Einheit drin (allocation.md §5.3).
+        var tonight = TonightLog.Load(store).ToContract(null, initial: false);
+        Assert.Equal(restarted.UnitId(PlanStore.Load(store, "2026-09-17")!.Plan.Blocks[1]), Assert.Single(tonight.PastBlocks!).UnitId);
     }
 
     [Fact]
