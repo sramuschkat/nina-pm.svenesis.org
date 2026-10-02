@@ -249,7 +249,50 @@ jobs:
       - name: Chromium installieren (nur ohne Cache)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install chromium
-      - run: pnpm e2e --shard=${{ matrix.shard }}/6
+      - name: E2E (Shard ${{ matrix.shard }}/6)
+        shell: bash
+        # Diagnose (Wunsch Sven 02.10.2026): Mehrfach hing ein Shard nach „N passed“ bis zum Job-Limit (zuletzt
+        # e2e 6/6 auf main, 20 min). Playwright selbst endet spätestens 30 s nach dem Ergebnis – vermutlich hält ein
+        # übrig gebliebener Prozess die Ausgabe des Schritts offen. Der Wächter meldet sich erst, wenn der Schritt
+        # 2 min nach dem Testergebnis noch läuft, und schreibt dann Prozessbaum, Halter der Ausgabe-Pipe und
+        # offene Ports ins Log (höchstens dreimal). Sonst bleibt er stumm.
+        run: |
+          log="$RUNNER_TEMP/e2e.log"
+          : > "$log"
+          step_pipe=$(readlink /proc/$$/fd/1 || true)
+          (
+            # Ohne Zeilenanfang-Anker: die Ausgabe kann Farbcodes enthalten.
+            until grep -qE '[0-9]+ (passed|failed|flaky|interrupted)' "$log"; do sleep 5; done
+            for i in 1 2 3; do
+              sleep 120
+              echo "::group::Diagnose: Schritt läuft $((i * 2)) min nach dem Testergebnis"
+              echo "--- Prozessbaum"
+              ps -eo pid,ppid,pgid,sid,etimes,stat,args --forest | grep -v ' \[' || true
+              # Halter der Schritt-Ausgabe und der Pipe Playwright → tee.
+              tee_pid=$(pgrep -n -x tee || true)
+              tee_pipe=$( [ -n "$tee_pid" ] && readlink "/proc/$tee_pid/fd/0" || true)
+              for pipe in "$step_pipe" "$tee_pipe"; do
+                [ -n "$pipe" ] || continue
+                echo "--- Prozesse mit $pipe"
+                for fd in /proc/[0-9]*/fd/*; do
+                  [ "$(sudo readlink "$fd" 2>/dev/null)" = "$pipe" ] || continue
+                  pid=${fd#/proc/}; pid=${pid%%/*}
+                  echo "$pid $(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)"
+                done | sort -u
+              done
+              echo "--- Ports 8787 (API) und 4173 (Web)"
+              sudo ss -ltnp | grep -E ':(8787|4173) ' || echo "keine"
+              echo "::endgroup::"
+            done
+            # stderr ins Leere: sonst meldet bash beim Beenden „Terminated … sleep“ im Log.
+          ) 2>/dev/null &
+          watchdog=$!
+          status=0
+          pnpm e2e --shard=${{ matrix.shard }}/6 2>&1 | tee "$log" || status=$?
+          # Wächter samt seinem `sleep` beenden – sonst hielte er selbst die Ausgabe offen.
+          pkill -P "$watchdog" || true
+          kill "$watchdog" 2>/dev/null || true
+          exit "$status"
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
