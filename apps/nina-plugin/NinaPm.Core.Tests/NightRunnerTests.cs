@@ -43,6 +43,8 @@ public sealed class NightRunnerTests : IDisposable
     {
         public bool Offline { get; set; }
         public List<NinaPlanRequest> Plans { get; } = [];
+        public List<DateTimeOffset> PlanTimes { get; } = [];
+        public Func<DateTimeOffset>? Now { get; set; }
         public List<NinaSessionCreate> Created { get; } = [];
         public List<(Guid Id, NinaSessionPatch Patch)> Patches { get; } = [];
         public Func<NinaSessionCreate, NinaSessionCreated>? OnCreate { get; set; }
@@ -54,6 +56,7 @@ public sealed class NightRunnerTests : IDisposable
         {
             if (Offline) throw new HttpRequestException("offline");
             Plans.Add(request);
+            if (Now is not null) PlanTimes.Add(Now());
             var p = Example<NinaPlanResponse>("plan.response");
             p.Night = request.Night;
             p.NightPlanId = Guid.NewGuid();
@@ -133,6 +136,47 @@ public sealed class NightRunnerTests : IDisposable
         await runner.RunOnceAsync(default);
         Assert.Equal(plans + 1, api.Plans.Count);
         Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Server_liefert_den_erledigten_Block_erneut_neu_planen_hoechstens_alle_5_Minuten()
+    {
+        // Lauf 02.10.2026: kurz vor dem Blockende passte keine Belichtung mehr, der Block war sofort erledigt; der
+        // Test-Server lieferte ihn im neuen Plan erneut, der Plan mit Blöcken hob die Sperre auf → 834 Pläne in 61 s.
+        api.Now = () => clock.UtcNow;
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan + Session um 01:00, Sperre bis 01:05
+        clock.UtcNow = UtcText.Parse("2026-09-18T09:19:30Z"); // regulärer Block endet 09:20:01
+
+        for (var i = 0; i < 40 && runner.HasBlocksRemaining; i++) await runner.RunOnceAsync(default);
+
+        for (var i = 1; i < api.PlanTimes.Count; i++)
+            Assert.True(api.PlanTimes[i] - api.PlanTimes[i - 1] >= NightLoop.PlanLock, $"Plan {i} nach {api.PlanTimes[i] - api.PlanTimes[i - 1]}");
+        Assert.Contains(nina.Calls, c => c.StartsWith("delay:", StringComparison.Ordinal));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("loop_guard"));
+    }
+
+    [Fact]
+    public async Task Schleifenschutz_nach_25_sofortigen_Aufrufen_30_s_Pause()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        // Nicht behebbarer Zustand: jeder Aufruf kehrt sofort zurück (NINA hört normalerweise über HasBlocksRemaining auf).
+        runner.Loop.Block(NinaHeartbeatBlockedReason.Rig_busy, clock.UtcNow);
+        var start = clock.UtcNow;
+
+        // Der erste Aufruf (Plan, Session) kehrte ebenfalls sofort zurück und zählt mit.
+        for (var i = 2; i < NightRunner.LoopGuardCalls; i++) await runner.RunOnceAsync(default);
+        Assert.Equal(start, clock.UtcNow);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("loop_guard"));
+
+        await runner.RunOnceAsync(default);
+        Assert.Equal(start + NightRunner.LoopGuardWait, clock.UtcNow);
+        Assert.Contains(sink.Lines, l => l.Contains("WARNING code=loop_guard"));
+
+        // Zähler beginnt neu.
+        for (var i = 1; i < NightRunner.LoopGuardCalls; i++) await runner.RunOnceAsync(default);
+        Assert.Equal(start + NightRunner.LoopGuardWait, clock.UtcNow);
     }
 
     [Fact]

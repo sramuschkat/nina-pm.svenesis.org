@@ -69,8 +69,9 @@ public sealed record NightContext(
 /// <item>Nachtende, sobald kein Block läuft und <c>now ≥ (darknessEndUtc ?? sessionEndUtc)</c>, spätestens bei
 /// <c>sessionEndUtc</c>; Reihenfolge Flats (ab <c>flatsNotBeforeUtc</c>) → Abschluss-<c>PATCH</c> → <c>nightFinished</c>
 /// → im **nächsten** Aufruf <c>false</c>.</item>
-/// <item>Leerer oder fehlgeschlagener Planaufbau → 5 min kein neuer Abruf (Zeitstempel vor dem Versuch); nur
-/// Benutzerabbruch und <em>Zurücksetzen</em> heben die Sperre auf. Ein leerer Plan nach <c>darknessEndUtc</c> ist Nachtende.</item>
+/// <item>Jeder Planabruf aus der Schleife sperrt 5 min weitere Abrufe (Zeitstempel vor dem Versuch) – ob leer,
+/// fehlgeschlagen oder mit Blöcken; nur Benutzerabbruch und <em>Zurücksetzen</em> heben die Sperre auf. Ein leerer Plan
+/// nach <c>darknessEndUtc</c> ist Nachtende.</item>
 /// <item>Gesperrte Zustände je Grund mit Austrittsregel; nicht behebbare beenden zuerst den laufenden Block und setzen
 /// die Schleife erst im nächsten Aufruf ohne laufenden Block auf <c>false</c>.</item>
 /// </list>
@@ -180,12 +181,16 @@ public sealed class NightLoop
     /// <summary>Vor jedem Planabruf: Sperre setzen (Zeitstempel **vor** dem Versuch, execution.md §2).</summary>
     public void PlanAttempt(DateTimeOffset now) => planLockUntil = now + PlanLock;
 
-    /// <summary>Plan mit Blöcken erhalten: Sperre und <c>plan_failed</c> aufheben. Ein leerer Plan lässt die Sperre stehen.</summary>
-    public void PlanReceived(bool hasBlocks)
+    /// <summary>
+    /// Plan erhalten (online oder gespeichert): <c>plan_failed</c> aufheben. Die Sperre aus <see cref="PlanAttempt"/>
+    /// bleibt auch bei einem Plan mit Blöcken stehen – sind dessen Blöcke vor Ablauf der 5 min erledigt (gleicher Block
+    /// erneut geliefert, vor dem Blockende passt keine Belichtung mehr, offline gespeicherter Plan), plant die Schleife
+    /// erst nach Ablauf neu (Lauf 02.10.2026: 834 Pläne in 61 s).
+    /// </summary>
+    public void PlanReceived()
     {
         PlanFailed = false;
         if (Blocked == NinaHeartbeatBlockedReason.Plan_failed) Unblock();
-        if (hasBlocks) planLockUntil = null;
     }
 
     /// <summary>Planaufbau fehlgeschlagen: <c>blocked{plan_failed}</c>, die Sperre aus <see cref="PlanAttempt"/> gilt.</summary>

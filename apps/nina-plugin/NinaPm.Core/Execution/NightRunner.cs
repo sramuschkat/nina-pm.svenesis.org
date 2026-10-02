@@ -102,7 +102,9 @@ public sealed class NightRunner(
         cancelHandled = false;
         try
         {
+            var started = clock.UtcNow;
             await StepAsync(token).ConfigureAwait(false);
+            await GuardLoopAsync(started, token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested && !cancelHandled)
         {
@@ -122,6 +124,36 @@ public sealed class NightRunner(
     }
 
     private bool cancelHandled;
+
+    /// <summary>Aufrufe in Folge, die ohne Warten oder Belichten zurückkehren, bevor der Schleifenschutz greift.</summary>
+    public const int LoopGuardCalls = 25;
+
+    /// <summary>Ein Aufruf kürzer als das gilt als „sofort zurück“.</summary>
+    public static readonly TimeSpan LoopGuardFast = TimeSpan.FromSeconds(2);
+
+    /// <summary>Wartezeit des Schleifenschutzes.</summary>
+    public static readonly TimeSpan LoopGuardWait = TimeSpan.FromSeconds(30);
+
+    private int fastCalls;
+
+    /// <summary>
+    /// Letzte Sicherung gegen Dauerschleifen (NINA ruft den Container sofort wieder auf): kehren
+    /// <see cref="LoopGuardCalls"/> Aufrufe in Folge jeweils in weniger als <see cref="LoopGuardFast"/> zurück, wartet
+    /// der Aufruf <see cref="LoopGuardWait"/> (abbrechbar) und meldet <c>WARNING code=loop_guard</c>. Regulär folgen
+    /// höchstens Planabruf, Session und übersprungene Blöcke aufeinander.
+    /// </summary>
+    private async Task GuardLoopAsync(DateTimeOffset started, CancellationToken token)
+    {
+        if (clock.UtcNow - started >= LoopGuardFast)
+        {
+            fastCalls = 0;
+            return;
+        }
+        if (++fastCalls < LoopGuardCalls) return;
+        fastCalls = 0;
+        log.Warning("WARNING", ("code", "loop_guard"), ("untilUtc", clock.UtcNow + LoopGuardWait));
+        await blockHost.DelayAsync(clock.UtcNow + LoopGuardWait, token).ConfigureAwait(false);
+    }
 
     private async Task StepAsync(CancellationToken token)
     {
@@ -221,14 +253,14 @@ public sealed class NightRunner(
             var plan = outcome.Plan!;
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
             store.SetState(StateKeys.DoneBlocks, null);
-            Loop.PlanReceived(plan.Blocks.Count > 0);
+            Loop.PlanReceived();
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             return;
         }
         if (outcome.Unreachable)
         {
             // Ohne Verbindung: gespeicherter Plan der Nacht weiter (execution.md §8); ohne ihn keine Blöcke.
-            if (stored is not null) Loop.PlanReceived(stored.Plan.Blocks.Count > 0);
+            if (stored is not null) Loop.PlanReceived();
             else Loop.PlanFailedAt(clock.UtcNow);
             return;
         }
