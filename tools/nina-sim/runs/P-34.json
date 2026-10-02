@@ -1,0 +1,88 @@
+{
+  "protocol": "P-34",
+  "scenario": "one-night",
+  "description": "Kamera-Sollwert während Block 1 auf 0 °C (Rig −10 °C ± 1): weiter belichten, je Block genau eine Warnung, Aufnahmen markiert, Heartbeat zeigt die Kamera.",
+  "untilMin": 60,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 8,
+      "sim": "setpoint",
+      "value": 0
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "camera_temperature"
+          }
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "perBlock": {
+          "event": "WARNING",
+          "where": {
+            "code": "camera_temperature"
+          }
+        },
+        "max": 1
+      },
+      {
+        "order": [
+          {
+            "event": "WARNING",
+            "where": {
+              "code": "camera_temperature"
+            }
+          },
+          {
+            "event": "CAPTURE",
+            "where": {
+              "result": "saved"
+            }
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "report": "captures",
+        "where": {
+          "temperatureDeviation": true
+        },
+        "min": 5
+      },
+      {
+        "report": "captures",
+        "where": {
+          "temperatureDeviation": true,
+          "metrics.setPointC": 0
+        },
+        "min": 5
+      },
+      {
+        "report": "captures",
+        "where": {
+          "temperatureDeviation": false
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "report": "heartbeats.last.camera.setPointC",
+        "equals": 0
+      },
+      {
+        "report": "heartbeats.last.camera.coolerOn",
+        "equals": true
+      }
+    ]
+  ]
+}

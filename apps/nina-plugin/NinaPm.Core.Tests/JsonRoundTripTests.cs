@@ -55,4 +55,28 @@ public sealed class JsonRoundTripTests
         var hb = JsonConvert.DeserializeObject<NinaHeartbeatResponse>(ContractExamples.Json("heartbeat.response"), Settings)!;
         Assert.Equal(TimeSpan.Zero, hb.ServerTimeUtc.Offset);
     }
+
+    /// <summary>
+    /// Pflichtfelder, die <c>null</c> sein dürfen, stehen im JSON (Fund des kopflosen Nachtlaufs 02.10.2026: ohne sie
+    /// antwortete der Server auf jede Aufnahme-Meldung und jeden Heartbeat <c>422</c>); optionale bleiben weg.
+    /// </summary>
+    [Fact]
+    public void Pflichtfelder_mit_null_werden_geschrieben_optionale_nicht()
+    {
+        var capture = JObject.Parse(JsonConvert.SerializeObject(new Captures { Gain = null, Offset = null, ReadoutMode = null, ReadoutModeIndex = null, FileName = null }, Settings));
+        foreach (var key in new[] { "gain", "offset", "readoutMode", "readoutModeIndex" })
+            Assert.Equal(JTokenType.Null, capture[key]?.Type);
+        Assert.False(capture.ContainsKey("fileName"));
+
+        var hb = JObject.Parse(JsonConvert.SerializeObject(new NinaHeartbeat { SequenceTriggers = new SequenceTriggers { AutofocusAfterTimeMin = null } }, Settings));
+        Assert.Equal(JTokenType.Null, hb["sequenceTriggers"]?["autofocusAfterTimeMin"]?.Type);
+    }
+
+    /// <summary>Lesen bleibt nachsichtig: Exoplaneten-Zeilen ohne <c>order</c>/<c>enabled</c>/<c>counts</c> (Vertragsbeispiel).</summary>
+    [Fact]
+    public void Targets_mit_Exoplaneten_Zeilen_ohne_Deep_Sky_Pflichtfelder_lesbar()
+    {
+        var t = JsonConvert.DeserializeObject<NinaTargets>(ContractExamples.Json("targets.response"), Settings)!;
+        Assert.Contains(t.Projects, p => p.Panels.Any(panel => panel.Lines.Count > 0));
+    }
 }

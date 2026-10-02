@@ -322,4 +322,7 @@ public static class StateKeys
     public const string SettingsVersion = "settingsVersion";
     public const string PlanBlockedUntil = "planBlockedUntil";
     public const string DoneBlocks = "doneBlocks";
+
+    /// <summary>Abgeschlossene Session mit noch offenen Meldungen: <c>sessionId|endedAtUtc</c> (execution.md §8, NIN5-7).</summary>
+    public const string CompletedSession = "completedSession";
 }

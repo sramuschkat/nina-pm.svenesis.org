@@ -68,11 +68,12 @@ const entriesOf = (plan: Json) => (plan.blocks as Json[]).flatMap((b) => b.entri
 const P = '/api/nina/v1';
 
 describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', () => {
-  it('kennt die 14 Szenarien aus ops/plugin-test-protocol.md', () => {
+  it('kennt die 15 Szenarien aus ops/plugin-test-protocol.md', () => {
     expect(SCENARIO_NAMES).toEqual(
       [
         'current-night',
         'delay',
+        'filters-readout',
         'flats',
         'flip',
         'lease',
@@ -422,7 +423,7 @@ describe('Pläne der Szenarien', () => {
     t.advance(5);
     t.server.apply('skip_block');
     const plan = await t.ok('POST', `${P}/plan`, planRequest(night(t.server)));
-    expect(blocks(plan)[0].startUtc).toBe('2026-09-18T01:18:00Z');
+    expect(blocks(plan)[0].startUtc).toBe('2026-09-18T01:33:00Z');
   });
 
   it('delay: Block 1 begann vor 6 min – seine ersten Einträge liegen in der Vergangenheit', async () => {

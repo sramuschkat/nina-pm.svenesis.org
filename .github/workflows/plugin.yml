@@ -19,6 +19,8 @@ on:
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-test-server/**'
+      - 'tools/nina-sim/**'
+      - 'tools/test-run-check/**'
       - 'packages/shared/src/contracts/nina/**'
       - 'docs/contracts/nina/**'
       - 'packages/shared/contracts/test-vectors/**'
@@ -37,6 +39,8 @@ on:
       - 'packages/engine/**'
       - 'tools/engine-bundle/**'
       - 'tools/nina-test-server/**'
+      - 'tools/nina-sim/**'
+      - 'tools/test-run-check/**'
       - 'packages/shared/src/contracts/nina/**'
       - 'docs/contracts/nina/**'
       - 'packages/shared/contracts/test-vectors/**'
@@ -188,6 +192,32 @@ jobs:
         run: |
           curl -sf http://127.0.0.1:8787/test/report > report.json
           node -e "const r=require('./report.json'); const ok=r.sessions.some(s=>s.status==='completed') && r.captures.length>0 && r.heartbeats.count>0; console.log(JSON.stringify({plans:r.plans.length,sessions:r.sessions.length,captures:r.captures.length,heartbeats:r.heartbeats.count})); process.exit(ok?0:1)"
+
+  # Kopfloser Nachtlauf (ops/plugin-test-protocol.md „Kopfloser Nachtlauf“): Plugin-Kern mit simuliertem NINA gegen
+  # den Test-Server mit virtueller Uhr – die Protokolle aus tools/nina-sim/runs/ in Sekunden, Schritte automatisch
+  # geprüft, danach test-run:check. Ergebnisordner als Artefakt plugin-sim.
+  plugin-sim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pnpm install --frozen-lockfile
+      - name: Kopfloser Nachtlauf (alle Läufe)
+        run: pnpm plugin:sim --out sim-runs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-sim
+          path: sim-runs
+          retention-days: 14
 
   # AP-S2a (TK 10.4): Laufzeit von planNight unter Jint auf dem x64-Runner – Messwert, keine Abnahmegrenze.
   # Ergebnis als Artefakt jint-runtime (docs/adr/ADR-S2a-jint.md).

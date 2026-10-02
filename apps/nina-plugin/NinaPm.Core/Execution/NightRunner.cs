@@ -76,7 +76,7 @@ public sealed class NightRunner(
     IBlockHost blockHost,
     INightHost nightHost,
     IClock clock,
-    NinaPmLog log)
+    NinaPmLog log) : IOutboxListener
 {
     public const string BootstrapCacheKey = "bootstrap";
     public const string TargetsCacheKey = "targets";
@@ -96,6 +96,13 @@ public sealed class NightRunner(
     /// </summary>
     private NinaPlanRequestReason? forcedPlan = NinaPlanRequestReason.Resume;
     private bool interrupted;
+
+    /// <summary>Erster Aufruf nach dem Start geprüft (Neustart mit Session → <c>PATCH running</c>, §6).</summary>
+    private bool resumeChecked;
+
+    /// <summary><c>409 session.rig_busy</c> während eines Blocks: Session erst nach dem Block beenden (NIN5-2).</summary>
+    private bool abortSessionAfterBlock;
+    private readonly object sessionGate = new();
 
     public NightLoop Loop { get; } = new();
 
@@ -227,14 +234,20 @@ public sealed class NightRunner(
         var hasSession = SessionId is not null && !stale;
         // Ohne Session gibt es nichts wiederaufzunehmen: neue Session, erster Plan der Session (§3.2).
         if (forcedPlan == NinaPlanRequestReason.Resume && !hasSession) forcedPlan = NinaPlanRequestReason.Initial;
+        var nightRunning = clock.UtcNow < (stored?.Plan is { } running ? running.DarknessEndUtc ?? running.SessionEndUtc : row.NightWindowEndUtc);
+        if (!resumeChecked)
+        {
+            resumeChecked = true;
+            // Nur fortsetzen, solange die Nacht läuft; danach schließt der nächste Schritt die Session ab (P-22).
+            if (hasSession && forcedPlan == NinaPlanRequestReason.Resume && nightRunning) QueueResume(SessionId!.Value);
+        }
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: false, FlatsPending: false, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
             DoneBlocks: DoneBlocks(stored));
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
         // neu planen, solange die Nacht läuft; offline gilt danach der gespeicherte Plan.
-        var forced = forcedPlan is not null && !stale && Loop.Blocked is null && !Loop.NightFinished
-            && clock.UtcNow < (stored?.Plan is { } sp ? sp.DarknessEndUtc ?? sp.SessionEndUtc : row.NightWindowEndUtc);
+        var forced = forcedPlan is not null && !stale && Loop.Blocked is null && !Loop.NightFinished && nightRunning;
         var step = forced ? new NightStep(NightAction.FetchPlan, Reason: forcedPlan) : Loop.Decide(context);
         forcedPlan = null;
 
@@ -263,6 +276,8 @@ public sealed class NightRunner(
             case NightAction.CompleteSession:
                 await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);
                 Loop.SessionCompleted();
+                // Abgeschlossen ist endgültig (NT-11): danach Heartbeats ohne Session, nichts mehr fortsetzen.
+                store.SetState(StateKeys.SessionId, null);
                 return;
             case NightAction.FinishNight:
                 Loop.NightFinishedSet();
@@ -424,25 +439,96 @@ public sealed class NightRunner(
         }
     }
 
+    /// <summary>
+    /// Session beenden (<c>completed</c>/<c>aborted</c>) – sofort, auch mit offenen Meldungen (NIN5-7). Ohne Serverantwort
+    /// wandert der PATCH in die Outbox (hinter die offenen Meldungen, §8 Sendereihenfolge); mit offenen Meldungen meldet
+    /// die Outbox nach jedem Leeren den neuen Stand, bis 0.
+    /// </summary>
     private async Task PatchSessionAsync(NinaSessionPatchStatus status, CancellationToken token)
     {
         if (SessionId is not { } id) return;
+        var patch = new NinaSessionPatch { Status = status, EndedAtUtc = clock.UtcNow, OutboxPending = store.OutboxCount() };
+        if (status == NinaSessionPatchStatus.Completed && patch.OutboxPending > 0) OutboxSender.RememberCompleted(store, id, patch.EndedAtUtc!.Value);
         try
         {
-            await sessionApi.PatchAsync(id, new NinaSessionPatch
-            {
-                Status = status,
-                EndedAtUtc = clock.UtcNow,
-                OutboxPending = store.OutboxCount(),
-            }, token).ConfigureAwait(false);
+            await sessionApi.PatchAsync(id, patch, token).ConfigureAwait(false);
+            log.Event("API", ("status", 200), ("call", "sessions"));
             log.Event("SESSION", ("session", id), ("status", status == NinaSessionPatchStatus.Completed ? "completed" : "aborted"),
-                ("pending", store.OutboxCount()));
+                ("pending", patch.OutboxPending));
         }
-        catch (Exception ex) when (ex is NinaApiException or HttpRequestException)
+        catch (NinaApiException ex) when (ex.StatusCode is 408 or 429 or >= 500)
         {
-            // Nachsenden über die Outbox folgt mit AP-16g; die Nacht endet trotzdem (NIN5-7).
-            log.Warning("API", ("status", ex is NinaApiException a ? a.StatusCode : 0), ("call", "sessions"));
+            log.Warning("API", ("status", ex.StatusCode), ("code", NinaApi.ProblemCode(ex.Response)), ("call", "sessions"));
+            store.EnqueueOutbox(OutboxKinds.SessionPatch, JsonConvert.SerializeObject(patch, NinaJson.Settings()), id, null);
         }
+        catch (NinaApiException ex)
+        {
+            log.Warning("API", ("status", ex.StatusCode), ("code", NinaApi.ProblemCode(ex.Response)), ("call", "sessions"));
+        }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !token.IsCancellationRequested))
+        {
+            log.Warning("API", ("status", 0), ("code", ex is TaskCanceledException ? "timeout" : "network"), ("call", "sessions"));
+            store.EnqueueOutbox(OutboxKinds.SessionPatch, JsonConvert.SerializeObject(patch, NinaJson.Settings()), id, null);
+        }
+    }
+
+    /// <summary>
+    /// Neustart mit Session aus <c>ninapm.db</c> (§6 „Neustart“): <c>PATCH {status: running, resumedAtUtc}</c> über die
+    /// Outbox – hinter allem, was vor dem Neustart offen war; die Blöcke warten nicht darauf. Lease → <c>reacquiring</c>.
+    /// </summary>
+    private void QueueResume(Guid sessionId)
+    {
+        var patch = new NinaSessionPatch { Status = NinaSessionPatchStatus.Running, ResumedAtUtc = clock.UtcNow };
+        store.EnqueueOutbox(OutboxKinds.SessionPatch, JsonConvert.SerializeObject(patch, NinaJson.Settings()), sessionId, null);
+        ApplyLease(Lease.ResumeSent());
+        log.Event("LEASE", ("session", sessionId), ("state", "reacquiring"));
+    }
+
+    // ---- Antworten auf Session-PATCHes aus der Outbox (IOutboxListener) --------------------------------
+
+    /// <summary><c>PATCH running</c> aus der Outbox nur für die aktuelle Session (nach Abschluss oder Stopp veraltet).</summary>
+    public bool ShouldResume(Guid sessionId) => SessionId == sessionId;
+
+    /// <summary><c>PATCH running</c> beantwortet: Lease wie eine Heartbeat-Antwort (<c>reacquiring → held</c> bzw. <c>lost</c>).</summary>
+    public void SessionPatched(Guid sessionId, NinaSessionPatch sent, NinaSessionPatched response)
+    {
+        if (sent.Status != NinaSessionPatchStatus.Running || SessionId != sessionId) return;
+        ApplyLease(Lease.HeartbeatAnswered(response.Lease?.LeaseLost ?? false));
+    }
+
+    /// <summary>
+    /// <c>409</c> auf <c>PATCH running</c>: <c>session.rig_busy</c> → eine andere Instanz hat übernommen (§6
+    /// <c>reacquiring → none</c>): gesperrt <c>rig_busy</c>, laufende Belichtung und Block zuerst zu Ende (NIN5-2), dann
+    /// Session beenden (<c>PATCH aborted</c>). <c>session.closed</c>/<c>session.unknown</c> → Session vergessen, der
+    /// nächste Plan legt eine neue an (NT-11).
+    /// </summary>
+    public void SessionPatchRejected(Guid sessionId, NinaSessionPatch sent, string? code)
+    {
+        if (sent.Status != NinaSessionPatchStatus.Running || SessionId != sessionId) return;
+        if (code == "session.rig_busy")
+        {
+            ApplyLease(Lease.RigBusy());
+            lock (sessionGate)
+            {
+                if (BlockRunning)
+                {
+                    abortSessionAfterBlock = true;
+                    return;
+                }
+            }
+            AbortSession();
+            return;
+        }
+        log.Note($"Session {sessionId} wird nicht fortgesetzt ({code}); der nächste Plan legt eine neue an.");
+        store.SetState(StateKeys.SessionId, null);
+        forcedPlan = NinaPlanRequestReason.Initial;
+    }
+
+    /// <summary>Session beenden ohne Benutzer-Stopp (Rig belegt): <c>PATCH aborted</c>, Session vergessen, Sperre bleibt.</summary>
+    private void AbortSession()
+    {
+        _ = PatchSessionAsync(NinaSessionPatchStatus.Aborted, CancellationToken.None);
+        store.SetState(StateKeys.SessionId, null);
     }
 
     // ---- Block --------------------------------------------------------------------------------------
@@ -493,7 +579,14 @@ public sealed class NightRunner(
         }
         finally
         {
-            runningBlock = null;
+            bool abort;
+            lock (sessionGate)
+            {
+                runningBlock = null;
+                abort = abortSessionAfterBlock;
+                abortSessionAfterBlock = false;
+            }
+            if (abort) AbortSession();
         }
     }
 
@@ -578,7 +671,8 @@ public sealed class NightRunner(
         switch (effect)
         {
             case LeaseEffect.LeaseLost:
-                Loop.Block(NinaHeartbeatBlockedReason.Lease_lost, now);
+                // rig_busy ist endgültig (nicht wiederherstellbar) und bleibt die Sperre.
+                if (Loop.Blocked != NinaHeartbeatBlockedReason.Rig_busy) Loop.Block(NinaHeartbeatBlockedReason.Lease_lost, now);
                 log.Event("LEASE", ("state", "lost"));
                 log.Event("LEASE_LOST", ("atUtc", now));
                 log.Event("BLOCKED", ("reason", "lease_lost"));

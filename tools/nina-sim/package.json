@@ -1,0 +1,10 @@
+{
+  "name": "@nina-pm/nina-sim",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kopfloser Nachtlauf: Plugin-Kern mit simuliertem NINA gegen den Test-Server mit virtueller Uhr, Protokolle automatisch geprüft",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

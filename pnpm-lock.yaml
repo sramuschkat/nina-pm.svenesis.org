@@ -531,6 +531,8 @@ importers:
 
   tools/smoke: {}
 
+  tools/nina-sim: {}
+
   tools/test-run-check: {}
 
 packages:

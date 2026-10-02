@@ -1,0 +1,202 @@
+{
+  "protocol": "P-25",
+  "scenario": "safety",
+  "description": "Safety: unsicher während der Belichtung, Wiederaufnahme, Benutzer-Stopp mit neuer Session, getrennter Monitor, unsicher bis Nachtende.",
+  "untilMin": 70,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 5.5,
+      "sim": "unsafe"
+    },
+    {
+      "atMin": 10.5,
+      "sim": "safe"
+    },
+    {
+      "atMin": 14.2,
+      "sim": "monitor_off"
+    },
+    {
+      "atMin": 17,
+      "sim": "monitor_on"
+    },
+    {
+      "atMin": 20,
+      "sim": "stop"
+    },
+    {
+      "atMin": 21,
+      "sim": "start"
+    },
+    {
+      "atMin": 30,
+      "sim": "unsafe"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "CAPTURE",
+            "where": {
+              "result": "aborted"
+            }
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "interrupted"
+            }
+          },
+          {
+            "event": "SAFETY_PAUSE"
+          },
+          {
+            "event": "HEARTBEAT",
+            "where": {
+              "state": "paused"
+            }
+          }
+        ]
+      },
+      {
+        "none": {
+          "event": "SESSION",
+          "where": {
+            "status": "aborted"
+          }
+        },
+        "before": {
+          "event": "SAFETY_RESUME"
+        }
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "SAFETY_PAUSE"
+          },
+          {
+            "event": "SAFETY_RESUME"
+          },
+          {
+            "event": "PLAN",
+            "where": {
+              "reason": "resume"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "aborted"
+            }
+          },
+          {
+            "event": "HEARTBEAT",
+            "where": {
+              "state": "idle"
+            }
+          },
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "running"
+            }
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "report": "sessions",
+        "min": 2,
+        "max": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "finished",
+            "reason": "unsafe"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "none": {
+          "event": "SAFETY_RESUME"
+        },
+        "after": {
+          "event": "SAFETY_PAUSE"
+        },
+        "nth": 3
+      },
+      {
+        "report": "sessions",
+        "where": {
+          "status": "completed"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "safety_monitor_not_connected"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "order": [
+          {
+            "event": "WARNING",
+            "where": {
+              "code": "safety_monitor_not_connected"
+            }
+          },
+          {
+            "event": "SAFETY_RESUME"
+          }
+        ]
+      }
+    ]
+  ]
+}

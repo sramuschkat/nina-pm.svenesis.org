@@ -1,0 +1,135 @@
+{
+  "protocol": "P-10",
+  "scenario": "lease",
+  "description": "Rig belegt: NINA stürzt im Block ab, eine andere Instanz hält das Rig; nach dem Neustart antwortet PATCH running 409 rig_busy – laufender Block endet zuerst, dann nur Simulation.",
+  "untilMin": 40,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 6,
+      "server": "rig_busy"
+    },
+    {
+      "atMin": 6.5,
+      "sim": "crash"
+    },
+    {
+      "atMin": 7,
+      "sim": "start"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "actions",
+        "where": {
+          "action": "rig_busy"
+        },
+        "min": 1
+      },
+      {
+        "log": {
+          "event": "LEASE",
+          "where": {
+            "state": "reacquiring"
+          }
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "API",
+          "where": {
+            "status": "409",
+            "code": "session.rig_busy"
+          }
+        },
+        "min": 1
+      },
+      {
+        "report": "sessions",
+        "where": {
+          "status": "aborted"
+        },
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "LEASE",
+            "where": {
+              "state": "reacquiring"
+            }
+          },
+          {
+            "event": "API",
+            "where": {
+              "status": "409",
+              "code": "session.rig_busy"
+            }
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "lease_lost"
+            }
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "rig_busy"
+          }
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "none": {
+          "event": "BLOCK_START"
+        },
+        "after": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "lease_lost"
+          }
+        },
+        "nth": 2
+      },
+      {
+        "order": [
+          {
+            "event": "BLOCKED",
+            "where": {
+              "reason": "rig_busy"
+            }
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "lease_lost"
+            }
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

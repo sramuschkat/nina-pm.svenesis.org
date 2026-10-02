@@ -42,7 +42,10 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private (Guid ProjectId, Guid? PanelId, DateTimeOffset EndUtc)? lastCentered;
     private bool interruptedSinceCenter;
     /// <summary>Hinweise höchstens 1×/12 h je Schlüssel (filter_not_found je Filter, readout_mode_not_found je Modus, §4.3/§4.4).</summary>
-    private readonly HintThrottle hints = new(HintThrottle.TwelveHours);
+    private HostRules? rules;
+
+    /// <summary>Gemeinsame Regeln mit dem kopflosen Nachtlauf (Hinweise, Filter, Auslesemodus, Meldungen).</summary>
+    private HostRules Rules => rules ??= new HostRules(clock, () => Runtime?.Log, () => Runtime?.Runner);
 
     /// <summary>NINAs Mediatoren (Heartbeat-Einstellungen, AP-16e).</summary>
     internal NinaMediators Mediators => m;
@@ -95,13 +98,8 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// </summary>
     public void PlanBuilt(NinaTargets? targets)
     {
-        var now = clock.UtcNow;
         var dither = AncestorTriggers().FirstOrDefault(t => t.GetType().Name.Contains("dither", StringComparison.OrdinalIgnoreCase));
-        if (dither is not null && hints.ShouldEmit("nina_dither_trigger_present", now))
-            Runtime?.Log.Warning("WARNING", ("code", "nina_dither_trigger_present"), ("type", dither.GetType().Name));
-        foreach (var name in FilterResolver.MissingInProfile(targets, ProfileFilterNames()))
-            if (hints.ShouldEmit($"filter_wheel_changed:{name}", now))
-                Runtime?.Log.Warning("WARNING", ("code", "filter_wheel_changed"), ("filter", name));
+        Rules.PlanBuilt(targets, ProfileFilterNames(), dither?.GetType().Name);
     }
 
     /// <summary>Filternamen des aktiven NINA-Profils in Rad-Reihenfolge (leer ohne Filterrad).</summary>
@@ -243,15 +241,11 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     {
         currentFilter = null;
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
-        var nina = FilterResolver.NinaNameFor(entry, Runtime?.Runner.Targets, Runtime?.Runner.Bootstrap);
-        var r = FilterResolver.Resolve(nina, ProfileFilterNames());
+        var r = Rules.ChooseFilter(entry, ProfileFilterNames());
         switch (r.Kind)
         {
             case FilterResolutionKind.NoWheel:
-                return;
             case FilterResolutionKind.NotFound:
-                if (hints.ShouldEmit($"filter_not_found:{nina ?? entry.Filter}", clock.UtcNow))
-                    Runtime?.Log.Event("FILTER_NOT_FOUND", ("filter", nina ?? ""), ("short", entry.Filter ?? ""));
                 return;
             default:
                 currentFilter = filters![r.Index];
@@ -277,17 +271,12 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     internal CaptureFacts? CaptureFactsFor(Guid captureId, Blocks block, Entries entry, NINA.Core.Model.Equipment.FilterInfo? filter,
         bool temperatureDeviation, double exposureS)
     {
-        if (Runtime?.Runner.ExecutingPlan is not { } plan) return null;
-        var now = clock.UtcNow;
         var rotator = m.Rotator.GetInfo();
         var telescope = m.Telescope.GetInfo();
-        var readout = ReadoutResolver.Resolve(entry.ReadoutMode, m.Camera.GetInfo().ReadoutModes?.ToList());
-        return new CaptureFacts(captureId, plan.Night, plan.NightPlanId, block, entry, now, now.AddSeconds(exposureS / 2),
-            filter?.Name ?? entry.Filter ?? "", exposureS, entry.Gain, entry.Offset, entry.Binning ?? 1,
-            entry.ReadoutMode, readout.Kind == ReadoutResolutionKind.Found ? readout.Index : null,
+        return Rules.Facts(captureId, block, entry, filter?.Name, temperatureDeviation, exposureS,
+            m.Camera.GetInfo().ReadoutModes?.ToList(),
             rotator.Connected && float.IsFinite(rotator.MechanicalPosition) ? rotator.MechanicalPosition : 0,
-            telescope.Connected ? CaptureMapper.PierSide(telescope.SideOfPier.ToString()) : null,
-            temperatureDeviation, null);
+            telescope.Connected ? telescope.SideOfPier.ToString() : null);
     }
 
     public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
@@ -306,8 +295,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
         catch (OperationCanceledException)
         {
-            Runtime?.Log.Event("CAPTURE", ("id", item.CaptureId), ("result", "aborted"), ("atUtc", clock.UtcNow));
-            if (item.Facts is { } facts) Runtime?.Runner.ReportCapture(facts, CapturesResult.Aborted, null);
+            Rules.Aborted(item.CaptureId, item.Facts);
             throw;
         }
         await TriggerWalker.RunAsync(Box, after: true, item, item, progress, Runtime, token);
@@ -322,14 +310,12 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// </summary>
     private bool ApplyReadoutMode(Entries entry)
     {
-        var r = ReadoutResolver.Resolve(entry.ReadoutMode, m.Camera.GetInfo().ReadoutModes?.ToList());
+        var r = Rules.ChooseReadout(entry, m.Camera.GetInfo().ReadoutModes?.ToList());
         switch (r.Kind)
         {
             case ReadoutResolutionKind.Unchanged:
                 return true;
             case ReadoutResolutionKind.NotFound:
-                if (hints.ShouldEmit($"readout_mode_not_found:{entry.ReadoutMode}", clock.UtcNow))
-                    Runtime?.Log.Event("READOUT_MODE_NOT_FOUND", ("name", entry.ReadoutMode));
                 return false;
             default:
                 m.Camera.SetReadoutModeForNormalImages((short)r.Index);
@@ -384,13 +370,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         _ = Task.Run(async () =>
         {
             await Task.Delay(CaptureRegistry.SaveTimeout + TimeSpan.FromSeconds(1));
-            foreach (var f in captures.Expire(clock.UtcNow))
-            {
-                Runtime?.Log.Event("CAPTURE", ("id", f.CaptureId), ("result", "failed"), ("atUtc", clock.UtcNow));
-                Runtime?.Log.Warning("WARNING", ("code", "image_not_saved"), ("id", f.CaptureId));
-                Runtime?.Runner.ReportCapture(f, CapturesResult.Failed, null);
-                Runtime?.Runner.ReportEvent(EventsKind.Warning, "image_not_saved", f.Block.Id);
-            }
+            foreach (var f in captures.Expire(clock.UtcNow)) Rules.Failed(f);
             ReleaseIfDrained();
         });
     }
@@ -414,8 +394,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
             SensorTempC = e.MetaData?.Camera is { } cam && double.IsFinite(cam.Temperature) ? cam.Temperature : null,
             SetPointC = e.MetaData?.Camera is { } cam2 && double.IsFinite(cam2.SetPoint) ? cam2.SetPoint : null,
         };
-        Runtime?.Log.Event("CAPTURE", ("id", facts.CaptureId), ("result", "saved"), ("file", file), ("atUtc", clock.UtcNow));
-        Runtime?.Runner.ReportCapture(facts with { Metrics = metrics }, CapturesResult.Saved, file);
+        Rules.Saved(facts, metrics, file);
         ReleaseIfDrained();
     }
 

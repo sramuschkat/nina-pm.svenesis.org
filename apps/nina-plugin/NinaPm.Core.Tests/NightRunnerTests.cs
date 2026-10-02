@@ -80,10 +80,18 @@ public sealed class NightRunnerTests : IDisposable
             return Task.FromResult(OnCreate?.Invoke(body) ?? new NinaSessionCreated { SessionId = body.Id, PlanLogUploadUrl = "http://x" });
         }
 
+        /// <summary>Eigene Antwort auf <c>PATCH /sessions/{id}</c> (wirft z. B. <c>409 session.rig_busy</c>).</summary>
+        public Func<Guid, NinaSessionPatch, NinaSessionPatched>? OnPatch { get; set; }
+
         public Task<NinaSessionPatched> PatchAsync(Guid sessionId, NinaSessionPatch body, CancellationToken token)
         {
+            if (Offline || ReportsFail) throw new HttpRequestException("offline");
             Patches.Add((sessionId, body));
-            return Task.FromResult(new NinaSessionPatched { SessionId = sessionId });
+            return Task.FromResult(OnPatch?.Invoke(sessionId, body) ?? new NinaSessionPatched
+            {
+                SessionId = sessionId,
+                Lease = new Lease3 { LeaseLost = false },
+            });
         }
 
         /// <summary>Meldungen (captures/events) scheitern mit Netzfehler, solange gesetzt.</summary>
@@ -681,4 +689,108 @@ public sealed class NightRunnerTests : IDisposable
     [InlineData(true, true, true, false, CancelKind.Own)]
     public void Unterbrechung_oder_Benutzerabbruch(bool own, bool safetyCondition, bool connected, bool safe, CancelKind expected) =>
         Assert.Equal(expected, Interruption.Classify(own, new SafetyState(safetyCondition, connected, safe)));
+
+    // ---- vorgezogen aus AP-16g: Session-PATCH über die Outbox (execution.md §6 Neustart, §8 NIN5-7) ------------
+
+    private static NinaApiException Problem(int status, string code) =>
+        new("Problem", status, $"{{\"code\":\"{code}\"}}", new Dictionary<string, IEnumerable<string>>(), null);
+
+    private OutboxSender Outbox(NightRunner runner) => new(store, api, new NinaPmLog(sink)) { Listener = runner };
+
+    [Fact]
+    public async Task Neustart_mit_Session_stellt_PATCH_running_in_die_Outbox_die_Antwort_haelt_die_Lease()
+    {
+        await Runner().RunOnceAsync(default);
+        var session = Assert.Single(api.Created).Id;
+        clock.UtcNow = UtcText.Parse("2026-09-18T05:00:00Z");
+        var restarted = Runner();
+
+        await restarted.RunOnceAsync(default);
+
+        Assert.Equal(LeaseState.Reacquiring, restarted.Lease.State);
+        Assert.Empty(api.Patches); // die Blöcke warten nicht darauf
+        await Outbox(restarted).FlushAsync(default);
+        var (id, patch) = Assert.Single(api.Patches);
+        Assert.Equal((session, NinaSessionPatchStatus.Running), (id, patch.Status));
+        Assert.NotNull(patch.ResumedAtUtc);
+        Assert.Equal(LeaseState.Held, restarted.Lease.State);
+        Assert.Contains(sink.Lines, l => l.Contains("LEASE_REGAINED"));
+    }
+
+    [Fact]
+    public async Task Rig_belegt_beim_Fortsetzen_sperrt_rig_busy_und_beendet_die_Session()
+    {
+        await Runner().RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T05:00:00Z");
+        var restarted = Runner();
+        await restarted.RunOnceAsync(default);
+        api.OnPatch = (_, p) => p.Status == NinaSessionPatchStatus.Running ? throw Problem(409, "session.rig_busy") : new NinaSessionPatched();
+
+        await Outbox(restarted).FlushAsync(default);
+
+        Assert.Equal(NinaHeartbeatBlockedReason.Rig_busy, restarted.Loop.Blocked);
+        Assert.Null(restarted.SessionId);
+        Assert.Contains(api.Patches, p => p.Patch.Status == NinaSessionPatchStatus.Aborted);
+        Assert.Equal(0, store.OutboxCount()); // 409 wird nicht wiederholt
+        Assert.False(restarted.HasBlocksRemaining);
+        // Eine spätere Heartbeat-Antwort „Lease weg“ macht daraus keine wiederherstellbare Sperre (P-10).
+        restarted.HeartbeatAnswered(new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = true } }, clock.UtcNow);
+        Assert.Equal(NinaHeartbeatBlockedReason.Rig_busy, restarted.Loop.Blocked);
+    }
+
+    [Fact]
+    public async Task Veraltetes_PATCH_running_nach_Abschluss_wird_verworfen()
+    {
+        await Runner().RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T05:00:00Z");
+        var restarted = Runner();
+        await restarted.RunOnceAsync(default);
+        restarted.UserStopped(); // Session vergessen, bevor die Outbox das Fortsetzen sendet
+
+        await Outbox(restarted).FlushAsync(default);
+
+        Assert.DoesNotContain(api.Patches, p => p.Patch.Status == NinaSessionPatchStatus.Running);
+        Assert.Equal(0, store.OutboxCount());
+    }
+
+    [Fact]
+    public async Task Abschluss_ohne_Antwort_wandert_in_die_Outbox_und_meldet_den_Stand_beim_Senden()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        api.ReportsFail = true; // Netz weg: auch der PATCH scheitert
+
+        await runner.CloseNightUnsafeAsync(default);
+
+        Assert.Equal(2, store.OutboxCount()); // Aufnahme + Abschluss-PATCH, in dieser Reihenfolge
+        api.ReportsFail = false;
+        await Outbox(runner).FlushAsync(default);
+        var completed = Assert.Single(api.Patches);
+        Assert.Equal((session, NinaSessionPatchStatus.Completed, 0), (completed.Id, completed.Patch.Status, completed.Patch.OutboxPending));
+        Assert.Single(api.CaptureBatches);
+        Assert.Contains(sink.Lines, l => l.Contains("SESSION") && l.Contains("status=completed") && l.Contains("pending=0"));
+        Assert.Null(OutboxSender.CompletedSession(store));
+    }
+
+    [Fact]
+    public async Task Abschluss_mit_offenen_Meldungen_meldet_nach_dem_Leeren_pending_0()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        api.ReportsFail = true;
+        await Outbox(runner).FlushAsync(default); // scheitert, Aufnahme bleibt
+        api.ReportsFail = false;
+        api.OnPatch = null;
+
+        await runner.CloseNightUnsafeAsync(default); // PATCH sofort mit pending=1 (NIN5-7)
+        Assert.Equal(1, api.Patches[^1].Patch.OutboxPending);
+        await Outbox(runner).FlushAsync(default);
+
+        Assert.Equal(2, api.Patches.Count);
+        Assert.Equal((NinaSessionPatchStatus.Completed, 0), (api.Patches[^1].Patch.Status, api.Patches[^1].Patch.OutboxPending));
+        Assert.Null(OutboxSender.CompletedSession(store));
+    }
 }

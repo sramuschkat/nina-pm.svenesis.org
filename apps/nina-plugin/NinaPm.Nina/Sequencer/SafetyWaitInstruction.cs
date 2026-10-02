@@ -25,7 +25,6 @@ namespace NinaPm.Nina.Sequencer;
 [JsonObject(MemberSerialization.OptIn)]
 public sealed class SafetyWaitInstruction : SequenceItem
 {
-    private static readonly TimeSpan Tick = TimeSpan.FromSeconds(10);
     private readonly ISafetyMonitorMediator safetyMonitor;
     private readonly IClock clock = SystemClock.Instance;
 
@@ -44,32 +43,21 @@ public sealed class SafetyWaitInstruction : SequenceItem
 
     public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token)
     {
-        var warned = false;
-        while (true)
-        {
-            var runtime = NinaPmRuntime.Current;
-            // Ohne Laufzeit kein Nachtende – nicht unbefristet warten (die Nachtschleife hält dann ohnehin an).
-            if (runtime is null) return;
-            var info = safetyMonitor.GetInfo();
-            if (!info.Connected && !warned)
+        var runtime = NinaPmRuntime.Current;
+        // Ohne Laufzeit kein Nachtende – nicht unbefristet warten (die Nachtschleife hält dann ohnehin an).
+        if (runtime is null) return;
+        await SafetyWait.RunAsync(runtime.Runner, runtime.Log, clock,
+            () =>
             {
-                runtime.Log.Warning("WARNING", ("code", "safety_monitor_not_connected"));
-                warned = true;
-            }
-            var nightEnd = runtime.Runner.NightEndUtc() ?? DateTimeOffset.MaxValue;
-            switch (Interruption.SafetyWaitStep(clock.UtcNow, nightEnd, info.Connected, info.IsSafe))
+                var info = safetyMonitor.GetInfo();
+                return (info.Connected, info.IsSafe);
+            },
+            (tick, t) =>
             {
-                case SafetyWaitResult.Safe:
-                    return;
-                case SafetyWaitResult.CloseNight:
-                    await runtime.Runner.CloseNightUnsafeAsync(token);
-                    return;
-                default:
-                    progress?.Report(new ApplicationStatus { Source = "NINA-PM", Status = "Waiting until safe or night end" });
-                    await Task.Delay(Tick, token);
-                    break;
-            }
-        }
+                progress?.Report(new ApplicationStatus { Source = "NINA-PM", Status = "Waiting until safe or night end" });
+                return Task.Delay(tick, t);
+            },
+            token);
     }
 
     public override string ToString() => "NINA-PM Wait until Safe or Night End";

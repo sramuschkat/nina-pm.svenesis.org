@@ -1,0 +1,82 @@
+{
+  "protocol": "P-32",
+  "scenario": "one-night",
+  "description": "Filterbelegung geändert (Test-Server filter_wheel_changed): Hinweis beim Planaufbau, Alarm aus dem Heartbeat, betroffene Zeilen nie mit dem alten Platz belichtet.",
+  "untilMin": 60,
+  "setup": {
+    "autoStart": false
+  },
+  "steps": [
+    {
+      "atMin": 0.5,
+      "server": "filter_wheel_changed"
+    },
+    {
+      "atMin": 1,
+      "sim": "start"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "actions",
+        "where": {
+          "action": "filter_wheel_changed"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "report": "alerts",
+        "where": {
+          "code": "filter_wheel_changed"
+        },
+        "min": 1
+      },
+      {
+        "report": "heartbeats.last.filterWheel.0.name",
+        "equals": "LUMINANCE"
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "filter_wheel_changed"
+          }
+        },
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "FILTER_NOT_FOUND",
+          "where": {
+            "short": "L"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "L"
+        },
+        "min": 0,
+        "max": 0
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "R"
+        },
+        "min": 1
+      }
+    ]
+  ]
+}

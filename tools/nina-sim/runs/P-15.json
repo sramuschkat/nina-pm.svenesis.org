@@ -1,0 +1,98 @@
+{
+  "protocol": "P-15",
+  "scenario": "replan",
+  "description": "Im Block: anderes Projekt geändert (c) → Block läuft weiter; laufendes Projekt pausiert (a) → Block endet target_removed, neuer Plan ab jetzt.",
+  "untilMin": 140,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 6,
+      "server": "pause_project",
+      "project": "ngc7000"
+    },
+    {
+      "atMin": 70,
+      "server": "pause_project",
+      "project": "m31"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "target_removed"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "order": [
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "target_removed"
+            }
+          },
+          {
+            "event": "PLAN_REBUILT",
+            "where": {
+              "reason": "refresh"
+            }
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "TARGETS"
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "completed"
+            }
+          },
+          {
+            "event": "PLAN_REBUILT",
+            "where": {
+              "reason": "refresh"
+            }
+          }
+        ]
+      },
+      {
+        "none": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "target_removed"
+          }
+        },
+        "before": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "completed"
+          }
+        }
+      }
+    ],
+    [
+      {
+        "none": {
+          "event": "PLAN_REBUILT"
+        },
+        "before": {
+          "event": "TARGETS"
+        },
+        "nth": 2
+      }
+    ]
+  ]
+}

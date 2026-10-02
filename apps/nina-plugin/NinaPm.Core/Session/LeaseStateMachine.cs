@@ -77,6 +77,16 @@ public sealed class LeaseStateMachine
         return LeaseEffect.RigBusy;
     }
 
+    /// <summary>
+    /// Neustart mit Session aus <c>ninapm.db</c>: <c>PATCH {status: running}</c> liegt in der Outbox (§6 „Neustart“) –
+    /// <c>none</c>/<c>lost</c> → <c>reacquiring</c>; die erste Antwort (Heartbeat oder PATCH) entscheidet.
+    /// </summary>
+    public LeaseEffect ResumeSent()
+    {
+        if (State is LeaseState.None or LeaseState.Lost) State = LeaseState.Reacquiring;
+        return LeaseEffect.None;
+    }
+
     public LeaseEffect PatchRunningSent()
     {
         if (State == LeaseState.Lost) State = LeaseState.Reacquiring;
@@ -90,6 +100,8 @@ public sealed class LeaseStateMachine
         var before = State;
         if (leaseLost)
         {
+            // Ohne Lease (Rig belegt, Session beendet) gibt es nichts zu verlieren – bleibt none (P-10).
+            if (before == LeaseState.None) return LeaseEffect.None;
             State = LeaseState.Lost;
             return before is LeaseState.Lost ? LeaseEffect.None : LeaseEffect.LeaseLost;
         }

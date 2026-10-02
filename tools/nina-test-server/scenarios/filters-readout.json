@@ -1,0 +1,33 @@
+{
+  "name": "filters-readout",
+  "description": "Filter- und Auslesemodus-Auflösung (P-19): fehlender Filter, Name ohne Präfix-Treffer, unbekannter Auslesemodus mit zwei bzw. einem Kameramodus",
+  "protocols": ["P-19"],
+  "blocks": [
+    {
+      "durationMin": 6,
+      "filters": ["OIII"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 6,
+      "filters": ["Ha"],
+      "exposureS": 60,
+      "project": "ngc7000"
+    },
+    {
+      "durationMin": 6,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "ic1396",
+      "readoutMode": "Ultra Mode"
+    },
+    {
+      "durationMin": 6,
+      "filters": ["R"],
+      "exposureS": 60,
+      "project": "ngc6960",
+      "readoutMode": "Ultra Mode"
+    }
+  ]
+}

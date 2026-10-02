@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Kopfloser Nachtlauf (tools/nina-sim): NinaPm.Core mit einem simulierten NINA gegen den Test-Server, virtuelle Uhr –
+    eine Nacht in Sekunden, auf macOS, Linux und Windows. Wird nicht ausgeliefert. Newtonsoft hier mit Laufzeit (der Kern
+    nimmt es nur zum Übersetzen, NINA bringt es mit).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>NinaPm.Sim</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NinaPm.Core/NinaPm.Core.csproj" />
+  </ItemGroup>
+</Project>

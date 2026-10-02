@@ -1,0 +1,180 @@
+{
+  "protocol": "P-22",
+  "description": "Nachtende mit gefüllter Outbox (Netz kurz vor dem Ende weg) und – zweite Nacht – NINA hart beendet: verwaiste Session, späte Meldungen nach dem Neustart angenommen.",
+  "parts": [
+    {
+      "scenario": "night-end",
+      "untilMin": 80,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 15,
+          "sim": "network_down"
+        },
+        {
+          "atMin": 30,
+          "sim": "network_up"
+        }
+      ]
+    },
+    {
+      "scenario": "night-end",
+      "untilMin": 60,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 9,
+          "sim": "network_down"
+        },
+        {
+          "atMin": 14,
+          "sim": "crash"
+        },
+        {
+          "atMin": 25,
+          "sim": "network_up"
+        },
+        {
+          "atMin": 26,
+          "sim": "start"
+        }
+      ]
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "part": 1,
+        "report": "sessions",
+        "where": {
+          "status": "completed"
+        },
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "order": [
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          }
+        ]
+      },
+      {
+        "part": 1,
+        "none": {
+          "event": "LEASE",
+          "where": {
+            "state": "reacquiring"
+          }
+        },
+        "after": {
+          "event": "SESSION",
+          "where": {
+            "status": "completed"
+          }
+        }
+      },
+      {
+        "part": 1,
+        "report": "sessions.0.patches",
+        "where": {
+          "status": "running"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "completed",
+            "pending": "0"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "report": "sessions.0.patches",
+        "where": {
+          "status": "completed",
+          "outboxPending": 0
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "part": 2,
+        "report": "alerts",
+        "where": {
+          "code": "session_stale"
+        },
+        "min": 1
+      },
+      {
+        "part": 2,
+        "report": "sessions",
+        "min": 1,
+        "max": 1
+      },
+      {
+        "part": 2,
+        "report": "captures",
+        "where": {
+          "result": "saved"
+        },
+        "min": 2
+      },
+      {
+        "part": 2,
+        "order": [
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          {
+            "event": "API",
+            "where": {
+              "status": "200",
+              "call": "captures"
+            }
+          },
+          {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          }
+        ]
+      }
+    ]
+  ]
+}

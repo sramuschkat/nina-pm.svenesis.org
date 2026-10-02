@@ -1,22 +1,22 @@
 {
   "name": "replan",
-  "description": "Drei Blöcke; im laufenden Block Projekt pausieren (a) oder ein anderes ändern (c)",
+  "description": "Drei Blöcke à 30 min (die Prüfung im Block läuft alle 15 min, §3.2); im laufenden Block Projekt pausieren (a) oder ein anderes ändern (c)",
   "protocols": ["P-06", "P-15"],
   "blocks": [
     {
-      "durationMin": 15,
+      "durationMin": 30,
       "filters": ["L"],
       "exposureS": 60,
       "project": "m31"
     },
     {
-      "durationMin": 15,
+      "durationMin": 30,
       "filters": ["Ha"],
       "exposureS": 60,
       "project": "ngc7000"
     },
     {
-      "durationMin": 15,
+      "durationMin": 30,
       "filters": ["R", "G", "B"],
       "exposureS": 60,
       "project": "m31"
