@@ -3,6 +3,8 @@
  * gewählten Nacht als Job `multi_sim` – fortgeschriebener Restbedarf, optional mit Wettergewichtung aus
  * der Nachtbewertung, optional mit eigenen Entwürfen. Ergebnis: Streifen je Nacht (belichtete Stunden,
  * Gewicht) und Tabelle je Projekt (Bedarf, simuliert, Stunden, Nächte, Fertigstellung, Anteil).
+ * Mit Wetter (Wunsch Sven 02.10.2026): das 7-Tage-Farbband des Standorts wie in Ausrüstung → Standorte und je
+ * Nacht im Streifen die Nachtbewertung (Farbe, Name, Klar-Anteil) aus derselben Vorhersage.
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation } from '@tanstack/react-query';
@@ -10,9 +12,12 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { simulationApi, type MultiSimResult } from '../../api/client';
 import { DataTable, type DataColumn } from '../../components/DataTable';
+import { ratingColour } from '../../components/WeatherChart';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
+import { SiteWeather } from '../weather/SiteWeather';
+import { useSiteWeather } from '../weather/WeatherPage';
 import styles from './simulator.module.css';
 
 type SimProject = MultiSimResult['projects'][number];
@@ -21,10 +26,13 @@ export function MultiNightPanel({
   rigId,
   nightFrom,
   withDrafts,
+  site,
 }: {
   rigId: string;
   nightFrom: string;
   withDrafts: boolean;
+  /** Standort des Rigs: Vorhersage für die Wettergewichtung (Farbband und Bewertung je Nacht). */
+  site: { id: string; name: string } | null;
 }) {
   const { t, i18n } = useTranslation();
   const ids = { nights: useId(), weather: useId(), title: useId() };
@@ -40,6 +48,15 @@ export function MultiNightPanel({
   const data = result.data;
   const n = (v: number, digits = 1) =>
     v.toLocaleString(i18n.language, { maximumFractionDigits: digits });
+  // Gleiche Abfrage wie das Farbband (ein Cache): Bewertung je Nacht im Streifen.
+  const forecast = useSiteWeather(weather || data?.weather ? (site?.id ?? null) : null);
+  const forecastNight = (night: string) => forecast.data?.nights.find((x) => x.night === night);
+  const ratingText = (night: string) => {
+    const f = forecastNight(night);
+    if (!f || f.ratingIndex === null) return null;
+    const pct = f.nightMean === null ? '' : ` ${n(f.nightMean * 100, 0)} %`;
+    return `${t(`weather.rating.${String(f.ratingIndex)}`)}${pct}`;
+  };
   const columns: DataColumn<SimProject>[] = [
     {
       id: 'name',
@@ -146,6 +163,12 @@ export function MultiNightPanel({
         </button>
       </div>
       <p className={styles.muted}>{t('multiSim.hint')}</p>
+      {weather && site ? (
+        <>
+          <SiteWeather siteId={site.id} siteName={site.name} compact />
+          {nights === 14 ? <p className={styles.muted}>{t('multiSim.forecastRange')}</p> : null}
+        </>
+      ) : null}
       {start.error ? <ProblemMessage code={problemCode(start.error)} /> : null}
       {running ? (
         <p role="status" className={styles.note}>
@@ -161,11 +184,21 @@ export function MultiNightPanel({
               <li
                 key={x.night}
                 className={styles.nightCell}
-                aria-label={t('multiSim.nightAria', {
-                  night: formatNightKey(x.night),
-                  hours: n(x.exposureHours),
-                  dark: x.darkHours === null ? '–' : n(x.darkHours),
-                })}
+                aria-label={
+                  data.weather
+                    ? t('multiSim.nightAriaWeather', {
+                        night: formatNightKey(x.night),
+                        hours: n(x.exposureHours),
+                        dark: x.darkHours === null ? '–' : n(x.darkHours),
+                        rating: ratingText(x.night) ?? t('multiSim.noForecast'),
+                        w: n(x.weight, 2),
+                      })
+                    : t('multiSim.nightAria', {
+                        night: formatNightKey(x.night),
+                        hours: n(x.exposureHours),
+                        dark: x.darkHours === null ? '–' : n(x.darkHours),
+                      })
+                }
               >
                 <span className={styles.nightTrack} aria-hidden="true">
                   <span
@@ -180,11 +213,23 @@ export function MultiNightPanel({
                   {t('multiSim.hours', { h: n(x.exposureHours) })}
                 </span>
                 {data.weather ? (
-                  <span className={x.hasForecast ? styles.tag : styles.muted}>
-                    {x.hasForecast
-                      ? t('multiSim.weight', { w: n(x.weight, 2) })
-                      : t('multiSim.noForecast')}
-                  </span>
+                  <>
+                    <span
+                      className={styles.nightRating}
+                      aria-hidden="true"
+                      style={{
+                        background: ratingColour(forecastNight(x.night)?.nightMean ?? null, 1),
+                      }}
+                    />
+                    {ratingText(x.night) ? (
+                      <span className={styles.muted}>{ratingText(x.night)}</span>
+                    ) : null}
+                    <span className={x.hasForecast ? styles.tag : styles.muted}>
+                      {x.hasForecast
+                        ? t('multiSim.weight', { w: n(x.weight, 2) })
+                        : t('multiSim.noForecast')}
+                    </span>
+                  </>
                 ) : null}
               </li>
             ))}

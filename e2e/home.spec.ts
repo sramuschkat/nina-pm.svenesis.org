@@ -1,7 +1,8 @@
 /**
  * AP-26c/AP-26d: Startseite als Übersicht gegen den lokalen Stack – eigener Menüpunkt „Übersicht“ (27.09.2026),
  * Kopf mit Mandant, Kennzahlen, Karten Warteschlange, Aktive Projekte, Letzte Sessions mit ihren Links (keine
- * Karte „Wetter heute Nacht“ mehr); axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
+ * Karte „Wetter heute Nacht“ mehr); *Wetter (7 Tage)* direkt unter den Kennzahlen über die volle Breite
+ * (Wunsch Sven 02.10.2026, gemessen); axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -29,6 +30,22 @@ test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async
   await expect(kpis.getByRole('listitem')).toHaveCount(4);
   await expect(kpis).toContainText(/\d+ offen\s*\d+ ohne deine Stimme/);
   await expect(kpis).toContainText(/Integration \p{L}+/u);
+  // Wetter (7 Tage) direkt unter den Kennzahlen, vor den Spalten, so breit wie die Kennzahlzeile.
+  const weather = page.getByRole('region', { name: 'Wetter (7 Tage)' });
+  await expect(weather).toBeVisible();
+  const box = async (l: ReturnType<Page['locator']>) => {
+    const b = await l.boundingBox();
+    if (!b) throw new Error('nicht sichtbar');
+    return b;
+  };
+  const [k, w, p] = [
+    await box(kpis),
+    await box(weather),
+    await box(page.getByRole('region', { name: 'Aktive Projekte' })),
+  ];
+  expect(w.y).toBeGreaterThan(k.y + k.height);
+  expect(p.y).toBeGreaterThan(w.y + w.height);
+  expect(Math.abs(w.width - k.width)).toBeLessThanOrEqual(2);
   await expect(page.getByRole('link', { name: 'Neues Projekt' })).toHaveAttribute(
     'href',
     '/projekte/neu',
