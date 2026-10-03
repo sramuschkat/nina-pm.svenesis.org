@@ -451,6 +451,23 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Uhrabweichung_5_bis_60_s_warnt_clock_drift_einmal_und_sperrt_nicht()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        api.OnHeartbeat = _ => new NinaHeartbeatResponse
+        {
+            ServerTimeUtc = clock.UtcNow.AddSeconds(20), Lease = new Lease { LeaseLost = false }, SettingsVersion = 0, TargetsEtag = "x",
+        };
+        await hb.TickAsync(default);
+        await hb.TickAsync(default);
+        Assert.Null(runner.Loop.Blocked);
+        Assert.Single(sink.Lines, l => l.Contains("WARNING code=clock_drift"));
+        Assert.Contains(api.EventBatches.SelectMany(b => b.Batch.Events), e => e.Code == "clock_drift");
+    }
+
+    [Fact]
     public async Task Fehler_im_Block_beendet_ihn_mit_error_ohne_Wiederholung()
     {
         var runner = Runner();

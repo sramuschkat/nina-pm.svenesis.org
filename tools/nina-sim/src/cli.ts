@@ -212,15 +212,15 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
 }
 
 /** `--vm <ordner>`: echten VM-Lauf prüfen – `nina.log` (NINA-Log der Sitzung) und `report.json` (Test-Server-Report). */
-function checkVm(dir: string): never {
-  const run = JSON.parse(readFileSync(join(RUNS, 'vm-smoke.json'), 'utf8')) as RunFile;
+function checkVm(dir: string, name = 'vm-smoke'): never {
+  const run = JSON.parse(readFileSync(join(RUNS, `${name}.json`), 'utf8')) as RunFile;
   const c = evaluateChecks(
     run.checks ?? [],
     readFileSync(join(dir, 'nina.log'), 'utf8'),
     JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as unknown,
     true,
   );
-  console.log(`${c.passed ? '✓' : '✗'} VM-Kurzlauf ${dir}`);
+  console.log(`${c.passed ? '✓' : '✗'} VM-Kurzlauf ${name} ${dir}`);
   for (const l of c.lines) console.log(l);
   writeFileSync(join(dir, 'vm-check.txt'), `${c.lines.join('\n')}\n`);
   process.exit(c.passed ? 0 : 1);
@@ -229,7 +229,11 @@ function checkVm(dir: string): never {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const vmIndex = args.indexOf('--vm');
-  if (vmIndex >= 0) checkVm(resolve(args[vmIndex + 1] ?? '.'));
+  if (vmIndex >= 0)
+    checkVm(
+      resolve(args[vmIndex + 1] ?? '.'),
+      args.find((a) => a.startsWith('vm-')),
+    );
   const outIndex = args.indexOf('--out');
   const outRoot = resolve(outIndex >= 0 ? (args[outIndex + 1] ?? '') : join(ROOT, '.sim-runs'));
   const wanted = args.filter((a, i) => /^(P-|vm-)/.test(a) && args[i - 1] !== '--out');

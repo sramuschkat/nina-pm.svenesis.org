@@ -1,0 +1,157 @@
+{
+  "name": "vm-flip",
+  "scenario": "vm-flip",
+  "description": "Gleicher Ablauf wie der VM-Flip-Lauf (Rotator verbunden, Montierung 20 s später als die Engine); vmOnly-Prüfungen nur gegen echtes NINA (pnpm plugin:sim --vm <ordner> vm-flip).",
+  "untilMin": 34,
+  "setup": {
+    "rotatorConnected": true,
+    "mountFlipOffsetS": 20
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Flip beim Eintrag meridian_flip, erkannt über die Pier-Seite (west → east) mit Dauer",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLIP",
+            "where": {
+              "pierBefore": "west",
+              "pierAfter": "east"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "FLIP_UNDETECTED"
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Nach dem Flip nur Zentrieren, Winkel modulo 180° in Toleranz, danach weiter belichtet",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "FLIP"
+            },
+            {
+              "event": "CAPTURE",
+              "where": {
+                "result": "saved"
+              }
+            }
+          ]
+        },
+        {
+          "log": {
+            "event": "ROTATION_MISMATCH"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "ROTATION_UNKNOWN"
+          },
+          "min": 0,
+          "max": 0,
+          "vmOnly": true
+        }
+      ]
+    },
+    {
+      "name": "Kein Nachrotieren: mechanischer Rotatorwinkel aller Aufnahmen gleich",
+      "asserts": [
+        {
+          "report": "captures",
+          "sameValue": "rotatorMechDeg"
+        },
+        {
+          "report": "captures",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "name": "SiteCheck ohne Befund (PC-Zone = Standortzone, Montierung am Rig-Standort)",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "pc_timezone_differs"
+            }
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "mount_site_mismatch"
+            }
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "clock_drift"
+            }
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Nachtende: Session abgeschlossen, Outbox leer",
+      "asserts": [
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          "min": 1
+        },
+        {
+          "log": {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          },
+          "min": 1
+        }
+      ]
+    },
+    {
+      "name": "Keine Fehler, keine vom Server abgelehnte Anfrage",
+      "asserts": [
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

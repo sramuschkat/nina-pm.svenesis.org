@@ -668,10 +668,22 @@ public sealed class NightRunner(
     {
         var now = clock.UtcNow;
         var serverNow = response.ServerTimeUtc + (now - sentUtc) / 2;
-        Loop.ClockChecked(serverNow - now, now);
+        var skew = serverNow - now;
+        Loop.ClockChecked(skew, now);
+        // 5–60 s: nur Warnung (NT-05), höchstens 1×/12 h; > 60 s sperrt die Nachtschleife (clock_skew).
+        if (skew.Duration() > ClockDriftWarn && skew.Duration() <= TimeSpan.FromSeconds(60) && clockHints.ShouldEmit("clock_drift", now))
+        {
+            log.Warning("WARNING", ("code", "clock_drift"), ("durationS", Math.Round(skew.TotalSeconds)));
+            ReportEvent(EventsKind.Warning, "clock_drift", message: $"PC-Uhr weicht {Math.Round(skew.TotalSeconds)} s von der Serverzeit ab");
+        }
         if (SessionId is not null) ApplyLease(Lease.HeartbeatAnswered(response.Lease?.LeaseLost ?? false));
         if (bootstrap is not null && response.SettingsVersion > SettingsVersion(bootstrap)) bootstrapReload = true;
     }
+
+    /// <summary>Uhrabweichung, ab der gewarnt wird (NT-05); über 60 s gilt <c>clock_skew</c>.</summary>
+    public static readonly TimeSpan ClockDriftWarn = TimeSpan.FromSeconds(5);
+
+    private readonly HintThrottle clockHints = new(HintThrottle.TwelveHours);
 
     /// <summary>Heartbeat ohne Serverantwort (Netzfehler, Timeout, 5xx).</summary>
     public void HeartbeatUnanswered() => ApplyLease(Lease.HeartbeatUnanswered());
