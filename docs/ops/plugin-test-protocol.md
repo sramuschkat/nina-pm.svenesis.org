@@ -43,13 +43,26 @@ Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `Image
 
 Vorbereitung (einmal): Plugin aus dem `plugin`-Lauf auf `main` installieren; NINA-Profil-Filterrad wie `tools/nina-test-server/rig.json` (`LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII`); Sequenz „Eine Nacht mit Safety“ nach der Vorlage (Start mit *Unpark*, Ziel mit *Loop While Safe* und *Nachtschleife*, darin *Set Tracking*/*Unpark* vor „Blöcke“, Sicherung mit Park und *Warten bis sicher oder Nachtende*, Ende mit Park); **globaler Trigger „Dither after Exposures“** (Amount 1); Geräte wie in den bisherigen Läufen: Sky-Simulator-Kamera (Kühlung an, Sollwert −10 °C) und -Montierung, PHD2-Simulator, Rotator getrennt (der Plan meldet dann `WARNING code=rotator_unavailable` und zentriert ohne Drehung – erwartet); OmniSim-Safety-Monitor verbunden und sicher; Plugin-Optionen Testbetrieb an, Server-URL `http://<Mac-IP>:8787/api`, Token `npm_test`.
 
+Geräte in NINA (Stand der Läufe vom 01./02.10.2026):
+
+| Gerät | Treiber / Simulator | Zustand | Einstellung |
+|---|---|---|---|
+| Kamera | Sky Simulator | verbunden | Kühlung an, Sollwert −10 °C (ignoriert die Belichtungszeit) |
+| Montierung | Sky Simulator | verbunden | – |
+| Filterrad | Sky Simulator | verbunden | Namen im Profil wie `rig.json`: `LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII` (Plätze 1–7) |
+| Fokussierer | Sky Simulator | verbunden oder getrennt | Autofokus in der Sequenz deaktiviert |
+| Guider | PHD2 (Simulator) | verbunden | – |
+| Safety-Monitor | OmniSim | verbunden, sicher | OmniSim trennt bei jedem Umschalten – danach in NINA **neu verbinden** |
+| Rotator | – | **getrennt** | `WARNING rotator_unavailable` je Block ist erwartet |
+| Kuppel, Flat-Panel, Wetter, Schalter | – | getrennt | – |
+
 | Minute nach Serverstart | Wer | Was |
 |---|---|---|
 | 0 | Mac | `pnpm nina-test-server --scenario vm-smoke --host 0.0.0.0` |
 | ≤ 1 | VM | Sequenz starten (Block 1 beginnt bei Minute 2) |
 | 5 | VM | Kamera-Sollwert auf **0 °C** stellen (bis zum Ende so lassen) |
-| 13 | VM | Safety-Monitor **unsicher** (OmniSim) |
-| 15 | VM | Safety-Monitor wieder **sicher** |
+| 13 | VM | Safety-Monitor **unsicher** (OmniSim), danach in NINA neu verbinden |
+| 15 | VM | Safety-Monitor wieder **sicher**, danach in NINA neu verbinden |
 | ≈ 22 | – | Nachtende (Minute 21): Session abgeschlossen, Ende-Bereich parkt |
 | 24 | Mac | `mkdir -p /tmp/vm && curl -s http://localhost:8787/test/report > /tmp/vm/report.json`, danach Server beenden |
 | 24 | VM → Mac | NINA-Log der Sitzung als `/tmp/vm/nina.log` ablegen |
