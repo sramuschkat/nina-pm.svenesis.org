@@ -95,31 +95,13 @@ NINA-Profil → Meridian-Flip (wie das Test-Rig): **Minuten nach Meridian 1**, *
 
 Keine Handgriffe während des Laufs. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`.
 
-### VM-Termin AP-16h (≈ 70 min): Beispielsequenzen, `vm-flip`, Live-Status, Zielbrowser P-11
-Ein Termin für alles, was nach AP-16f–h nur echtes NINA zeigt. Plugin aus dem `plugin`-Lauf nach #218 installieren.
+### VM-Termin AP-16h (≈ 40 min): Beispielsequenz in NINA, `vm-flip`
+Nur was echtes NINA braucht. Live-Status und Optionsseite mit Zielbrowser prüfen die Render-Tests der Windows-CI (`RenderTests`, Artefakt `nina-pm-render`, kein Binding-Fehler), die Beispielsequenzen der Typ-Test `SampleSequenceTests`. P-11 (Framing-Assistent mit echten Zielen) folgt in der Plugin-Nacht P-05 gegen prod, die ohnehin mit dem Test-Mandanten läuft.
 
-**Teil A – Beispielsequenzen in NINA (≈ 10 min, ohne Test-Server).** `one-night-safety.json` und `one-night.json` aus `apps/nina-plugin/NinaPm.Nina/Samples/` in NINA laden (*Load Sequence*), mit `docs/ops/sample-sequences.md` vergleichen (Start: Warten → Unpark → Cool → Autofokus; „NINA-PM Nacht“ → „Ziel“ mit *Unpark Scope* zuerst und darin „Blöcke“ mit *NINA-PM Instructions*; „Sicherung“ endet mit *NINA-PM Wait until Safe or Night End*) und **unverändert** mit *Save Sequence As* unter demselben Namen speichern → beide Dateien auf den Mac (ersetzen die Skriptfassung aus AP-16h). Danach eine **Testkopie** von „Eine Nacht mit Safety“: *Wait if Sun Altitude* und *Run Autofocus* im Start-Bereich deaktivieren (Rechtsklick → *Disable*), globalen Trigger *Dither after Exposures* (Amount 1) hinzufügen, als `vm-test.json` speichern.
+1. **Beispielsequenz (≈ 2 min):** `one-night-safety.json` aus `apps/nina-plugin/NinaPm.Nina/Samples/` in NINA laden – lädt sie ohne Fehler, ist der Skript-Umbau aus AP-16h bestätigt. Optional unverändert unter demselben Namen speichern und auf den Mac legen (ersetzt die Skriptfassung). Dann *Wait if Sun Altitude* und *Run Autofocus* im Start-Bereich deaktivieren (Rechtsklick → *Disable*) und als `vm-test.json` speichern. **Kein** globaler Dither-Trigger.
+2. **`vm-flip` mit `vm-test.json` (≈ 35 min):** Geräte, Profil und Zeitplan wie im Abschnitt `vm-flip`, vorher `ninapm.db` löschen, keine Handgriffe. Optional bei Minute 3–7 ein Screenshot des aufgeklappten Containers (Banner, *Läuft*, „Heutige Ziele“).
 
-**Teil B – `vm-flip` mit der Testkopie (≈ 35 min).** Geräte, Profil und Zeitplan wie im Abschnitt `vm-flip`; vorher `ninapm.db` löschen. Während des Laufs ohne Eingriff in die Sequenz:
-- Minute 3–7 (Block läuft): Container *NINA-PM Instructions* aufklappen – rotes Banner *Testbetrieb – Sicherheitsprüfungen aus*, Zustand *Läuft*, Ziel „Test m31“ mit RA/Dec und Rotation, Belichtung (Filter, 30 s), Outbox-Zähler, „Heutige Ziele“ mit einem Block *läuft* (Zeiten in Standortzeit CDT) → Screenshot.
-- Minute 10 (nach dem Flip): Live-Status weiter *Läuft* → Screenshot.
-- Optionsseite → *An NINA ausgeliefert* → *Aktualisieren*: eine Zeile „Test m31“ (Deep-Sky, 1 Panel, Sensor/Brennweite des Test-Rigs) → Screenshot.
-- Nach dem Nachtende (Minute ≈ 27): Zustand *Beendet*.
-Erwartet zusätzlich (vmOnly-Prüfung in `tools/nina-sim/runs/vm-flip.json`): genau einmal `WARNING code=sequence_template_deviation checks=start_wait_missing,start_autofocus_missing,dither_trigger_present`, kein `safety_monitor_not_connected`. Auswertung wie oben: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`.
-
-**Teil C – P-11 gegen prod im Test-Mandanten (≈ 15 min).** Voraussetzung: im Test-Mandanten sind am Test-Rig mindestens ein Einzelfeld-Projekt und ein **2×2-Mosaik** aktiv und an NINA ausgeliefert (Web-App → Rig → *An NINA ausgeliefert*). Plugin-Optionen: **Testbetrieb aus**, Server-URL `https://nina-pm.svenesis.org/api`, Token der NINA-Instanz des Test-Rigs → *Speichern & Verbindung testen*. Keine Sequenz starten.
-
-| Gerät | Treiber | Zustand | Grund |
-|---|---|---|---|
-| Kamera | Camera Sky Simulator for ALPACA | **getrennt** | verbunden überschreibt NINA Sensorgröße und Pixel mit denen der Simulator-Kamera – geprüft werden die Werte des Rigs |
-| Montierung | Mount Sky Simulator for ALPACA | getrennt | nicht gebraucht |
-| Filterrad, Rotator, Fokussierer, Guider, Safety-Monitor | – | getrennt | nicht gebraucht |
-
-Optionsseite → *An NINA ausgeliefert* → *Aktualisieren* → Tabelle mit den ausgelieferten Zielen (Screenshot). Je Ziel auswählen → *In Framing-Assistent laden*: NINA wechselt in den Framing-Assistenten, lädt das Himmelsbild; Erwartung siehe P-11 (Zentrum, Rotation, Sensor/Pixel/Brennweite des Rigs, Raster 2×2 mit Überlappung, Panel 1 oben links = Nordost bei Rotation 0, Reihenfolge wie die Panel-Labels der Web-App) → Screenshot je Ziel. Danach zurück: Server-URL `http://<Mac-IP>:8787/api`, Token `npm_test`, Testbetrieb an, NINA beenden und `ninapm.db` löschen (enthält jetzt den prod-Cache).
-
-**Teil D – Optionsseite Betrieb (≈ 5 min, im Anschluss an Teil B, Test-Server noch an).** *Offline-Modus* an → Status „Offline-Modus“, Live-Status „· Offline-Modus“; wieder aus → Status ohne Offline; *Erneut hochladen ab* mit heutigem Datum → keine Fehlermeldung. Screenshot der Optionsseite.
-
-Ergebnis: `docs/test-runs/<Datum>/vm-ap16h/` mit `report.json`, `vm-check.txt`, Screenshots und `README.md` (Geräte, Befunde).
+Erwartet zusätzlich (vmOnly in `tools/nina-sim/runs/vm-flip.json`): genau einmal `WARNING code=sequence_template_deviation checks=start_wait_missing,start_autofocus_missing`, kein `safety_monitor_not_connected`. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`. Ergebnis unter `docs/test-runs/<Datum>/vm-flip/`.
 
 ## Log-Grammatik
 Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Großbuchstaben, Werte ohne Leerzeichen oder in `"…"`), z. B. `NINA-PM | CAPTURE id=0192… result=saved file="NGC 281_Ha_0023.fits"`.

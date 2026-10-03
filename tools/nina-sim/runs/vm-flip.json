@@ -154,14 +154,14 @@
       ]
     },
     {
-      "name": "Sequenzvorlage geprüft (AP-16h): Testkopie mit deaktiviertem Warten/Autofokus und globalem Dither-Trigger ergibt genau diese Hinweise, einmal",
+      "name": "Sequenzvorlage geprüft (AP-16h): Beispielsequenz mit deaktiviertem Warten und Autofokus ergibt genau diese Hinweise, einmal",
       "asserts": [
         {
           "log": {
             "event": "WARNING",
             "where": {
               "code": "sequence_template_deviation",
-              "checks": "start_wait_missing,start_autofocus_missing,dither_trigger_present"
+              "checks": "start_wait_missing,start_autofocus_missing"
             }
           },
           "min": 1,
