@@ -42,6 +42,7 @@ export const TEST_ACTIONS = [
   'restore_responses',
   'clock_skew',
   'filter_wheel_changed',
+  'filter_wheel_restored',
   'clear',
 ] as const;
 export type TestAction = (typeof TEST_ACTIONS)[number];
@@ -423,6 +424,11 @@ export class NinaTestServer {
         break;
       case 'filter_wheel_changed':
         s.filterWheelChanged = true;
+        s.targetsVersion += 1;
+        break;
+      case 'filter_wheel_restored':
+        // Belegung im Web korrigiert (P-05 prod 03.10.2026): neues targets-ETag, der Name passt wieder zum Profil.
+        s.filterWheelChanged = false;
         s.targetsVersion += 1;
         break;
       case 'clear':

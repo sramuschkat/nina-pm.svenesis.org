@@ -32,6 +32,12 @@ public interface IBlockHost
     /// <summary>Höhe und Dunkelheit jetzt erfüllt (§4.1 Nr. 3); im Testbetrieb (NIN-17) immer wahr.</summary>
     bool IsViableNow(Blocks block);
 
+    /// <summary>
+    /// Mindestens eine Belichtungszeile des Blocks hat einen Filter, der im NINA-Profil gefunden wird (§4.1 Nr. 1, §4.4);
+    /// ohne Filterrad immer wahr. Sonst wird der Block <c>filter_not_found</c> übersprungen.
+    /// </summary>
+    bool AnyFilterAvailable(Blocks block);
+
     /// <summary>Ziel setzen: Container-<c>Target</c>, Koordinaten in Center-after-Drift und eigene Trigger (§4.1 Nr. 4, NT-28).</summary>
     void SetTarget(Blocks block);
 

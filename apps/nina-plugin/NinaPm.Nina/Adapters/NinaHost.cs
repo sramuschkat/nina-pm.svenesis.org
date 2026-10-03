@@ -156,6 +156,8 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     public static Coordinates Coordinates(Blocks block) =>
         new(Angle.ByDegree(block.RaDeg), Angle.ByDegree(block.DecDeg), Epoch.J2000);
 
+    public bool AnyFilterAvailable(Blocks block) => Rules.AnyFilterAvailable(block, ProfileFilterNames());
+
     public void SetTarget(Blocks block)
     {
         var coords = new InputCoordinates(Coordinates(block));
@@ -335,6 +337,9 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
         var filters = m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters;
+        // Filter beim Filterwechsel nicht gefunden: mit den aktuellen Zielen erneut versuchen – eine im Web bestätigte
+        // Zuordnung wirkt so ab der nächsten Belichtung, nicht erst im nächsten Block (P-05 prod 03.10.2026).
+        if (filters is { Count: > 0 } && currentFilter is null) await ChangeFilterAsync(entry, token);
         if (filters is { Count: > 0 } && currentFilter is null) return ExposureResult.Skipped;
         if (!ApplyReadoutMode(entry)) return ExposureResult.Skipped;
 

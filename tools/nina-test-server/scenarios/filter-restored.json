@@ -1,0 +1,19 @@
+{
+  "name": "filter-restored",
+  "description": "Filtername passt nicht zum NINA-Profil (P-05 prod 03.10.2026: Belegung im Web nicht bestätigt) und wird mitten im zweiten Block korrigiert: Block nur mit diesem Filter übersprungen (filter_not_found), danach neue Ziele sofort statt nach 15 min",
+  "protocols": ["P-05"],
+  "blocks": [
+    {
+      "durationMin": 6,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31"
+    },
+    {
+      "durationMin": 12,
+      "filters": ["L", "R"],
+      "exposureS": 60,
+      "project": "ngc7000"
+    }
+  ]
+}

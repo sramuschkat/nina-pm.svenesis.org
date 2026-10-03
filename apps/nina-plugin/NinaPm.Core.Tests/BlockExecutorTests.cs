@@ -72,6 +72,42 @@ public sealed class BlockExecutorTests
     }
 
     [Fact]
+    public async Task Ohne_gefundenen_Filter_Block_ueberspringen_statt_leer_absitzen()
+    {
+        // §4.1 Nr. 1 (P-05 prod 03.10.2026): keine Belichtungszeile mit bestätigtem, im Profil gefundenem Filter →
+        // BLOCK_SKIPPED filter_not_found, kein Slew, die Zeit gehört dem nächsten Block.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.FiltersAvailable = false;
+        var block = Regular();
+        var r = await executor.RunAsync(block, null, default);
+        Assert.Equal(("filter_not_found", false), (r.Reason, r.Started));
+        Assert.DoesNotContain(nina.Calls, c => c.StartsWith("center", StringComparison.Ordinal));
+        Assert.Contains(sink.Lines, l => l.Contains($"BLOCK_SKIPPED id={block.Id}") && l.EndsWith("reason=filter_not_found", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Neues_targets_ETag_im_Heartbeat_prueft_sofort_statt_nach_15_min()
+    {
+        // Eine im Web bestätigte Filterzuordnung soll nicht bis zur 15-min-Prüfung warten (P-05 prod 03.10.2026).
+        var (executor, _, _, clock) = Setup("2026-09-18T07:35:00Z");
+        var checks = new List<DateTimeOffset>();
+        var changed = true;
+        var options = new BlockRunOptions(
+            InBlockCheck: (_, _) =>
+            {
+                checks.Add(clock.UtcNow);
+                changed = false;
+                return Task.FromResult<string?>(null);
+            },
+            TargetsChanged: () => changed);
+        await executor.RunAsync(Regular(), null, default, options);
+        // Sofort vor der ersten Belichtung (nach dem Zentrieren), danach wieder im 15-min-Takt.
+        Assert.True(checks[0] < T("2026-09-18T07:40:00Z"), checks[0].ToString("O"));
+        Assert.True(checks.Count > 1);
+        Assert.All(checks.Zip(checks.Skip(1)), p => Assert.True(p.Second - p.First >= TimeSpan.FromMinutes(15)));
+    }
+
+    [Fact]
     public async Task Wartet_bis_zum_Blockstart()
     {
         var (executor, nina, _, _) = Setup("2026-09-18T07:30:00Z");

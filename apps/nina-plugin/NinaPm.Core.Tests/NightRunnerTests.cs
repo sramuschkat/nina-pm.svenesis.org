@@ -450,6 +450,33 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Neues_targets_ETag_im_Heartbeat_markiert_Ziele_als_geaendert_bis_zum_Abruf()
+    {
+        // P-05 prod 03.10.2026: im Web bestätigte Filternamen sollen die laufende Prüfung im Block sofort erreichen.
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default); // Ziele mit "t-9b41" im Cache
+        var etag = "\"t-9b41\"";
+        api.OnHeartbeat = _ => new NinaHeartbeatResponse
+        {
+            ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = false }, SettingsVersion = 0, TargetsEtag = etag,
+        };
+        await hb.TickAsync(default);
+        Assert.False(runner.TargetsChanged);
+
+        etag = "\"t-2\"";
+        await hb.TickAsync(default);
+        Assert.True(runner.TargetsChanged);
+
+        var changed = Example<NinaTargets>("targets.response");
+        api.OnTargets = e => Serve(e, changed, "\"t-2\"");
+        await runner.RefreshAsync(default);
+        Assert.False(runner.TargetsChanged);
+        await hb.TickAsync(default); // Cache hat jetzt "t-2"
+        Assert.False(runner.TargetsChanged);
+    }
+
+    [Fact]
     public async Task LeaseLost_sperrt_neue_Bloecke_leaseLost_false_holt_die_Lease_zurueck()
     {
         var runner = Runner();

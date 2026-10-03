@@ -107,6 +107,9 @@ public sealed class NightRunner(
     /// <summary>Heartbeat-Kommandos, die mit dem nächsten Heartbeat quittiert werden (<c>ackedCommandIds</c>).</summary>
     private readonly List<Guid> commandAcks = [];
 
+    /// <summary>Heartbeat meldet ein anderes targets-ETag als der Cache: Prüfung im Block sofort statt nach 15 min.</summary>
+    private volatile bool targetsChanged;
+
     /// <summary>Offline-Modus (FA-NIN-04, execution.md §6): kein Planabruf, gespeicherter Plan, Outbox angehalten.</summary>
     private bool offlineMode;
 
@@ -207,6 +210,9 @@ public sealed class NightRunner(
             return acks;
         }
     }
+
+    /// <summary>Heartbeat hat ein neues targets-ETag gemeldet, die Ziele sind noch nicht neu geladen.</summary>
+    public bool TargetsChanged => targetsChanged;
 
     /// <summary>Schleifenbedingung <em>NINA-PM Nachtschleife</em>.</summary>
     public bool HasBlocksRemaining => Loop.HasBlocksRemaining(BlockRunning, flatsRunning: false);
@@ -516,6 +522,7 @@ public sealed class NightRunner(
             var (targets, etag) = await planApi.TargetsAsync(cached?.Etag, token).ConfigureAwait(false);
             log.Event("API", ("status", targets is null ? 304 : 200), ("call", "targets"));
             if (targets is not null) store.PutCache(TargetsCacheKey, JsonConvert.SerializeObject(targets, NinaJson.Settings()), etag);
+            targetsChanged = false;
             if (targets is not null || etag != cached?.Etag) log.Event("TARGETS", ("etag", etag ?? ""));
             return etag;
         }
@@ -714,7 +721,8 @@ public sealed class NightRunner(
                     t.FlipDone(UnitId(b));
                     t.Save(store);
                 },
-                () => skipRequested))
+                () => skipRequested,
+                () => targetsChanged))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
@@ -829,6 +837,8 @@ public sealed class NightRunner(
         }
         foreach (var c in response.Commands ?? [])
             ApplyCommand(c);
+        if (!string.IsNullOrEmpty(response.TargetsEtag) && store.GetCache(TargetsCacheKey) is { } cached && cached.Etag != response.TargetsEtag)
+            targetsChanged = true;
         // 5–60 s: nur Warnung (NT-05), höchstens 1×/12 h; > 60 s sperrt die Nachtschleife (clock_skew).
         if (skew.Duration() > ClockDriftWarn && skew.Duration() <= TimeSpan.FromSeconds(60) && clockHints.ShouldEmit("clock_drift", now))
         {

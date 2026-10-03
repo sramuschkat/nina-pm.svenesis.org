@@ -99,6 +99,12 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
         return deviations;
     }
 
+    /// <summary>Mindestens eine Belichtungszeile mit gefundenem Filter (§4.1 Nr. 1); ohne Filterrad immer wahr.</summary>
+    public bool AnyFilterAvailable(Blocks block, IReadOnlyList<string> profileFilters) =>
+        profileFilters.Count == 0
+        || block.Entries.Where(e => e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series)
+            .Any(e => ChooseFilter(e, profileFilters).Kind != FilterResolutionKind.NotFound);
+
     /// <summary>Filter des Eintrags im Profil (§4.4); nicht gefunden → <c>FILTER_NOT_FOUND</c> höchstens 1×/12 h je Filter.</summary>
     public FilterResolution ChooseFilter(Entries entry, IReadOnlyList<string> profileFilters)
     {
