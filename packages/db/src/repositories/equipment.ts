@@ -96,6 +96,9 @@ export type RigRow = Omit<
 };
 
 /** Standardwerte des Aufwands je Block (TK 7.2, Rig-Spalte `overhead`); `afEveryMin = 0` = aus. */
+/** Nachtpläne je Transaktion beim Rig-Löschen (rules/dsql.md: ≤ 3.000 Zeilen je Transaktion). */
+export const RIG_PLAN_BATCH = 1000;
+
 export const DEFAULT_OVERHEAD: Overhead = {
   slewCenterS: 120,
   filterChangeS: 10,
@@ -1433,50 +1436,89 @@ export class EquipmentRepository extends TenantRepo {
     );
   }
 
-  deleteRig(id: string, now: Date): Promise<void> {
+  /**
+   * Rig löschen (FA-RIG-13): gesperrt durch Projekte (auch Wunsch-Rig und Papierkorb), NINA-Instanzen, Sessions,
+   * Nachtpläne einer Session und eine aktive Lease. Nachtpläne **ohne** Session (Web-Simulation, Prognose-Job,
+   * Server-Plan ohne angelegte Session) sind abgeleitete Daten und gehen mit dem Rig (Ergänzung, freigegeben
+   * 03.10.2026) – erst nach bestandener Prüfung, in Stapeln von höchstens `RIG_PLAN_BATCH` Zeilen je Transaktion
+   * (rules/dsql.md); die letzte Transaktion prüft erneut und löscht den Rest samt Rig.
+   */
+  async deleteRig(id: string, now: Date): Promise<void> {
+    await this.tx(
+      async (trx) => {
+        await this.assertRigUnused(trx, id);
+      },
+      [{ table: 'rig', id }],
+    );
+    for (;;) {
+      const n = await this.tx((trx) => this.deleteRigPlans(trx, id, RIG_PLAN_BATCH));
+      if (n < RIG_PLAN_BATCH) break;
+    }
     return this.tx(
       async (trx) => {
-        const rig = await this.rig(id, trx);
-        if (!rig) throw notFound();
+        const rig = await this.assertRigUnused(trx, id);
+        await this.deleteRigPlans(trx, id, RIG_PLAN_BATCH);
         const t = this.tenantId;
-        const [projects, instances, sessions, plans, lease] = await Promise.all([
-          sql<{ name: string }>`
-            SELECT name FROM project WHERE tenant_id = ${t} AND (rig_id = ${id} OR requested_rig_id = ${id})
-            ORDER BY name`.execute(trx),
-          sql<{ name: string }>`
-            SELECT name FROM nina_instance WHERE tenant_id = ${t} AND rig_id = ${id} ORDER BY name`.execute(
-            trx,
-          ),
-          sql<{ n: number }>`
-            SELECT count(*)::int AS n FROM session WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(
-            trx,
-          ),
-          sql<{ n: number }>`
-            SELECT count(*)::int AS n FROM night_plan WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(
-            trx,
-          ),
-          sql<{ active: string | null }>`
-            SELECT active_session_id AS active FROM rig_lease WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(
-            trx,
-          ),
-        ]);
-        const users: User[] = [
-          ...projects.rows.map((r) => ({ kind: 'project', name: r.name })),
-          ...instances.rows.map((r) => ({ kind: 'ninaInstance', name: r.name })),
-        ];
-        const sessionCount = sessions.rows[0]?.n ?? 0;
-        const planCount = plans.rows[0]?.n ?? 0;
-        if (sessionCount > 0) users.push({ kind: 'sessions', name: String(sessionCount) });
-        if (planCount > 0) users.push({ kind: 'nightPlans', name: String(planCount) });
-        if (lease.rows[0]?.active)
-          users.push({ kind: 'activeSession', name: lease.rows[0].active });
-        if (users.length > 0) throw inUse(users);
         await sql`DELETE FROM rig_lease WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(trx);
         await trx.deleteFrom('rig').where('tenantId', '=', t).where('id', '=', id).execute();
         await this.log(trx, 'rig', id, 'delete', { name: rig.name }, now);
       },
       [{ table: 'rig', id }],
     );
+  }
+
+  /** Nachtpläne des Rigs ohne Session (weder `session_id` noch `session.night_plan_id`), höchstens `limit`. */
+  private async deleteRigPlans(trx: Tx, id: string, limit: number): Promise<number> {
+    const t = this.tenantId;
+    const res = await sql`
+      DELETE FROM night_plan WHERE id IN (
+        SELECT np.id FROM night_plan np
+        WHERE np.tenant_id = ${t} AND np.rig_id = ${id} AND np.session_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM session s WHERE s.tenant_id = ${t} AND s.night_plan_id = np.id)
+        LIMIT ${limit})`.execute(trx);
+    return Number(res.numAffectedRows ?? 0);
+  }
+
+  /** Verwender des Rigs (FA-RIG-13) → `resource.in_use`; Nachtpläne zählen nur mit Session. */
+  private async assertRigUnused(trx: Tx, id: string) {
+    const rig = await this.rig(id, trx);
+    if (!rig) throw notFound();
+    const t = this.tenantId;
+    const [projects, instances, sessions, plans, lease] = await Promise.all([
+      sql<{ name: string }>`
+        SELECT name FROM project WHERE tenant_id = ${t} AND (rig_id = ${id} OR requested_rig_id = ${id})
+        ORDER BY name`.execute(trx),
+      sql<{ name: string }>`
+        SELECT name FROM nina_instance WHERE tenant_id = ${t} AND rig_id = ${id} ORDER BY name`.execute(
+        trx,
+      ),
+      sql<{ n: number }>`
+        SELECT count(*)::int AS n FROM session WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(
+        trx,
+      ),
+      sql<{ n: number }>`
+        SELECT count(*)::int AS n FROM night_plan np
+        WHERE np.tenant_id = ${t} AND np.rig_id = ${id}
+          AND (np.session_id IS NOT NULL
+               OR EXISTS (SELECT 1 FROM session s WHERE s.tenant_id = ${t} AND s.night_plan_id = np.id))`.execute(
+        trx,
+      ),
+      sql<{ active: string | null }>`
+        SELECT active_session_id AS active FROM rig_lease WHERE tenant_id = ${t} AND rig_id = ${id}`.execute(
+        trx,
+      ),
+    ]);
+    const users: User[] = [
+      ...projects.rows.map((r) => ({ kind: 'project', name: r.name })),
+      ...instances.rows.map((r) => ({ kind: 'ninaInstance', name: r.name })),
+    ];
+    const sessionCount = sessions.rows[0]?.n ?? 0;
+    const planCount = plans.rows[0]?.n ?? 0;
+    if (sessionCount > 0) users.push({ kind: 'sessions', name: String(sessionCount) });
+    if (planCount > 0) users.push({ kind: 'nightPlans', name: String(planCount) });
+    if (lease.rows[0]?.active) users.push({ kind: 'activeSession', name: lease.rows[0].active });
+    if (users.length > 0) throw inUse(users);
+    return rig;
   }
 
   /**
