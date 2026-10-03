@@ -59,4 +59,9 @@ Meridian-Flip-Werte setzt der Lauf selbst über die Advanced API (`profile` in d
 
 Ergebnisse liegen in `.vm-bench/<zeit>-<lauf>/` (`report.json`, `nina.log`, `vm-check.txt`, Screenshots; nicht im Repository). Abgenommene Läufe kommen wie bisher nach `docs/test-runs/<datum>/`.
 
-Noch nicht über den Prüfstand: Schritte, die den Safety-Monitor umschalten (`vm-smoke`, P-25). OmniSim lässt sich nicht über die Advanced API steuern; das bleibt vorerst ein Handgriff.
+Safety-Monitor in Läufen (`steps`):
+- `safe: true|false` setzt über die Simulator-Schnittstelle von OmniSim (Port 32323, `PUT /simulator/v1/safetymonitor/0/issafesetting`), was der Monitor meldet. Der Monitor bleibt verbunden, wie bei einem Dach, das schließt (P-25 „unsicher“).
+- `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
+- Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
+
+Läufe: `vm-flip`, `vm-smoke`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist; `untilMin` ist die Obergrenze.

@@ -19,6 +19,8 @@ export interface BenchConfig {
   benchPort: number;
   /** Port des Test-Servers auf dem Mac (Plugin-Optionen in der VM zeigen darauf). */
   testServerPort: number;
+  /** Port von OmniSim in der VM (Simulator-Schnittstelle `/simulator/v1/…`, Safety-Monitor umschalten). */
+  omnisimPort: number;
   /** NINA-Profil für die Läufe (`--profileid`); ohne Angabe das zuletzt benutzte. */
   profileId?: string;
 }
@@ -32,13 +34,21 @@ export function loadConfig(path = CONFIG_PATH): BenchConfig {
       apiPort: 1888,
       benchPort: 8788,
       testServerPort: 8787,
+      omnisimPort: 32323,
     };
     saveConfig(fresh, path);
     return fresh;
   }
   const c = JSON.parse(readFileSync(path, 'utf8')) as Partial<BenchConfig>;
   if (!c.key) throw new Error(`${path}: Schlüssel fehlt`);
-  return { apiPort: 1888, benchPort: 8788, testServerPort: 8787, ...c, key: c.key };
+  return {
+    apiPort: 1888,
+    benchPort: 8788,
+    testServerPort: 8787,
+    omnisimPort: 32323,
+    ...c,
+    key: c.key,
+  };
 }
 
 export function saveConfig(c: BenchConfig, path = CONFIG_PATH): void {

@@ -1,0 +1,46 @@
+{
+  "name": "vm-smoke",
+  "description": "VM-Kurzlauf (≈ 30 min) ohne Handgriffe: Profil im Heartbeat, ImageSaved mit Messwerten, NINAs globaler Dither-Trigger unterdrückt, Kühlungsabweichung ab Minute 5, Safety unsicher bei Minute 13,3 und sicher bei Minute 15 (OmniSim, Monitor bleibt verbunden), Nachtende; Rotator getrennt (rotator_unavailable erwartet)",
+  "simRun": "vm-smoke",
+  "scenario": "vm-smoke",
+  "untilMin": 30,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
+    "globalDither": 1
+  },
+  "profile": {
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 4,
+      "screenshot": "live-status-laeuft",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 5,
+      "coolC": 0
+    },
+    {
+      "atMin": 13.3,
+      "safe": false
+    },
+    {
+      "atMin": 14.2,
+      "screenshot": "safety-pause",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 15,
+      "safe": true
+    },
+    {
+      "atMin": 16.5,
+      "screenshot": "nach-wiederaufnahme",
+      "tab": "sequencer"
+    }
+  ]
+}
