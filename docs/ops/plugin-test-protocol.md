@@ -39,22 +39,35 @@ Die Ablauflogik eines Protokolls prüft zuerst der kopflose Nachtlauf – ohne N
 Abgedeckt: P-05, P-06, P-10, P-15, P-17, P-19, P-22, P-25, P-32, P-34. **Nicht** abgedeckt – bleibt beim Windows-Sequenztest bzw. beim VM-Kurzlauf: NINAs Sequencer (Trigger-Walk, `TRIGGER_SUPPRESSED`, P-28), echtes `ImageSaved` mit Messwerten, Profil- und Geräteeinstellungen, Park/Home, Plattensolve und Flip.
 
 ## VM-Kurzlauf `vm-smoke` (≈ 25 min, ersetzt die Einzelläufe auf der VM)
-Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Abbruch, Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.
+Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit NINAs Zeiten und Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.
 
-Vorbereitung (einmal): Plugin aus dem `plugin`-Lauf auf `main` installieren; NINA-Profil-Filterrad wie `tools/nina-test-server/rig.json` (`LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII`); Sequenz „Eine Nacht mit Safety“ nach der Vorlage (Start mit *Unpark*, Ziel mit *Loop While Safe* und *Nachtschleife*, darin *Set Tracking*/*Unpark* vor „Blöcke“, Sicherung mit Park und *Warten bis sicher oder Nachtende*, Ende mit Park); **globaler Trigger „Dither after Exposures“** (Amount 1); Kamera-Simulator mit Kühlung an, Sollwert −10 °C; OmniSim-Safety-Monitor verbunden und sicher; Plugin-Optionen Testbetrieb an, Server-URL `http://<Mac-IP>:8787/api`, Token `npm_test`.
+Vorbereitung (einmal): Plugin aus dem `plugin`-Lauf auf `main` installieren; NINA-Profil-Filterrad wie `tools/nina-test-server/rig.json` (`LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII`); Sequenz „Eine Nacht mit Safety“ nach der Vorlage (Start mit *Unpark*, Ziel mit *Loop While Safe* und *Nachtschleife*, darin *Set Tracking*/*Unpark* vor „Blöcke“, Sicherung mit Park und *Warten bis sicher oder Nachtende*, Ende mit Park); **globaler Trigger „Dither after Exposures“** (Amount 1); Geräte wie in den bisherigen Läufen: Sky-Simulator-Kamera (Kühlung an, Sollwert −10 °C) und -Montierung, PHD2-Simulator, Rotator getrennt (der Plan meldet dann `WARNING code=rotator_unavailable` und zentriert ohne Drehung – erwartet); OmniSim-Safety-Monitor verbunden und sicher; Plugin-Optionen Testbetrieb an, Server-URL `http://<Mac-IP>:8787/api`, Token `npm_test`.
+
+Geräte in NINA (Stand der Läufe vom 01./02.10.2026):
+
+| Gerät | Treiber / Simulator | Zustand | Einstellung |
+|---|---|---|---|
+| Kamera | Sky Simulator | verbunden | Kühlung an, Sollwert −10 °C (ignoriert die Belichtungszeit) |
+| Montierung | Sky Simulator | verbunden | – |
+| Filterrad | Sky Simulator | verbunden | Namen im Profil wie `rig.json`: `LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII` (Plätze 1–7) |
+| Fokussierer | Sky Simulator | verbunden oder getrennt | Autofokus in der Sequenz deaktiviert |
+| Guider | PHD2 (Simulator) | verbunden | – |
+| Safety-Monitor | OmniSim | verbunden, sicher | OmniSim trennt bei jedem Umschalten – danach in NINA **neu verbinden** |
+| Rotator | – | **getrennt** | `WARNING rotator_unavailable` je Block ist erwartet |
+| Kuppel, Flat-Panel, Wetter, Schalter | – | getrennt | – |
 
 | Minute nach Serverstart | Wer | Was |
 |---|---|---|
 | 0 | Mac | `pnpm nina-test-server --scenario vm-smoke --host 0.0.0.0` |
 | ≤ 1 | VM | Sequenz starten (Block 1 beginnt bei Minute 2) |
 | 5 | VM | Kamera-Sollwert auf **0 °C** stellen (bis zum Ende so lassen) |
-| 13 | VM | Safety-Monitor **unsicher** (OmniSim) – am besten kurz nach Beginn einer Belichtung |
-| 15 | VM | Safety-Monitor wieder **sicher** |
+| 13 | VM | Safety-Monitor **unsicher** (OmniSim), danach in NINA neu verbinden |
+| 15 | VM | Safety-Monitor wieder **sicher**, danach in NINA neu verbinden |
 | ≈ 22 | – | Nachtende (Minute 21): Session abgeschlossen, Ende-Bereich parkt |
 | 24 | Mac | `mkdir -p /tmp/vm && curl -s http://localhost:8787/test/report > /tmp/vm/report.json`, danach Server beenden |
 | 24 | VM → Mac | NINA-Log der Sitzung als `/tmp/vm/nina.log` ablegen |
 
-Auswertung: `pnpm plugin:sim --vm /tmp/vm` – prüft dieselben benannten Prüfungen wie der kopflose `vm-smoke`-Lauf, zusätzlich die nur mit NINA möglichen (`TRIGGER_SUPPRESSED`), und schreibt `vm-check.txt`. Grün → Abnahme der Pakete, deren Protokolle kopflos grün sind.
+Die Sky-Simulator-Kamera ignoriert die Belichtungszeit (P-05, 02.10.2026): den Abbruch mitten in der Belichtung (`CAPTURE result=aborted`, P-25) prüft deshalb nur der kopflose Lauf. Auswertung: `pnpm plugin:sim --vm /tmp/vm` – prüft dieselben benannten Prüfungen wie der kopflose `vm-smoke`-Lauf, zusätzlich die nur mit NINA möglichen (`TRIGGER_SUPPRESSED`), und schreibt `vm-check.txt`. Grün → Abnahme der Pakete, deren Protokolle kopflos grün sind.
 
 ## Log-Grammatik
 Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Großbuchstaben, Werte ohne Leerzeichen oder in `"…"`), z. B. `NINA-PM | CAPTURE id=0192… result=saved file="NGC 281_Ha_0023.fits"`.

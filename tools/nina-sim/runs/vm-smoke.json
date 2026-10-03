@@ -1,7 +1,7 @@
 {
   "name": "vm-smoke",
   "scenario": "vm-smoke",
-  "description": "Gleicher Ablauf wie der VM-Kurzlauf; prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
+  "description": "Gleicher Ablauf wie der VM-Kurzlauf mit den Geräten der bisherigen Läufe (Sky-Simulator-Kamera und -Montierung, PHD2-Simulator, OmniSim-Safety-Monitor; die Sky-Simulator-Kamera ignoriert die Belichtungszeit); prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
   "untilMin": 30,
   "setup": {
     "ditherTrigger": true
@@ -23,7 +23,7 @@
   ],
   "checks": [
     {
-      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera)",
+      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera mit Kühlung)",
       "asserts": [
         {
           "report": "heartbeats.last.filterWheel",
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "name": "Belichtungen gespeichert und gemeldet, Messwerte aus ImageSaved",
+      "name": "Belichtungen gespeichert und gemeldet, Zeiten und Messwerte aus NINA",
       "asserts": [
         {
           "log": {
@@ -60,7 +60,7 @@
         },
         {
           "report": "captures",
-          "whereExists": ["metrics.hfr", "metrics.sensorTempC", "exposureMidUtc"],
+          "whereExists": ["exposureMidUtc", "metrics.meanAdu", "metrics.sensorTempC"],
           "min": 3
         }
       ]
@@ -117,16 +117,10 @@
       ]
     },
     {
-      "name": "Safety unsicher während der Belichtung: Abbruch, Pause, Wiederaufnahme",
+      "name": "Safety unsicher: Pause, Heartbeat paused, Wiederaufnahme mit neuem Plan",
       "asserts": [
         {
           "order": [
-            {
-              "event": "CAPTURE",
-              "where": {
-                "result": "aborted"
-              }
-            },
             {
               "event": "SAFETY_PAUSE"
             },

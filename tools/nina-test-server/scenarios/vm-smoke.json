@@ -1,6 +1,6 @@
 {
   "name": "vm-smoke",
-  "description": "VM-Kurzlauf (≈ 25 min): was nur echtes NINA zeigt – Profil im Heartbeat, ImageSaved mit Messwerten, Dither-Trigger unterdrückt, Kühlung, Safety mit Park/Unpark, Nachtende",
+  "description": "VM-Kurzlauf (≈ 25 min): was nur echtes NINA zeigt – Profil im Heartbeat, ImageSaved, Dither-Trigger unterdrückt, Safety mit Park/Unpark, Nachtende",
   "protocols": [],
   "blocks": [
     {
