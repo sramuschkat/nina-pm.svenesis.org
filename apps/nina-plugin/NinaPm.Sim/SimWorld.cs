@@ -21,6 +21,21 @@ public sealed class SimWorld(SimSetup setup)
     public bool SafeNow => MonitorConnected && MonitorSafe;
 
     public bool Parked { get; set; } = true;
+    public bool RotatorConnected { get; set; } = setup.RotatorConnected;
+    public bool RotatorRangeQuarter { get; set; } = setup.RotatorRangeQuarter;
+    public double? CameraAngleDeg { get; set; } = setup.CameraAngleDeg;
+    public bool PierKnown { get; set; } = setup.PierKnown;
+    public bool SolveAvailable { get; set; } = setup.SolveAvailable;
+    public double MountFlipOffsetS { get; set; } = setup.MountFlipOffsetS;
+    public double FlipDurationS { get; set; } = setup.FlipDurationS;
+    public bool FlipTrigger { get; set; } = setup.FlipTrigger;
+    public int? PcUtcOffsetMinutes { get; set; } = setup.PcUtcOffsetMinutes;
+    public double CenterDelayS { get; set; } = setup.CenterDelayS;
+
+    /// <summary>Montierung: Pier-Seite (<c>west</c> vor, <c>east</c> nach dem Flip) und früheste Flipzeit des Ziels.</summary>
+    public string Pier { get; set; } = "west";
+    public DateTimeOffset? EarliestFlipUtc { get; set; }
+    public int Flips { get; set; }
     public bool NetworkDown { get; set; }
     public int ImageCounter { get; set; }
 }

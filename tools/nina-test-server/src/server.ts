@@ -305,6 +305,18 @@ export class NinaTestServer {
     this.heartbeats += 1;
     this.lastHeartbeat = { instance, ...(r.data as unknown as Json) };
     this.checkFilterWheel(r.data.filterWheel);
+    // Rotator-Bereich QUARTER (M2): Alarm nina_settings_mismatch mit Code rotator_range_quarter (einmal).
+    if (
+      r.data.rotator?.rangeType === 'QUARTER' &&
+      !this.alerts.some(
+        (a) => a.code === 'nina_settings_mismatch' && a.detail === 'rotator_range_quarter',
+      )
+    )
+      this.alerts.push({
+        code: 'nina_settings_mismatch',
+        detail: 'rotator_range_quarter',
+        atUtc: iso(this.nowS()),
+      });
     let lease: { untilUtc: string | null; leaseLost: boolean } | null = null;
     const own = r.data.sessionId ? this.sessions.get(r.data.sessionId) : undefined;
     if (own && (own.status === 'running' || own.status === 'stale')) {

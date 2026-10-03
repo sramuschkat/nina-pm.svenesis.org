@@ -93,18 +93,6 @@
     ],
     [
       {
-        "none": {
-          "event": "BLOCK_START"
-        },
-        "after": {
-          "event": "BLOCK_END",
-          "where": {
-            "reason": "lease_lost"
-          }
-        },
-        "nth": 2
-      },
-      {
         "order": [
           {
             "event": "BLOCKED",
@@ -119,6 +107,13 @@
             }
           }
         ]
+      },
+      {
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 1,
+        "max": 2
       },
       {
         "log": {

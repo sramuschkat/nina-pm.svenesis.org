@@ -59,7 +59,7 @@ public sealed class SimRuntime : IDisposable
         Log = new NinaPmLog(new FileLogSink(logWriter, clock, () => Dead));
         api = new NinaApi(apiBase, "npm_test", "0.0.0-sim", new SimHttpHandler(clock, world, () => Dead), TimeSpan.FromSeconds(30));
         var sessionApi = new NinaSessionApi(api.Client);
-        Host = new SimNina(clock, world, () => Runner, Log, () => Dead);
+        Host = new SimNina(clock, world, () => Runner, Log, () => Dead, logWriter);
         Runner = new NightRunner(new NinaPlanApi(api.Client), sessionApi, Store, Host, Host, clock, Log)
         {
             Executor = new BlockExecutor(Host, clock, Log) { Mode = PlaybackMode.Sequential },

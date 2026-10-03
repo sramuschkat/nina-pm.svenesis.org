@@ -1,0 +1,79 @@
+{
+  "protocol": "P-08",
+  "description": "Ohne Rotator, Kamerawinkel 30° daneben: rotation_mismatch; mit skipOnRotationMismatch Block übersprungen.",
+  "parts": [
+    {
+      "scenario": "flip",
+      "untilMin": 30,
+      "setup": {
+        "rotatorConnected": false,
+        "cameraAngleDeg": 60
+      },
+      "steps": []
+    },
+    {
+      "scenario": "flip-no-rotator",
+      "untilMin": 30,
+      "setup": {
+        "rotatorConnected": false,
+        "cameraAngleDeg": 120
+      },
+      "steps": []
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "part": 2,
+        "log": {
+          "event": "BLOCK_SKIPPED"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "ROTATION_MISMATCH"
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "report": "events",
+        "where": {
+          "kind": "rotation_mismatch"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "part": 2,
+        "log": {
+          "event": "BLOCK_SKIPPED",
+          "where": {
+            "reason": "rotation_mismatch"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 2,
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

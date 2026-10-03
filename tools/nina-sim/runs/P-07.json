@@ -1,0 +1,111 @@
+{
+  "protocol": "P-07",
+  "description": "Flip mit Rotator: warten auf NINAs früheste Flipzeit (Montierung 20 s später als die Engine), danach nur Zentrieren, Winkel modulo 180°; zweite Nacht mit RangeType QUARTER.",
+  "parts": [
+    {
+      "scenario": "flip",
+      "untilMin": 40,
+      "setup": {
+        "rotatorConnected": true,
+        "mountFlipOffsetS": 20
+      },
+      "steps": []
+    },
+    {
+      "scenario": "flip",
+      "untilMin": 5,
+      "setup": {
+        "rotatorConnected": true,
+        "rotatorRangeQuarter": true
+      },
+      "steps": []
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "FLIP",
+          "where": {
+            "pierBefore": "west",
+            "pierAfter": "east"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "FLIP_UNDETECTED"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "order": [
+          {
+            "event": "FLIP"
+          },
+          {
+            "event": "CAPTURE",
+            "where": {
+              "result": "saved"
+            }
+          }
+        ]
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "ROTATION_MISMATCH"
+        },
+        "min": 0,
+        "max": 0
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "ROTATION_UNKNOWN"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "part": 2,
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "rotator_range_quarter"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "part": 2,
+        "report": "alerts",
+        "where": {
+          "code": "nina_settings_mismatch",
+          "detail": "rotator_range_quarter"
+        },
+        "min": 1
+      }
+    ]
+  ]
+}

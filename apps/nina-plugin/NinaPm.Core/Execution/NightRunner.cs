@@ -313,8 +313,9 @@ public sealed class NightRunner(
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
             store.SetState(StateKeys.DoneBlocks, null);
             Loop.PlanReceived();
-            nightHost.PlanBuilt(Targets);
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
+            // Nach der Session: Hinweise des Planaufbaus (SiteCheck, Sequenz) erreichen dann auch den Server.
+            nightHost.PlanBuilt(Targets);
             return;
         }
         if (outcome.Unreachable)
@@ -547,12 +548,26 @@ public sealed class NightRunner(
         try
         {
             var camera = bootstrap?.Rig.Camera;
+            var scheduler = bootstrap?.Rig.Scheduler;
+            var flip = scheduler?.MeridianFlip;
+            var rotator = bootstrap?.Rig.Rotator;
             var outcome = await executor.RunAsync(block, stored.Plan.DarknessEndUtc, token, new BlockRunOptions(
                 (next, t) => InBlockCheckAsync(block, next, t),
                 camera?.SetpointC is { } setpoint ? new CoolingTarget(setpoint, camera.ToleranceC) : null,
                 b => ReportEvent(EventsKind.Warning, "camera_temperature", b.Id),
                 // Lease verloren bzw. Rig belegt (§6, P-10/P-17): laufende Belichtung zu Ende, dann block_end lease_lost.
-                () => Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null))
+                () => Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
+                flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
+                rotator is null ? null : new RotationSettings(rotator.ToleranceDeg, rotator.SkipOnMismatch),
+                scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
+                (kind, code, b) => ReportEvent(kind, code, b.Id),
+                b =>
+                {
+                    // flipDoneByPanel (flip-rotation.md §1): die Neuplanung plant für dieses Panel keinen zweiten Flip.
+                    var t = TonightLog.Load(store);
+                    t.FlipDone(UnitId(b));
+                    t.Save(store);
+                }))
                 .ConfigureAwait(false);
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.

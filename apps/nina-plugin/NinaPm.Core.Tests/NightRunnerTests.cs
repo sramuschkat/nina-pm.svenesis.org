@@ -166,8 +166,8 @@ public sealed class NightRunnerTests : IDisposable
         await runner.RunOnceAsync(default); // Plan + Session
         clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
 
-        await runner.RunOnceAsync(default); // regulärer Block, nach wenigen Minuten durch
-        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T08:00:00Z")); // Blockende wäre 09:20:01
+        await runner.RunOnceAsync(default); // regulärer Block; zeitgeführt (Rig) wartet er bis zu den Planzeiten
+        Assert.True(clock.UtcNow <= UtcText.Parse("2026-09-18T09:20:01Z")); // spätestens Blockende
         var starts = sink.Lines.Count(l => l.Contains("BLOCK_START"));
         var plans = api.Plans.Count;
 

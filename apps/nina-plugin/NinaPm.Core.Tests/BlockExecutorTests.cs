@@ -124,15 +124,144 @@ public sealed class BlockExecutorTests
         Assert.DoesNotContain(sink.Lines, l => l.Contains("BLOCK_END"));
     }
 
+    /// <summary>
+    /// Brief AP-16f: Filterverhältnisse bleiben nach 6 min Verzögerung erhalten – der Startverzug geht in den Verzug ein
+    /// (§4.2, NT-21), die Planuhr rutscht nach hinten, statt Belichtungen zu verwerfen; nur das Blockende schneidet ab.
+    /// </summary>
     [Fact]
-    public async Task Zeitgefuehrt_spaeter_Start_ueberspringt_verpasste_Belichtungen()
+    public async Task Zeitgefuehrt_Startverzug_verschiebt_die_Planuhr_Filterfolge_bleibt()
     {
-        var (executor, nina, sink, _) = Setup("2026-09-18T08:20:00Z", PlaybackMode.TimeAware);
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:41:00Z", PlaybackMode.TimeAware); // 6 min nach Planstart
         nina.SkipSlew = true;
-        var outcome = await executor.RunAsync(Regular(), null, default);
-        Assert.True(outcome.SkippedTimeAware >= 6);
-        Assert.True(outcome.NeedsReplan);
-        Assert.Contains(sink.Lines, l => l.Contains("SKIPPED_TIMEAWARE"));
+        var block = Regular();
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal(0, outcome.SkippedTimeAware);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("SKIPPED_TIMEAWARE"));
+        var planned = block.Entries.Where(e => e.Cmd == EntriesCmd.Expose).Select(e => e.Seq).ToList();
+        var done = nina.Calls.Where(c => c.StartsWith("expose:", StringComparison.Ordinal))
+            .Select(c => int.Parse(c[7..c.IndexOf('@')], System.Globalization.CultureInfo.InvariantCulture)).ToList();
+        Assert.Equal(planned.Take(done.Count), done); // Präfix des Plans in Planreihenfolge
+    }
+
+    // ---- Flip und Rotation (AP-16f, execution.md §4.2/§4.5, flip-rotation.md §3) ---------------------------------
+
+    [Fact]
+    public async Task Flip_wartet_auf_NINAs_frueheste_Flipzeit_danach_nur_Zentrieren()
+    {
+        var (executor, nina, sink, clock) = Setup("2026-09-18T07:35:00Z");
+        var block = Regular();
+        var flipEntry = block.Entries.Single(e => e.Cmd == EntriesCmd.Meridian_flip);
+        nina.Pier = "west";
+        nina.FlipOnTriggers = true;
+        nina.EarliestFlipUtc = flipEntry.AtUtc.AddSeconds(20); // Montierung 20 s später als die Engine
+        var flips = 0;
+        var options = new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240), Rotation: new RotationSettings(5, false), FlipDone: _ => flips++);
+
+        await executor.RunAsync(block, null, default, options);
+
+        var trigger = nina.Calls.FindIndex(c => c == "flip");
+        Assert.True(trigger > 0);
+        var delays = nina.Calls.Take(trigger).Where(c => c.StartsWith("delay:", StringComparison.Ordinal)).ToList();
+        Assert.Contains(delays, d => string.CompareOrdinal(d[6..], UtcText.Format(flipEntry.AtUtc.AddSeconds(20))) >= 0);
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east"));
+        Assert.Equal(1, flips);
+        // Nach dem Flip Center ohne Rotation, danach keine Rotation mehr; Winkel mit eigenem Solve geprüft.
+        Assert.Contains("center-no-rotate", nina.Calls.Skip(trigger));
+        Assert.Equal(1, nina.Calls.Count(c => c == "flip"));
+    }
+
+    [Fact]
+    public async Task Ungeplanter_Flip_vor_einer_Belichtung_zentriert_und_erledigt_den_Plan_Flip()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 1; // NINAs Trigger flippt schon vor der ersten Belichtung (±1 Belichtung)
+
+        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240)));
+
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east"));
+        Assert.Contains("center-no-rotate", nina.Calls);
+        Assert.DoesNotContain("flip", nina.Calls); // Plan-Flip erledigt, kein zweiter Trigger-Aufruf
+    }
+
+    [Fact]
+    public async Task Pier_Seite_unbekannt_ohne_PA_Sprung_meldet_flip_undetected()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.Solves.Add(new SolveReading(90));
+        var flips = 0;
+        await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240), FlipDone: _ => flips++));
+
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP_UNDETECTED"));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("NINA-PM | FLIP id="));
+        Assert.Equal(0, flips);
+    }
+
+    [Theory]
+    [InlineData(false, "rotation_mismatch")]
+    [InlineData(true, null)]
+    public async Task Ohne_Rotator_Winkel_30_Grad_daneben(bool rotatorConnected, string? skipReason)
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.RotatorConnected = rotatorConnected;
+        var block = Regular();
+        nina.Solves.Add(new SolveReading(block.RotationDeg + 30));
+
+        var outcome = await executor.RunAsync(block, null, default, new BlockRunOptions(Rotation: new RotationSettings(5, SkipOnMismatch: true)));
+
+        if (skipReason is null)
+        {
+            // Mit Rotator prüft NINAs CenterAndRotate am Blockbeginn selbst – kein eigener Solve vor dem Blockstart
+            // (nach dem Flip im Block prüft das Plugin dagegen immer selbst, §4.5).
+            Assert.True(outcome.Started);
+            Assert.DoesNotContain("solve", nina.Calls.TakeWhile(c => c != "before"));
+        }
+        else
+        {
+            Assert.Equal((false, skipReason), (outcome.Started, outcome.Reason));
+            Assert.Contains(sink.Lines, l => l.Contains("ROTATION_MISMATCH"));
+        }
+    }
+
+    [Fact]
+    public async Task Winkelabweichung_bleibt_fuer_das_Ziel_gemerkt_wenn_das_Zentrieren_entfaellt()
+    {
+        // Sim-Lauf P-08: derselbe Block kommt im nächsten Plan wieder; ohne Zentrieren entfiele die Winkelprüfung.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.RotatorConnected = false;
+        var block = Regular();
+        nina.Solves.Add(new SolveReading(block.RotationDeg + 30));
+        var options = new BlockRunOptions(Rotation: new RotationSettings(5, SkipOnMismatch: true));
+        Assert.Equal("rotation_mismatch", (await executor.RunAsync(block, null, default, options)).Reason);
+
+        nina.SkipSlew = true;
+        var again = await executor.RunAsync(Regular(), null, default, options);
+        Assert.Equal((false, "rotation_mismatch"), (again.Started, again.Reason));
+    }
+
+    [Fact]
+    public async Task Winkel_modulo_180_ok_kein_Solve_rotation_unknown_gespiegelt_optics_mirrored()
+    {
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.RotatorConnected = false;
+        var block = Regular();
+        nina.Solves.Add(new SolveReading(block.RotationDeg + 180.5));
+        var ok = await executor.RunAsync(block, null, default, new BlockRunOptions(Rotation: new RotationSettings(5, true)));
+        Assert.True(ok.Started);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("ROTATION_"));
+
+        var (e2, n2, s2, _) = Setup("2026-09-18T07:35:00Z");
+        n2.RotatorConnected = false;
+        await e2.RunAsync(Regular(), null, default, new BlockRunOptions(Rotation: new RotationSettings(5, true)));
+        Assert.Contains(s2.Lines, l => l.Contains("ROTATION_UNKNOWN"));
+
+        var (e3, n3, s3, _) = Setup("2026-09-18T07:35:00Z");
+        n3.RotatorConnected = false;
+        n3.Solves.Add(new SolveReading(10, Mirrored: true));
+        var r3 = await e3.RunAsync(Regular(), null, default, new BlockRunOptions(Rotation: new RotationSettings(5, true)));
+        Assert.True(r3.Started);
+        Assert.Contains(s3.Lines, l => l.Contains("WARNING code=optics_mirrored"));
     }
 
     [Fact]

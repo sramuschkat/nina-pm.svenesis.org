@@ -12,7 +12,7 @@ namespace NinaPm.Sim;
 /// Aktion stellt die virtuelle Uhr um ihre Dauer vor; eine Belichtung bricht ab, sobald der Sequenz-Token abgebrochen
 /// wird (Safety, Benutzer-Stopp, Absturz).
 /// </summary>
-public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner?> runner, NinaPmLog log, Func<bool> dead)
+public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner?> runner, NinaPmLog log, Func<bool> dead, TextWriter logWriterForSim)
     : IBlockHost, INightHost
 {
     public const double DownloadS = 2;
@@ -30,27 +30,75 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public void OnInterrupted() => interrupted = true;
 
-    public void PlanBuilt(NinaTargets? targets) =>
+    public void PlanBuilt(NinaTargets? targets)
+    {
         rules.PlanBuilt(targets, world.ProfileFilters, world.DitherTrigger ? "DitherAfterExposures" : null);
+        var siteOffset = runner()?.Bootstrap is { } b ? SiteCheck.SiteOffset(b, clock.UtcNow) : null;
+        var pc = world.PcUtcOffsetMinutes is { } m ? TimeSpan.FromMinutes(m) : siteOffset ?? TimeSpan.Zero;
+        rules.CheckSite(new SiteFacts(pc, 31.5471, -99.3823, 0, world.RotatorRangeQuarter, world.FlipTrigger));
+    }
 
     // ---- IBlockHost ---------------------------------------------------------------------------------
 
     public bool IsViableNow(Blocks block) => true;
 
-    public void SetTarget(Blocks block)
-    {
-    }
+    private Blocks? target;
+
+    public void SetTarget(Blocks block) => target = block;
 
     public bool CanSkipSlew(Blocks block) =>
         !interrupted && !world.Parked && lastCentered == (block.ProjectId, block.PanelId);
 
-    public async Task<CenterResult> SlewCenterAsync(Blocks block, CancellationToken token)
+    public async Task<CenterResult> SlewCenterAsync(Blocks block, bool rotate, CancellationToken token)
     {
-        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(60), token).ConfigureAwait(false);
+        var newTarget = lastCentered != (block.ProjectId, block.PanelId);
+        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(60 + (newTarget ? world.CenterDelayS : 0)), token).ConfigureAwait(false);
         world.Parked = false;
+        if (newTarget && block.MeridianFlip is { Planned: true } flip)
+        {
+            // Montierung: früheste Flipzeit des Ziels = Plan-Flipzeit + Abweichung der Montierung; vorher westlich.
+            world.EarliestFlipUtc = flip.PlannedUtc.AddSeconds(world.MountFlipOffsetS);
+            world.Pier = clock.UtcNow >= world.EarliestFlipUtc.Value.AddMinutes(10) ? "east" : "west";
+        }
+        else if (newTarget)
+        {
+            // Ohne Flip im Block (Meridian schon vorbei oder nicht in der Nacht): Pier-Seite bleibt, kein Flip mehr fällig.
+            world.EarliestFlipUtc = null;
+        }
         lastCentered = (block.ProjectId, block.PanelId);
         interrupted = false;
         return new CenterResult(true);
+    }
+
+    // ---- Flip und Rotation (AP-16f) ----------------------------------------------------------------
+
+    public bool RotatorConnected => world.RotatorConnected;
+
+    public bool NinaRecentersAfterFlip => false;
+
+    public string? PierSide() => world.PierKnown ? world.Pier : null;
+
+    public double? MinutesToEarliestFlip() =>
+        world.EarliestFlipUtc is { } e ? (e - clock.UtcNow).TotalMinutes : 600;
+
+    /// <summary>NINAs Meridian-Flip-Trigger: flippt bei jedem Aufruf ab der frühesten Flipzeit (L8), wenn er in der Sequenz ist.</summary>
+    private async Task NinaFlipTriggerAsync(CancellationToken token)
+    {
+        if (!world.FlipTrigger || world.Pier != "west" || world.EarliestFlipUtc is not { } e || clock.UtcNow < e) return;
+        FileLogSink.Sim(logWriterForSim, clock, "NINA meridian flip");
+        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.FlipDurationS), token).ConfigureAwait(false);
+        world.Pier = "east";
+        world.Flips++;
+    }
+
+    public Task RunTriggersAsync(CancellationToken token) => NinaFlipTriggerAsync(token);
+
+    public Task<SolveReading> SolveAsync(CancellationToken token)
+    {
+        if (!world.SolveAvailable || target is null) return Task.FromResult(new SolveReading(null));
+        // Ohne Rotator der Kamerawinkel, mit Rotator der Soll-Winkel; nach dem Flip steht der Himmels-PA um 180° gedreht.
+        var pa = (world.RotatorConnected ? target.RotationDeg : world.CameraAngleDeg ?? target.RotationDeg) + (world.Pier == "east" ? 180 : 0);
+        return Task.FromResult(new SolveReading(Rotation.Normalize(pa)));
     }
 
     public Task BeforeTargetChangeAsync(CancellationToken token) => Task.CompletedTask;
@@ -74,6 +122,8 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
     {
         if (world.ProfileFilters.Count > 0 && currentFilter is null) return ExposureResult.Skipped;
         if (rules.ChooseReadout(entry, world.ReadoutModes).Kind == ReadoutResolutionKind.NotFound) return ExposureResult.Skipped;
+        // NINAs Trigger-Walk vor der Belichtung: ab der frühesten Flipzeit flippt der Meridian-Flip-Trigger (±1 Belichtung).
+        await NinaFlipTriggerAsync(token).ConfigureAwait(false);
         var exposureS = entry.ExposureS ?? 0;
         var id = Uuid7.New(clock);
         var start = clock.UtcNow;
@@ -100,12 +150,6 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public Task DitherAsync(CancellationToken token) => clock.AdvanceToAsync(clock.UtcNow.AddSeconds(10), token);
 
-    public async Task MeridianFlipAsync(Blocks block, Entries entry, CancellationToken token)
-    {
-        if (entry.AtUtc > clock.UtcNow) await clock.AdvanceToAsync(entry.AtUtc, token).ConfigureAwait(false);
-        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(entry.DurationS ?? 240), token).ConfigureAwait(false);
-    }
-
     public Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token) => clock.AdvanceToAsync(untilUtc, token);
 }
 
@@ -118,6 +162,13 @@ public sealed class SimSettings(SimWorld world, double latDeg, double lonDeg) : 
         FilterWheel = [.. world.ProfileFilters.Select((name, i) => new FilterWheel { Position = i + 1, Name = name, FocusOffset = 0 })],
         Camera = new Camera { TemperatureC = world.CameraTemperatureC, SetPointC = world.CameraSetpointC, CoolerOn = world.CoolerOn, CoolerPowerPct = 40 },
         CameraReadoutModes = [.. world.ReadoutModes.Select((name, i) => new CameraReadoutModes { Index = i, Name = name })],
+        Rotator = new Rotator
+        {
+            Connected = world.RotatorConnected,
+            RangeType = world.RotatorRangeQuarter ? RotatorRangeType.QUARTER : RotatorRangeType.FULL,
+            RangeStartMechanicalDeg = 0,
+            Reverse = false,
+        },
         SequenceTriggers = new SequenceTriggers
         {
             Autofocus = [],
