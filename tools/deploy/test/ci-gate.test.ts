@@ -102,4 +102,33 @@ describe('deploy:prod – CI-Vorbedingung (P1-21a)', () => {
     expect(isFullRun(d.gh, '')).toBe(false);
     expect(isFullRun(d.gh, '5; rm')).toBe(false);
   });
+
+  it('Merge-Commit mit übernommenem Ergebnis: vollständiger PR-Lauf mit gleichem geprüftem Stand genügt', async () => {
+    // main-Lauf grün, aber Tests/Build/E2E übersprungen (Ergebnis aus dem PR übernommen, ci.yml `changes`).
+    const d = deps({
+      own: ['completed success 11'],
+      skipped: { '11': 9, '21': 0 },
+      trees: { [HEAD]: 't-merge' },
+    });
+    const gate = {
+      ...d,
+      prRuns: () => ['21'],
+      testedTree: (id: string) => (id === '21' ? 't-merge' : null),
+    };
+    await expect(ensureGreenCi(HEAD, gate)).resolves.toBe('gleicher Stand wie PR-Lauf 21');
+  });
+
+  it('PR-Lauf mit anderem Stand oder mit übersprungenen Jobs genügt nicht', async () => {
+    const d = deps({
+      own: ['completed success 11'],
+      skipped: { '11': 9, '21': 0, '22': 3 },
+      trees: { [HEAD]: 't-merge' },
+    });
+    const gate = {
+      ...d,
+      prRuns: () => ['21', '22'],
+      testedTree: (id: string) => (id === '21' ? 't-other' : 't-merge'),
+    };
+    await expect(ensureGreenCi(HEAD, gate)).rejects.toThrow('übersprungenen Jobs');
+  });
 });

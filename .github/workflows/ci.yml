@@ -16,6 +16,11 @@
 # `test` in 3 und E2E in 6 Shards (13 gleichzeitige Jobs, Grenze 20), Vitest mit 3 Workern (vitest.config.ts),
 # Typecheck inkrementell und Lint/Prettier mit Cache (aus dem letzten Lauf auf `main`), und Tests samt E2E
 # wieder auch auf `main` – ein Fehler durch zwei einzeln grüne PRs fällt so sofort auf.
+# Tempo (03.10.2026, Sven): PRs, die nur Plugin, dessen Test-Werkzeuge oder plugin.yml ändern (`web=false`), lassen
+# Web-Tests, Build und E2E weg (Lint, Typecheck und Tests unter tools/ laufen). Auf `main` übernimmt der Lauf das
+# Ergebnis eines vollständig grünen PR-Laufs aus diesem Repo, der genau denselben Dateistand geprüft hat (Artefakt
+# `tested-tree`, Git-Tree des Merge-Refs) – Tests, Build und E2E entfallen dann; `pnpm deploy:prod` akzeptiert das
+# ebenso (tools/deploy/src/ci-gate.ts). Ist zwischen PR-Lauf und Merge etwas anderes gelandet, läuft alles.
 name: ci
 
 on:
@@ -25,6 +30,8 @@ on:
 
 permissions:
   contents: read
+  # Auftrag `changes` auf `main`: grünen PR-Lauf mit gleichem Dateistand finden (Artefakt `tested-tree`).
+  actions: read
 
 # Ein neuer Push ersetzt den laufenden Lauf – in PRs wie auf `main`. Landen mehrere PRs nacheinander, zählt für
 # den Deploy nur der letzte Stand (tools/deploy/src/ci-gate.ts); überlappende Läufe mit je 15 Jobs warteten
@@ -41,35 +48,82 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      web: ${{ steps.filter.outputs.web }}
+      reuse: ${{ steps.reuse.outputs.reuse }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: filter
-        name: Nur Doku geändert?
+        name: Nur Doku oder nur Plugin geändert?
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           # Nur in PRs: Doku ohne Wirkung auf Code oder Tests überspringt Tests, Build und E2E. Auf `main` (push)
           # immer volle CI – der Vergleich mit dem Vorgänger würde einen roten Vorgänger-Lauf verdecken.
-          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; echo "Kein PR: volle CI"; exit 0; fi
-          # Alles andere (auch docs/contracts, docs/api, docs/seed, docs/test-runs, docs/concept, docs/rules) löst
-          # die volle CI aus – ebenso die geschützten Kopien (legacy/, packages/catalog-data/, geprüft von
-          # tools/repo-check), auch deren README.md. Die erste passende Zeile gewinnt.
-          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # `web=false` (Sven 03.10.2026): der PR ändert nur Plugin, dessen Test-Werkzeuge oder Plugin-Workflow –
+          # dann entfallen Web-Tests, Build und E2E, es laufen Lint, Typecheck und die Tests unter tools/
+          # (das Plugin selbst prüft plugin.yml).
+          if [ "$EVENT" != "pull_request" ]; then
+            { echo "code=true"; echo "web=true"; } >> "$GITHUB_OUTPUT"; echo "Kein PR: volle CI"; exit 0
+          fi
+          # Alles andere (auch docs/contracts, docs/api, docs/seed, docs/concept, docs/rules) löst die volle CI
+          # aus – ebenso die geschützten Kopien (legacy/, packages/catalog-data/, geprüft von tools/repo-check),
+          # auch deren README.md. Die erste passende Zeile gewinnt.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            { echo "code=true"; echo "web=true"; } >> "$GITHUB_OUTPUT"; exit 0
+          fi
           files=$(git diff --name-only "$BASE" HEAD)
           code=false
+          web=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
-              legacy/*|packages/catalog-data/*) code=true ;;
-              docs/CHANGELOG.md|docs/changelog.d/*|docs/work-packages/*|docs/ops/*|docs/history/*|docs/adr/*|docs/specs/*|docs/runbooks/*|CLAUDE.md|START.md|README.md|*/README.md) ;;
-              *) code=true ;;
+              legacy/*|packages/catalog-data/*) code=true; web=true ;;
+              docs/CHANGELOG.md|docs/changelog.d/*|docs/work-packages/*|docs/ops/*|docs/history/*|docs/adr/*|docs/specs/*|docs/runbooks/*|docs/test-runs/*|CLAUDE.md|START.md|README.md|*/README.md) ;;
+              apps/nina-plugin/*|tools/nina-sim/*|tools/nina-test-server/scenarios/*|tools/test-run-check/*|tools/nina-*.sh|spikes/nina-probe/*|spikes/jint-runtime/*|.github/workflows/plugin.yml) code=true ;;
+              *) code=true; web=true ;;
             esac
           done <<< "$files"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "Code geändert: $code"
+          { echo "code=$code"; echo "web=$web"; } >> "$GITHUB_OUTPUT"
+          echo "Code geändert: $code, Web/API betroffen: $web"
+      # Geprüfter Dateistand des PR-Laufs (Merge-Ref) für `main` und `pnpm deploy:prod` (tools/deploy/src/ci-gate.ts).
+      - name: Geprüften Stand festhalten
+        if: github.event_name == 'pull_request'
+        run: git rev-parse 'HEAD^{tree}' > tested-tree.txt
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: tested-tree
+          path: tested-tree.txt
+          retention-days: 14
+      # Auf `main` (Sven 03.10.2026): hat ein vollständig grüner PR-Lauf aus diesem Repo genau diesen Dateistand
+      # geprüft (nichts anderes ist dazwischen gelandet), übernimmt `main` das Ergebnis – Tests, Build und E2E
+      # entfallen. Sonst volle CI wie bisher.
+      - id: reuse
+        name: Gleicher Stand schon im PR geprüft?
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          tree=$(git rev-parse 'HEAD^{tree}')
+          ids=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=pull_request&status=success&per_page=15" \
+            --jq '.workflow_runs[] | select(.head_repository.full_name == env.REPO) | .id')
+          for id in $ids; do
+            skipped=$(gh run view "$id" -R "$REPO" --json jobs --jq '[.jobs[] | select(.conclusion == "skipped")] | length')
+            [ "$skipped" = "0" ] || continue
+            rm -rf "t-$id"
+            gh run download "$id" -R "$REPO" -n tested-tree -D "t-$id" 2>/dev/null || continue
+            if [ "$(cat "t-$id/tested-tree.txt")" = "$tree" ]; then
+              echo "reuse=true" >> "$GITHUB_OUTPUT"
+              echo "Gleicher Stand wie PR-Lauf $id ($tree) – Ergebnis übernommen"
+              exit 0
+            fi
+          done
+          echo "reuse=false" >> "$GITHUB_OUTPUT"
+          echo "Kein PR-Lauf mit diesem Stand – volle CI"
 
   static:
     name: lint · typecheck
@@ -111,7 +165,7 @@ jobs:
   test-shard:
     name: test (${{ matrix.shard }}/3)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -144,7 +198,15 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test --shard=${{ matrix.shard }}/3
+      # Nur Plugin geändert (`web=false`): Shard 1 prüft die Werkzeuge unter tools/, die übrigen enden sofort.
+      - name: Tests
+        env:
+          WEB: ${{ needs.changes.outputs.web }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$WEB" = "true" ]; then pnpm test --shard="$SHARD/3"
+          elif [ "$SHARD" = "1" ]; then pnpm vitest run tools
+          else echo "Nur Plugin geändert – Werkzeug-Tests laufen in Shard 1"; fi
 
   test:
     name: test
@@ -163,7 +225,7 @@ jobs:
   build:
     name: build · cdk synth
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -181,7 +243,7 @@ jobs:
   e2e-shard:
     name: e2e (${{ matrix.shard }}/6)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
