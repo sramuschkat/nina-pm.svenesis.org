@@ -1,0 +1,10 @@
+{
+  "name": "@nina-pm/vm-bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VM-Prüfstand: echtes NINA in der Windows-VM, gesteuert vom Mac (Agent holt Aufträge per HTTP, Advanced API für Geräte, Sequenz und Screenshots)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

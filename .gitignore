@@ -58,3 +58,4 @@ dist-e2e/
 tools/astropm-oracle/upstream/
 tools/astropm-oracle/out/
 .sim-runs/
+.vm-bench/
