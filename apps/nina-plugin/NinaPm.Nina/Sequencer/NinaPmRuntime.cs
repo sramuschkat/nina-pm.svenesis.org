@@ -49,7 +49,8 @@ internal sealed class NinaPmRuntime : IDisposable
             Executor = new BlockExecutor(host, clock, Log) { Mode = PlaybackModeSequential },
         };
         host.Runtime = this;
-        Outbox = new OutboxSender(Store, sessionApi, Log) { Listener = Runner };
+        Outbox = new OutboxSender(Store, sessionApi, Log, clock) { Listener = Runner };
+        Runner.OfflineMode = options.OfflineMode;
         Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
             clock, Log, NinaPmPlugin.PluginVersion);
         if (startHeartbeat) _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
@@ -146,6 +147,7 @@ internal sealed class NinaPmRuntime : IDisposable
             ServerUrl = accessor.GetValueString(nameof(PluginOptions.ServerUrl), PluginOptions.DefaultServerUrl),
             ProtectedToken = accessor.GetValueString(nameof(PluginOptions.ProtectedToken), ""),
             TestMode = accessor.GetValueBoolean(nameof(PluginOptions.TestMode), false),
+            OfflineMode = accessor.GetValueBoolean(nameof(PluginOptions.OfflineMode), false),
         };
     }
 

@@ -144,14 +144,25 @@ describe('Prüfung eines Laufs', () => {
     expect(run(res, P13_LOG).outcome.passed).toBe(false);
   });
 
+  it('allow: P-37 erwartet ERROR code=clock_skew, andere ERROR bleiben verboten', () => {
+    const log = [
+      'NINA-PM | ERROR code=clock_skew durationS=90',
+      'NINA-PM | BLOCKED reason=clock_skew',
+      'NINA-PM | ERROR code=block_failed',
+    ].join('\n');
+    const { outcome } = run(result('P-37', 4), log);
+    expect(outcome.logCheck.missing).toEqual([]);
+    expect(outcome.logCheck.unexpected).toEqual(['ERROR in Zeile 3']);
+  });
+
   it('Protokoll ohne Erwartungen wird klar gemeldet', () => {
-    const { outcome } = run(result('P-09', 3), P13_LOG);
+    const { outcome } = run(result('P-11', 3), P13_LOG);
     expect(outcome.schemaErrors).toContain(
-      'keine Erwartungen für P-09 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
+      'keine Erwartungen für P-11 in expectations.json (ergänzt das Paket, das das Protokoll braucht)',
     );
   });
 
-  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25, P-31, AP-16d P-06, P-15, P-19, P-28, P-32, AP-16e P-10, P-17, P-22, P-34, AP-16f P-07, P-08, P-21, P-26, P-36', () => {
+  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25, P-31, AP-16d P-06, P-15, P-19, P-28, P-32, AP-16e P-10, P-17, P-22, P-34, AP-16f P-07, P-08, P-21, P-26, P-36, AP-16g P-09, P-16, P-18, P-20, P-30, P-37', () => {
     expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual([
       'P-01',
       'P-02',
@@ -161,20 +172,26 @@ describe('Prüfung eines Laufs', () => {
       'P-06',
       'P-07',
       'P-08',
+      'P-09',
       'P-10',
       'P-13',
       'P-15',
+      'P-16',
       'P-17',
+      'P-18',
       'P-19',
+      'P-20',
       'P-21',
       'P-22',
       'P-25',
       'P-26',
       'P-28',
+      'P-30',
       'P-31',
       'P-32',
       'P-34',
       'P-36',
+      'P-37',
     ]);
     expect(EXPECTATIONS.protocols['P-04']?.package).toBe('AP-16a');
     for (const p of ['P-05', 'P-25', 'P-31'])

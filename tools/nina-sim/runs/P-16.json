@@ -1,0 +1,168 @@
+{
+  "protocol": "P-16",
+  "description": "Offline-Modus, Netz weg, Neustart mit gespeichertem Plan (source=cache), zwei Blöcke offline, danach zurück; Gegenprobe ohne gespeicherten Plan.",
+  "parts": [
+    {
+      "scenario": "lease",
+      "untilMin": 70,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 4,
+          "sim": "offline_on"
+        },
+        {
+          "atMin": 5,
+          "sim": "network_down"
+        },
+        {
+          "atMin": 6,
+          "sim": "crash"
+        },
+        {
+          "atMin": 7,
+          "sim": "start"
+        },
+        {
+          "atMin": 50,
+          "sim": "network_up"
+        },
+        {
+          "atMin": 51,
+          "sim": "offline_off"
+        }
+      ]
+    },
+    {
+      "scenario": "lease",
+      "untilMin": 10,
+      "setup": {
+        "autoStart": false
+      },
+      "steps": [
+        {
+          "atMin": 0.1,
+          "sim": "offline_on"
+        },
+        {
+          "atMin": 0.2,
+          "sim": "network_down"
+        },
+        {
+          "atMin": 0.5,
+          "sim": "start"
+        }
+      ]
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "order": [
+          {
+            "event": "HEARTBEAT",
+            "where": {
+              "state": "offline"
+            }
+          },
+          {
+            "event": "PLAN",
+            "where": {
+              "source": "cache"
+            }
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "log": {
+          "event": "PLAN",
+          "where": {
+            "source": "cache"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "none": {
+          "event": "PLAN",
+          "where": {
+            "source": "server"
+          }
+        },
+        "after": {
+          "event": "PLAN",
+          "where": {
+            "source": "cache"
+          }
+        },
+        "before": {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "idle"
+          }
+        }
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "report": "alerts",
+        "where": {
+          "code": "session_stale"
+        },
+        "min": 0,
+        "max": 0
+      },
+      {
+        "part": 1,
+        "log": {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 1,
+        "report": "rejected",
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "part": 2,
+        "log": {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "plan_failed"
+          }
+        },
+        "min": 1
+      },
+      {
+        "part": 2,
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

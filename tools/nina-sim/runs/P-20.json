@@ -1,0 +1,95 @@
+{
+  "protocol": "P-20",
+  "scenario": "lease",
+  "description": "NINA mitten in Block 2 beendet und neu gestartet: resume mit neuer nightPlanId, gleiche Session, Lease zurück.",
+  "untilMin": 60,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 22,
+      "sim": "crash"
+    },
+    {
+      "atMin": 23,
+      "sim": "start"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "LEASE",
+            "where": {
+              "state": "reacquiring"
+            }
+          },
+          {
+            "event": "PLAN",
+            "where": {
+              "reason": "resume"
+            }
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "sessions",
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "report": "sessions.0.patches",
+        "where": {
+          "status": "running"
+        },
+        "min": 1
+      },
+      {
+        "order": [
+          {
+            "event": "PLAN",
+            "where": {
+              "reason": "resume"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "CAPTURE",
+            "where": {
+              "result": "saved"
+            }
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "report": "rejected",
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

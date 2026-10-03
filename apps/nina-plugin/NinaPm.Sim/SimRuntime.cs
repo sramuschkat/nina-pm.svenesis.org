@@ -64,7 +64,8 @@ public sealed class SimRuntime : IDisposable
         {
             Executor = new BlockExecutor(Host, clock, Log) { Mode = PlaybackMode.Sequential },
         };
-        Outbox = new OutboxSender(Store, sessionApi, Log) { Listener = Runner };
+        Outbox = new OutboxSender(Store, sessionApi, Log, clock) { Listener = Runner };
+        Runner.OfflineMode = world.OfflineMode; // Option im NINA-Profil, übersteht den Neustart
         // Profil-Standort = Rig-Standort des Test-Servers (Starfront, rig.json).
         Heartbeat = new HeartbeatService(sessionApi, Runner, new SimSettings(world, 31.5471, -99.3823), Outbox, clock, Log, "0.0.0-sim");
         heartbeatTimer = clock.At(clock.UtcNow, () => Dead ? Task.CompletedTask : Heartbeat.TickAsync(CancellationToken.None),

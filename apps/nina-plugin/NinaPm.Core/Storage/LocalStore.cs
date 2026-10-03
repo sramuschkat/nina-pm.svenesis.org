@@ -246,6 +246,116 @@ public sealed class LocalStore : IDisposable
     /// <summary>Anzahl noch nicht quittierter Meldungen (<c>outboxPending</c> im Abschluss-<c>PATCH</c>, NIN5-7).</summary>
     public int OutboxCount() => Convert.ToInt32(Scalar("SELECT COUNT(*) FROM outbox"));
 
+    // ---- AP-16g: Backoff, Dead-Letter, Historie (execution.md §8) ------------------------------------------
+
+    /// <summary>Wiederholungen und nächster Versuch des ältesten Eintrags (FIFO-Kopf); <c>null</c> bei leerer Outbox.</summary>
+    public (int Attempts, DateTimeOffset NextAttemptUtc)? OutboxHead()
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT attempts, next_attempt_utc FROM outbox ORDER BY id LIMIT 1");
+            using var r = cmd.ExecuteReader();
+            return r.Read() ? (r.GetInt32(0), UtcText.Parse(r.GetString(1))) : null;
+        }
+    }
+
+    /// <summary>Gescheiterte Einträge: Wiederholung zählen, nächster Versuch frühestens <paramref name="nextUtc"/>.</summary>
+    public void OutboxRetryLater(IReadOnlyList<OutboxEntry> entries, DateTimeOffset nextUtc)
+    {
+        lock (gate)
+        {
+            using var tx = connection.BeginTransaction();
+            foreach (var e in entries)
+                Execute("UPDATE outbox SET attempts = attempts + 1, next_attempt_utc = $next WHERE id = $id", tx,
+                    ("$next", UtcText.Format(nextUtc)), ("$id", e.Id));
+            tx.Commit();
+        }
+    }
+
+    /// <summary>Alle Einträge sofort wieder fällig (Rückkehr der Verbindung, neues Token).</summary>
+    public void OutboxDueNow()
+    {
+        lock (gate) Execute("UPDATE outbox SET next_attempt_utc = $now", null, ("$now", UtcText.Format(clock.UtcNow)));
+    }
+
+    /// <summary>Einträge aus der Outbox ins Dead-Letter verschieben (Status, Code, Grund für die Anzeige im Plugin).</summary>
+    public void OutboxDeadLetter(IReadOnlyList<OutboxEntry> entries, int? status, string? code, string reason)
+    {
+        lock (gate)
+        {
+            using var tx = connection.BeginTransaction();
+            var now = UtcText.Format(clock.UtcNow);
+            foreach (var e in entries)
+            {
+                Execute("INSERT INTO dead_letter (kind, session_id, payload, status, code, reason, created_utc) " +
+                    "VALUES ($kind, $session, $payload, $status, $code, $reason, $now)", tx,
+                    ("$kind", e.Kind), ("$session", e.SessionId?.ToString()), ("$payload", e.Payload), ("$status", status),
+                    ("$code", code), ("$reason", reason), ("$now", now));
+                Execute("DELETE FROM outbox WHERE id = $id", tx, ("$id", e.Id));
+            }
+            tx.Commit();
+        }
+    }
+
+    /// <summary>Anzahl der Dead-Letter-Einträge (Heartbeat <c>deadLetters</c>, Anzeige im Plugin).</summary>
+    public int DeadLetterCount() => Convert.ToInt32(Scalar("SELECT COUNT(*) FROM dead_letter"));
+
+    /// <summary>Gründe der Dead-Letter-Einträge, neueste zuerst (Optionsseite).</summary>
+    public IReadOnlyList<string> DeadLetterReasons(int max)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT reason FROM dead_letter ORDER BY id DESC LIMIT $max", null, ("$max", max));
+            using var r = cmd.ExecuteReader();
+            var list = new List<string>();
+            while (r.Read()) list.Add(r.GetString(0));
+            return list;
+        }
+    }
+
+    /// <summary>Eintrag vor alle anderen stellen (z. B. Session nachmelden nach <c>409 session.unknown</c>).</summary>
+    public long EnqueueOutboxFront(string kind, string payload, Guid? sessionId, Guid? nightPlanId)
+    {
+        var now = UtcText.Format(clock.UtcNow);
+        lock (gate)
+        {
+            var id = (long)Scalar("SELECT COALESCE(MIN(id), 1) - 1 FROM outbox")!;
+            Execute("INSERT INTO outbox (id, session_id, night_plan_id, kind, payload, created_utc, next_attempt_utc) " +
+                "VALUES ($id, $session, $plan, $kind, $payload, $now, $now)", null,
+                ("$id", id), ("$session", sessionId?.ToString()), ("$plan", nightPlanId?.ToString()), ("$kind", kind),
+                ("$payload", payload), ("$now", now));
+            return id;
+        }
+    }
+
+    /// <summary>Gesendete Meldungen älter als <paramref name="beforeUtc"/> aus <c>sent_history</c> löschen (14 Tage, §8).</summary>
+    public int PruneSentHistory(DateTimeOffset beforeUtc)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("DELETE FROM sent_history WHERE sent_utc < $before", null, ("$before", UtcText.Format(beforeUtc)));
+            return cmd.ExecuteNonQuery();
+        }
+    }
+
+    /// <summary>
+    /// *Erneut hochladen ab Datum* (FA-NIN-13): gesendete Aufnahmen und Ereignisse ab <paramref name="sinceUtc"/> wieder in
+    /// die Outbox stellen; der Server erkennt Wiederholungen an der ID (<c>duplicate</c>). Liefert die Anzahl.
+    /// </summary>
+    public int ReuploadSince(DateTimeOffset sinceUtc)
+    {
+        lock (gate)
+        {
+            var now = UtcText.Format(clock.UtcNow);
+            using var cmd = Command(
+                "INSERT INTO outbox (session_id, night_plan_id, kind, payload, created_utc, next_attempt_utc) " +
+                "SELECT session_id, NULL, kind, payload, $now, $now FROM sent_history " +
+                "WHERE sent_utc >= $since AND kind IN ('capture', 'event') ORDER BY id", null,
+                ("$now", now), ("$since", UtcText.Format(sinceUtc)));
+            return cmd.ExecuteNonQuery();
+        }
+    }
+
     // ---- intern ---------------------------------------------------------------------------------------
 
     internal IReadOnlyList<string> TableNames()
@@ -322,6 +432,9 @@ public static class StateKeys
     public const string SettingsVersion = "settingsVersion";
     public const string PlanBlockedUntil = "planBlockedUntil";
     public const string DoneBlocks = "doneBlocks";
+
+    /// <summary>Anlage-Daten der aktuellen Session (JSON <c>NinaSessionCreate</c>) für das Nachmelden (§8, <c>session.unknown</c>).</summary>
+    public const string SessionCreate = "sessionCreate";
 
     /// <summary>Abgeschlossene Session mit noch offenen Meldungen: <c>sessionId|endedAtUtc</c> (execution.md §8, NIN5-7).</summary>
     public const string CompletedSession = "completedSession";

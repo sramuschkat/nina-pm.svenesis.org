@@ -63,7 +63,7 @@ public sealed class SimSetup
 /// Schritt zur Minute <c>atMin</c>: <c>server</c> = Aktion des Test-Servers (<c>POST /test/actions</c>), sonst
 /// <c>sim</c> = <c>start</c>, <c>stop</c> (Benutzer-Stopp), <c>crash</c> (NINA hart beendet), <c>unsafe</c>, <c>safe</c>,
 /// <c>monitor_off</c>, <c>monitor_on</c>, <c>setpoint</c> (<c>value</c> °C), <c>filters</c>/<c>readout_modes</c>
-/// (<c>names</c>), <c>network_down</c>, <c>network_up</c>.
+/// (<c>names</c>), <c>network_down</c>, <c>network_up</c>, <c>offline_on</c>, <c>offline_off</c> (Offline-Modus).
 /// </summary>
 public sealed class SimStep
 {

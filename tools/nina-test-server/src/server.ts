@@ -53,6 +53,8 @@ interface SessionRecord {
   nightPlanId: string | null;
   /** `stale` = verwaist: 10 min ohne Heartbeat (TK 6.6, P-22); Heartbeat oder `PATCH running` holt sie zurück (M6). */
   status: 'running' | 'completed' | 'aborted' | 'stale';
+  /** Offline-Modus gemeldet (Heartbeat `state: offline`): Überwachung eingefroren, keine `stale`-Markierung (§6). */
+  frozen?: boolean;
   offline: boolean;
   startedAtUtc: string;
   lastSeenUtc: string;
@@ -322,6 +324,7 @@ export class NinaTestServer {
     if (own && (own.status === 'running' || own.status === 'stale')) {
       own.status = 'running';
       own.lastSeenUtc = iso(this.nowS());
+      own.frozen = r.data.state === 'offline';
     }
     if (own?.status === 'running') {
       if (this.flags.rigBusy) {
@@ -463,7 +466,11 @@ export class NinaTestServer {
   private markStale(): void {
     const now = this.nowS();
     for (const s of this.sessions.values())
-      if (s.status === 'running' && now - Date.parse(s.lastSeenUtc) / 1000 >= STALE_AFTER_S) {
+      if (
+        s.status === 'running' &&
+        !s.frozen &&
+        now - Date.parse(s.lastSeenUtc) / 1000 >= STALE_AFTER_S
+      ) {
         s.status = 'stale';
         this.alerts.push({ code: 'session_stale', sessionId: s.id, atUtc: iso(now) });
       }

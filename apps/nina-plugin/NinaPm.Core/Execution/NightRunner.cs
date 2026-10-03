@@ -100,6 +100,19 @@ public sealed class NightRunner(
     /// <summary>Erster Aufruf nach dem Start geprüft (Neustart mit Session → <c>PATCH running</c>, §6).</summary>
     private bool resumeChecked;
 
+    /// <summary>Benutzeraktion *Block überspringen* (§4.1 Nr. 2, §4.2): wirkt auf den nächsten bzw. laufenden Block.</summary>
+    private volatile bool skipRequested;
+
+    /// <summary>Heartbeat-Kommandos, die mit dem nächsten Heartbeat quittiert werden (<c>ackedCommandIds</c>).</summary>
+    private readonly List<Guid> commandAcks = [];
+
+    /// <summary>Offline-Modus (FA-NIN-04, execution.md §6): kein Planabruf, gespeicherter Plan, Outbox angehalten.</summary>
+    private bool offlineMode;
+
+    /// <summary>Gesperrte Zustände, in denen die Outbox nicht sendet (§2: Warteschlange bleibt, kein Dead-Letter).</summary>
+    private static readonly NinaHeartbeatBlockedReason[] HaltingReasons =
+        [NinaHeartbeatBlockedReason.Token_invalid, NinaHeartbeatBlockedReason.Tenant_locked, NinaHeartbeatBlockedReason.Engine_incompatible];
+
     /// <summary><c>409 session.rig_busy</c> während eines Blocks: Session erst nach dem Block beenden (NIN5-2).</summary>
     private bool abortSessionAfterBlock;
     private readonly object sessionGate = new();
@@ -116,14 +129,75 @@ public sealed class NightRunner(
 
     public int OutboxPending => store.OutboxCount();
 
+    /// <summary>Dead-Letter-Einträge (Heartbeat <c>deadLetters</c>, Optionsseite).</summary>
+    public int DeadLetters => store.DeadLetterCount();
+
     public BlockExecutor Executor { get; init; } = null!;
 
     public bool BlockRunning => runningBlock is not null;
 
+    /// <summary>
+    /// Offline-Modus ein/aus (FA-NIN-04): ein letzter Heartbeat meldet <c>offline</c>, danach keine Aufrufe; Blöcke laufen
+    /// nach dem gespeicherten Server-Plan der laufenden Nacht weiter, Meldungen sammeln sich in der Outbox. Aus: Outbox
+    /// sofort fällig, bei vorhandener Session neu planen (<c>resume</c>).
+    /// </summary>
+    public bool OfflineMode
+    {
+        get => offlineMode;
+        set
+        {
+            if (offlineMode == value) return;
+            offlineMode = value;
+            log.Event("HEARTBEAT", ("state", value ? "offline" : "idle"));
+            if (!value)
+            {
+                OfflineAnnounced = false;
+                store.OutboxDueNow();
+                if (SessionId is not null) forcedPlan = NinaPlanRequestReason.Resume;
+            }
+        }
+    }
+
+    /// <summary>Der Offline-Modus wurde dem Server gemeldet (danach keine Heartbeats mehr).</summary>
+    public bool OfflineAnnounced { get; set; }
+
+    /// <summary>Senden angehalten: Offline-Modus oder gesperrter Zustand ohne Senden (§2, §8).</summary>
+    public bool Paused => offlineMode || (Loop.Blocked is { } b && HaltingReasons.Contains(b));
+
+    /// <summary>
+    /// *Zurücksetzen* (§3.2): Plan mit <c>reason: reset</c>, Blockindex 0, Sperre und <c>plan_failed</c> aufgehoben,
+    /// erledigte Blöcke vergessen.
+    /// </summary>
+    public void Reset()
+    {
+        Loop.UserAbortOrReset();
+        store.SetState(StateKeys.DoneBlocks, null);
+        forcedPlan = NinaPlanRequestReason.Reset;
+        log.Note("Zurücksetzen: neuer Plan mit reason=reset");
+    }
+
+    /// <summary>*Block überspringen*: der wartende Block wird <c>user_skip</c> übersprungen, ein laufender endet nach der Belichtung.</summary>
+    public void SkipBlock()
+    {
+        skipRequested = true;
+        log.Note("Block überspringen angefordert");
+    }
+
+    /// <summary>Quittierte Heartbeat-Kommandos für den nächsten Heartbeat (und vergessen).</summary>
+    public List<Guid> TakeCommandAcks()
+    {
+        lock (commandAcks)
+        {
+            var acks = commandAcks.ToList();
+            commandAcks.Clear();
+            return acks;
+        }
+    }
+
     /// <summary>Schleifenbedingung <em>NINA-PM Nachtschleife</em>.</summary>
     public bool HasBlocksRemaining => Loop.HasBlocksRemaining(BlockRunning, flatsRunning: false);
 
-    public NinaHeartbeatState HeartbeatState(bool offline) => Loop.HeartbeatState(BlockRunning, false, interrupted, offline);
+    public NinaHeartbeatState HeartbeatState(bool offline) => Loop.HeartbeatState(BlockRunning, false, interrupted, offline || offlineMode);
 
     public Guid? SessionId => Guid.TryParse(store.GetState(StateKeys.SessionId), out var id) ? id : null;
 
@@ -211,7 +285,13 @@ public sealed class NightRunner(
         var b = await EnsureBootstrapAsync(token).ConfigureAwait(false);
         if (b is null)
         {
-            // Ohne Bootstrap keine Nacht (NT-01): kurz warten, nicht in Dauerschleife zurückkehren.
+            // Ohne Bootstrap keine Nacht (NT-01): Start ohne Verbindung und ohne Speicher → keine Blöcke (plan_failed, §8);
+            // kurz warten, nicht in Dauerschleife zurückkehren.
+            if (Loop.Blocked is null)
+            {
+                Loop.PlanFailedAt(clock.UtcNow);
+                log.Event("BLOCKED", ("reason", "plan_failed"));
+            }
             await blockHost.DelayAsync(clock.UtcNow + NightLoop.BlockedWait, token).ConfigureAwait(false);
             return;
         }
@@ -295,6 +375,13 @@ public sealed class NightRunner(
         DateTimeOffset? startAtUtc = null)
     {
         Loop.PlanAttempt(clock.UtcNow);
+        if (offlineMode)
+        {
+            // Offline-Modus: das Plugin plant nie selbst – gespeicherter Server-Plan der Nacht oder keine Blöcke (§8).
+            UseStoredPlan(stored, reason);
+            if (stored is not null && SessionId is null) await EnsureSessionAsync(stored.Plan, token).ConfigureAwait(false);
+            return;
+        }
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
         var initial = reason == NinaPlanRequestReason.Initial;
@@ -321,8 +408,8 @@ public sealed class NightRunner(
         if (outcome.Unreachable)
         {
             // Ohne Verbindung: gespeicherter Plan der Nacht weiter (execution.md §8); ohne ihn keine Blöcke.
-            if (stored is not null) Loop.PlanReceived();
-            else Loop.PlanFailedAt(clock.UtcNow);
+            UseStoredPlan(stored, reason);
+            if (stored is not null && SessionId is null) await EnsureSessionAsync(stored.Plan, token).ConfigureAwait(false);
             return;
         }
         if (outcome.Blocked == NinaHeartbeatBlockedReason.Plan_failed) Loop.PlanFailedAt(clock.UtcNow);
@@ -330,6 +417,19 @@ public sealed class NightRunner(
     }
 
     private static int SettingsVersion(NinaBootstrap b) => b.Rig.SettingsVersion;
+
+    /// <summary>Gespeicherter Server-Plan der Nacht (<c>PLAN source=cache</c>, P-16) oder <c>plan_failed</c> ohne ihn.</summary>
+    private void UseStoredPlan(StoredPlan? stored, NinaPlanRequestReason reason)
+    {
+        if (stored is null)
+        {
+            Loop.PlanFailedAt(clock.UtcNow);
+            log.Event("BLOCKED", ("reason", "plan_failed"));
+            return;
+        }
+        log.Event("PLAN", ("reason", reason.ToString().ToLowerInvariant()), ("plan", stored.Plan.NightPlanId), ("source", "cache"), ("night", stored.Plan.Night));
+        Loop.PlanReceived();
+    }
 
     // ---- Neuplanung (execution.md §3.2, FA-SYN-03) --------------------------------------------------------
 
@@ -382,6 +482,8 @@ public sealed class NightRunner(
     private async Task<string?> RefreshTargetsAsync(CancellationToken token)
     {
         var cached = store.GetCache(TargetsCacheKey);
+        // Offline-Modus: kein Abruf, der gespeicherte Plan gilt unverändert (§6).
+        if (offlineMode) return cached?.Etag;
         try
         {
             var (targets, etag) = await planApi.TargetsAsync(cached?.Etag, token).ConfigureAwait(false);
@@ -410,17 +512,17 @@ public sealed class NightRunner(
             return;
         }
         var id = Uuid7.New(clock);
+        var create = new NinaSessionCreate { Id = id, Night = plan.Night, NightPlanId = plan.NightPlanId, StartedAtUtc = clock.UtcNow, Offline = false };
+        if (offlineMode)
+        {
+            CreateOfflineSession(create);
+            return;
+        }
         Lease.SessionPostSent();
         try
         {
-            await sessionApi.CreateAsync(new NinaSessionCreate
-            {
-                Id = id,
-                Night = plan.Night,
-                NightPlanId = plan.NightPlanId,
-                StartedAtUtc = clock.UtcNow,
-                Offline = false,
-            }, token).ConfigureAwait(false);
+            await sessionApi.CreateAsync(create, token).ConfigureAwait(false);
+            store.SetState(StateKeys.SessionCreate, JsonConvert.SerializeObject(create, NinaJson.Settings()));
             store.SetState(StateKeys.SessionId, id.ToString());
             store.SetState(StateKeys.Night, plan.Night);
             Lease.SessionCreated();
@@ -433,11 +535,26 @@ public sealed class NightRunner(
             log.Warning("API", ("status", ex.StatusCode), ("code", code), ("call", "sessions"));
             if (ex.StatusCode == 409 && code == "session.rig_busy") ApplyLease(Lease.RigBusy());
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !token.IsCancellationRequested)
+            || ex is NinaApiException { StatusCode: 408 or 429 or >= 500 })
         {
-            // Ohne Antwort: Session in AP-16g über die Outbox nachmelden; Blöcke laufen nach dem Plan (execution.md §6).
-            log.Warning("API", ("status", 0), ("code", "network"), ("call", "sessions"));
+            // Ohne Antwort (§6): Session lokal anlegen, mit offline: true über die Outbox nachmelden; Blöcke laufen nach
+            // dem Plan, Aufnahmen gehen nicht verloren.
+            log.Warning("API", ("status", ex is NinaApiException a ? a.StatusCode : 0), ("code", "network"), ("call", "sessions"));
+            CreateOfflineSession(create);
         }
+    }
+
+    /// <summary>Session ohne Serverantwort (Netz oder Offline-Modus): lokal führen, über die Outbox mit <c>offline: true</c> melden.</summary>
+    private void CreateOfflineSession(NinaSessionCreate create)
+    {
+        create.Offline = true;
+        var json = JsonConvert.SerializeObject(create, NinaJson.Settings());
+        store.SetState(StateKeys.SessionId, create.Id.ToString());
+        store.SetState(StateKeys.Night, create.Night);
+        store.SetState(StateKeys.SessionCreate, json);
+        store.EnqueueOutbox(OutboxKinds.Session, json, create.Id, create.NightPlanId);
+        log.Event("SESSION", ("session", create.Id), ("status", "running"), ("night", create.Night), ("state", "offline"));
     }
 
     /// <summary>
@@ -556,7 +673,9 @@ public sealed class NightRunner(
                 camera?.SetpointC is { } setpoint ? new CoolingTarget(setpoint, camera.ToleranceC) : null,
                 b => ReportEvent(EventsKind.Warning, "camera_temperature", b.Id),
                 // Lease verloren bzw. Rig belegt (§6, P-10/P-17): laufende Belichtung zu Ende, dann block_end lease_lost.
-                () => Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
+                () => skipRequested ? "user_skip"
+                    : Loop.Blocked is { } bl && HaltingReasons.Contains(bl) ? "error"
+                    : Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
                 rotator is null ? null : new RotationSettings(rotator.ToleranceDeg, rotator.SkipOnMismatch),
                 scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
@@ -567,8 +686,10 @@ public sealed class NightRunner(
                     var t = TonightLog.Load(store);
                     t.FlipDone(UnitId(b));
                     t.Save(store);
-                }))
+                },
+                () => skipRequested))
                 .ConfigureAwait(false);
+            if (skipRequested) skipRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             if (outcome.Reason is "target_removed" or "transit_interrupt") forcedPlan = NinaPlanRequestReason.Refresh;
@@ -669,7 +790,17 @@ public sealed class NightRunner(
         var now = clock.UtcNow;
         var serverNow = response.ServerTimeUtc + (now - sentUtc) / 2;
         var skew = serverNow - now;
+        var wasClockBlocked = Loop.Blocked == NinaHeartbeatBlockedReason.Clock_skew;
         Loop.ClockChecked(skew, now);
+        if (!wasClockBlocked && Loop.Blocked == NinaHeartbeatBlockedReason.Clock_skew)
+        {
+            // > 60 s (NT-05): keine neuen Blöcke, Ereignis error clock_skew (P-37).
+            log.Error("ERROR", ("code", "clock_skew"), ("durationS", Math.Round(skew.TotalSeconds)));
+            log.Event("BLOCKED", ("reason", "clock_skew"));
+            ReportEvent(EventsKind.Error, "clock_skew", message: $"Uhrabweichung {Math.Round(skew.TotalSeconds)} s");
+        }
+        foreach (var c in response.Commands ?? [])
+            ApplyCommand(c);
         // 5–60 s: nur Warnung (NT-05), höchstens 1×/12 h; > 60 s sperrt die Nachtschleife (clock_skew).
         if (skew.Duration() > ClockDriftWarn && skew.Duration() <= TimeSpan.FromSeconds(60) && clockHints.ShouldEmit("clock_drift", now))
         {
@@ -684,6 +815,56 @@ public sealed class NightRunner(
     public static readonly TimeSpan ClockDriftWarn = TimeSpan.FromSeconds(5);
 
     private readonly HintThrottle clockHints = new(HintThrottle.TwelveHours);
+
+    /// <summary>
+    /// Heartbeat-Kommando (TK 5.6): <c>refresh_targets</c> → Ziele vor dem nächsten Block neu abrufen und neu planen,
+    /// <c>reset_plan</c> → *Zurücksetzen*; quittiert im nächsten Heartbeat.
+    /// </summary>
+    private void ApplyCommand(Commands c)
+    {
+        switch (c.Command)
+        {
+            case CommandsCommand.Reset_plan:
+                Reset();
+                break;
+            default:
+                // refresh_targets: neues ETag erzwingen → Neuplanung vor dem nächsten Block (§3.2).
+                store.PutCache(TargetsCacheKey, store.GetCache(TargetsCacheKey)?.Value ?? "{}", null);
+                break;
+        }
+        log.Note($"Heartbeat-Kommando {c.Command} ({c.Id}) ausgeführt");
+        lock (commandAcks) commandAcks.Add(c.Id);
+    }
+
+    /// <summary>401, 403 tenant.locked oder 409 engine.incompatible von einem beliebigen Aufruf: gesperrt, Outbox angehalten (§2).</summary>
+    public void Rejected(NinaHeartbeatBlockedReason reason)
+    {
+        if (Loop.Blocked == reason) return;
+        Loop.Block(reason, clock.UtcNow);
+        log.Event("BLOCKED", ("reason", ReasonName(reason)));
+    }
+
+    private static string ReasonName(NinaHeartbeatBlockedReason r) => r switch
+    {
+        NinaHeartbeatBlockedReason.Token_invalid => "token_invalid",
+        NinaHeartbeatBlockedReason.Tenant_locked => "tenant_locked",
+        NinaHeartbeatBlockedReason.Engine_incompatible => "engine_incompatible",
+        NinaHeartbeatBlockedReason.Clock_skew => "clock_skew",
+        NinaHeartbeatBlockedReason.Rig_busy => "rig_busy",
+        NinaHeartbeatBlockedReason.Lease_lost => "lease_lost",
+        _ => "plan_failed",
+    };
+
+    /// <summary>Offline angelegte Session ist beim Server angekommen.</summary>
+    public void SessionReported(Guid sessionId)
+    {
+    }
+
+    /// <summary>Anlage-Daten der aktuellen Session (Nachmelden nach <c>409 session.unknown</c>).</summary>
+    public NinaSessionCreate? SessionCreateFor(Guid sessionId) =>
+        store.GetState(StateKeys.SessionCreate) is { } json && JsonConvert.DeserializeObject<NinaSessionCreate>(json, NinaJson.Settings()) is { } c && c.Id == sessionId
+            ? c
+            : null;
 
     /// <summary>Heartbeat ohne Serverantwort (Netzfehler, Timeout, 5xx).</summary>
     public void HeartbeatUnanswered() => ApplyLease(Lease.HeartbeatUnanswered());
@@ -718,6 +899,7 @@ public sealed class NightRunner(
                 ReportEvent(EventsKind.Offline_start, null);
                 break;
             case LeaseEffect.OfflineEnd:
+                store.OutboxDueNow();
                 log.Event("LEASE", ("state", "held"));
                 log.Event("OFFLINE_END", ("atUtc", now));
                 ReportEvent(EventsKind.Offline_end, null);
@@ -807,6 +989,7 @@ public sealed class NightRunner(
     {
         if (bootstrap is not null && !bootstrapReload && !NightCalendar.NeedsReload(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow))
             return bootstrap;
+        if (offlineMode) return bootstrap ??= CachedBootstrap();
         try
         {
             bootstrap = await planApi.BootstrapAsync(token).ConfigureAwait(false);
@@ -829,8 +1012,14 @@ public sealed class NightRunner(
                 return null;
             }
         }
+        return bootstrap ??= CachedBootstrap();
+    }
+
+    /// <summary>Gespeicherter Bootstrap, höchstens 7 Tage alt (§8); nach 401 nie (Aufrufer prüft vorher).</summary>
+    private NinaBootstrap? CachedBootstrap()
+    {
         var cached = store.GetCache(BootstrapCacheKey);
-        if (cached is null || clock.UtcNow - cached.UpdatedUtc > BootstrapMaxAge) return bootstrap;
-        return bootstrap ??= JsonConvert.DeserializeObject<NinaBootstrap>(cached.Value, NinaJson.Settings());
+        if (cached is null || clock.UtcNow - cached.UpdatedUtc > BootstrapMaxAge) return null;
+        return JsonConvert.DeserializeObject<NinaBootstrap>(cached.Value, NinaJson.Settings());
     }
 }

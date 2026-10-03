@@ -62,6 +62,10 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         };
         TestCommand = new RelayCommand(() => TestAsync(CancellationToken.None));
         SaveAndTestCommand = new RelayCommand(() => SaveAndTestAsync(CancellationToken.None));
+        ResetCommand = new RelayCommand(() => Operate(r => r.Reset()));
+        SkipBlockCommand = new RelayCommand(() => Operate(r => r.SkipBlock()));
+        ReuploadCommand = new RelayCommand(Reupload);
+        RefreshCommand = new RelayCommand(() => { RaiseOperationChanged(); return Task.CompletedTask; });
         ResetStatus();
         profileService.ProfileChanged += (_, _) => StartRuntime();
         StartRuntime();
@@ -119,6 +123,84 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     public string TokenInput { get; set; } = "";
 
     public string TokenState => ProtectedToken.Length > 0 ? Texts.TokenStored : Texts.TokenMissing;
+
+    // ---- Betrieb (AP-16g, FA-NIN-04/13): Offline-Modus, Zurücksetzen, Block überspringen, Erneut hochladen ----
+
+    /// <summary>Offline-Modus (FA-NIN-04); wirkt sofort auf die laufende Laufzeit, ohne sie neu aufzubauen.</summary>
+    public bool OfflineMode
+    {
+        get => accessor.GetValueBoolean(nameof(OfflineMode), false);
+        set
+        {
+            accessor.SetValueBoolean(nameof(OfflineMode), value);
+            if (NinaPmRuntime.Current is { } rt) rt.Runner.OfflineMode = value;
+            RaisePropertyChanged();
+            RaiseOperationChanged();
+        }
+    }
+
+    /// <summary>*Erneut hochladen ab* (Datum, Standard: vor 7 Tagen).</summary>
+    public DateTime ReuploadFrom { get; set; } = NinaPm.Core.Time.SystemClock.Instance.UtcNow.UtcDateTime.Date.AddDays(-7);
+
+    public ICommand ResetCommand { get; }
+
+    public ICommand SkipBlockCommand { get; }
+
+    public ICommand ReuploadCommand { get; }
+
+    public ICommand RefreshCommand { get; }
+
+    /// <summary>Zustand der Laufzeit für die Optionsseite: gesperrt (mit Grund), Outbox, Dead-Letter, Uhr ungeprüft (offline).</summary>
+    public string OperationStatus
+    {
+        get
+        {
+            if (NinaPmRuntime.Current is not { } rt) return Texts.NotConfigured;
+            var r = rt.Runner;
+            var blocked = r.Loop.Blocked switch
+            {
+                NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Token_invalid => Texts.TokenInvalid,
+                NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Tenant_locked => Texts.TenantLocked,
+                NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Engine_incompatible => Texts.UpdateNeeded,
+                NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Clock_skew => Texts.ClockSkew,
+                { } other => Texts.Blocked(other.ToString().ToLowerInvariant()),
+                null => null,
+            };
+            var parts = new List<string> { Texts.Outbox(r.OutboxPending, r.DeadLetters) };
+            if (blocked is not null) parts.Insert(0, blocked);
+            if (r.OfflineMode) parts.Add(Texts.ClockUnchecked);
+            return string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>Gründe der letzten Dead-Letter-Einträge (z. B. „Nacht seit … abgeschlossen – erneut hochladen“).</summary>
+    public string DeadLetterInfo =>
+        NinaPmRuntime.Current is { } rt ? string.Join(Environment.NewLine, rt.Store.DeadLetterReasons(3)) : "";
+
+    private Task Operate(Action<NinaPm.Core.Execution.NightRunner> action)
+    {
+        if (NinaPmRuntime.Current is { } rt) action(rt.Runner);
+        RaiseOperationChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task Reupload()
+    {
+        if (NinaPmRuntime.Current is { } rt)
+        {
+            var n = rt.Store.ReuploadSince(new DateTimeOffset(DateTime.SpecifyKind(ReuploadFrom.Date, DateTimeKind.Utc)));
+            rt.Store.OutboxDueNow();
+            rt.Log.Note($"Erneut hochladen ab {ReuploadFrom:yyyy-MM-dd}: {n} Meldungen in der Outbox");
+        }
+        RaiseOperationChanged();
+        return Task.CompletedTask;
+    }
+
+    private void RaiseOperationChanged()
+    {
+        RaisePropertyChanged(nameof(OperationStatus));
+        RaisePropertyChanged(nameof(DeadLetterInfo));
+    }
 
     public ICommand TestCommand { get; }
 
@@ -226,6 +308,8 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     {
         RaisePropertyChanged(nameof(ServerUrl));
         RaisePropertyChanged(nameof(TestMode));
+        RaisePropertyChanged(nameof(OfflineMode));
         RaisePropertyChanged(nameof(TokenState));
+        RaiseOperationChanged();
     }
 }

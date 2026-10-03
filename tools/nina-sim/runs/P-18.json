@@ -1,0 +1,97 @@
+{
+  "protocol": "P-18",
+  "scenario": "lease",
+  "description": "Token mitten in einer Belichtung widerrufen: Block endet mit error, token_invalid, keine neuen Blöcke, Outbox wartet ohne Dead-Letter.",
+  "untilMin": 40,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 5.5,
+      "server": "revoke_token"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "actions",
+        "where": {
+          "action": "revoke_token"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "API",
+            "where": {
+              "status": "401"
+            }
+          },
+          {
+            "event": "BLOCKED",
+            "where": {
+              "reason": "token_invalid"
+            }
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "error"
+            }
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "none": {
+          "event": "BLOCK_START"
+        },
+        "after": {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "token_invalid"
+          }
+        }
+      },
+      {
+        "none": {
+          "event": "OUTBOX",
+          "where": {
+            "dead": "1"
+          }
+        },
+        "after": {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "token_invalid"
+          }
+        }
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "error"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

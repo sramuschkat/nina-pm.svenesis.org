@@ -37,5 +37,8 @@ public sealed class SimWorld(SimSetup setup)
     public DateTimeOffset? EarliestFlipUtc { get; set; }
     public int Flips { get; set; }
     public bool NetworkDown { get; set; }
+
+    /// <summary>Offline-Modus der Plugin-Optionen (bleibt über einen Neustart erhalten).</summary>
+    public bool OfflineMode { get; set; }
     public int ImageCounter { get; set; }
 }

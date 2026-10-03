@@ -76,7 +76,10 @@ public sealed class BlockExecutorTests
     {
         var (executor, nina, _, _) = Setup("2026-09-18T07:30:00Z");
         await executor.RunAsync(Regular(), null, default);
-        Assert.Equal("delay:2026-09-18T07:35:00.000Z", nina.Calls[0]);
+        // Im 10-s-Takt (abbrechbar durch *Block überspringen*), der letzte Takt endet genau am Blockstart.
+        var delays = nina.Calls.TakeWhile(c => c.StartsWith("delay:", StringComparison.Ordinal)).ToList();
+        Assert.Equal("delay:2026-09-18T07:30:10.000Z", delays[0]);
+        Assert.Equal("delay:2026-09-18T07:35:00.000Z", delays[^1]);
     }
 
     [Fact]
