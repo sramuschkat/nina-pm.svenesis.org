@@ -109,4 +109,25 @@ public sealed class LeaseStateMachineTests
         Assert.Equal(LeaseState.Held, m.State);
         Assert.Equal(LeaseEffect.None, m.HeartbeatAnswered(false)); // gehalten: kein weiteres Ereignis
     }
+
+    // ---- vorgezogen aus AP-16g: Neustart über die Outbox, Rig belegt (P-10, P-22) -----------------------------
+
+    [Fact]
+    public void Neustart_mit_Session_reacquiring_bis_zur_ersten_Antwort()
+    {
+        var m = new LeaseStateMachine();
+        m.ResumeSent();
+        Assert.Equal(LeaseState.Reacquiring, m.State);
+        Assert.Equal(LeaseEffect.LeaseRegained, m.HeartbeatAnswered(leaseLost: false));
+        Assert.Equal(LeaseState.Held, m.State);
+    }
+
+    [Fact]
+    public void Ohne_Lease_aendert_leaseLost_nichts_rig_busy_bleibt()
+    {
+        var m = Held();
+        Assert.Equal(LeaseEffect.RigBusy, m.RigBusy());
+        Assert.Equal(LeaseEffect.None, m.HeartbeatAnswered(leaseLost: true));
+        Assert.Equal(LeaseState.None, m.State);
+    }
 }

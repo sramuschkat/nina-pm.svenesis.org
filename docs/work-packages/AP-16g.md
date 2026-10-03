@@ -22,7 +22,7 @@ FA-NIN-04, FA-NIN-13, FA-NIN-14, FA-SYN-08/09
 - `blocked{clock_skew}` bei Uhrabweichung > 60 s: keine neuen Blöcke, 60-s-Takt, Austritt bei ≤ 5 s; offline keine Prüfung, Hinweis „Uhrzeit ungeprüft“ (NT-05)
 
 ## Nicht im Umfang
-- –
+- – (vorgezogen am 02.10.2026, Entscheidung Sven, mit dem kopflosen Nachtlauf: Session-PATCH über die Outbox – `running` beim Fortsetzen nach Neustart, `completed`/`aborted` ohne Antwort, Nachmelden von `outboxPending` bis 0 – und `409 session.rig_busy`/`session.closed` auf `PATCH running`; `execution.md` §6/§8 Spec-Ergänzungen. Offen bleiben hier Backoff, Dead-Letter, Offline-Sessions, `401`, Offline-Modus und Bedienung.)
 
 ## Automatisierte Abnahme
 - [ ] Outbox-Tests je Fehlerklasse (Core)

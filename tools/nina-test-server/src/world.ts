@@ -175,6 +175,11 @@ export class TestWorld {
 
   // ---- Projekte (Targets) ---------------------------------------------------------------------------
 
+  /** Filterradbelegung aus rig.json (Plätze ab 1). */
+  rigFilters() {
+    return this.rig.filters;
+  }
+
   filter(short: string) {
     const f = this.rig.filters.find((x) => x.shortName === short);
     if (!f) throw new Error(`Filter ${short} nicht in rig.json`);
@@ -217,7 +222,7 @@ export class TestWorld {
               exposureS: b.exposureS ?? 60,
               gain: null,
               offset: null,
-              readoutMode: null,
+              readoutMode: b.readoutMode ?? null,
               readoutModeIndex: null,
               moon: { mode: 'none' },
             };
@@ -419,7 +424,7 @@ export class TestWorld {
       gain: null,
       offset: null,
       binning: 1,
-      readoutMode: null,
+      readoutMode: line.readoutMode ?? null,
       readoutModeIndex: null,
     });
 

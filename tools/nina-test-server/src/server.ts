@@ -51,10 +51,29 @@ interface SessionRecord {
   instance: string;
   night: string;
   nightPlanId: string | null;
-  status: 'running' | 'completed' | 'aborted';
+  /** `stale` = verwaist: 10 min ohne Heartbeat (TK 6.6, P-22); Heartbeat oder `PATCH running` holt sie zurück (M6). */
+  status: 'running' | 'completed' | 'aborted' | 'stale';
   offline: boolean;
   startedAtUtc: string;
+  lastSeenUtc: string;
   patches: Json[];
+}
+
+/** Verwaist nach so vielen Sekunden ohne Heartbeat der Session (TK 6.6). */
+export const STALE_AFTER_S = 600;
+
+/**
+ * Virtuelle Uhr des kopflosen Nachtlaufs (`tools/nina-sim`): jede Anfrage trägt die Zeit des Plugins im Header
+ * `x-npm-sim-now`; die Server-Uhr folgt ihr (nie rückwärts). Ohne Header bleibt sie stehen.
+ */
+export class SimClock {
+  constructor(public nowS: number = Date.now() / 1000) {}
+  readonly read = (): number => this.nowS;
+  observe(header: string | undefined): void {
+    if (!header) return;
+    const t = Date.parse(header) / 1000;
+    if (Number.isFinite(t) && t > this.nowS) this.nowS = t;
+  }
 }
 
 const NINA = '/api/nina/v1';
@@ -73,11 +92,16 @@ export class NinaTestServer {
   readonly actions: Json[] = [];
   heartbeats = 0;
   lastHeartbeat: Json | null = null;
+  /** Betriebsalarme des Servers (P-22: `session_stale`). */
+  readonly alerts: Json[] = [];
+  /** Abgelehnte Anfragen (`422`) mit den Vertragsfehlern – zeigt Abweichungen des Plugins vom Vertrag. */
+  readonly rejected: Json[] = [];
 
   constructor(
     readonly scenario: Scenario,
     rig: RigConfig = loadRig(),
     readonly nowS: () => number = () => Date.now() / 1000,
+    readonly simClock?: SimClock,
   ) {
     this.world = new TestWorld(scenario, rig, nowS, freshState());
     this.tokens = new Map([['npm_test', 'Test-Instanz 1']]);
@@ -88,7 +112,20 @@ export class NinaTestServer {
   // ---- Anfrage → Antwort -------------------------------------------------------------------------
 
   async handle(req: TestRequest): Promise<TestResponse | typeof DROP> {
+    const r = await this.route(req);
+    if (r !== DROP && r.status === 422 && this.rejected.length < 50)
+      this.rejected.push({
+        path: `${req.method} ${req.path}`,
+        atUtc: iso(this.nowS()),
+        errors: (r.body as Json | undefined)?.errors ?? null,
+      } as Json);
+    return r;
+  }
+
+  private async route(req: TestRequest): Promise<TestResponse | typeof DROP> {
     await Promise.resolve();
+    this.simClock?.observe(req.headers['x-npm-sim-now']);
+    this.markStale();
     this.runTimeline();
     if (req.path.startsWith('/test/')) return this.testRoute(req);
     if (!req.path.startsWith(NINA)) return problem(404, 'resource.not_found', 'Unbekannter Pfad');
@@ -183,6 +220,7 @@ export class NinaTestServer {
         status: 'running',
         offline: r.data.offline,
         startedAtUtc: r.data.startedAtUtc,
+        lastSeenUtc: iso(this.nowS()),
         patches: [],
       });
     }
@@ -206,7 +244,7 @@ export class NinaTestServer {
     const s = this.sessions.get(id);
     if (!s) return problem(409, 'session.unknown', 'Session unbekannt');
     if (r.data.status === 'running') {
-      if (s.status !== 'running')
+      if (s.status !== 'running' && s.status !== 'stale')
         return problem(409, 'session.closed', 'Session ist abgeschlossen');
       if (this.flags.rigBusy)
         return problem(
@@ -215,8 +253,12 @@ export class NinaTestServer {
           'Das Rig wird von einer anderen NINA-Instanz belegt',
         );
     }
-    s.patches.push(r.data as unknown as Json);
+    s.patches.push({ ...(r.data as unknown as Json), atUtc: iso(this.nowS()) });
     if (r.data.status === 'completed' || r.data.status === 'aborted') s.status = r.data.status;
+    if (r.data.status === 'running') {
+      s.status = 'running';
+      s.lastSeenUtc = iso(this.nowS());
+    }
     if (r.data.offlinePlan) s.nightPlanId = r.data.offlinePlan.nightPlanId;
     const lease = s.status === 'running' ? this.leaseFor(id, instance) : null;
     return ok(nina.NinaSessionPatched, {
@@ -262,15 +304,24 @@ export class NinaTestServer {
     if (!r.success) return invalid(r.error);
     this.heartbeats += 1;
     this.lastHeartbeat = { instance, ...(r.data as unknown as Json) };
+    this.checkFilterWheel(r.data.filterWheel);
     let lease: { untilUtc: string | null; leaseLost: boolean } | null = null;
-    if (r.data.sessionId && this.sessions.get(r.data.sessionId)?.status === 'running') {
-      if (this.flags.leaseRelease) {
+    const own = r.data.sessionId ? this.sessions.get(r.data.sessionId) : undefined;
+    if (own && (own.status === 'running' || own.status === 'stale')) {
+      own.status = 'running';
+      own.lastSeenUtc = iso(this.nowS());
+    }
+    if (own?.status === 'running') {
+      if (this.flags.rigBusy) {
+        // rig_busy (P-10): eine andere Instanz hält das Rig – die eigene Lease ist weg.
+        lease = { untilUtc: null, leaseLost: true };
+      } else if (this.flags.leaseRelease) {
         // lease_release (P-17): die Lease ist weg, eine andere Instanz könnte übernehmen.
         this.flags.leaseRelease = false;
         this.lease = null;
         lease = { untilUtc: null, leaseLost: true };
       } else {
-        const l = this.leaseFor(r.data.sessionId, instance);
+        const l = this.leaseFor(own.id, instance);
         lease = { untilUtc: iso(l.untilS), leaseLost: !l.ok };
       }
     }
@@ -288,25 +339,27 @@ export class NinaTestServer {
   private testRoute(req: TestRequest): TestResponse {
     if (req.method === 'GET' && req.path === '/test/report') return json(200, this.report());
     if (req.method === 'POST' && req.path === '/test/actions') {
-      const body = (req.body ?? {}) as { action?: string; seconds?: number };
+      const body = (req.body ?? {}) as { action?: string; seconds?: number; project?: string };
       if (!TEST_ACTIONS.includes(body.action as TestAction))
         return problem(
           422,
           'validation.failed',
           `action muss eine von ${TEST_ACTIONS.join(', ')} sein`,
         );
-      this.apply(body.action as TestAction, body.seconds);
+      this.apply(body.action as TestAction, body.seconds, body.project);
       return json(200, { ok: true, action: body.action });
     }
     if (req.method === 'POST' && req.path === '/test/plan-log') return json(204, undefined);
     return problem(404, 'resource.not_found', `${req.method} ${req.path}`);
   }
 
-  apply(action: TestAction, seconds?: number): void {
+  /** `project`: Projektname aus dem Szenario (nur `pause_project`; ohne Angabe das erste aktive Projekt). */
+  apply(action: TestAction, seconds?: number, project?: string): void {
     const s = this.world.state;
     this.actions.push({
       action,
       ...(seconds !== undefined ? { seconds } : {}),
+      ...(project !== undefined ? { project } : {}),
       atUtc: iso(this.nowS()),
     });
     switch (action) {
@@ -314,7 +367,13 @@ export class NinaTestServer {
         s.targetsVersion += 1;
         break;
       case 'pause_project': {
-        const active = this.world.projects().find((p) => p.status === 'active');
+        const active = this.world
+          .projects()
+          .find(
+            (p) =>
+              p.status === 'active' &&
+              (project === undefined || p.id === uuidFor(`project:${project}`)),
+          );
         if (active) s.pausedProjects.add(active.id as string);
         s.targetsVersion += 1;
         break;
@@ -362,6 +421,42 @@ export class NinaTestServer {
     }
   }
 
+  /**
+   * Filterrad des Heartbeats gegen die bestätigten `ninaFilterName` je Platz (execution.md §6 Tabelle, P-32):
+   * Abweichung → Alarm `filter_wheel_changed` (einmal, bis die Belegung wieder passt).
+   */
+  private checkFilterWheel(
+    wheel: readonly { position: number; name: string }[] | null | undefined,
+  ): void {
+    if (!wheel || wheel.length === 0) return;
+    const differs = this.world
+      .rigFilters()
+      .some(
+        (f) =>
+          wheel.find((w) => w.position === f.position)?.name !==
+          this.world.filter(f.shortName).ninaFilterName,
+      );
+    const open = this.alerts.some(
+      (a) => a.code === 'filter_wheel_changed' && a.resolvedUtc === undefined,
+    );
+    if (differs && !open)
+      this.alerts.push({ code: 'filter_wheel_changed', atUtc: iso(this.nowS()) });
+    if (!differs && open)
+      for (const a of this.alerts)
+        if (a.code === 'filter_wheel_changed' && a.resolvedUtc === undefined)
+          a.resolvedUtc = iso(this.nowS());
+  }
+
+  /** Laufende Sessions ohne Heartbeat seit {@link STALE_AFTER_S} → verwaist, mit Alarm (TK 6.6, P-22). */
+  private markStale(): void {
+    const now = this.nowS();
+    for (const s of this.sessions.values())
+      if (s.status === 'running' && now - Date.parse(s.lastSeenUtc) / 1000 >= STALE_AFTER_S) {
+        s.status = 'stale';
+        this.alerts.push({ code: 'session_stale', sessionId: s.id, atUtc: iso(now) });
+      }
+  }
+
   /** Aktionen der Szenario-Zeitleiste, sobald ihre Minute erreicht ist (je einmal). */
   private runTimeline(): void {
     const elapsedMin = (this.nowS() - this.world.epochS) / 60;
@@ -386,6 +481,8 @@ export class NinaTestServer {
       events: this.events,
       heartbeats: { count: this.heartbeats, last: this.lastHeartbeat },
       actions: this.actions,
+      alerts: this.alerts,
+      rejected: this.rejected,
       skippedBlocks: [...this.world.state.skippedBlocks],
     };
   }
@@ -467,4 +564,13 @@ function send(res: ServerResponse, r: TestResponse): void {
 
 export function createTestServer(name: string, nowS?: () => number): NinaTestServer {
   return new NinaTestServer(loadScenario(name), loadRig(), nowS);
+}
+
+/** Test-Server mit virtueller Uhr für den kopflosen Nachtlauf (`x-npm-sim-now`). */
+export function createSimServer(
+  name: string,
+  startS = Math.floor(Date.now() / 1000),
+): NinaTestServer {
+  const clock = new SimClock(startS);
+  return new NinaTestServer(loadScenario(name), loadRig(), clock.read, clock);
 }

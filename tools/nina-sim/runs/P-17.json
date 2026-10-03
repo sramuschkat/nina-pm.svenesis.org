@@ -1,0 +1,130 @@
+{
+  "protocol": "P-17",
+  "scenario": "lease",
+  "description": "Lease freigegeben (S-42 „Session übernehmen“): laufende Belichtung zu Ende, gesperrt; der nächste Heartbeat holt die Lease zurück; Neustart setzt die eigene Session fort.",
+  "untilMin": 45,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 6,
+      "server": "lease_release"
+    },
+    {
+      "atMin": 8.5,
+      "server": "clear"
+    },
+    {
+      "atMin": 20,
+      "sim": "crash"
+    },
+    {
+      "atMin": 21,
+      "sim": "start"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "actions",
+        "where": {
+          "action": "lease_release"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "LEASE",
+            "where": {
+              "state": "lost"
+            }
+          },
+          {
+            "event": "BLOCKED",
+            "where": {
+              "reason": "lease_lost"
+            }
+          },
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "lease_lost"
+            }
+          }
+        ]
+      },
+      {
+        "none": {
+          "event": "CAPTURE",
+          "where": {
+            "result": "aborted"
+          }
+        },
+        "after": {
+          "event": "LEASE",
+          "where": {
+            "state": "lost"
+          }
+        }
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "LEASE_LOST"
+          },
+          {
+            "event": "LEASE_REGAINED"
+          },
+          {
+            "event": "BLOCK_START"
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "LEASE",
+          "where": {
+            "state": "held"
+          }
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "LEASE",
+          "where": {
+            "state": "reacquiring"
+          }
+        },
+        "min": 1
+      },
+      {
+        "log": {
+          "event": "LEASE_REGAINED"
+        },
+        "min": 2
+      },
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "sessions",
+        "min": 1,
+        "max": 1
+      }
+    ]
+  ]
+}

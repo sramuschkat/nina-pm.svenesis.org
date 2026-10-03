@@ -27,6 +27,8 @@ export interface ScenarioBlock {
   readonly project?: string;
   /** Plan-Dither nach jeder n-ten Belichtung (P-28: 3). */
   readonly ditherEvery?: number;
+  /** Auslesemodus aller Zeilen des Blocks (P-19: Name, den die Kamera nicht kennt); Standard `null`. */
+  readonly readoutMode?: string;
 }
 
 export interface TimelineAction {

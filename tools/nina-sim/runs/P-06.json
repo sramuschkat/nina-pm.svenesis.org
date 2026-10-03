@@ -1,0 +1,87 @@
+{
+  "protocol": "P-06",
+  "scenario": "replan",
+  "description": "Projekt 2 während Block 1 pausiert: Neuplanung vor Block 2 ohne Projekt 2; ohne Änderung kein neuer Plan.",
+  "untilMin": 120,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 8,
+      "server": "pause_project",
+      "project": "ngc7000"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "actions",
+        "where": {
+          "action": "pause_project"
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "TARGETS"
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "PLAN_REBUILT"
+        },
+        "min": 1
+      },
+      {
+        "order": [
+          {
+            "event": "TARGETS"
+          },
+          {
+            "event": "TARGETS"
+          },
+          {
+            "event": "PLAN_REBUILT",
+            "where": {
+              "reason": "refresh"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          }
+        ]
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "Ha"
+        },
+        "max": 0,
+        "min": 0
+      }
+    ],
+    [
+      {
+        "none": {
+          "event": "PLAN_REBUILT"
+        },
+        "before": {
+          "event": "TARGETS"
+        },
+        "nth": 2
+      },
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "completed"
+          }
+        },
+        "min": 1
+      }
+    ]
+  ]
+}

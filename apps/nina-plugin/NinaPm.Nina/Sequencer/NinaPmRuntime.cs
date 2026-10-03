@@ -42,7 +42,7 @@ internal sealed class NinaPmRuntime : IDisposable
             Executor = new BlockExecutor(host, clock, Log) { Mode = PlaybackModeSequential },
         };
         host.Runtime = this;
-        Outbox = new OutboxSender(Store, sessionApi, Log);
+        Outbox = new OutboxSender(Store, sessionApi, Log) { Listener = Runner };
         Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
             clock, Log, NinaPmPlugin.PluginVersion);
         _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
