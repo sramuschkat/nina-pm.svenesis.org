@@ -38,7 +38,7 @@ public sealed class TargetBrowserTests
         var application = new Mock<IApplicationMediator>();
         var loader = new FramingLoader(framing.Object, application.Object, Profile());
 
-        var ok = await loader.LoadAsync(new FramingRequest("NGC 7000", 314.75, 44.33, 30, 2, 2, 15, 6248, 4176, 3.76, 382));
+        var ok = await loader.LoadAsync(new FramingRequest("NGC 7000", 314.75, 44.33, 30, 2, 2, 15, 6248, 4176, 3.76, 382, 9));
 
         Assert.True(ok);
         application.Verify(a => a.ChangeTab(ApplicationTab.FRAMINGASSISTANT));
@@ -52,9 +52,10 @@ public sealed class TargetBrowserTests
         framing.VerifySet(f => f.CameraHeight = 4176);
         framing.VerifySet(f => f.CameraPixelSize = 3.76);
         framing.VerifySet(f => f.FocalLength = 382);
+        framing.VerifySet(f => f.FieldOfView = 9); // vor dem Laden des Himmelsbilds, sonst liegt das Mosaik außerhalb (P-11)
         framing.VerifySet(f => f.HorizontalPanels = 2);
         framing.VerifySet(f => f.VerticalPanels = 2);
-        framing.VerifySet(f => f.OverlapPercentage = 15);
+        framing.VerifySet(f => f.OverlapPercentage = 0.15); // Anteil, nicht Prozent (P-11)
         // Panel 1 des NINA-Rasters ist Nordost = (i, j) = (1, 0) (geometry.md §2.1, NT-32).
         Assert.Equal((1, 0), PanelNumbering.Position(1, 2));
     }

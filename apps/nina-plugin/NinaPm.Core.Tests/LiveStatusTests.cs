@@ -108,8 +108,20 @@ public sealed class LiveStatusTests
     {
         var ngc = Targets.Projects.Single(p => p.Name == "NGC 281 Pacman");
         var f = TargetBrowser.Framing(Targets, Bootstrap, ngc.Id)!;
-        Assert.Equal(new FramingRequest("NGC 281", 13.2046, 56.6297, 90, 1, 1, 20, 6248, 4176, 3.76, 382), f);
+        // Bildfeld: 6248 px × 3,76 µm / 382 mm = 3,52° × 1,5 = 5,28° → 5,5°.
+        Assert.Equal(new FramingRequest("NGC 281", 13.2046, 56.6297, 90, 1, 1, 20, 6248, 4176, 3.76, 382, 5.5), f);
         Assert.Null(TargetBrowser.Framing(Targets, Bootstrap, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Bildfeld_umfasst_das_Mosaik_mindestens_NINAs_3_Grad()
+    {
+        // P-11 (03.10.2026): M 31 2×2, 20 % am Svenesis-Texas-Rig (3008 px, 3,76 µm, 382,4 mm) – Panel 1,69°,
+        // Mosaik 3,05° → 4,58° → 5°; mit NINAs 3° zeichnete der Framing-Assistent keine Panels.
+        Assert.Equal(5, TargetBrowser.FieldOfViewDeg(2, 2, 20, 3008, 3008, 3.76, 382.4));
+        Assert.Equal(3, TargetBrowser.FieldOfViewDeg(1, 1, 20, 3008, 3008, 3.76, 382.4)); // Einzelfeld 1,69° → 2,54° → 3°
+        Assert.Equal(3, TargetBrowser.FieldOfViewDeg(3, 3, 20, null, 3008, 3.76, 382.4)); // ohne Sensor die Vorgabe
+        Assert.Equal(7.5, TargetBrowser.FieldOfViewDeg(3, 1, 10, 3008, 3008, 3.76, 382.4)); // 1,69 × 2,8 = 4,75° → 7,13° → 7,5°
     }
 
     [Fact]

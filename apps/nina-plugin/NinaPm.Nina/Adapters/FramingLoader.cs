@@ -23,6 +23,8 @@ internal sealed class FramingLoader(IFramingAssistantVM framing, IApplicationMed
         if (r.CameraHeightPx is { } h) framing.CameraHeight = h;
         if (r.PixelSizeUm is { } px) framing.CameraPixelSize = px;
         if (r.FocalLengthMm is { } fl) framing.FocalLength = fl;
+        // Vor dem Laden des Himmelsbilds: sonst liegt ein Mosaik am Rig außerhalb von NINAs 3° (P-11).
+        framing.FieldOfView = r.FieldOfViewDeg;
         application.ChangeTab(ApplicationTab.FRAMINGASSISTANT);
         var coordinates = new Coordinates(Angle.ByDegree(r.RaDeg), Angle.ByDegree(r.DecDeg), Epoch.J2000);
         var dso = new DeepSkyObject(r.Name, coordinates, profile.ActiveProfile.AstrometrySettings.Horizon)
@@ -32,7 +34,9 @@ internal sealed class FramingLoader(IFramingAssistantVM framing, IApplicationMed
         var loaded = await framing.SetCoordinates(dso);
         framing.HorizontalPanels = r.Columns;
         framing.VerticalPanels = r.Rows;
-        framing.OverlapPercentage = r.OverlapPct;
+        // NINA führt die Überlappung als Anteil (0,2), das Textfeld (`OverlapValue`) rechnet je Einheit um. 20 statt 0,2
+        // ergab negative Rahmen und Panelzentren Stunden neben dem Ziel (P-11, 03.10.2026).
+        framing.OverlapPercentage = r.OverlapPct / 100;
         return loaded;
     }
 }

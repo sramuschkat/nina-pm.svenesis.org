@@ -31,7 +31,10 @@ public sealed record TargetRow(
     double ProgressPct,
     DateTimeOffset? NextTransitUtc);
 
-/// <summary>Was der Framing-Assistent erhält (FA-NIN-02): Zentrum, <c>pa₀</c>, Raster, Sensor und Brennweite.</summary>
+/// <summary>
+/// Was der Framing-Assistent erhält (FA-NIN-02): Zentrum, <c>pa₀</c>, Raster, Sensor, Brennweite und das Bildfeld des
+/// Himmelsbilds (<see cref="TargetBrowser.FieldOfViewDeg"/>).
+/// </summary>
 public sealed record FramingRequest(
     string Name,
     double RaDeg,
@@ -43,7 +46,8 @@ public sealed record FramingRequest(
     int? CameraWidthPx,
     int? CameraHeightPx,
     double? PixelSizeUm,
-    double? FocalLengthMm);
+    double? FocalLengthMm,
+    double FieldOfViewDeg);
 
 /// <summary>
 /// Zielbrowser (FA-NIN-02, AP-16h): Zeilen aus <c>GET /targets</c> und dem Rig des Bootstraps, Filter nach Typ und
@@ -84,10 +88,34 @@ public static class TargetBrowser
         var (ra, dec, rot) = Center(p);
         var camera = bootstrap?.Rig.Camera;
         var telescope = bootstrap?.Rig.Telescope;
-        return new FramingRequest(p.Target?.Name ?? p.Name, ra, dec, rot,
-            p.Mosaic?.Columns ?? 1, p.Mosaic?.Rows ?? 1, p.Mosaic?.OverlapPct ?? 20,
-            camera?.WidthPx, camera?.HeightPx, camera?.PixelSizeUm,
-            telescope is null ? null : telescope.FocalLengthMm * (telescope.ReducerFactor > 0 ? telescope.ReducerFactor : 1));
+        int columns = p.Mosaic?.Columns ?? 1, rows = p.Mosaic?.Rows ?? 1;
+        var overlap = p.Mosaic?.OverlapPct ?? 20;
+        // Gerundet: 382 × 1,0010… ergab in NINA „382.40000000000003 mm“ (P-11, 03.10.2026).
+        double? focal = telescope is null
+            ? null
+            : Math.Round(telescope.FocalLengthMm * (telescope.ReducerFactor > 0 ? telescope.ReducerFactor : 1), 2);
+        return new FramingRequest(p.Target?.Name ?? p.Name, ra, dec, rot, columns, rows, overlap,
+            camera?.WidthPx, camera?.HeightPx, camera?.PixelSizeUm, focal,
+            FieldOfViewDeg(columns, rows, overlap, camera?.WidthPx, camera?.HeightPx, camera?.PixelSizeUm, focal));
+    }
+
+    /// <summary>NINAs Vorgabe für das Bildfeld des Himmelsbilds (Grad).</summary>
+    public const double DefaultFieldOfViewDeg = 3;
+
+    /// <summary>
+    /// Bildfeld des Himmelsbilds: das 1,5-Fache der größeren Mosaik-Kante (deckt jede Rotation ab, Diagonale ≤ √2),
+    /// auf 0,5° aufgerundet, mindestens NINAs 3°. Mit der Vorgabe allein lag ein 2×2-Mosaik am Rig (3,05°) außerhalb
+    /// des Bilds und NINA zeichnete keine Panels (P-11, 03.10.2026). Ohne Sensor oder Brennweite die Vorgabe.
+    /// </summary>
+    public static double FieldOfViewDeg(int columns, int rows, double overlapPct, int? widthPx, int? heightPx,
+        double? pixelSizeUm, double? focalLengthMm)
+    {
+        if (widthPx is not { } w || heightPx is not { } h || pixelSizeUm is not { } px || focalLengthMm is not { } fl || fl <= 0)
+            return DefaultFieldOfViewDeg;
+        double Panel(int pixels) => 2 * Math.Atan(pixels * px / 1000 / (2 * fl)) * 180 / Math.PI;
+        double Extent(int n, double panel) => panel * (n - (n - 1) * overlapPct / 100);
+        var extent = Math.Max(Extent(columns, Panel(w)), Extent(rows, Panel(h)));
+        return Math.Max(DefaultFieldOfViewDeg, Math.Ceiling(extent * 1.5 * 2) / 2);
     }
 
     /// <summary>Zentrum und <c>pa₀</c> des Projekts (siehe Klassenkommentar).</summary>
