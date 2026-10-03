@@ -142,6 +142,14 @@ jobs:
       - name: Adapter-Tests (nur unter Windows ausführbar)
         # Hängt ein Test (z. B. WPF auf STA-Threads), bricht er nach 2 min mit seinem Namen ab statt nach dem Job-Limit.
         run: dotnet test -c Release apps/nina-plugin/NinaPm.Nina.Tests --blame-hang-timeout 2m
+      # AP-16h: gerenderte Oberfläche (Live-Status, Optionsseite mit Zielbrowser) aus RenderTests – Sichtprüfung ohne VM.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nina-pm-render
+          path: apps/nina-plugin/NinaPm.Nina.Tests/bin/Release/net8.0-windows/render/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Plugin veröffentlichen (win-x64, ohne eigene Laufzeit)
         run: dotnet publish -c Release -r win-x64 --self-contained false apps/nina-plugin/NinaPm.Nina -o out/Svenesis.NinaPm
       - name: Inhalt prüfen (TK 10.5)

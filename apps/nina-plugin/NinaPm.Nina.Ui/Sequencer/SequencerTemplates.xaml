@@ -16,8 +16,45 @@
     <SolidColorBrush x:Key="NinaPm.DangerBrush" Color="#b3261e" />
     <SolidColorBrush x:Key="NinaPm.OnDangerBrush" Color="#ffffff" />
     <BooleanToVisibilityConverter x:Key="NinaPm.BoolToVisibility" />
-    <ui:NullToVisibility x:Key="NinaPm.NullToCollapsed" />
     <ui:NullToVisibility x:Key="NinaPm.NullToVisible" Invert="True" />
+
+    <!-- Live-Status-Kopf (FA-NIN-13): eigene Vorlage, damit der Adapter-Test sie ohne NINAs Sequenzansicht rendert. -->
+    <DataTemplate x:Key="NinaPm.LiveStatus">
+        <StackPanel Orientation="Vertical">
+            <Border Margin="0,2" Padding="6,3" Background="{StaticResource NinaPm.DangerBrush}"
+                    Visibility="{Binding TestBanner, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                <TextBlock FontWeight="Bold" Foreground="{StaticResource NinaPm.OnDangerBrush}" Text="{Binding TestBannerText}" />
+            </Border>
+            <WrapPanel Margin="0,2" Orientation="Horizontal">
+                <TextBlock Margin="0,0,12,0" FontWeight="Bold" Text="{Binding StateText}" />
+                <TextBlock Margin="0,0,12,0" Text="{Binding TargetText}" />
+                <TextBlock Margin="0,0,12,0" Opacity="0.8" Text="{Binding CoordinatesText}" />
+                <TextBlock Margin="0,0,12,0" Opacity="0.8" Text="{Binding RotationText}" />
+            </WrapPanel>
+            <TextBlock Margin="0,2" Foreground="{StaticResource NinaPm.DangerBrush}" Text="{Binding BlockedText}" TextWrapping="Wrap"
+                       Visibility="{Binding IsBlocked, Converter={StaticResource NinaPm.BoolToVisibility}}" />
+            <TextBlock Margin="0,2" Text="{Binding ExposureText}" />
+            <TextBlock Margin="0,2" Opacity="0.7" Text="{Binding CountersText}" />
+            <Expander Margin="0,4,0,0" Header="{x:Static ui:Texts.TodayTargets}">
+                <ItemsControl ItemsSource="{Binding Blocks}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="90" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding Window}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Opacity="0.8" Text="{Binding StateText}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Expander>
+        </StackPanel>
+    </DataTemplate>
 
     <!-- Live-Status im Container (FA-NIN-13, AP-16h): Kopf, Zähler, Bedienung, „Heutige Ziele“. -->
     <DataTemplate x:Key="NinaPm.Container">
@@ -26,41 +63,7 @@
                 <StackPanel Orientation="Vertical">
                     <TextBlock VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.ContainerHint}" TextWrapping="Wrap"
                                Visibility="{Binding Live, Converter={StaticResource NinaPm.NullToVisible}}" />
-                    <StackPanel DataContext="{Binding Live}" Orientation="Vertical"
-                                Visibility="{Binding Converter={StaticResource NinaPm.NullToCollapsed}}">
-                        <Border Margin="0,2" Padding="6,3" Background="{StaticResource NinaPm.DangerBrush}"
-                                Visibility="{Binding TestBanner, Converter={StaticResource NinaPm.BoolToVisibility}}">
-                            <TextBlock FontWeight="Bold" Foreground="{StaticResource NinaPm.OnDangerBrush}" Text="{Binding TestBannerText}" />
-                        </Border>
-                        <WrapPanel Margin="0,2" Orientation="Horizontal">
-                            <TextBlock Margin="0,0,12,0" FontWeight="Bold" Text="{Binding StateText}" />
-                            <TextBlock Margin="0,0,12,0" Text="{Binding TargetText}" />
-                            <TextBlock Margin="0,0,12,0" Opacity="0.8" Text="{Binding CoordinatesText}" />
-                            <TextBlock Margin="0,0,12,0" Opacity="0.8" Text="{Binding RotationText}" />
-                        </WrapPanel>
-                        <TextBlock Margin="0,2" Foreground="{StaticResource NinaPm.DangerBrush}" Text="{Binding BlockedText}" TextWrapping="Wrap"
-                                   Visibility="{Binding IsBlocked, Converter={StaticResource NinaPm.BoolToVisibility}}" />
-                        <TextBlock Margin="0,2" Text="{Binding ExposureText}" />
-                        <TextBlock Margin="0,2" Opacity="0.7" Text="{Binding CountersText}" />
-                        <Expander Margin="0,4,0,0" Header="{x:Static ui:Texts.TodayTargets}">
-                            <ItemsControl ItemsSource="{Binding Blocks}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,1">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="90" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="{Binding Window}" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Grid.Column="2" Opacity="0.8" Text="{Binding StateText}" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Expander>
-                    </StackPanel>
+                    <ContentControl Content="{Binding Live}" ContentTemplate="{StaticResource NinaPm.LiveStatus}" />
                     <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                         <Button Padding="8,2" Command="{Binding ResetPlanCommand}">
                             <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reset}" />

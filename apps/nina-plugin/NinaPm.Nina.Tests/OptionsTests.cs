@@ -81,7 +81,7 @@ public sealed class OptionsTests
         Assert.Equal("", plugin.TenantName);
     }
 
-    private sealed class PlainProtector : ITokenProtector
+    internal sealed class PlainProtector : ITokenProtector
     {
         public string Protect(string token) => "p:" + token;
         public string? Unprotect(string protectedToken) => protectedToken.StartsWith("p:") ? protectedToken[2..] : null;
