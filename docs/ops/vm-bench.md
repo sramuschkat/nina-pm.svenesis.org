@@ -11,9 +11,13 @@ Claude Code fährt die VM-Läufe ohne Handgriffe: Ein kleiner Agent in der VM ho
 | Agent `C:\NinaPmBench\NinaPmBenchAgent.ps1` | VM | Aufgabenplanung „NINA-PM Bench Agent“ bei Anmeldung, in der angemeldeten Sitzung (NINA erscheint normal auf dem Bildschirm); fragt alle 3 s den Mac nach Aufträgen |
 | Advanced API (NINA-Plugin, Port 1888) | VM | Geräte verbinden, Profilwerte, Sequenz laden und starten, Reiter, Screenshots |
 
-Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` (ZIP mit SHA-256-Prüfung) und `collect-log`: keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
+Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log` und `update-agent` (sich selbst vom Mac neu laden): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
 
-Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`. Die VM erreicht den Mac wie bisher beim Test-Server.
+Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`.
+
+Prüfstand-Schlüssel wechseln: auf dem Mac in `~/.config/nina-pm/vm-bench.json` die Zeile `key` löschen, `pnpm vm-bench setup` ausführen und die ausgegebene Zeile in der VM erneut ausführen.
+
+Geräte verbindet der Prüfstand nach einem Rescan je Typ (`/equipment/<gerät>/rescan`) mit der Geräte-ID aus dem aktiven Profil; per Alpaca-Discovery gefundene Geräte kennt NINA nach dem Start sonst noch nicht („Invalid Id“). Die VM erreicht den Mac wie bisher beim Test-Server.
 
 ## Einrichtung (einmalig, ≈ 15 min, Sven)
 1. **Advanced API in NINA (VM):**
@@ -21,9 +25,7 @@ Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`. Die VM erreicht den M
    - *Options → Plugins → Advanced API*: API an, Port **1888**.
    - Die Firewall-Abfrage von Windows mit „Zulassen“ beantworten (die Einrichtung in Schritt 4 legt die Regel ohnehin an).
 2. **NINA-PM-Optionen im Profil der VM:** Server-URL `http://172.16.245.1:8787/api`, Token `npm_test`, *Testbetrieb* an.
-3. **Sequenz:**
-   - `vm-test.json` in NINAs **Standard-Sequenzordner** legen (*Options → General → Sequence folder*).
-   - Die Sequenz ist die Beispielsequenz „Eine Nacht mit Safety“, im Start-Bereich *Wait for Sun Altitude* und *Run Autofocus* deaktiviert.
+3. **Sequenz:** entfällt. Der Prüfstand erzeugt je Lauf `nina-pm-bench.json` aus der Beispielsequenz ohne *Wait for Sun Altitude* und *Run Autofocus*; der Agent legt sie in NINAs Standard-Sequenzordner (`SequenceSettings.DefaultSequenceFolder` im Profil). Gelöscht statt deaktiviert, weil NINA 3.2 „deaktiviert“ nicht speichert.
 4. **Agent:**
    - Auf dem Mac im eigenen Terminal `pnpm vm-bench setup` ausführen. Es gibt den Einrichtungsbefehl mit dem Schlüssel aus, nur in Svens Terminal.
    - In der VM PowerShell **„Als Administrator ausführen“** öffnen und die Zeile mit `172.16.245.1` einfügen.
@@ -50,6 +52,7 @@ Meridian-Flip-Werte setzt der Lauf selbst über die Advanced API (`profile` in d
 | Befehl | Wirkung |
 |---|---|
 | `pnpm vm-bench status` | Agent und Advanced API erreichbar, Sequenzen in NINA |
+| `pnpm vm-bench update-agent` | Agent in der VM aus dem Repository neu laden (ab dieser Version ohne Handgriff) |
 | `pnpm vm-bench install-plugin <ordner>` | Plugin-Build (CI-Artefakt `nina-pm-plugin`) in die VM, NINA neu gestartet |
 | `pnpm vm-bench run vm-flip [--plugin <ordner>]` | Lauf: NINA frisch ohne `ninapm.db`, Profilwerte, Geräte, Test-Server, Sequenz, Screenshots, Log und Report, Auswertung |
 | `pnpm vm-bench screenshot [reiter]` | Screenshot des NINA-Fensters |

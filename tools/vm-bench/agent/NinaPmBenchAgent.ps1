@@ -2,7 +2,8 @@
   NINA-PM Bench Agent (ops/vm-bench.md): läuft per Aufgabenplanung in der angemeldeten Sitzung der Test-VM und holt
   Aufträge vom Prüfstand-Server auf dem Mac (GET /agent/next, Kopf X-Bench-Key). Er führt NUR diese Aufträge aus:
     ping, restart-nina (optional ninapm.db löschen), stop-nina, install-plugin (ZIP vom Mac, SHA-256 geprüft),
-    collect-log (NINA-Log seit einem Zeitpunkt zurück an den Mac).
+    put-sequence (Sequenzdatei vom Mac in NINAs Sequenzordner, SHA-256 geprüft), collect-log (NINA-Log seit einem
+    Zeitpunkt zurück an den Mac), update-agent (diesen Agenten vom Mac neu laden und neu starten).
   Keine beliebigen Befehle, keine Anmeldedaten. Konfiguration: C:\NinaPmBench\agent.json (server, key, ninaExe).
   Windows PowerShell 5.1.
 #>
@@ -96,6 +97,26 @@ function Invoke-Job($Job) {
             if ($Job.args.start) { Start-Nina ([string]$Job.args.profileId) }
             return "Plugin installiert ($((Get-ChildItem $PluginDir -Recurse -File).Count) Dateien)"
         }
+        'put-sequence' {
+            $name = [System.IO.Path]::GetFileName([string]$Job.args.file)
+            if ($name -notmatch '^[A-Za-z0-9._-]+\.json$') { throw "Sequenzname '$name' nicht erlaubt" }
+            $folder = [string]$Job.args.folder
+            if (-not (Test-Path -PathType Container $folder)) { throw "Sequenzordner '$folder' fehlt" }
+            $target = Join-Path $folder $name
+            Invoke-WebRequest -UseBasicParsing -Uri "$($Cfg.server)/files/$name" -Headers $Headers -OutFile $target
+            $hash = (Get-FileHash -Path $target -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($hash -ne ([string]$Job.args.sha256).ToLowerInvariant()) { Remove-Item $target -Force; throw "SHA-256 stimmt nicht ($hash)" }
+            return "Sequenz $target"
+        }
+        'update-agent' {
+            $new = Join-Path $env:TEMP 'NinaPmBenchAgent.new.ps1'
+            Invoke-WebRequest -UseBasicParsing -Uri "$($Cfg.server)/setup/NinaPmBenchAgent.ps1" -OutFile $new
+            if ((Get-Item $new).Length -lt 1000) { throw 'Agent-Skript unvollständig' }
+            Copy-Item -Path $new -Destination (Join-Path $Root 'NinaPmBenchAgent.ps1') -Force
+            # Nach diesem Auftrag beenden; ein abgesetzter Prozess startet die Aufgabe neu, sobald dieser Agent weg ist.
+            $script:Restart = $true
+            return 'Agent aktualisiert, Neustart'
+        }
         'collect-log' {
             $since = [DateTime]::Parse([string]$Job.args.sinceUtc, $null, [System.Globalization.DateTimeStyles]::AdjustToUniversal)
             $files = Get-ChildItem -Path $LogDir -Filter '*.log' | Where-Object { $_.LastWriteTimeUtc -ge $since } | Sort-Object Name
@@ -109,6 +130,7 @@ function Invoke-Job($Job) {
     }
 }
 
+$script:Restart = $false
 Write-AgentLog "Agent gestartet, Server $($Cfg.server)"
 $lastError = ''
 while ($true) {
@@ -122,6 +144,12 @@ while ($true) {
             try {
                 $msg = Invoke-Job $job
                 Send-Done $job.id $true ([string]$msg)
+                if ($script:Restart) {
+                    Write-AgentLog 'Neustart nach Aktualisierung'
+                    $mutex.ReleaseMutex()
+                    Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList '-NoProfile -Command "Start-Sleep 5; Start-ScheduledTask -TaskName ''NINA-PM Bench Agent''"'
+                    exit 0
+                }
             } catch {
                 Write-AgentLog "Fehler: $($_.Exception.Message)"
                 Send-Done $job.id $false $_.Exception.Message

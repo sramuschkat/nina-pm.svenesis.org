@@ -23,6 +23,21 @@ export type Device =
   | 'weather'
   | 'switch';
 
+/** Abschnitt des NINA-Profils je Gerätetyp (Antwort von `/profile/show?active=true`). */
+const PROFILE_KEYS: Record<Device, string> = {
+  camera: 'CameraSettings',
+  mount: 'TelescopeSettings',
+  filterwheel: 'FilterWheelSettings',
+  focuser: 'FocuserSettings',
+  rotator: 'RotatorSettings',
+  guider: 'GuiderSettings',
+  safetymonitor: 'SafetyMonitorSettings',
+  dome: 'DomeSettings',
+  flatdevice: 'FlatDeviceSettings',
+  weather: 'WeatherDataSettings',
+  switch: 'SwitchSettings',
+};
+
 export class AdvancedApi {
   readonly base: string;
 
@@ -59,8 +74,26 @@ export class AdvancedApi {
     throw new Error(`Advanced API unter ${this.base} nicht erreichbar: ${last}`);
   }
 
-  connect(device: Device): Promise<ApiAnswer> {
-    return this.get(`/equipment/${device}/connect`);
+  /**
+   * Gerät verbinden, das im aktiven Profil ausgewählt ist. Nach dem NINA-Start kennt NINA die per Alpaca-Discovery
+   * gefundenen Geräte erst nach einem Rescan; ohne `to` antwortet die API dann „Invalid Id“ (Prüfstand 03.10.2026).
+   */
+  async connectFromProfile(device: Device, profile: Record<string, unknown>): Promise<string> {
+    const settings = (profile[PROFILE_KEYS[device]] ?? {}) as {
+      Id?: string | null;
+      GuiderName?: string;
+    };
+    const id = settings.Id ?? settings.GuiderName;
+    if (!id || id.startsWith('No_')) throw new Error(`${device}: im Profil kein Gerät ausgewählt`);
+    const list = (await this.get<{ Id: string }[]>(`/equipment/${device}/rescan`)).Response;
+    if (!list.some((d) => d.Id === id))
+      throw new Error(`${device}: ${id} nach dem Rescan nicht gefunden`);
+    await this.get(`/equipment/${device}/connect`, { to: id });
+    return id;
+  }
+
+  async activeProfile(): Promise<Record<string, unknown>> {
+    return (await this.get<Record<string, unknown>>('/profile/show', { active: true })).Response;
   }
 
   disconnect(device: Device): Promise<ApiAnswer> {

@@ -3,6 +3,7 @@
  *   setup                         Prüfstand-Server starten und den Einrichtungsbefehl für die VM ausgeben (einmalig)
  *   config --vm-host <ip> [--profile-id <id>]
  *   status                        Agent und Advanced API prüfen, Sequenzen in NINA auflisten
+ *   update-agent                  Agenten in der VM aus dem Repository neu laden
  *   install-plugin <ordner>       Plugin-Build in die VM bringen (NINA wird neu gestartet)
  *   run <lauf> [--plugin <ordner>] Lauf aus runs/<lauf>.json: NINA frisch, Geräte, Test-Server, Sequenz, Auswertung
  *   screenshot [reiter] [--out <datei>]
@@ -18,6 +19,7 @@ import { NinaTestServer } from '../../nina-test-server/src/server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
+import { benchSequence, SEQUENCE, type SequenceSpec } from './sequence';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const RUNS = fileURLToPath(new URL('../runs/', import.meta.url));
@@ -43,8 +45,12 @@ export interface BenchRun {
   readonly simRun: string;
   readonly scenario: string;
   readonly untilMin: number;
-  /** Sequenz im Standard-Sequenzordner von NINA (Name ohne `.json`). */
-  readonly sequence: string;
+  /**
+   * Sequenz: Beispielsequenz aus `apps/nina-plugin/NinaPm.Nina/Samples/<from>.json`, ohne die genannten Anweisungen
+   * im Start-Bereich (NINA 3.2 speichert „deaktiviert“ nicht – `Status` ist keine JSON-Eigenschaft –, darum entfernen).
+   * Der Agent legt sie als `nina-pm-bench.json` in NINAs Standard-Sequenzordner.
+   */
+  readonly sequence: SequenceSpec;
   /** Profilwerte vor dem Lauf (Pfad wie `/profile/show`, z. B. `MeridianFlipSettings-Recenter`). */
   readonly profile?: Readonly<Record<string, string | number | boolean>>;
   /** Geräte verbinden; alle anderen werden getrennt. */
@@ -150,24 +156,24 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     for (const [path, value] of Object.entries(r.profile ?? {})) await a.setProfile(path, value);
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
-    for (const d of r.connect) {
-      await a.connect(d);
-      log(`verbunden: ${d}`);
-    }
+    const profile = await a.activeProfile();
+    for (const d of r.connect) log(`verbunden: ${d} (${await a.connectFromProfile(d, profile)})`);
     if (r.coolC !== undefined) await a.cool(r.coolC);
-    const sequences = await a.sequences();
-    if (!sequences.includes(r.sequence))
-      throw new Error(
-        `Sequenz „${r.sequence}“ nicht im NINA-Sequenzordner (vorhanden: ${sequences.join(', ')})`,
-      );
+    const folder = (profile.SequenceSettings as { DefaultSequenceFolder?: string } | undefined)
+      ?.DefaultSequenceFolder;
+    if (!folder) throw new Error('Profil ohne SequenceSettings.DefaultSequenceFolder');
+    const staged = bench.stage(benchSequence(r, dir));
+    await job(bench, 'put-sequence', { file: staged.name, sha256: staged.sha256, folder }, dir);
+    if (!(await a.sequences()).includes(SEQUENCE))
+      throw new Error(`Sequenz „${SEQUENCE}“ nach dem Ablegen nicht in NINA`);
 
     const server = new NinaTestServer(loadScenario(r.scenario), loadRig());
     const http = await server.listen(cfg.testServerPort, '0.0.0.0');
     const startedMs = Date.now();
     const startUtc = new Date(startedMs).toISOString();
     try {
-      log(`Test-Server „${r.scenario}“ läuft, Sequenz „${r.sequence}“ startet`);
-      await a.loadSequence(r.sequence);
+      log(`Test-Server „${r.scenario}“ läuft, Sequenz „${SEQUENCE}“ startet`);
+      await a.loadSequence(SEQUENCE);
       await a.startSequence();
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
         await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
@@ -265,6 +271,19 @@ async function main(): Promise<number> {
       if (!name) throw new Error('Lauf angeben, z. B. vm-flip');
       return (await run(cfg, name)) ? 0 : 1;
     }
+    case 'update-agent':
+      return withBench(cfg, async (bench) => {
+        await needAgent(bench);
+        await job(bench, 'update-agent', {}, join(ROOT, '.vm-bench', 'status'), 60_000);
+        await sleep(8_000);
+        const back = await bench.waitForAgent(60_000);
+        log(
+          back
+            ? 'Agent nach der Aktualisierung wieder da'
+            : 'Agent meldet sich nach der Aktualisierung nicht',
+        );
+        return back ? 0 : 1;
+      });
     case 'screenshot': {
       const tab = process.argv[3]?.startsWith('--') ? undefined : process.argv[3];
       const out = arg('out') ?? join(ROOT, '.vm-bench', `${stamp()}-screenshot.png`);
@@ -274,7 +293,7 @@ async function main(): Promise<number> {
     }
     default:
       console.error(
-        'Aufruf: pnpm vm-bench setup | config --vm-host <ip> | status | install-plugin <ordner> | run <lauf> [--plugin <ordner>] | screenshot [reiter]',
+        'Aufruf: pnpm vm-bench setup | config --vm-host <ip> | status | update-agent | install-plugin <ordner> | run <lauf> [--plugin <ordner>] | screenshot [reiter]',
       );
       return 2;
   }

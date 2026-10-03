@@ -12,7 +12,14 @@ import { fileURLToPath } from 'node:url';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 /** Aufträge, die der Agent kennt (feste Liste; alles andere lehnt er ab). */
-export type JobType = 'ping' | 'restart-nina' | 'stop-nina' | 'install-plugin' | 'collect-log';
+export type JobType =
+  | 'ping'
+  | 'restart-nina'
+  | 'stop-nina'
+  | 'install-plugin'
+  | 'put-sequence'
+  | 'collect-log'
+  | 'update-agent';
 
 export interface Job {
   readonly id: string;

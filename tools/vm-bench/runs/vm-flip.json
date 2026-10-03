@@ -4,7 +4,10 @@
   "simRun": "vm-flip",
   "scenario": "vm-flip",
   "untilMin": 30,
-  "sequence": "vm-test",
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
   "profile": {
     "MeridianFlipSettings-MinutesAfterMeridian": 1,
     "MeridianFlipSettings-MaxMinutesAfterMeridian": 5,
@@ -14,8 +17,20 @@
   "connect": ["camera", "mount", "filterwheel", "rotator", "guider", "safetymonitor"],
   "coolC": -10,
   "steps": [
-    { "atMin": 5, "screenshot": "live-status-laeuft", "tab": "sequencer" },
-    { "atMin": 13, "screenshot": "live-status-nach-flip", "tab": "sequencer" },
-    { "atMin": 14, "screenshot": "optionsseite", "tab": "options" }
+    {
+      "atMin": 5,
+      "screenshot": "live-status-laeuft",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 13,
+      "screenshot": "live-status-nach-flip",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 14,
+      "screenshot": "optionsseite",
+      "tab": "options"
+    }
   ]
 }

@@ -60,7 +60,7 @@ Geräte in NINA (Stand der Läufe vom 01./02.10.2026):
 | Kamera | Sky Simulator | verbunden | Kühlung an, Sollwert −10 °C (ignoriert die Belichtungszeit) |
 | Montierung | Sky Simulator | verbunden | – |
 | Filterrad | Sky Simulator | verbunden | Namen im Profil wie `rig.json`: `LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII` (Plätze 1–7) |
-| Fokussierer | Sky Simulator | verbunden oder getrennt | Autofokus in der Sequenz deaktiviert |
+| Fokussierer | Sky Simulator | verbunden oder getrennt | *Run Autofocus* in der Testkopie gelöscht |
 | Guider | PHD2 (Simulator) | verbunden | – |
 | Safety-Monitor | OmniSim | verbunden, sicher | OmniSim trennt bei jedem Umschalten – danach in NINA **neu verbinden** |
 | Rotator | – | **getrennt** | `WARNING rotator_unavailable` je Block ist erwartet |
@@ -108,7 +108,7 @@ Keine Handgriffe während des Laufs. Auswertung: `pnpm plugin:sim --vm /tmp/vm-f
 ### VM-Termin AP-16h (≈ 40 min): Beispielsequenz in NINA, `vm-flip`
 Nur was echtes NINA braucht. Live-Status und Optionsseite mit Zielbrowser prüfen die Render-Tests der Windows-CI (`RenderTests`, Artefakt `nina-pm-render`, kein Binding-Fehler), die Beispielsequenzen der Typ-Test `SampleSequenceTests`. P-11 (Framing-Assistent mit echten Zielen) folgt in der Plugin-Nacht P-05 gegen prod, die ohnehin mit dem Test-Mandanten läuft.
 
-1. **Beispielsequenz (≈ 2 min):** `one-night-safety.json` aus `apps/nina-plugin/NinaPm.Nina/Samples/` in NINA laden – lädt sie ohne Fehler, ist der Skript-Umbau aus AP-16h bestätigt. Optional unverändert unter demselben Namen speichern und auf den Mac legen (ersetzt die Skriptfassung). Dann *Wait if Sun Altitude* und *Run Autofocus* im Start-Bereich deaktivieren (Rechtsklick → *Disable*) und als `vm-test.json` speichern. **Kein** globaler Dither-Trigger.
+1. **Beispielsequenz (≈ 2 min):** `one-night-safety.json` aus `apps/nina-plugin/NinaPm.Nina/Samples/` in NINA laden – lädt sie ohne Fehler, ist der Skript-Umbau aus AP-16h bestätigt. Optional unverändert unter demselben Namen speichern und auf den Mac legen (ersetzt die Skriptfassung). Dann *Wait if Sun Altitude* und *Run Autofocus* im Start-Bereich **löschen** (nicht nur deaktivieren – NINA 3.2 speichert „deaktiviert“ nicht) und als `vm-test.json` speichern. Mit dem VM-Prüfstand (`docs/ops/vm-bench.md`) entfällt dieser Schritt. **Kein** globaler Dither-Trigger.
 2. **`vm-flip` mit `vm-test.json` (≈ 35 min):** Geräte, Profil und Zeitplan wie im Abschnitt `vm-flip`, vorher `ninapm.db` löschen, keine Handgriffe. Optional bei Minute 3–7 ein Screenshot des aufgeklappten Containers (Banner, *Läuft*, „Heutige Ziele“).
 
 Erwartet zusätzlich (vmOnly in `tools/nina-sim/runs/vm-flip.json`): genau einmal `WARNING code=sequence_template_deviation checks=start_wait_missing,start_autofocus_missing`, kein `safety_monitor_not_connected`. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`. Ergebnis unter `docs/test-runs/<Datum>/vm-flip/`.
