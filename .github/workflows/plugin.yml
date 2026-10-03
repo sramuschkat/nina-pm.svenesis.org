@@ -62,6 +62,38 @@ env:
   PLUGIN_DEPS: Microsoft.Data.Sqlite,SQLitePCLRaw.batteries_v2,SQLitePCLRaw.core,SQLitePCLRaw.provider.e_sqlite3,e_sqlite3,Polly,Polly.Core
 
 jobs:
+  # Engine- und Jint-Prüfungen (500 Pläne unter Jint ≈ 4 min, Jint-Laufzeit ≈ 2,5 min) sagen nur etwas, wenn sich
+  # Engine, Bundle, Testvektoren oder die Jint-Tests ändern. In PRs laufen sie nur dann; auf `main` (push) immer.
+  # Das Plugin plant nie selbst (Entscheidung Sven 01.10.2026), Jint ist nur noch Referenz der Engine-Parität.
+  changes:
+    name: Engine geändert?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      engine: ${{ steps.filter.outputs.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ] || [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "engine=true" >> "$GITHUB_OUTPUT"; echo "Kein PR: volle Prüfung"; exit 0
+          fi
+          engine=false
+          while IFS= read -r f; do
+            case "$f" in
+              packages/engine/*|tools/engine-bundle/*|spikes/jint-runtime/*|packages/shared/contracts/test-vectors/*|\
+              apps/nina-plugin/NinaPm.Core.Tests/EngineBundle.cs|apps/nina-plugin/NinaPm.Core.Tests/EngineParityTests.cs|\
+              apps/nina-plugin/NinaPm.Core.Tests/PlanParityTests.cs|.github/workflows/plugin.yml) engine=true ;;
+            esac
+          done <<< "$(git diff --name-only "$BASE" HEAD)"
+          echo "engine=$engine" >> "$GITHUB_OUTPUT"
+          echo "Engine geändert: $engine"
+
   # Sichert die Entwicklung ohne Windows: bricht dieser Auftrag, ist der lokale Arbeitsablauf auf macOS/Linux kaputt.
   cross-build:
     runs-on: ubuntu-latest
@@ -160,8 +192,11 @@ jobs:
   # AP-08c (rules/engine.md Nr. 7, canonical-json.md): Engine-Bundle unter Jint rechnet dieselben Hashes wie Node –
   # feste Testvektoren und 500 zufällige PlanInput. Bricht dieser Auftrag, würde das Plugin offline anders planen.
   engine-parity:
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      ENGINE: ${{ needs.changes.outputs.engine }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -174,8 +209,10 @@ jobs:
           dotnet-version: '8.0.x'
       - run: pnpm install --frozen-lockfile
       - name: Engine bündeln (engine.iife.js, ES2020)
+        if: env.ENGINE == 'true'
         run: pnpm engine:bundle
       - name: Erwartung mit Node (500 Pläne)
+        if: env.ENGINE == 'true'
         run: pnpm engine:parity --count 500 --seed 1
       # AP-16a: ApiClient gegen den NINA-Test-Server (TestServerIntegrationTests) – der Server prüft jede Anfrage
       # mit den zod-Verträgen; ohne NINA_TEST_SERVER_URL kehren die Tests sofort zurück.
@@ -187,7 +224,10 @@ jobs:
       - name: Parität unter Jint und ApiClient gegen den Test-Server
         env:
           NINA_TEST_SERVER_URL: http://127.0.0.1:8787/api
-        run: dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests
+        # Ohne Engine-Änderung nur ApiClient gegen den Test-Server (die Parität mit Jint entfällt, s. Auftrag changes).
+        run: |
+          if [ "$ENGINE" = "true" ]; then dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests
+          else dotnet test -c Release apps/nina-plugin/NinaPm.Core.Tests --filter "FullyQualifiedName!~Parity"; fi
       - name: Test-Server wurde wirklich aufgerufen
         run: |
           curl -sf http://127.0.0.1:8787/test/report > report.json
@@ -222,6 +262,8 @@ jobs:
   # AP-S2a (TK 10.4): Laufzeit von planNight unter Jint auf dem x64-Runner – Messwert, keine Abnahmegrenze.
   # Ergebnis als Artefakt jint-runtime (docs/adr/ADR-S2a-jint.md).
   jint-runtime:
+    needs: changes
+    if: needs.changes.outputs.engine == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
