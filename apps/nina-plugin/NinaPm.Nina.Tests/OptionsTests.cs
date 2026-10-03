@@ -23,6 +23,15 @@ public sealed class OptionsTests
         new(true, 200, null, "Demo", "Rig A NINA", "Rig A", "Starfront", km, DateTimeOffset.UnixEpoch, test);
 
     [Fact]
+    public void Zielbrowser_ohne_Laufzeit_leer_mit_Hinweis()
+    {
+        var plugin = NewPlugin();
+        plugin.Targets.Rebuild();
+        Assert.Empty(plugin.Targets.Rows);
+        Assert.Equal(3, plugin.Targets.Types.Count);
+    }
+
+    [Fact]
     public void Erfolg_zeigt_Mandant_Rig_und_Standort()
     {
         var plugin = NewPlugin();

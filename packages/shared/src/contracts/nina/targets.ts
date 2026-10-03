@@ -87,6 +87,18 @@ const Common = {
   startDate: NightKey.nullable().optional(),
   dueDate: NightKey.nullable().optional(),
   conditions: Conditions,
+  /**
+   * Projektzentrum und Positionswinkel `pa₀` (geometry.md §2, NT-30/NT-32) für „In Framing-Assistent
+   * laden“ (FA-NIN-02, AP-16h); ohne Rotator der Kamerawinkel des Rigs. Optional: ältere Server liefern
+   * ihn nicht, das Plugin nimmt dann das einzige Panel bzw. den Mittelpunkt der Panels.
+   */
+  center: z
+    .object({
+      raDeg: z.number().min(0).lt(360),
+      decDeg: z.number().min(-90).max(90),
+      rotationDeg: Angle,
+    })
+    .optional(),
 };
 
 export const NinaDeepSkyProject = z.object({

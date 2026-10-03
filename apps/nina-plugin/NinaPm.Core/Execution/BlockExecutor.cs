@@ -74,6 +74,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// <summary>Playback-Modus, wenn der Block keinen aus dem Rig mitbringt (<see cref="BlockRunOptions.Mode"/>).</summary>
     public PlaybackMode Mode { get; init; } = PlaybackMode.Sequential;
 
+    /// <summary>Zuletzt gestartete Belichtung des laufenden Blocks (Live-Status, FA-NIN-13); außerhalb eines Blocks <c>null</c>.</summary>
+    public Entries? CurrentEntry { get; private set; }
+
     /// <summary>Gespiegelte Optik nur einmal melden (NT-33: einmal je Nacht; der Executor lebt eine Laufzeit lang).</summary>
     private bool opticsMirroredWarned;
 
@@ -161,7 +164,16 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         await host.BeforeTargetChangeAsync(token).ConfigureAwait(false);
         await host.StartGuidingAsync(token).ConfigureAwait(false);
 
-        var (reason, exposures, skipped) = await EntriesAsync(run, darknessEndUtc, CheckCooling, token).ConfigureAwait(false);
+        (string Reason, int Exposures, int Skipped) result;
+        try
+        {
+            result = await EntriesAsync(run, darknessEndUtc, CheckCooling, token).ConfigureAwait(false);
+        }
+        finally
+        {
+            CurrentEntry = null;
+        }
+        var (reason, exposures, skipped) = result;
 
         await host.AfterTargetChangeAsync(token).ConfigureAwait(false);
         log.Event("BLOCK_END", ("id", block.Id), ("reason", reason));
@@ -293,6 +305,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             }
             var deviation = checkCooling();
             var e = entries[target];
+            CurrentEntry = e;
             var pierBefore = host.PierSide();
             var started = clock.UtcNow;
             var result = await host.ExposeAsync(block, e, deviation, token).ConfigureAwait(false);

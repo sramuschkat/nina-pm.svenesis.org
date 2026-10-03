@@ -7,6 +7,7 @@ using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
 using NinaPm.Core.Reporting;
 using NinaPm.Core.Sequence;
+using NinaPm.Core.Status;
 using NinaPm.Core.Session;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
@@ -147,6 +148,22 @@ public sealed class NightRunnerTests : IDisposable
         var json = JObject.Parse(File.ReadAllText(Path.Combine(ContractExamples.RepoRoot(), "apps", "nina-plugin", "NinaPm.Nina", "Samples", file)));
         change?.Invoke(json);
         return SequenceFile.Parse(json.ToString());
+    }
+
+    [Fact]
+    public async Task Live_Status_aus_gespeichertem_Plan_und_Outbox()
+    {
+        // FA-NIN-13 (AP-16h): Blockliste aus dem gespeicherten Plan, Zähler aus ninapm.db, Banner nur auf Anfrage.
+        var runner = Runner();
+        Assert.True(runner.LiveStatus(testBanner: false).NoPlan);
+        await runner.RunOnceAsync(default);
+        store.EnqueueOutbox(OutboxKinds.Event, "{}", null, null);
+        var s = runner.LiveStatus(testBanner: true);
+        Assert.Equal(2, s.Blocks.Count);
+        Assert.Equal(LiveState.Waiting, s.State);
+        Assert.Equal(store.OutboxCount(), s.OutboxPending);
+        Assert.True(s.OutboxPending >= 1);
+        Assert.True(s.TestBanner);
     }
 
     [Fact]

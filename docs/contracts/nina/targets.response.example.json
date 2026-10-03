@@ -24,6 +24,11 @@
           "enabled": false
         }
       },
+      "center": {
+        "raDeg": 13.2046,
+        "decDeg": 56.6297,
+        "rotationDeg": 90.0
+      },
       "mosaic": {
         "rows": 1,
         "columns": 1,
@@ -85,6 +90,11 @@
         "minAltitudeDeg": 30,
         "minTimeOnTargetH": 0,
         "twilight": "nautical"
+      },
+      "center": {
+        "raDeg": 324.5366,
+        "decDeg": 30.4886,
+        "rotationDeg": 0
       },
       "panels": [
         {

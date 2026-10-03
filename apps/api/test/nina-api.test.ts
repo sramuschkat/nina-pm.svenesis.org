@@ -158,6 +158,19 @@ describe('NINA-API: Zugriff (TK 5.6)', () => {
     const ids = (targets.body.projects as Body[]).map((p) => p.id);
     expect(ids).toEqual([t.a.pid]);
     expect(ids).not.toContain(t.b.pid);
+    // Zentrum und Raster für „In Framing-Assistent laden“ (FA-NIN-02, AP-16h).
+    expect(nina.NinaTargets.safeParse(targets.body).error?.issues ?? []).toEqual([]);
+    const project = (targets.body.projects as Body[])[0] as Body;
+    expect(project.center).toEqual({
+      raDeg: expect.any(Number),
+      decDeg: expect.any(Number),
+      rotationDeg: expect.any(Number),
+    });
+    expect(project.mosaic).toEqual({
+      rows: expect.any(Number),
+      columns: expect.any(Number),
+      overlapPct: expect.any(Number),
+    });
   });
 
   it('X-NPM-Engine-Version mit anderer Major-Version → 409 engine.incompatible', async () => {

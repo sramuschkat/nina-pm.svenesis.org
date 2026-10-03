@@ -247,6 +247,11 @@ export class TestWorld {
           version: this.state.targetsVersion,
           name: `Test ${key}`,
           status: this.state.pausedProjects.has(id) ? 'on_hold' : 'active',
+          center: {
+            raDeg: (panels[0] as Json).raDeg,
+            decDeg: (panels[0] as Json).decDeg,
+            rotationDeg: (panels[0] as Json).rotationDeg,
+          },
           panels,
           target: { ...(base.target as Json), name: `Test ${key}` },
         };

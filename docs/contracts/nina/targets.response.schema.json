@@ -178,6 +178,31 @@
                       "twilight"
                     ]
                   },
+                  "center": {
+                    "type": "object",
+                    "properties": {
+                      "raDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMaximum": 360
+                      },
+                      "decDeg": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "rotationDeg": {
+                        "type": "number",
+                        "minimum": -360,
+                        "maximum": 360
+                      }
+                    },
+                    "required": [
+                      "raDeg",
+                      "decDeg",
+                      "rotationDeg"
+                    ]
+                  },
                   "type": {
                     "type": "string",
                     "const": "deep_sky"
@@ -644,6 +669,31 @@
                       "minAltitudeDeg",
                       "minTimeOnTargetH",
                       "twilight"
+                    ]
+                  },
+                  "center": {
+                    "type": "object",
+                    "properties": {
+                      "raDeg": {
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMaximum": 360
+                      },
+                      "decDeg": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "rotationDeg": {
+                        "type": "number",
+                        "minimum": -360,
+                        "maximum": 360
+                      }
+                    },
+                    "required": [
+                      "raDeg",
+                      "decDeg",
+                      "rotationDeg"
                     ]
                   },
                   "type": {
