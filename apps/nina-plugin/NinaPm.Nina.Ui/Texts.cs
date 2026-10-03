@@ -92,6 +92,7 @@ public static class Texts
     public static string TestBanner => T("Testbetrieb – Sicherheitsprüfungen aus", "Test mode – safety checks off");
     public static string LiveWaiting => T("Warten", "Waiting");
     public static string LiveRunning => T("Läuft", "Running");
+    public static string LivePaused => T("Pausiert – unsicher", "Paused – unsafe");
     public static string LiveBlocked => T("Gesperrt", "Blocked");
     public static string LiveFinished => T("Beendet", "Finished");
     public static string LiveOffline => T("Offline-Modus", "Offline mode");

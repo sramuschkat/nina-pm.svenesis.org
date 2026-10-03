@@ -194,7 +194,7 @@ public sealed class NightRunner(
         var stored = night is null ? null : PlanStore.Load(store, night);
         var blocked = Loop.Blocked ?? (Loop.PlanFailed ? NinaHeartbeatBlockedReason.Plan_failed : null);
         return LiveStatusBuilder.Build(new LiveInputs(stored?.Plan, DoneBlocks(stored), runningBlock, Executor?.CurrentEntry, Targets,
-            blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap));
+            blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap, SafetyPaused: interrupted));
     }
 
     /// <summary>Quittierte Heartbeat-Kommandos für den nächsten Heartbeat (und vergessen).</summary>

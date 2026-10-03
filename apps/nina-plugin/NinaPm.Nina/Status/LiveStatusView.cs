@@ -21,6 +21,7 @@ public sealed class LiveStatusView(LiveStatus s)
     public string StateText => Status.State switch
     {
         LiveState.Running => Texts.LiveRunning,
+        LiveState.Paused => Texts.LivePaused,
         LiveState.Blocked => Texts.LiveBlocked,
         LiveState.Finished => Texts.LiveFinished,
         _ => Texts.LiveWaiting,
