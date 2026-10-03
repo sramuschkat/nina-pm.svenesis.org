@@ -123,6 +123,7 @@ Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Gro�
 | `atUtc`, `untilUtc` | Zeitpunkte in `…Z` | beliebig |
 | `code` | Unterfall aus `enums.json`/`errors.json`; bei `API status=0` (keine HTTP-Antwort) `network` oder `timeout` | `WARNING`, `ERROR`, `API` |
 | `night` | Nacht-Schlüssel `JJJJ-MM-TT` | `PLAN` (P-29) |
+| `checks` | Prüfcodes des `SequenceInspector`, durch Komma getrennt (AP-16h, `execution.md` §1) | `WARNING code=sequence_template_deviation` |
 
   Feste Schreibweisen: **`READOUT mode=set name="High Gain Mode" index=0`** (nicht `READOUT set …`) und **`CAPTURE id=… result=saved file="…"`** für die Zuordnung nach `ImageSaved` (es gibt kein Ereignis `ImageSaved` in der Grammatik).
 

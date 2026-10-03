@@ -24,6 +24,9 @@ public sealed class NinaPmResources : ResourceDictionary
         ["NinaPm.SafetyWait"] = typeof(SafetyWaitInstruction),
         ["NinaPm.BeforeExposureTrigger"] = typeof(BeforeExposureTrigger),
         ["NinaPm.AfterExposureTrigger"] = typeof(AfterExposureTrigger),
+        ["NinaPm.BeforeTargetChangeTrigger"] = typeof(BeforeTargetChangeTrigger),
+        ["NinaPm.AfterTargetChangeTrigger"] = typeof(AfterTargetChangeTrigger),
+        ["NinaPm.RefreshTargets"] = typeof(RefreshTargetsInstruction),
     };
 
     public NinaPmResources()

@@ -476,6 +476,19 @@ public sealed class NightRunner(
     }
 
     /// <summary>
+    /// Anweisung <em>NINA-PM Ziele aktualisieren</em> (FA-NIN-08, AP-16h): Bootstrap neu laden und <c>GET /targets</c>
+    /// in den Cache, z. B. am Sequenzbeginn. Offline-Modus: kein Abruf, der Cache bleibt (§6). Fehler bleiben
+    /// Logzeilen (<c>API</c>), der Cache gilt weiter; der Planaufbau entscheidet wie sonst (§8).
+    /// </summary>
+    public async Task<TargetsRefresh> RefreshAsync(CancellationToken token)
+    {
+        if (!offlineMode) bootstrapReload = true;
+        await EnsureBootstrapAsync(token).ConfigureAwait(false);
+        var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
+        return new TargetsRefresh(Targets?.Projects.Count ?? 0, etag, offlineMode);
+    }
+
+    /// <summary>
     /// <c>GET /targets</c> mit dem ETag des Caches (execution.md §3.1, NT-19); neue Ziele landen in <c>cache.targets</c>.
     /// Ohne Verbindung bleibt der Cache, der Planaufbau entscheidet dann über offline (§8).
     /// </summary>
@@ -771,11 +784,11 @@ public sealed class NightRunner(
     }
 
     /// <summary>Ereignis melden (<c>sessionEventKinds</c>; bei <c>warning</c> ein Code aus <c>pluginWarningCodes</c>).</summary>
-    public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null)
+    public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null, IDictionary<string, object>? data = null)
     {
         if (SessionId is not { } session) return;
         var planId = ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
-        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId };
+        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId, Data = data };
         store.EnqueueOutbox(OutboxKinds.Event, JsonConvert.SerializeObject(e, NinaJson.Settings()), session, planId);
     }
 
@@ -1023,3 +1036,6 @@ public sealed class NightRunner(
         return JsonConvert.DeserializeObject<NinaBootstrap>(cached.Value, NinaJson.Settings());
     }
 }
+
+/// <summary>Ergebnis von <see cref="NightRunner.RefreshAsync"/>: Ziele im Cache, ETag, Offline-Modus.</summary>
+public sealed record TargetsRefresh(int Projects, string? Etag, bool Offline);

@@ -1,6 +1,7 @@
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Reporting;
+using NinaPm.Core.Sequence;
 using NinaPm.Core.Time;
 
 namespace NinaPm.Core.Execution;
@@ -62,6 +63,40 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
             Warn("mount_site_mismatch");
         if (f.RotatorRangeQuarter && b.Rig.Rotator.Present) Warn("rotator_range_quarter");
         if (!f.FlipTriggerPresent && b.Rig.Scheduler.MeridianFlip.Enabled) Warn("sequence_template_deviation", "MeridianFlipTrigger");
+    }
+
+    /// <summary>
+    /// Sequenzvorlage beim Planaufbau (execution.md §1, NT-44, AP-16h): Abweichungen aus dem <see cref="SequenceInspector"/>
+    /// einmal je Nacht als <c>warning sequence_template_deviation checks=…</c> (Ereignis mit <c>data.checks[]</c>) und den Hinweisen als Notiz; Safety-Bedingungen
+    /// ohne verbundenen Safety-Monitor → <c>warning safety_monitor_not_connected</c> 1×/12 h. <c>Autofokus nach Zeit</c> wird
+    /// gegen <c>afEveryMin</c> des Rigs geprüft (M7), <c>flip_trigger_missing</c> nur bei eingeschaltetem Flip im Rig.
+    /// Ohne Sequenz (<paramref name="root"/> <c>null</c>) oder ohne Bootstrap keine Prüfung. Liefert die Abweichungen für
+    /// die Optionsseite.
+    /// </summary>
+    public IReadOnlyList<TemplateDeviation> CheckSequence(SeqNode? root, bool safetyMonitorConnected)
+    {
+        var r = runner();
+        if (root is null || r?.Bootstrap is not { } b) return [];
+        var now = clock.UtcNow;
+        var every = b.Rig.Scheduler.Overhead.AfEveryMin;
+        var deviations = SequenceInspector.Inspect(root, every > 0 ? every : null)
+            .Where(d => d.Check != "flip_trigger_missing" || b.Rig.Scheduler.MeridianFlip.Enabled)
+            .Where(d => d.Check is not ("af_time_trigger_missing" or "af_time_mismatch") || every > 0)
+            .ToList();
+        if (deviations.Count > 0 && hints.ShouldEmit("sequence_template_deviation", now))
+        {
+            var checks = string.Join(",", deviations.Select(d => d.Check));
+            log()?.Warning("WARNING", ("code", "sequence_template_deviation"), ("checks", checks));
+            foreach (var d in deviations) log()?.Note($"Sequenzvorlage: {d.Hint}");
+            r.ReportEvent(EventsKind.Warning, "sequence_template_deviation", message: checks,
+                data: new Dictionary<string, object> { ["checks"] = deviations.Select(d => d.Check).ToList() });
+        }
+        if (SequenceInspector.UsesSafety(root) && !safetyMonitorConnected && hints.ShouldEmit("safety_monitor_not_connected", now))
+        {
+            log()?.Warning("WARNING", ("code", "safety_monitor_not_connected"));
+            r.ReportEvent(EventsKind.Warning, "safety_monitor_not_connected");
+        }
+        return deviations;
     }
 
     /// <summary>Filter des Eintrags im Profil (§4.4); nicht gefunden → <c>FILTER_NOT_FOUND</c> höchstens 1×/12 h je Filter.</summary>

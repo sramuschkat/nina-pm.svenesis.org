@@ -102,4 +102,73 @@
     <DataTemplate x:Key="NinaPm.Nina.Sequencer.AfterExposureTrigger_Mini">
         <mini:MiniSequenceItem />
     </DataTemplate>
+
+    <!-- Trigger-Sets vor/nach Zielwechsel (FA-NIN-16), Box wie oben. -->
+    <DataTemplate x:Key="NinaPm.BeforeTargetChangeTrigger">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <StackPanel Margin="0,2" Orientation="Vertical">
+                    <TextBlock Margin="0,0,0,4" Opacity="0.6" FontStyle="Italic" Text="{x:Static ui:Texts.BeforeTargetChangeHint}" />
+                    <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid Background="{StaticResource BackgroundBrush}" DataContext="{Binding TriggerRunner}">
+                            <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
+                                       Text="{x:Static ui:Texts.DropInstructionsHint}"
+                                       Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                            <i:Interaction.Behaviors>
+                                <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
+                                <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />
+                            </i:Interaction.Behaviors>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.BeforeTargetChangeTrigger_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.AfterTargetChangeTrigger">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <StackPanel Margin="0,2" Orientation="Vertical">
+                    <TextBlock Margin="0,0,0,4" Opacity="0.6" FontStyle="Italic" Text="{x:Static ui:Texts.AfterTargetChangeHint}" />
+                    <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <Grid Background="{StaticResource BackgroundBrush}" DataContext="{Binding TriggerRunner}">
+                            <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
+                                       Text="{x:Static ui:Texts.DropInstructionsHint}"
+                                       Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                            <i:Interaction.Behaviors>
+                                <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
+                                <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />
+                            </i:Interaction.Behaviors>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.AfterTargetChangeTrigger_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
+
+    <!-- Ziele aktualisieren (FA-NIN-08). -->
+    <DataTemplate x:Key="NinaPm.RefreshTargets">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <TextBlock VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.RefreshTargetsHint}" />
+            </view:SequenceBlockView.SequenceItemContent>
+            <view:SequenceBlockView.SequenceItemProgressContent>
+                <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" />
+            </view:SequenceBlockView.SequenceItemProgressContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.RefreshTargetsInstruction_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
 </ResourceDictionary>

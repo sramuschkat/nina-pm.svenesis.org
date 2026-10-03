@@ -1,0 +1,9 @@
+### AP-16h (Teil 1) – Plugin: SequenceInspector, Trigger-Sets Zielwechsel, Ziele aktualisieren, Dreifachsperre
+
+Anforderungen: FA-NIN-08, FA-NIN-16, FA-NIN-25, FA-NIN-26; execution.md §1 (NT-44, H2, H3, M7), §9 (NIN-17)
+
+- **SequenceInspector (`NinaPm.Core/Sequence`):** prüft beim Planaufbau die laufende NINA-Sequenz gegen die Sequenzvorlage – Start-Bereich mit Reihenfolge (Warten → Unpark → Kühlen/Autofokus), „Ziel“ mit Nachtschleife und *Loop While Safe*, Wiederherstellung am Anfang, „Blöcke“ mit *NINA-PM-Anweisungen*, Trigger *Meridian Flip* und *Autofokus nach Zeit* (`Amount = afEveryMin`), kein Dither-Trigger, Sicherung mit *Loop While Unsafe* + Nachtschleife und *NINA-PM Warten bis sicher oder Nachtende* als letzter Anweisung, Ende-Bereich. Abweichungen als Hinweis, 1×/12 h `WARNING code=sequence_template_deviation checks=…` mit Ereignis `data.checks[]`; Safety-Bedingungen ohne verbundenen Monitor → `safety_monitor_not_connected`. Log-Schlüssel `checks` ergänzt.
+- **Beispielsequenzen** „Eine Nacht mit/ohne Safety“ auf die Vorlage mit „Blöcke“ gebracht (kein *Unpark Scope* mehr hinter der Warte-Anweisung); der Tabellentest prüft, dass beide keinen Hinweis ergeben. In NINA beim nächsten VM-Termin laden und neu speichern.
+- **Trigger-Sets *NINA-PM vor/nach Zielwechsel*** (FA-NIN-16): je Block nach Slew/Zentrieren vor dem Guiding bzw. nach dem Block, aus allen Vorfahren einschließlich der globalen Trigger; *Center*, *Center and Rotate* und *Slew to Ra/Dec* in allen vier Trigger-Sets erhalten die Koordinaten des aktuellen Ziels.
+- **Anweisung *NINA-PM Ziele aktualisieren*** (FA-NIN-08): lädt Bootstrap und Ziele in den Cache; im Offline-Modus kein Abruf.
+- **Dreifachsperre des Testbetriebs** als Kern-Regel mit Tabellentest: nur Schalter + lokale URL + `X-NPM-Test: 1` schalten die Prüfungen ab.

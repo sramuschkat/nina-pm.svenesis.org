@@ -70,6 +70,7 @@ export const KEYS: ReadonlySet<string> = new Set([
   'untilUtc',
   'code',
   'night',
+  'checks',
 ]);
 
 const ENUMS = fileURLToPath(new URL('../../../docs/contracts/enums.json', import.meta.url));

@@ -21,6 +21,19 @@ public sealed class OptionsTests
     public void Lokale_Gegenstelle(string url, bool local) =>
         Assert.Equal(local, new PluginOptions { ServerUrl = url }.IsLocalServer);
 
+    /// <summary>Dreifachsperre (execution.md §9, NIN-17, AP-16h): nur alle drei Bedingungen schalten die Prüfungen ab.</summary>
+    [Theory]
+    [InlineData(true, "http://localhost:8787/api", true, true)]
+    [InlineData(false, "http://localhost:8787/api", true, false)]
+    [InlineData(true, "https://nina-pm.svenesis.org/api", true, false)]
+    [InlineData(true, "http://192.168.64.1:8787/api", false, false)]
+    [InlineData(false, "https://nina-pm.svenesis.org/api", true, false)]
+    [InlineData(false, "http://localhost:8787/api", false, false)]
+    [InlineData(true, "https://nina-pm.svenesis.org/api", false, false)]
+    [InlineData(false, "https://nina-pm.svenesis.org/api", false, false)]
+    public void Testbetrieb_nur_mit_Schalter_lokaler_URL_und_Test_Header(bool testMode, string url, bool testHeader, bool off) =>
+        Assert.Equal(off, new PluginOptions { TestMode = testMode, ServerUrl = url }.SafetyChecksOff(testHeader));
+
     [Theory]
     [InlineData("https://nina-pm.svenesis.org/api", "https://nina-pm.svenesis.org")]
     [InlineData("https://nina-pm.svenesis.org/api/", "https://nina-pm.svenesis.org")]
