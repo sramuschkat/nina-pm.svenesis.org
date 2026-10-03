@@ -10,7 +10,7 @@
   "steps": [],
   "checks": [
     {
-      "name": "Flip beim Eintrag meridian_flip, erkannt über die Pier-Seite (west → east) mit Dauer",
+      "name": "Flip beim Eintrag meridian_flip, erkannt über die Pier-Seite (west → east) mit Dauer; Ereignis flip mit durationS (FA-NIN-24)",
       "asserts": [
         {
           "log": {
@@ -29,6 +29,15 @@
           },
           "min": 0,
           "max": 0
+        },
+        {
+          "report": "events",
+          "where": {
+            "kind": "flip"
+          },
+          "whereExists": ["durationS"],
+          "min": 1,
+          "max": 1
         }
       ]
     },

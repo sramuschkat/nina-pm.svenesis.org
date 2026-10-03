@@ -47,7 +47,7 @@ public sealed record BlockRunOptions(
     FlipSettings? Flip = null,
     RotationSettings? Rotation = null,
     PlaybackMode? Mode = null,
-    Action<EventsKind, string?, Blocks>? Report = null,
+    Action<EventsKind, string?, Blocks, double?>? Report = null,
     Action<Blocks>? FlipDone = null,
     Func<bool>? SkipRequested = null);
 
@@ -230,14 +230,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             {
                 opticsMirroredWarned = true;
                 log.Warning("WARNING", ("code", "optics_mirrored"), ("block", block.Id));
-                run.Options.Report?.Invoke(EventsKind.Warning, "optics_mirrored", block);
+                run.Options.Report?.Invoke(EventsKind.Warning, "optics_mirrored", block, null);
             }
             return new RotationOutcome(false);
         }
         if (reading.PositionAngleDeg is not { } actual)
         {
             log.Event("ROTATION_UNKNOWN", ("id", block.Id));
-            run.Options.Report?.Invoke(EventsKind.Rotation_unknown, null, block);
+            run.Options.Report?.Invoke(EventsKind.Rotation_unknown, null, block, null);
             return new RotationOutcome(false);
         }
         if (Rotation.WithinTolerance(actual, block.RotationDeg, r.ToleranceDeg))
@@ -247,7 +247,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         }
         mismatchTarget = (block.ProjectId, block.PanelId);
         log.Event("ROTATION_MISMATCH", ("id", block.Id));
-        run.Options.Report?.Invoke(EventsKind.Rotation_mismatch, null, block);
+        run.Options.Report?.Invoke(EventsKind.Rotation_mismatch, null, block, null);
         return new RotationOutcome(r.SkipOnMismatch && !host.RotatorConnected);
     }
 
@@ -332,7 +332,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         run.Flipped = true;
         run.RecenterPending = true;
         log.Event("FLIP", ("id", run.Block.Id), ("pierBefore", before), ("pierAfter", after), ("durationS", durationS));
-        run.Options.Report?.Invoke(EventsKind.Flip, null, run.Block);
+        run.Options.Report?.Invoke(EventsKind.Flip, null, run.Block, durationS); // mit Dauer (FA-NIN-24)
         run.Options.FlipDone?.Invoke(run.Block);
     }
 
@@ -385,7 +385,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             default:
                 // NINA hat nicht (erkennbar) geflippt: Plan-Flip bleibt offen (flipDoneByPanel unverändert, NIN5-1).
                 log.Event("FLIP_UNDETECTED", ("id", block.Id));
-                run.Options.Report?.Invoke(EventsKind.Flip_undetected, null, block);
+                run.Options.Report?.Invoke(EventsKind.Flip_undetected, null, block, null);
                 break;
         }
         // Verzug: Warten auf die früheste Flipzeit und der Flip selbst gegen die geplante Flipdauer (§4.2).
