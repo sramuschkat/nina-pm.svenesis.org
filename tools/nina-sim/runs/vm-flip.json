@@ -152,6 +152,34 @@
           "max": 0
         }
       ]
+    },
+    {
+      "name": "Sequenzvorlage geprüft (AP-16h): Beispielsequenz mit deaktiviertem Warten und Autofokus ergibt genau diese Hinweise, einmal",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "sequence_template_deviation",
+              "checks": "start_wait_missing,start_autofocus_missing"
+            }
+          },
+          "min": 1,
+          "max": 1,
+          "vmOnly": true
+        },
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "safety_monitor_not_connected"
+            }
+          },
+          "min": 0,
+          "max": 0,
+          "vmOnly": true
+        }
+      ]
     }
   ]
 }

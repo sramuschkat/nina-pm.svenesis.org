@@ -95,6 +95,14 @@ NINA-Profil → Meridian-Flip (wie das Test-Rig): **Minuten nach Meridian 1**, *
 
 Keine Handgriffe während des Laufs. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`.
 
+### VM-Termin AP-16h (≈ 40 min): Beispielsequenz in NINA, `vm-flip`
+Nur was echtes NINA braucht. Live-Status und Optionsseite mit Zielbrowser prüfen die Render-Tests der Windows-CI (`RenderTests`, Artefakt `nina-pm-render`, kein Binding-Fehler), die Beispielsequenzen der Typ-Test `SampleSequenceTests`. P-11 (Framing-Assistent mit echten Zielen) folgt in der Plugin-Nacht P-05 gegen prod, die ohnehin mit dem Test-Mandanten läuft.
+
+1. **Beispielsequenz (≈ 2 min):** `one-night-safety.json` aus `apps/nina-plugin/NinaPm.Nina/Samples/` in NINA laden – lädt sie ohne Fehler, ist der Skript-Umbau aus AP-16h bestätigt. Optional unverändert unter demselben Namen speichern und auf den Mac legen (ersetzt die Skriptfassung). Dann *Wait if Sun Altitude* und *Run Autofocus* im Start-Bereich deaktivieren (Rechtsklick → *Disable*) und als `vm-test.json` speichern. **Kein** globaler Dither-Trigger.
+2. **`vm-flip` mit `vm-test.json` (≈ 35 min):** Geräte, Profil und Zeitplan wie im Abschnitt `vm-flip`, vorher `ninapm.db` löschen, keine Handgriffe. Optional bei Minute 3–7 ein Screenshot des aufgeklappten Containers (Banner, *Läuft*, „Heutige Ziele“).
+
+Erwartet zusätzlich (vmOnly in `tools/nina-sim/runs/vm-flip.json`): genau einmal `WARNING code=sequence_template_deviation checks=start_wait_missing,start_autofocus_missing`, kein `safety_monitor_not_connected`. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`. Ergebnis unter `docs/test-runs/<Datum>/vm-flip/`.
+
 ## Log-Grammatik
 Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Großbuchstaben, Werte ohne Leerzeichen oder in `"…"`), z. B. `NINA-PM | CAPTURE id=0192… result=saved file="NGC 281_Ha_0023.fits"`.
 
