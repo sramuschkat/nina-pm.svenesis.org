@@ -15,7 +15,7 @@ namespace NinaPm.Nina.Sequencer;
 /// </summary>
 [ExportMetadata("Name", "NINA-PM Night Loop")]
 [ExportMetadata("Description", "True while the NINA-PM night is running; false after the night end (then NINA runs the end area).")]
-[ExportMetadata("Icon", "LoopSVG")]
+[ExportMetadata("Icon", "NinaPmSVG")]
 [ExportMetadata("Category", "NINA-PM")]
 [Export(typeof(ISequenceCondition))]
 [JsonObject(MemberSerialization.OptIn)]

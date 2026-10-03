@@ -18,6 +18,7 @@ describe('nina-pm-viewer-request', () => {
     ['/index.html', '/index.html'],
     ['/assets/abc/app.js', '/assets/abc/app.js'],
     ['/favicon.ico', '/favicon.ico'],
+    ['/nina-plugin-logo.png', '/nina-plugin-logo.png'],
     ['/api/health', '/api/health'],
     ['/api/web/v1/projects', '/api/web/v1/projects'],
     ['/catalog/img/m31', '/catalog/img/m31'],

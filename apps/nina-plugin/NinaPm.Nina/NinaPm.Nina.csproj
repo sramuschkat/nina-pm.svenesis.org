@@ -55,6 +55,8 @@
     <AssemblyMetadata Include="License" Value="Proprietary" />
     <AssemblyMetadata Include="Homepage" Value="https://nina-pm.svenesis.org" />
     <AssemblyMetadata Include="Repository" Value="https://github.com/sramuschkat/nina-pm.svenesis.org" />
+    <!-- Logo in NINAs Plugin-Liste: aus apps/web/public, ausgeliefert mit der Web-App (nie www.svenesis.org, Regel 6). -->
+    <AssemblyMetadata Include="FeaturedImageURL" Value="https://nina-pm.svenesis.org/nina-plugin-logo.png" />
     <!-- TK 10.5: NINA lädt das Plugin nicht in einer älteren Version. -->
     <AssemblyMetadata Include="MinimumApplicationVersion" Value="$(NinaVersion)" />
   </ItemGroup>

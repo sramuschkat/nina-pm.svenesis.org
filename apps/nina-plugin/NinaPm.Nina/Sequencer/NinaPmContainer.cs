@@ -29,7 +29,7 @@ namespace NinaPm.Nina.Sequencer;
 /// </summary>
 [ExportMetadata("Name", "NINA-PM Instructions")]
 [ExportMetadata("Description", "Runs the NINA-PM night plan: one block per call (plan, slew/center, exposures, night end).")]
-[ExportMetadata("Icon", "SequentialSVG")]
+[ExportMetadata("Icon", "NinaPmSVG")]
 [ExportMetadata("Category", "NINA-PM")]
 [Export(typeof(ISequenceItem))]
 [Export(typeof(ISequenceContainer))]

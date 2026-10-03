@@ -33,6 +33,8 @@ public sealed class ManifestTests
         Assert.False(string.IsNullOrWhiteSpace(Plugin.GetCustomAttribute<AssemblyDescriptionAttribute>()?.Description));
         Assert.Matches(@"^3\.\d+\.\d+\.\d+$", Meta("MinimumApplicationVersion"));
         Assert.DoesNotContain("Astro PM", Meta("Description") ?? "", StringComparison.OrdinalIgnoreCase);
+        // Logo aus der Web-App (apps/web/public/nina-plugin-logo.png), nie von www.svenesis.org (Regel 6).
+        Assert.Equal("https://nina-pm.svenesis.org/nina-plugin-logo.png", Meta("FeaturedImageURL"));
     }
 
     [Fact]

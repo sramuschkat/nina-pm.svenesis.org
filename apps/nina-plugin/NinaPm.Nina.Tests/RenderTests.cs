@@ -101,6 +101,30 @@ public sealed class RenderTests
         OutboxPending: 4, DeadLetters: 1, Offline: false, TestBanner: banner);
 
     [Fact]
+    public void Eigenes_Symbol_wird_aufgeloest_und_gerendert() => Sta.Run(() =>
+    {
+        // NINA sucht ExportMetadata("Icon") als Ressourcenschlüssel; fehlt er, bleibt das Symbol leer.
+        var resources = new NinaPmResources();
+        var keys = typeof(NinaPmResources).Assembly.GetTypes()
+            .SelectMany(t => t.GetCustomAttributes(typeof(System.ComponentModel.Composition.ExportMetadataAttribute), false))
+            .Cast<System.ComponentModel.Composition.ExportMetadataAttribute>()
+            .Where(a => a.Name == "Icon" && ((string)a.Value!).StartsWith("NinaPm", StringComparison.Ordinal))
+            .Select(a => (string)a.Value!)
+            .Distinct()
+            .ToList();
+        Assert.Equal(["NinaPmSVG"], keys);
+        var geometry = Assert.IsAssignableFrom<Geometry>(resources["NinaPmSVG"]);
+        Assert.Equal(new Rect(1, 1, 30, 30), geometry.Bounds);
+        var template = new DataTemplate { VisualTree = new FrameworkElementFactory(typeof(System.Windows.Shapes.Path)) };
+        template.VisualTree.SetValue(System.Windows.Shapes.Path.DataProperty, geometry);
+        template.VisualTree.SetValue(System.Windows.Shapes.Path.FillProperty, Brushes.DimGray);
+        template.VisualTree.SetValue(System.Windows.Shapes.Path.StretchProperty, Stretch.Uniform);
+        template.VisualTree.SetValue(FrameworkElement.WidthProperty, 64.0);
+        template.VisualTree.SetValue(FrameworkElement.HeightProperty, 64.0);
+        Assert.Empty(Render(new object(), template, 80, "nina-pm-icon.png"));
+    });
+
+    [Fact]
     public void Live_Status_rendert_ohne_Binding_Fehler() => Sta.Run(() =>
     {
         var resources = new NinaPmResources();
