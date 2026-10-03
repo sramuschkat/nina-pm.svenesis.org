@@ -26,6 +26,8 @@
   <ItemGroup>
     <AdditionalFiles Include="../BannedSymbols.txt" />
     <InternalsVisibleTo Include="NinaPm.Core.Tests" />
+    <!-- Bildpipeline-Test des Adapters setzt den ausgeführten Plan (NightRunner.ExecutingPlan). -->
+    <InternalsVisibleTo Include="NinaPm.Nina.Tests" />
   </ItemGroup>
 
   <!--

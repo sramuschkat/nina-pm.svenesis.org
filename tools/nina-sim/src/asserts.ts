@@ -12,6 +12,8 @@ export interface Sel {
 /** Gemeinsam: `part` = nur dieser Teil des Laufs (ab 1; Log ohne Angabe alle Teile, Report ohne Angabe Teil 1). */
 interface Part {
   readonly part?: number;
+  /** Nur gegen echtes NINA prüfen (VM-Kurzlauf); im kopflosen Lauf übersprungen. */
+  readonly vmOnly?: boolean;
 }
 
 export type Assert = Part &
@@ -28,6 +30,8 @@ export type Assert = Part &
     | {
         readonly report: string;
         readonly where?: Readonly<Record<string, unknown>>;
+        /** Nur Einträge, bei denen diese Punktpfade einen Wert haben. */
+        readonly whereExists?: readonly string[];
         readonly min?: number;
         readonly max?: number;
         readonly equals?: unknown;
@@ -126,12 +130,16 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
       text: `Report ${a.report} = ${JSON.stringify(value)} (erwartet ${JSON.stringify(a.equals)})`,
     };
   const list = Array.isArray(value) ? value : [];
-  const n = list.filter((x) =>
-    Object.entries(a.where ?? {}).every(([k, v]) => JSON.stringify(at(x, k)) === JSON.stringify(v)),
+  const n = list.filter(
+    (x) =>
+      Object.entries(a.where ?? {}).every(
+        ([k, v]) => JSON.stringify(at(x, k)) === JSON.stringify(v),
+      ) && (a.whereExists ?? []).every((k) => at(x, k) !== undefined && at(x, k) !== null),
   ).length;
-  const where = Object.entries(a.where ?? {})
-    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
-    .join(' ');
+  const where = [
+    ...Object.entries(a.where ?? {}).map(([k, v]) => `${k}=${JSON.stringify(v)}`),
+    ...(a.whereExists ?? []).map((k) => `${k}≠null`),
+  ].join(' ');
   return {
     ok: range(n, a.min, a.max),
     text: `Report ${a.report}${where ? ` [${where}]` : ''}: ${String(n)} (erwartet ${rangeText(a.min, a.max)})`,

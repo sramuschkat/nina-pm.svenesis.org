@@ -7,7 +7,7 @@ Claude Code wertet `result.json` und das Log maschinell aus (`pnpm test-run:chec
 
 ## Testbetrieb tagsüber: `tools/nina-test-server`
 NINA-Simulatoren haben keine Simulatoruhr. Deshalb läuft das Plugin gegen einen lokalen Test-Server statt gegen prod:
-1. `pnpm nina-test-server --scenario <name>` auf dem Windows-Rechner starten (Port 8787); Szenarien liegen unter `tools/nina-test-server/scenarios/` (`one-night`, `replan`, `replan-transit`, `transit`, `flip`, `delay`, `night-end`, `flats`, `multi-night`, `lease`, `mosaic-flip`, `transit-flip`, `current-night`, `safety`, `filters-readout`).
+1. `pnpm nina-test-server --scenario <name>` auf dem Windows-Rechner starten (Port 8787); Szenarien liegen unter `tools/nina-test-server/scenarios/` (`one-night`, `replan`, `replan-transit`, `transit`, `flip`, `delay`, `night-end`, `flats`, `multi-night`, `lease`, `mosaic-flip`, `transit-flip`, `current-night`, `safety`, `filters-readout`, `vm-smoke`).
 2. Im Plugin Server-URL `http://localhost:8787/api` und Token `npm_test` eintragen. Läuft der Server auf einem anderen Rechner im lokalen Netz (z. B. dem Mac neben der Windows-VM), dann `http://<IP dieses Rechners>:8787/api` – nur Adressen aus 10/8, 172.16/12 und 192.168/16 gelten als lokal (die Firewall des Rechners muss Port 8787 für Node zulassen); P-29 und P-36 brauchen den Server auf dem Windows-Rechner selbst. Der Server lauscht nur auf Anfragen des Plugins; das Rig selbst braucht nie eingehende Verbindungen.
 3. Der Server erzeugt Blöcke ab `jetzt + 2 min`, für Flip-Tests ein Ziel mit `RA_J2000 = LST + n min − (α_app − α_J2000)` (NT-35: der Meridian gilt für die scheinbare RA; ohne die Korrektur liegt der Flip 2026 um gut 1 min daneben, polnah deutlich mehr), Transitfenster ab `jetzt + 10 min`. Ausnahme Szenario `current-night`: es liefert die echte Nachttabelle des Standorts Starfront (`America/Chicago`, `bootstrap.nights[]`, `timeZoneTransitions`) und prüft den `night`-Wert in `POST /plan`/`POST /sessions` (sonst `422 nina.night_invalid`). Änderungen zur Laufzeit über `POST /test/actions {action}` (oder die Szenario-Zeitleiste):
 
@@ -37,6 +37,24 @@ Die Ablauflogik eines Protokolls prüft zuerst der kopflose Nachtlauf – ohne N
 3. Ergebnis je Lauf unter `.sim-runs/P-xx/` (bzw. `--out`): `nina.log`, `report.json`, `result.json` mit `ok`/`note` je Schritt aus den Prüfungen; danach `test-run:check` wie bei einem VM-Lauf. `pnpm plugin:sim P-17` fährt einen Lauf, ohne Angabe alle.
 
 Abgedeckt: P-05, P-06, P-10, P-15, P-17, P-19, P-22, P-25, P-32, P-34. **Nicht** abgedeckt – bleibt beim Windows-Sequenztest bzw. beim VM-Kurzlauf: NINAs Sequencer (Trigger-Walk, `TRIGGER_SUPPRESSED`, P-28), echtes `ImageSaved` mit Messwerten, Profil- und Geräteeinstellungen, Park/Home, Plattensolve und Flip.
+
+## VM-Kurzlauf `vm-smoke` (≈ 25 min, ersetzt die Einzelläufe auf der VM)
+Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Abbruch, Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.
+
+Vorbereitung (einmal): Plugin aus dem `plugin`-Lauf auf `main` installieren; NINA-Profil-Filterrad wie `tools/nina-test-server/rig.json` (`LUMINANCE`, `RED`, `GREEN`, `BLUE`, `HA`, `SII`, `OIII`); Sequenz „Eine Nacht mit Safety“ nach der Vorlage (Start mit *Unpark*, Ziel mit *Loop While Safe* und *Nachtschleife*, darin *Set Tracking*/*Unpark* vor „Blöcke“, Sicherung mit Park und *Warten bis sicher oder Nachtende*, Ende mit Park); **globaler Trigger „Dither after Exposures“** (Amount 1); Kamera-Simulator mit Kühlung an, Sollwert −10 °C; OmniSim-Safety-Monitor verbunden und sicher; Plugin-Optionen Testbetrieb an, Server-URL `http://<Mac-IP>:8787/api`, Token `npm_test`.
+
+| Minute nach Serverstart | Wer | Was |
+|---|---|---|
+| 0 | Mac | `pnpm nina-test-server --scenario vm-smoke --host 0.0.0.0` |
+| ≤ 1 | VM | Sequenz starten (Block 1 beginnt bei Minute 2) |
+| 5 | VM | Kamera-Sollwert auf **0 °C** stellen (bis zum Ende so lassen) |
+| 13 | VM | Safety-Monitor **unsicher** (OmniSim) – am besten kurz nach Beginn einer Belichtung |
+| 15 | VM | Safety-Monitor wieder **sicher** |
+| ≈ 22 | – | Nachtende (Minute 21): Session abgeschlossen, Ende-Bereich parkt |
+| 24 | Mac | `mkdir -p /tmp/vm && curl -s http://localhost:8787/test/report > /tmp/vm/report.json`, danach Server beenden |
+| 24 | VM → Mac | NINA-Log der Sitzung als `/tmp/vm/nina.log` ablegen |
+
+Auswertung: `pnpm plugin:sim --vm /tmp/vm` – prüft dieselben benannten Prüfungen wie der kopflose `vm-smoke`-Lauf, zusätzlich die nur mit NINA möglichen (`TRIGGER_SUPPRESSED`), und schreibt `vm-check.txt`. Grün → Abnahme der Pakete, deren Protokolle kopflos grün sind.
 
 ## Log-Grammatik
 Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Großbuchstaben, Werte ohne Leerzeichen oder in `"…"`), z. B. `NINA-PM | CAPTURE id=0192… result=saved file="NGC 281_Ha_0023.fits"`.

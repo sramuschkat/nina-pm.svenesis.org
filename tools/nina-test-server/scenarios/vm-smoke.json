@@ -1,0 +1,25 @@
+{
+  "name": "vm-smoke",
+  "description": "VM-Kurzlauf (≈ 25 min): was nur echtes NINA zeigt – Profil im Heartbeat, ImageSaved mit Messwerten, Dither-Trigger unterdrückt, Kühlung, Safety mit Park/Unpark, Nachtende",
+  "protocols": [],
+  "blocks": [
+    {
+      "durationMin": 8,
+      "filters": ["L", "R", "G"],
+      "exposureS": 30,
+      "project": "m31",
+      "ditherEvery": 3
+    },
+    {
+      "durationMin": 8,
+      "filters": ["Ha"],
+      "exposureS": 30,
+      "project": "ngc7000"
+    }
+  ],
+  "darknessEndInMin": 21,
+  "sessionEndInMin": 26,
+  "flats": {
+    "enabled": false
+  }
+}

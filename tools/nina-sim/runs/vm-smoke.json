@@ -1,0 +1,212 @@
+{
+  "name": "vm-smoke",
+  "scenario": "vm-smoke",
+  "description": "Gleicher Ablauf wie der VM-Kurzlauf; prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
+  "untilMin": 30,
+  "setup": {
+    "ditherTrigger": true
+  },
+  "steps": [
+    {
+      "atMin": 5,
+      "sim": "setpoint",
+      "value": 0
+    },
+    {
+      "atMin": 13.3,
+      "sim": "unsafe"
+    },
+    {
+      "atMin": 15,
+      "sim": "safe"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera)",
+      "asserts": [
+        {
+          "report": "heartbeats.last.filterWheel",
+          "min": 3
+        },
+        {
+          "report": "heartbeats.last.filterWheel.0.position",
+          "equals": 1
+        },
+        {
+          "report": "heartbeats.last.camera.coolerOn",
+          "equals": true
+        }
+      ]
+    },
+    {
+      "name": "Belichtungen gespeichert und gemeldet, Messwerte aus ImageSaved",
+      "asserts": [
+        {
+          "log": {
+            "event": "CAPTURE",
+            "where": {
+              "result": "saved"
+            }
+          },
+          "min": 5
+        },
+        {
+          "report": "captures",
+          "where": {
+            "result": "saved"
+          },
+          "min": 5
+        },
+        {
+          "report": "captures",
+          "whereExists": ["metrics.hfr", "metrics.sensorTempC", "exposureMidUtc"],
+          "min": 3
+        }
+      ]
+    },
+    {
+      "name": "NINAs Dither-Trigger unterdrückt, gedithert nur laut Plan",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "nina_dither_trigger_present"
+            }
+          },
+          "min": 1
+        },
+        {
+          "log": {
+            "event": "TRIGGER_SUPPRESSED"
+          },
+          "min": 1,
+          "vmOnly": true
+        }
+      ]
+    },
+    {
+      "name": "Kühlung abweichend: weiter belichtet, je Block höchstens eine Warnung",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "camera_temperature"
+            }
+          },
+          "min": 1
+        },
+        {
+          "perBlock": {
+            "event": "WARNING",
+            "where": {
+              "code": "camera_temperature"
+            }
+          },
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "temperatureDeviation": true
+          },
+          "min": 1
+        }
+      ]
+    },
+    {
+      "name": "Safety unsicher während der Belichtung: Abbruch, Pause, Wiederaufnahme",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "CAPTURE",
+              "where": {
+                "result": "aborted"
+              }
+            },
+            {
+              "event": "SAFETY_PAUSE"
+            },
+            {
+              "event": "HEARTBEAT",
+              "where": {
+                "state": "paused"
+              }
+            },
+            {
+              "event": "SAFETY_RESUME"
+            },
+            {
+              "event": "PLAN",
+              "where": {
+                "reason": "resume"
+              }
+            }
+          ]
+        },
+        {
+          "none": {
+            "event": "SESSION",
+            "where": {
+              "status": "aborted"
+            }
+          },
+          "after": {
+            "event": "SAFETY_PAUSE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Nachtende: Session abgeschlossen, Outbox leer",
+      "asserts": [
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          "min": 1
+        },
+        {
+          "report": "sessions",
+          "where": {
+            "status": "completed"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          },
+          "min": 1
+        }
+      ]
+    },
+    {
+      "name": "Keine Fehler, keine vom Server abgelehnte Anfrage",
+      "asserts": [
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}
