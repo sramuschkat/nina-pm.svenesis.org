@@ -98,8 +98,31 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// </summary>
     public void PlanBuilt(NinaTargets? targets)
     {
-        var dither = AncestorTriggers().FirstOrDefault(t => t.GetType().Name.Contains("dither", StringComparison.OrdinalIgnoreCase));
+        var triggers = Container is null ? [] : AncestorTriggers().ToList();
+        var dither = triggers.FirstOrDefault(t => t.GetType().Name.Contains("dither", StringComparison.OrdinalIgnoreCase));
         Rules.PlanBuilt(targets, ProfileFilterNames(), dither?.GetType().Name);
+        Rules.CheckSite(SiteFacts(triggers.Any(t => t.GetType().Name == "MeridianFlipTrigger")));
+    }
+
+    /// <summary>
+    /// Fakten für den SiteCheck (AP-16f): PC-Zeitzone jetzt – die einzige erlaubte Stelle für
+    /// <c>TimeZoneInfo.Local</c> (NT-06) –, Standort und Sternzeit-Abweichung der Montierung, Rotator-Bereich.
+    /// </summary>
+    private SiteFacts SiteFacts(bool flipTriggerPresent)
+    {
+#pragma warning disable RS0030 // NT-06: SiteCheck-Hinweis pc_timezone_differs vergleicht die PC-Zone mit der Standortzone.
+        var pcOffset = TimeZoneInfo.Local.GetUtcOffset(clock.UtcNow);
+#pragma warning restore RS0030
+        var t = m.Telescope.GetInfo();
+        double? lstDeltaS = null;
+        if (t.Connected && double.IsFinite(t.SiderealTime))
+        {
+            var deltaH = t.SiderealTime - AstroUtil.GetLocalSiderealTimeNow(t.SiteLongitude);
+            deltaH -= 24 * Math.Round(deltaH / 24);
+            lstDeltaS = deltaH * 3600;
+        }
+        return new SiteFacts(pcOffset, t.Connected ? t.SiteLatitude : null, t.Connected ? t.SiteLongitude : null, lstDeltaS,
+            m.Profile.ActiveProfile.RotatorSettings.RangeType.ToString() == "QUARTER", flipTriggerPresent);
     }
 
     /// <summary>Filternamen des aktiven NINA-Profils in Rad-Reihenfolge (leer ohne Filterrad).</summary>
@@ -183,12 +206,14 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// <summary>
     /// Ein Versuch Slew + Zentrieren über NINAs eigene Anweisungen (Center bzw. Center and Rotate mit
     /// <c>PositionAngle = block.rotationDeg</c>, NT-E4), am Container hängend; NINA meldet Fehlschlag als Ausnahme.
+    /// Nach dem Flip ruft der Kern mit <paramref name="allowRotate"/> = <c>false</c>: nur Center (NT-E4).
     /// </summary>
-    public async Task<CenterResult> SlewCenterAsync(Blocks block, CancellationToken token)
+    public async Task<CenterResult> SlewCenterAsync(Blocks block, bool allowRotate, CancellationToken token)
     {
         var coords = new InputCoordinates(Coordinates(block));
-        var rotate = block.RotationMode == BlocksRotationMode.Rotator && m.Rotator.GetInfo().Connected;
-        if (block.RotationMode == BlocksRotationMode.Rotator && !rotate)
+        var connected = m.Rotator.GetInfo().Connected;
+        var rotate = allowRotate && block.RotationMode == BlocksRotationMode.Rotator && connected;
+        if (block.RotationMode == BlocksRotationMode.Rotator && !connected)
             Runtime?.Log.Warning("WARNING", ("code", "rotator_unavailable"), ("block", block.Id));
         Center item = rotate
             ? new CenterAndRotate(m.Profile, m.Telescope, m.Imaging, m.Rotator, m.FilterWheel, m.Guider, m.Dome, m.DomeFollower,
@@ -328,14 +353,88 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         if (m.Guider.GetInfo().Connected) await m.Guider.Dither(token);
     }
 
-    /// <summary>
-    /// Flip (NT-21, M3): ab <c>atUtc</c> die Vorfahren-Trigger aufrufen – NINAs <em>Meridian Flip</em>-Trigger flippt,
-    /// sobald die früheste Flipzeit erreicht ist. Warten auf die früheste Flipzeit und Erkennung folgen mit AP-16f.
-    /// </summary>
-    public async Task MeridianFlipAsync(Blocks block, Entries entry, CancellationToken token)
+    // ---- IBlockHost: Flip und Rotation (AP-16f, execution.md §4.5) ------------------------------------------
+
+    public bool RotatorConnected => m.Rotator.GetInfo().Connected;
+
+    public bool NinaRecentersAfterFlip => m.Profile.ActiveProfile.MeridianFlipSettings.Recenter;
+
+    /// <summary>Pier-Seite nach fester ASCOM-Zuordnung (NT-34); ohne Montierung <c>null</c>.</summary>
+    public string? PierSide()
     {
-        if (entry.AtUtc > clock.UtcNow) await DelayAsync(entry.AtUtc, token);
-        await TriggerWalker.RunAsync(Box, after: false, previousItem, Box, Progress ?? new Progress<ApplicationStatus>(), Runtime, token);
+        var t = m.Telescope.GetInfo();
+        return t.Connected
+            ? CaptureMapper.PierSide(t.SideOfPier.ToString()) switch
+            {
+                CapturesPierSide.West => "west",
+                CapturesPierSide.East => "east",
+                _ => null,
+            }
+            : null;
+    }
+
+    /// <summary>
+    /// Minuten bis NINAs früheste Flipzeit wie <c>MeridianFlipTrigger.CalculateMinimumTimeRemaining</c>:
+    /// <c>TimeToMeridianFlip − (MaxMinutesAfterMeridian − MinutesAfterMeridian)</c>, mit Pause vor dem Meridian zusätzlich
+    /// <c>− MinutesAfterMeridian − PauseTimeBeforeMeridian</c>. Ohne Montierung <c>null</c>.
+    /// </summary>
+    public double? MinutesToEarliestFlip()
+    {
+        var t = m.Telescope.GetInfo();
+        if (!t.Connected || !double.IsFinite(t.TimeToMeridianFlip)) return null;
+        var s = m.Profile.ActiveProfile.MeridianFlipSettings;
+        var min = TimeSpan.FromHours(t.TimeToMeridianFlip) - TimeSpan.FromMinutes(s.MaxMinutesAfterMeridian - s.MinutesAfterMeridian);
+        if (s.PauseTimeBeforeMeridian != 0)
+            min = min - TimeSpan.FromMinutes(s.MinutesAfterMeridian) - TimeSpan.FromMinutes(s.PauseTimeBeforeMeridian);
+        return min.TotalMinutes;
+    }
+
+    /// <summary>Trigger aller Vorfahren zur Flipzeit (M1): NINAs <em>Meridian Flip</em>-Trigger flippt, Dither unterdrückt.</summary>
+    public Task RunTriggersAsync(CancellationToken token) =>
+        TriggerWalker.RunAsync(Box, after: false, previousItem, Box, Progress ?? new Progress<ApplicationStatus>(), Runtime, token);
+
+    /// <summary>
+    /// Eigenes Plate-Solve (flip-rotation.md §3, NIN-4): Aufnahme und Lösung mit den Plate-Solve-Einstellungen des
+    /// Profils wie NINAs <em>Center</em>, ohne Sync; <c>PositionAngle</c> und <c>Flipped</c> (NT-33). Scheitert es, ist
+    /// der Winkel unbekannt.
+    /// </summary>
+    public async Task<SolveReading> SolveAsync(CancellationToken token)
+    {
+        var profile = m.Profile.ActiveProfile;
+        var ps = profile.PlateSolveSettings;
+        try
+        {
+            var solver = m.PlateSolverFactory.GetCaptureSolver(m.PlateSolverFactory.GetPlateSolver(ps),
+                m.PlateSolverFactory.GetBlindSolver(ps), m.Imaging, m.FilterWheel);
+            var parameter = new NINA.PlateSolving.CaptureSolverParameter
+            {
+                Attempts = ps.NumberOfAttempts,
+                Binning = ps.Binning,
+                Coordinates = m.Telescope.GetCurrentPosition(),
+                DownSampleFactor = ps.DownSampleFactor,
+                FocalLength = profile.TelescopeSettings.FocalLength,
+                MaxObjects = ps.MaxObjects,
+                PixelSize = profile.CameraSettings.PixelSize,
+                ReattemptDelay = TimeSpan.FromMinutes(ps.ReattemptDelay),
+                Regions = ps.Regions,
+                SearchRadius = ps.SearchRadius,
+                BlindFailoverEnabled = ps.BlindFailoverEnabled,
+            };
+            var seq = new NINA.Equipment.Model.CaptureSequence(ps.ExposureTime, NINA.Equipment.Model.CaptureSequence.ImageTypes.SNAPSHOT,
+                ps.Filter, new NINA.Core.Model.Equipment.BinningMode(ps.Binning, ps.Binning), 1) { Gain = ps.Gain };
+            var r = await solver.Solve(seq, parameter, new Progress<NINA.PlateSolving.PlateSolveProgress>(),
+                Progress ?? new Progress<ApplicationStatus>(), token);
+            return r is { Success: true } ? new SolveReading(r.PositionAngle, r.Flipped) : new SolveReading(null);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"NINA-PM: Plate-Solve für die Winkelprüfung fehlgeschlagen: {ex.Message}");
+            return new SolveReading(null);
+        }
     }
 
     /// <summary>Wartet im 10-s-Takt (abbrechbar) bis <paramref name="untilUtc"/>.</summary>

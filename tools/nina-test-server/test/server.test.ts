@@ -68,7 +68,7 @@ const entriesOf = (plan: Json) => (plan.blocks as Json[]).flatMap((b) => b.entri
 const P = '/api/nina/v1';
 
 describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', () => {
-  it('kennt die 16 Szenarien aus ops/plugin-test-protocol.md', () => {
+  it('kennt die 17 Szenarien aus ops/plugin-test-protocol.md', () => {
     expect(SCENARIO_NAMES).toEqual(
       [
         'current-night',
@@ -76,6 +76,7 @@ describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', 
         'filters-readout',
         'flats',
         'flip',
+        'flip-no-rotator',
         'lease',
         'mosaic-flip',
         'multi-night',

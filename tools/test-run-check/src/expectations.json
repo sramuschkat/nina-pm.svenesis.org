@@ -648,6 +648,136 @@
           }
         }
       ]
+    },
+    "P-07": {
+      "package": "AP-16f",
+      "steps": [
+        "Rig mit Rotator-Simulator, RangeType FULL bzw. HALF, Meridian im Block",
+        "Flip-Trigger feuert beim Eintrag meridian_flip, nachdem das Plugin auf NINAs früheste Flipzeit gewartet hat (TimeToMeridianFlip, höchstens bis limitEnd)",
+        "Danach nur Zentrieren, keine Rotatorbewegung (mechanischer Winkel unverändert ±0,1°); PA nach dem Flip = Soll modulo 180° (±1°), kein ROTATION_MISMATCH",
+        "RangeType QUARTER: WARNING code=rotator_range_quarter, Alarm nina_settings_mismatch mit Code rotator_range_quarter im Test-Report"
+      ],
+      "require": [
+        {
+          "event": "FLIP",
+          "where": {
+            "pierBefore": "west",
+            "pierAfter": "east"
+          },
+          "has": ["durationS"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "ROTATION_MISMATCH"
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-08": {
+      "package": "AP-16f",
+      "steps": [
+        "Rig ohne Rotator, Kamerawinkel absichtlich 30° daneben",
+        "Ereignis rotation_mismatch (ROTATION_MISMATCH), ohne skipOnRotationMismatch läuft der Block weiter",
+        "Mit skipOnRotationMismatch: Block übersprungen (BLOCK_SKIPPED reason=rotation_mismatch)"
+      ],
+      "require": [
+        {
+          "event": "ROTATION_MISMATCH"
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-21": {
+      "package": "AP-16f",
+      "steps": [
+        "Szenario delay: Block 1 begann vor 6 min, Zentrieren im Test-Server um 6 min verzögert; zweiter Block mit Flip",
+        "Verzug (Startverzug und Zentrieren) verschiebt die Planuhr: keine SKIPPED_TIMEAWARE, Belichtungen in Planreihenfolge, kein Filter-Block ausgelassen",
+        "Nach dem Flip Planzeit um (tatsächlich − geplant) verschoben, danach laut Uhr weiter"
+      ],
+      "require": [
+        {
+          "event": "FLIP",
+          "has": ["durationS"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "SKIPPED_TIMEAWARE"
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-26": {
+      "package": "AP-16f",
+      "steps": [
+        "Szenario mosaic-flip: 2×1-Mosaik, tM von Panel 1 im ersten Block, Panel 2 folgt direkt; Rotator-Simulator",
+        "Flip im Block von Panel 1 (FLIP pierBefore=west pierAfter=east)",
+        "Beim Wechsel auf Panel 2 kein zweiter Flip, wenn dessen tM schon überschritten ist, sonst Flip-Dauer im Plan des Folgeblocks eingerechnet",
+        "Kein Nachrotieren (mechanischer Winkel bleibt), Panel-PA modulo 180° in Toleranz"
+      ],
+      "require": [
+        {
+          "event": "FLIP",
+          "where": {
+            "pierBefore": "west",
+            "pierAfter": "east"
+          },
+          "has": ["durationS"]
+        }
+      ],
+      "forbid": [
+        {
+          "event": "ROTATION_MISMATCH"
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-36": {
+      "package": "AP-16f",
+      "steps": [
+        "Windows-Zeitzone des Test-PCs auf Mitteleuropa, Standort Starfront (America/Chicago)",
+        "SiteCheck WARNING code=pc_timezone_differs; die Meldung nennt die Folge für $$DATEMINUS12$$/Datumsordner und empfiehlt PC-Zone = Standortzone",
+        "Nacht-Schlüssel und Blockzeiten richten sich nach Standortzeit, nicht nach der PC-Zone (Warten auf Zeit folgt mit R5)"
+      ],
+      "require": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "pc_timezone_differs"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
     }
   }
 }

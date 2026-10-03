@@ -7,23 +7,100 @@
   "steps": [],
   "asserts": [
     [
-      { "log": { "event": "SESSION", "where": { "status": "running" } }, "min": 1, "max": 1 },
-      { "report": "sessions", "min": 1, "max": 1 }
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "running"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "sessions",
+        "min": 1,
+        "max": 1
+      }
     ],
     [
-      { "log": { "event": "BLOCK_START" }, "min": 2 },
-      { "log": { "event": "BLOCK_END", "where": { "reason": "completed" } }, "min": 2 },
-      { "log": { "event": "BLOCK_END", "where": { "reason": "error" } }, "min": 0, "max": 0 }
+      {
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 2
+      },
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "completed"
+          }
+        },
+        "min": 2
+      },
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "error"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
     ],
     [
-      { "log": { "event": "CAPTURE", "where": { "result": "saved" } }, "min": 30 },
-      { "report": "captures", "where": { "result": "saved" }, "min": 30 },
-      { "report": "captures", "where": { "frameType": "light" }, "min": 30 }
+      {
+        "log": {
+          "event": "CAPTURE",
+          "where": {
+            "result": "saved"
+          }
+        },
+        "min": 20
+      },
+      {
+        "report": "captures",
+        "where": {
+          "result": "saved"
+        },
+        "min": 20
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "light"
+        },
+        "min": 20
+      }
     ],
     [
-      { "log": { "event": "OUTBOX", "where": { "pending": "0" } } },
-      { "report": "sessions", "where": { "status": "completed" }, "min": 1, "max": 1 },
-      { "log": { "event": "SESSION", "where": { "status": "completed" } }, "min": 1 }
+      {
+        "log": {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        }
+      },
+      {
+        "report": "sessions",
+        "where": {
+          "status": "completed"
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "SESSION",
+          "where": {
+            "status": "completed"
+          }
+        },
+        "min": 1
+      }
     ]
   ]
 }

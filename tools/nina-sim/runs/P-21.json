@@ -1,0 +1,72 @@
+{
+  "protocol": "P-21",
+  "scenario": "delay",
+  "description": "Block 1 begann vor 6 min, Zentrieren um 6 min verzögert: der Verzug verschiebt die Planuhr, nichts wird verworfen; Block 2 mit Flip.",
+  "untilMin": 60,
+  "setup": {
+    "centerDelayS": 360
+  },
+  "steps": [],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "SKIPPED_TIMEAWARE"
+        },
+        "min": 0,
+        "max": 0
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "L"
+        },
+        "min": 2
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "R"
+        },
+        "min": 1
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "G"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "FLIP"
+          },
+          {
+            "event": "CAPTURE",
+            "where": {
+              "result": "saved"
+            }
+          }
+        ]
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "Ha"
+        },
+        "min": 1
+      }
+    ]
+  ]
+}

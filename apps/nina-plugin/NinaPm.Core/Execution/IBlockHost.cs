@@ -19,6 +19,9 @@ public sealed record CameraCooling(bool CoolerOn, double? TemperatureC);
 /// <summary>Ergebnis eines Zentrier-Versuchs (§4.1 Nr. 5).</summary>
 public sealed record CenterResult(bool Success, string? Error = null);
 
+/// <summary>Eigenes Plate-Solve (flip-rotation.md §3, NIN-4): Positionswinkel in Grad (<c>null</c> = kein Solve) und gespiegelte Optik (NT-33).</summary>
+public sealed record SolveReading(double? PositionAngleDeg, bool Mirrored = false);
+
 /// <summary>
 /// Was der Blockablauf von NINA braucht (TK 10.2, execution.md §4.1/§4.2). <c>NinaPm.Nina</c> setzt es auf NINAs
 /// Mediatoren und den Trigger-Walk um, die Kern-Tests auf eine Attrappe. Alle Zeiten kommen aus <c>IClock</c>,
@@ -38,8 +41,32 @@ public interface IBlockHost
     /// </summary>
     bool CanSkipSlew(Blocks block);
 
-    /// <summary>Ein Versuch Slew + Zentrieren (mit Rotator <c>CenterAndRotate</c> auf <c>block.rotationDeg</c>).</summary>
-    Task<CenterResult> SlewCenterAsync(Blocks block, CancellationToken token);
+    /// <summary>
+    /// Ein Versuch Slew + Zentrieren: mit verbundenem Rotator und <paramref name="rotate"/> <c>CenterAndRotate</c> auf
+    /// <c>block.rotationDeg</c>, sonst <c>Center</c> (nach dem Flip immer <c>Center</c>, NT-E4).
+    /// </summary>
+    Task<CenterResult> SlewCenterAsync(Blocks block, bool rotate, CancellationToken token);
+
+    /// <summary>Rotator verbunden (sonst Winkelprüfung über eigenes Plate-Solve, NT-29).</summary>
+    bool RotatorConnected { get; }
+
+    /// <summary>NINA-Profil <c>MeridianFlipSettings.Recenter</c> (NT-22: ohne Rotator dann kein eigenes Zentrieren nach dem Flip).</summary>
+    bool NinaRecentersAfterFlip { get; }
+
+    /// <summary>Pier-Seite nach fester ASCOM-Zuordnung (<c>west</c>/<c>east</c>), <c>null</c> = unbekannt (NT-34).</summary>
+    string? PierSide();
+
+    /// <summary>
+    /// Minuten bis NINAs früheste Flipzeit (<c>minimumTimeRemaining</c> aus <c>TelescopeInfo.TimeToMeridianFlip</c> wie
+    /// <c>MeridianFlipTrigger</c>); ≤ 0 = erreicht, <c>null</c> = unbekannt (keine Montierung).
+    /// </summary>
+    double? MinutesToEarliestFlip();
+
+    /// <summary>Trigger aller Vorfahren über die eigene Iteration (Dither unterdrückt) – zur Flipzeit, auch ohne Belichtung (M1).</summary>
+    Task RunTriggersAsync(CancellationToken token);
+
+    /// <summary>Eigenes Plate-Solve am aktuellen Ort (Winkelprüfung, Flip-Rückfall).</summary>
+    Task<SolveReading> SolveAsync(CancellationToken token);
 
     /// <summary>Trigger-Set <em>vor Zielwechsel</em> (Vorfahren-Trigger, §4.1 Nr. 6; Trigger-Walk AP-16d).</summary>
     Task BeforeTargetChangeAsync(CancellationToken token);
@@ -61,12 +88,6 @@ public interface IBlockHost
     CameraCooling ReadCooling();
 
     Task DitherAsync(CancellationToken token);
-
-    /// <summary>
-    /// Flip aktiv auslösen (NT-21, M3): ab <c>atUtc</c> warten, bis NINAs früheste Flipzeit erreicht ist, dann die
-    /// Vorfahren-Trigger aufrufen. Einzelheiten (Erkennung, Dauer) AP-16f.
-    /// </summary>
-    Task MeridianFlipAsync(Blocks block, Entries entry, CancellationToken token);
 
     /// <summary>Wartet bis <paramref name="untilUtc"/> (10-s-Takt im Adapter); in Tests springt die Uhr.</summary>
     Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token);

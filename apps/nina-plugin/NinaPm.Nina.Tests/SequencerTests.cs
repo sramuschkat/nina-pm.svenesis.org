@@ -350,4 +350,39 @@ public sealed class SequencerTests
     [InlineData(42.5, 42.5)]
     public void Kuehlerleistung_ausserhalb_0_bis_100_wird_weggelassen(double power, double? expected) =>
         Assert.Equal(expected, NinaSettingsSource.Percent(power));
+
+    /// <summary>
+    /// Früheste Flipzeit wie <c>MeridianFlipTrigger.CalculateMinimumTimeRemaining</c> (execution.md §4.5, AP-16f):
+    /// <c>TimeToMeridianFlip − (MaxMinutesAfterMeridian − MinutesAfterMeridian)</c>, mit Pause zusätzlich
+    /// <c>− MinutesAfterMeridian − PauseTimeBeforeMeridian</c>; ohne Montierung unbekannt.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 0.5, 0, 20.0)]
+    [InlineData(true, 0.5, 10, 5.0)]
+    [InlineData(true, 0.1, 0, -4.0)]
+    [InlineData(false, 0.5, 0, null)]
+    public void Frueheste_Flipzeit_wie_NINAs_Meridian_Flip_Trigger(bool connected, double timeToFlipH, double pauseMin, double? expectedMin)
+    {
+        var flip = new Mock<NINA.Profile.Interfaces.IMeridianFlipSettings>();
+        flip.SetupGet(f => f.MinutesAfterMeridian).Returns(5);
+        flip.SetupGet(f => f.MaxMinutesAfterMeridian).Returns(15);
+        flip.SetupGet(f => f.PauseTimeBeforeMeridian).Returns(pauseMin);
+        var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
+        profile.SetupGet(p => p.MeridianFlipSettings).Returns(flip.Object);
+        profile.SetupGet(p => p.AstrometrySettings).Returns(Mock.Of<NINA.Profile.Interfaces.IAstrometrySettings>());
+        var service = new Mock<NINA.Profile.Interfaces.IProfileService>();
+        service.SetupGet(x => x.ActiveProfile).Returns(profile.Object);
+        var telescope = new Mock<ITelescopeMediator>();
+        telescope.Setup(t => t.GetInfo()).Returns(new NINA.Equipment.Equipment.MyTelescope.TelescopeInfo { Connected = connected, TimeToMeridianFlip = timeToFlipH });
+        var m = new NinaMediators(service.Object, telescope.Object, Mock.Of<IImagingMediator>(), Mock.Of<ICameraMediator>(), Mock.Of<IFilterWheelMediator>(),
+            Mock.Of<IRotatorMediator>(), Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
+            Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
+            Mock.Of<NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator>(), Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(),
+            Mock.Of<ISafetyMonitorMediator>());
+
+        var minutes = new NinaHost(m).MinutesToEarliestFlip();
+
+        if (expectedMin is null) Assert.Null(minutes);
+        else Assert.Equal(expectedMin.Value, minutes!.Value, 6);
+    }
 }

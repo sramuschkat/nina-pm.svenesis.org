@@ -6,6 +6,14 @@ using NinaPm.Core.Time;
 namespace NinaPm.Core.Execution;
 
 /// <summary>
+/// Was der SiteCheck vom NINA-PC und der Sequenz braucht (AP-16f): Offset der PC-Zeitzone jetzt, Standort und
+/// Sternzeit-Abweichung der Montierung (<c>null</c> = keine Montierung), Rotator-Bereich <c>QUARTER</c>, Flip-Trigger in
+/// der Sequenz vorhanden.
+/// </summary>
+public sealed record SiteFacts(TimeSpan PcOffset, double? MountLatDeg, double? MountLonDeg, double? SiderealDeltaS,
+    bool RotatorRangeQuarter, bool FlipTriggerPresent);
+
+/// <summary>
 /// Geräteunabhängige Regeln des NINA-Adapters (execution.md §4.3/§4.4, NT-23, NT-37): Hinweise beim Planaufbau,
 /// Filter- und Auslesemodus-Auswahl mit 12-h-Drosselung, Fakten und Meldung einer Aufnahme. <c>NinaPm.Nina</c> liest
 /// dafür NINAs Profil und Geräte, der kopflose Nachtlauf (<c>NinaPm.Sim</c>) ein simuliertes NINA – beide verhalten
@@ -27,6 +35,33 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
         foreach (var name in FilterResolver.MissingInProfile(targets, profileFilters))
             if (hints.ShouldEmit($"filter_wheel_changed:{name}", now))
                 log()?.Warning("WARNING", ("code", "filter_wheel_changed"), ("filter", name));
+    }
+
+    /// <summary>
+    /// SiteCheck und Sequenzprüfung beim Planaufbau (execution.md §2, §4.5, §6; NT-06, NT-22, M2), je Code höchstens
+    /// 1×/12 h: <c>pc_timezone_differs</c> (mit Folge und Empfehlung, L3), <c>mount_site_mismatch</c>,
+    /// <c>rotator_range_quarter</c> (Rig mit Rotator), <c>sequence_template_deviation type=MeridianFlipTrigger</c> (Flip
+    /// im Rig an, aber kein Flip-Trigger in der Sequenz). Ohne Bootstrap keine Prüfung.
+    /// </summary>
+    public void CheckSite(SiteFacts f)
+    {
+        var r = runner();
+        if (r?.Bootstrap is not { } b) return;
+        var now = clock.UtcNow;
+        void Warn(string code, string? type = null, string? message = null)
+        {
+            if (!hints.ShouldEmit(code, now)) return;
+            if (type is null) log()?.Warning("WARNING", ("code", code));
+            else log()?.Warning("WARNING", ("code", code), ("type", type));
+            if (message is not null) log()?.Note(message);
+            r.ReportEvent(EventsKind.Warning, code, message: message);
+        }
+        if (SiteCheck.SiteOffset(b, now) is { } site && SiteCheck.TimezoneDiffers(f.PcOffset, site))
+            Warn("pc_timezone_differs", message: SiteCheck.TimezoneMessage(f.PcOffset, site, b.Rig.Site.TimeZone));
+        if (SiteCheck.MountSiteMismatch(f.MountLatDeg, f.MountLonDeg, f.SiderealDeltaS, b.Rig.Site.LatDeg, b.Rig.Site.LonDeg))
+            Warn("mount_site_mismatch");
+        if (f.RotatorRangeQuarter && b.Rig.Rotator.Present) Warn("rotator_range_quarter");
+        if (!f.FlipTriggerPresent && b.Rig.Scheduler.MeridianFlip.Enabled) Warn("sequence_template_deviation", "MeridianFlipTrigger");
     }
 
     /// <summary>Filter des Eintrags im Profil (§4.4); nicht gefunden → <c>FILTER_NOT_FOUND</c> höchstens 1×/12 h je Filter.</summary>

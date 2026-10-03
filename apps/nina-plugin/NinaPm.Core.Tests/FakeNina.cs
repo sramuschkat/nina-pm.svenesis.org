@@ -46,9 +46,10 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     public bool CanSkipSlew(Blocks block) => SkipSlew;
 
-    public Task<CenterResult> SlewCenterAsync(Blocks block, CancellationToken token)
+    public Task<CenterResult> SlewCenterAsync(Blocks block, bool rotate, CancellationToken token)
     {
         Calls.Add($"center@{UtcText.Format(clock.UtcNow)}");
+        if (!rotate) Calls.Add("center-no-rotate");
         clock.Advance(TimeSpan.FromSeconds(90));
         return Task.FromResult(Center(++centerAttempts));
     }
@@ -95,6 +96,7 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
         exposures++;
         if (exposures == FailAtExposure) throw new InvalidOperationException("Kamera meldet Fehler");
         Calls.Add($"expose:{entry.Seq}@{UtcText.Format(clock.UtcNow)}");
+        if (exposures == FlipDuringExposure && Pier is not null) Pier = Pier == "west" ? "east" : "west";
         if (exposures == CancelAtExposure)
         {
             Sequence.Cancel();
@@ -111,12 +113,50 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
         return Task.CompletedTask;
     }
 
-    public Task MeridianFlipAsync(Blocks block, Entries entry, CancellationToken token)
+    // ---- Flip und Rotation (AP-16f) ----------------------------------------------------------------
+
+    public bool RotatorConnected { get; set; } = true;
+
+    public bool NinaRecentersAfterFlip { get; set; }
+
+    /// <summary>Pier-Seite der Montierung; <c>null</c> = unbekannt.</summary>
+    public string? Pier { get; set; }
+
+    public string? PierSide() => Pier;
+
+    /// <summary>Zeitpunkt, ab dem NINAs früheste Flipzeit erreicht ist (<c>null</c>: unbekannt).</summary>
+    public DateTimeOffset? EarliestFlipUtc { get; set; }
+
+    public double? MinutesToEarliestFlip() => EarliestFlipUtc is { } t ? (t - clock.UtcNow).TotalMinutes : null;
+
+    /// <summary>Dauer des Trigger-Aufrufs zur Flipzeit; flippt die Pier-Seite, wenn <see cref="FlipOnTriggers"/>.</summary>
+    public double FlipTriggerS { get; set; } = 240;
+
+    public bool FlipOnTriggers { get; set; }
+
+    public Task RunTriggersAsync(CancellationToken token)
     {
         Calls.Add("flip");
-        clock.Advance(TimeSpan.FromSeconds(entry.DurationS ?? 240));
+        clock.Advance(TimeSpan.FromSeconds(FlipTriggerS));
+        if (FlipOnTriggers && Pier is not null) Pier = Pier == "west" ? "east" : "west";
         return Task.CompletedTask;
     }
+
+    /// <summary>Plate-Solve-Ergebnisse der Reihe nach (letztes bleibt stehen); leer = kein Solve.</summary>
+    public List<SolveReading> Solves { get; } = [];
+
+    private int solveCalls;
+
+    public Task<SolveReading> SolveAsync(CancellationToken token)
+    {
+        Calls.Add("solve");
+        var r = Solves.Count == 0 ? new SolveReading(null) : Solves[Math.Min(solveCalls, Solves.Count - 1)];
+        solveCalls++;
+        return Task.FromResult(r);
+    }
+
+    /// <summary>Wechselt die Pier-Seite während der n-ten Belichtung (1-basiert): ungeplanter Flip über NINAs Trigger.</summary>
+    public int FlipDuringExposure { get; set; }
 
     public Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token)
     {

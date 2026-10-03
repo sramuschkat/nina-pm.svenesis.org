@@ -1,0 +1,19 @@
+{
+  "name": "flip-no-rotator",
+  "description": "Wie flip, aber Rig ohne Rotator mit Überspringen bei Winkelabweichung (P-08)",
+  "protocols": ["P-08"],
+  "blocks": [
+    {
+      "durationMin": 20,
+      "filters": ["L", "R"],
+      "exposureS": 60,
+      "meridianInMin": 8,
+      "rotationDeg": 90
+    }
+  ],
+  "rig": {
+    "rotatorPresent": false,
+    "rotatorToleranceDeg": 5,
+    "skipOnRotationMismatch": true
+  }
+}

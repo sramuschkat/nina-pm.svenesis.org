@@ -325,6 +325,18 @@ export class TestWorld {
         },
         filters: this.rig.filters.map((f) => ({ ...this.filter(f.shortName), color: '#c8c8c8' })),
         scheduler,
+        rotator: {
+          ...(rig.rotator as Json),
+          ...(this.scenario.rig?.rotatorPresent !== undefined
+            ? { present: this.scenario.rig.rotatorPresent }
+            : {}),
+          ...(this.scenario.rig?.rotatorToleranceDeg !== undefined
+            ? { toleranceDeg: this.scenario.rig.rotatorToleranceDeg }
+            : {}),
+          ...(this.scenario.rig?.skipOnRotationMismatch !== undefined
+            ? { skipOnMismatch: this.scenario.rig.skipOnRotationMismatch }
+            : {}),
+        },
       },
       tzdataVersion: table.tzdataVersion,
       nights: table.nights,
@@ -540,7 +552,7 @@ export class TestWorld {
       raDeg: panel.raDeg,
       decDeg: panel.decDeg,
       rotationDeg: panel.rotationDeg,
-      rotationMode: 'rotator',
+      rotationMode: this.scenario.rig?.rotatorPresent === false ? 'fixed_camera' : 'rotator',
       meridianFlip: flip,
       entries,
     };

@@ -1,0 +1,52 @@
+{
+  "protocol": "P-36",
+  "scenario": "one-night",
+  "description": "PC-Zeitzone Mitteleuropa (UTC+2) bei Standort America/Chicago: pc_timezone_differs mit Folge und Empfehlung; Blockzeiten nach Standortzeit.",
+  "untilMin": 50,
+  "setup": {
+    "pcUtcOffsetMinutes": 120
+  },
+  "steps": [],
+  "asserts": [
+    [
+      {
+        "report": "heartbeats.count",
+        "exists": true
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "pc_timezone_differs"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "events",
+        "where": {
+          "code": "pc_timezone_differs"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "BLOCK_START"
+        },
+        "min": 2
+      },
+      {
+        "log": {
+          "event": "SKIPPED_TIMEAWARE"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

@@ -55,6 +55,12 @@ export interface Scenario {
   /** Zweite Nacht planbar (Szenario `multi-night`, P-23): Pläne der Folgenacht 24 h später. */
   readonly multiNight?: boolean;
   readonly timeline?: readonly TimelineAction[];
+  /** Rig-Abweichungen gegenüber dem Vertragsbeispiel (AP-16f, P-08): Rotator vorhanden, Toleranz, Block bei Winkelabweichung überspringen. */
+  readonly rig?: {
+    readonly rotatorPresent?: boolean;
+    readonly rotatorToleranceDeg?: number;
+    readonly skipOnRotationMismatch?: boolean;
+  };
 }
 
 const dir = fileURLToPath(new URL('../scenarios/', import.meta.url));

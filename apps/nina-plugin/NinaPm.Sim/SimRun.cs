@@ -25,6 +25,36 @@ public sealed class SimSetup
     [JsonProperty("cameraSetpointC")] public double CameraSetpointC { get; set; } = -10;
     [JsonProperty("ditherTrigger")] public bool DitherTrigger { get; set; }
 
+    /// <summary>Rotator verbunden (Rig mit Rotator: NINAs CenterAndRotate; sonst Winkelprüfung per Plate-Solve).</summary>
+    [JsonProperty("rotatorConnected")] public bool RotatorConnected { get; set; } = true;
+
+    /// <summary>RotatorSettings.RangeType = QUARTER (M2).</summary>
+    [JsonProperty("rotatorRangeQuarter")] public bool RotatorRangeQuarter { get; set; }
+
+    /// <summary>Kamerawinkel ohne Rotator (Grad); <c>null</c> = genau der Soll-Winkel des Blocks.</summary>
+    [JsonProperty("cameraAngleDeg")] public double? CameraAngleDeg { get; set; }
+
+    /// <summary>Pier-Seite meldet die Montierung (sonst <c>null</c>, Rückfall über Plate-Solve).</summary>
+    [JsonProperty("pierKnown")] public bool PierKnown { get; set; } = true;
+
+    /// <summary>Plate-Solve verfügbar.</summary>
+    [JsonProperty("solveAvailable")] public bool SolveAvailable { get; set; } = true;
+
+    /// <summary>Früheste Flipzeit der Montierung gegenüber der Engine (Sekunden, + = später).</summary>
+    [JsonProperty("mountFlipOffsetS")] public double MountFlipOffsetS { get; set; }
+
+    /// <summary>Dauer eines Flips in der Montierung (Sekunden).</summary>
+    [JsonProperty("flipDurationS")] public double FlipDurationS { get; set; } = 200;
+
+    /// <summary>Meridian-Flip-Trigger in der Sequenz.</summary>
+    [JsonProperty("flipTrigger")] public bool FlipTrigger { get; set; } = true;
+
+    /// <summary>UTC-Offset der PC-Zeitzone in Minuten; <c>null</c> = wie der Standort.</summary>
+    [JsonProperty("pcUtcOffsetMinutes")] public int? PcUtcOffsetMinutes { get; set; }
+
+    /// <summary>Zusätzliche Dauer des ersten Zentrierens je Block (Sekunden, P-21 „Zentrieren verzögert“).</summary>
+    [JsonProperty("centerDelayS")] public double CenterDelayS { get; set; }
+
     /// <summary>Sequenz beim Laufbeginn starten (sonst über einen Schritt <c>start</c>).</summary>
     [JsonProperty("autoStart")] public bool AutoStart { get; set; } = true;
 }
