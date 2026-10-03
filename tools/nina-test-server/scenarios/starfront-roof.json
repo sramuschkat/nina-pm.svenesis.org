@@ -1,0 +1,21 @@
+{
+  "name": "starfront-roof",
+  "description": "Starfront-Dach (Generic-File-Safety): Sequenz am Nachmittag mit geschlossenem Dach gestartet, Dach öffnet in der Dämmerung, schließt vor dem Ende der Dunkelheit wieder und bleibt zu",
+  "protocols": [],
+  "blocks": [
+    {
+      "startInMin": 5,
+      "durationMin": 55,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "ngc6946",
+      "ditherEvery": 1,
+      "decDeg": 60
+    }
+  ],
+  "darknessEndInMin": 65,
+  "sessionEndInMin": 75,
+  "rig": {
+    "rotatorPresent": false
+  }
+}

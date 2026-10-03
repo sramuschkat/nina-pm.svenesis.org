@@ -1,0 +1,96 @@
+{
+  "name": "starfront-night",
+  "scenario": "starfront-night",
+  "description": "Gemessene Starfront-Zeiten (Dither-Settle 18 s, Slew+Zentrieren 35 s, Flip 250 s nach 10 min Pause um den Meridian) gegen Rig-Werte auf den gemessenen Medianen: Plan und Nacht stimmen überein (54 geplant, 54 aufgenommen).",
+  "untilMin": 100,
+  "setup": {
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "flipDurationS": 250
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Rig-Werte = gemessene Mediane: nichts übersprungen, Aufnahmen wie geplant (54 ± 1)",
+      "asserts": [
+        {
+          "log": {
+            "event": "SKIPPED_TIMEAWARE"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "captures",
+          "where": {
+            "result": "saved"
+          },
+          "min": 53,
+          "max": 55
+        }
+      ]
+    },
+    {
+      "name": "Pause vor dem Meridian: Warten, dann genau ein Flip mit Dauer, danach weiter belichtet",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLIP"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "events",
+          "where": {
+            "kind": "flip"
+          },
+          "whereExists": ["durationS"],
+          "min": 1,
+          "max": 1
+        },
+        {
+          "order": [
+            {
+              "event": "FLIP"
+            },
+            {
+              "event": "CAPTURE",
+              "where": {
+                "result": "saved"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nacht vollständig: Session abgeschlossen, keine Fehler, keine abgelehnte Anfrage",
+      "asserts": [
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

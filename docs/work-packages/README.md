@@ -106,8 +106,8 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-16c](AP-16c.md) | Plugin Adapter: Container, interne Items, Blockablauf | L | AP-16b, AP-14b | H-14, H-15 | ☑ 02.10.2026 |
 | [AP-16d](AP-16d.md) | Plugin Adapter: Trigger-Walk, Filter und Auslesemodus, Neuplanung im Block | M | AP-16c | H-15 | ☑ 03.10.2026 |
 | [AP-16e](AP-16e.md) | Plugin: Aufnahme-Zuordnung, Heartbeat, Lease | M | AP-16d | H-15 | ☑ 03.10.2026 |
-| [AP-16f](AP-16f.md) | Plugin: Rotator, Flip, Standort- und Sequenzprüfung, Playback-Verzug | M | AP-16e | H-15 | ◐ |
-| [AP-16g](AP-16g.md) | Plugin: Outbox, Offline-Modus, Bedienung | M | AP-16f | H-15 | ◐ |
+| [AP-16f](AP-16f.md) | Plugin: Rotator, Flip, Standort- und Sequenzprüfung, Playback-Verzug | M | AP-16e | H-15 | ☑ 03.10.2026 |
+| [AP-16g](AP-16g.md) | Plugin: Outbox, Offline-Modus, Bedienung | M | AP-16f | H-15 | ☑ 03.10.2026 |
 | [AP-16h](AP-16h.md) | Plugin: Live-Status, Zielbrowser, Trigger-Sets, Anweisungskatalog | L | AP-16g | H-12b, H-15 | ◐ |
 
 ## R4

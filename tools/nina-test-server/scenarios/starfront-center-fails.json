@@ -1,0 +1,26 @@
+{
+  "name": "starfront-center-fails",
+  "description": "Zentrieren scheitert immer für ein Ziel (falsche Koordinaten wie NGC 6946 am 04.09.2026, 10 Plate-Solves je Versuch); der nächste Block muss pünktlich laufen",
+  "protocols": [],
+  "blocks": [
+    {
+      "durationMin": 30,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "badcoords",
+      "decDeg": 60
+    },
+    {
+      "durationMin": 30,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "m31",
+      "decDeg": 41
+    }
+  ],
+  "darknessEndInMin": 70,
+  "sessionEndInMin": 80,
+  "rig": {
+    "rotatorPresent": false
+  }
+}

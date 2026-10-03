@@ -53,7 +53,9 @@ public sealed class HeartbeatService(
         body.SessionId = runner.SessionId;
         body.BlockId = runner.RunningBlockId;
         body.PluginVersion = pluginVersion;
-        body.EngineVersion = runner.Bootstrap?.Server.EngineVersion ?? "";
+        // Eigene Engine-Version wie im Kopf X-NPM-Engine-Version (TK 7.3), auch vor dem ersten Bootstrap – NINA läuft
+        // oft Stunden vor dem Sequenzstart (Szenario starfront-roof).
+        body.EngineVersion = EngineVersionInfo.Version;
         body.SettingsVersion = runner.Bootstrap?.Rig.SettingsVersion;
         body.OutboxPending = runner.OutboxPending;
         body.DeadLetters = runner.DeadLetters;

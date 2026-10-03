@@ -52,7 +52,15 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
     public async Task<CenterResult> SlewCenterAsync(Blocks block, bool rotate, CancellationToken token)
     {
         var newTarget = lastCentered != (block.ProjectId, block.PanelId);
-        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(60 + (newTarget ? world.CenterDelayS : 0)), token).ConfigureAwait(false);
+        var name = runner()?.Targets?.Projects.FirstOrDefault(p => p.Id == block.ProjectId)?.Name;
+        if (name is not null && world.CenterFailProjects.Contains(name))
+        {
+            // Falsche Zielkoordinaten: NINAs Center gibt nach seinen Plate-Solve-Versuchen auf.
+            await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.CenterFailS), token).ConfigureAwait(false);
+            world.Parked = false;
+            return new CenterResult(false, "Cancelling centering after 10 unsuccessful slew attempts");
+        }
+        await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.CenterS + (newTarget ? world.CenterDelayS : 0)), token).ConfigureAwait(false);
         world.Parked = false;
         if (newTarget && block.MeridianFlip is { Planned: true } flip)
         {
@@ -148,7 +156,7 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
         return ExposureResult.Saved;
     }
 
-    public Task DitherAsync(CancellationToken token) => clock.AdvanceToAsync(clock.UtcNow.AddSeconds(10), token);
+    public Task DitherAsync(CancellationToken token) => clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.DitherSettleS), token);
 
     public Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token) => clock.AdvanceToAsync(untilUtc, token);
 }
