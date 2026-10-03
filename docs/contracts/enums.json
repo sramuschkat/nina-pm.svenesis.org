@@ -607,7 +607,8 @@
   "rotator_range_quarter",
   "safety_monitor_not_connected",
   "sequence_template_deviation",
-  "loop_guard"
+  "loop_guard",
+  "clock_drift"
  ],
  "ninaSettingsMismatchCodes": [
   "flip_trigger_missing",

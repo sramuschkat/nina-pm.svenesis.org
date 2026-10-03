@@ -71,6 +71,30 @@ Vor **jedem** Lauf mit einem frisch gestarteten Test-Server: NINA beenden und de
 
 Die Sky-Simulator-Kamera ignoriert die Belichtungszeit (P-05, 02.10.2026): den Abbruch mitten in der Belichtung (`CAPTURE result=aborted`, P-25) prüft deshalb nur der kopflose Lauf. Auswertung: `pnpm plugin:sim --vm /tmp/vm` – prüft dieselben benannten Prüfungen wie der kopflose `vm-smoke`-Lauf, zusätzlich die nur mit NINA möglichen (`TRIGGER_SUPPRESSED`), und schreibt `vm-check.txt`. Grün → Abnahme der Pakete, deren Protokolle kopflos grün sind.
 
+### VM-Kurzlauf `vm-flip` (≈ 35 min, Flip mit echtem NINA – P-07/P-26)
+Meridian 8 min nach Serverstart im Block, Flip beim Eintrag `meridian_flip` nach NINAs frühester Flipzeit, danach nur Zentrieren, Rotator ohne Nachrotieren, SiteCheck ohne Befund. Vorher `ninapm.db` löschen (s. o.), Sequenz wie bei `vm-smoke`, der globale Dither-Trigger darf bleiben.
+
+| Gerät | Treiber | Zustand | Einstellung |
+|---|---|---|---|
+| Kamera | Camera Sky Simulator for ALPACA | verbunden | Kühlung an, −10 °C |
+| Montierung | Mount Sky Simulator for ALPACA | verbunden | – |
+| Filterrad | Filterwheel Sky Simulator for ALPACA | verbunden | Namen wie `rig.json` |
+| Rotator | Rotator Sky Simulator for ALPACA | **verbunden** | Optionen → Rotator: Bereich `FULL` |
+| Guider | PHD2 (Simulator) | verbunden | – |
+| Safety-Monitor | Alpaca Safety Monitor Simulator (OmniSim) | verbunden, sicher | – |
+| Kuppel, Flat-Panel, Wetter, Schalter | – | getrennt | – |
+
+NINA-Profil → Meridian-Flip (wie das Test-Rig): **Minuten nach Meridian 1**, **max. Minuten nach Meridian 5**, Pause vor Meridian 0, *Recenter* aus; Windows-Zeitzone = US Central.
+
+| Minute nach Serverstart | Wer | Was |
+|---|---|---|
+| 0 | Mac | `pnpm nina-test-server --scenario vm-flip --host 0.0.0.0` |
+| ≤ 1 | VM | Sequenz starten (Block ab Minute 2, Meridian bei Minute 8, Flip ab Minute 9) |
+| ≈ 27 | – | Nachtende (Minute 26), Session abgeschlossen |
+| 30 | Mac | `mkdir -p /tmp/vm-flip && curl -s http://localhost:8787/test/report > /tmp/vm-flip/report.json`, dann Server beenden; NINA-Log als `/tmp/vm-flip/nina.log` |
+
+Keine Handgriffe während des Laufs. Auswertung: `pnpm plugin:sim --vm /tmp/vm-flip vm-flip`.
+
 ## Log-Grammatik
 Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Großbuchstaben, Werte ohne Leerzeichen oder in `"…"`), z. B. `NINA-PM | CAPTURE id=0192… result=saved file="NGC 281_Ha_0023.fits"`.
 

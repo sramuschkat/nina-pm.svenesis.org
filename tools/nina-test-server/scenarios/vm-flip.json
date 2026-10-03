@@ -1,0 +1,19 @@
+{
+  "name": "vm-flip",
+  "description": "VM-Kurzlauf Flip (≈ 30 min): Meridian im Block, Flip beim Eintrag nach NINAs frühester Flipzeit, danach nur Zentrieren, Rotator-Simulator ohne Nachrotieren (P-07/P-26 mit echtem NINA)",
+  "protocols": [],
+  "blocks": [
+    {
+      "durationMin": 20,
+      "filters": ["L", "R"],
+      "exposureS": 30,
+      "project": "m31",
+      "meridianInMin": 8
+    }
+  ],
+  "darknessEndInMin": 26,
+  "sessionEndInMin": 32,
+  "flats": {
+    "enabled": false
+  }
+}

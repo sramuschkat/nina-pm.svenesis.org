@@ -37,6 +37,8 @@ export type Assert = Part &
         readonly equals?: unknown;
         /** Wert unter `report` vorhanden (nicht `undefined`/`null`). */
         readonly exists?: boolean;
+        /** Alle Einträge der Liste (gefiltert mit `where`) haben unter diesem Punktpfad denselben Wert. */
+        readonly sameValue?: string;
       }
   );
 
@@ -139,6 +141,21 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
       text: `Report ${a.report} = ${JSON.stringify(value)} (erwartet ${JSON.stringify(a.equals)})`,
     };
   const list = Array.isArray(value) ? value : [];
+  if (a.sameValue !== undefined) {
+    const values = new Set(
+      list
+        .filter((x) =>
+          Object.entries(a.where ?? {}).every(
+            ([k, v]) => JSON.stringify(at(x, k)) === JSON.stringify(v),
+          ),
+        )
+        .map((x) => JSON.stringify(at(x, a.sameValue ?? ''))),
+    );
+    return {
+      ok: list.length > 0 && values.size === 1,
+      text: `Report ${a.report}: ${a.sameValue} ${values.size === 1 ? `überall ${[...values][0] ?? ''}` : `uneinheitlich (${[...values].join(', ')})`}`,
+    };
+  }
   const n = list.filter(
     (x) =>
       Object.entries(a.where ?? {}).every(
