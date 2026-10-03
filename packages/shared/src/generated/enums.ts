@@ -236,7 +236,7 @@ export type SimulatorWarning = (typeof simulatorWarnings)[number];
 export const warningLevels = ["warn","error"] as const;
 export type WarningLevel = (typeof warningLevels)[number];
 
-export const blockSkipReasons = ["elapsed","no_exposures","not_viable","center_failed","user_skip","rotation_mismatch","filter_not_found","lease_lost"] as const;
+export const blockSkipReasons = ["elapsed","no_exposures","not_viable","center_failed","user_skip","rotation_mismatch","filter_not_found","readout_mode_not_found","lease_lost"] as const;
 export type BlockSkipReason = (typeof blockSkipReasons)[number];
 
 export const blockEndReasons = ["completed","target_removed","transit_interrupt","user_skip","lease_lost","night_end","error","interrupted","replanned"] as const;

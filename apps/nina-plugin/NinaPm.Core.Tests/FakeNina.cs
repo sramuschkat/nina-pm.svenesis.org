@@ -42,10 +42,10 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     public bool IsViableNow(Blocks block) => Viable;
 
-    /// <summary>Filter einer Belichtungszeile im Profil gefunden (§4.1 Nr. 1).</summary>
-    public bool FiltersAvailable { get; set; } = true;
+    /// <summary>Grund, den Block ohne mögliche Belichtung zu überspringen (§4.1 Nr. 1); Standard: belichtbar.</summary>
+    public string? Unexposable { get; set; }
 
-    public bool AnyFilterAvailable(Blocks block) => FiltersAvailable;
+    public string? UnexposableReason(Blocks block) => Unexposable;
 
     public void SetTarget(Blocks block) => Calls.Add("target");
 
