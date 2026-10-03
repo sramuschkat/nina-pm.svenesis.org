@@ -1,17 +1,12 @@
 {
   "name": "vm-smoke",
   "scenario": "vm-smoke",
-  "description": "Gleicher Ablauf wie der VM-Kurzlauf; prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
+  "description": "Gleicher Ablauf wie der VM-Kurzlauf mit NINAs Kamera-Simulator (keine Temperaturregelung, Belichtung praktisch sofort); prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
   "untilMin": 30,
   "setup": {
     "ditherTrigger": true
   },
   "steps": [
-    {
-      "atMin": 5,
-      "sim": "setpoint",
-      "value": 0
-    },
     {
       "atMin": 13.3,
       "sim": "unsafe"
@@ -23,7 +18,7 @@
   ],
   "checks": [
     {
-      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera)",
+      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Auslesemodi der Kamera)",
       "asserts": [
         {
           "report": "heartbeats.last.filterWheel",
@@ -34,13 +29,13 @@
           "equals": 1
         },
         {
-          "report": "heartbeats.last.camera.coolerOn",
-          "equals": true
+          "report": "heartbeats.last.cameraReadoutModes",
+          "min": 1
         }
       ]
     },
     {
-      "name": "Belichtungen gespeichert und gemeldet, Messwerte aus ImageSaved",
+      "name": "Belichtungen gespeichert und gemeldet, Zeiten und Messwerte aus NINA",
       "asserts": [
         {
           "log": {
@@ -60,7 +55,7 @@
         },
         {
           "report": "captures",
-          "whereExists": ["metrics.hfr", "metrics.sensorTempC", "exposureMidUtc"],
+          "whereExists": ["exposureMidUtc", "metrics.meanAdu"],
           "min": 3
         }
       ]
@@ -87,46 +82,10 @@
       ]
     },
     {
-      "name": "Kühlung abweichend: weiter belichtet, je Block höchstens eine Warnung",
-      "asserts": [
-        {
-          "log": {
-            "event": "WARNING",
-            "where": {
-              "code": "camera_temperature"
-            }
-          },
-          "min": 1
-        },
-        {
-          "perBlock": {
-            "event": "WARNING",
-            "where": {
-              "code": "camera_temperature"
-            }
-          },
-          "max": 1
-        },
-        {
-          "report": "captures",
-          "where": {
-            "temperatureDeviation": true
-          },
-          "min": 1
-        }
-      ]
-    },
-    {
-      "name": "Safety unsicher während der Belichtung: Abbruch, Pause, Wiederaufnahme",
+      "name": "Safety unsicher: Pause, Heartbeat paused, Wiederaufnahme mit neuem Plan",
       "asserts": [
         {
           "order": [
-            {
-              "event": "CAPTURE",
-              "where": {
-                "result": "aborted"
-              }
-            },
             {
               "event": "SAFETY_PAUSE"
             },
