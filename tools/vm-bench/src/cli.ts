@@ -22,6 +22,8 @@ import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } f
 import { benchSequence, SEQUENCE, type SequenceSpec } from './sequence';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+/** Plugin-Id von NINA-PM (Guid-Attribut in NinaPm.Nina.csproj): Schlüssel der Plugin-Optionen im Profil. */
+const NINA_PM_PLUGIN_ID = '4b8e6c1d-2f7a-4e39-9d55-0c1a7e3b9f42';
 const RUNS = fileURLToPath(new URL('../runs/', import.meta.url));
 const ALL_DEVICES: Device[] = [
   'camera',
@@ -343,6 +345,52 @@ async function main(): Promise<number> {
         );
         return back ? 0 : 1;
       });
+    case 'clone-profile': {
+      // Prod-Profil für P-05/P-11: Kopie des Prüfstand-Profils, Token trägt Sven selbst ein (nie über den Prüfstand).
+      const name = arg('name');
+      const serverUrl = arg('server-url');
+      if (!name || !serverUrl || !cfg.profileId)
+        throw new Error('--name und --server-url angeben; profileId in der Konfiguration');
+      const flip = (arg('flip') ?? '').split(',').filter(Boolean).map(Number);
+      const args = {
+        sourceId: cfg.profileId,
+        name,
+        serverUrl,
+        testMode: false,
+        pluginId: NINA_PM_PLUGIN_ID,
+        filters: (arg('filters') ?? '').split(',').filter(Boolean),
+        ...(flip.length === 3
+          ? {
+              flip: {
+                MinutesAfterMeridian: flip[0],
+                MaxMinutesAfterMeridian: flip[1],
+                PauseTimeBeforeMeridian: flip[2],
+                Recenter: false,
+              },
+            }
+          : {}),
+      };
+      return withBench(cfg, async (bench) => {
+        await needAgent(bench);
+        const r = await job(
+          bench,
+          'clone-profile',
+          args,
+          join(ROOT, '.vm-bench', 'status'),
+          120_000,
+        );
+        const id = /Profil ([0-9a-f-]{36})/.exec(r.message)?.[1];
+        if (!id) throw new Error(`keine Profil-Id: ${r.message}`);
+        saveConfig({ ...cfg, prodProfileId: id });
+        const a = api(cfg);
+        await a.waitUntilUp(180_000);
+        await a.get('/profile/switch', { profileid: id });
+        log(
+          `Profil „${name}“ (${id}) angelegt und in NINA aktiv – Token jetzt auf der Optionsseite eintragen`,
+        );
+        return 0;
+      });
+    }
     case 'screenshot': {
       const tab = process.argv[3]?.startsWith('--') ? undefined : process.argv[3];
       const out = arg('out') ?? join(ROOT, '.vm-bench', `${stamp()}-screenshot.png`);

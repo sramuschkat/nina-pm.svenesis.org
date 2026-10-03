@@ -11,7 +11,7 @@ Claude Code fährt die VM-Läufe ohne Handgriffe: Ein kleiner Agent in der VM ho
 | Agent `C:\NinaPmBench\NinaPmBenchAgent.ps1` | VM | Aufgabenplanung „NINA-PM Bench Agent“ bei Anmeldung, in der angemeldeten Sitzung (NINA erscheint normal auf dem Bildschirm); fragt alle 3 s den Mac nach Aufträgen |
 | Advanced API (NINA-Plugin, Port 1888) | VM | Geräte verbinden, Profilwerte, Sequenz laden und starten, Reiter, Screenshots |
 
-Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log` und `update-agent` (sich selbst vom Mac neu laden): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
+Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log`, `update-agent` (sich selbst vom Mac neu laden) und `clone-profile` (Profil kopieren, Token der Kopie geleert): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
 
 Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`.
 
@@ -52,6 +52,7 @@ Meridian-Flip-Werte setzt der Lauf selbst über die Advanced API (`profile` in d
 | Befehl | Wirkung |
 |---|---|
 | `pnpm vm-bench status` | Agent und Advanced API erreichbar, Sequenzen in NINA |
+| `pnpm vm-bench clone-profile --name <name> --server-url <url> [--filters a,b,…] [--flip 5,10,5]` | Prüfstand-Profil kopieren (neue Id, Name, Filternamen, Flip-Werte, NINA-PM-URL, Testbetrieb aus, Token geleert) und in NINA aktivieren; das Token trägt Sven auf der Optionsseite ein |
 | `pnpm vm-bench update-agent` | Agent in der VM aus dem Repository neu laden (ab dieser Version ohne Handgriff) |
 | `pnpm vm-bench install-plugin <ordner>` | Plugin-Build (CI-Artefakt `nina-pm-plugin`) in die VM, NINA neu gestartet |
 | `pnpm vm-bench run vm-flip [--plugin <ordner>]` | Lauf: NINA frisch ohne `ninapm.db`, Profilwerte, Geräte, Test-Server, Sequenz, Screenshots, Log und Report, Auswertung |
