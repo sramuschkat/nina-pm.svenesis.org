@@ -185,6 +185,21 @@ beforeEach(() => {
 });
 
 describe('S-63 Projektbericht', () => {
+  it('Zeitraum nach dem Tag in der Zeitzone des Mandanten, nur eine Abfrage (Mitternacht dort, nicht in UTC)', async () => {
+    // 03.10.2026 22:30 UTC = 04.10. 00:30 in Berlin: vorher erst mit UTC-Tag, nach dem Laden mit dem Berliner Tag.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.UTC(2026, 9, 3, 22, 30));
+    try {
+      wrap();
+      expect(await screen.findByText(/1 Projekte · 24 akzeptierte Frames/)).toBeTruthy();
+      expect(state.calls).toEqual([
+        { from: '2026-07-06', to: '2026-10-04', status: '', rigId: '', type: '' },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Übersicht und aufklappbarer Projektabschnitt; Filter gehen in die Abfrage; axe', async () => {
     wrap();
     const overview = await screen.findByRole('table', { name: 'Übersicht' });
