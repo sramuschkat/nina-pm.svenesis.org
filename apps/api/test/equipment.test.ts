@@ -207,6 +207,39 @@ describe('Löschsperren (FA-RIG-13)', () => {
     expect((await t.call(`/cameras/${camera.id}`, { method: 'DELETE' })).status).toBe(204);
   });
 
+  it('Rig mit Simulations- und Prognoseplänen löschbar, mit Session-Plan nicht (FA-RIG-13, 03.10.2026)', async () => {
+    const t = await setup();
+    const { rig } = await withRig(t);
+    const plan = (origin: string, sessionId: string | null = null) =>
+      s.pg.admin.query(
+        `INSERT INTO night_plan (tenant_id, rig_id, night, origin, session_id, reason, engine_version, input_hash, summary, blocks)
+         VALUES ($1, $2, '2026-10-03', $3, $4, 'initial', '1.0.0', 'h', '{}'::jsonb, '[]'::jsonb)`,
+        [t.tenantId, rig.id, origin, sessionId],
+      );
+    await plan('web_simulation');
+    await plan('forecast_job');
+    await plan('server_plan');
+    const count = async () =>
+      (
+        await s.pg.admin.query('SELECT count(*)::int AS n FROM night_plan WHERE rig_id = $1', [
+          rig.id,
+        ])
+      ).rows[0] as { n: number };
+
+    // Plan einer Session sperrt (echte Nacht), abgeleitete Pläne nicht – und bleiben bei Sperre erhalten.
+    await plan('server_plan', id());
+    const blocked = await t.call(`/rigs/${rig.id}`, { method: 'DELETE' });
+    expect([blocked.status, blocked.body.code]).toEqual([409, 'resource.in_use']);
+    expect(blocked.body.errors).toEqual([{ path: 'nightPlans', message: '1' }]);
+    expect(await count()).toEqual({ n: 4 });
+
+    await s.pg.admin.query('DELETE FROM night_plan WHERE rig_id = $1 AND session_id IS NOT NULL', [
+      rig.id,
+    ]);
+    expect((await t.call(`/rigs/${rig.id}`, { method: 'DELETE' })).status).toBe(204);
+    expect(await count()).toEqual({ n: 0 });
+  });
+
   it('Filter in Vorlage und Filterrad, Mondprofil als Filter-Standard', async () => {
     const t = await setup();
     const { rig } = await withRig(t);
