@@ -58,9 +58,12 @@ export function ProjectReportPage() {
         ? { from: custom.from, to: custom.to }
         : { from: keyFromDays(daysFromKey(today) - Number(period)), to: today };
   const query = { ...range, status, rigId, type };
+  // Erst mit geladenem Mandanten abfragen: sonst gilt „heute“ zuerst in UTC und nach dem Laden in der Zeitzone des
+  // Mandanten – zwischen Mitternacht dort und in UTC ändert sich die Abfrage mitten im Laden (CI rot am 03.10.2026).
   const report = useQuery({
     queryKey: ['project-report', query],
     queryFn: () => reportsApi.projects(query),
+    enabled: me?.tenant != null,
   });
   const print = () => {
     for (const d of document.querySelectorAll('details')) d.open = true;
