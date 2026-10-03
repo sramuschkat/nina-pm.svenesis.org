@@ -88,7 +88,7 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
                 TemperatureC = Finite(camera.Temperature),
                 SetPointC = Finite(camera.TemperatureSetPoint),
                 CoolerOn = camera.CoolerOn,
-                CoolerPowerPct = Finite(camera.CoolerPower),
+                CoolerPowerPct = Percent(camera.CoolerPower),
             };
             body.CameraReadoutModes = [.. (camera.ReadoutModes ?? []).Select((name, index) => new CameraReadoutModes { Index = index, Name = name })];
         }
@@ -96,4 +96,10 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
     }
 
     private static double? Finite(double v) => double.IsFinite(v) ? v : null;
+
+    /// <summary>
+    /// Kühlerleistung 0–100 % (Vertrag); Treiber melden „unbekannt“ als NaN oder negativ (Sky-Simulator, VM-Lauf
+    /// 03.10.2026: <c>422</c> auf jeden Heartbeat) → weglassen.
+    /// </summary>
+    internal static double? Percent(double v) => double.IsFinite(v) && v is >= 0 and <= 100 ? v : null;
 }
