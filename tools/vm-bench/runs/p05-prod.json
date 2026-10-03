@@ -1,0 +1,30 @@
+{
+  "name": "p05-prod",
+  "description": "P-05 verkürzt gegen prod (Test-Mandant): Prod-Profil, Standort laut Rig (für den Lauf am 03.10.2026 vorübergehend Berlin), volle Beispielsequenz mit Warten auf Sonnenhöhe, ohne Autofokus (Simulator); nach 45 min stoppt der Prüfstand, wartet auf die Outbox und zählt. Abgleich der Aufnahmen und Zähler im Web durch Sven.",
+  "prod": true,
+  "untilMin": 30,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["RunAutofocus"]
+  },
+  "profile": {
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "AstrometrySettings-Latitude": 52.52,
+    "AstrometrySettings-Longitude": 13.405,
+    "AstrometrySettings-Elevation": 431.9
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 10,
+      "screenshot": "live-status",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 25,
+      "screenshot": "live-status-25",
+      "tab": "sequencer"
+    }
+  ]
+}

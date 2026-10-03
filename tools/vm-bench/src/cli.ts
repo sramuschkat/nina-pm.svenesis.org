@@ -44,8 +44,14 @@ export interface BenchRun {
   readonly name: string;
   readonly description: string;
   /** Kopfloser Lauf mit denselben Prüfungen (`tools/nina-sim/runs/<simRun>.json`, ausgewertet mit `--vm`). */
-  readonly simRun: string;
-  readonly scenario: string;
+  readonly simRun?: string;
+  /** Test-Server-Szenario; ohne Angabe (`prod`) kein Test-Server. */
+  readonly scenario?: string;
+  /**
+   * Gegen prod (Test-Mandant, P-05): Prod-Profil (`prodProfileId`, Token von Sven), kein Test-Server. Nach `untilMin`
+   * stoppt der Prüfstand die Sequenz, wartet auf die Outbox und zählt aus dem Log; den Abgleich im Web macht Sven.
+   */
+  readonly prod?: boolean;
   readonly untilMin: number;
   /**
    * Sequenz: Beispielsequenz aus `apps/nina-plugin/NinaPm.Nina/Samples/<from>.json`, ohne die genannten Anweisungen
@@ -188,6 +194,33 @@ async function waitForNightEnd(cfg: BenchConfig, deadlineMs: number): Promise<vo
   }
 }
 
+/** Zählung aus den `NINA-PM |`-Zeilen eines prod-Laufs (Abgleich mit dem Web macht Sven). */
+export function logSummary(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .filter((l) => l.includes('NINA-PM | '))
+    .map((l) => l.slice(l.indexOf('NINA-PM | ') + 10));
+  const field = (l: string, k: string) => new RegExp(`(?:^| )${k}=("[^"]*"|\\S+)`).exec(l)?.[1];
+  const ev = (name: string) => lines.filter((l) => l.startsWith(`${name} `) || l === name);
+  const outbox = ev('OUTBOX')
+    .map((l) => Number(field(l, 'pending') ?? NaN))
+    .filter((n) => !Number.isNaN(n));
+  const warnings: Record<string, number> = {};
+  for (const l of ev('WARNING'))
+    warnings[field(l, 'code') ?? '?'] = (warnings[field(l, 'code') ?? '?'] ?? 0) + 1;
+  return {
+    capturesSaved: ev('CAPTURE').filter((l) => field(l, 'result') === 'saved').length,
+    capturesOther: ev('CAPTURE').filter((l) => field(l, 'result') !== 'saved').length,
+    blocksStarted: ev('BLOCK_START').length,
+    plans: ev('PLAN').map((l) => field(l, 'reason')),
+    sessions: ev('SESSION').map((l) => field(l, 'status')),
+    outboxPendingAtEnd: outbox.length ? outbox[outbox.length - 1] : null,
+    rejectedApi: ev('API').filter((l) => /status=4\d\d/.test(l)).length,
+    errors: ev('ERROR').length,
+    warnings,
+  };
+}
+
 async function screenshot(a: AdvancedApi, tab: string | undefined, path: string): Promise<void> {
   if (tab) await a.switchTab(tab as Parameters<AdvancedApi['switchTab']>[0]);
   await sleep(1500);
@@ -205,7 +238,9 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const plugin = arg('plugin');
     if (plugin) await installPlugin(cfg, bench, plugin, dir);
     // NINA frisch: ninapm.db löschen (ein gespeicherter Plan derselben Nacht schlösse sie sofort ab, VM-Lauf 03.10.2026).
-    await job(bench, 'restart-nina', { resetDb: true, profileId: cfg.profileId ?? '' }, dir);
+    const profileId = r.prod ? cfg.prodProfileId : cfg.profileId;
+    if (r.prod && !profileId) throw new Error('Kein Prod-Profil: pnpm vm-bench clone-profile …');
+    await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
@@ -223,12 +258,16 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     if (!(await a.sequences()).includes(SEQUENCE))
       throw new Error(`Sequenz „${SEQUENCE}“ nach dem Ablegen nicht in NINA`);
 
-    const server = new NinaTestServer(loadScenario(r.scenario), loadRig());
-    const http = await server.listen(cfg.testServerPort, '0.0.0.0');
+    const server = r.scenario ? new NinaTestServer(loadScenario(r.scenario), loadRig()) : undefined;
+    const http = server ? await server.listen(cfg.testServerPort, '0.0.0.0') : undefined;
     const startedMs = Date.now();
     const startUtc = new Date(startedMs).toISOString();
     try {
-      log(`Test-Server „${r.scenario}“ läuft, Sequenz „${SEQUENCE}“ startet`);
+      log(
+        r.scenario
+          ? `Test-Server „${r.scenario}“ läuft, Sequenz „${SEQUENCE}“ startet`
+          : `prod: Sequenz „${SEQUENCE}“ startet`,
+      );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
@@ -245,14 +284,21 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
           log(`Schritt bei Minute ${String(s.atMin)}: ${String(e)}`);
         }
       }
-      await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000);
-      const report = await (
-        await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
-      ).json();
-      writeFileSync(join(dir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
-      await a.stopSequence().catch(() => undefined);
+      if (server) {
+        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000);
+        const report = await (
+          await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
+        ).json();
+        writeFileSync(join(dir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
+        await a.stopSequence().catch(() => undefined);
+      } else {
+        await sleep(Math.max(0, startedMs + r.untilMin * 60_000 - Date.now()));
+        await a.stopSequence().catch(() => undefined);
+        log('Sequenz gestoppt – 3 min für die Outbox (Heartbeat-Takt 60 s)');
+        await sleep(180_000);
+      }
     } finally {
-      http.close();
+      http?.close();
     }
     const logs = await job(
       bench,
@@ -265,6 +311,13 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       join(dir, 'bench.json'),
       `${JSON.stringify({ run: r.name, startUtc, endUtc: new Date().toISOString() }, null, 2)}\n`,
     );
+    if (!r.simRun) {
+      const summary = logSummary(readFileSync(logs.files['nina.log'], 'utf8'));
+      writeFileSync(join(dir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
+      log(`Zusammenfassung: ${JSON.stringify(summary)}`);
+      log(`Ergebnis in ${dir}`);
+      return summary.errors === 0 && summary.rejectedApi === 0 && summary.outboxPendingAtEnd === 0;
+    }
     const check = spawnSync('pnpm', ['plugin:sim', '--vm', dir, r.simRun], {
       cwd: ROOT,
       stdio: 'inherit',
