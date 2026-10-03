@@ -3,6 +3,9 @@
  * je PR auf die CI warten, prüfen, ob er konfliktfrei ist, mit Merge-Commit mergen und den Branch
  * löschen – nur den Kopf-Commit, dessen CI abgewartet wurde (`--match-head-commit`). Mit `--deploy` folgt danach `pnpm deploy:prod` (fragt weiterhin nach „ja“).
  *
+ * Meldet sich auf macOS mit einer Mitteilung (gelandet, CI rot, Konflikt, Deploy-Bestätigung), damit niemand
+ * danebensitzen muss (Sven 03.10.2026) – einfach in einem eigenen Terminal-Tab starten und weiterarbeiten.
+ *
  * Ersatz für GitHub-Auto-Merge: im privaten Repo ohne GitHub Pro gibt es keine Pflicht-Checks, und
  * `gh pr merge --auto` würde sofort mergen, statt auf die CI zu warten. Nur Sven führt das aus
  * (Claude Code mergt keine eigenen PRs).
@@ -22,8 +25,22 @@ function gh(args: string[], inherit = false): { ok: boolean; out: string } {
   return { ok: res.status === 0, out: `${res.stdout ?? ''}`.trim() };
 }
 
+/** macOS-Mitteilung (Benachrichtigungszentrale); anderswo oder ohne osascript still. */
+function notify(title: string, message: string): void {
+  if (process.platform !== 'darwin') return;
+  const q = (t: string) => t.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  spawnSync(
+    'osascript',
+    ['-e', `display notification "${q(message)}" with title "${q(title)}" sound name "Glass"`],
+    {
+      stdio: 'ignore',
+    },
+  );
+}
+
 function fail(message: string): never {
   console.error(`\n✗ ${message}`);
+  notify('pr:land – Abbruch', message);
   process.exit(1);
 }
 
@@ -71,6 +88,7 @@ async function land(pr: string): Promise<void> {
     fail(error instanceof Error ? error.message : String(error));
   }
   console.log(`✓ #${pr} gemergt.`);
+  notify('pr:land', `#${pr} gelandet`);
 }
 
 async function main(): Promise<void> {
@@ -97,6 +115,10 @@ async function main(): Promise<void> {
     console.log('\nFertig. Deploy bei Bedarf: pnpm deploy:prod');
     return;
   }
+  notify(
+    'pr:land',
+    `${prs.map((p) => `#${p}`).join(', ')} gelandet – Deploy startet (Bestätigung „ja“ im Terminal)`,
+  );
   const res = spawnSync('pnpm', ['deploy:prod'], { cwd: repoRoot, stdio: 'inherit' });
   process.exit(res.status ?? 1);
 }

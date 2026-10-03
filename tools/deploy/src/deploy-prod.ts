@@ -9,7 +9,9 @@
  * AP-03: bei neuen Migrationen test:dsql grün für den Stand (H-22) und On-Demand-Backup vor dem Deploy.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { stdin, stdout } from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
@@ -173,6 +175,36 @@ async function ensureGreenCi(sha: string): Promise<string> {
         });
       },
       log: (line) => console.log(line),
+      prRuns: () => {
+        const repo = capture('gh', [
+          'repo',
+          'view',
+          '--json',
+          'nameWithOwner',
+          '--jq',
+          '.nameWithOwner',
+        ]).out;
+        if (!repo) return [];
+        return capture('gh', [
+          'api',
+          `repos/${repo}/actions/workflows/ci.yml/runs?event=pull_request&status=success&per_page=15`,
+          '--jq',
+          `.workflow_runs[] | select(.head_repository.full_name == "${repo}") | .id`,
+        ])
+          .out.split('\n')
+          .filter(Boolean);
+      },
+      testedTree: (runId) => {
+        const dir = mkdtempSync(join(tmpdir(), 'tested-tree-'));
+        try {
+          const res = capture('gh', ['run', 'download', runId, '-n', 'tested-tree', '-D', dir]);
+          return res.ok ? readFileSync(join(dir, 'tested-tree.txt'), 'utf8').trim() : null;
+        } catch {
+          return null;
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      },
     });
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error));

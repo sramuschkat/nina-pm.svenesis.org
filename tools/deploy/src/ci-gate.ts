@@ -17,6 +17,10 @@ export interface CiGateDeps {
   /** `gh run watch <id>` – wartet, bis der Lauf fertig ist. */
   watch: (runId: string) => void;
   log: (line: string) => void;
+  /** Grüne PR-Läufe von ci.yml aus diesem Repo (keine Forks), neueste zuerst – Lauf-IDs. */
+  prRuns?: () => string[];
+  /** Vom PR-Lauf geprüfter Dateistand (Artefakt `tested-tree`, Git-Tree des Merge-Refs) oder `null`. */
+  testedTree?: (runId: string) => string | null;
 }
 
 const RUNNING = ['in_progress', 'queued', 'waiting', 'pending', 'requested'];
@@ -70,6 +74,20 @@ export function isFullRun(gh: Cmd, runId: string): boolean {
  *    `in_progress`, z. B. direkt nach `pr:land`) → warten (`gh run watch`), statt abzubrechen.
  * „Vollständig“ heißt: kein Job übersprungen (`isFullRun`). Wirft mit Begründung, wenn nichts davon zutrifft.
  */
+/**
+ * Vollständig grüner PR-Lauf, der genau den Dateistand von `sha` geprüft hat (Sven 03.10.2026): nach `pr:land` ist
+ * der Merge-Commit inhaltsgleich mit dem Merge-Ref, den die PR-CI getestet hat, solange nichts dazwischen gelandet
+ * ist. `main` übernimmt dann das Ergebnis (ci.yml, Auftrag `changes`) – der Deploy wartet nicht auf einen zweiten Lauf.
+ */
+function samePrTree(sha: string, deps: CiGateDeps): string | null {
+  if (!deps.prRuns || !deps.testedTree) return null;
+  const tree = deps.git(['rev-parse', `${sha}^{tree}`]).out;
+  if (!tree) return null;
+  for (const id of deps.prRuns())
+    if (isFullRun(deps.gh, id) && deps.testedTree(id) === tree) return id;
+  return null;
+}
+
 export async function ensureGreenCi(sha: string, deps: CiGateDeps): Promise<string> {
   const { git, gh } = deps;
   const own = latestRun(gh, sha);
@@ -98,6 +116,8 @@ export async function ensureGreenCi(sha: string, deps: CiGateDeps): Promise<stri
       return `gleicher Stand wie ${candidate.slice(0, 7)}`;
   }
 
+  const pr = samePrTree(sha, deps);
+  if (pr) return `gleicher Stand wie PR-Lauf ${pr}`;
   // Direkt nach dem Merge legt GitHub den Lauf erst nach einigen Sekunden an.
   let run = latestRun(gh, sha);
   for (let i = 0; run.state === '' && i < 12; i += 1) {
