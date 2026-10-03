@@ -35,6 +35,8 @@ export type Assert = Part &
         readonly min?: number;
         readonly max?: number;
         readonly equals?: unknown;
+        /** Wert unter `report` vorhanden (nicht `undefined`/`null`). */
+        readonly exists?: boolean;
       }
   );
 
@@ -124,6 +126,13 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
     };
   }
   const value = at(report, a.report);
+  if (a.exists !== undefined) {
+    const present = value !== undefined && value !== null;
+    return {
+      ok: present === a.exists,
+      text: `Report ${a.report} ${present ? `= ${JSON.stringify(value)}` : 'fehlt'} (erwartet ${a.exists ? 'vorhanden' : 'fehlend'})`,
+    };
+  }
   if (a.equals !== undefined)
     return {
       ok: JSON.stringify(value) === JSON.stringify(a.equals),

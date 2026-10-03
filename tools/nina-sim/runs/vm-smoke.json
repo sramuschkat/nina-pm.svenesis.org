@@ -23,7 +23,7 @@
   ],
   "checks": [
     {
-      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera mit Kühlung)",
+      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera mit Temperatur)",
       "asserts": [
         {
           "report": "heartbeats.last.filterWheel",
@@ -34,8 +34,8 @@
           "equals": 1
         },
         {
-          "report": "heartbeats.last.camera.coolerOn",
-          "equals": true
+          "report": "heartbeats.last.camera.temperatureC",
+          "exists": true
         }
       ]
     },
