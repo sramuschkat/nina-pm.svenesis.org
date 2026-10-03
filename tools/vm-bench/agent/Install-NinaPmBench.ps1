@@ -24,6 +24,11 @@ if (-not (Test-Path $nina)) {
 }
 Write-Host "NINA: $nina"
 
+# Erneute Einrichtung: laufenden Agenten zuerst beenden, sonst arbeitet er mit dem alten Skript weiter.
+Stop-ScheduledTask -TaskName 'NINA-PM Bench Agent' -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" |
+    Where-Object { $_.CommandLine -like '*NinaPmBenchAgent.ps1*' } |
+    ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate | Out-Null }
 Invoke-WebRequest -UseBasicParsing -Uri "$Server/setup/NinaPmBenchAgent.ps1" -OutFile (Join-Path $Root 'NinaPmBenchAgent.ps1')
 @{ server = $Server; key = $Key; ninaExe = $nina } | ConvertTo-Json | Set-Content -Path (Join-Path $Root 'agent.json') -Encoding UTF8
 
