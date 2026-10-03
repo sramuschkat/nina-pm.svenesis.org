@@ -42,6 +42,8 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public bool IsViableNow(Blocks block) => true;
 
+    public bool AnyFilterAvailable(Blocks block) => rules.AnyFilterAvailable(block, world.ProfileFilters);
+
     private Blocks? target;
 
     public void SetTarget(Blocks block) => target = block;
@@ -128,6 +130,7 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public async Task<ExposureResult> ExposeAsync(Blocks block, Entries entry, bool temperatureDeviation, CancellationToken token)
     {
+        if (world.ProfileFilters.Count > 0 && currentFilter is null) await ChangeFilterAsync(entry, token);
         if (world.ProfileFilters.Count > 0 && currentFilter is null) return ExposureResult.Skipped;
         if (rules.ChooseReadout(entry, world.ReadoutModes).Kind == ReadoutResolutionKind.NotFound) return ExposureResult.Skipped;
         // NINAs Trigger-Walk vor der Belichtung: ab der frühesten Flipzeit flippt der Meridian-Flip-Trigger (±1 Belichtung).

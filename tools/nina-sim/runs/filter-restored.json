@@ -1,0 +1,94 @@
+{
+  "name": "filter-restored",
+  "scenario": "filter-restored",
+  "description": "Filtername passt nicht zum Profil und wird in Minute 12 (mitten im zweiten Block) im Web korrigiert (P-05 prod 03.10.2026): erster Block filter_not_found übersprungen statt leer abzusitzen, im zweiten Block belichtet der korrigierte Filter sofort nach dem Heartbeat mit neuem targets-ETag, nicht erst nach der 15-min-Prüfung.",
+  "untilMin": 30,
+  "setup": {
+    "autoStart": false
+  },
+  "steps": [
+    {
+      "atMin": 0.5,
+      "server": "filter_wheel_changed"
+    },
+    {
+      "atMin": 1,
+      "sim": "start"
+    },
+    {
+      "atMin": 12,
+      "server": "filter_wheel_restored"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Block nur mit fehlendem Filter: BLOCK_SKIPPED filter_not_found ohne Slew, Hinweis einmal",
+      "asserts": [
+        {
+          "log": {
+            "event": "BLOCK_SKIPPED",
+            "where": {
+              "reason": "filter_not_found"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "FILTER_NOT_FOUND",
+            "where": {
+              "short": "L"
+            }
+          },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Zweiter Block läuft mit R, nach der Korrektur sofort auch mit L (Block 12 min < 15-min-Prüfung)",
+      "asserts": [
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "R",
+            "result": "saved"
+          },
+          "min": 3
+        },
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "L",
+            "result": "saved"
+          },
+          "min": 2
+        },
+        {
+          "order": [
+            {
+              "event": "BLOCK_SKIPPED",
+              "where": {
+                "reason": "filter_not_found"
+              }
+            },
+            {
+              "event": "BLOCK_START"
+            },
+            {
+              "event": "TARGETS"
+            }
+          ]
+        },
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

@@ -49,7 +49,8 @@ public sealed record BlockRunOptions(
     PlaybackMode? Mode = null,
     Action<EventsKind, string?, Blocks, double?>? Report = null,
     Action<Blocks>? FlipDone = null,
-    Func<bool>? SkipRequested = null);
+    Func<bool>? SkipRequested = null,
+    Func<bool>? TargetsChanged = null);
 
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
@@ -139,6 +140,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
         if (block.EndUtc <= clock.UtcNow) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
+        // §4.1 Nr. 1: keine Zeile mit gefundenem Filter → überspringen statt den Block leer abzusitzen (P-05 prod 03.10.2026).
+        if (!host.AnyFilterAvailable(block)) return Skip(block, "filter_not_found");
 
         host.SetTarget(block);
         if (host.CanSkipSlew(block))
@@ -180,7 +183,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         return new BlockOutcome(true, reason, exposures, skipped);
     }
 
-    /// <summary>§4.1 Nr. 1: vorbei bzw. ohne Belichtung; Filterprüfung (<c>filter_not_found</c>) im Adapter (AP-16d).</summary>
+    /// <summary>§4.1 Nr. 1: vorbei bzw. ohne Belichtung; die Filterprüfung (<c>filter_not_found</c>) folgt nach dem Warten auf den Blockstart.</summary>
     private string? PreCheck(Blocks block)
     {
         if (block.EndUtc <= clock.UtcNow) return "elapsed";
@@ -297,7 +300,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 continue;
             }
             if (options.StopReason?.Invoke() is { } stop) return (stop, exposures, skippedTotal);
-            if (inBlockCheck is not null && ReplanPolicy.InBlockCheckDue(lastCheck, clock.UtcNow))
+            // Prüfung im Block alle 15 min – oder sofort, wenn der Heartbeat ein neues targets-ETag meldet (z. B. eine im
+            // Web bestätigte Filterzuordnung, P-05 prod 03.10.2026).
+            if (inBlockCheck is not null && (ReplanPolicy.InBlockCheckDue(lastCheck, clock.UtcNow) || options.TargetsChanged?.Invoke() == true))
             {
                 lastCheck = clock.UtcNow;
                 var end = await inBlockCheck(entries[target], token).ConfigureAwait(false);

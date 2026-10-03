@@ -68,11 +68,12 @@ const entriesOf = (plan: Json) => (plan.blocks as Json[]).flatMap((b) => b.entri
 const P = '/api/nina/v1';
 
 describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', () => {
-  it('kennt die 22 Szenarien aus ops/plugin-test-protocol.md', () => {
+  it('kennt die 23 Szenarien aus ops/plugin-test-protocol.md', () => {
     expect(SCENARIO_NAMES).toEqual(
       [
         'current-night',
         'delay',
+        'filter-restored',
         'filters-readout',
         'flats',
         'flip',
@@ -299,6 +300,11 @@ describe('Session, Meldungen und Heartbeat', () => {
     t.server.apply('filter_wheel_changed');
     const b = await t.ok('GET', `${P}/bootstrap`);
     expect(((b.rig as Json).filters as Json[])[0]?.ninaFilterName).toBe('LUMINANCE-ALT');
+    const etag = (await t.ok('POST', `${P}/heartbeat`, heartbeat())).targetsEtag;
+    t.server.apply('filter_wheel_restored');
+    const restored = await t.ok('GET', `${P}/bootstrap`);
+    expect(((restored.rig as Json).filters as Json[])[0]?.ninaFilterName).toBe('LUMINANCE');
+    expect((await t.ok('POST', `${P}/heartbeat`, heartbeat())).targetsEtag).not.toBe(etag);
   });
 });
 
