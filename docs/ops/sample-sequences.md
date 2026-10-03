@@ -59,8 +59,12 @@ Wiederherstellung am Anfang von „Ziel“ und der Container „Blöcke“ bleib
 
 - Keine Gerätewerte, die nur zu einem Rig passen (Filter, Pfade, Profilnamen); Temperatur −10 °C und AF-Intervall
   60 min als neutrale Vorgaben.
-- Die Dateien werden unverändert eingecheckt (keine Handbearbeitung); `SequenceInspector` (AP-16h) prüft sie später
-  gegen die Vorlage.
+- Die Dateien werden unverändert eingecheckt (keine Handbearbeitung); `SequenceInspectorTests` (AP-16h) prüft sie in
+  der CI gegen die Vorlage – beide ergeben keinen Hinweis.
+- **Ausnahme AP-16h:** Die Fassungen aus AP-16c entstanden vor der Spec-Ergänzung „Blöcke“/„nichts hinter der
+  Warte-Anweisung“ und wurden per Skript umgebaut (Container „Blöcke“ in „Ziel“ mit *Unpark Scope* davor, *Unpark
+  Scope* hinter *NINA-PM Wait until Safe or Night End* entfernt). Beim nächsten VM-Termin in NINA laden, mit dieser
+  Liste vergleichen und unverändert mit *Save Sequence As* wieder speichern; der NINA-Export ersetzt die Skriptfassung.
 
 ## 4. Testkopie für Läufe tagsüber (Test-Server)
 

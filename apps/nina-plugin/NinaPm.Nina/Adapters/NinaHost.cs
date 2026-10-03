@@ -91,13 +91,18 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
 
     public void OnInterrupted() => interruptedSinceCenter = true;
 
+    /// <summary>Abweichungen von der Sequenzvorlage beim letzten Planaufbau (Hinweis auf der Optionsseite, kein Abbruch).</summary>
+    public IReadOnlyList<NinaPm.Core.Sequence.TemplateDeviation> Deviations { get; private set; } = [];
+
     /// <summary>
-    /// Nach dem Planaufbau (execution.md §4.3 NT-23, §4.4): Dither-Trigger in den Vorfahren → einmal je Nacht
+    /// Nach dem Planaufbau (execution.md §1, §4.3 NT-23, §4.4): Sequenzvorlage (<see cref="HostRules.CheckSequence"/>); Dither-Trigger in den Vorfahren → einmal je Nacht
     /// <c>warning nina_dither_trigger_present</c> (der Walk unterdrückt ihn ohnehin); bestätigte NINA-Filternamen, die
     /// im Profil fehlen → <c>warning filter_wheel_changed</c> je Name höchstens 1×/12 h.
     /// </summary>
     public void PlanBuilt(NinaTargets? targets)
     {
+        // Sequenzvorlage zuerst (AP-16h): sie meldet einen fehlenden Flip-Trigger mit allen übrigen Abweichungen.
+        Deviations = Rules.CheckSequence(SequenceTree.FromAncestors(Container), m.SafetyMonitor.GetInfo()?.Connected == true);
         var triggers = Container is null ? [] : AncestorTriggers().ToList();
         var dither = triggers.FirstOrDefault(t => t.GetType().Name.Contains("dither", StringComparison.OrdinalIgnoreCase));
         Rules.PlanBuilt(targets, ProfileFilterNames(), dither?.GetType().Name);
@@ -167,14 +172,20 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
         Box.Target = target;
         previousItem = null;
-        // Koordinaten in Center-after-Drift der Vorfahren injizieren (TargetInstructionSet.cs SetTargetFromBlock).
+        // Koordinaten in Center-after-Drift der Vorfahren und in die Anweisungen der Trigger-Sets injizieren
+        // (TargetInstructionSet.cs SetTargetFromBlock, FA-NIN-16).
         foreach (var trigger in AncestorTriggers())
-            if (trigger is CenterAfterDriftTrigger drift)
+            switch (trigger)
             {
-                drift.AttachNewParent(Box);
-                drift.Coordinates = coords.Clone();
-                drift.Inherited = true;
-                drift.SequenceBlockInitialize();
+                case CenterAfterDriftTrigger drift:
+                    drift.AttachNewParent(Box);
+                    drift.Coordinates = coords.Clone();
+                    drift.Inherited = true;
+                    drift.SequenceBlockInitialize();
+                    break;
+                case BeforeExposureTrigger or AfterExposureTrigger or BeforeTargetChangeTrigger or AfterTargetChangeTrigger:
+                    CoordinatesInjector.Inject(((NINA.Sequencer.Trigger.SequenceTrigger)trigger).TriggerRunner, coords);
+                    break;
             }
     }
 
@@ -239,12 +250,34 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
     }
 
-    public Task BeforeTargetChangeAsync(CancellationToken token) => Task.CompletedTask; // Trigger-Sets FA-NIN-16: AP-16h
+    /// <summary>
+    /// Trigger-Sets <em>NINA-PM vor Zielwechsel</em> aller Vorfahren einschließlich der globalen Trigger (FA-NIN-16,
+    /// §4.1 Nr. 6; Walk wie TargetInstructionSet.cs). Ein Fehler darin bricht den Block ab wie jeder andere.
+    /// </summary>
+    public async Task BeforeTargetChangeAsync(CancellationToken token)
+    {
+        foreach (var set in AncestorTriggers().OfType<BeforeTargetChangeTrigger>().ToList())
+            await set.FireAsync(Progress ?? new Progress<ApplicationStatus>(), token);
+    }
 
-    public Task AfterTargetChangeAsync(CancellationToken token)
+    /// <summary>
+    /// Trigger-Sets <em>NINA-PM nach Zielwechsel</em> (§4.1 Nr. 7); ein Fehler darin wird nur gemeldet – der Block ist
+    /// schon abgeschlossen (TargetInstructionSet.cs).
+    /// </summary>
+    public async Task AfterTargetChangeAsync(CancellationToken token)
     {
         if (Box.Target is not null && lastCentered is { } c) lastCentered = c with { EndUtc = clock.UtcNow };
-        return Task.CompletedTask;
+        foreach (var set in AncestorTriggers().OfType<AfterTargetChangeTrigger>().ToList())
+        {
+            try
+            {
+                await set.FireAsync(Progress ?? new Progress<ApplicationStatus>(), token);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Logger.Warning($"NINA-PM: Trigger-Set nach dem Zielwechsel fehlgeschlagen: {ex.Message}");
+            }
+        }
     }
 
     public async Task StartGuidingAsync(CancellationToken token)

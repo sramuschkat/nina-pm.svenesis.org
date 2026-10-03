@@ -1,10 +1,12 @@
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Execution;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
 using NinaPm.Core.Reporting;
+using NinaPm.Core.Sequence;
 using NinaPm.Core.Session;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
@@ -139,6 +141,62 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     private NightRunner Runner() => new(api, api, store, nina, nina, clock, new NinaPmLog(sink));
+
+    private static SeqNode SampleSequence(string file, Action<JObject>? change = null)
+    {
+        var json = JObject.Parse(File.ReadAllText(Path.Combine(ContractExamples.RepoRoot(), "apps", "nina-plugin", "NinaPm.Nina", "Samples", file)));
+        change?.Invoke(json);
+        return SequenceFile.Parse(json.ToString());
+    }
+
+    [Fact]
+    public async Task Ziele_aktualisieren_laedt_Bootstrap_und_Ziele_offline_nur_Cache()
+    {
+        // FA-NIN-08 (AP-16h): Anweisung NINA-PM Ziele aktualisieren.
+        var runner = Runner();
+        var r = await runner.RefreshAsync(default);
+        Assert.Equal(new TargetsRefresh(2, "\"t-9b41\"", false), r);
+        Assert.Contains(sink.Lines, l => l.EndsWith("API status=200 call=bootstrap", StringComparison.Ordinal));
+        Assert.Contains(sink.Lines, l => l.EndsWith("API status=200 call=targets", StringComparison.Ordinal));
+
+        sink.Lines.Clear();
+        runner.OfflineMode = true;
+        Assert.Equal(new TargetsRefresh(2, "\"t-9b41\"", true), await runner.RefreshAsync(default));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("API ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sequenzvorlage_Abweichung_einmal_je_Nacht_und_Safety_ohne_Monitor()
+    {
+        // AP-16h (execution.md §1, NT-44): Hinweis kein Abbruch, warning sequence_template_deviation 1×/12 h mit checks,
+        // Safety-Bedingungen ohne verbundenen Monitor → safety_monitor_not_connected; Vorlage ohne Safety bleibt still.
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Bootstrap (afEveryMin 60, Flip an) und Session
+        var rules = new HostRules(clock, () => new NinaPmLog(sink), () => runner);
+        sink.Lines.Clear();
+
+        Assert.Empty(rules.CheckSequence(SampleSequence("one-night.json"), safetyMonitorConnected: false));
+        Assert.Empty(sink.Lines);
+
+        var deviating = SampleSequence("one-night-safety.json", s =>
+            s.SelectTokens("$..[?(@.$type =~ /.*AutofocusAfterTimeTrigger.*/)]").OfType<JObject>().Single()["Amount"] = 30.0);
+        var found = rules.CheckSequence(deviating, safetyMonitorConnected: false);
+        Assert.Equal("af_time_mismatch", Assert.Single(found).Check);
+        Assert.Single(sink.Lines, l => l.Contains("WARNING code=sequence_template_deviation checks=af_time_mismatch", StringComparison.Ordinal));
+        Assert.Single(sink.Lines, l => l.Contains("WARNING code=safety_monitor_not_connected", StringComparison.Ordinal));
+        var deviation = store.OutboxPayloads(OutboxKinds.Event).Select(JObject.Parse)
+            .Single(e => (string?)e["code"] == "sequence_template_deviation");
+        Assert.Equal(["af_time_mismatch"], deviation["data"]!["checks"]!.Values<string>());
+
+        sink.Lines.Clear();
+        clock.UtcNow = clock.UtcNow.AddHours(1);
+        Assert.Single(rules.CheckSequence(deviating, safetyMonitorConnected: false)); // Hinweis bleibt für die Optionsseite
+        Assert.Empty(sink.Lines);                                                     // Meldung gedrosselt
+        clock.UtcNow = clock.UtcNow.AddHours(12);
+        rules.CheckSequence(deviating, safetyMonitorConnected: true);
+        Assert.Single(sink.Lines, l => l.Contains("sequence_template_deviation", StringComparison.Ordinal));
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("safety_monitor_not_connected", StringComparison.Ordinal));
+    }
 
     [Fact]
     public async Task Erster_Aufruf_holt_den_Plan_speichert_ihn_und_legt_die_Session_an()

@@ -14,6 +14,13 @@ public static class Texts
 
     public static string BeforeExposureHint => T("Läuft vor jeder NINA-PM-Belichtung", "Runs before each NINA-PM exposure");
     public static string AfterExposureHint => T("Läuft nach jeder NINA-PM-Belichtung", "Runs after each NINA-PM exposure");
+    public static string BeforeTargetChangeHint => T(
+        "Läuft je neuem NINA-PM-Ziel nach Slew und Zentrieren, vor dem Guiding", "Runs on each new NINA-PM target after slew and centering, before guiding");
+    public static string AfterTargetChangeHint => T("Läuft nach jedem NINA-PM-Block", "Runs after each NINA-PM block");
+    public static string RefreshTargetsHint => T("Lädt Rig-Einstellungen und Ziele in den Cache", "Loads rig settings and targets into the cache");
+    public static string TargetsRefreshed(int projects, bool offline) => offline
+        ? T($"Offline-Modus – {projects} Ziele im Cache", $"Offline mode – {projects} targets in cache")
+        : T($"{projects} Ziele im Cache", $"{projects} targets in cache");
     public static string DropInstructionsHint => T("Anweisungen hierher ziehen …", "Drag instructions here …");
 
     public static string Intro => T(

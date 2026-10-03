@@ -65,7 +65,8 @@ public sealed class SequencerTests
         foreach (var type in NinaPmResources.TemplateTypes.Values)
             Assert.IsType<DataTemplate>(resources[new DataTemplateKey(type)]);
         foreach (var type in new[] { typeof(NinaPmContainer), typeof(NightLoopCondition), typeof(SafetyWaitInstruction),
-                     typeof(BeforeExposureTrigger), typeof(AfterExposureTrigger) })
+                     typeof(BeforeExposureTrigger), typeof(AfterExposureTrigger), typeof(BeforeTargetChangeTrigger),
+                     typeof(AfterTargetChangeTrigger), typeof(RefreshTargetsInstruction) })
             Assert.IsType<DataTemplate>(resources[$"{type.FullName}_Mini"]);
         Assert.IsType<DataTemplate>(resources["NINA-PM_Options"]);
     });
@@ -148,6 +149,62 @@ public sealed class SequencerTests
         Assert.True(after.ShouldTriggerAfter(exposure, other));
         Assert.False(after.ShouldTriggerAfter(other, exposure));
         Assert.False(after.ShouldTrigger(other, exposure));
+    }
+
+    // ---- AP-16h: Trigger-Sets Zielwechsel, Sequenzbaum (FA-NIN-16, execution.md §1) -------------------------
+
+    private sealed class CountingItem : SequenceItem
+    {
+        public int Runs { get; private set; }
+
+        public override Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token)
+        {
+            Runs++;
+            return Task.CompletedTask;
+        }
+
+        public override object Clone() => this;
+    }
+
+    [Fact]
+    public async Task Trigger_Sets_Zielwechsel_feuern_nie_ueber_NINA_aber_je_Block_erneut()
+    {
+        var before = new BeforeTargetChangeTrigger();
+        var after = new AfterTargetChangeTrigger();
+        var other = new PlaceholderItem();
+        Assert.False(before.ShouldTrigger(other, other));
+        Assert.False(before.ShouldTriggerAfter(other, other));
+        Assert.False(after.ShouldTrigger(other, other));
+        Assert.False(after.ShouldTriggerAfter(other, other));
+
+        // Zwei Blöcke: Fortschritt wird je Lauf zurückgesetzt (sonst liefe ab dem zweiten Block nichts).
+        var item = new CountingItem();
+        before.TriggerRunner.Add(item);
+        await before.FireAsync(new Progress<ApplicationStatus>(), default);
+        await before.FireAsync(new Progress<ApplicationStatus>(), default);
+        Assert.Equal(2, item.Runs);
+        await after.FireAsync(new Progress<ApplicationStatus>(), default); // leer: nichts zu tun
+    }
+
+    [Fact]
+    public void Sequenzbaum_von_der_Wurzel_mit_Bedingungen_Triggern_und_deaktivierten_Anweisungen()
+    {
+        var (outer, inner) = Nested(withSafety: true);
+        outer.Name = "Ziel";
+        outer.Add(new FakeAutofocusAfterTimeTrigger());
+        var disabled = new PlaceholderItem { Status = NINA.Core.Enum.SequenceEntityStatus.DISABLED };
+        inner.Add(disabled);
+        var leaf = new SequentialContainer { Name = "Blöcke" };
+        inner.Add(leaf);
+
+        var root = SequenceTree.FromAncestors(leaf)!;
+        Assert.Equal(("SequentialContainer", "Ziel"), (root.Type, root.Name));
+        Assert.True(root.HasCondition("SafetyMonitorCondition"));
+        Assert.Equal("FakeAutofocusAfterTimeTrigger", Assert.Single(root.TriggerList).Type);
+        var innerNode = Assert.Single(root.ItemList);
+        Assert.True(innerNode.ItemList[0].Disabled);
+        Assert.Equal("Blöcke", innerNode.ItemList[1].Name);
+        Assert.Null(SequenceTree.FromAncestors(null));
     }
 
     // ---- AP-16e: Heartbeat-Einstellungen (execution.md §4.4/§6) ----------------------------------------------

@@ -111,7 +111,7 @@ internal sealed class NinaPmRuntime : IDisposable
     public NightRunner Runner { get; }
 
     /// <summary>Testbetrieb nur mit allen drei Bedingungen (NIN-17): Schalter, lokale URL, Antwort mit <c>X-NPM-Test: 1</c>.</summary>
-    public bool TestModeActive => Options.TestMode && Options.IsLocalServer && api.LastResponseWasTestServer;
+    public bool TestModeActive => Options.SafetyChecksOff(api.LastResponseWasTestServer);
 
     /// <summary>Laufzeit für die aktuellen Optionen holen oder neu aufbauen; <c>null</c>, wenn URL oder Token fehlen.</summary>
     public static NinaPmRuntime? Ensure(IProfileService profileService, Func<NinaHost> hostFactory)

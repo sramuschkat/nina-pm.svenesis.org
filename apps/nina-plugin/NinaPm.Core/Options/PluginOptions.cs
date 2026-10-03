@@ -44,6 +44,13 @@ public sealed class PluginOptions
             return b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168);
         }
     }
+
+    /// <summary>
+    /// Dreifachsperre des Testbetriebs (execution.md §9, NIN-17): Dunkelheits- und Höhenprüfung entfallen nur mit
+    /// sichtbarem Schalter <see cref="TestMode"/>, lokaler Server-URL (<see cref="IsLocalServer"/>) <b>und</b> Antwort mit
+    /// <c>X-NPM-Test: 1</c>; zwei von drei lassen die Prüfungen an. Dann zeigt der Live-Status das rote Banner.
+    /// </summary>
+    public bool SafetyChecksOff(bool lastResponseWasTestServer) => TestMode && IsLocalServer && lastResponseWasTestServer;
 }
 
 /// <summary>
