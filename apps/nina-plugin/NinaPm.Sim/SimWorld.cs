@@ -15,7 +15,7 @@ public sealed class SimWorld(SimSetup setup)
     public bool CoolerOn { get; set; } = true;
     public bool DitherTrigger { get; set; } = setup.DitherTrigger;
     public bool MonitorConnected { get; set; } = true;
-    public bool MonitorSafe { get; set; } = true;
+    public bool MonitorSafe { get; set; } = setup.SafeAtStart;
 
     /// <summary>NINAs <em>Loop While Safe</em>: getrennt zählt wie unsicher.</summary>
     public bool SafeNow => MonitorConnected && MonitorSafe;
@@ -31,6 +31,10 @@ public sealed class SimWorld(SimSetup setup)
     public bool FlipTrigger { get; set; } = setup.FlipTrigger;
     public int? PcUtcOffsetMinutes { get; set; } = setup.PcUtcOffsetMinutes;
     public double CenterDelayS { get; set; } = setup.CenterDelayS;
+    public double DitherSettleS { get; set; } = setup.DitherSettleS;
+    public double CenterS { get; set; } = setup.CenterS;
+    public List<string> CenterFailProjects { get; set; } = [.. setup.CenterFailProjects];
+    public double CenterFailS { get; set; } = setup.CenterFailS;
 
     /// <summary>Montierung: Pier-Seite (<c>west</c> vor, <c>east</c> nach dem Flip) und früheste Flipzeit des Ziels.</summary>
     public string Pier { get; set; } = "west";

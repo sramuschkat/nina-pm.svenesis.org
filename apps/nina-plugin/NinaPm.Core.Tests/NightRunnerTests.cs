@@ -439,6 +439,9 @@ public sealed class NightRunnerTests : IDisposable
         await hb.TickAsync(default);
 
         Assert.Null(api.Heartbeats[0].SessionId);
+        // Vor dem ersten Bootstrap (NINA läuft am Nachmittag, Sequenz wartet aufs Dach): eigene Engine-Version, kein "" (422).
+        Assert.Equal(EngineVersionInfo.Version, api.Heartbeats[0].EngineVersion);
+        Assert.Matches(@"^\d+\.\d+\.\d+", api.Heartbeats[0].EngineVersion);
         Assert.Equal(NinaHeartbeatState.Idle, api.Heartbeats[1].State); // wartet auf den Block
         Assert.Equal(runner.SessionId, api.Heartbeats[1].SessionId);
         Assert.Equal("0.2.0", api.Heartbeats[1].PluginVersion);

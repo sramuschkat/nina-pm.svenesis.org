@@ -1,0 +1,104 @@
+{
+  "name": "starfront-roof",
+  "scenario": "starfront-roof",
+  "description": "Sequenz am Nachmittag bei geschlossenem Dach gestartet (Safety unsicher), Dach öffnet bei Minute 15 – der Block ab Minute 5 beginnt erst dann; Dach schließt bei Minute 50 und bleibt zu bis nach dem Ende der Dunkelheit (Minute 65).",
+  "untilMin": 75,
+  "setup": {
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "flipDurationS": 250,
+    "safeAtStart": false
+  },
+  "steps": [
+    {
+      "atMin": 15,
+      "sim": "safe"
+    },
+    {
+      "atMin": 50,
+      "sim": "unsafe"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Dach zu beim Start: kein Planabbruch, keine Warnung zum Monitor, Block nach dem Öffnen",
+      "asserts": [
+        {
+          "log": {
+            "event": "BLOCK_START"
+          },
+          "min": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "result": "saved"
+          },
+          "min": 20
+        },
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "safety_monitor_not_connected"
+            }
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Dach schließt vor dem Ende der Dunkelheit: Pause, keine Wiederaufnahme, Nacht abgeschlossen",
+      "asserts": [
+        {
+          "log": {
+            "event": "SAFETY_PAUSE"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "SAFETY_RESUME"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "aborted"
+            }
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

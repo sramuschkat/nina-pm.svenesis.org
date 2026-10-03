@@ -1,0 +1,99 @@
+{
+  "name": "starfront-center-fails",
+  "scenario": "starfront-center-fails",
+  "description": "Erstes Ziel lässt sich nie zentrieren (je Versuch 2 min); die Wiederholungsleiter endet vor dem Blockende, der Block wird übersprungen, das zweite Ziel läuft.",
+  "untilMin": 80,
+  "setup": {
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "flipDurationS": 250,
+    "centerFailProjects": ["Test badcoords"],
+    "centerFailS": 120
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Zentrieren gescheitert: mehrere Versuche, dann Block übersprungen",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "center_failed"
+            }
+          },
+          "min": 3
+        },
+        {
+          "log": {
+            "event": "BLOCK_SKIPPED",
+            "where": {
+              "reason": "center_failed"
+            }
+          },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Zweites Ziel läuft danach und belichtet",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "BLOCK_SKIPPED",
+              "where": {
+                "reason": "center_failed"
+              }
+            },
+            {
+              "event": "BLOCK_START"
+            },
+            {
+              "event": "CAPTURE",
+              "where": {
+                "result": "saved"
+              }
+            }
+          ]
+        },
+        {
+          "report": "captures",
+          "where": {
+            "result": "saved"
+          },
+          "min": 15
+        }
+      ]
+    },
+    {
+      "name": "Nacht abgeschlossen, keine Fehler",
+      "asserts": [
+        {
+          "log": {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

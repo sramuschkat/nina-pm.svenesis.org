@@ -1,0 +1,31 @@
+{
+  "name": "starfront-night-untuned",
+  "description": "Wie starfront-night, aber mit den bisherigen Rig-Werten (Dither 15 s, Flip 120 s): zeigt, wie viele Belichtungen der zeitgeführte Ablauf überspringt, wenn das Rig mehr Zeit braucht als geplant",
+  "protocols": [],
+  "blocks": [
+    {
+      "durationMin": 90,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "ngc6946",
+      "ditherEvery": 1,
+      "meridianInMin": 45,
+      "decDeg": 60
+    }
+  ],
+  "darknessEndInMin": 95,
+  "sessionEndInMin": 100,
+  "scheduler": {
+    "afterMin": 5,
+    "maxAfterMin": 10,
+    "pauseBeforeMin": 5,
+    "flipDurationS": 120,
+    "slewCenterS": 90,
+    "filterChangeS": 10,
+    "ditherSettleS": 15,
+    "downloadS": 3
+  },
+  "rig": {
+    "rotatorPresent": false
+  }
+}

@@ -55,6 +55,24 @@ public sealed class SimSetup
     /// <summary>Zusätzliche Dauer des ersten Zentrierens je Block (Sekunden, P-21 „Zentrieren verzögert“).</summary>
     [JsonProperty("centerDelayS")] public double CenterDelayS { get; set; }
 
+    /// <summary>Settle-Zeit von PHD2 nach einem Dither (Sekunden; Starfront gemessen p50 ≈ 18 s).</summary>
+    [JsonProperty("ditherSettleS")] public double DitherSettleS { get; set; } = 10;
+
+    /// <summary>Dauer von Slew und Zentrieren (Sekunden; Starfront gemessen p50 ≈ 35 s).</summary>
+    [JsonProperty("centerS")] public double CenterS { get; set; } = 60;
+
+    /// <summary>
+    /// Projekte (Anzeigename aus <c>/targets</c>, z. B. <c>Test badcoords</c>), deren Zentrieren immer scheitert – wie
+    /// falsche Zielkoordinaten (Starfront 04.09.2026); jeder Versuch kostet <see cref="CenterFailS"/>.
+    /// </summary>
+    [JsonProperty("centerFailProjects")] public List<string> CenterFailProjects { get; set; } = [];
+
+    /// <summary>Dauer eines gescheiterten Zentrierversuchs (NINA mit 10 Plate-Solves ≈ 2 min).</summary>
+    [JsonProperty("centerFailS")] public double CenterFailS { get; set; } = 120;
+
+    /// <summary>Safety-Monitor beim Start sicher (Starfront: Dach tagsüber zu → <c>false</c>).</summary>
+    [JsonProperty("safeAtStart")] public bool SafeAtStart { get; set; } = true;
+
     /// <summary>Sequenz beim Laufbeginn starten (sonst über einen Schritt <c>start</c>).</summary>
     [JsonProperty("autoStart")] public bool AutoStart { get; set; } = true;
 }

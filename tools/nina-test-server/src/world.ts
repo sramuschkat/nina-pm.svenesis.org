@@ -22,6 +22,7 @@ const iso = (sec: number) => new Date(Math.round(sec) * 1000).toISOString().repl
 export const TEST_SCHEDULER = {
   afterMin: 1,
   maxAfterMin: 5,
+  pauseBeforeMin: 0,
   flipDurationS: 120,
   slewCenterS: 90,
   filterChangeS: 10,
@@ -51,6 +52,11 @@ export class TestWorld {
     readonly state: WorldState,
   ) {
     this.epochS = Math.floor(nowS());
+  }
+
+  /** Overhead- und Flip-Werte: `TEST_SCHEDULER`, je Szenario überschreibbar (Starfront-Szenarien). */
+  get sched() {
+    return { ...TEST_SCHEDULER, ...this.scenario.scheduler };
   }
 
   get site() {
@@ -300,10 +306,17 @@ export class TestWorld {
     const scheduler = structuredClone(rig.scheduler as Json);
     scheduler.meridianFlip = {
       enabled: true,
-      afterMin: TEST_SCHEDULER.afterMin,
-      maxAfterMin: TEST_SCHEDULER.maxAfterMin,
-      pauseBeforeMin: 0,
-      durationS: TEST_SCHEDULER.flipDurationS,
+      afterMin: this.sched.afterMin,
+      maxAfterMin: this.sched.maxAfterMin,
+      pauseBeforeMin: this.sched.pauseBeforeMin,
+      durationS: this.sched.flipDurationS,
+    };
+    scheduler.overhead = {
+      ...(scheduler.overhead as Json),
+      slewCenterS: this.sched.slewCenterS,
+      filterChangeS: this.sched.filterChangeS,
+      ditherSettleS: this.sched.ditherSettleS,
+      downloadS: this.sched.downloadS,
     };
     scheduler.flats = {
       ...(scheduler.flats as Json),
@@ -375,7 +388,7 @@ export class TestWorld {
         // Ein Block, der in einen Transit (samt Vorlauf) hineinreicht, endet davor.
         const cut = transits
           .filter((t) => t.startS < b.endS && t.endS > b.startS)
-          .map((t) => t.startS - (t.slewCenterS ?? TEST_SCHEDULER.slewCenterS) - MIN);
+          .map((t) => t.startS - (t.slewCenterS ?? this.sched.slewCenterS) - MIN);
         return cut.length ? { ...b, endS: Math.min(b.endS, ...cut) } : b;
       })
       .filter((b) => b.endS > b.startS && b.endS + shift > this.serverTimeS())
@@ -446,12 +459,12 @@ export class TestWorld {
     });
 
     if (b.kind === 'transit') {
-      const slew = b.slewCenterS ?? TEST_SCHEDULER.slewCenterS;
+      const slew = b.slewCenterS ?? this.sched.slewCenterS;
       add({ cmd: 'slew_center', atUtc: iso(startS - slew - 60), durationS: slew });
       add({
         cmd: 'filter',
         atUtc: iso(startS - 60),
-        durationS: TEST_SCHEDULER.filterChangeS,
+        durationS: this.sched.filterChangeS,
         filter: (lines[0] as Json).filter,
       });
       add({
@@ -474,13 +487,13 @@ export class TestWorld {
           inTransitWindow: true,
           planned: false,
           gapStartUtc: flip.plannedUtc,
-          gapDurationS: TEST_SCHEDULER.flipDurationS + TEST_SCHEDULER.slewCenterS,
+          gapDurationS: this.sched.flipDurationS + this.sched.slewCenterS,
         },
       );
     }
 
     let t = startS;
-    const slew = b.slewCenterS ?? TEST_SCHEDULER.slewCenterS;
+    const slew = b.slewCenterS ?? this.sched.slewCenterS;
     add({ cmd: 'slew_center', atUtc: iso(t), durationS: slew });
     t += slew;
     const flip = this.flipFor(b, shift);
@@ -491,13 +504,24 @@ export class TestWorld {
       const line = lines[n % lines.length] as Json;
       const exp = line.exposureS as number;
       if (!flipped && flip && t >= Date.parse(flip.plannedUtc) / 1000) {
-        add({ cmd: 'meridian_flip', atUtc: iso(t), durationS: TEST_SCHEDULER.flipDurationS });
-        t += TEST_SCHEDULER.flipDurationS;
+        add({ cmd: 'meridian_flip', atUtc: iso(t), durationS: this.sched.flipDurationS });
+        t += this.sched.flipDurationS;
         add({ cmd: 'slew_center', atUtc: iso(t), durationS: slew });
         t += slew;
         flipped = true;
       }
-      const filterS = current === line.filter ? 0 : TEST_SCHEDULER.filterChangeS;
+      const filterS = current === line.filter ? 0 : this.sched.filterChangeS;
+      // Pause vor dem Meridian (flip-rotation.md §2): keine Belichtung über limitEnd = tM − pause, warten bis flipAt.
+      if (!flipped && flip && this.sched.pauseBeforeMin > 0) {
+        const flipAt = Date.parse(flip.plannedUtc) / 1000;
+        const limitEnd = flipAt - (this.sched.afterMin + this.sched.pauseBeforeMin) * MIN;
+        if (t + filterS + exp + this.sched.downloadS > limitEnd) {
+          if (flipAt + this.sched.flipDurationS > endS) break;
+          if (t < flipAt) add({ cmd: 'wait', atUtc: iso(t), durationS: flipAt - t });
+          t = Math.max(t, flipAt);
+          continue;
+        }
+      }
       if (t + filterS + exp > endS) break;
       if (filterS > 0) {
         add({ cmd: 'filter', atUtc: iso(t), durationS: filterS, filter: line.filter });
@@ -505,11 +529,11 @@ export class TestWorld {
         current = line.filter as string;
       }
       add({ cmd: 'expose', atUtc: iso(t), ...exposure(line), bonus: false, lastOfNight: false });
-      t += exp + TEST_SCHEDULER.downloadS;
+      t += exp + this.sched.downloadS;
       n += 1;
-      if (b.ditherEvery && n % b.ditherEvery === 0 && t + TEST_SCHEDULER.ditherSettleS < endS) {
-        add({ cmd: 'dither', atUtc: iso(t), durationS: TEST_SCHEDULER.ditherSettleS });
-        t += TEST_SCHEDULER.ditherSettleS;
+      if (b.ditherEvery && n % b.ditherEvery === 0 && t + this.sched.ditherSettleS < endS) {
+        add({ cmd: 'dither', atUtc: iso(t), durationS: this.sched.ditherSettleS });
+        t += this.sched.ditherSettleS;
       }
     }
     add({ cmd: 'end', atUtc: iso(Math.min(t, endS)) });
@@ -520,13 +544,13 @@ export class TestWorld {
   private flipFor(b: ReturnType<TestWorld['timeline']>[number], shift: number) {
     if (b.meridianInMin === undefined) return null;
     const tM = this.epochS + b.meridianInMin * MIN + shift;
-    const planned = tM + TEST_SCHEDULER.afterMin * MIN;
+    const planned = tM + this.sched.afterMin * MIN;
     // Meridian schon vor Blockbeginn überschritten (Mosaik-Panel 2, P-26): Montierung steht bereits ost.
     if (planned >= b.endS + shift || planned <= b.startS + shift) return null;
     return {
       waitStartUtc: null,
       plannedUtc: iso(planned),
-      durationS: TEST_SCHEDULER.flipDurationS,
+      durationS: this.sched.flipDurationS,
       inTransitWindow: false,
       planned: true,
       gapStartUtc: null,

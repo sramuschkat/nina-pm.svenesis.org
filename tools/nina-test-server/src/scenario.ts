@@ -55,6 +55,20 @@ export interface Scenario {
   /** Zweite Nacht planbar (Szenario `multi-night`, P-23): Pläne der Folgenacht 24 h später. */
   readonly multiNight?: boolean;
   readonly timeline?: readonly TimelineAction[];
+  /**
+   * Overhead- und Flip-Werte des Rigs statt `TEST_SCHEDULER` (Starfront-Szenarien, gemessen 03.10.2026):
+   * `pauseBeforeMin > 0` stoppt die Belichtungen vor `tM − pause` und wartet bis zum Flip (flip-rotation.md §2, limitEnd).
+   */
+  readonly scheduler?: {
+    readonly afterMin?: number;
+    readonly maxAfterMin?: number;
+    readonly pauseBeforeMin?: number;
+    readonly flipDurationS?: number;
+    readonly slewCenterS?: number;
+    readonly filterChangeS?: number;
+    readonly ditherSettleS?: number;
+    readonly downloadS?: number;
+  };
   /** Rig-Abweichungen gegenüber dem Vertragsbeispiel (AP-16f, P-08): Rotator vorhanden, Toleranz, Block bei Winkelabweichung überspringen. */
   readonly rig?: {
     readonly rotatorPresent?: boolean;

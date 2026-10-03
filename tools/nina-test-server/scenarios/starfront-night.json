@@ -1,0 +1,31 @@
+{
+  "name": "starfront-night",
+  "description": "Starfront-Nacht nach den Logs 23.08.–26.09.2026 (gemessen 03.10.2026): 60-s-Belichtungen L, Dither je Belichtung, Meridian im Block mit Pause 5 min vor dem Meridian und Flip 5 min danach; Rig-Werte auf die gemessenen Mediane gesetzt (Dither 18 s, Slew 40 s, Flip 250 s)",
+  "protocols": [],
+  "blocks": [
+    {
+      "durationMin": 90,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "ngc6946",
+      "ditherEvery": 1,
+      "meridianInMin": 45,
+      "decDeg": 60
+    }
+  ],
+  "darknessEndInMin": 95,
+  "sessionEndInMin": 100,
+  "scheduler": {
+    "afterMin": 5,
+    "maxAfterMin": 10,
+    "pauseBeforeMin": 5,
+    "flipDurationS": 250,
+    "slewCenterS": 40,
+    "filterChangeS": 10,
+    "ditherSettleS": 18,
+    "downloadS": 3
+  },
+  "rig": {
+    "rotatorPresent": false
+  }
+}
