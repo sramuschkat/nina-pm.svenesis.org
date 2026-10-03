@@ -706,7 +706,7 @@ public sealed class NightRunner(
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
                 rotator is null ? null : new RotationSettings(rotator.ToleranceDeg, rotator.SkipOnMismatch),
                 scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
-                (kind, code, b) => ReportEvent(kind, code, b.Id),
+                (kind, code, b, durationS) => ReportEvent(kind, code, b.Id, durationS: durationS),
                 b =>
                 {
                     // flipDoneByPanel (flip-rotation.md §1): die Neuplanung plant für dieses Panel keinen zweiten Flip.
@@ -798,11 +798,12 @@ public sealed class NightRunner(
     }
 
     /// <summary>Ereignis melden (<c>sessionEventKinds</c>; bei <c>warning</c> ein Code aus <c>pluginWarningCodes</c>).</summary>
-    public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null, IDictionary<string, object>? data = null)
+    public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null, IDictionary<string, object>? data = null,
+        double? durationS = null)
     {
         if (SessionId is not { } session) return;
         var planId = ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
-        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId, Data = data };
+        var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId, Data = data, DurationS = durationS };
         store.EnqueueOutbox(OutboxKinds.Event, JsonConvert.SerializeObject(e, NinaJson.Settings()), session, planId);
     }
 

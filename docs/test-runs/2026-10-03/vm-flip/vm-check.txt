@@ -1,0 +1,8 @@
+  ✗ Flip beim Eintrag meridian_flip, erkannt über die Pier-Seite (west → east) mit Dauer; Ereignis flip mit durationS (FA-NIN-24)
+      ✗ Report events [kind="flip" durationS≠null]: 0 (erwartet = 1)
+  ✓ Nach dem Flip nur Zentrieren, Winkel modulo 180° in Toleranz, danach weiter belichtet
+  ✓ Kein Nachrotieren: mechanischer Rotatorwinkel aller Aufnahmen gleich
+  ✓ SiteCheck ohne Befund (PC-Zone = Standortzone, Montierung am Rig-Standort)
+  ✓ Nachtende: Session abgeschlossen, Outbox leer
+  ✓ Keine Fehler, keine vom Server abgelehnte Anfrage
+  ✓ Sequenzvorlage geprüft (AP-16h): Beispielsequenz mit deaktiviertem Warten und Autofokus ergibt genau diese Hinweise, einmal

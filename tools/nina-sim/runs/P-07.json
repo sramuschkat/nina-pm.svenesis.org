@@ -51,6 +51,15 @@
         },
         "min": 0,
         "max": 0
+      },
+      {
+        "part": 1,
+        "report": "events",
+        "where": {
+          "kind": "flip"
+        },
+        "whereExists": ["durationS"],
+        "min": 1
       }
     ],
     [
