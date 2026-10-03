@@ -3,7 +3,9 @@
   Aufträge vom Prüfstand-Server auf dem Mac (GET /agent/next, Kopf X-Bench-Key). Er führt NUR diese Aufträge aus:
     ping, restart-nina (optional ninapm.db löschen), stop-nina, install-plugin (ZIP vom Mac, SHA-256 geprüft),
     put-sequence (Sequenzdatei vom Mac in NINAs Sequenzordner, SHA-256 geprüft), collect-log (NINA-Log seit einem
-    Zeitpunkt zurück an den Mac), update-agent (diesen Agenten vom Mac neu laden und neu starten).
+    Zeitpunkt zurück an den Mac), update-agent (diesen Agenten vom Mac neu laden und neu starten),
+    clone-profile (NINA-Profil kopieren: neue Id und Name, Filternamen, Meridian-Flip-Werte, NINA-PM-Server-URL und
+    Testbetrieb; das Token der Kopie wird geleert – es trägt nur ein Mensch ein).
   Keine beliebigen Befehle, keine Anmeldedaten. Konfiguration: C:\NinaPmBench\agent.json (server, key, ninaExe).
   Windows PowerShell 5.1.
 #>
@@ -116,6 +118,46 @@ function Invoke-Job($Job) {
             # Nach diesem Auftrag beenden; ein abgesetzter Prozess startet die Aufgabe neu, sobald dieser Agent weg ist.
             $script:Restart = $true
             return 'Agent aktualisiert, Neustart'
+        }
+        'clone-profile' {
+            $profiles = Join-Path $env:LOCALAPPDATA 'NINA\Profiles'
+            $sourceId = [string]$Job.args.sourceId
+            if ($sourceId -notmatch '^[0-9a-fA-F-]{36}$') { throw "Profil-Id '$sourceId' ungültig" }
+            $src = Join-Path $profiles "$sourceId.profile"
+            if (-not (Test-Path $src)) { throw "Profil $sourceId nicht gefunden" }
+            Stop-Nina
+            [xml]$x = Get-Content -Path $src -Raw -Encoding UTF8
+            $newId = [guid]::NewGuid().ToString()
+            $x.SelectSingleNode("/*[local-name()='Profile']/*[local-name()='Id']").InnerText = $newId
+            $x.SelectSingleNode("/*[local-name()='Profile']/*[local-name()='Name']").InnerText = [string]$Job.args.name
+            if ($Job.args.filters) {
+                $names = $x.SelectNodes("//*[local-name()='FilterWheelFilters']//*[local-name()='_name']")
+                $i = 0
+                foreach ($n in $names) { if ($i -lt @($Job.args.filters).Count) { $n.InnerText = [string]@($Job.args.filters)[$i] }; $i++ }
+            }
+            if ($Job.args.flip) {
+                foreach ($k in @('MinutesAfterMeridian', 'MaxMinutesAfterMeridian', 'PauseTimeBeforeMeridian', 'Recenter')) {
+                    $v = $Job.args.flip.$k
+                    if ($null -eq $v) { continue }
+                    $node = $x.SelectSingleNode("//*[local-name()='MeridianFlipSettings']/*[local-name()='$k']")
+                    if ($node) { $node.InnerText = ([string]$v).ToLowerInvariant() }
+                }
+            }
+            $plugin = $x.SelectSingleNode("//*[local-name()='Key' and text()='$([string]$Job.args.pluginId)']/following-sibling::*[local-name()='Value']")
+            if ($plugin) {
+                $set = @{ ServerUrl = [string]$Job.args.serverUrl; TestMode = ([string]$Job.args.testMode).ToLowerInvariant(); ProtectedToken = '' }
+                foreach ($k in $set.Keys) {
+                    $node = $plugin.SelectSingleNode(".//*[local-name()='Key' and text()='$k']/following-sibling::*[local-name()='Value']")
+                    if ($node) { $node.InnerText = $set[$k] }
+                }
+            }
+            $target = Join-Path $profiles "$newId.profile"
+            $settings = New-Object System.Xml.XmlWriterSettings
+            $settings.Encoding = New-Object System.Text.UTF8Encoding($false)
+            $w = [System.Xml.XmlWriter]::Create($target, $settings)
+            try { $x.Save($w) } finally { $w.Dispose() }
+            Start-Nina $sourceId
+            return "Profil $newId"
         }
         'collect-log' {
             $since = [DateTime]::Parse([string]$Job.args.sinceUtc, $null, [System.Globalization.DateTimeStyles]::AdjustToUniversal)

@@ -19,7 +19,8 @@ export type JobType =
   | 'install-plugin'
   | 'put-sequence'
   | 'collect-log'
-  | 'update-agent';
+  | 'update-agent'
+  | 'clone-profile';
 
 export interface Job {
   readonly id: string;

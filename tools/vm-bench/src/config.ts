@@ -23,6 +23,8 @@ export interface BenchConfig {
   omnisimPort: number;
   /** NINA-Profil für die Läufe (`--profileid`); ohne Angabe das zuletzt benutzte. */
   profileId?: string;
+  /** Prod-Profil (Test-Mandant) für P-05/P-11, angelegt mit `clone-profile`. */
+  prodProfileId?: string;
 }
 
 export const CONFIG_PATH = join(homedir(), '.config', 'nina-pm', 'vm-bench.json');
