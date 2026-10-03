@@ -102,7 +102,7 @@ Sonst gilt der bestehende Plan unverändert (Hysterese).
 ## 4. Block ausführen
 
 ### 4.1 Ablauf
-1. Vergangene Blöcke (`endUtc ≤ now`) überspringen (`block_skipped` Grund `elapsed`); Blöcke ohne `expose`/`expose_series` überspringen (`no_exposures`); Blöcke, deren sämtliche Belichtungszeilen keinen bestätigten `ninaFilterName` haben oder deren Namen im NINA-Filterrad fehlen, überspringen (`filter_not_found`, §4.4).
+1. Vergangene Blöcke (`endUtc ≤ now`) überspringen (`block_skipped` Grund `elapsed`); Blöcke ohne `expose`/`expose_series` überspringen (`no_exposures`); Blöcke, deren sämtliche Belichtungszeilen keinen bestätigten `ninaFilterName` haben oder deren Namen im NINA-Filterrad fehlen, überspringen (`filter_not_found`, §4.4); Blöcke, in denen keine dieser Zeilen einen Auslesemodus hat, den die Kamera kennt (§4.3, NT-37), überspringen (`readout_mode_not_found`) – sonst säße der Block bis zum Ende ohne Belichtung (P-05 prod 03.10.2026).
 2. Bis Blockstart warten (10-s-Takt, abbrechbar durch *Block überspringen*); währenddessen Heartbeat weiter (§6, Zustand `idle`, NT-17).
 3. Machbarkeit jetzt (Höhe, Dunkelheit mit Engine-Werten aus dem Plan) → sonst überspringen (`not_viable`). **Kühlung (NT-E2):** ist `camera.setpointC` gesetzt, prüft das Plugin `CoolerOn` und `|Temperatur − Soll| ≤ camera.toleranceC`; bei Abweichung wird **trotzdem** belichtet, Ereignis `warning` Code `camera_temperature` (höchstens einmal je Block).
 4. `SetTarget`: Container-`Target` (Name = Projektname bzw. „Projekt – Panel-Label“, J2000-Koordinaten, Positionswinkel) setzen und `DeepSkyObject` synchronisieren; Koordinaten in `CenterAfterDriftTrigger` (`AttachNewParent`, `Coordinates`, `SequenceBlockInitialize`) und in die Boxen der eigenen Trigger injizieren. **Koordinaten (verbindlich, NT-28):** `new Coordinates(Angle.ByDegree(raDeg), Angle.ByDegree(decDeg), Epoch.J2000)` für Ziel, Slew und Metadaten – das Original rechnet mit `Angle.ByHours(RaHours)`; das wird **nicht** übernommen, weil `raDeg` in Grad kommt (Unit-Test im Kern: `raDeg = 198,069` ergibt `Coordinates.RA` = 13,2046 h). Die Umrechnung auf JNow übernimmt NINA je nach `EquatorialSystem` der Montierung.
@@ -117,6 +117,7 @@ Sonst gilt der bestehende Plan unverändert (Hysterese).
 | `elapsed` | Nr. 1: Block schon vorbei (`endUtc ≤ now`), z. B. nach Neustart, Unterbrechung oder langem Vorgängerblock |
 | `no_exposures` | Nr. 1: Block ohne `expose`/`expose_series` |
 | `filter_not_found` | Nr. 1: keine Belichtungszeile des Blocks hat einen bestätigten `ninaFilterName`, der im NINA-Filterrad vorkommt (§4.4) |
+| `readout_mode_not_found` | Nr. 1: keine Belichtungszeile mit gefundenem Filter hat einen Auslesemodus, den die Kamera kennt (leer = Kamera-Einstellung zählt als belichtbar, genau ein Kameramodus ebenfalls; §4.3, NT-37) |
 | `not_viable` | Nr. 3: Höhe oder Dunkelheit jetzt nicht erfüllt |
 | `center_failed` | Nr. 5: Zentrieren nach allen Wiederholungen fehlgeschlagen |
 | `rotation_mismatch` | Nr. 5: ohne Rotator (bzw. Rotator nicht verbunden) Winkel außerhalb der Toleranz **und** `skip_on_rotation_mismatch` (flip-rotation.md §3) |

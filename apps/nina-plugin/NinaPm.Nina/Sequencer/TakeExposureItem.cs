@@ -75,12 +75,18 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
     public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token)
     {
         var target = host.Container!.Target;
-        var sequence = new CaptureSequence(ExposureTime, "LIGHT", filter, Binning, 1) { Gain = Gain, Offset = Offset };
+        var frame = host.Frames.Peek(target.TargetName, filter?.Name);
+        // Bildnummer für $$FRAMENR$$ wie NINAs TakeExposure (ProgressExposureCount), sonst immer 0000.
+        var sequence = new CaptureSequence(ExposureTime, "LIGHT", filter, Binning, 1)
+        {
+            Gain = Gain, Offset = Offset, ProgressExposureCount = frame, TotalExposureCount = frame + 1,
+        };
         progress?.Report(new ApplicationStatus { Source = "NINA-PM", Status = $"{target.TargetName} {entry.Filter} {ExposureTime} s" });
 
         Facts = host.CaptureFactsFor(CaptureId, block, entry, filter, temperatureDeviation, ExposureTime);
         var exposure = await m.Imaging.CaptureImage(sequence, token, progress, target.TargetName);
         if (exposure is null) return;
+        host.Frames.Advance(target.TargetName, filter?.Name);
         var imageId = exposure.MetaData.Image.Id;
         // Bildhistorie: sonst zählen „AF nach n Belichtungen“ und „AF nach HFR-Anstieg“ nicht (NIN-19).
         m.ImageHistory.Add(imageId, "LIGHT");

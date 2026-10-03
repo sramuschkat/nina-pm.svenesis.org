@@ -33,10 +33,10 @@ public interface IBlockHost
     bool IsViableNow(Blocks block);
 
     /// <summary>
-    /// Mindestens eine Belichtungszeile des Blocks hat einen Filter, der im NINA-Profil gefunden wird (§4.1 Nr. 1, §4.4);
-    /// ohne Filterrad immer wahr. Sonst wird der Block <c>filter_not_found</c> übersprungen.
+    /// Grund, den Block vor dem Slew zu überspringen, weil keine Belichtung möglich ist (§4.1 Nr. 1, §4.3, §4.4):
+    /// <c>filter_not_found</c> bzw. <c>readout_mode_not_found</c>; sonst <c>null</c> (<see cref="HostRules.UnexposableReason"/>).
     /// </summary>
-    bool AnyFilterAvailable(Blocks block);
+    string? UnexposableReason(Blocks block);
 
     /// <summary>Ziel setzen: Container-<c>Target</c>, Koordinaten in Center-after-Drift und eigene Trigger (§4.1 Nr. 4, NT-28).</summary>
     void SetTarget(Blocks block);

@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Execution;
+using NinaPm.Core.Time;
 using Xunit;
 
 namespace NinaPm.Core.Tests;
@@ -83,5 +84,24 @@ public sealed class ResolverTests
         Assert.False(throttle.ShouldEmit("filter_not_found:Ha 3nm", t.AddHours(11.9)));
         Assert.True(throttle.ShouldEmit("filter_not_found:OIII 3nm", t.AddHours(1)));
         Assert.True(throttle.ShouldEmit("filter_not_found:Ha 3nm", t.AddHours(12)));
+    }
+    private static Blocks Block(params (string? Filter, string? Readout)[] lines) => new()
+    {
+        Entries = [.. lines.Select(l => new Entries { Cmd = EntriesCmd.Expose, Filter = l.Filter, ReadoutMode = l.Readout, ExposureS = 60 })],
+    };
+
+    [Fact]
+    public void Block_ohne_belichtbare_Zeile_vor_dem_Slew_ueberspringen()
+    {
+        // P-05 prod 03.10.2026: Zeilen mit „M1“, die Simulator-Kamera kennt nur normal1/normal2 → Block saß leer bis zum Ende.
+        var rules = new HostRules(new FixedClock(DateTimeOffset.Parse("2026-10-03T20:00:00Z")), () => null, () => null);
+        string[] modes = ["normal1", "normal2"];
+        Assert.Equal("readout_mode_not_found", rules.UnexposableReason(Block(("R", "M1"), ("G", "M1")), [], modes));
+        Assert.Null(rules.UnexposableReason(Block(("R", "M1"), ("G", "normal1")), [], modes)); // eine Zeile reicht
+        Assert.Null(rules.UnexposableReason(Block(("R", null)), [], modes)); // ohne Modus: Kamera-Einstellung bleibt
+        Assert.Null(rules.UnexposableReason(Block(("R", "M1")), [], ["Only Mode"])); // genau ein Modus → belichten (NT-37)
+        Assert.Null(rules.UnexposableReason(new Blocks(), [], modes)); // ohne Belichtung entscheidet no_exposures
+        // Mit Filterrad und ohne bestätigten Namen (kein Plan im Test) zuerst der Filter.
+        Assert.Equal("filter_not_found", rules.UnexposableReason(Block(("R", "M1")), ["RED"], modes));
     }
 }

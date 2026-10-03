@@ -99,11 +99,24 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
         return deviations;
     }
 
-    /// <summary>Mindestens eine Belichtungszeile mit gefundenem Filter (§4.1 Nr. 1); ohne Filterrad immer wahr.</summary>
-    public bool AnyFilterAvailable(Blocks block, IReadOnlyList<string> profileFilters) =>
-        profileFilters.Count == 0
-        || block.Entries.Where(e => e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series)
-            .Any(e => ChooseFilter(e, profileFilters).Kind != FilterResolutionKind.NotFound);
+    /// <summary>
+    /// Grund, den Block vor dem Slew zu überspringen (§4.1 Nr. 1), oder <c>null</c>: keine Belichtungszeile mit
+    /// gefundenem Filter → <c>filter_not_found</c> (ohne Filterrad nie); keine dieser Zeilen mit einem Auslesemodus,
+    /// den die Kamera kennt → <c>readout_mode_not_found</c> (§4.3, NT-37). Sonst säße der Block leer bis zum Ende
+    /// (P-05 prod 03.10.2026). Hinweise wie bei der Belichtung höchstens 1×/12 h.
+    /// </summary>
+    public string? UnexposableReason(Blocks block, IReadOnlyList<string> profileFilters, IReadOnlyList<string>? cameraModes)
+    {
+        var exposures = block.Entries.Where(e => e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series).ToList();
+        if (exposures.Count == 0) return null;
+        var withFilter = profileFilters.Count == 0
+            ? exposures
+            : exposures.Where(e => ChooseFilter(e, profileFilters).Kind != FilterResolutionKind.NotFound).ToList();
+        if (withFilter.Count == 0) return "filter_not_found";
+        return withFilter.Any(e => ChooseReadout(e, cameraModes).Kind != ReadoutResolutionKind.NotFound)
+            ? null
+            : "readout_mode_not_found";
+    }
 
     /// <summary>Filter des Eintrags im Profil (§4.4); nicht gefunden → <c>FILTER_NOT_FOUND</c> höchstens 1×/12 h je Filter.</summary>
     public FilterResolution ChooseFilter(Entries entry, IReadOnlyList<string> profileFilters)

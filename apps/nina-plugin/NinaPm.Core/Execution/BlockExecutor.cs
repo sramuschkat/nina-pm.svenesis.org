@@ -140,8 +140,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
         if (block.EndUtc <= clock.UtcNow) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
-        // §4.1 Nr. 1: keine Zeile mit gefundenem Filter → überspringen statt den Block leer abzusitzen (P-05 prod 03.10.2026).
-        if (!host.AnyFilterAvailable(block)) return Skip(block, "filter_not_found");
+        // §4.1 Nr. 1: keine Zeile mit gefundenem Filter bzw. Auslesemodus → überspringen statt den Block leer abzusitzen
+        // (P-05 prod 03.10.2026).
+        if (host.UnexposableReason(block) is { } unexposable) return Skip(block, unexposable);
 
         host.SetTarget(block);
         if (host.CanSkipSlew(block))

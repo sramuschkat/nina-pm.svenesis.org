@@ -48,6 +48,9 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// <summary>Gemeinsame Regeln mit dem kopflosen Nachtlauf (Hinweise, Filter, Auslesemodus, Meldungen).</summary>
     private HostRules Rules => rules ??= new HostRules(clock, () => Runtime?.Log, () => Runtime?.Runner);
 
+    /// <summary>Bildnummern für <c>$$FRAMENR$$</c> je Ziel und Filter (<see cref="FrameNumbers"/>).</summary>
+    internal FrameNumbers Frames { get; } = new();
+
     /// <summary>NINAs Mediatoren (Heartbeat-Einstellungen, AP-16e).</summary>
     internal NinaMediators Mediators => m;
 
@@ -156,7 +159,8 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     public static Coordinates Coordinates(Blocks block) =>
         new(Angle.ByDegree(block.RaDeg), Angle.ByDegree(block.DecDeg), Epoch.J2000);
 
-    public bool AnyFilterAvailable(Blocks block) => Rules.AnyFilterAvailable(block, ProfileFilterNames());
+    public string? UnexposableReason(Blocks block) =>
+        Rules.UnexposableReason(block, ProfileFilterNames(), m.Camera.GetInfo().ReadoutModes?.ToList());
 
     public void SetTarget(Blocks block)
     {

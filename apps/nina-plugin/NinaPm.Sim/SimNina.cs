@@ -42,7 +42,7 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public bool IsViableNow(Blocks block) => true;
 
-    public bool AnyFilterAvailable(Blocks block) => rules.AnyFilterAvailable(block, world.ProfileFilters);
+    public string? UnexposableReason(Blocks block) => rules.UnexposableReason(block, world.ProfileFilters, world.ReadoutModes);
 
     private Blocks? target;
 

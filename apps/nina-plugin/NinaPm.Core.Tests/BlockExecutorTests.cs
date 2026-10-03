@@ -77,7 +77,7 @@ public sealed class BlockExecutorTests
         // §4.1 Nr. 1 (P-05 prod 03.10.2026): keine Belichtungszeile mit bestätigtem, im Profil gefundenem Filter →
         // BLOCK_SKIPPED filter_not_found, kein Slew, die Zeit gehört dem nächsten Block.
         var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
-        nina.FiltersAvailable = false;
+        nina.Unexposable = "filter_not_found";
         var block = Regular();
         var r = await executor.RunAsync(block, null, default);
         Assert.Equal(("filter_not_found", false), (r.Reason, r.Started));

@@ -580,6 +580,7 @@
   "user_skip",
   "rotation_mismatch",
   "filter_not_found",
+  "readout_mode_not_found",
   "lease_lost"
  ],
  "blockEndReasons": [
