@@ -225,6 +225,8 @@ async function main(): Promise<number> {
         const a = await bench.waitForAgent(20 * 60_000);
         if (!a) return 1;
         log(`Agent meldet sich: ${a.host}, NINA ${a.nina}. Einrichtung fertig.`);
+        // Noch kurz erreichbar bleiben: die letzte Verbindungsprüfung des Einrichtungsskripts kommt nach dem Agenten.
+        await sleep(30_000);
         return 0;
       });
     }
