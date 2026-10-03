@@ -16,7 +16,7 @@ namespace NinaPm.Nina.Sequencer;
 /// </summary>
 [ExportMetadata("Name", "NINA-PM Update Targets")]
 [ExportMetadata("Description", "Loads the rig settings and the delivered targets from NINA-PM into the local cache")]
-[ExportMetadata("Icon", "LoopSVG")]
+[ExportMetadata("Icon", "NinaPmSVG")]
 [ExportMetadata("Category", "NINA-PM")]
 [Export(typeof(ISequenceItem))]
 [JsonObject(MemberSerialization.OptIn)]
