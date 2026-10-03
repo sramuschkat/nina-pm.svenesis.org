@@ -26,3 +26,34 @@ describe('Laufsequenz des Prüfstands', () => {
     expect(JSON.stringify(seq)).toContain('SafetyWaitInstruction');
   });
 });
+
+describe('globaler Dither-Trigger (vm-smoke)', () => {
+  it('hängt Dither after Exposures an die Wurzel, mit eigener Box und freien $id', () => {
+    const path = benchSequence(
+      {
+        sequence: {
+          from: 'one-night-safety',
+          removeFromStart: ['WaitForSunAltitude'],
+          globalDither: 1,
+        },
+      },
+      mkdtempSync(join(tmpdir(), 'seq-')),
+    );
+    const text = readFileSync(path, 'utf8');
+    const seq = JSON.parse(text) as {
+      $id: string;
+      Triggers: { $values: Record<string, unknown>[] };
+    };
+    const t = seq.Triggers.$values[0] as {
+      $type: string;
+      AfterExposures: number;
+      Parent: { $ref: string };
+    };
+    expect(shortType(t.$type)).toBe('DitherAfterExposures');
+    expect(t.AfterExposures).toBe(1);
+    expect(t.Parent.$ref).toBe(seq.$id);
+    const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(text).toContain('NINA.Sequencer.SequenceItem.Guider.Dither, NINA.Sequencer');
+  });
+});

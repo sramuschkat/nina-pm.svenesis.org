@@ -56,8 +56,18 @@ export interface BenchRun {
   /** Geräte verbinden; alle anderen werden getrennt. */
   readonly connect: readonly Device[];
   readonly coolC?: number;
-  /** Zeitpunkte nach dem Serverstart: Screenshot eines Reiters oder Kamera-Sollwert. */
-  readonly steps?: readonly { atMin: number; screenshot?: string; tab?: string; coolC?: number }[];
+  /**
+   * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Safety-Monitor unsicher/sicher
+   * (`safe`, OmniSim-Simulatorschnittstelle, bleibt verbunden) oder getrennt/verbunden (`monitor`, Advanced API).
+   */
+  readonly steps?: readonly {
+    atMin: number;
+    screenshot?: string;
+    tab?: string;
+    coolC?: number;
+    safe?: boolean;
+    monitor?: 'connect' | 'disconnect';
+  }[];
 }
 
 function arg(name: string): string | undefined {
@@ -134,6 +144,48 @@ async function installPlugin(
   );
 }
 
+/** OmniSim-Safety-Monitor 0 auf sicher/unsicher (`PUT /simulator/v1/safetymonitor/0/issafesetting`). */
+async function omnisimSafe(cfg: BenchConfig, safe: boolean): Promise<void> {
+  if (!cfg.vmHost) throw new Error('VM-Adresse fehlt');
+  const res = await fetch(
+    `http://${cfg.vmHost}:${String(cfg.omnisimPort)}/simulator/v1/safetymonitor/0/issafesetting`,
+    {
+      method: 'PUT',
+      body: new URLSearchParams({ IsSafeSetting: String(safe) }),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+  const body = (await res.json()) as { ErrorNumber?: number; ErrorMessage?: string };
+  if (!res.ok || body.ErrorNumber)
+    throw new Error(`OmniSim: ${body.ErrorMessage ?? String(res.status)}`);
+}
+
+/**
+ * Warten, bis die Nacht vorbei ist: alle Sessions des Test-Servers abgeschlossen, danach 60 s Nachlauf für die
+ * letzten Meldungen; höchstens bis `deadlineMs` (`untilMin` der Laufdatei).
+ */
+async function waitForNightEnd(cfg: BenchConfig, deadlineMs: number): Promise<void> {
+  let doneAt: number | undefined;
+  while (Date.now() < deadlineMs) {
+    try {
+      const rep = (await (
+        await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
+      ).json()) as { sessions?: { status: string }[] };
+      const sessions = rep.sessions ?? [];
+      if (sessions.length > 0 && sessions.every((x) => x.status === 'completed')) {
+        doneAt ??= Date.now();
+        if (Date.now() - doneAt >= 60_000) {
+          log('Session abgeschlossen – Lauf endet vor dem Zeitlimit');
+          return;
+        }
+      } else doneAt = undefined;
+    } catch {
+      // Test-Server kurz nicht erreichbar: weiter warten.
+    }
+    await sleep(10_000);
+  }
+}
+
 async function screenshot(a: AdvancedApi, tab: string | undefined, path: string): Promise<void> {
   if (tab) await a.switchTab(tab as Parameters<AdvancedApi['switchTab']>[0]);
   await sleep(1500);
@@ -153,6 +205,8 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     // NINA frisch: ninapm.db löschen (ein gespeicherter Plan derselben Nacht schlösse sie sofort ab, VM-Lauf 03.10.2026).
     await job(bench, 'restart-nina', { resetDb: true, profileId: cfg.profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
+    // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
+    await omnisimSafe(cfg, true);
     for (const [path, value] of Object.entries(r.profile ?? {})) await a.setProfile(path, value);
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
@@ -179,12 +233,17 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
         try {
           if (s.coolC !== undefined) await a.cool(s.coolC);
+          if (s.safe !== undefined) await omnisimSafe(cfg, s.safe);
+          if (s.monitor === 'disconnect') await a.disconnect('safetymonitor');
+          if (s.monitor === 'connect') await a.connectFromProfile('safetymonitor', profile);
+          if (s.safe !== undefined || s.monitor)
+            log(`Safety-Monitor: ${s.monitor ?? (s.safe ? 'sicher' : 'unsicher')}`);
           if (s.screenshot) await screenshot(a, s.tab, join(dir, `${s.screenshot}.png`));
         } catch (e) {
           log(`Schritt bei Minute ${String(s.atMin)}: ${String(e)}`);
         }
       }
-      await sleep(Math.max(0, startedMs + r.untilMin * 60_000 - Date.now()));
+      await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000);
       const report = await (
         await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
       ).json();
