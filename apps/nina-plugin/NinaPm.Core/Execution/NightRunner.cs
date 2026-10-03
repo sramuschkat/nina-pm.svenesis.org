@@ -110,7 +110,7 @@ public sealed class NightRunner(
     public LeaseStateMachine Lease { get; } = new();
 
     /// <summary>Plan, nach dem gerade belichtet wird (Nacht, <c>nightPlanId</c>) – Pflicht in jeder Meldung (NIN5-14).</summary>
-    public (string Night, Guid NightPlanId)? ExecutingPlan { get; private set; }
+    public (string Night, Guid NightPlanId)? ExecutingPlan { get; internal set; }
 
     public Guid? RunningBlockId => runningBlock?.Id;
 

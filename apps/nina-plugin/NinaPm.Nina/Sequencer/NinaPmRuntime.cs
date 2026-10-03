@@ -29,13 +29,20 @@ internal sealed class NinaPmRuntime : IDisposable
     private readonly CancellationTokenSource heartbeatStop = new();
 
     private NinaPmRuntime(PluginOptions options, Uri apiBase, string token, NinaHost host)
+        : this(options, new NinaApi(apiBase, token, NinaPmPlugin.PluginVersion), LocalStore.Open(LocalStore.DefaultPath(), SystemClock.Instance),
+            host, NinaLogSink.Instance, startHeartbeat: true)
+    {
+    }
+
+    /// <summary>Laufzeit mit eigener API, eigenem Speicher und Log (Adapter-Tests: ohne Netz, ohne Heartbeat-Takt).</summary>
+    internal NinaPmRuntime(PluginOptions options, NinaApi api, LocalStore store, NinaHost host, ILogSink sink, bool startHeartbeat)
     {
         Options = options;
         Host = host;
         var clock = SystemClock.Instance;
-        Log = new NinaPmLog(NinaLogSink.Instance);
-        Store = LocalStore.Open(LocalStore.DefaultPath(), clock);
-        api = new NinaApi(apiBase, token, NinaPmPlugin.PluginVersion);
+        Log = new NinaPmLog(sink);
+        Store = store;
+        this.api = api;
         var sessionApi = new NinaSessionApi(api.Client);
         Runner = new NightRunner(new NinaPlanApi(api.Client), sessionApi, Store, host, host, clock, Log)
         {
@@ -45,7 +52,7 @@ internal sealed class NinaPmRuntime : IDisposable
         Outbox = new OutboxSender(Store, sessionApi, Log) { Listener = Runner };
         Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
             clock, Log, NinaPmPlugin.PluginVersion);
-        _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
+        if (startHeartbeat) _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
     }
 
     public OutboxSender Outbox { get; }

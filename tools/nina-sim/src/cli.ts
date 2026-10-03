@@ -27,12 +27,42 @@ interface RunPart {
   readonly steps?: unknown[];
 }
 
+/** Benannte Prüfung (Läufe ohne Protokoll, z. B. der VM-Kurzlauf `vm-smoke`). */
+interface NamedCheck {
+  readonly name: string;
+  readonly asserts: readonly Assert[];
+}
+
 interface RunFile extends Partial<RunPart> {
-  readonly protocol: string;
+  readonly protocol?: string;
+  readonly name?: string;
+  readonly checks?: readonly NamedCheck[];
   readonly description?: string;
   /** Mehrere Nächte nacheinander (je ein frischer Test-Server und eine frische ninapm.db), z. B. P-22. */
   readonly parts?: readonly RunPart[];
-  readonly asserts: readonly (readonly Assert[])[];
+  readonly asserts?: readonly (readonly Assert[])[];
+}
+
+/** Benannte Prüfungen auf Log und Report; `vm` = gegen echtes NINA (sonst werden `vmOnly`-Prüfungen übersprungen). */
+export function evaluateChecks(
+  checks: readonly NamedCheck[],
+  log: string,
+  report: unknown,
+  vm: boolean,
+): { passed: boolean; lines: string[] } {
+  const { events } = parseLog(log);
+  const lines: string[] = [];
+  let passed = true;
+  for (const c of checks) {
+    const outcomes = c.asserts
+      .filter((a) => vm || !a.vmOnly)
+      .map((a) => evaluate(a, events, report));
+    const ok = outcomes.every((o) => o.ok);
+    if (!ok) passed = false;
+    lines.push(`  ${ok ? '✓' : '✗'} ${c.name}`);
+    for (const o of outcomes) if (!o.ok) lines.push(`      ✗ ${o.text}`);
+  }
+  return { passed, lines };
 }
 
 /** Ein Teil: Test-Server mit virtueller Uhr, NinaPm.Sim dagegen; liefert Report und Logtext. */
@@ -84,6 +114,20 @@ export interface RunOutcome {
 
 export async function runOne(file: string, outRoot: string): Promise<RunOutcome> {
   const run = JSON.parse(readFileSync(join(RUNS, file), 'utf8')) as RunFile;
+  if (run.checks) {
+    const name = run.name ?? file.slice(0, -5);
+    const dir = join(outRoot, name);
+    rmSync(dir, { recursive: true, force: true });
+    const r = await runPart(
+      name,
+      { scenario: run.scenario ?? '', untilMin: run.untilMin, setup: run.setup, steps: run.steps },
+      dir,
+    );
+    writeFileSync(join(dir, 'report.json'), `${JSON.stringify(r.report, null, 2)}\n`);
+    const c = evaluateChecks(run.checks, r.log, r.report, false);
+    return { protocol: name, passed: c.passed, lines: c.lines };
+  }
+  if (!run.protocol || !run.asserts) throw new Error(`${file}: weder protocol/asserts noch checks`);
   const exp = EXPECTATIONS.protocols[run.protocol];
   if (!exp) throw new Error(`${file}: keine Erwartungen für ${run.protocol}`);
   if (run.asserts.length !== exp.steps.length)
@@ -167,11 +211,28 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
   return { protocol: run.protocol, passed: check.passed, lines };
 }
 
+/** `--vm <ordner>`: echten VM-Lauf prüfen – `nina.log` (NINA-Log der Sitzung) und `report.json` (Test-Server-Report). */
+function checkVm(dir: string): never {
+  const run = JSON.parse(readFileSync(join(RUNS, 'vm-smoke.json'), 'utf8')) as RunFile;
+  const c = evaluateChecks(
+    run.checks ?? [],
+    readFileSync(join(dir, 'nina.log'), 'utf8'),
+    JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8')) as unknown,
+    true,
+  );
+  console.log(`${c.passed ? '✓' : '✗'} VM-Kurzlauf ${dir}`);
+  for (const l of c.lines) console.log(l);
+  writeFileSync(join(dir, 'vm-check.txt'), `${c.lines.join('\n')}\n`);
+  process.exit(c.passed ? 0 : 1);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  const vmIndex = args.indexOf('--vm');
+  if (vmIndex >= 0) checkVm(resolve(args[vmIndex + 1] ?? '.'));
   const outIndex = args.indexOf('--out');
   const outRoot = resolve(outIndex >= 0 ? (args[outIndex + 1] ?? '') : join(ROOT, '.sim-runs'));
-  const wanted = args.filter((a, i) => /^P-/.test(a) && args[i - 1] !== '--out');
+  const wanted = args.filter((a, i) => /^(P-|vm-)/.test(a) && args[i - 1] !== '--out');
   const files = readdirSync(RUNS)
     .filter((f) => f.endsWith('.json'))
     .filter((f) => wanted.length === 0 || wanted.includes(f.slice(0, -5)))

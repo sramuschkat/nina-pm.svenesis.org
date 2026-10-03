@@ -1,5 +1,8 @@
 using System.Windows;
+using System.Net.Http;
 using Moq;
+using NINA.Core.Utility;
+using NINA.Equipment.Model;
 using NINA.Equipment.Interfaces.Mediator;
 using NINA.Sequencer.Conditions;
 using NINA.Core.Model;
@@ -192,4 +195,150 @@ public sealed class SequencerTests
         Assert.Null(hb.Camera);
         Assert.False(hb.Rotator!.Connected);
     }
+
+    // ---- Bildpipeline: Plugin-Belichtung durch NINAs Sequenz und ImageSaved (execution.md §4.3, NT-10, NT-34) ----
+
+    private sealed class ListSink : NinaPm.Core.Logging.ILogSink
+    {
+        public List<string> Lines { get; } = [];
+        public void Info(string line) { lock (Lines) Lines.Add(line); }
+        public void Warning(string line) { lock (Lines) Lines.Add(line); }
+        public void Error(string line) { lock (Lines) Lines.Add(line); }
+    }
+
+    /// <summary>Netz gibt es im Test nicht: jede Anfrage scheitert sofort (die Meldungen bleiben in der Outbox).</summary>
+    private sealed class NoNetwork : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("kein Netz im Test");
+    }
+
+    /// <summary>
+    /// Was die Simulation nicht kann (der kopflose Nachtlauf hat ein simuliertes NINA): eine Plugin-Belichtung läuft in
+    /// einer echten Sequenz-Hierarchie durch den Trigger-Walk (Dither der Vorfahren unterdrückt, andere Trigger laufen),
+    /// über <c>IImagingMediator</c> und <c>IImageSaveMediator.Enqueue</c>; NINAs <c>ImageSaved</c> mit derselben Bild-ID
+    /// ergibt <c>CAPTURE result=saved</c> und eine Meldung mit NINAs Zeiten, Pier-Seite und Messwerten (P-02, P-28).
+    /// </summary>
+    [Fact]
+    public async Task Belichtung_durch_NINAs_Bildpipeline_meldet_saved_mit_Messwerten_und_unterdrueckt_Dither()
+    {
+        var start = new DateTime(2026, 10, 3, 2, 0, 0, DateTimeKind.Utc);
+        var camera = new Mock<ICameraMediator>();
+        camera.Setup(c => c.GetInfo()).Returns(new NINA.Equipment.Equipment.MyCamera.CameraInfo { Connected = true, Temperature = -9.8, TemperatureSetPoint = -10, CoolerOn = true });
+        var telescope = new Mock<ITelescopeMediator>();
+        telescope.Setup(t => t.GetInfo()).Returns(new NINA.Equipment.Equipment.MyTelescope.TelescopeInfo { Connected = true, SideOfPier = NINA.Core.Enum.PierSide.pierWest });
+        var rotator = new Mock<IRotatorMediator>();
+        rotator.Setup(r => r.GetInfo()).Returns(new NINA.Equipment.Equipment.MyRotator.RotatorInfo { Connected = false });
+
+        var exposure = new Mock<NINA.Image.Interfaces.IExposureData>();
+        var meta = new NINA.Image.ImageData.ImageMetaData();
+        meta.Image.Id = 42;
+        meta.Image.ExposureStart = start;
+        meta.Image.ExposureMidPoint = start.AddSeconds(150);
+        exposure.SetupGet(e => e.MetaData).Returns(meta);
+        var imageData = new Mock<NINA.Image.Interfaces.IImageData>();
+        imageData.SetupGet(d => d.MetaData).Returns(new NINA.Image.ImageData.ImageMetaData());
+        imageData.SetupGet(d => d.Statistics).Returns(new Nito.AsyncEx.AsyncLazy<NINA.Image.Interfaces.IImageStatistics>(
+            () => Task.FromResult(Mock.Of<NINA.Image.Interfaces.IImageStatistics>())));
+        exposure.Setup(e => e.ToImageData(It.IsAny<IProgress<ApplicationStatus>>(), It.IsAny<CancellationToken>())).ReturnsAsync(imageData.Object);
+        var imaging = new Mock<IImagingMediator>();
+        imaging.Setup(i => i.CaptureImage(It.IsAny<NINA.Equipment.Model.CaptureSequence>(), It.IsAny<CancellationToken>(),
+                It.IsAny<IProgress<ApplicationStatus>>(), It.IsAny<string>()))
+            .ReturnsAsync(exposure.Object);
+        imaging.Setup(i => i.PrepareImage(It.IsAny<NINA.Image.Interfaces.IImageData>(), It.IsAny<PrepareImageParameters>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(Mock.Of<NINA.Image.Interfaces.IRenderedImage>()));
+
+        var imageSave = new Mock<NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator>();
+        imageSave.Setup(s => s.Enqueue(It.IsAny<NINA.Image.Interfaces.IImageData>(), It.IsAny<Task<NINA.Image.Interfaces.IRenderedImage>>(),
+                It.IsAny<IProgress<ApplicationStatus>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask)
+            .Callback(() =>
+            {
+                var saved = new NINA.Image.ImageData.ImageMetaData();
+                saved.Image.Id = 42;
+                saved.Camera.Temperature = -9.8;
+                saved.Camera.SetPoint = -10;
+                var stats = new Mock<NINA.Image.Interfaces.IImageStatistics>();
+                stats.SetupGet(x => x.Mean).Returns(1234.5);
+                var stars = new Mock<NINA.Image.Interfaces.IStarDetectionAnalysis>();
+                stars.SetupGet(x => x.HFR).Returns(2.3);
+                stars.SetupGet(x => x.DetectedStars).Returns(812);
+                imageSave.Raise(x => x.ImageSaved += null, new NINA.WPF.Base.Interfaces.Mediator.ImageSavedEventArgs
+                {
+                    MetaData = saved,
+                    Statistics = stats.Object,
+                    StarDetectionAnalysis = stars.Object,
+                    PathToImage = new Uri(@"C:\Bilder\M31_L_0001.fits"),
+                });
+            });
+
+        // Profil mit Standort und leerem Filterrad (ohne Filterrad belichtet der Adapter ohne Filterwechsel).
+        var wheel = new Mock<NINA.Profile.Interfaces.IFilterWheelSettings>();
+        wheel.SetupGet(w => w.FilterWheelFilters).Returns(new ObserveAllCollection<NINA.Core.Model.Equipment.FilterInfo>(
+            Array.Empty<NINA.Core.Model.Equipment.FilterInfo>()));
+        var profile = new Mock<NINA.Profile.Interfaces.IProfile>();
+        profile.SetupGet(p => p.AstrometrySettings).Returns(Mock.Of<NINA.Profile.Interfaces.IAstrometrySettings>());
+        profile.SetupGet(p => p.FilterWheelSettings).Returns(wheel.Object);
+        var profileService = new Mock<NINA.Profile.Interfaces.IProfileService>();
+        profileService.SetupGet(x => x.ActiveProfile).Returns(profile.Object);
+
+        var m = new NinaMediators(profileService.Object, telescope.Object, imaging.Object, camera.Object, Mock.Of<IFilterWheelMediator>(),
+            rotator.Object, Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
+            Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
+            imageSave.Object, Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(), Mock.Of<ISafetyMonitorMediator>());
+        var sink = new ListSink();
+        var dbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"ninapm-pipeline-{Guid.NewGuid():N}.db");
+        using var store = NinaPm.Core.Storage.LocalStore.Open(dbPath, NinaPm.Core.Time.SystemClock.Instance);
+        var host = new NinaHost(m);
+        using var runtime = new NinaPmRuntime(new NinaPm.Core.Options.PluginOptions(),
+            new NinaPm.Core.Api.NinaApi(new Uri("http://127.0.0.1:9/api"), "npm_test", "0.0.0", new NoNetwork()), store, host, sink, startHeartbeat: false);
+        host.Runtime = runtime;
+        var session = Guid.NewGuid();
+        store.SetState(NinaPm.Core.Storage.StateKeys.SessionId, session.ToString());
+        runtime.Runner.ExecutingPlan = ("2026-10-02", Guid.NewGuid());
+
+        // Sequenz wie die Vorlage: Ziel (mit Dither- und AF-Trigger) → Blöcke → NINA-PM-Anweisungen.
+        var target = new SequentialContainer();
+        var blocks = new SequentialContainer();
+        var box = new NinaPmContainer(profileService.Object, telescope.Object, imaging.Object, camera.Object, Mock.Of<IFilterWheelMediator>(),
+            rotator.Object, Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
+            Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
+            imageSave.Object, Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(), Mock.Of<ISafetyMonitorMediator>(),
+            Mock.Of<NINA.Astrometry.Interfaces.INighttimeCalculator>());
+        target.Add(blocks);
+        blocks.Add(box);
+        var dither = new FakeDitherAfterExposures();
+        var af = new FakeAutofocusAfterTimeTrigger();
+        target.Add(dither);
+        target.Add(af);
+        host.Container = box;
+
+        var block = new Blocks { Id = Guid.NewGuid(), ProjectId = Guid.NewGuid(), PanelId = Guid.NewGuid(), RaDeg = 10.68, DecDeg = 41.27, RotationDeg = 90 };
+        var entry = new Entries { Seq = 1, Cmd = EntriesCmd.Expose, ExposureS = 300, Filter = "L", ExposureLineId = Guid.NewGuid() };
+
+        var result = await host.ExposeAsync(block, entry, temperatureDeviation: false, default);
+
+        Assert.Equal(ExposureResult.Saved, result);
+        Assert.Equal(0, dither.Runs);
+        Assert.True(af.Runs >= 1);
+        Assert.Contains(sink.Lines, l => l.Contains("TRIGGER_SUPPRESSED type=FakeDitherAfterExposures"));
+        Assert.Contains(sink.Lines, l => l.Contains("TRIGGER type=FakeAutofocusAfterTimeTrigger"));
+        Assert.Contains(sink.Lines, l => l.Contains("CAPTURE") && l.Contains("result=saved") && l.Contains("file=M31_L_0001.fits"));
+
+        // Zeitpunkte als Text lesen (sonst deutet Newtonsoft sie als DateTime um).
+        var payload = Newtonsoft.Json.JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(
+            Assert.Single(store.OutboxPayloads(NinaPm.Core.Storage.OutboxKinds.Capture)),
+            new Newtonsoft.Json.JsonSerializerSettings { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })!;
+        Assert.Equal("saved", (string?)payload["result"]);
+        Assert.Equal("west", (string?)payload["pierSide"]);
+        Assert.Equal("2026-10-03T02:00:00Z", (string?)payload["capturedAtUtc"]);
+        Assert.Equal("2026-10-03T02:02:30Z", (string?)payload["exposureMidUtc"]);
+        Assert.Equal(2.3, (double?)payload["metrics"]?["hfr"]);
+        Assert.Equal(812, (int?)payload["metrics"]?["stars"]);
+        Assert.Equal(-9.8, (double?)payload["metrics"]?["sensorTempC"]);
+        Assert.Equal(-10, (double?)payload["metrics"]?["setPointC"]);
+        Assert.Equal(JTokenTypeNull, payload["gain"]?.Type); // Pflichtfeld mit null steht im JSON
+    }
+
+    private const Newtonsoft.Json.Linq.JTokenType JTokenTypeNull = Newtonsoft.Json.Linq.JTokenType.Null;
 }
