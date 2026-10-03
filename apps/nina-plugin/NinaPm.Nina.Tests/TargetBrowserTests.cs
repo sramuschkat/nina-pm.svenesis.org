@@ -71,6 +71,7 @@ public sealed class TargetBrowserTests
         Assert.Equal(codes.Length, texts.Distinct().Count());
         Assert.DoesNotContain(texts, t => codes.Contains(t));
         Assert.Equal(Texts.LiveBlocked, new LiveStatusView(Status("rig_busy")).StateText);
+        Assert.Equal(Texts.LivePaused, new LiveStatusView(Status(null) with { State = LiveState.Paused }).StateText);
 
         var waiting = new LiveStatusView(Status(null));
         Assert.False(waiting.IsBlocked);

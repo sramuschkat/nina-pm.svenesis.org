@@ -3,11 +3,15 @@ using NinaPm.Core.Targets;
 
 namespace NinaPm.Core.Status;
 
-/// <summary>Zustand im Live-Status-Kopf (FA-NIN-13): Warten, Läuft, gesperrt (mit Grund), Beendet.</summary>
+/// <summary>
+/// Zustand im Live-Status-Kopf (FA-NIN-13): Warten, Läuft, pausiert (Safety unsicher, wie Heartbeat <c>paused</c>,
+/// execution.md §4.6), gesperrt (mit Grund), Beendet.
+/// </summary>
 public enum LiveState
 {
     Waiting,
     Running,
+    Paused,
     Blocked,
     Finished,
 }
@@ -67,7 +71,8 @@ public sealed record LiveInputs(
     bool Offline,
     bool TestBanner,
     DateTimeOffset Now,
-    NinaBootstrap? Bootstrap = null);
+    NinaBootstrap? Bootstrap = null,
+    bool SafetyPaused = false);
 
 public static class LiveStatusBuilder
 {
@@ -83,6 +88,7 @@ public static class LiveStatusBuilder
         var state = i.NightFinished ? LiveState.Finished
             : i.Blocked is not null ? LiveState.Blocked
             : i.Running is not null ? LiveState.Running
+            : i.SafetyPaused ? LiveState.Paused
             : LiveState.Waiting;
         var e = i.Running is null ? null : i.CurrentEntry;
         return new LiveStatus(

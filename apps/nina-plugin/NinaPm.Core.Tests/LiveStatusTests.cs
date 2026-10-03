@@ -60,6 +60,11 @@ public sealed class LiveStatusTests
         Assert.Equal(transit.StartUtc, site.Blocks[0].Start);
 
         Assert.Equal(LiveState.Finished, LiveStatusBuilder.Build(Inputs("2026-09-18T09:30:00Z", finished: true)).State);
+
+        // Safety-Pause (§4.6, VM-Prüfstand 03.10.2026): pausiert statt „Warten“, wie der Heartbeat paused; gesperrt geht vor.
+        Assert.Equal(LiveState.Paused, LiveStatusBuilder.Build(Inputs("2026-09-18T03:00:00Z") with { SafetyPaused = true }).State);
+        Assert.Equal(LiveState.Blocked,
+            LiveStatusBuilder.Build(Inputs("2026-09-18T03:00:00Z", blocked: NinaHeartbeatBlockedReason.Rig_busy) with { SafetyPaused = true }).State);
     }
 
     public static TheoryData<NinaHeartbeatBlockedReason> Reasons() => [.. Enum.GetValues<NinaHeartbeatBlockedReason>()];
