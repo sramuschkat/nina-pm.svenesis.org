@@ -21,6 +21,8 @@ interface ProtocolExpectation {
   readonly steps: readonly string[];
   readonly require?: readonly Match[];
   readonly forbid?: readonly Match[];
+  /** Ausnahmen von `global.forbid` für dieses Protokoll (z. B. P-37: `ERROR code=clock_skew` ist erwartet). */
+  readonly allow?: readonly Match[];
   readonly checks?: readonly string[];
 }
 
@@ -148,8 +150,9 @@ export function checkRun(dir: string, write = true): CheckOutcome {
       if (n < (m.min ?? 1))
         missing.push(`${describe(m)}${n > 0 ? `, gefunden ${String(n)}×` : ''}`);
     }
+    const allowed = (e: LogEvent) => (exp?.allow ?? []).some((a) => matches(e, a));
     for (const m of [...EXPECTATIONS.global.forbid, ...(exp?.forbid ?? [])])
-      for (const e of events.filter((x) => matches(x, m)))
+      for (const e of events.filter((x) => matches(x, m) && !allowed(x)))
         unexpected.push(`${describe(m)} in Zeile ${String(e.line)}`);
     for (const name of exp?.checks ?? []) {
       const check = CHECKS[name];

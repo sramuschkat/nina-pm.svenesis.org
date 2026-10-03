@@ -34,6 +34,8 @@ public sealed class HeartbeatService(
 
     public async Task TickAsync(CancellationToken token)
     {
+        // Offline-Modus (FA-NIN-04): ein letzter Heartbeat meldet offline, danach keine Aufrufe bis zum Ende des Modus.
+        if (runner.OfflineMode && runner.OfflineAnnounced) return;
         NinaHeartbeat body;
         try
         {
@@ -54,12 +56,20 @@ public sealed class HeartbeatService(
         body.EngineVersion = runner.Bootstrap?.Server.EngineVersion ?? "";
         body.SettingsVersion = runner.Bootstrap?.Rig.SettingsVersion;
         body.OutboxPending = runner.OutboxPending;
-        body.DeadLetters = 0;
+        body.DeadLetters = runner.DeadLetters;
+        body.AckedCommandIds = runner.TakeCommandAcks();
 
         var sent = clock.UtcNow;
         try
         {
             var response = await api.HeartbeatAsync(body, token).ConfigureAwait(false);
+            if (runner.OfflineMode)
+            {
+                // Offline: keine Uhr- und Lease-Prüfung, Lease bleibt serverseitig eingefroren (§6).
+                runner.OfflineAnnounced = true;
+                log.Event("HEARTBEAT", ("state", "offline"), ("status", 200));
+                return;
+            }
             runner.HeartbeatAnswered(response, sent);
             log.Event("HEARTBEAT", ("state", Name(state)), ("status", 200));
         }
@@ -74,6 +84,8 @@ public sealed class HeartbeatService(
             var code = NinaApi.ProblemCode(ex.Response);
             log.Warning("API", ("status", ex.StatusCode), ("code", code), ("call", "heartbeat"));
             if (ex.StatusCode == 409 && code == "session.rig_busy") runner.LeaseRigBusy();
+            else if (ex.StatusCode == 401) runner.Rejected(NinaHeartbeatBlockedReason.Token_invalid);
+            else if (ex.StatusCode == 403 && code == "tenant.locked") runner.Rejected(NinaHeartbeatBlockedReason.Tenant_locked);
         }
         catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !token.IsCancellationRequested))
         {

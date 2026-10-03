@@ -778,6 +778,228 @@
           }
         }
       ]
+    },
+    "P-09": {
+      "package": "AP-16g",
+      "steps": [
+        "Nach Block 1 Netz weg (Test-Server drop_responses bzw. Netz trennen), 30 min laufen lassen, dann wieder verbinden",
+        "Nach 3 Heartbeats ohne Antwort LEASE state=unreachable, nicht lost",
+        "Laufender und folgende Blöcke nach dem gespeicherten Plan, kein neuer Plan während des Ausfalls; alle Aufnahmen tragen dessen nightPlanId",
+        "Nach der Rückkehr LEASE state=held (Lease zurückgeholt), Outbox sendet FIFO nach, kein PATCH offlinePlan, keine Duplikate"
+      ],
+      "require": [
+        {
+          "event": "LEASE",
+          "where": {
+            "state": "unreachable"
+          }
+        },
+        {
+          "event": "OFFLINE_END"
+        },
+        {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "LEASE",
+          "where": {
+            "state": "lost"
+          }
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-16": {
+      "package": "AP-16g",
+      "steps": [
+        "Offline-Modus einschalten, Netz trennen, NINA neu starten, 2 Blöcke laufen lassen, Netz verbinden, Offline-Modus aus",
+        "HEARTBEAT state=offline vor der Trennung",
+        "Nach dem Neustart PLAN source=cache mit der nightPlanId des gespeicherten Server-Plans, Blockindex nach der Uhr",
+        "Keine stale-Markierung und kein Alarm; nach Rückkehr Outbox nachgesendet, keine Duplikate",
+        "Gegenprobe: Start ohne gespeicherten Plan der Nacht → BLOCKED reason=plan_failed, keine Blöcke"
+      ],
+      "require": [
+        {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "offline"
+          }
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "source": "cache"
+          }
+        },
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "plan_failed"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-18": {
+      "package": "AP-16g",
+      "steps": [
+        "Während einer laufenden Belichtung Token widerrufen (Test-Server revoke_token bzw. S-42)",
+        "API status=401 → laufende Belichtung zu Ende, BLOCK_END reason=error, BLOCKED reason=token_invalid",
+        "Keine neuen Blöcke, Cache nicht verwendet, Outbox pausiert (kein Dead-Letter), klare Meldung in der Optionsseite",
+        "Die Nachtschleife wird erst im nächsten Aufruf ohne laufenden Block falsch (NIN5-2)"
+      ],
+      "require": [
+        {
+          "event": "API",
+          "where": {
+            "status": "401"
+          }
+        },
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "error"
+          }
+        },
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "token_invalid"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-20": {
+      "package": "AP-16g",
+      "steps": [
+        "NINA mitten in Block 2 beenden und neu starten, Sequenz erneut starten",
+        "PLAN reason=resume; gleiche sessionId aus ninapm.db, neue nightPlanId (Aufnahmen danach tragen sie, NT-18)",
+        "SESSION status=running mit resumedAtUtc; Blockindex aus dem neuen Plan (erster Block mit endUtc > now)",
+        "Keine doppelten Aufnahmen"
+      ],
+      "require": [
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "resume"
+          }
+        },
+        {
+          "event": "LEASE",
+          "where": {
+            "state": "reacquiring"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-30": {
+      "package": "AP-16g",
+      "steps": [
+        "Offline-Modus während eines laufenden Blocks einschalten, 2 Blöcke offline laufen lassen, Offline-Modus aus",
+        "HEARTBEAT state=offline; laufender Block läuft weiter (kein BLOCK_END reason=replanned, kein neuer PLAN)",
+        "Jede Offline-Aufnahme trägt die nightPlanId des gespeicherten Server-Plans",
+        "Nach der Rückkehr Outbox nachgesendet (kein PATCH offlinePlan), keine Duplikate"
+      ],
+      "require": [
+        {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "offline"
+          }
+        },
+        {
+          "event": "OUTBOX",
+          "where": {
+            "pending": "0"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "replanned"
+          }
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
+    },
+    "P-37": {
+      "package": "AP-16g",
+      "steps": [
+        "Test-Server-Aktion clock_skew mit seconds=90, danach clear",
+        "ERROR code=clock_skew, BLOCKED reason=clock_skew, keine neuen Blöcke, 60-s-Wartetakt",
+        "Nach clear Abweichung ≤ 5 s → Zustand gelöscht, Blöcke laufen",
+        "Im Offline-Modus keine Prüfung (Hinweis „Uhrzeit ungeprüft“)"
+      ],
+      "require": [
+        {
+          "event": "ERROR",
+          "where": {
+            "code": "clock_skew"
+          }
+        },
+        {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "clock_skew"
+          }
+        }
+      ],
+      "allow": [
+        {
+          "event": "ERROR",
+          "where": {
+            "code": "clock_skew"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "loop_guard"
+          }
+        }
+      ]
     }
   }
 }

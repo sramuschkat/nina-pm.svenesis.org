@@ -52,6 +52,22 @@ public static class Texts
         $"Profile location is {km:0} km from the rig site – check the NINA profile.");
     public static string SiteUnknown => T("Profil-Standort unbekannt", "Profile location unknown");
 
+    // ---- Betrieb (AP-16g) ----
+    public static string OperationHeader => T("Betrieb", "Operation");
+    public static string OfflineMode => T("Offline-Modus", "Offline mode");
+    public static string OfflineModeHint => T(
+        "gespeicherter Plan der laufenden Nacht, Meldungen warten in der Outbox",
+        "stored plan of the current night, reports wait in the outbox");
+    public static string Reset => T("Zurücksetzen", "Reset");
+    public static string SkipBlock => T("Block überspringen", "Skip block");
+    public static string ReuploadFrom => T("Erneut hochladen ab", "Re-upload from");
+    public static string Reupload => T("Erneut hochladen", "Re-upload");
+    public static string Refresh => T("Aktualisieren", "Refresh");
+    public static string ClockSkew => T("Uhr weicht mehr als 60 s ab – keine Blöcke", "Clock off by more than 60 s – no blocks");
+    public static string ClockUnchecked => T("Uhrzeit ungeprüft", "Clock not checked");
+    public static string Blocked(string reason) => T($"Gesperrt: {reason}", $"Blocked: {reason}");
+    public static string Outbox(int pending, int dead) => T($"Outbox {pending} offen, {dead} Dead-Letter", $"Outbox {pending} pending, {dead} dead letters");
+
     // ---- Sequenz-Bausteine (execution.md §1) ----
     public static string ContainerHint => T(
         "Führt den NINA-PM-Plan aus: je Aufruf ein Block. Bedingungen an den umgebenden Container hängen.",

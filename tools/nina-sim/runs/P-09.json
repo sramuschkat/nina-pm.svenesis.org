@@ -1,0 +1,102 @@
+{
+  "protocol": "P-09",
+  "scenario": "lease",
+  "description": "Netz nach Block 1 für 30 min weg: unreachable statt lost, Blöcke nach dem gespeicherten Plan, danach Lease zurück und Outbox FIFO nachgesendet.",
+  "untilMin": 90,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 18,
+      "sim": "network_down"
+    },
+    {
+      "atMin": 48,
+      "sim": "network_up"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "report": "captures",
+        "min": 1
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "LEASE",
+          "where": {
+            "state": "unreachable"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "LEASE",
+          "where": {
+            "state": "lost"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "OFFLINE_START"
+          },
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "OFFLINE_END"
+          }
+        ]
+      },
+      {
+        "none": {
+          "event": "PLAN"
+        },
+        "after": {
+          "event": "OFFLINE_START"
+        },
+        "before": {
+          "event": "OFFLINE_END"
+        }
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "OFFLINE_START"
+          },
+          {
+            "event": "LEASE",
+            "where": {
+              "state": "held"
+            }
+          },
+          {
+            "event": "OFFLINE_END"
+          },
+          {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          }
+        ]
+      },
+      {
+        "report": "rejected",
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

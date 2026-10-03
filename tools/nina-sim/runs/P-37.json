@@ -1,0 +1,122 @@
+{
+  "protocol": "P-37",
+  "description": "Uhr 90 s daneben: ERROR clock_skew, keine Blöcke; nach clear wieder normal; im Offline-Modus keine Prüfung.",
+  "parts": [
+    {
+      "scenario": "one-night",
+      "untilMin": 40,
+      "setup": {
+        "autoStart": false
+      },
+      "steps": [
+        {
+          "atMin": 0.2,
+          "server": "clock_skew",
+          "seconds": 90
+        },
+        {
+          "atMin": 0.5,
+          "sim": "start"
+        },
+        {
+          "atMin": 8,
+          "server": "clear"
+        }
+      ]
+    },
+    {
+      "scenario": "one-night",
+      "untilMin": 20,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 0.5,
+          "sim": "offline_on"
+        },
+        {
+          "atMin": 1,
+          "server": "clock_skew",
+          "seconds": 90
+        }
+      ]
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "part": 1,
+        "report": "actions",
+        "where": {
+          "action": "clock_skew"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "order": [
+          {
+            "event": "ERROR",
+            "where": {
+              "code": "clock_skew"
+            }
+          },
+          {
+            "event": "BLOCKED",
+            "where": {
+              "reason": "clock_skew"
+            }
+          }
+        ]
+      },
+      {
+        "part": 1,
+        "none": {
+          "event": "BLOCK_START"
+        },
+        "after": {
+          "event": "BLOCKED",
+          "where": {
+            "reason": "clock_skew"
+          }
+        },
+        "before": {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "idle"
+          }
+        }
+      }
+    ],
+    [
+      {
+        "part": 1,
+        "order": [
+          {
+            "event": "BLOCKED",
+            "where": {
+              "reason": "clock_skew"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "part": 2,
+        "log": {
+          "event": "ERROR",
+          "where": {
+            "code": "clock_skew"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

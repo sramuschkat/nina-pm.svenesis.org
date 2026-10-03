@@ -48,7 +48,8 @@ public sealed record BlockRunOptions(
     RotationSettings? Rotation = null,
     PlaybackMode? Mode = null,
     Action<EventsKind, string?, Blocks>? Report = null,
-    Action<Blocks>? FlipDone = null);
+    Action<Blocks>? FlipDone = null,
+    Func<bool>? SkipRequested = null);
 
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
@@ -125,7 +126,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         if (skip is not null) return Skip(block, skip);
 
         var start = ReplanPolicy.PlannedStart(block);
-        if (clock.UtcNow < start) await host.DelayAsync(start, token).ConfigureAwait(false);
+        // Bis Blockstart warten, 10-s-Takt, abbrechbar durch *Block überspringen* (§4.1 Nr. 2).
+        while (clock.UtcNow < start)
+        {
+            if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
+            var next = clock.UtcNow + FlipWaitTick;
+            await host.DelayAsync(next < start ? next : start, token).ConfigureAwait(false);
+        }
+        if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
         if (block.EndUtc <= clock.UtcNow) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
 

@@ -94,6 +94,14 @@ async Task ApplyAsync(SimStep step)
         case "network_up":
             world.NetworkDown = false;
             break;
+        case "offline_on":
+            world.OfflineMode = true;
+            if (runtime is not null) runtime.Runner.OfflineMode = true;
+            break;
+        case "offline_off":
+            world.OfflineMode = false;
+            if (runtime is not null) runtime.Runner.OfflineMode = false;
+            break;
         default:
             throw new InvalidOperationException($"Unbekannter Schritt {step.Sim}");
     }

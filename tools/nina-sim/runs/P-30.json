@@ -1,0 +1,88 @@
+{
+  "protocol": "P-30",
+  "scenario": "lease",
+  "description": "Offline-Modus mitten im Block: Block läuft weiter, kein neuer Plan, Aufnahmen mit der nightPlanId des gespeicherten Plans, danach nachgesendet.",
+  "untilMin": 70,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 6,
+      "sim": "offline_on"
+    },
+    {
+      "atMin": 40,
+      "sim": "offline_off"
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "offline"
+          }
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "none": {
+          "event": "PLAN"
+        },
+        "after": {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "offline"
+          }
+        },
+        "before": {
+          "event": "HEARTBEAT",
+          "where": {
+            "state": "idle"
+          }
+        }
+      },
+      {
+        "log": {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "replanned"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "report": "captures",
+        "sameValue": "nightPlanId"
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "HEARTBEAT",
+            "where": {
+              "state": "idle"
+            }
+          },
+          {
+            "event": "OUTBOX",
+            "where": {
+              "pending": "0"
+            }
+          }
+        ]
+      },
+      {
+        "report": "rejected",
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

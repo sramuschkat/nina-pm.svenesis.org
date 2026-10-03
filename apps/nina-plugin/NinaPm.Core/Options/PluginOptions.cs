@@ -17,6 +17,9 @@ public sealed class PluginOptions
     /// <summary>Sichtbarer Schalter *Testbetrieb* (NIN-17): nur zusammen mit lokaler URL und <c>X-NPM-Test: 1</c> wirksam.</summary>
     public bool TestMode { get; set; }
 
+    /// <summary>Offline-Modus (FA-NIN-04): kein Serverkontakt, gespeicherter Plan der laufenden Nacht, Outbox wartet.</summary>
+    public bool OfflineMode { get; set; }
+
     /// <summary>Basis-URI der API ohne abschließenden Schrägstrich; <c>null</c> bei ungültiger Eingabe.</summary>
     public Uri? ApiBase =>
         Uri.TryCreate(ServerUrl.Trim().TrimEnd('/'), UriKind.Absolute, out var uri) &&

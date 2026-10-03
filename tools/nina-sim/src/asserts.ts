@@ -96,6 +96,19 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
     return { ok: true, text: `Reihenfolge ${a.order.map(sel).join(' → ')}` };
   }
   if ('none' in a) {
+    if (a.after && a.before) {
+      // Zwischen dem nth-ten `after` und dem ersten folgenden `before` (bzw. Logende).
+      const from = events.filter((e) => hit(e, a.after as Sel))[(a.nth ?? 1) - 1];
+      if (!from) return { ok: false, text: `${sel(a.after)} fehlt` };
+      const to = events.find((e) => e.line > from.line && hit(e, a.before as Sel));
+      const bad = events.filter(
+        (e) => hit(e, a.none) && e.line > from.line && (!to || e.line < to.line),
+      );
+      return {
+        ok: bad.length === 0,
+        text: `kein ${sel(a.none)} zwischen ${sel(a.after)} und ${sel(a.before)}${bad.length ? ` – ${String(bad.length)}× gefunden` : ''}`,
+      };
+    }
     const anchorSel = a.after ?? a.before;
     if (!anchorSel) return { ok: false, text: 'none ohne after/before' };
     const anchor = events.filter((e) => hit(e, anchorSel))[(a.nth ?? 1) - 1];

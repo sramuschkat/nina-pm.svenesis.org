@@ -73,6 +73,46 @@
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="{x:Static ui:Texts.Site}" />
                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SiteCheck}" TextWrapping="Wrap" />
             </Grid>
+            <!--  Betrieb (AP-16g, FA-NIN-04/13): Offline-Modus, Zurücksetzen, Block überspringen, Erneut hochladen.  -->
+            <TextBlock Margin="0,15,0,5" FontWeight="Bold" Text="{x:Static ui:Texts.OperationHeader}" />
+            <Grid Margin="0,0,0,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.OfflineMode}" />
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
+                    <CheckBox VerticalAlignment="Center" IsChecked="{Binding OfflineMode}" />
+                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.OfflineModeHint}" />
+                </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static ui:Texts.Status}" />
+                <TextBlock Grid.Row="1" Grid.Column="1" FontWeight="Bold" Text="{Binding OperationStatus}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Opacity="0.7" Text="{Binding DeadLetterInfo}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.ReuploadFrom}" />
+                <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
+                    <DatePicker Width="140" SelectedDate="{Binding ReuploadFrom}" />
+                    <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding ReuploadCommand}">
+                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reupload}" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+            <StackPanel Margin="0,5" Orientation="Horizontal">
+                <Button Padding="10,4" Command="{Binding ResetCommand}">
+                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reset}" />
+                </Button>
+                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding SkipBlockCommand}">
+                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SkipBlock}" />
+                </Button>
+                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding RefreshCommand}">
+                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Refresh}" />
+                </Button>
+            </StackPanel>
         </StackPanel>
     </DataTemplate>
 </ResourceDictionary>
