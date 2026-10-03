@@ -14,3 +14,4 @@ Anforderungen: FA-NIN-09/10/12/21, FA-SYN-07; execution.md §4.2, §4.6, §6; fl
 - **Behoben:** Der Heartbeat meldet die eigene Engine-Version auch vor dem ersten Bootstrap.
   - Bisher stand dort bis zum ersten Plan ein leerer Wert, und jeder Heartbeat wurde mit `422` abgelehnt.
   - In Starfront wäre das der ganze Nachmittag, solange NINA vor dem Sequenzstart läuft. Das erklärt auch die zwei 422 im VM-Lauf vom 03.10.2026.
+- **Abnahme:** AP-16f und AP-16g ☑ 03.10.2026 (Sven).
