@@ -341,4 +341,13 @@ public sealed class SequencerTests
     }
 
     private const Newtonsoft.Json.Linq.JTokenType JTokenTypeNull = Newtonsoft.Json.Linq.JTokenType.Null;
+
+    [Theory]
+    [InlineData(-1.0, null)]
+    [InlineData(double.NaN, null)]
+    [InlineData(150.0, null)]
+    [InlineData(0.0, 0.0)]
+    [InlineData(42.5, 42.5)]
+    public void Kuehlerleistung_ausserhalb_0_bis_100_wird_weggelassen(double power, double? expected) =>
+        Assert.Equal(expected, NinaSettingsSource.Percent(power));
 }

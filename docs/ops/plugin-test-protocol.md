@@ -56,6 +56,8 @@ Geräte in NINA (Stand der Läufe vom 01./02.10.2026):
 | Rotator | – | **getrennt** | `WARNING rotator_unavailable` je Block ist erwartet |
 | Kuppel, Flat-Panel, Wetter, Schalter | – | getrennt | – |
 
+Vor **jedem** Lauf mit einem frisch gestarteten Test-Server: NINA beenden und den lokalen Speicher des Plugins löschen (PowerShell: `Remove-Item "$env:LOCALAPPDATA\NINA\Plugins\Svenesis.NinaPm\ninapm.db*"`), dann NINA starten. Jeder Test-Server erzeugt seine Nacht neu, der Nacht-Schlüssel ist aber das Kalenderdatum – ein gespeicherter Plan vom vorigen Lauf derselben Nacht hat sein Dunkelheitsende längst hinter sich, das Plugin schlösse die Nacht sofort ab (`SESSION status=finished`, VM-Lauf 03.10.2026).
+
 | Minute nach Serverstart | Wer | Was |
 |---|---|---|
 | 0 | Mac | `pnpm nina-test-server --scenario vm-smoke --host 0.0.0.0` |
