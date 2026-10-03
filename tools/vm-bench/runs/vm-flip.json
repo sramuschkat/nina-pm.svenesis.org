@@ -1,0 +1,32 @@
+{
+  "name": "vm-flip",
+  "description": "VM-Kurzlauf Flip (≈ 30 min) ohne Handgriffe: Rotator verbunden, Meridian 8 min nach Serverstart, Flip nach NINAs frühester Flipzeit, nur Zentrieren; Screenshots des Live-Status vor und nach dem Flip (Reiter Sequencer zeigt den Advanced Sequencer, Profilwert wirkt ab dem NINA-Neustart des Laufs)",
+  "simRun": "vm-flip",
+  "scenario": "vm-flip",
+  "untilMin": 30,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-MinutesAfterMeridian": 1,
+    "MeridianFlipSettings-MaxMinutesAfterMeridian": 5,
+    "MeridianFlipSettings-PauseTimeBeforeMeridian": 0,
+    "MeridianFlipSettings-Recenter": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "rotator", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 5,
+      "screenshot": "live-status-laeuft",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 13,
+      "screenshot": "live-status-nach-flip",
+      "tab": "sequencer"
+    }
+  ]
+}

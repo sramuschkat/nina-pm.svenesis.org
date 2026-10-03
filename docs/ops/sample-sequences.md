@@ -68,6 +68,9 @@ Wiederherstellung am Anfang von „Ziel“ und der Container „Blöcke“ bleib
 
 ## 4. Testkopie für Läufe tagsüber (Test-Server)
 
-Für Läufe gegen `pnpm nina-test-server` eine Kopie der Sequenz verwenden und darin *Wait if Sun Altitude* deaktivieren
-(Rechtsklick → *Disable*), sonst wartet NINA bis zur Dämmerung; *Run Autofocus* darf für Kurztests ebenfalls deaktiviert
-werden. Die eingecheckten Beispielsequenzen bleiben vollständig.
+Für Läufe gegen `pnpm nina-test-server` eine Kopie der Sequenz verwenden und darin *Wait if Sun Altitude* **löschen**,
+sonst wartet NINA bis zur Dämmerung; *Run Autofocus* darf für Kurztests ebenfalls gelöscht werden. **Nicht nur
+deaktivieren:** NINA 3.2 speichert den Zustand „deaktiviert“ nicht (`SequenceItem.Status` ist keine JSON-Eigenschaft) –
+nach dem nächsten Laden wäre die Anweisung wieder aktiv (VM-Prüfstand 03.10.2026). Deaktivieren hilft nur, wenn die
+Sequenz danach ohne erneutes Laden gestartet wird. Der VM-Prüfstand erzeugt seine Laufsequenz selbst
+(`tools/vm-bench/src/sequence.ts`). Die eingecheckten Beispielsequenzen bleiben vollständig.
