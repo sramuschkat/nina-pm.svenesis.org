@@ -1,12 +1,17 @@
 {
   "name": "vm-smoke",
   "scenario": "vm-smoke",
-  "description": "Gleicher Ablauf wie der VM-Kurzlauf mit NINAs Kamera-Simulator (keine Temperaturregelung, Belichtung praktisch sofort); prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
+  "description": "Gleicher Ablauf wie der VM-Kurzlauf mit den Geräten der bisherigen Läufe (Sky-Simulator-Kamera und -Montierung, PHD2-Simulator, OmniSim-Safety-Monitor; die Sky-Simulator-Kamera ignoriert die Belichtungszeit); prüft vorab, dass Szenario und Zeitpunkte passen. Prüfungen mit vmOnly nur gegen echtes NINA (pnpm plugin:sim --vm <ordner>).",
   "untilMin": 30,
   "setup": {
     "ditherTrigger": true
   },
   "steps": [
+    {
+      "atMin": 5,
+      "sim": "setpoint",
+      "value": 0
+    },
     {
       "atMin": 13.3,
       "sim": "unsafe"
@@ -18,7 +23,7 @@
   ],
   "checks": [
     {
-      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Auslesemodi der Kamera)",
+      "name": "Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera mit Kühlung)",
       "asserts": [
         {
           "report": "heartbeats.last.filterWheel",
@@ -29,8 +34,8 @@
           "equals": 1
         },
         {
-          "report": "heartbeats.last.cameraReadoutModes",
-          "min": 1
+          "report": "heartbeats.last.camera.coolerOn",
+          "equals": true
         }
       ]
     },
@@ -55,7 +60,7 @@
         },
         {
           "report": "captures",
-          "whereExists": ["exposureMidUtc", "metrics.meanAdu"],
+          "whereExists": ["exposureMidUtc", "metrics.meanAdu", "metrics.sensorTempC"],
           "min": 3
         }
       ]
@@ -78,6 +83,36 @@
           },
           "min": 1,
           "vmOnly": true
+        }
+      ]
+    },
+    {
+      "name": "Kühlung abweichend: weiter belichtet, je Block höchstens eine Warnung",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "camera_temperature"
+            }
+          },
+          "min": 1
+        },
+        {
+          "perBlock": {
+            "event": "WARNING",
+            "where": {
+              "code": "camera_temperature"
+            }
+          },
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "temperatureDeviation": true
+          },
+          "min": 1
         }
       ]
     },
