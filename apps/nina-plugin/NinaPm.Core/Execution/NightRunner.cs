@@ -5,6 +5,7 @@ using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
 using NinaPm.Core.Reporting;
 using NinaPm.Core.Session;
+using NinaPm.Core.Status;
 using NinaPm.Core.Storage;
 using NinaPm.Core.Time;
 
@@ -181,6 +182,19 @@ public sealed class NightRunner(
     {
         skipRequested = true;
         log.Note("Block überspringen angefordert");
+    }
+
+    /// <summary>
+    /// Live-Status für den Container (FA-NIN-13, AP-16h): gespeicherter Plan der Nacht mit erledigten Blöcken, laufender
+    /// Block und Belichtung, gesperrter Zustand (<c>plan_failed</c> wie im Heartbeat), Outbox- und Dead-Letter-Zähler.
+    /// </summary>
+    public LiveStatus LiveStatus(bool testBanner)
+    {
+        var night = ExecutingPlan?.Night ?? store.GetState(StateKeys.Night);
+        var stored = night is null ? null : PlanStore.Load(store, night);
+        var blocked = Loop.Blocked ?? (Loop.PlanFailed ? NinaHeartbeatBlockedReason.Plan_failed : null);
+        return LiveStatusBuilder.Build(new LiveInputs(stored?.Plan, DoneBlocks(stored), runningBlock, Executor?.CurrentEntry, Targets,
+            blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap));
     }
 
     /// <summary>Quittierte Heartbeat-Kommandos für den nächsten Heartbeat (und vergessen).</summary>

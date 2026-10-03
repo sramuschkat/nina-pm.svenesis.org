@@ -75,6 +75,59 @@ public static class Texts
     public static string Blocked(string reason) => T($"Gesperrt: {reason}", $"Blocked: {reason}");
     public static string Outbox(int pending, int dead) => T($"Outbox {pending} offen, {dead} Dead-Letter", $"Outbox {pending} pending, {dead} dead letters");
 
+    /// <summary>Text je Grund aus <c>blockedReasons</c> (execution.md §2); unbekannte Codes unverändert.</summary>
+    public static string BlockedReason(string code) => code switch
+    {
+        "lease_lost" => T("Reservierung verloren – ein anderer Rechner nutzt das Rig", "Lease lost – another computer uses the rig"),
+        "rig_busy" => T("Rig belegt – eine andere Session läuft", "Rig busy – another session is running"),
+        "token_invalid" => T("Token ungültig oder widerrufen – neues Token eintragen", "Token invalid or revoked – enter a new token"),
+        "clock_skew" => T("Uhr weicht mehr als 60 s ab – keine Blöcke", "Clock off by more than 60 s – no blocks"),
+        "plan_failed" => T("Plan konnte nicht erstellt werden – neuer Versuch in 5 min", "Plan could not be built – retrying in 5 min"),
+        "engine_incompatible" => T("Plugin-Update nötig (Engine-Version)", "Plugin update required (engine version)"),
+        "tenant_locked" => T("Mandant gesperrt", "Tenant locked"),
+        _ => code,
+    };
+
+    // ---- Live-Status (FA-NIN-13, AP-16h) ----
+    public static string TestBanner => T("Testbetrieb – Sicherheitsprüfungen aus", "Test mode – safety checks off");
+    public static string LiveWaiting => T("Warten", "Waiting");
+    public static string LiveRunning => T("Läuft", "Running");
+    public static string LiveBlocked => T("Gesperrt", "Blocked");
+    public static string LiveFinished => T("Beendet", "Finished");
+    public static string LiveOffline => T("Offline-Modus", "Offline mode");
+    public static string PlanAtStart => T("Plan wird beim Sequenzstart erstellt …", "Plan is built when the sequence starts …");
+    public static string NextBlock(string time) => T($"Nächster Block {time}", $"Next block {time}");
+    public static string TodayTargets => T("Heutige Ziele", "Today's targets");
+    public static string BlockPending => T("offen", "pending");
+    public static string BlockRunning => T("läuft", "running");
+    public static string BlockDone => T("erledigt", "done");
+    public static string BlockElapsed => T("verstrichen", "elapsed");
+    public static string Transit => T("Transit", "Transit");
+
+    // ---- Zielbrowser (FA-NIN-02, AP-16h) ----
+    public static string TargetsHeader => T("An NINA ausgeliefert", "Delivered to NINA");
+    public static string TargetsHint => T(
+        "Ziele des Rigs aus der Web-App. „In Framing-Assistent laden“ übernimmt Zentrum, Rotation, Sensor, Brennweite und Mosaik-Raster.",
+        "Targets of the rig from the web app. “Load into Framing Assistant” transfers center, rotation, sensor, focal length and mosaic grid.");
+    public static string LoadIntoFraming => T("In Framing-Assistent laden", "Load into Framing Assistant");
+    public static string TypeAll => T("Alle Typen", "All types");
+    public static string TypeDeepSky => T("Deep-Sky", "Deep sky");
+    public static string TypeExoplanet => T("Exoplanet", "Exoplanet");
+    public static string OpenOnly => T("nur offene", "open only");
+    public static string ColTarget => T("Ziel", "Target");
+    public static string ColRotation => T("Rotation", "Rotation");
+    public static string ColPanels => T("Panels", "Panels");
+    public static string ColFocalLength => T("Brennweite", "Focal length");
+    public static string ColSensor => T("Sensor (px)", "Sensor (px)");
+    public static string ColPixel => T("Pixel (µm)", "Pixel (µm)");
+    public static string ColPriority => T("Priorität", "Priority");
+    public static string ColType => T("Typ", "Type");
+    public static string ColProgress => T("Fortschritt", "Progress");
+    public static string ColNextTransit => T("Nächster Transit", "Next transit");
+    public static string TargetsCount(int n) => T($"{n} Ziele", $"{n} targets");
+    public static string FramingLoaded(string name) => T($"„{name}“ an den Framing-Assistenten übergeben", $"“{name}” sent to the Framing Assistant");
+    public static string FramingUnavailable => T("Framing-Assistent nicht verfügbar", "Framing Assistant not available");
+
     // ---- Sequenz-Bausteine (execution.md §1) ----
     public static string ContainerHint => T(
         "Führt den NINA-PM-Plan aus: je Aufruf ein Block. Bedingungen an den umgebenden Container hängen.",

@@ -42,15 +42,20 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         NINA.Equipment.Interfaces.IDomeFollower domeFollower, NINA.PlateSolving.Interfaces.IPlateSolverFactory plateSolverFactory,
         NINA.Core.Utility.WindowService.IWindowServiceFactory windowServiceFactory,
         NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator imageSave, NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM imageHistory,
-        NINA.Equipment.Interfaces.Mediator.ISafetyMonitorMediator safetyMonitor)
+        NINA.Equipment.Interfaces.Mediator.ISafetyMonitorMediator safetyMonitor,
+        NINA.WPF.Base.Interfaces.ViewModel.IFramingAssistantVM framingAssistant,
+        NINA.WPF.Base.Interfaces.Mediator.IApplicationMediator applicationMediator)
         : this(profileService, new DpapiTokenProtector(), new NinaMediators(profileService, telescope, imaging, camera, filterWheel,
-            rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor))
+            rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor),
+            new FramingLoader(framingAssistant, applicationMediator, profileService))
     {
     }
 
-    internal NinaPmPlugin(IProfileService profileService, ITokenProtector protector, NinaMediators? mediators = null)
+    internal NinaPmPlugin(IProfileService profileService, ITokenProtector protector, NinaMediators? mediators = null,
+        FramingLoader? framing = null)
     {
         this.profileService = profileService;
+        Targets = new Browser.TargetBrowserModel(framing);
         this.mediators = mediators;
         this.protector = protector;
         accessor = new PluginOptionsAccessor(profileService, Guid.Parse(Identifier));
@@ -65,7 +70,12 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         ResetCommand = new RelayCommand(() => Operate(r => r.Reset()));
         SkipBlockCommand = new RelayCommand(() => Operate(r => r.SkipBlock()));
         ReuploadCommand = new RelayCommand(Reupload);
-        RefreshCommand = new RelayCommand(() => { RaiseOperationChanged(); return Task.CompletedTask; });
+        RefreshCommand = new RelayCommand(() =>
+        {
+            RaiseOperationChanged();
+            Targets.Rebuild();
+            return Task.CompletedTask;
+        });
         ResetStatus();
         profileService.ProfileChanged += (_, _) => StartRuntime();
         StartRuntime();
@@ -150,6 +160,9 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
 
     public ICommand RefreshCommand { get; }
 
+    /// <summary>Zielbrowser „An NINA ausgeliefert“ (FA-NIN-02, AP-16h).</summary>
+    public Browser.TargetBrowserModel Targets { get; }
+
     /// <summary>Zustand der Laufzeit für die Optionsseite: gesperrt (mit Grund), Outbox, Dead-Letter, Uhr ungeprüft (offline).</summary>
     public string OperationStatus
     {
@@ -163,7 +176,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
                 NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Tenant_locked => Texts.TenantLocked,
                 NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Engine_incompatible => Texts.UpdateNeeded,
                 NinaPm.Core.Api.Generated.NinaHeartbeatBlockedReason.Clock_skew => Texts.ClockSkew,
-                { } other => Texts.Blocked(other.ToString().ToLowerInvariant()),
+                { } other => Texts.Blocked(Texts.BlockedReason(other.ToString().ToLowerInvariant())),
                 null => null,
             };
             var parts = new List<string> { Texts.Outbox(r.OutboxPending, r.DeadLetters) };

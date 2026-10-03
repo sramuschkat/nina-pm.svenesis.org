@@ -27,6 +27,7 @@ on:
       - 'tools/nina-build-check.sh'
       - 'tools/nina-banned-api-check.sh'
       - 'tools/nina-zip-check.sh'
+      - 'tools/nina-release-check.sh'
       - '.github/workflows/plugin.yml'
   push:
     branches: [main]
@@ -47,6 +48,7 @@ on:
       - 'tools/nina-build-check.sh'
       - 'tools/nina-banned-api-check.sh'
       - 'tools/nina-zip-check.sh'
+      - 'tools/nina-release-check.sh'
       - '.github/workflows/plugin.yml'
   workflow_dispatch:
 
@@ -178,8 +180,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          # Tag = Plugin-Version aus NinaPm.Nina.csproj (Manifest-Version, AP-16h); ZIP mit SHA-256-Prüfsumme.
+          tools/nina-release-check.sh "$TAG"
           zip -r "nina-pm-$TAG.zip" Svenesis.NinaPm
-          assets=("nina-pm-$TAG.zip")
+          sha256sum "nina-pm-$TAG.zip" > "nina-pm-$TAG.zip.sha256"
+          assets=("nina-pm-$TAG.zip" "nina-pm-$TAG.zip.sha256")
           shopt -s nullglob
           sequences=(apps/nina-plugin/NinaPm.Nina/Samples/*.json)
           # Sequenzen kommen mit AP-16c/AP-50/AP-52; ohne *.json kein leeres ZIP.

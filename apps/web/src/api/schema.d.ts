@@ -18718,6 +18718,11 @@ export interface components {
                         moonMustBeDown?: boolean;
                     };
                 };
+                center?: {
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
+                };
                 /** @enum {string} */
                 type: "deep_sky";
                 mosaic?: {
@@ -18821,6 +18826,11 @@ export interface components {
                         maxIlluminationPct?: number;
                         moonMustBeDown?: boolean;
                     };
+                };
+                center?: {
+                    raDeg: number;
+                    decDeg: number;
+                    rotationDeg: number;
                 };
                 /** @enum {string} */
                 type: "exoplanet";

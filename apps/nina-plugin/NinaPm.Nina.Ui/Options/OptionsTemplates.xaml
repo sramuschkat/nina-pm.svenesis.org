@@ -113,6 +113,40 @@
                     <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Refresh}" />
                 </Button>
             </StackPanel>
+            <!--  Zielbrowser „An NINA ausgeliefert“ (FA-NIN-02, AP-16h).  -->
+            <StackPanel DataContext="{Binding Targets}" Orientation="Vertical">
+                <TextBlock Margin="0,15,0,5" FontWeight="Bold" Text="{x:Static ui:Texts.TargetsHeader}" />
+                <TextBlock Margin="0,0,0,5" Opacity="0.7" Text="{x:Static ui:Texts.TargetsHint}" TextWrapping="Wrap" />
+                <StackPanel Margin="0,0,0,5" Orientation="Horizontal">
+                    <ComboBox Width="140" ItemsSource="{Binding Types}" SelectedIndex="{Binding TypeIndex}" />
+                    <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="{Binding OpenOnly}" />
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.OpenOnly}" />
+                    <Button Margin="12,0,0,0" Padding="10,4" Command="{Binding RefreshCommand}">
+                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Refresh}" />
+                    </Button>
+                    <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding LoadCommand}">
+                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.LoadIntoFraming}" />
+                    </Button>
+                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding Status}" />
+                </StackPanel>
+                <DataGrid MaxHeight="300" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" SelectionMode="Single">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Binding="{Binding Name}" Header="{x:Static ui:Texts.ColTarget}" />
+                        <DataGridTextColumn Binding="{Binding Ra}" Header="RA" />
+                        <DataGridTextColumn Binding="{Binding Dec}" Header="Dec" />
+                        <DataGridTextColumn Binding="{Binding Rotation}" Header="{x:Static ui:Texts.ColRotation}" />
+                        <DataGridTextColumn Binding="{Binding Panels}" Header="{x:Static ui:Texts.ColPanels}" />
+                        <DataGridTextColumn Binding="{Binding FocalLength}" Header="{x:Static ui:Texts.ColFocalLength}" />
+                        <DataGridTextColumn Binding="{Binding Sensor}" Header="{x:Static ui:Texts.ColSensor}" />
+                        <DataGridTextColumn Binding="{Binding Pixel}" Header="{x:Static ui:Texts.ColPixel}" />
+                        <DataGridTextColumn Binding="{Binding Priority}" Header="{x:Static ui:Texts.ColPriority}" />
+                        <DataGridTextColumn Binding="{Binding Type}" Header="{x:Static ui:Texts.ColType}" />
+                        <DataGridTextColumn Binding="{Binding Progress}" Header="{x:Static ui:Texts.ColProgress}" />
+                        <DataGridTextColumn Binding="{Binding NextTransit}" Header="{x:Static ui:Texts.ColNextTransit}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
         </StackPanel>
     </DataTemplate>
 </ResourceDictionary>

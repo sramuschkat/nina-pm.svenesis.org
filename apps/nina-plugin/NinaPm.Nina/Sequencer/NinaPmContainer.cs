@@ -16,6 +16,7 @@ using NINA.Sequencer.SequenceItem;
 using NINA.WPF.Base.Interfaces.Mediator;
 using NINA.WPF.Base.Interfaces.ViewModel;
 using NinaPm.Nina.Adapters;
+using NinaPm.Nina.Status;
 
 namespace NinaPm.Nina.Sequencer;
 
@@ -56,6 +57,48 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
         var astro = m.Profile.ActiveProfile.AstrometrySettings;
         target = new InputTarget(Angle.ByDegree(astro.Latitude), Angle.ByDegree(astro.Longitude), astro.Horizon);
         Add(new PlaceholderItem());
+        ResetPlanCommand = new RelayCommand(() => Operate(r => r.Reset()));
+        SkipBlockCommand = new RelayCommand(() => Operate(r => r.SkipBlock()));
+        System.Windows.WeakEventManager<LiveTicker, EventArgs>.AddHandler(LiveTicker.Instance, nameof(LiveTicker.Tick), OnLiveTick);
+    }
+
+    // ── Live-Status (FA-NIN-13, AP-16h) ──
+
+    private LiveStatusView? live;
+
+    /// <summary>Live-Status-Kopf; alle 2 s aus der Laufzeit (ohne eingerichtetes NINA-PM <c>null</c>).</summary>
+    public LiveStatusView? Live
+    {
+        get => live;
+        private set
+        {
+            live = value;
+            RaisePropertyChanged();
+        }
+    }
+
+    /// <summary>*Zurücksetzen*: Plan verwerfen, beim nächsten Aufruf neu (§3.2).</summary>
+    public System.Windows.Input.ICommand ResetPlanCommand { get; }
+
+    /// <summary>*Block überspringen* (§4.1 Nr. 2).</summary>
+    public System.Windows.Input.ICommand SkipBlockCommand { get; }
+
+    private void OnLiveTick(object? sender, EventArgs e)
+    {
+        try
+        {
+            Live = NinaPmRuntime.Current is { } r ? new LiveStatusView(r.Runner.LiveStatus(r.TestModeActive)) : null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug($"NINA-PM: Live-Status: {ex.Message}");
+        }
+    }
+
+    private static Task Operate(Action<NinaPm.Core.Execution.NightRunner> action)
+    {
+        if (NinaPmRuntime.Current is { } r) action(r.Runner);
+        return Task.CompletedTask;
     }
 
     public override object Clone()

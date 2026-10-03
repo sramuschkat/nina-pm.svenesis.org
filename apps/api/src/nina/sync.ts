@@ -352,6 +352,21 @@ async function targetsData(svc: ApiServices, p: RigRef) {
               }
             : { enabled: false },
         },
+        // Zentrum und Raster für den Framing-Assistenten (FA-NIN-02, AP-16h); ohne Rotator gilt der
+        // Kamerawinkel des Rigs als pa₀ (NT-30).
+        center: {
+          raDeg: pv.raDeg ?? pv.panels[0]?.raDeg ?? 0,
+          decDeg: pv.decDeg ?? pv.panels[0]?.decDeg ?? 0,
+          rotationDeg:
+            !d.rig.hasRotator && d.rig.defaultRotationDeg !== null
+              ? d.rig.defaultRotationDeg
+              : (pv.rotationDeg ?? pv.panels[0]?.rotationDeg ?? 0),
+        },
+        mosaic: {
+          rows: pv.mosaic.rows,
+          columns: pv.mosaic.cols,
+          overlapPct: pv.mosaic.overlapPct,
+        },
         // Position = NINA-Nummer − 1 (NT-32, AP-22); `pv.panels` ist nach `panel_index` sortiert.
         panels: pv.panels.map((panel, position) => ({
           id: panel.id,

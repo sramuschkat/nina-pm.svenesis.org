@@ -18,6 +18,7 @@ using NinaPm.Core.Planning;
 using NinaPm.Core.Reporting;
 using NinaPm.Core.Time;
 using NinaPm.Nina.Sequencer;
+using Center = NINA.Sequencer.SequenceItem.Platesolving.Center;
 
 namespace NinaPm.Nina.Adapters;
 
@@ -190,13 +191,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     }
 
     /// <summary>Name, unter dem die Lights gespeichert werden: Projekt bzw. „Projekt – Panel-Label“ (§4.1 Nr. 4).</summary>
-    private string TargetName(Blocks block)
-    {
-        var project = Runtime?.Runner.Targets?.Projects.FirstOrDefault(p => p.Id == block.ProjectId);
-        if (project is null) return "NINA-PM";
-        var panel = project.Panels.FirstOrDefault(p => p.Id == block.PanelId);
-        return project.Panels.Count > 1 && panel is not null ? $"{project.Name} – {panel.Label}" : project.Name;
-    }
+    private string TargetName(Blocks block) => NinaPm.Core.Targets.TargetTitle.For(block, Runtime?.Runner.Targets);
 
     public bool CanSkipSlew(Blocks block)
     {
