@@ -6,9 +6,12 @@
   position: fixed;
   inset: 0;
   background: rgba(11, 22, 33, 0.55);
+  /* Über Kopfzeile (100) und klebenden Tabellenköpfen, unter Menüs/Auswahllisten (300). */
+  z-index: 200;
 }
 .dialog {
   position: fixed;
+  z-index: 201;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

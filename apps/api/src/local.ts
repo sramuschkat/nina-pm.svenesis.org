@@ -38,6 +38,7 @@ import {
   type OpenDatabase,
   readMaintenanceBanner,
   TenantRepository,
+  DiscordRepository,
   latestWeather,
   saveWeather,
   siteNightRunDone,
@@ -79,6 +80,9 @@ import { weatherJobHandler, weatherTick } from './weather/job';
 import { sampleOpenMeteo } from './weather/sample';
 import { thumbnailLoader } from './worker/thumbnail-db';
 import { thumbnailJobHandler } from './worker/thumbnail';
+import { discordLocalFetch } from './discord/local-fetch';
+import { discordPostHandler } from './discord/post-job';
+import { discordTick } from './discord/tick';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const AUTH_TEST_MODE = process.env.AUTH_TEST_MODE === 'true';
@@ -150,6 +154,9 @@ const localThumbnailHandler = thumbnailJobHandler({
   save: (tenantId, projectId, key) => setProjectThumbnail(db, tenantId, projectId, key),
 });
 
+// Discord (AP-60) lokal nie an discord.com: mit DISCORD_MOCK_URL an tools/discord-mock, sonst nur ins Log.
+const localDiscordFetch = discordLocalFetch(process.env.DISCORD_MOCK_URL);
+
 // Ergebnisse von multi_sim/impact lokal im Speicher (AP-32a).
 const localJobResults = memoryJobResultStore();
 const localMultiSim = multiSimDbDeps(() => Promise.resolve(db), localJobResults.put);
@@ -173,6 +180,7 @@ const jobs: JobRunnerDeps = {
     multi_sim: multiSimJobHandler(localMultiSim),
     impact: impactJobHandler(localMultiSim),
     forecast: forecastJobHandler(forecastDbDeps(() => Promise.resolve(db))),
+    discord_post: discordPostHandler({ db: () => Promise.resolve(db), fetch: localDiscordFetch }),
     // Astro-Wetter (AP-23): lokal mit Beispieldaten, echte Open-Meteo-Abrufe nur mit LOCAL_WEATHER=live.
     weather: weatherJobHandler({
       http:
@@ -202,6 +210,14 @@ const localWeatherTick = () =>
   );
 void localWeatherTick();
 setInterval(() => void localWeatherTick(), 5 * 60_000).unref();
+// Discord-Zustellungen lokal alle 30 s statt 5 min.
+setInterval(
+  () =>
+    void discordTick(db, jobs, now()).catch((error: unknown) =>
+      logger.warn('local_discord_failed', { error: error instanceof Error ? error.message : '' }),
+    ),
+  30_000,
+).unref();
 const services: ApiServices = {
   repositories: (ctx) => ({
     job: new JobRepository(db, ctx),
@@ -224,6 +240,7 @@ const services: ApiServices = {
     exoProjects: () => new ExoProjectRepository(db, ctx),
     transits: () => new TransitRepository(db, ctx),
     tenant: () => new TenantRepository(db, ctx),
+    discord: () => new DiscordRepository(db, ctx),
   }),
   tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
   auth: new AuthRepository(db),
@@ -260,6 +277,7 @@ const services: ApiServices = {
     lookup: (hash) => ninaTokenLookup(db, hash),
     touch: (p, at) => ninaTouch(db, p, at),
   },
+  discordFetch: localDiscordFetch,
   jobInvoker: {
     invoke: (jobId) => {
       setImmediate(() => void runJob(jobs, jobId));

@@ -17,6 +17,7 @@ import type { Kysely, Selectable, Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, TransitObservationTable } from '../types';
 import { TenantRepo } from './base';
+import { enqueueDiscordEvent } from './discord';
 import { insertNotifications } from './notification';
 import { renumberRanks } from './ranks';
 
@@ -722,6 +723,36 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
           .orderBy('sessionId')
           .execute();
         const count = captures.reduce((s, c) => s + Number(c.n), 0);
+        // Discord „Transit beobachtet/verpasst“ (FA-DIS-03, AP-60): Name, Abdeckung, Ein-/Austritt in Standortzeit.
+        const discord = async (eventKey: 'transit.observed' | 'transit.missed') => {
+          const p = await trx
+            .selectFrom('project as p')
+            .leftJoin('rig as r', (j) =>
+              j.onRef('r.id', '=', 'p.rigId').onRef('r.tenantId', '=', 'p.tenantId'),
+            )
+            .leftJoin('site as s', (j) =>
+              j.onRef('s.id', '=', 'r.siteId').onRef('s.tenantId', '=', 'r.tenantId'),
+            )
+            .select(['p.name', 's.timeZone'])
+            .where('p.tenantId', '=', d.tenantId)
+            .where('p.id', '=', o.projectId)
+            .executeTakeFirst();
+          const planned = Number(o.plannedCount);
+          await enqueueDiscordEvent(trx, {
+            tenantId: d.tenantId,
+            eventKey,
+            objectId: o.id,
+            data: {
+              planet: p?.name ?? '',
+              projectId: o.projectId,
+              coveragePct: planned > 0 ? Math.min(100, (100 * count) / planned) : null,
+              startUtc: iso(o.ingressUtc),
+              endUtc: iso(o.egressUtc),
+              siteTimeZone: p?.timeZone ?? null,
+            },
+            now,
+          });
+        };
         if (count === 0) {
           if (o.status === 'missed') return null;
           await trx
@@ -730,6 +761,7 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
             .where('tenantId', '=', d.tenantId)
             .where('id', '=', o.id)
             .execute();
+          await discord('transit.missed');
           return 'missed' as const;
         }
         await trx
@@ -742,6 +774,7 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
           .where('tenantId', '=', d.tenantId)
           .where('id', '=', o.id)
           .execute();
+        await discord('transit.observed');
         return 'observed' as const;
       },
       { guard: [{ table: 'transit_observation', id: d.id, tenantId: d.tenantId }] },

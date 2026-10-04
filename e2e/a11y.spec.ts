@@ -84,6 +84,7 @@ for (const theme of ['light', 'dark'] as const) {
       await testLogin(page, 'owner');
       for (const [path, heading] of [
         ['/verwaltung/einstellungen', 'Mandanteneinstellungen'],
+        ['/verwaltung/discord', 'Discord'],
         ['/verwaltung/protokoll', 'Protokoll'],
         ['/einstellungen', 'Persönliche Einstellungen'],
       ] as const) {

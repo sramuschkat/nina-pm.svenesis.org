@@ -25,12 +25,14 @@ import type {
   TenantAdminRepository,
   TenantContext,
   TenantRepository,
+  DiscordRepository,
 } from '@nina-pm/db';
 import type { AuthConfig } from '../auth/config';
 import type { DiscordClient } from '../auth/discord';
 import type { DownloadSigner } from '../files/download';
 import type { TenantFileStore } from '../files/tenant-files';
 import type { JobInvoker } from '../jobs/enqueue';
+import type { FetchLike } from '../discord/webhook';
 
 /** Was die Routen von der Datenbank brauchen – im Test auf PGlite bzw. durch Fälschungen ersetzbar. */
 export interface ApiRepositories {
@@ -56,6 +58,7 @@ export interface ApiRepositories {
   exoProjects(): ExoProjectRepository;
   transits(): TransitRepository;
   tenant(): TenantRepository;
+  discord(): DiscordRepository;
 }
 
 /** Dienste der Lambda `api`, einmal je Container erzeugt (DB-Pool, S3, Lambda, SSM). */
@@ -73,6 +76,8 @@ export interface ApiServices {
   /** Aktiver Wartungshinweis für alle (FA-SU-08). */
   maintenanceBanner(): Promise<{ de: string; en: string } | null>;
   readonly jobInvoker: JobInvoker;
+  /** Webhook-Aufruf der Testnachricht (S-71); fehlt → `fetch` (Lambda). Lokal/Test: Mock. */
+  readonly discordFetch?: FetchLike;
   /** Presigned POST für Dateien, die das Plugin hochlädt (Planprotokoll, SEC-23). */
   readonly uploads: {
     planLog(

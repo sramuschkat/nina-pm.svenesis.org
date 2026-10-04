@@ -13,6 +13,21 @@ export interface JobQueueLike {
   finish(id: string, now: Date, resultS3Key?: string | null): Promise<void>;
   fail(id: string, now: Date, error: JobError): Promise<void>;
   stale(now: Date, limit?: number): Promise<StaleJob[]>;
+  retry?(id: string, runAfter: Date, error: JobError): Promise<void>;
+}
+
+/**
+ * Vorübergehender Fehler mit festem nächsten Versuch (Backoff, TK 7.7): der Runner setzt den Job auf
+ * `pending` ab `runAfter`; ist die Höchstzahl an Versuchen erreicht, wird er `failed`.
+ */
+export class RetryLater extends Error {
+  constructor(
+    readonly runAfter: Date,
+    readonly code: string,
+  ) {
+    super(code);
+    this.name = 'RetryLater';
+  }
 }
 
 export interface JobRunContext {
@@ -39,7 +54,7 @@ export interface JobRunnerDeps {
   readonly now?: () => Date;
 }
 
-export type RunOutcome = 'done' | 'failed' | 'skipped';
+export type RunOutcome = 'done' | 'failed' | 'skipped' | 'retry';
 
 export async function runJob(deps: JobRunnerDeps, jobId: string): Promise<RunOutcome> {
   const now = deps.now ?? (() => new Date());
@@ -67,6 +82,26 @@ export async function runJob(deps: JobRunnerDeps, jobId: string): Promise<RunOut
     });
     return 'done';
   } catch (error) {
+    if (
+      error instanceof RetryLater &&
+      queue.retry &&
+      job.attempts < maxJobAttempts(job.kind as JobKind)
+    ) {
+      logger.warn('job_retry_later', {
+        jobId,
+        kind: job.kind,
+        attempt: job.attempts,
+        code: error.code,
+        runAfter: error.runAfter.toISOString(),
+      });
+      await queue.retry(jobId, error.runAfter, { code: error.code });
+      return 'retry';
+    }
+    if (error instanceof RetryLater) {
+      logger.warn('job_failed', { jobId, kind: job.kind, code: error.code, attempt: job.attempts });
+      await queue.fail(jobId, now(), { code: error.code });
+      return 'failed';
+    }
     if (isProblemError(error)) {
       logger.warn('job_failed', { jobId, kind: job.kind, code: error.code, errors: error.errors });
       await queue.fail(jobId, now(), {

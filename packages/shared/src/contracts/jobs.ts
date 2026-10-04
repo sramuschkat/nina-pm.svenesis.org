@@ -103,6 +103,9 @@ export const dedupeKeys = {
   thumbnail: (projectId: string) => `thumbnail:${projectId}`,
   sessionClose: (sessionId: string) => `session_close:${sessionId}`,
   sessionReport: (sessionId: string) => `session_report:${sessionId}`,
+  /** Discord-Zustellung je Kanal, Ereignis und Objekt (TK 7.7, wie der PK von `discord_delivery`). */
+  discordPost: (channelId: string, eventKey: string, objectId: string) =>
+    `discord:${channelId}:${eventKey}:${objectId}`,
 } as const;
 
 export const JobAccepted = z.object({ jobId: Uuid }).meta({ id: 'JobAccepted' });

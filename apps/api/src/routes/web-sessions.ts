@@ -10,6 +10,8 @@
  *   einzelne Aufnahme verwerfen bzw. zurücknehmen (AP-31, FA-AUS-20); Regel max ohne Doppelabzug.
  * Das Detail trägt Kennzahlen und Abweichungsgründe (AP-31, FA-AUS-04/05/09).
  * Nicht zugeordnete Aufnahmen ordnet `PATCH /web/v1/captures/{id}/assign` zu (AP-14b).
+ * - `POST /web/v1/sessions/{id}/report/resend` (`session.report.resend`): Nachtbericht erneut nach Discord
+ *   (AP-60, FA-AUS-21, TK 7.7) – Zustellzeilen zurückgesetzt, neue Jobs, Eintrag im Änderungsprotokoll.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { applyCorrection, rejectCapture } from '@nina-pm/db';
@@ -24,6 +26,7 @@ import {
   NightSessionQuery,
   NightSessionReviewed,
   ProblemError,
+  ReportResendResult,
   Uuid,
 } from '@nina-pm/shared';
 import type { ApiEnv } from '../lib/env';
@@ -137,12 +140,29 @@ export const captureRejectRoute = defineRoute(
   },
 );
 
+export const reportResendRoute = defineRoute(
+  { action: 'session.report.resend', requirements: ['FA-AUS-21', 'TK 7.7', 'DAT5-4'] },
+  {
+    method: 'post',
+    path: `${BASE}/{id}/report/resend`,
+    summary: 'Nachtbericht erneut nach Discord senden',
+    tags: ['sessions'],
+    request: { params: z.object({ id: Uuid }) },
+    responses: {
+      200: { description: 'Eingereiht', ...json(ReportResendResult) },
+      ...denied,
+      404: problemContent('resource.not_found'),
+    },
+  },
+);
+
 export const SESSION_ROUTES = [
   listSessionsRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
   sessionReviewRoute,
   captureRejectRoute,
+  reportResendRoute,
 ] as const;
 
 export function webSessionRoutes(services: () => Promise<ApiServices>) {
@@ -256,6 +276,15 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
       .sessionReview()
       .setReviewed(c.req.valid('param').id, c.req.valid('json').reviewed);
     return c.body(null, 204);
+  });
+
+  app.openapi(reportResendRoute, async (c) => {
+    const svc = await services();
+    const channels = await svc
+      .repositories(requireTenant(c).tenant)
+      .discord()
+      .resendSessionReport(c.req.valid('param').id, svc.now());
+    return c.json({ channels }, 200);
   });
 
   return app;

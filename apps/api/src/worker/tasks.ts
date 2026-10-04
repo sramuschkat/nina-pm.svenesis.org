@@ -15,6 +15,8 @@ export interface MaintenanceDeps {
    * zurückgegeben; Fensterende erreicht → beobachtet/verpasst.
    */
   readonly settleTransits?: () => Promise<unknown>;
+  /** Fällige Discord-Zustellungen (`discord_post`, AP-60, TK 7.7, `tick-5min`). */
+  readonly discord?: () => Promise<number>;
   /** Verwaiste Sessions, Metrik `StaleRunningSessions`, fällige Session-Jobs (AP-15, `tick-5min`). */
   readonly sessions?: () => Promise<unknown>;
   /** Mehrnacht-Prognose je Standort und Nacht nach dem lokalen Mittag (AP-33, NT-08, `tick-hourly`). */
@@ -55,6 +57,9 @@ export function tickTasks(jobs: JobRunnerDeps, maintenance?: MaintenanceDeps): T
         : []),
       ...(maintenance?.settleTransits
         ? [{ name: 'transits', run: async () => void (await maintenance.settleTransits?.()) }]
+        : []),
+      ...(maintenance?.discord
+        ? [{ name: 'discord', run: async () => void (await maintenance.discord?.()) }]
         : []),
       ...(maintenance?.weather
         ? [{ name: 'weather', run: async () => void (await maintenance.weather?.()) }]

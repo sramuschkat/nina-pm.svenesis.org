@@ -91,6 +91,28 @@ export {
 } from './repositories/job';
 export { TenantRepository, type Tenant } from './repositories/tenant';
 export {
+  deliveryStatuses,
+  discordProjectBrief,
+  discordReportExtras,
+  discordSendContext,
+  discordSessionBrief,
+  DiscordRepository,
+  dueDiscordJobs,
+  enqueueDiscordEvent,
+  markDeliveryFailed,
+  markDeliverySent,
+  noteDeliveryAttempt,
+  NOTIFICATION_DISCORD_EVENTS,
+  stableUuid,
+  type DiscordChannelRecord,
+  type DiscordErrorText,
+  type DiscordEvent,
+  type DiscordProjectBrief,
+  type DiscordReportExtras,
+  type DiscordSendContext,
+  type DiscordSessionBrief,
+} from './repositories/discord';
+export {
   isOccConflict,
   orderGuards,
   RowCounterPlugin,

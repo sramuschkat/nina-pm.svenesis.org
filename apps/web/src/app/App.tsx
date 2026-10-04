@@ -20,6 +20,7 @@ import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
 import { MembersPage } from '../pages/admin/MembersPage';
 import { TenantSettingsPage } from '../pages/admin/TenantSettingsPage';
+import { DiscordSettingsPage } from '../pages/admin/DiscordSettingsPage';
 import { PersonalSettingsPage } from '../pages/me/PersonalSettingsPage';
 import { SuperUsersPage } from '../pages/system/SuperUsersPage';
 import { SystemAuditPage } from '../pages/system/SystemAuditPage';
@@ -240,6 +241,7 @@ export function createRouter() {
                   element: <RequireAction action="tenant.settings" />,
                   children: [
                     { path: 'einstellungen', element: <TenantSettingsPage /> },
+                    { path: 'discord', element: <DiscordSettingsPage /> },
                     { path: 'protokoll', element: <ChangeLogPage /> },
                   ],
                 },

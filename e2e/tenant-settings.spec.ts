@@ -149,3 +149,64 @@ for (const width of [768, 2400]) {
     }
   });
 }
+
+test('S-71 Discord (AP-60): Kanal anlegen, URL nie sichtbar, Testnachricht, Löschen per ConfirmDialog', async ({
+  browser,
+}) => {
+  const owner = await pageAs(browser, 'owner');
+  const name = `#e2e-${Date.now().toString(36)}`;
+  await owner.goto('/verwaltung/discord');
+  await expect(owner.getByRole('heading', { name: 'Discord', exact: true })).toBeVisible();
+  await owner.getByRole('button', { name: 'Kanal anlegen' }).click();
+  const form = owner.getByRole('dialog', { name: 'Kanal anlegen' });
+  await form.getByLabel('Name', { exact: true }).fill(name);
+  await form.getByLabel('Webhook-URL').fill('https://evil.example/api/webhooks/1/x');
+  await expect(form.getByRole('button', { name: 'Anlegen' })).toBeDisabled();
+  await form
+    .getByLabel('Webhook-URL')
+    .fill('https://discord.com/api/webhooks/123456789/e2e-Secret-tok_QRST');
+  await form.getByLabel('Alarme & Betrieb').check();
+  await form.getByRole('button', { name: 'Anlegen' }).click();
+  await expect(form).toHaveCount(0);
+  const table = owner.getByRole('table', { name: 'Kanäle' });
+  const row = table.getByRole('row').filter({ hasText: name });
+  await expect(row).toContainText('gesetzt – endet auf QRST');
+  await expect(owner.locator('body')).not.toContainText('e2e-Secret');
+  const api = await (await owner.request.get('/api/web/v1/tenant/discord')).text();
+  expect(api).not.toContain('e2e-Secret');
+  // Lokal geht die Testnachricht nicht an Discord (ohne DISCORD_MOCK_URL nur ins Log).
+  await row.getByRole('button', { name: 'Testnachricht' }).click();
+  await expect(owner.getByText(`Testnachricht an ${name} gesendet.`)).toBeVisible();
+  // Bearbeiten aus dem ⋯-Menü (Maus): Kategorie ergänzen, URL bleibt unverändert.
+  await row.getByRole('button', { name: `Weitere Aktionen zu ${name}` }).click();
+  await owner.getByRole('menuitem', { name: 'Bearbeiten' }).click();
+  const edit = owner.getByRole('dialog', { name: `Kanal ${name} bearbeiten` });
+  await expect(edit.getByText('gesetzt – endet auf QRST')).toBeVisible();
+  await edit.getByLabel('Nachtbericht & Sessions').check();
+  await edit.getByRole('button', { name: 'Speichern' }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(row).toContainText('Alarme & Betrieb, Nachtbericht & Sessions');
+  await expect(row).toContainText('gesetzt – endet auf QRST');
+  await row.getByRole('button', { name: `Weitere Aktionen zu ${name}` }).click();
+  await owner.getByRole('menuitem', { name: 'Löschen' }).click();
+  const confirm = owner.getByRole('alertdialog', { name: `Kanal ${name} löschen?` });
+  await expect(confirm.getByRole('button', { name: 'Abbrechen' })).toBeFocused();
+  await confirm.getByRole('button', { name: 'Löschen' }).click();
+  await expect(row).toHaveCount(0);
+});
+
+for (const width of [768, 2400]) {
+  test(`S-71 Discord bei ${width} px ohne horizontales Scrollen`, async ({ browser }) => {
+    const owner = await pageAs(browser, 'owner');
+    await owner.setViewportSize({ width, height: 900 });
+    await owner.goto('/verwaltung/discord');
+    await expect(owner.getByRole('heading', { name: 'Kanäle' })).toBeVisible();
+    await owner.getByRole('button', { name: 'Kanal anlegen' }).click();
+    await expect(owner.getByRole('dialog', { name: 'Kanal anlegen' })).toBeVisible();
+    expect(
+      await owner.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+  });
+}

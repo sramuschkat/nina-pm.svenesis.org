@@ -684,10 +684,11 @@ export async function setReportStatus(
   tenantId: string,
   sessionId: string,
   status: 'pending' | 'sent' | 'failed' | 'skipped',
+  sentAt?: Date,
 ): Promise<void> {
   await db
     .updateTable('session')
-    .set({ reportStatus: status })
+    .set({ reportStatus: status, ...(status === 'sent' && sentAt ? { reportSentAt: sentAt } : {}) })
     .where('tenantId', '=', tenantId)
     .where('id', '=', sessionId)
     .execute();

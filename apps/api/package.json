@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@hono/node-server": "2.1.1",
+    "@nina-pm/discord-mock": "workspace:*",
     "@nina-pm/fake-plugin": "workspace:*",
     "@types/aws-lambda": "8.10.163",
     "tsup": "^8.5.1",

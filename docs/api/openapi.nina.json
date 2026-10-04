@@ -5351,6 +5351,7 @@
               "rig.flip_settings_invalid",
               "discord.webhook_invalid",
               "discord.test_failed",
+              "discord.delivery_failed",
               "job.not_found",
               "request.too_large",
               "file.too_large",

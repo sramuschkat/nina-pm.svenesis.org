@@ -1,7 +1,7 @@
 /**
  * S-71 Mandanteneinstellungen, Reiter *Allgemein* (FA-MAN-05; TK 7.2): Schlüssel ausschließlich aus
  * `tenantSettingsKeys`. **Kein** Reiter *Sicherheit* – Sitzungsdauer und 2FA-Regel sind fest (SV-01,
- * SV-03). Der Reiter *Discord* folgt mit AP-60.
+ * SV-03). Der Reiter *Discord* ist eine eigene Seite (`DiscordSettingsPage`, AP-60).
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';

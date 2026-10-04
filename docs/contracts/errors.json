@@ -261,6 +261,13 @@
    "titleEn": "Test message failed"
   },
   {
+   "code": "discord.delivery_failed",
+   "http": 502,
+   "i18nKey": "errors.discord.deliveryFailed",
+   "titleDe": "Discord-Zustellung fehlgeschlagen",
+   "titleEn": "Discord delivery failed"
+  },
+  {
    "code": "job.not_found",
    "http": 404,
    "i18nKey": "errors.job.notFound",

@@ -220,6 +220,19 @@ export class JobQueue {
   }
 
   /**
+   * Zurück auf `pending` ab `runAfter` (Backoff von `discord_post`, TK 7.7); `dedupe_active` bleibt
+   * belegt, der Versuchszähler läuft weiter (Höchstzahl über `claim`).
+   */
+  async retry(id: string, runAfter: Date, error: JobError): Promise<void> {
+    await this.db
+      .updateTable('job')
+      .set({ status: 'pending', runAfter, startedAt: null, error: JSON.stringify(error) })
+      .where('id', '=', id)
+      .where('status', '=', 'running')
+      .execute();
+  }
+
+  /**
    * Liegengebliebene Jobs für `tick-5min` (TK 7.4): `pending` seit > 2 min oder `running` seit
    * > 20 min. Reihenfolge: Vorrang je Art (Zeitplan vor benutzerausgelöst, TK 13), dann Jobs ohne
    * auslösendes Mitglied, dann Alter.

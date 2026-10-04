@@ -1,0 +1,13 @@
+{
+  "name": "@nina-pm/discord-mock",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lokaler Discord-Webhook-Empfänger für Tests und pnpm dev:api (CC-12, AP-60)",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

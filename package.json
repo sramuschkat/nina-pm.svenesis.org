@@ -31,6 +31,7 @@
     "engine:parity": "tsx tools/engine-bundle/src/parity.ts",
     "engine:bench": "tsx tools/engine-bundle/src/bench.ts",
     "fake-plugin": "tsx tools/fake-plugin/src/cli.ts",
+    "discord-mock": "tsx tools/discord-mock/src/cli.ts",
     "nina-test-server": "tsx tools/nina-test-server/src/cli.ts",
     "test-run:check": "tsx tools/test-run-check/src/cli.ts",
     "plugin:sim": "tsx tools/nina-sim/src/cli.ts",

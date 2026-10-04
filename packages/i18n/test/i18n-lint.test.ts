@@ -53,10 +53,27 @@ const enKeys = flattenKeys(en);
 const literals = new Set(
   [...code.matchAll(/['"`]([a-z][a-zA-Z]*(?:\.[a-zA-Z_]+)+)['"`]/g)].map((m) => m[1]),
 );
-/** Dynamische Präfixe: t(`nav.${…}`), `status.${kind}.${value}` … */
-const prefixes = [...code.matchAll(/`([a-z][a-zA-Z]*(?:\.[a-zA-Z_]+)*\.)\$\{/g)].map(
-  (m) => m[1] ?? '',
+/**
+ * Discord-Meldungen (AP-60): Texte `discordMsg.*` nutzt der Server (`apps/api/src/discord`, `text(lang, key)`
+ * ohne das Präfix) – deren Schlüssel und Präfixe zählen mit `discordMsg.` davor.
+ */
+const serverCode = sources(
+  fileURLToPath(new URL('../../../apps/api/src/discord/', import.meta.url)),
+)
+  .map((p) => readFileSync(p, 'utf8'))
+  .join('\n');
+const serverLiterals = new Set(
+  [...serverCode.matchAll(/['"`]([a-z][a-zA-Z_]*(?:\.[a-zA-Z_]+)*)['"`]/g)].map(
+    (m) => `discordMsg.${m[1] ?? ''}`,
+  ),
 );
+/** Dynamische Präfixe: t(`nav.${…}`), `status.${kind}.${value}` … */
+const prefixes = [
+  ...[...code.matchAll(/`([a-z][a-zA-Z]*(?:\.[a-zA-Z_]+)*\.)\$\{/g)].map((m) => m[1] ?? ''),
+  ...[...serverCode.matchAll(/`([a-z][a-zA-Z]*(?:\.[a-zA-Z_]+)*\.)\$\{/g)].map(
+    (m) => `discordMsg.${m[1] ?? ''}`,
+  ),
+];
 
 describe('i18n-Lint (CC-12)', () => {
   it('DE und EN haben dieselben Schlüssel (keine fehlenden, keine überzähligen)', () => {
@@ -80,7 +97,9 @@ describe('i18n-Lint (CC-12)', () => {
   });
 
   it('kein Schlüssel ist überzählig', () => {
-    const unused = deKeys.filter((k) => !literals.has(k) && !prefixes.some((p) => k.startsWith(p)));
+    const unused = deKeys.filter(
+      (k) => !literals.has(k) && !serverLiterals.has(k) && !prefixes.some((p) => k.startsWith(p)),
+    );
     expect(unused).toEqual([]);
   });
 
