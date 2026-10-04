@@ -514,3 +514,19 @@ describe('Steuerung über HTTP', () => {
     }
   });
 });
+
+describe('GET /simulation (AP-53, FA-NIN-18)', () => {
+  it('Simulation der Nacht aus dem Szenario-Plan, ohne Planrevision; Nacht außerhalb der Tabelle → 422', async () => {
+    const t = setup('one-night');
+    const n = night(t.server);
+    const sim = await t.ok('GET', `${P}/simulation?night=${n}`);
+    expect(nina.NinaSimulation.safeParse(sim).error?.issues ?? []).toEqual([]);
+    expect(t.server.plans).toHaveLength(0);
+    expect((sim.cards as Json[]).length).toBeGreaterThan(0);
+    expect((sim.timeZoneSegments as Json[])[0]?.abbr).toBe('CDT');
+    const plan = await t.ok('POST', `${P}/plan`, planRequest(n));
+    expect(plan.revision).toBe(1);
+    const bad = (await t.call('GET', `${P}/simulation?night=2020-01-01`)) as TestResponse;
+    expect([bad.status, (bad.body as Json).code]).toEqual([422, 'nina.night_invalid']);
+  });
+});
