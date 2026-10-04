@@ -42,7 +42,22 @@ public sealed class SimulatorModelTests
         public void Error(string line) { }
     }
 
-    internal static SimulatorModel Model(FakeApi api, bool offline = false) => new(
+    /// <summary>Antwortet erst nach <see cref="Release"/> – eine Simulation „läuft“ solange.</summary>
+    internal sealed class BlockingApi : ISimulationApi
+    {
+        private readonly TaskCompletionSource<NinaSimulation> gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Calls { get; private set; }
+
+        public Task<NinaSimulation> SimulateAsync(string night, CancellationToken token)
+        {
+            Calls++;
+            return gate.Task;
+        }
+
+        public void Release() => gate.SetResult(Sim);
+    }
+
+    internal static SimulatorModel Model(ISimulationApi api, bool offline = false) => new(
         () => new SimulatorContext(api, Bootstrap, offline, UtcText.Parse("2026-09-17T18:02:00Z"), new NinaPmLog(new NullSink())), Clock);
 
     [Fact]
@@ -66,6 +81,27 @@ public sealed class SimulatorModelTests
         Assert.Equal(Texts.SimUnavailable(Texts.SimOffline), model.Status);
         Assert.Equal(11, model.Settings.Count);
         Assert.False(model.HasResults);
+    });
+
+    [Fact]
+    public void Waehrend_einer_Simulation_sind_alle_Lauf_Knoepfe_gesperrt_und_ein_zweiter_Lauf_startet_nicht() => Sta.Run(() =>
+    {
+        var api = new BlockingApi();
+        var model = Model(api);
+        var first = model.SimulateAsync(CancellationToken.None);
+        Assert.True(model.IsRunning);
+        foreach (var c in new[] { model.PrevCommand, model.NextCommand, model.TonightCommand, model.SimulateCommand })
+            Assert.False(c.CanExecute(null));
+        var night = model.NightText;
+        model.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        model.NextCommand.Execute(null);
+        Assert.Equal(1, api.Calls);
+        Assert.Equal(night, model.NightText);
+        api.Release();
+        first.GetAwaiter().GetResult();
+        Assert.False(model.IsRunning);
+        foreach (var c in new[] { model.PrevCommand, model.NextCommand, model.TonightCommand, model.SimulateCommand })
+            Assert.True(c.CanExecute(null));
     });
 
     [Fact]

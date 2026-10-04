@@ -45,15 +45,18 @@ public sealed class SimulatorModel : INotifyPropertyChanged
     {
         this.context = context ?? FromRuntime;
         this.clock = clock ?? SystemClock.Instance;
-        PrevCommand = new RelayCommand(() => Move(-1));
-        NextCommand = new RelayCommand(() => Move(1));
+        // Während einer Simulation sind alle Lauf-Knöpfe gesperrt (wie der Simulator des Astro-PM-NINA-Plugins,
+        // SimulatorViewModel.cs, IsSimulating; Wunsch Sven 04.10.2026): kein zweiter Lauf, keine Nacht gewechselt.
+        PrevCommand = new RelayCommand(() => Move(-1), () => running);
+        NextCommand = new RelayCommand(() => Move(1), () => running);
         TonightCommand = new RelayCommand(() =>
         {
+            if (running) return Task.CompletedTask;
             night = Dates.Tonight(this.clock.UtcNow);
             RaiseDate();
             return SimulateAsync(CancellationToken.None);
-        });
-        SimulateCommand = new RelayCommand(() => SimulateAsync(CancellationToken.None));
+        }, () => running);
+        SimulateCommand = new RelayCommand(() => SimulateAsync(CancellationToken.None), () => running);
         CopyCommand = new RelayCommand(Copy);
         Samples = SampleSequences.Files
             .Select(f => new SampleLinkView(Texts.SampleName(f), SampleSequences.Url(NinaPmPlugin.PluginVersion, f)))
@@ -143,6 +146,8 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         {
             running = value;
             Raise();
+            foreach (var c in new[] { PrevCommand, NextCommand, TonightCommand, SimulateCommand })
+                ((RelayCommand)c).Requery();
         }
     }
 
@@ -226,6 +231,7 @@ public sealed class SimulatorModel : INotifyPropertyChanged
 
     private Task Move(int direction)
     {
+        if (running) return Task.CompletedTask;
         Refresh();
         if (night is null) return Task.CompletedTask;
         night = direction < 0 ? Dates.Previous(night, clock.UtcNow) : Dates.Next(night);
@@ -235,6 +241,7 @@ public sealed class SimulatorModel : INotifyPropertyChanged
 
     internal async Task SimulateAsync(CancellationToken token)
     {
+        if (running) return;
         Refresh();
         var ctx = context();
         if (night is null)
