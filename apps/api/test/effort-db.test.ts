@@ -146,8 +146,11 @@ describe('Aufwand-Kennzeichen (Datenbank)', () => {
 
       await runProjectEffort(t.deps, t.tenantId, pid, new Date('2026-09-18T18:00:00Z'));
       expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(false);
+      const before = (await t.eq.rig(t.rig.id))?.settingsVersion ?? 0;
       await t.eq.updateMoonProfile(t.moon.id, { ...MOON, separationDeg: 90 }, s.clock.now());
       expect((await t.call(`/projects/${pid}`)).body.effortStale).toBe(true);
+      // Mondprofil steckt in den Zielen: settings_version steigt, damit das targets-ETag wechselt.
+      expect((await t.eq.rig(t.rig.id))?.settingsVersion).toBe(before + 1);
     },
     SLOW,
   );

@@ -1,3 +1,4 @@
+using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
 
 namespace NinaPm.Core.Planning;
@@ -66,7 +67,7 @@ public static class ReplanPolicy
         DateTimeOffset now)
     {
         RefreshCause? cause =
-            currentTargetsEtag is not null && currentTargetsEtag != planTargetsEtag ? RefreshCause.TargetsChanged
+            currentTargetsEtag is not null && NinaApi.OpaqueEtag(currentTargetsEtag) != NinaApi.OpaqueEtag(planTargetsEtag) ? RefreshCause.TargetsChanged
             : currentSettingsVersion > planSettingsVersion ? RefreshCause.SettingsChanged
             : now - plannedBlockStart > MaxDelay ? RefreshCause.BehindPlan
             : null;

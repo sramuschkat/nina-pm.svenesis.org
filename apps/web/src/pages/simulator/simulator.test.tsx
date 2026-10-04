@@ -144,6 +144,7 @@ const nodeHash = () =>
     buildPlanInput(rig, projects, moonProfiles, nights, {
       night: '2026-09-17',
       site: STARFRONT,
+      autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
     }) as PlanInput,
   ).outputHash;
 

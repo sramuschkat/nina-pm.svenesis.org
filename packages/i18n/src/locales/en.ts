@@ -2059,6 +2059,10 @@ export const en: Messages = {
       revokeConsequence:
         'The next request of this NINA instance will be rejected. Create a new instance for new access.',
       lease: 'Take over session',
+      cmdRefresh: 'Reload targets',
+      cmdReset: 'Reset plan',
+      cmdSent: 'Sent to {{count}} instance(s) – takes effect with the next heartbeat.',
+      cmdNone: 'No active instance on this rig.',
       leaseInfo: 'Lease: session {{session}} until {{until}}',
       leaseOffline: 'Offline mode until {{until}}',
       leaseFree: 'The rig is free.',

@@ -10807,6 +10807,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/rigs/{id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kommando an das Plugin (Ziele neu laden, Plan zurücksetzen)
+         * @description Aktion: `nina.instance.manage` · NIN5-14, TK 7.6, FA-NIN-08
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NinaRigCommand"];
+                };
+            };
+            responses: {
+                /** @description Angelegt (je aktiver Instanz eines; leer ohne Instanz) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaRigCommandCreated"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/sessions": {
         parameters: {
             query?: never;
@@ -18469,6 +18551,13 @@ export interface components {
                 accepted: number;
             }[];
             commentCount: number;
+        };
+        NinaRigCommandCreated: {
+            commandIds: string[];
+        };
+        NinaRigCommand: {
+            /** @enum {string} */
+            command: "refresh_targets" | "reset_plan";
         };
         NightSessionList: {
             items: components["schemas"]["NightSession"][];

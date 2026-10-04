@@ -790,6 +790,8 @@ public sealed class NightRunnerTests : IDisposable
         var runner = Runner();
         await runner.RunOnceAsync(default);
         Assert.Equal(UtcText.Parse("2026-09-18T11:30:42Z"), runner.NightEndUtc());
+        // Offline-Modus gilt nur für diese Nacht: offlineUntil = Ende des Nachtfensters (Flats eingeschlossen).
+        Assert.Equal(UtcText.Parse("2026-09-18T13:00:00Z"), runner.OfflineUntilUtc());
 
         await runner.CloseNightUnsafeAsync(default);
 
@@ -1112,6 +1114,36 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Contains(id, api.Heartbeats[^1].AckedCommandIds!);
         await runner.RunOnceAsync(default);
         Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Heartbeat_Kommando_genau_einmal_Quittung_ueberlebt_gescheiterten_Heartbeat()
+    {
+        var runner = Runner();
+        var hb = Heartbeat(runner);
+        await runner.RunOnceAsync(default);
+        var id = Guid.NewGuid();
+        NinaHeartbeatResponse WithCommand(NinaHeartbeat _) => new()
+        {
+            ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = false }, SettingsVersion = 0, TargetsEtag = "x",
+            Commands = [new Commands { Id = id, Command = CommandsCommand.Refresh_targets }],
+        };
+        api.OnHeartbeat = WithCommand;
+        await hb.TickAsync(default);
+        // Antwort mit der Quittung geht verloren: Quittung bleibt für den nächsten Heartbeat.
+        api.OnHeartbeat = _ => throw new HttpRequestException("weg");
+        await hb.TickAsync(default);
+        Assert.Contains(id, api.Heartbeats[^1].AckedCommandIds!);
+        // Server liefert das unquittierte Kommando erneut: quittieren, nicht noch einmal ausführen.
+        api.OnHeartbeat = WithCommand;
+        await hb.TickAsync(default);
+        Assert.Contains(id, api.Heartbeats[^1].AckedCommandIds!);
+        api.OnHeartbeat = null;
+        await hb.TickAsync(default);
+        Assert.Contains(id, api.Heartbeats[^1].AckedCommandIds!);
+        await hb.TickAsync(default);
+        Assert.Empty(api.Heartbeats[^1].AckedCommandIds!);
+        Assert.Single(sink.Lines, l => l.Contains($"Heartbeat-Kommando Refresh_targets ({id}) ausgeführt"));
     }
 
     [Fact]

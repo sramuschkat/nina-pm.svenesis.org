@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   blockedReasons,
   heartbeatStates,
+  ninaCommands,
   ninaInstanceStatuses,
   ninaSettingsMismatchCodes,
 } from '../../generated/enums';
@@ -99,3 +100,16 @@ export const NinaInstanceDiagnostics = z
     heartbeat: z.record(z.string(), z.unknown()).nullable(),
   })
   .meta({ id: 'NinaInstanceDiagnostics' });
+
+/**
+ * `POST /web/v1/rigs/{id}/commands` (TK 7.2/7.6, NIN5-14): Kommando an das Plugin aller aktiven Instanzen des Rigs –
+ * `refresh_targets` (Ziele sofort neu laden, bei Änderung neu planen) bzw. `reset_plan` (wie *Zurücksetzen*). Zustellung
+ * über die Heartbeat-Antwort, höchstens 10 min, genau einmal ausgeführt (Quittung `ackedCommandIds`).
+ */
+export const NinaRigCommand = z
+  .strictObject({ command: z.enum(ninaCommands) })
+  .meta({ id: 'NinaRigCommand' });
+
+export const NinaRigCommandCreated = z
+  .object({ commandIds: z.array(Uuid) })
+  .meta({ id: 'NinaRigCommandCreated' });

@@ -263,6 +263,18 @@ export class EquipmentRepository extends TenantRepo {
   }
 
   /**
+   * Mondprofile und Filter stecken in den Zielen jedes Rigs (Belichtungszeilen), zählen aber weder zur Projekt- noch zur
+   * Einstellungsversion: ohne Erhöhung bliebe das targets-ETag gleich, und das Plugin plante mit dem alten Stand.
+   */
+  private async bumpAllRigs(trx: Tx, now: Date) {
+    await trx
+      .updateTable('rig')
+      .set((eb) => ({ settingsVersion: eb('settingsVersion', '+', 1), updatedAt: now }))
+      .where('tenantId', '=', this.tenantId)
+      .execute();
+  }
+
+  /**
    * Aufwand-Kennzeichen betroffener Projekte als veraltet markieren (effort.md: Änderung an Rig-Settings,
    * Standort, Mondprofil; AP-13e). Projekte des Rigs bzw. Wunsch-Rigs bzw. mit Zeilen im Mondprofil.
    */
@@ -816,6 +828,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('id', '=', id)
           .returningAll()
           .executeTakeFirstOrThrow();
+        await this.bumpAllRigs(trx, now);
         await this.staleEffort(trx, { moonProfileId: id });
         await this.log(trx, 'moon_profile', id, 'update', diffOf(before, input), now);
         return row;
@@ -943,6 +956,7 @@ export class EquipmentRepository extends TenantRepo {
           .where('id', '=', id)
           .returningAll()
           .executeTakeFirstOrThrow();
+        await this.bumpAllRigs(trx, now);
         await this.log(trx, 'filter', id, 'update', diffOf(before, input), now);
         return row;
       },

@@ -9,6 +9,7 @@
 import { planNight, unixFromIso, type NightPlan, type PlanInput } from '@nina-pm/engine';
 import {
   buildPlanInput,
+  isDeliverable,
   simulationView,
   type SimCard,
   type SimCheck,
@@ -72,9 +73,44 @@ export interface SimulationResult {
 
 const colorOf = (i: number) => `var(--npm-chart-series-${String((i % CHART_SERIES_COUNT) + 1)})`;
 
+/**
+ * Auslieferungsregel wie `POST /plan` (FA-SIM-05, TK 6.3 `isDeliverable`): Startdatum erreicht und Arbeit vorhanden
+ * (Planungsbedarf > 0 oder Bonus). Der Schalter *An NINA ausliefern* zählt nicht – der Simulator zeigt, was das Rig
+ * eingeschaltet täte. Exoplaneten fehlen ohnehin (keine Transits in der Web-Simulation).
+ */
+function deliverable(req: SimulationRequest, p: SimulationRequest['projects'][number]): boolean {
+  const s = req.rig.scheduler;
+  return isDeliverable(
+    {
+      approvalStatus: p.approvalStatus,
+      status: p.status,
+      deletedAt: p.deletedAt,
+      ninaDeliveryEnabled: true,
+      bonusEnabled: s.bonusEnabled,
+      startDate: p.startDate,
+      projectType: p.projectType,
+      lines: p.panels.flatMap((panel) =>
+        panel.lines.map((l) => ({
+          enabled: l.enabled && panel.enabled,
+          disabledForNight: l.disabledForNight,
+          plannedCount: l.plannedCount,
+          acquiredCount: l.counters.acquired,
+          rejectedCount: l.counters.rejected,
+          bonusCount: l.counters.bonus,
+          bonusRejectedCount: l.counters.bonusRejected,
+        })),
+      ),
+      overshootPct: s.overshootPct,
+    },
+    req.night,
+  );
+}
+
 export function simulate(req: SimulationRequest): SimulationResult {
   // Entwürfe ohne Panel kann die Engine nicht planen (engine.input_invalid) – sie fehlen im Plan.
-  const candidates = req.projects.filter((p) => p.panels.length > 0);
+  const candidates = req.projects.filter(
+    (p) => p.panels.length > 0 && (req.selection === 'given' || deliverable(req, p)),
+  );
   const input = buildPlanInput(req.rig, candidates, req.moonProfiles, req.nights, {
     night: req.night,
     site: {
@@ -83,6 +119,8 @@ export function simulate(req: SimulationRequest): SimulationResult {
       elevationM: req.site.elevationM,
     },
     selection: req.selection,
+    // AF-Intervall des Rigs wie der Server, solange er die Trigger der Sequenz nicht kennt (FA-SIM-05).
+    autofocusAfterTimeMin: req.rig.scheduler.overhead.afEveryMin,
   }) as PlanInput;
   const plan = planNight(input);
   const site = { latDeg: req.site.latitudeDeg, lonDeg: req.site.longitudeDeg };

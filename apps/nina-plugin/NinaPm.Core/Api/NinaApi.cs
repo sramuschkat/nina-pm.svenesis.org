@@ -95,6 +95,13 @@ public sealed class NinaApi : IDisposable
         }
     }
 
+    /// <summary>
+    /// ETag ohne <c>W/</c>-Präfix (schwacher Vergleich, RFC 9110 §8.8.3.2): CloudFront macht beim Komprimieren aus dem
+    /// starken ETag einen schwachen, der Heartbeat meldet das starke (<c>targetsEtag</c>).
+    /// </summary>
+    public static string? OpaqueEtag(string? etag) =>
+        etag is not null && etag.StartsWith("W/", StringComparison.Ordinal) ? etag[2..] : etag;
+
     /// <summary>Code aus einer Problem-Details-Antwort (<c>application/problem+json</c>, rules/api.md).</summary>
     public static string? ProblemCode(string? body)
     {

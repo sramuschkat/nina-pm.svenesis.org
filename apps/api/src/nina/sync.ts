@@ -31,7 +31,7 @@ import {
 } from '@nina-pm/shared';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
-import { siteNights } from '../lib/night-table';
+import { graceNight, siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
 import { filterPlanSummary, projectView } from '../routes/web-projects';
 import type { ApiServices } from '../routes/services';
@@ -560,7 +560,8 @@ export async function plan(
   const table = siteNights(d.site, now, undefined, 3);
   const current = currentNightRow(table, iso(now)).night;
   const next = table.nights[table.nights.findIndex((n) => n.night === current) + 1]?.night;
-  if (req.night !== current && req.night !== next) throw new ProblemError('nina.night_invalid');
+  if (req.night !== current && req.night !== next && req.night !== graceNight(table, now))
+    throw new ProblemError('nina.night_invalid');
   if (req.reason === 'initial' && req.tonight) {
     const filled = (v: unknown) =>
       v !== undefined &&

@@ -66,10 +66,14 @@ namespace NinaPm.Core.Api.Generated
         static partial void UpdateJsonSerializerSettings(JsonSerializerSettings settings) =>
             NinaPm.Core.Api.NinaJson.Configure(settings);
 
-        /// <summary>ETag der letzten Antwort (<c>GET /targets</c>, NT-19); NSwag reicht Kopfzeilen sonst nicht durch.</summary>
+        /// <summary>
+        /// ETag der letzten Antwort (<c>GET /targets</c>, NT-19); NSwag reicht Kopfzeilen sonst nicht durch. Ohne
+        /// <c>W/</c>-Präfix: komprimiert ein Proxy die Antwort, wird das ETag schwach, der Heartbeat meldet aber das starke –
+        /// ein Vergleich mit Präfix sähe dann bei jedem Heartbeat und vor jedem Block „neue Ziele“.
+        /// </summary>
         public string? LastEtag { get; private set; }
 
         partial void ProcessResponse(System.Net.Http.HttpClient client, System.Net.Http.HttpResponseMessage response) =>
-            LastEtag = response.Headers.ETag?.ToString();
+            LastEtag = response.Headers.ETag?.Tag;
     }
 }

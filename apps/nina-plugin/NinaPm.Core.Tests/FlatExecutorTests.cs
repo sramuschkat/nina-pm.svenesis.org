@@ -138,6 +138,18 @@ public sealed class FlatExecutorTests : IDisposable
         // Nach dem Lauf gilt die aktuelle Position.
         var positions = JsonConvert.DeserializeObject<Dictionary<string, int>>(store.GetState(StateKeys.TrainedFlatPositions)!)!;
         Assert.Equal(1, positions["L"]);
+        Assert.Equal(5, positions["HA"]);
+
+        // Folgenacht: kein dauerhaftes Überspringen – die neue Position gilt, Ha läuft (Analyse 04.10.2026).
+        const string next = "2026-10-04";
+        store.RecordFlatLight(next, new LightObservation("Ha", "HA", 100, 10, 1, 0, null, FlatClustering.Dg(0),
+            new FlatTarget(M31, null, "M 31"), 0, 3));
+        sink.Lines.Clear();
+        await flats.RunAsync(Settings() with { Night = next }, CancellationToken.None);
+        Assert.Equal(FlatStatus.Done, store.FlatCombinations(next).Single(c => c.FilterShort == "Ha").Status);
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("trained_flat_position_changed"));
+        positions = JsonConvert.DeserializeObject<Dictionary<string, int>>(store.GetState(StateKeys.TrainedFlatPositions)!)!;
+        Assert.NotEqual(5, positions["HA"]);
     }
 
     [Fact]

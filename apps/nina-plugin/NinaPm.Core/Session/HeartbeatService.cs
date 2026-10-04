@@ -60,11 +60,13 @@ public sealed class HeartbeatService(
         body.OutboxPending = runner.OutboxPending;
         body.DeadLetters = runner.DeadLetters;
         body.AckedCommandIds = runner.TakeCommandAcks();
+        if (state == NinaHeartbeatState.Offline) body.OfflineUntil = runner.OfflineUntilUtc();
 
         var sent = clock.UtcNow;
         try
         {
             var response = await api.HeartbeatAsync(body, token).ConfigureAwait(false);
+            runner.CommandAcksSent(body.AckedCommandIds ?? []);
             if (runner.OfflineMode)
             {
                 // Offline: keine Uhr- und Lease-Prüfung, Lease bleibt serverseitig eingefroren (§6).

@@ -26,7 +26,7 @@ import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import { captureForecastSnapshot } from '../sessions/log';
-import { noonNightKey, siteNights } from '../lib/night-table';
+import { graceNight, noonNightKey, siteNights } from '../lib/night-table';
 import { createNotificationService } from '../notifications/service';
 import type { ApiServices } from '../routes/services';
 import { targets } from './sync';
@@ -73,7 +73,7 @@ async function checkNight(
   const current = currentNightRow(table, isoUtc(now)).night;
   const currentIndex = table.nights.findIndex((n) => n.night === current);
   const next = table.nights[currentIndex + 1]?.night;
-  if (night === current || night === next) return rig;
+  if (night === current || night === next || night === graceNight(table, now)) return rig;
   if (opts.offline) {
     const index = table.nights.findIndex((n) => n.night === night);
     const row = table.nights[index];
@@ -180,7 +180,7 @@ export async function createSession(svc: ApiServices, p: NinaPrincipal, body: Se
   if (r.created && body.offline) {
     const others = await repos
       .ninaSession(p.rigId, p.instanceId)
-      .otherSessionsInNight(body.id, body.night);
+      .otherSessionsInNight(body.id, body.night, r.session.startedAt);
     if (others > 0) {
       logger.warn('alert_rig_busy', { rigId: p.rigId, sessionId: body.id });
       await busyAlert();

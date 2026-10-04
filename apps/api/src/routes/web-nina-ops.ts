@@ -4,9 +4,10 @@
  *   die bisherige Session holt sie per Heartbeat nicht zurück (M5).
  * - `PATCH /web/v1/captures/{id}/assign` (Admin): nicht zugeordnete Aufnahme einer Zeile zuordnen (DAT5-12).
  * - `GET /web/v1/rigs/{id}/delivery` (AP-14c, S-41): „An NINA ausgeliefert“ – dieselbe Liste wie `targets`.
+ * - `POST /web/v1/rigs/{id}/commands` (Admin, TK 7.6): `refresh_targets` bzw. `reset_plan` an das Plugin.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { assignCapture, releaseRigLease } from '@nina-pm/db';
+import { assignCapture, createRigCommand, releaseRigLease } from '@nina-pm/db';
 import { nina, ProblemError, Uuid } from '@nina-pm/shared';
 import { delivery } from '../nina/sync';
 import type { ApiEnv } from '../lib/env';
@@ -82,7 +83,36 @@ export const rigDeliveryRoute = defineRoute(
   },
 );
 
-export const NINA_OPS_ROUTES = [releaseLeaseRoute, assignCaptureRoute, rigDeliveryRoute] as const;
+export const rigCommandRoute = defineRoute(
+  { action: 'nina.instance.manage', requirements: ['NIN5-14', 'TK 7.6', 'FA-NIN-08'] },
+  {
+    method: 'post',
+    path: '/api/web/v1/rigs/{id}/commands',
+    summary: 'Kommando an das Plugin (Ziele neu laden, Plan zurücksetzen)',
+    tags: ['nina-instances'],
+    request: {
+      params: z.object({ id: Uuid }),
+      body: { content: { 'application/json': { schema: nina.NinaRigCommand } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'Angelegt (je aktiver Instanz eines; leer ohne Instanz)',
+        content: { 'application/json': { schema: nina.NinaRigCommandCreated } },
+      },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('Keine Berechtigung'),
+      404: problemContent('resource.not_found'),
+      422: problemContent('validation.failed'),
+    },
+  },
+);
+
+export const NINA_OPS_ROUTES = [
+  releaseLeaseRoute,
+  assignCaptureRoute,
+  rigDeliveryRoute,
+  rigCommandRoute,
+] as const;
 
 export function webNinaOpsRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
@@ -114,6 +144,19 @@ export function webNinaOpsRoutes(services: () => Promise<ApiServices>) {
     if (!rig) throw new ProblemError('resource.not_found');
     c.header('cache-control', 'no-store');
     return c.json(await delivery(svc, { tenantId: tenant.tenantId, rigId }), 200);
+  });
+  app.openapi(rigCommandRoute, async (c) => {
+    const svc = await services();
+    const { tenant } = requireTenant(c);
+    const commandIds = await createRigCommand(
+      svc.db,
+      tenant.tenantId,
+      c.req.valid('param').id,
+      c.req.valid('json').command,
+      tenant.memberId ?? '',
+      svc.now(),
+    );
+    return c.json({ commandIds }, 200);
   });
   return app;
 }

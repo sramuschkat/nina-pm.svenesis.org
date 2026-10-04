@@ -259,10 +259,17 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         }
 
         // Trained Flats (NT-39): NINAs Tabelle hängt an der Filterposition – hat sie sich seit dem letzten Flat-Lauf geändert, gilt sie nicht mehr.
+        // Bemerkt wird der Wechsel einmal je Nacht: in dieser Nacht übersprungen (Hinweis), ab der nächsten gilt die Tabelle der
+        // neuen Position – sonst übersprang der Filter jede Nacht, ohne Weg zurück (Analyse 04.10.2026). Ist sie nicht neu
+        // trainiert, meldet die Prüfung der ersten Aufnahme `flat_exposure_off`.
         var positions = TrainedPositions();
+        var noticed = PositionNoticed();
         if (boxes.UsesTrainedTable && filter.Kind == FilterResolutionKind.Found
-            && positions.TryGetValue(combo.NinaFilter, out var lastPosition) && lastPosition != filter.Index + 1)
+            && positions.TryGetValue(combo.NinaFilter, out var lastPosition) && lastPosition != filter.Index + 1
+            && (!noticed.TryGetValue(combo.NinaFilter, out var noticedNight) || noticedNight == s.Night))
         {
+            noticed[combo.NinaFilter] = s.Night;
+            store.SetState(StateKeys.TrainedFlatPositionNoticed, JsonConvert.SerializeObject(noticed));
             log.Warning("WARNING", ("code", "trained_flat_position_changed"), ("filter", combo.NinaFilter));
             ReportEvent?.Invoke(EventsKind.Warning, "trained_flat_position_changed",
                 new Dictionary<string, object> { ["filter"] = combo.NinaFilter, ["before"] = lastPosition, ["now"] = filter.Index + 1 });
@@ -374,6 +381,8 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         {
             positions[combo.NinaFilter] = filter.Index + 1;
             store.SetState(StateKeys.TrainedFlatPositions, JsonConvert.SerializeObject(positions));
+            if (noticed.Remove(combo.NinaFilter))
+                store.SetState(StateKeys.TrainedFlatPositionNoticed, JsonConvert.SerializeObject(noticed));
         }
         return currentMech;
     }
@@ -528,6 +537,14 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
                 log.Event("COPY", ("file", Path.GetFileName(destination)), ("status", ok ? "copied" : "skipped"));
             }
         }
+    }
+
+    private Dictionary<string, string> PositionNoticed()
+    {
+        var json = store.GetState(StateKeys.TrainedFlatPositionNoticed);
+        return json is null
+            ? new Dictionary<string, string>(StringComparer.Ordinal)
+            : new Dictionary<string, string>(JsonConvert.DeserializeObject<Dictionary<string, string>>(json) ?? [], StringComparer.Ordinal);
     }
 
     private Dictionary<string, int> TrainedPositions()
