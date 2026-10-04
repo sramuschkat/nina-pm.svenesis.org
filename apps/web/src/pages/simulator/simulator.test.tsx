@@ -79,8 +79,16 @@ vi.mock('../../api/client', async () => {
       },
     },
     projectsApi: {
-      list: (q: string) =>
-        Promise.resolve({ items: q.includes('approvalStatus=approved') ? approvedActive : [] }),
+      list: (q?: string) =>
+        Promise.resolve({
+          // Ohne Filter: Projektliste für die Kommentaranzahl der Zielkarten (FA-PRJ-17).
+          items:
+            q === undefined
+              ? f.projects.map((p) => ({ id: p.id, commentCount: 2 }))
+              : q.includes('approvalStatus=approved')
+                ? approvedActive
+                : [],
+        }),
       get: (id: string) => Promise.resolve(f.projects.find((p) => p.id === id)),
       patchLine: state.patchLine,
     },
@@ -164,6 +172,10 @@ describe('S-40 Nacht-Simulator', () => {
     expect(card).toBeDefined();
     expect(within(card as HTMLElement).getByText('Zeitfenster')).toBeInTheDocument();
     expect(within(card as HTMLElement).getByText('Ersteller')).toBeInTheDocument();
+    // Kommentare am Projekt (FA-PRJ-17): Sprechblase im Kartentitel.
+    expect(
+      await within(card as HTMLElement).findByRole('img', { name: 'Kommentare: 2' }),
+    ).toBeInTheDocument();
     // Kartentitel wählt das Ziel (Rand in Zielfarbe, Blöcke in der Plangrafik hervorgehoben).
     const pick = within(card as HTMLElement).getByRole('button', { pressed: false });
     // Neben dem Namen ein eigener Link zum Projekt (01.10.2026).

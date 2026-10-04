@@ -271,7 +271,7 @@ Knopf mit Lucide-Symbol (`emoji` im Eingabefeld, `react` für Reaktionen), der e
 
 ### 2.24 `CommentCount` (Sprechblase mit Zahl, FA-PRJ-17, 04.10.2026)
 
-Symbol `comments` (`message-square`, dekorativ) und die Anzahl nicht gelöschter Kommentare eines Projekts; `role="img"` mit `aria-label`/`title` „Kommentare: n“. Eigenschaft: `count`. Bei 0 rendert der Baustein **nichts**, damit Listen ruhig bleiben. Verwendet in Projektliste (Liste, Karten, Detail), Freigabe-Warteschlange, *An NINA ausgeliefert* und Projektbericht. Bricht nicht um.
+Symbol `comments` (`message-square`, dekorativ) und die Anzahl nicht gelöschter Kommentare eines Projekts; `role="img"` mit `aria-label`/`title` „Kommentare: n“. Eigenschaft: `count`. Bei 0 rendert der Baustein **nichts**, damit Listen ruhig bleiben. Verwendet in Projektliste (Liste, Karten, Detail), Freigabe-Warteschlange, *An NINA ausgeliefert*, Projektbericht, Übersicht (*Aktive Projekte* neben dem Namen, *Warteschlange* in der Zeile „von …“, weil die Karte schmal ist), *Heute Nacht* (*Plan für diese Nacht*) und Zielkarten des Simulators; die beiden letzten lesen die Anzahl aus der gecachten Projektliste (`useCommentCounts`). Bricht nicht um.
 
 ## 3. Symbole je Bereich (Lucide)
 

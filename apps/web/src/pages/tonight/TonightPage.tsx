@@ -34,6 +34,8 @@ import { useEquipmentList } from '../equipment/shared';
 import { useNightPlan } from '../simulator/use-night-plan';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
+import { CommentCount } from '../../components/CommentCount';
+import { useCommentCounts } from '../../lib/use-comment-counts';
 import styles from './tonight.module.css';
 import { MoonCalendar } from './MoonCalendar';
 import { TonightLines } from './TonightLines';
@@ -307,6 +309,7 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
     onSuccess: (r) => setJobId(r.jobId),
   });
   const job = useJob<unknown>(jobId);
+  const comments = useCommentCounts();
   const done = job.job.data?.status === 'done';
   useEffect(() => {
     if (done) void client.invalidateQueries({ queryKey: TONIGHT_KEY });
@@ -316,7 +319,12 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
       id: 'name',
       header: t('tonight.col.project'),
       sortValue: (p) => p.name,
-      cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
+      cell: (p) => (
+        <>
+          <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>{' '}
+          <CommentCount count={comments(p.projectId)} />
+        </>
+      ),
     },
     {
       // Ersteller mit Bild (Wunsch Sven 30.09.2026); Name aus dem Mitgliederverzeichnis.
