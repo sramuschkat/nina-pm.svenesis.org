@@ -313,7 +313,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <!--  Zielkarte wie im Web-Simulator: Punkt in Zielfarbe, Kennzahlen, Filter-Chips, Prüfliste.  -->
-                                <Border Width="360" Margin="0,0,10,10" Padding="14,10" Background="{DynamicResource SecondaryBackgroundBrush}"
+                                <Border Width="360" Margin="0,0,10,10" Padding="14,10" Background="{DynamicResource BackgroundBrush}"
                                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                                     <StackPanel>
                                         <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
