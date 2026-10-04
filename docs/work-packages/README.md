@@ -130,7 +130,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-50](AP-50.md) | Flat-Handling im Plugin | L | AP-16h | H-15 | ◐ |
 | [AP-50b](AP-50b.md) | Auto-Flats je Projekt | M | AP-50 | H-15 | ◐ |
 | [AP-52](AP-52.md) | Tagesschleife | M | AP-50 | H-15 | ☐ |
-| [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ☐ |
+| [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ◐ |
 | [AP-54](AP-54.md) | Mandanten-Export/-Import | M | AP-17 | – | ☐ |
 | [AP-55](AP-55.md) | Astro-PM-Import (optional) | M | AP-54 | – | ☐ |
 
