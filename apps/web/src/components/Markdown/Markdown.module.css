@@ -17,3 +17,18 @@
   /* Links im Fließtext nicht nur über die Farbe erkennbar (WCAG 1.4.1, axe link-in-text-block). */
   text-decoration: underline;
 }
+.md pre {
+  /* Sequenz-Bäume in der Sequencer-Hilfe: Festbreitenschrift, eigener Rollbereich statt Seitenbreite. */
+  background: var(--npm-surface-sub);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  padding: var(--npm-space-3) var(--npm-space-4);
+  overflow-x: auto;
+  font-family: var(--npm-font-mono);
+  font-size: var(--npm-font-small);
+  line-height: 1.5;
+}
+.md code {
+  font-family: var(--npm-font-mono);
+  font-size: 0.92em;
+}

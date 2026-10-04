@@ -82,3 +82,47 @@ for (const width of [768, 2400]) {
     }
   });
 }
+
+test('NINA › Hilfe: Sequencer – für jedes Mitglied, Verzeichnis springt, axe hell/dunkel', async ({
+  page,
+}) => {
+  await testLogin(page, 'user1');
+  await page.goto('/nina/hilfe');
+  await expect(
+    page.getByRole('heading', { name: 'Hilfe: NINA-PM im Advanced Sequencer' }),
+  ).toBeVisible();
+  const toc = page.getByRole('navigation', { name: 'Inhalt' });
+  await toc.getByRole('link', { name: 'NINA-PM Wait for Time' }).click();
+  await expect(page).toHaveURL(/#wait-for-time$/);
+  await expect(
+    page.getByRole('heading', { name: 'NINA-PM Wait for Time', level: 3 }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole('table', { name: 'Einstellungen: NINA-PM Wait for Time' }),
+  ).toBeVisible();
+  for (const theme of ['light', 'dark'] as const) {
+    await page.evaluate((t) => window.localStorage.setItem('npm.theme', t), theme);
+    await page.reload();
+    await expectNoSerious(page, `Sequencer-Hilfe ${theme}`);
+  }
+});
+
+for (const width of [768, 2400]) {
+  test(`NINA › Hilfe: Sequencer bei ${width} px ohne horizontales Scrollen`, async ({ page }) => {
+    await testLogin(page, 'owner');
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/nina/hilfe');
+    await expect(page.getByRole('navigation', { name: 'Inhalt' })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    // Verzeichnis links neben dem Text (breit) bzw. darüber (schmal) – echte Lage, nicht die Spaltenvorlage.
+    const toc = await page.getByRole('navigation', { name: 'Inhalt' }).boundingBox();
+    const intro = await page.getByText('NINA-PM bringt eigene Bausteine').boundingBox();
+    if (!toc || !intro) throw new Error('Lage nicht messbar');
+    if (width >= 1100) expect(toc.x + toc.width).toBeLessThanOrEqual(intro.x);
+    else expect(toc.y + toc.height).toBeLessThanOrEqual(intro.y);
+  });
+}

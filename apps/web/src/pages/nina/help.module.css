@@ -1,0 +1,116 @@
+/* NINA › Hilfe: Sequencer – Inhaltsverzeichnis links (mitlaufend), Text auf Lesebreite (Textseite, rules/ui.md);
+   unter 1100 px eine Spalte mit dem Verzeichnis oben. Abstände und Farben aus Tokens. */
+.page {
+  composes: page from '../admin/admin.module.css';
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: var(--npm-space-6);
+  align-items: start;
+}
+.toc {
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: var(--npm-space-4);
+  background: var(--npm-white);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-4);
+  font-size: var(--npm-font-small);
+  max-height: calc(100vh - var(--npm-space-6) * 2);
+  overflow-y: auto;
+}
+.toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+.toc ol ol {
+  padding-left: var(--npm-space-3);
+  margin-top: var(--npm-space-1);
+}
+.toc a {
+  color: var(--npm-text);
+  text-decoration: none;
+}
+.toc a:hover,
+.toc a:focus-visible {
+  color: var(--npm-accent);
+  text-decoration: underline;
+}
+.tocTitle {
+  font-weight: 600;
+  margin-bottom: var(--npm-space-2);
+}
+.content {
+  grid-column: 2;
+  grid-row: 1;
+  /* Textseite: Lesebreite. */
+  max-width: 980px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-5);
+}
+.intro,
+.section,
+.item {
+  background: var(--npm-white);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  padding: var(--npm-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-3);
+  scroll-margin-top: var(--npm-space-4);
+}
+.section .section,
+.section .item {
+  box-shadow: none;
+  padding: var(--npm-space-4) 0 0;
+  border-top: 1px solid var(--npm-border);
+  border-radius: 0;
+}
+.itemHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--npm-space-3);
+}
+.kind {
+  font-size: var(--npm-font-small);
+  padding: 0 var(--npm-space-2);
+  border-radius: 999px;
+  border: 1px solid var(--npm-border-strong);
+  color: var(--npm-text-light);
+}
+.summary {
+  font-weight: 500;
+}
+.item h4 {
+  font-size: var(--npm-font-base);
+  margin-top: var(--npm-space-2);
+}
+.muted {
+  color: var(--npm-text-light);
+}
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .toc {
+    grid-column: 1;
+    grid-row: 1;
+    position: static;
+    max-height: none;
+  }
+  .content {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}

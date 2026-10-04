@@ -15,6 +15,7 @@ export const NINA_PATHS = {
   simulator: '/nina/simulator',
   delivery: '/nina/ausgeliefert',
   instances: '/nina/instanzen',
+  help: '/nina/hilfe',
 } as const;
 
 /** Bereichsreiter des NINA-Bereichs für `PageHeader.nav`. */
@@ -28,6 +29,7 @@ export function NinaTabs() {
         { to: NINA_PATHS.simulator, label: t('nina.tab.simulator') },
         { to: NINA_PATHS.delivery, label: t('nina.tab.delivery') },
         ...(canManage ? [{ to: NINA_PATHS.instances, label: t('nina.tab.instances') }] : []),
+        { to: NINA_PATHS.help, label: t('nina.tab.help') },
       ]}
     />
   );
