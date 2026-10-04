@@ -47,6 +47,7 @@ internal sealed class NinaPmRuntime : IDisposable
         Runner = new NightRunner(new NinaPlanApi(api.Client), sessionApi, Store, host, host, clock, Log)
         {
             Executor = new BlockExecutor(host, clock, Log) { Mode = PlaybackModeSequential },
+            Flats = new NinaPm.Core.Flats.FlatExecutor(host, Store, clock, Log),
         };
         host.Runtime = this;
         Outbox = new OutboxSender(Store, sessionApi, Log, clock) { Listener = Runner };

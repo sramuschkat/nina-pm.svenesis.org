@@ -1,0 +1,201 @@
+{
+  "protocol": "P-12",
+  "description": "Flats & Dark-Flats: zwei Ziele mit 0° und 45° (Rotator), eines mit Flip; NINA stürzt während der 2. Kombination ab und wird neu gestartet.",
+  "parts": [
+    {
+      "scenario": "flats",
+      "untilMin": 90,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 44,
+          "sim": "crash"
+        },
+        {
+          "atMin": 46,
+          "sim": "start"
+        }
+      ]
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "order": [
+          {
+            "event": "BLOCK_END"
+          },
+          {
+            "event": "FLATS_START"
+          },
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "none": {
+          "event": "BLOCK_START"
+        },
+        "after": {
+          "event": "FLATS_START"
+        }
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "done"
+          }
+        },
+        "min": 4,
+        "max": 4
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "combination": "L_b1_g-1_o-1_r0",
+            "mechDg": "0",
+            "status": "done"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "combination": "L_b1_g-1_o-1_r0",
+            "mechDg": "450",
+            "status": "done"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "combination": "Ha_b1_g-1_o-1_r0",
+            "mechDg": "0",
+            "status": "done"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "combination": "Ha_b1_g-1_o-1_r0",
+            "mechDg": "450",
+            "status": "done"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "FLIP"
+        },
+        "min": 1
+      }
+    ],
+    [
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat",
+          "filterShortName": "Ha",
+          "rotatorMechDeg": 0
+        },
+        "min": 20,
+        "max": 20
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat",
+          "filterShortName": "Ha",
+          "rotatorMechDeg": 0
+        },
+        "sameValue": "flatsPlanned"
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat",
+          "filterShortName": "L",
+          "rotatorMechDeg": 45
+        },
+        "min": 20,
+        "max": 20
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "dark_flat"
+        },
+        "min": 20,
+        "max": 20
+      },
+      {
+        "log": {
+          "event": "DARKFLAT_GROUP",
+          "where": {
+            "status": "done"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat",
+          "filterShortName": "L",
+          "rotatorMechDeg": 45,
+          "darkFlatsPlanned": 0
+        },
+        "min": 20,
+        "max": 20
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "FLATS_RESUME",
+          "where": {
+            "combination": "Ha_b1_g-1_o-1_r0",
+            "mechDg": "0"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat"
+        },
+        "min": 80,
+        "max": 80
+      },
+      {
+        "report": "sessions",
+        "min": 1,
+        "max": 1
+      }
+    ]
+  ]
+}

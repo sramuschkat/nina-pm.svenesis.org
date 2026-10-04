@@ -48,4 +48,14 @@ public sealed class SimWorld(SimSetup setup)
     /// <summary>Offline-Modus der Plugin-Optionen (bleibt über einen Neustart erhalten).</summary>
     public bool OfflineMode { get; set; }
     public int ImageCounter { get; set; }
+
+    public string FlatBox { get; set; } = setup.FlatBox;
+    public double FlatMeanShare { get; set; } = setup.FlatMeanShare;
+    public Dictionary<string, int>? LastFlatPositions { get; } = setup.LastFlatPositions;
+
+    /// <summary>Mechanischer Rotatorwinkel (Grad), zuletzt angefahren.</summary>
+    public double RotatorMechDeg { get; set; }
+
+    /// <summary>Gespeicherte Flat-/Dark-Flat-Dateien und Kopien (Pfade), überdauern einen Absturz wie die Platte.</summary>
+    public List<string> FlatFiles { get; } = [];
 }

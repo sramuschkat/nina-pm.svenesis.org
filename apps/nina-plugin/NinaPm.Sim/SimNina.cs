@@ -12,7 +12,7 @@ namespace NinaPm.Sim;
 /// Aktion stellt die virtuelle Uhr um ihre Dauer vor; eine Belichtung bricht ab, sobald der Sequenz-Token abgebrochen
 /// wird (Safety, Benutzer-Stopp, Absturz).
 /// </summary>
-public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner?> runner, NinaPmLog log, Func<bool> dead, TextWriter logWriterForSim)
+public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner?> runner, NinaPmLog log, Func<bool> dead, TextWriter logWriterForSim)
     : IBlockHost, INightHost
 {
     public const double DownloadS = 2;
@@ -156,7 +156,9 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
         var exposureS = entry.ExposureS ?? 0;
         var id = Uuid7.New(clock);
         var start = clock.UtcNow;
-        var facts = rules.Facts(id, block, entry, currentFilter, temperatureDeviation, exposureS, world.ReadoutModes, 0, "pierWest");
+        // Rotator: der mechanische Winkel steht auf dem Soll des Blocks und bleibt beim Flip (NT-E4) – Flat-Kombinationen je Winkel.
+        var mech = world.RotatorConnected ? Rotation.Normalize(block.RotationDeg) : 0;
+        var facts = rules.Facts(id, block, entry, currentFilter, temperatureDeviation, exposureS, world.ReadoutModes, mech, "pierWest");
         try
         {
             await clock.AdvanceToAsync(start.AddSeconds(exposureS), token).ConfigureAwait(false);

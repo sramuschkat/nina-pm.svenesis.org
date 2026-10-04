@@ -1095,6 +1095,70 @@
           "event": "FLIP_UNDETECTED"
         }
       ]
+    },
+    "P-12": {
+      "package": "AP-50",
+      "steps": [
+        "Reihenfolge Blöcke → Nachtende (darknessEndUtc) → Flats ab flatsNotBeforeUtc → SESSION status=completed → Ende-Bereich; während der Flats kein Block",
+        "Kombinationen = gespeicherte Light-Kombinationen: je Filter die zwei mechanischen Winkel der beiden Ziele, der Flip erzeugt keine weitere (NT-E4); seriell",
+        "Jede Flat-Meldung trägt den eingefrorenen rotatorMechDeg und flatsPlanned/darkFlatsPlanned (NIN5-8/9); Dark-Flat-Gruppe nur einmal je Nacht (DARKFLAT_GROUP status=done, danach darkFlatsPlanned=0)",
+        "Nach dem Neustart Fortsetzen nur mit fehlenden Aufnahmen (FLATS_RESUME … missing=…), ohne zweite Kombination"
+      ],
+      "require": [
+        {
+          "event": "FLATS_START"
+        },
+        {
+          "event": "FLATS_END"
+        },
+        {
+          "event": "DARKFLAT_GROUP"
+        },
+        {
+          "event": "FLATS_RESUME"
+        },
+        {
+          "event": "SESSION",
+          "where": {
+            "status": "completed"
+          }
+        }
+      ],
+      "forbid": []
+    },
+    "P-33": {
+      "package": "AP-50",
+      "steps": [
+        "Geänderte Filterposition bei Trained Flats: Kombination skipped, WARNING code=trained_flat_position_changed (VM/Rig; im kopflosen Lauf über Kern-Tests)",
+        "Zu lange Belichtung: WARNING code=flat_exposure_off nach der ersten Flat-Aufnahme (meanAdu > 80 %), Kombination läuft weiter; Flatpanel öffnet sich nicht (KeepPanelClosed)"
+      ],
+      "require": [
+        {
+          "event": "FLATS_START"
+        },
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "flat_exposure_off"
+          }
+        }
+      ],
+      "forbid": []
+    },
+    "P-35": {
+      "package": "AP-50",
+      "steps": [
+        "Zwei getrennte Kombinationen (Bin 1, Bin 2), jede mit eigenem Flat- und Dark-Flat-Satz in passendem Binning; Gain/Offset null im Schlüssel als -1; Meldungen tragen das Binning der Kombination"
+      ],
+      "require": [
+        {
+          "event": "FLATS_END"
+        },
+        {
+          "event": "DARKFLAT_GROUP"
+        }
+      ],
+      "forbid": []
     }
   }
 }

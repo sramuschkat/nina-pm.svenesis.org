@@ -65,6 +65,25 @@
     </DataTemplate>
 
     <!-- Live-Status im Container (FA-NIN-13, AP-16h): Kopf, Zähler, Bedienung, „Heutige Ziele“. -->
+    <!-- Eine Flat-Box: Überschrift aus Tag des ContentControl, Inhalt = SequentialContainer mit Drop-Ziel. -->
+    <DataTemplate x:Key="NinaPm.FlatBox">
+        <StackPanel Margin="0,0,0,6" Orientation="Vertical">
+            <TextBlock Margin="0,0,0,2" Opacity="0.8" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
+            <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <Grid Background="{StaticResource BackgroundBrush}">
+                    <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
+                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
+                               Text="{x:Static ui:Texts.DropInstructionsHint}"
+                               Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                    <i:Interaction.Behaviors>
+                        <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
+                        <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />
+                    </i:Interaction.Behaviors>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </DataTemplate>
+
     <DataTemplate x:Key="NinaPm.Container">
         <view:SequenceBlockView>
             <view:SequenceBlockView.SequenceItemContent>
@@ -80,6 +99,15 @@
                             <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SkipBlock}" />
                         </Button>
                     </StackPanel>
+                    <!-- Flat-Handling (FA-NIN-17): drei Boxen wie NINAs Trigger-Boxen (DropIntoCommand des SequentialContainer). -->
+                    <Expander Margin="0,8,0,0" Header="{x:Static ui:Texts.FlatsHeader}">
+                        <StackPanel Margin="0,2" Orientation="Vertical">
+                            <TextBlock Margin="0,0,0,6" Opacity="0.6" FontStyle="Italic" Text="{x:Static ui:Texts.FlatsHint}" TextWrapping="Wrap" />
+                            <ContentControl Content="{Binding FlatsSetupRunner}" Tag="{x:Static ui:Texts.FlatsBefore}" ContentTemplate="{StaticResource NinaPm.FlatBox}" />
+                            <ContentControl Content="{Binding FlatsRunner}" Tag="{x:Static ui:Texts.FlatsPerCombination}" ContentTemplate="{StaticResource NinaPm.FlatBox}" />
+                            <ContentControl Content="{Binding FlatsTeardownRunner}" Tag="{x:Static ui:Texts.FlatsAfter}" ContentTemplate="{StaticResource NinaPm.FlatBox}" />
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
             </view:SequenceBlockView.SequenceItemContent>
             <view:SequenceBlockView.SequenceItemProgressContent>

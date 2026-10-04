@@ -23,6 +23,16 @@ public static class Texts
         : T($"{projects} Ziele im Cache", $"{projects} targets in cache");
     public static string DropInstructionsHint => T("Anweisungen hierher ziehen …", "Drag instructions here …");
 
+    // Flat-Handling (FA-NIN-17, AP-50)
+    public static string FlatsHeader => T("Flats am Nachtende", "Flats at night end");
+    public static string FlatsHint => T(
+        "Laufen nach der Nacht, wenn im Rig eingeschaltet. Filter, Rotator, Gain, Offset, Binning und Auslesemodus je Kombination setzt NINA-PM; Anzahlen kommen aus dem Rig.",
+        "Run after the night when enabled in the rig. NINA-PM sets filter, rotator, gain, offset, binning and readout mode per combination; counts come from the rig.");
+    public static string FlatsBefore => T("Vor Flats (einmal, z. B. parken, Panel schließen, Licht an)", "Before flats (once, e.g. park, close panel, light on)");
+    public static string FlatsPerCombination => T(
+        "Je Kombination (z. B. Trained Flat Exposure, danach Trained Dark Flat Exposure)", "Per combination (e.g. Trained Flat Exposure, then Trained Dark Flat Exposure)");
+    public static string FlatsAfter => T("Nach Flats (einmal, z. B. Licht aus, Panel öffnen)", "After flats (once, e.g. light off, open panel)");
+
     public static string Intro => T(
         "NINA-PM plant deine Projekte auf dem Server und führt sie in NINA aus. Server-URL und Sync-Token stehen in der Web-App unter Rig → NINA-Instanzen.",
         "NINA-PM plans your projects on the server and runs them in NINA. Server URL and sync token are shown in the web app under Rig → NINA instances.");

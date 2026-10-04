@@ -82,6 +82,18 @@ public sealed class SimSetup
     /// <summary>Trigger <c>AutofocusAfterTimeTrigger</c> in der Sequenz (im Transit unterdrückt, P-14).</summary>
     [JsonProperty("afTrigger")] public bool AfTrigger { get; set; }
 
+    /// <summary>
+    /// Inhalt der Flat-Box <em>Je Kombination</em> (AP-50): <c>trained</c> (Trained Flat + Trained Dark Flat Exposure),
+    /// <c>trained_no_darks</c>, <c>auto</c> (Auto Exposure Flat, Anzahl offen) oder <c>none</c> (leere Box, keine Flats).
+    /// </summary>
+    [JsonProperty("flatBox")] public string FlatBox { get; set; } = "trained";
+
+    /// <summary>Filterposition je NINA-Filtername beim letzten Flat-Lauf (NT-39, P-33: Filter im Profil umgesteckt).</summary>
+    [JsonProperty("lastFlatPositions")] public Dictionary<string, int>? LastFlatPositions { get; set; }
+
+    /// <summary>Mittelwert der Flats als Anteil am Vollausschlag (P-33: 0,95 = zu lange belichtet).</summary>
+    [JsonProperty("flatMeanShare")] public double FlatMeanShare { get; set; } = 0.45;
+
     /// <summary>Sequenz beim Laufbeginn starten (sonst über einen Schritt <c>start</c>).</summary>
     [JsonProperty("autoStart")] public bool AutoStart { get; set; } = true;
 }

@@ -29,7 +29,7 @@ namespace NinaPm.Nina.Adapters;
 /// <c>Instructions/AstroPMChildItems.cs</c> (Belichtung, Bildpipeline); Trigger-Walk und Bildzuordnung wie im
 /// Probe-Plugin (AP-S2b, P-01…P-03 go). Koordinaten mit <c>Angle.ByDegree</c> (NT-28), nicht <c>ByHours</c>.
 /// </summary>
-internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
+internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost, NinaPm.Core.Flats.IFlatHost
 {
     private static readonly TimeSpan SaveTimeout = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(10);
@@ -136,7 +136,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     }
 
     /// <summary>Filternamen des aktiven NINA-Profils in Rad-Reihenfolge (leer ohne Filterrad).</summary>
-    private List<string> ProfileFilterNames() =>
+    public IReadOnlyList<string> ProfileFilterNames() =>
         m.Profile.ActiveProfile.FilterWheelSettings.FilterWheelFilters?.Select(f => f.Name).ToList() ?? [];
 
     // ---- IBlockHost: Vorbereitung -----------------------------------------------------------------------

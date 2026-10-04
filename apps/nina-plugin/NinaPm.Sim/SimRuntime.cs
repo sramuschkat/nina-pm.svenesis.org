@@ -56,6 +56,9 @@ public sealed class SimRuntime : IDisposable
     {
         Clock = clock;
         Store = LocalStore.Open(dbPath, clock);
+        // Stand eines früheren Flat-Laufs (NT-39, P-33): Filterposition je NINA-Name, nur in einer frischen ninapm.db.
+        if (world.LastFlatPositions is { Count: > 0 } positions && Store.GetState(StateKeys.TrainedFlatPositions) is null)
+            Store.SetState(StateKeys.TrainedFlatPositions, Newtonsoft.Json.JsonConvert.SerializeObject(positions));
         Log = new NinaPmLog(new FileLogSink(logWriter, clock, () => Dead));
         api = new NinaApi(apiBase, "npm_test", "0.0.0-sim", new SimHttpHandler(clock, world, () => Dead), TimeSpan.FromSeconds(30));
         var sessionApi = new NinaSessionApi(api.Client);
@@ -63,6 +66,7 @@ public sealed class SimRuntime : IDisposable
         Runner = new NightRunner(new NinaPlanApi(api.Client), sessionApi, Store, Host, Host, clock, Log)
         {
             Executor = new BlockExecutor(Host, clock, Log) { Mode = PlaybackMode.Sequential },
+            Flats = new NinaPm.Core.Flats.FlatExecutor(Host, Store, clock, Log),
         };
         Outbox = new OutboxSender(Store, sessionApi, Log, clock) { Listener = Runner };
         Runner.OfflineMode = world.OfflineMode; // Option im NINA-Profil, übersteht den Neustart
