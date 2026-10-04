@@ -3441,6 +3441,18 @@ components:
           enum:
             - panel
             - sky
+        flatsAutoMode:
+          type: string
+          enum:
+            - off
+            - once_per_project
+            - time_based
+          default: off
+        flatsAutoIntervalDays:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 7
         flipEnabled:
           type: boolean
         flipAfterMeridianMin:
@@ -11935,6 +11947,22 @@ components:
                       required:
                         - enabled
                         - count
+                    auto:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum:
+                            - off
+                            - once_per_project
+                            - time_based
+                        intervalDays:
+                          type: integer
+                          minimum: 1
+                          maximum: 30
+                      required:
+                        - mode
+                        - intervalDays
                   required:
                     - enabled
                     - source
@@ -12239,6 +12267,45 @@ components:
                       - minAltitudeDeg
                       - minTimeOnTargetH
                       - twilight
+                  flatsOnRecord:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        filterShortName:
+                          type: string
+                          maxLength: 256
+                        rotatorMechDg:
+                          type: integer
+                          minimum: 0
+                          maximum: 3599
+                        gain:
+                          type: integer
+                        offset:
+                          type: integer
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutModeIndex:
+                          type: integer
+                          minimum: 0
+                        lastUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        count:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - filterShortName
+                        - rotatorMechDg
+                        - gain
+                        - offset
+                        - binning
+                        - readoutModeIndex
+                        - lastUtc
+                        - count
+                    maxItems: 500
                   center:
                     type: object
                     properties:
@@ -12555,6 +12622,45 @@ components:
                       - minAltitudeDeg
                       - minTimeOnTargetH
                       - twilight
+                  flatsOnRecord:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        filterShortName:
+                          type: string
+                          maxLength: 256
+                        rotatorMechDg:
+                          type: integer
+                          minimum: 0
+                          maximum: 3599
+                        gain:
+                          type: integer
+                        offset:
+                          type: integer
+                        binning:
+                          type: integer
+                          minimum: 1
+                        readoutModeIndex:
+                          type: integer
+                          minimum: 0
+                        lastUtc:
+                          type: string
+                          format: date-time
+                          example: 2026-09-18T13:00:00Z
+                        count:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - filterShortName
+                        - rotatorMechDg
+                        - gain
+                        - offset
+                        - binning
+                        - readoutModeIndex
+                        - lastUtc
+                        - count
+                    maxItems: 500
                   center:
                     type: object
                     properties:

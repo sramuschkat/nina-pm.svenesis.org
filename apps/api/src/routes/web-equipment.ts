@@ -86,6 +86,16 @@ function pick<S extends z.ZodObject>(schema: S, row: object): z.output<S> {
   return out as z.output<S>;
 }
 
+/** Scheduler-Einstellungen; Spalten aus Migration 0013 sind für ältere Rigs `NULL` (= aus, 7 Tage). */
+export function schedulerView(row: object): z.output<typeof SchedulerSettings> {
+  const s = pick(SchedulerSettings, row);
+  return {
+    ...s,
+    flatsAutoMode: s.flatsAutoMode ?? 'off',
+    flatsAutoIntervalDays: s.flatsAutoIntervalDays ?? 7,
+  };
+}
+
 export const cameraView = (row: CameraRow) => pick(CameraView, row);
 export const moonProfileView = (row: MoonProfileRow) => pick(MoonProfileView, row);
 export const telescopeView = (row: TelescopeRow) => pick(TelescopeView, row);
@@ -125,7 +135,7 @@ export function rigView(
   return {
     ...pick(RigInput, row),
     id: row.id,
-    scheduler: pick(SchedulerSettings, row),
+    scheduler: schedulerView(row),
     filterWheel: row.filterWheel.map((s) => ({ ...s })),
     settingsVersion: row.settingsVersion,
     derived: {

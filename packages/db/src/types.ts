@@ -305,6 +305,10 @@ export interface RigTable {
   darkFlatsEnabled: Generated<boolean>;
   darkFlatCount: number | null;
   flatsSource: Generated<string>;
+  /** `null` = `off` (Migration 0013, AP-50b). */
+  flatsAutoMode: string | null;
+  /** `null` = 7 Tage. */
+  flatsAutoIntervalDays: number | null;
   flipEnabled: Generated<boolean>;
   flipAfterMeridianMin: Generated<number>;
   flipMaxAfterMeridianMin: Generated<number>;

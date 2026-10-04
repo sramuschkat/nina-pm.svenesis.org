@@ -646,6 +646,11 @@
   "panel",
   "sky"
  ],
+ "flatsAutoModes": [
+  "off",
+  "once_per_project",
+  "time_based"
+ ],
  "projectStatusTransitions": {
   "planning": [
    "active",

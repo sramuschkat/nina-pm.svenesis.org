@@ -15266,6 +15266,13 @@ export interface components {
             darkFlatCount: number | null;
             /** @enum {string} */
             flatsSource: "panel" | "sky";
+            /**
+             * @default off
+             * @enum {string}
+             */
+            flatsAutoMode: "off" | "once_per_project" | "time_based";
+            /** @default 7 */
+            flatsAutoIntervalDays: number;
             flipEnabled: boolean;
             flipAfterMeridianMin: number;
             flipMaxAfterMeridianMin: number;
@@ -18879,6 +18886,11 @@ export interface components {
                             enabled: boolean;
                             count: number | null;
                         };
+                        auto?: {
+                            /** @enum {string} */
+                            mode: "off" | "once_per_project" | "time_based";
+                            intervalDays: number;
+                        };
                     };
                     meridianFlip: {
                         enabled: boolean;
@@ -18999,6 +19011,20 @@ export interface components {
                         moonMustBeDown?: boolean;
                     };
                 };
+                flatsOnRecord?: {
+                    filterShortName: string;
+                    rotatorMechDg: number;
+                    gain: number;
+                    offset: number;
+                    binning: number;
+                    readoutModeIndex: number;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    lastUtc: string;
+                    count: number;
+                }[];
                 center?: {
                     raDeg: number;
                     decDeg: number;
@@ -19108,6 +19134,20 @@ export interface components {
                         moonMustBeDown?: boolean;
                     };
                 };
+                flatsOnRecord?: {
+                    filterShortName: string;
+                    rotatorMechDg: number;
+                    gain: number;
+                    offset: number;
+                    binning: number;
+                    readoutModeIndex: number;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    lastUtc: string;
+                    count: number;
+                }[];
                 center?: {
                     raDeg: number;
                     decDeg: number;

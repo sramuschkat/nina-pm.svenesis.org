@@ -475,6 +475,28 @@
                         "enabled",
                         "count"
                       ]
+                    },
+                    "auto": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "once_per_project",
+                            "time_based"
+                          ]
+                        },
+                        "intervalDays": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 30
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "intervalDays"
+                      ]
                     }
                   },
                   "required": [

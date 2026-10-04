@@ -7,7 +7,7 @@
  *   (A5-2, FA-SIM-05, NT-01, NT-20, M7).
  * Exoplaneten werden erst mit der Transit-Festlegung (R4) ausgeliefert; bis dahin nur Deep-Sky.
  */
-import type { NinaPrincipal, ProjectDetail } from '@nina-pm/db';
+import type { FlatRecord, NinaPrincipal, ProjectDetail } from '@nina-pm/db';
 import {
   EngineInputError,
   ENGINE_VERSION,
@@ -158,6 +158,7 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
           fullSet: s.flatsFullSet,
           count: s.flatCount,
           darkFlats: { enabled: s.darkFlatsEnabled, count: s.darkFlatCount },
+          auto: { mode: s.flatsAutoMode, intervalDays: s.flatsAutoIntervalDays },
         },
         meridianFlip: {
           enabled: s.flipEnabled,
@@ -237,6 +238,7 @@ function targetsEtag(
   filterWheel: unknown,
   projects: readonly ProjectDetail[],
   rejected: Readonly<Record<string, number>>,
+  flats: ReadonlyMap<string, readonly FlatRecord[]>,
 ): string {
   const key = JSON.stringify({
     settingsVersion,
@@ -245,6 +247,8 @@ function targetsEtag(
       .map((d) => [d.project.id, d.project.version])
       .sort(([a], [b]) => (String(a) < String(b) ? -1 : 1)),
     rejected: Object.entries(rejected).sort(([a], [b]) => (a < b ? -1 : 1)),
+    // Neue Flats ändern die Auswahl am nächsten Morgen (AP-50b).
+    flats: [...flats.entries()].sort(([a], [b]) => (a < b ? -1 : 1)),
   });
   return `"t-${sha256hex(key).slice(0, 16)}"`;
 }
@@ -319,6 +323,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   );
   const deepSky = list.filter((x) => x.project.projectType === 'deep_sky');
   const rejected = await d.repos.ninaRig(p.rigId).rejectedCounts(deepSky.map((x) => x.project.id));
+  const flats = await d.repos.ninaRig(p.rigId).flatRecords(deepSky.map((x) => x.project.id));
   const confirmed = new Map(
     d.rig.filterWheel
       .filter((s) => s.filterId !== null && s.ninaConfirmedAt !== null)
@@ -346,6 +351,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
         priority: pv.priority,
         startDate: pv.startDate,
         dueDate: pv.dueDate,
+        flatsOnRecord: flats.get(pv.id) ?? [],
         conditions: {
           minAltitudeDeg: c.minAltitudeDeg,
           minTimeOnTargetH: c.minTimeOnTargetH,
@@ -435,7 +441,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   };
   return {
     body,
-    etag: targetsEtag(d.rig.settingsVersion, d.rig.filterWheel, deepSky, rejected),
+    etag: targetsEtag(d.rig.settingsVersion, d.rig.filterWheel, deepSky, rejected, flats),
     details: deepSky,
     confirmed,
     night,

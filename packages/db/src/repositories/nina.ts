@@ -312,6 +312,18 @@ export class NinaInstanceRepository extends TenantRepo {
 }
 
 /** Plugin-Sicht auf das Rig des Tokens (Mandant und Rig aus dem Token, TK 5.6). */
+/** Vorhandene Flats eines Projekts je Kombination (AP-50b). */
+export interface FlatRecord {
+  readonly filterShortName: string;
+  readonly rotatorMechDg: number;
+  readonly gain: number;
+  readonly offset: number;
+  readonly binning: number;
+  readonly readoutModeIndex: number;
+  readonly lastUtc: string;
+  readonly count: number;
+}
+
 export class NinaRigRepository extends TenantRepo {
   constructor(
     db: Kysely<Database>,
@@ -346,6 +358,64 @@ export class NinaRigRepository extends TenantRepo {
     return Object.fromEntries(
       rows.map((r) => [r.id, Number(r.rejectedCount) + Number(r.bonusRejectedCount)]),
     );
+  }
+
+  /**
+   * Vorhandene Flats je Projekt auf diesem Rig (AP-50b): Kombinationen aus `flat_combination` der Sessions des Rigs
+   * mit mindestens einer Flat-Aufnahme, nicht übersprungen. Je Projekt und Schlüssel (Filter, mechanischer Winkel in
+   * Zehntelgrad, Gain, Offset, Binning, Auslesemodus-Index) das späteste Sessionende und die Summe der Flats.
+   */
+  async flatRecords(projectIds: readonly string[]): Promise<Map<string, FlatRecord[]>> {
+    const result = new Map<string, FlatRecord[]>();
+    if (projectIds.length === 0) return result;
+    const wanted = new Set(projectIds);
+    const rows = await this.db
+      .selectFrom('flatCombination as f')
+      .innerJoin('session as s', 's.id', 'f.sessionId')
+      .select([
+        'f.filterShortName',
+        'f.rotatorMechDegDg',
+        'f.gain',
+        'f.offsetAdu',
+        'f.binning',
+        'f.readoutModeIndex',
+        'f.projectIds',
+        'f.flatsTaken',
+        's.startedAt',
+        's.endedAt',
+      ])
+      .where('f.tenantId', '=', this.ctx.tenantId)
+      .where('s.tenantId', '=', this.ctx.tenantId)
+      .where('s.rigId', '=', this.rigId)
+      .where('f.status', '<>', 'skipped')
+      .where('f.flatsTaken', '>', 0)
+      .execute();
+    const byKey = new Map<string, FlatRecord & { projectId: string }>();
+    for (const r of rows) {
+      const at = (r.endedAt ?? r.startedAt).toISOString().replace(/\.\d{3}Z$/, 'Z');
+      for (const projectId of (r.projectIds as string[] | null) ?? []) {
+        if (!wanted.has(projectId)) continue;
+        const rec = {
+          filterShortName: r.filterShortName,
+          rotatorMechDg: Number(r.rotatorMechDegDg),
+          gain: Number(r.gain),
+          offset: Number(r.offsetAdu),
+          binning: Number(r.binning),
+          readoutModeIndex: Number(r.readoutModeIndex),
+        };
+        const key = JSON.stringify([projectId, rec]);
+        const prev = byKey.get(key);
+        byKey.set(key, {
+          ...rec,
+          projectId,
+          lastUtc: prev && prev.lastUtc > at ? prev.lastUtc : at,
+          count: (prev?.count ?? 0) + Number(r.flatsTaken),
+        });
+      }
+    }
+    for (const { projectId, ...rec } of [...byKey.values()].sort((a, b) => (a.lastUtc < b.lastUtc ? -1 : 1)))
+      result.set(projectId, [...(result.get(projectId) ?? []), rec]);
+    return result;
   }
 
   /** Offene Meldungen (NT-20): IDs, die schon in `capture` stehen, zählen nicht noch einmal. */

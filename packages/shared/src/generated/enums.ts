@@ -257,6 +257,9 @@ export type FlatCombinationStatus = (typeof flatCombinationStatuses)[number];
 export const flatsSources = ["panel","sky"] as const;
 export type FlatsSource = (typeof flatsSources)[number];
 
+export const flatsAutoModes = ["off","once_per_project","time_based"] as const;
+export type FlatsAutoMode = (typeof flatsAutoModes)[number];
+
 export const projectStatusTransitions = {
   "planning": [
     "active",

@@ -26,3 +26,4 @@ export * from './project-report';
 export * from './sky-satellites';
 export * from './transit-lock';
 export * from './exo-exposure';
+export * from './flats-coverage';
