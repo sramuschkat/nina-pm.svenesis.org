@@ -43,13 +43,9 @@
                 </StackPanel>
             </Grid>
             <StackPanel Margin="0,5" Orientation="Horizontal">
-                <!--  Schriftfarbe aus NINAs Thema (ButtonForegroundBrush); ohne sie schwarz auf dunklem Grund.  -->
-                <Button Padding="10,4" Command="{Binding SaveAndTestCommand}">
-                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SaveAndConnect}" />
-                </Button>
-                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding TestCommand}">
-                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.TestConnection}" />
-                </Button>
+                <!--  Knöpfe mit den Stilen aus ButtonStyles.xaml (Innenabstand, Höhe, Zustände, Farben aus NINAs Thema).  -->
+                <Button Style="{DynamicResource NinaPm.ButtonPrimary}" Command="{Binding SaveAndTestCommand}" Content="{x:Static ui:Texts.SaveAndConnect}" />
+                <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding TestCommand}" Content="{x:Static ui:Texts.TestConnection}" />
             </StackPanel>
             <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
@@ -82,7 +78,7 @@
                 <!--  FA-NIN-03: bei > 10 km Knopf, der den Rig-Standort nach Rückfrage ins aktive Profil schreibt.  -->
                 <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
                     <TextBlock VerticalAlignment="Center" Text="{Binding SiteCheck}" TextWrapping="Wrap" />
-                    <Button Margin="12,0,0,0" Padding="8,2" Command="{Binding ApplySiteCommand}" Content="{x:Static ui:Texts.ApplySite}"
+                    <Button Margin="12,0,0,0" Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding ApplySiteCommand}" Content="{x:Static ui:Texts.ApplySite}"
                             Visibility="{Binding SiteMismatch, Converter={StaticResource NinaPm.BoolToVisibility}}" />
                 </StackPanel>
             </Grid>
@@ -113,21 +109,13 @@
                 <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.ReuploadFrom}" />
                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
                     <DatePicker Width="140" SelectedDate="{Binding ReuploadFrom}" />
-                    <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding ReuploadCommand}">
-                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reupload}" />
-                    </Button>
+                    <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding ReuploadCommand}" Content="{x:Static ui:Texts.Reupload}" />
                 </StackPanel>
             </Grid>
             <StackPanel Margin="0,5" Orientation="Horizontal">
-                <Button Padding="10,4" Command="{Binding ResetCommand}">
-                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reset}" />
-                </Button>
-                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding SkipBlockCommand}">
-                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SkipBlock}" />
-                </Button>
-                <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding RefreshCommand}">
-                    <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Refresh}" />
-                </Button>
+                <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding ResetCommand}" Content="{x:Static ui:Texts.Reset}" />
+                <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding SkipBlockCommand}" Content="{x:Static ui:Texts.SkipBlock}" />
+                <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding RefreshCommand}" Content="{x:Static ui:Texts.Refresh}" />
             </StackPanel>
             <!--  Zielbrowser „An NINA ausgeliefert“ (FA-NIN-02, AP-16h).  -->
             <StackPanel DataContext="{Binding Targets}" Orientation="Vertical">
@@ -137,12 +125,8 @@
                     <ComboBox Width="140" ItemsSource="{Binding Types}" SelectedIndex="{Binding TypeIndex}" />
                     <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="{Binding OpenOnly}" />
                     <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.OpenOnly}" />
-                    <Button Margin="12,0,0,0" Padding="10,4" Command="{Binding RefreshCommand}">
-                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Refresh}" />
-                    </Button>
-                    <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding LoadCommand}">
-                        <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.LoadIntoFraming}" />
-                    </Button>
+                    <Button Style="{DynamicResource NinaPm.Button}" Margin="12,0,8,0" Command="{Binding RefreshCommand}" Content="{x:Static ui:Texts.Refresh}" />
+                    <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding LoadCommand}" Content="{x:Static ui:Texts.LoadIntoFraming}" />
                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding Status}" />
                 </StackPanel>
                 <DataGrid MaxHeight="300" AutoGenerateColumns="False" CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
@@ -212,9 +196,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Margin="8,0,0,0" Padding="8,2" Command="{Binding OpenCommand}" ToolTip="{Binding Url}">
-                                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{Binding Name}" />
-                                        </Button>
+                                        <Button Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding OpenCommand}" ToolTip="{Binding Url}" Content="{Binding Name}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -275,19 +257,11 @@
                     <StackPanel>
                         <WrapPanel Orientation="Horizontal">
                             <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.Night}" />
-                            <Button Padding="8,2" Command="{Binding PrevCommand}" ToolTip="{x:Static ui:Texts.PrevNight}">
-                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="◀" />
-                            </Button>
+                            <Button Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding PrevCommand}" ToolTip="{x:Static ui:Texts.PrevNight}" Content="◀" />
                             <TextBlock Width="150" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding NightText}" TextAlignment="Center" />
-                            <Button Padding="8,2" Command="{Binding NextCommand}" ToolTip="{x:Static ui:Texts.NextNight}">
-                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="▶" />
-                            </Button>
-                            <Button Margin="8,0,0,0" Padding="10,2" Command="{Binding TonightCommand}">
-                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Tonight}" />
-                            </Button>
-                            <Button Margin="16,0,0,0" Padding="14,2" Command="{Binding SimulateCommand}">
-                                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Simulate}" />
-                            </Button>
+                            <Button Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding NextCommand}" ToolTip="{x:Static ui:Texts.NextNight}" Content="▶" />
+                            <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding TonightCommand}" Content="{x:Static ui:Texts.Tonight}" />
+                            <Button Style="{DynamicResource NinaPm.ButtonPrimary}" Margin="16,0,8,0" Command="{Binding SimulateCommand}" Content="{x:Static ui:Texts.Simulate}" />
                             <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Opacity="0.8" Text="{Binding SummaryText}" />
                         </WrapPanel>
                         <WrapPanel Margin="0,6,0,0" Orientation="Horizontal">
@@ -489,9 +463,7 @@
                                   Visibility="{Binding HasWarnings, Converter={StaticResource NinaPm.BoolToVisibility}}" />
                     <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
                         <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{x:Static ui:Texts.Protocol}" />
-                        <Button Margin="12,0,0,0" Padding="10,2" Command="{Binding CopyCommand}">
-                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.CopyProtocol}" />
-                        </Button>
+                        <Button Style="{DynamicResource NinaPm.Button}" Margin="12,0,8,0" Command="{Binding CopyCommand}" Content="{x:Static ui:Texts.CopyProtocol}" />
                         <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding CopyStatus}" />
                     </StackPanel>
                     <!--  Planprotokoll: Spalten mit Abstand, Zeilen in Festbreitenschrift wie im Web (S-40).  -->

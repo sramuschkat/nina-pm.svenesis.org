@@ -8,5 +8,7 @@ public sealed partial class SequencerTemplates : ResourceDictionary
     public SequencerTemplates()
     {
         InitializeComponent();
+        // Knopf-Stile (Style="{DynamicResource NinaPm.Button…}"), gemeinsam mit der jeweils anderen Vorlage.
+        MergedDictionaries.Add(new ButtonStyles());
     }
 }
