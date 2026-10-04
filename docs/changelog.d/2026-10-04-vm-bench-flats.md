@@ -5,3 +5,5 @@
 - **Agent-Auftrag `set-trained-flats`:** schreibt trainierte Belichtungen je Filterposition und Binning ins Prüfstand-Profil (mit Sicherung); der Lauf prüft, dass NINA sie geladen hat – kein Training von Hand.
 - **Schritt `restartAfterLog`:** NINA-Neustart, sobald eine Log-Zeile zum n-ten Mal (verschieden) erscheint, danach Geräte und Sequenz wieder an (P-12: Neustart in der 2. Flat-Kombination).
 - **Test-Server:** Szenario-Optionen `flats.count` und `flats.onRecord` (vorhandene Flats je Projekt ohne zweite Nacht); Szenarien `vm-flats`, `vm-flats-auto` mit kopflosen Gegenstücken und benannten Prüfungen.
+- **Agent `install-plugin`:** wartet bis 30 s, bis Windows die Plugin-DLLs nach NINAs Ende freigibt (vorher „Access denied“ auf `e_sqlite3.dll`).
+- **Protokoll `vm-flats`** (P-12 + P-35 auf echtem NINA): alle Prüfungen grün. Der Flip wird dort nicht geprüft: Das Simulator-Teleskop meldet kurz nach dem Flip wieder `pierWest`.

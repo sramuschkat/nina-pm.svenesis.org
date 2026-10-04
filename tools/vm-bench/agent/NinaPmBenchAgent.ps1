@@ -92,8 +92,12 @@ function Invoke-Job($Job) {
             $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($hash -ne ([string]$Job.args.sha256).ToLowerInvariant()) { throw "SHA-256 stimmt nicht ($hash)" }
             Stop-Nina
-            if (Test-Path $PluginDir) { Remove-Item -Path (Join-Path $PluginDir '*') -Recurse -Force }
-            else { New-Item -ItemType Directory -Path $PluginDir | Out-Null }
+            # Windows gibt die DLL-Sperren erst kurz nach dem Prozessende frei (13:12 am 04.10.: e_sqlite3.dll gesperrt).
+            for ($i = 1; Test-Path (Join-Path $PluginDir '*'); $i++) {
+                try { Remove-Item -Path (Join-Path $PluginDir '*') -Recurse -Force }
+                catch { if ($i -ge 15) { throw }; Start-Sleep -Seconds 2 }
+            }
+            if (-not (Test-Path $PluginDir)) { New-Item -ItemType Directory -Path $PluginDir | Out-Null }
             Expand-Archive -Path $zip -DestinationPath $PluginDir -Force
             Remove-Item $zip -Force
             if ($Job.args.start) { Start-Nina ([string]$Job.args.profileId) }

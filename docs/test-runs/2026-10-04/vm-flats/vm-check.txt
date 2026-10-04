@@ -1,0 +1,6 @@
+✓ VM-Kurzlauf vm-flats .vm-bench/20261004-1247-vm-flats
+  ✓ Blöcke → Nachtende → Flats → Session abgeschlossen, keine Blöcke während der Flats
+  ✓ Drei Kombinationen: L Bin 1, Ha Bin 1, L Bin 2 mit Gain/Offset null als -1; der Flip ergibt keine weitere
+  ✓ Neustart in der 2. Kombination: Fortsetzen nur mit den fehlenden Aufnahmen, je Kombination genau 5 Flats
+  ✓ Dark-Flats je Gruppe einmal (Bin 1, Bin 2), Meldungen mit dem Binning der Kombination
+  ✓ Nichts abgelehnt

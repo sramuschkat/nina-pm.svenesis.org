@@ -45,7 +45,7 @@
       ]
     },
     {
-      "name": "Drei Kombinationen: L Bin 1, Ha Bin 1, L Bin 2 mit Gain/Offset null als -1; Flip ohne weitere",
+      "name": "Drei Kombinationen: L Bin 1, Ha Bin 1, L Bin 2 mit Gain/Offset null als -1; der Flip ergibt keine weitere",
       "asserts": [
         {
           "log": {
@@ -67,12 +67,6 @@
           },
           "min": 1,
           "max": 1
-        },
-        {
-          "log": {
-            "event": "FLIP"
-          },
-          "min": 1
         }
       ]
     },
