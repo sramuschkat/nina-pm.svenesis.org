@@ -18,6 +18,30 @@ public static class ChartPalette
     /// <summary><c>chart-min-alt</c></summary>
     public const string MinAltitude = "#e5484d";
 
+    /// <summary><c>chart-frame</c>: Grund der Plangrafik (Tag).</summary>
+    public const string Frame = "#10151c";
+
+    /// <summary><c>chart-sky-night</c> (<c>rgb(14, 24, 36)</c>): Dämmerungsbänder, je Stufe deckender.</summary>
+    public const string SkyNight = "#0e1824";
+
+    /// <summary><c>chart-mark-civil</c>: Tageslicht/bürgerliche Dämmerung über dem Grund.</summary>
+    public const string Civil = "#9cc1ee";
+
+    /// <summary><c>chart-axis</c>: Stundenmarken und Beschriftung.</summary>
+    public const string Axis = "#9aa7b6";
+
+    /// <summary><c>chart-now</c>: Jetzt-Linie.</summary>
+    public const string Now = "#e5484d";
+
+    /// <summary><c>chart-meridian</c>: Flip-Marken.</summary>
+    public const string Meridian = "#c9a3ff";
+
+    /// <summary><c>chart-recommended</c>: Prüfliste ✓.</summary>
+    public const string Ok = "#2ecc71";
+
+    /// <summary><c>chart-mark-sun</c>: Prüfliste ⚠.</summary>
+    public const string Warn = "#f0a93b";
+
     public static string ForSeries(int index) => index < 0 ? Moon : Series[index % Series.Count];
 }
 

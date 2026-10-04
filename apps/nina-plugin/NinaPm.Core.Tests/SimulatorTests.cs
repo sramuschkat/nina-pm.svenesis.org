@@ -257,6 +257,16 @@ public sealed class SimulatorTests
         Assert.Equal(ChartPalette.Marker, Token("chart-marker"));
         Assert.Equal(ChartPalette.Moon, Token("chart-moon"));
         Assert.Equal(ChartPalette.MinAltitude, Token("chart-min-alt"));
+        Assert.Equal(ChartPalette.Frame, Token("chart-frame"));
+        Assert.Equal(ChartPalette.Civil, Token("chart-mark-civil"));
+        Assert.Equal(ChartPalette.Axis, Token("chart-axis"));
+        Assert.Equal(ChartPalette.Now, Token("chart-now"));
+        Assert.Equal(ChartPalette.Meridian, Token("chart-meridian"));
+        Assert.Equal(ChartPalette.Ok, Token("chart-recommended"));
+        Assert.Equal(ChartPalette.Warn, Token("chart-mark-sun"));
+        var rgb = Regex.Match(tokens, @"'chart-sky-night': 'rgb\((\d+), (\d+), (\d+)\)'");
+        Assert.Equal(ChartPalette.SkyNight,
+            "#" + string.Concat(Enumerable.Range(1, 3).Select(i => int.Parse(rgb.Groups[i].Value, System.Globalization.CultureInfo.InvariantCulture).ToString("x2"))));
         Assert.Equal(ChartPalette.Series[1], ChartPalette.ForSeries(7));
         Assert.Equal(ChartPalette.Moon, ChartPalette.ForSeries(-1));
     }
