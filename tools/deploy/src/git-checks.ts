@@ -12,7 +12,12 @@ const SHA = /^[0-9a-f]{40}$/;
  * Gibt den Commit zurück, wirft mit Begründung.
  */
 export function checkHeadIsFreshOriginMain(git: Cmd): string {
-  if (!git(['fetch', '--quiet', 'origin', 'main']).ok)
+  // Bis zu drei Versuche: ein paralleler Fetch (Desktop-App, zweites Terminal) sperrt kurz `origin/main`
+  // („cannot lock ref“, 04.10.2026) – das ist kein Grund, den Deploy abzubrechen.
+  let fetched = false;
+  for (let i = 0; i < 3 && !fetched; i += 1)
+    fetched = git(['fetch', '--quiet', 'origin', 'main']).ok;
+  if (!fetched)
     throw new Error(
       '`git fetch origin main` ist gescheitert (Netz, Anmeldung?) – ohne aktuellen origin/main wird nicht deployt.',
     );
