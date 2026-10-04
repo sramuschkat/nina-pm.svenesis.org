@@ -137,16 +137,17 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
     /// </summary>
     private async Task ReportCompletedAsync(bool acked, CancellationToken token)
     {
-        if (Listener?.Paused == true || CompletedSession(store) is not { } completed) return;
+        if (Listener?.Paused == true || ClosedSession(store) is not { } completed) return;
         var pending = store.OutboxCount();
         if (!acked && pending > 0) return;
         if (store.OutboxPeek(MaxBatch).Any(e => e.Kind == OutboxKinds.SessionPatch && e.SessionId == completed.Id)) return;
-        var patch = new NinaSessionPatch { Status = NinaSessionPatchStatus.Completed, EndedAtUtc = completed.EndedAtUtc, OutboxPending = pending };
+        var patch = new NinaSessionPatch { Status = completed.Status, EndedAtUtc = completed.EndedAtUtc, OutboxPending = pending };
         try
         {
             await api.PatchAsync(completed.Id, patch, token).ConfigureAwait(false);
             log.Event("API", ("status", 200), ("call", "sessions"));
-            log.Event("SESSION", ("session", completed.Id), ("status", "completed"), ("pending", pending));
+            log.Event("SESSION", ("session", completed.Id), ("status", completed.Status == NinaSessionPatchStatus.Aborted ? "aborted" : "completed"),
+                ("pending", pending));
             if (pending == 0) store.SetState(StateKeys.CompletedSession, null);
         }
         catch (NinaApiException ex)
@@ -206,14 +207,15 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                         return Result.Sent;
                     }
                     // Abschluss meldet den Stand beim Senden (alles davor ist quittiert, NIN5-7).
-                    if (patch.Status == NinaSessionPatchStatus.Completed) patch.OutboxPending = Math.Max(0, store.OutboxCount() - 1);
+                    if (patch.Status is NinaSessionPatchStatus.Completed or NinaSessionPatchStatus.Aborted)
+                        patch.OutboxPending = Math.Max(0, store.OutboxCount() - 1);
                     var response = await api.PatchAsync(session, patch, token).ConfigureAwait(false);
                     log.Event("API", ("status", 200), ("call", call));
                     if (patch.Status != NinaSessionPatchStatus.Running)
                     {
                         log.Event("SESSION", ("session", session), ("status", patch.Status == NinaSessionPatchStatus.Completed ? "completed" : "aborted"),
                             ("pending", patch.OutboxPending ?? 0));
-                        if (patch.Status == NinaSessionPatchStatus.Completed && patch.OutboxPending == 0) store.SetState(StateKeys.CompletedSession, null);
+                        if (patch.OutboxPending == 0 && ClosedSession(store)?.Id == session) store.SetState(StateKeys.CompletedSession, null);
                     }
                     Listener?.SessionPatched(session, patch, response);
                     return Result.Sent;
@@ -325,18 +327,28 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
     }
 
     /// <summary>Gespeicherter Abschluss (<c>sessionId|endedAtUtc</c>) oder <c>null</c>.</summary>
-    public static (Guid Id, DateTimeOffset EndedAtUtc)? CompletedSession(LocalStore store)
+    public static (Guid Id, DateTimeOffset EndedAtUtc)? CompletedSession(LocalStore store) =>
+        ClosedSession(store) is { } c ? (c.Id, c.EndedAtUtc) : null;
+
+    /// <summary>Gemerkter Abschluss mit Status (<c>sessionId|endedAtUtc[|aborted]</c>; ohne Zusatz <c>completed</c>).</summary>
+    public static (Guid Id, DateTimeOffset EndedAtUtc, NinaSessionPatchStatus Status)? ClosedSession(LocalStore store)
     {
-        var value = store.GetState(StateKeys.CompletedSession);
-        if (value?.Split('|') is not [var id, var ended]) return null;
-        return Guid.TryParse(id, out var g) && DateTimeOffset.TryParse(ended, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var e)
-            ? (g, e)
+        var parts = store.GetState(StateKeys.CompletedSession)?.Split('|');
+        if (parts is null || parts.Length is < 2 or > 3) return null;
+        var status = parts.Length == 3 && parts[2] == "aborted" ? NinaSessionPatchStatus.Aborted : NinaSessionPatchStatus.Completed;
+        return Guid.TryParse(parts[0], out var g) && DateTimeOffset.TryParse(parts[1], CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var e)
+            ? (g, e, status)
             : null;
     }
 
-    /// <summary>Abschluss merken, solange Meldungen offen sind.</summary>
-    public static void RememberCompleted(LocalStore store, Guid id, DateTimeOffset endedAtUtc) =>
-        store.SetState(StateKeys.CompletedSession, $"{id}|{UtcText.Format(endedAtUtc)}");
+    /// <summary>
+    /// Abschluss (<c>completed</c> bzw. <c>aborted</c>) merken, solange Meldungen offen sind: die Outbox meldet den Stand nach
+    /// jedem Leeren nach, bis 0 – auch nach einem Abbruch, sonst liefen Abschluss und Bericht erst nach 6 h (Analyse 04.10.2026).
+    /// </summary>
+    public static void RememberCompleted(LocalStore store, Guid id, DateTimeOffset endedAtUtc,
+        NinaSessionPatchStatus status = NinaSessionPatchStatus.Completed) =>
+        store.SetState(StateKeys.CompletedSession,
+            $"{id}|{UtcText.Format(endedAtUtc)}{(status == NinaSessionPatchStatus.Aborted ? "|aborted" : "")}");
 
     private static T Read<T>(string json) => JsonConvert.DeserializeObject<T>(json, NinaJson.Settings())!;
 }

@@ -15,12 +15,19 @@
 import { withTx } from '../tx';
 import { ProjectRepository } from './project';
 import type { Database } from '../types';
-import type { Kysely } from 'kysely';
+import type { ExpressionBuilder, Kysely } from 'kysely';
 import { sql } from 'kysely';
 
 export const STALE_NO_HEARTBEAT_MS = 10 * 60_000;
 export const STALE_AFTER_SESSION_END_MS = 2 * 3_600_000;
 export const CLOSE_AFTER_END_MS = 6 * 3_600_000;
+/** Offline-Modus länger als die Höchstdauer (`OFFLINE_MAX_MS`, 14 Tage): dann doch verwaist. */
+export const OFFLINE_STALE_MS = 14 * 86_400_000;
+/**
+ * Bericht einer verwaisten Session frühestens 1 h nach dem Verwaisen: kommt das Plugin zurück, zieht `rearmClose` ihn
+ * zurück und der Abschluss legt ihn mit den nachgemeldeten Aufnahmen neu an (Analyse 04.10.2026).
+ */
+export const STALE_REPORT_GRACE_MS = 3_600_000;
 
 export interface StaleSession {
   readonly tenantId: string;
@@ -35,6 +42,21 @@ export interface StaleSession {
 export async function markStaleSessions(db: Kysely<Database>, now: Date): Promise<StaleSession[]> {
   const heartbeatLimit = new Date(now.getTime() - STALE_NO_HEARTBEAT_MS);
   const endLimit = new Date(now.getTime() - STALE_AFTER_SESSION_END_MS);
+  // Offline-Modus (execution.md §6): keine stale-Markierung, keine Alarme – erst wenn er länger als erlaubt dauert.
+  const offlineLimit = new Date(now.getTime() - OFFLINE_STALE_MS);
+  // Beide Schwellen auch im UPDATE: ein Heartbeat zwischen Auswahl und Schreiben gewinnt (Analyse 04.10.2026).
+  const due = (eb: ExpressionBuilder<Database, 'session'>) =>
+    eb.or([
+      eb.and([
+        eb('offlineSince', 'is', null),
+        eb(eb.fn.coalesce('lastHeartbeatAt', 'startedAt'), '<', heartbeatLimit),
+      ]),
+      eb.and([
+        eb('sessionEndUtc', 'is not', null),
+        eb('sessionEndUtc', '<', endLimit),
+        eb.or([eb('offlineSince', 'is', null), eb('offlineSince', '<', offlineLimit)]),
+      ]),
+    ]);
   const candidates = await db
     .selectFrom('session as s')
     .innerJoin('rig as r', (j) =>
@@ -58,7 +80,11 @@ export async function markStaleSessions(db: Kysely<Database>, now: Date): Promis
           eb('s.offlineSince', 'is', null),
           eb(eb.fn.coalesce('s.lastHeartbeatAt', 's.startedAt'), '<', heartbeatLimit),
         ]),
-        eb.and([eb('s.sessionEndUtc', 'is not', null), eb('s.sessionEndUtc', '<', endLimit)]),
+        eb.and([
+          eb('s.sessionEndUtc', 'is not', null),
+          eb('s.sessionEndUtc', '<', endLimit),
+          eb.or([eb('s.offlineSince', 'is', null), eb('s.offlineSince', '<', offlineLimit)]),
+        ]),
       ]),
     )
     .orderBy('s.tenantId')
@@ -76,6 +102,7 @@ export async function markStaleSessions(db: Kysely<Database>, now: Date): Promis
       .where('tenantId', '=', c.tenantId)
       .where('id', '=', c.id)
       .where('status', '=', 'running')
+      .where(due)
       .executeTakeFirst();
     if (Number(updated.numUpdatedRows) === 0) continue;
     out.push({
@@ -145,7 +172,11 @@ export async function sessionsDueForClose(
     const ended = r.endedAt === null ? null : new Date(r.endedAt);
     const mark = s?.darknessEndUtc ?? s?.sessionEndUtc ?? null;
     const reportAt = new Date(
-      Math.max(ended?.getTime() ?? now.getTime(), mark ? Date.parse(mark) : 0),
+      Math.max(
+        ended?.getTime() ?? now.getTime(),
+        mark ? Date.parse(mark) : 0,
+        r.status === 'stale' ? now.getTime() + STALE_REPORT_GRACE_MS : 0,
+      ),
     );
     out.push({ tenantId: r.tenantId, sessionId: r.id, endedAt: ended, reportAt });
   }

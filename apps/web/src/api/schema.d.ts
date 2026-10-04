@@ -21431,7 +21431,7 @@ export interface components {
                 name: string;
             }[];
             meridianFlip?: {
-                triggerPresent: boolean;
+                triggerPresent?: boolean | null;
                 useSideOfPier: boolean;
                 recenter: boolean;
                 autoFocusAfterFlip: boolean;

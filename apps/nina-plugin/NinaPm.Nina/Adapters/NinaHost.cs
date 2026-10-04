@@ -54,9 +54,12 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// <summary>NINAs Mediatoren (Heartbeat-Einstellungen, AP-16e).</summary>
     internal NinaMediators Mediators => m;
 
-    /// <summary>Trigger der Vorfahren des zuletzt laufenden Containers; ohne Container keine (Heartbeat, §6).</summary>
-    internal IEnumerable<NINA.Sequencer.Trigger.ISequenceTrigger> CurrentTriggers() =>
-        Container is null ? [] : AncestorTriggers().ToList();
+    /// <summary>
+    /// Trigger der Vorfahren des zuletzt laufenden Containers; ohne Container <c>null</c> = unbekannt (Heartbeat, §6) – nicht
+    /// „keine“, sonst meldete der Server nach jedem NINA-Start fehlende Flip- und Autofokus-Trigger (Analyse 04.10.2026).
+    /// </summary>
+    internal IEnumerable<NINA.Sequencer.Trigger.ISequenceTrigger>? CurrentTriggers() =>
+        Container is null ? null : AncestorTriggers().ToList();
 
     /// <summary>Container, der gerade ausgeführt wird (setzt <see cref="NinaPmContainer.Execute"/>).</summary>
     public NinaPmContainer? Container { get; set; }

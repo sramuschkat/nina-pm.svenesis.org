@@ -168,6 +168,8 @@ export {
   CLOSE_AFTER_END_MS,
   STALE_AFTER_SESSION_END_MS,
   STALE_NO_HEARTBEAT_MS,
+  STALE_REPORT_GRACE_MS,
+  OFFLINE_STALE_MS,
   activeAdminIds,
   alertSentSince,
   markStaleSessions,

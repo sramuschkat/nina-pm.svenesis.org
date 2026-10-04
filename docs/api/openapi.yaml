@@ -16244,7 +16244,9 @@ components:
             - "null"
           properties:
             triggerPresent:
-              type: boolean
+              type:
+                - boolean
+                - "null"
             useSideOfPier:
               type: boolean
             recenter:
@@ -16264,7 +16266,6 @@ components:
               type: number
               minimum: 0
           required:
-            - triggerPresent
             - useSideOfPier
             - recenter
             - autoFocusAfterFlip
