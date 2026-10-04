@@ -494,7 +494,14 @@ export type ReportProject = Schemas['ReportProject'];
 
 /** Projektbericht S-63 (AP-34): Zeitraum (Nacht-Schlüssel), Status, Rig, Typ. */
 export const reportsApi = {
-  projects: (q: { from?: string; to?: string; status?: string; rigId?: string; type?: string }) => {
+  projects: (q: {
+    from?: string;
+    to?: string;
+    status?: string;
+    rigId?: string;
+    type?: string;
+    projectId?: string;
+  }) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(q)) if (v) p.set(k, v);
     const s = p.toString();
