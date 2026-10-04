@@ -117,7 +117,7 @@ internal sealed partial class NinaHost
     /// Auto Brightness Flat, Sky Flat): Filter, Gain, Offset, Binning und Anzahl. Dark-Flats mit Anzahl 0 werden
     /// übersprungen (Gruppe erledigt, NIN-15).
     /// </summary>
-    private static void Apply(ISequenceContainer container, FlatComboRun run, FilterInfo? filter)
+    internal static void Apply(ISequenceContainer container, FlatComboRun run, FilterInfo? filter)
     {
         foreach (var item in container.GetItemsSnapshot())
         {

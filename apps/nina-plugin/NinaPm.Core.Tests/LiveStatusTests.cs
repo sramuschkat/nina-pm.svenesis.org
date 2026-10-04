@@ -27,6 +27,21 @@ public sealed class LiveStatusTests
             blocked, finished, OutboxPending: 3, DeadLetters: 1, Offline: false, TestBanner: false, UtcText.Parse(now));
 
     [Fact]
+    public void Flats_zeigen_Zustand_Primaerziel_Filter_Kamera_und_mechanischen_Winkel()
+    {
+        var flat = new NinaPm.Core.Flats.FlatCombination
+        {
+            FilterShort = "Ha", NinaFilter = "HA", Gain = -1, Offset = -1, Binning = 2, ReadoutIndex = 0, ReadoutName = "Low Noise",
+            MechDg = 451, Targets = [new NinaPm.Core.Flats.FlatTarget(Guid.NewGuid(), null, "NGC 7000")],
+        };
+        var s = LiveStatusBuilder.Build(Inputs("2026-09-18T11:00:00Z") with { FlatsRunning = true, Flat = flat });
+        Assert.Equal(LiveState.Flats, s.State);
+        Assert.Equal("NGC 7000", s.Target);
+        Assert.Equal(45.1, s.RotationDeg);
+        Assert.Equal(new LiveExposure("Ha", null, null, null, 2, "Low Noise"), s.Exposure);
+    }
+
+    [Fact]
     public void Blockliste_aus_dem_Plan_mit_Zustaenden_und_Namen()
     {
         var transit = Plan.Blocks[0];

@@ -14,6 +14,9 @@ public enum LiveState
     Paused,
     Blocked,
     Finished,
+
+    /// <summary>Flat-Lauf am Nachtende (Heartbeat <c>flats</c>, FA-NIN-13).</summary>
+    Flats,
 }
 
 /// <summary>Zeile der Blockliste „Heutige Ziele“.</summary>
@@ -72,7 +75,9 @@ public sealed record LiveInputs(
     bool TestBanner,
     DateTimeOffset Now,
     NinaBootstrap? Bootstrap = null,
-    bool SafetyPaused = false);
+    bool SafetyPaused = false,
+    bool FlatsRunning = false,
+    Flats.FlatCombination? Flat = null);
 
 public static class LiveStatusBuilder
 {
@@ -88,18 +93,23 @@ public static class LiveStatusBuilder
         var state = i.NightFinished ? LiveState.Finished
             : i.Blocked is not null ? LiveState.Blocked
             : i.Running is not null ? LiveState.Running
+            : i.FlatsRunning ? LiveState.Flats
             : i.SafetyPaused ? LiveState.Paused
             : LiveState.Waiting;
         var e = i.Running is null ? null : i.CurrentEntry;
+        // Während der Flats: Primärziel, Filter, Kamera und mechanischer Winkel der laufenden Kombination.
+        var flat = state == LiveState.Flats ? i.Flat : null;
         return new LiveStatus(
             state,
             i.Blocked is { } r ? Code(r) : null,
             i.Blocked is { } rr && Planning.NightLoop.Recoverable(rr),
-            i.Running is { } run ? TargetTitle.For(run, i.Targets) : null,
+            i.Running is { } run ? TargetTitle.For(run, i.Targets) : flat?.Targets.FirstOrDefault()?.Name,
             i.Running?.RaDeg,
             i.Running?.DecDeg,
-            i.Running?.RotationDeg,
-            e is null ? null : new LiveExposure(e.Filter, e.ExposureS, e.Gain, e.Offset, e.Binning, e.ReadoutMode),
+            i.Running?.RotationDeg ?? (flat is null ? null : flat.MechDg / 10.0),
+            e is not null ? new LiveExposure(e.Filter, e.ExposureS, e.Gain, e.Offset, e.Binning, e.ReadoutMode)
+            : flat is null ? null
+            : new LiveExposure(flat.FilterShort, null, flat.Gain == -1 ? null : flat.Gain, flat.Offset == -1 ? null : flat.Offset, flat.Binning, flat.ReadoutName),
             blocks.FirstOrDefault(b => b.State == LiveBlockState.Pending)?.Start,
             blocks,
             i.OutboxPending,

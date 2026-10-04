@@ -4,7 +4,13 @@
  * Mondprofile, Nacht-Tabelle ab der Mittagsnacht und `serverTimeUtc` als einzige Uhrquelle.
  */
 import { z } from 'zod';
-import { filterTypes, flatsSources, playbackModes, sortChainKeys, strategies } from '../../generated/enums';
+import {
+  filterTypes,
+  flatsSources,
+  playbackModes,
+  sortChainKeys,
+  strategies,
+} from '../../generated/enums';
 import { NightKey, Text, UtcInstant, Uuid, Version } from './common';
 
 export const NinaReadoutMode = z.object({ index: z.number().int().min(0), name: Text });

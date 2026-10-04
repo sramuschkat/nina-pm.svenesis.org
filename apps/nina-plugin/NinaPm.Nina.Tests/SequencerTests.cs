@@ -106,7 +106,7 @@ public sealed class SequencerTests
         return service.Object;
     }
 
-    private static NinaPmContainer NewContainer() => new(
+    internal static NinaPmContainer NewContainer() => new(
         Profile(),
         Mock.Of<ITelescopeMediator>(), Mock.Of<IImagingMediator>(), Mock.Of<ICameraMediator>(), Mock.Of<IFilterWheelMediator>(),
         Mock.Of<IRotatorMediator>(), Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
@@ -452,4 +452,10 @@ public sealed class SequencerTests
         if (expectedMin is null) Assert.Null(minutes);
         else Assert.Equal(expectedMin.Value, minutes!.Value, 6);
     }
+}
+
+/// <summary>Container-Fabrik der Sequencer-Tests für andere Testklassen.</summary>
+internal static class SequencerTestsAccess
+{
+    public static NinaPmContainer NewContainer() => SequencerTests.NewContainer();
 }

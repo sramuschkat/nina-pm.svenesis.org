@@ -55,7 +55,24 @@ Speichern: *Save Sequence As* → `one-night-safety.json`.
 Wie 1, aber im Container „Ziel“ **ohne** *Loop While Safe* und **ohne** den Container „Sicherung“ (H2); die
 Wiederherstellung am Anfang von „Ziel“ und der Container „Blöcke“ bleiben. Speichern als `one-night.json`.
 
-## 3. Vor dem Einchecken
+## 3. „Mit Flats“ – `with-flats.json` (AP-50)
+
+Wie 1 („Eine Nacht mit Safety“). Zusätzlich im Baustein *NINA-PM Instructions* (Container „Blöcke“) den Bereich
+**„Flats am Nachtende“** aufklappen und die drei Boxen füllen (FA-NIN-17, `execution.md` §7):
+
+1. **Vor Flats** (einmal): *Stop Guiding* (Guider) → Park-Variante *Park Scope* (Telescope), Home-Variante *Find Home* →
+   *Set Tracking* → *Stopped*; mit Flat-Panel *Close Cover* und *Toggle Light* → *On* (Flat Panel). Für **Himmelsflats**
+   (Rig: Flat-Quelle *Himmel*) nicht parken und das Panel weglassen.
+2. **Je Kombination:** *Trained Flat Exposure* (Flat Panel), direkt danach *Trained Dark Flat Exposure* (Flat Panel), bei
+   beiden *Keep Panel Closed* **an** (NT-39). Filter, Gain, Offset, Binning und Anzahl **nicht** eintragen – das Plugin
+   schreibt sie je Kombination hinein (Anzahl aus den Rig-Einstellungen). Für Himmelsflats statt dessen *Sky Flat*.
+3. **Nach Flats** (einmal): *Toggle Light* → *Off*, *Open Cover* nur, wenn das Panel tagsüber offen stehen soll.
+
+Die Box *Je Kombination* entscheidet, ob Flats laufen: ist sie leer, nimmt das Plugin trotz eingeschalteter Flats keine
+auf (Hinweis im Log). Speichern als `with-flats.json`. Entsteht beim VM-Termin für P-12 in NINA (das Flat-Panel liefert
+der OmniSim-*Cover Calibrator*); bis dahin fehlt die Datei im Ordner `Samples/`.
+
+## 4. Vor dem Einchecken
 
 - Keine Gerätewerte, die nur zu einem Rig passen (Filter, Pfade, Profilnamen); Temperatur −10 °C und AF-Intervall
   60 min als neutrale Vorgaben.
@@ -66,7 +83,7 @@ Wiederherstellung am Anfang von „Ziel“ und der Container „Blöcke“ bleib
   Scope* hinter *NINA-PM Wait until Safe or Night End* entfernt). Beim nächsten VM-Termin in NINA laden, mit dieser
   Liste vergleichen und unverändert mit *Save Sequence As* wieder speichern; der NINA-Export ersetzt die Skriptfassung.
 
-## 4. Testkopie für Läufe tagsüber (Test-Server)
+## 5. Testkopie für Läufe tagsüber (Test-Server)
 
 Für Läufe gegen `pnpm nina-test-server` eine Kopie der Sequenz verwenden und darin *Wait if Sun Altitude* **löschen**,
 sonst wartet NINA bis zur Dämmerung; *Run Autofocus* darf für Kurztests ebenfalls gelöscht werden. **Nicht nur

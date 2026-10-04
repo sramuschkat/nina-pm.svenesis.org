@@ -24,6 +24,7 @@ public sealed class LiveStatusView(LiveStatus s)
         LiveState.Paused => Texts.LivePaused,
         LiveState.Blocked => Texts.LiveBlocked,
         LiveState.Finished => Texts.LiveFinished,
+        LiveState.Flats => Texts.LiveFlats,
         _ => Texts.LiveWaiting,
     } + (Status.Offline ? $" · {Texts.LiveOffline}" : "");
 

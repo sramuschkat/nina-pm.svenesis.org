@@ -118,14 +118,17 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-41](AP-41.md) | Transitrechnung | M | AP-40, AP-08b | – | ☑ 30.09.2026 |
 | [AP-42](AP-42.md) | Exoplaneten-Bildschirm S-22 | M | AP-41 | – | ☑ 30.09.2026 |
 | [AP-43](AP-43.md) | Exoplaneten-Projekt und Transit-Beobachtungen | L | AP-42, AP-12c | – | ☑ 30.09.2026 |
-| [AP-44](AP-44.md) | Scheduler-Reservierung und Plugin-Transitblock | M | AP-43, AP-16h | H-15 | ◐ |
-| [AP-45](AP-45.md) | Transit-Auswertung und Ergebnisimport | M | AP-44 | H-19 | ☐ |
+| [AP-44](AP-44.md) | Scheduler-Reservierung und Plugin-Transitblock | M | AP-43, AP-16h | H-15 | ☑ 04.10.2026 |
+| [AP-45](AP-45.md) | Transit-Auswertung und Ergebnisimport | M | AP-44 | H-19 | ☐ zurückgestellt |
+
+**AP-45 zurückgestellt** (Sven, 04.10.2026): wartet auf die Beispieldateien aus H-19; R5 beginnt vorher mit AP-50.
 
 ## R5
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-50](AP-50.md) | Flat-Handling im Plugin | L | AP-16h | H-15 | ☐ |
+| [AP-50](AP-50.md) | Flat-Handling im Plugin | L | AP-16h | H-15 | ◐ |
+| [AP-50b](AP-50b.md) | Auto-Flats je Projekt | M | AP-50 | H-15 | ☐ |
 | [AP-52](AP-52.md) | Tagesschleife | M | AP-50 | H-15 | ☐ |
 | [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ☐ |
 | [AP-54](AP-54.md) | Mandanten-Export/-Import | M | AP-17 | – | ☐ |
