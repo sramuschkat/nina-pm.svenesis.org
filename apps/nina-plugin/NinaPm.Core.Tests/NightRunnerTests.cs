@@ -244,6 +244,102 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Equal(NinaHeartbeatState.Idle, runner.HeartbeatState(offline: false));
     }
 
+    // ---- Analyse 04.10.2026, Paket 2: Nachtablauf -----------------------------------------------------------------
+
+    [Fact]
+    public async Task Neue_Ziele_waehrend_des_Wartens_auf_einen_spaeten_Block_planen_sofort_neu()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan 01:00, nächster Block (Transit) erst 02:05:30, Sperre bis 01:05
+        clock.UtcNow = UtcText.Parse("2026-09-18T01:10:00Z");
+        var changed = Example<NinaTargets>("targets.response");
+        api.OnTargets = e => Serve(e, changed, "\"t-2\"");
+        // Freigabe im Web: der Heartbeat meldet ein neues ETag.
+        runner.HeartbeatAnswered(new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, TargetsEtag = "\"t-2\"" }, clock.UtcNow);
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T02:05:30Z")); // nicht bis zum Blockstart gewartet
+    }
+
+    [Fact]
+    public async Task Zuruecksetzen_beendet_das_Warten_auf_einen_spaeten_Block()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        nina.OnDelay = until => runner.Reset(); // während des Wartens im Plugin auf Zurücksetzen gedrückt
+        await runner.RunOnceAsync(default);
+        nina.OnDelay = null;
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T02:05:30Z"));
+        await runner.RunOnceAsync(default);
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Lease_lost_bis_zum_Nachtende_bricht_die_Session_ab_und_beendet_die_Nacht()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        runner.HeartbeatAnswered(new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = true } }, clock.UtcNow, session);
+        Assert.Equal(NinaHeartbeatBlockedReason.Lease_lost, runner.Loop.Blocked);
+
+        var plan = PlanStore.Load(store, "2026-09-17")!.Plan;
+        clock.UtcNow = (plan.DarknessEndUtc ?? plan.SessionEndUtc).AddMinutes(1);
+        await runner.RunOnceAsync(default); // Nachtende: Session abbrechen
+        Assert.Equal((session, NinaSessionPatchStatus.Aborted), (api.Patches[^1].Id, api.Patches[^1].Patch.Status));
+        Assert.Null(runner.SessionId);
+        Assert.Null(runner.Loop.Blocked);
+
+        await runner.RunOnceAsync(default); // Nacht schließen → Ende-Bereich (Parken)
+        Assert.False(runner.HasBlocksRemaining);
+    }
+
+    [Fact]
+    public async Task Heartbeat_Antwort_einer_frueheren_Session_bzw_ohne_Lease_sperrt_nicht()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var lost = new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, Lease = new Lease { LeaseLost = true } };
+        runner.HeartbeatAnswered(lost, clock.UtcNow, Guid.NewGuid()); // gesendet mit der abgeschlossenen Session
+        Assert.Null(runner.Loop.Blocked);
+        runner.HeartbeatAnswered(new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, Lease = null }, clock.UtcNow, runner.SessionId);
+        Assert.Null(runner.Loop.Blocked); // Server kennt die Session (noch) nicht
+    }
+
+    [Fact]
+    public async Task Veraltete_offene_Session_wird_vor_dem_Zuruecksetzen_abgeschlossen()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        clock.UtcNow = UtcText.Parse("2026-09-19T20:00:00Z"); // nächster Abend, Nacht gewechselt
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal((session, NinaSessionPatchStatus.Completed), (api.Patches[^1].Id, api.Patches[^1].Patch.Status));
+        Assert.NotEqual(session, runner.SessionId);
+    }
+
+    [Fact]
+    public async Task Tagesschleife_endet_nicht_mit_veralteten_Lieferangaben()
+    {
+        var empty = Example<NinaTargets>("targets.response");
+        empty.DeliveryNights = [new() { Night = "2026-09-17", Projects = 0 }, new() { Night = "2026-09-18", Projects = 0 }, new() { Night = "2026-09-19", Projects = 0 }];
+        api.OnTargets = e => Serve(e, empty, "\"t-0\"");
+        var runner = Runner();
+        await runner.RefreshAsync(default);
+        var settings = new DayLoopSettings();
+        var log = new NinaPmLog(sink);
+
+        Assert.Equal(DayLoopDecision.No_delivery, DayCycle.Boundary(runner, new DayLoopState(), settings, clock.UtcNow, starting: true, log));
+        // Cache von gestern (älter als 6 h): unbekannt → weiter; Warten auf Zeit frischt die Ziele danach auf.
+        var later = clock.UtcNow + DayCycle.DeliveryMaxAge + TimeSpan.FromMinutes(1);
+        Assert.Equal(DayLoopDecision.Continue, DayCycle.Boundary(runner, new DayLoopState(), settings, later, starting: true, log));
+    }
+
     [Fact]
     public async Task Abgearbeiteter_Block_laeuft_nicht_noch_einmal_auch_vor_seinem_Ende()
     {

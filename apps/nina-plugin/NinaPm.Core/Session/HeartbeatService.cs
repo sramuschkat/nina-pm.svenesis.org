@@ -72,7 +72,7 @@ public sealed class HeartbeatService(
                 log.Event("HEARTBEAT", ("state", "offline"), ("status", 200));
                 return;
             }
-            runner.HeartbeatAnswered(response, sent);
+            runner.HeartbeatAnswered(response, sent, body.SessionId);
             log.Event("HEARTBEAT", ("state", Name(state)), ("status", 200));
         }
         catch (NinaApiException ex) when (ex.StatusCode is 408 or 429 or >= 500)

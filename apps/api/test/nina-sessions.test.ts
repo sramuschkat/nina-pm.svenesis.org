@@ -707,6 +707,15 @@ describe('Offline-Session für eine vergangene Nacht (P0-2, FA-NIN-04, night.md 
   });
 });
 
+describe('Heartbeat mit unbekannter Session (Analyse 04.10.2026)', () => {
+  it('offline angelegt, noch nicht gemeldet → keine Lease-Angabe statt leaseLost', async () => {
+    const t = await setup();
+    const beat = await t.hb(t.tokens.a1, { sessionId: id() });
+    expect(beat.status).toBe(200);
+    expect(beat.body.lease).toBeNull();
+  });
+});
+
 describe('Admin-Freigabe bleibt an der Session (P1-3, M5)', () => {
   it('nach Übernahme und Ende der Ersatz-Session holt die freigegebene Session die Lease auf keinem Weg zurück', async () => {
     const t = await setup();

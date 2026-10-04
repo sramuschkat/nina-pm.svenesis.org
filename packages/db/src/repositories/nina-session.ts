@@ -467,7 +467,10 @@ export class NinaSessionRepository extends TenantRepo {
       const lease = await this.lockLease(trx);
       if (!input.sessionId) return null;
       const s = await this.session(input.sessionId, trx);
-      if (!s) return { untilUtc: null, leaseLost: true };
+      // Unbekannte Session (offline angelegt, Anlage liegt noch in der Outbox des Plugins): keine Lease-Angabe statt
+      // `leaseLost` – sonst brach das Plugin den laufenden Block mit `lease_lost` ab, bis die Outbox die Session nachmeldete
+      // (Analyse 04.10.2026).
+      if (!s) return null;
       await trx
         .updateTable('session')
         .set({
