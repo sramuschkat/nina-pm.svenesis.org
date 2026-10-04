@@ -1,6 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
 using Moq;
 using NINA.Core.Model.Equipment;
 using NINA.Equipment.Interfaces.Mediator;
@@ -97,19 +95,11 @@ public sealed class FlatAdapterTests
     }
 
     [Fact]
-    public void Flat_Box_rendert_ohne_Binding_Fehler() => Sta.Run(() =>
+    public void Flat_Box_Vorlage_ist_vorhanden() => Sta.Run(() =>
     {
+        // Nicht gerendert: NINAs DragOverBehavior braucht die laufende NINA-Anwendung (wie bei den Trigger-Boxen).
         var resources = new NinaPmResources();
-        var template = (DataTemplate)resources["NinaPm.FlatBox"];
-        var host = new Border
-        {
-            Background = Brushes.White,
-            Width = 480,
-            Child = new ContentControl { Content = new SequentialContainer(), ContentTemplate = template, Tag = "Vor Flats" },
-        };
-        host.Measure(new Size(480, double.PositiveInfinity));
-        host.Arrange(new Rect(host.DesiredSize));
-        host.UpdateLayout();
-        Assert.True(host.ActualHeight > 30);
+        Assert.IsType<DataTemplate>(resources["NinaPm.FlatBox"]);
+        Assert.IsType<NinaPm.Nina.Ui.ZeroToVisibility>(resources["NinaPm.ZeroToVisible"]);
     });
 }
