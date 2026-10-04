@@ -608,29 +608,61 @@ export interface SettleResult {
   readonly expired: number;
   readonly observed: number;
   readonly missed: number;
+  /** *Beobachtet* mit nachgemeldeten Aufnahmen neu gezählt (ohne neues Discord-Ereignis). */
+  readonly recounted?: number;
+}
+
+/**
+ * Wartezeit nach Fensterende, bevor eine festgelegte Beobachtung abgeschlossen wird (transit.md §8): Die letzte
+ * Belichtung der Serie kann über das Fensterende hinauslaufen, und die Aufnahmemeldungen kommen aus dem Postausgang
+ * des Plugins erst Sekunden bis Minuten später. Ohne Wartezeit würde eine beobachtete Beobachtung zuerst *verpasst*
+ * (Discord „Transit verpasst“) und kurz darauf *beobachtet*.
+ */
+export const TRANSIT_SETTLE_GRACE_MS = 30 * 60_000;
+/** Nachmeldungen werden 14 Tage nach Fensterende noch gezählt (FA-EXO-21). */
+const LATE_CAPTURES_MS = 14 * 86_400_000;
+
+/** Aufnahmen einer Beobachtung je Session; verknüpfte zählen die ihrer primären (FA-EXO-33a). */
+async function transitCaptures(
+  db: Db,
+  tenantId: string,
+  o: { id: string; primaryObservationId: string | null },
+) {
+  const captures = await db
+    .selectFrom('capture')
+    .select(['sessionId', (eb) => eb.fn.countAll<string>().as('n')])
+    .where('tenantId', '=', tenantId)
+    .where('transitObservationId', '=', o.primaryObservationId ?? o.id)
+    .groupBy('sessionId')
+    .orderBy('sessionId')
+    .execute();
+  return { captures, count: captures.reduce((s, c) => s + Number(c.n), 0) };
 }
 
 /**
  * Zeitplan `tick-5min` (transit.md §8, FA-FRG-09, FA-EXO-21) über alle Mandanten:
  * - gewünscht und Frist verstrichen → storniert; eingereichtes Projekt → zurückgegeben („Frist verpasst“);
- * - festgelegt und Fensterende erreicht → beobachtet (Aufnahmen vorhanden) bzw. verpasst;
- * - verpasst mit nachgemeldeten Aufnahmen (≤ 14 Tage) → beobachtet.
+ * - festgelegt und Fensterende + `TRANSIT_SETTLE_GRACE_MS` erreicht → beobachtet (Aufnahmen vorhanden) bzw. verpasst;
+ * - verpasst mit nachgemeldeten Aufnahmen (≤ 14 Tage) → beobachtet;
+ * - beobachtet mit weiteren nachgemeldeten Aufnahmen (≤ 14 Tage) → Anzahl neu gezählt, ohne neues Ereignis.
  * Verknüpfte Beobachtungen zählen die Aufnahmen ihrer primären.
  */
 export async function settleTransits(db: Kysely<Database>, now: Date): Promise<SettleResult> {
   let expired = 0;
   let observed = 0;
   let missed = 0;
+  let recounted = 0;
+  const settleBefore = new Date(now.getTime() - TRANSIT_SETTLE_GRACE_MS);
   const due = await db
     .selectFrom('transitObservation')
-    .select(['id', 'tenantId', 'projectId', 'status'])
+    .select(['id', 'tenantId', 'projectId', 'status', 'primaryObservationId', 'acquiredCount'])
     .where((eb) =>
       eb.or([
         eb.and([eb('status', '=', 'requested'), eb('confirmDeadlineUtc', '<', now)]),
-        eb.and([eb('status', '=', 'locked'), eb('windowEndUtc', '<=', now)]),
+        eb.and([eb('status', '=', 'locked'), eb('windowEndUtc', '<=', settleBefore)]),
         eb.and([
-          eb('status', '=', 'missed'),
-          eb('windowEndUtc', '>', new Date(now.getTime() - 14 * 86_400_000)),
+          eb('status', 'in', ['missed', 'observed']),
+          eb('windowEndUtc', '>', new Date(now.getTime() - LATE_CAPTURES_MS)),
         ]),
       ]),
     )
@@ -638,6 +670,11 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
     .orderBy('id')
     .execute();
   for (const d of due) {
+    // Nachmeldungen: ohne neue Aufnahmen keine Transaktion (läuft alle 5 min über 14 Tage).
+    if (d.status === 'missed' || d.status === 'observed') {
+      const { count } = await transitCaptures(db, d.tenantId, d);
+      if (d.status === 'missed' ? count === 0 : count === Number(d.acquiredCount)) continue;
+    }
     const result = await withTx(
       db,
       async (trx) => {
@@ -711,18 +748,21 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
           }
           return 'expired' as const;
         }
-        if (ms(o.windowEndUtc) > now.getTime()) return null;
+        if (ms(o.windowEndUtc) > settleBefore.getTime()) return null;
         // Aufnahmen hängen an der primären Beobachtung (FA-EXO-33a).
-        const source = o.primaryObservationId ?? o.id;
-        const captures = await trx
-          .selectFrom('capture')
-          .select(['sessionId', (eb) => eb.fn.countAll<string>().as('n')])
-          .where('tenantId', '=', d.tenantId)
-          .where('transitObservationId', '=', source)
-          .groupBy('sessionId')
-          .orderBy('sessionId')
-          .execute();
-        const count = captures.reduce((s, c) => s + Number(c.n), 0);
+        const { captures, count } = await transitCaptures(trx, d.tenantId, o);
+        if (o.status === 'observed') {
+          // Schon gemeldet: nur die Anzahl nachziehen, kein zweites Discord-Ereignis.
+          if (count === Number(o.acquiredCount)) return null;
+          await trx
+            .updateTable('transitObservation')
+            .set({ acquiredCount: count })
+            .where('tenantId', '=', d.tenantId)
+            .where('id', '=', o.id)
+            .execute();
+          return 'recounted' as const;
+        }
+        if (o.status !== 'locked' && o.status !== 'missed') return null;
         // Discord „Transit beobachtet/verpasst“ (FA-DIS-03, AP-60): Name, Abdeckung, Ein-/Austritt in Standortzeit.
         const discord = async (eventKey: 'transit.observed' | 'transit.missed') => {
           const p = await trx
@@ -782,6 +822,7 @@ export async function settleTransits(db: Kysely<Database>, now: Date): Promise<S
     if (result === 'expired') expired += 1;
     if (result === 'observed') observed += 1;
     if (result === 'missed') missed += 1;
+    if (result === 'recounted') recounted += 1;
   }
-  return { expired, observed, missed };
+  return { expired, observed, missed, ...(recounted > 0 ? { recounted } : {}) };
 }

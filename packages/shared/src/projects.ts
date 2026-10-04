@@ -153,7 +153,10 @@ export interface DeliverableInput {
   readonly projectType: 'deep_sky' | 'exoplanet';
   readonly lines: readonly (ProgressLine & { readonly disabledForNight?: string | null })[];
   readonly overshootPct: number;
-  /** Exoplaneten: eine festgelegte Beobachtung mit Fensterende in der Zukunft (AP-40). */
+  /**
+   * Exoplaneten: eine festgelegte, primäre Beobachtung **in dieser Nacht** mit Fensterende in der Zukunft und aktiver
+   * Transit-Zeile (AP-44, transit.md §9); der Aufrufer bestimmt sie je Nacht.
+   */
   readonly hasLockedTransit?: boolean;
 }
 
