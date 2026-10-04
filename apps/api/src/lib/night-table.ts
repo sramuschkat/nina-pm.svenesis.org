@@ -133,11 +133,27 @@ export interface NightTableSite {
   readonly timeZone: string;
 }
 
+export interface TwilightCrossingRow {
+  duskUtc: string | null;
+  dawnUtc: string | null;
+}
+
 export interface NightTableRow {
   night: string;
   noonStartUtc: string;
   noonEndUtc: string;
   nightWindowEndUtc: string;
+  /** Nur mit `{ twilight: true }` (Bootstrap, AP-52) – nie in Plan-Eingaben (`inputHash`). */
+  twilight?: {
+    civil: TwilightCrossingRow;
+    nautical: TwilightCrossingRow;
+    astronomical: TwilightCrossingRow;
+  };
+}
+
+export interface NightTableOptions {
+  /** Dämmerungen je Nacht mitliefern (*NINA-PM Warten auf Zeit*, AP-52). */
+  readonly twilight?: boolean;
 }
 
 export interface NightTable {
@@ -153,7 +169,12 @@ export const tzdataVersion = (): string => process.versions.tz ?? 'unknown';
  * `count` Nächte ab `from` (Nacht-Schlüssel). Nächte, deren lokaler Mittag nicht existiert
  * (Datumslinie), entfallen (AST-N16); ist `from` selbst so eine Nacht → `422 validation.failed`.
  */
-export function buildNightTable(site: NightTableSite, from: string, count: number): NightTable {
+export function buildNightTable(
+  site: NightTableSite,
+  from: string,
+  count: number,
+  options: NightTableOptions = {},
+): NightTable {
   const [y, m, d] = from.split('-').map(Number) as [number, number, number];
   // Großzügiger Rahmen: ±2 Tage um die Tabelle, damit jeder lokale Mittag abgedeckt ist.
   const startMs = Date.UTC(y, m - 1, d) - 2 * DAY;
@@ -179,6 +200,15 @@ export function buildNightTable(site: NightTableSite, from: string, count: numbe
       noonStartUtc: iso(t.noonStartUtc),
       noonEndUtc: iso(t.noonEndUtc),
       nightWindowEndUtc: iso(t.nightWindow.endUtc),
+      ...(options.twilight
+        ? {
+            twilight: {
+              civil: crossing(t.twilight.civil),
+              nautical: crossing(t.twilight.nautical),
+              astronomical: crossing(t.twilight.astronomical),
+            },
+          }
+        : {}),
     });
   }
   return {
@@ -192,6 +222,10 @@ export function buildNightTable(site: NightTableSite, from: string, count: numbe
 }
 
 const iso = (unixSec: number) => isoUtc(new Date(unixSec * 1000));
+const crossing = (c: { startUtc: number | null; endUtc: number | null }): TwilightCrossingRow => ({
+  duskUtc: c.startUtc === null ? null : iso(c.startUtc),
+  dawnUtc: c.endUtc === null ? null : iso(c.endUtc),
+});
 
 /**
  * Nacht-Tabelle für `GET /web/v1/sites/{id}/nights` (NT-02): ab `from` bzw. ohne `from` ab der
@@ -202,9 +236,10 @@ export function siteNights(
   now: Date,
   from: string | undefined,
   count: number,
+  options: NightTableOptions = {},
 ) {
   const noon = noonNightKey(site.timeZone, now.getTime());
-  const table = buildNightTable(site, from ?? noon, count);
+  const table = buildNightTable(site, from ?? noon, count, options);
   const around = from === undefined && count >= 2 ? table : buildNightTable(site, noon, 2);
   return { currentNight: currentNight(around, isoUtc(now)), ...table };
 }

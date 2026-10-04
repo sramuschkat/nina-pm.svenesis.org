@@ -19124,6 +19124,44 @@ export interface components {
                  * @example 2026-09-18T13:00:00Z
                  */
                 nightWindowEndUtc: string;
+                twilight?: {
+                    civil: {
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        duskUtc: string | null;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        dawnUtc: string | null;
+                    };
+                    nautical: {
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        duskUtc: string | null;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        dawnUtc: string | null;
+                    };
+                    astronomical: {
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        duskUtc: string | null;
+                        /**
+                         * Format: date-time
+                         * @example 2026-09-18T13:00:00Z
+                         */
+                        dawnUtc: string | null;
+                    };
+                };
             }[];
             timeZoneTransitions: {
                 /**
@@ -19432,6 +19470,14 @@ export interface components {
                 };
             })[];
             mosaicPanelsIndependent: boolean;
+            deliveryNights?: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                projects: number;
+            }[];
         };
         NinaSimulation: {
             /**

@@ -190,6 +190,15 @@ export const NinaTargets = z
       .array(z.discriminatedUnion('type', [NinaDeepSkyProject, NinaExoplanetProject]))
       .max(500),
     mosaicPanelsIndependent: z.boolean(),
+    /**
+     * Auslieferungsmenge der aktuellen und der zwei folgenden Nächte (FA-NIN-07, AP-52): Anzahl auslieferbarer Projekte
+     * je Nacht (FA-SYN-02, mit Startdatum und Planungsbedarf). Die *NINA-PM Tagesschleife* läuft weiter, solange eine
+     * dieser Nächte (ab der nächsten auszuführenden) nicht leer ist.
+     */
+    deliveryNights: z
+      .array(z.object({ night: NightKey, projects: z.number().int().min(0) }))
+      .max(3)
+      .optional(),
   })
   .meta({ id: 'NinaTargets' });
 export type NinaTargets = z.infer<typeof NinaTargets>;
