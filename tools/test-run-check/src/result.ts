@@ -28,8 +28,8 @@ export interface RunResult {
   readonly artifacts: string[];
 }
 
-/** `P-01 … P-37` und `P-15b`. */
-export const PROTOCOL = /^P-(0[1-9]|[12][0-9]|3[0-7]|15b)$/;
+/** `P-01 … P-38` und `P-15b`. */
+export const PROTOCOL = /^P-(0[1-9]|[12][0-9]|3[0-8]|15b)$/;
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -44,7 +44,7 @@ export function validateResult(raw: unknown, expectedSteps: number | null): stri
     if (typeof raw[key] !== 'string' || raw[key] === '') errors.push(`${key}: Zeichenkette fehlt`);
   };
   if (typeof raw.protocol !== 'string' || !PROTOCOL.test(raw.protocol))
-    errors.push(`protocol: „${String(raw.protocol)}“ ist nicht P-01 … P-37 oder P-15b`);
+    errors.push(`protocol: „${String(raw.protocol)}“ ist nicht P-01 … P-38 oder P-15b`);
   if (typeof raw.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw.date))
     errors.push('date: JJJJ-MM-TT erwartet');
   str('pluginVersion');

@@ -552,6 +552,9 @@ public static class StateKeys
     /// <summary>Filterposition je NINA-Filtername beim letzten Flat-Lauf (Trained Flats, NT-39).</summary>
     public const string TrainedFlatPositions = "trainedFlatPositions";
 
+    /// <summary>Ausgefallene Flat-Kombinationen zum Nachholen am nächsten Morgen (Auto-Flats, AP-50b).</summary>
+    public const string FlatCarryOver = "flatCarryOver";
+
     /// <summary>Anlage-Daten der aktuellen Session (JSON <c>NinaSessionCreate</c>) für das Nachmelden (§8, <c>session.unknown</c>).</summary>
     public const string SessionCreate = "sessionCreate";
 

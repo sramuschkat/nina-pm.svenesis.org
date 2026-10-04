@@ -1,7 +1,8 @@
 namespace NinaPm.Core.Flats;
 
 /// <summary>Einstellungen für die Kombinationsbildung aus Rig und Bootstrap.</summary>
-public sealed record FlatPlanOptions(double RotationToleranceDeg, bool FullSet, bool Sky, IReadOnlyList<RigFilter> Filters);
+/// <param name="Auto">Auto-Flats je Projekt (AP-50b); <c>null</c> = aus.</param>
+public sealed record FlatPlanOptions(double RotationToleranceDeg, bool FullSet, bool Sky, IReadOnlyList<RigFilter> Filters, FlatAutoSettings? Auto = null);
 
 /// <summary>
 /// Kombinationsbildung der Nacht (FA-NIN-17, execution.md §7, flip-rotation.md §4): die mechanischen Winkel aller

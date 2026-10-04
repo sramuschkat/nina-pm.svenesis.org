@@ -1,0 +1,32 @@
+{
+  "name": "auto-flats",
+  "description": "Zwei Nächte (L/Ha, zwei Ziele mit 0° und 45°), Flats vom Panel mit Auto-Flats einmal je Projekt: Nacht 2 ohne Flats",
+  "protocols": ["P-38"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L", "Ha"],
+      "exposureS": 60,
+      "rotationDeg": 0,
+      "project": "m31"
+    },
+    {
+      "durationMin": 15,
+      "filters": ["L", "Ha"],
+      "exposureS": 60,
+      "rotationDeg": 45,
+      "project": "ngc7000"
+    }
+  ],
+  "darknessEndInMin": 40,
+  "sessionEndInMin": 90,
+  "multiNight": true,
+  "flats": {
+    "enabled": true,
+    "source": "panel",
+    "auto": {
+      "mode": "once_per_project",
+      "intervalDays": 7
+    }
+  }
+}

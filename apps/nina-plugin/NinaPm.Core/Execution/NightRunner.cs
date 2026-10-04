@@ -155,6 +155,7 @@ public sealed class NightRunner(
                     store.EnqueueOutbox(OutboxKinds.Capture, JsonConvert.SerializeObject(capture, NinaJson.Settings()), session, capture.NightPlanId);
             };
             value.ReportEvent = (kind, code, data) => ReportEvent(kind, code, data: data);
+            value.Records = projectId => Targets?.Projects.FirstOrDefault(p => p.Id == projectId)?.FlatsOnRecord;
         }
     }
 
@@ -367,7 +368,9 @@ public sealed class NightRunner(
         }
         // Flats erst am Nachtende bilden: der Winkel-Repräsentant wird beim Anlegen eingefroren (flip-rotation.md §4, NIN5-8).
         var flatsOn = FlatsOn(b);
-        var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b));
+        // Nachholen nur mit eingeschalteten Flats und Auto-Flats (AP-50b) und nur mit Session (sonst würden die Flats nicht gemeldet).
+        if (flats is not null && !(b.Rig.Scheduler.Flats.Enabled && AutoFlats(b))) flats.DropCarryOver("Flats oder Auto-Flats aus");
+        var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b), includeCarryOver: hasSession);
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: flatsOn, FlatsPending: flatsPending, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
             DoneBlocks: DoneBlocks(stored));
@@ -383,7 +386,7 @@ public sealed class NightRunner(
             case NightAction.ResetStaleSession:
                 if (flats is not null)
                     foreach (var oldNight in store.NightsWithOpenFlats(row.Night))
-                        flats.SkipOpen(oldNight, "night_stale");
+                        flats.SkipOpen(oldNight, "night_stale", carryOver: AutoFlats(b));
                 foreach (var key in new[] { StateKeys.SessionId, StateKeys.NightPlanId, StateKeys.BlockIndex, StateKeys.Night, StateKeys.DoneBlocks })
                     store.SetState(key, null);
                 TonightLog.Clear(store);
@@ -417,7 +420,7 @@ public sealed class NightRunner(
                 await flats!.RunAsync(FlatSettings(b, row.Night, context.Plan), token).ConfigureAwait(false);
                 return;
             case NightAction.SkipFlats:
-                flats?.SkipOpen(row.Night, "session_end");
+                flats?.SkipOpen(row.Night, "session_end", carryOver: AutoFlats(b));
                 return;
             default:
                 // Stop beendet die Schleife über HasBlocksRemaining.
@@ -442,6 +445,9 @@ public sealed class NightRunner(
         return false;
     }
 
+    /// <summary>Auto-Flats je Projekt eingeschaltet (AP-50b); ältere Server liefern keinen Wert (= aus).</summary>
+    private static bool AutoFlats(NinaBootstrap b) => b.Rig.Scheduler.Flats.Auto is { Mode: not AutoMode.Off };
+
     public static FlatPlanOptions FlatOptions(NinaBootstrap b) => new(
         b.Rig.Rotator.ToleranceDeg,
         b.Rig.Scheduler.Flats.FullSet,
@@ -452,7 +458,8 @@ public sealed class NightRunner(
             FiltersType.Narrowband => "narrowband",
             FiltersType.Luminance => "luminance",
             _ => "broadband",
-        }))]);
+        }))],
+        b.Rig.Scheduler.Flats.Auto is { } auto ? new FlatAutoSettings(auto.Mode, auto.IntervalDays) : null);
 
     private FlatRunSettings FlatSettings(NinaBootstrap b, string night, StoredPlan? stored)
     {
@@ -1092,7 +1099,8 @@ public sealed class NightRunner(
     public async Task CloseNightUnsafeAsync(CancellationToken token)
     {
         // Flats nur, falls sicher (H2): offene Kombinationen der Nacht übersprungen.
-        if (flats is not null && store.GetState(StateKeys.Night) is { } night) flats.SkipOpen(night, "unsafe");
+        if (flats is not null && store.GetState(StateKeys.Night) is { } night)
+            flats.SkipOpen(night, "unsafe", carryOver: bootstrap is { } b && AutoFlats(b));
         await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);
         Loop.SessionCompleted();
         Loop.NightFinishedSet();

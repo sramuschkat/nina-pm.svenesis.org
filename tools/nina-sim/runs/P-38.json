@@ -1,0 +1,71 @@
+{
+  "protocol": "P-38",
+  "description": "Auto-Flats je Projekt (einmal je Projekt): Nacht 1 nimmt Flats auf, Nacht 2 mit denselben Zielen überspringt alle Kombinationen (vorhandene Flats aus targets). Zwischen den Nächten wird NINA neu gestartet (ohne Neustart bleibt die Nachtschleife nach Nacht 1 falsch – Tagesschleife erst mit AP-52).",
+  "parts": [
+    {
+      "scenario": "auto-flats",
+      "untilMin": 1540,
+      "setup": {},
+      "steps": [
+        {
+          "atMin": 1430,
+          "sim": "crash"
+        },
+        {
+          "atMin": 1438,
+          "sim": "start"
+        }
+      ]
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "done"
+          }
+        },
+        "min": 4,
+        "max": 4
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "skipped",
+            "reason": "covered"
+          }
+        },
+        "min": 4,
+        "max": 4
+      },
+      {
+        "log": {
+          "event": "FLATS_START"
+        },
+        "min": 5,
+        "max": 5
+      },
+      {
+        "report": "sessions",
+        "where": {
+          "status": "completed"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "report": "captures",
+        "where": {
+          "frameType": "flat"
+        },
+        "min": 80,
+        "max": 80
+      }
+    ]
+  ]
+}

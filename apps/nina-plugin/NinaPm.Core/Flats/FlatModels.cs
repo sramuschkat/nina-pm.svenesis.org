@@ -77,6 +77,12 @@ public sealed class FlatCombination
     /// <summary><c>flat_exposure_off</c> wurde für die erste Aufnahme geprüft.</summary>
     public bool ExposureChecked { get; set; }
 
+    /// <summary>Auto-Flats (AP-50b): Regel geprüft (einmal, bevor die Kombination beginnt).</summary>
+    public bool AutoChecked { get; set; }
+
+    /// <summary>Nachgeholt aus einer früheren Nacht (AP-50b): Nacht, in der die Kombination entstand.</summary>
+    public string? CarriedFrom { get; set; }
+
     /// <summary>Gespeicherte Dateien (vollständiger Pfad) für die Kopie in die Ordner der übrigen Ziele.</summary>
     public List<string> SavedFiles { get; set; } = [];
 

@@ -52,7 +52,12 @@ export interface Scenario {
   readonly darknessEndInMin?: number;
   /** Nachtende (`sessionEndUtc`) in Minuten nach „jetzt“; Standard: Dunkelheitsende + 60 min. */
   readonly sessionEndInMin?: number;
-  readonly flats?: { readonly enabled: boolean; readonly source?: 'panel' | 'sky' };
+  readonly flats?: {
+    readonly enabled: boolean;
+    readonly source?: 'panel' | 'sky';
+    /** Auto-Flats je Projekt (AP-50b); Standard aus. */
+    readonly auto?: { readonly mode: 'off' | 'once_per_project' | 'time_based'; readonly intervalDays: number };
+  };
   /** Weitere NINA-Instanzen am gleichen Rig (Szenario `lease`): zusätzliche Tokens `npm_test2`, … */
   readonly extraInstances?: number;
   /** Echte Nachttabelle Starfront ohne relative Nachtmarken (Szenario `current-night`, P-29). */
