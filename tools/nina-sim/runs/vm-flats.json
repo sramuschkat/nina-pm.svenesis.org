@@ -1,0 +1,168 @@
+{
+  "name": "vm-flats",
+  "description": "P-12 + P-35 auf echtem NINA (≈ 25 min): Flats nach der Nacht für L/Ha Bin 1 und L Bin 2 (Gain/Offset null), NINA-Neustart während der 2. Kombination, Fortsetzen mit den fehlenden Aufnahmen. Kopflos: Absturz bei Minute 14,55 (2. Kombination), Start bei 15,5.",
+  "scenario": "vm-flats",
+  "untilMin": 45,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 14.55,
+      "sim": "crash"
+    },
+    {
+      "atMin": 15.5,
+      "sim": "start"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Blöcke → Nachtende → Flats → Session abgeschlossen, keine Blöcke während der Flats",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "BLOCK_END"
+            },
+            {
+              "event": "FLATS_START"
+            },
+            {
+              "event": "SESSION",
+              "where": {
+                "status": "completed"
+              }
+            }
+          ]
+        },
+        {
+          "none": {
+            "event": "BLOCK_START"
+          },
+          "after": {
+            "event": "FLATS_START"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Drei Kombinationen: L Bin 1, Ha Bin 1, L Bin 2 mit Gain/Offset null als -1; der Flip ergibt keine weitere",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLATS_END",
+            "where": {
+              "status": "done"
+            }
+          },
+          "min": 3,
+          "max": 3
+        },
+        {
+          "log": {
+            "event": "FLATS_END",
+            "where": {
+              "combination": "L_b2_g-1_o-1_r0",
+              "status": "done"
+            }
+          },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Neustart in der 2. Kombination: Fortsetzen nur mit den fehlenden Aufnahmen, je Kombination genau 5 Flats",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLATS_RESUME",
+            "where": {
+              "combination": "Ha_b1_g-1_o-1_r0"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat",
+            "filterShortName": "Ha"
+          },
+          "min": 5,
+          "max": 5
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat",
+            "filterShortName": "Ha"
+          },
+          "sameValue": "flatsPlanned"
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat"
+          },
+          "min": 15,
+          "max": 15
+        }
+      ]
+    },
+    {
+      "name": "Dark-Flats je Gruppe einmal (Bin 1, Bin 2), Meldungen mit dem Binning der Kombination",
+      "asserts": [
+        {
+          "log": {
+            "event": "DARKFLAT_GROUP",
+            "where": {
+              "status": "done"
+            }
+          },
+          "min": 2,
+          "max": 2
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "dark_flat",
+            "binning": 1
+          },
+          "min": 5,
+          "max": 5
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "dark_flat",
+            "binning": 2
+          },
+          "min": 5,
+          "max": 5
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat",
+            "binning": 2,
+            "gain": null,
+            "offset": null
+          },
+          "min": 5,
+          "max": 5
+        }
+      ]
+    },
+    {
+      "name": "Nichts abgelehnt",
+      "asserts": [
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

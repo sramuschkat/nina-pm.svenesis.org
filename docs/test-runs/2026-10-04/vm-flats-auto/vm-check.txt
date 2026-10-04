@@ -1,0 +1,3 @@
+✓ VM-Kurzlauf vm-flats-auto .vm-bench/20261004-1313-vm-flats-auto
+  ✓ Alle Kombinationen covered (FLATS_END reason=covered), kein Flat-Lauf
+  ✓ Session abgeschlossen, nichts abgelehnt

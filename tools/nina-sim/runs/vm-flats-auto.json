@@ -1,0 +1,59 @@
+{
+  "name": "vm-flats-auto",
+  "description": "P-38 auf echtem NINA (≈ 20 min): Auto-Flats einmal je Projekt, beide Projekte haben schon Flats → alle Kombinationen covered, kein Flat-Lauf, Session abgeschlossen.",
+  "scenario": "vm-flats-auto",
+  "untilMin": 40,
+  "setup": {},
+  "steps": [],
+  "checks": [
+    {
+      "name": "Alle Kombinationen covered (FLATS_END reason=covered), kein Flat-Lauf",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLATS_END",
+            "where": {
+              "status": "skipped",
+              "reason": "covered"
+            }
+          },
+          "min": 2,
+          "max": 2
+        },
+        {
+          "log": {
+            "event": "FLATS_START"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat"
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Session abgeschlossen, nichts abgelehnt",
+      "asserts": [
+        {
+          "report": "sessions",
+          "where": {
+            "status": "completed"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "vm-flats",
+  "description": "VM-Lauf P-12 + P-35 (≈ 25 min): L/Ha mit Flip, dazu L in Bin 2 mit Gain/Offset null; Dunkelheit endet nach 13 min, 5 Flats/Dark-Flats je Kombination vom Panel",
+  "protocols": ["P-12", "P-35"],
+  "blocks": [
+    {
+      "durationMin": 5,
+      "filters": ["L", "Ha"],
+      "exposureS": 30,
+      "rotationDeg": 0,
+      "meridianInMin": 4,
+      "project": "m31"
+    },
+    {
+      "durationMin": 4,
+      "filters": ["L"],
+      "exposureS": 30,
+      "rotationDeg": 0,
+      "project": "ic1396",
+      "binning": 2
+    }
+  ],
+  "darknessEndInMin": 13,
+  "sessionEndInMin": 45,
+  "flats": {
+    "enabled": true,
+    "source": "panel",
+    "count": 5
+  }
+}

@@ -92,8 +92,12 @@ function Invoke-Job($Job) {
             $hash = (Get-FileHash -Path $zip -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($hash -ne ([string]$Job.args.sha256).ToLowerInvariant()) { throw "SHA-256 stimmt nicht ($hash)" }
             Stop-Nina
-            if (Test-Path $PluginDir) { Remove-Item -Path (Join-Path $PluginDir '*') -Recurse -Force }
-            else { New-Item -ItemType Directory -Path $PluginDir | Out-Null }
+            # Windows gibt die DLL-Sperren erst kurz nach dem Prozessende frei (13:12 am 04.10.: e_sqlite3.dll gesperrt).
+            for ($i = 1; Test-Path (Join-Path $PluginDir '*'); $i++) {
+                try { Remove-Item -Path (Join-Path $PluginDir '*') -Recurse -Force }
+                catch { if ($i -ge 15) { throw }; Start-Sleep -Seconds 2 }
+            }
+            if (-not (Test-Path $PluginDir)) { New-Item -ItemType Directory -Path $PluginDir | Out-Null }
             Expand-Archive -Path $zip -DestinationPath $PluginDir -Force
             Remove-Item $zip -Force
             if ($Job.args.start) { Start-Nina ([string]$Job.args.profileId) }
@@ -158,6 +162,55 @@ function Invoke-Job($Job) {
             try { $x.Save($w) } finally { $w.Dispose() }
             Start-Nina $sourceId
             return "Profil $newId"
+        }
+        'set-trained-flats' {
+            # Trainierte Flat-Belichtungen ins Profil (AP-50, VM-Läufe vm-flats*): je Filterposition und Binning ein
+            # Eintrag mit Gain/Offset -1 (NINA nimmt ihn als Rückfall für jedes Gain/Offset). Binning-Knoten nach
+            # einer Vorlage aus demselben Profil (BinningMode ist [Serializable]: Felder _x/_y statt Eigenschaften).
+            $profiles = Join-Path $env:LOCALAPPDATA 'NINA\Profiles'
+            $id = [string]$Job.args.profileId
+            if ($id -notmatch '^[0-9a-fA-F-]{36}$') { throw "Profil-Id '$id' ungültig" }
+            $path = Join-Path $profiles "$id.profile"
+            if (-not (Test-Path $path)) { throw "Profil $id nicht gefunden" }
+            Stop-Nina
+            Copy-Item -Path $path -Destination "$path.bak" -Force
+            [xml]$x = Get-Content -Path $path -Raw -Encoding UTF8
+            $fd = $x.SelectSingleNode("//*[local-name()='FlatDeviceSettings']")
+            if (-not $fd) { throw 'Profil ohne FlatDeviceSettings' }
+            $list = $fd.SelectSingleNode("*[local-name()='TrainedFlatExposureSettings']")
+            $memberNs = $fd.FirstChild.NamespaceURI
+            if (-not $list) { $list = $x.CreateElement('TrainedFlatExposureSettings', $memberNs); [void]$fd.AppendChild($list) }
+            $template = $x.SelectSingleNode("//*[local-name()='TrainedFlatExposureSetting']/*[local-name()='Binning'][*]")
+            if (-not $template) { $template = $x.SelectSingleNode("//*[(local-name()='BinningMode' or local-name()='Binning') and *[local-name()='_x']]") }
+            if (-not $template) { throw 'Keine BinningMode-Vorlage im Profil (z. B. FlatWizardSettings) gefunden' }
+            $itemNs = $list.NamespaceURI
+            $list.RemoveAll()
+            $filters = @($x.SelectNodes("//*[local-name()='FilterWheelFilters']/*")).Count
+            if ($filters -lt 1) { $filters = 1 }
+            $n = 0
+            foreach ($pos in 0..($filters - 1)) {
+                foreach ($bin in @($Job.args.binnings)) {
+                    $e = $x.CreateElement('TrainedFlatExposureSetting', $itemNs)
+                    $b = $x.CreateElement('Binning', $itemNs)
+                    foreach ($c in $template.ChildNodes) {
+                        $copy = $c.Clone()
+                        if ($copy.LocalName -match '^_?[xXyY]$') { $copy.InnerText = [string]$bin }
+                        [void]$b.AppendChild($copy)
+                    }
+                    [void]$e.AppendChild($b)
+                    $values = [ordered]@{ Brightness = [string]$Job.args.brightness; Filter = [string]$pos; Gain = '-1'; Offset = '-1'; Time = ([string]$Job.args.timeS) }
+                    foreach ($k in $values.Keys) {
+                        $m = $x.CreateElement($k, $itemNs); $m.InnerText = $values[$k]; [void]$e.AppendChild($m)
+                    }
+                    [void]$list.AppendChild($e)
+                    $n++
+                }
+            }
+            $settings = New-Object System.Xml.XmlWriterSettings
+            $settings.Encoding = New-Object System.Text.UTF8Encoding($false)
+            $w = [System.Xml.XmlWriter]::Create($path, $settings)
+            try { $x.Save($w) } finally { $w.Dispose() }
+            return "$n trainierte Flat-Belichtungen ($filters Filter), Sicherung $id.profile.bak"
         }
         'collect-log' {
             $since = [DateTime]::Parse([string]$Job.args.sinceUtc, $null, [System.Globalization.DateTimeStyles]::AdjustToUniversal)

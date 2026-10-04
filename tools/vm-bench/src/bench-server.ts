@@ -15,6 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 export type JobType =
   | 'ping'
   | 'restart-nina'
+  | 'set-trained-flats'
   | 'stop-nina'
   | 'install-plugin'
   | 'put-sequence'

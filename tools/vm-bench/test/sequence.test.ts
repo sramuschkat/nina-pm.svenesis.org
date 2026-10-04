@@ -57,3 +57,81 @@ describe('globaler Dither-Trigger (vm-smoke)', () => {
     expect(text).toContain('NINA.Sequencer.SequenceItem.Guider.Dither, NINA.Sequencer');
   });
 });
+
+describe('Flat-Boxen (vm-flats, AP-50)', () => {
+  it('hängt drei Boxen an NINA-PM Instructions, Je Kombination mit Trained Flat/Dark Flat Exposure', () => {
+    const path = benchSequence(
+      {
+        sequence: {
+          from: 'one-night-safety',
+          removeFromStart: ['WaitForSunAltitude'],
+          flats: true,
+        },
+      },
+      mkdtempSync(join(tmpdir(), 'seq-')),
+    );
+    const text = readFileSync(path, 'utf8');
+    const find = (o: unknown): Record<string, unknown> | undefined => {
+      if (Array.isArray(o)) return o.map(find).find(Boolean);
+      if (o && typeof o === 'object') {
+        const r = o as Record<string, unknown>;
+        if (String(r.$type ?? '').startsWith('NinaPm.Nina.Sequencer.NinaPmContainer')) return r;
+        return Object.values(r).map(find).find(Boolean);
+      }
+      return undefined;
+    };
+    const box = find(JSON.parse(text)) as Record<
+      string,
+      { $id: string; Items: { $values: Record<string, unknown>[] } }
+    >;
+    expect(box.FlatsSetupRunner?.Items.$values).toEqual([]);
+    expect(box.FlatsTeardownRunner?.Items.$values).toEqual([]);
+    const items = box.FlatsRunner?.Items.$values ?? [];
+    expect(items.map((i) => shortType(String(i.$type)))).toEqual([
+      'TrainedFlatExposure',
+      'TrainedDarkFlatExposure',
+    ]);
+    // Vollständig wie von NINA gespeichert (Trained*-Anweisungen leeren beim Laden ihre Unterelemente):
+    // Reihenfolge nach den NINA-Konstruktoren – Index 2 = Filter, Index 4 = Container mit Schleife und Belichtung.
+    const shape = (i: Record<string, unknown>) =>
+      (i.Items as { $values: Record<string, unknown>[] }).$values.map((x) =>
+        shortType(String(x.$type)),
+      );
+    expect(shape(items[0] as Record<string, unknown>)).toEqual([
+      'CloseCover',
+      'ToggleLight',
+      'SwitchFilter',
+      'SetBrightness',
+      'SequentialContainer',
+      'ToggleLight',
+      'OpenCover',
+    ]);
+    expect(shape(items[1] as Record<string, unknown>)).toEqual([
+      'CloseCover',
+      'ToggleLight',
+      'SwitchFilter',
+      'SetBrightness',
+      'SequentialContainer',
+      'OpenCover',
+    ]);
+    for (const i of items) {
+      expect(i.KeepPanelClosed).toBe(true);
+      expect((i.Parent as { $ref: string }).$ref).toBe(box.FlatsRunner?.$id);
+      const inner = (i.Items as { $values: Record<string, unknown>[] }).$values[4] as {
+        $id: string;
+        Conditions: { $values: { $type: string; Iterations: number; Parent: { $ref: string } }[] };
+        Items: { $values: { $type: string; ImageType: string; Parent: { $ref: string } }[] };
+      };
+      expect(shortType(inner.Conditions.$values[0]?.$type ?? '')).toBe('LoopCondition');
+      expect(inner.Conditions.$values[0]?.Parent.$ref).toBe(inner.$id);
+      expect(shortType(inner.Items.$values[0]?.$type ?? '')).toBe('TakeExposure');
+      expect(inner.Items.$values[0]?.Parent.$ref).toBe(inner.$id);
+    }
+    expect(
+      (items[1]?.Items as { $values: { Items?: { $values: { ImageType: string }[] } }[] })
+        .$values[4]?.Items?.$values[0]?.ImageType,
+    ).toBe('DARK');
+    const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

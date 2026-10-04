@@ -11,7 +11,7 @@ Claude Code fährt die VM-Läufe ohne Handgriffe: Ein kleiner Agent in der VM ho
 | Agent `C:\NinaPmBench\NinaPmBenchAgent.ps1` | VM | Aufgabenplanung „NINA-PM Bench Agent“ bei Anmeldung, in der angemeldeten Sitzung (NINA erscheint normal auf dem Bildschirm); fragt alle 3 s den Mac nach Aufträgen |
 | Advanced API (NINA-Plugin, Port 1888) | VM | Geräte verbinden, Profilwerte, Sequenz laden und starten, Reiter, Screenshots |
 
-Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log`, `update-agent` (sich selbst vom Mac neu laden) und `clone-profile` (Profil kopieren, Token der Kopie geleert): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
+Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log`, `update-agent` (sich selbst vom Mac neu laden), `clone-profile` (Profil kopieren, Token der Kopie geleert) und `set-trained-flats` (trainierte Flat-Belichtungen ins Prüfstand-Profil, Sicherung `<Profil>.profile.bak`): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
 
 Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`.
 
@@ -77,4 +77,29 @@ Safety-Monitor in Läufen (`steps`):
 - `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
 - Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
 
-Läufe: `vm-flip`, `vm-smoke`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist; `untilMin` ist die Obergrenze.
+Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist; `untilMin` ist die Obergrenze.
+
+### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
+
+Zwei kurze Läufe statt einzelner Protokolle (Sven 04.10.2026: Laufzeit optimieren):
+
+| Lauf | deckt ab | Dauer |
+|---|---|---|
+| `vm-flats` | P-12 (Reihenfolge, Kombinationen, Dark-Flat-Gruppe, Neustart in der 2. Kombination mit Fortsetzen) und P-35 (Bin 1/Bin 2, Gain/Offset `null`) | ≈ 25 min |
+| `vm-flats-auto` | P-38 (Auto-Flats einmal je Projekt: vorhandene Flats aus dem Test-Server, alle Kombinationen `covered`, kein Flat-Lauf) | ≈ 20 min |
+
+| Gerät | Simulator | Zustand |
+|---|---|---|
+| Kamera | Camera Sky Simulator for ALPACA | verbunden, −10 °C |
+| Montierung | Mount Sky Simulator for ALPACA | verbunden |
+| Filterrad | Filterwheel Sky Simulator for ALPACA | verbunden |
+| Guider | PHD2 (Simulator) | verbunden |
+| Safety-Monitor | OmniSim Safety Monitor | verbunden, sicher |
+| Flat-Panel, Rotator, Fokussierer, Kuppel | – | getrennt |
+
+- **Trainierte Flats:** Der Lauf schreibt vor dem Start je Filterposition und Binning (1, 2) eine trainierte Belichtung (1 s, Gain/Offset −1) ins Prüfstand-Profil (`set-trained-flats`, Vorlage für den Binning-Knoten aus demselben Profil) und prüft nach dem Start über die Advanced API, dass NINA sie geladen hat. Kein Training von Hand.
+- **Ohne Flat-Panel:** *Trained Flat/Dark Flat Exposure* überspringen Panel-Schritte, wenn kein Panel verbunden ist; es bleiben die Belichtungen (FLAT, Dark-Flats als DARK).
+- **Ohne Rotator:** Der Sky Simulator rendert sein Bild unabhängig vom Rotator – *Center and Rotate* käme nie auf den Winkel. Alle Lights stehen bei 0°; zwei mechanische Winkel und der Flip ohne zweite Kombination prüft der kopflose Lauf P-12.
+- **Flip im Flat-Lauf:** NINA flippt im ersten Block, aber das Sky-Simulator-Teleskop meldet ≈ 90 s danach wieder `pierWest` (Lauf 04.10.: NINA flippt am Blockende ein zweites Mal). Die Pier-Seite vor und nach der Belichtung ist dann gleich, also kein `FLIP` im Plugin-Log. Das ist ein Simulator-Artefakt; `vm-flats` prüft den Flip deshalb nicht, sondern nur, dass er keine weitere Kombination ergibt.
+- **Neustart (P-12):** Schritt `restartAfterLog`: sobald die 2. verschiedene Zeile `FLATS_START combination=` im Log steht, startet der Prüfstand NINA neu (ohne `ninapm.db` zu löschen), verbindet die Geräte und startet die Sequenz wieder.
+- **Mittelwert der Flats:** Die Simulator-Kamera liefert Sternfelder, keine hellen Flats – `WARNING code=flat_exposure_off` nach der ersten Flat je Kombination ist dort erwartet.
