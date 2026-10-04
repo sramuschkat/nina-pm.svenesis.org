@@ -288,7 +288,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     // Log ab diesem Neustart: ein vorheriger (abgebrochener) Lauf darf nicht mitzählen (04.10.2026, P-14).
     const restartMs = Date.now();
     if (r.trainedFlats) {
-      const t = await job(
+      await job(
         bench,
         'set-trained-flats',
         {
@@ -298,7 +298,6 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         },
         dir,
       );
-      log(`Agent set-trained-flats: ${t.message}`);
     }
     await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);

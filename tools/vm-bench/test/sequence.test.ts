@@ -91,12 +91,46 @@ describe('Flat-Boxen (vm-flats, AP-50)', () => {
       'TrainedFlatExposure',
       'TrainedDarkFlatExposure',
     ]);
+    // Vollständig wie von NINA gespeichert (Trained*-Anweisungen leeren beim Laden ihre Unterelemente):
+    // Reihenfolge nach den NINA-Konstruktoren – Index 2 = Filter, Index 4 = Container mit Schleife und Belichtung.
+    const shape = (i: Record<string, unknown>) =>
+      (i.Items as { $values: Record<string, unknown>[] }).$values.map((x) =>
+        shortType(String(x.$type)),
+      );
+    expect(shape(items[0] as Record<string, unknown>)).toEqual([
+      'CloseCover',
+      'ToggleLight',
+      'SwitchFilter',
+      'SetBrightness',
+      'SequentialContainer',
+      'ToggleLight',
+      'OpenCover',
+    ]);
+    expect(shape(items[1] as Record<string, unknown>)).toEqual([
+      'CloseCover',
+      'ToggleLight',
+      'SwitchFilter',
+      'SetBrightness',
+      'SequentialContainer',
+      'OpenCover',
+    ]);
     for (const i of items) {
       expect(i.KeepPanelClosed).toBe(true);
       expect((i.Parent as { $ref: string }).$ref).toBe(box.FlatsRunner?.$id);
-      // Ohne Items: NINA legt die Unterelemente selbst an.
-      expect(i.Items).toBeUndefined();
+      const inner = (i.Items as { $values: Record<string, unknown>[] }).$values[4] as {
+        $id: string;
+        Conditions: { $values: { $type: string; Iterations: number; Parent: { $ref: string } }[] };
+        Items: { $values: { $type: string; ImageType: string; Parent: { $ref: string } }[] };
+      };
+      expect(shortType(inner.Conditions.$values[0]?.$type ?? '')).toBe('LoopCondition');
+      expect(inner.Conditions.$values[0]?.Parent.$ref).toBe(inner.$id);
+      expect(shortType(inner.Items.$values[0]?.$type ?? '')).toBe('TakeExposure');
+      expect(inner.Items.$values[0]?.Parent.$ref).toBe(inner.$id);
     }
+    expect(
+      (items[1]?.Items as { $values: { Items?: { $values: { ImageType: string }[] } }[] })
+        .$values[4]?.Items?.$values[0]?.ImageType,
+    ).toBe('DARK');
     const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(ids.length);
   });
