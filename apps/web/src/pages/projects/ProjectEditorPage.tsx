@@ -81,7 +81,7 @@ import { WikipediaLink } from '../catalog/wikipedia';
 import { PanelList } from './PanelList';
 import { ChangeRequestsTab } from './ChangeRequestsTab';
 import { CommentsTab } from './CommentsTab';
-import { ChartArea, HistoryTab } from './ProjectTabs';
+import { ChartArea, HistoryTab, ProjectSessionsTab } from './ProjectTabs';
 import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
 import { ProjectImage } from './ProjectImage';
@@ -1162,6 +1162,12 @@ function Editor({
               onChange={onChange}
               onReload={onReload}
               rigPath={EQUIPMENT_PATHS.rigs}
+              // Sessions & Protokoll (S-31) neben dem Belichtungsplan: Geplantes und Aufgenommenes zusammen (Sven 04.10.2026).
+              sessionsTab={
+                saved.approvalStatus === 'approved' ? (
+                  <ProjectSessionsTab projectId={saved.id} />
+                ) : undefined
+              }
               panelsTab={
                 <PanelList
                   project={saved}
@@ -1185,7 +1191,6 @@ function Editor({
             draft={draft}
             site={site}
             exo={saved?.projectType === 'exoplanet' ? { projectId: saved.id, canUpdate } : null}
-            sessionsProjectId={saved?.approvalStatus === 'approved' ? saved.id : null}
           />
           <section className={styles.area} aria-label={t('projectEditor.tabs.imageNotes')}>
             {imagePanel}
