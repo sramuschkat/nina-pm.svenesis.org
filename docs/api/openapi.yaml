@@ -22113,6 +22113,14 @@ paths:
           required: false
           name: type
           in: query
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: projectId
+          in: query
       responses:
         "200":
           description: Bericht

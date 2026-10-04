@@ -9252,6 +9252,8 @@ export interface paths {
                     /** @description UUID */
                     rigId?: string;
                     type?: "deep_sky" | "exoplanet";
+                    /** @description UUID */
+                    projectId?: string;
                 };
                 header?: never;
                 path?: never;
