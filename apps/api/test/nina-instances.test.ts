@@ -264,11 +264,11 @@ describe('NINA-Instanzen im Web (S-42, FA-ADM-02/06)', () => {
     const diag = (await t.web(`/nina-instances/${inst.id}/diagnostics`)).body;
     const calls = diag.calls as Body[];
     expect(calls.map((c) => `${String(c.method)} ${String(c.route)} ${String(c.status)}`)).toEqual([
-      'PATCH /sessions/:sessionId 404',
+      'PATCH /sessions/:sessionId 409',
       'GET /targets 200',
       'GET /bootstrap 200',
     ]);
-    expect((diag.errors as Body[]).map((c) => c.code)).toEqual(['resource.not_found']);
+    expect((diag.errors as Body[]).map((c) => c.code)).toEqual(['session.unknown']);
     expect(diag.heartbeat).toMatchObject({ state: 'idle', pluginVersion: '1.2.0' });
     expect((diag.instance as Body).pluginVersion).toBe('1.2.0');
   });

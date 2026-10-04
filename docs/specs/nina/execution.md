@@ -342,18 +342,19 @@ Die Zuordnung Web-Filter ↔ NINA-Filtername wird **nicht** mehr zur Laufzeit ge
 
 | Antwort | Aktion |
 |---|---|
-| `2xx` | gesendet, in `sent_history` (14 Tage) |
+| `2xx` | gesendet, in `sent_history` (14 Tage); Aufnahmen mit `rejected_invalid` in der Antwort je Meldung ins Dead-Letter (TK 6.6, Analyse 04.10.2026) |
 | `408`, `429`, `5xx`, Netzfehler | Wiederholung mit Backoff (1, 2, 5, 15, 60 min), unbegrenzt |
-| `409 session.unknown` | Session erneut senden, dann Paket wiederholen |
+| `409 session.unknown` | Session erneut senden, dann Paket wiederholen; liegt die Anlage dieser Session schon im Dead-Letter, das Paket ins Dead-Letter (keine Endlosschleife). Auch Antwort auf `PATCH` einer unbekannten Session (seit 04.10.2026; fremdes Rig weiter `404`) |
 | `409 session.rig_busy` (ohne Serverantwort angelegte Session) | mit `offline: true` erneut senden; nie Dead-Letter |
 | `409 session.closed` | **kein** Reopen (NIN5-6): Paket sofort ins Dead-Letter mit Hinweis „Nacht seit &lt;Datum&gt; abgeschlossen – erneut hochladen“ (Anzeige im Plugin, Import über `POST /web/v1/rigs/{id}/import`). Ein `PATCH {status: "running"}` würde die Lease erneuern (und damit einem gerade laufenden Rig die Session entreißen) sowie `session_close`/Nachtbericht ein zweites Mal auslösen |
 | `422 nina.night_invalid` (bei `POST /plan`, `POST /sessions`) | `night` ist weder die aktuelle noch die folgende Nacht (NT-01): Bootstrap neu laden, `currentNight` neu bestimmen, einmal wiederholen; danach `blocked{plan_failed}` |
 | `409 plan.targets_etag_mismatch` | `GET /targets` neu, Plan neu, Paket einmal wiederholen |
 | `409 engine.incompatible` / `minPluginVersion` | keine neuen Blöcke, Meldung „Update nötig“, Outbox pausiert (kein Dead-Letter) |
 | `413` | Paket halbieren und erneut senden (bis Größe 1), dann Dead-Letter |
-| `422` mit `errors[]` | nur die beanstandeten Meldungen ins Dead-Letter, den Rest erneut senden |
+| `422` mit `errors[]` | nur die beanstandeten Meldungen ins Dead-Letter, den Rest erneut senden; Pfade im Server-Format `$.captures[3].…` bzw. `$.events[3].…` |
 | `401` | Senden anhalten (`blocked{token_invalid}`), Warteschlange bleibt erhalten |
-| übrige `4xx` | Dead-Letter (Anzeige im Plugin, Anzahl im Heartbeat) |
+| `403` (außer `tenant.locked`), `404` ohne Problem-Code | hängen an keiner Meldung (Origin-Prüfung, Proxy, falsche URL): Wiederholung mit Backoff wie `5xx`, kein Dead-Letter |
+| übrige `4xx` | Dead-Letter (Anzeige im Plugin, Anzahl im Heartbeat). *Dead-Letter erneut senden* auf der Optionsseite stellt Aufnahmen und Ereignisse wieder in die Outbox |
 
 ## 9. Testbetrieb ohne echte Nacht
 - `tools/nina-test-server` (AP-16a): lokaler HTTP-Server mit der NINA-API, der Pläne relativ zur aktuellen Zeit erzeugt (Blöcke ab `now + 2 min`, konfigurierbare Ziele; für Flip-Tests Ziel `RA_J2000 = LST + n min − (α_app − α_J2000)`, damit der Meridian der scheinbaren RA im Block liegt (NT-35); Transit-Fenster ab `now + 10 min`). Szenarien: `one-night`, `replan`, `replan-transit`, `transit`, `flip`, `delay`, `night-end`, `flats`, `multi-night`, **`lease`** (zwei Rechner am gleichen Rig), `mosaic-flip`, `transit-flip`, `current-night` (echte Nachttabelle Starfront), `safety`; Änderungen zur Laufzeit über `POST /test/actions {action}` mit den Aktionen `targets_change`, `pause_project`, `lock_transit`, `skip_block`, **`lease_release`** (nächste Heartbeat-Antwort trägt `leaseLost: true`), **`rig_busy`** (`POST /sessions` und `PATCH … {status: running}` antworten `409 session.rig_busy`), **`revoke_token`** (alle weiteren Aufrufe antworten `401 nina.token_invalid`), `drop_responses`/`restore_responses` (keine Antwort → Lease-Zustand `unreachable`), `clock_skew`, `filter_wheel_changed` und `clear` (setzt alle Aktionen zurück) – damit sind P-10, P-17 und P-18 ohne echten zweiten Rechner prüfbar; Auswertung über `GET /test/report` (Aufnahmen, Ereignisse, Sessions, Alarme `session_stale`/`filter_wheel_changed`, abgelehnte Anfragen), damit die Protokolle **ohne** Web-App prüfbar sind. Das Plugin nutzt ihn über die Server-URL. **Sicherheitsprüfungen dürfen nur lokal abgeschaltet werden (NIN-17):** Dunkelheits- und Höhenprüfung entfallen nur, wenn (a) in den Plugin-Optionen der sichtbare Schalter *Testbetrieb* aktiv ist, (b) die Server-URL auf `localhost`/`127.0.0.1` oder eine private IP zeigt **und** (c) die Antwort den Header `X-NPM-Test: 1` trägt. Alle drei Bedingungen müssen erfüllt sein; im Live-Status erscheint dann ein rotes Banner *Testbetrieb – Sicherheitsprüfungen aus*. Eine Gegenstelle allein kann die Prüfungen nie abschalten.

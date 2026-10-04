@@ -416,6 +416,32 @@ public sealed class LocalStore : IDisposable
     /// <summary>Anzahl der Dead-Letter-Einträge (Heartbeat <c>deadLetters</c>, Anzeige im Plugin).</summary>
     public int DeadLetterCount() => Convert.ToInt32(Scalar("SELECT COUNT(*) FROM dead_letter"));
 
+    /// <summary>Liegt die Anlage dieser Session im Dead-Letter (endgültig abgelehnt)?</summary>
+    public bool DeadLetterHasSession(Guid sessionId) =>
+        Convert.ToInt32(Scalar("SELECT COUNT(*) FROM dead_letter WHERE kind = 'session' AND session_id = $s", ("$s", sessionId.ToString()))) > 0;
+
+    /// <summary>
+    /// Aufnahmen und Ereignisse aus dem Dead-Letter wieder in die Outbox (Optionsseite *Dead-Letter erneut senden*), in der
+    /// ursprünglichen Reihenfolge; Session-Einträge bleiben. Nach einer Korrektur am Server bzw. einem Plugin-Update
+    /// gehen abgelehnte Meldungen so nicht verloren. Liefert die Anzahl.
+    /// </summary>
+    public int DeadLetterRequeue()
+    {
+        lock (gate)
+        {
+            using var tx = connection.BeginTransaction();
+            var now = UtcText.Format(clock.UtcNow);
+            using var cmd = Command(
+                "INSERT INTO outbox (session_id, night_plan_id, kind, payload, created_utc, next_attempt_utc) " +
+                "SELECT session_id, NULL, kind, payload, $now, $now FROM dead_letter WHERE kind IN ('capture', 'event') ORDER BY id", tx,
+                ("$now", now));
+            var count = cmd.ExecuteNonQuery();
+            Execute("DELETE FROM dead_letter WHERE kind IN ('capture', 'event')", tx);
+            tx.Commit();
+            return count;
+        }
+    }
+
     /// <summary>Gründe der Dead-Letter-Einträge, neueste zuerst (Optionsseite).</summary>
     public IReadOnlyList<string> DeadLetterReasons(int max)
     {

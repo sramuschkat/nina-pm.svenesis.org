@@ -112,12 +112,18 @@ public sealed class NightRunnerTests : IDisposable
         /// <summary>Eigene Antwort auf <c>POST captures</c> (wirft z. B. <c>409 session.closed</c>); <c>null</c> = 2xx.</summary>
         public Func<NinaCaptureBatch, Exception?>? OnCaptures { get; set; }
 
-        public Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token)
+        /// <summary>Status je Aufnahme in der Antwort; Standard <c>accepted</c>.</summary>
+        public Func<Captures, ResultsStatus>? CaptureStatus { get; set; }
+
+        public Task<NinaCaptureResults> CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token)
         {
             if (Offline || ReportsFail) throw new HttpRequestException("offline");
             if (OnCaptures?.Invoke(body) is { } ex) throw ex;
             CaptureBatches.Add((sessionId, body));
-            return Task.CompletedTask;
+            return Task.FromResult(new NinaCaptureResults
+            {
+                Results = [.. body.Captures.Select(c => new Results { Id = c.Id, Status = CaptureStatus?.Invoke(c) ?? ResultsStatus.Accepted })],
+            });
         }
 
         public Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token)
@@ -1041,6 +1047,135 @@ public sealed class NightRunnerTests : IDisposable
         var created = Assert.Single(api.Created);
         Assert.Equal((session!.Value, true), (created.Id, created.Offline));
         Assert.Single(api.CaptureBatches); // Session vor den Aufnahmen (FIFO)
+    }
+
+    // ---- Analyse 04.10.2026: kein Datenverlust zwischen Plugin und Server ----------------------------------------
+
+    [Theory]
+    [InlineData(500)]
+    [InlineData(503)]
+    [InlineData(429)]
+    [InlineData(408)]
+    public async Task Session_Anlage_mit_5xx_legt_die_Session_offline_an_statt_ohne_Session_zu_belichten(int status)
+    {
+        api.OnCreate = _ => throw Problem(status, "internal.error");
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId;
+        Assert.NotNull(session);
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        Assert.Equal(2, store.OutboxCount()); // Session-Anlage + Aufnahme
+
+        api.OnCreate = null;
+        await Outbox(runner).FlushAsync(default);
+        Assert.Equal((session!.Value, true), (api.Created[^1].Id, api.Created[^1].Offline));
+        Assert.Single(api.CaptureBatches);
+    }
+
+    [Fact]
+    public void Fehlerpfade_im_Serverformat_und_in_Punktform()
+    {
+        string Body(params string[] paths) => JsonConvert.SerializeObject(new { errors = paths.Select(p => new { path = p, message = "x" }) });
+        Assert.Equal([1, 3], OutboxSender.ProblemIndices(Body("$.captures[1].pierSide", "$.captures[3].panelId")).Order());
+        Assert.Equal([2], OutboxSender.ProblemIndices(Body("$.events[2].code")));
+        Assert.Equal([3], OutboxSender.ProblemIndices(Body("captures.3.exposureMidUtc")));
+        Assert.Empty(OutboxSender.ProblemIndices(Body("$.captures", "night")));
+    }
+
+    [Fact]
+    public async Task Rejected_invalid_je_Aufnahme_ins_Dead_Letter_die_uebrigen_quittiert()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var facts = Enumerable.Range(0, 3).Select(i => Facts(runner, i)).ToList();
+        foreach (var f in facts) runner.ReportCapture(f, CapturesResult.Saved, $"{f.CaptureId}.fits");
+        api.CaptureStatus = c => c.Id == facts[1].CaptureId ? ResultsStatus.Rejected_invalid : ResultsStatus.Accepted;
+
+        Assert.True(await Outbox(runner).FlushAsync(default));
+
+        Assert.Equal((0, 1), (store.OutboxCount(), store.DeadLetterCount()));
+        Assert.Contains(store.DeadLetterReasons(1), r => r.Contains("rejected_invalid", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(403, "permission.denied")]
+    [InlineData(403, null)]
+    [InlineData(404, null)]
+    public async Task Fehler_ohne_Bezug_zur_Meldung_wird_wiederholt_statt_die_Outbox_ins_Dead_Letter_zu_leeren(int status, string? code)
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        foreach (var i in Enumerable.Range(0, 3)) runner.ReportCapture(Facts(runner, i), CapturesResult.Saved, $"{i}.fits");
+        api.OnCaptures = _ => code is null
+            ? new NinaApiException("Gateway", status, "", new Dictionary<string, IEnumerable<string>>(), null)
+            : Problem(status, code);
+
+        Assert.False(await Outbox(runner).FlushAsync(default));
+
+        Assert.Equal((3, 0), (store.OutboxCount(), store.DeadLetterCount()));
+        Assert.Equal(clock.UtcNow.AddMinutes(1), store.OutboxHead()!.Value.NextAttemptUtc);
+    }
+
+    [Fact]
+    public async Task Session_unknown_nach_abgelehnter_Anlage_dreht_sich_nicht_im_Kreis()
+    {
+        api.SessionsFail = true;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        api.SessionsFail = false;
+        // Anlage endgültig abgelehnt (z. B. 422 nina.night_invalid nach > 21 Tagen), Meldungen danach session.unknown.
+        api.OnCreate = _ => throw Problem(422, "nina.night_invalid");
+        api.OnCaptures = _ => Problem(409, "session.unknown");
+
+        Assert.True(await Outbox(runner).FlushAsync(default));
+
+        Assert.Equal((0, 2), (store.OutboxCount(), store.DeadLetterCount()));
+        Assert.Single(api.Created); // keine zweite Anlage
+    }
+
+    [Fact]
+    public async Task Ereignisse_in_Paketen_bis_200()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var before = api.EventBatches.Count;
+        foreach (var _ in Enumerable.Range(0, 250)) runner.ReportEvent(EventsKind.Warning, "test");
+        await Outbox(runner).FlushAsync(default);
+        Assert.All(api.EventBatches.Skip(before), b => Assert.True(b.Batch.Events.Count <= OutboxSender.MaxEventBatch));
+        Assert.Equal(250, api.EventBatches.Skip(before).Sum(b => b.Batch.Events.Count(e => e.Code == "test")));
+    }
+
+    [Fact]
+    public async Task Spaetes_ImageSaved_nach_Sessionende_geht_an_die_Session_der_Belichtung()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        var facts = Facts(runner, 0) with { SessionId = session };
+        store.SetState(StateKeys.SessionId, null); // Session inzwischen abgeschlossen
+
+        runner.ReportCapture(facts, CapturesResult.Saved, "spaet.fits");
+
+        var entry = Assert.Single(store.OutboxPeek(10), e => e.Kind == OutboxKinds.Capture);
+        Assert.Equal(session, entry.SessionId);
+    }
+
+    [Fact]
+    public async Task Dead_Letter_erneut_senden_stellt_Aufnahmen_wieder_in_die_Outbox()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        api.OnCaptures = _ => Problem(409, "session.closed");
+        await Outbox(runner).FlushAsync(default);
+        Assert.Equal(1, store.DeadLetterCount());
+
+        Assert.Equal(1, store.DeadLetterRequeue());
+        api.OnCaptures = null;
+        Assert.True(await Outbox(runner).FlushAsync(default));
+        Assert.Equal((0, 0), (store.OutboxCount(), store.DeadLetterCount()));
+        Assert.Single(api.CaptureBatches);
     }
 
     [Fact]

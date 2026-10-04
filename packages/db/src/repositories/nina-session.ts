@@ -367,7 +367,12 @@ export class NinaSessionRepository extends TenantRepo {
   }> {
     return withTx(this.db, async (trx) => {
       const s = await this.session(id, trx);
-      if (!s) throw new ProblemError('resource.not_found');
+      // Wie bei Aufnahmen und Ereignissen: unbekannt → `409 session.unknown` (das Plugin vergisst die Session bzw. meldet
+      // sie nach), fremdes Rig → `404` (SEC-53).
+      if (!s)
+        throw new ProblemError(
+          (await this.exists(trx, id)) ? 'resource.not_found' : 'session.unknown',
+        );
       const lease = await this.lockLease(trx);
       const released = excludedByRelease(s, lease);
       const set: Partial<Record<keyof SessionTable, unknown>> = {};

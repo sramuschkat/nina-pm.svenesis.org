@@ -73,6 +73,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         ResetCommand = new RelayCommand(() => Operate(r => r.Reset()));
         SkipBlockCommand = new RelayCommand(() => Operate(r => r.SkipBlock()));
         ReuploadCommand = new RelayCommand(Reupload);
+        RequeueDeadLettersCommand = new RelayCommand(RequeueDeadLetters);
         RefreshCommand = new RelayCommand(() =>
         {
             RaiseOperationChanged();
@@ -180,6 +181,9 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
 
     public ICommand ReuploadCommand { get; }
 
+    /// <summary>Aufnahmen und Ereignisse aus dem Dead-Letter erneut senden (nach Korrektur am Server bzw. Plugin-Update).</summary>
+    public ICommand RequeueDeadLettersCommand { get; }
+
     public ICommand RefreshCommand { get; }
 
     /// <summary>Zielbrowser „An NINA ausgeliefert“ (FA-NIN-02, AP-16h).</summary>
@@ -229,6 +233,18 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
             var n = rt.Store.ReuploadSince(new DateTimeOffset(DateTime.SpecifyKind(ReuploadFrom.Date, DateTimeKind.Utc)));
             rt.Store.OutboxDueNow();
             rt.Log.Note($"Erneut hochladen ab {ReuploadFrom:yyyy-MM-dd}: {n} Meldungen in der Outbox");
+        }
+        RaiseOperationChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task RequeueDeadLetters()
+    {
+        if (NinaPmRuntime.Current is { } rt)
+        {
+            var n = rt.Store.DeadLetterRequeue();
+            rt.Store.OutboxDueNow();
+            rt.Log.Note($"Dead-Letter erneut senden: {n} Meldungen in der Outbox");
         }
         RaiseOperationChanged();
         return Task.CompletedTask;

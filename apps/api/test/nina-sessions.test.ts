@@ -306,6 +306,34 @@ describe('Isolation je Session (SEC-53)', () => {
   });
 });
 
+describe('Vertrag Plugin ↔ Server (Analyse 04.10.2026)', () => {
+  it('Light ohne die null-Felder (C#-Client lässt sie weg) wird angenommen; unzugeordnet zählt als unassigned', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    const pier = t.light();
+    delete (pier as Record<string, unknown>).pierSide;
+    const omitted = new Set(['blockId', 'projectId', 'panelId', 'exposureLineId', 'pierSide']);
+    const free = Object.fromEntries(Object.entries(t.light()).filter(([k]) => !omitted.has(k)));
+    const r = await t.captures(t.tokens.a1, sid, [pier, { ...free, assignment: 'unassigned' }]);
+    expect(r.status).toBe(200);
+    expect((r.body.results as { status: string }[]).map((x) => x.status)).toEqual([
+      'accepted',
+      'unassigned',
+    ]);
+  });
+
+  it('PATCH auf eine unbekannte Session → 409 session.unknown (fremdes Rig bleibt 404)', async () => {
+    const t = await setup();
+    const r = await t.call(t.tokens.a1, `/sessions/${id()}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z' },
+    });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('session.unknown');
+  });
+});
+
 describe('Aufnahmen (TK 6.6)', () => {
   it('Doppel-Upload zählt einmal; Batch 501 → 413; fremde Zeile → rejected_invalid; aborted ohne fileName ok', async () => {
     const t = await setup();
