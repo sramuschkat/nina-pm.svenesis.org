@@ -11827,6 +11827,16 @@ components:
                       - string
                       - "null"
                     maxLength: 256
+                  type:
+                    type: string
+                    enum:
+                      - broadband
+                      - narrowband
+                      - luminance
+                      - uv_ir_cut
+                      - light_pollution
+                      - photometric
+                      - other
                 required:
                   - shortName
                   - name

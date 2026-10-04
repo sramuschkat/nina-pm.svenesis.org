@@ -1,0 +1,31 @@
+{
+  "name": "flats-binning",
+  "description": "Filter L in Bin 1 (Gain 100, Offset 10) und Bin 2 (Gain/Offset null), gleicher Winkel; Dunkelheit endet in 40 min, Flats vom Panel",
+  "protocols": ["P-35"],
+  "blocks": [
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "rotationDeg": 0,
+      "project": "m33",
+      "binning": 1,
+      "gain": 100,
+      "offset": 10
+    },
+    {
+      "durationMin": 15,
+      "filters": ["L"],
+      "exposureS": 60,
+      "rotationDeg": 0,
+      "project": "ic1396",
+      "binning": 2
+    }
+  ],
+  "darknessEndInMin": 40,
+  "sessionEndInMin": 90,
+  "flats": {
+    "enabled": true,
+    "source": "panel"
+  }
+}

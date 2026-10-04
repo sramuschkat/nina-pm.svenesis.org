@@ -7,7 +7,7 @@ Claude Code wertet `result.json` und das Log maschinell aus (`pnpm test-run:chec
 
 ## Testbetrieb tagsüber: `tools/nina-test-server`
 NINA-Simulatoren haben keine Simulatoruhr. Deshalb läuft das Plugin gegen einen lokalen Test-Server statt gegen prod:
-1. `pnpm nina-test-server --scenario <name>` auf dem Windows-Rechner starten (Port 8787); Szenarien liegen unter `tools/nina-test-server/scenarios/` (`one-night`, `replan`, `replan-transit`, `transit`, `flip`, `delay`, `night-end`, `flats`, `multi-night`, `lease`, `mosaic-flip`, `transit-flip`, `current-night`, `safety`, `filters-readout`, `filter-restored`, `vm-smoke`, `flip-no-rotator`, `vm-flip`, `starfront-night`, `starfront-night-untuned`, `starfront-roof`, `starfront-center-fails`).
+1. `pnpm nina-test-server --scenario <name>` auf dem Windows-Rechner starten (Port 8787); Szenarien liegen unter `tools/nina-test-server/scenarios/` (`one-night`, `replan`, `replan-transit`, `transit`, `flip`, `delay`, `night-end`, `flats`, `flats-binning`, `multi-night`, `lease`, `mosaic-flip`, `transit-flip`, `current-night`, `safety`, `filters-readout`, `filter-restored`, `vm-smoke`, `flip-no-rotator`, `vm-flip`, `starfront-night`, `starfront-night-untuned`, `starfront-roof`, `starfront-center-fails`).
 2. Im Plugin Server-URL `http://localhost:8787/api` und Token `npm_test` eintragen. Läuft der Server auf einem anderen Rechner im lokalen Netz (z. B. dem Mac neben der Windows-VM), dann `http://<IP dieses Rechners>:8787/api` – nur Adressen aus 10/8, 172.16/12 und 192.168/16 gelten als lokal (die Firewall des Rechners muss Port 8787 für Node zulassen); P-29 und P-36 brauchen den Server auf dem Windows-Rechner selbst. Der Server lauscht nur auf Anfragen des Plugins; das Rig selbst braucht nie eingehende Verbindungen.
 3. Der Server erzeugt Blöcke ab `jetzt + 2 min`, für Flip-Tests ein Ziel mit `RA_J2000 = LST + n min − (α_app − α_J2000)` (NT-35: der Meridian gilt für die scheinbare RA; ohne die Korrektur liegt der Flip 2026 um gut 1 min daneben, polnah deutlich mehr), Transitfenster ab `jetzt + 10 min`. Ausnahme Szenario `current-night`: es liefert die echte Nachttabelle des Standorts Starfront (`America/Chicago`, `bootstrap.nights[]`, `timeZoneTransitions`) und prüft den `night`-Wert in `POST /plan`/`POST /sessions` (sonst `422 nina.night_invalid`). Änderungen zur Laufzeit über `POST /test/actions {action}` (oder die Szenario-Zeitleiste):
 
@@ -37,7 +37,7 @@ Die Ablauflogik eines Protokolls prüft zuerst der kopflose Nachtlauf – ohne N
 2. Ein Lauf ist `tools/nina-sim/runs/P-xx.json`: Szenario, Geräte (`setup`: Filterrad, Auslesemodi, Kamera-Sollwert, Dither-Trigger, Autofokus-Trigger `afTrigger`, NINA-Profil `recenter`/`autoFocusAfterFlip`), Schritte zur Minute (`server`: Aktion des Test-Servers; `sim`: `start`, `stop` (Benutzer-Stopp), `crash` (NINA hart beendet), `unsafe`/`safe`, `monitor_off`/`monitor_on`, `setpoint`, `filters`, `readout_modes`, `network_down`/`network_up`) und **je Protokollschritt Prüfungen** auf Log und Report (Anzahl, Reihenfolge, Abwesenheit vor/nach einem Ereignis, je Block). P-22 läuft in zwei Teilen (zwei Nächte).
 3. Ergebnis je Lauf unter `.sim-runs/P-xx/` (bzw. `--out`): `nina.log`, `report.json`, `result.json` mit `ok`/`note` je Schritt aus den Prüfungen; danach `test-run:check` wie bei einem VM-Lauf. `pnpm plugin:sim P-17` fährt einen Lauf, ohne Angabe alle.
 
-Abgedeckt: P-05, P-06, P-10, P-14, P-15, P-15b, P-17, P-19, P-22, P-25, P-27, P-32, P-34. **Nicht** abgedeckt – bleibt beim Windows-Sequenztest bzw. beim VM-Kurzlauf: NINAs Sequencer (Trigger-Walk, `TRIGGER_SUPPRESSED`, P-28), echtes `ImageSaved` mit Messwerten, Profil- und Geräteeinstellungen, Park/Home, Plattensolve und Flip.
+Abgedeckt: P-05, P-06, P-10, P-12, P-14, P-15, P-15b, P-17, P-19, P-22, P-25, P-27, P-32, P-33, P-34, P-35. **Nicht** abgedeckt – bleibt beim Windows-Sequenztest bzw. beim VM-Kurzlauf: NINAs Sequencer (Trigger-Walk, `TRIGGER_SUPPRESSED`, P-28), echtes `ImageSaved` mit Messwerten, Profil- und Geräteeinstellungen, Park/Home, Plattensolve und Flip.
 
 ## Starfront-Szenarien (kopflos, aus echten Nächten)
 Aus 21 NINA-Logs des Rigs in Starfront (23.08.–26.09.2026, Astro PM) und dem NINA-Profil gemessen (03.10.2026): Dither-Settle Median 18 s, Slew und Zentrieren 35 s, Autofokus 2–5 min, Flip 250 s nach 10 min Pause um den Meridian (Pause vor dem Meridian 5 min, Flip 5 min danach). Die Szenarien geben dem Test-Server diese Rig-Werte (`scheduler` im Szenario) und dem simulierten NINA die gemessenen Zeiten (`setup` im Lauf):
@@ -136,7 +136,7 @@ Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Gro�
 | `type`, `box` | Triggertyp, Name der Anweisungsbox | `TRIGGER_SUPPRESSED` |
 | `pierBefore`, `pierAfter`, `durationS` | Flip-Messwerte | `FLIP`, `FLIP_UNDETECTED` |
 | `pending`, `dead` | Outbox-Zähler | `OUTBOX` |
-| `combination`, `missing`, `mechDg` | Flat-Kombination (Schlüssel in Zehntelgrad) | `FLATS_*`, `DARKFLAT_GROUP` |
+| `combination`, `missing`, `mechDg` | Flat-Kombination (Schlüssel in Zehntelgrad; Werte und `status`/`reason` bei Flats: `execution.md` §7, Spec-Ergänzung AP-50) | `FLATS_*`, `DARKFLAT_GROUP` |
 | `source` | `server` / `cache` (gespeicherter Server-Plan) | `PLAN` |
 | `etag` | `targetsEtag` (in `"…"`) | `TARGETS` |
 | `atUtc`, `untilUtc` | Zeitpunkte in `…Z` | beliebig |

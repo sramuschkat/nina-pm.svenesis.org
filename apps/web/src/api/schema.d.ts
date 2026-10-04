@@ -18847,6 +18847,8 @@ export interface components {
                     color: string;
                     position: number;
                     ninaFilterName: string | null;
+                    /** @enum {string} */
+                    type?: "broadband" | "narrowband" | "luminance" | "uv_ir_cut" | "light_pollution" | "photometric" | "other";
                 }[];
                 scheduler: {
                     /** @enum {string} */

@@ -8,12 +8,54 @@
     "timeZone": "America/Chicago"
   },
   "filters": [
-    { "position": 1, "shortName": "L", "name": "Luminance", "ninaFilterName": "LUMINANCE" },
-    { "position": 2, "shortName": "R", "name": "Red", "ninaFilterName": "RED" },
-    { "position": 3, "shortName": "G", "name": "Green", "ninaFilterName": "GREEN" },
-    { "position": 4, "shortName": "B", "name": "Blue", "ninaFilterName": "BLUE" },
-    { "position": 5, "shortName": "Ha", "name": "H-alpha", "ninaFilterName": "HA" },
-    { "position": 6, "shortName": "SII", "name": "S-II", "ninaFilterName": "SII" },
-    { "position": 7, "shortName": "OIII", "name": "O-III", "ninaFilterName": "OIII" }
+    {
+      "position": 1,
+      "shortName": "L",
+      "name": "Luminance",
+      "ninaFilterName": "LUMINANCE",
+      "type": "luminance"
+    },
+    {
+      "position": 2,
+      "shortName": "R",
+      "name": "Red",
+      "ninaFilterName": "RED",
+      "type": "broadband"
+    },
+    {
+      "position": 3,
+      "shortName": "G",
+      "name": "Green",
+      "ninaFilterName": "GREEN",
+      "type": "broadband"
+    },
+    {
+      "position": 4,
+      "shortName": "B",
+      "name": "Blue",
+      "ninaFilterName": "BLUE",
+      "type": "broadband"
+    },
+    {
+      "position": 5,
+      "shortName": "Ha",
+      "name": "H-alpha",
+      "ninaFilterName": "HA",
+      "type": "narrowband"
+    },
+    {
+      "position": 6,
+      "shortName": "SII",
+      "name": "S-II",
+      "ninaFilterName": "SII",
+      "type": "narrowband"
+    },
+    {
+      "position": 7,
+      "shortName": "OIII",
+      "name": "O-III",
+      "ninaFilterName": "OIII",
+      "type": "narrowband"
+    }
   ]
 }

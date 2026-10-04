@@ -209,7 +209,13 @@ describe('GET /bootstrap (NT-02, NT-05, NT-E1)', () => {
     expect(currentNight(r.body as never, r.body.serverTimeUtc as string)).toBe('2026-09-18');
     const rig = r.body.rig as { filters: Body[]; settingsVersion: number; leaseMinutes: number };
     expect(rig.filters).toEqual([
-      expect.objectContaining({ shortName: 'Ha', position: 1, ninaFilterName: 'Ha 3nm' }),
+      // Filtertyp für die Reihenfolge der Himmelsflats (NT-40, AP-50); filterInput legt „broadband“ an.
+      expect.objectContaining({
+        shortName: 'Ha',
+        position: 1,
+        ninaFilterName: 'Ha 3nm',
+        type: 'broadband',
+      }),
     ]);
     expect(rig.leaseMinutes).toBe(3);
     // Übernahmestatus (FA-SIM-09).

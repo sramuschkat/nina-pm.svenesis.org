@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using NinaPm.Core.Api;
 using NinaPm.Core.Api.Generated;
+using NinaPm.Core.Flats;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
 using NinaPm.Core.Reporting;
@@ -138,6 +139,28 @@ public sealed class NightRunner(
 
     public BlockExecutor Executor { get; init; } = null!;
 
+    private FlatExecutor? flats;
+
+    /// <summary>Flat-Ablauf am Nachtende (AP-50); ohne Flat-Host (Tests) keine Flats.</summary>
+    public FlatExecutor? Flats
+    {
+        get => flats;
+        init
+        {
+            flats = value;
+            if (value is null) return;
+            value.ReportCapture = capture =>
+            {
+                if (SessionId is { } session)
+                    store.EnqueueOutbox(OutboxKinds.Capture, JsonConvert.SerializeObject(capture, NinaJson.Settings()), session, capture.NightPlanId);
+            };
+            value.ReportEvent = (kind, code, data) => ReportEvent(kind, code, data: data);
+        }
+    }
+
+    /// <summary>Flat-Lauf aktiv (Heartbeat <c>flats</c>, Schleifenbedingung bleibt wahr).</summary>
+    public bool FlatsRunning => flats?.Running ?? false;
+
     public bool BlockRunning => runningBlock is not null;
 
     /// <summary>
@@ -197,7 +220,8 @@ public sealed class NightRunner(
         var stored = night is null ? null : PlanStore.Load(store, night);
         var blocked = Loop.Blocked ?? (Loop.PlanFailed ? NinaHeartbeatBlockedReason.Plan_failed : null);
         return LiveStatusBuilder.Build(new LiveInputs(stored?.Plan, DoneBlocks(stored), runningBlock, Executor?.CurrentEntry, Targets,
-            blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap, SafetyPaused: interrupted));
+            blocked, Loop.NightFinished, OutboxPending, DeadLetters, offlineMode, testBanner, clock.UtcNow, bootstrap, SafetyPaused: interrupted,
+            FlatsRunning: FlatsRunning, Flat: flats?.Current));
     }
 
     /// <summary>Quittierte Heartbeat-Kommandos für den nächsten Heartbeat (und vergessen).</summary>
@@ -215,9 +239,9 @@ public sealed class NightRunner(
     public bool TargetsChanged => targetsChanged;
 
     /// <summary>Schleifenbedingung <em>NINA-PM Nachtschleife</em>.</summary>
-    public bool HasBlocksRemaining => Loop.HasBlocksRemaining(BlockRunning, flatsRunning: false);
+    public bool HasBlocksRemaining => Loop.HasBlocksRemaining(BlockRunning, FlatsRunning);
 
-    public NinaHeartbeatState HeartbeatState(bool offline) => Loop.HeartbeatState(BlockRunning, false, interrupted, offline || offlineMode);
+    public NinaHeartbeatState HeartbeatState(bool offline) => Loop.HeartbeatState(BlockRunning, FlatsRunning, interrupted, offline || offlineMode);
 
     public Guid? SessionId => Guid.TryParse(store.GetState(StateKeys.SessionId), out var id) ? id : null;
 
@@ -341,8 +365,11 @@ public sealed class NightRunner(
             // Nur fortsetzen, solange die Nacht läuft; danach schließt der nächste Schritt die Session ab (P-22).
             if (hasSession && forcedPlan == NinaPlanRequestReason.Resume && nightRunning) QueueResume(SessionId!.Value);
         }
+        // Flats erst am Nachtende bilden: der Winkel-Repräsentant wird beim Anlegen eingefroren (flip-rotation.md §4, NIN5-8).
+        var flatsOn = FlatsOn(b);
+        var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b));
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
-            FlatsEnabled: false, FlatsPending: false, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
+            FlatsEnabled: flatsOn, FlatsPending: flatsPending, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
             DoneBlocks: DoneBlocks(stored));
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
@@ -354,6 +381,9 @@ public sealed class NightRunner(
         switch (step.Action)
         {
             case NightAction.ResetStaleSession:
+                if (flats is not null)
+                    foreach (var oldNight in store.NightsWithOpenFlats(row.Night))
+                        flats.SkipOpen(oldNight, "night_stale");
                 foreach (var key in new[] { StateKeys.SessionId, StateKeys.NightPlanId, StateKeys.BlockIndex, StateKeys.Night, StateKeys.DoneBlocks })
                     store.SetState(key, null);
                 TonightLog.Clear(store);
@@ -383,10 +413,62 @@ public sealed class NightRunner(
                 Loop.NightFinishedSet();
                 log.Event("SESSION", ("status", "finished"), ("night", row.Night));
                 return;
+            case NightAction.RunFlats:
+                await flats!.RunAsync(FlatSettings(b, row.Night, context.Plan), token).ConfigureAwait(false);
+                return;
+            case NightAction.SkipFlats:
+                flats?.SkipOpen(row.Night, "session_end");
+                return;
             default:
-                // Stop, RunFlats, SkipFlats: Flats folgen mit AP-50; Stop beendet die Schleife über HasBlocksRemaining.
+                // Stop beendet die Schleife über HasBlocksRemaining.
                 return;
         }
+    }
+
+    // ---- Flats (AP-50, execution.md §7) ---------------------------------------------------------------
+
+    private bool flatsBoxHint;
+
+    /// <summary>Flats laufen, wenn das Rig sie einschaltet und die Box <em>Je Kombination</em> Anweisungen hat (sonst einmal ein Hinweis).</summary>
+    private bool FlatsOn(NinaBootstrap b)
+    {
+        if (flats is null || !b.Rig.Scheduler.Flats.Enabled) return false;
+        if (flats.Boxes().PerCombination) return true;
+        if (!flatsBoxHint)
+        {
+            flatsBoxHint = true;
+            log.Note("Flats sind im Rig eingeschaltet, aber die Box „Flats je Kombination“ ist leer – keine Flats");
+        }
+        return false;
+    }
+
+    public static FlatPlanOptions FlatOptions(NinaBootstrap b) => new(
+        b.Rig.Rotator.ToleranceDeg,
+        b.Rig.Scheduler.Flats.FullSet,
+        b.Rig.Scheduler.Flats.Source == FlatsSource.Sky,
+        [.. b.Rig.Filters.Select(f => new RigFilter(f.ShortName, f.NinaFilterName, f.Position, f.Type switch
+        {
+            null => null,
+            FiltersType.Narrowband => "narrowband",
+            FiltersType.Luminance => "luminance",
+            _ => "broadband",
+        }))]);
+
+    private FlatRunSettings FlatSettings(NinaBootstrap b, string night, StoredPlan? stored)
+    {
+        var f = b.Rig.Scheduler.Flats;
+        var planId = ExecutingPlan?.NightPlanId ?? stored?.Plan.NightPlanId;
+        var darkCount = f.DarkFlats.Enabled ? f.DarkFlats.Count ?? f.Count : 0;
+        return new FlatRunSettings(night, planId, f.Count, darkCount, stored?.Plan.FlatsNotAfterUtc, FlatOptions(b));
+    }
+
+    /// <summary>Gespeicherte Light-Aufnahme für die Flat-Kombinationen der Nacht merken (Filter, Kamera, mechanischer Winkel, Ziel).</summary>
+    private void RecordLightForFlats(CaptureFacts f)
+    {
+        if (flats is null || f.Entry.Filter is null) return;
+        var target = new FlatTarget(f.Block.ProjectId, f.Block.PanelId, NinaPm.Core.Targets.TargetTitle.For(f.Block, Targets));
+        store.RecordFlatLight(f.Night, new LightObservation(f.Entry.Filter, f.FilterActual, f.Gain ?? -1, f.Offset ?? -1, f.Binning,
+            f.ReadoutModeIndex ?? 0, f.ReadoutMode, FlatClustering.Dg(f.RotatorMechDeg), target, 0, 1));
     }
 
     // ---- Plan und Session -----------------------------------------------------------------------------
@@ -806,7 +888,11 @@ public sealed class NightRunner(
     /// </summary>
     public void ReportCapture(CaptureFacts facts, CapturesResult result, string? fileName)
     {
-        if (result == CapturesResult.Saved) ExposureSaved(facts.Block, facts.Entry);
+        if (result == CapturesResult.Saved)
+        {
+            ExposureSaved(facts.Block, facts.Entry);
+            RecordLightForFlats(facts);
+        }
         if (SessionId is not { } session) return;
         var capture = CaptureMapper.Build(facts, result, fileName);
         store.EnqueueOutbox(OutboxKinds.Capture, JsonConvert.SerializeObject(capture, NinaJson.Settings()), session, facts.NightPlanId);
@@ -1005,6 +1091,8 @@ public sealed class NightRunner(
     /// <summary>Anweisung <em>Warten bis sicher oder Nachtende</em> hat die Nacht abgeschlossen (H2).</summary>
     public async Task CloseNightUnsafeAsync(CancellationToken token)
     {
+        // Flats nur, falls sicher (H2): offene Kombinationen der Nacht übersprungen.
+        if (flats is not null && store.GetState(StateKeys.Night) is { } night) flats.SkipOpen(night, "unsafe");
         await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);
         Loop.SessionCompleted();
         Loop.NightFinishedSet();

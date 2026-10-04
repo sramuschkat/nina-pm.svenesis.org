@@ -1,0 +1,97 @@
+{
+  "protocol": "P-33",
+  "description": "Trained Flats: Teil 1 – HA steckte beim letzten Flat-Lauf auf Platz 3 (jetzt 5) → Kombinationen mit HA skipped + trained_flat_position_changed; Teil 2 – zu lange Belichtung (95 % des Vollausschlags) → flat_exposure_off, Kombination läuft weiter.",
+  "parts": [
+    {
+      "scenario": "flats",
+      "untilMin": 90,
+      "setup": {
+        "lastFlatPositions": {
+          "HA": 3,
+          "LUMINANCE": 1
+        }
+      },
+      "steps": []
+    },
+    {
+      "scenario": "flats",
+      "untilMin": 90,
+      "setup": {
+        "flatMeanShare": 0.95
+      },
+      "steps": []
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "trained_flat_position_changed",
+            "filter": "HA"
+          }
+        },
+        "part": 1,
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "skipped",
+            "reason": "trained_flat_position_changed"
+          }
+        },
+        "part": 1,
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "done"
+          }
+        },
+        "part": 1,
+        "min": 2,
+        "max": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "flat_exposure_off"
+          }
+        },
+        "part": 2,
+        "min": 4,
+        "max": 4
+      },
+      {
+        "log": {
+          "event": "FLATS_END",
+          "where": {
+            "status": "done"
+          }
+        },
+        "part": 2,
+        "min": 4,
+        "max": 4
+      },
+      {
+        "report": "captures",
+        "part": 2,
+        "where": {
+          "frameType": "flat"
+        },
+        "min": 80,
+        "max": 80
+      }
+    ]
+  ]
+}

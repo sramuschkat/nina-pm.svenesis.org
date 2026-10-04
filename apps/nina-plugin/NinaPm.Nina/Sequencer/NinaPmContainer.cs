@@ -57,6 +57,9 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
         var astro = m.Profile.ActiveProfile.AstrometrySettings;
         target = new InputTarget(Angle.ByDegree(astro.Latitude), Angle.ByDegree(astro.Longitude), astro.Horizon);
         Add(new PlaceholderItem());
+        FlatsSetupRunner = NewRunner();
+        FlatsRunner = NewRunner();
+        FlatsTeardownRunner = NewRunner();
         ResetPlanCommand = new RelayCommand(() => Operate(r => r.Reset()));
         SkipBlockCommand = new RelayCommand(() => Operate(r => r.SkipBlock()));
         System.Windows.WeakEventManager<LiveTicker, EventArgs>.AddHandler(LiveTicker.Instance, nameof(LiveTicker.Tick), OnLiveTick);
@@ -105,7 +108,48 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
     {
         var clone = new NinaPmContainer(m, nighttimeCalculator);
         clone.CopyMetaData(this);
+        clone.FlatsSetupRunner = CloneRunner(FlatsSetupRunner, clone);
+        clone.FlatsRunner = CloneRunner(FlatsRunner, clone);
+        clone.FlatsTeardownRunner = CloneRunner(FlatsTeardownRunner, clone);
         return clone;
+    }
+
+    // ── Flat-Handling (FA-NIN-17, execution.md §7): drei Boxen, Serialisierung wie NINAs TriggerRunner ──
+    // Muster nach dem Astro-PM-Plugin (MIT), Instructions/TargetInstructionSet.cs (FlatsSetupRunner, FlatsRunner,
+    // FlatsTeardownRunner, FlatsIsolationContainer), Commit 5dd621d.
+
+    /// <summary><em>Vor Flats</em> (einmal): z. B. parken, Flat-Panel schließen, Licht an (Himmelsflats: nicht parken).</summary>
+    [JsonProperty]
+    public SequentialContainer FlatsSetupRunner { get; private set; }
+
+    /// <summary><em>Flats je Kombination</em>: Filter, Rotator, Gain, Offset, Binning und Auslesemodus setzt das Plugin.</summary>
+    [JsonProperty]
+    public SequentialContainer FlatsRunner { get; private set; }
+
+    /// <summary><em>Nach Flats</em> (einmal): z. B. Licht aus, Flat-Panel öffnen.</summary>
+    [JsonProperty]
+    public SequentialContainer FlatsTeardownRunner { get; private set; }
+
+    private SequentialContainer NewRunner()
+    {
+        var runner = new SequentialContainer();
+        runner.AttachNewParent(this);
+        return runner;
+    }
+
+    private static SequentialContainer CloneRunner(SequentialContainer? source, NinaPmContainer parent)
+    {
+        var runner = source is null ? new SequentialContainer() : (SequentialContainer)source.Clone();
+        runner.AttachNewParent(parent);
+        return runner;
+    }
+
+    /// <summary>Boxen wieder am Container einhängen (nach dem Flat-Lauf hängen sie am Container ohne Parent).</summary>
+    internal void RehomeFlatRunners()
+    {
+        FlatsSetupRunner.AttachNewParent(this);
+        FlatsRunner.AttachNewParent(this);
+        FlatsTeardownRunner.AttachNewParent(this);
     }
 
     /// <summary>Bereits gemeldete unterdrückte Trigger-Typen (je Aufruf einmal, NT-23).</summary>
@@ -140,6 +184,11 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
     {
         ScrubPlaceholders();
         EnsurePlaceholder();
+        // Ältere Sequenzen ohne Flat-Boxen: leere Boxen anlegen; gespeicherte Boxen am Container einhängen.
+        FlatsSetupRunner ??= new SequentialContainer();
+        FlatsRunner ??= new SequentialContainer();
+        FlatsTeardownRunner ??= new SequentialContainer();
+        RehomeFlatRunners();
     }
 
     private void ScrubPlaceholders()

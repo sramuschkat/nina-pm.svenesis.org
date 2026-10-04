@@ -19,11 +19,13 @@ import {
   buildPlanInput,
   currentNightRow,
   effectiveTenantSettings,
+  filterTypes,
   isDeliverable,
   lineCounters,
   nina,
   ProblemError,
   sortChainKeys,
+  type FilterType,
   type PlanMoonProfileSource,
   type SortChainKey,
 } from '@nina-pm/shared';
@@ -45,6 +47,8 @@ export const BOOTSTRAP_NIGHTS = 60;
 export const LEASE_MINUTES = 3;
 export const MIN_PLUGIN_VERSION = '1.0.0';
 const SORT_KEYS = new Set<string>(sortChainKeys);
+const FILTER_TYPES: ReadonlySet<string> = new Set(filterTypes);
+const isFilterType = (t: string): t is FilterType => FILTER_TYPES.has(t);
 
 const iso = (d: Date) => isoUtc(d);
 
@@ -133,6 +137,7 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
             color: f?.colorHex ?? '#CCCCCC',
             position: slot.position,
             ninaFilterName: slot.ninaConfirmedAt !== null ? slot.ninaFilterName : null,
+            ...(f && isFilterType(f.filterType) ? { type: f.filterType } : {}),
           };
         }),
       scheduler: {

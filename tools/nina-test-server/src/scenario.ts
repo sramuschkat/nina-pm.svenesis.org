@@ -29,6 +29,11 @@ export interface ScenarioBlock {
   readonly ditherEvery?: number;
   /** Auslesemodus aller Zeilen des Blocks (P-19: Name, den die Kamera nicht kennt); Standard `null`. */
   readonly readoutMode?: string;
+  /** Binning aller Zeilen des Blocks (P-35); Standard 1. */
+  readonly binning?: number;
+  /** Gain und Offset aller Zeilen des Blocks (P-35); Standard `null` (Kamera-Standard). */
+  readonly gain?: number;
+  readonly offset?: number;
 }
 
 export interface TimelineAction {

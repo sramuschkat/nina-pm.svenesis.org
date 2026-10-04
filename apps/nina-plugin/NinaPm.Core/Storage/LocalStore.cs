@@ -1,12 +1,14 @@
 using Microsoft.Data.Sqlite;
+using Newtonsoft.Json;
+using NinaPm.Core.Flats;
 using NinaPm.Core.Time;
 
 namespace NinaPm.Core.Storage;
 
 /// <summary>
 /// Der eine lokale Speicher des Plugins (execution.md §8, TK 10.2): SQLite <c>ninapm.db</c> mit den Tabellen
-/// <c>cache</c>, <c>outbox</c>, <c>sent_history</c>, <c>dead_letter</c>, <c>flat_combination_local</c> und
-/// <c>state</c>. Zeitpunkte als ISO-UTC-Strings mit <c>Z</c> (NT-05). Schema über <c>PRAGMA user_version</c> und
+/// <c>cache</c>, <c>outbox</c>, <c>sent_history</c>, <c>dead_letter</c>, <c>flat_combination_local</c>,
+/// <c>flat_light_local</c>, <c>dark_flat_group_local</c> und <c>state</c>. Zeitpunkte als ISO-UTC-Strings mit <c>Z</c> (NT-05). Schema über <c>PRAGMA user_version</c> und
 /// eine Liste nur anfügender Migrationen – eine ausgelieferte Migration wird nie geändert.
 /// </summary>
 public sealed class LocalStore : IDisposable
@@ -65,6 +67,25 @@ public sealed class LocalStore : IDisposable
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
           updated_utc TEXT NOT NULL
+        );
+        """,
+        // 2 – AP-50: gespeicherte Lights je Nacht (Kombinationsbildung am Nachtende) und Dark-Flat-Gruppen (NIN-15).
+        """
+        CREATE TABLE flat_light_local (
+          night TEXT NOT NULL,
+          key TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          count INTEGER NOT NULL,
+          first_seq INTEGER NOT NULL,
+          PRIMARY KEY (night, key)
+        );
+        CREATE TABLE dark_flat_group_local (
+          night TEXT NOT NULL,
+          key TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          status TEXT NOT NULL,
+          updated_utc TEXT NOT NULL,
+          PRIMARY KEY (night, key)
         );
         """,
     ];
@@ -155,6 +176,101 @@ public sealed class LocalStore : IDisposable
                 "INSERT INTO state (key, value, updated_utc) VALUES ($key, $value, $now) " +
                 "ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_utc = excluded.updated_utc",
                 null, ("$key", key), ("$value", value), ("$now", UtcText.Format(clock.UtcNow)));
+    }
+
+    // ---- Flats (AP-50, execution.md §7) ----------------------------------------------------------------
+
+    /// <summary>Gespeicherte Light-Aufnahme für die Flats der Nacht: Zähler je Kombination und Ziel, erste Reihenfolge bleibt.</summary>
+    public void RecordFlatLight(string night, LightObservation light)
+    {
+        lock (gate)
+        {
+            using var tx = connection.BeginTransaction();
+            using var existsCmd = Command("SELECT count FROM flat_light_local WHERE night = $night AND key = $key", tx,
+                ("$night", night), ("$key", light.Key));
+            if (existsCmd.ExecuteScalar() is null)
+            {
+                using var seqCmd = Command("SELECT COALESCE(MAX(first_seq), 0) + 1 FROM flat_light_local WHERE night = $night", tx, ("$night", night));
+                var seq = Convert.ToInt64(seqCmd.ExecuteScalar());
+                Execute("INSERT INTO flat_light_local (night, key, payload, count, first_seq) VALUES ($night, $key, $payload, $count, $seq)", tx,
+                    ("$night", night), ("$key", light.Key), ("$payload", JsonConvert.SerializeObject(light with { FirstSeq = seq, Count = 0 })),
+                    ("$count", light.Count), ("$seq", seq));
+            }
+            else
+            {
+                Execute("UPDATE flat_light_local SET count = count + $count WHERE night = $night AND key = $key", tx,
+                    ("$night", night), ("$key", light.Key), ("$count", light.Count));
+            }
+            tx.Commit();
+        }
+    }
+
+    public IReadOnlyList<LightObservation> FlatLights(string night)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT payload, count, first_seq FROM flat_light_local WHERE night = $night ORDER BY first_seq", null, ("$night", night));
+            using var r = cmd.ExecuteReader();
+            var list = new List<LightObservation>();
+            while (r.Read())
+                list.Add(JsonConvert.DeserializeObject<LightObservation>(r.GetString(0))! with { Count = r.GetInt32(1), FirstSeq = r.GetInt64(2) });
+            return list;
+        }
+    }
+
+    public void SaveFlatCombination(string night, FlatCombination combination) =>
+        Execute(
+            "INSERT INTO flat_combination_local (night, combination, payload, status, flats_taken, dark_flats_taken, updated_utc) " +
+            "VALUES ($night, $key, $payload, $status, $flats, $darks, $now) ON CONFLICT (night, combination) DO UPDATE SET " +
+            "payload = excluded.payload, status = excluded.status, flats_taken = excluded.flats_taken, " +
+            "dark_flats_taken = excluded.dark_flats_taken, updated_utc = excluded.updated_utc",
+            null, ("$night", night), ("$key", combination.Key), ("$payload", JsonConvert.SerializeObject(combination)),
+            ("$status", combination.Status.ToString().ToLowerInvariant()), ("$flats", combination.FlatsSaved),
+            ("$darks", combination.DarkFlatsSaved), ("$now", UtcText.Format(clock.UtcNow)));
+
+    public IReadOnlyList<FlatCombination> FlatCombinations(string night)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT payload FROM flat_combination_local WHERE night = $night", null, ("$night", night));
+            using var r = cmd.ExecuteReader();
+            var list = new List<FlatCombination>();
+            while (r.Read()) list.Add(JsonConvert.DeserializeObject<FlatCombination>(r.GetString(0))!);
+            return list.OrderBy(c => c.Order).ToList();
+        }
+    }
+
+    /// <summary>Nächte mit offenen Kombinationen außer <paramref name="exceptNight"/> (veraltete Session, §7).</summary>
+    public IReadOnlyList<string> NightsWithOpenFlats(string? exceptNight)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT DISTINCT night FROM flat_combination_local WHERE status IN ('pending', 'running') AND night <> $night ORDER BY night",
+                null, ("$night", exceptNight ?? ""));
+            using var r = cmd.ExecuteReader();
+            var list = new List<string>();
+            while (r.Read()) list.Add(r.GetString(0));
+            return list;
+        }
+    }
+
+    public void SaveDarkFlatGroup(string night, DarkFlatGroup group) =>
+        Execute(
+            "INSERT INTO dark_flat_group_local (night, key, payload, status, updated_utc) VALUES ($night, $key, $payload, $status, $now) " +
+            "ON CONFLICT (night, key) DO UPDATE SET payload = excluded.payload, status = excluded.status, updated_utc = excluded.updated_utc",
+            null, ("$night", night), ("$key", group.Key), ("$payload", JsonConvert.SerializeObject(group)),
+            ("$status", group.Status.ToString().ToLowerInvariant()), ("$now", UtcText.Format(clock.UtcNow)));
+
+    public IReadOnlyList<DarkFlatGroup> DarkFlatGroups(string night)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT payload FROM dark_flat_group_local WHERE night = $night", null, ("$night", night));
+            using var r = cmd.ExecuteReader();
+            var list = new List<DarkFlatGroup>();
+            while (r.Read()) list.Add(JsonConvert.DeserializeObject<DarkFlatGroup>(r.GetString(0))!);
+            return list;
+        }
     }
 
     // ---- cache ----------------------------------------------------------------------------------------
@@ -432,6 +548,9 @@ public static class StateKeys
     public const string SettingsVersion = "settingsVersion";
     public const string PlanBlockedUntil = "planBlockedUntil";
     public const string DoneBlocks = "doneBlocks";
+
+    /// <summary>Filterposition je NINA-Filtername beim letzten Flat-Lauf (Trained Flats, NT-39).</summary>
+    public const string TrainedFlatPositions = "trainedFlatPositions";
 
     /// <summary>Anlage-Daten der aktuellen Session (JSON <c>NinaSessionCreate</c>) für das Nachmelden (§8, <c>session.unknown</c>).</summary>
     public const string SessionCreate = "sessionCreate";

@@ -19,7 +19,7 @@ public sealed class LocalStoreTests : IDisposable
         using var store = LocalStore.Open(DbPath, clock);
         Assert.Equal(LocalStore.LatestVersion, store.SchemaVersion);
         Assert.Equal(
-            ["cache", "dead_letter", "flat_combination_local", "outbox", "sent_history", "state"],
+            ["cache", "dark_flat_group_local", "dead_letter", "flat_combination_local", "flat_light_local", "outbox", "sent_history", "state"],
             store.TableNames());
     }
 
