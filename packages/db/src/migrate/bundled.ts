@@ -14,6 +14,7 @@ import m0009 from '../../migrations/0009_antragsrang_worker.sql';
 import m0010 from '../../migrations/0010_exo_katalog.sql';
 import m0011 from '../../migrations/0011_rollenansicht.sql';
 import m0012 from '../../migrations/0012_kommentare.sql';
+import m0013 from '../../migrations/0013_auto_flats.sql';
 import type { Migration } from './types';
 
 export const bundledMigrations: readonly Migration[] = [
@@ -29,4 +30,5 @@ export const bundledMigrations: readonly Migration[] = [
   { id: '0010_exo_katalog', sql: m0010 },
   { id: '0011_rollenansicht', sql: m0011 },
   { id: '0012_kommentare', sql: m0012 },
+  { id: '0013_auto_flats', sql: m0013 },
 ];

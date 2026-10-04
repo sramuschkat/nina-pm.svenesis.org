@@ -407,6 +407,95 @@ describe('Aufnahmen (TK 6.6)', () => {
     ]);
   });
 
+  it('Auto-Flats (AP-50b): vorhandene Flats in targets, Auto-Modus im Bootstrap, Markierung je Zeile', async () => {
+    const t = await setup();
+    await t.eq.updateScheduler(
+      t.rig.id,
+      {
+        ...SCHEDULER,
+        flatsEnabled: true,
+        flatsAutoMode: 'once_per_project',
+        flatsAutoIntervalDays: 7,
+      },
+      s.clock.now(),
+    );
+    const before = await t.web(`/projects/${t.a.pid}/flats`);
+    expect(before.status).toBe(200);
+    expect(before.body).toEqual({
+      mode: 'once_per_project',
+      intervalDays: 7,
+      lines: [{ lineId: t.a.lineId, covered: false, lastUtc: null, count: 0 }],
+    });
+
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    await t.captures(t.tokens.a1, sid, [t.light({ rotatorMechDeg: 90.04 })]);
+    const flat = () => {
+      const {
+        blockId,
+        projectId,
+        panelId,
+        exposureLineId,
+        raDeg,
+        decDeg,
+        rotationDeg,
+        pierSide,
+        bonus,
+        ...rest
+      } = t.light({ frameType: 'flat', exposureS: 2.4, rotatorMechDeg: 90.1 });
+      void [
+        blockId,
+        projectId,
+        panelId,
+        exposureLineId,
+        raDeg,
+        decDeg,
+        rotationDeg,
+        pierSide,
+        bonus,
+      ];
+      return { ...rest, projectIds: [t.a.pid], flatsPlanned: 2, darkFlatsPlanned: 0 };
+    };
+    await t.captures(t.tokens.a1, sid, [flat(), flat()]);
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z', outboxPending: 0 },
+    });
+
+    const after = await t.web(`/projects/${t.a.pid}/flats`);
+    expect(after.body.lines).toEqual([
+      { lineId: t.a.lineId, covered: true, lastUtc: '2026-09-18T14:00:00Z', count: 2 },
+    ]);
+    const targets = await t.call(t.tokens.a1, '/targets');
+    const project = (targets.body.projects as Body[]).find((p) => p.id === t.a.pid);
+    expect(project?.flatsOnRecord).toEqual([
+      {
+        filterShortName: 'Ha',
+        rotatorMechDg: 901,
+        gain: -1,
+        offset: -1,
+        binning: 1,
+        readoutModeIndex: 0,
+        lastUtc: '2026-09-18T14:00:00Z',
+        count: 2,
+      },
+    ]);
+    expect(nina.NinaTargets.safeParse(targets.body).error?.issues ?? []).toEqual([]);
+    const boot = await t.call(t.tokens.a1, '/bootstrap');
+    expect(((boot.body.rig as Body).scheduler as { flats: { auto: unknown } }).flats.auto).toEqual({
+      mode: 'once_per_project',
+      intervalDays: 7,
+    });
+
+    // Andere Rigs sehen die Flats nicht (Optik), Auto aus → keine Markierung.
+    await t.eq.updateScheduler(t.rig.id, { ...SCHEDULER, flatsEnabled: true }, s.clock.now());
+    expect((await t.web(`/projects/${t.a.pid}/flats`)).body).toEqual({
+      mode: 'off',
+      intervalDays: 7,
+      lines: [],
+    });
+  });
+
   it('nachträgliche Zuordnung legt capture_night an und zählt (DAT5-12)', async () => {
     const t = await setup();
     const sid = id();

@@ -352,6 +352,16 @@ function Editor({
   const [defaultSaved, setDefaultSaved] = useState(false);
 
   const rig = (rigs.data ?? []).find((r) => r.id === draft.rigId) ?? null;
+  // Flat-Markierung je Zeile (AP-50b): nur mit gespeichertem Rig und eingeschalteten Auto-Flats.
+  const flatsQuery = useQuery({
+    queryKey: ['projects', saved?.id, 'flats', saved?.version, saved?.rigId],
+    queryFn: () => projectsApi.flats(saved?.id ?? ''),
+    enabled:
+      !!saved?.rigId &&
+      !!rig?.scheduler.flatsEnabled &&
+      rig.scheduler.flatsAutoMode !== 'off' &&
+      saved.rigId === rig.id,
+  });
   const site = (sites.data ?? []).find((s) => s.id === rig?.siteId) ?? null;
   // Live-Aufwand (FA-PRJ-23): gespeicherte Zeilen + ungespeicherte Projektfelder, Nacht-Tabelle ab heute.
   const nights = useQuery({
@@ -1143,6 +1153,7 @@ function Editor({
             <ExposurePlan
               project={saved}
               canEdit={canEdit}
+              flats={flatsQuery.data ?? null}
               rig={rig}
               camera={camera}
               filters={filters.data ?? []}

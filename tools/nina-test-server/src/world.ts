@@ -38,6 +38,8 @@ export interface WorldState {
   filterWheelChanged: boolean;
   skippedBlocks: Set<string>;
   clockSkewS: number;
+  /** Vorhandene Flats je Projekt aus den eingegangenen Flat-Meldungen (Auto-Flats, AP-50b). */
+  flatRecords: Map<string, Json[]>;
   planRevision: number;
 }
 
@@ -252,6 +254,7 @@ export class TestWorld {
           ...base,
           id,
           version: this.state.targetsVersion,
+          flatsOnRecord: this.state.flatRecords.get(id) ?? [],
           name: `Test ${key}`,
           status: this.state.pausedProjects.has(id) ? 'on_hold' : 'active',
           center: {
@@ -282,6 +285,42 @@ export class TestWorld {
         return { project, pi };
       })
       .map((x) => x.project);
+  }
+
+  /**
+   * Flat-Meldungen eingegangen (AP-50b): vorhandene Flats je Projekt neu bilden wie der Server aus `flat_combination`
+   * (Schlüssel Filter, Winkel in Zehntelgrad, Gain/Offset `-1` für `null`, Binning, Auslesemodus; Zeitpunkt = späteste
+   * Flat-Aufnahme statt Sessionende) und das Targets-ETag erhöhen.
+   */
+  flatsReceived(captures: readonly Json[]): void {
+    const byKey = new Map<string, Json & { projectId: string }>();
+    for (const c of captures) {
+      if (c.frameType !== 'flat') continue;
+      const rec = {
+        filterShortName: c.filterShortName,
+        rotatorMechDg: Math.round(Number(c.rotatorMechDeg) * 10) % 3600,
+        gain: c.gain ?? -1,
+        offset: c.offset ?? -1,
+        binning: c.binning,
+        readoutModeIndex: c.readoutModeIndex ?? 0,
+      };
+      for (const projectId of (c.projectIds as string[] | undefined) ?? []) {
+        const key = JSON.stringify([projectId, rec]);
+        const prev = byKey.get(key);
+        const at = String(c.capturedAtUtc).replace(/\.\d+Z$/, 'Z');
+        byKey.set(key, {
+          ...rec,
+          projectId,
+          lastUtc: prev && String(prev.lastUtc) > at ? prev.lastUtc : at,
+          count: Number(prev?.count ?? 0) + 1,
+        });
+      }
+    }
+    const records = new Map<string, Json[]>();
+    for (const { projectId, ...rec } of byKey.values())
+      records.set(projectId, [...(records.get(projectId) ?? []), rec]);
+    this.state.flatRecords = records;
+    this.state.targetsVersion += 1;
   }
 
   targetsEtag(): string {
@@ -323,6 +362,7 @@ export class TestWorld {
       ...(scheduler.flats as Json),
       enabled: this.scenario.flats?.enabled ?? false,
       source: this.scenario.flats?.source ?? 'panel',
+      auto: this.scenario.flats?.auto ?? { mode: 'off', intervalDays: 7 },
     };
     return {
       ...b,
@@ -368,8 +408,9 @@ export class TestWorld {
   /** Plan für `night` (aktuelle Nacht; Folgenacht nur im Szenario multi-night, 24 h später). */
   plan(night: string, request: Json): Json {
     this.state.planRevision += 1;
-    const nights = this.validNights();
-    const shift = night === nights[1] && this.scenario.multiNight ? 86_400 : 0;
+    // Folgenacht = dieselben Blöcke n × 24 h später (n = Abstand zur Nacht beim Start), auch wenn die Uhr schon dort steht.
+    const dayIndex = this.nightTable().nights.findIndex((n) => n.night === night);
+    const shift = this.scenario.multiNight ? Math.max(0, dayIndex) * 86_400 : 0;
     const projects = this.projects();
     const projectOf = (b: { index: number } & ScenarioBlock) =>
       projects.find((p) => p.id === uuidFor(`project:${this.projectKey(b)}`));
@@ -597,6 +638,7 @@ export const freshState = (): WorldState => ({
   skippedBlocks: new Set(),
   clockSkewS: 0,
   planRevision: 0,
+  flatRecords: new Map(),
 });
 
 type Twilight = ReturnType<TestWorld['realNight']>['twilight'];

@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import {
   filterTypes,
+  flatsAutoModes,
   flatsSources,
   playbackModes,
   sortChainKeys,
@@ -95,6 +96,13 @@ export const NinaBootstrap = z
           fullSet: z.boolean(),
           count: z.number().int().min(0),
           darkFlats: z.object({ enabled: z.boolean(), count: z.number().int().min(0).nullable() }),
+          /** Auto-Flats je Projekt (AP-50b); fehlt bei älteren Servern (= aus). */
+          auto: z
+            .object({
+              mode: z.enum(flatsAutoModes),
+              intervalDays: z.number().int().min(1).max(30),
+            })
+            .optional(),
         }),
         meridianFlip: z.object({
           enabled: z.boolean(),

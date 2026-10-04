@@ -85,7 +85,7 @@ describe('result.json', () => {
       5,
     );
     expect(errors).toEqual([
-      'protocol: „P-99“ ist nicht P-01 … P-37 oder P-15b',
+      'protocol: „P-99“ ist nicht P-01 … P-38 oder P-15b',
       'date: JJJJ-MM-TT erwartet',
       'server: genau „nina_test_server“ oder „prod“',
       'result: „go“ oder „no_go“',
@@ -162,7 +162,7 @@ describe('Prüfung eines Laufs', () => {
     );
   });
 
-  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25, P-31, AP-16d P-06, P-15, P-19, P-28, P-32, AP-16e P-10, P-17, P-22, P-34, AP-16f P-07, P-08, P-21, P-26, P-36, AP-16g P-09, P-16, P-18, P-20, P-30, P-37, AP-44 P-14, P-15b, P-27, AP-50 P-12, P-33, P-35', () => {
+  it('Erwartungen: AP-S2b liefert P-01, P-02, P-03 und P-13, AP-16a P-04, AP-16c P-05, P-25, P-31, AP-16d P-06, P-15, P-19, P-28, P-32, AP-16e P-10, P-17, P-22, P-34, AP-16f P-07, P-08, P-21, P-26, P-36, AP-16g P-09, P-16, P-18, P-20, P-30, P-37, AP-44 P-14, P-15b, P-27, AP-50 P-12, P-33, P-35, AP-50b P-38', () => {
     expect(Object.keys(EXPECTATIONS.protocols).sort()).toEqual([
       'P-01',
       'P-02',
@@ -198,12 +198,14 @@ describe('Prüfung eines Laufs', () => {
       'P-35',
       'P-36',
       'P-37',
+      'P-38',
     ]);
     expect(EXPECTATIONS.protocols['P-04']?.package).toBe('AP-16a');
     for (const p of ['P-14', 'P-15b', 'P-27'])
       expect(EXPECTATIONS.protocols[p]?.package).toBe('AP-44');
     for (const p of ['P-12', 'P-33', 'P-35'])
       expect(EXPECTATIONS.protocols[p]?.package).toBe('AP-50');
+    expect(EXPECTATIONS.protocols['P-38']?.package).toBe('AP-50b');
     for (const p of ['P-05', 'P-25', 'P-31'])
       expect(EXPECTATIONS.protocols[p]?.package).toBe('AP-16c');
     // Schrittzahl wie die Protokolltabelle (ops/plugin-test-protocol.md).

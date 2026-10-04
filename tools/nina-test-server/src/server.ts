@@ -283,11 +283,14 @@ export class NinaTestServer {
     const r = schema.safeParse(body);
     if (!r.success) return invalid(r.error);
     if (kind === 'captures') {
+      let flats = false;
       const results = (r.data as z.infer<typeof nina.NinaCaptureBatch>).captures.map((c) => {
         const duplicate = this.captures.some((x) => x.id === c.id);
         if (!duplicate) this.captures.push({ sessionId, ...c });
+        if (!duplicate && c.frameType === 'flat') flats = true;
         return { id: c.id, status: duplicate ? 'duplicate' : 'accepted' };
       });
+      if (flats) this.world.flatsReceived(this.captures as unknown as Json[]);
       return ok(nina.NinaCaptureResults, { results });
     }
     let accepted = 0;

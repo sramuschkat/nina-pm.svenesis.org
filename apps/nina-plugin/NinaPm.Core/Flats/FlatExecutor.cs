@@ -48,6 +48,12 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
     /// <summary>Ereignis an den Server (<c>flats_start</c>, <c>flats_end</c>, <c>warning</c>).</summary>
     public Action<EventsKind, string?, IDictionary<string, object>?>? ReportEvent { get; set; }
 
+    /// <summary>Nachholen ausgefallener Flats höchstens so viele Nächte nach ihrer Entstehung (AP-50b, wie Astro PM).</summary>
+    public const int CarryOverMaxNights = 3;
+
+    /// <summary>Vorhandene Flats je Projekt aus <c>targets</c> (Auto-Flats, AP-50b); ohne Ziele keine.</summary>
+    public Func<Guid, IReadOnlyList<FlatsOnRecord>?>? Records { get; set; }
+
     /// <summary>Inhalt der Boxen am Container.</summary>
     public FlatBoxes Boxes() => host.Boxes();
 
@@ -67,11 +73,16 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
     /// Kombinationen der Nacht aus den gespeicherten Lights bilden bzw. fortschreiben und speichern (neue Kombinationen
     /// <c>pending</c>, bestehende behalten Winkel und Status).
     /// </summary>
-    public IReadOnlyList<FlatCombination> Prepare(string night, FlatPlanOptions options)
+    public IReadOnlyList<FlatCombination> Prepare(string night, FlatPlanOptions options, bool includeCarryOver = false)
     {
         var lights = store.FlatLights(night);
         var before = store.FlatCombinations(night);
         var combos = FlatPlanner.Update(lights, before, options);
+        if (options.Auto is { On: true } auto)
+        {
+            if (includeCarryOver) MergeCarryOver(night, combos);
+            ApplyAuto(combos, auto, options.RotationToleranceDeg);
+        }
         foreach (var c in combos)
         {
             var old = before.FirstOrDefault(b => b.Key == c.Key);
@@ -81,20 +92,110 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
     }
 
     /// <summary>Offene Kombinationen der Nacht (nach <see cref="Prepare"/>).</summary>
-    public bool Pending(string night, FlatPlanOptions options) => Prepare(night, options).Any(c => c.Open);
+    public bool Pending(string night, FlatPlanOptions options, bool includeCarryOver = false) =>
+        Prepare(night, options, includeCarryOver).Any(c => c.Open);
 
-    /// <summary>Offene Kombinationen auf <c>skipped</c> setzen (Nachtende bei <c>sessionEndUtc</c>, veraltete Nacht, unsicherer Abschluss).</summary>
-    public int SkipOpen(string night, string reason)
+    /// <summary>
+    /// Offene Kombinationen auf <c>skipped</c> setzen (Nachtende bei <c>sessionEndUtc</c>, veraltete Nacht, unsicherer
+    /// Abschluss). Mit <paramref name="carryOver"/> (Auto-Flats an, AP-50b) gehen sie in den nächsten Morgen über.
+    /// </summary>
+    public int SkipOpen(string night, string reason, bool carryOver = false)
     {
-        var n = 0;
+        var skipped = new List<FlatCombination>();
         foreach (var c in store.FlatCombinations(night).Where(c => c.Open))
         {
             c.Status = FlatStatus.Skipped;
             store.SaveFlatCombination(night, c);
             log.Event("FLATS_END", ("combination", c.LogKey), ("mechDg", c.MechDg), ("status", "skipped"), ("reason", reason));
-            n++;
+            skipped.Add(c);
         }
-        return n;
+        if (carryOver && skipped.Count > 0)
+        {
+            var carry = LoadCarryOver();
+            var list = carry?.Night == night ? carry.Combinations : [];
+            foreach (var c in skipped)
+            {
+                c.CarriedFrom ??= night;
+                if (!list.Any(x => x.Key == c.Key)) list.Add(c);
+            }
+            store.SetState(StateKeys.FlatCarryOver, JsonConvert.SerializeObject(new FlatCarryOver(night, list)));
+            log.Note($"Flats: {skipped.Count} Kombination(en) werden am nächsten Morgen nachgeholt (höchstens {CarryOverMaxNights} Nächte)");
+        }
+        return skipped.Count;
+    }
+
+    /// <summary>Nachholen verwerfen (Flats oder Auto-Flats im Rig ausgeschaltet).</summary>
+    public void DropCarryOver(string why)
+    {
+        if (store.GetState(StateKeys.FlatCarryOver) is null) return;
+        store.SetState(StateKeys.FlatCarryOver, null);
+        log.Note($"Flats: nachzuholende Kombinationen verworfen ({why})");
+    }
+
+    private FlatCarryOver? LoadCarryOver() =>
+        store.GetState(StateKeys.FlatCarryOver) is { } json ? JsonConvert.DeserializeObject<FlatCarryOver>(json) : null;
+
+    /// <summary>
+    /// Nachzuholende Kombinationen einer früheren Nacht als offene Kombinationen dieser Nacht übernehmen (volle Anzahl,
+    /// eigener eingefrorener Winkel und Zielliste); älter als <see cref="CarryOverMaxNights"/> Nächte → verworfen.
+    /// </summary>
+    private void MergeCarryOver(string night, List<FlatCombination> combos)
+    {
+        if (LoadCarryOver() is not { } carry || carry.Night == night) return;
+        store.SetState(StateKeys.FlatCarryOver, null);
+        var order = combos.Count == 0 ? 0 : combos.Max(c => c.Order) + 1;
+        foreach (var old in carry.Combinations)
+        {
+            var origin = old.CarriedFrom ?? carry.Night;
+            if (NightsBetween(origin, night) > CarryOverMaxNights)
+            {
+                log.Event("FLATS_END", ("combination", old.LogKey), ("mechDg", old.MechDg), ("status", "skipped"), ("reason", "carry_over_expired"));
+                continue;
+            }
+            if (combos.Any(c => c.Key == old.Key)) continue;
+            combos.Add(new FlatCombination
+            {
+                FilterShort = old.FilterShort,
+                NinaFilter = old.NinaFilter,
+                Gain = old.Gain,
+                Offset = old.Offset,
+                Binning = old.Binning,
+                ReadoutIndex = old.ReadoutIndex,
+                ReadoutName = old.ReadoutName,
+                MechDg = old.MechDg,
+                MedianDg = old.MedianDg,
+                Targets = [.. old.Targets],
+                FullSet = old.FullSet,
+                CarriedFrom = origin,
+                Order = order++,
+            });
+            log.Note($"Flats: {old.LogKey} @ {old.MechDg / 10.0:0.0}° aus der Nacht {origin} wird nachgeholt");
+        }
+    }
+
+    private static int NightsBetween(string from, string to) =>
+        DateOnly.TryParse(from, System.Globalization.CultureInfo.InvariantCulture, out var a)
+        && DateOnly.TryParse(to, System.Globalization.CultureInfo.InvariantCulture, out var b)
+            ? b.DayNumber - a.DayNumber
+            : int.MaxValue;
+
+    /// <summary>
+    /// Auto-Flats (AP-50b): eine noch nicht begonnene Kombination entfällt, wenn **alle** Projekte ihrer Zielliste
+    /// gültige Flats dafür haben; einmal je Kombination geprüft (danach bleibt die Entscheidung bis zum Ende der Nacht).
+    /// </summary>
+    private void ApplyAuto(List<FlatCombination> combos, FlatAutoSettings auto, double rotationToleranceDeg)
+    {
+        if (Records is not { } records) return;
+        var now = clock.UtcNow;
+        foreach (var c in combos.Where(c => c.Status == FlatStatus.Pending && !c.AutoChecked && c.FlatsSaved == 0 && c.DarkFlatsSaved == 0))
+        {
+            c.AutoChecked = true;
+            var projects = c.Targets.Select(t => t.ProjectId).Distinct().ToList();
+            if (projects.Count == 0) continue;
+            if (!projects.All(p => FlatCoverage.Covered(records(p), c, auto, rotationToleranceDeg, now, out _))) continue;
+            c.Status = FlatStatus.Skipped;
+            log.Event("FLATS_END", ("combination", c.LogKey), ("mechDg", c.MechDg), ("status", "skipped"), ("reason", "covered"));
+        }
     }
 
     public async Task RunAsync(FlatRunSettings s, CancellationToken token)
@@ -424,3 +525,6 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         }
     }
 }
+
+/// <summary>Nachzuholende Kombinationen (Auto-Flats, AP-50b): Nacht, in der sie ausfielen, und die Kombinationen.</summary>
+public sealed record FlatCarryOver(string Night, List<FlatCombination> Combinations);

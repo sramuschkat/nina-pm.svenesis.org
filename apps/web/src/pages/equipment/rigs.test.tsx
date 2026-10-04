@@ -105,6 +105,8 @@ const scheduler: RigView['scheduler'] = {
   darkFlatsEnabled: true,
   darkFlatCount: null,
   flatsSource: 'panel',
+  flatsAutoMode: 'off',
+  flatsAutoIntervalDays: 7,
   flipEnabled: true,
   flipAfterMeridianMin: 5,
   flipMaxAfterMeridianMin: 15,

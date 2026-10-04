@@ -7493,6 +7493,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/projects/{id}/flats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Flat-Markierung je Belichtungszeile nach der Auto-Flats-Regel des Rigs (AP-50b)
+         * @description Aktion: `project.read` · FA-SCH-08, FA-NIN-17
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Flats je Zeile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectFlatsView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/rigs/{id}/compatibility": {
         parameters: {
             query?: never;
@@ -15266,6 +15344,13 @@ export interface components {
             darkFlatCount: number | null;
             /** @enum {string} */
             flatsSource: "panel" | "sky";
+            /**
+             * @default off
+             * @enum {string}
+             */
+            flatsAutoMode: "off" | "once_per_project" | "time_based";
+            /** @default 7 */
+            flatsAutoIntervalDays: number;
             flipEnabled: boolean;
             flipAfterMeridianMin: number;
             flipMaxAfterMeridianMin: number;
@@ -16397,6 +16482,25 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             createdAt: string;
+        };
+        ProjectFlatsView: {
+            /** @enum {string} */
+            mode: "off" | "once_per_project" | "time_based";
+            intervalDays: number;
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                lineId: string;
+                covered: boolean;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lastUtc: string | null;
+                count: number;
+            }[];
         };
         RigCheckView: {
             conflicts: {
@@ -18879,6 +18983,11 @@ export interface components {
                             enabled: boolean;
                             count: number | null;
                         };
+                        auto?: {
+                            /** @enum {string} */
+                            mode: "off" | "once_per_project" | "time_based";
+                            intervalDays: number;
+                        };
                     };
                     meridianFlip: {
                         enabled: boolean;
@@ -18999,6 +19108,20 @@ export interface components {
                         moonMustBeDown?: boolean;
                     };
                 };
+                flatsOnRecord?: {
+                    filterShortName: string;
+                    rotatorMechDg: number;
+                    gain: number;
+                    offset: number;
+                    binning: number;
+                    readoutModeIndex: number;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    lastUtc: string;
+                    count: number;
+                }[];
                 center?: {
                     raDeg: number;
                     decDeg: number;
@@ -19108,6 +19231,20 @@ export interface components {
                         moonMustBeDown?: boolean;
                     };
                 };
+                flatsOnRecord?: {
+                    filterShortName: string;
+                    rotatorMechDg: number;
+                    gain: number;
+                    offset: number;
+                    binning: number;
+                    readoutModeIndex: number;
+                    /**
+                     * Format: date-time
+                     * @example 2026-09-18T13:00:00Z
+                     */
+                    lastUtc: string;
+                    count: number;
+                }[];
                 center?: {
                     raDeg: number;
                     decDeg: number;

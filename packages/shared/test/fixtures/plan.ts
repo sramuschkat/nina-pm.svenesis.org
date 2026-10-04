@@ -52,6 +52,8 @@ export const rig: z.infer<typeof RigView> = {
     darkFlatsEnabled: false,
     darkFlatCount: null,
     flatsSource: 'panel',
+    flatsAutoMode: 'off',
+    flatsAutoIntervalDays: 7,
     flipEnabled: false,
     flipAfterMeridianMin: 5,
     flipMaxAfterMeridianMin: 15,

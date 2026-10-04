@@ -9,6 +9,7 @@ import { EffortView } from './effort';
 import {
   approvalStatuses,
   commentReactions,
+  flatsAutoModes,
   moonModes,
   projectStatuses,
   twilight,
@@ -373,6 +374,26 @@ export const ProgressView = z.object({
   plannedS: z.number(),
   integrationS: z.number(),
 });
+
+/**
+ * Flat-Markierung je Belichtungszeile (AP-50b, FA-SCH-08): gelten nach der Auto-Flats-Regel des Rigs schon Flats für
+ * die Zeile? `covered = false` heißt: beim nächsten Belichten nimmt das Plugin Flats auf. Bei `mode = off` (oder ohne
+ * Rig) keine Zeilen.
+ */
+export const ProjectFlatsView = z
+  .object({
+    mode: z.enum(flatsAutoModes),
+    intervalDays: z.number().int().min(1).max(30),
+    lines: z.array(
+      z.object({
+        lineId: Uuid,
+        covered: z.boolean(),
+        lastUtc: UtcInstant.nullable(),
+        count: z.number().int().min(0),
+      }),
+    ),
+  })
+  .meta({ id: 'ProjectFlatsView' });
 
 export const ProjectView = z
   .object({

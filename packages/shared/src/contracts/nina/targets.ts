@@ -73,6 +73,21 @@ const Conditions = z.object({
     .optional(),
 });
 
+/** Vorhandene Flats des Projekts auf diesem Rig je Kombination (Auto-Flats, AP-50b). */
+export const NinaFlatRecord = z.object({
+  filterShortName: Text,
+  /** Mechanischer Rotatorwinkel in Zehntelgrad (Schlüssel wie `flat_combination`, NIN5-8). */
+  rotatorMechDg: z.number().int().min(0).max(3599),
+  /** Gain/Offset `null` als `-1` (NT-38). */
+  gain: z.number().int(),
+  offset: z.number().int(),
+  binning: z.number().int().min(1),
+  readoutModeIndex: z.number().int().min(0),
+  /** Ende der Session, in der die Flats entstanden. */
+  lastUtc: UtcInstant,
+  count: z.number().int().min(0),
+});
+
 const Common = {
   id: Uuid,
   version: z.number().int().min(1),
@@ -87,6 +102,8 @@ const Common = {
   startDate: NightKey.nullable().optional(),
   dueDate: NightKey.nullable().optional(),
   conditions: Conditions,
+  /** Vorhandene Flats (AP-50b); fehlt bei älteren Servern – dann gelten keine als vorhanden. */
+  flatsOnRecord: z.array(NinaFlatRecord).max(500).optional(),
   /**
    * Projektzentrum und Positionswinkel `pa₀` (geometry.md §2, NT-30/NT-32) für „In Framing-Assistent
    * laden“ (FA-NIN-02, AP-16h); ohne Rotator der Kamerawinkel des Rigs. Optional: ältere Server liefern

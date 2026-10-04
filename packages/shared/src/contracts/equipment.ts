@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import {
   filterTypes,
+  flatsAutoModes,
   flatsSources,
   moonModes,
   observatoryTypes,
@@ -421,6 +422,12 @@ export const SchedulerSettings = z
     /** `null` = wie `flatCount` (FA-SCH-08). */
     darkFlatCount: z.number().int().min(1).max(500).nullable(),
     flatsSource: z.enum(flatsSources),
+    /**
+     * Auto-Flats je Projekt (AP-50b): `off` = Flats nach jeder Nacht für alle Kombinationen; `once_per_project` = nur
+     * Kombinationen ohne Flats im Projekt; `time_based` = zusätzlich, wenn die letzten älter als `flatsAutoIntervalDays` sind.
+     */
+    flatsAutoMode: z.enum(flatsAutoModes).default('off'),
+    flatsAutoIntervalDays: z.number().int().min(1).max(30).default(7),
     flipEnabled: z.boolean(),
     flipAfterMeridianMin: z.number().min(0).max(120),
     flipMaxAfterMeridianMin: z.number().min(0).max(240),

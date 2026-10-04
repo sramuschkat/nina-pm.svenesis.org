@@ -842,6 +842,7 @@ async function projectExamples(): Promise<Record<string, Example>> {
       resource: qRes,
     },
     [`GET ${P}/{id}/history`]: { url: `${P}/${Q}/history`, resource: qRes },
+    [`GET ${P}/{id}/flats`]: { url: `${P}/${Q}/flats`, resource: qRes },
     'POST /api/web/v1/rigs/{id}/compatibility': {
       url: `/api/web/v1/rigs/${rig.id}/compatibility`,
       method: 'POST',

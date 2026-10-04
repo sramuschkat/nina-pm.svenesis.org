@@ -135,6 +135,7 @@ export {
   ninaTokenLookup,
   ninaTouch,
   parseCallLog,
+  type FlatRecord,
   type NinaCallLog,
   type NinaCallRecord,
   type NinaInstanceOverview,

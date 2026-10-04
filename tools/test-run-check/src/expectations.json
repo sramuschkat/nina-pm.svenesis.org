@@ -1159,6 +1159,28 @@
         }
       ],
       "forbid": []
+    },
+    "P-38": {
+      "package": "AP-50b",
+      "steps": [
+        "Nacht 1: Flats für die Kombinationen der Nacht wie P-12 (FLATS_END status=done)",
+        "Nacht 2 (einmal je Projekt): dieselben Kombinationen FLATS_END status=skipped reason=covered, kein Flat-Lauf, Session completed"
+      ],
+      "require": [
+        {
+          "event": "FLATS_END",
+          "where": {
+            "status": "done"
+          }
+        },
+        {
+          "event": "FLATS_END",
+          "where": {
+            "reason": "covered"
+          }
+        }
+      ],
+      "forbid": []
     }
   }
 }

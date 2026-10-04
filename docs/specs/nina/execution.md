@@ -299,6 +299,14 @@ Die Zuordnung Web-Filter ↔ NINA-Filtername wird **nicht** mehr zur Laufzeit ge
 > - **Bootstrap:** `rig.filters[].type` (Filtertyp) für die Reihenfolge der Himmelsflats; fehlt er, ordnet der Kurzname ein (Ha/OIII/SII/… Schmalband, L Luminanz).
 > - Mit dem Merge des AP-50-PR freigegeben.
 
+> **Spec-Ergänzung (AP-50b, 04.10.2026, Entscheidungen Sven):** Auto-Flats je Projekt (FA-SCH-08), `NinaPm.Core/Flats/FlatCoverage.cs` und `packages/shared/src/flats-coverage.ts` (gleiche Regel).
+> - **Einstellung** `rig.scheduler.flats.auto = {mode, intervalDays}` (`off` | `once_per_project` | `time_based`, 1–30 Tage); fehlt sie (älterer Server), gilt `off`.
+> - **Vorhandene Flats** liefert der Server je Projekt in `targets` (`flatsOnRecord`: Filter, mechanischer Winkel in Zehntelgrad, Gain/Offset mit `-1`, Binning, Auslesemodus-Index, Sessionende, Anzahl) aus `flat_combination` der Sessions **dieses Rigs** (nicht übersprungen, mindestens eine Flat). Neue Flats ändern das Targets-ETag. Keine lokale Ergänzung im Plugin.
+> - **Auswahl am Morgen:** Nach der Kombinationsbildung wird jede noch nicht begonnene Kombination einmal geprüft; sie entfällt (`FLATS_END … status=skipped reason=covered`), wenn **alle** Projekte ihrer Zielliste gültige Flats haben – gleicher Kamera-Schlüssel, Winkel innerhalb `max(1°, Toleranz/2)`; `once_per_project`: vorhanden genügt; `time_based`: die neuesten sind jünger als das Intervall (genau N Tage alt → neu). Bleibt keine Kombination, gibt es keinen Flat-Lauf (auch keine Boxen).
+> - **Nachholen:** Nur mit Auto-Flats gehen Kombinationen, die bei `sessionEndUtc`, beim unsicheren Nachtende oder als veraltete Nacht offen sind, in den nächsten Morgen über (Zustand `flatCarryOver` in `ninapm.db`; eigener eingefrorener Winkel und Zielliste, volle Anzahl). Übernommen wird erst am Nachtende einer Nacht **mit Session** (sonst würden die Flats nicht gemeldet); älter als 3 Nächte → `reason=carry_over_expired`; Flats oder Auto-Flats im Rig aus → verworfen. Ohne Auto bleibt es bei `skipped`.
+> - **Web:** `GET /projects/{id}/flats` (Aktion `project.read`) liefert je Belichtungszeile `covered`, `lastUtc`, `count` nach derselben Regel; der Winkel ist der der jüngsten Light-Aufnahme der Zeile auf diesem Rig (ohne Lights jeder Winkel). Bei `off` keine Zeilen und keine Spalte.
+> - Mit dem Merge des AP-50b-PR freigegeben.
+
 ## 8. Offline, Cache und Persistenz (Kern)
 - **Ein** lokaler Speicher: SQLite `%LOCALAPPDATA%\NINA\Plugins\Svenesis.NinaPm\ninapm.db` mit Tabellen `cache` (Bootstrap, Targets, letzter Plan, ETag), `outbox`, `sent_history` (14 Tage), `dead_letter`, `flat_combination_local`, `state` (sessionId, nightPlanId, Blockindex, `tonight`).
 - Cache (Bootstrap, Targets) höchstens 7 Tage alt verwendbar; ein gespeicherter Plan gilt nur für seine eigene Nacht (`night` = `currentNight`, §2). `401` (Token widerrufen) → Cache **nicht** verwenden, Fehlermeldung, keine Blöcke.
