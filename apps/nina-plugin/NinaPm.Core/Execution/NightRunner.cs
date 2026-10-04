@@ -758,7 +758,7 @@ public sealed class NightRunner(
     private async Task PatchSessionAsync(NinaSessionPatchStatus status, CancellationToken token)
     {
         if (SessionId is not { } id) return;
-        var patch = new NinaSessionPatch { Status = status, EndedAtUtc = clock.UtcNow, OutboxPending = store.OutboxCount() };
+        var patch = new NinaSessionPatch { Status = status, EndedAtUtc = clock.UtcNow, OutboxPending = store.OutboxCount(id) };
         if (patch.OutboxPending > 0) OutboxSender.RememberCompleted(store, id, patch.EndedAtUtc!.Value, status);
         // Offline-Modus: gar nichts aufrufen (§6) – der Abschluss wartet in der Outbox hinter den offenen Meldungen.
         if (offlineMode)

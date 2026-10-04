@@ -359,8 +359,13 @@ public sealed class LocalStore : IDisposable
         tx.Commit();
     }
 
-    /// <summary>Anzahl noch nicht quittierter Meldungen (<c>outboxPending</c> im Abschluss-<c>PATCH</c>, NIN5-7).</summary>
-    public int OutboxCount() => Convert.ToInt32(Scalar("SELECT COUNT(*) FROM outbox"));
+    /// <summary>
+    /// Anzahl noch nicht quittierter Meldungen – insgesamt (Heartbeat, Anzeige) bzw. je Session (<c>outboxPending</c> im
+    /// Abschluss-<c>PATCH</c>, NIN5-7): Reste einer früheren Session halten den Abschluss sonst bis zur 6-h-Grenze auf.
+    /// </summary>
+    public int OutboxCount(Guid? sessionId = null) => sessionId is { } id
+        ? Convert.ToInt32(Scalar("SELECT COUNT(*) FROM outbox WHERE session_id = $session", ("$session", id.ToString())))
+        : Convert.ToInt32(Scalar("SELECT COUNT(*) FROM outbox"));
 
     // ---- AP-16g: Backoff, Dead-Letter, Historie (execution.md §8) ------------------------------------------
 
