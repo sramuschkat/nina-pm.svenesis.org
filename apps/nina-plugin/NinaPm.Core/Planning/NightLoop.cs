@@ -42,6 +42,12 @@ public enum NightAction
     Stop,
 
     /// <summary>
+    /// Nachtende mit <c>lease_lost</c> (Lease freigegeben bzw. anderes Rig aktiv): keine Flats, Session als abgebrochen
+    /// melden und vergessen, Sperre aufheben – danach schließt die Nacht wie sonst (Ende-Bereich, Parken).
+    /// </summary>
+    AbandonSession,
+
+    /// <summary>
     /// Tagesschleife (AP-52): die Nacht ist beendet und die nächste angefordert, sie beginnt aber erst mit dem Wechsel von
     /// <c>currentNight</c> (Nachtfensterende, NT-01) – bis <see cref="NightStep.WaitUntilUtc"/> warten (Heartbeat <c>idle</c>).
     /// </summary>
@@ -149,7 +155,13 @@ public sealed class NightLoop
         if (Blocked is { } reason && reason != NinaHeartbeatBlockedReason.Plan_failed)
         {
             if (!Recoverable(reason) || ClockSkewExhausted) return new NightStep(NightAction.Stop);
-            return new NightStep(NightAction.BlockedWait, WaitUntilUtc: c.Now + BlockedWait);
+            // lease_lost endet nicht von selbst, wenn die Lease freigegeben wurde oder ein anderes Rig sie hält: am Nachtende
+            // trotzdem abschließen, sonst liefen weder Abschluss noch Ende-Bereich (Parken) – Analyse 04.10.2026.
+            if (reason == NinaHeartbeatBlockedReason.Lease_lost && c.Now >= NightEndUtc(c))
+                return new NightStep(c.HasSession ? NightAction.AbandonSession : NightAction.FinishNight);
+            var wake = c.Now + BlockedWait;
+            if (reason == NinaHeartbeatBlockedReason.Lease_lost && NightEndUtc(c) is var end && end < wake) wake = end;
+            return new NightStep(NightAction.BlockedWait, WaitUntilUtc: wake);
         }
         if (c.SessionStale) return new NightStep(NightAction.ResetStaleSession);
 
@@ -169,6 +181,15 @@ public sealed class NightLoop
         return start > c.Now
             ? new NightStep(NightAction.WaitForBlock, index, start)
             : new NightStep(NightAction.RunBlock, index);
+    }
+
+    /// <summary>Nachtende laut Plan (Ende der Dunkelheit, sonst Sessionende) bzw. ohne Plan das Nachtfensterende.</summary>
+    private static DateTimeOffset NightEndUtc(NightContext c)
+    {
+        var plan = c.Plan?.Plan;
+        var sessionEnd = plan?.SessionEndUtc ?? c.NightWindowEndUtc;
+        var nightEnd = plan is null ? sessionEnd : plan.DarknessEndUtc ?? plan.SessionEndUtc;
+        return nightEnd < sessionEnd ? nightEnd : sessionEnd;
     }
 
     /// <summary>Erster Block mit <c>endUtc &gt; now</c>, der in diesem Plan noch nicht gelaufen ist; -1 ohne.</summary>

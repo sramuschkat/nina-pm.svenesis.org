@@ -58,7 +58,12 @@ public static class WaitForTime
     public static NightRow TargetRow(IReadOnlyList<NightRow> nights, DateTimeOffset now, string? finishedNight)
     {
         var row = NightCalendar.CurrentRow(nights, now);
-        if (finishedNight is null || row.Night != finishedNight) return row;
+        // Start am Morgen nach der Dunkelheit, aber vor dem Nachtfensterende (z. B. NINA startet um 06:00): currentNight ist
+        // noch die alte Nacht, deren Abenddämmerung vorbei ist – ohne diese Regel ginge es sofort weiter, und die Sequenz
+        // entparkte im Morgengrauen (Analyse 04.10.2026). Dann gilt die folgende Nacht.
+        var darknessOver = row.Twilight is { } tw
+            && (tw.Astronomical.DawnUtc ?? tw.Nautical.DawnUtc ?? tw.Civil.DawnUtc) is { } dawn && now >= dawn;
+        if ((finishedNight is null || row.Night != finishedNight) && !darknessOver) return row;
         var index = nights.ToList().FindIndex(n => n.Night == row.Night);
         if (index < 0 || index + 1 >= nights.Count) throw new NightTableException("Folgenacht fehlt in der Nacht-Tabelle");
         return nights[index + 1];

@@ -391,6 +391,10 @@ public sealed class NightRunner(
         switch (step.Action)
         {
             case NightAction.ResetStaleSession:
+                // Session der vergangenen Nacht noch offen (z. B. Flats liefen bis über das Nachtfensterende, Neustart am
+                // nächsten Tag): erst abschließen – sonst bliebe sie beim Server `stale` statt `completed` (Analyse 04.10.2026).
+                if (SessionId is not null && !Loop.NightFinished)
+                    await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);
                 if (flats is not null)
                     foreach (var oldNight in store.NightsWithOpenFlats(row.Night))
                         flats.SkipOpen(oldNight, "night_stale", carryOver: AutoFlats(b));
@@ -402,12 +406,30 @@ public sealed class NightRunner(
             case NightAction.FetchPlan:
                 await FetchPlanAsync(b, row.Night, step.Reason ?? NinaPlanRequestReason.Initial, stored, token).ConfigureAwait(false);
                 return;
-            case NightAction.Idle:
             case NightAction.WaitForBlock:
+                // Vor einem späteren Block auf geänderte Ziele bzw. Einstellungen reagieren (Freigabe, Pause, Zeile aus),
+                // nicht erst bei dessen Start – sonst blieben bis zum Blockstart Stunden Dunkelzeit ungenutzt (Analyse 04.10.2026).
+                if (!Loop.PlanLocked(clock.UtcNow) && (targetsChanged || context.Plan!.SettingsVersion != SettingsVersion(b))
+                    && await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
+                    return;
+                await WaitAsync(step.WaitUntilUtc!.Value, wakeOnTargets: true, token).ConfigureAwait(false);
+                return;
+            case NightAction.Idle:
             case NightAction.BlockedWait:
             case NightAction.WaitForFlats:
             case NightAction.WaitForNight:
-                await blockHost.DelayAsync(step.WaitUntilUtc ?? clock.UtcNow + NightLoop.BlockedWait, token).ConfigureAwait(false);
+                await WaitAsync(step.WaitUntilUtc ?? clock.UtcNow + NightLoop.BlockedWait, wakeOnTargets: false, token).ConfigureAwait(false);
+                return;
+            case NightAction.AbandonSession:
+                // lease_lost bis zum Nachtende (Lease freigegeben bzw. anderes Rig aktiv): keine Flats, Session als
+                // abgebrochen melden und vergessen; danach schließt die Nacht und der Ende-Bereich (Parken) läuft.
+                log.Note("Nachtende ohne Lease – Session wird abgebrochen gemeldet, Flats entfallen.");
+                if (flats is not null) flats.SkipOpen(row.Night, "lease_lost", carryOver: AutoFlats(b));
+                if (SessionId is not null) await PatchSessionAsync(NinaSessionPatchStatus.Aborted, token).ConfigureAwait(false);
+                store.SetState(StateKeys.SessionId, null);
+                Loop.Unblock();
+                Loop.SessionCompleted();
+                ApplyLease(Lease.Reset());
                 return;
             case NightAction.RunBlock:
                 if (await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
@@ -421,6 +443,8 @@ public sealed class NightRunner(
                 store.SetState(StateKeys.SessionId, null);
                 return;
             case NightAction.FinishNight:
+                // Ziele am Morgen auffrischen: die Tagesschleife entscheidet gleich danach über „keine Ziele“ (AP-52).
+                await RefreshTargetsAsync(token).ConfigureAwait(false);
                 Loop.NightFinishedSet(row.Night);
                 log.Event("SESSION", ("status", "finished"), ("night", row.Night));
                 return;
@@ -556,6 +580,25 @@ public sealed class NightRunner(
     /// 5-min-Sperre – sonst plante das Plugin bei einem Server, der den Verzug nicht auflösen kann oder nicht erreichbar
     /// ist, vor jedem Aufruf neu.
     /// </summary>
+    /// <summary>Takt, in dem eine Wartezeit prüft, ob sie früher enden soll.</summary>
+    public static readonly TimeSpan WakeCheck = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Bis <paramref name="untilUtc"/> warten, aber früher zurück zur Entscheidung, wenn *Zurücksetzen* bzw. ein Kommando
+    /// eine Neuplanung verlangt oder (nur vor einem Block) Ziele bzw. Einstellungen sich geändert haben und die 5-min-Sperre
+    /// abgelaufen ist (Analyse 04.10.2026: vorher wartete der Container bis zum Blockstart, Freigaben wirkten erst dann).
+    /// </summary>
+    private async Task WaitAsync(DateTimeOffset untilUtc, bool wakeOnTargets, CancellationToken token)
+    {
+        while (clock.UtcNow < untilUtc)
+        {
+            if (forcedPlan is not null) return;
+            if (wakeOnTargets && (targetsChanged || bootstrapReload) && !Loop.PlanLocked(clock.UtcNow)) return;
+            var next = clock.UtcNow + WakeCheck;
+            await blockHost.DelayAsync(next < untilUtc ? next : untilUtc, token).ConfigureAwait(false);
+        }
+    }
+
     private async Task<bool> RefreshBeforeBlockAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
     {
         if (Loop.PlanLocked(clock.UtcNow)) return false;
@@ -930,7 +973,7 @@ public sealed class NightRunner(
     /// Heartbeat beantwortet: Uhrabgleich (NT-05, Laufzeit halbiert), Lease (nur mit Session), gestiegene
     /// <c>settingsVersion</c> → Bootstrap neu laden (die Neuplanung vor dem nächsten Block sieht sie, §3.2).
     /// </summary>
-    public void HeartbeatAnswered(NinaHeartbeatResponse response, DateTimeOffset sentUtc)
+    public void HeartbeatAnswered(NinaHeartbeatResponse response, DateTimeOffset sentUtc, Guid? sentSessionId = null)
     {
         var now = clock.UtcNow;
         var serverNow = response.ServerTimeUtc + (now - sentUtc) / 2;
@@ -954,7 +997,11 @@ public sealed class NightRunner(
             log.Warning("WARNING", ("code", "clock_drift"), ("durationS", Math.Round(skew.TotalSeconds)));
             ReportEvent(EventsKind.Warning, "clock_drift", message: $"PC-Uhr weicht {Math.Round(skew.TotalSeconds)} s von der Serverzeit ab");
         }
-        if (SessionId is not null) ApplyLease(Lease.HeartbeatAnswered(response.Lease?.LeaseLost ?? false));
+        // Lease nur für die Session, mit der der Heartbeat gesendet wurde: ist sie inzwischen abgeschlossen bzw. gewechselt,
+        // gälte ein `leaseLost` der alten Session sonst für die neue (Analyse 04.10.2026). Ohne Lease-Angabe (Server kennt die
+        // Session noch nicht, z. B. offline angelegt und noch in der Outbox) bleibt der Zustand.
+        if (SessionId is { } current && (sentSessionId is null || sentSessionId == current) && response.Lease is { } lease)
+            ApplyLease(Lease.HeartbeatAnswered(lease.LeaseLost));
         if (bootstrap is not null && response.SettingsVersion > SettingsVersion(bootstrap)) bootstrapReload = true;
     }
 
@@ -975,8 +1022,10 @@ public sealed class NightRunner(
                 Reset();
                 break;
             default:
-                // refresh_targets: neues ETag erzwingen → Neuplanung vor dem nächsten Block (§3.2).
+                // refresh_targets: neues ETag erzwingen → Neuplanung vor dem nächsten Block (§3.2); ein wartender Block
+                // prüft sofort.
                 store.PutCache(TargetsCacheKey, store.GetCache(TargetsCacheKey)?.Value ?? "{}", null);
+                targetsChanged = true;
                 break;
         }
         log.Note($"Heartbeat-Kommando {c.Command} ({c.Id}) ausgeführt");

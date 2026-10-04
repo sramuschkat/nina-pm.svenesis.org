@@ -117,7 +117,11 @@ public sealed class DayLoopTests
         // 06:00 CDT, vor dem Nachtfensterende (08:00): currentNight ist noch 2026-09-17, die ist aber beendet.
         var morning = T("2026-09-18T11:00:00Z");
         var spec = new WaitForTimeSpec(WaitSource.AstronomicalDusk, default);
-        Assert.Equal("2026-09-17", WaitForTime.Target(spec, nights, Chicago, morning, null).Night);
+        // Auch ohne beendete Nacht (Start am Morgen nach der Dunkelheit): die folgende Nacht, nicht die vorbeigegangene
+        // Dämmerung der alten – sonst entparkte die Sequenz im Morgengrauen (Analyse 04.10.2026).
+        Assert.Equal("2026-09-18", WaitForTime.Target(spec, nights, Chicago, morning, null).Night);
+        // Mitten in der Nacht (vor der Morgendämmerung) bleibt es die laufende Nacht.
+        Assert.Equal("2026-09-17", WaitForTime.Target(spec, nights, Chicago, T("2026-09-18T07:00:00Z"), null).Night);
         var next = WaitForTime.Target(spec, nights, Chicago, morning, finishedNight: "2026-09-17");
         Assert.Equal(("2026-09-18", T("2026-09-19T01:30:00Z")), (next.Night, next.UntilUtc!.Value));
     }
