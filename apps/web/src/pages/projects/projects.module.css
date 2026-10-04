@@ -1088,6 +1088,11 @@ tr[data-dragging='true'] {
   flex-direction: column;
   min-width: 0;
 }
+/* Reiter Sessions & Protokoll im Belichtungsplan-Bereich: Innenabstand wie die Hinweise des Bereichs. */
+.sessionsBody {
+  min-width: 0;
+  padding: var(--npm-space-3) var(--npm-space-4);
+}
 .planTools {
   display: flex;
   flex-direction: column;

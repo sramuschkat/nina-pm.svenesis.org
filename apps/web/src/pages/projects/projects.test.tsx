@@ -478,6 +478,34 @@ describe('Belichtungsplan (Komponente)', () => {
     expect(sums).toHaveTextContent('Gesamtfortschritt 25 %');
   });
 
+  it('Reiter: Einzelpanel heißt „Belichtungsplan“ (nicht „Main“), Sessions & Protokoll nur freigegeben, Mosaik nach Panel', async () => {
+    const view = wrap(
+      <ExposurePlan
+        project={project([line(1, 'Ha')])}
+        canEdit
+        rig={rig}
+        camera={camera}
+        filters={filters}
+        moonProfiles={[]}
+        templates={[]}
+        onChange={vi.fn()}
+        onReload={() => Promise.resolve()}
+        rigPath="/ausruestung/rigs"
+        panelsTab={<p>Panel-Liste</p>}
+        sessionsTab={<p>Sessions-Inhalt</p>}
+      />,
+    );
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
+    expect(tabs).toEqual(['Belichtungsplan', 'Panels', 'Sessions & Protokoll']);
+    await userEvent.click(screen.getByRole('tab', { name: 'Sessions & Protokoll' }));
+    expect(screen.getByText('Sessions-Inhalt')).toBeInTheDocument();
+    // Ohne Zeilenwerkzeuge auf dem Sessions-Reiter.
+    expect(screen.queryByRole('button', { name: /^Vorlage/ })).toBeNull();
+    view.unmount();
+    plan(project([line(1, 'Ha')]));
+    expect(screen.queryByRole('tab', { name: 'Sessions & Protokoll' })).toBeNull();
+  });
+
   it('Flat-Markierung je Zeile (AP-50b): vorhanden, zu alt, fehlt; ohne Auto-Flats keine Spalte', () => {
     const [ha, oiii, sii] = [line(1, 'Ha'), line(2, 'OIII'), line(3, 'SII')];
     const lines = [ha, oiii, sii];

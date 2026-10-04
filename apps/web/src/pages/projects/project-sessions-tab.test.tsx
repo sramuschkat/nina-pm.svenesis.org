@@ -4,13 +4,12 @@
  * aufgeklappt; Abfrage mit `projectId` über alle Nächte.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../../test/setup';
 import type { ProjectReport } from '../../api/client';
-import { ChartArea } from './ProjectTabs';
-import type { ProjectDraft } from './model';
+import { ProjectSessionsTab } from './ProjectTabs';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -134,15 +133,13 @@ const report = (): ProjectReport => ({
   ],
 });
 
-const draft = { raDeg: null, decDeg: null, conditions: {} } as unknown as ProjectDraft;
-
-const wrap = (projectId: string | null) =>
+const wrap = (projectId: string) =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <MemoryRouter>
-        <ChartArea draft={draft} site={null} sessionsProjectId={projectId} />
+        <ProjectSessionsTab projectId={projectId} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -155,21 +152,16 @@ beforeEach(() => {
 describe('Projekt-Editor: Reiter Sessions & Protokoll (S-31)', () => {
   it('zeigt Filter, Verlauf und Sessions des Projekts, Abfrage nur mit projectId', async () => {
     wrap(ID(10));
-    fireEvent.click(screen.getByRole('tab', { name: 'Sessions & Protokoll' }));
     const sessions = await screen.findByRole('table', { name: 'Sessions von NGC 7000' });
     expect(within(sessions).getByRole('link', { name: '12./13.09.' })).toBeTruthy();
     expect(screen.getByRole('table', { name: 'Filter von NGC 7000' })).toBeTruthy();
     expect(state.calls).toEqual([{ projectId: ID(10) }]);
   });
 
-  it('ohne Aufnahmen ein Hinweis; ohne freigegebenes Projekt kein Reiter', async () => {
+  it('ohne Aufnahmen ein Hinweis', async () => {
     const r = report();
     state.report = { ...r, projects: [{ ...r.projects[0], sessions: [] }] };
-    const { unmount } = wrap(ID(10));
-    fireEvent.click(screen.getByRole('tab', { name: 'Sessions & Protokoll' }));
+    wrap(ID(10));
     expect(await screen.findByText('Noch keine Aufnahmen für dieses Projekt.')).toBeTruthy();
-    unmount();
-    wrap(null);
-    expect(screen.queryByRole('tab', { name: 'Sessions & Protokoll' })).toBeNull();
   });
 });

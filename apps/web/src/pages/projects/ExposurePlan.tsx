@@ -66,7 +66,12 @@ export interface ExposurePlanProps {
 /** Schlüssel des Reiters *Panels* (Liste, Reihenfolge, Mosaik) neben den Reitern je Panel. */
 const PANELS_TAB = 'panels';
 
-export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode }) {
+/** Schlüssel des Reiters *Sessions & Protokoll* (S-31): Geplantes und Aufgenommenes in einem Bereich (Sven 04.10.2026). */
+const SESSIONS_TAB = 'sessions';
+
+export function ExposurePlan(
+  props: ExposurePlanProps & { panelsTab?: ReactNode; sessionsTab?: ReactNode },
+) {
   const { t } = useTranslation();
   const { project, canEdit } = props;
   const [tab, setTab] = useState<string>(project.panels[0]?.id ?? PANELS_TAB);
@@ -95,7 +100,10 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
   const active =
     tab === PANELS_TAB && props.panelsTab
       ? PANELS_TAB
-      : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
+      : tab === SESSIONS_TAB && props.sessionsTab
+        ? SESSIONS_TAB
+        : ((project.panels.find((p) => p.id === tab) ?? project.panels[0])?.id ?? PANELS_TAB);
+  const panelTab = active !== PANELS_TAB && active !== SESSIONS_TAB;
   const panelBody = (panelId: string) => {
     const panel = project.panels.find((p) => p.id === panelId);
     if (!panel) return null;
@@ -138,13 +146,20 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
         value={active}
         onChange={setTab}
         tabs={[
-          ...project.panels.map((p) => ({ key: p.id, label: p.label })),
+          // Ein einzelnes Panel heißt intern „Main“ – als Reiter „Belichtungsplan“; Mosaike nach Panel (Sven 04.10.2026).
+          ...project.panels.map((p) => ({
+            key: p.id,
+            label: project.panels.length === 1 ? t('projectEditor.plan.title') : p.label,
+          })),
           ...(props.panelsTab
             ? [{ key: PANELS_TAB, label: t('projectEditor.panelList.title') }]
             : []),
+          ...(props.sessionsTab
+            ? [{ key: SESSIONS_TAB, label: t('projectEditor.tabs.sessions') }]
+            : []),
         ]}
         toolbar={
-          canEdit && active !== PANELS_TAB ? (
+          canEdit && panelTab ? (
             <button
               type="button"
               className={styles.button}
@@ -160,6 +175,12 @@ export function ExposurePlan(props: ExposurePlanProps & { panelsTab?: ReactNode 
         panels={Object.fromEntries([
           ...project.panels.map((p) => [p.id, panelBody(p.id)]),
           [PANELS_TAB, props.panelsTab ?? null],
+          [
+            SESSIONS_TAB,
+            props.sessionsTab ? (
+              <div className={styles.sessionsBody}>{props.sessionsTab}</div>
+            ) : null,
+          ],
         ])}
       />
     </section>
