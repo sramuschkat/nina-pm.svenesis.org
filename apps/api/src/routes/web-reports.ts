@@ -85,6 +85,7 @@ export function webReportRoutes(services: () => Promise<ApiServices>) {
       rigNames: new Map(rigs.map((r) => [r.id, r.name])),
       nights: rows.nights,
       sessions: rows.sessions,
+      commentCounts: new Map(list.map((d) => [d.project.id, d.commentCount])),
     });
     c.header('cache-control', 'no-store');
     return c.json(report satisfies z.output<typeof ProjectReport>, 200);

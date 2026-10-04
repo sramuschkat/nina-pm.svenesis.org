@@ -2,20 +2,18 @@
  * Mittlerer Bereich des Projekt-Editors S-31 (FK 14.3, AP-26b): Reiter *Nachtdiagramm* (mit Nachtwahl
  * in der Reiterleiste, Standortzeit), *Saisondiagramm* (AP-24) und *Wetter* des Standorts (FA-WET-05,
  * AP-23) – Vorschau des Entwurfs, Koordinaten und Bedingungen live; Engine im Browser mit der
- * Nacht-Tabelle des Standorts (NT-02). Dazu *Notizen* (FA-PRJ-17, Markdown ohne rohes HTML) und
- * *Freigabe-Verlauf* (FA-BER-03), die der Editor unter *Bild & Notizen* zeigt. Exoplaneten-Projekte haben
+ * Nacht-Tabelle des Standorts (NT-02). Dazu *Freigabe-Verlauf* (FA-BER-03), den der Editor unter
+ * *Bild & Kommentare* zeigt (Kommentare FA-PRJ-17 in `CommentsTab`). Exoplaneten-Projekte haben
  * zusätzlich den Reiter *Exoplanet-Transit* (FA-EXO-17, AP-42) und öffnen mit ihm.
  */
 import { formatNightKey } from '@nina-pm/shared';
-import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { useId, useMemo, useState } from 'react';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
-import { useCan } from '../../auth';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
-import { Markdown } from '../../components/Markdown';
 import { NightChart } from '../../components/night-chart';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { Tabs } from '../../components/Tabs';
@@ -273,89 +271,6 @@ function NightTab({
       state={nights.isError ? 'error' : 'loading'}
       onRetry={() => void nights.refetch()}
     />
-  );
-}
-
-// ---- Notizen --------------------------------------------------------------------------------------
-
-export function NotesTab({
-  projectId,
-  resource,
-}: {
-  projectId: string;
-  resource: Parameters<typeof useCan>[1];
-}) {
-  const { t, i18n } = useTranslation();
-  const client = useQueryClient();
-  const canWrite = useCan('project.note.write', resource);
-  const notes = useQuery({
-    queryKey: ['project-notes', projectId],
-    queryFn: async () => (await projectsApi.notes(projectId)).items,
-  });
-  const [body, setBody] = useState('');
-  const id = useId();
-  const add = useMutation({
-    mutationFn: () => projectsApi.addNote(projectId, body.trim()),
-    onSuccess: async () => {
-      setBody('');
-      await client.invalidateQueries({ queryKey: ['project-notes', projectId] });
-    },
-  });
-  // Kein eigenes `<form>`: der Reiter liegt im Formular des oberen Bereichs (keine verschachtelten Formulare).
-  const submit = () => {
-    if (body.trim()) add.mutate();
-  };
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(
-      Date.parse(iso),
-    );
-  return (
-    <div className={styles.stack}>
-      {canWrite ? (
-        <div className={styles.stack}>
-          <label htmlFor={id} className={styles.muted}>
-            {t('projectEditor.notes.new')}
-          </label>
-          <textarea
-            id={id}
-            className={styles.input}
-            rows={3}
-            maxLength={20000}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          {add.error ? <ProblemMessage code={problemCode(add.error)} /> : null}
-          <div>
-            <button
-              type="button"
-              className={styles.buttonPrimary}
-              disabled={!body.trim()}
-              onClick={submit}
-            >
-              {t('projectEditor.notes.add')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {notes.isError ? (
-        <ProblemMessage code={problemCode(notes.error)} onRetry={() => void notes.refetch()} />
-      ) : notes.isPending ? (
-        <p role="status">{t('common.loading')}</p>
-      ) : notes.data.length === 0 ? (
-        <p className={styles.muted}>{t('projectEditor.notes.empty')}</p>
-      ) : (
-        <ul className={styles.notes}>
-          {notes.data.map((n) => (
-            <li key={n.id}>
-              <span className={styles.noteMeta}>
-                <Person id={n.userId} name={n.authorName} /> · {when(n.createdAt)}
-              </span>
-              <Markdown>{n.bodyMd}</Markdown>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

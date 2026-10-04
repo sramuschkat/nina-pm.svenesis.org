@@ -432,6 +432,20 @@ export interface ProjectNoteTable {
   sessionId: string | null;
   bodyMd: string;
   createdAt: Timestamp;
+  /** Antwort auf einen Kommentar der obersten Ebene (Migration 0012, FA-PRJ-17). */
+  parentId: string | null;
+  editedAt: Timestamp | null;
+  deletedAt: Timestamp | null;
+  deletedBy: string | null;
+}
+
+/** Reaktion auf einen Kommentar (Migration 0012, `enums.json commentReactions`). */
+export interface ProjectNoteReactionTable {
+  tenantId: string;
+  noteId: string;
+  userId: string;
+  emoji: string;
+  createdAt: Timestamp;
 }
 
 export interface ApprovalEventTable {
@@ -961,6 +975,7 @@ export interface Database {
   projectPanel: ProjectPanelTable;
   exposureLine: ExposureLineTable;
   projectNote: ProjectNoteTable;
+  projectNoteReaction: ProjectNoteReactionTable;
   approvalEvent: ApprovalEventTable;
   queueVote: QueueVoteTable;
   changeRequest: ChangeRequestTable;

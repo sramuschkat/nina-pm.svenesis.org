@@ -324,6 +324,7 @@ export type ProjectListItem = Schemas['ProjectListItem'];
 export type PanelView = Schemas['PanelView'];
 export type LineView = Schemas['LineView'];
 export type NoteView = Schemas['NoteView'];
+export type CommentReaction = NoteView['reactions'][number]['emoji'];
 export type HistoryEntry = Schemas['HistoryEntry'];
 export type RigCheckView = Schemas['RigCheckView'];
 export type ProjectConditionsView = ProjectView['conditions'];
@@ -391,9 +392,23 @@ export const projectsApi = {
     apiFetch<ProjectView>(`${V1}/projects/${id}/status`, json('PUT', { status })),
   favorite: (id: string, on: boolean) =>
     apiFetch<undefined>(`${V1}/me/favorites/${id}`, json(on ? 'PUT' : 'DELETE')),
+  /** Kommentare (FA-PRJ-17): flach, neueste zuerst; Antworten mit `parentId`. */
   notes: (id: string) => apiFetch<{ items: NoteView[] }>(`${V1}/projects/${id}/notes`),
-  addNote: (id: string, bodyMd: string) =>
-    apiFetch<NoteView>(`${V1}/projects/${id}/notes`, json('POST', { bodyMd })),
+  addNote: (id: string, bodyMd: string, parentId: string | null = null) =>
+    apiFetch<NoteView>(
+      `${V1}/projects/${id}/notes`,
+      json('POST', parentId ? { bodyMd, parentId } : { bodyMd }),
+    ),
+  editNote: (id: string, noteId: string, bodyMd: string) =>
+    apiFetch<NoteView>(`${V1}/projects/${id}/notes/${noteId}`, json('PATCH', { bodyMd })),
+  deleteNote: (id: string, noteId: string) =>
+    apiFetch<undefined>(`${V1}/projects/${id}/notes/${noteId}`, json('DELETE')),
+  /** Eigene Reaktion setzen (`active`) bzw. entfernen – idempotent. */
+  reactNote: (id: string, noteId: string, emoji: CommentReaction, active: boolean) =>
+    apiFetch<NoteView>(
+      `${V1}/projects/${id}/notes/${noteId}/reactions`,
+      json('PUT', { emoji, active }),
+    ),
   history: (id: string) => apiFetch<{ items: HistoryEntry[] }>(`${V1}/projects/${id}/history`),
   rigCheck: (rigId: string, projectId: string) =>
     apiFetch<RigCheckView>(`${V1}/rigs/${rigId}/compatibility`, json('POST', { projectId })),

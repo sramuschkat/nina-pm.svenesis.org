@@ -96,6 +96,8 @@ export const ReportProject = z
       moonSeparationDeg: z.number(),
     }),
     channelBalance: ChannelBalanceHint.nullable(),
+    /** Nicht gelöschte Kommentare am Projekt (FA-PRJ-17). */
+    commentCount: z.number().int().min(0),
   })
   .meta({ id: 'ReportProject' });
 export type ReportProject = z.infer<typeof ReportProject>;

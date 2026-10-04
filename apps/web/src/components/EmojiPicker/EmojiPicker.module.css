@@ -1,0 +1,58 @@
+/* Emoji-Auswahl (components.md §2.23): Knopf in Zeilenhöhe, Raster mit festen Feldern in der Karte. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--npm-row-h);
+  height: var(--npm-row-h);
+  border: 1px solid transparent;
+  border-radius: var(--npm-radius);
+  background: transparent;
+  color: var(--npm-text-light);
+  cursor: pointer;
+}
+.trigger:hover:not(:disabled) {
+  background: var(--npm-note-bg);
+  color: var(--npm-text);
+}
+.trigger:focus-visible,
+.emoji:focus-visible {
+  outline: 2px solid var(--npm-focus-ring);
+  outline-offset: 1px;
+}
+.trigger:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.panel {
+  padding: var(--npm-space-2);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  box-shadow: var(--npm-shadow);
+  z-index: 300;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(8, var(--npm-row-h));
+  gap: var(--npm-space-1);
+}
+.emoji {
+  width: var(--npm-row-h);
+  height: var(--npm-row-h);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--npm-radius);
+  background: transparent;
+  font-size: var(--npm-font-base);
+  line-height: 1;
+  cursor: pointer;
+}
+.emoji:hover {
+  background: var(--npm-note-bg);
+}
+.emoji[aria-pressed='true'] {
+  background: var(--npm-selected-bg);
+  border-color: var(--npm-accent);
+}

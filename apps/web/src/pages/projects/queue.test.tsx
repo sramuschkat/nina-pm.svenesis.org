@@ -156,6 +156,7 @@ const item = (n: number, over: Partial<QueueItem> = {}): QueueItem =>
     target: null,
     conditions: { minAltitudeDeg: 30, minTimeOnTargetH: 1, twilight: 'astronomical' },
     startDate: null,
+    commentCount: 0,
     ...over,
   }) as QueueItem;
 
@@ -272,9 +273,11 @@ describe('Modell', () => {
 
 describe('S-33 (Komponente)', () => {
   it('Stimme abgeben; eigenes Objekt gesperrt; Plan-Chip mit Tooltip; axe', async () => {
-    state.queue = [item(1), item(2, { createdBy: ME, name: 'Meins' })];
+    state.queue = [item(1, { commentCount: 4 }), item(2, { createdBy: ME, name: 'Meins' })];
     state.vote.mockResolvedValue({});
     renderPage();
+    // Kommentare am Projekt (FA-PRJ-17): Sprechblase mit Zahl neben dem Namen.
+    expect(await screen.findByRole('img', { name: 'Kommentare: 4' })).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: 'Für „Objekt 1“ stimmen' }));
     await waitFor(() => expect(state.vote).toHaveBeenCalledWith(ID(101), true, 'project'));
     expect(

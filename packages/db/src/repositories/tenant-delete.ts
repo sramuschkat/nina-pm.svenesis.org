@@ -37,6 +37,7 @@ export const TENANT_DELETE_ORDER: readonly { table: string; key: readonly string
   { table: 'invitation', key: ['id'] },
   { table: 'job', key: ['id'] },
   { table: 'notification', key: ['id'] },
+  { table: 'project_note_reaction', key: ['note_id', 'user_id', 'emoji'] },
   { table: 'project_note', key: ['id'] },
   { table: 'queue_vote', key: ['tenant_id', 'subject_kind', 'subject_id', 'voter_id'] },
   { table: 'rig_lease', key: ['rig_id'] },

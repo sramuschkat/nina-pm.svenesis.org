@@ -31,8 +31,8 @@ const superUser = ctx({
 });
 
 describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
-  it('kennt genau die 45 Aktionen aus enums.json', () => {
-    expect(ACTIONS).toHaveLength(45);
+  it('kennt genau die 46 Aktionen aus enums.json', () => {
+    expect(ACTIONS).toHaveLength(46);
   });
 
   it('nina.sync gilt nur mit Rig-Token, nie für eine Web-Sitzung (TK 5.6, SV-08)', () => {
@@ -82,6 +82,8 @@ describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
     ['member.manage', false],
     ['simulation.run', true],
     ['job.read', true],
+    ['project.note.write', true],
+    ['project.note.delete', false],
   ])('User auf Aktionsebene: %s → %s', (action, expected) => {
     expect(can(user, action)).toBe(expected);
   });
@@ -122,6 +124,20 @@ describe('can() – Rechtematrix TK 5.5 / FK 6.14', () => {
       expect(can(admin, 'project.read', { createdBy: 'other', approvalStatus: 'draft' })).toBe(
         true,
       );
+    });
+
+    it('Kommentare (FA-PRJ-17): schreiben wie lesen, löschen nur Admins', () => {
+      const approved = { createdBy: 'other', approvalStatus: 'approved' } as const;
+      const draft = { createdBy: 'other', approvalStatus: 'draft' } as const;
+      expect(can(user, 'project.note.write', approved)).toBe(true);
+      expect(can(user, 'project.note.write', draft)).toBe(false);
+      expect(
+        can(user, 'project.note.write', { createdBy: 'm-user', approvalStatus: 'draft' }),
+      ).toBe(true);
+      expect(can(admin, 'project.note.write', draft)).toBe(true);
+      expect(can(user, 'project.note.delete', approved)).toBe(false);
+      expect(can(admin, 'project.note.delete', approved)).toBe(true);
+      expect(can(owner, 'project.note.delete', draft)).toBe(true);
     });
 
     it('queue.vote nicht für eigene, queue.decide nicht für eigene außer einziger Admin', () => {

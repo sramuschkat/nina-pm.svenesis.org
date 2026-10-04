@@ -1,12 +1,18 @@
 /**
  * Projekte (AP-11a; FA-PRJ-01…22, FA-BER; TK 7.2): Projekt mit Bedingungen, Panels und Belichtungszeilen,
- * Zähler (FK 8.4), Status, Priorität, Favoriten, Notizen, Verlauf, Papierkorb. Datumsfelder mit
+ * Zähler (FK 8.4), Status, Priorität, Favoriten, Kommentare, Verlauf, Papierkorb. Datumsfelder mit
  * Standortbezug (`startDate`, `dueDate`) sind Nacht-Schlüssel (NT-04). Entwürfe dürfen unvollständig
  * sein (Koordinaten, Rig); Panels und Zeilen setzen Koordinaten voraus (Schema `project_panel`).
  */
 import { z } from 'zod';
 import { EffortView } from './effort';
-import { approvalStatuses, moonModes, projectStatuses, twilight } from '../generated/enums';
+import {
+  approvalStatuses,
+  commentReactions,
+  moonModes,
+  projectStatuses,
+  twilight,
+} from '../generated/enums';
 import { NightKey, UtcInstant, Uuid } from './common';
 
 const text = (max: number) => z.string().max(max);
@@ -279,10 +285,29 @@ export const PriorityChange = z
   .strict()
   .meta({ id: 'PriorityChange' });
 
+/** Kommentartext (FA-PRJ-17): Markdown ohne rohes HTML, Emoji im Text erlaubt. */
+const commentBody = z.string().trim().min(1).max(20000);
+
+/**
+ * Kommentar anlegen (FA-PRJ-17). `parentId` = Antwort; zeigt sie auf eine Antwort, hängt der Server sie an
+ * denselben Strang (Kommentar der obersten Ebene), Antworten sind also nur eine Ebene tief.
+ */
 export const NoteCreate = z
-  .object({ bodyMd: z.string().trim().min(1).max(20000) })
+  .object({ bodyMd: commentBody, parentId: Uuid.nullable().optional() })
   .strict()
   .meta({ id: 'NoteCreate' });
+
+/** Kommentar bearbeiten: nur der Verfasser, höchstens 1 h nach dem Anlegen (`409 comment.edit_window_closed`). */
+export const NotePatch = z.object({ bodyMd: commentBody }).strict().meta({ id: 'NotePatch' });
+
+/** Eigene Reaktion setzen (`active: true`) bzw. entfernen – idempotent; Emoji nur aus `commentReactions`. */
+export const NoteReactionSet = z
+  .object({ emoji: z.enum(commentReactions), active: z.boolean() })
+  .strict()
+  .meta({ id: 'NoteReactionSet' });
+
+/** Bearbeitungsfenster eines Kommentars ab dem Anlegen (FA-PRJ-17). */
+export const COMMENT_EDIT_WINDOW_MS = 60 * 60 * 1000;
 
 export const RigCheck = z.object({ rigId: Uuid }).strict().meta({ id: 'RigCheck' });
 
@@ -432,6 +457,8 @@ export const ProjectListItem = ProjectView.omit({ panels: true, descriptionMd: t
     createdByName: z.string(),
     panelCount: z.number().int(),
     filters: z.array(FilterPlanSummary),
+    /** Nicht gelöschte Kommentare (FA-PRJ-17, Sprechblase mit Zahl). */
+    commentCount: z.number().int().min(0),
   })
   .meta({ id: 'ProjectListItem' });
 
@@ -444,6 +471,11 @@ export const ProjectListQuery = z.object({
   favorites: z.enum(['true', 'false']).optional(),
 });
 
+/**
+ * Kommentar (FA-PRJ-17). Die Liste ist flach und neueste zuerst; Antworten tragen `parentId` (Kommentar der
+ * obersten Ebene) – die Oberfläche ordnet sie darunter, älteste zuerst. Gelöschte Kommentare behalten
+ * Verfasser und Zeit, liefern aber leeren Text und keine Reaktionen.
+ */
 export const NoteView = z
   .object({
     id: Uuid,
@@ -451,6 +483,20 @@ export const NoteView = z
     authorName: z.string(),
     bodyMd: z.string(),
     createdAt: UtcInstant,
+    parentId: Uuid.nullable(),
+    /** Zuletzt bearbeitet (Kennzeichen „bearbeitet“); `null` = nie. */
+    editedAt: UtcInstant.nullable(),
+    /** Weich gelöscht (Admin/Owner); dann `bodyMd = ''`. */
+    deletedAt: UtcInstant.nullable(),
+    /** Reaktionen in der Reihenfolge von `commentReactions`, nur mit Zähler > 0. */
+    reactions: z.array(
+      z.object({
+        emoji: z.enum(commentReactions),
+        count: z.number().int().min(1),
+        /** Das angemeldete Mitglied hat so reagiert. */
+        mine: z.boolean(),
+      }),
+    ),
   })
   .meta({ id: 'NoteView' });
 

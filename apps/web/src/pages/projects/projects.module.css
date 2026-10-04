@@ -149,6 +149,79 @@
   font-size: var(--npm-font-small);
   color: var(--npm-text-light);
 }
+/* Name mit Sprechblase in der Projektliste (FA-PRJ-17). */
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+}
+/* Kommentare (FA-PRJ-17): Antworten eingerückt unter dem Strang, Aktionen und Reaktionen als Textknöpfe. */
+.replies {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+  margin: var(--npm-space-2) 0 0 var(--npm-space-5);
+  padding: 0;
+  list-style: none;
+}
+.notes .replies li {
+  border-left-color: var(--npm-border-strong);
+}
+.comment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+  min-width: 0;
+}
+.commentActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--npm-space-1) var(--npm-space-2);
+}
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-2);
+  border: 1px solid var(--npm-border);
+  border-radius: var(--npm-radius);
+  background: var(--npm-white);
+  color: var(--npm-text);
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.reaction[aria-pressed='true'] {
+  border-color: var(--npm-accent);
+  background: var(--npm-selected-bg);
+}
+.reaction:disabled {
+  cursor: default;
+}
+.commentAction,
+.commentDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--npm-space-1);
+  min-height: var(--npm-row-h);
+  padding: 0 var(--npm-space-1);
+  border: none;
+  background: none;
+  color: var(--npm-link);
+  font: inherit;
+  font-size: var(--npm-font-small);
+  cursor: pointer;
+}
+.commentDanger {
+  color: var(--npm-danger);
+}
+.reaction:focus-visible,
+.commentAction:focus-visible,
+.commentDanger:focus-visible {
+  outline: 2px solid var(--npm-focus-ring);
+  outline-offset: 1px;
+}
 
 .templates,
 .quick {

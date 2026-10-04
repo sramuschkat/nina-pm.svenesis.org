@@ -124,6 +124,7 @@ components:
             - line.locked_by_captures
             - nina.night_invalid
             - engine.input_invalid
+            - comment.edit_window_closed
         requestId:
           type: string
         errors:
@@ -1152,6 +1153,7 @@ components:
             - vote.subject_changed
             - vote.subject_resubmitted
             - project.completed
+            - project.comment
             - transit.confirmation_needed
             - transit.confirmed
             - transit.declined
@@ -4606,6 +4608,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FilterPlanSummary"
+        commentCount:
+          type: integer
+          minimum: 0
       required:
         - id
         - name
@@ -4642,6 +4647,7 @@ components:
         - createdByName
         - panelCount
         - filters
+        - commentCount
     EffortView:
       type:
         - object
@@ -5861,13 +5867,75 @@ components:
           type: string
           format: date-time
           example: 2026-09-18T13:00:00Z
+        parentId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        editedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        deletedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        reactions:
+          type: array
+          items:
+            type: object
+            properties:
+              emoji:
+                type: string
+                enum:
+                  - 👍
+                  - ❤️
+                  - 🎉
+                  - 😄
+                  - 😮
+                  - 🙏
+                  - 🔭
+              count:
+                type: integer
+                minimum: 1
+              mine:
+                type: boolean
+            required:
+              - emoji
+              - count
+              - mine
       required:
         - id
         - userId
         - authorName
         - bodyMd
         - createdAt
+        - parentId
+        - editedAt
+        - deletedAt
+        - reactions
     NoteCreate:
+      type: object
+      properties:
+        bodyMd:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        parentId:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+      required:
+        - bodyMd
+      additionalProperties: false
+    NotePatch:
       type: object
       properties:
         bodyMd:
@@ -5876,6 +5944,25 @@ components:
           maxLength: 20000
       required:
         - bodyMd
+      additionalProperties: false
+    NoteReactionSet:
+      type: object
+      properties:
+        emoji:
+          type: string
+          enum:
+            - 👍
+            - ❤️
+            - 🎉
+            - 😄
+            - 😮
+            - 🙏
+            - 🔭
+        active:
+          type: boolean
+      required:
+        - emoji
+        - active
       additionalProperties: false
     HistoryEntry:
       type: object
@@ -6282,6 +6369,9 @@ components:
             - rigName
             - timeZone
             - plannedCount
+        commentCount:
+          type: integer
+          minimum: 0
       required:
         - kind
         - id
@@ -6314,6 +6404,7 @@ components:
         - version
         - changeRequest
         - transit
+        - commentCount
     QueueVotes:
       type: object
       properties:
@@ -7802,6 +7893,9 @@ components:
             - moonSeparationDeg
         channelBalance:
           $ref: "#/components/schemas/ChannelBalanceHint"
+        commentCount:
+          type: integer
+          minimum: 0
       required:
         - projectId
         - name
@@ -7820,6 +7914,7 @@ components:
         - sessions
         - conditions
         - channelBalance
+        - commentCount
     ReportFilterTotal:
       type: object
       properties:
@@ -8801,6 +8896,9 @@ components:
               - ninaFilterName
               - planned
               - accepted
+        commentCount:
+          type: integer
+          minimum: 0
       required:
         - id
         - name
@@ -8816,6 +8914,7 @@ components:
         - decDeg
         - rotationDeg
         - filters
+        - commentCount
     NightSessionList:
       type: object
       properties:
@@ -20507,7 +20606,7 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/projects/{id}/notes:
     get:
-      summary: Notizverlauf des Projekts
+      summary: Kommentare des Projekts mit Antworten und Reaktionen, neueste zuerst
       tags:
         - projects
       description: "Aktion: `project.read` · FA-PRJ-17"
@@ -20525,7 +20624,7 @@ paths:
           in: path
       responses:
         "200":
-          description: Notizen
+          description: Kommentare
           content:
             application/json:
               schema:
@@ -20562,7 +20661,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
     post:
-      summary: Notiz hinzufügen (Markdown)
+      summary: Kommentar oder Antwort (Markdown); benachrichtigt Ersteller und bisherige Verfasser
       tags:
         - projects
       description: "Aktion: `project.note.write` · FA-PRJ-17"
@@ -20587,6 +20686,190 @@ paths:
       responses:
         "201":
           description: Angelegt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/notes/{noteId}:
+    patch:
+      summary: Eigenen Kommentar bearbeiten (höchstens 1 h nach dem Anlegen)
+      tags:
+        - projects
+      description: "Aktion: `project.note.write` · FA-PRJ-17"
+      x-npm-action: project.note.write
+      x-npm-requirements:
+        - FA-PRJ-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: noteId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotePatch"
+      responses:
+        "200":
+          description: Bearbeitet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteView"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: comment.edit_window_closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    delete:
+      summary: Kommentar weich löschen (Admin/Owner); Antworten bleiben
+      tags:
+        - projects
+      description: "Aktion: `project.note.delete` · FA-PRJ-17"
+      x-npm-action: project.note.delete
+      x-npm-requirements:
+        - FA-PRJ-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: noteId
+          in: path
+      responses:
+        "204":
+          description: Gelöscht
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/projects/{id}/notes/{noteId}/reactions:
+    put:
+      summary: Eigene Reaktion setzen oder entfernen (feste Auswahl `commentReactions`)
+      tags:
+        - projects
+      description: "Aktion: `project.note.write` · FA-PRJ-17"
+      x-npm-action: project.note.write
+      x-npm-requirements:
+        - FA-PRJ-17
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: noteId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteReactionSet"
+      responses:
+        "200":
+          description: Kommentar mit Reaktionen
           content:
             application/json:
               schema:

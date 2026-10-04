@@ -149,6 +149,7 @@ const item = (n: number, over: Partial<ProjectListItem> = {}): ProjectListItem =
     },
     panelCount: 1,
     filters: [],
+    commentCount: 0,
     ...over,
   }) as ProjectListItem;
 
@@ -360,6 +361,17 @@ describe('S-30 (Komponente)', () => {
     fireEvent.error(img);
     fireEvent.error(screen.getByRole('img', { name: 'Vorschaubild M 31' }));
     expect(screen.getAllByText('Vorschaubild folgt')).toHaveLength(2);
+  });
+
+  it('Kommentare (FA-PRJ-17): Sprechblase mit Zahl in Liste, Karten und Detail; bei 0 nichts', async () => {
+    state.items = [item(1, { name: 'M 31', commentCount: 3 }), item(2, { name: 'Leer' })];
+    renderPage();
+    expect(await screen.findByRole('img', { name: 'Kommentare: 3' })).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: /^Kommentare/ })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('radio', { name: 'Karten' }));
+    expect(await screen.findByRole('img', { name: 'Kommentare: 3' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Detail' }));
+    expect(await screen.findByRole('img', { name: 'Kommentare: 3' })).toBeInTheDocument();
   });
 
   it('Priorität mit Pfeilen (nur Admin, freigegebene Projekte)', async () => {

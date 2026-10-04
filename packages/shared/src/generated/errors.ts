@@ -70,6 +70,7 @@ export const ERRORS = {
   "line.locked_by_captures": { http: 409, i18nKey: "errors.line.lockedByCaptures", titleDe: "Zeile hat Aufnahmen – Filter, Belichtungszeit, Gain, Offset, Binning und Auslesemodus sind gesperrt; Zeile duplizieren", titleEn: "Line has captures – filter, exposure time, gain, offset, binning and readout mode are locked; duplicate the line" },
   "nina.night_invalid": { http: 422, i18nKey: "errors.nina.nightInvalid", titleDe: "Nacht ist weder die aktuelle noch die folgende Nacht des Standorts", titleEn: "Night is neither the current nor the next night of the site" },
   "engine.input_invalid": { http: 422, i18nKey: "errors.engine.inputInvalid", titleDe: "Planungseingabe unvollständig (z. B. Nacht-Tabelle zu kurz)", titleEn: "Planning input incomplete (e.g. night table too short)" },
+  "comment.edit_window_closed": { http: 409, i18nKey: "errors.comment.editWindowClosed", titleDe: "Kommentare lassen sich nur in der ersten Stunde bearbeiten", titleEn: "Comments can only be edited within the first hour" },
 } as const;
 
 export type ErrorCode = keyof typeof ERRORS;

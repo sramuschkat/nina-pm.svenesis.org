@@ -91,6 +91,8 @@ export const TABLE_GRANTS: Readonly<Record<string, TableGrant>> = {
   project_panel: g(PROJ, ALL, SI),
   exposure_line: g(PROJ, ALL, SIU),
   project_note: g(PROJ, ALL, SI),
+  // Reaktionen auf Kommentare (Migration 0012, FA-PRJ-17): wie project_note.
+  project_note_reaction: g(PROJ, ALL, SI),
   approval_event: g(PROJ, ALL, SI),
   // UPDATE nur auf `submitter_rank`: Rangfolge beim Verfall einer Einreichung (Migration 0009), Anträge sonst unverändert.
   change_request: g(PROJ, ALL, SIU, ['submitter_rank']),

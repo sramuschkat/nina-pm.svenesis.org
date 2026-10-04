@@ -259,6 +259,11 @@ export async function targets(
 export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDelivery> {
   const d = await targetsData(svc, p);
   const confirmed = d.confirmed;
+  // Kommentare je Projekt (FA-PRJ-17): nur für die Web-Ansicht, nicht Teil von `targets`.
+  const comments = await svc
+    .repositories({ tenantId: p.tenantId })
+    .projects()
+    .commentCounts(d.details.map((x) => x.project.id));
   return {
     rigId: p.rigId,
     rigName: d.rig.name,
@@ -290,6 +295,7 @@ export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDeli
           planned: f.planned,
           accepted: f.accepted,
         })),
+        commentCount: comments.get(pv.id) ?? 0,
       };
     }),
   };

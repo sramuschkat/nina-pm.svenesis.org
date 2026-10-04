@@ -58,6 +58,8 @@ export function projectReport(input: {
   readonly rigNames: ReadonlyMap<string, string>;
   readonly nights: readonly ReportNightRow[];
   readonly sessions: readonly ReportSessionRow[];
+  /** Nicht gelöschte Kommentare je Projekt (FA-PRJ-17); fehlt ein Projekt, gilt 0. */
+  readonly commentCounts?: ReadonlyMap<string, number>;
 }): ProjectReport {
   const projects = input.projects.map((p): ReportProject => {
     const lines = p.panels.flatMap((panel) => panel.lines);
@@ -172,6 +174,7 @@ export function projectReport(input: {
         moonSeparationDeg: p.conditions.moonSeparationDeg,
       },
       channelBalance: channelBalance(filters),
+      commentCount: input.commentCounts?.get(p.id) ?? 0,
     };
   });
   return {

@@ -1,11 +1,11 @@
 /**
  * Projekte (AP-11a; TK 7.2 „Projekte“, „Projektstatus & Priorität“, „Verlauf“, „Notizen“; FA-PRJ-01…22):
  * CRUD für Projekte, Panels und Zeilen, Vorlage anwenden, Duplizieren, Status, Priorität je Rig,
- * Favoriten, Notizen, Verlauf, Rig-Wechsel-Prüfung und Papierkorb. Die Routen-Aktion prüft die Rolle;
+ * Favoriten, Kommentare (FA-PRJ-17), Verlauf, Rig-Wechsel-Prüfung und Papierkorb. Die Routen-Aktion prüft die Rolle;
  * die Entscheidung mit dem geladenen Objekt (eigene Entwürfe, Freigabestatus) fällt im Handler mit `can`.
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import type { ProjectDetail, ProjectRepository } from '@nina-pm/db';
+import type { NoteRecord, ProjectDetail, ProjectRepository } from '@nina-pm/db';
 import {
   ApplyTemplate,
   can,
@@ -18,6 +18,8 @@ import {
   LinePatch,
   MosaicApply,
   NoteCreate,
+  NotePatch,
+  NoteReactionSet,
   NoteView,
   PanelCreate,
   PanelOrder,
@@ -55,6 +57,7 @@ const BASE = '/api/web/v1';
 const idParam = z.object({ id: Uuid });
 const panelParam = z.object({ id: Uuid, panelId: Uuid });
 const lineParam = z.object({ id: Uuid, lineId: Uuid });
+const noteParam = z.object({ id: Uuid, noteId: Uuid });
 const json = <T extends z.ZodType>(schema: T) => ({ content: { 'application/json': { schema } } });
 const errors = {
   401: problemContent('Nicht angemeldet'),
@@ -217,7 +220,7 @@ export function filterPlanSummary(d: ProjectDetail) {
   return [...out.values()];
 }
 
-export const listItem = (d: ProjectDetail & { createdByName: string }) => {
+export const listItem = (d: ProjectDetail & { createdByName: string; commentCount: number }) => {
   const view: Partial<ReturnType<typeof projectView>> = projectView(d);
   delete view.panels;
   delete view.descriptionMd;
@@ -226,8 +229,22 @@ export const listItem = (d: ProjectDetail & { createdByName: string }) => {
     createdByName: d.createdByName,
     panelCount: d.panels.length,
     filters: filterPlanSummary(d),
+    commentCount: d.commentCount,
   };
 };
+
+/** Kommentar als API-Sicht (FA-PRJ-17). */
+export const noteView = (n: NoteRecord): z.output<typeof NoteView> => ({
+  id: n.id,
+  userId: n.userId,
+  authorName: n.authorName,
+  bodyMd: n.bodyMd,
+  createdAt: isoUtc(n.createdAt),
+  parentId: n.parentId,
+  editedAt: isoUtcOrNull(n.editedAt),
+  deletedAt: isoUtcOrNull(n.deletedAt),
+  reactions: [...n.reactions],
+});
 
 // ---- Routen ---------------------------------------------------------------------------------------
 
@@ -541,16 +558,18 @@ export const removeFavoriteRoute = defineRoute(
   },
 );
 
+// Kommentare (FA-PRJ-17): Pfad `/notes` bleibt (bisherige Notizen, Tabelle `project_note`), erweitert um
+// Antworten, Bearbeiten, weiches Löschen und Reaktionen – keine zweite Routenfamilie.
 export const listNotesRoute = defineRoute(
   { action: 'project.read', requirements: ['FA-PRJ-17'] },
   {
     method: 'get',
     path: `${BASE}/projects/{id}/notes`,
-    summary: 'Notizverlauf des Projekts',
+    summary: 'Kommentare des Projekts mit Antworten und Reaktionen, neueste zuerst',
     tags: ['projects'],
     request: { params: idParam },
     responses: {
-      200: { description: 'Notizen', ...json(z.object({ items: z.array(NoteView) })) },
+      200: { description: 'Kommentare', ...json(z.object({ items: z.array(NoteView) })) },
       ...errors,
     },
   },
@@ -561,10 +580,50 @@ export const addNoteRoute = defineRoute(
   {
     method: 'post',
     path: `${BASE}/projects/{id}/notes`,
-    summary: 'Notiz hinzufügen (Markdown)',
+    summary: 'Kommentar oder Antwort (Markdown); benachrichtigt Ersteller und bisherige Verfasser',
     tags: ['projects'],
     request: { params: idParam, body: { ...json(NoteCreate), required: true } },
     responses: { 201: { description: 'Angelegt', ...json(NoteView) }, ...errors },
+  },
+);
+
+export const editNoteRoute = defineRoute(
+  { action: 'project.note.write', requirements: ['FA-PRJ-17'] },
+  {
+    method: 'patch',
+    path: `${BASE}/projects/{id}/notes/{noteId}`,
+    summary: 'Eigenen Kommentar bearbeiten (höchstens 1 h nach dem Anlegen)',
+    tags: ['projects'],
+    request: { params: noteParam, body: { ...json(NotePatch), required: true } },
+    responses: {
+      200: { description: 'Bearbeitet', ...json(NoteView) },
+      ...errors,
+      409: problemContent('comment.edit_window_closed'),
+    },
+  },
+);
+
+export const deleteNoteRoute = defineRoute(
+  { action: 'project.note.delete', requirements: ['FA-PRJ-17'] },
+  {
+    method: 'delete',
+    path: `${BASE}/projects/{id}/notes/{noteId}`,
+    summary: 'Kommentar weich löschen (Admin/Owner); Antworten bleiben',
+    tags: ['projects'],
+    request: { params: noteParam },
+    responses: { 204: { description: 'Gelöscht' }, ...errors },
+  },
+);
+
+export const noteReactionRoute = defineRoute(
+  { action: 'project.note.write', requirements: ['FA-PRJ-17'] },
+  {
+    method: 'put',
+    path: `${BASE}/projects/{id}/notes/{noteId}/reactions`,
+    summary: 'Eigene Reaktion setzen oder entfernen (feste Auswahl `commentReactions`)',
+    tags: ['projects'],
+    request: { params: noteParam, body: { ...json(NoteReactionSet), required: true } },
+    responses: { 200: { description: 'Kommentar mit Reaktionen', ...json(NoteView) }, ...errors },
   },
 );
 
@@ -623,6 +682,9 @@ export const PROJECT_ROUTES = [
   removeFavoriteRoute,
   listNotesRoute,
   addNoteRoute,
+  editNoteRoute,
+  deleteNoteRoute,
+  noteReactionRoute,
   historyRoute,
   rigCompatibilityRoute,
 ] as const;
@@ -950,22 +1012,52 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     return c.body(null, 204);
   });
 
+  /** Einzelner Kommentar nach dem Schreiben (mit Reaktionen des Mitglieds). */
+  const noteOf = async (repo: ProjectRepository, id: string, noteId: string) => {
+    const [note] = await repo.notes(id, noteId);
+    if (!note) throw new ProblemError('resource.not_found');
+    return noteView(note);
+  };
+
   app.openapi(listNotesRoute, async (c) => {
     const { repo, auth } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.read');
-    const notes = await repo.notes(id);
-    return c.json({ items: notes.map((n) => ({ ...n, createdAt: isoUtc(n.createdAt) })) }, 200);
+    c.header('cache-control', 'no-store');
+    return c.json({ items: (await repo.notes(id)).map(noteView) }, 200);
   });
 
   app.openapi(addNoteRoute, async (c) => {
     const { repo, auth, svc } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.note.write');
-    const note = await repo.addNote(id, c.req.valid('json').bodyMd, svc.now());
-    const [created] = (await repo.notes(id)).filter((n) => n.id === note.id);
-    if (!created) throw new ProblemError('resource.not_found');
-    return c.json({ ...created, createdAt: isoUtc(created.createdAt) }, 201);
+    const note = await repo.addNote(id, c.req.valid('json'), svc.now());
+    return c.json(await noteOf(repo, id, note.id), 201);
+  });
+
+  app.openapi(editNoteRoute, async (c) => {
+    const { repo, auth, svc } = await ctx(c);
+    const { id, noteId } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.note.write');
+    await repo.editNote(id, noteId, c.req.valid('json').bodyMd, svc.now());
+    return c.json(await noteOf(repo, id, noteId), 200);
+  });
+
+  app.openapi(deleteNoteRoute, async (c) => {
+    const { repo, auth, svc } = await ctx(c);
+    const { id, noteId } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.note.delete');
+    await repo.deleteNote(id, noteId, svc.now());
+    return c.body(null, 204);
+  });
+
+  app.openapi(noteReactionRoute, async (c) => {
+    const { repo, auth, svc } = await ctx(c);
+    const { id, noteId } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.note.write');
+    const { emoji, active } = c.req.valid('json');
+    await repo.setReaction(id, noteId, emoji, active, svc.now());
+    return c.json(await noteOf(repo, id, noteId), 200);
   });
 
   app.openapi(historyRoute, async (c) => {

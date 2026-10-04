@@ -822,6 +822,22 @@ CREATE TABLE project_note (                        -- Notizverlauf (FA-PRJ-17)
     created_at      timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ASYNC ix_project_note_project ON project_note (tenant_id, project_id, created_at);
+-- Kommentare (Migration 0012, FA-PRJ-17 – Ausbau der Notizen, 04.10.2026): nachträgliche Spalten ohne
+-- DEFAULT/Constraint; NULL = Kommentar der obersten Ebene, nie bearbeitet, nicht gelöscht.
+--   ALTER TABLE project_note ADD COLUMN parent_id  uuid;         -- Antwort auf einen Kommentar der obersten Ebene (ohne FK)
+--   ALTER TABLE project_note ADD COLUMN edited_at  timestamptz;  -- bearbeitet (nur Verfasser, ≤ 1 h nach dem Anlegen)
+--   ALTER TABLE project_note ADD COLUMN deleted_at timestamptz;  -- weich gelöscht (Admin/Owner), Antworten bleiben
+--   ALTER TABLE project_note ADD COLUMN deleted_by uuid;
+
+CREATE TABLE project_note_reaction (               -- Reaktionen auf Kommentare (Migration 0012, FA-PRJ-17)
+    tenant_id       uuid NOT NULL REFERENCES tenant(id),
+    note_id         uuid NOT NULL REFERENCES project_note(id),
+    user_id         uuid NOT NULL REFERENCES app_user(id),
+    emoji           text NOT NULL,                 -- enums.json commentReactions
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (note_id, user_id, emoji)
+);
+CREATE INDEX ASYNC ix_project_note_reaction_tenant ON project_note_reaction (tenant_id, note_id);
 
 CREATE TABLE approval_event (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -16,6 +16,8 @@ import {
   autoReactivate,
   autoReadyToProcess,
   canTransition,
+  COMMENT_EDIT_WINDOW_MS,
+  commentReactions,
   effectiveTenantSettings,
   imageScale,
   LINE_LOCKED_FIELDS,
@@ -23,6 +25,7 @@ import {
   missingForActivation,
   ProblemError,
   projectProgress,
+  type CommentReaction,
   type FieldError,
   type LineCreate,
   type LinePatch,
@@ -106,6 +109,23 @@ export interface ListFilter {
   readonly favorites?: boolean;
   /** Admin sieht alle; User nur eigene und fremde außerhalb von Entwurf/Zurückgegeben (FA-BER-02). */
   readonly admin: boolean;
+}
+
+/** Kommentar mit Reaktionen (FA-PRJ-17); gelöscht = leerer Text, keine Reaktionen. */
+export interface NoteRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly authorName: string;
+  readonly bodyMd: string;
+  readonly createdAt: Date;
+  readonly parentId: string | null;
+  readonly editedAt: Date | null;
+  readonly deletedAt: Date | null;
+  readonly reactions: readonly {
+    readonly emoji: CommentReaction;
+    readonly count: number;
+    readonly mine: boolean;
+  }[];
 }
 
 export interface RigConflict {
@@ -346,10 +366,12 @@ export class ProjectRepository extends TenantRepo {
               .execute()
           ).map((u) => [u.id, u.displayName] as const),
     );
+    const comments = await this.commentCounts(projects.map((p) => p.id));
     return Promise.all(
       projects.map(async (p) => ({
         ...(await this.detailOf(this.db, p)),
         createdByName: names.get(p.createdBy) ?? '',
+        commentCount: comments.get(p.id) ?? 0,
       })),
     );
   }
@@ -1900,7 +1922,7 @@ export class ProjectRepository extends TenantRepo {
     );
   }
 
-  // ---- Favoriten, Notizen, Verlauf ----------------------------------------------------------------
+  // ---- Favoriten, Kommentare, Verlauf -------------------------------------------------------------
 
   async setFavorite(projectId: string, on: boolean, now: Date): Promise<void> {
     const memberId = this.ctx.memberId;
@@ -1921,27 +1943,226 @@ export class ProjectRepository extends TenantRepo {
         .execute();
   }
 
-  async addNote(projectId: string, bodyMd: string, now: Date) {
+  // ---- Kommentare (FA-PRJ-17, Ausbau der Notizen 04.10.2026) --------------------------------------
+
+  /** Nicht gelöschte Kommentare je Projekt – eine gruppierte Abfrage für ganze Listen (kein N+1). */
+  async commentCounts(projectIds: readonly string[]): Promise<Map<string, number>> {
+    const ids = [...new Set(projectIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .selectFrom('projectNote')
+      .select(['projectId', (eb) => eb.fn.countAll<string>().as('n')])
+      .where('tenantId', '=', this.tenantId)
+      .where('projectId', 'in', ids)
+      .where('deletedAt', 'is', null)
+      .groupBy('projectId')
+      .execute();
+    return new Map(rows.map((r) => [r.projectId, Number(r.n)]));
+  }
+
+  private noteRow(trx: Tx | Kysely, projectId: string, noteId: string) {
+    return trx
+      .selectFrom('projectNote')
+      .selectAll()
+      .where('tenantId', '=', this.tenantId)
+      .where('projectId', '=', projectId)
+      .where('id', '=', noteId)
+      .executeTakeFirst();
+  }
+
+  /**
+   * Kommentar oder Antwort anlegen. Eine Antwort auf eine Antwort hängt sich an denselben Strang (eine
+   * Ebene tief). Benachrichtigt (`project.comment`) den Ersteller des Projekts und alle, die dort schon
+   * kommentiert haben – außer dem Verfasser –, in derselben Transaktion.
+   */
+  async addNote(
+    projectId: string,
+    input: { bodyMd: string; parentId?: string | null | undefined },
+    now: Date,
+  ) {
+    const memberId = this.ctx.memberId;
+    if (!memberId) throw new ProblemError('permission.denied');
+    return this.tx(async (trx) => {
+      const project = await this.row(projectId, trx);
+      if (!project) throw notFound();
+      let parentId: string | null = null;
+      if (input.parentId) {
+        const parent = await this.noteRow(trx, projectId, input.parentId);
+        if (!parent) throw notFound();
+        parentId = parent.parentId ?? parent.id;
+      }
+      const row = await trx
+        .insertInto('projectNote')
+        .values({
+          tenantId: this.tenantId,
+          projectId,
+          userId: memberId,
+          bodyMd: input.bodyMd,
+          parentId,
+          createdAt: now,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      // Empfänger: Ersteller und bisherige Verfasser, nur aktive Mitglieder, nie der Verfasser selbst.
+      const [recipients, author] = await Promise.all([
+        trx
+          .selectFrom('appUser')
+          .select('id')
+          .where('tenantId', '=', this.tenantId)
+          .where('status', '=', 'active')
+          .where('id', '<>', memberId)
+          .where((eb) =>
+            eb.or([
+              eb('id', '=', project.createdBy),
+              eb(
+                'id',
+                'in',
+                eb
+                  .selectFrom('projectNote')
+                  .select('userId')
+                  .where('tenantId', '=', this.tenantId)
+                  .where('projectId', '=', projectId),
+              ),
+            ]),
+          )
+          .execute(),
+        trx
+          .selectFrom('appUser')
+          .select('displayName')
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', memberId)
+          .executeTakeFirst(),
+      ]);
+      await insertNotifications(trx, {
+        tenantId: this.tenantId,
+        recipients: recipients.map((r) => r.id),
+        kind: 'project.comment',
+        projectId,
+        payload: {
+          subject: project.name,
+          author: author?.displayName ?? '',
+          noteId: row.id,
+        },
+        now,
+      });
+      return row;
+    });
+  }
+
+  /** Eigenen Kommentar bearbeiten: nur der Verfasser, höchstens 1 h nach dem Anlegen. */
+  async editNote(projectId: string, noteId: string, bodyMd: string, now: Date) {
     const memberId = this.ctx.memberId;
     if (!memberId) throw new ProblemError('permission.denied');
     if (!(await this.row(projectId))) throw notFound();
-    const row = await this.db
-      .insertInto('projectNote')
-      .values({ tenantId: this.tenantId, projectId, userId: memberId, bodyMd, createdAt: now })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return row;
+    const note = await this.noteRow(this.db, projectId, noteId);
+    if (!note || note.deletedAt !== null) throw notFound();
+    if (note.userId !== memberId) throw new ProblemError('permission.denied');
+    if (now.getTime() - new Date(note.createdAt).getTime() > COMMENT_EDIT_WINDOW_MS)
+      throw new ProblemError('comment.edit_window_closed');
+    await this.db
+      .updateTable('projectNote')
+      .set({ bodyMd, editedAt: now })
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', noteId)
+      .execute();
   }
 
-  notes(projectId: string) {
-    return this.db
+  /** Kommentar weich löschen (Admin/Owner, Route `project.note.delete`); wiederholbar, Antworten bleiben. */
+  async deleteNote(projectId: string, noteId: string, now: Date) {
+    if (!(await this.row(projectId))) throw notFound();
+    const note = await this.noteRow(this.db, projectId, noteId);
+    if (!note) throw notFound();
+    if (note.deletedAt !== null) return;
+    await this.db
+      .updateTable('projectNote')
+      .set({ deletedAt: now, deletedBy: this.ctx.memberId ?? null })
+      .where('tenantId', '=', this.tenantId)
+      .where('id', '=', noteId)
+      .execute();
+  }
+
+  /** Eigene Reaktion setzen bzw. entfernen (idempotent); nicht an gelöschten Kommentaren. */
+  async setReaction(
+    projectId: string,
+    noteId: string,
+    emoji: CommentReaction,
+    active: boolean,
+    now: Date,
+  ) {
+    const memberId = this.ctx.memberId;
+    if (!memberId) throw new ProblemError('permission.denied');
+    if (!(await this.row(projectId))) throw notFound();
+    const note = await this.noteRow(this.db, projectId, noteId);
+    if (!note || note.deletedAt !== null) throw notFound();
+    if (active)
+      await this.db
+        .insertInto('projectNoteReaction')
+        .values({ tenantId: this.tenantId, noteId, userId: memberId, emoji, createdAt: now })
+        .onConflict((oc) => oc.columns(['noteId', 'userId', 'emoji']).doNothing())
+        .execute();
+    else
+      await this.db
+        .deleteFrom('projectNoteReaction')
+        .where('tenantId', '=', this.tenantId)
+        .where('noteId', '=', noteId)
+        .where('userId', '=', memberId)
+        .where('emoji', '=', emoji)
+        .execute();
+  }
+
+  /**
+   * Kommentare des Projekts, neueste zuerst, mit Reaktionen (Zähler, eigene). Gelöschte behalten Verfasser
+   * und Zeit, aber ohne Text und Reaktionen.
+   */
+  async notes(projectId: string, only?: string): Promise<NoteRecord[]> {
+    let noteQuery = this.db
       .selectFrom('projectNote as n')
       .innerJoin('appUser as u', 'u.id', 'n.userId')
-      .select(['n.id', 'n.userId', 'u.displayName as authorName', 'n.bodyMd', 'n.createdAt'])
+      .select([
+        'n.id',
+        'n.userId',
+        'u.displayName as authorName',
+        'n.bodyMd',
+        'n.createdAt',
+        'n.parentId',
+        'n.editedAt',
+        'n.deletedAt',
+      ])
       .where('n.tenantId', '=', this.tenantId)
-      .where('n.projectId', '=', projectId)
-      .orderBy('n.createdAt', 'desc')
-      .execute();
+      .where('n.projectId', '=', projectId);
+    let reactionQuery = this.db
+      .selectFrom('projectNoteReaction as r')
+      .innerJoin('projectNote as n', (j) =>
+        j.onRef('n.id', '=', 'r.noteId').onRef('n.tenantId', '=', 'r.tenantId'),
+      )
+      .select(['r.noteId', 'r.emoji', 'r.userId'])
+      .where('r.tenantId', '=', this.tenantId)
+      .where('n.projectId', '=', projectId);
+    if (only) {
+      noteQuery = noteQuery.where('n.id', '=', only);
+      reactionQuery = reactionQuery.where('r.noteId', '=', only);
+    }
+    const [notes, reactions] = await Promise.all([
+      noteQuery.orderBy('n.createdAt', 'desc').orderBy('n.id', 'desc').execute(),
+      reactionQuery.execute(),
+    ]);
+    const me = this.ctx.memberId;
+    const byNote = new Map<string, { emoji: string; userId: string }[]>();
+    for (const r of reactions) byNote.set(r.noteId, [...(byNote.get(r.noteId) ?? []), r]);
+    return notes.map((n) => {
+      const deleted = n.deletedAt !== null;
+      const own = deleted ? [] : (byNote.get(n.id) ?? []);
+      return {
+        ...n,
+        bodyMd: deleted ? '' : n.bodyMd,
+        reactions: commentReactions.flatMap((emoji) => {
+          const users = own.filter((r) => r.emoji === emoji);
+          return users.length === 0
+            ? []
+            : [{ emoji, count: users.length, mine: users.some((r) => r.userId === me) }];
+        }),
+      };
+    });
   }
 
   /** Freigabe- und Änderungsverlauf (FA-PRJ-17, FA-BER-03), neueste zuerst. */

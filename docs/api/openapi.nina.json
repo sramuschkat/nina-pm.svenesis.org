@@ -4250,7 +4250,8 @@
               "capture.assign_mismatch",
               "line.locked_by_captures",
               "nina.night_invalid",
-              "engine.input_invalid"
+              "engine.input_invalid",
+              "comment.edit_window_closed"
             ]
           },
           "requestId": {
