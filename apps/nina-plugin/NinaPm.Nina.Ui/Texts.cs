@@ -86,6 +86,7 @@ public static class Texts
     public static string SkipBlock => T("Block überspringen", "Skip block");
     public static string ReuploadFrom => T("Erneut hochladen ab", "Re-upload from");
     public static string Reupload => T("Erneut hochladen", "Re-upload");
+    public static string RequeueDeadLetters => T("Dead-Letter erneut senden", "Resend dead letters");
     public static string Refresh => T("Aktualisieren", "Refresh");
     public static string ClockSkew => T("Uhr weicht mehr als 60 s ab – keine Blöcke", "Clock off by more than 60 s – no blocks");
     public static string ClockUnchecked => T("Uhrzeit ungeprüft", "Clock not checked");

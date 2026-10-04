@@ -27,7 +27,8 @@ public sealed record CaptureFacts(
     CapturesPierSide? PierSide,
     bool TemperatureDeviation,
     Metrics? Metrics,
-    double? RotationDeg = null);
+    double? RotationDeg = null,
+    Guid? SessionId = null);
 
 /// <summary>Meldung einer Light-Aufnahme (<c>captures</c>, contracts/nina/README.md) aus den Fakten der Belichtung.</summary>
 public static class CaptureMapper

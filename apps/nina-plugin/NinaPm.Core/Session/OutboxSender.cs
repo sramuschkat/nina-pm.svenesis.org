@@ -42,13 +42,18 @@ public interface IOutboxListener
 /// Wiederholung mit Backoff 1, 2, 5, 15, 60 min (unbegrenzt) bei 408/429/5xx/Netz; <c>409 session.unknown</c> → Session
 /// nachmelden, dann wiederholen; <c>409 session.closed</c> → Dead-Letter mit Hinweis; <c>413</c> → Paket halbieren;
 /// <c>422</c> mit <c>errors[]</c> → nur die beanstandeten Meldungen ins Dead-Letter; <c>401</c>, <c>403 tenant.locked</c>,
-/// <c>409 engine.incompatible</c> → anhalten (gesperrter Zustand, kein Dead-Letter); übrige 4xx → Dead-Letter.
+/// <c>409 engine.incompatible</c> → anhalten (gesperrter Zustand, kein Dead-Letter); übrige <c>403</c> und <c>404</c> ohne
+/// Problem-Code (Origin-Prüfung, Proxy, falsche URL) → Wiederholung wie 5xx, sie hängen an keiner Meldung; übrige 4xx →
+/// Dead-Letter. <c>2xx</c> mit <c>rejected_invalid</c> zu einzelnen Aufnahmen → genau diese ins Dead-Letter (TK 6.6).
 /// Nach dem Nachtende meldet jedes weitere Leeren <c>PATCH {status: completed, outboxPending}</c> bis 0 (NIN5-7).
 /// Meldungen scheitern nie an der Lease (§6).
 /// </summary>
 public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog log, IClock? clock = null)
 {
     public const int MaxBatch = 500;
+
+    /// <summary>Höchstzahl Ereignisse je Paket (Server: <c>NinaEventBatch</c> ≤ 200).</summary>
+    public const int MaxEventBatch = 200;
 
     /// <summary>Backoff-Leiter in Minuten (§8); ab dem fünften Fehlschlag bleibt es bei 60 min.</summary>
     public static readonly int[] BackoffMinutes = [1, 2, 5, 15, 60];
@@ -66,6 +71,8 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
     private enum Result
     {
         Sent,
+        /// <summary>Gesendet, Quittung bzw. Dead-Letter je Meldung schon erledigt.</summary>
+        Acked,
         Retry,
         Pause,
         Continue,
@@ -94,11 +101,17 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                 var single = first.Kind is OutboxKinds.SessionPatch or OutboxKinds.Session;
                 var run = single
                     ? new List<OutboxEntry> { first }
-                    : entries.TakeWhile(e => e.Kind == first.Kind && e.SessionId == first.SessionId).ToList();
+                    : entries.TakeWhile(e => e.Kind == first.Kind && e.SessionId == first.SessionId)
+                        .Take(first.Kind == OutboxKinds.Event ? MaxEventBatch : MaxBatch).ToList();
                 switch (await SendAsync(run, token).ConfigureAwait(false))
                 {
                     case Result.Sent:
                         store.OutboxAcknowledge(run);
+                        acked = true;
+                        batchLimit = MaxBatch;
+                        LogState();
+                        break;
+                    case Result.Acked:
                         acked = true;
                         batchLimit = MaxBatch;
                         LogState();
@@ -183,9 +196,18 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
             switch (head.Kind)
             {
                 case OutboxKinds.Capture:
-                    await api.CapturesAsync(session, new NinaCaptureBatch { Captures = [.. run.Select(e => Read<Captures>(e.Payload))] }, token)
+                    var results = await api.CapturesAsync(session, new NinaCaptureBatch { Captures = [.. run.Select(e => Read<Captures>(e.Payload))] }, token)
                         .ConfigureAwait(false);
-                    break;
+                    log.Event("API", ("status", 200), ("call", call));
+                    var rejected = (results?.Results ?? []).Where(r => r.Status == ResultsStatus.Rejected_invalid).Select(r => r.Id).ToHashSet();
+                    if (rejected.Count == 0) return Result.Sent;
+                    // Einzelne Aufnahmen nicht zuordenbar (z. B. Projekt inzwischen an einem anderen Rig): sichtbar im
+                    // Dead-Letter statt still quittiert – sonst gälten sie lokal als gesendet und fehlten auf dem Server.
+                    var bad = run.Where(e => rejected.Contains(Read<Captures>(e.Payload).Id)).ToList();
+                    store.OutboxDeadLetter(bad, 200, "rejected_invalid", "Vom Server nicht angenommen (rejected_invalid)");
+                    store.OutboxAcknowledge([.. run.Except(bad)]);
+                    log.Warning("OUTBOX", ("rejected_invalid", bad.Count), ("session", session));
+                    return Result.Acked;
                 case OutboxKinds.Event:
                     await api.EventsAsync(session, new NinaEventBatch { Events = [.. run.Select(e => Read<Events>(e.Payload))] }, token)
                         .ConfigureAwait(false);
@@ -253,6 +275,11 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
             case 403 when code == "tenant.locked":
                 Listener?.Rejected(NinaHeartbeatBlockedReason.Tenant_locked);
                 return Result.Pause;
+            case 403:
+            case 404 when code is null:
+                // Hängt an keiner Meldung (Origin-Prüfung beim Schlüsselwechsel, Proxy, falsche Server-URL): wiederholen statt die
+                // ganze Outbox ins Dead-Letter zu leeren (Analyse 04.10.2026).
+                return Result.Retry;
             case 409 when code == "engine.incompatible":
                 Listener?.Rejected(NinaHeartbeatBlockedReason.Engine_incompatible);
                 return Result.Pause;
@@ -264,6 +291,13 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                 Listener?.SessionPatchRejected(session, patch, code);
                 return Result.Sent;
             case 409 when code == "session.unknown" && run[0].Kind != OutboxKinds.Session:
+                // Die Anlage dieser Session ist schon endgültig gescheitert (Dead-Letter): nicht erneut nachmelden, sonst
+                // dreht sich die Outbox im Kreis (Anlage → Dead-Letter → session.unknown → Anlage …).
+                if (store.DeadLetterHasSession(session))
+                {
+                    store.OutboxDeadLetter(run, status, code, "Session dem Server unbekannt, Anlage abgelehnt");
+                    return Result.Continue;
+                }
                 if (Listener?.SessionCreateFor(session) is { } create)
                 {
                     create.Offline = true;
@@ -294,7 +328,11 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
         }
     }
 
-    /// <summary>Indizes der beanstandeten Meldungen aus <c>errors[].path</c> (<c>captures.3.exposureMidUtc</c> → 3).</summary>
+    /// <summary>
+    /// Indizes der beanstandeten Meldungen aus <c>errors[].path</c>: Server-Format <c>$.captures[3].pierSide</c> → 3, auch
+    /// <c>captures.3.exposureMidUtc</c>. Vorher wurde nur die Punkt-Form erkannt, bei <c>$…[n]</c> landete das ganze Paket
+    /// im Dead-Letter (Analyse 04.10.2026).
+    /// </summary>
     public static HashSet<int> ProblemIndices(string? body)
     {
         var result = new HashSet<int>();
@@ -304,8 +342,9 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
             if (JObject.Parse(body)["errors"] is not JArray errors) return result;
             foreach (var e in errors)
             {
-                var parts = (e.Value<string>("path") ?? "").Split('.');
-                if (parts.Length >= 2 && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)) result.Add(i);
+                var m = ProblemPath.Match(e.Value<string>("path") ?? "");
+                var digits = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value;
+                if (m.Success && int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)) result.Add(i);
             }
         }
         catch (JsonException)
@@ -313,6 +352,9 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
         }
         return result;
     }
+
+    private static readonly System.Text.RegularExpressions.Regex ProblemPath =
+        new(@"^\$?\.?(?:captures|events)(?:\[(\d+)\]|\.(\d+))", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private static string Night(IReadOnlyList<OutboxEntry> run)
     {

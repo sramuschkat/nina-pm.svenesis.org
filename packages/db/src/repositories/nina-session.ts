@@ -385,7 +385,12 @@ export class NinaSessionRepository extends TenantRepo {
   }> {
     return withTx(this.db, async (trx) => {
       const s = await this.session(id, trx);
-      if (!s) throw new ProblemError('resource.not_found');
+      // Wie bei Aufnahmen und Ereignissen: unbekannt → `409 session.unknown` (das Plugin vergisst die Session bzw. meldet
+      // sie nach), fremdes Rig → `404` (SEC-53).
+      if (!s)
+        throw new ProblemError(
+          (await this.exists(trx, id)) ? 'resource.not_found' : 'session.unknown',
+        );
       const lease = await this.lockLease(trx);
       const released = excludedByRelease(s, lease);
       const set: Partial<Record<keyof SessionTable, unknown>> = {};
@@ -480,7 +485,10 @@ export class NinaSessionRepository extends TenantRepo {
       const lease = await this.lockLease(trx);
       if (!input.sessionId) return null;
       const s = await this.session(input.sessionId, trx);
-      if (!s) return { untilUtc: null, leaseLost: true };
+      // Unbekannte Session (offline angelegt, Anlage liegt noch in der Outbox des Plugins): keine Lease-Angabe statt
+      // `leaseLost` – sonst brach das Plugin den laufenden Block mit `lease_lost` ab, bis die Outbox die Session nachmeldete
+      // (Analyse 04.10.2026).
+      if (!s) return null;
       await trx
         .updateTable('session')
         .set({

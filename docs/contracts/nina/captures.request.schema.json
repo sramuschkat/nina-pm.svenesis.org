@@ -181,6 +181,7 @@
                     "const": "light"
                   },
                   "blockId": {
+                    "default": null,
                     "anyOf": [
                       {
                         "type": "string",
@@ -194,6 +195,7 @@
                     ]
                   },
                   "projectId": {
+                    "default": null,
                     "anyOf": [
                       {
                         "type": "string",
@@ -207,6 +209,7 @@
                     ]
                   },
                   "panelId": {
+                    "default": null,
                     "anyOf": [
                       {
                         "type": "string",
@@ -220,6 +223,7 @@
                     ]
                   },
                   "exposureLineId": {
+                    "default": null,
                     "anyOf": [
                       {
                         "type": "string",
@@ -265,6 +269,7 @@
                     "maximum": 360
                   },
                   "pierSide": {
+                    "default": null,
                     "anyOf": [
                       {
                         "type": "string",
@@ -300,14 +305,9 @@
                   "temperatureDeviation",
                   "result",
                   "frameType",
-                  "blockId",
-                  "projectId",
-                  "panelId",
-                  "exposureLineId",
                   "raDeg",
                   "decDeg",
                   "rotationDeg",
-                  "pierSide",
                   "bonus"
                 ]
               },

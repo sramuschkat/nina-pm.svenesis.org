@@ -157,6 +157,7 @@ export {
   ninaTokenLookup,
   ninaTouch,
   parseCallLog,
+  type DeliveredTransit,
   type FlatRecord,
   type NinaCallLog,
   type NinaCallRecord,
@@ -254,6 +255,7 @@ export {
 } from './repositories/thumbnail';
 export {
   settleTransits,
+  TRANSIT_SETTLE_GRACE_MS,
   TransitRepository,
   transitLine,
   type LockInput,

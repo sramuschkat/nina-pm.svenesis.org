@@ -163,11 +163,15 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     /// <summary>Wechselt die Pier-Seite während der n-ten Belichtung (1-basiert): ungeplanter Flip über NINAs Trigger.</summary>
     public int FlipDuringExposure { get; set; }
 
+    /// <summary>Wird bei jedem Warteschritt aufgerufen (z. B. Bedienung während des Wartens).</summary>
+    public Action<DateTimeOffset>? OnDelay { get; set; }
+
     public Task DelayAsync(DateTimeOffset untilUtc, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         Calls.Add($"delay:{UtcText.Format(untilUtc)}");
         if (untilUtc > clock.UtcNow) clock.UtcNow = untilUtc;
+        OnDelay?.Invoke(untilUtc);
         return Task.CompletedTask;
     }
 }
