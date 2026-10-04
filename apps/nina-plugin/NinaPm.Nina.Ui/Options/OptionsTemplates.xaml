@@ -285,44 +285,79 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="330" Margin="0,0,8,8" Padding="10,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                        CornerRadius="4">
+                                <!--  Zielkarte wie im Web-Simulator: Punkt in Zielfarbe, Kennzahlen, Filter-Chips, Prüfliste.  -->
+                                <Border Width="360" Margin="0,0,10,10" Padding="14,10" Background="{DynamicResource SecondaryBackgroundBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6">
                                     <StackPanel>
-                                        <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
-                                            <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
-                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                        <StackPanel Margin="0,0,0,6" Orientation="Horizontal">
+                                            <Ellipse Width="11" Height="11" Margin="0,0,8,0" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
+                                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding Name}" />
                                             <Border Margin="8,0,0,0" Padding="6,0" VerticalAlignment="Center" BorderBrush="{Binding ColorBrush}"
                                                     BorderThickness="1" CornerRadius="6"
                                                     Visibility="{Binding Transit, Converter={StaticResource NinaPm.BoolToVisibility}}">
                                                 <TextBlock FontSize="10" Text="{Binding TransitLabel}" />
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding WindowText}" />
-                                        <TextBlock Text="{Binding HoursText}" />
-                                        <TextBlock Text="{Binding AltitudeText}" />
-                                        <TextBlock Text="{Binding MoonText}" />
-                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Lines}">
+                                        <ItemsControl ItemsSource="{Binding Facts}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Margin="0,1" Opacity="{Binding Opacity}">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Rectangle Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
-                                                            <TextBlock Text="{Binding Text}" />
-                                                        </StackPanel>
-                                                        <TextBlock Margin="16,0,0,0" FontSize="10" Opacity="0.75" Text="{Binding MoonText}" />
-                                                    </StackPanel>
+                                                    <Grid Margin="0,1">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="110" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Opacity="0.7" Text="{Binding Label}" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                                                    </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Flips}" />
-                                        <Border Margin="0,4,0,0" Padding="6,3" BorderBrush="{Binding ColorBrush}" BorderThickness="1" CornerRadius="3"
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Flips}"
+                                                      Visibility="{Binding HasFlips, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontWeight="SemiBold" Foreground="{Binding DataContext.FlipBrush, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                               Text="{Binding}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Margin="0,10,0,4" FontSize="10.5" FontWeight="SemiBold" Opacity="0.65" Text="{Binding LinesHeader}" />
+                                        <ItemsControl ItemsSource="{Binding Lines}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2" Opacity="{Binding Opacity}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="60" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Grid.Column="0" Margin="0,0,8,0" Padding="4,1" VerticalAlignment="Top" Background="{Binding ChipBrush}"
+                                                                CornerRadius="3">
+                                                            <TextBlock HorizontalAlignment="Center" FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding ChipForeground}"
+                                                                       Text="{Binding Chip}" TextTrimming="CharacterEllipsis" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" />
+                                                            <Border Margin="0,2,0,0" Padding="6,0" HorizontalAlignment="Left" BorderBrush="{Binding MoonBrush}" BorderThickness="1"
+                                                                    CornerRadius="8" Visibility="{Binding HasMoon, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                                                                <TextBlock FontSize="10" Foreground="{Binding MoonBrush}" Text="{Binding MoonText}" />
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Border Margin="0,6,0,0" Padding="6,3" BorderBrush="{Binding ColorBrush}" BorderThickness="1" CornerRadius="3"
                                                 Visibility="{Binding Transit, Converter={StaticResource NinaPm.BoolToVisibility}}">
                                             <TextBlock FontSize="11" Text="{Binding TransitBox}" TextWrapping="Wrap" />
                                         </Border>
-                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Checks}">
+                                        <Separator Margin="0,8,0,6" Opacity="0.5" />
+                                        <ItemsControl ItemsSource="{Binding Checks}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock FontSize="11" Foreground="{Binding Brush}" Text="{Binding Text}" />
+                                                    <StackPanel Margin="0,1" Orientation="Horizontal">
+                                                        <TextBlock Width="18" FontWeight="Bold" Foreground="{Binding Brush}" Text="{Binding Icon}" />
+                                                        <TextBlock Opacity="0.85" Text="{Binding Label}" />
+                                                    </StackPanel>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -345,7 +380,8 @@
                     <!--  Schritt 3: Plangrafik (FA-SIM-07) und Planprotokoll (FA-SIM-08).  -->
                     <TextBlock Margin="0,4,0,2" FontWeight="SemiBold" Text="{x:Static ui:Texts.Step3}" />
                     <TextBlock Margin="0,0,0,4" Opacity="0.75" Text="{Binding PlanHeader}" />
-                    <Border Margin="0,0,0,8" HorizontalAlignment="Left" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    <!--  Plangrafik wie im Web-Simulator: dunkler Rahmen, Himmel im Verlauf, Mondfläche, Blöcke als Flächen in Zielfarbe.  -->
+                    <Border Margin="0,0,0,8" HorizontalAlignment="Left" Background="{Binding FrameBrush}" CornerRadius="6"
                             DataContext="{Binding Chart}">
                         <Grid Width="{Binding ChartWidth}" Height="{Binding ChartHeight}" ClipToBounds="True">
                             <ItemsControl ItemsSource="{Binding Rects}">
@@ -362,10 +398,24 @@
                                 </ItemsControl.ItemContainerStyle>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Width="{Binding Width}" Height="{Binding Height}" Background="{Binding Fill}" ToolTip="{Binding ToolTip}">
-                                            <TextBlock Margin="3,0" VerticalAlignment="Center" FontSize="10" Foreground="{Binding LabelBrush}"
-                                                       Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                        <Border Width="{Binding Width}" Height="{Binding Height}" Background="{Binding Fill}" BorderBrush="{Binding Stroke}"
+                                                BorderThickness="{Binding Border}" ToolTip="{Binding ToolTip}">
+                                            <TextBlock Margin="{Binding LabelMargin}" VerticalAlignment="{Binding LabelAlignment}" FontSize="{Binding LabelSize}"
+                                                       FontWeight="{Binding LabelWeight}" Foreground="{Binding LabelBrush}" Text="{Binding Label}"
+                                                       TextTrimming="CharacterEllipsis" />
                                         </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding Polygons}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Polygon Fill="{Binding Fill}" Points="{Binding Points}" />
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -396,7 +446,9 @@
                                 </ItemsControl.ItemContainerStyle>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock FontSize="10" Foreground="{Binding Foreground}" Text="{Binding Text}" />
+                                        <Border Padding="{Binding Padding}" Background="{Binding Background}">
+                                            <TextBlock FontSize="{Binding Size}" FontWeight="{Binding Weight}" Foreground="{Binding Foreground}" Text="{Binding Text}" />
+                                        </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -411,8 +463,35 @@
                         </Button>
                         <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding CopyStatus}" />
                     </StackPanel>
-                    <DataGrid MaxHeight="400" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" ItemsSource="{Binding Log}"
-                              SelectionMode="Extended">
+                    <!--  Planprotokoll: Spalten mit Abstand, Zeilen in Festbreitenschrift wie im Web (S-40).  -->
+                    <DataGrid MaxHeight="400" AutoGenerateColumns="False" CanUserAddRows="False" FontFamily="Consolas" GridLinesVisibility="Horizontal"
+                              HeadersVisibility="Column" IsReadOnly="True" ItemsSource="{Binding Log}" MinColumnWidth="44" SelectionMode="Extended">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style BasedOn="{StaticResource {x:Type DataGridColumnHeader}}" TargetType="DataGridColumnHeader">
+                                <Setter Property="Padding" Value="8,3" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.RowStyle>
+                            <Style BasedOn="{StaticResource {x:Type DataGridRow}}" TargetType="DataGridRow">
+                                <Setter Property="MinHeight" Value="22" />
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.CellStyle>
+                            <Style BasedOn="{StaticResource {x:Type DataGridCell}}" TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="8,1" />
+                                <Setter Property="TextBlock.TextAlignment" Value="Left" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridCell">
+                                            <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                                <ContentPresenter />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </DataGrid.CellStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Binding="{Binding Time}" Header="{x:Static ui:Texts.LogTime}" />
                             <DataGridTextColumn Binding="{Binding Cmd}" Header="{x:Static ui:Texts.LogCmd}" />

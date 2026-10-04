@@ -263,6 +263,17 @@ public static class Texts
     public static string CardLine(string filter, string exposure, int need, int tonight) =>
         T($"{filter} {exposure} s · verbleibend {need} · heute {tonight}", $"{filter} {exposure} s · remaining {need} · tonight {tonight}");
     public static string CardMoon(string name) => T($"Mond: {name}", $"Moon: {name}");
+    public static string CardAllocated => T("Zugeteilt", "Allocated");
+    public static string CardLinesHeader => T("BELICHTUNGSPLAN", "EXPOSURE PLAN");
+    public static string CardLineDetail(int need, int tonight, string exposure) =>
+        T($"verbleibend {need} · heute {tonight} · {exposure} s", $"remaining {need} · tonight {tonight} · {exposure} s");
+    public static string MoonWord => T("Mond", "Moon");
+    public static string TwilightWord(string kind) => kind switch
+    {
+        "civil" => T("Bürgerl.", "Civil"),
+        "nautical" => T("Naut.", "Nautical"),
+        _ => T("Astro.", "Astro"),
+    };
     public static string CardMoonDown => T("Mond unter dem Horizont", "moon below horizon");
     public static string CardLineOff => T("aus", "off");
     public static string CardFlip(string time, int minutes) => T($"Flip {time} ({minutes} min)", $"Flip {time} ({minutes} min)");
