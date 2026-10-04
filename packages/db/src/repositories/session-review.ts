@@ -51,6 +51,20 @@ interface PlanSummary {
 
 const parseJson = <T>(v: unknown): T => (typeof v === 'string' ? JSON.parse(v) : v) as T;
 
+/** HFR und Sterne aus `capture.metrics` (AP-62); fehlende oder ungültige Werte → `null`, nie 0. */
+export function captureMetrics(v: unknown): { hfr: number | null; stars: number | null } {
+  let m: { hfr?: unknown; stars?: unknown } | null;
+  try {
+    m = v === null || v === undefined ? null : parseJson<{ hfr?: unknown; stars?: unknown }>(v);
+  } catch {
+    m = null;
+  }
+  const hfr = typeof m?.hfr === 'number' && Number.isFinite(m.hfr) && m.hfr > 0 ? m.hfr : null;
+  const stars =
+    typeof m?.stars === 'number' && Number.isInteger(m.stars) && m.stars > 0 ? m.stars : null;
+  return { hfr, stars };
+}
+
 export class SessionReviewRepository extends TenantRepo {
   private base() {
     return this.db
@@ -278,6 +292,7 @@ export class SessionReviewRepository extends TenantRepo {
         'c.rejected',
         'c.rejectReason',
         'c.fileName',
+        'c.metrics',
       ])
       .where('c.tenantId', '=', t)
       .where('c.sessionId', '=', id)
@@ -389,6 +404,7 @@ export class SessionReviewRepository extends TenantRepo {
         rejected: Boolean(c.rejected),
         rejectReason: c.rejectReason as RejectReason | null,
         fileName: c.fileName,
+        ...captureMetrics(c.metrics),
       })),
       capturesTruncated: captureRows.length > captureLimit,
       events: events.map((e) => ({

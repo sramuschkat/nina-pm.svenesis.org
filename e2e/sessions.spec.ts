@@ -119,6 +119,9 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await admin.getByLabel('Anzeigen').selectOption('deviations');
   const flagged = admin.getByRole('table', { name: 'Aufnahmen' }).getByRole('row').nth(1);
   await expect(flagged).toContainText('Temperaturabweichung');
+  // Optionale NINA-Metriken (AP-62): HFR und Sterne aus den Fake-Plugin-Meldungen, Median über der Tabelle.
+  await expect(flagged).toContainText('2,10 px');
+  await expect(admin.getByTestId('capture-metrics')).toContainText('Median HFR 2,10 px');
   await expect(flagged).toContainText('Einstellungen abweichend');
   await expect(flagged).toContainText('330 s');
   await expectNoSerious(admin, 'S-61 Aufnahmen');

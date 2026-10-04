@@ -160,6 +160,8 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
     expect(flagged).toHaveLength(1);
     expect(flagged[0]).toMatchObject({ exposureS: 330, filterShortName: 'Ha' });
     expect(captures.filter((c) => c.assignment === 'unassigned')).toHaveLength(1);
+    // Optionale NINA-Metriken (AP-62) aus `capture.metrics`.
+    expect(captures.find((c) => c.frameType === 'light')).toMatchObject({ hfr: 2.1, stars: 380 });
     // Soll/Ist je Zeile: Ist über alle Sessions der Nacht (3 + 1 nach Lease-Verlust + 1 offline).
     expect(d.rows).toEqual([
       expect.objectContaining({

@@ -9359,6 +9359,16 @@ components:
           type:
             - string
             - "null"
+        hfr:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        stars:
+          type:
+            - integer
+            - "null"
+          minimum: 0
       required:
         - id
         - capturedAt
@@ -9381,6 +9391,8 @@ components:
         - rejected
         - rejectReason
         - fileName
+        - hfr
+        - stars
     NightSessionEvent:
       type: object
       properties:

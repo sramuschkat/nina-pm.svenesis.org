@@ -2169,10 +2169,17 @@ export const de = {
         project: 'Projekt',
         filter: 'Filter',
         exposure: 'Belichtung',
+        hfr: 'HFR',
+        stars: 'Sterne',
         result: 'Ergebnis',
         flags: 'Kennzeichen',
         action: 'Aktion',
       },
+      hfrPx: '{{hfr}} px',
+      metricsSummary:
+        'Median HFR {{hfr}} px · Median Sterne {{stars}} · {{count}} Aufnahmen mit Messwerten',
+      metricsMissing:
+        'Keine HFR- und Sternwerte: NINA meldet sie nur, wenn die Sternerkennung für die Aufnahmen läuft. Die Werte sind optional.',
       type: { light: 'Light', flat: 'Flat', dark_flat: 'Dark-Flat' },
       result: { saved: 'gespeichert', aborted: 'abgebrochen', failed: 'fehlgeschlagen' },
       temperatureDeviation: 'Temperaturabweichung',

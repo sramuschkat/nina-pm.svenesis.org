@@ -312,6 +312,8 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
     temperatureDeviation: false,
     result: 'saved',
     fileName: 'fake-plugin.fits',
+    // Optionale NINA-Metriken (AP-62) wie aus NINAs Sternanalyse.
+    metrics: { hfr: 2.1, stars: 380, meanAdu: 1500 },
     ...over,
   });
   const upload = async (sid: string, list: unknown[]) =>

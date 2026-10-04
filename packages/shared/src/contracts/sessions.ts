@@ -110,6 +110,12 @@ export const NightSessionCapture = z
     rejected: z.boolean(),
     rejectReason: z.enum(rejectReasons).nullable(),
     fileName: z.string().nullable(),
+    /**
+     * Optionale NINA-Metriken (AP-62, `capture.metrics`): mittlerer HFR in Pixeln und Zahl der erkannten Sterne aus
+     * NINAs Sternanalyse; `null`, wenn NINA nichts gemessen hat (Sternanalyse aus, Flats, keine Sterne).
+     */
+    hfr: z.number().min(0).nullable(),
+    stars: z.number().int().min(0).nullable(),
   })
   .meta({ id: 'NightSessionCapture' });
 export type NightSessionCapture = z.infer<typeof NightSessionCapture>;
