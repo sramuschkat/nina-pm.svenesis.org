@@ -317,7 +317,8 @@ export class TestWorld {
       }
     }
     const records = new Map<string, Json[]>();
-    for (const { projectId, ...rec } of byKey.values()) records.set(projectId, [...(records.get(projectId) ?? []), rec]);
+    for (const { projectId, ...rec } of byKey.values())
+      records.set(projectId, [...(records.get(projectId) ?? []), rec]);
     this.state.flatRecords = records;
     this.state.targetsVersion += 1;
   }

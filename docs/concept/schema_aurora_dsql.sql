@@ -628,6 +628,8 @@ CREATE TABLE rig (                                 -- Astro PM: ImagingSystems
     flats_source    text NOT NULL DEFAULT 'panel' CHECK (flats_source IN ('panel','sky')),
                                                    -- panel: ab darknessEndUtc, geparkt; sky: Himmelsflats Sonne -8 bis -2 Grad,
                                                    -- flatsNotAfterUtc, nicht parken (FA-SCH-08, NT-40)
+    flats_auto_mode text,                          -- Auto-Flats je Projekt (AP-50b, Migration 0013): NULL = off; once_per_project | time_based
+    flats_auto_interval_days smallint,             -- nur time_based, 1–30; NULL = 7 (ADD COLUMN ohne DEFAULT, ADR-S1)
     -- Meridian-Flip (FA-SCH-17, Bedeutung wie NINA-Trigger)
     flip_enabled    boolean NOT NULL DEFAULT true,
     flip_after_meridian_min real NOT NULL DEFAULT 5,

@@ -11,6 +11,7 @@ import {
   can,
   EffortDetail,
   EffortView,
+  flatCoverage,
   HistoryEntry,
   LineCreate,
   lineCounters,
@@ -34,6 +35,7 @@ import {
   projectProgress,
   ProjectDetailsList,
   ProjectDetailsQuery,
+  ProjectFlatsView,
   ProjectView,
   RigCheckView,
   StatusChange,
@@ -52,6 +54,7 @@ import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
 import { scheduleProjectJobs } from './effort-trigger';
 import { requireTenant } from './tenant';
+import { schedulerView } from './web-equipment';
 
 const BASE = '/api/web/v1';
 const idParam = z.object({ id: Uuid });
@@ -642,6 +645,18 @@ export const historyRoute = defineRoute(
   },
 );
 
+export const projectFlatsRoute = defineRoute(
+  { action: 'project.read', requirements: ['FA-SCH-08', 'FA-NIN-17'] },
+  {
+    method: 'get',
+    path: `${BASE}/projects/{id}/flats`,
+    summary: 'Flat-Markierung je Belichtungszeile nach der Auto-Flats-Regel des Rigs (AP-50b)',
+    tags: ['projects'],
+    request: { params: idParam },
+    responses: { 200: { description: 'Flats je Zeile', ...json(ProjectFlatsView) }, ...errors },
+  },
+);
+
 export const rigCompatibilityRoute = defineRoute(
   { action: 'project.read', requirements: ['FA-RIG-12'] },
   {
@@ -686,6 +701,7 @@ export const PROJECT_ROUTES = [
   deleteNoteRoute,
   noteReactionRoute,
   historyRoute,
+  projectFlatsRoute,
   rigCompatibilityRoute,
 ] as const;
 
@@ -1066,6 +1082,61 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     await authorized(repo, auth, id, 'project.history.read');
     const items = await repo.history(id);
     return c.json({ items: items.map((h) => ({ ...h, createdAt: isoUtc(h.createdAt) })) }, 200);
+  });
+
+  app.openapi(projectFlatsRoute, async (c) => {
+    const { svc, repo, auth } = await ctx(c);
+    const { id } = c.req.valid('param');
+    await authorized(repo, auth, id, 'project.read');
+    c.header('cache-control', 'no-store');
+    const d = await repo.detail(id);
+    if (!d) throw new ProblemError('resource.not_found');
+    const repos = svc.repositories(requireTenant(c).tenant);
+    const rigId = d.project.rigId;
+    const rig = rigId ? await repos.equipment().rig(rigId) : undefined;
+    const s = rig ? schedulerView(rig) : null;
+    if (!rig || !rigId || !s || s.flatsAutoMode === 'off' || !s.flatsEnabled)
+      return c.json(
+        {
+          mode: s?.flatsEnabled ? (s.flatsAutoMode ?? 'off') : 'off',
+          intervalDays: s?.flatsAutoIntervalDays ?? 7,
+          lines: [],
+        },
+        200,
+      );
+    const nina = repos.ninaRig(rigId);
+    const [records, angles, camera] = await Promise.all([
+      nina.flatRecords([id]).then((m) => m.get(id) ?? []),
+      nina.lightMechAngles(id),
+      repos.equipment().camera(rig.cameraId),
+    ]);
+    const modes = camera?.readoutModes ?? [];
+    const rule = {
+      mode: s.flatsAutoMode,
+      intervalDays: s.flatsAutoIntervalDays,
+      rotationToleranceDeg: rig.rotationToleranceDeg,
+    };
+    const now = isoUtc(svc.now());
+    const lines = projectView(d).panels.flatMap((panel) =>
+      panel.lines.map((l) => {
+        const index = l.readoutMode === null ? 0 : Math.max(0, modes.indexOf(l.readoutMode));
+        const r = flatCoverage(
+          records,
+          {
+            filterShortName: l.filterShortName,
+            rotatorMechDg: angles.get(l.id) ?? null,
+            gain: l.gain ?? -1,
+            offset: l.offsetAdu ?? -1,
+            binning: l.binning,
+            readoutModeIndex: index,
+          },
+          rule,
+          now,
+        );
+        return { lineId: l.id, covered: r.covered, lastUtc: r.lastUtc, count: r.count };
+      }),
+    );
+    return c.json({ mode: s.flatsAutoMode, intervalDays: s.flatsAutoIntervalDays, lines }, 200);
   });
 
   app.openapi(rigCompatibilityRoute, async (c) => {

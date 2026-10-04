@@ -413,8 +413,35 @@ export class NinaRigRepository extends TenantRepo {
         });
       }
     }
-    for (const { projectId, ...rec } of [...byKey.values()].sort((a, b) => (a.lastUtc < b.lastUtc ? -1 : 1)))
+    for (const { projectId, ...rec } of [...byKey.values()].sort((a, b) =>
+      a.lastUtc < b.lastUtc ? -1 : 1,
+    ))
       result.set(projectId, [...(result.get(projectId) ?? []), rec]);
+    return result;
+  }
+
+  /**
+   * Mechanischer Rotatorwinkel der jüngsten gespeicherten Light-Aufnahme je Belichtungszeile eines Projekts auf diesem
+   * Rig (Zehntelgrad) – für die Flat-Markierung je Zeile (AP-50b).
+   */
+  async lightMechAngles(projectId: string): Promise<Map<string, number>> {
+    const rows = await this.db
+      .selectFrom('capture as c')
+      .innerJoin('session as s', 's.id', 'c.sessionId')
+      .select(['c.exposureLineId', 'c.rotatorMechDeg', 'c.capturedAt'])
+      .where('c.tenantId', '=', this.ctx.tenantId)
+      .where('s.tenantId', '=', this.ctx.tenantId)
+      .where('s.rigId', '=', this.rigId)
+      .where('c.projectId', '=', projectId)
+      .where('c.frameType', '=', 'light')
+      .where('c.result', '=', 'saved')
+      .where('c.exposureLineId', 'is not', null)
+      .orderBy('c.capturedAt', 'desc')
+      .execute();
+    const result = new Map<string, number>();
+    for (const r of rows)
+      if (r.exposureLineId && !result.has(r.exposureLineId))
+        result.set(r.exposureLineId, Math.round(Number(r.rotatorMechDeg) * 10) % 3600);
     return result;
   }
 

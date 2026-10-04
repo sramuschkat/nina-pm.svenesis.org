@@ -181,6 +181,7 @@ describe('Migrationsdateien', () => {
       '0010_exo_katalog',
       '0011_rollenansicht',
       '0012_kommentare',
+      '0013_auto_flats',
     ]);
     const bundled = readFileSync(
       fileURLToPath(new URL('../src/migrate/bundled.ts', import.meta.url)),

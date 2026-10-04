@@ -14,6 +14,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type {
   CameraView,
   ExposureTemplateView,
+  ProjectFlatsView,
   FilterView,
   LineView,
   Me,
@@ -223,11 +224,17 @@ function wrap(children: ReactNode) {
   );
 }
 
-const plan = (p: ProjectView, canEdit = true, templates: ExposureTemplateView[] = []) =>
+const plan = (
+  p: ProjectView,
+  canEdit = true,
+  templates: ExposureTemplateView[] = [],
+  flats: ProjectFlatsView | null = null,
+) =>
   wrap(
     <ExposurePlan
       project={p}
       canEdit={canEdit}
+      flats={flats}
       rig={rig}
       camera={camera}
       filters={filters}
@@ -469,6 +476,35 @@ describe('Belichtungsplan (Komponente)', () => {
     expect(sums).toHaveTextContent('Geplant 120 Frames / 10,0 h');
     expect(sums).toHaveTextContent('Aktuell 30 Frames / 2,5 h');
     expect(sums).toHaveTextContent('Gesamtfortschritt 25 %');
+  });
+
+  it('Flat-Markierung je Zeile (AP-50b): vorhanden, zu alt, fehlt; ohne Auto-Flats keine Spalte', () => {
+    const [ha, oiii, sii] = [line(1, 'Ha'), line(2, 'OIII'), line(3, 'SII')];
+    const lines = [ha, oiii, sii];
+    const view = plan(project(lines), true, [], {
+      mode: 'time_based',
+      intervalDays: 7,
+      lines: [
+        { lineId: ha.id, covered: true, lastUtc: '2026-10-03T12:00:00Z', count: 20 },
+        { lineId: oiii.id, covered: false, lastUtc: '2026-09-01T12:00:00Z', count: 20 },
+        { lineId: sii.id, covered: false, lastUtc: null, count: 0 },
+      ],
+    });
+    expect(screen.getByRole('columnheader', { name: 'Flats' })).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Flats vorhanden (20, 03.10.2026) – keine neuen nötig'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        'Letzte Flats 01.09.2026 (20) sind zu alt – beim nächsten Belichten neue Flats',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Noch keine Flats – beim nächsten Belichten werden Flats aufgenommen'),
+    ).toBeInTheDocument();
+    view.unmount();
+    plan(project(lines), true, [], { mode: 'off', intervalDays: 7, lines: [] });
+    expect(screen.queryByRole('columnheader', { name: 'Flats' })).not.toBeInTheDocument();
   });
 
   it('Zeile mit Aufnahmen: Aufnahmefelder gesperrt, geplant änderbar; Duplizieren ruft die Route', async () => {

@@ -1242,3 +1242,13 @@ tr[data-dragging='true'] {
   align-items: center;
   gap: var(--npm-space-1);
 }
+
+/* Flat-Markierung je Zeile (AP-50b): vorhanden = Erfolgsfarbe, fehlt/zu alt = Warnfarbe. */
+.flatsMark {
+  display: inline-flex;
+  color: var(--npm-warning);
+}
+
+.flatsMark[data-covered='true'] {
+  color: var(--npm-success);
+}

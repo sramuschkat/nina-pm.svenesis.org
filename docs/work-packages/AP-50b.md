@@ -45,10 +45,10 @@ FA-NIN-17, FA-SCH-08 (Erweiterung im Fachkonzept mit diesem Paket)
 - Flats, die außerhalb von NINA-PM entstanden sind.
 
 ## Automatisierte Abnahme
-- [ ] Kern-Tests: einmal je Projekt, zeitbasiert (Grenze genau N Tage), Winkel-Toleranz, Ziele mit und ohne Flats in einer Kombination
-- [ ] Nachholen über 1–3 Nächte, Verfall nach der 3. Nacht und beim Abschalten
-- [ ] Kopfloser Lauf mit zwei Nächten
+- [x] Kern-Tests: einmal je Projekt, zeitbasiert (Grenze genau N Tage), Winkel-Toleranz, Ziele mit und ohne Flats in einer Kombination
+- [x] Nachholen über 1–3 Nächte, Verfall nach der 3. Nacht und beim Abschalten
+- [x] Kopfloser Lauf mit zwei Nächten (P-38)
 - [ ] `pnpm test:dsql`-Protokoll für die Migration (Sven), CI grün, Changelog, AP- und Anforderungs-IDs im PR
 
 ## Menschliche Freigabe
-Kurzer VM-Lauf mit zwei Nächten (zweite Nacht ohne Flats für schon abgedeckte Kombinationen).
+Kurzer VM-Lauf mit zwei Nächten (P-38; zweite Nacht ohne Flats für schon abgedeckte Kombinationen).

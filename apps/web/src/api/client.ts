@@ -326,6 +326,7 @@ export type LineView = Schemas['LineView'];
 export type NoteView = Schemas['NoteView'];
 export type CommentReaction = NoteView['reactions'][number]['emoji'];
 export type HistoryEntry = Schemas['HistoryEntry'];
+export type ProjectFlatsView = Schemas['ProjectFlatsView'];
 export type RigCheckView = Schemas['RigCheckView'];
 export type ProjectConditionsView = ProjectView['conditions'];
 
@@ -410,6 +411,8 @@ export const projectsApi = {
       json('PUT', { emoji, active }),
     ),
   history: (id: string) => apiFetch<{ items: HistoryEntry[] }>(`${V1}/projects/${id}/history`),
+  /** Flat-Markierung je Belichtungszeile nach der Auto-Flats-Regel des Rigs (AP-50b). */
+  flats: (id: string) => apiFetch<ProjectFlatsView>(`${V1}/projects/${id}/flats`),
   rigCheck: (rigId: string, projectId: string) =>
     apiFetch<RigCheckView>(`${V1}/rigs/${rigId}/compatibility`, json('POST', { projectId })),
 };

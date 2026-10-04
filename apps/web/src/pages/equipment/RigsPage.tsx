@@ -11,6 +11,7 @@
  * (`settingsVersion`, 412 bei parallelem Speichern).
  */
 import {
+  flatsAutoModes,
   flatsSources,
   imageScale,
   playbackModes,
@@ -702,7 +703,12 @@ function SchedulerSummary({ rig }: { rig: RigView }) {
     ],
     [
       t('rigs.scheduler.flatsSection'),
-      s.flatsEnabled ? t(`rigs.flatsSource.${s.flatsSource}`) : onOff(false),
+      s.flatsEnabled
+        ? [
+            t(`rigs.flatsSource.${s.flatsSource}`),
+            ...(s.flatsAutoMode !== 'off' ? [t(`rigs.flatsAutoMode.${s.flatsAutoMode}`)] : []),
+          ].join(' · ')
+        : onOff(false),
     ],
     [
       t('rigs.scheduler.flipSection'),
@@ -972,6 +978,29 @@ export function SchedulerForm({
             onChange={(v) => set('darkFlatsEnabled', v)}
             disabled={disabled || !draft.flatsEnabled}
           />
+          {/* Auto-Flats je Projekt (AP-50b): Modus nur mit Flats, Intervall nur zeitbasiert. */}
+          <div className={sched.pair}>
+            <SelectField
+              label={t('rigs.scheduler.flatsAuto')}
+              value={draft.flatsAutoMode}
+              onChange={(v) => set('flatsAutoMode', v)}
+              options={flatsAutoModes.map((m) => ({
+                value: m,
+                label: t(`rigs.flatsAutoMode.${m}`),
+              }))}
+              hint={t(`rigs.flatsAutoHint.${draft.flatsAutoMode}`)}
+              disabled={disabled || !draft.flatsEnabled}
+            />
+            <NumberField
+              label={t('rigs.scheduler.flatsAutoInterval')}
+              unit={t('rigs.scheduler.flatsAutoDays')}
+              step={1}
+              value={draft.flatsAutoIntervalDays}
+              onChange={(v) => set('flatsAutoIntervalDays', v ?? 7)}
+              error={fieldError('flatsAutoIntervalDays')}
+              disabled={disabled || !draft.flatsEnabled || draft.flatsAutoMode !== 'time_based'}
+            />
+          </div>
         </section>
         <section className={sched.box} aria-labelledby="scheduler-flip">
           <h4 id="scheduler-flip">{t('rigs.scheduler.flipSection')}</h4>

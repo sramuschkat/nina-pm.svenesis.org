@@ -19,9 +19,12 @@ import {
   type FilterView,
   type LineView,
   type MoonProfileView,
+  type ProjectFlatsView,
   type ProjectView,
   type RigView,
 } from '../../api/client';
+import { useAuth } from '../../auth';
+import { formatDate } from '../../lib/time';
 import { ActionMenu } from '../../components/ActionMenu';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { DataTable, type DataColumn } from '../../components/DataTable';
@@ -56,6 +59,8 @@ export interface ExposurePlanProps {
   /** Nach Löschen (Antwort ohne Projekt) neu laden. */
   onReload: () => Promise<unknown>;
   rigPath: string;
+  /** Flat-Markierung je Zeile (AP-50b); ohne Auto-Flats `null`. */
+  flats?: ProjectFlatsView | null;
 }
 
 /** Schlüssel des Reiters *Panels* (Liste, Reihenfolge, Mosaik) neben den Reitern je Panel. */
@@ -368,7 +373,7 @@ function QuickEntry({
 // ---- Tabelle ----------------------------------------------------------------------------------------
 
 function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run: Run }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { lines, project, run } = props;
   const [duplicate, setDuplicate] = useState<LineView | null>(null);
   const [deactivate, setDeactivate] = useState(true);
@@ -389,10 +394,13 @@ function LineTable(props: ExposurePlanProps & { lines: readonly LineView[]; run:
   };
   const num = useNumber();
   const moonLabel = useMoonProfileLabel();
+  const { me } = useAuth();
+  const zone = me?.tenant?.timeZone ?? 'UTC';
+  const date = (atUtc: string) => formatDate(atUtc, zone, i18n.language);
   const lineColumns = columnsFor(
     props,
     run,
-    { t, num, moonLabel },
+    { t, num, moonLabel, date },
     {
       onDuplicate: (line) => {
         setDeactivate(true);
@@ -486,11 +494,12 @@ function columnsFor(
     t: TFunction;
     num: ReturnType<typeof useNumber>;
     moonLabel: ReturnType<typeof useMoonProfileLabel>;
+    date: (atUtc: string) => string;
   },
   actions: { onDuplicate: (line: LineView) => void; onDelete: (line: LineView) => void },
 ): DataColumn<LineView>[] {
-  const { project, canEdit, filters, moonProfiles, camera, rig, rigPath } = props;
-  const { t, num, moonLabel } = fmt;
+  const { project, canEdit, filters, moonProfiles, camera, rig, rigPath, flats } = props;
+  const { t, num, moonLabel, date: fmtDate } = fmt;
   const patch = (line: LineView, body: object) =>
     void run(() => projectsApi.patchLine(project.id, line.id, body));
   const locked = (line: LineView, field: string) => !canEdit || isLocked(line, field);
@@ -618,6 +627,31 @@ function columnsFor(
         />
       ),
     },
+    ...(flats && flats.mode !== 'off'
+      ? ([
+          {
+            id: 'flats',
+            header: t('projectEditor.plan.col.flats'),
+            priority: 2,
+            cell: (line: LineView) => {
+              const f = flats.lines.find((x) => x.lineId === line.id);
+              if (!f) return null;
+              const Icon = f.covered ? uiIcons.ok : uiIcons.failed;
+              const date = f.lastUtc ? fmtDate(f.lastUtc) : null;
+              const title = f.covered
+                ? t('projectEditor.plan.flatsCovered', { date, count: f.count })
+                : date
+                  ? t('projectEditor.plan.flatsExpired', { date, count: f.count })
+                  : t('projectEditor.plan.flatsMissing');
+              return (
+                <span className={styles.flatsMark} data-covered={f.covered} title={title}>
+                  <Icon size={ICON_SIZE.table} aria-label={title} />
+                </span>
+              );
+            },
+          },
+        ] satisfies DataColumn<LineView>[])
+      : []),
     {
       id: 'accepted',
       header: t('projectEditor.plan.col.accepted'),

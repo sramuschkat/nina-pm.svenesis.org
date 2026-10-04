@@ -1142,7 +1142,12 @@ export const de = {
       sumCurrent: 'Aktuell',
       sumFrames: '{{n}} Frames / {{h}} h',
       sumProgress: 'Gesamtfortschritt {{pct}} %',
+      flatsCovered: 'Flats vorhanden ({{count}}, {{date}}) – keine neuen nötig',
+      flatsExpired:
+        'Letzte Flats {{date}} ({{count}}) sind zu alt – beim nächsten Belichten neue Flats',
+      flatsMissing: 'Noch keine Flats – beim nächsten Belichten werden Flats aufgenommen',
       col: {
+        flats: 'Flats',
         enabled: 'Aktiv',
         filter: 'Filter',
         moon: 'Mondprofil',
@@ -1421,6 +1426,18 @@ export const de = {
       panel: 'Panel- oder Dom-Flats ab Ende der Dunkelheit, Montierung geparkt',
       sky: 'Himmelsflats in der Morgendämmerung (Sonne −8° bis −2°), nicht parken',
     },
+    flatsAutoMode: {
+      off: 'Aus – nach jeder Nacht',
+      once_per_project: 'Einmal je Projekt',
+      time_based: 'Zeitbasiert',
+    },
+    flatsAutoHint: {
+      off: 'Flats nach jeder Nacht für jeden Filter und Rotatorwinkel der Nacht.',
+      once_per_project:
+        'Flats am Morgen nur für Filter- und Winkel-Kombinationen, für die das Projekt noch keine Flats hat. Endet eine Nacht unter Safety-Pause, werden ihre Flats am nächsten Morgen nachgeholt (höchstens 3 Nächte).',
+      time_based:
+        'Wie „einmal je Projekt“, aber Flats werden neu aufgenommen, wenn die letzten älter als das Intervall sind.',
+    },
     overhead: {
       slewCenterS: 'Slew + Zentrieren',
       filterChangeS: 'Filterwechsel',
@@ -1463,6 +1480,9 @@ export const de = {
       flats: 'Automatische Flats am Ende der Session',
       flatsSource: 'Flat-Quelle',
       flatsFullSet: 'Vollständiger Flat-Satz',
+      flatsAuto: 'Auto-Flats je Projekt',
+      flatsAutoInterval: 'Intervall',
+      flatsAutoDays: 'Tage',
       flatCount: 'Anzahl je Kombination',
       darkFlats: 'Dark-Flats aufnehmen',
       darkFlatCount: 'Anzahl Dark-Flats',

@@ -1137,7 +1137,12 @@ export const en: Messages = {
       sumCurrent: 'Current',
       sumFrames: '{{n}} frames / {{h}} h',
       sumProgress: 'Overall progress {{pct}} %',
+      flatsCovered: 'Flats on record ({{count}}, {{date}}) – none needed',
+      flatsExpired:
+        'Latest flats {{date}} ({{count}}) are too old – new flats with the next exposures',
+      flatsMissing: 'No flats yet – flats will be taken with the next exposures',
       col: {
+        flats: 'Flats',
         enabled: 'Active',
         filter: 'Filter',
         moon: 'Moon profile',
@@ -1416,6 +1421,18 @@ export const en: Messages = {
       panel: 'Panel or dome flats after darkness ends, mount parked',
       sky: 'Sky flats in morning twilight (sun −8° to −2°), not parked',
     },
+    flatsAutoMode: {
+      off: 'Off – after every night',
+      once_per_project: 'Once per project',
+      time_based: 'Time based',
+    },
+    flatsAutoHint: {
+      off: 'Flats after every night for each filter and rotator angle of the night.',
+      once_per_project:
+        'In the morning, flats only for filter and angle combinations the project has no flats for yet. If a night ends under a safety hold, its flats are made up the following morning (at most 3 nights).',
+      time_based:
+        'Like “once per project”, but flats are retaken when the latest ones are older than the interval.',
+    },
     overhead: {
       slewCenterS: 'Slew + centre',
       filterChangeS: 'Filter change',
@@ -1458,6 +1475,9 @@ export const en: Messages = {
       flats: 'Automatic flats at session end',
       flatsSource: 'Flat source',
       flatsFullSet: 'Full flat set',
+      flatsAuto: 'Auto flats per project',
+      flatsAutoInterval: 'Interval',
+      flatsAutoDays: 'days',
       flatCount: 'Count per combination',
       darkFlats: 'Take dark flats',
       darkFlatCount: 'Dark flat count',
