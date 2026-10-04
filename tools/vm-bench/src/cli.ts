@@ -54,6 +54,10 @@ export interface BenchRun {
   readonly prod?: boolean;
   readonly untilMin: number;
   /**
+   * Lauf endet erst, wenn mindestens so viele Sessions abgeschlossen sind (Standard 1; `vm-multi-night`: 2 Nächte).
+   */
+  readonly sessions?: number;
+  /**
    * Sequenz: Beispielsequenz aus `apps/nina-plugin/NinaPm.Nina/Samples/<from>.json`, ohne die genannten Anweisungen
    * im Start-Bereich (NINA 3.2 speichert „deaktiviert“ nicht – `Status` ist keine JSON-Eigenschaft –, darum entfernen).
    * Der Agent legt sie als `nina-pm-bench.json` in NINAs Standard-Sequenzordner.
@@ -185,10 +189,14 @@ async function omnisimSafe(cfg: BenchConfig, safe: boolean): Promise<void> {
 }
 
 /**
- * Warten, bis die Nacht vorbei ist: alle Sessions des Test-Servers abgeschlossen, danach 60 s Nachlauf für die
+ * Warten, bis die Nacht vorbei ist: alle Sessions des Test-Servers abgeschlossen (mindestens `minSessions`), danach 60 s Nachlauf für die
  * letzten Meldungen; höchstens bis `deadlineMs` (`untilMin` der Laufdatei).
  */
-async function waitForNightEnd(cfg: BenchConfig, deadlineMs: number): Promise<void> {
+async function waitForNightEnd(
+  cfg: BenchConfig,
+  deadlineMs: number,
+  minSessions = 1,
+): Promise<void> {
   let doneAt: number | undefined;
   while (Date.now() < deadlineMs) {
     try {
@@ -196,7 +204,7 @@ async function waitForNightEnd(cfg: BenchConfig, deadlineMs: number): Promise<vo
         await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
       ).json()) as { sessions?: { status: string }[] };
       const sessions = rep.sessions ?? [];
-      if (sessions.length > 0 && sessions.every((x) => x.status === 'completed')) {
+      if (sessions.length >= minSessions && sessions.every((x) => x.status === 'completed')) {
         doneAt ??= Date.now();
         if (Date.now() - doneAt >= 60_000) {
           log('Session abgeschlossen – Lauf endet vor dem Zeitlimit');
@@ -391,7 +399,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         }
       }
       if (server) {
-        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000);
+        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000, r.sessions);
         const report = await (
           await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
         ).json();

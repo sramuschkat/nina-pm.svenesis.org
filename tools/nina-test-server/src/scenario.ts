@@ -88,6 +88,12 @@ export interface Scenario {
   /** Zweite Nacht planbar (Szenario `multi-night`, P-23): Pläne der Folgenacht 24 h später. */
   readonly multiNight?: boolean;
   /**
+   * Abstand der Nächte in Minuten statt 24 h (VM-Lauf `vm-multi-night`, AP-52): zwei Nächte in einer Stunde. Das
+   * Nachtfenster endet 1 min nach `sessionEndInMin`, die Folgenacht beginnt 1 min vor ihrem Start; der Abstand muss
+   * mindestens `sessionEndInMin` + 2 sein.
+   */
+  readonly nightSpacingMin?: number;
+  /**
    * Dämmerungen je Nacht (AP-52, *NINA-PM Warten auf Zeit*): Abenddurchgang in Minuten relativ zum Start der jeweiligen
    * Nacht (Nacht n = Serverstart + n · 24 h). Standard bürgerlich −40, nautisch −20, astronomisch 0 – in der ersten Nacht
    * also schon vorbei, in der zweiten 24 h später.

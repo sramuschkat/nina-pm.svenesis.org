@@ -68,7 +68,7 @@ const entriesOf = (plan: Json) => (plan.blocks as Json[]).flatMap((b) => b.entri
 const P = '/api/nina/v1';
 
 describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', () => {
-  it('kennt die 27 Szenarien aus ops/plugin-test-protocol.md', () => {
+  it('kennt die 28 Szenarien aus ops/plugin-test-protocol.md', () => {
     expect(SCENARIO_NAMES).toEqual(
       [
         'auto-flats',
@@ -97,6 +97,7 @@ describe('NINA-Test-Server: jedes Szenario liefert vertragsgemäße Antworten', 
         'vm-flats',
         'vm-flats-auto',
         'vm-flip',
+        'vm-multi-night',
         'vm-smoke',
       ].sort(),
     );
@@ -346,6 +347,31 @@ describe('Tagesschleife (AP-52)', () => {
       { night: '2026-09-18', projects: 1 },
       { night: '2026-09-19', projects: 1 },
     ]);
+  });
+
+  it('vm-multi-night: verkürzte Nächte im Abstand von 20 min, Nachtwechsel 1 min nach dem Sessionende', async () => {
+    const t = setup('vm-multi-night');
+    const b = await t.ok('GET', `${P}/bootstrap`);
+    const nights = b.nights as {
+      night: string;
+      noonStartUtc: string;
+      noonEndUtc: string;
+      nightWindowEndUtc: string;
+      twilight: Record<string, { duskUtc: string }>;
+    }[];
+    const s = (iso: string) => Date.parse(iso) / 1000;
+    const [n0, n1] = [must(nights[0]), must(nights[1])];
+    expect(s(n0.nightWindowEndUtc)).toBe(T0 + 13 * 60);
+    expect(s(n0.noonEndUtc)).toBe(T0 + 19 * 60);
+    expect(s(n1.noonStartUtc)).toBe(s(n0.noonEndUtc));
+    expect(s(n1.nightWindowEndUtc)).toBe(T0 + 33 * 60);
+    expect(s(n1.twilight.nautical?.duskUtc ?? '')).toBe(T0 + 20 * 60);
+    expect(t.server.world.validNights()[0]).toBe(n0.night);
+    t.advance(13);
+    expect(t.server.world.validNights()[0]).toBe(n1.night);
+    // Plan der zweiten Nacht: derselbe Block 20 min später.
+    const p0 = blocks(await t.ok('POST', `${P}/plan`, planRequest(n1.night)))[0];
+    expect(s(p0.startUtc as string)).toBe(T0 + 22 * 60);
   });
 
   it('one-night: Auslieferung nur in der aktuellen Nacht', async () => {

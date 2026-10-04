@@ -135,3 +135,53 @@ describe('Flat-Boxen (vm-flats, AP-50)', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe('Mehrere Nächte (vm-multi-night, AP-52)', () => {
+  it('Autofokus aus der Tagesschleife, Warten auf Zeit und Höchstzahl gesetzt, Box vor jeder Belichtung am „Ziel“', () => {
+    const path = benchSequence(
+      {
+        sequence: {
+          from: 'multi-night',
+          removeFromStart: ['RunAutofocus'],
+          waitForTime: { source: 'NauticalDusk', offsetMinutes: 2 },
+          maxNights: 2,
+          beforeExposureBox: true,
+        },
+      },
+      mkdtempSync(join(tmpdir(), 'seq-')),
+    );
+    const text = readFileSync(path, 'utf8');
+    type Node = { $type?: string; $id?: string; Name?: string } & Record<string, unknown>;
+    const all: Node[] = [];
+    const walk = (o: unknown) => {
+      if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === 'object') {
+        if ((o as Node).$type) all.push(o as Node);
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(JSON.parse(text));
+    const of = (t: string) => all.filter((n) => shortType(n.$type ?? '') === t);
+    const day = all.find((n) => n.Name === 'NINA-PM Tage') as Node & { Items: { $values: Node[] } };
+    expect(day.Items.$values.map((i) => shortType(i.$type ?? ''))).toEqual([
+      'WaitForTimeInstruction',
+      'UnparkScope',
+      'CoolCamera',
+      'SequentialContainer',
+      'StopGuiding',
+      'ParkScope',
+      'WarmCamera',
+    ]);
+    expect(of('WaitForTimeInstruction')[0]).toMatchObject({
+      Source: 'NauticalDusk',
+      OffsetMinutes: 2,
+    });
+    expect(of('DayLoopCondition')[0]).toMatchObject({ MaxNights: 2 });
+    const box = of('BeforeExposureTrigger')[0] as Node & { Parent: { $ref: string } };
+    const ziel = all.find((n) => n.Name === 'Ziel');
+    expect(box.Parent.$ref).toBe(ziel?.$id);
+    expect(of('WaitForTimeSpan')[0]).toMatchObject({ Time: 1 });
+    const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
