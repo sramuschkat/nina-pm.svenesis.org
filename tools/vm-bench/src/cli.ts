@@ -259,6 +259,8 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     // NINA frisch: ninapm.db löschen (ein gespeicherter Plan derselben Nacht schlösse sie sofort ab, VM-Lauf 03.10.2026).
     const profileId = r.prod ? cfg.prodProfileId : cfg.profileId;
     if (r.prod && !profileId) throw new Error('Kein Prod-Profil: pnpm vm-bench clone-profile …');
+    // Log ab diesem Neustart: ein vorheriger (abgebrochener) Lauf darf nicht mitzählen (04.10.2026, P-14).
+    const restartMs = Date.now();
     await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
@@ -333,7 +335,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const logs = await job(
       bench,
       'collect-log',
-      { sinceUtc: new Date(startedMs - 10 * 60_000).toISOString() },
+      { sinceUtc: new Date(restartMs - 5_000).toISOString() },
       dir,
     );
     if (!logs.files['nina.log']) throw new Error('Agent hat kein NINA-Log geliefert');
