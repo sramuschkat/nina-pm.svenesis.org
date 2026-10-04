@@ -289,6 +289,8 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
             {
                 var key = DarkFlatGroup.KeyFor(t, combo.Gain, combo.Offset, combo.Binning, combo.ReadoutIndex);
                 group = store.DarkFlatGroups(s.Night).FirstOrDefault(g => g.Key == key) ?? new DarkFlatGroup { Key = key, CombinationKey = combo.Key };
+                // Eine Gruppe ohne gespeicherte Dark-Flats übernimmt die nächste passende Kombination (VM-Lauf 04.10.2026).
+                group.CombinationKey ??= combo.Key;
                 darkMissing = group.Status == FlatStatus.Done || group.CombinationKey != combo.Key ? 0 : Math.Max(0, darkCount - group.Saved);
             }
             else
@@ -333,7 +335,19 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         var primary = combo.Targets.FirstOrDefault()?.Name ?? "NINA-PM";
         var run = new FlatComboRun(filter.Kind == FilterResolutionKind.Found ? filter.Index : -1, combo.Gain, combo.Offset, combo.Binning,
             flatsMissing, darkMissing, primary);
-        await Guarded("flats", () => host.RunCombinationAsync(run, token)).ConfigureAwait(false);
+        var boxOk = await Guarded("flats", () => host.RunCombinationAsync(run, token)).ConfigureAwait(false);
+        if (!boxOk && combo.FlatsSaved == 0 && combo.DarkFlatsSaved == 0)
+        {
+            // Box gescheitert, nichts gespeichert: nicht als erledigt melden und nicht 120 s auf Dateien warten.
+            lock (gate)
+            {
+                running = null;
+                runningGroup = null;
+            }
+            ReleaseGroup(group, s.Night);
+            Skip(combo, s.Night, "box_failed");
+            return currentMech;
+        }
 
         // Abschluss: volle Zählung oder 120 s nach dem letzten ImageSaved (NIN5-11) – sonst fehlen die letzten Dateien.
         var boxEnd = clock.UtcNow;
@@ -377,11 +391,27 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         store.SaveFlatCombination(night, combo);
         if (group is not null && group.CombinationKey == combo.Key && group.Status != FlatStatus.Done)
         {
-            group.Status = FlatStatus.Done;
-            store.SaveDarkFlatGroup(night, group);
-            log.Event("DARKFLAT_GROUP", ("combination", combo.LogKey), ("mechDg", combo.MechDg), ("status", "done"));
+            // Erledigt erst mit allen Dark-Flats; sonst übernimmt die nächste passende Kombination die Gruppe.
+            if (group.Saved >= darkCount)
+            {
+                group.Status = FlatStatus.Done;
+                store.SaveDarkFlatGroup(night, group);
+                log.Event("DARKFLAT_GROUP", ("combination", combo.LogKey), ("mechDg", combo.MechDg), ("status", "done"));
+            }
+            else
+            {
+                ReleaseGroup(group, night);
+            }
         }
         log.Event("FLATS_END", ("combination", combo.LogKey), ("mechDg", combo.MechDg), ("status", "done"));
+    }
+
+    /// <summary>Gruppe ohne vollständige Dark-Flats freigeben: die nächste Kombination mit demselben Schlüssel übernimmt sie.</summary>
+    private void ReleaseGroup(DarkFlatGroup? group, string night)
+    {
+        if (group is null || group.Status == FlatStatus.Done) return;
+        group.CombinationKey = null;
+        store.SaveDarkFlatGroup(night, group);
     }
 
     private void Skip(FlatCombination combo, string night, string reason)
@@ -508,12 +538,13 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
             : new Dictionary<string, int>(JsonConvert.DeserializeObject<Dictionary<string, int>>(json) ?? [], StringComparer.Ordinal);
     }
 
-    /// <summary>Fehler einer Box (nicht Abbruch) protokollieren und weitermachen – wie im Original.</summary>
-    private async Task Guarded(string box, Func<Task> action)
+    /// <summary>Fehler einer Box (nicht Abbruch) protokollieren und weitermachen – wie im Original; <c>false</c> bei Fehler.</summary>
+    private async Task<bool> Guarded(string box, Func<Task> action)
     {
         try
         {
             await action().ConfigureAwait(false);
+            return true;
         }
         catch (OperationCanceledException)
         {
@@ -522,6 +553,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         catch (Exception ex)
         {
             log.Note($"Flats: Box {box} fehlgeschlagen, weiter mit dem nächsten Schritt: {ex.Message}");
+            return false;
         }
     }
 }

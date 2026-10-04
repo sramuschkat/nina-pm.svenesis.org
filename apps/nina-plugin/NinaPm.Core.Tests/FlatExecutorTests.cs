@@ -163,6 +163,28 @@ public sealed class FlatExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task Gescheiterte_Box_ohne_Dateien_ueberspringt_ohne_Wartezeit_und_gibt_die_Dark_Flat_Gruppe_frei()
+    {
+        Light("L", 0, M31, "M 31");
+        Light("Ha", 0, M31, "M 31");
+        host.Trained[(0, 1, 100, 10)] = 2.0;
+        host.Trained[(1, 1, 100, 10)] = 2.0;
+        host.FailRuns.Add(0);
+        var start = clock.UtcNow;
+
+        await flats.RunAsync(Settings(), CancellationToken.None);
+
+        var combos = store.FlatCombinations(Night);
+        Assert.Equal(FlatStatus.Skipped, combos.Single(c => c.FilterShort == "L").Status);
+        Assert.Contains(sink.Lines, l => l.Contains("FLATS_END combination=L_b1_g100_o10_r0 mechDg=0 status=skipped reason=box_failed"));
+        Assert.True(clock.UtcNow - start < FlatExecutor.SaveGrace, "keine 120 s Wartezeit nach einer gescheiterten Box");
+        // Die Dark-Flats nimmt die nächste Kombination mit derselben Gruppe (Ha, gleiche Belichtung) auf.
+        Assert.Equal([5, 5], host.Runs.Select(r => r.DarkFlats).ToArray());
+        Assert.Equal(5, captures.Count(c => c.FrameType == CapturesFrameType.Dark_flat && c.FilterShortName == "Ha"));
+        Assert.Single(sink.Lines, l => l.Contains("DARKFLAT_GROUP") && l.Contains("Ha_b1"));
+    }
+
+    [Fact]
     public async Task Unbekannte_Anzahl_wartet_120_s_nach_dem_letzten_Bild()
     {
         Light("L", 0, M31, "M 31");
@@ -186,6 +208,9 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
     public List<(string Source, string Destination)> Copies { get; } = [];
     public double MeanAduShare { get; set; } = 0.5;
     public (int Run, int Flats)? CancelAfterFlats { get; set; }
+
+    /// <summary>Läufe (ab 0), deren Box ohne eine gespeicherte Datei scheitert (VM-Lauf 04.10.2026: „Index was out of range“).</summary>
+    public HashSet<int> FailRuns { get; } = [];
     public CancellationTokenSource? Cancel { get; set; }
     private Action<FlatImage>? sinkAction;
     private double mech;
@@ -215,6 +240,7 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
     {
         Runs.Add(run);
         MechAt.Add((int)Math.Round(mech));
+        if (FailRuns.Contains(Runs.Count - 1)) throw new ArgumentOutOfRangeException("index");
         var filter = run.FilterIndex >= 0 ? Filters[run.FilterIndex] : null;
         for (var i = 0; i < run.Flats; i++)
         {
