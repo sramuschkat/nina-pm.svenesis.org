@@ -110,6 +110,7 @@
                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
                     <DatePicker Width="140" SelectedDate="{Binding ReuploadFrom}" />
                     <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding ReuploadCommand}" Content="{x:Static ui:Texts.Reupload}" />
+                    <Button Style="{DynamicResource NinaPm.Button}" Command="{Binding RequeueDeadLettersCommand}" Content="{x:Static ui:Texts.RequeueDeadLetters}" />
                 </StackPanel>
             </Grid>
             <StackPanel Margin="0,5" Orientation="Horizontal">

@@ -59,7 +59,9 @@ export const patchSessionRoute = defineNinaRoute(
       200: { description: 'Session', ...json(nina.NinaSessionPatched) },
       ...denied,
       404: problemContent('resource.not_found'),
-      409: problemContent('session.closed | session.rig_busy | engine.incompatible'),
+      409: problemContent(
+        'session.unknown | session.closed | session.rig_busy | engine.incompatible',
+      ),
     },
   },
 );

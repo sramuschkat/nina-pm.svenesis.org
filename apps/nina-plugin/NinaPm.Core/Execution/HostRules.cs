@@ -172,7 +172,7 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
         return new CaptureFacts(captureId, plan.Night, plan.NightPlanId, block, entry, now, now.AddSeconds(exposureS / 2),
             filterName ?? entry.Filter ?? "", exposureS, entry.Gain, entry.Offset, entry.Binning ?? 1,
             entry.ReadoutMode, readout.Kind == ReadoutResolutionKind.Found ? readout.Index : null,
-            rotatorMechDeg, CaptureMapper.PierSide(ascomPierSide), temperatureDeviation, null);
+            rotatorMechDeg, CaptureMapper.PierSide(ascomPierSide), temperatureDeviation, null, SessionId: runner()?.SessionId);
     }
 
     /// <summary><c>ImageSaved</c> zur Aufnahme: <c>CAPTURE result=saved</c>, Meldung mit Messwerten.</summary>

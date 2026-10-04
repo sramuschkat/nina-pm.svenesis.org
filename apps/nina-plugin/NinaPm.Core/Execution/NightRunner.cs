@@ -19,7 +19,8 @@ public interface ISessionApi
 
     Task<NinaSessionPatched> PatchAsync(Guid sessionId, NinaSessionPatch body, CancellationToken token);
 
-    Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token);
+    /// <summary>Antwort je Meldung (<c>accepted</c>, <c>duplicate</c>, … <c>rejected_invalid</c>).</summary>
+    Task<NinaCaptureResults> CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token);
 
     Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token);
 
@@ -34,7 +35,7 @@ public sealed class NinaSessionApi(NinaApiClient client) : ISessionApi
     public Task<NinaSessionPatched> PatchAsync(Guid sessionId, NinaSessionPatch body, CancellationToken token) =>
         client.ApiNinaV1SessionsPatchAsync(sessionId, body, token);
 
-    public Task CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token) =>
+    public Task<NinaCaptureResults> CapturesAsync(Guid sessionId, NinaCaptureBatch body, CancellationToken token) =>
         client.ApiNinaV1SessionsCapturesAsync(sessionId, body, token);
 
     public Task EventsAsync(Guid sessionId, NinaEventBatch body, CancellationToken token) =>
@@ -664,7 +665,9 @@ public sealed class NightRunner(
             log.Event("SESSION", ("session", id), ("status", "running"), ("night", plan.Night));
             log.Event("LEASE", ("state", "held"));
         }
-        catch (NinaApiException ex)
+        // Nur endgültige Antworten hier; 408/429/5xx fallen in den Offline-Zweig darunter. Vorher fing dieser Zweig alle
+        // Statusklassen ab: bei 5xx lief die Nacht ohne Session, und jede Aufnahme ging verloren (Analyse 04.10.2026).
+        catch (NinaApiException ex) when (ex.StatusCode is not (408 or 429 or >= 500))
         {
             var code = NinaApi.ProblemCode(ex.Response);
             log.Warning("API", ("status", ex.StatusCode), ("code", code), ("call", "sessions"));
@@ -909,7 +912,9 @@ public sealed class NightRunner(
             ExposureSaved(facts.Block, facts.Entry);
             RecordLightForFlats(facts);
         }
-        if (SessionId is not { } session) return;
+        // Session der Belichtung, nicht die aktuelle: NINA speichert asynchron, ein ImageSaved kann nach dem Abschluss der
+        // Session eintreffen (dann ist SessionId schon leer bzw. die nächste Nacht). Der Server nimmt späte Meldungen an.
+        if ((facts.SessionId ?? SessionId) is not { } session) return;
         var capture = CaptureMapper.Build(facts, result, fileName);
         store.EnqueueOutbox(OutboxKinds.Capture, JsonConvert.SerializeObject(capture, NinaJson.Settings()), session, facts.NightPlanId);
     }

@@ -13142,7 +13142,7 @@ export interface paths {
                         "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
-                /** @description session.closed | session.rig_busy | engine.incompatible */
+                /** @description session.unknown | session.closed | session.rig_busy | engine.incompatible */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -21196,21 +21196,25 @@ export interface components {
                 /**
                  * Format: uuid
                  * @description UUID
+                 * @default null
                  */
                 blockId: string | null;
                 /**
                  * Format: uuid
                  * @description UUID
+                 * @default null
                  */
                 projectId: string | null;
                 /**
                  * Format: uuid
                  * @description UUID
+                 * @default null
                  */
                 panelId: string | null;
                 /**
                  * Format: uuid
                  * @description UUID
+                 * @default null
                  */
                 exposureLineId: string | null;
                 /** @enum {string} */
@@ -21223,7 +21227,10 @@ export interface components {
                 raDeg: number;
                 decDeg: number;
                 rotationDeg: number;
-                /** @enum {string|null} */
+                /**
+                 * @default null
+                 * @enum {string|null}
+                 */
                 pierSide: "east" | "west" | null;
                 bonus: boolean;
             } | {
