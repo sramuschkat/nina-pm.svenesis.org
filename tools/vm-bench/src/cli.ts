@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRig, loadScenario } from '../../nina-test-server/src/scenario';
-import { NinaTestServer } from '../../nina-test-server/src/server';
+import { NinaTestServer, type TestAction } from '../../nina-test-server/src/server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
@@ -65,7 +65,7 @@ export interface BenchRun {
   readonly connect: readonly Device[];
   readonly coolC?: number;
   /**
-   * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Safety-Monitor unsicher/sicher
+   * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Test-Server-Aktion, Safety-Monitor unsicher/sicher
    * (`safe`, OmniSim-Simulatorschnittstelle, bleibt verbunden) oder getrennt/verbunden (`monitor`, Advanced API).
    */
   readonly steps?: readonly {
@@ -75,6 +75,8 @@ export interface BenchRun {
     coolC?: number;
     safe?: boolean;
     monitor?: 'connect' | 'disconnect';
+    /** Aktion des Test-Servers (`POST /test/actions`), z. B. `lock_transit` für P-15b. */
+    server?: string;
   }[];
 }
 
@@ -221,6 +223,18 @@ export function logSummary(text: string) {
   };
 }
 
+/** NINA-Log auf Einträge ab `fromLocal` (Ortszeit der VM, `YYYY-MM-DDTHH:MM:SS`) kürzen; das Original bleibt als `nina-full.log`. */
+export function trimLog(path: string, fromLocal: string): void {
+  const text = readFileSync(path, 'utf8');
+  writeFileSync(path.replace(/nina\.log$/, 'nina-full.log'), text);
+  let keep = false;
+  const out = text.split(/(?<=\n)/).filter((line) => {
+    if (/^\d{4}-\d\d-\d\dT/.test(line)) keep = line.slice(0, 19) >= fromLocal;
+    return keep;
+  });
+  writeFileSync(path, out.join(''));
+}
+
 async function screenshot(a: AdvancedApi, tab: string | undefined, path: string): Promise<void> {
   if (tab) await a.switchTab(tab as Parameters<AdvancedApi['switchTab']>[0]);
   await sleep(1500);
@@ -228,8 +242,25 @@ async function screenshot(a: AdvancedApi, tab: string | undefined, path: string)
   log(`Screenshot ${path}`);
 }
 
+/**
+ * Vor dem Lauf: OmniSim muss laufen, sobald der Safety-Monitor verbunden wird – nach einem Neustart der VM startet
+ * er nicht von selbst (04.10.2026: Lauf brach erst nach dem NINA-Start mit „fetch failed“ ab).
+ */
+async function preflight(cfg: BenchConfig, r: BenchRun): Promise<void> {
+  if (!r.connect.includes('safetymonitor')) return;
+  const url = `http://${cfg.vmHost ?? ''}:${String(cfg.omnisimPort)}/management/apiversions`;
+  const ok = await fetch(url, { signal: AbortSignal.timeout(5_000) })
+    .then((res) => res.ok)
+    .catch(() => false);
+  if (!ok)
+    throw new Error(
+      `OmniSim antwortet nicht (Port ${String(cfg.omnisimPort)}) – in der VM ASCOM OmniSim starten (und PHD2 für den Guider)`,
+    );
+}
+
 async function run(cfg: BenchConfig, name: string): Promise<boolean> {
   const r = JSON.parse(readFileSync(join(RUNS, `${name}.json`), 'utf8')) as BenchRun;
+  await preflight(cfg, r);
   const dir = join(ROOT, '.vm-bench', `${stamp()}-${r.name}`);
   mkdirSync(dir, { recursive: true });
   const a = api(cfg);
@@ -240,8 +271,12 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     // NINA frisch: ninapm.db löschen (ein gespeicherter Plan derselben Nacht schlösse sie sofort ab, VM-Lauf 03.10.2026).
     const profileId = r.prod ? cfg.prodProfileId : cfg.profileId;
     if (r.prod && !profileId) throw new Error('Kein Prod-Profil: pnpm vm-bench clone-profile …');
+    // Log ab diesem Neustart: ein vorheriger (abgebrochener) Lauf darf nicht mitzählen (04.10.2026, P-14).
+    const restartMs = Date.now();
     await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
+    // NINA schreibt Ortszeit ohne Zone: Abstand der VM-Uhr zu UTC aus dem jüngsten Logeintrag (auf 15 min).
+    const vmOffsetMs = await a.localOffsetMs();
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
     for (const [path, value] of Object.entries(r.profile ?? {})) await a.setProfile(path, value);
@@ -270,6 +305,13 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
+      // Uhr der VM (04.10.2026: nach einem Neustart 7 h falsch → Plugin sperrte mit clock_skew, Nacht sofort zu Ende).
+      // Der erste Heartbeat kommt nach höchstens 60 s; die Schritte sind absolut terminiert, Warten verschiebt sie nicht.
+      await sleep(75_000);
+      if ((await a.logMessages()).some((m) => m.includes('ERROR code=clock_skew')))
+        throw new Error(
+          'Uhr der VM weicht ab (clock_skew) – in der VM: w32tm /resync /force (Zeitdienst w32time gestartet, Zeitquelle gesetzt)',
+        );
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
         await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
         try {
@@ -279,6 +321,10 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
           if (s.monitor === 'connect') await a.connectFromProfile('safetymonitor', profile);
           if (s.safe !== undefined || s.monitor)
             log(`Safety-Monitor: ${s.monitor ?? (s.safe ? 'sicher' : 'unsicher')}`);
+          if (s.server && server) {
+            server.apply(s.server as TestAction);
+            log(`Test-Server: ${s.server}`);
+          }
           if (s.screenshot) await screenshot(a, s.tab, join(dir, `${s.screenshot}.png`));
         } catch (e) {
           log(`Schritt bei Minute ${String(s.atMin)}: ${String(e)}`);
@@ -303,10 +349,16 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const logs = await job(
       bench,
       'collect-log',
-      { sinceUtc: new Date(startedMs - 10 * 60_000).toISOString() },
+      { sinceUtc: new Date(restartMs - 5_000).toISOString() },
       dir,
     );
     if (!logs.files['nina.log']) throw new Error('Agent hat kein NINA-Log geliefert');
+    // Der Agent wählt ganze Logdateien nach Änderungszeit – die des vorigen Laufs käme mit (04.10.2026, P-15b).
+    // Darum auf die Zeilen ab dem eigenen Neustart kürzen (Folgezeilen ohne Zeitstempel bleiben beim Eintrag).
+    trimLog(
+      logs.files['nina.log'],
+      new Date(restartMs - 5_000 + vmOffsetMs).toISOString().slice(0, 19),
+    );
     writeFileSync(
       join(dir, 'bench.json'),
       `${JSON.stringify({ run: r.name, startUtc, endUtc: new Date().toISOString() }, null, 2)}\n`,

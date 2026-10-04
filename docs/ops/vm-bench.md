@@ -33,6 +33,18 @@ Geräte verbindet der Prüfstand nach einem Rescan je Typ (`/equipment/<gerät>/
 5. **Sperrbildschirm aus:** *Einstellungen → Konten → Anmeldeoptionen* → „Wenn Sie abwesend waren, wann soll Windows eine erneute Anmeldung erfordern?“ → **Nie**. Standby und Bildschirm schaltet die Einrichtung schon ab. Die VM bleibt angemeldet.
 6. Während der Läufe schläft der Mac nicht: `caffeinate -dims` in einem Terminal.
 
+## Vor jedem Lauf: was in der VM laufen muss
+Nach einem Neustart der VM startet nur der Agent von selbst (bei der Anmeldung). Die Simulatoren startet Sven **von Hand**, und zwar **erst, wenn die Uhr der VM stimmt** (Sky Simulator und OmniSim übernehmen die Zeit beim Start – mit falscher Uhr zeigt das Kamerabild den falschen Himmel und das Zentrieren scheitert, 04.10.2026); NINA startet der Prüfstand selbst.
+
+| Programm | Wofür | Prüfung durch den Prüfstand |
+|---|---|---|
+| Windows-Anmeldung | Agent „NINA-PM Bench Agent“ startet bei der Anmeldung; falls nicht: `Start-ScheduledTask -TaskName 'NINA-PM Bench Agent'` | „Agent in der VM meldet sich nicht“ |
+| **Sky Simulator for ALPACA** (Port 11111, nur lokal) | Kamera, Montierung, Filterrad, Rotator | Verbinden schlägt fehl |
+| **ASCOM Alpaca OmniSimulator** (Port **32323**, Firewall „Zulassen“) | Safety-Monitor (sicher/unsicher schaltet der Prüfstand) | Vorabprüfung vor jedem Lauf mit Safety-Monitor: „OmniSim antwortet nicht“ |
+| **PHD2** (Simulator-Profil, gestartet) | Guider | Verbinden des Guiders schlägt fehl |
+| NINA | – | **nicht** von Hand starten; der Prüfstand startet NINA frisch |
+| Uhr der VM | Zeitdienst `w32time` läuft, Zeitquelle gesetzt (`w32tm /config /manualpeerlist:"time.windows.com,0x9" /syncfromflags:manual /update`, dann `w32tm /resync /force`) | Lauf bricht nach 75 s ab, wenn das Plugin `clock_skew` meldet |
+
 ## Geräte im NINA-Profil der VM
 Die Advanced API verbindet je Gerätetyp das **im Profil ausgewählte** Gerät; welche Geräte ein Lauf verbindet, steht in `tools/vm-bench/runs/<lauf>.json` (`connect`, alle anderen werden getrennt).
 

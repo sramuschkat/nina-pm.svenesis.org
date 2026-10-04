@@ -1,0 +1,23 @@
+{
+  "name": "vm-transit",
+  "description": "P-14 auf echtem NINA (≈ 35 min): Regelblock mit 300-s-Belichtungen, Transit ab Minute 10 für 20 min; der Autofokus-Trigger der Beispielsequenz wird im Transit unterdrückt.",
+  "simRun": "vm-transit",
+  "scenario": "transit",
+  "untilMin": 35,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 12,
+      "screenshot": "live-status-transit",
+      "tab": "sequencer"
+    }
+  ]
+}
