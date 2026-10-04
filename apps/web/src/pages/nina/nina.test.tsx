@@ -172,6 +172,7 @@ const item = (n: number, over: Partial<NinaRigDelivery['items'][number]> = {}) =
     },
     { filterId: ID(301), filterShortName: 'OIII', ninaFilterName: null, planned: 20, accepted: 0 },
   ],
+  commentCount: 0,
   ...over,
 });
 
@@ -197,7 +198,9 @@ beforeEach(() => {
   state.me = me('owner');
   state.instances = [instance()];
   state.deliveries = {
-    [ID(500)]: delivery(ID(500), { items: [item(1), item(2, { panelCount: 4, name: 'Mosaik' })] }),
+    [ID(500)]: delivery(ID(500), {
+      items: [item(1, { commentCount: 2 }), item(2, { panelCount: 4, name: 'Mosaik' })],
+    }),
     [ID(501)]: delivery(ID(501), { deliveryEnabled: false }),
   };
   for (const fn of [state.create, state.revoke, state.release, state.remove, state.setStatus])
@@ -378,6 +381,9 @@ describe('S-41 An NINA ausgeliefert', () => {
     // Filter als farbige Chips, Ersteller mit Bild bzw. Symbol (30.09.2026).
     expect(within(card).getByText('Ha')).toBeTruthy();
     expect(within(card).getByText(/^Ersteller/)).toBeTruthy();
+    // Kommentare am Projekt (FA-PRJ-17): Sprechblase nur bei Kommentaren.
+    expect(within(card).getByRole('img', { name: 'Kommentare: 2' })).toBeTruthy();
+    expect(screen.getAllByRole('img', { name: /^Kommentare/ })).toHaveLength(1);
     expect(screen.getByText('Mosaik mit 4 Panels')).toBeTruthy();
     expect(screen.getByText('An NINA ausliefern ist für Rig B ausgeschaltet.')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Rig Rig A · Nacht 18./19.09.' })).toBeTruthy();

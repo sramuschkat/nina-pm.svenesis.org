@@ -34,6 +34,26 @@ describe('NotificationList (FA-FRG-11)', () => {
     }
   });
 
+  it('Kommentar am Projekt (FA-PRJ-17): Verfasser im Text, Projekt als Betreff', () => {
+    render(
+      <NotificationList
+        state="ready"
+        items={[
+          {
+            id: 'n3',
+            kind: 'project.comment',
+            payload: { subject: 'NGC 281', author: 'Zoe', noteId: 'x' },
+            readAt: null,
+            createdAt: '2026-10-04T10:00:00Z',
+          },
+        ]}
+        tenantTimeZone="Europe/Berlin"
+      />,
+    );
+    expect(screen.getByText(/Zoe hat ein Projekt kommentiert/)).toBeInTheDocument();
+    expect(screen.getByText('NGC 281')).toBeInTheDocument();
+  });
+
   it('Text mit übersetzten Rollen, Betreff, Zeit in Mandantenzeit mit Kürzel; ungelesen markierbar', async () => {
     const onMarkRead = vi.fn();
     render(

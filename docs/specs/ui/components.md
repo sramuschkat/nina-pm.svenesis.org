@@ -265,6 +265,14 @@ Mehrere Spuren auf **einer** Zeitachse in Standortzeit (volle Stunden, ab 17 Stu
 
 Überall, wo in Datenmasken ein Mitglied genannt wird (Ersteller, Einreicher, Stimmen in Entscheidungen, Notizen, Verlauf, Änderungsanträge, Transit-Hinweise, Sitzungsprotokoll, Mitglieder, Änderungsprotokoll): rundes Discord-Bild und Name, wie oben rechts im Benutzermenü. Eigenschaften: `name`, `avatarUrl?`, `size?: 'sm' | 'md'` (20 bzw. 24 px); dazu `MemberAvatar` (nur das Bild). Der Baustein fragt nichts ab (§1): die Seiten nutzen `lib/member.tsx` – `Person {id, name?}` bzw. `MemberAvatarFor {id}` holen das Bild aus dem Mitgliederverzeichnis (`GET /web/v1/members/directory`, Aktion `member.directory`, einmal je Sitzung, 5 min frisch), der Name kommt aus der Zeile, sonst aus dem Verzeichnis; ohne Bild oder bei Ladefehler das Symbol `user` auf neutraler Fläche. Bild dekorativ (`alt=""`), der Name trägt die Bedeutung; langer Name kürzt mit „…“. In Tooltips (`title`) bleibt es bei Namen als Text. Nicht für den System-Bereich (Super-User-Aktionen).
 
+### 2.23 `EmojiPicker` (Emoji-Auswahl, FA-PRJ-17, 04.10.2026)
+
+Knopf mit Lucide-Symbol (`emoji` im Eingabefeld, `react` für Reaktionen), der eine **feste** Auswahl als Raster öffnet (Radix `Popover`; `Esc` schließt, Fokus zurück auf den Knopf). Eigenschaften: `emojis` (Auswahl in Anzeigereihenfolge, vom Aufrufer – Kommentartext bzw. `enums.json commentReactions`), `onPick`, `label` (Tooltip, `aria-label` des Knopfs und der Gruppe), `icon`, `selected?` (`aria-pressed`, z. B. eigene Reaktionen), `disabled?`. Ein Klick wählt und schließt. Keine Bibliothek, keine Suche. Emoji sind hier **Inhalt** der Kommentare – Symbole der Oberfläche bleiben Lucide (§1). Mindestbreite: 8 Felder in Zeilenhöhe.
+
+### 2.24 `CommentCount` (Sprechblase mit Zahl, FA-PRJ-17, 04.10.2026)
+
+Symbol `comments` (`message-square`, dekorativ) und die Anzahl nicht gelöschter Kommentare eines Projekts; `role="img"` mit `aria-label`/`title` „Kommentare: n“. Eigenschaft: `count`. Bei 0 rendert der Baustein **nichts**, damit Listen ruhig bleiben. Verwendet in Projektliste (Liste, Karten, Detail), Freigabe-Warteschlange, *An NINA ausgeliefert* und Projektbericht. Bricht nicht um.
+
 ## 3. Symbole je Bereich (Lucide)
 
 | Bereich / Aktion | Symbol |
@@ -281,6 +289,7 @@ Mehrere Spuren auf **einer** Zeitachse in Standortzeit (volle Stunden, ab 17 Stu
 | Saison eines Objekts (Objektbrowser, AP-26d) | `calendar-range` |
 | Datumswahl der Nacht mit Mondkalender (Planung) | `calendar-days` |
 | Aktualisieren (An NINA ausgeliefert S-41, AP-14c) | `refresh-cw` |
+| Kommentare (Sprechblase mit Zahl) · Emoji einfügen · Reaktion hinzufügen · Antworten · Bearbeiten (FA-PRJ-17) | `message-square` · `smile` · `smile-plus` · `reply` · `pencil` |
 | Sortierbar · Detailzeile zu/offen (`DataTable`, AP-26a) | `arrow-up-down` (aufsteigend `arrow-up`, absteigend `arrow-down`) · `chevron-right`/`chevron-down` |
 | Filter aufklappen · Filter entfernen (`FilterBar`, AP-26c) | `plus` + `chevron-down` · `x` |
 | Sternkarte: Hineinzoomen · Herauszoomen · zur vorigen/nächsten Himmelsrichtung drehen · Rundblick · Vollbild/zurück | `plus` · `minus` · `chevron-left`/`chevron-right` · `mountain` · `maximize`/`minimize` |

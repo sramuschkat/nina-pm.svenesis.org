@@ -318,6 +318,8 @@ function queueItem(
     version: p.version,
     changeRequest: null,
     transit,
+    // Wird nach dem Zusammenstellen der Warteschlange mit einer gruppierten Abfrage gesetzt.
+    commentCount: 0,
   };
 }
 
@@ -639,8 +641,13 @@ export function webApprovalRoutes(services: () => Promise<ApiServices>) {
       }),
       ...transitItems,
     ].sort(queueOrder(x.svc.now().getTime()));
+    // Kommentare je Projekt (FA-PRJ-17) – auch Anträge und Transits zählen die Kommentare ihres Projekts.
+    const comments = await x.projects.commentCounts(items.map((i) => i.projectId));
     c.header('cache-control', 'no-store');
-    return c.json({ items }, 200);
+    return c.json(
+      { items: items.map((i) => ({ ...i, commentCount: comments.get(i.projectId) ?? 0 })) },
+      200,
+    );
   });
 
   const voteSubject = async (x: Awaited<ReturnType<typeof ctx>>, kind: string, id: string) => {

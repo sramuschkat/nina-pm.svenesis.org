@@ -16,6 +16,7 @@ import {
   type NinaRigDelivery,
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
+import { CommentCount } from '../../components/CommentCount';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { FilterChip } from '../../components/FilterChip';
 import { formatCoordinate } from '../../components/CoordinateInput/coords';
@@ -257,6 +258,7 @@ function DeliveryCard({ card }: { card: Card }) {
     <article className={styles.card} aria-labelledby={headingId}>
       <div className={styles.cardHead}>
         <h3 id={headingId}>{item.name}</h3>
+        <CommentCount count={item.commentCount} />
         <StatusBadge kind="project" value={item.status} />
       </div>
       <p className={styles.facts}>

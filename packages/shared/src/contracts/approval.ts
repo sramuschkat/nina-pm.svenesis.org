@@ -167,6 +167,8 @@ export const QueueItem = z
     changeRequest: ChangeRequestInfo.nullable(),
     /** Bei Transit-Bestätigungen und eingereichten Exoplaneten-Projekten (AP-43). */
     transit: QueueTransit.nullable(),
+    /** Nicht gelöschte Kommentare am Projekt (FA-PRJ-17). */
+    commentCount: z.number().int().min(0),
   })
   .meta({ id: 'QueueItem' });
 export type QueueItem = z.infer<typeof QueueItem>;

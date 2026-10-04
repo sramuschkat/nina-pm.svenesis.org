@@ -56,6 +56,7 @@ export {
 export {
   ProjectRepository,
   type LineDetail,
+  type NoteRecord,
   type ProjectDetail,
   type ProjectMeta,
   type RigConflict,

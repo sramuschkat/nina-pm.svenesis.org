@@ -35,6 +35,8 @@ export const NinaDeliveryItem = z
     decDeg: z.number().min(-90).max(90).nullable(),
     rotationDeg: Angle.nullable(),
     filters: z.array(NinaDeliveryFilter),
+    /** Nicht gelöschte Kommentare am Projekt (FA-PRJ-17) – nur Web, nicht Teil von `targets`. */
+    commentCount: z.number().int().min(0),
   })
   .meta({ id: 'NinaDeliveryItem' });
 export type NinaDeliveryItem = z.infer<typeof NinaDeliveryItem>;

@@ -60,6 +60,7 @@ const report = (): ProjectReport => ({
       approvalStatus: 'approved',
       status: 'active',
       percentDone: 55,
+      commentCount: 0,
       filters: [
         {
           filter: 'OIII',

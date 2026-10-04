@@ -105,12 +105,14 @@ async function setup() {
 describe('Projektbericht (S-63)', () => {
   it('Filter-Summen, Verlauf je Nacht und Sessions; nur freigegebene Projekte', async () => {
     const t = await setup();
+    await t.web(`/projects/${t.pid}/notes`, { method: 'POST', body: { bodyMd: 'Fertig?' } });
     const r = await t.web(`/reports/projects?from=${NIGHT}&to=${NIGHT}`);
     expect(r.status).toBe(200);
     const projects = r.body.projects as Body[];
     expect(projects.map((p) => p.name)).toEqual(['NGC 281']);
     const p = projects[0] as Body;
     expect(p).toMatchObject({
+      commentCount: 1,
       rigName: expect.any(String),
       status: 'active',
       projectType: 'deep_sky',

@@ -71,6 +71,7 @@ export const errorMessages = {
     "errors.line.lockedByCaptures": "Zeile hat Aufnahmen – Filter, Belichtungszeit, Gain, Offset, Binning und Auslesemodus sind gesperrt; Zeile duplizieren",
     "errors.nina.nightInvalid": "Nacht ist weder die aktuelle noch die folgende Nacht des Standorts",
     "errors.engine.inputInvalid": "Planungseingabe unvollständig (z. B. Nacht-Tabelle zu kurz)",
+    "errors.comment.editWindowClosed": "Kommentare lassen sich nur in der ersten Stunde bearbeiten",
   },
   en: {
     "errors.validation.failed": "Invalid input",
@@ -142,5 +143,6 @@ export const errorMessages = {
     "errors.line.lockedByCaptures": "Line has captures – filter, exposure time, gain, offset, binning and readout mode are locked; duplicate the line",
     "errors.nina.nightInvalid": "Night is neither the current nor the next night of the site",
     "errors.engine.inputInvalid": "Planning input incomplete (e.g. night table too short)",
+    "errors.comment.editWindowClosed": "Comments can only be edited within the first hour",
   },
 } as const;

@@ -438,7 +438,7 @@ export type Action =
   | 'project.submit' | 'project.withdraw' | 'project.rank' | 'queue.read' | 'queue.vote' | 'queue.decide' | 'project.status'
   | 'rig.settings.write' | 'simulation.run' | 'nina.instance.manage'
   | 'session.read' | 'session.correct' | 'session.review' | 'sessionlog.write'
-  | 'transit.result.import' | 'project.note.write' | 'project.history.read' | 'nina.instance.read'
+  | 'transit.result.import' | 'project.note.write' | 'project.note.delete' | 'project.history.read' | 'nina.instance.read'
   | 'member.directory' | 'member.manage' | 'member.admin.manage' | 'member.leave' | 'tenant.owner.transfer'
   | 'tenant.settings' | 'tenant.export' | 'tenant.import' | 'system.manage' | 'system.tenant.owner'
   | 'changeRequest.create' | 'changeRequest.update' | 'transit.lock' | 'session.report.resend'
@@ -699,7 +699,7 @@ export class TenantRepo {
 | Jobs | `GET /web/v1/jobs/{id}` (Status, Fortschritt, Download-Link des Ergebnisses) | `job.read` (Ersteller bzw. Admin) |
 | Sessions | `GET /web/v1/sessions?rigId=&from=&to=&unreviewed=`, `GET /sessions/{id}` (inkl. Soll/Ist), `GET /sessions/{id}/captures` (mit `temperatureDeviation`, `settingsDeviation`, `exposureMidUtc`; Anzeige im Session-Detail, NT-E2/NT-E3), `GET /sessions/{id}/events` (Abweichungsgründe, FA-AUS-04), `GET /sessions/{id}/plans` (Planrevisionen der Nacht), `PATCH /captures/{id} {rejected, reason}`, `POST /web/v1/corrections` (Regel max, 6.6), `PUT /sessions/{id}/log`, `POST /sessions/{id}/report/resend` (`session.report.resend`, FA-AUS-21), `GET /sessions/{id}/calibration` (Flats/Dark-Flats je Kombination), `PATCH /captures/{id}/assign {projectId, panelId, exposureLineId}` (nicht zugeordnete Aufnahmen), `POST /sessions/{id}/review` | `session.*`, `sessionlog.write` |
 | Verlauf | `GET /web/v1/projects/{id}/history` (Freigabe- und Änderungsverlauf, FA-FRG-12, FA-BER-03), `GET /web/v1/projects/{id}/captures?format=json|csv` (Aufnahmeliste je Projekt, FA-AUS-12), `GET /web/v1/projects/{id}/export` (FA-PRJ-09) | `project.history.read`, `session.read`, `project.read` |
-| Notizen | `POST /web/v1/projects/{id}/notes` | `project.note.write` (User: eigene Objekte in jedem Status) |
+| Kommentare (FA-PRJ-17, bisher Notizen) | `GET`/`POST /web/v1/projects/{id}/notes` (Antwort mit `parentId`, eine Ebene), `PATCH /notes/{noteId}` (Verfasser, ≤ 1 h, sonst `409 comment.edit_window_closed`), `DELETE /notes/{noteId}` (weich), `PUT /notes/{noteId}/reactions {emoji, active}` | `project.read`, `project.note.write` (wer das Projekt sehen darf), `project.note.delete` (Admin/Owner) |
 | Warteschlange | `POST /web/v1/queue/{projectId}/impact` → `202 {jobId}` (Auswirkungsvorschau, FA-FRG-05) | `queue.decide` |
 | Mandanten-Export/-Import | `POST /web/v1/tenant/export` → `202 {jobId}`; Import: `POST /web/v1/files/upload-url {purpose:'tenant_import'}` → `POST /web/v1/tenant/import {uploadTicketId}` (kein Schlüssel, 12) → `202 {jobId}` | `tenant.export`, `tenant.import` |
 | Super-User-Aktionen im Mandanten | `GET /web/v1/audit/system` (FA-SU-09) | `tenant.settings` |

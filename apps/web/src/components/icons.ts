@@ -42,12 +42,14 @@ import {
   LogOut,
   MapPin,
   Maximize,
+  MessageSquare,
   Minimize,
   Minus,
   Moon,
   MoonStar,
   Mountain,
   Orbit,
+  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -56,10 +58,13 @@ import {
   PlugZap,
   Plus,
   RefreshCw,
+  Reply,
   Satellite,
   Save,
   Send,
   Settings,
+  Smile,
+  SmilePlus,
   Sparkles,
   Star,
   Sun,
@@ -125,6 +130,9 @@ export const actionIcons = {
   export: Download,
   /** Aktualisieren (S-41). */
   refresh: RefreshCw,
+  /** Kommentar beantworten bzw. bearbeiten (FA-PRJ-17). */
+  reply: Reply,
+  edit: Pencil,
 } as const;
 
 /** Rahmen und Status. */
@@ -174,6 +182,10 @@ export const uiIcons = {
   panelOpen: PanelRightOpen,
   /** Meridian-Flip im Transitfenster (Transitsuche S-22, AP-42). */
   meridianFlip: FlipHorizontal2,
+  /** Kommentare am Projekt (Sprechblase mit Zahl), Emoji einfügen, Reaktion hinzufügen (FA-PRJ-17). */
+  comments: MessageSquare,
+  emoji: Smile,
+  react: SmilePlus,
 } as const;
 
 /** Gruppen von „Ereignisse der Nacht“ (Heute Nacht; Vorlage ⌁ ✧ ✺ ◑). */

@@ -80,7 +80,8 @@ import { CatalogSearch } from '../catalog/CatalogSearch';
 import { WikipediaLink } from '../catalog/wikipedia';
 import { PanelList } from './PanelList';
 import { ChangeRequestsTab } from './ChangeRequestsTab';
-import { ChartArea, HistoryTab, NotesTab } from './ProjectTabs';
+import { CommentsTab } from './CommentsTab';
+import { ChartArea, HistoryTab } from './ProjectTabs';
 import { SkyLocation } from './SkyLocation';
 import { SubmitPanel } from './SubmitPanel';
 import { ProjectImage } from './ProjectImage';
@@ -837,7 +838,7 @@ function Editor({
     { key: 'preview', label: t('projectEditor.tabs.preview') },
     { key: 'sky', label: t('projectEditor.tabs.sky') },
     { key: 'description', label: t('projectEditor.field.description') },
-    ...(saved ? [{ key: 'notes' as const, label: t('projectEditor.tabs.notes') }] : []),
+    ...(saved ? [{ key: 'notes' as const, label: t('projectEditor.tabs.comments') }] : []),
     ...(saved?.approvalStatus === 'approved'
       ? [{ key: 'changes' as const, label: t('projectEditor.tabs.changes') }]
       : []),
@@ -866,7 +867,7 @@ function Editor({
           />
         ),
         description: descriptionPanel,
-        ...(saved ? { notes: <NotesTab projectId={saved.id} resource={resource} /> } : {}),
+        ...(saved ? { notes: <CommentsTab projectId={saved.id} resource={resource} /> } : {}),
         ...(saved?.approvalStatus === 'approved'
           ? { changes: <ChangeRequestsTab project={saved} canEdit={canEdit} /> }
           : {}),
@@ -1264,7 +1265,7 @@ function ProjectProgress({ sums }: { sums: ReturnType<typeof planSums> }) {
   );
 }
 
-/** Unterreiter von *Bild & Notizen*. */
+/** Unterreiter von *Bild & Kommentare* (`notes` = Kommentare, FA-PRJ-17). */
 type ImageTab = 'preview' | 'sky' | 'description' | 'notes' | 'changes' | 'history';
 
 /** Fehler der Client-Prüfung (zod) als Feldpfade. */

@@ -1,0 +1,11 @@
+/* Sprechblase mit Zahl (components.md §2.24): Nebentext-Größe, bricht nicht um. */
+.count {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--npm-space-1);
+  color: var(--npm-text-light);
+  font-size: var(--npm-font-small);
+  white-space: nowrap;
+  vertical-align: middle;
+}

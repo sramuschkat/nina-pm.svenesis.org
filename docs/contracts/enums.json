@@ -38,6 +38,7 @@
   "sessionlog.write",
   "transit.result.import",
   "project.note.write",
+  "project.note.delete",
   "project.history.read",
   "member.directory",
   "member.manage",
@@ -424,6 +425,7 @@
   "vote.subject_changed",
   "vote.subject_resubmitted",
   "project.completed",
+  "project.comment",
   "transit.confirmation_needed",
   "transit.confirmed",
   "transit.declined",
@@ -435,6 +437,15 @@
   "alert.plugin_dead_letters",
   "alert.nina_settings_mismatch",
   "alert.discord_channel_failed"
+ ],
+ "commentReactions": [
+  "👍",
+  "❤️",
+  "🎉",
+  "😄",
+  "😮",
+  "🙏",
+  "🔭"
  ],
  "catalogs": [
   "dso",

@@ -359,6 +359,8 @@ describe('An NINA ausgeliefert (S-41, FA-NIN-22)', () => {
   it('dieselben Ziele wie targets, mit Fortschritt je Filter und bestätigtem NINA-Filter', async () => {
     const t = await setup();
     const inst = await t.createInstance('A');
+    // Kommentar am Projekt: Sprechblase mit Zahl auf der Karte (FA-PRJ-17).
+    await t.web(`/projects/${t.pid}/notes`, { method: 'POST', body: { bodyMd: 'Läuft.' } });
     const r = await t.web(`/rigs/${t.rig.id}/delivery`);
     expect(r.status).toBe(200);
     const targets = await s.request('/api/nina/v1/targets', {
@@ -379,6 +381,7 @@ describe('An NINA ausgeliefert (S-41, FA-NIN-22)', () => {
         panelCount: 1,
         raDeg: 13.2,
         decDeg: 56.6,
+        commentCount: 1,
         filters: [
           expect.objectContaining({
             filterShortName: 'Ha',

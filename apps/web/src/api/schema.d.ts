@@ -7036,7 +7036,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Notizverlauf des Projekts
+         * Kommentare des Projekts mit Antworten und Reaktionen, neueste zuerst
          * @description Aktion: `project.read` · FA-PRJ-17
          */
         get: {
@@ -7051,7 +7051,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Notizen */
+                /** @description Kommentare */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -7102,7 +7102,7 @@ export interface paths {
         };
         put?: never;
         /**
-         * Notiz hinzufügen (Markdown)
+         * Kommentar oder Antwort (Markdown); benachrichtigt Ersteller und bisherige Verfasser
          * @description Aktion: `project.note.write` · FA-PRJ-17
          */
         post: {
@@ -7168,6 +7168,245 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/notes/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Kommentar weich löschen (Admin/Owner); Antworten bleiben
+         * @description Aktion: `project.note.delete` · FA-PRJ-17
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Gelöscht */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Eigenen Kommentar bearbeiten (höchstens 1 h nach dem Anlegen)
+         * @description Aktion: `project.note.write` · FA-PRJ-17
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotePatch"];
+                };
+            };
+            responses: {
+                /** @description Bearbeitet */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NoteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description comment.edit_window_closed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/web/v1/projects/{id}/notes/{noteId}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Eigene Reaktion setzen oder entfernen (feste Auswahl `commentReactions`)
+         * @description Aktion: `project.note.write` · FA-PRJ-17
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description UUID */
+                    id: string;
+                    /** @description UUID */
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteReactionSet"];
+                };
+            };
+            responses: {
+                /** @description Kommentar mit Reaktionen */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NoteView"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -13567,7 +13806,7 @@ export interface components {
             title: string;
             status: number;
             /** @enum {string} */
-            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "request.too_large" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "catalog.source_failed" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.not_rejectable" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid";
+            code: "validation.failed" | "auth.unauthenticated" | "auth.no_membership" | "auth.identity_blocked" | "auth.mfa_required" | "auth.csrf_missing" | "auth.rate_limited" | "permission.denied" | "tenant.not_found" | "tenant.locked" | "resource.not_found" | "resource.version_conflict" | "resource.in_use" | "resource.read_only" | "invitation.invalid" | "invitation.expired" | "invitation.already_member" | "member.owner_protected" | "super_user.last_protected" | "member.cannot_change_self" | "member.owner_cannot_leave" | "owner_transfer.target_invalid" | "approval.not_allowed" | "approval.own_object" | "approval.incomplete" | "approval.rig_conflict" | "vote.own_object" | "vote.closed" | "ranking.incomplete" | "change_request.conflict" | "change_request.not_open" | "transit.lock_not_allowed" | "transit.deadline_passed" | "rig.sort_chain_invalid" | "rig.flip_settings_invalid" | "discord.webhook_invalid" | "discord.test_failed" | "job.not_found" | "request.too_large" | "file.too_large" | "file.type_not_allowed" | "nina.token_invalid" | "engine.incompatible" | "session.rig_busy" | "session.unknown" | "session.closed" | "capture.batch_too_large" | "event.batch_too_large" | "plan.targets_etag_mismatch" | "canonical.non_finite" | "system.maintenance" | "internal.error" | "transit.share_mismatch" | "transit.too_many_open" | "transit.window_overlap" | "transit.ephemeris_stale" | "exo.epoch_out_of_range" | "catalog.source_failed" | "transit.result_time_system" | "validation.min_time_too_small" | "project.status_transition_invalid" | "rig.change_has_captures" | "correction.conflict" | "site_night.has_session" | "capture.not_rejectable" | "capture.assign_mismatch" | "line.locked_by_captures" | "nina.night_invalid" | "engine.input_invalid" | "comment.edit_window_closed";
             requestId?: string;
             errors?: {
                 path: string;
@@ -14023,7 +14262,7 @@ export interface components {
              */
             id: string;
             /** @enum {string} */
-            kind: "submission.new" | "submission.withdrawn" | "submission.edited_by_admin" | "approval.approved" | "approval.returned" | "approval.rejected" | "approval.expired" | "deadline.near" | "change_request.new" | "change_request.decided" | "vote.subject_changed" | "vote.subject_resubmitted" | "project.completed" | "transit.confirmation_needed" | "transit.confirmed" | "transit.declined" | "transit.expired" | "role.changed" | "owner.reassigned" | "alert.rig_busy" | "alert.session_no_heartbeat" | "alert.plugin_dead_letters" | "alert.nina_settings_mismatch" | "alert.discord_channel_failed";
+            kind: "submission.new" | "submission.withdrawn" | "submission.edited_by_admin" | "approval.approved" | "approval.returned" | "approval.rejected" | "approval.expired" | "deadline.near" | "change_request.new" | "change_request.decided" | "vote.subject_changed" | "vote.subject_resubmitted" | "project.completed" | "project.comment" | "transit.confirmation_needed" | "transit.confirmed" | "transit.declined" | "transit.expired" | "role.changed" | "owner.reassigned" | "alert.rig_busy" | "alert.session_no_heartbeat" | "alert.plugin_dead_letters" | "alert.nina_settings_mismatch" | "alert.discord_channel_failed";
             payload: {
                 [key: string]: unknown;
             };
@@ -15528,6 +15767,7 @@ export interface components {
             createdByName: string;
             panelCount: number;
             filters: components["schemas"]["FilterPlanSummary"][];
+            commentCount: number;
         };
         EffortView: {
             /** @enum {string|null} */
@@ -16101,9 +16341,43 @@ export interface components {
              * @example 2026-09-18T13:00:00Z
              */
             createdAt: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            parentId: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            editedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            deletedAt: string | null;
+            reactions: {
+                /** @enum {string} */
+                emoji: "👍" | "❤️" | "🎉" | "😄" | "😮" | "🙏" | "🔭";
+                count: number;
+                mine: boolean;
+            }[];
         };
         NoteCreate: {
             bodyMd: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            parentId?: string | null;
+        };
+        NotePatch: {
+            bodyMd: string;
+        };
+        NoteReactionSet: {
+            /** @enum {string} */
+            emoji: "👍" | "❤️" | "🎉" | "😄" | "😮" | "🙏" | "🔭";
+            active: boolean;
         };
         HistoryEntry: {
             /** @enum {string} */
@@ -16321,6 +16595,7 @@ export interface components {
                 timeZone: string | null;
                 plannedCount: number;
             } | null;
+            commentCount: number;
         };
         QueueVotes: {
             count: number;
@@ -16989,6 +17264,7 @@ export interface components {
                 moonSeparationDeg: number;
             };
             channelBalance: components["schemas"]["ChannelBalanceHint"];
+            commentCount: number;
         };
         ReportFilterTotal: {
             filter: string;
@@ -17411,6 +17687,7 @@ export interface components {
                 planned: number;
                 accepted: number;
             }[];
+            commentCount: number;
         };
         NightSessionList: {
             items: components["schemas"]["NightSession"][];

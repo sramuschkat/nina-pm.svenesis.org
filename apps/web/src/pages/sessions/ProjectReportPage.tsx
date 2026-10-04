@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { reportsApi, type ProjectReport, type ReportProject } from '../../api/client';
 import { useAuth } from '../../auth';
+import { CommentCount } from '../../components/CommentCount';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
 import { PageHeader } from '../../components/PageHeader';
@@ -199,7 +200,12 @@ function ReportBody({ report }: { report: ProjectReport }) {
       id: 'name',
       header: t('report.col.project'),
       sortValue: (p) => p.name,
-      cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
+      cell: (p) => (
+        <>
+          <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>{' '}
+          <CommentCount count={p.commentCount} />
+        </>
+      ),
     },
     {
       // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
@@ -301,7 +307,8 @@ export function ProjectSection({
           {p.name}{' '}
           <span className={styles.reportCreator}>
             <Person id={p.createdBy} />
-          </span>
+          </span>{' '}
+          <CommentCount count={p.commentCount} />
           <span className={styles.muted}>
             {' '}
             · {p.rigName ?? '–'} · {n(p.percentDone)} % ·{' '}

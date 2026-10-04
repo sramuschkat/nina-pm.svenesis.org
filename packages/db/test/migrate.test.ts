@@ -180,6 +180,7 @@ describe('Migrationsdateien', () => {
       '0009_antragsrang_worker',
       '0010_exo_katalog',
       '0011_rollenansicht',
+      '0012_kommentare',
     ]);
     const bundled = readFileSync(
       fileURLToPath(new URL('../src/migrate/bundled.ts', import.meta.url)),

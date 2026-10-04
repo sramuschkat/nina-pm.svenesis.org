@@ -606,6 +606,7 @@ async function projectExamples(): Promise<Record<string, Example>> {
   );
   await admin().query('UPDATE project SET deleted_at = now() WHERE id = $1', [T]);
   const owner = world.members.owner;
+  const note = await projects.addNote(Q, { bodyMd: 'Framing passt.' }, now);
   const draftRes: ResourceMeta = {
     tenantId: world.tenantA,
     createdBy: owner,
@@ -816,6 +817,29 @@ async function projectExamples(): Promise<Record<string, Example>> {
       body: { bodyMd: 'Framing passt.' },
       resource: qRes,
       okStatus: 201,
+    },
+    // Kommentar des Owners: bearbeiten darf nur der Verfasser (andere → 403 vom Repository), löschen nur
+    // Admins (wiederholbar), reagieren jeder, der das Projekt sieht (FA-PRJ-17).
+    [`PATCH ${P}/{id}/notes/{noteId}`]: {
+      url: `${P}/${Q}/notes/${note.id}`,
+      method: 'PATCH',
+      body: { bodyMd: 'Framing passt wirklich.' },
+      resource: qRes,
+      expect: { Admin: 403, 'Admin ohne 2FA': 403, User: 403, 'User 2': 403 },
+    },
+    [`DELETE ${P}/{id}/notes/{noteId}`]: {
+      url: `${P}/${Q}/notes/${note.id}`,
+      method: 'DELETE',
+      resource: qRes,
+      okStatus: 204,
+      reset: () =>
+        admin().query('UPDATE project_note SET deleted_at = NULL WHERE id = $1', [note.id]),
+    },
+    [`PUT ${P}/{id}/notes/{noteId}/reactions`]: {
+      url: `${P}/${Q}/notes/${note.id}/reactions`,
+      method: 'PUT',
+      body: { emoji: '🔭', active: true },
+      resource: qRes,
     },
     [`GET ${P}/{id}/history`]: { url: `${P}/${Q}/history`, resource: qRes },
     'POST /api/web/v1/rigs/{id}/compatibility': {

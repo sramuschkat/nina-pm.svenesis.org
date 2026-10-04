@@ -161,6 +161,7 @@ const report = (): ProjectReport => ({
         behind: [{ filter: 'L', percentDone: 20 }],
         ahead: [{ filter: 'OIII', percentDone: 90 }],
       },
+      commentCount: 3,
     },
   ],
 });
@@ -206,6 +207,9 @@ describe('S-63 Projektbericht', () => {
     const row = within(overview).getByRole('row', { name: /NGC 7000/ });
     expect(row.textContent).toContain('55 %');
     expect(row.textContent).toContain('2 h');
+    // Kommentare am Projekt (FA-PRJ-17): Sprechblase in Übersicht und Abschnitt.
+    expect(within(row).getByRole('img', { name: 'Kommentare: 3' })).toBeTruthy();
+    expect(screen.getAllByRole('img', { name: 'Kommentare: 3' })).toHaveLength(2);
     expect(screen.getByText(/1 Projekte · 24 akzeptierte Frames/)).toBeTruthy();
     // Projektabschnitt: Filter, Kanalbalance, Sessions, Bedingungen.
     expect(screen.getByRole('table', { name: 'Filter von NGC 7000' })).toBeTruthy();

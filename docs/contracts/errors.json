@@ -483,6 +483,13 @@
    "i18nKey": "errors.engine.inputInvalid",
    "titleDe": "Planungseingabe unvollständig (z. B. Nacht-Tabelle zu kurz)",
    "titleEn": "Planning input incomplete (e.g. night table too short)"
+  },
+  {
+   "code": "comment.edit_window_closed",
+   "http": 409,
+   "i18nKey": "errors.comment.editWindowClosed",
+   "titleDe": "Kommentare lassen sich nur in der ersten Stunde bearbeiten",
+   "titleEn": "Comments can only be edited within the first hour"
   }
  ]
 }

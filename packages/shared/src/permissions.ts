@@ -64,6 +64,8 @@ const ADMIN_ACTIONS: ReadonlySet<Action> = new Set<Action>([
   'tenant.export',
   'tenant.import',
   'session.report.resend',
+  // Kommentar weich löschen (FA-PRJ-17, 04.10.2026): Admins und Owner; Super User über ihre Mitgliedschaft.
+  'project.note.delete',
 ]);
 
 export function can(
@@ -92,8 +94,11 @@ export function can(
   if (ADMIN_ACTIONS.has(action)) return admin;
 
   switch (action) {
+    // Kommentieren und reagieren darf, wer das Projekt sehen darf (FA-PRJ-17, 04.10.2026); Bearbeiten nur
+    // der Verfasser in der ersten Stunde – das prüft das Repository mit dem Kommentar.
     case 'project.read':
     case 'project.history.read':
+    case 'project.note.write':
       // Entwürfe anderer User sind für User nicht sichtbar (FA-BER-02).
       return admin || own || status === undefined || !EDITABLE.includes(status);
     case 'project.update':
@@ -119,8 +124,6 @@ export function can(
     case 'transit.result.import':
     case 'changeRequest.create':
       return admin || (own && (status === undefined || status === 'approved'));
-    case 'project.note.write':
-      return admin || own;
     case 'changeRequest.update':
       return admin || (own && (res?.status === undefined || res.status === 'open'));
     case 'transit.lock': {

@@ -409,6 +409,30 @@ export const de = {
     empty: 'Keine aktiven, freigegebenen Projekte an diesem Rig.',
     running: 'Simulation läuft …',
   },
+  /** Kommentare am Projekt (FA-PRJ-17): Reiter im Projekt-Editor und Sprechblase in Listen. */
+  comments: {
+    count: 'Kommentare: {{count}}',
+    new: 'Neuer Kommentar (Markdown, Emoji erlaubt)',
+    add: 'Kommentieren',
+    empty: 'Noch keine Kommentare.',
+    reply: 'Antworten',
+    replyTo: 'Antwort an {{name}} (Markdown)',
+    sendReply: 'Antwort senden',
+    edit: 'Bearbeiten',
+    editLabel: 'Kommentar bearbeiten (Markdown)',
+    editHint: 'Bearbeiten ist bis eine Stunde nach dem Anlegen möglich.',
+    save: 'Speichern',
+    edited: 'bearbeitet',
+    delete: 'Löschen',
+    deleteTitle: 'Kommentar löschen?',
+    deleteConsequence:
+      'Der Kommentar erscheint für alle als „Kommentar gelöscht“; Antworten und der Verlauf bleiben erhalten.',
+    deleted: 'Kommentar gelöscht',
+    emoji: 'Emoji einfügen',
+    react: 'Reaktion hinzufügen',
+    reaction: 'Reaktion {{emoji}}: {{count}}',
+    replies: 'Antworten auf den Kommentar von {{name}}',
+  },
   notifications: {
     bellUnread: 'Benachrichtigungen, {{count}} ungelesen',
     empty: 'Keine Benachrichtigungen.',
@@ -442,6 +466,7 @@ export const de = {
       },
       project: {
         completed: 'Ein Projekt ist fertiggestellt',
+        comment: '{{author}} hat ein Projekt kommentiert',
       },
       transit: {
         confirmation_needed: 'Ein Transit wartet auf Bestätigung',
@@ -912,7 +937,7 @@ export const de = {
     readOnlyRequest:
       'Das Projekt ist freigegeben – Änderungen beantragst du im Reiter „Änderungsanträge“.',
     rigChangeAnyway: 'Rig trotzdem wechseln',
-    sideLabel: 'Diagramme, Bild und Notizen',
+    sideLabel: 'Diagramme, Bild und Kommentare',
     areas: {
       charts: 'Diagramme',
     },
@@ -982,11 +1007,11 @@ export const de = {
       night: 'Nachtdiagramm',
       season: 'Saisondiagramm',
       weather: 'Wetter',
-      notes: 'Notizen',
+      comments: 'Kommentare',
       history: 'Freigabe-Verlauf',
       sessions: 'Sessions & Protokoll',
       sessionsEmpty: 'Noch keine Aufnahmen für dieses Projekt.',
-      imageNotes: 'Bild & Notizen',
+      imageNotes: 'Bild & Kommentare',
       preview: 'Vorschaubild',
       sky: 'Himmelslage',
     },
@@ -998,11 +1023,6 @@ export const de = {
       night: 'Nacht {{night}}',
       meridian: 'Meridian',
       siteTime: 'Zeiten in Standortzeit ({{site}})',
-    },
-    notes: {
-      new: 'Neue Notiz (Markdown)',
-      add: 'Notiz hinzufügen',
-      empty: 'Noch keine Notizen.',
     },
     history: {
       votes: 'Stimmen: {{count}} ({{names}})',

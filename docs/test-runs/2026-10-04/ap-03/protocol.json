@@ -1,0 +1,67 @@
+{
+  "tool": "pnpm test:dsql (tools/deploy/src/test-dsql.ts, @nina-pm/db/testing)",
+  "startedAt": "2026-10-04T09:21:31.705Z",
+  "migrationsHash": "2fe803e32cfc9c7f",
+  "commit": "3a32935",
+  "caller": "arn:aws:iam::509219055019:user/sramuschkat-portfolio-dev",
+  "suites": [
+    {
+      "id": "D-01",
+      "title": "Migration 0000 und Migrationen, idempotent",
+      "ok": true,
+      "summary": "0000: 7 Änderungen, danach 0; Migrationen: 211 Anweisungen angewandt, zweiter Lauf 0; 52 Tabellen",
+      "durationMs": 680825
+    },
+    {
+      "id": "D-02",
+      "title": "Rechte-Matrix je DB-Rolle nach TK 6.2",
+      "ok": true,
+      "summary": "422 Rechte geprüft, alle wie TK 6.2",
+      "durationMs": 8112
+    },
+    {
+      "id": "D-03",
+      "title": "SEC-4: app_job schreibt keine Sitzungen/Tokens, app_rw keine Kataloge",
+      "ok": true,
+      "summary": "12 verbotene Zugriffe mit 42501 abgelehnt, erlaubte Lesezugriffe, Rig-Sperre und Antragsrang ok",
+      "durationMs": 1415
+    },
+    {
+      "id": "D-04",
+      "title": "withTx: OCC-Konflikt über Wächterzeile wird wiederholt",
+      "ok": true,
+      "summary": "beide Transaktionen erfolgreich, 1 Wiederholung(en) nach 40001",
+      "durationMs": 890
+    },
+    {
+      "id": "D-05",
+      "title": "Grenze 3.000 geänderte Zeilen je Transaktion",
+      "ok": true,
+      "summary": "3.001 Zeilen abgelehnt (DSQL 54000), nichts übernommen",
+      "durationMs": 314
+    },
+    {
+      "id": "D-06",
+      "title": "Mandantenisolation (TenantRepository) und Gegenprobe",
+      "ok": true,
+      "summary": "fremder Mandant unsichtbar; fehlender Filter wird erkannt",
+      "durationMs": 310
+    },
+    {
+      "id": "D-07",
+      "title": "Jobs: dedupe_active, höchstens 3 offene Jobs je Mitglied, Übernahme (AP-05)",
+      "ok": true,
+      "summary": "3 offene Jobs, 4. → auth.rate_limited; Dedupe über dedupe_active; claim/finish/fail; Vorrang in stale()",
+      "durationMs": 1964
+    }
+  ],
+  "notes": [],
+  "cluster": {
+    "identifier": "ofuedcddbkk2ejjzzksinnievi",
+    "region": "eu-central-1",
+    "createMs": 487,
+    "activeMs": 5504
+  },
+  "finishedAt": "2026-10-04T09:33:12.289Z",
+  "passed": true
+}
