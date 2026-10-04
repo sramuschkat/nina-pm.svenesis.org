@@ -36,7 +36,8 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
         rules.FlipInTransit(plan, world.AutoFocusAfterFlip);
         var siteOffset = runner()?.Bootstrap is { } b ? SiteCheck.SiteOffset(b, clock.UtcNow) : null;
         var pc = world.PcUtcOffsetMinutes is { } m ? TimeSpan.FromMinutes(m) : siteOffset ?? TimeSpan.Zero;
-        rules.CheckSite(new SiteFacts(pc, 31.5471, -99.3823, 0, world.RotatorRangeQuarter, world.FlipTrigger));
+        rules.CheckSite(new SiteFacts(pc, 31.5471, -99.3823, 0, world.RotatorRangeQuarter, world.FlipTrigger,
+            world.ProfileLocation.ElementAtOrDefault(0), world.ProfileLocation.ElementAtOrDefault(1)));
     }
 
     // ---- IBlockHost ---------------------------------------------------------------------------------

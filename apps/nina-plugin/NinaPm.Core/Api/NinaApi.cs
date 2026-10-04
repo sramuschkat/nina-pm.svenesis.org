@@ -73,7 +73,8 @@ public sealed class NinaApi : IDisposable
                 SiteName: b.Rig.Site.Name,
                 SiteDistanceKm: distanceKm,
                 ServerTimeUtc: b.ServerTimeUtc,
-                TestServer: LastResponseWasTestServer);
+                TestServer: LastResponseWasTestServer,
+                Bootstrap: b);
         }
         catch (NinaApiException ex)
         {
@@ -134,7 +135,8 @@ public sealed record ConnectionResult(
     string? SiteName,
     double? SiteDistanceKm,
     DateTimeOffset? ServerTimeUtc,
-    bool TestServer)
+    bool TestServer,
+    NinaBootstrap? Bootstrap = null)
 {
     public static ConnectionResult Failed(int status, string? code) =>
         new(false, status, code, null, null, null, null, null, null, false);

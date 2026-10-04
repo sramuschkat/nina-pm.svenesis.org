@@ -42,6 +42,46 @@ public sealed class OptionsTests
         Assert.Equal(Texts.SiteOk(0.4), plugin.SiteCheck);
     }
 
+    /// <summary>Profil mit beschreibbarem Standort (München, weit weg von Starfront).</summary>
+    private static (NinaPmPlugin Plugin, Mock<IAstrometrySettings> Astro) PluginWithProfileAt(double lat, double lon)
+    {
+        var astro = new Mock<IAstrometrySettings>();
+        astro.SetupAllProperties();
+        astro.Object.Latitude = lat;
+        astro.Object.Longitude = lon;
+        var profile = new Mock<IProfile> { DefaultValue = DefaultValue.Mock };
+        profile.SetupGet(p => p.AstrometrySettings).Returns(astro.Object);
+        var service = new Mock<IProfileService> { DefaultValue = DefaultValue.Mock };
+        service.SetupGet(s => s.ActiveProfile).Returns(profile.Object);
+        return (new NinaPmPlugin(service.Object, new PlainProtector()), astro);
+    }
+
+    [Fact]
+    public void Rig_mit_Teleskop_und_Kamera_aus_dem_Bootstrap_Standort_weit_weg_zeigt_den_Knopf()
+    {
+        var b = SimulatorModelTests.Bootstrap;
+        var (plugin, astro) = PluginWithProfileAt(48.137, 11.575);
+        plugin.ApplyResult(Ok(test: false, km: null) with { Bootstrap = b }, new PluginOptions());
+        Assert.Equal($"{b.Rig.Name} · {b.Rig.Site.Name}", plugin.RigName);
+        Assert.Equal(b.Rig.Telescope.Name, plugin.TelescopeName);
+        Assert.Equal(b.Rig.Camera.Name, plugin.CameraName);
+        Assert.True(plugin.SiteMismatch);
+        Assert.Equal(Texts.SiteFar(Geo.DistanceKm(48.137, 11.575, b.Rig.Site.LatDeg, b.Rig.Site.LonDeg)), plugin.SiteCheck);
+
+        // Nein: Profil bleibt unverändert.
+        plugin.Confirm = (_, _) => false;
+        plugin.ApplySite();
+        Assert.Equal(48.137, astro.Object.Latitude);
+
+        // Ja: Rig-Standort im Profil, danach kein Knopf mehr.
+        plugin.Confirm = (_, _) => true;
+        plugin.ApplySite();
+        Assert.Equal((b.Rig.Site.LatDeg, b.Rig.Site.LonDeg, b.Rig.Site.ElevationM),
+            (astro.Object.Latitude, astro.Object.Longitude, astro.Object.Elevation));
+        Assert.False(plugin.SiteMismatch);
+        Assert.Equal(Texts.SiteOk(0), plugin.SiteCheck);
+    }
+
     [Fact]
     public void Standort_weit_weg_warnt()
     {

@@ -70,6 +70,9 @@ public sealed class SimSetup
     /// <summary>UTC-Offset der PC-Zeitzone in Minuten; <c>null</c> = wie der Standort.</summary>
     [JsonProperty("pcUtcOffsetMinutes")] public int? PcUtcOffsetMinutes { get; set; }
 
+    /// <summary>Standort des NINA-Profils <c>[Breite, Länge]</c> (FA-NIN-03); Standard Starfront wie der Rig-Standort.</summary>
+    [JsonProperty("profileLocation")] public double[] ProfileLocation { get; set; } = [31.5471, -99.3823];
+
     /// <summary>Zusätzliche Dauer des ersten Zentrierens je Block (Sekunden, P-21 „Zentrieren verzögert“).</summary>
     [JsonProperty("centerDelayS")] public double CenterDelayS { get; set; }
 

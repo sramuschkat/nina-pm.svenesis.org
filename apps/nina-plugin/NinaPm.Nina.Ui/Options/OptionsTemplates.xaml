@@ -62,6 +62,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static ui:Texts.Status}" />
                 <TextBlock Grid.Row="0" Grid.Column="1" FontWeight="Bold" Text="{Binding ConnectionStatus}" TextWrapping="Wrap" />
@@ -71,8 +73,18 @@
                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InstanceName}" />
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="{x:Static ui:Texts.Rig}" />
                 <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding RigName}" />
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="{x:Static ui:Texts.Site}" />
-                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SiteCheck}" TextWrapping="Wrap" />
+                <!--  Teleskop und Kamera des Rigs (wie die Rig-Zeile des Astro-PM-Plugins); das Rig legt das Sync-Token fest.  -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{x:Static ui:Texts.Telescope}" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding TelescopeName}" />
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="{x:Static ui:Texts.Camera}" />
+                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding CameraName}" />
+                <TextBlock Grid.Row="6" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.Site}" />
+                <!--  FA-NIN-03: bei > 10 km Knopf, der den Rig-Standort nach Rückfrage ins aktive Profil schreibt.  -->
+                <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" Text="{Binding SiteCheck}" TextWrapping="Wrap" />
+                    <Button Margin="12,0,0,0" Padding="8,2" Command="{Binding ApplySiteCommand}" Content="{x:Static ui:Texts.ApplySite}"
+                            Visibility="{Binding SiteMismatch, Converter={StaticResource NinaPm.BoolToVisibility}}" />
+                </StackPanel>
             </Grid>
             <!--  Betrieb (AP-16g, FA-NIN-04/13): Offline-Modus, Zurücksetzen, Block überspringen, Erneut hochladen.  -->
             <TextBlock Margin="0,15,0,5" FontWeight="Bold" Text="{x:Static ui:Texts.OperationHeader}" />

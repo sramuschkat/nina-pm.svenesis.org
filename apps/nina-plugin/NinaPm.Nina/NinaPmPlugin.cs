@@ -78,8 +78,15 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
             RaiseOperationChanged();
             Targets.Rebuild();
             Simulator.Refresh();
+            ShowRuntimeRig();
             return Task.CompletedTask;
         });
+        ApplySiteCommand = new RelayCommand(() =>
+        {
+            ApplySite();
+            return Task.CompletedTask;
+        });
+        Targets.Refreshed += ShowRuntimeRig;
         ResetStatus();
         profileService.ProfileChanged += (_, _) => StartRuntime();
         StartRuntime();
@@ -231,6 +238,22 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     public string InstanceName { get; private set; } = "";
     public string RigName { get; private set; } = "";
     public string SiteCheck { get; private set; } = "";
+    public string TelescopeName { get; private set; } = "";
+    public string CameraName { get; private set; } = "";
+
+    /// <summary>Profil-Standort weicht mehr als 10 km vom Rig-Standort ab (FA-NIN-03): Knopf „Standort übernehmen“ zeigen.</summary>
+    public bool SiteMismatch { get; private set; }
+
+    /// <summary>Schreibt Breite, Länge und Höhe des Rig-Standorts ins aktive NINA-Profil – nur nach Rückfrage (Sven 04.10.2026).</summary>
+    public ICommand ApplySiteCommand { get; }
+
+    /// <summary>Rückfrage vor dem Ändern des Profils (Tests ersetzen den Dialog).</summary>
+    internal Func<string, string, bool> Confirm { get; set; } = (text, caption) =>
+        NINA.Core.MyMessageBox.MyMessageBox.Show(text, caption, System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes;
+
+    /// <summary>Zuletzt angezeigter Bootstrap (Verbindungstest oder Laufzeit) – Quelle für „Standort übernehmen“.</summary>
+    private NinaPm.Core.Api.Generated.NinaBootstrap? shownBootstrap;
 
     internal PluginOptions Options() => new() { ServerUrl = ServerUrl, ProtectedToken = ProtectedToken, TestMode = TestMode };
 
@@ -282,13 +305,15 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         {
             TenantName = r.TenantName ?? "";
             InstanceName = r.InstanceName ?? "";
-            RigName = r.RigName is null ? "" : $"{r.RigName} · {r.SiteName}";
-            SiteCheck = r.SiteDistanceKm switch
+            if (r.Bootstrap is { } b)
             {
-                null => Texts.SiteUnknown,
-                <= Geo.SiteWarnKm => Texts.SiteOk(r.SiteDistanceKm.Value),
-                _ => Texts.SiteFar(r.SiteDistanceKm.Value),
-            };
+                ShowRig(b);
+            }
+            else
+            {
+                RigName = r.RigName is null ? "" : $"{r.RigName} · {r.SiteName}";
+                ShowSite(r.SiteDistanceKm);
+            }
             // Testbetrieb nur mit allen drei Bedingungen (NIN-17): Schalter, lokale URL, Antwort mit X-NPM-Test: 1.
             SetStatus(r.TestServer && options.IsLocalServer ? Texts.ConnectedTestServer : Texts.Connected);
             return;
@@ -305,8 +330,60 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
 
     private void ResetStatus()
     {
-        TenantName = InstanceName = RigName = SiteCheck = "";
+        TenantName = InstanceName = RigName = SiteCheck = TelescopeName = CameraName = "";
+        SiteMismatch = false;
+        shownBootstrap = null;
         SetStatus("");
+    }
+
+    /// <summary>Rig, Standort, Teleskop und Kamera aus dem Bootstrap (wie die Rig-Zeile des Astro-PM-Plugins) und Standortvergleich.</summary>
+    internal void ShowRig(NinaPm.Core.Api.Generated.NinaBootstrap b)
+    {
+        shownBootstrap = b;
+        RigName = $"{b.Rig.Name} · {b.Rig.Site.Name}";
+        TelescopeName = b.Rig.Telescope.Name;
+        CameraName = b.Rig.Camera.Name;
+        var (lat, lon, _) = new NinaSequenceHost(profileService).ProfileLocation;
+        ShowSite(NinaPm.Core.Execution.SiteCheck.ProfileDistanceKm(lat, lon, b.Rig.Site.LatDeg, b.Rig.Site.LonDeg));
+    }
+
+    private void ShowSite(double? km)
+    {
+        SiteCheck = km switch
+        {
+            null => Texts.SiteUnknown,
+            <= Geo.SiteWarnKm => Texts.SiteOk(km.Value),
+            _ => Texts.SiteFar(km.Value),
+        };
+        SiteMismatch = km > Geo.SiteWarnKm;
+        RaisePropertyChanged(nameof(RigName));
+        RaisePropertyChanged(nameof(TelescopeName));
+        RaisePropertyChanged(nameof(CameraName));
+        RaisePropertyChanged(nameof(SiteCheck));
+        RaisePropertyChanged(nameof(SiteMismatch));
+    }
+
+    /// <summary>Ohne Verbindungstest: Bootstrap der Laufzeit anzeigen, sobald sie ihn geladen hat (Refresh, Zielliste).</summary>
+    private void ShowRuntimeRig()
+    {
+        if (NinaPmRuntime.Current?.Runner.Bootstrap is { } b) ShowRig(b);
+    }
+
+    /// <summary>
+    /// Standort des Rigs ins aktive NINA-Profil (Breite, Länge, Höhe) – nur auf Klick und nach Rückfrage, nie automatisch
+    /// (FA-NIN-03, Entscheidung Sven 04.10.2026). Danach Vergleich neu.
+    /// </summary>
+    internal void ApplySite()
+    {
+        if (shownBootstrap is not { } b) return;
+        var site = b.Rig.Site;
+        if (!Confirm(Texts.ApplySiteConfirm(site.Name, site.LatDeg, site.LonDeg, site.ElevationM), Texts.ApplySiteCaption)) return;
+        var astro = profileService.ActiveProfile.AstrometrySettings;
+        astro.Latitude = site.LatDeg;
+        astro.Longitude = site.LonDeg;
+        astro.Elevation = site.ElevationM;
+        log.Note($"Standort des NINA-Profils auf den Rig-Standort {site.Name} gesetzt ({site.LatDeg:0.0000}, {site.LonDeg:0.0000}, {site.ElevationM:0} m)");
+        ShowRig(b);
     }
 
     private void SetStatus(string text)

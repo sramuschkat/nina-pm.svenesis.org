@@ -131,8 +131,10 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             deltaH -= 24 * Math.Round(deltaH / 24);
             lstDeltaS = deltaH * 3600;
         }
+        var astro = m.Profile.ActiveProfile.AstrometrySettings;
         return new SiteFacts(pcOffset, t.Connected ? t.SiteLatitude : null, t.Connected ? t.SiteLongitude : null, lstDeltaS,
-            m.Profile.ActiveProfile.RotatorSettings.RangeType.ToString() == "QUARTER", flipTriggerPresent);
+            m.Profile.ActiveProfile.RotatorSettings.RangeType.ToString() == "QUARTER", flipTriggerPresent,
+            astro.Latitude, astro.Longitude);
     }
 
     /// <summary>Filternamen des aktiven NINA-Profils in Rad-Reihenfolge (leer ohne Filterrad).</summary>
