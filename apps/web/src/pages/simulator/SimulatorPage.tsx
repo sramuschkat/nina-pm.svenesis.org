@@ -54,6 +54,8 @@ import type {
 } from './simulate';
 import { moonProfileLabel } from '../../lib/moon-profile-label';
 import { useUniformWidth } from '../../lib/use-uniform-width';
+import { CommentCount } from '../../components/CommentCount';
+import { useCommentCounts } from '../../lib/use-comment-counts';
 import styles from './simulator.module.css';
 import { useSimulator } from './use-simulator';
 import { Person } from '../../lib/member';
@@ -108,6 +110,7 @@ const protocolColumns = (t: Parameters<typeof cell>[2], tz: string): DataColumn<
 export function SimulatorPage() {
   const { t, i18n } = useTranslation();
   const client = useQueryClient();
+  const comments = useCommentCounts();
   const [params, setParams] = useSearchParams();
   const rigs = useEquipmentList('rigs');
   const sites = useEquipmentList('sites');
@@ -471,6 +474,7 @@ export function SimulatorPage() {
                   <TargetCardView
                     key={c.projectId}
                     card={c}
+                    comments={comments(c.projectId)}
                     selected={picked === c.projectId}
                     onSelect={() => {
                       const next = picked === c.projectId ? null : c.projectId;
@@ -659,8 +663,11 @@ function TargetCardView({
   onToggle,
   selected,
   onSelect,
+  comments,
 }: {
   card: TargetCard;
+  /** Anzahl Kommentare des Projekts (FA-PRJ-17). */
+  comments: number;
   selected: boolean;
   onSelect: () => void;
   tz: string;
@@ -723,6 +730,7 @@ function TargetCardView({
         >
           <actionIcons.external size={ICON_SIZE.table} aria-hidden />
         </Link>
+        <CommentCount count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
       </h3>
       <dl className={styles.facts}>

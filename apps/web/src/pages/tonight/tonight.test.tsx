@@ -61,7 +61,8 @@ vi.mock('../../api/client', () => ({
     weather: () => Promise.resolve({ status: 'pending' }),
   },
   projectsApi: {
-    list: () => Promise.resolve({ items: [] }),
+    // Projektliste nur für die Kommentaranzahl im Plan (FA-PRJ-17).
+    list: () => Promise.resolve({ items: [{ id: ID(10), commentCount: 3 }] }),
     get: () => Promise.reject(new Error('nicht gebraucht')),
   },
   tonightApi: {
@@ -230,6 +231,8 @@ describe('S-02 Heute Nacht', () => {
     expect(
       within(card).getByRole('link', { name: 'Safety- und Wetterseite der Sternwarte' }),
     ).toHaveProperty('href', 'https://example.org/safety');
+    // Kommentare am Projekt (FA-PRJ-17): Sprechblase neben dem Namen.
+    expect(await within(card).findByRole('img', { name: 'Kommentare: 3' })).toBeInTheDocument();
     for (const gone of [
       'Dunkelheit',
       'beleuchtet',

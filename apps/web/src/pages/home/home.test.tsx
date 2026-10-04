@@ -301,12 +301,12 @@ describe('Modell', () => {
 describe('Startseite (Mandant)', () => {
   it('Kopf, alle Karten mit Daten, Stimme abgeben, eigenes gesperrt; axe', async () => {
     state.queue = [
-      queueItem(1, { effort: null }),
+      queueItem(1, { effort: null, commentCount: 1 }),
       queueItem(2, { createdBy: ME, createdByName: 'Uta', name: 'Meins' }),
       queueItem(3, { votes: { count: 1, voters: [], mine: true, mineChangedSince: false } }),
     ];
     state.projects = [
-      project(1),
+      project(1, { commentCount: 2 }),
       project(2, { status: 'planning', name: 'In Planung' }),
       project(3, { rigId: ID(501), name: 'Projekt B' }),
     ];
@@ -316,6 +316,9 @@ describe('Startseite (Mandant)', () => {
     renderPage();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
+    // Kommentare am Projekt (FA-PRJ-17): in „Aktive Projekte“ und in der Warteschlange.
+    expect(await screen.findByRole('img', { name: 'Kommentare: 2' })).toBeInTheDocument();
+    expect(await screen.findByRole('img', { name: 'Kommentare: 1' })).toBeInTheDocument();
     expect(screen.getByText('Demo · Donnerstag, 24. September 2026')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Neues Projekt' })).toHaveAttribute(
       'href',

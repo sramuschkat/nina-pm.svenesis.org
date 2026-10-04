@@ -44,6 +44,7 @@ import { SiteWeather } from '../weather/SiteWeather';
 import { useNow, weatherKey } from '../weather/WeatherPage';
 import styles from './home.module.css';
 import { MemberAvatarFor, Person } from '../../lib/member';
+import { CommentCount } from '../../components/CommentCount';
 
 /** Gleiche Abfrage-Schlüssel wie Warteschlange, Projektliste und Sessions: ein Cache, keine Doppelabrufe. */
 const QUEUE_KEY = ['projects', 'queue'] as const;
@@ -476,9 +477,11 @@ function QueueRow({
     <li className={styles.queueRow}>
       <span className={styles.rowMain}>
         <Link to={`/projekte/${q.projectId}`}>{q.name}</Link>
+        {/* Kommentare in der Zeile „von …“: die Karte ist schmal, neben dem Namen bräche die Sprechblase um. */}
         <span className={`${styles.muted} ${styles.byLine}`}>
           <MemberAvatarFor id={q.createdBy} />
           {t('home.queue.by', { name: q.createdByName })}
+          <CommentCount count={q.commentCount} />
         </span>
       </span>
       <EffortChip effort={q.effort} size="sm" />
@@ -530,9 +533,12 @@ function ProjectsCard() {
       id: 'name',
       header: t('projectList.col.name'),
       cell: (p) => (
-        <Link className={styles.projectName} to={`/projekte/${p.id}`}>
-          {p.name}
-        </Link>
+        <>
+          <Link className={styles.projectName} to={`/projekte/${p.id}`}>
+            {p.name}
+          </Link>{' '}
+          <CommentCount count={p.commentCount} />
+        </>
       ),
     },
     {
