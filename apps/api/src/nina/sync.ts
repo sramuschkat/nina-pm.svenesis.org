@@ -600,7 +600,16 @@ export async function plan(
     tonight,
     pendingByLine,
   });
-  const result = runEngine(input);
+  let result = runEngine(input);
+  // Erstplan mitten in der Nacht (Spec-Ergänzung 04.10.2026, Sven): ab jetzt rechnen, sonst verteilte die Engine die schon
+  // vergangene Dunkelzeit mit, und die Blöcke darin gingen verloren. Vor Beginn des Nachtfensters bleibt `startAtUtc`
+  // leer – gleicher Hash wie der Simulator im Plugin (execution.md §10).
+  if (
+    req.reason === 'initial' &&
+    !req.startAtUtc &&
+    now.getTime() > Date.parse(result.nightWindow.startUtc)
+  )
+    result = runEngine({ ...input, startAtUtc: iso(now) });
   const modes = d.camera.readoutModes;
   const index = (mode: string | null) => {
     const i = mode === null ? -1 : modes.indexOf(mode);
