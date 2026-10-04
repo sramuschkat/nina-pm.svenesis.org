@@ -1156,6 +1156,12 @@ async function projectExamples(): Promise<Record<string, Example>> {
         method: 'POST',
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'POST /api/web/v1/rigs/{id}/commands': {
+        url: `/api/web/v1/rigs/${common.rigId}/commands`,
+        method: 'POST',
+        body: { command: 'refresh_targets' },
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       // Unbekannte Aufnahme: nach der Rechteprüfung 404 (das Objekt ist ein Pfadparameter).
       'PATCH /api/web/v1/captures/{id}/assign': {
         url: `/api/web/v1/captures/${crypto.randomUUID()}/assign`,

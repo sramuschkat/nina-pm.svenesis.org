@@ -28,6 +28,7 @@ public sealed class ReplanPolicyTests
         { "Verzug 10 min 1 s", "\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:45:01Z", true, RefreshCause.BehindPlan, "2026-09-18T07:45:01Z" },
         { "neues ETag vor dem Blockstart", "\"t-1\"", "\"t-2\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:30:00Z", true, RefreshCause.TargetsChanged, "2026-09-18T07:35:00Z" },
         { "settingsVersion gestiegen", "\"t-1\"", "\"t-1\"", 7, 8, "2026-09-18T07:35:00Z", "2026-09-18T07:36:00Z", true, RefreshCause.SettingsChanged, "2026-09-18T07:36:00Z" },
+        { "schwaches ETag (CloudFront komprimiert) = starkes", "W/\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:35:00Z", false, null, null },
         { "kein ETag abrufbar (offline) → kein Anlass", "\"t-1\"", null, 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:36:00Z", false, null, null },
     };
 

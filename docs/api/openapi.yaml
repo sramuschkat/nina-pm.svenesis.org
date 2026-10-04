@@ -9185,6 +9185,28 @@ components:
         - rotationDeg
         - filters
         - commentCount
+    NinaRigCommandCreated:
+      type: object
+      properties:
+        commandIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+            description: UUID
+      required:
+        - commandIds
+    NinaRigCommand:
+      type: object
+      properties:
+        command:
+          type: string
+          enum:
+            - refresh_targets
+            - reset_plan
+      required:
+        - command
+      additionalProperties: false
     NightSessionList:
       type: object
       properties:
@@ -24459,6 +24481,63 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/rigs/{id}/commands:
+    post:
+      summary: Kommando an das Plugin (Ziele neu laden, Plan zurücksetzen)
+      tags:
+        - nina-instances
+      description: "Aktion: `nina.instance.manage` · NIN5-14, TK 7.6, FA-NIN-08"
+      x-npm-action: nina.instance.manage
+      x-npm-requirements:
+        - NIN5-14
+        - TK 7.6
+        - FA-NIN-08
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: id
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NinaRigCommand"
+      responses:
+        "200":
+          description: Angelegt (je aktiver Instanz eines; leer ohne Instanz)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NinaRigCommandCreated"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
           content:
             application/problem+json:
               schema:

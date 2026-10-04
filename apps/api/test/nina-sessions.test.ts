@@ -215,6 +215,65 @@ describe('Sessions und Lease (TK 5.6)', () => {
     expect([past.status, past.body.code]).toEqual([422, 'nina.night_invalid']);
   });
 
+  it('Nachtgrenze: Vornacht bis 2 min nach nightWindowEnd angenommen, danach 422', async () => {
+    const t = await setup();
+    const nights = await t.web(`/sites/${t.rig.siteId}/nights?from=${NIGHT}&count=1`);
+    const end = Date.parse((nights.body.nights as Body[])[0]?.nightWindowEndUtc as string);
+    s.clock.set(new Date(end + 60_000));
+    expect(
+      (
+        await t.session(t.tokens.a1, {
+          startedAtUtc: new Date(end - 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        })
+      ).status,
+    ).toBe(201);
+    s.clock.set(new Date(end + 3 * 60_000));
+    const late = await t.session(t.tokens.a2, {
+      startedAtUtc: new Date(end - 30_000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    });
+    expect([late.status, late.body.code]).toEqual([422, 'nina.night_invalid']);
+  });
+
+  it('Kommando aus dem Web (NIN5-14): je aktiver Instanz zugestellt, nach Quittung nicht mehr', async () => {
+    const t = await setup();
+    const r = await t.web(`/rigs/${t.rig.id}/commands`, {
+      method: 'POST',
+      body: { command: 'refresh_targets' },
+    });
+    expect(r.status).toBe(200);
+    const ids = r.body.commandIds as string[];
+    expect(ids).toHaveLength(2); // a1 und a2
+    const first = await t.hb(t.tokens.a1);
+    const mine = first.body.commands as { id: string; command: string }[];
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.command).toBe('refresh_targets');
+    expect(ids).toContain(mine[0]?.id);
+    // Unquittiert wiederholt, nach der Quittung nicht mehr.
+    expect((await t.hb(t.tokens.a1)).body.commands).toEqual(mine);
+    await t.hb(t.tokens.a1, { ackedCommandIds: [mine[0]?.id] });
+    expect((await t.hb(t.tokens.a1)).body.commands).toEqual([]);
+    const bad = await t.web(`/rigs/${t.rig.id}/commands`, {
+      method: 'POST',
+      body: { command: 'park' },
+    });
+    expect(bad.status).toBe(422);
+  });
+
+  it('Neustart derselben Instanz mit neuer Session innerhalb der Lease → 201, Lease geht über', async () => {
+    const t = await setup();
+    const old = id();
+    await t.session(t.tokens.a1, { id: old });
+    s.clock.advance(60_000);
+    const fresh = id();
+    const again = await t.session(t.tokens.a1, { id: fresh });
+    expect(again.status).toBe(201);
+    expect((again.body.lease as Body).untilUtc).toBe('2026-09-18T14:04:00Z');
+    expect((await leaseRow(t.rig.id))?.active_session_id).toBe(fresh);
+    // Eine andere Instanz desselben Rigs bleibt ausgesperrt.
+    const busy = await t.session(t.tokens.a2);
+    expect([busy.status, busy.body.code]).toEqual([409, 'session.rig_busy']);
+  });
+
   it('eigene abgelaufene Lease → PATCH running setzt fort; completed ist endgültig (409 session.closed)', async () => {
     const t = await setup();
     const sid = id();
@@ -352,6 +411,11 @@ describe('Aufnahmen (TK 6.6)', () => {
     const r2 = await t.captures(t.tokens.a1, sid, [one]);
     expect(r2.body.results).toEqual([{ id: one.id, status: 'duplicate' }]);
     expect((await t.lineCounts()).acquired_count).toBe(1);
+    // Dieselbe id zweimal im selben Stapel zählt ebenfalls nur einmal.
+    const twice = t.light();
+    const r2b = await t.captures(t.tokens.a1, sid, [twice, twice]);
+    expect(r2b.body.results).toEqual([{ id: twice.id, status: 'accepted' }]);
+    expect((await t.lineCounts()).acquired_count).toBe(2);
     const big = Array.from({ length: 501 }, () => t.light());
     const r3 = await t.captures(t.tokens.a1, sid, big);
     expect([r3.status, r3.body.code]).toEqual([413, 'capture.batch_too_large']);
@@ -366,7 +430,7 @@ describe('Aufnahmen (TK 6.6)', () => {
       { id: foreign.id, status: 'rejected_invalid' },
       { id: aborted.id, status: 'accepted' },
     ]);
-    expect((await t.lineCounts()).acquired_count).toBe(1);
+    expect((await t.lineCounts()).acquired_count).toBe(2);
   });
 
   it('abweichende Belichtungszeit → gespeichert, gezählt, settings_deviation, integration_s mit gemeldeter Zeit', async () => {
@@ -439,6 +503,42 @@ describe('Aufnahmen (TK 6.6)', () => {
         dark_flats_taken: 1,
         status: 'done',
       },
+    ]);
+  });
+
+  it('Abschluss: vollständige Flats ohne Dark-Flats → done, unvollständige Flats → skipped', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    const calib = (frameType: string, mech: number) => {
+      const light = t.light({ frameType, exposureS: 2.4, rotatorMechDeg: mech });
+      const lightOnly = new Set([
+        'blockId',
+        'projectId',
+        'panelId',
+        'exposureLineId',
+        'raDeg',
+        'decDeg',
+        'rotationDeg',
+        'pierSide',
+        'bonus',
+      ]);
+      const rest = Object.fromEntries(Object.entries(light).filter(([k]) => !lightOnly.has(k)));
+      return { ...rest, projectIds: [t.a.pid], flatsPlanned: 2, darkFlatsPlanned: 1 };
+    };
+    await t.captures(t.tokens.a1, sid, [calib('flat', 10), calib('flat', 10), calib('flat', 20)]);
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z', outboxPending: 0 },
+    });
+    await closeSessionFlats(s.pg.db, t.tenantId, sid);
+    const rows = await s.pg.admin.query(
+      'SELECT rotator_mech_deg_dg, status FROM flat_combination WHERE session_id = $1 ORDER BY rotator_mech_deg_dg',
+      [sid],
+    );
+    expect(rows.rows).toEqual([
+      { rotator_mech_deg_dg: 100, status: 'done' },
+      { rotator_mech_deg_dg: 200, status: 'skipped' },
     ]);
   });
 
@@ -544,12 +644,15 @@ describe('Aufnahmen (TK 6.6)', () => {
     const r = await t.captures(t.tokens.a1, sid, [c]);
     expect(r.body.results).toEqual([{ id: c.id, status: 'unassigned' }]);
     expect((await t.lineCounts()).acquired_count).toBe(0);
+    await s.pg.admin.query('UPDATE project SET effort_stale = false WHERE id = $1', [t.a.pid]);
     const a = await t.web(`/captures/${c.id}/assign`, {
       method: 'PATCH',
       body: { exposureLineId: t.a.lineId },
     });
     expect(a.status).toBe(204);
     expect((await t.lineCounts()).acquired_count).toBe(1);
+    const p = await s.pg.admin.query('SELECT effort_stale FROM project WHERE id = $1', [t.a.pid]);
+    expect((p.rows[0] as { effort_stale: boolean }).effort_stale).toBe(true);
     const wrong = await t.web(`/captures/${c.id}/assign`, {
       method: 'PATCH',
       body: { exposureLineId: t.b.lineId },
@@ -582,6 +685,10 @@ describe('Aufnahmen (TK 6.6)', () => {
     ).rejects.toMatchObject({
       code: 'correction.conflict',
     });
+    // Mehr als die drei aufgenommenen → 422.
+    await expect(
+      applyCorrection(s.pg.db, { ...base, rejected: 4 }, s.clock.now()),
+    ).rejects.toMatchObject({ code: 'validation.failed' });
     const ok = await applyCorrection(s.pg.db, { ...base, rejected: 3 }, s.clock.now());
     expect(ok.rejectedCount).toBe(3);
     const line = await s.pg.admin.query('SELECT rejected_count FROM exposure_line WHERE id = $1', [

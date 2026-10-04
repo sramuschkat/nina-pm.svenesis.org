@@ -124,7 +124,9 @@ async function setup(admin: Page, user: Page) {
 
 /** Node-Lauf mit denselben API-Daten und der Nacht-Tabelle des Servers (NT-46). */
 async function nodeHash(page: Page, s: { siteId: string; rigId: string; projectId: string }) {
-  const rigs = await json<{ items: { id: string }[] }>(page, '/api/web/v1/rigs');
+  const rigs = await json<{
+    items: { id: string; scheduler: { overhead: { afEveryMin: number } } }[];
+  }>(page, '/api/web/v1/rigs');
   const rig = rigs.items.find((r) => r.id === s.rigId);
   const project = await json<unknown>(page, `/api/web/v1/projects/${s.projectId}`);
   const moon = await json<{ items: unknown[] }>(page, '/api/web/v1/moon-profiles');
@@ -137,7 +139,8 @@ async function nodeHash(page: Page, s: { siteId: string; rigId: string; projectI
     [project] as never,
     moon.items as never,
     nights as never,
-    { night: NIGHT, site: STARFRONT },
+    // Wie der Simulator: AF-Intervall des Rigs (FA-SIM-05).
+    { night: NIGHT, site: STARFRONT, autofocusAfterTimeMin: rig?.scheduler.overhead.afEveryMin },
   );
   return planNight(input as PlanInput).outputHash;
 }

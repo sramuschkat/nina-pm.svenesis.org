@@ -110,6 +110,9 @@ public sealed class NightRunner(
     /// <summary>Heartbeat-Kommandos, die mit dem nächsten Heartbeat quittiert werden (<c>ackedCommandIds</c>).</summary>
     private readonly List<Guid> commandAcks = [];
 
+    /// <summary>Schon ausgeführte Kommandos: der Server wiederholt ein unquittiertes bis 10 min – nur einmal ausführen.</summary>
+    private readonly HashSet<Guid> commandsDone = [];
+
     /// <summary>Heartbeat meldet ein anderes targets-ETag als der Cache: Prüfung im Block sofort statt nach 15 min.</summary>
     private volatile bool targetsChanged;
 
@@ -227,15 +230,21 @@ public sealed class NightRunner(
             FlatsRunning: FlatsRunning, Flat: flats?.Current));
     }
 
-    /// <summary>Quittierte Heartbeat-Kommandos für den nächsten Heartbeat (und vergessen).</summary>
+    /// <summary>
+    /// Quittierte Heartbeat-Kommandos für den nächsten Heartbeat. Vergessen erst nach einer Antwort (<see cref="CommandAcksSent"/>):
+    /// scheitert der Heartbeat, gingen die Quittungen sonst verloren und der Server lieferte das Kommando erneut (Analyse 04.10.2026).
+    /// </summary>
     public List<Guid> TakeCommandAcks()
     {
+        lock (commandAcks) return commandAcks.ToList();
+    }
+
+    /// <summary>Heartbeat mit diesen Quittungen beantwortet.</summary>
+    public void CommandAcksSent(IEnumerable<Guid> acks)
+    {
         lock (commandAcks)
-        {
-            var acks = commandAcks.ToList();
-            commandAcks.Clear();
-            return acks;
-        }
+            foreach (var id in acks)
+                commandAcks.Remove(id);
     }
 
     /// <summary>Heartbeat hat ein neues targets-ETag gemeldet, die Ziele sind noch nicht neu geladen.</summary>
@@ -627,7 +636,7 @@ public sealed class NightRunner(
         var previousEtag = store.GetCache(TargetsCacheKey)?.Etag;
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var current = Targets;
-        if (previous is null || current is null || etag is null || etag == previousEtag) return null;
+        if (previous is null || current is null || etag is null || etag == NinaApi.OpaqueEtag(previousEtag)) return null;
         var leadS = TransitLeadS;
         var running = new RunningBlock(block.ProjectId, block.PanelId ?? Guid.Empty, next.ExposureLineId, block.EndUtc,
             block.TransitObservationId);
@@ -667,6 +676,9 @@ public sealed class NightRunner(
             log.Event("API", ("status", targets is null ? 304 : 200), ("call", "targets"));
             targetsFetchedUtc = clock.UtcNow;
             if (targets is not null) store.PutCache(TargetsCacheKey, JsonConvert.SerializeObject(targets, NinaJson.Settings()), etag);
+            // 304 auf ein noch mit `W/` gespeichertes ETag (Plugin ≤ 0.3.0): Cache-ETag angleichen, sonst bliebe der Vergleich
+            // mit dem Heartbeat dauerhaft ungleich.
+            else if (cached is not null && etag is not null && etag != cached.Etag) store.PutCache(TargetsCacheKey, cached.Value, etag);
             targetsChanged = false;
             if (targets is not null || etag != cached?.Etag) log.Event("TARGETS", ("etag", etag ?? ""));
             return etag;
@@ -1000,7 +1012,7 @@ public sealed class NightRunner(
         }
         foreach (var c in response.Commands ?? [])
             ApplyCommand(c);
-        if (!string.IsNullOrEmpty(response.TargetsEtag) && store.GetCache(TargetsCacheKey) is { } cached && cached.Etag != response.TargetsEtag)
+        if (!string.IsNullOrEmpty(response.TargetsEtag) && store.GetCache(TargetsCacheKey) is { } cached && NinaApi.OpaqueEtag(cached.Etag) != NinaApi.OpaqueEtag(response.TargetsEtag))
             targetsChanged = true;
         // 5–60 s: nur Warnung (NT-05), höchstens 1×/12 h; > 60 s sperrt die Nachtschleife (clock_skew).
         if (skew.Duration() > ClockDriftWarn && skew.Duration() <= TimeSpan.FromSeconds(60) && clockHints.ShouldEmit("clock_drift", now))
@@ -1027,6 +1039,12 @@ public sealed class NightRunner(
     /// </summary>
     private void ApplyCommand(Commands c)
     {
+        lock (commandAcks)
+        {
+            if (!commandAcks.Contains(c.Id)) commandAcks.Add(c.Id);
+            // Erneut geliefert (Quittung noch nicht angekommen): nur quittieren, nicht noch einmal ausführen (genau einmal, TK 7.6).
+            if (!commandsDone.Add(c.Id)) return;
+        }
         switch (c.Command)
         {
             case CommandsCommand.Reset_plan:
@@ -1040,7 +1058,6 @@ public sealed class NightRunner(
                 break;
         }
         log.Note($"Heartbeat-Kommando {c.Command} ({c.Id}) ausgeführt");
-        lock (commandAcks) commandAcks.Add(c.Id);
     }
 
     /// <summary>401, 403 tenant.locked oder 409 engine.incompatible von einem beliebigen Aufruf: gesperrt, Outbox angehalten (§2).</summary>
@@ -1183,6 +1200,23 @@ public sealed class NightRunner(
         try
         {
             return NightCalendar.CurrentNight(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow);
+        }
+        catch (NightTableException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// <c>offlineUntil</c> im Offline-Heartbeat (§6, FA-NIN-04): Ende des Nachtfensters der laufenden Nacht – der Modus gilt
+    /// nur für diese Nacht (Flats eingeschlossen). Ohne Nachttabelle <c>null</c>; dann friert der Server höchstens 14 Tage ein.
+    /// </summary>
+    public DateTimeOffset? OfflineUntilUtc()
+    {
+        if (bootstrap is null) return null;
+        try
+        {
+            return NightCalendar.CurrentRow(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow).NightWindowEndUtc;
         }
         catch (NightTableException)
         {

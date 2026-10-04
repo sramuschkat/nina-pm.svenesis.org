@@ -344,6 +344,10 @@ function InstanceDetail({
     await ninaApi.releaseLease(instance.rigId);
     await refresh();
   });
+  // Kommandos an das Plugin (TK 7.6): Ziele neu laden bzw. Plan zurücksetzen – wirken mit dem nächsten Heartbeat.
+  const command = useMutation({
+    mutationFn: (kind: 'refresh_targets' | 'reset_plan') => ninaApi.command(instance.rigId, kind),
+  });
   const zone = instance.siteTimeZone;
   const lease = instance.lease;
   const held = lease !== null && (lease.activeSessionId !== null || lease.offlineUntilUtc !== null);
@@ -399,6 +403,22 @@ function InstanceDetail({
               >
                 {t('nina.instances.lease')}
               </button>
+              <button
+                type="button"
+                className={styles.button}
+                disabled={command.isPending || instance.status !== 'active'}
+                onClick={() => command.mutate('refresh_targets')}
+              >
+                {t('nina.instances.cmdRefresh')}
+              </button>
+              <button
+                type="button"
+                className={styles.button}
+                disabled={command.isPending || instance.status !== 'active'}
+                onClick={() => command.mutate('reset_plan')}
+              >
+                {t('nina.instances.cmdReset')}
+              </button>
               {instance.status === 'active' ? (
                 <button type="button" className={styles.buttonDanger} onClick={revoke.open}>
                   <Delete size={ICON_SIZE.button} aria-hidden />
@@ -411,6 +431,14 @@ function InstanceDetail({
               </button>
             </div>
           ) : null}
+          {command.data ? (
+            <p role="status" className={styles.muted}>
+              {command.data.commandIds.length > 0
+                ? t('nina.instances.cmdSent', { count: command.data.commandIds.length })
+                : t('nina.instances.cmdNone')}
+            </p>
+          ) : null}
+          {command.isError ? <ProblemMessage code={problemCode(command.error)} /> : null}
           {canManage ? <p className={styles.muted}>{t('nina.instances.removeHint')}</p> : null}
         </div>
 

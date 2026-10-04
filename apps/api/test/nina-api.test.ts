@@ -387,6 +387,18 @@ describe('POST /plan (FA-SIM-05, NT-01, NT-20, M7)', () => {
     expect(expose?.readoutModeIndex).toBe(0);
   });
 
+  it('Erstplan mitten in der Nacht rechnet ab jetzt, vor dem Nachtfenster ohne startAtUtc (Spec 04.10.2026)', async () => {
+    const t = await setup();
+    const before = await post(t, { night: '2026-09-18', reason: 'initial' });
+    expect(before.body.startAtUtc).toBeNull();
+    s.clock.set(new Date('2026-09-19T06:00:00Z'));
+    const mid = await post(t, { night: '2026-09-18', reason: 'initial' });
+    expect(mid.status).toBe(200);
+    expect(mid.body.startAtUtc).toBe('2026-09-19T06:00:00Z');
+    for (const b of mid.body.blocks as { endUtc: string }[])
+      expect(Date.parse(b.endUtc)).toBeGreaterThan(Date.parse('2026-09-19T06:00:00Z'));
+  });
+
   it('Trigger Autofokus nach Zeit: unbekannt → Rig-Intervall, gemeldet ohne → kein autofocus_hint, mit → schon (M7)', async () => {
     const t = await setup();
     const cmds = (b: Body) =>

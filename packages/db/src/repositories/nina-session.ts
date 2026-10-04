@@ -278,8 +278,18 @@ export class NinaSessionRepository extends TenantRepo {
       const lease = await this.lockLease(trx);
       let until: Date | null = null;
       if (!input.offline) {
-        if (lease.activeSessionId !== input.id && leaseHeld(lease, now))
-          throw new ProblemError('session.rig_busy');
+        if (lease.activeSessionId !== input.id && leaseHeld(lease, now)) {
+          // Dieselbe NINA-Instanz nach einem Neustart (lokaler Stand verloren) innerhalb der 3 min: ihre alte Session
+          // läuft nicht mehr – kein Konflikt, die Lease geht auf die neue Session über; die alte verwaist über den Tick.
+          const holder = await trx
+            .selectFrom('session')
+            .select('ninaInstanceId')
+            .where('tenantId', '=', this.tenantId)
+            .where('id', '=', lease.activeSessionId as string)
+            .executeTakeFirst();
+          if (!this.instanceId || holder?.ninaInstanceId !== this.instanceId)
+            throw new ProblemError('session.rig_busy');
+        }
         until = new Date(now.getTime() + LEASE_MS);
         await this.setLease(trx, input.id, until, now);
       }
@@ -344,8 +354,11 @@ export class NinaSessionRepository extends TenantRepo {
     });
   }
 
-  /** Andere Sessions desselben Rigs in derselben Nacht (Alarm `rig.busy` bei Offline-Sessions). */
-  async otherSessionsInNight(sessionId: string, night: string): Promise<number> {
+  /**
+   * Sessions **anderer** Instanzen desselben Rigs in derselben Nacht, die beim Start von `sessionId` noch liefen (Alarm
+   * `rig.busy` bei Offline-Sessions). Eine früher beendete Session oder die eigene vor einem Neustart ist kein Konflikt.
+   */
+  async otherSessionsInNight(sessionId: string, night: string, startedAt: Date): Promise<number> {
     const row = await this.db
       .selectFrom('session')
       .select((eb) => eb.fn.countAll<string>().as('n'))
@@ -353,6 +366,8 @@ export class NinaSessionRepository extends TenantRepo {
       .where('rigId', '=', this.rigId)
       .where('night', '=', night)
       .where('id', '!=', sessionId)
+      .where('ninaInstanceId', '!=', this.instanceId)
+      .where((eb) => eb.or([eb('endedAt', 'is', null), eb('endedAt', '>', startedAt)]))
       .executeTakeFirstOrThrow();
     return Number(row.n);
   }
@@ -682,9 +697,12 @@ export async function closeSessionFlats(
       .where('status', '=', 'running')
       .execute();
     for (const c of combos) {
+      // Vollständige Flats zählen als vorhanden, auch wenn Dark-Flats fehlen (die gehören zur Nachtgruppe, NIN-15);
+      // sonst übernähme Auto-Flats (`flatRecords`) die Kombination erneut, obwohl die Dateien da sind.
+      const flatsComplete = Number(c.flatsTaken) >= Number(c.flatsPlanned);
       const done =
-        Number(c.flatsTaken) >= Number(c.flatsPlanned) &&
-        Number(c.darkFlatsTaken) >= Number(c.darkFlatsPlanned);
+        flatsComplete &&
+        (Number(c.flatsTaken) > 0 || Number(c.darkFlatsTaken) >= Number(c.darkFlatsPlanned));
       await trx
         .updateTable('flatCombination')
         .set({ status: done ? 'done' : 'skipped' })
@@ -724,4 +742,50 @@ export async function setReportStatus(
     .where('tenantId', '=', tenantId)
     .where('id', '=', sessionId)
     .execute();
+}
+
+/**
+ * Kommando an das Plugin (`POST /web/v1/rigs/{id}/commands`, TK 7.6, NIN5-14): je aktiver Instanz des Rigs eine Zeile
+ * `command`; zugestellt über die Heartbeat-Antwort (`commands`), höchstens 10 min. Rig fremd → `404`.
+ */
+export async function createRigCommand(
+  db: Kysely<Database>,
+  tenantId: string,
+  rigId: string,
+  kind: 'refresh_targets' | 'reset_plan',
+  memberId: string,
+  now: Date,
+): Promise<string[]> {
+  return withTx(db, async (trx) => {
+    const rig = await trx
+      .selectFrom('rig')
+      .select('id')
+      .where('tenantId', '=', tenantId)
+      .where('id', '=', rigId)
+      .executeTakeFirst();
+    if (!rig) throw new ProblemError('resource.not_found');
+    const instances = await trx
+      .selectFrom('ninaInstance')
+      .select('id')
+      .where('tenantId', '=', tenantId)
+      .where('rigId', '=', rigId)
+      .where('status', '=', 'active')
+      .orderBy('id')
+      .execute();
+    if (instances.length === 0) return [];
+    const rows = await trx
+      .insertInto('command')
+      .values(
+        instances.map((i) => ({
+          tenantId,
+          ninaInstanceId: i.id,
+          kind,
+          createdBy: memberId,
+          createdAt: now,
+        })),
+      )
+      .returning('id')
+      .execute();
+    return rows.map((r) => r.id);
+  });
 }

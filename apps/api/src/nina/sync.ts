@@ -33,7 +33,7 @@ import {
 } from '@nina-pm/shared';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
-import { siteNights } from '../lib/night-table';
+import { graceNight, siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
 import { filterPlanSummary, projectView } from '../routes/web-projects';
 import type { ApiServices } from '../routes/services';
@@ -710,7 +710,8 @@ export async function plan(
   const table = siteNights(d.site, now, undefined, 3);
   const current = currentNightRow(table, iso(now)).night;
   const next = table.nights[table.nights.findIndex((n) => n.night === current) + 1]?.night;
-  if (req.night !== current && req.night !== next) throw new ProblemError('nina.night_invalid');
+  if (req.night !== current && req.night !== next && req.night !== graceNight(table, now))
+    throw new ProblemError('nina.night_invalid');
   if (req.reason === 'initial' && req.tonight) {
     const filled = (v: unknown) =>
       v !== undefined &&
@@ -749,7 +750,16 @@ export async function plan(
     tonight,
     pendingByLine,
   });
-  const result = runEngine(input);
+  let result = runEngine(input);
+  // Erstplan mitten in der Nacht (Spec-Ergänzung 04.10.2026, Sven): ab jetzt rechnen, sonst verteilte die Engine die schon
+  // vergangene Dunkelzeit mit, und die Blöcke darin gingen verloren. Vor Beginn des Nachtfensters bleibt `startAtUtc`
+  // leer – gleicher Hash wie der Simulator im Plugin (execution.md §10).
+  if (
+    req.reason === 'initial' &&
+    !req.startAtUtc &&
+    now.getTime() > Date.parse(result.nightWindow.startUtc)
+  )
+    result = runEngine({ ...input, startAtUtc: iso(now) });
   const modes = d.camera.readoutModes;
   const index = (mode: string | null) => {
     const i = mode === null ? -1 : modes.indexOf(mode);

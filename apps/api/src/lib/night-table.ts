@@ -9,7 +9,7 @@ import {
   nightTimes,
   type TimeZoneTransition,
 } from '@nina-pm/engine';
-import { currentNight, ProblemError } from '@nina-pm/shared';
+import { currentNight, type NightTable as RowTable, ProblemError } from '@nina-pm/shared';
 import { isoUtc } from './format';
 
 const DAY = 86_400_000;
@@ -242,4 +242,18 @@ export function siteNights(
   const table = buildNightTable(site, from ?? noon, count, options);
   const around = from === undefined && count >= 2 ? table : buildNightTable(site, noon, 2);
   return { currentNight: currentNight(around, isoUtc(now)), ...table };
+}
+
+/**
+ * Kulanz an der Nachtgrenze (`nightWindowEndUtc`): Plugin-Uhr bis 60 s daneben (NT-05) plus Laufzeit – eine Meldung der
+ * eben beendeten Nacht, die bis zu 2 min nach dem Wechsel ankommt, gilt noch (sonst `422 nina.night_invalid`).
+ */
+export const NIGHT_EDGE_GRACE_MS = 2 * 60_000;
+
+/** Nacht, die `NIGHT_EDGE_GRACE_MS` vor `now` galt; `null`, wenn die Tabelle so weit nicht zurückreicht. */
+export function graceNight(table: RowTable, now: Date): string | null {
+  const earlier = isoUtc(new Date(now.getTime() - NIGHT_EDGE_GRACE_MS));
+  const first = table.nights[0];
+  if (!first || earlier < first.noonStartUtc) return null;
+  return currentNight(table, earlier);
 }

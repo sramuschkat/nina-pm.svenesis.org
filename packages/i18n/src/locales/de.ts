@@ -2068,6 +2068,10 @@ export const de = {
       revokeConsequence:
         'Die nächste Anfrage dieser NINA-Instanz wird abgelehnt. Für einen neuen Zugang eine neue Instanz anlegen.',
       lease: 'Session übernehmen',
+      cmdRefresh: 'Ziele neu laden',
+      cmdReset: 'Plan zurücksetzen',
+      cmdSent: 'An {{count}} Instanz(en) gesendet – wirkt mit dem nächsten Heartbeat.',
+      cmdNone: 'Keine aktive Instanz an diesem Rig.',
       leaseInfo: 'Lease: Session {{session}} bis {{until}}',
       leaseOffline: 'Offline-Modus bis {{until}}',
       leaseFree: 'Das Rig ist frei.',

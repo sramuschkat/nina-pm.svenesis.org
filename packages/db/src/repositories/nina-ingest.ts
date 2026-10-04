@@ -210,10 +210,15 @@ export class NinaIngestRepository extends TenantRepo {
    */
   ingestCaptures(
     sessionId: string,
-    captures: readonly CaptureInput[],
+    batch: readonly CaptureInput[],
     now: Date,
     serverEventId: () => string,
   ): Promise<{ results: { id: string; status: IngestStatus }[]; withoutLease: boolean }> {
+    // Dieselbe id zweimal im Stapel (Outbox-Wiederholung): nur die erste zählt – `ON CONFLICT DO NOTHING` verwirft die
+    // zweite Zeile, die Zähler unten liefen aber über beide (`added`).
+    const firstById = new Map<string, CaptureInput>();
+    for (const c of batch) if (!firstById.has(c.id)) firstById.set(c.id, c);
+    const captures = [...firstById.values()];
     return withTx(this.db, async (trx) => {
       const session = await this.reportingSession(trx, sessionId, now);
       const lineIds = captures
@@ -630,6 +635,11 @@ export async function applyCorrection(
       .executeTakeFirst();
     const individual = Number(cn?.rejectedIndividual ?? 0);
     if (input.rejected < individual) throw new ProblemError('correction.conflict');
+    // Mehr verworfen als in der Nacht aufgenommen ergäbe negative Zählstände und Integrationszeit.
+    if (input.rejected > Number(cn?.acquiredCount ?? 0))
+      throw new ProblemError('validation.failed', [
+        { path: 'rejected', message: 'Mehr verworfen als in der Nacht aufgenommen' },
+      ]);
     const before = Number(cn?.rejectedCount ?? 0);
     const after = Math.max(individual, input.rejected);
     const delta = after - before;
@@ -947,5 +957,13 @@ export async function assignCapture(
         })),
       )
       .execute();
+    // Wie beim Eingang (DAT5-12): Aufwand neu schätzen, Soll erreicht → Projektstatus nachziehen (FA-PRJ-11).
+    await trx
+      .updateTable('project')
+      .set({ effortStale: true })
+      .where('tenantId', '=', tenantId)
+      .where('id', '=', line.projectId)
+      .execute();
+    await new ProjectRepository(trx, { tenantId }).autoStatusAfterCounts(trx, line.projectId, now);
   });
 }

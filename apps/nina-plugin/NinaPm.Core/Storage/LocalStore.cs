@@ -577,6 +577,8 @@ public static class StateKeys
 
     /// <summary>Filterposition je NINA-Filtername beim letzten Flat-Lauf (Trained Flats, NT-39).</summary>
     public const string TrainedFlatPositions = "trainedFlatPositions";
+    /// <summary>Je NINA-Filtername die Nacht, in der eine geänderte Trained-Flat-Position zuerst bemerkt wurde (NT-39).</summary>
+    public const string TrainedFlatPositionNoticed = "trainedFlatPositionNoticed";
 
     /// <summary>Ausgefallene Flat-Kombinationen zum Nachholen am nächsten Morgen (Auto-Flats, AP-50b).</summary>
     public const string FlatCarryOver = "flatCarryOver";

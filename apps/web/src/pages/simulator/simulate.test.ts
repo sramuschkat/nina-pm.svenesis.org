@@ -39,10 +39,19 @@ describe('simulate', () => {
       buildPlanInput(rig, projects, moonProfiles, nights, {
         night: '2026-09-17',
         site: STARFRONT,
+        autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
       }) as PlanInput,
     );
     expect(r.plan.outputHash).toBe(node.outputHash);
     expect(r.plan.inputHash).toBe(node.inputHash);
+  });
+
+  it('Auslieferungsregel wie POST /plan: Projekt mit späterem Startdatum fehlt (FA-SIM-05)', () => {
+    const later = projects.map((p) => (p.id === NGC281 ? { ...p, startDate: '2026-09-20' } : p));
+    const seen = (r: ReturnType<typeof simulate>) =>
+      [...r.cards, ...r.unallocated].some((x) => x.projectId === NGC281);
+    expect(seen(simulate(request()))).toBe(true);
+    expect(seen(simulate(request({ projects: later })))).toBe(false);
   });
 
   it('Protokoll je Eintrag mit Höhe, Mondabstand, Dunkelheit; Blöcke und Filterbalken im Diagramm', () => {

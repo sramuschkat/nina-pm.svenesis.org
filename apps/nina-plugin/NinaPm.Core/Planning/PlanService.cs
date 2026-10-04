@@ -29,11 +29,11 @@ public sealed class NinaPlanApi(NinaApiClient client) : IPlanApi
         try
         {
             var targets = await client.ApiNinaV1TargetsAsync(etag, token).ConfigureAwait(false);
-            return (targets, client.LastEtag ?? etag);
+            return (targets, NinaApi.OpaqueEtag(client.LastEtag ?? etag));
         }
         catch (NinaApiException ex) when (ex.StatusCode == 304)
         {
-            return (null, etag);
+            return (null, NinaApi.OpaqueEtag(etag));
         }
     }
 }

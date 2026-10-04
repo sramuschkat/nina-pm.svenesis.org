@@ -654,6 +654,9 @@ export const ninaApi = {
       json('POST'),
     ),
   delivery: (rigId: string) => apiFetch<NinaRigDelivery>(`${V1}/rigs/${rigId}/delivery`),
+  /** Kommando an das Plugin aller aktiven Instanzen des Rigs (TK 7.6), zugestellt mit dem nächsten Heartbeat. */
+  command: (rigId: string, command: 'refresh_targets' | 'reset_plan') =>
+    apiFetch<{ commandIds: string[] }>(`${V1}/rigs/${rigId}/commands`, json('POST', { command })),
 };
 
 export type NightSession = Schemas['NightSession'];

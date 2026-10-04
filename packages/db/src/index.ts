@@ -199,6 +199,7 @@ export {
   NinaSessionRepository,
   OFFLINE_MAX_MS,
   closeSessionFlats,
+  createRigCommand,
   releaseRigLease,
   setReportStatus,
   type LeaseView,
