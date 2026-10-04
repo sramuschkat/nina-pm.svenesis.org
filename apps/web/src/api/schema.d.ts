@@ -18057,6 +18057,8 @@ export interface components {
             /** @enum {string|null} */
             rejectReason: "clouds" | "wind" | "focus" | "satellite" | "guiding" | "other" | null;
             fileName: string | null;
+            hfr: number | null;
+            stars: number | null;
         };
         NightSessionEvent: {
             /**

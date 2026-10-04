@@ -486,7 +486,7 @@ function Captures({
   onFilter: (f: CaptureFilter) => void;
   onChanged: () => Promise<unknown>;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const nameOf = useMemberNames();
   const zone = detail.session.siteTimeZone;
   const [rejecting, setRejecting] = useState<NightSessionCapture | null>(null);
@@ -552,6 +552,24 @@ function Captures({
       align: 'end',
       nowrap: true,
       cell: (c) => t('sessions.captures.seconds', { s: c.exposureS }),
+    },
+    {
+      id: 'hfr',
+      header: t('sessions.captures.col.hfr'),
+      sortValue: (c) => c.hfr ?? -1,
+      priority: 3,
+      align: 'end',
+      nowrap: true,
+      cell: (c) =>
+        c.hfr === null ? '–' : t('sessions.captures.hfrPx', { hfr: hfrText(c.hfr, i18n.language) }),
+    },
+    {
+      id: 'stars',
+      header: t('sessions.captures.col.stars'),
+      sortValue: (c) => c.stars ?? -1,
+      priority: 4,
+      align: 'end',
+      cell: (c) => (c.stars === null ? '–' : c.stars.toLocaleString(i18n.language)),
     },
     {
       id: 'result',
@@ -625,6 +643,7 @@ function Captures({
       {unassigned.length > 0 && filter !== 'deviations' ? (
         <AssignPanel detail={detail} captures={unassigned} onChanged={onChanged} />
       ) : null}
+      {list.length > 0 ? <MetricsSummary captures={detail.captures} /> : null}
       {list.length === 0 ? (
         <p className={styles.muted}>{t('sessions.captures.empty')}</p>
       ) : (
@@ -786,6 +805,8 @@ function downloadCsv(
     'settingsDeviation',
     'assignment',
     'fileName',
+    'hfr',
+    'stars',
   ];
   const rows = list.map((c) =>
     [
@@ -808,6 +829,8 @@ function downloadCsv(
       c.settingsDeviation,
       c.assignment,
       c.fileName,
+      c.hfr,
+      c.stars,
     ]
       .map(cell)
       .join(';'),
@@ -1018,5 +1041,40 @@ function Flats({ detail }: { detail: NightSessionDetail }) {
       rowLabel={(f) => f.filterShortName}
       label={t('sessions.detail.tab.flats')}
     />
+  );
+}
+
+/** HFR mit zwei Nachkommastellen in der Sprache der Oberfläche. */
+function hfrText(hfr: number, lang: string): string {
+  return hfr.toLocaleString(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 === 1 ? (s[m] as number) : ((s[m - 1] as number) + (s[m] as number)) / 2;
+}
+
+/**
+ * Optionale NINA-Metriken (AP-62): Median von HFR und Sternen über die gespeicherten Lights der Session; ohne Messwerte
+ * ein Hinweis, warum die Spalten leer sind.
+ */
+function MetricsSummary({ captures }: { captures: readonly NightSessionCapture[] }) {
+  const { t, i18n } = useTranslation();
+  const lights = captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
+  if (lights.length === 0) return null;
+  const measured = lights.filter((c) => c.hfr !== null);
+  const hfr = median(measured.map((c) => c.hfr as number));
+  const stars = median(lights.flatMap((c) => (c.stars === null ? [] : [c.stars])));
+  if (hfr === null) return <p className={styles.muted}>{t('sessions.captures.metricsMissing')}</p>;
+  return (
+    <p className={styles.muted} data-testid="capture-metrics">
+      {t('sessions.captures.metricsSummary', {
+        hfr: hfrText(hfr, i18n.language),
+        stars: stars === null ? '–' : Math.round(stars).toLocaleString(i18n.language),
+        count: measured.length,
+      })}
+    </p>
   );
 }

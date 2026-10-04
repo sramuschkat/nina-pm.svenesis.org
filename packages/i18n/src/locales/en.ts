@@ -2160,10 +2160,17 @@ export const en: Messages = {
         project: 'Project',
         filter: 'Filter',
         exposure: 'Exposure',
+        hfr: 'HFR',
+        stars: 'Stars',
         result: 'Result',
         flags: 'Flags',
         action: 'Action',
       },
+      hfrPx: '{{hfr}} px',
+      metricsSummary:
+        'Median HFR {{hfr}} px · median stars {{stars}} · {{count}} captures with metrics',
+      metricsMissing:
+        'No HFR or star values: NINA reports them only when star detection runs for the captures. The values are optional.',
       type: { light: 'Light', flat: 'Flat', dark_flat: 'Dark flat' },
       result: { saved: 'saved', aborted: 'aborted', failed: 'failed' },
       temperatureDeviation: 'Temperature deviation',

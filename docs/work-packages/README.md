@@ -123,16 +123,18 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 
 **AP-45 zurückgestellt** (Sven, 04.10.2026): wartet auf die Beispieldateien aus H-19; R5 beginnt vorher mit AP-50.
 
+**AP-54, AP-55 und AP-63 zurückgestellt** (Sven, 04.10.2026): Mandanten-Export/-Import, Astro-PM-Import und Teilen von Ausrüstung/Projekten (hängt an AP-54) ruhen; als Nächstes AP-62, danach AP-60 (wartet auf H-21).
+
 ## R5
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
 | [AP-50](AP-50.md) | Flat-Handling im Plugin | L | AP-16h | H-15 | ☑ |
 | [AP-50b](AP-50b.md) | Auto-Flats je Projekt | M | AP-50 | H-15 | ☑ |
-| [AP-52](AP-52.md) | Tagesschleife | M | AP-50 | H-15 | ◐ |
-| [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ◐ |
-| [AP-54](AP-54.md) | Mandanten-Export/-Import | M | AP-17 | – | ☐ |
-| [AP-55](AP-55.md) | Astro-PM-Import (optional) | M | AP-54 | – | ☐ |
+| [AP-52](AP-52.md) | Tagesschleife | M | AP-50 | H-15 | ☑ 04.10.2026 |
+| [AP-53](AP-53.md) | Simulator im Plugin | M | AP-16h | H-15 | ☑ 04.10.2026 |
+| [AP-54](AP-54.md) | Mandanten-Export/-Import | M | AP-17 | – | ☐ zurückgestellt |
+| [AP-55](AP-55.md) | Astro-PM-Import (optional) | M | AP-54 | – | ☐ zurückgestellt |
 
 ## R6
 
@@ -140,5 +142,5 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 |---|---|---|---|---|---|
 | [AP-60](AP-60.md) | Discord-Kanäle und Nachtbericht | M | AP-15 | H-21 | ☐ |
 | [AP-61](AP-61.md) | Belichtungs-/Sampling-Rechner | S | AP-09b | – | ☑ 01.10.2026 |
-| [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ☐ |
-| [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ |
+| [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ◐ |
+| [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ zurückgestellt |

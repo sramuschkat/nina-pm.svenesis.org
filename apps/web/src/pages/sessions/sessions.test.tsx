@@ -157,6 +157,8 @@ const detail = (): NightSessionDetail => ({
       rejected: false,
       rejectReason: null,
       fileName: 'a.fits',
+      hfr: 2.134,
+      stars: 412,
     },
     {
       id: ID(31),
@@ -180,6 +182,8 @@ const detail = (): NightSessionDetail => ({
       rejected: false,
       rejectReason: null,
       fileName: 'b.fits',
+      hfr: null,
+      stars: null,
     },
   ],
   capturesTruncated: false,
@@ -337,6 +341,12 @@ describe('S-61 Session-Detail', () => {
     expect(within(flagged).getByText('Temperaturabweichung')).toBeTruthy();
     expect(within(flagged).getByText('Einstellungen abweichend')).toBeTruthy();
     expect(within(flagged).getByText('21:34 CDT')).toBeTruthy();
+    // Optionale NINA-Metriken (AP-62): HFR und Sterne je Aufnahme, Median über die Lights mit Messwerten.
+    expect(within(flagged).getByText('2,13 px')).toBeTruthy();
+    expect(within(flagged).getByText('412')).toBeTruthy();
+    expect(screen.getByTestId('capture-metrics').textContent).toBe(
+      'Median HFR 2,13 px · Median Sterne 412 · 1 Aufnahmen mit Messwerten',
+    );
     fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'deviations' } });
     expect(
       within(screen.getByRole('table', { name: 'Aufnahmen' })).getAllByRole('row'),
