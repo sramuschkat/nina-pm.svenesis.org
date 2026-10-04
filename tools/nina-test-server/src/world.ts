@@ -12,6 +12,7 @@ import {
   timeZoneTransitions,
 } from '../../../apps/api/src/lib/night-table';
 import { example, uuidFor } from './examples';
+import { simulationFromPlan } from './simulation';
 import type { RigConfig, Scenario, ScenarioBlock } from './scenario';
 
 type Json = Record<string, unknown>;
@@ -408,6 +409,27 @@ export class TestWorld {
   /** Plan für `night` (aktuelle Nacht; Folgenacht nur im Szenario multi-night, 24 h später). */
   plan(night: string, request: Json): Json {
     this.state.planRevision += 1;
+    return this.buildPlan(night, request, this.state.planRevision);
+  }
+
+  /**
+   * Simulator im Plugin (AP-53): derselbe Plan wie `plan`, aber ohne Planrevision; Auswertung in `simulation.ts`.
+   */
+  simulation(night: string, settingsVersion: number): Json {
+    const plan = this.buildPlan(night, { night }, Math.max(1, this.state.planRevision));
+    const colors = new Map(this.rigFilters().map((f) => [f.shortName, '#c8c8c8']));
+    return simulationFromPlan({
+      plan,
+      targets: this.targets(),
+      filterColor: (filter) => colors.get(filter) ?? null,
+      timeZone: this.rig.site.timeZone,
+      transitions: this.nightTable().timeZoneTransitions,
+      nowS: this.serverTimeS(),
+      settingsVersion,
+    });
+  }
+
+  private buildPlan(night: string, request: Json, revision: number): Json {
     // Folgenacht = dieselben Blöcke n × 24 h später (n = Abstand zur Nacht beim Start), auch wenn die Uhr schon dort steht.
     const dayIndex = this.nightTable().nights.findIndex((n) => n.night === night);
     const shift = this.scenario.multiNight ? Math.max(0, dayIndex) * 86_400 : 0;
@@ -451,7 +473,7 @@ export class TestWorld {
       engineVersion: ENGINE_VERSION,
       inputHash: `sha256:${createHash('sha256').update(JSON.stringify(request)).digest('hex')}`,
       night,
-      revision: this.state.planRevision,
+      revision,
       startAtUtc: (request.startAtUtc as string | null | undefined) ?? null,
       nightWindow: { startUtc: iso(start), endUtc: iso(sessionEnd) },
       darkness: real

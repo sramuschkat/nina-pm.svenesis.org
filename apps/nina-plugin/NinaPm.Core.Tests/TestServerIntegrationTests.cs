@@ -132,4 +132,32 @@ public sealed class TestServerIntegrationTests
         var done = await client.ApiNinaV1SessionsPatchAsync(create.Id, patch);
         Assert.Equal(NinaSessionPatchedStatus.Completed, done.Status);
     }
+
+    [Fact]
+    public async Task Simulator_bekommt_die_Nacht_vom_Server_ohne_Planrevision()
+    {
+        // AP-53, FA-NIN-18: GET /simulation über den generierten Client, Antwort vertragsgemäß deserialisiert.
+        if (Url is null) return;
+        using var api = Api();
+        var bootstrap = await api.Client.ApiNinaV1BootstrapAsync();
+        var night = Simulator.SimulatorDates.From(bootstrap).Tonight(bootstrap.ServerTimeUtc)!;
+        var sink = new ListSink();
+        var r = await Simulator.SimulatorService.RunAsync(new Simulator.NinaSimulationApi(api.Client), false, night,
+            new NinaPmLog(sink), CancellationToken.None);
+        Assert.True(r.Ok, $"{r.State} {r.Status} {r.Code}");
+        Assert.Equal(night, r.Simulation!.Night);
+        Assert.NotEmpty(r.Simulation.Cards);
+        Assert.NotEmpty(Simulator.PlanLog.Build(r.Simulation, Simulator.SiteTime.From(r.Simulation), new PlainLogTexts()));
+    }
+
+    private sealed class PlainLogTexts : Simulator.IPlanLogTexts
+    {
+        public IReadOnlyList<string> Headers => Simulator.PlanLog.Columns;
+        public string Command(string code) => code;
+        public string Until(string time) => time;
+        public string Bonus => "bonus";
+        public string Yes => "yes";
+        public string No => "no";
+        public string MoonProfile(string raw) => raw;
+    }
 }

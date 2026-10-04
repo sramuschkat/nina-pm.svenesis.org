@@ -54,7 +54,7 @@ const iso = (d: Date) => isoUtc(d);
 
 type RigRef = Pick<NinaPrincipal, 'tenantId' | 'rigId'>;
 
-async function rigData(svc: ApiServices, p: RigRef) {
+export async function rigData(svc: ApiServices, p: RigRef) {
   const repos = svc.repositories({ tenantId: p.tenantId });
   const eq = repos.equipment();
   const rig = await eq.rig(p.rigId);
@@ -190,7 +190,7 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
 }
 
 /** Auslieferbare Projekte des Rigs für eine Nacht (`isDeliverable`, TK 6.3). */
-async function deliverable(
+export async function deliverable(
   svc: ApiServices,
   p: RigRef,
   rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
@@ -449,6 +449,72 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   };
 }
 
+type RigDataResult = Awaited<ReturnType<typeof rigData>>;
+
+/**
+ * Engine-Eingabe einer Nacht für das Rig des Tokens (FA-SIM-05): auslieferbare Deep-Sky-Projekte, Mondprofile,
+ * Nacht-Tabelle ab `night`, Autofokus-Intervall nur mit gemeldetem Trigger (M7). `POST /plan` und der
+ * Plugin-Simulator (`GET /simulation`, AP-53) rechnen damit dieselbe Eingabe.
+ */
+export async function nightPlanInput(
+  svc: ApiServices,
+  p: NinaPrincipal,
+  d: RigDataResult,
+  o: {
+    night: string;
+    currentNight: string;
+    now: Date;
+    startAtUtc: string | null;
+    tonight: Parameters<typeof buildPlanInput>[4]['tonight'];
+    pendingByLine: Record<string, number>;
+  },
+) {
+  const view = rigView(d.rig, d.telescope, d.camera);
+  const list = await deliverable(
+    svc,
+    p,
+    { ...view, bonusEnabled: view.scheduler.bonusEnabled },
+    o.night,
+  );
+  const projects = list
+    .filter((x) => x.project.projectType === 'deep_sky')
+    .map((x) => projectView(x));
+  const lastState = (p.lastState ?? {}) as {
+    sequenceTriggers?: { autofocusAfterTimeMin?: number | null } | null;
+  };
+  const planTable = siteNights(d.site, o.now, o.night, 2);
+  const input = buildPlanInput(
+    view,
+    projects,
+    d.profiles.map(moonProfileView) as PlanMoonProfileSource[],
+    { ...planTable, currentNight: o.currentNight },
+    {
+      night: o.night,
+      site: {
+        latitudeDeg: d.site.latitudeDeg,
+        longitudeDeg: d.site.longitudeDeg,
+        elevationM: d.site.elevationM,
+      },
+      startAtUtc: o.startAtUtc,
+      tonight: o.tonight,
+      pendingByLine: o.pendingByLine,
+      autofocusAfterTimeMin: lastState.sequenceTriggers?.autofocusAfterTimeMin ?? null,
+    },
+  ) as PlanInput;
+  return { input, projects };
+}
+
+/** `planNight` mit ungültiger Eingabe → `422 engine.input_invalid` bzw. `validation.failed` (TK 7.3). */
+export function runEngine(input: PlanInput) {
+  try {
+    return planNight(input);
+  } catch (error) {
+    if (error instanceof EngineInputError)
+      throw new ProblemError(error.code, [{ path: 'plan', message: error.message }]);
+    throw error;
+  }
+}
+
 /**
  * `POST /plan`: `night` nur `currentNight` oder die folgende Nacht (NT-01); offene Meldungen ohne
  * bereits gespeicherte IDs (NT-20); `afEveryMin` nur mit gemeldetem Trigger *Autofokus nach Zeit* (M7).
@@ -460,7 +526,6 @@ export async function plan(
 ): Promise<PlanResponse> {
   const now = svc.now();
   const d = await rigData(svc, p);
-  const view = rigView(d.rig, d.telescope, d.camera);
   const table = siteNights(d.site, now, undefined, 3);
   const current = currentNightRow(table, iso(now)).night;
   const next = table.nights[table.nights.findIndex((n) => n.night === current) + 1]?.night;
@@ -476,13 +541,6 @@ export async function plan(
         { path: 'tonight', message: 'bei reason initial nur lastAutofocusUtc zulässig' },
       ]);
   }
-  const list = await deliverable(
-    svc,
-    p,
-    { ...view, bonusEnabled: view.scheduler.bonusEnabled },
-    req.night,
-  );
-  const deepSky = list.filter((x) => x.project.projectType === 'deep_sky');
   const rigRepo = d.repos.ninaRig(p.rigId);
   // NT-20: nur IDs abziehen, die noch nicht in `capture` stehen; Transit-Meldungen zählen nicht.
   const pendingItems = req.pendingCaptures.filter((c) => !c.transitObservationId);
@@ -492,10 +550,6 @@ export async function plan(
     pendingByLine[item.exposureLineId] =
       (pendingByLine[item.exposureLineId] ?? 0) +
       new Set(item.captureIds.filter((id) => !known.has(id))).size;
-  const lastState = (p.lastState ?? {}) as {
-    sequenceTriggers?: { autofocusAfterTimeMin?: number | null } | null;
-  };
-  const planTable = siteNights(d.site, now, req.night, 2);
   const tonight = req.tonight
     ? {
         pastBlocks: req.tonight.pastBlocks ?? [],
@@ -506,33 +560,15 @@ export async function plan(
         currentUnitId: req.tonight.currentUnitId ?? null,
       }
     : null;
-  const input = buildPlanInput(
-    view,
-    deepSky.map((x) => projectView(x)),
-    d.profiles.map(moonProfileView) as PlanMoonProfileSource[],
-    { ...planTable, currentNight: current },
-    {
-      night: req.night,
-      site: {
-        latitudeDeg: d.site.latitudeDeg,
-        longitudeDeg: d.site.longitudeDeg,
-        elevationM: d.site.elevationM,
-      },
-      startAtUtc: req.startAtUtc ?? null,
-      tonight,
-      pendingByLine,
-      autofocusAfterTimeMin: lastState.sequenceTriggers?.autofocusAfterTimeMin ?? null,
-    },
-  );
-  let result;
-  try {
-    result = planNight(input as PlanInput);
-  } catch (error) {
-    // Ungültige Engine-Eingabe → 422 engine.input_invalid bzw. validation.failed (TK 7.3).
-    if (error instanceof EngineInputError)
-      throw new ProblemError(error.code, [{ path: 'plan', message: error.message }]);
-    throw error;
-  }
+  const { input } = await nightPlanInput(svc, p, d, {
+    night: req.night,
+    currentNight: current,
+    now,
+    startAtUtc: req.startAtUtc ?? null,
+    tonight,
+    pendingByLine,
+  });
+  const result = runEngine(input);
   const modes = d.camera.readoutModes;
   const index = (mode: string | null) => {
     const i = mode === null ? -1 : modes.indexOf(mode);

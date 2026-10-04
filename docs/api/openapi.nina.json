@@ -154,6 +154,92 @@
         }
       }
     },
+    "/api/nina/v1/simulation": {
+      "get": {
+        "summary": "Simulator im Plugin: Nacht rechnen ohne Planrevision (gleiche Eingabe wie /plan)",
+        "description": "Nacht aus der Bootstrap-Tabelle; ganze Nacht ab Nachtfensterbeginn, ohne tonight und offene Meldungen. Speichert nichts (keine Planrevision, keine Session).\n\nAktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-NIN-18, FA-SIM-05, FA-SIM-06, FA-SIM-07, FA-SIM-08",
+        "tags": [
+          "nina"
+        ],
+        "security": [
+          {
+            "ninaToken": []
+          }
+        ],
+        "x-npm-action": "nina.sync",
+        "x-npm-requirements": [
+          "FA-NIN-18",
+          "FA-SIM-05",
+          "FA-SIM-06",
+          "FA-SIM-07",
+          "FA-SIM-08"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-09-18"
+            },
+            "required": true,
+            "name": "night",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Simulation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NinaSimulation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "nina.token_invalid",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "tenant.locked",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "engine.incompatible",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "nina.night_invalid | engine.input_invalid | validation.failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/nina/v1/plan": {
       "post": {
         "summary": "Nachtplan vom Server (gleiche Engine und Eingaben wie der Simulator)",
@@ -3642,6 +3728,905 @@
           "lease",
           "nightPlanId",
           "reportStatus"
+        ]
+      },
+      "NinaSimulation": {
+        "type": "object",
+        "properties": {
+          "night": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-18"
+          },
+          "generatedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "engineVersion": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+          },
+          "inputHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{1,64}$"
+          },
+          "outputHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{1,64}$"
+          },
+          "settingsVersion": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "timeZoneSegments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationTimeZoneSegment"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "nightWindow": {
+            "$ref": "#/components/schemas/NinaSimulationNightWindow"
+          },
+          "darkness": {
+            "$ref": "#/components/schemas/NinaSimulationDarkness"
+          },
+          "header": {
+            "$ref": "#/components/schemas/NinaSimulationHeader"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationTarget"
+            },
+            "maxItems": 200
+          },
+          "moon": {
+            "$ref": "#/components/schemas/NinaSimulationMoon"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationBlock"
+            },
+            "maxItems": 200
+          },
+          "filterBars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationFilterBar"
+            },
+            "maxItems": 5000
+          },
+          "flips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationFlip"
+            },
+            "maxItems": 200
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationCard"
+            },
+            "maxItems": 200
+          },
+          "unallocated": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationUnallocated"
+            },
+            "maxItems": 500
+          },
+          "protocol": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationProtocolRow"
+            },
+            "maxItems": 50000
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationWarning"
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "night",
+          "generatedAtUtc",
+          "engineVersion",
+          "inputHash",
+          "settingsVersion",
+          "timeZone",
+          "timeZoneSegments",
+          "nightWindow",
+          "darkness",
+          "header",
+          "targets",
+          "moon",
+          "blocks",
+          "filterBars",
+          "flips",
+          "cards",
+          "unallocated",
+          "protocol",
+          "warnings"
+        ]
+      },
+      "NinaSimulationAltitude": {
+        "type": "object",
+        "properties": {
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "altDeg": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          }
+        },
+        "required": [
+          "atUtc",
+          "altDeg"
+        ]
+      },
+      "NinaSimulationBlock": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "transit"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "seriesIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "startUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "endUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "kind",
+          "label",
+          "seriesIndex",
+          "startUtc",
+          "endUtc"
+        ]
+      },
+      "NinaSimulationCard": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "seriesIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "allocatedS": {
+            "type": "number",
+            "minimum": 0
+          },
+          "fromUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "toUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "altMinDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "altMaxDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "moonSepMinDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "transit": {
+            "type": "boolean"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationCardLine"
+            },
+            "maxItems": 500
+          },
+          "checks": {
+            "$ref": "#/components/schemas/NinaSimulationChecks"
+          },
+          "flips": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationCardFlip"
+            },
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "projectId",
+          "name",
+          "seriesIndex",
+          "allocatedS",
+          "fromUtc",
+          "toUtc",
+          "altMinDeg",
+          "altMaxDeg",
+          "moonSepMinDeg",
+          "transit",
+          "lines",
+          "checks",
+          "flips"
+        ]
+      },
+      "NinaSimulationCardFlip": {
+        "type": "object",
+        "properties": {
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "durationS": {
+            "type": "number",
+            "minimum": 0
+          },
+          "inTransitWindow": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "atUtc",
+          "durationS",
+          "inTransitWindow"
+        ]
+      },
+      "NinaSimulationCardLine": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "filter": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "exposureS": {
+            "type": "number",
+            "minimum": 0
+          },
+          "need": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tonight": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "moon": {
+            "$ref": "#/components/schemas/NinaSimulationLineMoon"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lineId",
+          "filter",
+          "color",
+          "exposureS",
+          "need",
+          "tonight",
+          "moon",
+          "enabled"
+        ]
+      },
+      "NinaSimulationCheck": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "fail",
+          "warn",
+          "none"
+        ]
+      },
+      "NinaSimulationChecks": {
+        "type": "object",
+        "properties": {
+          "altitude": {
+            "$ref": "#/components/schemas/NinaSimulationCheck"
+          },
+          "time": {
+            "$ref": "#/components/schemas/NinaSimulationCheck"
+          },
+          "moon": {
+            "$ref": "#/components/schemas/NinaSimulationCheck"
+          },
+          "darkness": {
+            "$ref": "#/components/schemas/NinaSimulationCheck"
+          },
+          "rotation": {
+            "$ref": "#/components/schemas/NinaSimulationCheck"
+          }
+        },
+        "required": [
+          "altitude",
+          "time",
+          "moon",
+          "darkness",
+          "rotation"
+        ]
+      },
+      "NinaSimulationDarkness": {
+        "type": "object",
+        "properties": {
+          "civilStartUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "civilEndUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "nauticalStartUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "nauticalEndUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "astronomicalStartUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "astronomicalEndUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "civilStartUtc",
+          "civilEndUtc",
+          "nauticalStartUtc",
+          "nauticalEndUtc",
+          "astronomicalStartUtc",
+          "astronomicalEndUtc"
+        ]
+      },
+      "NinaSimulationFilterBar": {
+        "type": "object",
+        "properties": {
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "filter": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "color": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "fromUtc",
+          "toUtc",
+          "filter",
+          "color",
+          "count"
+        ]
+      },
+      "NinaSimulationFlip": {
+        "type": "object",
+        "properties": {
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "atUtc"
+        ]
+      },
+      "NinaSimulationHeader": {
+        "type": "object",
+        "properties": {
+          "darkHours": {
+            "type": "number",
+            "minimum": 0
+          },
+          "targets": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "frames": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "moonIllumPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "darkHours",
+          "targets",
+          "frames",
+          "moonIllumPct"
+        ]
+      },
+      "NinaSimulationLineMoon": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "separationDeg": {
+            "type": "number"
+          },
+          "widthDays": {
+            "type": "number"
+          },
+          "mustBeDown": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "separationDeg",
+          "widthDays",
+          "mustBeDown"
+        ]
+      },
+      "NinaSimulationMoon": {
+        "type": "object",
+        "properties": {
+          "illuminationPct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "altitude": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationAltitude"
+            },
+            "maxItems": 300
+          }
+        },
+        "required": [
+          "illuminationPct",
+          "altitude"
+        ]
+      },
+      "NinaSimulationNightWindow": {
+        "type": "object",
+        "properties": {
+          "startUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "endUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "startUtc",
+          "endUtc"
+        ]
+      },
+      "NinaSimulationProtocolRow": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "cmd": {
+            "type": "string",
+            "enum": [
+              "slew_center",
+              "slew_center_rotate",
+              "filter",
+              "expose",
+              "expose_series",
+              "dither",
+              "autofocus_hint",
+              "wait",
+              "meridian_flip",
+              "end"
+            ]
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "untilUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "durationS": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "projectName": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "panel": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "no": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1
+          },
+          "filter": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "exposureS": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "gain": {
+            "type": "integer",
+            "nullable": true
+          },
+          "offset": {
+            "type": "integer",
+            "nullable": true
+          },
+          "binning": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1
+          },
+          "readoutMode": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 256
+          },
+          "rotationDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "raDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "decDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "altDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "moonSepDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "moonOk": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "requiredSepDeg": {
+            "type": "number",
+            "nullable": true
+          },
+          "dark": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "la": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "moonProfile": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "bonus": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "blockId",
+          "projectId",
+          "cmd",
+          "atUtc",
+          "untilUtc",
+          "durationS",
+          "projectName",
+          "panel",
+          "no",
+          "filter",
+          "exposureS",
+          "gain",
+          "offset",
+          "binning",
+          "readoutMode",
+          "rotationDeg",
+          "raDeg",
+          "decDeg",
+          "altDeg",
+          "moonSepDeg",
+          "moonOk",
+          "requiredSepDeg",
+          "dark",
+          "la",
+          "moonProfile",
+          "bonus"
+        ]
+      },
+      "NinaSimulationReason": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "start_date",
+              "not_visible",
+              "below_min_time",
+              "moon_blocked",
+              "prefiltered",
+              "outranked",
+              "no_need",
+              "transit_conflict",
+              "flip_in_transit",
+              "filter_not_found",
+              "rotation_mismatch"
+            ]
+          },
+          "lineId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "NinaSimulationTarget": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "seriesIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minAltitudeDeg": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "altitude": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationAltitude"
+            },
+            "maxItems": 300
+          }
+        },
+        "required": [
+          "projectId",
+          "name",
+          "seriesIndex",
+          "minAltitudeDeg",
+          "altitude"
+        ]
+      },
+      "NinaSimulationTimeZoneSegment": {
+        "type": "object",
+        "properties": {
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "utcOffsetMinutes": {
+            "type": "integer"
+          },
+          "abbr": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "fromUtc",
+          "utcOffsetMinutes",
+          "abbr"
+        ]
+      },
+      "NinaSimulationUnallocated": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NinaSimulationReason"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "projectId",
+          "name",
+          "reasons"
+        ]
+      },
+      "NinaSimulationWarning": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "idle_gap",
+              "la_unsafe",
+              "total_min",
+              "no_alloc",
+              "la_miss",
+              "filter_stuck",
+              "past_mismatch",
+              "panel_rotation_mismatch",
+              "twilight_grazing"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "warn",
+              "error"
+            ]
+          },
+          "unitId": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "durationS": {
+            "type": "number",
+            "minimum": 0
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "code",
+          "level"
         ]
       },
       "NinaTargets": {

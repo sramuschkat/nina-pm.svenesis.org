@@ -1,11 +1,13 @@
 /**
  * `GET /bootstrap`, `GET /targets`, `POST /plan` der NINA-API (AP-14a; TK 7.3, 7.6; FA-SYN-02/03,
- * FA-SIM-05): Mandant und Rig ausschließlich aus dem Token (TK 5.6).
+ * FA-SIM-05) und `GET /simulation` für den Simulator im Plugin (AP-53, FA-NIN-18): Mandant und Rig
+ * ausschließlich aus dem Token (TK 5.6).
  */
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { nina } from '@nina-pm/shared';
 import { ifNoneMatchHits } from '../../lib/etag';
 import type { ApiEnv } from '../../lib/env';
+import { simulation } from '../../nina/simulation';
 import { bootstrap, plan, targets } from '../../nina/sync';
 import { problemContent } from '../define';
 import type { ApiServices } from '../services';
@@ -64,7 +66,25 @@ export const planRoute = defineNinaRoute(
   },
 );
 
-export const NINA_SYNC_ROUTES = [bootstrapRoute, targetsRoute, planRoute] as const;
+export const simulationRoute = defineNinaRoute(
+  { requirements: ['FA-NIN-18', 'FA-SIM-05', 'FA-SIM-06', 'FA-SIM-07', 'FA-SIM-08'] },
+  {
+    method: 'get',
+    path: `${NINA_BASE}/simulation`,
+    summary: 'Simulator im Plugin: Nacht rechnen ohne Planrevision (gleiche Eingabe wie /plan)',
+    description:
+      'Nacht aus der Bootstrap-Tabelle; ganze Nacht ab Nachtfensterbeginn, ohne tonight und offene Meldungen. Speichert nichts (keine Planrevision, keine Session).',
+    tags: ['nina'],
+    request: { query: nina.NinaSimulationQuery },
+    responses: {
+      200: { description: 'Simulation', ...json(nina.NinaSimulation) },
+      ...denied,
+      422: problemContent('nina.night_invalid | engine.input_invalid | validation.failed'),
+    },
+  },
+);
+
+export const NINA_SYNC_ROUTES = [bootstrapRoute, targetsRoute, planRoute, simulationRoute] as const;
 
 export function ninaSyncRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
@@ -85,6 +105,12 @@ export function ninaSyncRoutes(services: () => Promise<ApiServices>) {
     c.header('cache-control', 'no-cache');
     if (ifNoneMatchHits(c.req.valid('header')['if-none-match'], etag)) return c.body(null, 304);
     return c.json(body, 200);
+  });
+
+  app.openapi(simulationRoute, async (c) => {
+    c.header('cache-control', 'no-store');
+    const { night } = c.req.valid('query');
+    return c.json(await simulation(await services(), principal(c), night), 200);
   });
 
   app.openapi(planRoute, async (c) => {

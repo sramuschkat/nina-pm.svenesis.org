@@ -35,7 +35,7 @@ describe('OpenAPI (docs/api/openapi.yaml)', () => {
     const doc = openApiNinaDocument();
     expect(doc.openapi).toBe('3.0.3');
     expect(Object.keys(doc.paths as object).every((p) => p.startsWith('/api/nina/'))).toBe(true);
-    expect(Object.keys(doc.paths as object)).toHaveLength(8);
+    expect(Object.keys(doc.paths as object)).toHaveLength(9);
     const text = JSON.stringify(doc);
     expect(text).not.toMatch(/"type":\[/);
     expect(text).not.toMatch(/"exclusiveM(in|ax)imum":-?\d/);

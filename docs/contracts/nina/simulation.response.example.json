@@ -1,0 +1,312 @@
+{
+  "night": "2026-09-17",
+  "generatedAtUtc": "2026-09-17T19:02:10Z",
+  "engineVersion": "3.2.0",
+  "inputHash": "sha256:9c1e…",
+  "settingsVersion": 12,
+  "timeZone": "America/Chicago",
+  "timeZoneSegments": [
+    { "fromUtc": "2026-09-18T00:00:00Z", "utcOffsetMinutes": -300, "abbr": "CDT" }
+  ],
+  "nightWindow": { "startUtc": "2026-09-18T00:00:00Z", "endUtc": "2026-09-18T13:00:00Z" },
+  "darkness": {
+    "civilStartUtc": "2026-09-18T01:04:49Z",
+    "civilEndUtc": "2026-09-18T11:59:08Z",
+    "nauticalStartUtc": "2026-09-18T01:33:13Z",
+    "nauticalEndUtc": "2026-09-18T11:30:42Z",
+    "astronomicalStartUtc": "2026-09-18T02:01:58Z",
+    "astronomicalEndUtc": "2026-09-18T11:01:56Z"
+  },
+  "header": { "darkHours": 9, "targets": 2, "frames": 322, "moonIllumPct": 12 },
+  "targets": [
+    {
+      "projectId": "e77c…",
+      "name": "HAT-P-17 b",
+      "seriesIndex": 0,
+      "minAltitudeDeg": 30,
+      "altitude": [
+        { "atUtc": "2026-09-18T00:00:00Z", "altDeg": 41.2 },
+        { "atUtc": "2026-09-18T03:00:00Z", "altDeg": 77.9 },
+        { "atUtc": "2026-09-18T06:00:00Z", "altDeg": 58.3 },
+        { "atUtc": "2026-09-18T09:00:00Z", "altDeg": 21.6 },
+        { "atUtc": "2026-09-18T12:00:00Z", "altDeg": -12.4 }
+      ]
+    },
+    {
+      "projectId": "a91f…",
+      "name": "NGC 281 Pacman",
+      "seriesIndex": 1,
+      "minAltitudeDeg": 30,
+      "altitude": [
+        { "atUtc": "2026-09-18T00:00:00Z", "altDeg": 18.7 },
+        { "atUtc": "2026-09-18T03:00:00Z", "altDeg": 43.1 },
+        { "atUtc": "2026-09-18T06:00:00Z", "altDeg": 62.5 },
+        { "atUtc": "2026-09-18T09:00:00Z", "altDeg": 52.8 },
+        { "atUtc": "2026-09-18T12:00:00Z", "altDeg": 31.0 }
+      ]
+    }
+  ],
+  "moon": {
+    "illuminationPct": 12,
+    "altitude": [
+      { "atUtc": "2026-09-18T00:00:00Z", "altDeg": 8.4 },
+      { "atUtc": "2026-09-18T03:00:00Z", "altDeg": -20.3 },
+      { "atUtc": "2026-09-18T06:00:00Z", "altDeg": -45.0 },
+      { "atUtc": "2026-09-18T09:00:00Z", "altDeg": -38.2 },
+      { "atUtc": "2026-09-18T12:00:00Z", "altDeg": -6.1 }
+    ]
+  },
+  "blocks": [
+    {
+      "id": "0192a7c0-0000-7000-8000-000000000c01",
+      "projectId": "e77c…",
+      "kind": "transit",
+      "label": "HAT-P-17 b",
+      "seriesIndex": 0,
+      "startUtc": "2026-09-18T02:08:00Z",
+      "endUtc": "2026-09-18T07:34:00Z"
+    },
+    {
+      "id": "0192a7c0-0000-7000-8000-000000000c02",
+      "projectId": "a91f…",
+      "kind": "regular",
+      "label": "NGC 281 Pacman",
+      "seriesIndex": 1,
+      "startUtc": "2026-09-18T07:35:00Z",
+      "endUtc": "2026-09-18T09:20:01Z"
+    }
+  ],
+  "filterBars": [
+    {
+      "fromUtc": "2026-09-18T02:08:00Z",
+      "toUtc": "2026-09-18T07:34:00Z",
+      "filter": "R",
+      "color": "#E53935",
+      "count": 326
+    },
+    {
+      "fromUtc": "2026-09-18T07:42:40Z",
+      "toUtc": "2026-09-18T09:19:58Z",
+      "filter": "Ha",
+      "color": "#D32F2F",
+      "count": 17
+    }
+  ],
+  "flips": [{ "atUtc": "2026-09-18T04:33:23Z" }, { "atUtc": "2026-09-18T07:47:55Z" }],
+  "cards": [
+    {
+      "projectId": "e77c…",
+      "name": "HAT-P-17 b",
+      "seriesIndex": 0,
+      "allocatedS": 19560,
+      "fromUtc": "2026-09-18T02:08:00Z",
+      "toUtc": "2026-09-18T07:34:00Z",
+      "altMinDeg": 52.1,
+      "altMaxDeg": 78.4,
+      "moonSepMinDeg": 96.3,
+      "transit": true,
+      "lines": [
+        {
+          "lineId": "l9…",
+          "filter": "R",
+          "color": "#E53935",
+          "exposureS": 60,
+          "need": 305,
+          "tonight": 0,
+          "moon": null,
+          "enabled": true
+        }
+      ],
+      "checks": { "altitude": "ok", "time": "ok", "moon": "ok", "darkness": "ok", "rotation": "ok" },
+      "flips": [{ "atUtc": "2026-09-18T04:33:23Z", "durationS": 240, "inTransitWindow": true }]
+    },
+    {
+      "projectId": "a91f…",
+      "name": "NGC 281 Pacman",
+      "seriesIndex": 1,
+      "allocatedS": 6301,
+      "fromUtc": "2026-09-18T07:35:00Z",
+      "toUtc": "2026-09-18T09:20:01Z",
+      "altMinDeg": 55.9,
+      "altMaxDeg": 61.4,
+      "moonSepMinDeg": 112.7,
+      "transit": false,
+      "lines": [
+        {
+          "lineId": "l001…",
+          "filter": "Ha",
+          "color": "#D32F2F",
+          "exposureS": 300,
+          "need": 17,
+          "tonight": 17,
+          "moon": {
+            "name": "moonProfile.moderate",
+            "separationDeg": 60,
+            "widthDays": 7,
+            "mustBeDown": false
+          },
+          "enabled": true
+        }
+      ],
+      "checks": { "altitude": "ok", "time": "ok", "moon": "ok", "darkness": "ok", "rotation": "ok" },
+      "flips": [{ "atUtc": "2026-09-18T07:47:55Z", "durationS": 240, "inTransitWindow": false }]
+    }
+  ],
+  "unallocated": [
+    {
+      "projectId": "c3d0…",
+      "name": "M 31",
+      "reasons": [{ "reason": "transit_conflict" }]
+    }
+  ],
+  "protocol": [
+    {
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "projectId": "e77c…",
+      "cmd": "slew_center_rotate",
+      "atUtc": "2026-09-18T02:05:30Z",
+      "untilUtc": null,
+      "durationS": 90,
+      "projectName": "HAT-P-17 b",
+      "panel": "",
+      "no": null,
+      "filter": "",
+      "exposureS": null,
+      "gain": null,
+      "offset": null,
+      "binning": null,
+      "readoutMode": null,
+      "rotationDeg": 0,
+      "raDeg": 324.5366,
+      "decDeg": 30.4886,
+      "altDeg": 52.1,
+      "moonSepDeg": 96.3,
+      "moonOk": null,
+      "requiredSepDeg": null,
+      "dark": true,
+      "la": null,
+      "moonProfile": "",
+      "bonus": false
+    },
+    {
+      "blockId": "0192a7c0-0000-7000-8000-000000000c01",
+      "projectId": "e77c…",
+      "cmd": "expose_series",
+      "atUtc": "2026-09-18T02:08:00Z",
+      "untilUtc": "2026-09-18T07:34:00Z",
+      "durationS": null,
+      "projectName": "HAT-P-17 b",
+      "panel": "",
+      "no": null,
+      "filter": "R",
+      "exposureS": 60,
+      "gain": 100,
+      "offset": 20,
+      "binning": 1,
+      "readoutMode": "High Gain Mode",
+      "rotationDeg": 0,
+      "raDeg": 324.5366,
+      "decDeg": 30.4886,
+      "altDeg": 53.0,
+      "moonSepDeg": 96.4,
+      "moonOk": true,
+      "requiredSepDeg": null,
+      "dark": true,
+      "la": false,
+      "moonProfile": "",
+      "bonus": false
+    },
+    {
+      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "projectId": "a91f…",
+      "cmd": "expose",
+      "atUtc": "2026-09-18T07:42:40Z",
+      "untilUtc": null,
+      "durationS": null,
+      "projectName": "NGC 281 Pacman",
+      "panel": "",
+      "no": 1,
+      "filter": "Ha",
+      "exposureS": 300,
+      "gain": 100,
+      "offset": 20,
+      "binning": 1,
+      "readoutMode": "High Gain Mode",
+      "rotationDeg": 90,
+      "raDeg": 13.2046,
+      "decDeg": 56.6297,
+      "altDeg": 61.4,
+      "moonSepDeg": 112.7,
+      "moonOk": true,
+      "requiredSepDeg": 42.5,
+      "dark": true,
+      "la": true,
+      "moonProfile": "moonProfile.moderate",
+      "bonus": false
+    },
+    {
+      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "projectId": "a91f…",
+      "cmd": "meridian_flip",
+      "atUtc": "2026-09-18T07:47:58Z",
+      "untilUtc": null,
+      "durationS": 240,
+      "projectName": "NGC 281 Pacman",
+      "panel": "",
+      "no": null,
+      "filter": "",
+      "exposureS": null,
+      "gain": null,
+      "offset": null,
+      "binning": null,
+      "readoutMode": null,
+      "rotationDeg": 90,
+      "raDeg": 13.2046,
+      "decDeg": 56.6297,
+      "altDeg": 61.2,
+      "moonSepDeg": 112.6,
+      "moonOk": null,
+      "requiredSepDeg": null,
+      "dark": true,
+      "la": null,
+      "moonProfile": "",
+      "bonus": false
+    },
+    {
+      "blockId": "0192a7c0-0000-7000-8000-000000000c02",
+      "projectId": "a91f…",
+      "cmd": "end",
+      "atUtc": "2026-09-18T09:20:01Z",
+      "untilUtc": null,
+      "durationS": null,
+      "projectName": "NGC 281 Pacman",
+      "panel": "",
+      "no": null,
+      "filter": "",
+      "exposureS": null,
+      "gain": null,
+      "offset": null,
+      "binning": null,
+      "readoutMode": null,
+      "rotationDeg": 90,
+      "raDeg": 13.2046,
+      "decDeg": 56.6297,
+      "altDeg": 55.9,
+      "moonSepDeg": 111.9,
+      "moonOk": null,
+      "requiredSepDeg": null,
+      "dark": true,
+      "la": null,
+      "moonProfile": "",
+      "bonus": false
+    }
+  ],
+  "warnings": [
+    {
+      "code": "no_alloc",
+      "level": "warn",
+      "unitId": "c3d0…/p0",
+      "message": "Arbeit und nutzbare Zeit, aber keine Belichtung – die nutzbare Zeit liegt im gesperrten Transitfenster"
+    }
+  ]
+}
