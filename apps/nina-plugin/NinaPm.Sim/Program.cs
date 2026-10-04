@@ -131,7 +131,7 @@ while (!finished && clock.UtcNow < end)
         pendingStart = false;
         runtime ??= new SimRuntime(clock, world, apiBase, dbPath, logWriter);
         sequenceStop = new CancellationTokenSource();
-        sequence = new SimSequence(runtime, world, logWriter);
+        sequence = new SimSequence(runtime, world, logWriter, run.DayLoop);
         var seqTask = sequence.RunAsync(sequenceStop.Token);
         // Die Sequenz treibt die Uhr, bis sie endet (Nachtende, Benutzer-Stopp, Absturz).
         try

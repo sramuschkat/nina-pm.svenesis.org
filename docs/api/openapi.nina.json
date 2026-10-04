@@ -1515,6 +1515,25 @@
                   "type": "string",
                   "format": "date-time",
                   "example": "2026-09-18T13:00:00Z"
+                },
+                "twilight": {
+                  "type": "object",
+                  "properties": {
+                    "civil": {
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
+                    },
+                    "nautical": {
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
+                    },
+                    "astronomical": {
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
+                    }
+                  },
+                  "required": [
+                    "civil",
+                    "nautical",
+                    "astronomical"
+                  ]
                 }
               },
               "required": [
@@ -5228,6 +5247,28 @@
           },
           "mosaicPanelsIndependent": {
             "type": "boolean"
+          },
+          "deliveryNights": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "night": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-09-18"
+                },
+                "projects": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "night",
+                "projects"
+              ]
+            },
+            "maxItems": 3
           }
         },
         "required": [
@@ -5235,6 +5276,27 @@
           "generatedAtUtc",
           "projects",
           "mosaicPanelsIndependent"
+        ]
+      },
+      "NinaTwilightCrossing": {
+        "type": "object",
+        "properties": {
+          "duskUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "dawnUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "duskUtc",
+          "dawnUtc"
         ]
       },
       "ProblemDetails": {

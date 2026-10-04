@@ -4,9 +4,10 @@
  * Zähler aus Meldungen (NT-19), `POST /plan` = Engine-Ergebnis gleicher Eingabe, Nacht nur aktuelle oder
  * folgende (NT-01), `afEveryMin` nur mit Trigger (M7), offene Meldungen ohne Doppelabzug (NT-20).
  */
-import { ENGINE_VERSION, planNight, type PlanInput } from '@nina-pm/engine';
+import { ENGINE_VERSION, nightTimes, planNight, type PlanInput } from '@nina-pm/engine';
 import { buildPlanInput, COOKIE_NAMES, currentNight, nina } from '@nina-pm/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { isoUtc } from '../src/lib/format';
 import { CAMERA, filterInput, rigInput, SCHEDULER, SITE, TELESCOPE } from './support/equipment';
 import { createStack, type Stack } from './support/stack';
 
@@ -224,6 +225,61 @@ describe('GET /bootstrap (NT-02, NT-05, NT-E1)', () => {
       settingsVersionFetched: rig.settingsVersion,
       settingsFetchedAt: '2026-09-18T14:00:00Z',
     });
+  });
+});
+
+describe('GET /bootstrap: Dämmerungen je Nacht (AP-52, FA-NIN-26)', () => {
+  it('twilight je Nacht aus derselben Engine; bürgerlich vor nautisch vor astronomisch', async () => {
+    const t = await setup();
+    const r = await t.ninaCall('/bootstrap');
+    interface Row {
+      night: string;
+      noonStartUtc: string;
+      noonEndUtc: string;
+      twilight: Record<'civil' | 'nautical' | 'astronomical', { duskUtc: string; dawnUtc: string }>;
+    }
+    const nights = r.body.nights as Row[];
+    const transitions = (
+      r.body.timeZoneTransitions as { atUtc: string; utcOffsetMinutes: number }[]
+    ).map((x) => ({ atUtc: Date.parse(x.atUtc) / 1000, utcOffsetMinutes: x.utcOffsetMinutes }));
+    for (const row of nights.slice(0, 3)) {
+      const tw = row.twilight;
+      expect(tw.civil.duskUtc < tw.nautical.duskUtc).toBe(true);
+      expect(tw.nautical.duskUtc < tw.astronomical.duskUtc).toBe(true);
+      expect(tw.astronomical.dawnUtc < tw.nautical.dawnUtc).toBe(true);
+      expect(tw.civil.duskUtc > row.noonStartUtc && tw.civil.dawnUtc < row.noonEndUtc).toBe(true);
+      const e = nightTimes({
+        site: { latDeg: SITE.latitudeDeg, lonDeg: SITE.longitudeDeg },
+        night: row.night,
+        timeZoneTransitions: transitions,
+      });
+      const iso = (sec: number | null) => (sec === null ? null : isoUtc(new Date(sec * 1000)));
+      expect(tw.astronomical).toEqual({
+        duskUtc: iso(e.twilight.astronomical.startUtc),
+        dawnUtc: iso(e.twilight.astronomical.endUtc),
+      });
+    }
+  });
+});
+
+describe('GET /targets: Auslieferung der nächsten Nächte (AP-52, FA-NIN-07)', () => {
+  it('deliveryNights = aktuelle und zwei folgende Nächte; Startdatum zählt erst ab seiner Nacht; ETag ändert sich', async () => {
+    const t = await setup();
+    const first = await t.ninaCall('/targets');
+    expect(first.body.deliveryNights).toEqual([
+      { night: '2026-09-18', projects: 1 },
+      { night: '2026-09-19', projects: 1 },
+      { night: '2026-09-20', projects: 1 },
+    ]);
+    await s.pg.admin.query("UPDATE project SET start_date = '2026-09-20' WHERE id = $1", [t.a.pid]);
+    const later = await t.ninaCall('/targets');
+    expect(later.body.deliveryNights).toEqual([
+      { night: '2026-09-18', projects: 0 },
+      { night: '2026-09-19', projects: 0 },
+      { night: '2026-09-20', projects: 1 },
+    ]);
+    expect(later.body.projects).toEqual([]);
+    expect(later.etag).not.toBe(first.etag);
   });
 });
 

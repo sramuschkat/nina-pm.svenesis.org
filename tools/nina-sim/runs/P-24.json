@@ -1,0 +1,72 @@
+{
+  "protocol": "P-24",
+  "description": "Warten auf Zeit (astronomische Dämmerung + 15 min) in Standortzeit: endet zur erwarteten Zeit (±30 s), danach erst Blöcke. Die Trigger-Box vor jeder Belichtung prüft der VM-Lauf (Adapter, nicht im kopflosen Lauf).",
+  "scenario": "multi-night",
+  "untilMin": 60,
+  "setup": {},
+  "steps": [],
+  "dayLoop": {
+    "maxNights": 1,
+    "source": "AstronomicalDusk",
+    "offsetMin": 15
+  },
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "WAIT_TIME",
+          "where": {
+            "source": "astronomicaldusk"
+          }
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "timeGap": [
+          {
+            "report": "epochUtc"
+          },
+          {
+            "event": "WAIT_TIME",
+            "field": "untilUtc"
+          }
+        ],
+        "minS": 870,
+        "maxS": 930
+      },
+      {
+        "timeGap": [
+          {
+            "event": "WAIT_TIME",
+            "field": "untilUtc"
+          },
+          {
+            "event": "WAIT_TIME_END",
+            "field": "atUtc"
+          }
+        ],
+        "minS": 0,
+        "maxS": 30
+      },
+      {
+        "none": {
+          "event": "BLOCK_START"
+        },
+        "before": {
+          "event": "WAIT_TIME_END"
+        }
+      },
+      {
+        "log": {
+          "event": "DAYLOOP_END",
+          "where": {
+            "reason": "max_nights"
+          }
+        },
+        "min": 1,
+        "max": 1
+      }
+    ]
+  ]
+}

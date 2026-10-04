@@ -25,6 +25,8 @@ interface RunPart {
   readonly untilMin?: number;
   readonly setup?: unknown;
   readonly steps?: unknown[];
+  /** Sequenz „Mehrere Nächte“ (AP-52): Tagesschleife mit Warten auf Zeit (`NinaPm.Sim`, `SimDayLoop`). */
+  readonly dayLoop?: unknown;
 }
 
 /** Benannte Prüfung (Läufe ohne Protokoll, z. B. der VM-Kurzlauf `vm-smoke`). */
@@ -120,7 +122,13 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
     rmSync(dir, { recursive: true, force: true });
     const r = await runPart(
       name,
-      { scenario: run.scenario ?? '', untilMin: run.untilMin, setup: run.setup, steps: run.steps },
+      {
+        scenario: run.scenario ?? '',
+        untilMin: run.untilMin,
+        setup: run.setup,
+        steps: run.steps,
+        dayLoop: run.dayLoop,
+      },
       dir,
     );
     writeFileSync(join(dir, 'report.json'), `${JSON.stringify(r.report, null, 2)}\n`);
@@ -146,6 +154,7 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
           untilMin: run.untilMin,
           setup: run.setup,
           steps: run.steps,
+          dayLoop: run.dayLoop,
         },
       ];
   const results: { report: unknown; log: string }[] = [];

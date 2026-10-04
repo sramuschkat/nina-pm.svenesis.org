@@ -40,6 +40,12 @@ public enum NightAction
 
     /// <summary>Nachtschleife ist falsch: NINA führt den Ende-Bereich aus (bzw. Sequenz endet geordnet bei <c>blocked</c>).</summary>
     Stop,
+
+    /// <summary>
+    /// Tagesschleife (AP-52): die Nacht ist beendet und die nächste angefordert, sie beginnt aber erst mit dem Wechsel von
+    /// <c>currentNight</c> (Nachtfensterende, NT-01) – bis <see cref="NightStep.WaitUntilUtc"/> warten (Heartbeat <c>idle</c>).
+    /// </summary>
+    WaitForNight,
 }
 
 public sealed record NightStep(NightAction Action, int? BlockIndex = null, DateTimeOffset? WaitUntilUtc = null, NinaPlanRequestReason? Reason = null);
@@ -56,6 +62,8 @@ public sealed record NightContext(
     bool FlatsPending,
     /// <summary>Erster Aufruf nach einem Neustart mit Session aus <c>ninapm.db</c> → <c>reason: resume</c>.</summary>
     bool Resuming = false,
+    /// <summary>Nacht-Schlüssel nach <c>currentNight</c> (NT-01); Tagesschleife: Wechsel gegenüber der beendeten Nacht.</summary>
+    string? Night = null,
     /// <summary>
     /// Blöcke des gespeicherten Plans, die schon ausgeführt oder übersprungen wurden. Ein Block läuft je Plan höchstens
     /// einmal – auch wenn seine Einträge vor <c>endUtc</c> abgearbeitet sind (Lauf 02.10.2026: Block 1703-mal neu
@@ -87,6 +95,8 @@ public sealed class NightLoop
     private DateTimeOffset? planLockUntil;
     private bool sessionCompleted;
     private bool nightFinished;
+    private string? finishedNight;
+    private bool nextNightRequested;
     private int clockSkewAttempts;
 
     /// <summary>Gesperrter Zustand (<c>blockedReasons</c>) oder <c>null</c>.</summary>
@@ -98,6 +108,12 @@ public sealed class NightLoop
     public bool PlanFailed { get; private set; }
 
     public bool NightFinished => nightFinished;
+
+    /// <summary>Nacht-Schlüssel der beendeten Nacht (Tagesschleife, AP-52); <c>null</c>, solange die Nacht läuft.</summary>
+    public string? FinishedNight => nightFinished ? finishedNight : null;
+
+    /// <summary>Tagesschleife hat die nächste Nacht angefordert; die Schleifenbedingung ist wieder wahr (AP-52).</summary>
+    public bool NextNightRequested => nightFinished && nextNightRequested;
 
     /// <summary>Behebbare Gründe (execution.md §2): <c>lease_lost</c>, <c>clock_skew</c>, <c>plan_failed</c>.</summary>
     public static bool Recoverable(NinaHeartbeatBlockedReason reason) => reason is
@@ -111,8 +127,10 @@ public sealed class NightLoop
     public bool HasBlocksRemaining(bool blockRunning, bool flatsRunning)
     {
         if (blockRunning || flatsRunning) return true;
-        if (nightFinished) return false;
         if (Blocked is { } b && (!Recoverable(b) || ClockSkewExhausted)) return false;
+        // Nach dem Nachtende falsch (Ende-Bereich, NT-11) – wieder wahr erst, wenn die Tagesschleife die nächste Nacht
+        // anfordert (AP-52); ohne Tagesschleife bleibt es beim Ende der Sequenz.
+        if (nightFinished) return nextNightRequested;
         return true;
     }
 
@@ -120,7 +138,14 @@ public sealed class NightLoop
 
     public NightStep Decide(NightContext c)
     {
-        if (nightFinished) return new NightStep(NightAction.Stop);
+        if (nightFinished)
+        {
+            if (!nextNightRequested) return new NightStep(NightAction.Stop);
+            // Nächste Nacht angefordert (Tagesschleife): beginnt mit dem Wechsel von currentNight (NT-01) – dann wie eine
+            // veraltete Session neu aufbauen; vorher bis zum Nachtfensterende der beendeten Nacht warten.
+            if (c.SessionStale || (c.Night is { } night && night != finishedNight)) return new NightStep(NightAction.ResetStaleSession);
+            return new NightStep(NightAction.WaitForNight, WaitUntilUtc: c.NightWindowEndUtc);
+        }
         if (Blocked is { } reason && reason != NinaHeartbeatBlockedReason.Plan_failed)
         {
             if (!Recoverable(reason) || ClockSkewExhausted) return new NightStep(NightAction.Stop);
@@ -245,7 +270,22 @@ public sealed class NightLoop
 
     public void SessionCompleted() => sessionCompleted = true;
 
-    public void NightFinishedSet() => nightFinished = true;
+    /// <summary><c>nightFinished</c> setzen; <paramref name="night"/> = beendete Nacht (Tagesschleife, AP-52).</summary>
+    public void NightFinishedSet(string? night = null)
+    {
+        nightFinished = true;
+        finishedNight = night;
+        nextNightRequested = false;
+    }
+
+    /// <summary>
+    /// Tagesschleife beginnt eine neue Runde (AP-52): nach einer beendeten Nacht die nächste anfordern – die
+    /// Nachtschleife wird wieder wahr und wartet auf den Wechsel von <c>currentNight</c>. Ohne beendete Nacht ohne Wirkung.
+    /// </summary>
+    public void RequestNextNight()
+    {
+        if (nightFinished) nextNightRequested = true;
+    }
 
     /// <summary>Neue Nacht (veraltete Session verworfen): Zustand der alten Nacht zurücksetzen.</summary>
     public void NewNight()
@@ -253,6 +293,8 @@ public sealed class NightLoop
         planLockUntil = null;
         sessionCompleted = false;
         nightFinished = false;
+        finishedNight = null;
+        nextNightRequested = false;
         PlanFailed = false;
         if (Blocked == NinaHeartbeatBlockedReason.Plan_failed) Unblock();
     }

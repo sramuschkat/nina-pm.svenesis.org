@@ -72,6 +72,21 @@ Die Box *Je Kombination* entscheidet, ob Flats laufen: ist sie leer, nimmt das P
 auf (Hinweis im Log). Speichern als `with-flats.json`. Entsteht beim VM-Termin für P-12 in NINA (das Flat-Panel liefert
 der OmniSim-*Cover Calibrator*); bis dahin fehlt die Datei im Ordner `Samples/`.
 
+## 3a. „Mehrere Nächte“ – `multi-night.json` (AP-52)
+
+Wie 1, aber alles Nächtliche liegt in einem Container **„NINA-PM Tage“** im Ziel-Bereich mit der Bedingung
+*NINA-PM Day Loop* (Enddatum leer, höchstens 14 Nächte; FA-NIN-07). Darin in dieser Reihenfolge:
+
+1. *NINA-PM Wait for Time*: Quelle *Nautische Dämmerung*, Versatz 0, Tageswechsel 12:00. Die Zeit gilt in Standortzeit,
+   nicht in der Zone des NINA-PCs (NT-06). Sie steht **vor** dem Entparken (H3).
+2. *Unpark Scope* → *Cool Camera* → *Run Autofocus*: der Start-Bereich von 1, jetzt jede Nacht.
+3. Die äußere Schleife „NINA-PM Nacht“ aus 1, unverändert („Ziel“, „Blöcke“, „Sicherung“).
+4. *Stop Guiding* → *Park Scope* → *Warm Camera*: jeden Morgen (Home-Variante wie in 1).
+
+Der Start-Bereich der Sequenz bleibt leer. Der Ende-Bereich bleibt wie in 1 (Parken nach der letzten Nacht).
+Die Datei ist aus `one-night-safety.json` abgeleitet (gleiche Objekte, neue `$id`s für den Container und die
+Morgen-Anweisungen). Ob NINA sie lädt, prüft der VM-Lauf zu P-23; danach wie in Abschnitt 4 aus NINA neu exportieren.
+
 ## 4. Vor dem Einchecken
 
 - Keine Gerätewerte, die nur zu einem Rig passen (Filter, Pfade, Profilnamen); Temperatur −10 °C und AF-Intervall

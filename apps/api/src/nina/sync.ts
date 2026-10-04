@@ -80,7 +80,7 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
   const d = await rigData(svc, p);
   const s = rigView(d.rig, d.telescope, d.camera).scheduler;
   const filterOf = new Map(d.filters.map((f) => [f.id, f]));
-  const table = siteNights(d.site, now, undefined, BOOTSTRAP_NIGHTS);
+  const table = siteNights(d.site, now, undefined, BOOTSTRAP_NIGHTS, { twilight: true });
   await d.repos.ninaRig(p.rigId).recordSettingsFetched(p.instanceId, d.rig.settingsVersion, now);
   return {
     apiVersion: '1',
@@ -196,6 +196,16 @@ export async function deliverable(
   rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
   night: string,
 ): Promise<ProjectDetail[]> {
+  return (await deliverableByNight(svc, p, rig, [night]))[0] ?? [];
+}
+
+/** Wie `deliverable`, für mehrere Nächte mit einer Abfrage (Tagesschleife, `targets.deliveryNights`, AP-52). */
+export async function deliverableByNight(
+  svc: ApiServices,
+  p: RigRef,
+  rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
+  nights: readonly string[],
+): Promise<ProjectDetail[][]> {
   const projects = svc.repositories({ tenantId: p.tenantId }).projects();
   const list = await projects.list({
     admin: true,
@@ -206,29 +216,31 @@ export async function deliverable(
     mine: false,
     favorites: false,
   });
-  return list.filter(
-    (d) =>
-      d.project.rigId === p.rigId &&
-      isDeliverable(
-        {
-          approvalStatus: d.project.approvalStatus,
-          status: d.project.status,
-          deletedAt: d.project.deletedAt,
-          ninaDeliveryEnabled: rig.ninaDeliveryEnabled,
-          bonusEnabled: rig.bonusEnabled,
-          startDate: d.project.startDate,
-          projectType: d.project.projectType as 'deep_sky' | 'exoplanet',
-          lines: d.panels.flatMap((panel) =>
-            panel.lines.map((l) => ({
-              ...l,
-              enabled: l.enabled && panel.enabled !== false,
-              deleted: l.deletedAt !== null,
-            })),
-          ),
-          overshootPct: d.overshootPct,
-        },
-        night,
-      ),
+  return nights.map((night) =>
+    list.filter(
+      (d) =>
+        d.project.rigId === p.rigId &&
+        isDeliverable(
+          {
+            approvalStatus: d.project.approvalStatus,
+            status: d.project.status,
+            deletedAt: d.project.deletedAt,
+            ninaDeliveryEnabled: rig.ninaDeliveryEnabled,
+            bonusEnabled: rig.bonusEnabled,
+            startDate: d.project.startDate,
+            projectType: d.project.projectType as 'deep_sky' | 'exoplanet',
+            lines: d.panels.flatMap((panel) =>
+              panel.lines.map((l) => ({
+                ...l,
+                enabled: l.enabled && panel.enabled !== false,
+                deleted: l.deletedAt !== null,
+              })),
+            ),
+            overshootPct: d.overshootPct,
+          },
+          night,
+        ),
+    ),
   );
 }
 
@@ -239,6 +251,7 @@ function targetsEtag(
   projects: readonly ProjectDetail[],
   rejected: Readonly<Record<string, number>>,
   flats: ReadonlyMap<string, readonly FlatRecord[]>,
+  deliveryNights: readonly { night: string; projects: number }[],
 ): string {
   const key = JSON.stringify({
     settingsVersion,
@@ -249,6 +262,8 @@ function targetsEtag(
     rejected: Object.entries(rejected).sort(([a], [b]) => (a < b ? -1 : 1)),
     // Neue Flats ändern die Auswahl am nächsten Morgen (AP-50b).
     flats: [...flats.entries()].sort(([a], [b]) => (a < b ? -1 : 1)),
+    // Auslieferung der nächsten Nächte (Tagesschleife, AP-52).
+    deliveryNights,
   });
   return `"t-${sha256hex(key).slice(0, 16)}"`;
 }
@@ -314,13 +329,21 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   const now = svc.now();
   const d = await rigData(svc, p);
   const view = rigView(d.rig, d.telescope, d.camera);
-  const night = currentNightRow(siteNights(d.site, now, undefined, 2), iso(now)).night;
-  const list = await deliverable(
+  // Aktuelle und zwei folgende Nächte (Tagesschleife, FA-NIN-07); ausgeliefert wird die aktuelle.
+  const table = siteNights(d.site, now, undefined, 4);
+  const night = currentNightRow(table, iso(now)).night;
+  const index = table.nights.findIndex((n) => n.night === night);
+  const ahead = table.nights.slice(index, index + 3).map((n) => n.night);
+  const [list = [], ...later] = await deliverableByNight(
     svc,
     p,
     { ...view, bonusEnabled: view.scheduler.bonusEnabled },
-    night,
+    ahead,
   );
+  const deliveryNights = ahead.map((n, i) => ({
+    night: n,
+    projects: (i === 0 ? list : (later[i - 1] ?? [])).length,
+  }));
   const deepSky = list.filter((x) => x.project.projectType === 'deep_sky');
   const rejected = await d.repos.ninaRig(p.rigId).rejectedCounts(deepSky.map((x) => x.project.id));
   const flats = await d.repos.ninaRig(p.rigId).flatRecords(deepSky.map((x) => x.project.id));
@@ -334,6 +357,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
     rigId: p.rigId,
     generatedAtUtc: iso(now),
     mosaicPanelsIndependent: view.scheduler.mosaicPanelsIndependent,
+    deliveryNights,
     projects: deepSky.map((x) => {
       const pv = projectView(x);
       const c = pv.conditions;
@@ -441,7 +465,14 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   };
   return {
     body,
-    etag: targetsEtag(d.rig.settingsVersion, d.rig.filterWheel, deepSky, rejected, flats),
+    etag: targetsEtag(
+      d.rig.settingsVersion,
+      d.rig.filterWheel,
+      deepSky,
+      rejected,
+      flats,
+      deliveryNights,
+    ),
     details: deepSky,
     confirmed,
     night,

@@ -265,4 +265,65 @@
     <DataTemplate x:Key="NinaPm.Nina.Sequencer.RefreshTargetsInstruction_Mini">
         <mini:MiniSequenceItem />
     </DataTemplate>
+
+    <!-- Tagesschleife (FA-NIN-07, AP-52): Enddatum (letzte Nacht einschließlich) und Höchstzahl Nächte. -->
+    <DataTemplate x:Key="NinaPm.DayLoopCondition">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.DayLoopEndNightLabel}" />
+                    <TextBox MinWidth="90" Margin="0,0,4,0" VerticalAlignment="Center"
+                             ToolTip="{x:Static ui:Texts.DayLoopEndNightPlaceholder}"
+                             Text="{Binding EndNight, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{StaticResource NinaPm.DangerBrush}" Text="{Binding EndNightHint}" />
+                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.DayLoopMaxNightsLabel}" />
+                    <TextBox MinWidth="40" Margin="0,0,12,0" VerticalAlignment="Center"
+                             Text="{Binding MaxNights, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.DayLoopHint}" />
+                    <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" />
+                </WrapPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.DayLoopCondition_Mini">
+        <mini:MiniCondition />
+    </DataTemplate>
+
+    <!-- Warten auf Zeit (FA-NIN-26, AP-52): Quelle, Uhrzeit (nur Quelle Uhrzeit), Versatz, Tageswechsel; Standortzeit. -->
+    <DataTemplate x:Key="NinaPm.WaitForTime">
+        <view:SequenceBlockView>
+            <view:SequenceBlockView.SequenceItemContent>
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox MinWidth="160" Margin="0,0,12,0" VerticalAlignment="Center"
+                              ItemsSource="{Binding Sources}" DisplayMemberPath="Label" SelectedValuePath="Value"
+                              SelectedValue="{Binding Source, Mode=TwoWay}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0"
+                                Visibility="{Binding IsTimeSource, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                        <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.WaitTimeLabel}" />
+                        <TextBox MinWidth="30" VerticalAlignment="Center" Text="{Binding Hours, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                        <TextBlock Margin="2,0" VerticalAlignment="Center" Text=":" />
+                        <TextBox MinWidth="30" VerticalAlignment="Center" Text="{Binding Minutes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.WaitOffsetLabel}" />
+                    <TextBox MinWidth="40" Margin="0,0,12,0" VerticalAlignment="Center"
+                             Text="{Binding OffsetMinutes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.WaitRolloverLabel}" />
+                    <TextBox MinWidth="30" VerticalAlignment="Center" Text="{Binding RolloverHours, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="2,0" VerticalAlignment="Center" Text=":" />
+                    <TextBox MinWidth="30" Margin="0,0,12,0" VerticalAlignment="Center"
+                             Text="{Binding RolloverMinutes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Foreground="{StaticResource NinaPm.DangerBrush}" Text="{Binding RolloverHint}" />
+                    <TextBlock Margin="0,0,12,0" VerticalAlignment="Center" Opacity="0.7" Text="{x:Static ui:Texts.WaitForTimeHint}" />
+                </WrapPanel>
+            </view:SequenceBlockView.SequenceItemContent>
+            <view:SequenceBlockView.SequenceItemProgressContent>
+                <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" />
+            </view:SequenceBlockView.SequenceItemProgressContent>
+        </view:SequenceBlockView>
+    </DataTemplate>
+
+    <DataTemplate x:Key="NinaPm.Nina.Sequencer.WaitForTimeInstruction_Mini">
+        <mini:MiniSequenceItem />
+    </DataTemplate>
 </ResourceDictionary>

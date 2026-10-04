@@ -19124,6 +19124,11 @@ export interface components {
                  * @example 2026-09-18T13:00:00Z
                  */
                 nightWindowEndUtc: string;
+                twilight?: {
+                    civil: components["schemas"]["NinaTwilightCrossing"];
+                    nautical: components["schemas"]["NinaTwilightCrossing"];
+                    astronomical: components["schemas"]["NinaTwilightCrossing"];
+                };
             }[];
             timeZoneTransitions: {
                 /**
@@ -19133,6 +19138,18 @@ export interface components {
                 atUtc: string;
                 utcOffsetMinutes: number;
             }[];
+        };
+        NinaTwilightCrossing: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            duskUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            dawnUtc: string | null;
         };
         NinaTargets: {
             /**
@@ -19432,6 +19449,14 @@ export interface components {
                 };
             })[];
             mosaicPanelsIndependent: boolean;
+            deliveryNights?: {
+                /**
+                 * Format: date
+                 * @example 2026-09-18
+                 */
+                night: string;
+                projects: number;
+            }[];
         };
         NinaSimulation: {
             /**

@@ -16,11 +16,30 @@ import { NightKey, Text, UtcInstant, Uuid, Version } from './common';
 
 export const NinaReadoutMode = z.object({ index: z.number().int().min(0), name: Text });
 
+/** Abend- (`duskUtc`, Abwärtsdurchgang) und Morgendurchgang (`dawnUtc`) einer Dämmerungsgrenze; `null` ohne Durchgang. */
+export const NinaTwilightCrossing = z
+  .object({
+    duskUtc: UtcInstant.nullable(),
+    dawnUtc: UtcInstant.nullable(),
+  })
+  .meta({ id: 'NinaTwilightCrossing' });
+
 export const NinaNightRow = z.object({
   night: NightKey,
   noonStartUtc: UtcInstant,
   noonEndUtc: UtcInstant,
   nightWindowEndUtc: UtcInstant,
+  /**
+   * Dämmerungen der Nacht für *NINA-PM Warten auf Zeit* (AP-52, FA-NIN-26): vom Server mit derselben Engine gerechnet,
+   * das Plugin rechnet keine Astronomie (H1). Nur im Bootstrap, nicht in Plan-Eingaben (`inputHash` unverändert).
+   */
+  twilight: z
+    .object({
+      civil: NinaTwilightCrossing,
+      nautical: NinaTwilightCrossing,
+      astronomical: NinaTwilightCrossing,
+    })
+    .optional(),
 });
 
 export const NinaBootstrap = z

@@ -105,18 +105,31 @@ export class TestWorld {
       timeZone: this.rig.site.timeZone,
     };
     if (this.scenario.realNight) {
-      return buildNightTable(site, noonNightKey(site.timeZone, this.serverTimeS() * 1000), 60);
+      return buildNightTable(site, noonNightKey(site.timeZone, this.serverTimeS() * 1000), 60, {
+        twilight: true,
+      });
     }
     const table = buildNightTable(site, noonNightKey(site.timeZone, this.epochS * 1000), 60);
     const span = this.sessionEndS() - this.epochS + 3600;
+    const tw = { civil: -40, nautical: -20, astronomical: 0, ...this.scenario.twilightInMin };
     const nights = table.nights.map((n, i) => {
       const noonStart = this.epochS - 12 * 3600 + i * 86_400;
       const windowEnd = Math.min(noonStart + 86_400, noonStart + 12 * 3600 + span);
+      // Dämmerungen relativ zum Start der Nacht (AP-52); Morgendurchgang 1 h vor dem Nachtfensterende.
+      const crossing = (min: number) => ({
+        duskUtc: iso(this.epochS + i * 86_400 + min * 60),
+        dawnUtc: iso(windowEnd - 3600),
+      });
       return {
         ...n,
         noonStartUtc: iso(noonStart),
         noonEndUtc: iso(noonStart + 86_400),
         nightWindowEndUtc: iso(windowEnd),
+        twilight: {
+          civil: crossing(tw.civil),
+          nautical: crossing(tw.nautical),
+          astronomical: crossing(tw.astronomical),
+        },
       };
     });
     return { ...table, nights };
@@ -354,7 +367,21 @@ export class TestWorld {
       rigId: uuidFor('rig'),
       generatedAtUtc: iso(this.serverTimeS()),
       projects: this.projects(),
+      deliveryNights: this.deliveryNights(),
     };
+  }
+
+  /** Auslieferung der aktuellen und der zwei folgenden Nächte (Tagesschleife, AP-52). */
+  deliveryNights(): { night: string; projects: number }[] {
+    const table = this.nightTable();
+    const current = this.validNights()[0];
+    const start = table.nights.findIndex((n) => n.night === current);
+    const all = this.projects().length;
+    return table.nights.slice(Math.max(0, start), Math.max(0, start) + 3).map((n, i) => ({
+      night: n.night,
+      projects:
+        this.scenario.deliveryProjects?.[i] ?? (i === 0 || this.scenario.multiNight ? all : 0),
+    }));
   }
 
   // ---- Bootstrap ----------------------------------------------------------------------------------

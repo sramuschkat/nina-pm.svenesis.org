@@ -27,6 +27,8 @@ public sealed class NinaPmResources : ResourceDictionary
         ["NinaPm.BeforeTargetChangeTrigger"] = typeof(BeforeTargetChangeTrigger),
         ["NinaPm.AfterTargetChangeTrigger"] = typeof(AfterTargetChangeTrigger),
         ["NinaPm.RefreshTargets"] = typeof(RefreshTargetsInstruction),
+        ["NinaPm.DayLoopCondition"] = typeof(DayLoopCondition),
+        ["NinaPm.WaitForTime"] = typeof(WaitForTimeInstruction),
     };
 
     public NinaPmResources()

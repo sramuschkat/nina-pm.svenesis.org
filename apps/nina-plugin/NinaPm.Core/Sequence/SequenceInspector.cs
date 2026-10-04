@@ -67,10 +67,14 @@ public sealed record TemplateDeviation(string Check, string Hint);
 /// afEveryMin</c>), kein Dither-Trigger, Sicherungscontainer mit <em>Loop While Unsafe</em> + Nachtschleife und
 /// <em>NINA-PM Warten bis sicher oder Nachtende</em> als letzter Anweisung (nie <em>Wait until Safe</em>), Park- oder
 /// Home-Variante, Ende-Bereich. Abweichungen sind Hinweise, kein Abbruch.
+/// <para>„Mehrere Nächte“ (AP-52): Liegt die äußere Schleife in einem Container mit <em>NINA-PM Tagesschleife</em>, gelten
+/// dessen Anweisungen **vor** der äußeren Schleife als Start (erst <em>NINA-PM Warten auf Zeit</em>, dann Entparken, H3)
+/// und die **danach** zusammen mit dem Ende-Bereich als Ende (Parken jeden Morgen); die Lage von „Ziel“ und „Blöcke“
+/// zählt dann ab der Tagesschleife.</para>
 /// </summary>
 public static class SequenceInspector
 {
-    private static readonly string[] WaitTypes = ["WaitForSunAltitude", "WaitForAltitude", "WaitForTime", "WaitUntilTime"];
+    private static readonly string[] WaitTypes = ["WaitForSunAltitude", "WaitForAltitude", "WaitForTime", "WaitUntilTime", "WaitForTimeInstruction"];
 
     /// <param name="afEveryMin">Autofokus-Takt des Rigs (<c>null</c> = unbekannt, nur Vorhandensein prüfen).</param>
     public static IReadOnlyList<TemplateDeviation> Inspect(SeqNode root, double? afEveryMin = null)
@@ -80,9 +84,19 @@ public static class SequenceInspector
         var all = root.Descendants().Concat([root]).ToList();
         var active = all.Where(n => !n.Disabled).ToList();
 
+        var box = active.FirstOrDefault(n => n.Type == "NinaPmContainer");
+        var path = box is null ? [] : PathTo(root, box) ?? [];
+        // Tagesschleife (AP-52): Container auf dem Weg zu den NINA-PM-Anweisungen mit der Bedingung DayLoopCondition.
+        var dayIndex = path.FindIndex(n => n.HasCondition("DayLoopCondition"));
+        var day = dayIndex >= 0 && dayIndex + 1 < path.Count ? path[dayIndex] : null;
+        var dayItems = day?.ItemList.Where(n => !n.Disabled).ToList() ?? [];
+        var nightAt = day is null ? -1 : dayItems.FindIndex(n => ReferenceEquals(n, path[dayIndex + 1]));
+
         // ---- Start-Bereich (H3, NT-24) ----
         var start = root.ItemList.FirstOrDefault(n => n.Type == "StartAreaContainer");
-        var startItems = start?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
+        var startItems = day is not null && nightAt >= 0
+            ? dayItems.Take(nightAt).Select(n => n.Type).ToList()
+            : start?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
         int Index(string t) => startItems.IndexOf(t);
         var wait = startItems.FindIndex(t => WaitTypes.Contains(t));
         var unpark = Index("UnparkScope");
@@ -94,17 +108,15 @@ public static class SequenceInspector
             if (unpark >= 0 && Index(t) >= 0 && Index(t) < unpark) Add("start_order", $"Start: {t} steht vor dem Entparken.");
 
         // ---- Zielcontainer und „Blöcke“ ----
-        var box = active.FirstOrDefault(n => n.Type == "NinaPmContainer");
         if (box is null)
         {
             Add("box_missing", "Keine NINA-PM-Anweisungen in der Sequenz.");
             return d;
         }
-        var path = PathTo(root, box) ?? [];
         var safety = UsesSafety(root);
         // Vorlage (§1): Ziel-Bereich → äußere Schleife → „Ziel“ → „Blöcke“ → NINA-PM-Anweisungen. Positionen relativ zum
         // Ziel-Bereich, nicht über die Bedingungen – äußere Schleife und „Ziel“ tragen beide die Nachtschleife.
-        var areaIndex = path.FindIndex(n => n.Type == "TargetAreaContainer");
+        var areaIndex = day is not null ? dayIndex : path.FindIndex(n => n.Type == "TargetAreaContainer");
         var below = path.Skip(areaIndex + 1).ToList();
         var ziel = below.Count >= 3 ? below[1] : null;
         var parent = path.Count >= 2 ? path[^2] : null;
@@ -159,6 +171,7 @@ public static class SequenceInspector
 
         // ---- Ende ----
         var end = root.ItemList.FirstOrDefault(n => n.Type == "EndAreaContainer")?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
+        if (day is not null && nightAt >= 0) end = [.. dayItems.Skip(nightAt + 1).Select(n => n.Type), .. end];
         if (!end.Contains("ParkScope") && !end.Contains("FindHome")) Add("end_secure_missing", "Ende: Park Scope bzw. Find Home fehlt.");
         if (!end.Contains("WarmCamera")) Add("end_warm_missing", "Ende: Kamera aufwärmen fehlt.");
         return d;

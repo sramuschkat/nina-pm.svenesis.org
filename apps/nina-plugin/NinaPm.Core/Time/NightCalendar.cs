@@ -2,8 +2,15 @@ using NinaPm.Core.Api.Generated;
 
 namespace NinaPm.Core.Time;
 
-/// <summary>Zeile der Nacht-Tabelle aus <c>bootstrap.nights[]</c> (night.md §1, NT-02).</summary>
-public sealed record NightRow(string Night, DateTimeOffset NoonStartUtc, DateTimeOffset NoonEndUtc, DateTimeOffset NightWindowEndUtc);
+/// <summary>Abend- und Morgendurchgang einer Dämmerungsgrenze; <c>null</c> ohne Durchgang (Polartag/-nacht).</summary>
+public sealed record TwilightCrossing(DateTimeOffset? DuskUtc, DateTimeOffset? DawnUtc);
+
+/// <summary>Dämmerungen einer Nacht vom Server (Bootstrap, AP-52) – das Plugin rechnet keine Astronomie (H1).</summary>
+public sealed record NightTwilight(TwilightCrossing Civil, TwilightCrossing Nautical, TwilightCrossing Astronomical);
+
+/// <summary>Zeile der Nacht-Tabelle aus <c>bootstrap.nights[]</c> (night.md §1, NT-02); Dämmerungen ab AP-52.</summary>
+public sealed record NightRow(string Night, DateTimeOffset NoonStartUtc, DateTimeOffset NoonEndUtc, DateTimeOffset NightWindowEndUtc,
+    NightTwilight? Twilight = null);
 
 /// <summary>Nacht-Tabelle zu kurz oder leer (<c>engine.input_invalid</c>, night.md §1.1): Bootstrap nachladen.</summary>
 public sealed class NightTableException(string message) : Exception(message)
@@ -26,7 +33,10 @@ public static class NightCalendar
     public static readonly TimeSpan StaleAfterSessionEnd = TimeSpan.FromHours(2);
 
     public static IReadOnlyList<NightRow> FromBootstrap(NinaBootstrap bootstrap) =>
-        bootstrap.Nights.Select(n => new NightRow(n.Night, n.NoonStartUtc, n.NoonEndUtc, n.NightWindowEndUtc)).ToList();
+        bootstrap.Nights.Select(n => new NightRow(n.Night, n.NoonStartUtc, n.NoonEndUtc, n.NightWindowEndUtc,
+            n.Twilight is { } t ? new NightTwilight(Crossing(t.Civil), Crossing(t.Nautical), Crossing(t.Astronomical)) : null)).ToList();
+
+    private static TwilightCrossing Crossing(NinaTwilightCrossing c) => new(c.DuskUtc, c.DawnUtc);
 
     public static NightRow CurrentRow(IReadOnlyList<NightRow> nights, DateTimeOffset now)
     {

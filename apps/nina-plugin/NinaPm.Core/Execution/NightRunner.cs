@@ -380,7 +380,7 @@ public sealed class NightRunner(
         var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b), includeCarryOver: hasSession);
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: flatsOn, FlatsPending: flatsPending, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
-            DoneBlocks: DoneBlocks(stored));
+            Night: row.Night, DoneBlocks: DoneBlocks(stored));
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
         // neu planen, solange die Nacht läuft; offline gilt danach der gespeicherte Plan.
@@ -406,6 +406,7 @@ public sealed class NightRunner(
             case NightAction.WaitForBlock:
             case NightAction.BlockedWait:
             case NightAction.WaitForFlats:
+            case NightAction.WaitForNight:
                 await blockHost.DelayAsync(step.WaitUntilUtc ?? clock.UtcNow + NightLoop.BlockedWait, token).ConfigureAwait(false);
                 return;
             case NightAction.RunBlock:
@@ -420,7 +421,7 @@ public sealed class NightRunner(
                 store.SetState(StateKeys.SessionId, null);
                 return;
             case NightAction.FinishNight:
-                Loop.NightFinishedSet();
+                Loop.NightFinishedSet(row.Night);
                 log.Event("SESSION", ("status", "finished"), ("night", row.Night));
                 return;
             case NightAction.RunFlats:
@@ -1111,9 +1112,22 @@ public sealed class NightRunner(
             flats.SkipOpen(night, "unsafe", carryOver: bootstrap is { } b && AutoFlats(b));
         await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);
         Loop.SessionCompleted();
-        Loop.NightFinishedSet();
+        Loop.NightFinishedSet(store.GetState(StateKeys.Night) ?? CurrentNightOrNull());
         store.SetState(StateKeys.SessionId, null);
         log.Event("SESSION", ("status", "finished"), ("reason", "unsafe"));
+    }
+
+    private string? CurrentNightOrNull()
+    {
+        if (bootstrap is null) return null;
+        try
+        {
+            return NightCalendar.CurrentNight(NightCalendar.FromBootstrap(bootstrap), clock.UtcNow);
+        }
+        catch (NightTableException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Nachtende für <em>Warten bis sicher oder Nachtende</em>: <c>darknessEndUtc ?? sessionEndUtc</c>, ohne Plan das Nachtfensterende.</summary>

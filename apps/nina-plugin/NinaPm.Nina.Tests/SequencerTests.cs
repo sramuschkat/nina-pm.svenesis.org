@@ -66,7 +66,8 @@ public sealed class SequencerTests
             Assert.IsType<DataTemplate>(resources[new DataTemplateKey(type)]);
         foreach (var type in new[] { typeof(NinaPmContainer), typeof(NightLoopCondition), typeof(SafetyWaitInstruction),
                      typeof(BeforeExposureTrigger), typeof(AfterExposureTrigger), typeof(BeforeTargetChangeTrigger),
-                     typeof(AfterTargetChangeTrigger), typeof(RefreshTargetsInstruction) })
+                     typeof(AfterTargetChangeTrigger), typeof(RefreshTargetsInstruction), typeof(DayLoopCondition),
+                     typeof(WaitForTimeInstruction) })
             Assert.IsType<DataTemplate>(resources[$"{type.FullName}_Mini"]);
         Assert.IsType<DataTemplate>(resources["NINA-PM_Options"]);
     });

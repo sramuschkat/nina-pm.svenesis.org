@@ -75,4 +75,51 @@ describe('Prüfungen des kopflosen Nachtlaufs', () => {
       true,
     );
   });
+  it('timeGap: Abstand zweier Zeitpunkte aus Log und Report (Warten auf Zeit, P-24)', () => {
+    const wait = parseLog(
+      [
+        'NINA-PM | WAIT_TIME source=astronomicaldusk night=2026-10-03 untilUtc=2026-10-04T13:15:00Z',
+        'NINA-PM | WAIT_TIME_END night=2026-10-03 atUtc=2026-10-04T13:15:20Z',
+      ].join('\n'),
+    ).events;
+    const r = { epochUtc: '2026-10-04T13:00:00Z' };
+    const gap = (minS: number, maxS: number) =>
+      evaluate(
+        {
+          timeGap: [{ report: 'epochUtc' }, { event: 'WAIT_TIME', field: 'untilUtc' }],
+          minS,
+          maxS,
+        },
+        wait,
+        r,
+      ).ok;
+    expect(gap(870, 930)).toBe(true);
+    expect(gap(0, 60)).toBe(false);
+    expect(
+      evaluate(
+        {
+          timeGap: [
+            { event: 'WAIT_TIME', field: 'untilUtc' },
+            { event: 'WAIT_TIME_END', field: 'atUtc' },
+          ],
+          minS: 0,
+          maxS: 30,
+        },
+        wait,
+        r,
+      ).ok,
+    ).toBe(true);
+    // Fehlender Zeitpunkt (2. Auftreten) ist ein Fehlschlag.
+    expect(
+      evaluate(
+        {
+          timeGap: [{ report: 'epochUtc' }, { event: 'WAIT_TIME_END', field: 'atUtc', nth: 2 }],
+          minS: 0,
+          maxS: 1e9,
+        },
+        wait,
+        r,
+      ).ok,
+    ).toBe(false);
+  });
 });

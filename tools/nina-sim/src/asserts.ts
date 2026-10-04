@@ -16,6 +16,12 @@ interface Part {
   readonly vmOnly?: boolean;
 }
 
+/**
+ * Zeitpunkt für `timeGap`: Feld einer Logzeile (`nth`-tes Auftreten, Standard 1) bzw. Punktpfad im Report.
+ */
+export type TimePoint =
+  (Sel & { readonly field: string; readonly nth?: number }) | { readonly report: string };
+
 export type Assert = Part &
   /** Anzahl passender Logzeilen in [min, max] (Standard min 1). */
   (
@@ -26,6 +32,12 @@ export type Assert = Part &
     | { readonly none: Sel; readonly after?: Sel; readonly before?: Sel; readonly nth?: number }
     /** Je Block (BLOCK_START … BLOCK_END) passende Zeilen in [min, max] (Standard min 0). */
     | { readonly perBlock: Sel; readonly min?: number; readonly max?: number }
+    /** Abstand `to − from` in Sekunden in [minS, maxS] (z. B. Ende von *Warten auf Zeit* ±30 s, P-24). */
+    | {
+        readonly timeGap: readonly [TimePoint, TimePoint];
+        readonly minS: number;
+        readonly maxS: number;
+      }
     /** Report: Liste unter `path` (gefiltert mit `where`) hat [min, max] Einträge, bzw. der Wert ist `equals`. */
     | {
         readonly report: string;
@@ -74,7 +86,33 @@ const rangeText = (min = 1, max?: number) =>
       ? `= ${String(min)}`
       : `${String(min)}…${String(max)}`;
 
+function timeOf(p: TimePoint, events: readonly LogEvent[], report: unknown): number | null {
+  const text =
+    'report' in p
+      ? at(report, p.report)
+      : events.filter((e) => hit(e, p))[(p.nth ?? 1) - 1]?.fields[p.field];
+  const ms = typeof text === 'string' ? Date.parse(text) : NaN;
+  return Number.isNaN(ms) ? null : ms / 1000;
+}
+
+const pointText = (p: TimePoint) =>
+  'report' in p
+    ? `Report ${p.report}`
+    : `${sel(p)}${p.nth && p.nth > 1 ? ` (${String(p.nth)}.)` : ''}.${p.field}`;
+
 export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown): AssertOutcome {
+  if ('timeGap' in a) {
+    const [from, to] = a.timeGap;
+    const f = timeOf(from, events, report);
+    const t = timeOf(to, events, report);
+    const label = `${pointText(from)} → ${pointText(to)}`;
+    if (f === null || t === null) return { ok: false, text: `${label}: Zeitpunkt fehlt` };
+    const gap = t - f;
+    return {
+      ok: gap >= a.minS && gap <= a.maxS,
+      text: `${label}: ${String(gap)} s (erwartet ${String(a.minS)}…${String(a.maxS)} s)`,
+    };
+  }
   if ('log' in a) {
     const n = events.filter((e) => hit(e, a.log)).length;
     return {
