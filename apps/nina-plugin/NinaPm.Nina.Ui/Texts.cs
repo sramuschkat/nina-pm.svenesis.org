@@ -386,4 +386,36 @@ public static class Texts
     public static string SafetyWaitHint => T(
         "Wartet bis sicher, höchstens bis zum Nachtende; danach wird die Nacht abgeschlossen.",
         "Waits until safe, at most until the night end; then the night is closed.");
+
+    // ---- Tagesschleife und Warten auf Zeit (AP-52, FA-NIN-07, FA-NIN-26) ----
+    public static string DayLoopHint => T(
+        "Nacht für Nacht, solange NINA-PM für eine der nächsten 3 Nächte Ziele liefert.",
+        "Night after night while NINA-PM delivers targets for one of the next 3 nights.");
+    public static string DayLoopEndNightLabel => T("Letzte Nacht", "Last night");
+    public static string DayLoopEndNightPlaceholder => T("JJJJ-MM-TT, leer = ohne", "YYYY-MM-DD, empty = none");
+    public static string DayLoopMaxNightsLabel => T("Höchstens Nächte", "Max. nights");
+    public static string DayLoopEndNightInvalid => T("Datum ungültig – gilt nicht", "Invalid date – ignored");
+    public static string DayLoopStatus(int nights, string? endReason) => endReason switch
+    {
+        null => nights == 0 ? "" : T($"{nights}. Nacht", $"Night {nights}"),
+        "end_date" => T("beendet: Enddatum erreicht", "ended: end night reached"),
+        "max_nights" => T("beendet: Höchstzahl Nächte erreicht", "ended: max. nights reached"),
+        _ => T("beendet: keine Ziele in den nächsten 3 Nächten", "ended: no targets in the next 3 nights"),
+    };
+
+    public static string WaitForTimeHint => T("Standortzeit des Rigs", "Rig site time");
+    public static string WaitSourceTime => T("Uhrzeit", "Time");
+    public static string WaitSourceCivil => T("Bürgerliche Dämmerung", "Civil dusk");
+    public static string WaitSourceNautical => T("Nautische Dämmerung", "Nautical dusk");
+    public static string WaitSourceAstronomical => T("Astronomische Dämmerung", "Astronomical dusk");
+    public static string WaitTimeLabel => T("Uhrzeit", "Time");
+    public static string WaitOffsetLabel => T("Versatz (min)", "Offset (min)");
+    public static string WaitRolloverLabel => T("Tageswechsel", "Day rollover");
+    public static string WaitRolloverNotNoon => T(
+        "Tageswechsel weicht vom lokalen Mittag ab (Nacht-Definition)",
+        "Day rollover differs from local noon (night definition)");
+    public static string WaitTargetText(string siteTime, string night) => T($"bis {siteTime} (Nacht {night})", $"until {siteTime} (night {night})");
+    public static string WaitNoTwilight(string night) => T($"Nacht {night} ohne diese Dämmerung – kein Warten", $"Night {night} has no such twilight – no wait");
+    public static string WaitingFor(TimeSpan left) =>
+        T($"Warten noch {(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}", $"Waiting {(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}");
 }

@@ -332,6 +332,31 @@ describe('Nacht-Tabelle der relativen Szenarien', () => {
   });
 });
 
+describe('Tagesschleife (AP-52)', () => {
+  it('multi-night: Dämmerungen je Nacht um 24 h verschoben, deliveryNights mit Projekten in drei Nächten', async () => {
+    const t = setup('multi-night');
+    const b = await t.ok('GET', `${P}/bootstrap`);
+    const nights = b.nights as { night: string; twilight: Record<string, { duskUtc: string }> }[];
+    const dusk = (i: number) => Date.parse(must(nights[i]).twilight.nautical?.duskUtc ?? '') / 1000;
+    expect(dusk(0)).toBe(T0 - 20 * 60);
+    expect(dusk(1) - dusk(0)).toBe(86_400);
+    const targets = await t.ok('GET', `${P}/targets`);
+    expect(targets.deliveryNights).toEqual([
+      { night: '2026-09-17', projects: 1 },
+      { night: '2026-09-18', projects: 1 },
+      { night: '2026-09-19', projects: 1 },
+    ]);
+  });
+
+  it('one-night: Auslieferung nur in der aktuellen Nacht', async () => {
+    const t = setup('one-night');
+    const targets = await t.ok('GET', `${P}/targets`);
+    expect((targets.deliveryNights as { projects: number }[]).map((d) => d.projects)).toEqual([
+      2, 0, 0,
+    ]);
+  });
+});
+
 describe('Pläne der Szenarien', () => {
   it('Blöcke beginnen 2 min nach dem Start, je 1 min Abstand', async () => {
     const t = setup('one-night');

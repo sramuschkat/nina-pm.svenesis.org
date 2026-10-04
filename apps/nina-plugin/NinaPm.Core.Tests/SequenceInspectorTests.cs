@@ -28,6 +28,7 @@ public sealed class SequenceInspectorTests
     [Theory]
     [InlineData("one-night-safety.json")]
     [InlineData("one-night.json")]
+    [InlineData("multi-night.json")]
     public void Mitgelieferte_Beispielsequenzen_ohne_Hinweis(string file) => Assert.Empty(Checks(Sample(file)));
 
     public static TheoryData<string, Action<JObject>> Abweichungen() => new()
@@ -64,6 +65,28 @@ public sealed class SequenceInspectorTests
         var s = Sample("one-night-safety.json");
         change(s);
         Assert.Contains(check, Checks(s));
+    }
+
+    [Fact]
+    public void Mehrere_Naechte_Start_und_Ende_in_der_Tagesschleife()
+    {
+        // Start: erst NINA-PM Warten auf Zeit, dann Entparken (H3) – in der Tagesschleife, nicht im Start-Bereich.
+        var s = Sample("multi-night.json");
+        var day = Find(s, "SequentialContainer", "NINA-PM Tage");
+        var items = Values(day, "Items");
+        var wait = items.First(i => ((string)i["$type"]!).Contains("WaitForTimeInstruction", StringComparison.Ordinal));
+        wait.Remove();
+        items.Insert(1, wait);
+        Assert.Equal(["start_unpark_before_wait"], Checks(s));
+
+        // Ohne Parken am Morgen in der Tagesschleife genügt der Ende-Bereich (Parken nach der letzten Nacht).
+        s = Sample("multi-night.json");
+        foreach (var park in Values(Find(s, "SequentialContainer", "NINA-PM Tage"), "Items")
+                     .Where(i => ((string)i["$type"]!).Contains("ParkScope", StringComparison.Ordinal)).ToList())
+            park.Remove();
+        Assert.Empty(Checks(s));
+        Values(Find(s, "EndAreaContainer"), "Items").Clear();
+        Assert.Contains("end_secure_missing", Checks(s));
     }
 
     [Fact]

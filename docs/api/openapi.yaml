@@ -12167,59 +12167,11 @@ components:
                 type: object
                 properties:
                   civil:
-                    type: object
-                    properties:
-                      duskUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                      dawnUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                    required:
-                      - duskUtc
-                      - dawnUtc
+                    $ref: "#/components/schemas/NinaTwilightCrossing"
                   nautical:
-                    type: object
-                    properties:
-                      duskUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                      dawnUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                    required:
-                      - duskUtc
-                      - dawnUtc
+                    $ref: "#/components/schemas/NinaTwilightCrossing"
                   astronomical:
-                    type: object
-                    properties:
-                      duskUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                      dawnUtc:
-                        type:
-                          - string
-                          - "null"
-                        format: date-time
-                        example: 2026-09-18T13:00:00Z
-                    required:
-                      - duskUtc
-                      - dawnUtc
+                    $ref: "#/components/schemas/NinaTwilightCrossing"
                 required:
                   - civil
                   - nautical
@@ -12258,6 +12210,24 @@ components:
         - tzdataVersion
         - nights
         - timeZoneTransitions
+    NinaTwilightCrossing:
+      type: object
+      properties:
+        duskUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        dawnUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+      required:
+        - duskUtc
+        - dawnUtc
     NinaTargets:
       type: object
       properties:

@@ -1,0 +1,115 @@
+{
+  "protocol": "P-23",
+  "description": "Tagesschleife über zwei Nächte (Sequenz „Mehrere Nächte“, Szenario multi-night): nach SESSION status=completed wartet die Tagesschleife in Warten auf Zeit (nautische Dämmerung) auf die zweite Nacht, startet dort eine neue Session mit neuem Nacht-Schlüssel – ohne NINA-Neustart; die Höchstzahl 2 Nächte beendet die Schleife.",
+  "scenario": "multi-night",
+  "untilMin": 1500,
+  "setup": {},
+  "steps": [],
+  "dayLoop": {
+    "maxNights": 2,
+    "source": "NauticalDusk"
+  },
+  "asserts": [
+    [
+      {
+        "report": "sessions",
+        "where": {
+          "status": "completed"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "DAYLOOP"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "WAIT_TIME_END"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "DAYLOOP_END",
+          "where": {
+            "reason": "max_nights"
+          }
+        },
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "finished"
+            }
+          },
+          {
+            "event": "DAYLOOP"
+          },
+          {
+            "event": "WAIT_TIME"
+          },
+          {
+            "event": "WAIT_TIME_END"
+          },
+          {
+            "event": "PLAN",
+            "where": {
+              "reason": "initial"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "SESSION",
+            "where": {
+              "status": "finished"
+            }
+          },
+          {
+            "event": "DAYLOOP_END",
+            "where": {
+              "reason": "max_nights"
+            }
+          }
+        ]
+      },
+      {
+        "timeGap": [
+          {
+            "report": "epochUtc"
+          },
+          {
+            "event": "WAIT_TIME_END",
+            "field": "atUtc",
+            "nth": 2
+          }
+        ],
+        "minS": 85170,
+        "maxS": 85230
+      },
+      {
+        "none": {
+          "event": "ERROR"
+        },
+        "after": {
+          "event": "DAYLOOP"
+        }
+      }
+    ]
+  ]
+}

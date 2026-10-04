@@ -87,6 +87,21 @@ export interface Scenario {
   readonly realNight?: boolean;
   /** Zweite Nacht planbar (Szenario `multi-night`, P-23): Pläne der Folgenacht 24 h später. */
   readonly multiNight?: boolean;
+  /**
+   * Dämmerungen je Nacht (AP-52, *NINA-PM Warten auf Zeit*): Abenddurchgang in Minuten relativ zum Start der jeweiligen
+   * Nacht (Nacht n = Serverstart + n · 24 h). Standard bürgerlich −40, nautisch −20, astronomisch 0 – in der ersten Nacht
+   * also schon vorbei, in der zweiten 24 h später.
+   */
+  readonly twilightInMin?: {
+    readonly civil?: number;
+    readonly nautical?: number;
+    readonly astronomical?: number;
+  };
+  /**
+   * `targets.deliveryNights` (Tagesschleife, FA-NIN-07): Anzahl auslieferbarer Projekte je Nacht ab der aktuellen
+   * (höchstens 3). Standard: alle Szenario-Projekte in der aktuellen Nacht, mit `multiNight` auch in den folgenden, sonst 0.
+   */
+  readonly deliveryProjects?: readonly number[];
   readonly timeline?: readonly TimelineAction[];
   /**
    * Overhead- und Flip-Werte des Rigs statt `TEST_SCHEDULER` (Starfront-Szenarien, gemessen 03.10.2026):

@@ -17,10 +17,12 @@ import { NightKey, Text, UtcInstant, Uuid, Version } from './common';
 export const NinaReadoutMode = z.object({ index: z.number().int().min(0), name: Text });
 
 /** Abend- (`duskUtc`, Abwärtsdurchgang) und Morgendurchgang (`dawnUtc`) einer Dämmerungsgrenze; `null` ohne Durchgang. */
-export const NinaTwilightCrossing = z.object({
-  duskUtc: UtcInstant.nullable(),
-  dawnUtc: UtcInstant.nullable(),
-});
+export const NinaTwilightCrossing = z
+  .object({
+    duskUtc: UtcInstant.nullable(),
+    dawnUtc: UtcInstant.nullable(),
+  })
+  .meta({ id: 'NinaTwilightCrossing' });
 
 export const NinaNightRow = z.object({
   night: NightKey,

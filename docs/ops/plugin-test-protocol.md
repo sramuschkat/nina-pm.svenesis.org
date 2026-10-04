@@ -137,16 +137,19 @@ Eine Zeile je Ereignis: `NINA-PM | EVENT key=value key=value …` (EVENT in Gro�
 | `pierBefore`, `pierAfter`, `durationS` | Flip-Messwerte | `FLIP`, `FLIP_UNDETECTED` |
 | `pending`, `dead` | Outbox-Zähler | `OUTBOX` |
 | `combination`, `missing`, `mechDg` | Flat-Kombination (Schlüssel in Zehntelgrad; Werte und `status`/`reason` bei Flats: `execution.md` §7, Spec-Ergänzung AP-50) | `FLATS_*`, `DARKFLAT_GROUP` |
-| `source` | `server` / `cache` (gespeicherter Server-Plan) | `PLAN` |
+| `source` | `server` / `cache` (gespeicherter Server-Plan); bei *Warten auf Zeit* die Quelle (`time`, `civildusk`, `nauticaldusk`, `astronomicaldusk`) | `PLAN`, `WAIT_TIME` |
 | `etag` | `targetsEtag` (in `"…"`) | `TARGETS` |
 | `atUtc`, `untilUtc` | Zeitpunkte in `…Z` | beliebig |
 | `code` | Unterfall aus `enums.json`/`errors.json`; bei `API status=0` (keine HTTP-Antwort) `network` oder `timeout` | `WARNING`, `ERROR`, `API` |
-| `night` | Nacht-Schlüssel `JJJJ-MM-TT` | `PLAN` (P-29) |
+| `night` | Nacht-Schlüssel `JJJJ-MM-TT` | `PLAN` (P-29), `DAYLOOP*`, `WAIT_TIME*` |
+| `nights` | Tagesschleife: Zahl der in dieser Sequenz beendeten Nächte (AP-52) | `DAYLOOP`, `DAYLOOP_END` |
 | `checks` | Prüfcodes des `SequenceInspector`, durch Komma getrennt (AP-16h, `execution.md` §1) | `WARNING code=sequence_template_deviation` |
 
   Feste Schreibweisen: **`READOUT mode=set name="High Gain Mode" index=0`** (nicht `READOUT set …`) und **`CAPTURE id=… result=saved file="…"`** für die Zuordnung nach `ImageSaved` (es gibt kein Ereignis `ImageSaved` in der Grammatik).
 
-Erlaubte Ereignisnamen: alle `sessionEventKinds` aus `../contracts/enums.json` in Großbuchstaben (`PLAN_BUILT`, `PLAN_REBUILT`, `BLOCK_START`, `BLOCK_END`, `BLOCK_SKIPPED`, `FLIP`, `TRANSIT_START`, `TRANSIT_END`, `TRIGGER_SUPPRESSED`, `FILTER_NOT_FOUND`, `READOUT_MODE_NOT_FOUND`, `LEASE_LOST`, `LEASE_REGAINED`, `OFFLINE_START`, `OFFLINE_END`, `ROTATION_MISMATCH`, `ROTATION_UNKNOWN`, `FLIP_UNDETECTED`, `SKIPPED_TIMEAWARE`, `FLATS_START`, `FLATS_END`, `WARNING`, `ERROR`, …) **plus** die Betriebszeilen `PLAN`, `API`, `LEASE`, `HEARTBEAT`, `OUTBOX`, `READOUT`, `CAPTURE`, `SESSION`, `TARGETS`, `BLOCKED`, `FLATS_RESUME`, `DARKFLAT_GROUP`, `COPY`, `TRIGGER`.
+Erlaubte Ereignisnamen: alle `sessionEventKinds` aus `../contracts/enums.json` in Großbuchstaben (`PLAN_BUILT`, `PLAN_REBUILT`, `BLOCK_START`, `BLOCK_END`, `BLOCK_SKIPPED`, `FLIP`, `TRANSIT_START`, `TRANSIT_END`, `TRIGGER_SUPPRESSED`, `FILTER_NOT_FOUND`, `READOUT_MODE_NOT_FOUND`, `LEASE_LOST`, `LEASE_REGAINED`, `OFFLINE_START`, `OFFLINE_END`, `ROTATION_MISMATCH`, `ROTATION_UNKNOWN`, `FLIP_UNDETECTED`, `SKIPPED_TIMEAWARE`, `FLATS_START`, `FLATS_END`, `WARNING`, `ERROR`, …) **plus** die Betriebszeilen `PLAN`, `API`, `LEASE`, `HEARTBEAT`, `OUTBOX`, `READOUT`, `CAPTURE`, `SESSION`, `TARGETS`, `BLOCKED`, `FLATS_RESUME`, `DARKFLAT_GROUP`, `COPY`, `TRIGGER`, `DAYLOOP`, `DAYLOOP_END`, `WAIT_TIME`, `WAIT_TIME_END`.
+
+  Tagesschleife und *Warten auf Zeit* (AP-52): `DAYLOOP night=<nächste Nacht> nights=<beendete>` zu Beginn jeder Runde, `DAYLOOP_END reason=end_date|max_nights|no_delivery night=… nights=…` beim Ende der Schleife; `WAIT_TIME source=… night=… untilUtc=…` und `WAIT_TIME_END night=… atUtc=…`, ohne Dämmerung in der Nacht `WAIT_TIME status=skipped reason=no_twilight`, ohne Nacht-Tabelle `WAIT_TIME status=unavailable reason=no_night_table` (Warnung, erneuter Versuch nach 60 s).
 
 > **Spec-Ergänzung (AP-S2b, 28.09.2026):** Zwei Ergänzungen, mit dem Merge des AP-S2b-PR freigegeben.
 > - **Betriebszeile `TRIGGER type=… atUtc=…`:** Ein Trigger wurde über den eigenen Trigger-Walk ausgeführt (`execution.md` §4.3). P-01 verlangt die Trigger-Ausführung zwischen den Belichtungen im Log, dafür gab es bisher kein Ereignis.

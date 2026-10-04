@@ -13,6 +13,24 @@ public sealed class SimRun
 
     [JsonProperty("setup")] public SimSetup Setup { get; set; } = new();
     [JsonProperty("steps")] public List<SimStep> Steps { get; set; } = [];
+
+    /// <summary>Sequenz „Mehrere Nächte“ (AP-52): Tagesschleife mit <em>Warten auf Zeit</em>; ohne Angabe „Eine Nacht“.</summary>
+    [JsonProperty("dayLoop")] public SimDayLoop? DayLoop { get; set; }
+}
+
+/// <summary>
+/// <em>NINA-PM Tagesschleife</em> mit <em>NINA-PM Warten auf Zeit</em> am Anfang jeder Runde (AP-52, P-23/P-24):
+/// Enddatum (letzter Nacht-Schlüssel einschließlich), Höchstzahl Nächte, Quelle (<c>Time</c>, <c>CivilDusk</c>,
+/// <c>NauticalDusk</c>, <c>AstronomicalDusk</c>), Uhrzeit <c>HH:mm</c> (Standortzeit), Versatz, Tageswechsel.
+/// </summary>
+public sealed class SimDayLoop
+{
+    [JsonProperty("endNight")] public string? EndNight { get; set; }
+    [JsonProperty("maxNights")] public int MaxNights { get; set; } = 14;
+    [JsonProperty("source")] public string Source { get; set; } = "NauticalDusk";
+    [JsonProperty("time")] public string Time { get; set; } = "21:00";
+    [JsonProperty("offsetMin")] public int OffsetMin { get; set; }
+    [JsonProperty("rollover")] public string Rollover { get; set; } = "12:00";
 }
 
 /// <summary>Simuliertes NINA beim Start (wie das Profil auf dem Testrechner, rig.json).</summary>

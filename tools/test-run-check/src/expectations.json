@@ -1181,6 +1181,27 @@
         }
       ],
       "forbid": []
+    },
+    "P-23": {
+      "package": "AP-52",
+      "steps": [
+        "Zwei Nächte ohne NINA-Neustart: zwei abgeschlossene Sessions, je Runde ein Beginn der Tagesschleife (DAYLOOP) und ein Ende von Warten auf Zeit",
+        "Nach SESSION status=finished wartet die Tagesschleife auf die zweite Nacht (Dämmerung 24 h später), baut dort den Plan neu auf (PLAN reason=initial) und endet nach der Höchstzahl Nächte (DAYLOOP_END reason=max_nights)"
+      ],
+      "require": [
+        { "event": "DAYLOOP" },
+        { "event": "WAIT_TIME_END" },
+        { "event": "DAYLOOP_END", "where": { "reason": "max_nights" } }
+      ],
+      "forbid": []
+    },
+    "P-24": {
+      "package": "AP-52",
+      "steps": [
+        "Warten auf Zeit (astronomische Dämmerung + 15 min, Standortzeit) endet zur erwarteten Zeit (±30 s), kein Block davor; Trigger-Box vor jeder Belichtung nur im VM-Lauf"
+      ],
+      "require": [{ "event": "WAIT_TIME" }, { "event": "WAIT_TIME_END" }],
+      "forbid": []
     }
   }
 }

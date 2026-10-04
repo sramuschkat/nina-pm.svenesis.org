@@ -1520,67 +1520,13 @@
                   "type": "object",
                   "properties": {
                     "civil": {
-                      "type": "object",
-                      "properties": {
-                        "duskUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        },
-                        "dawnUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        }
-                      },
-                      "required": [
-                        "duskUtc",
-                        "dawnUtc"
-                      ]
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
                     },
                     "nautical": {
-                      "type": "object",
-                      "properties": {
-                        "duskUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        },
-                        "dawnUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        }
-                      },
-                      "required": [
-                        "duskUtc",
-                        "dawnUtc"
-                      ]
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
                     },
                     "astronomical": {
-                      "type": "object",
-                      "properties": {
-                        "duskUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        },
-                        "dawnUtc": {
-                          "type": "string",
-                          "nullable": true,
-                          "format": "date-time",
-                          "example": "2026-09-18T13:00:00Z"
-                        }
-                      },
-                      "required": [
-                        "duskUtc",
-                        "dawnUtc"
-                      ]
+                      "$ref": "#/components/schemas/NinaTwilightCrossing"
                     }
                   },
                   "required": [
@@ -5330,6 +5276,27 @@
           "generatedAtUtc",
           "projects",
           "mosaicPanelsIndependent"
+        ]
+      },
+      "NinaTwilightCrossing": {
+        "type": "object",
+        "properties": {
+          "duskUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "dawnUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          }
+        },
+        "required": [
+          "duskUtc",
+          "dawnUtc"
         ]
       },
       "ProblemDetails": {

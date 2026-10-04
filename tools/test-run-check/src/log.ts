@@ -35,6 +35,10 @@ const OPERATION_LINES = [
   'DARKFLAT_GROUP',
   'COPY',
   'TRIGGER',
+  'DAYLOOP',
+  'DAYLOOP_END',
+  'WAIT_TIME',
+  'WAIT_TIME_END',
 ] as const;
 
 /** Verbindliche Schlüsselnamen (Tabelle „Schlüsselnamen“). */
@@ -71,6 +75,7 @@ export const KEYS: ReadonlySet<string> = new Set([
   'code',
   'night',
   'checks',
+  'nights',
 ]);
 
 const ENUMS = fileURLToPath(new URL('../../../docs/contracts/enums.json', import.meta.url));

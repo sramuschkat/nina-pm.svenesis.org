@@ -54,8 +54,8 @@ public static class SampleSequences
 {
     public const string BaseUrl = "https://nina-pm.svenesis.org/downloads/nina-sequences";
 
-    /// <summary>Dateien in <c>NinaPm.Nina/Samples/</c> (R1); <c>multi-night.json</c> (AP-52) und <c>with-flats.json</c> (AP-50) kommen mit ihren Paketen.</summary>
-    public static readonly IReadOnlyList<string> Files = ["one-night-safety.json", "one-night.json"];
+    /// <summary>Dateien in <c>NinaPm.Nina/Samples/</c>: R1 und <c>multi-night.json</c> (AP-52); <c>with-flats.json</c> (AP-50) folgt.</summary>
+    public static readonly IReadOnlyList<string> Files = ["one-night-safety.json", "one-night.json", "multi-night.json"];
 
     public static string Url(string pluginVersion, string file) => $"{BaseUrl}/{Uri.EscapeDataString(pluginVersion)}/{Uri.EscapeDataString(file)}";
 }

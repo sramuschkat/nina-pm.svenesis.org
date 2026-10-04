@@ -37,6 +37,7 @@ public sealed class SampleSequenceTests
     [Theory]
     [InlineData("one-night-safety.json")]
     [InlineData("one-night.json")]
+    [InlineData("multi-night.json")]
     public void Alle_Typen_und_Eigenschaften_gibt_es_in_NINA(string file)
     {
         var root = JObject.Parse(File.ReadAllText(Path.Combine(Samples(), file)));
