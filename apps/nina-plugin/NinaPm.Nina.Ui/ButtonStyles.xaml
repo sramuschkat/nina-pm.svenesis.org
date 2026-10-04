@@ -1,0 +1,85 @@
+<ResourceDictionary
+    x:Class="NinaPm.Nina.Ui.ButtonStyles"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Knöpfe der NINA-PM-Oberfläche (Optionsseite, Sequenz-Bausteine). NINAs StandardButton ignoriert Padding
+        (ContentPresenter mit Rand 0) und setzt die Schrift auf die Hintergrundfarbe – die Texte klebten am Rand und
+        brauchten je einen TextBlock mit eigener Farbe. Hier: echter Innenabstand, feste Höhe, Rahmen, Ecken, Zustände
+        für Maus, Drücken, Tastaturfokus und gesperrt. Farben nur aus NINAs Thema (DynamicResource), damit NINAs
+        Farbschemata greifen. Nach dem Muster der Optionsseite des Astro-PM-Plugins (MIT,
+        Views/AstroPMOptionsView.xaml, Commit 5dd621d: SyncBtn/SyncBtnSmall).
+    -->
+    <Style x:Key="NinaPm.Button" TargetType="{x:Type Button}">
+        <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="14,5" />
+        <Setter Property="MinHeight" Value="30" />
+        <Setter Property="MinWidth" Value="100" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border
+                        x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="3">
+                        <!--
+                            Eigener TextBlock mit fester Farbe: NINAs impliziter TextBlock-Stil (Application-Ressourcen) setzt die
+                            Schrift sonst auf PrimaryBrush – dunkel auf dunklem Knopf (VM 04.10.2026). Inhalt ist immer Text.
+                        -->
+                        <TextBlock
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="{TemplateBinding FontSize}"
+                            FontWeight="{TemplateBinding FontWeight}"
+                            Foreground="{TemplateBinding Foreground}"
+                            Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                            TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ButtonBackgroundSelectedBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  Hauptaktion eines Abschnitts (Speichern, Simulieren): fett und mit Rahmen in der Akzentfarbe.  -->
+    <Style x:Key="NinaPm.ButtonPrimary" BasedOn="{StaticResource NinaPm.Button}" TargetType="{x:Type Button}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+        <Setter Property="MinWidth" Value="140" />
+    </Style>
+
+    <!--  Kleine Knöpfe in Zeilen und im Sequenz-Baustein (Pfeile, Links, Zeilenaktionen).  -->
+    <Style x:Key="NinaPm.ButtonSmall" BasedOn="{StaticResource NinaPm.Button}" TargetType="{x:Type Button}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+</ResourceDictionary>

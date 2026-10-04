@@ -8,5 +8,7 @@ public sealed partial class OptionsTemplates : ResourceDictionary
     public OptionsTemplates()
     {
         InitializeComponent();
+        // Knopf-Stile (Style="{DynamicResource NinaPm.Button…}"), gemeinsam mit der jeweils anderen Vorlage.
+        MergedDictionaries.Add(new ButtonStyles());
     }
 }

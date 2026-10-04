@@ -93,12 +93,8 @@
                                Visibility="{Binding Live, Converter={StaticResource NinaPm.NullToVisible}}" />
                     <ContentControl Content="{Binding Live}" ContentTemplate="{StaticResource NinaPm.LiveStatus}" />
                     <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
-                        <Button Padding="8,2" Command="{Binding ResetPlanCommand}">
-                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Reset}" />
-                        </Button>
-                        <Button Margin="6,0,0,0" Padding="8,2" Command="{Binding SkipBlockCommand}">
-                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.SkipBlock}" />
-                        </Button>
+                        <Button Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding ResetPlanCommand}" Content="{x:Static ui:Texts.Reset}" />
+                        <Button Style="{DynamicResource NinaPm.ButtonSmall}" Command="{Binding SkipBlockCommand}" Content="{x:Static ui:Texts.SkipBlock}" />
                     </StackPanel>
                     <!-- Flat-Handling (FA-NIN-17): drei Boxen wie NINAs Trigger-Boxen (DropIntoCommand des SequentialContainer). -->
                     <Expander Margin="0,8,0,0" Header="{x:Static ui:Texts.FlatsHeader}">
