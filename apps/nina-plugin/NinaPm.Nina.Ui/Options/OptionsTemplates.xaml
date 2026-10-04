@@ -145,8 +145,35 @@
                     </Button>
                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding Status}" />
                 </StackPanel>
-                <DataGrid MaxHeight="300" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
-                          ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}" SelectionMode="Single">
+                <DataGrid MaxHeight="300" AutoGenerateColumns="False" CanUserAddRows="False" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                          IsReadOnly="True" ItemsSource="{Binding Rows}" MinColumnWidth="44" SelectedItem="{Binding Selected}" SelectionMode="Single">
+                    <!--  Spaltenköpfe mit Abstand und kompakte Zeilen wie im Planprotokoll.  -->
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style BasedOn="{StaticResource {x:Type DataGridColumnHeader}}" TargetType="DataGridColumnHeader">
+                            <Setter Property="Padding" Value="8,3" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.RowStyle>
+                        <Style BasedOn="{StaticResource {x:Type DataGridRow}}" TargetType="DataGridRow">
+                            <Setter Property="MinHeight" Value="24" />
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.CellStyle>
+                        <Style BasedOn="{StaticResource {x:Type DataGridCell}}" TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="8,2" />
+                            <Setter Property="TextBlock.TextAlignment" Value="Left" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                            <ContentPresenter VerticalAlignment="Center" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.CellStyle>
                     <DataGrid.Columns>
                         <DataGridTextColumn Binding="{Binding Name}" Header="{x:Static ui:Texts.ColTarget}" />
                         <DataGridTextColumn Binding="{Binding Ra}" Header="RA" />
