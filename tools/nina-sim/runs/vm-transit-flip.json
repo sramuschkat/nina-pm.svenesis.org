@@ -1,0 +1,97 @@
+{
+  "name": "vm-transit-flip",
+  "scenario": "transit-flip",
+  "description": "P-27 mit echtem NINA: Meridian im Transitfenster, NINA flippt in der Serie (Recenter an), Serie bis Fensterende, Alarm recenter_after_flip_on.",
+  "untilMin": 40,
+  "setup": {
+    "recenter": true
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Hinweis flip_in_transit beim Planaufbau (Lücke)",
+      "asserts": [
+        {
+          "log": {
+            "event": "WARNING",
+            "where": {
+              "code": "flip_in_transit"
+            }
+          },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "NINA flippt während der Serie (FLIP west → east)",
+      "asserts": [
+        {
+          "log": {
+            "event": "FLIP"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "FLIP_UNDETECTED"
+          },
+          "min": 0,
+          "max": 0
+        },
+        {
+          "order": [
+            {
+              "event": "TRANSIT_START"
+            },
+            {
+              "event": "FLIP"
+            },
+            {
+              "event": "TRANSIT_END"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Serie danach bis untilUtc, alle Aufnahmen mit transitObservationId",
+      "asserts": [
+        {
+          "log": {
+            "event": "TRANSIT_END"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "R"
+          },
+          "whereExists": ["transitObservationId"],
+          "min": 10
+        }
+      ]
+    },
+    {
+      "name": "Recenter an: Alarm nina_settings_mismatch (recenter_after_flip_on), nichts abgelehnt",
+      "asserts": [
+        {
+          "report": "alerts",
+          "where": {
+            "code": "nina_settings_mismatch",
+            "detail": "recenter_after_flip_on"
+          },
+          "min": 1
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "name": "vm-transit",
+  "scenario": "transit",
+  "description": "P-14 mit echtem NINA: Vorlauf, Serie bis Fensterende, Autofokus-Trigger der Sequenz im Transit unterdrückt, Neuplanung.",
+  "untilMin": 35,
+  "setup": {
+    "afTrigger": true
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Vorlauf: Regelblock endet vor dem Vorlauf, kein Abbruch, Serie am Fensterbeginn",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "BLOCK_END",
+              "where": {
+                "reason": "completed"
+              }
+            },
+            {
+              "event": "BLOCK_START"
+            },
+            {
+              "event": "TRANSIT_START"
+            }
+          ]
+        },
+        {
+          "log": {
+            "event": "CAPTURE",
+            "where": {
+              "result": "aborted"
+            }
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Serie bis untilUtc, alle Aufnahmen mit transitObservationId",
+      "asserts": [
+        {
+          "log": {
+            "event": "TRANSIT_START"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "TRANSIT_END"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "R"
+          },
+          "whereExists": ["transitObservationId"],
+          "min": 10
+        },
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "R"
+          },
+          "sameValue": "transitObservationId"
+        }
+      ]
+    },
+    {
+      "name": "Autofokus-Trigger im Transit unterdrückt (TRIGGER_SUPPRESSED)",
+      "asserts": [
+        {
+          "log": {
+            "event": "TRIGGER_SUPPRESSED",
+            "where": {
+              "type": "AutofocusAfterTimeTrigger"
+            }
+          },
+          "min": 1
+        }
+      ]
+    },
+    {
+      "name": "TRANSIT_END, Neuplanung, keine abgelehnte Anfrage",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "TRANSIT_END"
+            },
+            {
+              "event": "PLAN",
+              "where": {
+                "reason": "refresh"
+              }
+            }
+          ]
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        },
+        {
+          "log": {
+            "event": "ERROR"
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

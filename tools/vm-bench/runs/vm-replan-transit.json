@@ -1,0 +1,27 @@
+{
+  "name": "vm-replan-transit",
+  "description": "P-15b auf echtem NINA (≈ 40 min): langer Block, Transit in Minute 4 festgelegt (Test-Server lock_transit), Fenster ab Minute 15.",
+  "simRun": "vm-replan-transit",
+  "scenario": "replan-transit",
+  "untilMin": 40,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 4,
+      "server": "lock_transit"
+    },
+    {
+      "atMin": 17,
+      "screenshot": "live-status-transit",
+      "tab": "sequencer"
+    }
+  ]
+}

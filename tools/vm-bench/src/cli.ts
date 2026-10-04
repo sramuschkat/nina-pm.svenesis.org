@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRig, loadScenario } from '../../nina-test-server/src/scenario';
-import { NinaTestServer } from '../../nina-test-server/src/server';
+import { NinaTestServer, type TestAction } from '../../nina-test-server/src/server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
@@ -65,7 +65,7 @@ export interface BenchRun {
   readonly connect: readonly Device[];
   readonly coolC?: number;
   /**
-   * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Safety-Monitor unsicher/sicher
+   * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Test-Server-Aktion, Safety-Monitor unsicher/sicher
    * (`safe`, OmniSim-Simulatorschnittstelle, bleibt verbunden) oder getrennt/verbunden (`monitor`, Advanced API).
    */
   readonly steps?: readonly {
@@ -75,6 +75,8 @@ export interface BenchRun {
     coolC?: number;
     safe?: boolean;
     monitor?: 'connect' | 'disconnect';
+    /** Aktion des Test-Servers (`POST /test/actions`), z. B. `lock_transit` für P-15b. */
+    server?: string;
   }[];
 }
 
@@ -228,8 +230,25 @@ async function screenshot(a: AdvancedApi, tab: string | undefined, path: string)
   log(`Screenshot ${path}`);
 }
 
+/**
+ * Vor dem Lauf: OmniSim muss laufen, sobald der Safety-Monitor verbunden wird – nach einem Neustart der VM startet
+ * er nicht von selbst (04.10.2026: Lauf brach erst nach dem NINA-Start mit „fetch failed“ ab).
+ */
+async function preflight(cfg: BenchConfig, r: BenchRun): Promise<void> {
+  if (!r.connect.includes('safetymonitor')) return;
+  const url = `http://${cfg.vmHost ?? ''}:${String(cfg.omnisimPort)}/management/apiversions`;
+  const ok = await fetch(url, { signal: AbortSignal.timeout(5_000) })
+    .then((res) => res.ok)
+    .catch(() => false);
+  if (!ok)
+    throw new Error(
+      `OmniSim antwortet nicht (Port ${String(cfg.omnisimPort)}) – in der VM ASCOM OmniSim starten (und PHD2 für den Guider)`,
+    );
+}
+
 async function run(cfg: BenchConfig, name: string): Promise<boolean> {
   const r = JSON.parse(readFileSync(join(RUNS, `${name}.json`), 'utf8')) as BenchRun;
+  await preflight(cfg, r);
   const dir = join(ROOT, '.vm-bench', `${stamp()}-${r.name}`);
   mkdirSync(dir, { recursive: true });
   const a = api(cfg);
@@ -270,6 +289,13 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
+      // Uhr der VM (04.10.2026: nach einem Neustart 7 h falsch → Plugin sperrte mit clock_skew, Nacht sofort zu Ende).
+      // Der erste Heartbeat kommt nach höchstens 60 s; die Schritte sind absolut terminiert, Warten verschiebt sie nicht.
+      await sleep(75_000);
+      if ((await a.logMessages()).some((m) => m.includes('ERROR code=clock_skew')))
+        throw new Error(
+          'Uhr der VM weicht ab (clock_skew) – in der VM: w32tm /resync /force (Zeitdienst w32time gestartet, Zeitquelle gesetzt)',
+        );
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
         await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
         try {
@@ -279,6 +305,10 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
           if (s.monitor === 'connect') await a.connectFromProfile('safetymonitor', profile);
           if (s.safe !== undefined || s.monitor)
             log(`Safety-Monitor: ${s.monitor ?? (s.safe ? 'sicher' : 'unsicher')}`);
+          if (s.server && server) {
+            server.apply(s.server as TestAction);
+            log(`Test-Server: ${s.server}`);
+          }
           if (s.screenshot) await screenshot(a, s.tab, join(dir, `${s.screenshot}.png`));
         } catch (e) {
           log(`Schritt bei Minute ${String(s.atMin)}: ${String(e)}`);

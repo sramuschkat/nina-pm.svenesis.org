@@ -130,6 +130,15 @@ export class AdvancedApi {
     return this.get('/application/switch-tab', { tab });
   }
 
+  /** Letzte Zeilen des NINA-Logs (`Message`), ab Stufe INFO. */
+  async logMessages(lineCount = 300): Promise<string[]> {
+    const r = await this.get<{ Message?: string }[]>('/application/logs', {
+      lineCount,
+      level: 'INFO',
+    });
+    return (r.Response ?? []).map((e) => e.Message ?? '');
+  }
+
   /** Screenshot des NINA-Fensters als PNG. */
   async screenshot(): Promise<Buffer> {
     const res = await fetch(`${this.base}/application/screenshot?stream=true`, {
