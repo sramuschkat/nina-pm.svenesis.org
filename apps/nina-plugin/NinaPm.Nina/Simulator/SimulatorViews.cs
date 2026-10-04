@@ -224,11 +224,14 @@ public sealed class PlanChartView
         var now = Brush.Of(ChartPalette.Now, ChartPalette.Now);
         FrameBrush = frame;
 
-        var rects = new List<ChartRectView>();
-        // Himmel im Verlauf nach Sonnenhöhe (SKY_STOPS), 5-min-Abschnitte; +1 px gegen Nähte.
+        // Himmel als ein waagrechter Verlauf nach Sonnenhöhe (SKY_STOPS) – ohne Nähte zwischen Abschnitten.
+        var sky = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
         foreach (var k in chart.Sky)
-            rects.Add(new ChartRectView(Px(k.X), PlotTop, Math.Max(1, k.Width * PlotWidth + 1), PlotHeight,
-                Brush.Of(k.Color, ChartPalette.SkyNight), "", label, ""));
+            sky.GradientStops.Add(new GradientStop(Brush.Of(k.Color, ChartPalette.SkyNight).Color, k.X + k.Width / 2));
+        if (sky.GradientStops.Count == 0) sky.GradientStops.Add(new GradientStop(Brush.Of(ChartPalette.SkyNight, ChartPalette.SkyNight).Color, 0));
+        sky.Freeze();
+        SkyBrush = sky;
+        var rects = new List<ChartRectView>();
         // Blöcke als Flächen in Zielfarbe (20 % Fläche, 60 % Rahmen), Name oben links.
         foreach (var b in chart.Blocks)
         {
@@ -293,12 +296,18 @@ public sealed class PlanChartView
             labels.Add(new ChartTextView(4, Py(1 - alt / PlanChart.MaxAltitudeDeg) - 8, $"{alt}°", label, Size: 10.5));
         foreach (var t in chart.Ticks)
             labels.Add(new ChartTextView(Math.Clamp(Px(t.X) - 14, 0, Width - 30), AxisTop, t.Label, label, Size: 10.5));
-        // Dämmerungsnamen am Fuß: abends rechts der Linie, morgens links davon.
+        // Dämmerungsnamen am Fuß: abends rechts der Linie, morgens links davon; liegen Grenzen dicht beieinander,
+        // rückt der Name eine Zeile höher statt zu überlappen.
+        var placed = new List<(double Left, double Right, int Row)>();
         foreach (var t in chart.Twilight)
         {
             var word = Texts.TwilightWord(t.Kind);
-            var left = t.Evening ? Px(t.X) + 4 : Px(t.X) - 4 - TextWidth(word);
-            labels.Add(new ChartTextView(left, PlotTop + PlotHeight - 17, word, label));
+            var w = TextWidth(word);
+            var left = t.Evening ? Px(t.X) + 4 : Px(t.X) - 4 - w;
+            var row = 0;
+            while (placed.Any(p => p.Row == row && left < p.Right + 4 && left + w > p.Left - 4)) row++;
+            placed.Add((left, left + w, row));
+            labels.Add(new ChartTextView(left, PlotTop + PlotHeight - 17 - row * 14, word, label));
         }
         // Flip-Marke als Kasten in Meridianfarbe.
         foreach (var f in chart.Flips)
@@ -308,7 +317,8 @@ public sealed class PlanChartView
         }
         // „Mond“ am höchsten Punkt der Mondfläche.
         if (chart.Moon is { Points.Count: > 1 } m && m.Points.MinBy(p => p.Y) is var top && top.Y < 1 - 5 / PlanChart.MaxAltitudeDeg)
-            labels.Add(new ChartTextView(Px(top.X) - TextWidth(Texts.MoonWord) / 2, Py(top.Y) - 16, Texts.MoonWord, now, Bold: true));
+            labels.Add(new ChartTextView(Math.Clamp(Px(top.X) - TextWidth(Texts.MoonWord) / 2, PadLeft + 2, PadLeft + PlotWidth - TextWidth(Texts.MoonWord) - 2),
+                Math.Max(PlotTop + 2, Py(top.Y) - 16), Texts.MoonWord, now, Bold: true));
         Labels = labels;
     }
 
@@ -319,6 +329,17 @@ public sealed class PlanChartView
     public double ChartHeight => Height;
 
     public SolidColorBrush FrameBrush { get; }
+
+    /// <summary>Himmel als Verlauf über die Zeichenfläche.</summary>
+    public LinearGradientBrush SkyBrush { get; }
+
+    public double PlotLeft => PadLeft;
+
+    public double PlotTopPx => PlotTop;
+
+    public double PlotWidthPx => PlotWidth;
+
+    public double PlotHeightPx => PlotHeight;
 
     public IReadOnlyList<ChartRectView> Rects { get; }
 

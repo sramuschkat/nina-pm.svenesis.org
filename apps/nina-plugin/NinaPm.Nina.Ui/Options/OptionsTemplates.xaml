@@ -411,6 +411,10 @@
                     <Border Margin="0,0,0,8" HorizontalAlignment="Left" Background="{Binding FrameBrush}" CornerRadius="6"
                             DataContext="{Binding Chart}">
                         <Grid Width="{Binding ChartWidth}" Height="{Binding ChartHeight}" ClipToBounds="True">
+                            <Canvas IsHitTestVisible="False">
+                                <Rectangle Canvas.Left="{Binding PlotLeft}" Canvas.Top="{Binding PlotTopPx}" Width="{Binding PlotWidthPx}"
+                                           Height="{Binding PlotHeightPx}" Fill="{Binding SkyBrush}" />
+                            </Canvas>
                             <ItemsControl ItemsSource="{Binding Rects}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
