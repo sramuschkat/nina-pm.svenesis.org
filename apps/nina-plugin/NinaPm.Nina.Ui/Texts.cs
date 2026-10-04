@@ -75,6 +75,17 @@ public static class Texts
     public static string Blocked(string reason) => T($"Gesperrt: {reason}", $"Blocked: {reason}");
     public static string Outbox(int pending, int dead) => T($"Outbox {pending} offen, {dead} Dead-Letter", $"Outbox {pending} pending, {dead} dead letters");
 
+    /// <summary>Kurze Erklärung zu Outbox und Dead-Letter für Benutzer (Tooltip im Live-Status, Optionsseite).</summary>
+    public static string OutboxHelp => T(
+        "Outbox: Meldungen an NINA-PM (Aufnahmen, Ereignisse), die der Server noch nicht bestätigt hat. " +
+        "Ohne Internet sammeln sie sich hier und gehen später der Reihe nach raus – es geht nichts verloren.\n" +
+        "Dead-Letter: Meldungen, die der Server endgültig abgelehnt hat. Sie werden nicht wiederholt und zählen " +
+        "nicht zum Fortschritt; die Admins bekommen einen Hinweis.",
+        "Outbox: reports to NINA-PM (captures, events) the server has not confirmed yet. " +
+        "Without internet they collect here and are sent later in order – nothing is lost.\n" +
+        "Dead letters: reports the server rejected for good. They are not retried and do not count " +
+        "toward progress; the admins are notified.");
+
     /// <summary>Text je Grund aus <c>blockedReasons</c> (execution.md §2); unbekannte Codes unverändert.</summary>
     public static string BlockedReason(string code) => code switch
     {

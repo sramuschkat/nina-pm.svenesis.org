@@ -42,7 +42,7 @@
             <TextBlock Margin="0,2" Foreground="{StaticResource NinaPm.DangerBrush}" Text="{Binding BlockedText}" TextWrapping="Wrap"
                        Visibility="{Binding IsBlocked, Converter={StaticResource NinaPm.BoolToVisibility}}" />
             <TextBlock Margin="0,2" Text="{Binding ExposureText}" />
-            <TextBlock Margin="0,2" Opacity="0.7" Text="{Binding CountersText}" />
+            <TextBlock Margin="0,2" Opacity="0.7" Text="{Binding CountersText}" ToolTip="{x:Static ui:Texts.OutboxHelp}" />
             <Expander Margin="0,4,0,0" Header="{x:Static ui:Texts.TodayTargets}">
                 <ItemsControl ItemsSource="{Binding Blocks}">
                     <ItemsControl.ItemTemplate>
