@@ -33,12 +33,19 @@
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="3">
-                        <ContentPresenter
+                        <!--
+                            Eigener TextBlock mit fester Farbe: NINAs impliziter TextBlock-Stil (Application-Ressourcen) setzt die
+                            Schrift sonst auf PrimaryBrush – dunkel auf dunklem Knopf (VM 04.10.2026). Inhalt ist immer Text.
+                        -->
+                        <TextBlock
                             Margin="{TemplateBinding Padding}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            RecognizesAccessKey="True"
-                            TextElement.Foreground="{TemplateBinding Foreground}" />
+                            FontSize="{TemplateBinding FontSize}"
+                            FontWeight="{TemplateBinding FontWeight}"
+                            Foreground="{TemplateBinding Foreground}"
+                            Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                            TextTrimming="CharacterEllipsis" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
