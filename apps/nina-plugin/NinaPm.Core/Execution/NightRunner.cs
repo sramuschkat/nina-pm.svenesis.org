@@ -88,6 +88,7 @@ public sealed class NightRunner(
     private NinaBootstrap? bootstrap;
     private Blocks? runningBlock;
     private bool bootstrapReload;
+    private DateTimeOffset? targetsFetchedUtc;
 
     /// <summary>
     /// Plan beim nächsten Aufruf erzwingen: <c>resume</c> beim ersten Aufruf mit Session aus <c>ninapm.db</c> und nach
@@ -248,6 +249,12 @@ public sealed class NightRunner(
 
     /// <summary>Zuletzt geladener Bootstrap (Nacht-Tabelle, Rig, Filterzuordnung).</summary>
     public NinaBootstrap? Bootstrap => bootstrap;
+
+    /// <summary>
+    /// „Ziele zuletzt abgerufen“ im Simulator (FA-NIN-18): letzter beantwortete <c>GET /targets</c> (200 oder 304) dieser
+    /// Laufzeit, sonst der Stand des Caches.
+    /// </summary>
+    public DateTimeOffset? TargetsFetchedUtc => targetsFetchedUtc ?? store.GetCache(TargetsCacheKey)?.UpdatedUtc;
 
     /// <summary>Zuletzt geladene Ziele (Projektnamen, Panels) aus <c>cache.targets</c>.</summary>
     public NinaTargets? Targets
@@ -613,6 +620,7 @@ public sealed class NightRunner(
         {
             var (targets, etag) = await planApi.TargetsAsync(cached?.Etag, token).ConfigureAwait(false);
             log.Event("API", ("status", targets is null ? 304 : 200), ("call", "targets"));
+            targetsFetchedUtc = clock.UtcNow;
             if (targets is not null) store.PutCache(TargetsCacheKey, JsonConvert.SerializeObject(targets, NinaJson.Settings()), etag);
             targetsChanged = false;
             if (targets is not null || etag != cached?.Etag) log.Event("TARGETS", ("etag", etag ?? ""));
