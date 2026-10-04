@@ -528,7 +528,7 @@
             }
           },
           "409": {
-            "description": "session.closed | session.rig_busy | engine.incompatible",
+            "description": "session.unknown | session.closed | session.rig_busy | engine.incompatible",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1722,24 +1722,28 @@
                   "type": "string",
                   "nullable": true,
                   "format": "uuid",
+                  "default": null,
                   "description": "UUID"
                 },
                 "projectId": {
                   "type": "string",
                   "nullable": true,
                   "format": "uuid",
+                  "default": null,
                   "description": "UUID"
                 },
                 "panelId": {
                   "type": "string",
                   "nullable": true,
                   "format": "uuid",
+                  "default": null,
                   "description": "UUID"
                 },
                 "exposureLineId": {
                   "type": "string",
                   "nullable": true,
                   "format": "uuid",
+                  "default": null,
                   "description": "UUID"
                 },
                 "assignment": {
@@ -1777,7 +1781,8 @@
                     "east",
                     "west",
                     null
-                  ]
+                  ],
+                  "default": null
                 },
                 "bonus": {
                   "type": "boolean"
@@ -2082,7 +2087,8 @@
             "nullable": true,
             "properties": {
               "triggerPresent": {
-                "type": "boolean"
+                "type": "boolean",
+                "nullable": true
               },
               "useSideOfPier": {
                 "type": "boolean"
@@ -2111,7 +2117,6 @@
               }
             },
             "required": [
-              "triggerPresent",
               "useSideOfPier",
               "recenter",
               "autoFocusAfterFlip",

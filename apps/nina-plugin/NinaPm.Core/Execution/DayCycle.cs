@@ -1,3 +1,4 @@
+using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Planning;
 using NinaPm.Core.Time;
@@ -15,6 +16,13 @@ public static class DayCycle
 
     /// <summary>Ohne Nacht-Tabelle (nie verbunden) erneut versuchen – nicht entparken, solange die Nacht unbekannt ist (H3).</summary>
     public static readonly TimeSpan NoTableRetry = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// Ältere Lieferangaben (<c>deliveryNights</c> im Ziel-Cache) gelten als unbekannt – die Schleife läuft dann weiter, statt
+    /// mit „keine Ziele“ zu enden: Eine Freigabe tagsüber sieht der Cache von gestern nicht (Analyse 04.10.2026). Am Morgen
+    /// frischt der Nachtabschluss die Ziele auf, die Entscheidung am Rundenende ist also aktuell.
+    /// </summary>
+    public static readonly TimeSpan DeliveryMaxAge = TimeSpan.FromHours(6);
 
     /// <summary>
     /// Rundengrenze der Tagesschleife (Anfang <paramref name="starting"/> bzw. Ende einer Runde): Entscheidung für die
@@ -40,7 +48,7 @@ public static class DayCycle
         // Ohne Nacht-Tabelle nur die Höchstzahl; Warten auf Zeit wartet dann, bis die Tabelle geladen ist.
         var decision = next is null
             ? state.EvaluateWithoutTable(settings, finished)
-            : state.Evaluate(settings, next, runner.Targets?.DeliveryNights, finished);
+            : state.Evaluate(settings, next, FreshDeliveryNights(runner, now), finished);
         if (decision != DayLoopDecision.Continue)
         {
             if (state.LoggedEnd != (next ?? "", decision))
@@ -62,6 +70,9 @@ public static class DayCycle
         }
         return decision;
     }
+
+    private static List<DeliveryNights>? FreshDeliveryNights(NightRunner runner, DateTimeOffset now) =>
+        runner.TargetsFetchedUtc is { } fetched && now - fetched <= DeliveryMaxAge ? runner.Targets?.DeliveryNights : null;
 
     /// <summary>
     /// <em>Warten auf Zeit</em>: Bootstrap und Ziele auffrischen, Zielzeit für die nächste Nacht bestimmen (Standortzeit,

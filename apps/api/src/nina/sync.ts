@@ -5,9 +5,10 @@
  * - `targets`: auslieferbare Projekte (`isDeliverable`) mit ETag **ohne** Zähler aus Meldungen (NT-19).
  * - `plan`: Datenladen im Use-Case → `buildPlanInput` → `planNight`, Revision je Session speichern
  *   (A5-2, FA-SIM-05, NT-01, NT-20, M7).
- * Exoplaneten werden erst mit der Transit-Festlegung (R4) ausgeliefert; bis dahin nur Deep-Sky.
+ * Exoplaneten-Projekte nur in der Nacht ihres festgelegten Transits (AP-44; transit.md §9): in `targets` mit
+ * Ephemeride und Beobachtung, in `POST /plan` als Transit-Einheit (`buildPlanInput` mit `transits`).
  */
-import type { FlatRecord, NinaPrincipal, ProjectDetail } from '@nina-pm/db';
+import type { DeliveredTransit, FlatRecord, NinaPrincipal, ProjectDetail } from '@nina-pm/db';
 import {
   EngineInputError,
   ENGINE_VERSION,
@@ -27,6 +28,7 @@ import {
   sortChainKeys,
   type FilterType,
   type PlanMoonProfileSource,
+  type PlanTransitSource,
   type SortChainKey,
 } from '@nina-pm/shared';
 import type { z } from 'zod';
@@ -36,8 +38,11 @@ import { moonProfileView, rigView } from '../routes/web-equipment';
 import { filterPlanSummary, projectView } from '../routes/web-projects';
 import type { ApiServices } from '../routes/services';
 
+type ProjectViewLine = ReturnType<typeof projectView>['panels'][number]['lines'][number];
+
 type Bootstrap = z.output<typeof nina.NinaBootstrap>;
 type Targets = z.output<typeof nina.NinaTargets>;
+type TargetProject = Targets['projects'][number];
 type NinaRigDelivery = z.output<typeof nina.NinaRigDelivery>;
 type PlanRequest = z.output<typeof nina.NinaPlanRequest>;
 type PlanResponse = z.output<typeof nina.NinaPlanResponse>;
@@ -189,58 +194,98 @@ export async function bootstrap(svc: ApiServices, p: NinaPrincipal): Promise<Boo
   };
 }
 
-/** Auslieferbare Projekte des Rigs für eine Nacht (`isDeliverable`, TK 6.3). */
+/** Auslieferbare Projekte des Rigs für eine Nacht (`isDeliverable`, TK 6.3) mit deren festgelegten Transits. */
 export async function deliverable(
   svc: ApiServices,
   p: RigRef,
   rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
   night: string,
-): Promise<ProjectDetail[]> {
-  return (await deliverableByNight(svc, p, rig, [night]))[0] ?? [];
+  now: Date,
+): Promise<Delivery> {
+  const r = await deliverableByNight(svc, p, rig, [night], now);
+  return { projects: r.nights[0] ?? [], transits: r.transits };
 }
 
-/** Wie `deliverable`, für mehrere Nächte mit einer Abfrage (Tagesschleife, `targets.deliveryNights`, AP-52). */
+/** Auslieferung einer Nacht: Projekte und – je Exoplaneten-Projekt – der festgelegte Transit (Schlüssel Nacht:Projekt). */
+export interface Delivery {
+  readonly projects: ProjectDetail[];
+  readonly transits: ReadonlyMap<string, DeliveredTransit>;
+}
+
+/**
+ * Wie `deliverable`, für mehrere Nächte mit einer Abfrage (Tagesschleife, `targets.deliveryNights`, AP-52).
+ * Exoplaneten (TK 6.3 `hasLockedTransit`, transit.md §9): auslieferbar **nur in der Nacht** einer festgelegten,
+ * primären Beobachtung mit Fensterende nach `now` und aktiver Transit-Zeile – ohne Fenster in dieser Nacht entfällt die
+ * Transit-Einheit (`allocation.md` §3 Nr. 6), und ein Exoplaneten-Projekt wird nie wie Deep-Sky belichtet.
+ * `transits` enthält je Nacht höchstens einen Transit je Projekt (den frühesten).
+ */
 export async function deliverableByNight(
   svc: ApiServices,
   p: RigRef,
   rig: { ninaDeliveryEnabled: boolean; bonusEnabled: boolean },
   nights: readonly string[],
-): Promise<ProjectDetail[][]> {
-  const projects = svc.repositories({ tenantId: p.tenantId }).projects();
-  const list = await projects.list({
-    admin: true,
-    deleted: false,
-    rigId: p.rigId,
-    approvalStatus: 'approved',
-    status: 'active',
-    mine: false,
-    favorites: false,
-  });
-  return nights.map((night) =>
-    list.filter(
-      (d) =>
-        d.project.rigId === p.rigId &&
-        isDeliverable(
-          {
-            approvalStatus: d.project.approvalStatus,
-            status: d.project.status,
-            deletedAt: d.project.deletedAt,
-            ninaDeliveryEnabled: rig.ninaDeliveryEnabled,
-            bonusEnabled: rig.bonusEnabled,
-            startDate: d.project.startDate,
-            projectType: d.project.projectType as 'deep_sky' | 'exoplanet',
-            lines: d.panels.flatMap((panel) =>
-              panel.lines.map((l) => ({
-                ...l,
-                enabled: l.enabled && panel.enabled !== false,
-                deleted: l.deletedAt !== null,
-              })),
-            ),
-            overshootPct: d.overshootPct,
-          },
-          night,
-        ),
+  now: Date,
+): Promise<{ nights: ProjectDetail[][]; transits: Map<string, DeliveredTransit> }> {
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  const [list, locked] = await Promise.all([
+    repos.projects().list({
+      admin: true,
+      deleted: false,
+      rigId: p.rigId,
+      approvalStatus: 'approved',
+      status: 'active',
+      mine: false,
+      favorites: false,
+    }),
+    repos.ninaRig(p.rigId).lockedTransits(nights, now),
+  ]);
+  // `lockedTransits` ist nach Fensterbeginn sortiert: je Nacht und Projekt gewinnt der früheste.
+  const transits = new Map<string, DeliveredTransit>();
+  for (const t of locked) {
+    const key = transitKey(t.night, t.projectId);
+    if (t.lineId !== null && !transits.has(key)) transits.set(key, t);
+  }
+  return {
+    transits,
+    nights: nights.map((night) =>
+      list.filter(
+        (d) =>
+          d.project.rigId === p.rigId &&
+          isDeliverable(
+            {
+              approvalStatus: d.project.approvalStatus,
+              status: d.project.status,
+              deletedAt: d.project.deletedAt,
+              ninaDeliveryEnabled: rig.ninaDeliveryEnabled,
+              bonusEnabled: rig.bonusEnabled,
+              startDate: d.project.startDate,
+              projectType: d.project.projectType as 'deep_sky' | 'exoplanet',
+              lines: d.panels.flatMap((panel) =>
+                panel.lines.map((l) => ({
+                  ...l,
+                  enabled: l.enabled && panel.enabled !== false,
+                  deleted: l.deletedAt !== null,
+                })),
+              ),
+              overshootPct: d.overshootPct,
+              hasLockedTransit: transits.has(transitKey(night, d.project.id)),
+            },
+            night,
+          ),
+      ),
     ),
+  };
+}
+
+const transitKey = (night: string, projectId: string) => `${night}:${projectId}`;
+
+/** Festgelegte Transits einer Nacht je Projekt-ID. */
+function transitsOfNight(
+  all: ReadonlyMap<string, DeliveredTransit>,
+  night: string,
+): Map<string, DeliveredTransit> {
+  return new Map(
+    [...all.values()].filter((t) => t.night === night).map((t) => [t.projectId, t] as const),
   );
 }
 
@@ -252,6 +297,7 @@ function targetsEtag(
   rejected: Readonly<Record<string, number>>,
   flats: ReadonlyMap<string, readonly FlatRecord[]>,
   deliveryNights: readonly { night: string; projects: number }[],
+  transits: ReadonlyMap<string, DeliveredTransit>,
 ): string {
   const key = JSON.stringify({
     settingsVersion,
@@ -264,6 +310,23 @@ function targetsEtag(
     flats: [...flats.entries()].sort(([a], [b]) => (a < b ? -1 : 1)),
     // Auslieferung der nächsten Nächte (Tagesschleife, AP-52).
     deliveryNights,
+    // Transit-Festlegungen (TK 7.6): Festlegen, Aufheben und Erlaubnisse ändern die Auslieferung, ohne dass die
+    // Projektversion steigt. Ohne Zähler aus Meldungen (NT-19).
+    transits: [...transits.values()]
+      .map((t) => [
+        t.observationId,
+        t.projectId,
+        t.night,
+        iso(t.windowStartUtc),
+        iso(t.windowEndUtc),
+        iso(t.lockedAt),
+        t.plannedCount,
+        t.allowAutofocus,
+        t.allowRecenter,
+        t.ephemeris.id,
+        t.lineId,
+      ])
+      .sort(([a], [b]) => (String(a) < String(b) ? -1 : 1)),
   });
   return `"t-${sha256hex(key).slice(0, 16)}"`;
 }
@@ -278,7 +341,7 @@ export async function targets(
 
 /**
  * „An NINA ausgeliefert“ (S-41, FA-NIN-22): dieselbe Liste wie `targets` für das Rig, je Ziel mit Stand und
- * Fortschritt je Filter. Nur Deep-Sky, solange Exoplaneten nicht ausgeliefert werden (R4).
+ * Fortschritt je Filter – Exoplaneten-Projekte nur in der Nacht ihres festgelegten Transits (AP-44).
  */
 export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDelivery> {
   const d = await targetsData(svc, p);
@@ -334,146 +397,209 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   const night = currentNightRow(table, iso(now)).night;
   const index = table.nights.findIndex((n) => n.night === night);
   const ahead = table.nights.slice(index, index + 3).map((n) => n.night);
-  const [list = [], ...later] = await deliverableByNight(
+  const delivered = await deliverableByNight(
     svc,
     p,
     { ...view, bonusEnabled: view.scheduler.bonusEnabled },
     ahead,
+    now,
   );
+  const [list = [], ...later] = delivered.nights;
   const deliveryNights = ahead.map((n, i) => ({
     night: n,
     projects: (i === 0 ? list : (later[i - 1] ?? [])).length,
   }));
-  const deepSky = list.filter((x) => x.project.projectType === 'deep_sky');
-  const rejected = await d.repos.ninaRig(p.rigId).rejectedCounts(deepSky.map((x) => x.project.id));
-  const flats = await d.repos.ninaRig(p.rigId).flatRecords(deepSky.map((x) => x.project.id));
+  const transits = transitsOfNight(delivered.transits, night);
+  const ids = list.map((x) => x.project.id);
+  const rejected = await d.repos.ninaRig(p.rigId).rejectedCounts(ids);
+  const flats = await d.repos.ninaRig(p.rigId).flatRecords(ids);
   const confirmed = new Map(
     d.rig.filterWheel
       .filter((s) => s.filterId !== null && s.ninaConfirmedAt !== null)
       .map((s) => [s.filterId as string, s.ninaFilterName]),
   );
   const modes = d.camera.readoutModes;
+  const lineBase = (l: ProjectViewLine) => {
+    const index = l.readoutMode === null ? -1 : modes.indexOf(l.readoutMode);
+    return {
+      id: l.id,
+      filter: l.filterShortName,
+      ninaFilterName: l.filterId === null ? null : (confirmed.get(l.filterId) ?? null),
+      exposureS: l.exposureS,
+      gain: l.gain,
+      offset: l.offsetAdu,
+      binning: l.binning,
+      readoutMode: l.readoutMode,
+      readoutModeIndex: index < 0 ? null : index,
+      moon:
+        l.moonMode === 'profile' && l.moonProfileId
+          ? { mode: 'profile' as const, profileId: l.moonProfileId }
+          : l.moonMode === 'project_default'
+            ? { mode: 'project_default' as const }
+            : { mode: 'none' as const },
+    };
+  };
+  const projects: TargetProject[] = [];
+  for (const x of list) {
+    const pv = projectView(x);
+    const c = pv.conditions;
+    const common = {
+      id: pv.id,
+      version: pv.version,
+      name: pv.name,
+      target: {
+        name: pv.targetName,
+        objectType: pv.targetType,
+        catalogNames: pv.catalogNames,
+      },
+      status: pv.status ?? 'active',
+      priority: pv.priority,
+      startDate: pv.startDate,
+      dueDate: pv.dueDate,
+      flatsOnRecord: flats.get(pv.id) ?? [],
+      conditions: {
+        minAltitudeDeg: c.minAltitudeDeg,
+        minTimeOnTargetH: c.minTimeOnTargetH,
+        twilight: c.twilight,
+        moonDefault: c.moonAvoidanceEnabled
+          ? {
+              enabled: true,
+              separationDeg: c.moonSeparationDeg,
+              widthDays: c.moonWidthDays,
+              relax: c.moonRelaxScale,
+              minAltDeg: c.moonMinAltDeg,
+              maxAltDeg: c.moonMaxAltDeg,
+              maxIlluminationPct: c.moonMaxIlluminationPct,
+              moonMustBeDown: c.moonMustBeDown,
+            }
+          : { enabled: false },
+      },
+      // Zentrum und Raster für den Framing-Assistenten (FA-NIN-02, AP-16h); ohne Rotator gilt der
+      // Kamerawinkel des Rigs als pa₀ (NT-30).
+      center: {
+        raDeg: pv.raDeg ?? pv.panels[0]?.raDeg ?? 0,
+        decDeg: pv.decDeg ?? pv.panels[0]?.decDeg ?? 0,
+        rotationDeg:
+          !d.rig.hasRotator && d.rig.defaultRotationDeg !== null
+            ? d.rig.defaultRotationDeg
+            : (pv.rotationDeg ?? pv.panels[0]?.rotationDeg ?? 0),
+      },
+    };
+    const panelBase = (panel: (typeof pv.panels)[number], position: number) => ({
+      id: panel.id,
+      index: position,
+      label: panel.label,
+      raDeg: panel.raDeg,
+      decDeg: panel.decDeg,
+      rotationDeg: panel.rotationDeg,
+    });
+    if (x.project.projectType === 'exoplanet') {
+      // Exoplanet (transit.md §9): ein Panel mit genau der Transit-Zeile, Ephemeride der Festlegung und die
+      // Beobachtung dieser Nacht. `isDeliverable` hat schon geprüft, dass es sie gibt.
+      const t = transits.get(pv.id);
+      const panel = pv.panels[0];
+      const line = panel?.lines.find((l) => l.id === t?.lineId);
+      if (!t || !panel || !line) continue;
+      projects.push({
+        ...common,
+        type: 'exoplanet',
+        panels: [{ ...panelBase(panel, 0), lines: [lineBase(line)] }],
+        exoplanet: {
+          planet: t.planet,
+          ephemeris: {
+            t0BjdTdb: t.ephemeris.t0BjdTdb,
+            t0SigmaD: t.ephemeris.t0SigmaD,
+            periodD: t.ephemeris.periodD,
+            periodSigmaD: t.ephemeris.periodSigmaD,
+            // Ohne Katalogdauer die Dauer der Beobachtung (Ein- bis Austritt).
+            durationH:
+              t.ephemeris.durationH ?? (t.egressUtc.getTime() - t.ingressUtc.getTime()) / 3_600_000,
+          },
+          observation: {
+            id: t.observationId,
+            status: 'locked',
+            epoch: t.epoch,
+            night: t.night,
+            ingressUtc: iso(t.ingressUtc),
+            midUtc: iso(t.midUtc),
+            egressUtc: iso(t.egressUtc),
+            windowStartUtc: iso(t.windowStartUtc),
+            windowEndUtc: iso(t.windowEndUtc),
+            allowAutofocus: t.allowAutofocus,
+            allowRecenter: t.allowRecenter,
+            counts: {
+              planned: t.plannedCount,
+              acquired: t.acquiredCount,
+              rejected: t.rejectedCount,
+            },
+          },
+        },
+      });
+      continue;
+    }
+    projects.push({
+      ...common,
+      type: 'deep_sky',
+      mosaic: {
+        rows: pv.mosaic.rows,
+        columns: pv.mosaic.cols,
+        overlapPct: pv.mosaic.overlapPct,
+      },
+      // Position = NINA-Nummer − 1 (NT-32, AP-22); `pv.panels` ist nach `panel_index` sortiert.
+      panels: pv.panels.map((panel, position) => ({
+        ...panelBase(panel, position),
+        lines: panel.lines.map((l) => {
+          const k = lineCounters(
+            {
+              plannedCount: l.plannedCount,
+              acquiredCount: l.counters.acquired,
+              rejectedCount: l.counters.rejected,
+              bonusCount: l.counters.bonus,
+              bonusRejectedCount: l.counters.bonusRejected,
+            },
+            x.overshootPct,
+          );
+          return {
+            ...lineBase(l),
+            order: l.orderIndex,
+            enabled: l.enabled && panel.enabled && l.disabledForNight !== night,
+            counts: {
+              planned: k.planned,
+              acquired: k.acquired,
+              rejected: k.rejected,
+              accepted: k.accepted,
+              remaining: k.remaining,
+              planningNeed: k.planningNeed,
+              bonus: k.bonus,
+              bonusRejected: k.bonusRejected,
+            },
+          };
+        }),
+      })),
+      exoplanet: null,
+    });
+  }
   const body: Targets = {
     rigId: p.rigId,
     generatedAtUtc: iso(now),
     mosaicPanelsIndependent: view.scheduler.mosaicPanelsIndependent,
     deliveryNights,
-    projects: deepSky.map((x) => {
-      const pv = projectView(x);
-      const c = pv.conditions;
-      return {
-        id: pv.id,
-        version: pv.version,
-        type: 'deep_sky' as const,
-        name: pv.name,
-        target: {
-          name: pv.targetName,
-          objectType: pv.targetType,
-          catalogNames: pv.catalogNames,
-        },
-        status: pv.status ?? 'active',
-        priority: pv.priority,
-        startDate: pv.startDate,
-        dueDate: pv.dueDate,
-        flatsOnRecord: flats.get(pv.id) ?? [],
-        conditions: {
-          minAltitudeDeg: c.minAltitudeDeg,
-          minTimeOnTargetH: c.minTimeOnTargetH,
-          twilight: c.twilight,
-          moonDefault: c.moonAvoidanceEnabled
-            ? {
-                enabled: true,
-                separationDeg: c.moonSeparationDeg,
-                widthDays: c.moonWidthDays,
-                relax: c.moonRelaxScale,
-                minAltDeg: c.moonMinAltDeg,
-                maxAltDeg: c.moonMaxAltDeg,
-                maxIlluminationPct: c.moonMaxIlluminationPct,
-                moonMustBeDown: c.moonMustBeDown,
-              }
-            : { enabled: false },
-        },
-        // Zentrum und Raster für den Framing-Assistenten (FA-NIN-02, AP-16h); ohne Rotator gilt der
-        // Kamerawinkel des Rigs als pa₀ (NT-30).
-        center: {
-          raDeg: pv.raDeg ?? pv.panels[0]?.raDeg ?? 0,
-          decDeg: pv.decDeg ?? pv.panels[0]?.decDeg ?? 0,
-          rotationDeg:
-            !d.rig.hasRotator && d.rig.defaultRotationDeg !== null
-              ? d.rig.defaultRotationDeg
-              : (pv.rotationDeg ?? pv.panels[0]?.rotationDeg ?? 0),
-        },
-        mosaic: {
-          rows: pv.mosaic.rows,
-          columns: pv.mosaic.cols,
-          overlapPct: pv.mosaic.overlapPct,
-        },
-        // Position = NINA-Nummer − 1 (NT-32, AP-22); `pv.panels` ist nach `panel_index` sortiert.
-        panels: pv.panels.map((panel, position) => ({
-          id: panel.id,
-          index: position,
-          label: panel.label,
-          raDeg: panel.raDeg,
-          decDeg: panel.decDeg,
-          rotationDeg: panel.rotationDeg,
-          lines: panel.lines.map((l) => {
-            const k = lineCounters(
-              {
-                plannedCount: l.plannedCount,
-                acquiredCount: l.counters.acquired,
-                rejectedCount: l.counters.rejected,
-                bonusCount: l.counters.bonus,
-                bonusRejectedCount: l.counters.bonusRejected,
-              },
-              x.overshootPct,
-            );
-            const index = l.readoutMode === null ? -1 : modes.indexOf(l.readoutMode);
-            return {
-              id: l.id,
-              order: l.orderIndex,
-              enabled: l.enabled && panel.enabled && l.disabledForNight !== night,
-              filter: l.filterShortName,
-              ninaFilterName: l.filterId === null ? null : (confirmed.get(l.filterId) ?? null),
-              exposureS: l.exposureS,
-              gain: l.gain,
-              offset: l.offsetAdu,
-              binning: l.binning,
-              readoutMode: l.readoutMode,
-              readoutModeIndex: index < 0 ? null : index,
-              moon:
-                l.moonMode === 'profile' && l.moonProfileId
-                  ? { mode: 'profile' as const, profileId: l.moonProfileId }
-                  : l.moonMode === 'project_default'
-                    ? { mode: 'project_default' as const }
-                    : { mode: 'none' as const },
-              counts: {
-                planned: k.planned,
-                acquired: k.acquired,
-                rejected: k.rejected,
-                accepted: k.accepted,
-                remaining: k.remaining,
-                planningNeed: k.planningNeed,
-                bonus: k.bonus,
-                bonusRejected: k.bonusRejected,
-              },
-            };
-          }),
-        })),
-        exoplanet: null,
-      };
-    }),
+    projects,
   };
+  const shipped = new Set(projects.map((x) => x.id));
+  const details = list.filter((x) => shipped.has(x.project.id));
   return {
     body,
     etag: targetsEtag(
       d.rig.settingsVersion,
       d.rig.filterWheel,
-      deepSky,
+      details,
       rejected,
       flats,
       deliveryNights,
+      transits,
     ),
-    details: deepSky,
+    details,
     confirmed,
     night,
     rig: d.rig,
@@ -483,9 +609,10 @@ async function targetsData(svc: ApiServices, p: RigRef) {
 type RigDataResult = Awaited<ReturnType<typeof rigData>>;
 
 /**
- * Engine-Eingabe einer Nacht für das Rig des Tokens (FA-SIM-05): auslieferbare Deep-Sky-Projekte, Mondprofile,
- * Nacht-Tabelle ab `night`, Autofokus-Intervall nur mit gemeldetem Trigger (M7). `POST /plan` und der
- * Plugin-Simulator (`GET /simulation`, AP-53) rechnen damit dieselbe Eingabe.
+ * Engine-Eingabe einer Nacht für das Rig des Tokens (FA-SIM-05): auslieferbare Deep-Sky-Projekte, Exoplaneten-Projekte
+ * mit festgelegtem Transit dieser Nacht als Transit-Einheit (`transits`, transit.md §3/§9), Mondprofile, Nacht-Tabelle
+ * ab `night`, Autofokus-Intervall nur mit gemeldetem Trigger (M7). `POST /plan` und der Plugin-Simulator
+ * (`GET /simulation`, AP-53) rechnen damit dieselbe Eingabe.
  */
 export async function nightPlanInput(
   svc: ApiServices,
@@ -501,15 +628,33 @@ export async function nightPlanInput(
   },
 ) {
   const view = rigView(d.rig, d.telescope, d.camera);
-  const list = await deliverable(
+  const delivered = await deliverable(
     svc,
     p,
     { ...view, bonusEnabled: view.scheduler.bonusEnabled },
     o.night,
+    o.now,
   );
-  const projects = list
-    .filter((x) => x.project.projectType === 'deep_sky')
+  const ofNight = transitsOfNight(delivered.transits, o.night);
+  // Exoplaneten nur mit Transit dieser Nacht (`isDeliverable` hat das geprüft); nie als reguläre Einheit.
+  const projects = delivered.projects
+    .filter((x) => x.project.projectType === 'deep_sky' || ofNight.has(x.project.id))
     .map((x) => projectView(x));
+  const transits: PlanTransitSource[] = projects.flatMap((x) => {
+    const t = ofNight.get(x.id);
+    return t && t.lineId !== null
+      ? [
+          {
+            projectId: t.projectId,
+            observationId: t.observationId,
+            lineId: t.lineId,
+            windowStartUtc: iso(t.windowStartUtc),
+            windowEndUtc: iso(t.windowEndUtc),
+            lockedAtUtc: iso(t.lockedAt),
+          },
+        ]
+      : [];
+  });
   const lastState = (p.lastState ?? {}) as {
     sequenceTriggers?: { autofocusAfterTimeMin?: number | null } | null;
   };
@@ -529,7 +674,12 @@ export async function nightPlanInput(
       startAtUtc: o.startAtUtc,
       tonight: o.tonight,
       pendingByLine: o.pendingByLine,
-      autofocusAfterTimeMin: lastState.sequenceTriggers?.autofocusAfterTimeMin ?? null,
+      transits,
+      // Trigger noch unbekannt (kein Heartbeat mit NINA-PM-Container, z. B. erster Plan nach dem NINA-Start): mit dem
+      // Intervall des Rigs planen statt ohne Autofokus (Analyse 04.10.2026); bekannt ohne Trigger → ohne (M7).
+      autofocusAfterTimeMin: lastState.sequenceTriggers
+        ? (lastState.sequenceTriggers.autofocusAfterTimeMin ?? null)
+        : view.scheduler.overhead.afEveryMin,
     },
   ) as PlanInput;
   return { input, projects };

@@ -5,7 +5,7 @@
  * abweichende Zeile, Frist, Aufheben mit neuer primärer Beobachtung, Einstellungen, Abschluss nach Fensterende.
  * HAT-P-17 b mit verkürzter Periode (1,3 d) in Starfront, Uhr ab 24.09.2026.
  */
-import { replaceExoCatalog, settleTransits } from '@nina-pm/db';
+import { replaceExoCatalog, settleTransits, TRANSIT_SETTLE_GRACE_MS } from '@nina-pm/db';
 import {
   COOKIE_NAMES,
   type ExoProjectCreated,
@@ -289,10 +289,10 @@ describe('Transit-Beobachtungen (AP-43)', () => {
     ).toBe(30 * 60_000);
   });
 
-  it('nach Fensterende: ohne Aufnahmen verpasst (FA-EXO-21)', async () => {
+  it('nach Fensterende und Nachfrist: ohne Aufnahmen verpasst (FA-EXO-21)', async () => {
     const locked = open((await exo(admin, beaProject)).body).filter((o) => o.status === 'locked');
     const last = locked.map((o) => Date.parse(o.windowEndUtc)).sort((a, b) => b - a)[0] ?? 0;
-    const at = new Date(last + 60_000);
+    const at = new Date(last + TRANSIT_SETTLE_GRACE_MS);
     const result = await settleTransits(s.pg.db, at);
     expect(result.missed).toBeGreaterThanOrEqual(locked.length);
     s.clock.set(at);

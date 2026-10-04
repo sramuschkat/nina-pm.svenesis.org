@@ -157,6 +157,7 @@ export {
   ninaTokenLookup,
   ninaTouch,
   parseCallLog,
+  type DeliveredTransit,
   type FlatRecord,
   type NinaCallLog,
   type NinaCallRecord,
@@ -168,6 +169,8 @@ export {
   CLOSE_AFTER_END_MS,
   STALE_AFTER_SESSION_END_MS,
   STALE_NO_HEARTBEAT_MS,
+  STALE_REPORT_GRACE_MS,
+  OFFLINE_STALE_MS,
   activeAdminIds,
   alertSentSince,
   markStaleSessions,
@@ -253,6 +256,7 @@ export {
 } from './repositories/thumbnail';
 export {
   settleTransits,
+  TRANSIT_SETTLE_GRACE_MS,
   TransitRepository,
   transitLine,
   type LockInput,

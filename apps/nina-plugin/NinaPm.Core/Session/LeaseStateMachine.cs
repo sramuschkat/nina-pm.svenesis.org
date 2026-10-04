@@ -54,6 +54,14 @@ public sealed class LeaseStateMachine
     /// <summary>Neue Blöcke erlaubt: Lease gehalten oder Server nur nicht erreichbar.</summary>
     public bool BlocksAllowed => State is LeaseState.Held or LeaseState.Unreachable;
 
+    /// <summary>Session aufgegeben (Nachtende ohne Lease): zurück auf <c>none</c>, die nächste Session beginnt neu.</summary>
+    public LeaseEffect Reset()
+    {
+        State = LeaseState.None;
+        misses = 0;
+        return LeaseEffect.None;
+    }
+
     public LeaseEffect SessionPostSent()
     {
         if (State == LeaseState.None) State = LeaseState.Acquiring;

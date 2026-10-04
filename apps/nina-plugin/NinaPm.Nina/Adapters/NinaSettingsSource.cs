@@ -9,9 +9,10 @@ namespace NinaPm.Nina.Adapters;
 /// <summary>
 /// NINA-Einstellungen des aktiven Profils für den Heartbeat (execution.md §6 Tabelle, NT-22, NT-E1, NT-E2,
 /// contracts/nina/README.md <c>heartbeat.request</c>). Filterrad-Plätze ab 1 (NINA zählt ab 0, §4.4). Trigger aus den
-/// Vorfahren des zuletzt laufenden NINA-PM-Containers (ohne Container leer, <c>autofocusAfterTimeMin = null</c>).
+/// Vorfahren des zuletzt laufenden NINA-PM-Containers; ohne Container unbekannt (<c>sequenceTriggers = null</c>,
+/// <c>meridianFlip.triggerPresent = null</c>), der Server meldet dann keine Abweichung und plant mit dem Rig-Intervall.
 /// </summary>
-internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequenceTrigger>> triggers) : INinaSettingsSource
+internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequenceTrigger>?> triggers) : INinaSettingsSource
 {
     public NinaHeartbeat Snapshot()
     {
@@ -19,7 +20,8 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
         var flip = profile.MeridianFlipSettings;
         var rotatorSettings = profile.RotatorSettings;
         var astro = profile.AstrometrySettings;
-        var allTriggers = triggers().ToList();
+        var known = triggers()?.ToList();
+        var allTriggers = known ?? [];
         string Type(ISequenceTrigger t) => t.GetType().Name;
 
         var body = new NinaHeartbeat
@@ -27,7 +29,7 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
             ProfileLocation = new ProfileLocation { LatDeg = astro.Latitude, LonDeg = astro.Longitude },
             MeridianFlip = new NinaPm.Core.Api.Generated.MeridianFlip
             {
-                TriggerPresent = allTriggers.Any(t => Type(t) == "MeridianFlipTrigger"),
+                TriggerPresent = known is null ? null : allTriggers.Any(t => Type(t) == "MeridianFlipTrigger"),
                 UseSideOfPier = flip.UseSideOfPier,
                 Recenter = flip.Recenter,
                 AutoFocusAfterFlip = flip.AutoFocusAfterFlip,
@@ -49,7 +51,7 @@ internal sealed class NinaSettingsSource(NinaMediators m, Func<IEnumerable<ISequ
                 Reverse = rotatorSettings.Reverse2,
             },
             PlateSolve = new PlateSolve { RotationToleranceDeg = profile.PlateSolveSettings.RotationTolerance },
-            SequenceTriggers = new SequenceTriggers
+            SequenceTriggers = known is null ? null : new SequenceTriggers
             {
                 Autofocus = [.. allTriggers.Select(Type).Where(n => n.Contains("autofocus", StringComparison.OrdinalIgnoreCase)).Distinct()],
                 Dither = [.. allTriggers.Select(Type).Where(n => n.Contains("dither", StringComparison.OrdinalIgnoreCase)).Distinct()],

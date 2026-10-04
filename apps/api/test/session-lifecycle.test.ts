@@ -1,0 +1,66 @@
+/**
+ * Analyse Plugin ↔ Server 04.10.2026, Paket 4: Einstellungsabweichungen ohne Fehlalarm – unbekannte Trigger (noch kein
+ * NINA-PM-Container gelaufen) melden nichts, Autofokus nur bei `afEveryMin > 0` und erst über 0,5 min Abweichung.
+ */
+import { nina } from '@nina-pm/shared';
+import { describe, expect, it } from 'vitest';
+import { settingsMismatch } from '../src/nina/session';
+
+const rig = {
+  hasRotator: false,
+  rotationToleranceDeg: 1,
+  flipEnabled: true,
+  flipAfterMeridianMin: 5,
+  flipMaxAfterMeridianMin: 10,
+  flipPauseBeforeMeridianMin: 5,
+  afEveryMin: 60,
+  site: { latitudeDeg: 31.9, longitudeDeg: -104.5 },
+  filterWheel: [],
+};
+const flip = {
+  useSideOfPier: true,
+  recenter: false,
+  autoFocusAfterFlip: false,
+  settleTimeS: 0,
+  afterMin: 5,
+  maxAfterMin: 10,
+  pauseBeforeMin: 5,
+};
+const hb = (over: Record<string, unknown>) =>
+  nina.NinaHeartbeat.parse({
+    state: 'idle',
+    pluginVersion: '0.3.0',
+    engineVersion: '0.6.0',
+    ...over,
+  });
+
+describe('Einstellungsabweichungen (execution.md §6)', () => {
+  it('Trigger unbekannt (noch kein Container) → kein flip_trigger_missing, kein af_time_trigger_missing', () => {
+    const { codes } = settingsMismatch(
+      hb({ meridianFlip: { ...flip, triggerPresent: null }, sequenceTriggers: null }),
+      rig,
+    );
+    expect(codes).toEqual([]);
+  });
+
+  it('bekannt ohne Trigger → beide Codes; afEveryMin = 0 → kein Autofokus-Code; Abweichung erst über 0,5 min', () => {
+    const missing = hb({
+      meridianFlip: { ...flip, triggerPresent: false },
+      sequenceTriggers: { autofocus: [], dither: [], autofocusAfterTimeMin: null },
+    });
+    expect(settingsMismatch(missing, rig).codes.slice().sort()).toEqual([
+      'af_time_trigger_missing',
+      'flip_trigger_missing',
+    ]);
+    expect(settingsMismatch(missing, { ...rig, afEveryMin: 0 }).codes).toEqual([
+      'flip_trigger_missing',
+    ]);
+    const af = (min: number) =>
+      settingsMismatch(
+        hb({ sequenceTriggers: { autofocus: [], dither: [], autofocusAfterTimeMin: min } }),
+        rig,
+      ).codes;
+    expect(af(60.4)).toEqual([]);
+    expect(af(61)).toEqual(['af_time_mismatch']);
+  });
+});

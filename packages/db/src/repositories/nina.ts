@@ -3,13 +3,15 @@
  * - `NinaInstanceRepository` (Web, mandantengebunden): anlegen mit Token-Hash, auflisten, widerrufen.
  * - `ninaTokenLookup`: Suche über den eindeutigen Index `token_hash` bei **jeder** Plugin-Anfrage
  *   (kein Cache) – wie die Anmeldesitzung eine bewusste Ausnahme von der tenant_id-Regel (TK 6.1).
- * - `NinaRigRepository`: Plugin-Sicht auf genau ein Rig (Übernahmestatus, ETag-Bausteine, offene Meldungen).
+ * - `NinaRigRepository`: Plugin-Sicht auf genau ein Rig (Übernahmestatus, ETag-Bausteine, offene Meldungen,
+ *   festgelegte Transits für `targets` und `POST /plan`).
  */
 import { ProblemError } from '@nina-pm/shared';
 import type { Kysely, Selectable } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, NinaInstanceTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { transitLine } from './transit';
 
 export type NinaInstanceRow = Selectable<NinaInstanceTable>;
 
@@ -324,6 +326,42 @@ export interface FlatRecord {
   readonly count: number;
 }
 
+/**
+ * Festgelegter Transit für die Auslieferung an NINA (AP-44; transit.md §3, §9): Beobachtung, Planet, Erlaubnisse des
+ * Projekts, Ephemeride der Festlegung und Transit-Zeile (`transitLine`, wie beim Festlegen).
+ */
+export interface DeliveredTransit {
+  readonly observationId: string;
+  readonly projectId: string;
+  readonly night: string;
+  readonly epoch: number;
+  readonly ingressUtc: Date;
+  readonly midUtc: Date;
+  readonly egressUtc: Date;
+  readonly windowStartUtc: Date;
+  readonly windowEndUtc: Date;
+  /** `locked_at`, ersatzweise `created_at` (Reihenfolge bei Überlappung, allocation.md §7.1). */
+  readonly lockedAt: Date;
+  readonly plannedCount: number;
+  readonly acquiredCount: number;
+  readonly rejectedCount: number;
+  readonly planet: string;
+  readonly allowAutofocus: boolean;
+  readonly allowRecenter: boolean;
+  readonly ephemeris: {
+    readonly id: string;
+    readonly t0BjdTdb: number;
+    readonly t0SigmaD: number | null;
+    readonly periodD: number;
+    readonly periodSigmaD: number | null;
+    readonly durationH: number | null;
+  };
+  /** Aktive Transit-Zeile des Projekts; `null` = keine (dann nicht auslieferbar). */
+  readonly lineId: string | null;
+}
+
+const numOrNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+
 export class NinaRigRepository extends TenantRepo {
   constructor(
     db: Kysely<Database>,
@@ -443,6 +481,91 @@ export class NinaRigRepository extends TenantRepo {
       if (r.exposureLineId && !result.has(r.exposureLineId))
         result.set(r.exposureLineId, Math.round(Number(r.rotatorMechDeg) * 10) % 3600);
     return result;
+  }
+
+  /**
+   * Festgelegte Transits dieses Rigs für die Nächte `nights` (transit.md §3, §9): `status = 'locked'`, Fensterende
+   * nach `now`, Projekt nicht gelöscht und am Rig. Nur **primäre** Beobachtungen (`primary_observation_id IS NULL`):
+   * verknüpfte Beobachtungen desselben Ereignisses belichtet NINA nicht noch einmal, ihre Aufnahmen hängen an der
+   * primären (FA-EXO-33a). Sortiert nach Fensterbeginn.
+   */
+  async lockedTransits(nights: readonly string[], now: Date): Promise<DeliveredTransit[]> {
+    if (nights.length === 0) return [];
+    const tenantId = this.ctx.tenantId;
+    const rows = await this.db
+      .selectFrom('transitObservation as o')
+      .innerJoin('project as p', 'p.id', 'o.projectId')
+      .innerJoin('exoProject as x', 'x.projectId', 'o.projectId')
+      .innerJoin('ephemeris as e', 'e.id', 'o.ephemerisId')
+      .select([
+        'o.id',
+        'o.projectId',
+        'o.night',
+        'o.epoch',
+        'o.ingressUtc',
+        'o.midUtc',
+        'o.egressUtc',
+        'o.windowStartUtc',
+        'o.windowEndUtc',
+        'o.lockedAt',
+        'o.createdAt',
+        'o.plannedCount',
+        'o.acquiredCount',
+        'o.rejectedCount',
+        'x.planet',
+        'x.allowAutofocus',
+        'x.allowRecenter',
+        'e.id as ephemerisId',
+        'e.t0BjdTdb',
+        'e.t0SigmaD',
+        'e.periodD',
+        'e.periodSigmaD',
+        'e.durationH',
+      ])
+      .where('o.tenantId', '=', tenantId)
+      .where('p.tenantId', '=', tenantId)
+      .where('x.tenantId', '=', tenantId)
+      .where('e.tenantId', '=', tenantId)
+      .where('p.rigId', '=', this.rigId)
+      .where('p.deletedAt', 'is', null)
+      .where('o.status', '=', 'locked')
+      .where('o.primaryObservationId', 'is', null)
+      .where('o.night', 'in', [...nights])
+      .where('o.windowEndUtc', '>', now)
+      .orderBy('o.windowStartUtc')
+      .orderBy('o.id')
+      .execute();
+    const lines = new Map<string, string | null>();
+    for (const r of rows)
+      if (!lines.has(r.projectId))
+        lines.set(r.projectId, (await transitLine(this.db, tenantId, r.projectId))?.id ?? null);
+    return rows.map((r) => ({
+      observationId: r.id,
+      projectId: r.projectId,
+      night: String(r.night),
+      epoch: Number(r.epoch),
+      ingressUtc: new Date(r.ingressUtc),
+      midUtc: new Date(r.midUtc),
+      egressUtc: new Date(r.egressUtc),
+      windowStartUtc: new Date(r.windowStartUtc),
+      windowEndUtc: new Date(r.windowEndUtc),
+      lockedAt: new Date(r.lockedAt ?? r.createdAt),
+      plannedCount: Number(r.plannedCount),
+      acquiredCount: Number(r.acquiredCount),
+      rejectedCount: Number(r.rejectedCount),
+      planet: r.planet,
+      allowAutofocus: r.allowAutofocus,
+      allowRecenter: r.allowRecenter,
+      ephemeris: {
+        id: r.ephemerisId,
+        t0BjdTdb: Number(r.t0BjdTdb),
+        t0SigmaD: numOrNull(r.t0SigmaD),
+        periodD: Number(r.periodD),
+        periodSigmaD: numOrNull(r.periodSigmaD),
+        durationH: numOrNull(r.durationH),
+      },
+      lineId: lines.get(r.projectId) ?? null,
+    }));
   }
 
   /** Offene Meldungen (NT-20): IDs, die schon in `capture` stehen, zählen nicht noch einmal. */

@@ -367,6 +367,9 @@ describe('POST /plan (FA-SIM-05, NT-01, NT-20, M7)', () => {
           flipDoneByPanel: {},
           currentUnitId: null,
         },
+        // Noch kein Heartbeat mit NINA-PM-Container: Trigger unbekannt → Intervall des Rigs (Analyse 04.10.2026).
+        autofocusAfterTimeMin: (rigView as { scheduler: { overhead: { afEveryMin: number } } })
+          .scheduler.overhead.afEveryMin,
       },
     );
     expect(nina.NinaPlanResponse.safeParse(r.body).error?.issues ?? []).toEqual([]);
@@ -396,10 +399,16 @@ describe('POST /plan (FA-SIM-05, NT-01, NT-20, M7)', () => {
       expect(Date.parse(b.endUtc)).toBeGreaterThan(Date.parse('2026-09-19T06:00:00Z'));
   });
 
-  it('ohne gemeldeten Trigger Autofokus nach Zeit → kein autofocus_hint; mit Trigger schon (M7)', async () => {
+  it('Trigger Autofokus nach Zeit: unbekannt → Rig-Intervall, gemeldet ohne → kein autofocus_hint, mit → schon (M7)', async () => {
     const t = await setup();
     const cmds = (b: Body) =>
       (b.blocks as { entries: { cmd: string }[] }[]).flatMap((x) => x.entries.map((e) => e.cmd));
+    // Noch kein Heartbeat mit Container (z. B. erster Plan nach dem NINA-Start): mit dem Intervall des Rigs planen.
+    const unknown = await post(t, { night: '2026-09-18', reason: 'initial' });
+    expect(cmds(unknown.body)).toContain('autofocus_hint');
+    await s.pg.admin.query(
+      `UPDATE nina_instance SET last_state = '{"sequenceTriggers":{"autofocus":[],"autofocusAfterTimeMin":null,"dither":[]}}'`,
+    );
     const without = await post(t, { night: '2026-09-18', reason: 'initial' });
     expect(cmds(without.body)).not.toContain('autofocus_hint');
     await s.pg.admin.query(

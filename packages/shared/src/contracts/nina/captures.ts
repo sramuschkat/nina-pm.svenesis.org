@@ -42,19 +42,26 @@ const common = {
   metrics: Metrics.optional(),
 };
 
+/**
+ * Felder nur der Lights, die `null` sein dürfen: fehlt das Feld, gilt `null`. Der C#-Client des Plugins lässt sie bei
+ * `null` weg (im OpenAPI-Schema der Vereinigung optional); als Pflicht lehnte der Server sonst das ganze Paket mit
+ * `422` ab – z. B. jede nicht zugeordnete Aufnahme oder `pierSide` einer Montierung ohne Pier-Seite (Analyse 04.10.2026).
+ */
+const lightNullable = <T extends z.ZodType>(s: T) => s.nullable().default(null);
+
 export const NinaLightCapture = z.object({
   ...common,
   frameType: z.literal('light'),
-  blockId: Uuid.nullable(),
-  projectId: Uuid.nullable(),
-  panelId: Uuid.nullable(),
-  exposureLineId: Uuid.nullable(),
+  blockId: lightNullable(Uuid),
+  projectId: lightNullable(Uuid),
+  panelId: lightNullable(Uuid),
+  exposureLineId: lightNullable(Uuid),
   assignment: z.literal('unassigned').optional(),
   transitObservationId: Uuid.nullable().optional(),
   raDeg: z.number().min(0).lt(360),
   decDeg: z.number().min(-90).max(90),
   rotationDeg: Angle,
-  pierSide: z.enum(pierSides).nullable(),
+  pierSide: lightNullable(z.enum(pierSides)),
   bonus: z.boolean(),
 });
 
