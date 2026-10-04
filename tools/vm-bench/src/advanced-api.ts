@@ -130,6 +130,24 @@ export class AdvancedApi {
     return this.get('/application/switch-tab', { tab });
   }
 
+  /**
+   * Abstand der VM-Ortszeit zu UTC (ms, auf 15 min gerundet) aus dem jüngsten Logeintrag – NINA schreibt
+   * Zeitstempel in Ortszeit ohne Zone.
+   */
+  async localOffsetMs(): Promise<number> {
+    const r = await this.get<{ Timestamp?: string }[]>('/application/logs', {
+      lineCount: 5,
+      level: 'INFO',
+    });
+    const latest = (r.Response ?? [])
+      .map((e) => e.Timestamp ?? '')
+      .sort()
+      .at(-1);
+    if (!latest) return 0;
+    const step = 15 * 60_000;
+    return Math.round((Date.parse(`${latest.slice(0, 19)}Z`) - Date.now()) / step) * step;
+  }
+
   /** Letzte Zeilen des NINA-Logs (`Message`), ab Stufe INFO. */
   async logMessages(lineCount = 300): Promise<string[]> {
     const r = await this.get<{ Message?: string }[]>('/application/logs', {

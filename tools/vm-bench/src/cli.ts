@@ -223,6 +223,18 @@ export function logSummary(text: string) {
   };
 }
 
+/** NINA-Log auf Einträge ab `fromLocal` (Ortszeit der VM, `YYYY-MM-DDTHH:MM:SS`) kürzen; das Original bleibt als `nina-full.log`. */
+export function trimLog(path: string, fromLocal: string): void {
+  const text = readFileSync(path, 'utf8');
+  writeFileSync(path.replace(/nina\.log$/, 'nina-full.log'), text);
+  let keep = false;
+  const out = text.split(/(?<=\n)/).filter((line) => {
+    if (/^\d{4}-\d\d-\d\dT/.test(line)) keep = line.slice(0, 19) >= fromLocal;
+    return keep;
+  });
+  writeFileSync(path, out.join(''));
+}
+
 async function screenshot(a: AdvancedApi, tab: string | undefined, path: string): Promise<void> {
   if (tab) await a.switchTab(tab as Parameters<AdvancedApi['switchTab']>[0]);
   await sleep(1500);
@@ -263,6 +275,8 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const restartMs = Date.now();
     await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
+    // NINA schreibt Ortszeit ohne Zone: Abstand der VM-Uhr zu UTC aus dem jüngsten Logeintrag (auf 15 min).
+    const vmOffsetMs = await a.localOffsetMs();
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
     for (const [path, value] of Object.entries(r.profile ?? {})) await a.setProfile(path, value);
@@ -339,6 +353,12 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       dir,
     );
     if (!logs.files['nina.log']) throw new Error('Agent hat kein NINA-Log geliefert');
+    // Der Agent wählt ganze Logdateien nach Änderungszeit – die des vorigen Laufs käme mit (04.10.2026, P-15b).
+    // Darum auf die Zeilen ab dem eigenen Neustart kürzen (Folgezeilen ohne Zeitstempel bleiben beim Eintrag).
+    trimLog(
+      logs.files['nina.log'],
+      new Date(restartMs - 5_000 + vmOffsetMs).toISOString().slice(0, 19),
+    );
     writeFileSync(
       join(dir, 'bench.json'),
       `${JSON.stringify({ run: r.name, startUtc, endUtc: new Date().toISOString() }, null, 2)}\n`,
