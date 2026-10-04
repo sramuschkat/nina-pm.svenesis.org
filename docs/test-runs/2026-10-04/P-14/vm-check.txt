@@ -1,0 +1,4 @@
+  ✓ Vorlauf: Regelblock endet vor dem Vorlauf, kein Abbruch, Serie am Fensterbeginn
+  ✓ Serie bis untilUtc, alle Aufnahmen mit transitObservationId
+  ✓ Autofokus-Trigger im Transit unterdrückt (TRIGGER_SUPPRESSED)
+  ✓ TRANSIT_END, Neuplanung, keine abgelehnte Anfrage
