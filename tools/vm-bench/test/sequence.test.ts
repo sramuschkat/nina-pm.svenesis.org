@@ -57,3 +57,47 @@ describe('globaler Dither-Trigger (vm-smoke)', () => {
     expect(text).toContain('NINA.Sequencer.SequenceItem.Guider.Dither, NINA.Sequencer');
   });
 });
+
+describe('Flat-Boxen (vm-flats, AP-50)', () => {
+  it('hängt drei Boxen an NINA-PM Instructions, Je Kombination mit Trained Flat/Dark Flat Exposure', () => {
+    const path = benchSequence(
+      {
+        sequence: {
+          from: 'one-night-safety',
+          removeFromStart: ['WaitForSunAltitude'],
+          flats: true,
+        },
+      },
+      mkdtempSync(join(tmpdir(), 'seq-')),
+    );
+    const text = readFileSync(path, 'utf8');
+    const find = (o: unknown): Record<string, unknown> | undefined => {
+      if (Array.isArray(o)) return o.map(find).find(Boolean);
+      if (o && typeof o === 'object') {
+        const r = o as Record<string, unknown>;
+        if (String(r.$type ?? '').startsWith('NinaPm.Nina.Sequencer.NinaPmContainer')) return r;
+        return Object.values(r).map(find).find(Boolean);
+      }
+      return undefined;
+    };
+    const box = find(JSON.parse(text)) as Record<
+      string,
+      { $id: string; Items: { $values: Record<string, unknown>[] } }
+    >;
+    expect(box.FlatsSetupRunner?.Items.$values).toEqual([]);
+    expect(box.FlatsTeardownRunner?.Items.$values).toEqual([]);
+    const items = box.FlatsRunner?.Items.$values ?? [];
+    expect(items.map((i) => shortType(String(i.$type)))).toEqual([
+      'TrainedFlatExposure',
+      'TrainedDarkFlatExposure',
+    ]);
+    for (const i of items) {
+      expect(i.KeepPanelClosed).toBe(true);
+      expect((i.Parent as { $ref: string }).$ref).toBe(box.FlatsRunner?.$id);
+      // Ohne Items: NINA legt die Unterelemente selbst an.
+      expect(i.Items).toBeUndefined();
+    }
+    const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

@@ -54,6 +54,25 @@ export class TestWorld {
     readonly state: WorldState,
   ) {
     this.epochS = Math.floor(nowS());
+    // Vorhandene Flats aus dem Szenario (P-38 auf der VM, AP-50b) – solange noch keine Flat-Meldung kam.
+    const onRecord = scenario.flats?.onRecord;
+    if (onRecord && state.flatRecords.size === 0)
+      for (const [project, list] of Object.entries(onRecord))
+        state.flatRecords.set(
+          uuidFor(`project:${project}`),
+          list.map((r) => ({
+            filterShortName: r.filter,
+            rotatorMechDg: Math.round((r.mechDeg ?? 0) * 10) % 3600,
+            gain: r.gain ?? -1,
+            offset: r.offset ?? -1,
+            binning: r.binning ?? 1,
+            readoutModeIndex: r.readoutModeIndex ?? 0,
+            lastUtc: new Date((this.epochS - (r.ageDays ?? 2) * 86_400) * 1000)
+              .toISOString()
+              .replace(/\.\d{3}Z$/, 'Z'),
+            count: 20,
+          })),
+        );
   }
 
   /** Overhead- und Flip-Werte: `TEST_SCHEDULER`, je Szenario überschreibbar (Starfront-Szenarien). */
@@ -363,6 +382,12 @@ export class TestWorld {
       enabled: this.scenario.flats?.enabled ?? false,
       source: this.scenario.flats?.source ?? 'panel',
       auto: this.scenario.flats?.auto ?? { mode: 'off', intervalDays: 7 },
+      ...(this.scenario.flats?.count !== undefined
+        ? {
+            count: this.scenario.flats.count,
+            darkFlats: { enabled: true, count: this.scenario.flats.count },
+          }
+        : {}),
     };
     return {
       ...b,

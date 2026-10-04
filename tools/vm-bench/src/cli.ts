@@ -65,6 +65,15 @@ export interface BenchRun {
   readonly connect: readonly Device[];
   readonly coolC?: number;
   /**
+   * Trainierte Flat-Belichtungen vor dem Start ins Profil (Agent `set-trained-flats`, AP-50): je Filterposition und
+   * Binning; danach prüft der Prüfstand über die Advanced API, dass NINA sie geladen hat.
+   */
+  readonly trainedFlats?: {
+    readonly timeS: number;
+    readonly binnings: readonly number[];
+    readonly brightness?: number;
+  };
+  /**
    * Zeitpunkte nach dem Serverstart: Screenshot eines Reiters, Kamera-Sollwert, Test-Server-Aktion, Safety-Monitor unsicher/sicher
    * (`safe`, OmniSim-Simulatorschnittstelle, bleibt verbunden) oder getrennt/verbunden (`monitor`, Advanced API).
    */
@@ -77,6 +86,11 @@ export interface BenchRun {
     monitor?: 'connect' | 'disconnect';
     /** Aktion des Test-Servers (`POST /test/actions`), z. B. `lock_transit` für P-15b. */
     server?: string;
+    /**
+     * Ab `atMin` NINA neu starten (ohne `ninapm.db` zu löschen), sobald im Log die `nth`-te verschiedene Zeile mit
+     * `contains` steht – z. B. die 2. Flat-Kombination (P-12); danach Geräte, Sequenz laden und starten.
+     */
+    restartAfterLog?: { contains: string; nth: number };
   }[];
 }
 
@@ -273,6 +287,19 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     if (r.prod && !profileId) throw new Error('Kein Prod-Profil: pnpm vm-bench clone-profile …');
     // Log ab diesem Neustart: ein vorheriger (abgebrochener) Lauf darf nicht mitzählen (04.10.2026, P-14).
     const restartMs = Date.now();
+    if (r.trainedFlats) {
+      const t = await job(
+        bench,
+        'set-trained-flats',
+        {
+          profileId: profileId ?? '',
+          ...r.trainedFlats,
+          brightness: r.trainedFlats.brightness ?? 50,
+        },
+        dir,
+      );
+      log(`Agent set-trained-flats: ${t.message}`);
+    }
     await job(bench, 'restart-nina', { resetDb: true, profileId: profileId ?? '' }, dir);
     log(`Advanced API ${await a.waitUntilUp(180_000)}`);
     // NINA schreibt Ortszeit ohne Zone: Abstand der VM-Uhr zu UTC aus dem jüngsten Logeintrag (auf 15 min).
@@ -283,8 +310,21 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
     const profile = await a.activeProfile();
-    for (const d of r.connect) log(`verbunden: ${d} (${await a.connectFromProfile(d, profile)})`);
-    if (r.coolC !== undefined) await a.cool(r.coolC);
+    if (r.trainedFlats) {
+      const trained = (
+        profile.FlatDeviceSettings as { TrainedFlatExposureSettings?: unknown[] } | undefined
+      )?.TrainedFlatExposureSettings;
+      if (!trained?.length)
+        throw new Error(
+          'NINA hat keine trainierten Flat-Belichtungen geladen – Profil prüfen (Sicherung <Profil>.profile.bak in %LOCALAPPDATA%\\NINA\\Profiles)',
+        );
+      log(`trainierte Flat-Belichtungen im Profil: ${String(trained.length)}`);
+    }
+    const connectAll = async () => {
+      for (const d of r.connect) log(`verbunden: ${d} (${await a.connectFromProfile(d, profile)})`);
+      if (r.coolC !== undefined) await a.cool(r.coolC);
+    };
+    await connectAll();
     const folder = (profile.SequenceSettings as { DefaultSequenceFolder?: string } | undefined)
       ?.DefaultSequenceFolder;
     if (!folder) throw new Error('Profil ohne SequenceSettings.DefaultSequenceFolder');
@@ -326,6 +366,27 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
             log(`Test-Server: ${s.server}`);
           }
           if (s.screenshot) await screenshot(a, s.tab, join(dir, `${s.screenshot}.png`));
+          if (s.restartAfterLog) {
+            const seen = new Set<string>();
+            const until = startedMs + r.untilMin * 60_000;
+            while (seen.size < s.restartAfterLog.nth && Date.now() < until) {
+              for (const m of await a.logMessages(300))
+                if (m.includes(s.restartAfterLog.contains))
+                  seen.add(m.slice(m.indexOf(s.restartAfterLog.contains)));
+              if (seen.size < s.restartAfterLog.nth) await sleep(3_000);
+            }
+            if (seen.size < s.restartAfterLog.nth)
+              throw new Error(
+                `„${s.restartAfterLog.contains}“ nur ${String(seen.size)}× im Log – kein Neustart`,
+              );
+            log(`NINA-Neustart nach „${[...seen].at(-1) ?? ''}“`);
+            await job(bench, 'restart-nina', { resetDb: false, profileId: profileId ?? '' }, dir);
+            log(`Advanced API ${await a.waitUntilUp(180_000)}`);
+            await connectAll();
+            await a.loadSequence(SEQUENCE);
+            await a.startSequence();
+            log('Sequenz nach dem Neustart gestartet');
+          }
         } catch (e) {
           log(`Schritt bei Minute ${String(s.atMin)}: ${String(e)}`);
         }

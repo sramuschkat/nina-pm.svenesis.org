@@ -1,0 +1,44 @@
+{
+  "name": "vm-flats-auto",
+  "description": "VM-Lauf P-38 (≈ 20 min): Auto-Flats einmal je Projekt; für beide Projekte liegen schon Flats vor (wie aus einer früheren Nacht) → alle Kombinationen covered, kein Flat-Lauf",
+  "protocols": ["P-38"],
+  "blocks": [
+    {
+      "durationMin": 4,
+      "filters": ["L"],
+      "exposureS": 30,
+      "rotationDeg": 0,
+      "project": "m31"
+    },
+    {
+      "durationMin": 4,
+      "filters": ["Ha"],
+      "exposureS": 30,
+      "rotationDeg": 0,
+      "project": "ngc7000"
+    }
+  ],
+  "darknessEndInMin": 11,
+  "sessionEndInMin": 40,
+  "flats": {
+    "enabled": true,
+    "source": "panel",
+    "count": 5,
+    "auto": {
+      "mode": "once_per_project",
+      "intervalDays": 7
+    },
+    "onRecord": {
+      "m31": [
+        {
+          "filter": "L"
+        }
+      ],
+      "ngc7000": [
+        {
+          "filter": "Ha"
+        }
+      ]
+    }
+  }
+}

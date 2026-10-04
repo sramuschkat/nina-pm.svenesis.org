@@ -60,6 +60,26 @@ export interface Scenario {
       readonly mode: 'off' | 'once_per_project' | 'time_based';
       readonly intervalDays: number;
     };
+    /** Flats und Dark-Flats je Kombination (Rig); Standard wie das Beispiel (20). VM-Läufe: 5. */
+    readonly count?: number;
+    /**
+     * Schon vorhandene Flats je Projektname (`project`) beim Start – wie aus früheren Nächten (P-38 auf der VM ohne
+     * zweite Nacht). `ageDays` = Alter der Flats (Standard 2).
+     */
+    readonly onRecord?: Readonly<
+      Record<
+        string,
+        readonly {
+          readonly filter: string;
+          readonly mechDeg?: number;
+          readonly gain?: number;
+          readonly offset?: number;
+          readonly binning?: number;
+          readonly readoutModeIndex?: number;
+          readonly ageDays?: number;
+        }[]
+      >
+    >;
   };
   /** Weitere NINA-Instanzen am gleichen Rig (Szenario `lease`): zusätzliche Tokens `npm_test2`, … */
   readonly extraInstances?: number;
