@@ -1,0 +1,112 @@
+{
+  "protocol": "P-14",
+  "scenario": "transit",
+  "description": "Transit mit Vorlauf (300-s-Belichtungen davor), Serie bis Fensterende, Autofokus-Trigger im Transit unterdrückt, danach Neuplanung.",
+  "untilMin": 45,
+  "setup": {
+    "afTrigger": true
+  },
+  "steps": [],
+  "asserts": [
+    [
+      {
+        "order": [
+          {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "completed"
+            }
+          },
+          {
+            "event": "BLOCK_START"
+          },
+          {
+            "event": "TRANSIT_START"
+          }
+        ]
+      },
+      {
+        "log": {
+          "event": "CAPTURE",
+          "where": {
+            "result": "aborted"
+          }
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "TRANSIT_START"
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "log": {
+          "event": "TRANSIT_END"
+        },
+        "min": 1,
+        "max": 1
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "R"
+        },
+        "min": 30
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "TRIGGER_SUPPRESSED",
+          "where": {
+            "type": "AutofocusAfterTimeTrigger"
+          }
+        },
+        "min": 1,
+        "max": 1
+      }
+    ],
+    [
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "R"
+        },
+        "whereExists": ["transitObservationId"],
+        "min": 30
+      },
+      {
+        "report": "captures",
+        "where": {
+          "filterShortName": "R"
+        },
+        "sameValue": "transitObservationId"
+      }
+    ],
+    [
+      {
+        "order": [
+          {
+            "event": "TRANSIT_END"
+          },
+          {
+            "event": "PLAN",
+            "where": {
+              "reason": "refresh"
+            }
+          }
+        ]
+      },
+      {
+        "report": "rejected",
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

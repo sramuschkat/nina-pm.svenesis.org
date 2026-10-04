@@ -37,6 +37,42 @@ const plans = readdirSync(dir)
   .sort()
   .map((f) => JSON.parse(readFileSync(`${dir}${f}`, 'utf8')) as GoldenPlan);
 
+describe('Transit-Vorlauf (NT-25, AP-44)', () => {
+  // Ein regulärer Block vor einem gesperrten Transit endet spätestens zum Vorlaufbeginn fenster[0] − slewCenterS − 60 s.
+  const withTransit = plans.filter(
+    (p) => p.expected.entries && p.input.units.some((u) => u.transit) && p.input.startAtS === null,
+  );
+  it.each(withTransit.map((p) => [p.id, p] as const))(
+    '%s: Regelblock endet vor dem Vorlauf',
+    (_id, plan) => {
+      const entries = goldenEntries(planGrid(plan.input));
+      for (const unit of plan.input.units.filter((u) => u.transit)) {
+        const series = entries.find(
+          (e) => e.cmd === 'expose_series' && e.line === unit.transit?.lineId,
+        );
+        if (!series) continue; // vorgefiltert (Transitkonflikt)
+        const lead =
+          (unit.transit?.windowS[0] ?? 0) - plan.input.settings.overhead.slewCenterS - 60;
+        // Letzter Slew dieser Einheit vor der Serie = Vorlauf; das „end“ davor schließt den Regelblock.
+        let slew = -1;
+        entries.forEach((e, i) => {
+          if (
+            e.cmd === 'slew_center' &&
+            e.unit === unit.unitId &&
+            Number(e.atS) <= Number(series.atS)
+          )
+            slew = i;
+        });
+        const before = entries
+          .slice(0, Math.max(slew, 0))
+          .filter((e) => e.cmd === 'end')
+          .at(-1);
+        if (before) expect(Number(before.atS), plan.id).toBeLessThanOrEqual(lead);
+      }
+    },
+  );
+});
+
 describe('Soll-Pläne (Paint und Ablauf)', () => {
   it('sind vorhanden (Pflichtfälle README)', () => {
     expect(plans.length).toBeGreaterThanOrEqual(33);

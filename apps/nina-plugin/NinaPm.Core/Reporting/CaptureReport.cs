@@ -66,7 +66,8 @@ public static class CaptureMapper
         DecDeg = f.Block.DecDeg,
         RotationDeg = f.RotationDeg ?? f.Block.RotationDeg,
         PierSide = f.PierSide,
-        Bonus = f.Entry.Bonus,
+        // Pflichtfeld; Einträge der Transitserie tragen keins (der Server ordnet Transitaufnahmen selbst zu).
+        Bonus = f.Entry.Bonus ?? false,
     };
 
     /// <summary>Feste ASCOM-Zuordnung (NT-34): <c>pierWest → west</c>, <c>pierEast → east</c>, sonst <c>null</c>.</summary>

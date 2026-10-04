@@ -127,12 +127,22 @@ public sealed class SequencerTests
         outer.Add(dither); // zwei Ebenen über dem Container – der Walk geht alle Vorfahren durch
         middle.Add(af);
 
-        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null, default);
-        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null, default);
+        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null, transit: null, default);
+        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null, transit: null, default);
 
         Assert.Equal(0, dither.Runs);
         Assert.Equal(2, af.Runs);
         Assert.Contains(nameof(FakeDitherAfterExposures), box.SuppressedLogged);
+
+        // Im Transit ohne Erlaubnis der Beobachtung (§5, AP-44): Autofokus unterdrückt, Dither weiterhin.
+        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null,
+            transit: new NinaPm.Core.Execution.TransitTriggerContext(false, false), default);
+        Assert.Equal(2, af.Runs);
+        Assert.Contains(nameof(FakeAutofocusAfterTimeTrigger), box.SuppressedLogged);
+        await TriggerWalker.RunAsync(box, after: false, null, box, new Progress<ApplicationStatus>(), runtime: null,
+            transit: new NinaPm.Core.Execution.TransitTriggerContext(true, false), default);
+        Assert.Equal(3, af.Runs);
+        Assert.Equal(0, dither.Runs);
     }
 
     [Fact]

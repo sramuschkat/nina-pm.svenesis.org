@@ -1,6 +1,6 @@
 # Soll-Pläne (Golden Plans)
 
-Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle **G01–G18** aus **AP-13b**, Ablauf-Fälle **G19–G33** aus **AP-13d** (beide vorläufig bis zur Abnahme H-13) (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
+Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. **Status:** Paint-Fälle **G01–G18** aus **AP-13b**, Ablauf-Fälle **G19–G33** aus **AP-13d**, **G34** (Transitkonflikt) aus **AP-44** (alle vorläufig bis zur Abnahme H-13) (die bisherigen G01–G11 sind überholt, siehe `docs/history/golden-plans-v1/`).
 
 ## Vorgehen
 1. **AP-13a:** `tools/astropm-oracle` bauen (allocation.md §11.2): C#-Quellen des Astro-PM-Plugins (MIT, Commit `5dd621d`) mit Minimal-Patch in einer .NET-8-Konsolen-App; CI-Job `oracle.yml` auf `ubuntu-latest`; Grid-Format (unten) und Adapter festlegen.
@@ -54,7 +54,7 @@ Exakt prüfbare Erwartungen für `planNight` nach `specs/engine/allocation.md`. 
 - Das Grid enthält keine Astronomie; der Adapter `grid → Matrix` ist Teil des Tests.
 
 ## Pflichtfälle (Mindestumfang)
-**Paint (AP-13b):** Einzelziel · zwei gleiche Ziele (Fair Share) · früh untergehendes Ziel (Pass 3a, `accessible` nach 3a neu) · Knapp-Fall · Restposten (MinChunk verkleinert, Blockfixkosten A-16) · manuelle Priorität · Transit-Sperre · Nur-mondlos-Arbeit (Pass 1a) · exklusiv vs. flexibel (Pass 1b) · Mindestzeit verlängern/leihen/freigeben · Splitter · Defragmentierung · Bonus und absorb · Mosaik als Panel-Einheiten mit Deckel je Projekt (A-15) · Neuplanung mit `tonight` (Nachtfairness A-10).
+**Paint (AP-13b):** Einzelziel · zwei gleiche Ziele (Fair Share) · früh untergehendes Ziel (Pass 3a, `accessible` nach 3a neu) · Knapp-Fall · Restposten (MinChunk verkleinert, Blockfixkosten A-16) · manuelle Priorität · Transit-Sperre · Transitkonflikt (G34, AP-44) · Nur-mondlos-Arbeit (Pass 1a) · exklusiv vs. flexibel (Pass 1b) · Mindestzeit verlängern/leihen/freigeben · Splitter · Defragmentierung · Bonus und absorb · Mosaik als Panel-Einheiten mit Deckel je Projekt (A-15) · Neuplanung mit `tonight` (Nachtfairness A-10).
 
 **Ablauf (AP-13c/13d):** Filterwahl bei steigendem/sinkendem Mond · Filterwechsel mit Toleranz (Zyklus je Zeile, A-22) · zeitkritischer Schutz · Mosaik mit Panel-Rotation · Blockanfang ohne Arbeit (abgeben nur bei CanImage in allen Slots / freigeben, A-17) · Slew nach Leerlauf (A-18) · Nachtende-Kulanz · Meridian-Flip (vor der Filterwahl) · Overheads (A-4) · Belichtung passt nicht bis Blockende (A-7) · Transitreihe bis Fensterende (A-21) · Flip im Transitfenster (Diagnose `flip_in_transit`).
 

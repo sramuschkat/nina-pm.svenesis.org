@@ -35,6 +35,9 @@ public sealed class SimWorld(SimSetup setup)
     public double CenterS { get; set; } = setup.CenterS;
     public List<string> CenterFailProjects { get; set; } = [.. setup.CenterFailProjects];
     public double CenterFailS { get; set; } = setup.CenterFailS;
+    public bool Recenter { get; set; } = setup.Recenter;
+    public bool AutoFocusAfterFlip { get; set; } = setup.AutoFocusAfterFlip;
+    public bool AfTrigger { get; set; } = setup.AfTrigger;
 
     /// <summary>Montierung: Pier-Seite (<c>west</c> vor, <c>east</c> nach dem Flip) und früheste Flipzeit des Ziels.</summary>
     public string Pier { get; set; } = "west";

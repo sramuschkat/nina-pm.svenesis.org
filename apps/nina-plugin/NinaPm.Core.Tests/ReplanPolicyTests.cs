@@ -168,4 +168,30 @@ public sealed class ReplanPolicyTests
         var panel = samePanel ? next.PanelId!.Value : Guid.NewGuid();
         Assert.True(skip == ReplanPolicy.SkipSlew(next.ProjectId, panel, finishedEnd, next, atPark, interrupted, arcmin), name);
     }
+
+    [Fact]
+    public void Frist_vor_dem_Transit_Vorlauf_nur_fuer_regulaere_Bloecke_und_festgelegte_Transits()
+    {
+        // HAT-P-17 b: Fenster ab 02:08:00, Vorlauf 90 s + 60 s → Frist 02:05:30 (§5, NT-25).
+        var targets = Example<NinaTargets>("targets.response");
+        var regular = new Blocks { Kind = BlocksKind.Regular, StartUtc = T("2026-09-18T01:00:00Z") };
+        Assert.Equal(T("2026-09-18T02:05:30Z"), ReplanPolicy.TransitDeadline(targets, regular, 150));
+        // Der eigene Transitblock hat keine Frist; ein Block nach dem Fenster auch nicht.
+        var obs = Exo(targets).Exoplanet!.Observation!;
+        Assert.Null(ReplanPolicy.TransitDeadline(targets, new Blocks { Kind = BlocksKind.Transit, TransitObservationId = obs.Id }, 150));
+        Assert.Null(ReplanPolicy.TransitDeadline(targets, new Blocks { Kind = BlocksKind.Regular, StartUtc = T("2026-09-18T08:00:00Z") }, 150));
+        // Nur angefragt (nicht festgelegt): keine Frist.
+        obs.Status = ObservationStatus.Requested;
+        Assert.Null(ReplanPolicy.TransitDeadline(targets, regular, 150));
+    }
+
+    [Fact]
+    public void Pruefung_im_Block_in_der_Stunde_vor_einem_Fenster_alle_5_min()
+    {
+        var targets = Example<NinaTargets>("targets.response"); // Fenster ab 02:08:00
+        Assert.Equal(TimeSpan.FromMinutes(15), ReplanPolicy.InBlockIntervalFor(targets, T("2026-09-18T01:07:00Z")));
+        Assert.Equal(TimeSpan.FromMinutes(5), ReplanPolicy.InBlockIntervalFor(targets, T("2026-09-18T01:09:00Z")));
+        Assert.Equal(TimeSpan.FromMinutes(15), ReplanPolicy.InBlockIntervalFor(targets, T("2026-09-18T02:09:00Z")));
+        Assert.Equal(TimeSpan.FromMinutes(15), ReplanPolicy.InBlockIntervalFor(null, T("2026-09-18T01:09:00Z")));
+    }
 }

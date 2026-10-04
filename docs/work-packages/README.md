@@ -108,7 +108,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-16e](AP-16e.md) | Plugin: Aufnahme-Zuordnung, Heartbeat, Lease | M | AP-16d | H-15 | ☑ 03.10.2026 |
 | [AP-16f](AP-16f.md) | Plugin: Rotator, Flip, Standort- und Sequenzprüfung, Playback-Verzug | M | AP-16e | H-15 | ☑ 03.10.2026 |
 | [AP-16g](AP-16g.md) | Plugin: Outbox, Offline-Modus, Bedienung | M | AP-16f | H-15 | ☑ 03.10.2026 |
-| [AP-16h](AP-16h.md) | Plugin: Live-Status, Zielbrowser, Trigger-Sets, Anweisungskatalog | L | AP-16g | H-12b, H-15 | ◐ |
+| [AP-16h](AP-16h.md) | Plugin: Live-Status, Zielbrowser, Trigger-Sets, Anweisungskatalog | L | AP-16g | H-12b, H-15 | ☑ 04.10.2026 |
 
 ## R4
 
@@ -118,7 +118,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 | [AP-41](AP-41.md) | Transitrechnung | M | AP-40, AP-08b | – | ☑ 30.09.2026 |
 | [AP-42](AP-42.md) | Exoplaneten-Bildschirm S-22 | M | AP-41 | – | ☑ 30.09.2026 |
 | [AP-43](AP-43.md) | Exoplaneten-Projekt und Transit-Beobachtungen | L | AP-42, AP-12c | – | ☑ 30.09.2026 |
-| [AP-44](AP-44.md) | Scheduler-Reservierung und Plugin-Transitblock | M | AP-43, AP-16h | H-15 | ☐ |
+| [AP-44](AP-44.md) | Scheduler-Reservierung und Plugin-Transitblock | M | AP-43, AP-16h | H-15 | ◐ |
 | [AP-45](AP-45.md) | Transit-Auswertung und Ergebnisimport | M | AP-44 | H-19 | ☐ |
 
 ## R5
