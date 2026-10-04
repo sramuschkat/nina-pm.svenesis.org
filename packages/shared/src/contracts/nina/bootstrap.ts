@@ -4,7 +4,7 @@
  * Mondprofile, Nacht-Tabelle ab der Mittagsnacht und `serverTimeUtc` als einzige Uhrquelle.
  */
 import { z } from 'zod';
-import { flatsSources, playbackModes, sortChainKeys, strategies } from '../../generated/enums';
+import { filterTypes, flatsSources, playbackModes, sortChainKeys, strategies } from '../../generated/enums';
 import { NightKey, Text, UtcInstant, Uuid, Version } from './common';
 
 export const NinaReadoutMode = z.object({ index: z.number().int().min(0), name: Text });
@@ -66,6 +66,8 @@ export const NinaBootstrap = z
             color: Text,
             position: z.number().int().min(1),
             ninaFilterName: Text.nullable(),
+            /** Filtertyp (Reihenfolge der Himmelsflats Schmalband → Breitband → L, NT-40, AP-50); fehlt bei älteren Servern. */
+            type: z.enum(filterTypes).optional(),
           }),
         )
         .max(64),
