@@ -12289,6 +12289,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/nina/v1/simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Simulator im Plugin: Nacht rechnen ohne Planrevision (gleiche Eingabe wie /plan)
+         * @description Nacht aus der Bootstrap-Tabelle; ganze Nacht ab Nachtfensterbeginn, ohne tonight und offene Meldungen. Speichert nichts (keine Planrevision, keine Session).
+         *
+         *     Aktion: `nina.sync` (Bearer-Token der NINA-Instanz) · FA-NIN-18, FA-SIM-05, FA-SIM-06, FA-SIM-07, FA-SIM-08
+         */
+        get: {
+            parameters: {
+                query: {
+                    night: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Simulation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NinaSimulation"];
+                    };
+                };
+                /** @description nina.token_invalid */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description tenant.locked */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description engine.incompatible */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description nina.night_invalid | engine.input_invalid | validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/nina/v1/plan": {
         parameters: {
             query?: never;
@@ -19353,6 +19432,309 @@ export interface components {
                 };
             })[];
             mosaicPanelsIndependent: boolean;
+        };
+        NinaSimulation: {
+            /**
+             * Format: date
+             * @example 2026-09-18
+             */
+            night: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            generatedAtUtc: string;
+            engineVersion: string;
+            inputHash: string;
+            outputHash?: string;
+            settingsVersion: number;
+            timeZone: string;
+            timeZoneSegments: components["schemas"]["NinaSimulationTimeZoneSegment"][];
+            nightWindow: components["schemas"]["NinaSimulationNightWindow"];
+            darkness: components["schemas"]["NinaSimulationDarkness"];
+            header: components["schemas"]["NinaSimulationHeader"];
+            targets: components["schemas"]["NinaSimulationTarget"][];
+            moon: components["schemas"]["NinaSimulationMoon"];
+            blocks: components["schemas"]["NinaSimulationBlock"][];
+            filterBars: components["schemas"]["NinaSimulationFilterBar"][];
+            flips: components["schemas"]["NinaSimulationFlip"][];
+            cards: components["schemas"]["NinaSimulationCard"][];
+            unallocated: components["schemas"]["NinaSimulationUnallocated"][];
+            protocol: components["schemas"]["NinaSimulationProtocolRow"][];
+            warnings: components["schemas"]["NinaSimulationWarning"][];
+        };
+        NinaSimulationTimeZoneSegment: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fromUtc: string;
+            utcOffsetMinutes: number;
+            abbr: string;
+        };
+        NinaSimulationNightWindow: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endUtc: string;
+        };
+        NinaSimulationDarkness: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            civilStartUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            civilEndUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            nauticalStartUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            nauticalEndUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            astronomicalStartUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            astronomicalEndUtc: string | null;
+        };
+        NinaSimulationHeader: {
+            darkHours: number;
+            targets: number;
+            frames: number;
+            moonIllumPct: number;
+        };
+        NinaSimulationTarget: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            seriesIndex: number;
+            minAltitudeDeg: number;
+            altitude: components["schemas"]["NinaSimulationAltitude"][];
+        };
+        NinaSimulationAltitude: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+            altDeg: number;
+        };
+        NinaSimulationMoon: {
+            illuminationPct: number;
+            altitude: components["schemas"]["NinaSimulationAltitude"][];
+        };
+        NinaSimulationBlock: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            /** @enum {string} */
+            kind: "regular" | "transit";
+            label: string;
+            seriesIndex: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            startUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            endUtc: string;
+        };
+        NinaSimulationFilterBar: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fromUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            toUtc: string;
+            filter: string;
+            color: string | null;
+            count: number;
+        };
+        NinaSimulationFlip: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+        };
+        NinaSimulationCard: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            seriesIndex: number;
+            allocatedS: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            fromUtc: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            toUtc: string | null;
+            altMinDeg: number | null;
+            altMaxDeg: number | null;
+            moonSepMinDeg: number | null;
+            transit: boolean;
+            lines: components["schemas"]["NinaSimulationCardLine"][];
+            checks: components["schemas"]["NinaSimulationChecks"];
+            flips: components["schemas"]["NinaSimulationCardFlip"][];
+        };
+        NinaSimulationCardLine: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            lineId: string;
+            filter: string;
+            color: string | null;
+            exposureS: number;
+            need: number;
+            tonight: number;
+            moon: components["schemas"]["NinaSimulationLineMoon"];
+            enabled: boolean;
+        };
+        NinaSimulationLineMoon: {
+            name: string;
+            separationDeg: number;
+            widthDays: number;
+            mustBeDown: boolean;
+        } | null;
+        NinaSimulationChecks: {
+            altitude: components["schemas"]["NinaSimulationCheck"];
+            time: components["schemas"]["NinaSimulationCheck"];
+            moon: components["schemas"]["NinaSimulationCheck"];
+            darkness: components["schemas"]["NinaSimulationCheck"];
+            rotation: components["schemas"]["NinaSimulationCheck"];
+        };
+        /** @enum {string} */
+        NinaSimulationCheck: "ok" | "fail" | "warn" | "none";
+        NinaSimulationCardFlip: {
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+            durationS: number;
+            inTransitWindow: boolean;
+        };
+        NinaSimulationUnallocated: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            name: string;
+            reasons: components["schemas"]["NinaSimulationReason"][];
+        };
+        NinaSimulationReason: {
+            /** @enum {string} */
+            reason: "start_date" | "not_visible" | "below_min_time" | "moon_blocked" | "prefiltered" | "outranked" | "no_need" | "transit_conflict" | "flip_in_transit" | "filter_not_found" | "rotation_mismatch";
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            lineId?: string;
+            message?: string;
+        };
+        NinaSimulationProtocolRow: {
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            blockId: string;
+            /**
+             * Format: uuid
+             * @description UUID
+             */
+            projectId: string;
+            /** @enum {string} */
+            cmd: "slew_center" | "slew_center_rotate" | "filter" | "expose" | "expose_series" | "dither" | "autofocus_hint" | "wait" | "meridian_flip" | "end";
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            untilUtc: string | null;
+            durationS: number | null;
+            projectName: string;
+            panel: string;
+            no: number | null;
+            filter: string;
+            exposureS: number | null;
+            gain: number | null;
+            offset: number | null;
+            binning: number | null;
+            readoutMode: string | null;
+            rotationDeg: number | null;
+            raDeg: number | null;
+            decDeg: number | null;
+            altDeg: number | null;
+            moonSepDeg: number | null;
+            moonOk: boolean | null;
+            requiredSepDeg: number | null;
+            dark: boolean | null;
+            la: boolean | null;
+            moonProfile: string;
+            bonus: boolean;
+        };
+        NinaSimulationWarning: {
+            /** @enum {string} */
+            code: "idle_gap" | "la_unsafe" | "total_min" | "no_alloc" | "la_miss" | "filter_stuck" | "past_mismatch" | "panel_rotation_mismatch" | "twilight_grazing";
+            /** @enum {string} */
+            level: "warn" | "error";
+            unitId?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-18T13:00:00Z
+             */
+            atUtc?: string;
+            durationS?: number;
+            message?: string;
         };
         NinaPlanResponse: {
             /**

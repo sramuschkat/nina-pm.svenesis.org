@@ -151,4 +151,23 @@ public sealed class RenderTests
         var errors = Render(plugin, (DataTemplate)resources["NINA-PM_Options"], 1100, "optionsseite.png");
         Assert.Empty(errors);
     });
+
+    [Fact]
+    public void Optionsseite_mit_Simulator_rendert_ohne_Binding_Fehler() => Sta.Run(() =>
+    {
+        // Simulator (FA-NIN-18, AP-53): gesperrte Einstellungen, Lauf-Leiste, Zielkarten, Plangrafik und Protokoll.
+        var profile = new Mock<IProfileService> { DefaultValue = DefaultValue.Mock };
+        var simulator = SimulatorModelTests.Model(new SimulatorModelTests.FakeApi());
+        simulator.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var plugin = new NinaPmPlugin(profile.Object, new OptionsTests.PlainProtector(), simulator: simulator);
+        var resources = new NinaPmResources();
+        var errors = Render(plugin, (DataTemplate)resources["NINA-PM_Options"], 1400, "optionsseite-simulator.png");
+        Assert.Empty(errors);
+
+        // Offline: nicht verfügbar, Einstellungen bleiben sichtbar und gesperrt.
+        var offline = SimulatorModelTests.Model(new SimulatorModelTests.FakeApi(), offline: true);
+        offline.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var offlinePlugin = new NinaPmPlugin(profile.Object, new OptionsTests.PlainProtector(), simulator: offline);
+        Assert.Empty(Render(offlinePlugin, (DataTemplate)resources["NINA-PM_Options"], 1400, "optionsseite-simulator-offline.png"));
+    });
 }

@@ -18,7 +18,8 @@ namespace NinaPm.Nina;
 
 /// <summary>
 /// Plugin-Manifest und Optionsseite (FA-NIN-01, FA-NIN-03, AP-16a, P-04): Server-URL und Sync-Token je NINA-Profil,
-/// *Verbindung testen* mit Anzeige von Mandant, Instanz, Rig und Standort-Abgleich. Das Token liegt DPAPI-geschützt
+/// *Verbindung testen* mit Anzeige von Mandant, Instanz, Rig und Standort-Abgleich; darunter Zielbrowser (AP-16h) und
+/// Simulator (FA-NIN-18, AP-53). Das Token liegt DPAPI-geschützt
 /// in NINAs Plugin-Einstellungen, Klartext nur kurz im Speicher und nie im Log (SV-08).
 /// </summary>
 [Export(typeof(IPluginManifest))]
@@ -52,10 +53,11 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     }
 
     internal NinaPmPlugin(IProfileService profileService, ITokenProtector protector, NinaMediators? mediators = null,
-        FramingLoader? framing = null)
+        FramingLoader? framing = null, Simulator.SimulatorModel? simulator = null)
     {
         this.profileService = profileService;
         Targets = new Browser.TargetBrowserModel(framing);
+        Simulator = simulator ?? new Simulator.SimulatorModel();
         this.mediators = mediators;
         this.protector = protector;
         accessor = new PluginOptionsAccessor(profileService, Guid.Parse(Identifier));
@@ -74,6 +76,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         {
             RaiseOperationChanged();
             Targets.Rebuild();
+            Simulator.Refresh();
             return Task.CompletedTask;
         });
         ResetStatus();
@@ -162,6 +165,9 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
 
     /// <summary>Zielbrowser „An NINA ausgeliefert“ (FA-NIN-02, AP-16h).</summary>
     public Browser.TargetBrowserModel Targets { get; }
+
+    /// <summary>Simulator (FA-NIN-18, AP-53): der Server rechnet, Einstellungen gesperrt.</summary>
+    public Simulator.SimulatorModel Simulator { get; }
 
     /// <summary>Zustand der Laufzeit für die Optionsseite: gesperrt (mit Grund), Outbox, Dead-Letter, Uhr ungeprüft (offline).</summary>
     public string OperationStatus

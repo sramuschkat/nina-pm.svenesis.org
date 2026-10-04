@@ -52,12 +52,16 @@ internal sealed class NinaPmRuntime : IDisposable
         host.Runtime = this;
         Outbox = new OutboxSender(Store, sessionApi, Log, clock) { Listener = Runner };
         Runner.OfflineMode = options.OfflineMode;
+        SimulationApi = new NinaPm.Core.Simulator.NinaSimulationApi(api.Client);
         Heartbeat = new HeartbeatService(sessionApi, Runner, new NinaSettingsSource(host.Mediators, host.CurrentTriggers), Outbox,
             clock, Log, NinaPmPlugin.PluginVersion);
         if (startHeartbeat) _ = Task.Run(() => HeartbeatLoopAsync(heartbeatStop.Token));
     }
 
     public OutboxSender Outbox { get; }
+
+    /// <summary><c>GET /simulation</c> für den Simulator der Optionsseite (FA-NIN-18): der Server rechnet, nichts wird gespeichert.</summary>
+    public NinaPm.Core.Simulator.ISimulationApi SimulationApi { get; }
 
     public HeartbeatService Heartbeat { get; }
 

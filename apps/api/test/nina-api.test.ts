@@ -373,3 +373,62 @@ describe('POST /plan (FA-SIM-05, NT-01, NT-20, M7)', () => {
     expect(none.body.inputHash).not.toBe(onlyNew.body.inputHash);
   });
 });
+
+describe('GET /simulation (AP-53, FA-NIN-18, FA-SIM-05)', () => {
+  it('rechnet wie POST /plan, speichert aber nichts (keine Planrevision, kein Übernahmestatus)', async () => {
+    const t = await setup();
+    const count = async () =>
+      (await s.pg.admin.query('SELECT count(*)::int AS n FROM night_plan')).rows[0];
+    const before = await count();
+    const r = await t.ninaCall('/simulation?night=2026-09-18');
+    expect(r.status).toBe(200);
+    expect(nina.NinaSimulation.safeParse(r.body).error?.issues ?? []).toEqual([]);
+    expect(await count()).toEqual(before);
+    const fetched = await s.pg.admin.query(
+      'SELECT settings_version_fetched FROM nina_instance WHERE rig_id = $1',
+      [t.rig.id],
+    );
+    expect(fetched.rows[0]?.settings_version_fetched ?? null).toBeNull();
+    // Gleiche Eingabe wie der Erstplan ohne tonight → gleiche Hashes.
+    const planned = await t.ninaCall('/plan', {
+      method: 'POST',
+      body: { night: '2026-09-18', reason: 'initial' },
+    });
+    expect(r.body.inputHash).toBe(planned.body.inputHash);
+    expect(r.body.outputHash).toBe(planned.body.outputHash);
+  });
+
+  it('Zielkarten, Blöcke, Filterleiste und Protokoll wie S-40; Standortzeit mit Kürzel', async () => {
+    const t = await setup();
+    const r = await t.ninaCall('/simulation?night=2026-09-18');
+    const sim = nina.NinaSimulation.parse(r.body);
+    expect(sim.timeZone).toBe(SITE.timeZone);
+    expect(sim.timeZoneSegments[0]?.abbr).toBe('CDT');
+    expect(sim.timeZoneSegments[0]?.utcOffsetMinutes).toBe(-300);
+    expect(sim.cards.map((c) => c.name)).toEqual(['NGC 281']);
+    const card = sim.cards[0];
+    expect(card?.lines[0]).toMatchObject({ filter: 'Ha', exposureS: 300, need: 40 });
+    expect(card?.lines[0]?.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(card?.checks.altitude).toBe('ok');
+    expect(sim.blocks.length).toBeGreaterThan(0);
+    expect(sim.blocks[0]?.label).toBe('NGC 281');
+    expect(sim.filterBars.reduce((n, f) => n + f.count, 0)).toBe(
+      sim.protocol.filter((x) => x.cmd === 'expose').length,
+    );
+    expect(sim.protocol[0]?.cmd).toMatch(/^slew_center/);
+    expect(sim.targets[0]?.altitude.length).toBeGreaterThan(60);
+    expect(sim.header.targets).toBe(1);
+    // Projekt eines anderen Rigs erscheint nicht.
+    expect(JSON.stringify(sim)).not.toContain('M 31');
+  });
+
+  it('Nacht außerhalb der Bootstrap-Tabelle → 422 nina.night_invalid; spätere Nacht der Tabelle → 200', async () => {
+    const t = await setup();
+    for (const night of ['2026-09-16', '2026-11-20', '2025-09-18']) {
+      const r = await t.ninaCall(`/simulation?night=${night}`);
+      expect([night, r.status, r.body.code]).toEqual([night, 422, 'nina.night_invalid']);
+    }
+    expect((await t.ninaCall('/simulation?night=2026-10-10')).status).toBe(200);
+    expect((await t.ninaCall('/simulation?night=18.09.2026')).status).toBe(422);
+  });
+});

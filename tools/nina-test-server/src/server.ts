@@ -139,7 +139,8 @@ export class NinaTestServer {
     if (this.flags.revoked || !instance)
       return problem(401, 'nina.token_invalid', 'Token ungültig oder widerrufen');
 
-    const route = req.path.slice(NINA.length);
+    const url = new URL(req.path, 'http://localhost');
+    const route = url.pathname.slice(NINA.length);
     const key = `${req.method} ${route.replace(/\/sessions\/[^/]+/, '/sessions/{id}')}`;
     switch (key) {
       case 'GET /bootstrap':
@@ -152,6 +153,8 @@ export class NinaTestServer {
       }
       case 'POST /plan':
         return this.plan(req.body);
+      case 'GET /simulation':
+        return this.simulation(url.searchParams.get('night') ?? '');
       case 'POST /sessions':
         return this.createSession(req.body, instance);
       case 'PATCH /sessions/{id}':
@@ -186,6 +189,16 @@ export class NinaTestServer {
       atUtc: iso(this.world.serverTimeS()),
     });
     return ok(nina.NinaPlanResponse, plan);
+  }
+
+  /** Simulator im Plugin (AP-53): Nacht der Tabelle, keine Planrevision, nichts in `plans`. */
+  private simulation(night: string): TestResponse {
+    const r = nina.NinaSimulationQuery.safeParse({ night });
+    if (!r.success) return invalid(r.error);
+    if (!this.world.nightTable().nights.some((n) => n.night === night))
+      return problem(422, 'nina.night_invalid', `Nacht ${night} liegt nicht in der Nacht-Tabelle`);
+    const rig = this.world.bootstrap('Test-Instanz 1').rig as { settingsVersion: number };
+    return ok(nina.NinaSimulation, this.world.simulation(night, rig.settingsVersion));
   }
 
   private leaseFor(sessionId: string, instance: string) {
@@ -548,7 +561,12 @@ export class NinaTestServer {
     const headers = Object.fromEntries(
       Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(',') : v]),
     );
-    const r = await this.handle({ method: req.method ?? 'GET', path: url.pathname, headers, body });
+    const r = await this.handle({
+      method: req.method ?? 'GET',
+      path: `${url.pathname}${url.search}`,
+      headers,
+      body,
+    });
     if (r === DROP) return; // Verbindung bleibt offen, bis der Client aufgibt.
     send(res, r);
   }

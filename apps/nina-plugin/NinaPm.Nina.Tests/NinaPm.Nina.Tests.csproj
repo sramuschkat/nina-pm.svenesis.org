@@ -23,4 +23,8 @@
   <ItemGroup>
     <ProjectReference Include="../NinaPm.Nina/NinaPm.Nina.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Vertragsbeispiele (docs/contracts/nina) wie in den Kerntests: Simulator-Ansicht mit echten Daten (AP-53). -->
+    <Compile Include="../NinaPm.Core.Tests/ContractExamples.cs" Link="ContractExamples.cs" />
+  </ItemGroup>
 </Project>

@@ -9,6 +9,7 @@
         das Plugin-Objekt aus NinaPm.Nina (Bindungen nur über Namen). Das Token geht über eine PasswordBox und wird nie
         angezeigt (SV-08).
     -->
+    <BooleanToVisibilityConverter x:Key="NinaPm.BoolToVisibility" />
     <DataTemplate x:Key="NINA-PM_Options">
         <StackPanel Margin="5" Orientation="Vertical">
             <TextBlock Margin="0,0,0,10" MaxWidth="700" HorizontalAlignment="Left" Text="{x:Static ui:Texts.Intro}" TextWrapping="Wrap" />
@@ -149,6 +150,282 @@
                         <DataGridTextColumn Binding="{Binding NextTransit}" Header="{x:Static ui:Texts.ColNextTransit}" />
                     </DataGrid.Columns>
                 </DataGrid>
+            </StackPanel>
+            <!--
+                Simulator (FA-NIN-18, AP-53) mit der Gliederung von S-40: Infobox, Schritt 1 gesperrte Einstellungen, Lauf-Leiste,
+                Schritt 2 Zielkarten, Schritt 3 Plangrafik und Planprotokoll. Es rechnet immer der Server. Gliederung, Lauf-Leiste
+                mit Statuspunkt, Schloss-Karte und Zielkarten nach Views/SimulatorPanel.xaml des Astro-PM-NINA-Plugins (MIT,
+                Commit 5dd621d). NINA-Pinsel nur als DynamicResource (keine StaticResource-Abhängigkeit von NINA).
+            -->
+            <StackPanel Margin="0,15,0,0" DataContext="{Binding Simulator}" Orientation="Vertical">
+                <TextBlock Margin="0,0,0,5" FontWeight="Bold" Text="{x:Static ui:Texts.SimulatorHeader}" />
+                <Border MaxWidth="1000" Margin="0,0,0,8" Padding="10,6" HorizontalAlignment="Left" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Info}" TextWrapping="Wrap" />
+                        <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Text="{x:Static ui:Texts.SamplesDownload}" />
+                            <ItemsControl ItemsSource="{Binding Samples}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="8,0,0,0" Padding="8,2" Command="{Binding OpenCommand}" ToolTip="{Binding Url}">
+                                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{Binding Name}" />
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--  Schritt 1: gesperrte Einstellungen (nur Anzeige, abgeblendet) mit Schloss-Karte daneben.  -->
+                <TextBlock Margin="0,4,0,4" FontWeight="SemiBold" Text="{x:Static ui:Texts.Step1}" />
+                <Border MaxWidth="1000" Padding="10,8" HorizontalAlignment="Left" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" IsEnabled="False" Opacity="0.6">
+                            <ItemsControl ItemsSource="{Binding Settings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,1">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="220" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Label}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Margin="0,4,0,0" Opacity="0.8" Text="{Binding SettingsVersionText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Border Grid.Column="1" Width="360" Margin="12,0,0,0" Padding="12,8" VerticalAlignment="Top"
+                                Background="{DynamicResource BackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <!--  Schloss-Symbol (Pfad wie in Views/SimulatorPanel.xaml, Astro-PM-NINA-Plugin, MIT, 5dd621d).  -->
+                                <Path Grid.Column="0" Width="18" Height="18" Margin="0,1,10,0" VerticalAlignment="Top"
+                                      Data="M12,17A2,2 0 0,0 14,15A2,2 0 0,0 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10A2,2 0 0,1 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"
+                                      Fill="{DynamicResource PrimaryBrush}" Stretch="Uniform" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Margin="0,0,0,4" FontWeight="SemiBold" Text="{Binding LockedTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Opacity="0.8" Text="{Binding LockedHint}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!--  Lauf-Leiste: ◀ Nacht ▶, Heute Nacht, Simulieren, Kopfzahlen; Statuspunkt, „Ziele zuletzt abgerufen“, Status.  -->
+                <Border MaxWidth="1000" Margin="0,8,0,8" Padding="10,6" HorizontalAlignment="Left" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="4">
+                    <StackPanel>
+                        <WrapPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="{x:Static ui:Texts.Night}" />
+                            <Button Padding="8,2" Command="{Binding PrevCommand}" ToolTip="{x:Static ui:Texts.PrevNight}">
+                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="◀" />
+                            </Button>
+                            <TextBlock Width="150" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding NightText}" TextAlignment="Center" />
+                            <Button Padding="8,2" Command="{Binding NextCommand}" ToolTip="{x:Static ui:Texts.NextNight}">
+                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="▶" />
+                            </Button>
+                            <Button Margin="8,0,0,0" Padding="10,2" Command="{Binding TonightCommand}">
+                                <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Tonight}" />
+                            </Button>
+                            <Button Margin="16,0,0,0" Padding="14,2" Command="{Binding SimulateCommand}">
+                                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.Simulate}" />
+                            </Button>
+                            <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Opacity="0.8" Text="{Binding SummaryText}" />
+                        </WrapPanel>
+                        <WrapPanel Margin="0,6,0,0" Orientation="Horizontal">
+                            <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{Binding StatusBrush}" />
+                            <TextBlock VerticalAlignment="Center" Opacity="0.75" Text="{Binding FetchedText}" />
+                            <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" FontWeight="Bold" Text="{Binding Status}" TextWrapping="Wrap" />
+                            <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Opacity="0.6" Text="{Binding ComputedText}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Visibility="{Binding HasResults, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                    <!--  Schritt 2: Zielkarten und nicht zugeteilte Projekte (FA-SIM-03, FA-SIM-06).  -->
+                    <TextBlock Margin="0,4,0,4" FontWeight="SemiBold" Text="{x:Static ui:Texts.Step2}" />
+                    <TextBlock Margin="0,0,0,6" Opacity="0.75" Text="{Binding EmptyText}"
+                               Visibility="{Binding IsEmpty, Converter={StaticResource NinaPm.BoolToVisibility}}" />
+                    <ItemsControl MaxWidth="1400" HorizontalAlignment="Left" ItemsSource="{Binding Cards}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="330" Margin="0,0,8,8" Padding="10,8" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                        CornerRadius="4">
+                                    <StackPanel>
+                                        <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                                            <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
+                                            <TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+                                            <Border Margin="8,0,0,0" Padding="6,0" VerticalAlignment="Center" BorderBrush="{Binding ColorBrush}"
+                                                    BorderThickness="1" CornerRadius="6"
+                                                    Visibility="{Binding Transit, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                                                <TextBlock FontSize="10" Text="{Binding TransitLabel}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding WindowText}" />
+                                        <TextBlock Text="{Binding HoursText}" />
+                                        <TextBlock Text="{Binding AltitudeText}" />
+                                        <TextBlock Text="{Binding MoonText}" />
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Lines}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="0,1" Opacity="{Binding Opacity}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Rectangle Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{Binding ColorBrush}" />
+                                                            <TextBlock Text="{Binding Text}" />
+                                                        </StackPanel>
+                                                        <TextBlock Margin="16,0,0,0" FontSize="10" Opacity="0.75" Text="{Binding MoonText}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Flips}" />
+                                        <Border Margin="0,4,0,0" Padding="6,3" BorderBrush="{Binding ColorBrush}" BorderThickness="1" CornerRadius="3"
+                                                Visibility="{Binding Transit, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                                            <TextBlock FontSize="11" Text="{Binding TransitBox}" TextWrapping="Wrap" />
+                                        </Border>
+                                        <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding Checks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontSize="11" Foreground="{Binding Brush}" Text="{Binding Text}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Margin="0,0,0,8" Visibility="{Binding HasUnallocated, Converter={StaticResource NinaPm.BoolToVisibility}}">
+                        <TextBlock FontWeight="SemiBold" Text="{x:Static ui:Texts.Unallocated}" />
+                        <ItemsControl ItemsSource="{Binding Unallocated}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Opacity="0.8" Text="{Binding Text}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!--  Schritt 3: Plangrafik (FA-SIM-07) und Planprotokoll (FA-SIM-08).  -->
+                    <TextBlock Margin="0,4,0,2" FontWeight="SemiBold" Text="{x:Static ui:Texts.Step3}" />
+                    <TextBlock Margin="0,0,0,4" Opacity="0.75" Text="{Binding PlanHeader}" />
+                    <Border Margin="0,0,0,8" HorizontalAlignment="Left" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            DataContext="{Binding Chart}">
+                        <Grid Width="{Binding ChartWidth}" Height="{Binding ChartHeight}" ClipToBounds="True">
+                            <ItemsControl ItemsSource="{Binding Rects}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Width="{Binding Width}" Height="{Binding Height}" Background="{Binding Fill}" ToolTip="{Binding ToolTip}">
+                                            <TextBlock Margin="3,0" VerticalAlignment="Center" FontSize="10" Foreground="{Binding LabelBrush}"
+                                                       Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding Lines}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Polyline Points="{Binding Points}" Stroke="{Binding Stroke}" StrokeDashArray="{Binding Dash}"
+                                                  StrokeThickness="{Binding Thickness}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl IsHitTestVisible="False" ItemsSource="{Binding Labels}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="10" Foreground="{Binding Foreground}" Text="{Binding Text}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+                    <ItemsControl Margin="0,0,0,8" ItemsSource="{Binding Warnings}"
+                                  Visibility="{Binding HasWarnings, Converter={StaticResource NinaPm.BoolToVisibility}}" />
+                    <StackPanel Margin="0,0,0,4" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{x:Static ui:Texts.Protocol}" />
+                        <Button Margin="12,0,0,0" Padding="10,2" Command="{Binding CopyCommand}">
+                            <TextBlock Foreground="{DynamicResource ButtonForegroundBrush}" Text="{x:Static ui:Texts.CopyProtocol}" />
+                        </Button>
+                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.7" Text="{Binding CopyStatus}" />
+                    </StackPanel>
+                    <DataGrid MaxHeight="400" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" ItemsSource="{Binding Log}"
+                              SelectionMode="Extended">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Time}" Header="{x:Static ui:Texts.LogTime}" />
+                            <DataGridTextColumn Binding="{Binding Cmd}" Header="{x:Static ui:Texts.LogCmd}" />
+                            <DataGridTextColumn Binding="{Binding Target}" Header="{x:Static ui:Texts.LogTarget}" />
+                            <DataGridTextColumn Binding="{Binding Panel}" Header="{x:Static ui:Texts.LogPanel}" />
+                            <DataGridTextColumn Binding="{Binding No}" Header="{x:Static ui:Texts.LogNo}" />
+                            <DataGridTextColumn Binding="{Binding Filter}" Header="{x:Static ui:Texts.LogFilter}" />
+                            <DataGridTextColumn Binding="{Binding Exposure}" Header="{x:Static ui:Texts.LogExposure}" />
+                            <DataGridTextColumn Binding="{Binding Gain}" Header="{x:Static ui:Texts.LogGain}" />
+                            <DataGridTextColumn Binding="{Binding Offset}" Header="{x:Static ui:Texts.LogOffset}" />
+                            <DataGridTextColumn Binding="{Binding Binning}" Header="{x:Static ui:Texts.LogBinning}" />
+                            <DataGridTextColumn Binding="{Binding Readout}" Header="{x:Static ui:Texts.LogReadout}" />
+                            <DataGridTextColumn Binding="{Binding Rotation}" Header="{x:Static ui:Texts.LogRotation}" />
+                            <DataGridTextColumn Binding="{Binding Ra}" Header="{x:Static ui:Texts.LogRa}" />
+                            <DataGridTextColumn Binding="{Binding Dec}" Header="{x:Static ui:Texts.LogDec}" />
+                            <DataGridTextColumn Binding="{Binding Alt}" Header="{x:Static ui:Texts.LogAlt}" />
+                            <DataGridTextColumn Binding="{Binding MoonSep}" Header="{x:Static ui:Texts.LogMoonSep}" />
+                            <DataGridTextColumn Binding="{Binding MoonOk}" Header="{x:Static ui:Texts.LogMoonOk}" />
+                            <DataGridTextColumn Binding="{Binding Required}" Header="{x:Static ui:Texts.LogRequired}" />
+                            <DataGridTextColumn Binding="{Binding Dark}" Header="{x:Static ui:Texts.LogDark}" />
+                            <DataGridTextColumn Binding="{Binding La}" Header="{x:Static ui:Texts.LogLa}" />
+                            <DataGridTextColumn Binding="{Binding Profile}" Header="{x:Static ui:Texts.LogProfile}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
             </StackPanel>
         </StackPanel>
     </DataTemplate>

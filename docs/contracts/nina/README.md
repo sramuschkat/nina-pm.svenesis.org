@@ -8,6 +8,7 @@ Aus Technischem Konzept 7.6 extrahiert. **Nur Veranschaulichung** – Uhrzeiten/
 | `bootstrap.response.example.json` | `GET /api/nina/v1/bootstrap` |
 | `targets.response.example.json` | `GET /api/nina/v1/targets` |
 | `plan.request.example.json` / `plan.response.example.json` | `POST /api/nina/v1/plan` |
+| `simulation.response.example.json` (Auszug: Protokoll und Höhenkurven gekürzt) | `GET /api/nina/v1/simulation?night=` (Simulator im Plugin, AP-53, `execution.md` §10) |
 | `session.create.request.example.json` / `session.create.response.example.json` | `POST /api/nina/v1/sessions` |
 | `session.patch.request.example.json` (`completed`, Outbox nicht leer) · `session.patch.running.example.json` (Wiederaufnahme) · `session.patch.offline.example.json` (Offline-Plan nachmelden – vom Server weiter angenommen, das Plugin sendet ihn seit 01.10.2026 nicht mehr) · `session.patch.response.example.json` | `PATCH /api/nina/v1/sessions/{id}` |
 | `captures.request.example.json` | `POST /api/nina/v1/sessions/{id}/captures` (Light, Flat, Dark-Flat) |
