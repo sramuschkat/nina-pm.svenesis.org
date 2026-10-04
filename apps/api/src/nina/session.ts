@@ -7,6 +7,7 @@ import {
   activeAdminIds,
   alertSentSince,
   changedWheelPositions,
+  enqueueDiscordEvent,
   LATE_REPORT_MS,
   OFFLINE_MAX_MS,
   type NinaPrincipal,
@@ -114,6 +115,29 @@ async function alertAdmins(
   }
 }
 
+/** Discord „Session gestartet/beendet“ (FA-DIS-03, AP-60); ein Fehler hält die NINA-API nicht auf. */
+async function sessionDiscord(
+  svc: ApiServices,
+  tenantId: string,
+  eventKey: 'session.started' | 'session.completed',
+  sessionId: string,
+) {
+  try {
+    await enqueueDiscordEvent(svc.db, {
+      tenantId,
+      eventKey,
+      objectId: sessionId,
+      data: { sessionId },
+      now: svc.now(),
+    });
+  } catch (error) {
+    logger.warn('discord_enqueue_failed', {
+      eventKey,
+      error: error instanceof Error ? error.message : '',
+    });
+  }
+}
+
 async function rigName(svc: ApiServices, p: NinaPrincipal) {
   return (await svc.repositories({ tenantId: p.tenantId }).equipment().rig(p.rigId))?.name ?? '';
 }
@@ -164,6 +188,8 @@ export async function createSession(svc: ApiServices, p: NinaPrincipal, body: Se
   }
   // Wetter-Schnappschuss zum Sessionbeginn für Protokoll und Treffsicherheit (AP-30, FA-AUS-15/16).
   if (r.created) await captureForecastSnapshot(svc, p.tenantId, p.rigId, r.session.id, body.night);
+  if (r.created && !body.offline)
+    await sessionDiscord(svc, p.tenantId, 'session.started', r.session.id);
   const upload = await svc.uploads.planLog(p.tenantId, body.id);
   return {
     created: r.created,
@@ -229,6 +255,7 @@ export async function patchSession(
   // Nur beim Übergang: Session gerade beendet bzw. Outbox gerade leer geworden – nicht bei jedem
   // weiteren PATCH einer abgeschlossenen Session (sonst je PATCH ein neuer Close-/Berichtsjob).
   const closed = r.session.status === 'completed' || r.session.status === 'aborted';
+  if (closed && r.ended) await sessionDiscord(svc, p.tenantId, 'session.completed', sessionId);
   if (
     closed &&
     (r.ended || r.outboxDrained) &&

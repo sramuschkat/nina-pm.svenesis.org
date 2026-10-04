@@ -38,6 +38,7 @@ export const ERRORS = {
   "rig.flip_settings_invalid": { http: 422, i18nKey: "errors.rig.flipSettingsInvalid", titleDe: "Flip-Einstellungen ungültig", titleEn: "Flip settings invalid" },
   "discord.webhook_invalid": { http: 422, i18nKey: "errors.discord.webhookInvalid", titleDe: "Webhook-URL ungültig", titleEn: "Webhook URL invalid" },
   "discord.test_failed": { http: 502, i18nKey: "errors.discord.testFailed", titleDe: "Testnachricht fehlgeschlagen", titleEn: "Test message failed" },
+  "discord.delivery_failed": { http: 502, i18nKey: "errors.discord.deliveryFailed", titleDe: "Discord-Zustellung fehlgeschlagen", titleEn: "Discord delivery failed" },
   "job.not_found": { http: 404, i18nKey: "errors.job.notFound", titleDe: "Aufgabe nicht gefunden", titleEn: "Task not found" },
   "request.too_large": { http: 413, i18nKey: "errors.request.tooLarge", titleDe: "Anfrage zu groß", titleEn: "Request too large" },
   "file.too_large": { http: 413, i18nKey: "errors.file.tooLarge", titleDe: "Datei zu groß", titleEn: "File too large" },

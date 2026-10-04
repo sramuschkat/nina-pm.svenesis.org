@@ -28,6 +28,7 @@ import {
   TenantAdminRepository,
   readMaintenanceBanner,
   TenantRepository,
+  DiscordRepository,
 } from '@nina-pm/db';
 import { openPglite, type PgliteDatabase } from '@nina-pm/db/testing/pglite';
 import { COOKIE_NAMES } from '@nina-pm/shared';
@@ -35,6 +36,7 @@ import { createApp } from '../../src/app';
 import { PROD_REDIRECT_URI } from '../../src/auth/config';
 import { randomToken, sha256Hex } from '../../src/auth/crypto';
 import type { ApiServices } from '../../src/routes/services';
+import type { FetchLike } from '../../src/discord/webhook';
 import { memoryJobResultStore } from '../../src/files/job-results';
 import { FakeDiscord } from './fake-discord';
 import type { DiscordProfile } from '@nina-pm/db';
@@ -76,7 +78,11 @@ export async function createStack() {
     },
   };
   const jobResults = memoryJobResultStore();
+  // Discord-Webhooks (AP-60): nie ins Netz; Tests setzen den Mock aus tools/discord-mock.
+  const noDiscord: FetchLike = () => Promise.reject(new Error('Discord-Aufruf ohne Mock im Test'));
+  let discordFetch: FetchLike = noDiscord;
   const services: ApiServices = {
+    discordFetch: (url, init) => discordFetch(url, init),
     repositories: (ctx) => ({
       job: new JobRepository(pg.db, ctx),
       member: new MemberRepository(pg.db, ctx),
@@ -98,6 +104,7 @@ export async function createStack() {
       exoProjects: () => new ExoProjectRepository(pg.db, ctx),
       transits: () => new TransitRepository(pg.db, ctx),
       tenant: () => new TenantRepository(pg.db, ctx),
+      discord: () => new DiscordRepository(pg.db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(pg.db, actor),
     auth,
@@ -281,12 +288,14 @@ export async function createStack() {
       advance: (ms: number) => (now = new Date(now.getTime() + ms)),
     },
     setBootstrapIds: (ids: string[]) => (bootstrapIds = ids),
+    setDiscordFetch: (f: FetchLike) => (discordFetch = f),
     /** Ausgangszustand für den nächsten Test: leere Tabellen, Uhr, Discord-Nachbildung, Bootstrap-Liste. */
     reset: async () => {
       await pg.reset();
       now = START;
       discord.clear();
       bootstrapIds = [];
+      discordFetch = noDiscord;
     },
     close: () => pg.close(),
   };

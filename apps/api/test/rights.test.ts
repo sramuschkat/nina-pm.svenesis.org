@@ -77,8 +77,58 @@ beforeAll(async () => {
       403,
     ]),
   );
+  // Discord-Kanal (AP-60) für die Kanal-Routen; Testnachricht an eine Fälschung statt ins Netz.
+  stack.setDiscordFetch(() => Promise.resolve(new Response(null, { status: 204 })));
+  const discordChannelId = crypto.randomUUID();
+  const DISCORD_STAMP = '2026-09-24T10:00:00Z';
+  const discordChannel = () =>
+    stack.pg.admin.query(
+      `INSERT INTO discord_channel (id, tenant_id, name, webhook_url, webhook_hint, categories, created_at, updated_at)
+       VALUES ($1, $2, '#np-alarme', 'https://discord.com/api/webhooks/1234567/abc-defg', 'defg', '["alerts"]', $3, $3)
+       ON CONFLICT (id) DO UPDATE SET name = '#np-alarme', updated_at = $3, enabled = true`,
+      [discordChannelId, world.tenantA, DISCORD_STAMP],
+    );
+  await discordChannel();
+  const discordRes: ResourceMeta = { tenantId: world.tenantA };
   EXAMPLES = {
     'GET /api/health': { url: '/api/health' },
+    'GET /api/web/v1/tenant/discord': { url: '/api/web/v1/tenant/discord' },
+    'PUT /api/web/v1/tenant/discord': {
+      url: '/api/web/v1/tenant/discord',
+      method: 'PUT',
+      body: { guildName: 'Sternfreunde', guildId: null, inviteUrl: null },
+    },
+    'GET /api/web/v1/tenant/discord/channels': { url: '/api/web/v1/tenant/discord/channels' },
+    'POST /api/web/v1/tenant/discord/channels': {
+      url: '/api/web/v1/tenant/discord/channels',
+      method: 'POST',
+      body: {
+        name: '#np-rechte',
+        webhookUrl: 'https://discord.com/api/webhooks/7654321/xyz-rechte',
+        categories: ['approvals'],
+      },
+      okStatus: 201,
+      reset: () => stack.pg.admin.query("DELETE FROM discord_channel WHERE name = '#np-rechte'"),
+    },
+    'PATCH /api/web/v1/tenant/discord/channels/{id}': {
+      url: `/api/web/v1/tenant/discord/channels/${discordChannelId}`,
+      method: 'PATCH',
+      body: { expectedUpdatedAt: DISCORD_STAMP, name: '#np-alarme-2' },
+      resource: discordRes,
+      reset: discordChannel,
+    },
+    'DELETE /api/web/v1/tenant/discord/channels/{id}': {
+      url: `/api/web/v1/tenant/discord/channels/${discordChannelId}`,
+      method: 'DELETE',
+      okStatus: 204,
+      resource: discordRes,
+      reset: discordChannel,
+    },
+    'POST /api/web/v1/tenant/discord/channels/{id}/test': {
+      url: `/api/web/v1/tenant/discord/channels/${discordChannelId}/test`,
+      method: 'POST',
+      resource: discordRes,
+    },
     'GET /api/banner': { url: '/api/banner' },
     'GET /api/web/v1/audit/system': { url: '/api/web/v1/audit/system' },
     'GET /api/web/v1/audit/changes': { url: '/api/web/v1/audit/changes' },
@@ -991,6 +1041,11 @@ async function projectExamples(): Promise<Record<string, Example>> {
       'GET /api/web/v1/sessions/{id}': {
         url: `/api/web/v1/sessions/${sessionId}`,
         expect: { 'fremder Mandant (Admin)': 404 },
+      },
+      'POST /api/web/v1/sessions/{id}/report/resend': {
+        url: `/api/web/v1/sessions/${sessionId}/report/resend`,
+        method: 'POST',
+        resource: { tenantId: world.tenantA },
       },
       'POST /api/web/v1/sessions/{id}/corrections': {
         url: `/api/web/v1/sessions/${sessionId}/corrections`,

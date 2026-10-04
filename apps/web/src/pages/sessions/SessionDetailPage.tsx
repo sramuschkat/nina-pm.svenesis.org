@@ -13,6 +13,7 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import {
+  discordApi,
   sessionsApi,
   type NightSessionCapture,
   type NightSessionDetail,
@@ -46,6 +47,9 @@ export function SessionDetailPage() {
     queryFn: () => sessionsApi.get(id),
   });
   const canReview = useCan('session.review');
+  // Nachtbericht erneut nach Discord (FA-AUS-21, AP-60): nur Admins, nur nach dem Sessionende.
+  const canResend = useCan('session.report.resend');
+  const resend = useMutation({ mutationFn: () => discordApi.resendReport(id) });
   const [tab, setTab] = useState<Tab>('plan');
   const [correctLine, setCorrectLine] = useState<string | null>(null);
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter>('all');
@@ -88,7 +92,7 @@ export function SessionDetailPage() {
           </>
         }
         actions={
-          correctable.length > 0 || canReview ? (
+          correctable.length > 0 || canReview || canResend ? (
             <>
               {correctable.length > 0 ? (
                 <button
@@ -114,11 +118,29 @@ export function SessionDetailPage() {
                     : t('sessions.detail.markReviewed')}
                 </button>
               ) : null}
+              {canResend && s.status !== 'running' ? (
+                <button
+                  type="button"
+                  className={styles.button}
+                  disabled={resend.isPending}
+                  onClick={() => resend.mutate()}
+                >
+                  {t('sessions.detail.resendReport')}
+                </button>
+              ) : null}
             </>
           ) : null
         }
       />
       {review.error ? <ProblemMessage code={problemCode(review.error)} /> : null}
+      {resend.error ? <ProblemMessage code={problemCode(resend.error)} /> : null}
+      {resend.data ? (
+        <p role="status" className={resend.data.channels > 0 ? styles.pillOk : styles.pillWarn}>
+          {resend.data.channels > 0
+            ? t('sessions.detail.resendQueued', { count: resend.data.channels })
+            : t('sessions.detail.resendNoChannel')}
+        </p>
+      ) : null}
       {unassigned.length > 0 ? (
         <p>
           <span className={styles.pillWarn}>

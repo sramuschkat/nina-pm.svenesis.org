@@ -23,6 +23,7 @@ import { healthRoute, healthRoutes } from './routes/health';
 import { SYSTEM_ROUTES, systemRoutes } from './routes/system';
 import { AUDIT_ROUTES, webAuditRoutes } from './routes/web-audit';
 import { TENANT_ROUTES, webTenantRoutes } from './routes/web-tenant';
+import { DISCORD_ROUTES, webDiscordRoutes } from './routes/web-discord';
 import { EQUIPMENT_ROUTES, webEquipmentRoutes } from './routes/web-equipment';
 import { PROJECT_ROUTES, webProjectRoutes } from './routes/web-projects';
 import { APPROVAL_ROUTES, webApprovalRoutes } from './routes/web-approval';
@@ -70,6 +71,7 @@ export const ROUTES = [
   ...NOTIFICATION_ROUTES,
   ...AUDIT_ROUTES,
   ...TENANT_ROUTES,
+  ...DISCORD_ROUTES,
   ...EQUIPMENT_ROUTES,
   ...PROJECT_ROUTES,
   ...APPROVAL_ROUTES,
@@ -149,6 +151,7 @@ export function createApp(deps: AppDeps) {
   app.route('/', webNotificationRoutes(services));
   app.route('/', webAuditRoutes(services));
   app.route('/', webTenantRoutes(services));
+  app.route('/', webDiscordRoutes(services));
   app.route('/', webEquipmentRoutes(services));
   app.route('/', webProjectRoutes(services));
   app.route('/', webApprovalRoutes(services));

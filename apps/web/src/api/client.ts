@@ -177,6 +177,32 @@ export const tenantApi = {
     ),
 };
 
+export type DiscordSettingsView = Schemas['DiscordSettingsView'];
+export type DiscordChannelView = Schemas['DiscordChannelView'];
+export type DiscordGuild = Schemas['DiscordGuild'];
+export type DiscordChannelCreate = Schemas['DiscordChannelCreate'];
+export type DiscordChannelPatch = Schemas['DiscordChannelPatch'];
+
+/** Discord ausgehend (S-71 Reiter Discord, FA-DIS-01…05): Webhook-URLs nur schreibbar (SV-10). */
+export const discordApi = {
+  settings: () => apiFetch<DiscordSettingsView>('/api/web/v1/tenant/discord'),
+  saveGuild: (body: DiscordGuild) =>
+    apiFetch<DiscordGuild>('/api/web/v1/tenant/discord', json('PUT', body)),
+  createChannel: (body: DiscordChannelCreate) =>
+    apiFetch<DiscordChannelView>('/api/web/v1/tenant/discord/channels', json('POST', body)),
+  updateChannel: (id: string, body: DiscordChannelPatch) =>
+    apiFetch<DiscordChannelView>(`/api/web/v1/tenant/discord/channels/${id}`, json('PATCH', body)),
+  deleteChannel: (id: string) =>
+    apiFetch<undefined>(`/api/web/v1/tenant/discord/channels/${id}`, json('DELETE')),
+  testChannel: (id: string) =>
+    apiFetch<{ ok: true; sentAt: string }>(
+      `/api/web/v1/tenant/discord/channels/${id}/test`,
+      json('POST'),
+    ),
+  resendReport: (sessionId: string) =>
+    apiFetch<{ channels: number }>(`/api/web/v1/sessions/${sessionId}/report/resend`, json('POST')),
+};
+
 /** Eigene Anmeldesitzungen (S-73, TK 5.3) – in jedem Kontext. */
 export const sessionApi = {
   list: () => apiFetch<SessionList>('/api/auth/sessions'),

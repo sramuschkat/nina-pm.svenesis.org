@@ -11,6 +11,7 @@ import { SectionTabs } from './shared';
 export const ADMIN_PATHS = {
   members: '/verwaltung/mitglieder',
   settings: '/verwaltung/einstellungen',
+  discord: '/verwaltung/discord',
   log: '/verwaltung/protokoll',
 } as const;
 
@@ -36,6 +37,7 @@ export function AdminLayout({
             tabs={[
               { to: ADMIN_PATHS.members, label: t('admin.members.tab') },
               { to: ADMIN_PATHS.settings, label: t('admin.settings.tab') },
+              { to: ADMIN_PATHS.discord, label: t('admin.discord.tab') },
               { to: ADMIN_PATHS.log, label: t('admin.log.tab') },
             ]}
           />

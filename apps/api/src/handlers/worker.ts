@@ -54,6 +54,8 @@ import {
 } from '../worker/thumbnail';
 import { thumbnailLoader } from '../worker/thumbnail-db';
 import { CELESTRAK_TIMEOUT_MS, refreshSkySatellites } from '../worker/sky-satellites';
+import { discordPostHandler } from '../discord/post-job';
+import { discordTick } from '../discord/tick';
 
 // Metrik `DsqlRetries` (TK 16.2) aus jeder OCC-Wiederholung.
 emitDsqlRetries(process.env.AWS_LAMBDA_FUNCTION_NAME ?? 'nina-pm-worker');
@@ -134,6 +136,7 @@ const jobs: JobRunnerDeps = {
     multi_sim: multiSimJobHandler(multiSim),
     impact: impactJobHandler(multiSim),
     forecast: forecastJobHandler(forecastDbDeps(async () => (await lambdaDatabase()).db)),
+    discord_post: discordPostHandler({ db: async () => (await lambdaDatabase()).db }),
   },
 };
 
@@ -190,6 +193,11 @@ const maintenanceFor = (startedAt: number) => ({
   effortSiteNights: async () => {
     const runs = await effortSiteTick(effort, jobs, new Date());
     logger.info('effort_site_nights', { runs });
+    return runs;
+  },
+  discord: async () => {
+    const runs = await discordTick((await lambdaDatabase()).db, jobs, new Date());
+    if (runs > 0) logger.info('discord_tick', { runs });
     return runs;
   },
   settleTransits: async () => {

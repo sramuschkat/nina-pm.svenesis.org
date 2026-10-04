@@ -12,6 +12,7 @@ export * from './preferences';
 export * from './notifications';
 export * from './system';
 export * from './tenant-settings';
+export * from './discord';
 export * from './equipment';
 export * from './projects';
 export * from './reports';

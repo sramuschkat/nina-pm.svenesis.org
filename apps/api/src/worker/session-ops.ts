@@ -8,6 +8,7 @@
  */
 import {
   activeAdminIds,
+  enqueueDiscordEvent,
   markStaleSessions,
   reconcileSite,
   sessionsDueForClose,
@@ -56,6 +57,15 @@ export async function sessionTick(
       { name: APP_METRICS.staleRunningSessions, value: noHeartbeat.length },
     ]),
   );
+  // Discord „Session ohne Abschluss“ (FA-DIS-03, AP-60) für jede verwaiste Session.
+  for (const s of stale)
+    await enqueueDiscordEvent(db, {
+      tenantId: s.tenantId,
+      eventKey: 'session.stale',
+      objectId: s.sessionId,
+      data: { sessionId: s.sessionId },
+      now,
+    });
   for (const s of noHeartbeat) {
     logger.warn('alert_session_no_heartbeat', { tenantId: s.tenantId, sessionId: s.sessionId });
     await deps.notify(

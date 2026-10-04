@@ -9,6 +9,7 @@ import type { TenantContext } from './base';
 
 export type { AppDbRole, DbConfig } from '../connection';
 import { AuthRepository } from './auth';
+import { DiscordRepository } from './discord';
 import { JobQueue, JobRepository } from './job';
 import { MemberRepository } from './member';
 import { AuditRepository } from './audit';
@@ -50,6 +51,7 @@ export interface OpenDatabase {
     changeRequests: () => ChangeRequestRepository;
     exoProjects: () => ExoProjectRepository;
     transits: () => TransitRepository;
+    discord: () => DiscordRepository;
   };
   /** Systemverwaltung (Super User bzw. ops-cli, TK 5.4). */
   tenantAdmin(actor: SystemActor): TenantAdminRepository;
@@ -85,6 +87,7 @@ export function openDatabase(config: DbConfig, onError?: (error: Error) => void)
       changeRequests: () => new ChangeRequestRepository(db, ctx),
       exoProjects: () => new ExoProjectRepository(db, ctx),
       transits: () => new TransitRepository(db, ctx),
+      discord: () => new DiscordRepository(db, ctx),
     }),
     tenantAdmin: (actor) => new TenantAdminRepository(db, actor),
     jobQueue: () => new JobQueue(db),

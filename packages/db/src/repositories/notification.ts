@@ -6,6 +6,7 @@ import { notificationKinds, type NotificationKind } from '@nina-pm/shared';
 import { sql, type Kysely, type Transaction } from 'kysely';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { enqueueDiscordEvent, NOTIFICATION_DISCORD_EVENTS, stableUuid } from './discord';
 
 export interface NewNotifications {
   readonly tenantId: string;
@@ -17,13 +18,34 @@ export interface NewNotifications {
   readonly now: Date;
 }
 
-/** Legt je Empfänger eine Benachrichtigung an; Art nur aus `enums.json notificationKinds`. */
+/**
+ * Legt je Empfänger eine Benachrichtigung an; Art nur aus `enums.json notificationKinds`. Arten mit
+ * Discord-Gegenstück (`NOTIFICATION_DISCORD_EVENTS`, FA-DIS-03) reihen in derselben Transaktion die
+ * Zustellung in die passenden Kanäle ein (AP-60) – auch ohne Empfänger in der App (z. B. ein Admin gibt
+ * sein eigenes Objekt frei). Die Objekt-ID der Zustellung ist aus Art, Projekt, `payload.key` und Zeitpunkt
+ * abgeleitet: mehrere Aufrufe für dasselbe Ereignis (verschiedene Empfängergruppen) senden einmal.
+ */
 export async function insertNotifications(
   db: Kysely<Database> | Transaction<Database>,
   n: NewNotifications,
 ): Promise<number> {
   if (!(notificationKinds as readonly string[]).includes(n.kind))
     throw new Error(`Unbekannte Benachrichtigungsart ${n.kind}`);
+  const eventKey = NOTIFICATION_DISCORD_EVENTS[n.kind];
+  if (eventKey) {
+    const payload = n.payload ?? {};
+    const key = typeof payload.key === 'string' ? payload.key : '';
+    await enqueueDiscordEvent(db, {
+      tenantId: n.tenantId,
+      eventKey,
+      objectId: stableUuid(`${n.kind}|${n.projectId ?? ''}|${key}|${n.now.toISOString()}`),
+      data: { ...payload, projectId: n.projectId ?? null, atUtc: n.now.toISOString() },
+      now: n.now,
+      ...(typeof payload.channelId === 'string' && eventKey === 'discord.channel_failed'
+        ? { excludeChannelId: payload.channelId }
+        : {}),
+    });
+  }
   const recipients = [...new Set(n.recipients)];
   if (recipients.length === 0) return 0;
   await db

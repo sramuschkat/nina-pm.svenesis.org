@@ -946,6 +946,38 @@ export interface EphemerisTable {
   createdAt: Timestamp;
 }
 
+/** Tabelle `discord_channel` (Migration 0005, TK 7.7, SV-10): `webhookUrl` nie ausliefern oder loggen. */
+export interface DiscordChannelTable {
+  id: Generated<string>;
+  tenantId: string;
+  name: string;
+  webhookUrl: string | null;
+  webhookHint: string | null;
+  categories: ColumnType<unknown, string | undefined, string>;
+  eventFilter: ColumnType<unknown, string | undefined, string>;
+  enabled: Generated<boolean>;
+  lastDeliveryAt: Timestamp | null;
+  lastError: string | null;
+  lastErrorAt: Timestamp | null;
+  createdBy: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/** Tabelle `discord_delivery` (Migration 0005, TK 7.7, DAT-11): Zustellzustand je Kanal, Ereignis und Objekt. */
+export interface DiscordDeliveryTable {
+  tenantId: string;
+  channelId: string;
+  eventKey: string;
+  objectId: string;
+  jobId: string | null;
+  status: Generated<'pending' | 'sent' | 'failed'>;
+  attempts: Generated<number>;
+  lastError: string | null;
+  sentAt: Timestamp | null;
+  createdAt: Timestamp;
+}
+
 export interface Database {
   tenant: TenantTable;
   dsoObject: DsoObjectTable;
@@ -997,4 +1029,6 @@ export interface Database {
   flatCombination: FlatCombinationTable;
   command: CommandTable;
   transitObservation: TransitObservationTable;
+  discordChannel: DiscordChannelTable;
+  discordDelivery: DiscordDeliveryTable;
 }

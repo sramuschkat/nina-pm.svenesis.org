@@ -17,28 +17,31 @@ Bezug: FA-DIS-01…06, FA-AUS-21, TK 7.7. Texte über i18n (`discord.*`) in der 
 - `embeds[].timestamp` bleibt ISO-UTC mit `Z` (Discord rendert den Fußzeilen-Zeitpunkt selbst). Keine Uhrzeiten aus `session_event.message` übernehmen – Zeiten nur aus den `…Utc`-Feldern formatieren.
 
 ## Ereignisse
+Links relativ zu `https://nina-pm.svenesis.org` auf die Pfade der Web-App (Stand AP-60).
+
 | eventKey | Titel (de) | Felder | Link |
 |---|---|---|---|
-| `submission.new` | Neue Einreichung: {projekt} | Einreicher*, Rig, Aufwand, geschätzte Stunden | `/queue` |
-| `submission.withdrawn` | Einreichung zurückgezogen: {projekt} | Einreicher* | `/queue` |
-| `approval.approved` | Freigegeben: {projekt} | Rig, Priorität, Start | `/projects/{id}` |
-| `approval.returned` | Zur Überarbeitung: {projekt} | Kommentar (gekürzt 200) | `/projects/{id}` |
-| `approval.rejected` | Abgelehnt: {projekt} | Kommentar | `/projects/{id}` |
-| `approval.expired` | Einreichung verfallen: {projekt} | Frist | `/projects/{id}` |
-| `deadline.near` | Frist in 24 h: {projekt} | Frist (Mandantenzeit) | `/queue` |
-| `change_request.new` / `.decided` | Änderungsantrag: {projekt} | Art, Entscheidung | `/projects/{id}` |
-| `session.started` | Session gestartet: {rig} | Nacht (Doppeldatum), Start (Standortzeit + `<t:…:t>`), Blöcke, Ziele | `/sessions/{id}` |
-| `session.completed` | Session beendet: {rig} | Beginn–Ende (Standortzeit + `<t:…:t>`), Dauer, Lights | `/sessions/{id}` |
-| `session.stale` | Session ohne Abschluss: {rig} | letzter Heartbeat (Standortzeit + `<t:…:R>`) | `/sessions/{id}` |
-| `transit.observed` / `transit.missed` | Transit {planet}: beobachtet / verpasst | Abdeckung % | `/transit-observations/{id}` |
-| `session.report` | Nachtbericht {nacht} – {rig} | je Ziel: Filter Soll/Ist, Integrationszeit; Flats/Dark-Flats je Kombination; Flip-Dauer; Ausfälle; „vorläufig“ bei offenem Outbox | `/sessions/{id}` |
-| `session.no_heartbeat` | Kein Heartbeat seit {min} min: {rig} | Session | `/sessions/{id}` |
-| `plugin.dead_letters` | Plugin: {n} Meldungen nicht zustellbar | Instanz | `/admin/nina` |
-| `rig.busy` | Rig belegt: zweite Instanz abgewiesen | Instanzen | `/admin/nina` |
-| `nina.settings_mismatch` | NINA-Einstellungen weichen ab | Gründe als Code-Liste aus `enums.json` `ninaSettingsMismatchCodes` (u. a. `filter_wheel_changed` NT-E1, `mount_site_mismatch` NT-22, `rotator_range_quarter`, `af_time_trigger_missing`) mit Feld, Soll, Ist | `/equipment/rigs/{id}` |
-| `discord.channel_failed` | Kanal {name} nicht erreichbar | HTTP-Status, Versuche | `/admin/settings/discord` |
+| `submission.new` | Neue Einreichung: {projekt} | Einreicher*, Rig, Aufwand (Kennzeichen, Nächte) | `/projekte/warteschlange` |
+| `submission.withdrawn` | Einreichung zurückgezogen: {projekt} | Einreicher* | `/projekte/warteschlange` |
+| `approval.approved` | Freigegeben: {projekt} | Rig, Priorität | `/projekte/{id}` |
+| `approval.returned` | Zur Überarbeitung: {projekt} | Kommentar (gekürzt 200) | `/projekte/{id}` |
+| `approval.rejected` | Abgelehnt: {projekt} | Kommentar | `/projekte/{id}` |
+| `approval.expired` | Einreichung verfallen: {projekt} | Frist | `/projekte/{id}` |
+| `deadline.near` | Frist in 24 h: {projekt} | Frist (Mandantenzeit) | `/projekte/warteschlange` |
+| `change_request.new` / `.decided` | Änderungsantrag (entschieden): {projekt} | Entscheidung, Kommentar | `/projekte/{id}` |
+| `session.started` | Session gestartet: {rig} | Nacht (Doppeldatum), Start (Standortzeit + `<t:…:t>`) | `/auswertung/sessions/{id}` |
+| `session.completed` | Session beendet: {rig} | Beginn–Ende (Standortzeit + `<t:…:t>`), Dauer, Status, Lights, Integration | `/auswertung/sessions/{id}` |
+| `session.stale` | Session ohne Abschluss: {rig} | Nacht, letzter Heartbeat (Standortzeit + `<t:…:t>` + `<t:…:R>`) | `/auswertung/sessions/{id}` |
+| `transit.observed` / `transit.missed` | Transit {planet}: beobachtet / verpasst | Abdeckung % (Ist/Soll der Aufnahmen), Ein- bis Austritt | `/projekte/{id}` |
+| `session.report` | Nachtbericht {nacht} – {rig} | Status, Nacht, Beginn–Ende, Wetterbewertung, belichtete Stunden und Effizienz, Lights (+ Bonus), fertig gewordene Projekte, Transitabdeckung, „vorläufig“ bei offenem Outbox; je Projekt (höchstens 10, Rest „+ n weitere“) Filter Soll/Ist mit Integrationszeit; Flats/Dark-Flats je Filter (Ist/Soll); Abweichungsgründe mit Anzahl und Dauer (u. a. Flips, Safety-Pausen) | `/auswertung/sessions/{id}` |
+| `session.no_heartbeat` | Kein Heartbeat seit {min} min: {rig} | Session | `/auswertung/sessions/{id}` |
+| `plugin.dead_letters` | Plugin: Meldungen nicht zustellbar | Rig, Instanz, Anzahl | `/nina/instanzen` |
+| `rig.busy` | Rig belegt: zweite Instanz abgewiesen | Rig, Nacht, Instanz | `/nina/instanzen` |
+| `nina.settings_mismatch` | NINA-Einstellungen weichen ab | Rig/Instanz und Gründe als Code-Liste aus `enums.json` `ninaSettingsMismatchCodes` (u. a. `filter_wheel_changed` NT-E1, `mount_site_mismatch` NT-22, `rotator_range_quarter`, `af_time_trigger_missing`) | `/ausruestung/rigs` |
+| `discord.channel_failed` | Kanal {name} nicht erreichbar | HTTP-Status, Versuche | `/verwaltung/discord` |
 
 \* nur mit `showNames`.
 
 ## Fehlerbehandlung
-`429` → `retry_after` abwarten; `5xx`/Netz → bis 5 Versuche (30 s, 2 min, 10 min, 30 min, 2 h); `401/403/404` → Kanal `failing`, Ereignis `discord.channel_failed` an **andere** alerts-Kanäle und In-App an Owner; nie Endlosschleife.
+Vor jedem Senden: Kanal aktiv, URL vorhanden und gültig (`https`, Host `discord.com`/`discordapp.com`), sonst kein Aufruf; eine ungültige URL schaltet den Kanal ab. Weiterleitungen werden nicht verfolgt (`redirect: 'manual'`, `3xx` = Fehler ohne Wiederholung).
+`429` → `retry_after` abwarten (bis 5 s im selben Lauf, sonst als nächster Versuch); `5xx`/Netz → bis 5 Versuche mit Backoff 30 s, 2 min, 10 min, 30 min (abgeholt von `tick-5min`, also frühestens zum nächsten Lauf); `401/403/404` → Kanal aus (`enabled = false`, `last_error`), Benachrichtigung `alert.discord_channel_failed` in der App an die aktiven Admins (FA-DIS-05) und Ereignis `discord.channel_failed` an die **anderen** Alarm-Kanäle; übrige `4xx` → Fehler ohne Wiederholung; nie Endlosschleife. `last_error` enthält nur feste Codes (`http_404`, `network`, `redirect`, `webhook_invalid` …), nie Discords Antworttext oder die URL.
