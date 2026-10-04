@@ -323,7 +323,8 @@ export function settingsMismatch(
   const codes = new Set<NinaSettingsMismatchCode>();
   const f = hb.meridianFlip;
   if (f && rig.flipEnabled) {
-    if (!f.triggerPresent) codes.add('flip_trigger_missing');
+    // Unbekannt (noch kein Container gelaufen) ist keine Abweichung – sonst kam nach jedem NINA-Start ein Alarm.
+    if (f.triggerPresent === false) codes.add('flip_trigger_missing');
     const off = (a: number, b: number) => Math.abs(a - b) > 0.5;
     if (
       off(f.afterMin, rig.flipAfterMeridianMin) ||
@@ -351,8 +352,14 @@ export function settingsMismatch(
   const t = hb.sequenceTriggers;
   if (t) {
     if (t.dither.length > 0) codes.add('nina_dither_trigger_present');
-    if (t.autofocusAfterTimeMin === null) codes.add('af_time_trigger_missing');
-    else if (rig.afEveryMin > 0 && t.autofocusAfterTimeMin !== rig.afEveryMin)
+    // Wie execution.md §6: nur bei afEveryMin > 0, Abweichung erst über 0,5 min (Analyse 04.10.2026).
+    if (rig.afEveryMin > 0 && t.autofocusAfterTimeMin === null)
+      codes.add('af_time_trigger_missing');
+    else if (
+      rig.afEveryMin > 0 &&
+      t.autofocusAfterTimeMin !== null &&
+      Math.abs(t.autofocusAfterTimeMin - rig.afEveryMin) > 0.5
+    )
       codes.add('af_time_mismatch');
   }
   // Dieselbe Regel wie beim Speichern (`reportNinaFilterWheel`): fehlende Plätze gelten nicht als geändert.

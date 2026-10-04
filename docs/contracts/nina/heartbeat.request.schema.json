@@ -125,7 +125,10 @@
               "type": "object",
               "properties": {
                 "triggerPresent": {
-                  "type": "boolean"
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
                 },
                 "useSideOfPier": {
                   "type": "boolean"
@@ -154,7 +157,6 @@
                 }
               },
               "required": [
-                "triggerPresent",
                 "useSideOfPier",
                 "recenter",
                 "autoFocusAfterFlip",

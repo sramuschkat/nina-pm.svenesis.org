@@ -3,7 +3,14 @@
  * Aufnahmen und Ereignisse (idempotent, Grenzen, Zugehörigkeit), Zähler und Abweichungen, Heartbeat mit
  * Lease-Rückholung (M5/M6) und NINA-Einstellungen (NT-22, NT-E1), Isolation je Session (SEC-53).
  */
-import { applyCorrection, closeSessionFlats, type EnqueueInput } from '@nina-pm/db';
+import {
+  markStaleSessions,
+  sessionsDueForClose,
+  STALE_REPORT_GRACE_MS,
+  applyCorrection,
+  closeSessionFlats,
+  type EnqueueInput,
+} from '@nina-pm/db';
 import { COOKIE_NAMES, nina } from '@nina-pm/shared';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { CAMERA, filterInput, rigInput, SCHEDULER, SITE, TELESCOPE } from './support/equipment';
@@ -704,6 +711,57 @@ describe('Offline-Session für eine vergangene Nacht (P0-2, FA-NIN-04, night.md 
     expect((await t.session(t.tokens.a2, offline)).status).toBe(201);
     s.clock.advance(30 * 86_400_000);
     expect((await t.session(t.tokens.a2, offline)).status).toBe(200);
+  });
+});
+
+describe('verwaiste Sessions und Nachtbericht (Analyse 04.10.2026)', () => {
+  it('Heartbeat nach Sessionende + 2 h belebt eine verwaiste Session nicht wieder', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    await s.pg.admin.query(
+      "UPDATE session SET status = 'stale', session_end_utc = '2026-09-18T11:00:00Z' WHERE id = $1",
+      [sid],
+    );
+    s.clock.set(new Date('2026-09-18T14:00:00Z'));
+    const beat = await t.hb(t.tokens.a1, { sessionId: sid });
+    expect(beat.body.lease).toEqual({ untilUtc: null, leaseLost: true });
+    const row = (await s.pg.admin.query('SELECT status FROM session WHERE id = $1', [sid])).rows[0];
+    expect(row).toEqual({ status: 'stale' });
+  });
+
+  it('offline nicht verwaist; Bericht frühestens nach 1 h; Wiederaufnahme zieht den offenen Bericht zurück', async () => {
+    const t = await setup();
+    const [offline, silent] = [id(), id()];
+    await t.session(t.tokens.a1, { id: offline });
+    await t.session(t.tokens.b, { id: silent });
+    await s.pg.admin.query(
+      "UPDATE session SET session_end_utc = '2026-09-18T11:30:00Z', last_heartbeat_at = '2026-09-18T11:00:00Z', offline_since = CASE WHEN id = $1 THEN '2026-09-18T10:00:00Z'::timestamptz END WHERE id IN ($1, $2)",
+      [offline, silent],
+    );
+    const now = new Date('2026-09-18T14:00:00Z');
+    expect((await markStaleSessions(s.pg.db, now)).map((x) => x.sessionId)).toEqual([silent]);
+    const due = (await sessionsDueForClose(s.pg.db, now)).find((d) => d.sessionId === silent);
+    expect(due?.reportAt.getTime()).toBeGreaterThanOrEqual(now.getTime() + STALE_REPORT_GRACE_MS);
+
+    // Bericht-Job wie tick-5min; dann kommt das Plugin zurück (vor Sessionende + 2 h).
+    const tenantId = (
+      (await s.pg.admin.query('SELECT tenant_id FROM session WHERE id = $1', [silent])).rows[0] as {
+        tenant_id: string;
+      }
+    ).tenant_id;
+    await s.services.repositories({ tenantId }).job.enqueue({
+      kind: 'session_report',
+      input: { sessionId: silent },
+      dedupeKey: `session_report:${silent}`,
+      ...(due ? { runAfter: due.reportAt } : {}),
+    });
+    s.clock.set(new Date('2026-09-18T13:00:00Z'));
+    await t.hb(t.tokens.b, { sessionId: silent });
+    const job = (
+      await s.pg.admin.query("SELECT status, dedupe_active FROM job WHERE kind = 'session_report'")
+    ).rows[0];
+    expect(job).toEqual({ status: 'done', dedupe_active: null });
   });
 });
 

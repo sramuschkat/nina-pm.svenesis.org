@@ -25,7 +25,8 @@ export const NinaHeartbeat = z
       .optional(),
     meridianFlip: z
       .object({
-        triggerPresent: z.boolean(),
+        /** `null`/fehlt: noch kein NINA-PM-Container gelaufen, Trigger unbekannt (keine Abweichung melden). */
+        triggerPresent: z.boolean().nullable().optional(),
         useSideOfPier: z.boolean(),
         recenter: z.boolean(),
         autoFocusAfterFlip: z.boolean(),

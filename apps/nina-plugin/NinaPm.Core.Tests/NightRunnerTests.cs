@@ -1028,6 +1028,42 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Null(OutboxSender.CompletedSession(store));
     }
 
+    [Fact]
+    public async Task Abbruch_mit_offenen_Meldungen_meldet_aborted_nach_dem_Leeren_pending_0()
+    {
+        // Analyse 04.10.2026: vorher nur für completed – nach einem Benutzer-Stopp liefen Abschluss und Bericht erst nach 6 h.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
+        api.ReportsFail = true;
+        await Outbox(runner).FlushAsync(default);
+        api.ReportsFail = false;
+
+        runner.UserStopped();
+        await Task.Delay(50); // PATCH aborted läuft ohne Warten (wie im Adapter)
+        Assert.Equal((session, NinaSessionPatchStatus.Aborted, 1), (api.Patches[^1].Id, api.Patches[^1].Patch.Status, api.Patches[^1].Patch.OutboxPending));
+        clock.Advance(TimeSpan.FromMinutes(1));
+        await Outbox(runner).FlushAsync(default);
+
+        Assert.Equal((session, NinaSessionPatchStatus.Aborted, 0), (api.Patches[^1].Id, api.Patches[^1].Patch.Status, api.Patches[^1].Patch.OutboxPending));
+        Assert.Null(OutboxSender.CompletedSession(store));
+    }
+
+    [Fact]
+    public async Task Abschluss_im_Offline_Modus_ruft_nichts_auf_und_wartet_in_der_Outbox()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        runner.OfflineMode = true;
+        var patches = api.Patches.Count;
+
+        await runner.CloseNightUnsafeAsync(default);
+
+        Assert.Equal(patches, api.Patches.Count);
+        Assert.Contains(store.OutboxPeek(50), e => e.Kind == OutboxKinds.SessionPatch);
+    }
+
     // ---- AP-16g: Fehlerklassen der Outbox, Offline-Session, Offline-Modus, Bedienung (execution.md §2, §6, §8) ----
 
     private static NinaApiException ProblemWithErrors(int status, string code, params string[] paths) =>

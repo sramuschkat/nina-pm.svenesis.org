@@ -11,6 +11,7 @@ import type { Kysely, Selectable, Transaction } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, RigLeaseTable, SessionTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { STALE_AFTER_SESSION_END_MS } from './session-ops';
 
 export type SessionRow = Selectable<SessionTable>;
 type LeaseRow = Selectable<RigLeaseTable>;
@@ -167,6 +168,23 @@ export class NinaSessionRepository extends TenantRepo {
       .where('tenantId', '=', this.tenantId)
       .where('kind', '=', 'session_close')
       .where('dedupeKey', '=', key)
+      .execute();
+    // Ein beim Verwaisen angelegter, noch nicht gelaufener Nachtbericht ist überholt: zurückziehen, sonst ginge er mit den
+    // Zahlen vor der Wiederaufnahme hinaus und der richtige danach nie (Discord-Zustellung je Session nur einmal).
+    const report = dedupeKeys.sessionReport(sessionId);
+    await trx
+      .updateTable('job')
+      .set({
+        status: 'done',
+        finishedAt: now,
+        dedupeActive: null,
+        dedupeKey: `${report}:rearmed:${isoSec(now)}`,
+        error: JSON.stringify({ code: 'session.resumed' }),
+      })
+      .where('tenantId', '=', this.tenantId)
+      .where('kind', '=', 'session_report')
+      .where('dedupeKey', '=', report)
+      .where('status', '=', 'pending')
       .execute();
   }
 
@@ -482,7 +500,13 @@ export class NinaSessionRepository extends TenantRepo {
         .execute();
       const mine = lease.activeSessionId === null || lease.activeSessionId === s.id;
       const free = mine || !leaseHeld(lease, now);
-      if (!OPEN.has(s.status) || excludedByRelease(s, lease) || !free)
+      // Verwaist und deutlich nach dem Sessionende (z. B. NINA am Morgen neu gestartet, Sequenz nicht): nicht wiederbeleben –
+      // sonst pendelte die Session stale ↔ running, und `tick-5min` legte alle 5 min neue Abschluss-Jobs an (Analyse 04.10.2026).
+      const pastEnd =
+        s.status === 'stale' &&
+        s.sessionEndUtc !== null &&
+        now.getTime() - new Date(s.sessionEndUtc).getTime() > STALE_AFTER_SESSION_END_MS;
+      if (!OPEN.has(s.status) || excludedByRelease(s, lease) || !free || pastEnd)
         return { untilUtc: null, leaseLost: true };
       const until = new Date(now.getTime() + LEASE_MS);
       let offlineUntil: Date | null = null;

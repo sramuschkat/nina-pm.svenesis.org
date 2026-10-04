@@ -675,7 +675,11 @@ export async function nightPlanInput(
       tonight: o.tonight,
       pendingByLine: o.pendingByLine,
       transits,
-      autofocusAfterTimeMin: lastState.sequenceTriggers?.autofocusAfterTimeMin ?? null,
+      // Trigger noch unbekannt (kein Heartbeat mit NINA-PM-Container, z. B. erster Plan nach dem NINA-Start): mit dem
+      // Intervall des Rigs planen statt ohne Autofokus (Analyse 04.10.2026); bekannt ohne Trigger → ohne (M7).
+      autofocusAfterTimeMin: lastState.sequenceTriggers
+        ? (lastState.sequenceTriggers.autofocusAfterTimeMin ?? null)
+        : view.scheduler.overhead.afEveryMin,
     },
   ) as PlanInput;
   return { input, projects };

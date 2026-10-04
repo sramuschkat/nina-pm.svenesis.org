@@ -747,7 +747,13 @@ public sealed class NightRunner(
     {
         if (SessionId is not { } id) return;
         var patch = new NinaSessionPatch { Status = status, EndedAtUtc = clock.UtcNow, OutboxPending = store.OutboxCount() };
-        if (status == NinaSessionPatchStatus.Completed && patch.OutboxPending > 0) OutboxSender.RememberCompleted(store, id, patch.EndedAtUtc!.Value);
+        if (patch.OutboxPending > 0) OutboxSender.RememberCompleted(store, id, patch.EndedAtUtc!.Value, status);
+        // Offline-Modus: gar nichts aufrufen (§6) – der Abschluss wartet in der Outbox hinter den offenen Meldungen.
+        if (offlineMode)
+        {
+            store.EnqueueOutbox(OutboxKinds.SessionPatch, JsonConvert.SerializeObject(patch, NinaJson.Settings()), id, null);
+            return;
+        }
         try
         {
             await sessionApi.PatchAsync(id, patch, token).ConfigureAwait(false);

@@ -2087,7 +2087,8 @@
             "nullable": true,
             "properties": {
               "triggerPresent": {
-                "type": "boolean"
+                "type": "boolean",
+                "nullable": true
               },
               "useSideOfPier": {
                 "type": "boolean"
@@ -2116,7 +2117,6 @@
               }
             },
             "required": [
-              "triggerPresent",
               "useSideOfPier",
               "recenter",
               "autoFocusAfterFlip",
