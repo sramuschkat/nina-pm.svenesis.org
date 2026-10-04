@@ -30,9 +30,10 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public void OnInterrupted() => interrupted = true;
 
-    public void PlanBuilt(NinaTargets? targets)
+    public void PlanBuilt(NinaTargets? targets, NinaPlanResponse plan)
     {
         rules.PlanBuilt(targets, world.ProfileFilters, world.DitherTrigger ? "DitherAfterExposures" : null);
+        rules.FlipInTransit(plan, world.AutoFocusAfterFlip);
         var siteOffset = runner()?.Bootstrap is { } b ? SiteCheck.SiteOffset(b, clock.UtcNow) : null;
         var pc = world.PcUtcOffsetMinutes is { } m ? TimeSpan.FromMinutes(m) : siteOffset ?? TimeSpan.Zero;
         rules.CheckSite(new SiteFacts(pc, 31.5471, -99.3823, 0, world.RotatorRangeQuarter, world.FlipTrigger));
@@ -46,7 +47,16 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     private Blocks? target;
 
-    public void SetTarget(Blocks block) => target = block;
+    /// <summary>Trigger-Regeln des Blocks (Transit, §5) und schon gemeldete Unterdrückungen.</summary>
+    private TransitTriggerContext? transitTriggers;
+    private readonly HashSet<string> suppressedLogged = [];
+
+    public void SetTarget(Blocks block)
+    {
+        target = block;
+        transitTriggers = TriggerPolicy.ForBlock(block, runner()?.Targets);
+        suppressedLogged.Clear();
+    }
 
     public bool CanSkipSlew(Blocks block) =>
         !interrupted && !world.Parked && lastCentered == (block.ProjectId, block.PanelId);
@@ -64,7 +74,8 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
         }
         await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.CenterS + (newTarget ? world.CenterDelayS : 0)), token).ConfigureAwait(false);
         world.Parked = false;
-        if (newTarget && block.MeridianFlip is { Planned: true } flip)
+        // Auch ein unvermeidlicher Flip im Transitfenster (planned: false, Lücke ausgewiesen, NT-25): NINA flippt trotzdem.
+        if (newTarget && block.MeridianFlip is { } flip && (flip.Planned || flip.GapStartUtc is not null))
         {
             // Montierung: früheste Flipzeit des Ziels = Plan-Flipzeit + Abweichung der Montierung; vorher westlich.
             world.EarliestFlipUtc = flip.PlannedUtc.AddSeconds(world.MountFlipOffsetS);
@@ -84,7 +95,7 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
 
     public bool RotatorConnected => world.RotatorConnected;
 
-    public bool NinaRecentersAfterFlip => false;
+    public bool NinaRecentersAfterFlip => world.Recenter;
 
     public string? PierSide() => world.PierKnown ? world.Pier : null;
 
@@ -135,6 +146,13 @@ public sealed class SimNina(VirtualClock clock, SimWorld world, Func<NightRunner
         if (rules.ChooseReadout(entry, world.ReadoutModes).Kind == ReadoutResolutionKind.NotFound) return ExposureResult.Skipped;
         // NINAs Trigger-Walk vor der Belichtung: ab der frühesten Flipzeit flippt der Meridian-Flip-Trigger (±1 Belichtung).
         await NinaFlipTriggerAsync(token).ConfigureAwait(false);
+        // Autofokus-Trigger: im Transit ohne Erlaubnis der Beobachtung unterdrückt (dieselbe Regel wie der Adapter).
+        const string af = "AutofocusAfterTimeTrigger";
+        if (world.AfTrigger && TriggerPolicy.Suppressed(af, transitTriggers) && suppressedLogged.Add(af))
+        {
+            log.Event("TRIGGER_SUPPRESSED", ("type", af));
+            runner()?.ReportEvent(EventsKind.Trigger_suppressed, af, data: new Dictionary<string, object> { ["type"] = af });
+        }
         var exposureS = entry.ExposureS ?? 0;
         var id = Uuid7.New(clock);
         var start = clock.UtcNow;
@@ -180,9 +198,20 @@ public sealed class SimSettings(SimWorld world, double latDeg, double lonDeg) : 
             RangeStartMechanicalDeg = 0,
             Reverse = false,
         },
+        MeridianFlip = new MeridianFlip
+        {
+            TriggerPresent = world.FlipTrigger,
+            UseSideOfPier = true,
+            Recenter = world.Recenter,
+            AutoFocusAfterFlip = world.AutoFocusAfterFlip,
+            SettleTimeS = 0,
+            PauseBeforeMin = 0,
+            AfterMin = 5,
+            MaxAfterMin = 10,
+        },
         SequenceTriggers = new SequenceTriggers
         {
-            Autofocus = [],
+            Autofocus = world.AfTrigger ? ["AutofocusAfterTimeTrigger"] : [],
             Dither = world.DitherTrigger ? ["DitherAfterExposures"] : [],
             AutofocusAfterTimeMin = null,
         },

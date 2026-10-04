@@ -56,10 +56,14 @@ public static class Playback
         double downloadS)
     {
         var entries = block.Entries;
-        var exposes = Enumerable.Range(after + 1, Math.Max(0, entries.Count - after - 1))
-            .Where(i => entries[i].Cmd == EntriesCmd.Expose)
+        var all = Enumerable.Range(after + 1, Math.Max(0, entries.Count - after - 1))
+            .Where(i => entries[i].Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series)
             .ToList();
-        if (exposes.Count == 0) return PlaybackStep.End("completed", []);
+        if (all.Count == 0) return PlaybackStep.End("completed", []);
+        if (entries[all[0]].Cmd == EntriesCmd.Expose_series)
+            return Series(block, all[0], now, offset, mode, darknessEndUtc, downloadS);
+        // Belichtungen bis zur nächsten Serie (ein Block enthält praktisch nur eine der beiden Arten).
+        var exposes = all.TakeWhile(i => entries[i].Cmd == EntriesCmd.Expose).ToList();
 
         var skipped = new List<int>();
         int chosen;
@@ -89,6 +93,26 @@ public static class Playback
             return new PlaybackStep(PlaybackKind.Expose, chosen, skipped, null, null);
         return PlaybackStep.End(limit is { } k && finish > k ? "night_end" : "completed", skipped);
     }
+
+    /// <summary>
+    /// Transitserie (execution.md §5, transit.md §3): dieselbe Belichtung wiederholt ab <c>atUtc</c> (Fensterbeginn)
+    /// bis <c>untilUtc</c>, unabhängig von Anzahl und Planungsbedarf. Kein Verzug: das Fenster ist fest, die Serie wartet
+    /// nie über <c>atUtc</c> hinaus und verwirft keine Belichtungen. Passt die nächste Belichtung nicht mehr vor
+    /// <c>min(untilUtc, endUtc)</c>, ist die Serie erledigt und die Einträge danach folgen.
+    /// </summary>
+    private static PlaybackStep Series(Blocks block, int index, DateTimeOffset now, TimeSpan offset, PlaybackMode mode,
+        DateTimeOffset? darknessEndUtc, double downloadS)
+    {
+        var e = block.Entries[index];
+        if (now < e.AtUtc) return new PlaybackStep(PlaybackKind.Wait, index, [], e.AtUtc, null);
+        var until = e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc;
+        if (now.AddSeconds((e.ExposureS ?? 0) + downloadS) <= until)
+            return new PlaybackStep(PlaybackKind.Expose, index, [], null, null);
+        return Next(block, index, now, offset, mode, darknessEndUtc, downloadS);
+    }
+
+    /// <summary>Eintrag gehört zu einer Transitserie, die der Executor wiederholt (Cursor bleibt davor).</summary>
+    public static bool Repeats(Entries entry) => entry.Cmd == EntriesCmd.Expose_series;
 
     /// <summary><c>min(darknessEndUtc, block.twilightEndUtc)</c>; <c>null</c>-Werte zählen nicht (NT-13).</summary>
     public static DateTimeOffset? KulanzLimit(DateTimeOffset? darknessEndUtc, DateTimeOffset? twilightEndUtc) =>

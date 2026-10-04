@@ -1,0 +1,100 @@
+{
+  "protocol": "P-27",
+  "description": "Flip im Transitfenster: Teil 1 mit AF nach Flip (Recenter aus), Teil 2 mit Recenter an (Alarm im Test-Report).",
+  "parts": [
+    {
+      "scenario": "transit-flip",
+      "untilMin": 45,
+      "setup": {
+        "autoFocusAfterFlip": true
+      },
+      "steps": []
+    },
+    {
+      "scenario": "transit-flip",
+      "untilMin": 45,
+      "setup": {
+        "recenter": true
+      },
+      "steps": []
+    }
+  ],
+  "asserts": [
+    [
+      {
+        "log": {
+          "event": "WARNING",
+          "where": {
+            "code": "flip_in_transit"
+          }
+        },
+        "min": 2,
+        "max": 2
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "FLIP"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "log": {
+          "event": "FLIP_UNDETECTED"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ],
+    [
+      {
+        "log": {
+          "event": "TRANSIT_END"
+        },
+        "min": 2,
+        "max": 2
+      },
+      {
+        "report": "captures",
+        "part": 1,
+        "where": {
+          "filterShortName": "R"
+        },
+        "whereExists": ["transitObservationId"],
+        "min": 30
+      },
+      {
+        "report": "captures",
+        "part": 2,
+        "where": {
+          "filterShortName": "R"
+        },
+        "whereExists": ["transitObservationId"],
+        "min": 30
+      }
+    ],
+    [
+      {
+        "report": "alerts",
+        "part": 2,
+        "where": {
+          "code": "nina_settings_mismatch",
+          "detail": "recenter_after_flip_on"
+        },
+        "min": 1
+      },
+      {
+        "report": "alerts",
+        "part": 1,
+        "where": {
+          "code": "nina_settings_mismatch",
+          "detail": "recenter_after_flip_on"
+        },
+        "min": 0,
+        "max": 0
+      }
+    ]
+  ]
+}

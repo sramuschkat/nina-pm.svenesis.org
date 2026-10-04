@@ -50,7 +50,9 @@ public sealed record BlockRunOptions(
     Action<EventsKind, string?, Blocks, double?>? Report = null,
     Action<Blocks>? FlipDone = null,
     Func<bool>? SkipRequested = null,
-    Func<bool>? TargetsChanged = null);
+    Func<bool>? TargetsChanged = null,
+    Func<DateTimeOffset?>? TransitDeadline = null,
+    Func<TimeSpan>? InBlockInterval = null);
 
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
@@ -95,6 +97,12 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         public TimeSpan Offset { get; set; } = TimeSpan.Zero;
         public bool RecenterPending { get; set; }
         public bool Flipped { get; set; }
+
+        /// <summary>Transitserie begonnen (<c>TRANSIT_START</c> gemeldet).</summary>
+        public bool SeriesStarted { get; set; }
+
+        /// <summary>Filter der Transit-Zeile gesetzt – einmal, schon vor dem Fensterbeginn (§5).</summary>
+        public bool SeriesFilterSet { get; set; }
     }
 
     /// <summary>Verzug fortschreiben: tatsächliche minus geplante Dauer, nie negativ (§4.2, NIN-14).</summary>
@@ -138,7 +146,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             await host.DelayAsync(next < start ? next : start, token).ConfigureAwait(false);
         }
         if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
-        if (block.EndUtc <= clock.UtcNow) return Skip(block, "elapsed");
+        if (block.EndUtc <= clock.UtcNow || NothingFits(block)) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
         // §4.1 Nr. 1: keine Zeile mit gefundenem Filter bzw. Auslesemodus → überspringen statt den Block leer abzusitzen
         // (P-05 prod 03.10.2026).
@@ -178,6 +186,11 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             CurrentEntry = null;
         }
         var (reason, exposures, skipped) = result;
+        if (run.SeriesStarted)
+        {
+            log.Event("TRANSIT_END", ("id", block.Id));
+            options.Report?.Invoke(EventsKind.Transit_end, null, block, null);
+        }
 
         await host.AfterTargetChangeAsync(token).ConfigureAwait(false);
         log.Event("BLOCK_END", ("id", block.Id), ("reason", reason));
@@ -190,6 +203,23 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         if (block.EndUtc <= clock.UtcNow) return "elapsed";
         if (!block.Entries.Any(e => e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series)) return "no_exposures";
         return null;
+    }
+
+    /// <summary>
+    /// Keine Belichtung passt mehr vor das Blockende (harter Blockschluss, §4.2; Serie: vor <c>untilUtc</c>) – der Block
+    /// ist praktisch vorbei, Slew und Zentrieren entfallen (z. B. der Rest eines Transitblocks nach der Neuplanung).
+    /// Belichtungen mit <c>lastOfNight</c> dürfen bis zur Kulanzgrenze laufen und zählen immer als passend.
+    /// </summary>
+    private bool NothingFits(Blocks block)
+    {
+        var now = clock.UtcNow;
+        foreach (var e in block.Entries.Where(x => x.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series))
+        {
+            if (e.LastOfNight == true) return false;
+            var end = e.Cmd == EntriesCmd.Expose_series && e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc;
+            if (now.AddSeconds((e.ExposureS ?? 0) + DownloadS) <= end) return false;
+        }
+        return true;
     }
 
     private BlockOutcome Skip(Blocks block, string reason)
@@ -294,6 +324,14 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             // ihre Zwischen-Einträge mit (nur Filterwechsel und der Flip bleiben wirksam).
             for (var i = cursor + 1; i < target; i++)
                 await RunNonExposureAsync(run, i, target, skip: step.Skipped.Count > 0 && i < step.Skipped[^1], token).ConfigureAwait(false);
+            if (Playback.Repeats(entries[target]) && !run.SeriesFilterSet)
+            {
+                // Filter der Transit-Zeile einmal vor der Serie (§5), noch im Vorlauf; danach kein Filterwechsel.
+                run.SeriesFilterSet = true;
+                await host.ChangeFilterAsync(entries[target], token).ConfigureAwait(false);
+                cursor = target - 1; // Einträge davor (Vorlauf, Flip) sind erledigt
+                continue;
+            }
             if (step.Kind == PlaybackKind.Wait)
             {
                 await host.DelayAsync(step.WaitUntilUtc!.Value, token).ConfigureAwait(false);
@@ -303,22 +341,42 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             if (options.StopReason?.Invoke() is { } stop) return (stop, exposures, skippedTotal);
             // Prüfung im Block alle 15 min – oder sofort, wenn der Heartbeat ein neues targets-ETag meldet (z. B. eine im
             // Web bestätigte Filterzuordnung, P-05 prod 03.10.2026).
-            if (inBlockCheck is not null && (ReplanPolicy.InBlockCheckDue(lastCheck, clock.UtcNow) || options.TargetsChanged?.Invoke() == true))
+            var interval = options.InBlockInterval?.Invoke() ?? ReplanPolicy.InBlockInterval;
+            if (inBlockCheck is not null && (clock.UtcNow - lastCheck >= interval || options.TargetsChanged?.Invoke() == true))
             {
                 lastCheck = clock.UtcNow;
                 var end = await inBlockCheck(entries[target], token).ConfigureAwait(false);
                 if (end is not null) return (end, exposures, skippedTotal);
             }
-            var deviation = checkCooling();
             var e = entries[target];
+            var series = Playback.Repeats(e);
+            // Transit-Vorlauf (§5): eine Belichtung beginnt nur, wenn sie vor dem Vorlauf eines festgelegten Transits
+            // endet; sonst endet der Block für die Neuplanung mit dem Transit (Fall b).
+            if (!series && options.TransitDeadline?.Invoke() is { } deadline
+                && clock.UtcNow.AddSeconds((e.ExposureS ?? 0) + DownloadS) > deadline)
+                return ("transit_interrupt", exposures, skippedTotal);
+            if (series && !run.SeriesStarted)
+            {
+                run.SeriesStarted = true;
+                log.Event("TRANSIT_START", ("id", block.Id), ("untilUtc", e.UntilUtc ?? block.EndUtc));
+                run.Options.Report?.Invoke(EventsKind.Transit_start, null, block, null);
+            }
+            var deviation = checkCooling();
             CurrentEntry = e;
             var pierBefore = host.PierSide();
             var started = clock.UtcNow;
             var result = await host.ExposeAsync(block, e, deviation, token).ConfigureAwait(false);
             if (result == ExposureResult.Saved) exposures++;
             if (result != ExposureResult.Skipped) Overrun(run, started, (e.ExposureS ?? 0) + DownloadS);
+            if (series && result != ExposureResult.Saved && clock.UtcNow == started)
+            {
+                // Ohne Belichtung vergeht keine Zeit: die Serie liefe auf der Stelle (Filter/Auslesemodus fehlt).
+                log.Warning("WARNING", ("code", "transit_series_stalled"), ("block", block.Id));
+                return ("error", exposures, skippedTotal);
+            }
             DetectUnplannedFlip(run, pierBefore, host.PierSide(), started);
-            cursor = target;
+            // Die Serie wiederholt denselben Eintrag bis untilUtc (Playback entscheidet über das Ende).
+            cursor = series ? target - 1 : target;
         }
     }
 

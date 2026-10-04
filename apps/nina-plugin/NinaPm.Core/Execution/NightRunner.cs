@@ -59,7 +59,7 @@ public interface INightHost
     /// (<c>nina_dither_trigger_present</c>, einmal je Nacht), NINA-Filternamen aus <paramref name="targets"/>, die im
     /// Profil fehlen (<c>filter_wheel_changed</c>).
     /// </summary>
-    void PlanBuilt(NinaTargets? targets);
+    void PlanBuilt(NinaTargets? targets, NinaPlanResponse plan);
 }
 
 /// <summary>
@@ -422,7 +422,7 @@ public sealed class NightRunner(
             Loop.PlanReceived();
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             // Nach der Session: Hinweise des Planaufbaus (SiteCheck, Sequenz) erreichen dann auch den Server.
-            nightHost.PlanBuilt(Targets);
+            nightHost.PlanBuilt(Targets, plan);
             return;
         }
         if (outcome.Unreachable)
@@ -472,6 +472,9 @@ public sealed class NightRunner(
         return true;
     }
 
+    /// <summary>Slew-/Zentrier-Vorlauf vor einem Transitfenster: <c>slewCenterS + 60 s</c> (NT-25).</summary>
+    private double TransitLeadS => (bootstrap?.Rig.Scheduler.Overhead.SlewCenterS ?? 0) + 60;
+
     /// <summary>
     /// Im Block alle 15 min (§3.2): <c>GET /targets</c>; bei neuem ETag Fall (a) Projekt/Panel/Zeile entfällt →
     /// <c>target_removed</c>, (b) neuer <c>locked</c> Transit vor Blockende → <c>transit_interrupt</c> (Ablauf AP-44),
@@ -484,7 +487,7 @@ public sealed class NightRunner(
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var current = Targets;
         if (previous is null || current is null || etag is null || etag == previousEtag) return null;
-        var leadS = (bootstrap?.Rig.Scheduler.Overhead.SlewCenterS ?? 0) + 60;
+        var leadS = TransitLeadS;
         var running = new RunningBlock(block.ProjectId, block.PanelId ?? Guid.Empty, next.ExposureLineId, block.EndUtc,
             block.TransitObservationId);
         return ReplanPolicy.InBlock(previous, current, running, leadS) switch
@@ -722,12 +725,16 @@ public sealed class NightRunner(
                     t.Save(store);
                 },
                 () => skipRequested,
-                () => targetsChanged))
+                () => targetsChanged,
+                () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS),
+                () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow)))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
-            if (outcome.Reason is "target_removed" or "transit_interrupt") forcedPlan = NinaPlanRequestReason.Refresh;
+            // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).
+            if (outcome.Reason is "target_removed" or "transit_interrupt"
+                || outcome.Started && block.Kind == BlocksKind.Transit) forcedPlan = NinaPlanRequestReason.Refresh;
             // Gelaufen oder übersprungen: in diesem Plan nicht noch einmal (Unterbrechung → neuer Plan, §4.6).
             MarkDone(stored, block.Id);
         }

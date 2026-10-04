@@ -1000,6 +1000,101 @@
           }
         }
       ]
+    },
+    "P-14": {
+      "package": "AP-44",
+      "steps": [
+        "Vorlauf: die Belichtung vor dem Transit wird nicht mehr begonnen (oder abgebrochen); Slew/Zentrieren ab dem Vorlauf",
+        "TRANSIT_START am Fensterbeginn; Serie bis untilUtc unabhängig von der Anzahl, Filter einmal, kein Dither",
+        "Autofokus-Trigger im Transit unterdrückt (TRIGGER_SUPPRESSED), Meridian-Flip nicht",
+        "Alle Aufnahmen der Serie mit transitObservationId",
+        "TRANSIT_END, danach Neuplanung (refresh) und zurück zu regulären Zielen"
+      ],
+      "require": [
+        {
+          "event": "TRANSIT_START"
+        },
+        {
+          "event": "TRANSIT_END"
+        },
+        {
+          "event": "TRIGGER_SUPPRESSED",
+          "where": {
+            "type": "AutofocusAfterTimeTrigger"
+          }
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "refresh"
+          }
+        }
+      ],
+      "forbid": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "transit_series_stalled"
+          }
+        }
+      ]
+    },
+    "P-15b": {
+      "package": "AP-44",
+      "steps": [
+        "Transit im laufenden Block festgelegt: laufende Belichtung endet (oder wird abgebrochen), BLOCK_END reason=transit_interrupt",
+        "Neuer Plan (refresh), Transitblock mit Vorlauf, TRANSIT_START am Fensterbeginn",
+        "Serie bis untilUtc, TRANSIT_END"
+      ],
+      "require": [
+        {
+          "event": "BLOCK_END",
+          "where": {
+            "reason": "transit_interrupt"
+          }
+        },
+        {
+          "event": "PLAN",
+          "where": {
+            "reason": "refresh"
+          }
+        },
+        {
+          "event": "TRANSIT_START"
+        },
+        {
+          "event": "TRANSIT_END"
+        }
+      ],
+      "forbid": []
+    },
+    "P-27": {
+      "package": "AP-44",
+      "steps": [
+        "Plan ohne meridian_flip-Eintrag im Transitblock; Lücke ausgewiesen, WARNING code=flip_in_transit (mit AutoFocusAfterFlip: afAfterFlip=true)",
+        "NINA flippt während der Serie (FLIP), danach Zentrieren ohne Nachrotieren",
+        "Serie nach dem Flip bis untilUtc fortgesetzt, alle Aufnahmen mit transitObservationId",
+        "Recenter = true: Alarm nina_settings_mismatch (recenter_after_flip_on) im Test-Report"
+      ],
+      "require": [
+        {
+          "event": "WARNING",
+          "where": {
+            "code": "flip_in_transit"
+          }
+        },
+        {
+          "event": "FLIP"
+        },
+        {
+          "event": "TRANSIT_END"
+        }
+      ],
+      "forbid": [
+        {
+          "event": "FLIP_UNDETECTED"
+        }
+      ]
     }
   }
 }

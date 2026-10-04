@@ -320,6 +320,18 @@ export class NinaTestServer {
         detail: 'rotator_range_quarter',
         atUtc: iso(this.nowS()),
       });
+    // Nach dem Flip neu zentrieren (NT-22): Alarm nina_settings_mismatch mit Code recenter_after_flip_on (einmal).
+    if (
+      r.data.meridianFlip?.recenter === true &&
+      !this.alerts.some(
+        (a) => a.code === 'nina_settings_mismatch' && a.detail === 'recenter_after_flip_on',
+      )
+    )
+      this.alerts.push({
+        code: 'nina_settings_mismatch',
+        detail: 'recenter_after_flip_on',
+        atUtc: iso(this.nowS()),
+      });
     let lease: { untilUtc: string | null; leaseLost: boolean } | null = null;
     const own = r.data.sessionId ? this.sessions.get(r.data.sessionId) : undefined;
     if (own && (own.status === 'running' || own.status === 'stale')) {

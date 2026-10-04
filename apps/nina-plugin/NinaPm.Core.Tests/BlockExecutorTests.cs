@@ -54,6 +54,60 @@ public sealed class BlockExecutorTests
         Assert.True(clock.UtcNow <= block.EndUtc);
     }
 
+    private static Blocks Transit(Action<Blocks>? change = null)
+    {
+        var b = Plan().Blocks.Single(x => x.Kind == BlocksKind.Transit);
+        change?.Invoke(b);
+        return b;
+    }
+
+    [Fact]
+    public async Task Transitserie_vom_Vorlauf_bis_untilUtc_Filter_einmal_kein_Dither()
+    {
+        // Beispielnacht HAT-P-17 b: Vorlauf 02:05:30, Serie 02:08:00–07:34:00, 60 s + 3 s → 310 Aufnahmen ohne Flip.
+        var (executor, nina, sink, clock) = Setup("2026-09-18T02:00:00Z");
+        var block = Transit();
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal(("completed", 310), (outcome.Reason, outcome.Exposures));
+        Assert.Equal("center@2026-09-18T02:05:30.000Z", nina.Calls.First(c => c.StartsWith("center@", StringComparison.Ordinal)));
+        Assert.Single(nina.Calls, c => c.StartsWith("filter:", StringComparison.Ordinal));
+        Assert.DoesNotContain("dither", nina.Calls);
+        Assert.Equal("expose:2@2026-09-18T02:08:00.000Z", nina.Calls.First(c => c.StartsWith("expose:", StringComparison.Ordinal)));
+        Assert.True(clock.UtcNow <= block.EndUtc);
+        Assert.Contains(sink.Lines, l => l.Contains($"TRANSIT_START id={block.Id}"));
+        Assert.Contains(sink.Lines, l => l.EndsWith($"TRANSIT_END id={block.Id}", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Transitserie_NINA_flippt_im_Fenster_zentrieren_ohne_Rotation_Serie_bis_Fensterende()
+    {
+        // NT-25: kein Flip-Eintrag; NINAs Trigger flippt während der Serie, danach Center (nie CenterAndRotate), weiter.
+        var (executor, nina, sink, clock) = Setup("2026-09-18T02:00:00Z");
+        nina.Pier = "west";
+        nina.FlipDuringExposure = 140;
+        var block = Transit();
+        var outcome = await executor.RunAsync(block, null, default);
+
+        Assert.Equal("completed", outcome.Reason);
+        Assert.Contains(sink.Lines, l => l.Contains($"FLIP id={block.Id} pierBefore=west pierAfter=east"));
+        Assert.Contains("center-no-rotate", nina.Calls);
+        Assert.True(outcome.Exposures is > 140 and < 310, outcome.Exposures.ToString());
+        Assert.True(clock.UtcNow <= block.EndUtc);
+    }
+
+    [Fact]
+    public async Task Vorlauf_eines_Transits_Belichtung_beginnt_nur_wenn_sie_vorher_endet()
+    {
+        // §5: Frist = Fensterbeginn − slewCenterS − 60 s; die 300-s-Belichtung um 07:40 würde 07:45:03 enden → Blockende.
+        var (executor, nina, _, _) = Setup("2026-09-18T07:35:00Z");
+        var deadline = T("2026-09-18T07:45:00Z");
+        var outcome = await executor.RunAsync(Regular(), null, default, new BlockRunOptions(TransitDeadline: () => deadline));
+        Assert.Equal("transit_interrupt", outcome.Reason);
+        Assert.All(nina.Calls.Where(c => c.StartsWith("expose:", StringComparison.Ordinal)),
+            c => Assert.True(T(c[(c.IndexOf('@') + 1)..]).AddSeconds(303) <= deadline, c));
+    }
+
     [Fact]
     public async Task Vorbei_ohne_Belichtung_nicht_machbar()
     {

@@ -103,8 +103,9 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// <c>warning nina_dither_trigger_present</c> (der Walk unterdrückt ihn ohnehin); bestätigte NINA-Filternamen, die
     /// im Profil fehlen → <c>warning filter_wheel_changed</c> je Name höchstens 1×/12 h.
     /// </summary>
-    public void PlanBuilt(NinaTargets? targets)
+    public void PlanBuilt(NinaTargets? targets, NinaPlanResponse plan)
     {
+        Rules.FlipInTransit(plan, m.Profile.ActiveProfile.MeridianFlipSettings.AutoFocusAfterFlip);
         // Sequenzvorlage zuerst (AP-16h): sie meldet einen fehlenden Flip-Trigger mit allen übrigen Abweichungen.
         Deviations = Rules.CheckSequence(SequenceTree.FromAncestors(Container), m.SafetyMonitor.GetInfo()?.Connected == true);
         var triggers = Container is null ? [] : AncestorTriggers().ToList();
@@ -162,8 +163,12 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
     public string? UnexposableReason(Blocks block) =>
         Rules.UnexposableReason(block, ProfileFilterNames(), m.Camera.GetInfo().ReadoutModes?.ToList());
 
+    /// <summary>Trigger-Regeln des laufenden Blocks (Transit: Erlaubnisse der Beobachtung, §5); regulär <c>null</c>.</summary>
+    private TransitTriggerContext? transitTriggers;
+
     public void SetTarget(Blocks block)
     {
+        transitTriggers = TriggerPolicy.ForBlock(block, Runtime?.Runner.Targets);
         var coords = new InputCoordinates(Coordinates(block));
         var astro = m.Profile.ActiveProfile.AstrometrySettings;
         var target = new InputTarget(Angle.ByDegree(astro.Latitude), Angle.ByDegree(astro.Longitude), astro.Horizon)
@@ -350,7 +355,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
         var item = new TakeExposureItem(this, m, block, entry, currentFilter, Uuid7.New(clock), temperatureDeviation);
         item.AttachNewParent(Box);
         var progress = Progress ?? new Progress<ApplicationStatus>();
-        await TriggerWalker.RunAsync(Box, after: false, previousItem, item, progress, Runtime, token);
+        await TriggerWalker.RunAsync(Box, after: false, previousItem, item, progress, Runtime, transitTriggers, token);
         try
         {
             await item.Execute(progress, token);
@@ -360,7 +365,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
             Rules.Aborted(item.CaptureId, item.Facts);
             throw;
         }
-        await TriggerWalker.RunAsync(Box, after: true, item, item, progress, Runtime, token);
+        await TriggerWalker.RunAsync(Box, after: true, item, item, progress, Runtime, transitTriggers, token);
         previousItem = item;
         return item.Captured ? ExposureResult.Saved : ExposureResult.Failed;
     }
@@ -428,7 +433,7 @@ internal sealed class NinaHost(NinaMediators m) : IBlockHost, INightHost
 
     /// <summary>Trigger aller Vorfahren zur Flipzeit (M1): NINAs <em>Meridian Flip</em>-Trigger flippt, Dither unterdrückt.</summary>
     public Task RunTriggersAsync(CancellationToken token) =>
-        TriggerWalker.RunAsync(Box, after: false, previousItem, Box, Progress ?? new Progress<ApplicationStatus>(), Runtime, token);
+        TriggerWalker.RunAsync(Box, after: false, previousItem, Box, Progress ?? new Progress<ApplicationStatus>(), Runtime, transitTriggers, token);
 
     /// <summary>
     /// Eigenes Plate-Solve (flip-rotation.md §3, NIN-4): Aufnahme und Lösung mit den Plate-Solve-Einstellungen des

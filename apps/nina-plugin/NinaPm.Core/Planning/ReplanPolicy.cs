@@ -126,6 +126,41 @@ public static class ReplanPolicy
         return false;
     }
 
+    /// <summary>
+    /// Frist für Belichtungen eines regulären Blocks (execution.md §5): Beginn des Vorlaufs
+    /// (<c>windowStart − leadS</c>) des frühesten festgelegten Transits, dessen Fenster noch nicht vorbei ist – außer dem
+    /// eigenen. Im Transitblock selbst keine Frist. Ohne festgelegten Transit <c>null</c>.
+    /// </summary>
+    public static DateTimeOffset? TransitDeadline(NinaTargets? targets, Blocks block, double leadS)
+    {
+        if (targets is null || block.Kind == BlocksKind.Transit) return null;
+        DateTimeOffset? deadline = null;
+        foreach (var p in targets.Projects)
+        {
+            var obs = p.Exoplanet?.Observation;
+            if (obs is null || obs.Status != ObservationStatus.Locked || obs.Id == block.TransitObservationId) continue;
+            if (obs.WindowEndUtc <= block.StartUtc) continue;
+            var start = obs.WindowStartUtc.AddSeconds(-leadS);
+            if (deadline is null || start < deadline) deadline = start;
+        }
+        return deadline;
+    }
+
+    /// <summary>Prüfung im Block in der letzten Stunde vor einem Transitfenster alle 5 min statt 15 min (§5).</summary>
+    public static readonly TimeSpan InBlockIntervalNearTransit = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Abstand der Prüfungen im Block: 5 min, wenn ein Transit (festgelegt oder angefragt) innerhalb der nächsten Stunde
+    /// beginnt – eine kurzfristige Festlegung fällt so rechtzeitig auf –, sonst 15 min.
+    /// </summary>
+    public static TimeSpan InBlockIntervalFor(NinaTargets? targets, DateTimeOffset now)
+    {
+        foreach (var p in targets?.Projects ?? [])
+            if (p.Exoplanet?.Observation is { } obs && obs.WindowStartUtc > now && obs.WindowStartUtc - now <= TimeSpan.FromHours(1))
+                return InBlockIntervalNearTransit;
+        return InBlockInterval;
+    }
+
     /// <summary>Neuer Blockindex nach einem Planwechsel: erster Block mit <c>endUtc &gt; now</c> (NT-18), sonst -1.</summary>
     public static int NextBlockIndex(IReadOnlyList<Blocks> blocks, DateTimeOffset now)
     {

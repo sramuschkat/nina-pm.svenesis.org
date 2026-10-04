@@ -28,6 +28,24 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
     /// Nach dem Planaufbau: Dither-Trigger in den Vorfahren → einmal je Nacht <c>warning nina_dither_trigger_present</c>;
     /// bestätigte NINA-Filternamen, die im Profil fehlen → <c>warning filter_wheel_changed</c> je Name höchstens 1×/12 h.
     /// </summary>
+    /// <summary>
+    /// Flip im Transitfenster (NT-25, execution.md §5): je Transitblock mit ausgewiesener Lücke
+    /// <c>WARNING code=flip_in_transit</c> mit Beginn und Dauer; mit NINAs <c>AutoFocusAfterFlip</c> der Zusatz
+    /// „AF nach Flip aktiv“ – die Lücke wird dann um die AF-Dauer länger. Einmal je Transit.
+    /// </summary>
+    public void FlipInTransit(NinaPlanResponse plan, bool autoFocusAfterFlip)
+    {
+        foreach (var b in plan.Blocks.Where(x => x.Kind == BlocksKind.Transit && x.MeridianFlip?.GapStartUtc is not null))
+        {
+            // Einmal je Transit, nicht bei jedem Neuplan (12-h-Drossel je Beobachtung).
+            if (!hints.ShouldEmit($"flip_in_transit:{b.TransitObservationId?.ToString() ?? b.Id.ToString()}", clock.UtcNow)) continue;
+            // Schlüssel nach der Log-Grammatik (NIN5-15): atUtc = Beginn der Lücke, durationS = ihre Dauer.
+            log()?.Warning("WARNING", ("code", "flip_in_transit"), ("block", b.Id),
+                ("atUtc", b.MeridianFlip!.GapStartUtc), ("durationS", b.MeridianFlip.GapDurationS));
+            if (autoFocusAfterFlip) log()?.Note("Flip im Transitfenster: AF nach Flip aktiv – die Lücke wird um die Autofokus-Dauer länger.");
+        }
+    }
+
     public void PlanBuilt(NinaTargets? targets, IReadOnlyList<string> profileFilters, string? ditherTriggerType)
     {
         var now = clock.UtcNow;

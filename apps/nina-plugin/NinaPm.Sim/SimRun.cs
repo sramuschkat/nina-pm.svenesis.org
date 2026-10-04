@@ -73,6 +73,15 @@ public sealed class SimSetup
     /// <summary>Safety-Monitor beim Start sicher (Starfront: Dach tagsüber zu → <c>false</c>).</summary>
     [JsonProperty("safeAtStart")] public bool SafeAtStart { get; set; } = true;
 
+    /// <summary>NINA-Profil: nach dem Flip neu zentrieren (NT-22; Server-Alarm <c>recenter_after_flip_on</c>).</summary>
+    [JsonProperty("recenter")] public bool Recenter { get; set; }
+
+    /// <summary>NINA-Profil: Autofokus nach dem Flip (Zusatz „AF nach Flip aktiv“ bei <c>flip_in_transit</c>).</summary>
+    [JsonProperty("autoFocusAfterFlip")] public bool AutoFocusAfterFlip { get; set; }
+
+    /// <summary>Trigger <c>AutofocusAfterTimeTrigger</c> in der Sequenz (im Transit unterdrückt, P-14).</summary>
+    [JsonProperty("afTrigger")] public bool AfTrigger { get; set; }
+
     /// <summary>Sequenz beim Laufbeginn starten (sonst über einen Schritt <c>start</c>).</summary>
     [JsonProperty("autoStart")] public bool AutoStart { get; set; } = true;
 }
