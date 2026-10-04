@@ -726,6 +726,22 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Abschluss_zaehlt_nur_offene_Meldungen_der_eigenen_Session()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        // Rest einer früheren Session (z. B. nach langem Offline-Betrieb) hält den Abschluss nicht auf.
+        store.EnqueueOutbox(OutboxKinds.Event, "{}", Guid.NewGuid(), null);
+        clock.UtcNow = UtcText.Parse("2026-09-18T11:31:00Z");
+
+        await runner.RunOnceAsync(default);
+        var patch = Assert.Single(api.Patches);
+        Assert.Equal(NinaSessionPatchStatus.Completed, patch.Patch.Status);
+        Assert.Equal(0, patch.Patch.OutboxPending);
+        Assert.Equal(1, runner.OutboxPending); // Heartbeat und Anzeige zählen weiter alles
+    }
+
+    [Fact]
     public async Task Nachtende_PATCH_completed_dann_nightFinished_dann_false()
     {
         var runner = Runner();

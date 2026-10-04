@@ -151,7 +151,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
     private async Task ReportCompletedAsync(bool acked, CancellationToken token)
     {
         if (Listener?.Paused == true || ClosedSession(store) is not { } completed) return;
-        var pending = store.OutboxCount();
+        var pending = store.OutboxCount(completed.Id);
         if (!acked && pending > 0) return;
         if (store.OutboxPeek(MaxBatch).Any(e => e.Kind == OutboxKinds.SessionPatch && e.SessionId == completed.Id)) return;
         var patch = new NinaSessionPatch { Status = completed.Status, EndedAtUtc = completed.EndedAtUtc, OutboxPending = pending };
@@ -230,7 +230,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                     }
                     // Abschluss meldet den Stand beim Senden (alles davor ist quittiert, NIN5-7).
                     if (patch.Status is NinaSessionPatchStatus.Completed or NinaSessionPatchStatus.Aborted)
-                        patch.OutboxPending = Math.Max(0, store.OutboxCount() - 1);
+                        patch.OutboxPending = Math.Max(0, store.OutboxCount(session) - 1);
                     var response = await api.PatchAsync(session, patch, token).ConfigureAwait(false);
                     log.Event("API", ("status", 200), ("call", call));
                     if (patch.Status != NinaSessionPatchStatus.Running)
