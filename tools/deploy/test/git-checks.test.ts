@@ -30,6 +30,22 @@ describe('deploy:prod – HEAD ist aktueller origin/main', () => {
     );
   });
 
+  it('paralleler Fetch sperrt kurz origin/main: zweiter Versuch genügt, höchstens drei', () => {
+    let fetches = 0;
+    const flaky = Object.assign(
+      (args: string[]) => {
+        if (args[0] === 'fetch') return { ok: ++fetches >= 2, out: '' };
+        return { ok: true, out: A };
+      },
+      { calls: [] as string[] },
+    );
+    expect(checkHeadIsFreshOriginMain(flaky)).toBe(A);
+    expect(fetches).toBe(2);
+    const g = git({ fetchOk: false, head: A, remote: A });
+    expect(() => checkHeadIsFreshOriginMain(g)).toThrow('git fetch origin main');
+    expect(g.calls.filter((c) => c.startsWith('fetch'))).toHaveLength(3);
+  });
+
   it('bricht ab, wenn HEAD nicht origin/main ist', () => {
     expect(() => checkHeadIsFreshOriginMain(git({ fetchOk: true, head: A, remote: B }))).toThrow(
       'ist nicht origin/main',

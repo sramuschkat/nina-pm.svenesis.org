@@ -12,6 +12,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { pullFastForward } from './git-pull';
 import { mergeAtHead, readPrHead } from './pr-land-merge';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
@@ -104,8 +105,16 @@ async function main(): Promise<void> {
   const checkout = spawnSync('git', ['checkout', 'main'], { cwd: repoRoot, stdio: 'inherit' });
   if (checkout.status !== 0)
     fail('git checkout main ist gescheitert – Arbeitsbaum prüfen, dann erneut.');
-  const pull = spawnSync('git', ['pull', '--ff-only'], { cwd: repoRoot, stdio: 'inherit' });
-  if (pull.status !== 0)
+  const pulled = await pullFastForward(
+    () => {
+      const r = spawnSync('git', ['pull', '--ff-only'], { cwd: repoRoot, encoding: 'utf8' });
+      const output = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+      process.stdout.write(output);
+      return { status: r.status, output };
+    },
+    (ms) => new Promise((done) => setTimeout(done, ms)),
+  );
+  if (!pulled)
     fail(
       'git pull --ff-only ist gescheitert – main ist nicht aktuell, es wird nicht deployt. ' +
         'Meldung oben lesen (z. B. nicht verfolgte Datei entfernen), dann `pnpm deploy:prod`.',
