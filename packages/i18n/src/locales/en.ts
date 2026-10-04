@@ -1944,10 +1944,36 @@ export const en: Messages = {
   },
   nina: {
     tabsLabel: 'NINA areas',
+    help: {
+      title: 'Help: NINA-PM in the Advanced Sequencer',
+      toc: 'Contents',
+      templates: 'Recommended sequences',
+      items: 'Items',
+      place: 'Where to place it',
+      settings: 'Settings',
+      noSettings: 'No settings.',
+      behavior: 'How it works',
+      tips: 'Notes',
+      checks: 'Template check',
+      col: {
+        setting: 'Setting',
+        values: 'Values',
+        meaning: 'Meaning',
+        code: 'Code',
+        text: 'Message',
+      },
+      kind: {
+        container: 'Container',
+        instruction: 'Instruction',
+        condition: 'Condition',
+        trigger: 'Trigger',
+      },
+    },
     tab: {
       simulator: 'Night simulator',
       delivery: 'Delivered to NINA',
       instances: 'NINA instances',
+      help: 'Help: sequencer',
     },
     state: {
       running: 'running',

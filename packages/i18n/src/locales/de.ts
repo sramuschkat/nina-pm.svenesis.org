@@ -1953,10 +1953,36 @@ export const de = {
   },
   nina: {
     tabsLabel: 'NINA-Bereiche',
+    help: {
+      title: 'Hilfe: NINA-PM im Advanced Sequencer',
+      toc: 'Inhalt',
+      templates: 'Empfohlene Sequenzen',
+      items: 'Bausteine',
+      place: 'Wo einsetzen',
+      settings: 'Einstellungen',
+      noSettings: 'Keine Einstellungen.',
+      behavior: 'Ablauf',
+      tips: 'Hinweise',
+      checks: 'Vorlagenprüfung',
+      col: {
+        setting: 'Einstellung',
+        values: 'Werte',
+        meaning: 'Bedeutung',
+        code: 'Code',
+        text: 'Meldung',
+      },
+      kind: {
+        container: 'Container',
+        instruction: 'Anweisung',
+        condition: 'Bedingung',
+        trigger: 'Trigger',
+      },
+    },
     tab: {
       simulator: 'Nacht-Simulator',
       delivery: 'An NINA ausgeliefert',
       instances: 'NINA-Instanzen',
+      help: 'Hilfe: Sequencer',
     },
     state: {
       running: 'läuft',

@@ -11,6 +11,8 @@ export function Markdown({ children }: { children: string }) {
       <ReactMarkdown
         skipHtml
         components={{
+          // Codeblöcke rollen waagerecht in sich (Sequenz-Bäume): per Tastatur erreichbar (axe scrollable-region-focusable).
+          pre: ({ children: c }) => <pre tabIndex={0}>{c}</pre>,
           a: ({ href, children: c }) => {
             const external = typeof href === 'string' && /^https?:\/\//.test(href);
             return (

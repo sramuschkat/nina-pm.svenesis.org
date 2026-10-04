@@ -140,7 +140,7 @@ Entscheidung Sven, 23.09.2026: R1 geht ohne Plugin live; NINA-API (AP-14a–c) u
 
 | AP | Titel | Größe | Abhängig von | Mensch | Status |
 |---|---|---|---|---|---|
-| [AP-60](AP-60.md) | Discord-Kanäle und Nachtbericht | M | AP-15 | H-21 | ◐ |
+| [AP-60](AP-60.md) | Discord-Kanäle und Nachtbericht | M | AP-15 | H-21 | ☑ 04.10.2026 |
 | [AP-61](AP-61.md) | Belichtungs-/Sampling-Rechner | S | AP-09b | – | ☑ 01.10.2026 |
 | [AP-62](AP-62.md) | Optionale NINA-Metriken | S | AP-16h | – | ☑ 04.10.2026 |
 | [AP-63](AP-63.md) | Teilen von Ausrüstung/Projekten | S | AP-54 | – | ☐ zurückgestellt |

@@ -7,6 +7,14 @@ import { en } from './locales/en';
 export { errorMessages } from './generated/errors';
 export type { Messages } from './locales/de';
 export { privacyMarkdown, sourcesMarkdown } from './legal';
+export {
+  sequencerHelp,
+  type SequencerHelp,
+  type SequencerHelpItem,
+  type SequencerHelpSection,
+  type SequencerHelpSetting,
+  type SequencerItemKind,
+} from './sequencer-help';
 
 export const LANGUAGES = ['de', 'en'] as const;
 export type Language = (typeof LANGUAGES)[number];

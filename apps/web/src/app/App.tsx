@@ -37,6 +37,7 @@ import { ProjectEditorPage } from '../pages/projects/ProjectEditorPage';
 import { ProjectListPage } from '../pages/projects/ProjectListPage';
 import { QueuePage } from '../pages/projects/QueuePage';
 import { DeliveryPage } from '../pages/nina/DeliveryPage';
+import { SequencerHelpPage } from '../pages/nina/SequencerHelpPage';
 import { InstancesPage } from '../pages/nina/InstancesPage';
 import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
 import { ClearNightsPage } from '../pages/sessions/ClearNightsPage';
@@ -198,6 +199,7 @@ export function createRouter() {
                 { index: true, element: <Navigate to={NINA_PATHS.simulator} replace /> },
                 { path: 'simulator', element: <SimulatorPage /> },
                 { path: 'ausgeliefert', element: <DeliveryPage /> },
+                { path: 'hilfe', element: <SequencerHelpPage /> },
                 {
                   path: 'instanzen',
                   element: <RequireAction action="nina.instance.manage" />,
