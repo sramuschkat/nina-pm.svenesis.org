@@ -119,6 +119,7 @@ P-23 und P-24 auf echtem NINA in ≈ 45 min. Der Test-Server liefert **zwei verk
 
 - **Sequenz** (aus `multi-night.json`, Optionen in `sequence`):
   - *Run Autofocus* fehlt auch in der Tagesschleife, weil die VM keinen Fokussierer hat;
+  - *Warm Camera* fehlt am Morgen in der Tagesschleife: Das erneute Kühlen (bis 10 min, Lauf 04.10.) fräße die verkürzte zweite Nacht auf; der Ende-Bereich wärmt nach der letzten Nacht;
   - *NINA-PM Warten auf Zeit* wartet bis zur nautischen Dämmerung + 2 min;
   - Höchstzahl 2 Nächte;
   - am Container „Ziel“ hängt die Box *NINA-PM vor jeder Belichtung* mit *Wait for Time Span* 1 s.

@@ -221,6 +221,16 @@ function Invoke-Job($Job) {
             Send-File $Job.id 'nina.log' $all.ToArray()
             return "$(@($files).Count) Logdatei(en), $($all.Count) Bytes"
         }
+        'app-events' {
+            # Absturz von NINA ohne Eintrag im NINA-Log (z. B. Stapelüberlauf): Windows-Ereignisprotokoll „Application“,
+            # Quellen .NET Runtime, Application Error, Windows Error Reporting, seit sinceUtc.
+            $since = [DateTime]::Parse([string]$Job.args.sinceUtc, $null, [System.Globalization.DateTimeStyles]::AdjustToUniversal)
+            $events = Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $since.ToLocalTime() } -ErrorAction SilentlyContinue |
+                Where-Object { $_.ProviderName -in @('.NET Runtime', 'Application Error', 'Windows Error Reporting') }
+            $text = ($events | ForEach-Object { "$($_.TimeCreated.ToUniversalTime().ToString('o')) [$($_.ProviderName)] $($_.Message)" }) -join "`n`n"
+            Send-File $Job.id 'app-events.txt' ([System.Text.Encoding]::UTF8.GetBytes($text))
+            return "$(@($events).Count) Ereignis(se)"
+        }
         default { throw "Auftrag '$($Job.type)' ist nicht erlaubt" }
     }
 }

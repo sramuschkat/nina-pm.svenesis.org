@@ -20,6 +20,7 @@ export type JobType =
   | 'install-plugin'
   | 'put-sequence'
   | 'collect-log'
+  | 'app-events'
   | 'update-agent'
   | 'clone-profile';
 
