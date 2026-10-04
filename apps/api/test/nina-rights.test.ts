@@ -95,6 +95,7 @@ beforeAll(async () => {
       method: 'POST',
       body: { night: '2026-09-18', reason: 'initial', pendingCaptures: [] },
     },
+    'GET /api/nina/v1/simulation': { url: '/api/nina/v1/simulation?night=2026-09-18' },
     'POST /api/nina/v1/sessions': {
       url: '/api/nina/v1/sessions',
       method: 'POST',

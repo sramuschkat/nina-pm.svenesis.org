@@ -127,6 +127,7 @@ export function renderNinaSchemas(): Record<string, string> {
     'targets.response.schema.json': render(nina.NinaTargets, t('GET /targets')),
     'plan.request.schema.json': render(nina.NinaPlanRequest, t('POST /plan (Anfrage)')),
     'plan.response.schema.json': render(nina.NinaPlanResponse, t('POST /plan (Antwort)')),
+    'simulation.response.schema.json': render(nina.NinaSimulation, t('GET /simulation (AP-53)')),
     'session.create.request.schema.json': render(nina.NinaSessionCreate, t('POST /sessions')),
     'session.create.response.schema.json': render(
       nina.NinaSessionCreated,
