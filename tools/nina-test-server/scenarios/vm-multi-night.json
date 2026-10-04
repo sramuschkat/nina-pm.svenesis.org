@@ -1,0 +1,18 @@
+{
+  "name": "vm-multi-night",
+  "description": "VM-Lauf P-23 + P-24 (≈ 45 min): zwei verkürzte Nächte im Abstand von 20 min; je Nacht ein Block L 30 s, Dunkelheit endet nach 10 min, Session nach 12 min; nautische Dämmerung zum Start jeder Nacht. Sequenz „Mehrere Nächte“ mit Warten auf Zeit (nautisch + 2 min) und Trigger-Box vor jeder Belichtung.",
+  "protocols": ["P-23", "P-24"],
+  "blocks": [
+    {
+      "durationMin": 5,
+      "filters": ["L"],
+      "exposureS": 30,
+      "project": "m31"
+    }
+  ],
+  "darknessEndInMin": 10,
+  "sessionEndInMin": 12,
+  "multiNight": true,
+  "nightSpacingMin": 20,
+  "twilightInMin": { "civil": -2, "nautical": 0, "astronomical": 1 }
+}

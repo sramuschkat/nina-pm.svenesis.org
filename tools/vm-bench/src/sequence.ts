@@ -23,6 +23,74 @@ export interface SequenceSpec {
    * NINA legt sie über seine Fabrik mit den Standard-Unterelementen an und füllt nur die genannten Eigenschaften.
    */
   readonly flats?: boolean;
+  /**
+   * Sequenz „Mehrere Nächte“ (AP-52): Quelle und Versatz der Anweisung *NINA-PM Warten auf Zeit* (Quelle wie
+   * `WaitSource`: `Time`, `CivilDusk`, `NauticalDusk`, `AstronomicalDusk`).
+   */
+  readonly waitForTime?: { readonly source: string; readonly offsetMinutes: number };
+  /** Höchstzahl Nächte der *NINA-PM Tagesschleife* (AP-52). */
+  readonly maxNights?: number;
+  /**
+   * Trigger-Box *NINA-PM vor jeder Belichtung* am Container „Ziel“ mit einer harmlosen Anweisung (*Wait for Time Span*
+   * 1 s); das Plugin loggt je Lauf `TRIGGER type=BeforeExposureTrigger` (P-24).
+   */
+  readonly beforeExposureBox?: boolean;
+}
+
+type Obj = Record<string, unknown> & { $type?: string; $id?: string };
+
+/** Alle Objekte mit `$type` in Tiefensuche. */
+function objects(o: unknown, out: Obj[] = []): Obj[] {
+  if (Array.isArray(o)) for (const v of o) objects(v, out);
+  else if (o && typeof o === 'object') {
+    if ((o as Obj).$type) out.push(o as Obj);
+    for (const v of Object.values(o)) objects(v, out);
+  }
+  return out;
+}
+
+const values = (o: Obj, key: string) => (o[key] as { $values?: Obj[] } | undefined)?.$values ?? [];
+
+/** Container mit der Bedingung *NINA-PM Tagesschleife* (Sequenz „Mehrere Nächte“). */
+const dayLoop = (seq: unknown) =>
+  objects(seq).find((o) =>
+    values(o, 'Conditions').some((c) => shortType(c.$type ?? '') === 'DayLoopCondition'),
+  );
+
+/** Box *NINA-PM vor jeder Belichtung* mit *Wait for Time Span* 1 s (Form wie die Trigger in den Beispielsequenzen). */
+function beforeExposureTrigger(firstId: number, parentId: string): unknown {
+  const id = (k: number) => String(firstId + k);
+  return {
+    $id: id(0),
+    $type: 'NinaPm.Nina.Sequencer.BeforeExposureTrigger, NinaPm.Nina',
+    Parent: { $ref: parentId },
+    TriggerRunner: {
+      $id: id(1),
+      $type: T('Container.SequentialContainer'),
+      Strategy: { $type: T('Container.ExecutionStrategy.SequentialStrategy') },
+      Name: null,
+      Conditions: { $id: id(2), $type: COLLECTION('Conditions.ISequenceCondition'), $values: [] },
+      IsExpanded: true,
+      Items: {
+        $id: id(3),
+        $type: COLLECTION('SequenceItem.ISequenceItem'),
+        $values: [
+          {
+            $id: id(4),
+            $type: T('SequenceItem.Utility.WaitForTimeSpan'),
+            Time: 1,
+            Parent: { $ref: id(1) },
+            ErrorBehavior: 0,
+            Attempts: 1,
+          },
+        ],
+      },
+      Triggers: { $id: id(5), $type: COLLECTION('Trigger.ISequenceTrigger'), $values: [] },
+      Parent: null,
+      ErrorBehavior: 0,
+      Attempts: 1,
+    },
+  };
 }
 
 interface SeqJson {
@@ -254,6 +322,27 @@ export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: strin
   if (!start?.Items) throw new Error(`${r.sequence.from}: Start-Bereich fehlt`);
   const remove = new Set(r.sequence.removeFromStart ?? []);
   start.Items.$values = start.Items.$values.filter((i) => !remove.has(shortType(i.$type)));
+  // „Mehrere Nächte“: der Start jeder Nacht steht in der Tagesschleife (vor der äußeren Schleife).
+  const day = dayLoop(seq);
+  if (day) {
+    const items = day.Items as { $values: Obj[] };
+    items.$values = items.$values.filter((i) => !remove.has(shortType(i.$type ?? '')));
+    if (r.sequence.maxNights !== undefined)
+      for (const c of values(day, 'Conditions'))
+        if (shortType(c.$type ?? '') === 'DayLoopCondition') c.MaxNights = r.sequence.maxNights;
+  }
+  if (r.sequence.waitForTime)
+    for (const w of objects(seq).filter(
+      (o) => shortType(o.$type ?? '') === 'WaitForTimeInstruction',
+    )) {
+      w.Source = r.sequence.waitForTime.source;
+      w.OffsetMinutes = r.sequence.waitForTime.offsetMinutes;
+    }
+  if (r.sequence.beforeExposureBox) {
+    const ziel = objects(seq).find((o) => o.Name === 'Ziel');
+    if (!ziel?.$id) throw new Error(`${r.sequence.from}: Container „Ziel“ fehlt`);
+    values(ziel, 'Triggers').push(beforeExposureTrigger(maxId(seq) + 1, ziel.$id) as Obj);
+  }
   if (r.sequence.globalDither !== undefined)
     seq.Triggers.$values.push(ditherTrigger(maxId(seq) + 1, seq.$id, r.sequence.globalDither));
   if (r.sequence.flats) addFlatBoxes(seq, maxId(seq) + 1);

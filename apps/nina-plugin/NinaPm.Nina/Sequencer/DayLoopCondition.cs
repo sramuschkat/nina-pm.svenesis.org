@@ -114,7 +114,10 @@ public sealed class DayLoopCondition : SequenceCondition
         try
         {
             var decision = DayCycle.Boundary(runtime.Runner, state, Settings, clock.UtcNow, starting, runtime.Log);
-            StatusText = Ui.Texts.DayLoopStatus(state.Nights.Count, decision == DayLoopDecision.Continue ? null : decision.ToString().ToLowerInvariant());
+            // Laufende Nacht = beendete + 1 (VM-Lauf 04.10.2026: während Nacht 2 stand „Nacht 1“).
+            StatusText = decision == DayLoopDecision.Continue
+                ? Ui.Texts.DayLoopStatus(state.Nights.Count + 1, null)
+                : Ui.Texts.DayLoopStatus(state.Nights.Count, decision.ToString().ToLowerInvariant());
             return decision == DayLoopDecision.Continue;
         }
         catch (Exception ex)

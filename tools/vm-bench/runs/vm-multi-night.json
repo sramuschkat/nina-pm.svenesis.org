@@ -1,0 +1,30 @@
+{
+  "name": "vm-multi-night",
+  "description": "P-23 + P-24 auf echtem NINA (≈ 45 min): Sequenz „Mehrere Nächte“ über zwei verkürzte Nächte (Abstand 20 min) ohne NINA-Neustart – Warten auf Zeit (nautische Dämmerung + 2 min) vor dem Entparken, Trigger-Box vor jeder Belichtung, neue Session je Nacht, Ende nach 2 Nächten. Ohne Warm Camera am Morgen: in der verkürzten Nacht fräße das erneute Kühlen (bis 10 min) die zweite Nacht auf; der Ende-Bereich wärmt nach der letzten Nacht.",
+  "simRun": "vm-multi-night",
+  "scenario": "vm-multi-night",
+  "untilMin": 45,
+  "sessions": 2,
+  "sequence": {
+    "from": "multi-night",
+    "removeFromStart": ["RunAutofocus", "WarmCamera"],
+    "waitForTime": {
+      "source": "NauticalDusk",
+      "offsetMinutes": 2
+    },
+    "maxNights": 2,
+    "beforeExposureBox": true
+  },
+  "profile": {
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 24,
+      "screenshot": "nacht-2",
+      "tab": "sequencer"
+    }
+  ]
+}

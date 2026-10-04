@@ -32,6 +32,8 @@ export type Assert = Part &
     | { readonly none: Sel; readonly after?: Sel; readonly before?: Sel; readonly nth?: number }
     /** Je Block (BLOCK_START … BLOCK_END) passende Zeilen in [min, max] (Standard min 0). */
     | { readonly perBlock: Sel; readonly min?: number; readonly max?: number }
+    /** Beide Zeilenarten gleich oft, mindestens `min` (z. B. Trigger-Box vor jeder Belichtung, P-24). */
+    | { readonly sameCount: readonly [Sel, Sel]; readonly min?: number }
     /** Abstand `to − from` in Sekunden in [minS, maxS] (z. B. Ende von *Warten auf Zeit* ±30 s, P-24). */
     | {
         readonly timeGap: readonly [TimePoint, TimePoint];
@@ -51,6 +53,8 @@ export type Assert = Part &
         readonly exists?: boolean;
         /** Alle Einträge der Liste (gefiltert mit `where`) haben unter diesem Punktpfad denselben Wert. */
         readonly sameValue?: string;
+        /** Alle Einträge der Liste (gefiltert mit `where`) haben unter diesem Punktpfad verschiedene Werte. */
+        readonly distinct?: string;
       }
   );
 
@@ -101,6 +105,15 @@ const pointText = (p: TimePoint) =>
     : `${sel(p)}${p.nth && p.nth > 1 ? ` (${String(p.nth)}.)` : ''}.${p.field}`;
 
 export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown): AssertOutcome {
+  if ('sameCount' in a) {
+    const [x, y] = a.sameCount;
+    const nx = events.filter((e) => hit(e, x)).length;
+    const ny = events.filter((e) => hit(e, y)).length;
+    return {
+      ok: nx === ny && nx >= (a.min ?? 1),
+      text: `${sel(x)}: ${String(nx)}× = ${sel(y)}: ${String(ny)}×`,
+    };
+  }
   if ('timeGap' in a) {
     const [from, to] = a.timeGap;
     const f = timeOf(from, events, report);
@@ -192,6 +205,19 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
       text: `Report ${a.report} = ${JSON.stringify(value)} (erwartet ${JSON.stringify(a.equals)})`,
     };
   const list = Array.isArray(value) ? value : [];
+  if (a.distinct !== undefined) {
+    const picked = list
+      .filter((x) =>
+        Object.entries(a.where ?? {}).every(
+          ([k, v]) => JSON.stringify(at(x, k)) === JSON.stringify(v),
+        ),
+      )
+      .map((x) => JSON.stringify(at(x, a.distinct ?? '')));
+    return {
+      ok: picked.length > 0 && new Set(picked).size === picked.length,
+      text: `Report ${a.report}: ${a.distinct} verschieden (${picked.join(', ')})`,
+    };
+  }
   if (a.sameValue !== undefined) {
     const values = new Set(
       list

@@ -77,7 +77,7 @@ Safety-Monitor in Läufen (`steps`):
 - `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
 - Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
 
-Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist; `untilMin` ist die Obergrenze.
+Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
 
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 
@@ -103,3 +103,30 @@ Zwei kurze Läufe statt einzelner Protokolle (Sven 04.10.2026: Laufzeit optimier
 - **Flip im Flat-Lauf:** NINA flippt im ersten Block, aber das Sky-Simulator-Teleskop meldet ≈ 90 s danach wieder `pierWest` (Lauf 04.10.: NINA flippt am Blockende ein zweites Mal). Die Pier-Seite vor und nach der Belichtung ist dann gleich, also kein `FLIP` im Plugin-Log. Das ist ein Simulator-Artefakt; `vm-flats` prüft den Flip deshalb nicht, sondern nur, dass er keine weitere Kombination ergibt.
 - **Neustart (P-12):** Schritt `restartAfterLog`: sobald die 2. verschiedene Zeile `FLATS_START combination=` im Log steht, startet der Prüfstand NINA neu (ohne `ninapm.db` zu löschen), verbindet die Geräte und startet die Sequenz wieder.
 - **Mittelwert der Flats:** Die Simulator-Kamera liefert Sternfelder, keine hellen Flats – `WARNING code=flat_exposure_off` nach der ersten Flat je Kombination ist dort erwartet.
+
+### Tagesschleife (AP-52): `vm-multi-night`
+
+P-23 und P-24 auf echtem NINA in ≈ 45 min. Der Test-Server liefert **zwei verkürzte Nächte** im Abstand von 20 min (Szenario-Option `nightSpacingMin`). Die Nacht-Tabelle wechselt 1 min nach dem Sessionende auf die nächste Nacht, die Dämmerungen liegen am Anfang jeder Nacht. NINA fährt die Beispielsequenz „Mehrere Nächte“ ohne Neustart und ohne Handgriff.
+
+| Gerät | Simulator | Zustand |
+|---|---|---|
+| Kamera | Camera Sky Simulator for ALPACA | verbunden, −10 °C |
+| Montierung | Mount Sky Simulator for ALPACA | verbunden |
+| Filterrad | Filterwheel Sky Simulator for ALPACA | verbunden |
+| Guider | PHD2 (Simulator) | verbunden |
+| Safety-Monitor | OmniSim Safety Monitor | verbunden, sicher |
+| Rotator, Fokussierer, Kuppel, Flat-Panel | – | getrennt |
+
+- **Sequenz** (aus `multi-night.json`, Optionen in `sequence`):
+  - *Run Autofocus* fehlt auch in der Tagesschleife, weil die VM keinen Fokussierer hat;
+  - *Warm Camera* fehlt am Morgen in der Tagesschleife: Das erneute Kühlen (bis 10 min, Lauf 04.10.) fräße die verkürzte zweite Nacht auf; der Ende-Bereich wärmt nach der letzten Nacht;
+  - *NINA-PM Warten auf Zeit* wartet bis zur nautischen Dämmerung + 2 min;
+  - Höchstzahl 2 Nächte;
+  - am Container „Ziel“ hängt die Box *NINA-PM vor jeder Belichtung* mit *Wait for Time Span* 1 s.
+- **Prüfungen** (`tools/nina-sim/runs/vm-multi-night.json`, kopflos mit `dayLoop`):
+  - zwei abgeschlossene Sessions mit verschiedenen Nacht-Schlüsseln;
+  - *Warten auf Zeit* endet ±30 s zur Dämmerung + 2 min der 2. Nacht, erst danach kommen Plan und Blöcke;
+  - die Box läuft vor jeder Belichtung (`TRIGGER type=BeforeExposureTrigger` so oft wie `CAPTURE`, nur NINA);
+  - das Ende kommt nach der Höchstzahl (`DAYLOOP_END reason=max_nights`).
+- **Erster echter Ladetest** der abgeleiteten Beispielsequenz `multi-night.json` in NINA.
+

@@ -110,20 +110,29 @@ export class TestWorld {
       });
     }
     const table = buildNightTable(site, noonNightKey(site.timeZone, this.epochS * 1000), 60);
-    const span = this.sessionEndS() - this.epochS + 3600;
+    const day = this.nightSpacingS();
+    // Verkürzte Nächte (VM-Lauf vm-multi-night): Nachtfenster 1 min nach dem Sessionende, die Folgenacht beginnt 1 min
+    // vor ihrem Start (Nacht n = Serverstart + n · Abstand). Sonst 24 h und 1 h Nachlauf.
+    const short = this.scenario.nightSpacingMin !== undefined;
+    const span = this.sessionEndS() - this.epochS + (short ? 60 : 3600);
     const tw = { civil: -40, nautical: -20, astronomical: 0, ...this.scenario.twilightInMin };
+    const noonStartOf = (i: number) =>
+      short && i > 0 ? this.epochS + i * day - 60 : this.epochS - 12 * 3600 + i * day;
     const nights = table.nights.map((n, i) => {
-      const noonStart = this.epochS - 12 * 3600 + i * 86_400;
-      const windowEnd = Math.min(noonStart + 86_400, noonStart + 12 * 3600 + span);
-      // Dämmerungen relativ zum Start der Nacht (AP-52); Morgendurchgang 1 h vor dem Nachtfensterende.
+      const noonStart = noonStartOf(i);
+      const noonEnd = noonStartOf(i + 1);
+      const windowEnd = short
+        ? this.epochS + i * day + span
+        : Math.min(noonEnd, noonStart + 12 * 3600 + span);
+      // Dämmerungen relativ zum Start der Nacht (AP-52); Morgendurchgang vor dem Nachtfensterende.
       const crossing = (min: number) => ({
-        duskUtc: iso(this.epochS + i * 86_400 + min * 60),
-        dawnUtc: iso(windowEnd - 3600),
+        duskUtc: iso(this.epochS + i * day + min * 60),
+        dawnUtc: iso(windowEnd - (short ? 30 : 3600)),
       });
       return {
         ...n,
         noonStartUtc: iso(noonStart),
-        noonEndUtc: iso(noonStart + 86_400),
+        noonEndUtc: iso(noonEnd),
         nightWindowEndUtc: iso(windowEnd),
         twilight: {
           civil: crossing(tw.civil),
@@ -133,6 +142,11 @@ export class TestWorld {
       };
     });
     return { ...table, nights };
+  }
+
+  /** Abstand der Nächte in Sekunden: 24 h, im VM-Lauf vm-multi-night verkürzt (`nightSpacingMin`). */
+  private nightSpacingS(): number {
+    return (this.scenario.nightSpacingMin ?? 24 * 60) * 60;
   }
 
   /** Aktuelle und folgende Nacht (NT-01): nur diese nimmt der Server bei Plan und Session an. */
@@ -484,7 +498,7 @@ export class TestWorld {
   private buildPlan(night: string, request: Json, revision: number): Json {
     // Folgenacht = dieselben Blöcke n × 24 h später (n = Abstand zur Nacht beim Start), auch wenn die Uhr schon dort steht.
     const dayIndex = this.nightTable().nights.findIndex((n) => n.night === night);
-    const shift = this.scenario.multiNight ? Math.max(0, dayIndex) * 86_400 : 0;
+    const shift = this.scenario.multiNight ? Math.max(0, dayIndex) * this.nightSpacingS() : 0;
     const projects = this.projects();
     const projectOf = (b: { index: number } & ScenarioBlock) =>
       projects.find((p) => p.id === uuidFor(`project:${this.projectKey(b)}`));

@@ -122,4 +122,20 @@ describe('Prüfungen des kopflosen Nachtlaufs', () => {
       ).ok,
     ).toBe(false);
   });
+
+  it('sameCount und distinct (vm-multi-night, P-23/P-24)', () => {
+    expect(
+      evaluate({ sameCount: [{ event: 'BLOCK_START' }, { event: 'BLOCK_END' }] }, log, report).ok,
+    ).toBe(true);
+    expect(
+      evaluate({ sameCount: [{ event: 'BLOCK_START' }, { event: 'WARNING' }] }, log, report).ok,
+    ).toBe(false);
+    const r = { sessions: [{ night: '2026-10-03' }, { night: '2026-10-04' }] };
+    expect(evaluate({ report: 'sessions', distinct: 'night' }, log, r).ok).toBe(true);
+    expect(
+      evaluate({ report: 'sessions', distinct: 'night' }, log, {
+        sessions: [{ night: 'a' }, { night: 'a' }],
+      }).ok,
+    ).toBe(false);
+  });
 });

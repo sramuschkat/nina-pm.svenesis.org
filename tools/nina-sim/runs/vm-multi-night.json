@@ -1,0 +1,77 @@
+{
+  "name": "vm-multi-night",
+  "description": "P-23 + P-24 auf echtem NINA (≈ 45 min): Sequenz „Mehrere Nächte“ über zwei verkürzte Nächte (Abstand 20 min) ohne NINA-Neustart. Warten auf Zeit (nautische Dämmerung + 2 min) vor dem Entparken, Trigger-Box vor jeder Belichtung (nur VM), neue Session mit neuem Nacht-Schlüssel je Nacht, Ende nach 2 Nächten. Kopflos mit derselben Tagesschleife (dayLoop).",
+  "scenario": "vm-multi-night",
+  "untilMin": 45,
+  "setup": {},
+  "steps": [],
+  "dayLoop": { "maxNights": 2, "source": "NauticalDusk", "offsetMin": 2 },
+  "checks": [
+    {
+      "name": "Zwei Nächte ohne NINA-Neustart: zwei abgeschlossene Sessions mit verschiedenen Nacht-Schlüsseln",
+      "asserts": [
+        { "report": "sessions", "where": { "status": "completed" }, "min": 2, "max": 2 },
+        { "report": "sessions", "distinct": "night" },
+        { "log": { "event": "SESSION", "where": { "status": "running" } }, "min": 2, "max": 2 }
+      ]
+    },
+    {
+      "name": "Warten auf Zeit vor der 2. Nacht: Ende zur nautischen Dämmerung + 2 min (±30 s), erst danach Plan und Blöcke",
+      "asserts": [
+        {
+          "timeGap": [
+            { "report": "epochUtc" },
+            { "event": "WAIT_TIME", "field": "untilUtc", "nth": 2 }
+          ],
+          "minS": 1290,
+          "maxS": 1350
+        },
+        {
+          "timeGap": [
+            { "event": "WAIT_TIME", "field": "untilUtc", "nth": 2 },
+            { "event": "WAIT_TIME_END", "field": "atUtc", "nth": 2 }
+          ],
+          "minS": 0,
+          "maxS": 30
+        },
+        {
+          "order": [
+            { "event": "SESSION", "where": { "status": "finished" } },
+            { "event": "DAYLOOP" },
+            { "event": "WAIT_TIME_END" },
+            { "event": "PLAN", "where": { "reason": "initial" } },
+            { "event": "BLOCK_START" },
+            { "event": "SESSION", "where": { "status": "finished" } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Trigger-Box vor jeder Belichtung (P-24, nur NINA)",
+      "asserts": [
+        {
+          "vmOnly": true,
+          "sameCount": [
+            { "event": "TRIGGER", "where": { "type": "BeforeExposureTrigger" } },
+            { "event": "CAPTURE" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ende nach der Höchstzahl Nächte",
+      "asserts": [
+        { "log": { "event": "DAYLOOP" }, "min": 2, "max": 2 },
+        {
+          "log": { "event": "DAYLOOP_END", "where": { "reason": "max_nights" } },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Nichts abgelehnt",
+      "asserts": [{ "report": "rejected", "min": 0, "max": 0 }]
+    }
+  ]
+}
