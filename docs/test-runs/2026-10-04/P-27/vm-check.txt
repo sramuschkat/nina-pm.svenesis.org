@@ -1,0 +1,4 @@
+  ✓ Hinweis flip_in_transit beim Planaufbau (Lücke)
+  ✓ NINA flippt während der Serie (FLIP west → east)
+  ✓ Serie danach bis untilUtc, alle Aufnahmen mit transitObservationId
+  ✓ Recenter an: Alarm nina_settings_mismatch (recenter_after_flip_on), nichts abgelehnt
