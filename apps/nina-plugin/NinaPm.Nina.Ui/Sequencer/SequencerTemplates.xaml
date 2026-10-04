@@ -25,6 +25,7 @@
         <PathGeometry Figures="M10.47,18.37L13.14,18.11Q13.38,19.46 14.12,20.09Q14.86,20.72 16.11,20.72Q17.44,20.72 18.11,20.16Q18.78,19.59 18.78,18.84Q18.78,18.36 18.5,18.02Q18.22,17.68 17.51,17.43Q17.03,17.27 15.31,16.84Q13.11,16.29 12.21,15.49Q10.96,14.37 10.96,12.76Q10.96,11.72 11.55,10.81Q12.14,9.91 13.25,9.44Q14.36,8.96 15.93,8.96Q18.49,8.96 19.78,10.09Q21.07,11.21 21.14,13.08L18.39,13.2Q18.22,12.15 17.64,11.7Q17.06,11.24 15.9,11.24Q14.7,11.24 14.02,11.73Q13.59,12.04 13.59,12.57Q13.59,13.05 14,13.4Q14.52,13.83 16.52,14.31Q18.52,14.78 19.48,15.29Q20.44,15.79 20.99,16.67Q21.53,17.54 21.53,18.83Q21.53,20 20.88,21.02Q20.23,22.04 19.04,22.54Q17.86,23.04 16.08,23.04Q13.5,23.04 12.12,21.84Q10.74,20.65 10.47,18.37Z" />
     </GeometryGroup>
     <ui:NullToVisibility x:Key="NinaPm.NullToVisible" Invert="True" />
+    <ui:ZeroToVisibility x:Key="NinaPm.ZeroToVisible" />
 
     <!-- Live-Status-Kopf (FA-NIN-13): eigene Vorlage, damit der Adapter-Test sie ohne NINAs Sequenzansicht rendert. -->
     <DataTemplate x:Key="NinaPm.LiveStatus">
@@ -65,16 +66,16 @@
     </DataTemplate>
 
     <!-- Live-Status im Container (FA-NIN-13, AP-16h): Kopf, Zähler, Bedienung, „Heutige Ziele“. -->
-    <!-- Eine Flat-Box: Überschrift aus Tag des ContentControl, Inhalt = SequentialContainer mit Drop-Ziel. -->
+    <!-- Eine Flat-Box: Überschrift aus Tag des ContentControl, Inhalt = SequentialContainer mit Drop-Ziel; ohne StaticResource aus NINA (eigenständig renderbar). -->
     <DataTemplate x:Key="NinaPm.FlatBox">
         <StackPanel Margin="0,0,0,6" Orientation="Vertical">
             <TextBlock Margin="0,0,0,2" Opacity="0.8" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
-            <Border MinHeight="35" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                <Grid Background="{StaticResource BackgroundBrush}">
+            <Border MinHeight="35" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid Background="{DynamicResource BackgroundBrush}">
                     <ItemsControl MinHeight="35" ItemsSource="{Binding Items}" />
                     <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontStyle="Italic" Opacity="0.4"
                                Text="{x:Static ui:Texts.DropInstructionsHint}"
-                               Visibility="{Binding Items.Count, Converter={StaticResource InverseZeroToVisibilityConverter}}" />
+                               Visibility="{Binding Items.Count, Converter={StaticResource NinaPm.ZeroToVisible}}" />
                     <i:Interaction.Behaviors>
                         <behaviors:DragOverBehavior DragAboveSize="0" DragBelowSize="0" />
                         <behaviors:DropIntoBehavior AllowedDragDropTypesString="NINA.Sequencer.Container.ISequenceContainer;NINA.Sequencer.SequenceItem.ISequenceItem;NINA.Sequencer.TemplatedSequenceContainer" OnDropCommand="DropIntoCommand" />

@@ -22,11 +22,21 @@ public sealed class FlatAdapterTests
 {
     private static IProfileService Profile() => new Mock<IProfileService> { DefaultValue = DefaultValue.Mock }.Object;
 
-    private static TrainedFlatExposure Trained(IProfileService profile) => new(profile, Mock.Of<ICameraMediator>(), Mock.Of<IImagingMediator>(),
-        Mock.Of<IImageSaveMediator>(), Mock.Of<IImageHistoryVM>(), Mock.Of<IFilterWheelMediator>(), Mock.Of<IFlatDeviceMediator>());
+    // NINAs Flat-Anweisungen prüfen beim Einhängen Flat-Panel, Filterrad und Kamera (Validate in AfterParentChanged).
+    private static IFlatDeviceMediator FlatDevice() =>
+        Mock.Of<IFlatDeviceMediator>(f => f.GetInfo() == new NINA.Equipment.Equipment.MyFlatDevice.FlatDeviceInfo());
 
-    private static TrainedDarkFlatExposure TrainedDark(IProfileService profile) => new(profile, Mock.Of<ICameraMediator>(), Mock.Of<IImagingMediator>(),
-        Mock.Of<IImageSaveMediator>(), Mock.Of<IImageHistoryVM>(), Mock.Of<IFilterWheelMediator>(), Mock.Of<IFlatDeviceMediator>());
+    private static IFilterWheelMediator FilterWheel() =>
+        Mock.Of<IFilterWheelMediator>(f => f.GetInfo() == new NINA.Equipment.Equipment.MyFilterWheel.FilterWheelInfo());
+
+    private static ICameraMediator Camera() =>
+        Mock.Of<ICameraMediator>(c => c.GetInfo() == new NINA.Equipment.Equipment.MyCamera.CameraInfo());
+
+    private static TrainedFlatExposure Trained(IProfileService profile) => new(profile, Camera(), Mock.Of<IImagingMediator>(),
+        Mock.Of<IImageSaveMediator>(), Mock.Of<IImageHistoryVM>(), FilterWheel(), FlatDevice());
+
+    private static TrainedDarkFlatExposure TrainedDark(IProfileService profile) => new(profile, Camera(), Mock.Of<IImagingMediator>(),
+        Mock.Of<IImageSaveMediator>(), Mock.Of<IImageHistoryVM>(), FilterWheel(), FlatDevice());
 
     [Fact]
     public void Kombination_wird_in_alle_Flat_Anweisungen_geschrieben_Dark_Flats_mit_0_uebersprungen()
@@ -97,22 +107,9 @@ public sealed class FlatAdapterTests
             Width = 480,
             Child = new ContentControl { Content = new SequentialContainer(), ContentTemplate = template, Tag = "Vor Flats" },
         };
-        // NINAs Ressourcen, die die Box nutzt (im Plugin aus NINA, hier Platzhalter).
-        host.Resources["BorderBrush"] = Brushes.Gray;
-        host.Resources["BackgroundBrush"] = Brushes.White;
-        host.Resources["InverseZeroToVisibilityConverter"] = new ZeroToVisible();
         host.Measure(new Size(480, double.PositiveInfinity));
         host.Arrange(new Rect(host.DesiredSize));
         host.UpdateLayout();
         Assert.True(host.ActualHeight > 30);
     });
-
-    private sealed class ZeroToVisible : System.Windows.Data.IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
-            value is 0 ? Visibility.Visible : Visibility.Collapsed;
-
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) =>
-            throw new NotSupportedException();
-    }
 }
