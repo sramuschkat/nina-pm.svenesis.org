@@ -95,10 +95,14 @@ public sealed class TargetBrowserModel : INotifyPropertyChanged
         Status = runner is null ? Texts.NotConfigured : Texts.TargetsCount(Rows.Count);
     }
 
+    /// <summary>Nach einem Abruf (Bootstrap und Ziele neu) – der Simulator zieht seinen Stand nach.</summary>
+    public event Action? Refreshed;
+
     private async Task RefreshAsync()
     {
         if (NinaPmRuntime.Current is { } runtime) await runtime.Runner.RefreshAsync(CancellationToken.None);
         Rebuild();
+        Refreshed?.Invoke();
     }
 
     private async Task LoadAsync()

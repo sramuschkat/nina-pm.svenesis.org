@@ -122,4 +122,30 @@ public sealed class SimulatorModelTests
         Assert.Equal(Texts.TargetsFetched("17.09. 13:02 CDT"), model.FetchedText);
         Assert.Equal("17./18.09.2026", model.NightText);
     });
+
+    [Fact]
+    public void Ohne_Nacht_Tabelle_laedt_der_Simulator_die_Rig_Einstellungen_selbst() => Sta.Run(() =>
+    {
+        // Abnahme AP-53 (04.10.2026): NINA frisch gestartet, keine Sequenz gelaufen – vorher blieb es bei
+        // „keine Nacht-Tabelle“ und der Server wurde nie gefragt.
+        var api = new FakeApi();
+        NinaBootstrap? loaded = null;
+        var loads = 0;
+        var model = new SimulatorModel(() => new SimulatorContext(api, loaded, false, null, new NinaPmLog(new NullSink()),
+            _ =>
+            {
+                loads++;
+                loaded = Bootstrap;
+                return Task.CompletedTask;
+            }), Clock);
+        model.Refresh();
+        Assert.Equal(Texts.SimUnavailable(Texts.SimNoNights), model.Status);
+        model.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.Equal(1, loads);
+        Assert.Equal(["2026-09-17"], api.Calls);
+        Assert.True(model.Available);
+        // Mit Nacht-Tabelle kein erneutes Laden.
+        model.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
+        Assert.Equal(1, loads);
+    });
 }

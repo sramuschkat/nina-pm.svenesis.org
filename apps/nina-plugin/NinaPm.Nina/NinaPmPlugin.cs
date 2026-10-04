@@ -58,6 +58,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         this.profileService = profileService;
         Targets = new Browser.TargetBrowserModel(framing);
         Simulator = simulator ?? new Simulator.SimulatorModel();
+        Targets.Refreshed += Simulator.Refresh;
         this.mediators = mediators;
         this.protector = protector;
         accessor = new PluginOptionsAccessor(profileService, Guid.Parse(Identifier));

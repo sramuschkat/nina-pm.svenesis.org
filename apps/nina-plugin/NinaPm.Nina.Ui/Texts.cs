@@ -235,6 +235,7 @@ public static class Texts
     public static string NextNight => T("Nächste Nacht", "Next night");
     public static string Tonight => T("Heute Nacht", "Tonight");
     public static string Simulate => T("Simulieren", "Simulate");
+    public static string SimLoadingSettings => T("Lade Rig-Einstellungen …", "Loading rig settings …");
     public static string SimRunning => T("Simulation läuft …", "Simulating …");
     public static string TargetsFetched(string? when) => when is null
         ? T("Ziele zuletzt abgerufen: noch nie", "Targets last fetched: never")

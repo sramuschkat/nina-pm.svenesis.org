@@ -14,9 +14,12 @@ using NinaPm.Nina.Ui;
 
 namespace NinaPm.Nina.Simulator;
 
-/// <summary>Was der Simulator von der Laufzeit braucht (in Adapter-Tests frei gesetzt).</summary>
+/// <summary>
+/// Was der Simulator von der Laufzeit braucht (in Adapter-Tests frei gesetzt). <see cref="LoadSettings"/> lädt Bootstrap
+/// und Ziele, wenn noch keine Nacht-Tabelle da ist – ohne laufende Sequenz lädt sie sonst niemand.
+/// </summary>
 internal sealed record SimulatorContext(ISimulationApi Api, NinaBootstrap? Bootstrap, bool OfflineMode, DateTimeOffset? TargetsFetchedUtc,
-    NinaPmLog Log);
+    NinaPmLog Log, Func<CancellationToken, Task>? LoadSettings = null);
 
 /// <summary>
 /// Simulator auf der Optionsseite (FA-NIN-18, AP-53) mit der Gliederung von S-40: Infobox mit
@@ -66,7 +69,8 @@ public sealed class SimulatorModel : INotifyPropertyChanged
     private static SimulatorContext? FromRuntime()
     {
         if (NinaPmRuntime.Current is not { } rt) return null;
-        return new SimulatorContext(rt.SimulationApi, rt.Runner.Bootstrap, rt.Runner.OfflineMode, rt.Runner.TargetsFetchedUtc, rt.Log);
+        return new SimulatorContext(rt.SimulationApi, rt.Runner.Bootstrap, rt.Runner.OfflineMode, rt.Runner.TargetsFetchedUtc, rt.Log,
+            t => rt.Runner.RefreshAsync(t));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -229,20 +233,46 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         Raise(nameof(FetchedText));
     }
 
-    private Task Move(int direction)
+    private async Task Move(int direction)
     {
-        if (running) return Task.CompletedTask;
+        if (running) return;
         Refresh();
-        if (night is null) return Task.CompletedTask;
+        await EnsureSettingsAsync(CancellationToken.None);
+        if (night is null) return;
         night = direction < 0 ? Dates.Previous(night, clock.UtcNow) : Dates.Next(night);
         RaiseDate();
-        return SimulateAsync(CancellationToken.None);
+        await SimulateAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Ohne Nacht-Tabelle (NINA frisch gestartet, noch keine Sequenz gelaufen) Bootstrap und Ziele laden, statt mit
+    /// „keine Nacht-Tabelle“ stehen zu bleiben (Abnahme AP-53, 04.10.2026). Im Offline-Modus nicht.
+    /// </summary>
+    private async Task EnsureSettingsAsync(CancellationToken token)
+    {
+        if (context() is not { Bootstrap: null, OfflineMode: false, LoadSettings: { } load }) return;
+        IsRunning = true;
+        Status = Texts.SimLoadingSettings;
+        try
+        {
+            await load(token);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Fehler meldet der Lauf im NINA-Log (API …); unten bleibt „keine Nacht-Tabelle“.
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+        Refresh();
     }
 
     internal async Task SimulateAsync(CancellationToken token)
     {
         if (running) return;
         Refresh();
+        await EnsureSettingsAsync(token);
         var ctx = context();
         if (night is null)
         {
