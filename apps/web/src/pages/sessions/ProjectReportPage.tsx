@@ -286,7 +286,14 @@ function ReportBody({ report }: { report: ProjectReport }) {
   );
 }
 
-function ProjectSection({ project: p }: { project: ReportProject }) {
+/** Abschnitt eines Projekts (Bericht S-63; aufgeklappt im Reiter *Sessions & Protokoll* des Projekt-Editors). */
+export function ProjectSection({
+  project: p,
+  open = false,
+}: {
+  project: ReportProject;
+  open?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const filters = useEquipmentList('filters');
   const colorOf = (short: string) =>
@@ -294,7 +301,7 @@ function ProjectSection({ project: p }: { project: ReportProject }) {
   const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
   const c = p.conditions;
   return (
-    <details className={styles.reportSection}>
+    <details className={styles.reportSection} open={open}>
       <summary>
         <h2 className={styles.reportHeading}>
           {p.name}{' '}

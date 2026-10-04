@@ -1004,7 +1004,7 @@
     "P-14": {
       "package": "AP-44",
       "steps": [
-        "Vorlauf: die Belichtung vor dem Transit wird nicht mehr begonnen (oder abgebrochen); Slew/Zentrieren ab dem Vorlauf",
+        "Vorlauf: eine Belichtung, die in den Vorlauf reichen würde, wird nicht begonnen (laufende laufen zu Ende); Slew/Zentrieren ab dem Vorlauf",
         "TRANSIT_START am Fensterbeginn; Serie bis untilUtc unabhängig von der Anzahl, Filter einmal, kein Dither",
         "Autofokus-Trigger im Transit unterdrückt (TRIGGER_SUPPRESSED), Meridian-Flip nicht",
         "Alle Aufnahmen der Serie mit transitObservationId",
@@ -1042,7 +1042,7 @@
     "P-15b": {
       "package": "AP-44",
       "steps": [
-        "Transit im laufenden Block festgelegt: laufende Belichtung endet (oder wird abgebrochen), BLOCK_END reason=transit_interrupt",
+        "Transit im laufenden Block festgelegt: laufende Belichtung läuft zu Ende, danach BLOCK_END reason=transit_interrupt",
         "Neuer Plan (refresh), Transitblock mit Vorlauf, TRANSIT_START am Fensterbeginn",
         "Serie bis untilUtc, TRANSIT_END"
       ],

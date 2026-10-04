@@ -746,7 +746,12 @@ function columnsFor(
               patch(line, { readoutMode: e.target.value === '' ? null : e.target.value })
             }
           >
-            <option value="">{t('projectEditor.plan.default')}</option>
+            {/* Leer = Standard-Auslesemodus der Kamera; der Server speichert ihn (project.ts, AP-11a). */}
+            <option value="">
+              {camera?.defaultReadoutMode
+                ? t('projectEditor.plan.readoutCameraDefault', { mode: camera.defaultReadoutMode })
+                : t('projectEditor.plan.readoutCameraDefaultNone')}
+            </option>
             {(camera?.readoutModes ?? []).map((m) => (
               <option key={m} value={m}>
                 {m}

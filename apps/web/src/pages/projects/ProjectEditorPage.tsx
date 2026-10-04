@@ -1174,6 +1174,7 @@ function Editor({
             draft={draft}
             site={site}
             exo={saved?.projectType === 'exoplanet' ? { projectId: saved.id, canUpdate } : null}
+            sessionsProjectId={saved?.approvalStatus === 'approved' ? saved.id : null}
           />
           <section className={styles.area} aria-label={t('projectEditor.tabs.imageNotes')}>
             {imagePanel}

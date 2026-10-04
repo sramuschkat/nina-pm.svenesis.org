@@ -11,7 +11,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { equipmentApi, projectsApi, type HistoryEntry, type SiteView } from '../../api/client';
+import {
+  equipmentApi,
+  projectsApi,
+  reportsApi,
+  type HistoryEntry,
+  type SiteView,
+} from '../../api/client';
 import { DataTable, type DataColumn } from '../../components/DataTable';
 import { ICON_SIZE, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
@@ -22,12 +28,13 @@ import { problemCode } from '../equipment/shared';
 import { useSiteWeather } from '../weather/WeatherPage';
 import { weatherHref } from '../weather/model';
 import { ExoTransitTab } from '../exo/ExoTransitTab';
+import { ProjectSection } from '../sessions/ProjectReportPage';
 import { SeasonPanel } from './SeasonPanel';
 import { engineMoonProfile, type ProjectDraft } from './model';
 import styles from './projects.module.css';
 import { Person } from '../../lib/member';
 
-type ChartTab = 'transit' | 'night' | 'season' | 'weather';
+type ChartTab = 'transit' | 'night' | 'season' | 'weather' | 'sessions';
 
 /** Zeile des Freigabe-Verlaufs mit stabilem Schlüssel. */
 interface HistoryRow {
@@ -39,11 +46,14 @@ export function ChartArea({
   draft,
   site,
   exo = null,
+  sessionsProjectId = null,
 }: {
   draft: ProjectDraft;
   site: SiteView | null;
   /** Gespeichertes Exoplaneten-Projekt: Reiter *Exoplanet-Transit* (FA-EXO-17). */
   exo?: { projectId: string; canUpdate: boolean } | null;
+  /** Freigegebenes Projekt: Reiter *Sessions & Protokoll* (S-31) mit dem Abschnitt aus dem Projektbericht. */
+  sessionsProjectId?: string | null;
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<ChartTab>(exo ? 'transit' : 'night');
@@ -105,6 +115,9 @@ export function ChartArea({
           { key: 'night', label: t('projectEditor.tabs.night') },
           { key: 'season', label: t('projectEditor.tabs.season') },
           { key: 'weather', label: t('projectEditor.tabs.weather') },
+          ...(sessionsProjectId
+            ? [{ key: 'sessions' as const, label: t('projectEditor.tabs.sessions') }]
+            : []),
         ]}
         toolbar={nightNav}
         panelClassName={styles.areaMiddle}
@@ -145,6 +158,9 @@ export function ChartArea({
           ) : (
             <p className={styles.note}>{t('weatherPage.noRig')}</p>
           ),
+          ...(sessionsProjectId
+            ? { sessions: <ProjectSessionsTab projectId={sessionsProjectId} /> }
+            : {}),
         }}
       />
     </section>
@@ -359,4 +375,26 @@ export function HistoryTab({ projectId }: { projectId: string }) {
       defaultSort={{ id: 'when', dir: 'desc' }}
     />
   );
+}
+
+/**
+ * Reiter *Sessions & Protokoll* (S-31): derselbe Abschnitt wie im Projektbericht S-63 über alle Nächte – Frames und
+ * Integration je Filter, Verlauf je Nacht, Sessions mit Frames je Filter, Verworfen-Quote und Wetter; jede Session
+ * führt zur Detailseite mit Aufnahmen und Protokoll.
+ */
+function ProjectSessionsTab({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
+  const report = useQuery({
+    queryKey: ['project-report', { projectId }],
+    queryFn: () => reportsApi.projects({ projectId }),
+  });
+  if (report.isPending) return <p role="status">{t('common.loading')}</p>;
+  if (report.isError)
+    return (
+      <ProblemMessage code={problemCode(report.error)} onRetry={() => void report.refetch()} />
+    );
+  const project = report.data.projects[0];
+  if (!project || project.sessions.length === 0)
+    return <p className={styles.muted}>{t('projectEditor.tabs.sessionsEmpty')}</p>;
+  return <ProjectSection project={project} open />;
 }

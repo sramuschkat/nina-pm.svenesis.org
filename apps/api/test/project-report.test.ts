@@ -145,5 +145,13 @@ describe('Projektbericht (S-63)', () => {
       ((await t.web(`/reports/projects?rigId=${t.rig.id}`)).body.projects as Body[]).length,
     ).toBe(1);
     expect((await t.web('/reports/projects?from=2026-10-02&to=2026-10-01')).status).toBe(422);
+    // Nur ein Projekt (Reiter *Sessions & Protokoll* im Projekt-Editor, S-31).
+    const all = (await t.web('/reports/projects')).body.projects as Body[];
+    const id = String((all[0] as Body).projectId);
+    const one = await t.web(`/reports/projects?projectId=${id}`);
+    expect((one.body.projects as Body[]).map((p) => p.projectId)).toEqual([id]);
+    const other = await t.web(`/reports/projects?projectId=${crypto.randomUUID()}`);
+    expect(other.body.projects).toEqual([]);
+    expect((await t.web('/reports/projects?projectId=kein-uuid')).status).toBe(422);
   });
 });

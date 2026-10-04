@@ -1,0 +1,3 @@
+### Projekt-Editor: Reiter „Sessions & Protokoll“, Kamera-Standard beim Auslesemodus
+- Neuer Reiter **Sessions & Protokoll** (S-31) für freigegebene Projekte: Frames und Integration je Filter, Verlauf je Nacht, Sessions mit Frames je Filter, Verworfen-Quote und Wetter – derselbe Abschnitt wie im Projektbericht, über alle Nächte; jede Session verlinkt zur Detailseite mit Aufnahmen und Protokoll. Dafür `GET /reports/projects?projectId=`.
+- Belichtungsplan: die leere Auswahl beim Auslesemodus heißt jetzt **„Kamera-Standard (M1)“** statt „Standard“ – gespeichert wird der Standard-Auslesemodus der Kamera.

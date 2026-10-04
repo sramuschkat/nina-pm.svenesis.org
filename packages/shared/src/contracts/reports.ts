@@ -14,6 +14,8 @@ export const ProjectReportQuery = z.object({
   status: z.enum(projectStatuses).optional(),
   rigId: Uuid.optional(),
   type: z.enum(['deep_sky', 'exoplanet']).optional(),
+  /** Nur dieses Projekt (Reiter *Sessions & Protokoll* im Projekt-Editor, S-31). */
+  projectId: Uuid.optional(),
 });
 
 export const ReportFilterTotal = z

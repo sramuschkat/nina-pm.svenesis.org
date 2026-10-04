@@ -93,7 +93,10 @@
                 </StackPanel>
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Static ui:Texts.Status}" />
                 <TextBlock Grid.Row="1" Grid.Column="1" FontWeight="Bold" Text="{Binding OperationStatus}" TextWrapping="Wrap" />
-                <TextBlock Grid.Row="2" Grid.Column="1" Opacity="0.7" Text="{Binding DeadLetterInfo}" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="2" Grid.Column="1">
+                    <TextBlock Opacity="0.7" Text="{Binding DeadLetterInfo}" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,2,0,4" Opacity="0.7" Text="{x:Static ui:Texts.OutboxHelp}" TextWrapping="Wrap" />
+                </StackPanel>
                 <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Text="{x:Static ui:Texts.ReuploadFrom}" />
                 <StackPanel Grid.Row="3" Grid.Column="1" Margin="0,2" Orientation="Horizontal">
                     <DatePicker Width="140" SelectedDate="{Binding ReuploadFrom}" />

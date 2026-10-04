@@ -1,0 +1,89 @@
+{
+  "name": "vm-replan-transit",
+  "scenario": "replan-transit",
+  "description": "P-15b mit echtem NINA: Transit in Minute 4 festgelegt – laufende Belichtung zu Ende, transit_interrupt, neuer Plan, Transit.",
+  "untilMin": 40,
+  "setup": {},
+  "steps": [
+    {
+      "atMin": 4,
+      "server": "lock_transit"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Block endet transit_interrupt, laufende Belichtung zu Ende (kein Abbruch)",
+      "asserts": [
+        {
+          "log": {
+            "event": "BLOCK_END",
+            "where": {
+              "reason": "transit_interrupt"
+            }
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "log": {
+            "event": "CAPTURE",
+            "where": {
+              "result": "aborted"
+            }
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Neuer Plan, Transit am Fensterbeginn",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "BLOCK_END",
+              "where": {
+                "reason": "transit_interrupt"
+              }
+            },
+            {
+              "event": "PLAN",
+              "where": {
+                "reason": "refresh"
+              }
+            },
+            {
+              "event": "TRANSIT_START"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Serie bis untilUtc, nichts abgelehnt",
+      "asserts": [
+        {
+          "log": {
+            "event": "TRANSIT_END"
+          },
+          "min": 1,
+          "max": 1
+        },
+        {
+          "report": "captures",
+          "where": {
+            "filterShortName": "R"
+          },
+          "whereExists": ["transitObservationId"],
+          "min": 10
+        },
+        {
+          "report": "rejected",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

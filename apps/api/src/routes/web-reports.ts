@@ -1,6 +1,6 @@
 /**
  * Projektbericht S-63 (AP-34; FA-AUS-18, FA-AUS-10, FA-AUS-11, FA-AUS-13; TK 7.2 „Auswertung“):
- * `GET /web/v1/reports/projects?from=&to=&status=&rigId=&type=` (`project.read`) – freigegebene Projekte
+ * `GET /web/v1/reports/projects?from=&to=&status=&rigId=&type=&projectId=` (`project.read`) – freigegebene Projekte
  * (Sichtbarkeit wie die Projektliste, FA-BER-02) mit Filter-Summen, Verlauf je Nacht, Sessions und
  * Kanalbalance. `from`/`to` sind Nacht-Schlüssel (NT-04); CSV und Druckansicht erzeugt der Browser.
  */
@@ -66,6 +66,7 @@ export function webReportRoutes(services: () => Promise<ApiServices>) {
       .map((d) => projectView(d))
       .filter((p) => (q.type ? p.projectType === q.type : true))
       .filter((p) => (q.rigId ? p.rigId === q.rigId : true))
+      .filter((p) => (q.projectId ? p.id === q.projectId : true))
       .slice(0, MAX_REPORT_PROJECTS);
     const [rows, rigs] = await Promise.all([
       projectReportRows(
