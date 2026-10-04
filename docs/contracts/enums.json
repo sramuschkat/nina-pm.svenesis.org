@@ -613,6 +613,7 @@
   "flat_exposure_off",
   "filter_wheel_changed",
   "mount_site_mismatch",
+  "profile_site_mismatch",
   "pc_timezone_differs",
   "optics_mirrored",
   "image_not_saved",

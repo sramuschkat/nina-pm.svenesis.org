@@ -50,6 +50,13 @@ public static class Texts
     public static string Instance => T("NINA-Instanz", "NINA instance");
     public static string Rig => T("Rig", "Rig");
     public static string Site => T("Standort-Abgleich", "Site check");
+    public static string Telescope => T("Teleskop", "Telescope");
+    public static string Camera => T("Kamera", "Camera");
+    public static string ApplySite => T("Standort aus NINA-PM übernehmen", "Use location from NINA-PM");
+    public static string ApplySiteCaption => T("NINA-Profil ändern", "Change NINA profile");
+    public static string ApplySiteConfirm(string site, double lat, double lon, double elevationM) => T(
+        $"Standort des aktiven NINA-Profils auf den Rig-Standort {site} setzen?\n\nBreite {lat:0.0000}°, Länge {lon:0.0000}°, Höhe {elevationM:0} m",
+        $"Set the location of the active NINA profile to the rig site {site}?\n\nLatitude {lat:0.0000}°, longitude {lon:0.0000}°, elevation {elevationM:0} m");
 
     public static string Testing => T("Verbindung wird getestet …", "Testing connection …");
     public static string NotConfigured => T("Server-URL und Token eintragen.", "Enter server URL and token.");

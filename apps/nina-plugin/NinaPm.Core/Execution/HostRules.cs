@@ -9,10 +9,10 @@ namespace NinaPm.Core.Execution;
 /// <summary>
 /// Was der SiteCheck vom NINA-PC und der Sequenz braucht (AP-16f): Offset der PC-Zeitzone jetzt, Standort und
 /// Sternzeit-Abweichung der Montierung (<c>null</c> = keine Montierung), Rotator-Bereich <c>QUARTER</c>, Flip-Trigger in
-/// der Sequenz vorhanden.
+/// der Sequenz vorhanden, Standort des aktiven NINA-Profils (FA-NIN-03).
 /// </summary>
 public sealed record SiteFacts(TimeSpan PcOffset, double? MountLatDeg, double? MountLonDeg, double? SiderealDeltaS,
-    bool RotatorRangeQuarter, bool FlipTriggerPresent);
+    bool RotatorRangeQuarter, bool FlipTriggerPresent, double? ProfileLatDeg = null, double? ProfileLonDeg = null);
 
 /// <summary>
 /// Geräteunabhängige Regeln des NINA-Adapters (execution.md §4.3/§4.4, NT-23, NT-37): Hinweise beim Planaufbau,
@@ -58,7 +58,7 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
 
     /// <summary>
     /// SiteCheck und Sequenzprüfung beim Planaufbau (execution.md §2, §4.5, §6; NT-06, NT-22, M2), je Code höchstens
-    /// 1×/12 h: <c>pc_timezone_differs</c> (mit Folge und Empfehlung, L3), <c>mount_site_mismatch</c>,
+    /// 1×/12 h: <c>pc_timezone_differs</c> (mit Folge und Empfehlung, L3), <c>mount_site_mismatch</c>, <c>profile_site_mismatch</c> (FA-NIN-03),
     /// <c>rotator_range_quarter</c> (Rig mit Rotator), <c>sequence_template_deviation type=MeridianFlipTrigger</c> (Flip
     /// im Rig an, aber kein Flip-Trigger in der Sequenz). Ohne Bootstrap keine Prüfung.
     /// </summary>
@@ -79,6 +79,8 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
             Warn("pc_timezone_differs", message: SiteCheck.TimezoneMessage(f.PcOffset, site, b.Rig.Site.TimeZone));
         if (SiteCheck.MountSiteMismatch(f.MountLatDeg, f.MountLonDeg, f.SiderealDeltaS, b.Rig.Site.LatDeg, b.Rig.Site.LonDeg))
             Warn("mount_site_mismatch");
+        if (SiteCheck.ProfileDistanceKm(f.ProfileLatDeg, f.ProfileLonDeg, b.Rig.Site.LatDeg, b.Rig.Site.LonDeg) is { } km && km > NinaPm.Core.Api.Geo.SiteWarnKm)
+            Warn("profile_site_mismatch", message: SiteCheck.ProfileSiteMessage(km, b.Rig.Site.Name));
         if (f.RotatorRangeQuarter && b.Rig.Rotator.Present) Warn("rotator_range_quarter");
         if (!f.FlipTriggerPresent && b.Rig.Scheduler.MeridianFlip.Enabled) Warn("sequence_template_deviation", "MeridianFlipTrigger");
     }

@@ -33,6 +33,16 @@ public static class SiteCheck
 
     private static string Format(TimeSpan o) => $"{(o < TimeSpan.Zero ? "-" : "+")}{o.Duration():hh\\:mm}";
 
+    /// <summary>Abstand des NINA-Profil-Standorts zum Rig-Standort (FA-NIN-03); <c>null</c> ohne Profil-Standort.</summary>
+    public static double? ProfileDistanceKm(double? profileLatDeg, double? profileLonDeg, double siteLatDeg, double siteLonDeg) =>
+        profileLatDeg is { } lat && profileLonDeg is { } lon ? Geo.DistanceKm(lat, lon, siteLatDeg, siteLonDeg) : null;
+
+    /// <summary><c>profile_site_mismatch</c>: Hinweis mit Abstand und Abhilfe (Knopf auf der Optionsseite).</summary>
+    public static string ProfileSiteMessage(double km, string siteName) =>
+        $"Standort im NINA-Profil liegt {km:0} km vom Rig-Standort {siteName} entfernt (Warnung ab {Geo.SiteWarnKm:0} km, FA-NIN-03): "
+        + "NINA rechnet Höhen, Meridian-Flip und Dämmerung mit dem Profil-Standort. Abhilfe: in den NINA-PM-Optionen "
+        + "„Standort aus NINA-PM übernehmen“.";
+
     /// <summary>
     /// <c>mount_site_mismatch</c>: Montierungsstandort mehr als <see cref="Geo.SiteWarnKm"/> vom Rig-Standort entfernt oder
     /// Sternzeit der Montierung &gt; 60 s neben der berechneten LST (NT-22). Ohne Montierung keine Prüfung.

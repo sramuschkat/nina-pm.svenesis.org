@@ -239,6 +239,8 @@ Die Zuordnung Web-Filter ↔ NINA-Filtername wird **nicht** mehr zur Laufzeit ge
 | Kamera | `camera {temperatureC, setPointC, coolerOn, coolerPowerPct}` (`CameraInfo.Temperature`, `TemperatureSetPoint`, `CoolerOn`, `CoolerPower`) | Anzeige; Abweichung → `camera_temperature` (NT-E2) |
 | Filterrad | `filterWheel: [{position, name, focusOffset}]` (`FilterWheelSettings.FilterWheelFilters`) | Namen = bestätigte `ninaFilterName` je Platz, sonst `filter_wheel_changed` (§4.4) |
 
+> **Spec-Ergänzung (FA-NIN-03, 04.10.2026, Sven):** Der Standort des **NINA-Profils** (`AstrometrySettings.Latitude/Longitude`) wird nicht nur beim Verbindungstest geprüft. Beim Planaufbau prüft der SiteCheck ihn gegen den Rig-Standort aus dem Bootstrap; liegt er mehr als 10 km entfernt, meldet er `warning` Code `profile_site_mismatch` (`pluginWarningCodes`, 1×/12 h, mit Abstand und Abhilfe). Die Optionsseite zeigt Rig · Standort, Teleskop und Kamera aus dem Bootstrap, auch ohne Verbindungstest, sobald die Laufzeit ihn geladen hat. Bei Abweichung erscheint dort der Knopf *Standort aus NINA-PM übernehmen*. Er schreibt Breite, Länge und Höhe des Rig-Standorts ins aktive Profil, **nur auf Klick und nach Rückfrage**, nie automatisch. Eine Rig-Auswahl gibt es nicht: Das Sync-Token gehört zu genau einer Instanz eines Rigs (FA-SYN-01).
+
 - **Lease** 3 min (`rig_lease.lease_until`, eine Zeile je Rig, Schema 1.9+), jeder Heartbeat mit `sessionId` verlängert. Zustandsmaschine im Kern mit vollständigen Übergängen (NIN-7):
 
 | Von | Auslöser | Nach | Wirkung |

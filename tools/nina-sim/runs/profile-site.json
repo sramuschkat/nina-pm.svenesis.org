@@ -1,0 +1,29 @@
+{
+  "name": "profile-site",
+  "scenario": "one-night",
+  "description": "NINA-Profil steht auf einem anderen Standort (München) als das Rig (Starfront): beim Planaufbau einmal WARNING profile_site_mismatch mit Abstand und Abhilfe (FA-NIN-03); die Nacht läuft trotzdem, das Plugin ändert das Profil nicht selbst.",
+  "untilMin": 40,
+  "setup": {
+    "profileLocation": [48.137, 11.575]
+  },
+  "steps": [],
+  "checks": [
+    {
+      "name": "Profil-Standort weicht ab: Warnung einmal (Drosselung 12 h), Blöcke laufen",
+      "asserts": [
+        {
+          "log": { "event": "WARNING", "where": { "code": "profile_site_mismatch" } },
+          "min": 1,
+          "max": 1
+        },
+        { "log": { "event": "BLOCK_START" }, "min": 1 },
+        {
+          "report": "events",
+          "where": { "kind": "warning", "code": "profile_site_mismatch" },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    }
+  ]
+}

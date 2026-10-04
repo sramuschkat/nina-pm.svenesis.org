@@ -30,6 +30,7 @@ public sealed class SimWorld(SimSetup setup)
     public double FlipDurationS { get; set; } = setup.FlipDurationS;
     public bool FlipTrigger { get; set; } = setup.FlipTrigger;
     public int? PcUtcOffsetMinutes { get; set; } = setup.PcUtcOffsetMinutes;
+    public double[] ProfileLocation { get; set; } = setup.ProfileLocation;
     public double CenterDelayS { get; set; } = setup.CenterDelayS;
     public double DitherSettleS { get; set; } = setup.DitherSettleS;
     public double CenterS { get; set; } = setup.CenterS;
