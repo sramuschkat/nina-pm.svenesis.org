@@ -96,11 +96,22 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
     private void StartRuntime()
     {
         if (mediators is not { } m) return;
-        _ = Task.Run(() =>
+        _ = Task.Run(async () =>
         {
             try
             {
-                NinaPmRuntime.Ensure(profileService, () => new NinaHost(m));
+                // Rig, Teleskop und Kamera gleich nach dem Start zeigen, sobald die Laufzeit den Bootstrap hat
+                // (ohne Verbindungstest; VM 04.10.2026: Zeilen blieben bis Refresh leer).
+                if (NinaPmRuntime.Ensure(profileService, () => new NinaHost(m)) is { } runtime)
+                {
+                    await runtime.Runner.RefreshAsync(CancellationToken.None);
+                    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        ShowRuntimeRig();
+                        Targets.Rebuild();
+                        Simulator.Refresh();
+                    });
+                }
             }
             catch (Exception ex)
             {

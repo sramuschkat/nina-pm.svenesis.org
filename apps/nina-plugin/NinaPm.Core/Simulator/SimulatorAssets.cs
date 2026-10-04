@@ -42,6 +42,72 @@ public static class ChartPalette
     /// <summary><c>chart-mark-sun</c>: Prüfliste ⚠.</summary>
     public const string Warn = "#f0a93b";
 
+    /// <summary><c>chart-curve</c>: Beschriftung der Blöcke, Text auf dunklem Grund.</summary>
+    public const string Curve = "#eef2f6";
+
+    /// <summary><c>chart-grid</c> = <c>rgba(255, 255, 255, 0.16)</c>: Raster.</summary>
+    public const string Grid = "#ffffff";
+    public const double GridAlpha = 0.16;
+
+    /// <summary><c>chart-label</c> = <c>rgba(228, 233, 239, 0.8)</c>: Achsen- und Dämmerungsbeschriftung.</summary>
+    public const string Label = "#e4e9ef";
+    public const double LabelAlpha = 0.8;
+
+    /// <summary>Mondfläche wie im Web-Nachtdiagramm: <c>rgba(229, 72, 77, a)</c>, Deckkraft nach Beleuchtung.</summary>
+    public const string MoonFill = "#e5484d";
+
+    public static double MoonAlpha(double illuminationPct) => 0.18 + 0.4 * Math.Clamp(illuminationPct, 0, 100) / 100;
+
+    /// <summary>
+    /// <c>SKY_STOPS</c> aus <c>packages/ui-tokens</c>: Himmelsfarbe nach Sonnenhöhe (absteigend), dazwischen linear,
+    /// außerhalb die Randfarbe – derselbe Verlauf wie im Web-Simulator.
+    /// </summary>
+    public static readonly IReadOnlyList<(double SunAltDeg, int R, int G, int B)> SkyStops =
+    [
+        (6, 166, 140, 69),
+        (0, 93, 128, 168),
+        (-6, 62, 92, 130),
+        (-12, 31, 51, 80),
+        (-18, 14, 24, 36),
+    ];
+
+    /// <summary>Himmelsfarbe <c>#rrggbb</c> zur Sonnenhöhe (wie <c>skyColor</c> im Web).</summary>
+    public static string Sky(double sunAltDeg)
+    {
+        var first = SkyStops[0];
+        var last = SkyStops[^1];
+        static string Hex(double r, double g, double b) =>
+            $"#{(int)Math.Round(r):x2}{(int)Math.Round(g):x2}{(int)Math.Round(b):x2}";
+        if (sunAltDeg >= first.SunAltDeg) return Hex(first.R, first.G, first.B);
+        for (var i = 0; i + 1 < SkyStops.Count; i++)
+        {
+            var a = SkyStops[i];
+            var b = SkyStops[i + 1];
+            if (sunAltDeg <= a.SunAltDeg && sunAltDeg >= b.SunAltDeg)
+            {
+                var f = (a.SunAltDeg - sunAltDeg) / (a.SunAltDeg - b.SunAltDeg);
+                return Hex(a.R + (b.R - a.R) * f, a.G + (b.G - a.G) * f, a.B + (b.B - a.B) * f);
+            }
+        }
+        return Hex(last.R, last.G, last.B);
+    }
+
+    /// <summary>Relative Helligkeit (0–1) einer Farbe <c>#rrggbb</c> für die Textfarbe auf Filterbalken und -chips (wie <c>luminance</c> im Web).</summary>
+    public static double? Luminance(string? hex)
+    {
+        if (hex is null || hex.Length != 7 || hex[0] != '#') return null;
+        if (!int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out var v)) return null;
+        static double Lin(int c)
+        {
+            var x = c / 255.0;
+            return x <= 0.03928 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * Lin((v >> 16) & 0xFF) + 0.7152 * Lin((v >> 8) & 0xFF) + 0.0722 * Lin(v & 0xFF);
+    }
+
+    /// <summary>Text auf einer farbigen Fläche: dunkel (<c>chart-frame</c>) auf hellen Farben, sonst weiß.</summary>
+    public static string TextOn(string? hex) => Luminance(hex) is > 0.45 ? Frame : "#ffffff";
+
     public static string ForSeries(int index) => index < 0 ? Moon : Series[index % Series.Count];
 }
 

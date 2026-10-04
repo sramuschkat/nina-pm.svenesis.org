@@ -202,11 +202,19 @@ public sealed class SimulatorTests
         Assert.Equal(0, transit.SeriesIndex);
         // Volle Stunden 19 … 08 CDT (00:00Z … 13:00Z).
         Assert.Equal(14, chart.Ticks.Count);
-        Assert.Equal(("19", 0.0), (chart.Ticks[0].Label, chart.Ticks[0].X));
-        Assert.Equal(("08", 1.0), (chart.Ticks[^1].Label, chart.Ticks[^1].X));
+        Assert.Equal(("19:00", 0.0), (chart.Ticks[0].Label, chart.Ticks[0].X));
+        Assert.Equal(("08:00", 1.0), (chart.Ticks[^1].Label, chart.Ticks[^1].X));
         Assert.Equal(["Flip 23:33", "Flip 02:47"], chart.Flips.Select(f => f.Label));
         Assert.Equal(["R ×326", "Ha ×17"], chart.FilterBars.Select(f => f.Label));
         Assert.Equal([1, 2, 3], chart.Bands.Select(b => b.Level));
+        // Himmel wie im Web-Simulator: 5-min-Abschnitte im Verlauf nach Sonnenhöhe, Tag gelblich, Nacht dunkel.
+        Assert.Equal(13 * 12, chart.Sky.Count);
+        Assert.Equal(1.0, chart.Sky.Sum(k => k.Width), 6);
+        Assert.Equal(ChartPalette.Sky(6), chart.Sky[0].Color);
+        Assert.Equal(ChartPalette.Sky(-18), chart.Sky[chart.Sky.Count / 2].Color);
+        Assert.Equal(["civil", "nautical", "astronomical", "astronomical", "nautical", "civil"], chart.Twilight.Select(t => t.Kind));
+        Assert.Equal([true, true, true, false, false, false], chart.Twilight.Select(t => t.Evening));
+        Assert.Equal(Sim.Moon.IlluminationPct, chart.MoonIlluminationPct);
         Assert.Equal(6.5 / 13, chart.NowX!.Value, 6);
         Assert.Null(PlanChart.Build(Sim, Site, UtcText.Parse("2026-09-18T14:00:00Z")).NowX);
         Assert.Equal(1 - 30.0 / 90, chart.MinAltitudeY, 6);
@@ -268,6 +276,20 @@ public sealed class SimulatorTests
         Assert.Equal(ChartPalette.SkyNight,
             "#" + string.Concat(Enumerable.Range(1, 3).Select(i => int.Parse(rgb.Groups[i].Value, System.Globalization.CultureInfo.InvariantCulture).ToString("x2"))));
         Assert.Equal(ChartPalette.Series[1], ChartPalette.ForSeries(7));
+        // Nachtdiagramm wie im Web: Himmelsverlauf, Beschriftung, Raster, Mondfläche.
+        var skyBlock = tokens[tokens.IndexOf("SKY_STOPS", StringComparison.Ordinal)..];
+        skyBlock = skyBlock[..skyBlock.IndexOf("];", StringComparison.Ordinal)];
+        var stops = Regex.Matches(skyBlock, @"\[(-?\d+), \[(\d+), (\d+), (\d+)\]\]")
+            .Select(m => (double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture),
+                int.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture),
+                int.Parse(m.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture),
+                int.Parse(m.Groups[4].Value, System.Globalization.CultureInfo.InvariantCulture)))
+            .ToList();
+        Assert.Equal(stops, ChartPalette.SkyStops);
+        Assert.Equal(ChartPalette.Curve, Token("chart-curve"));
+        Assert.Contains("'chart-grid': 'rgba(255, 255, 255, 0.16)'", tokens);
+        Assert.Contains("'chart-label': 'rgba(228, 233, 239, 0.8)'", tokens);
+        Assert.Equal((ChartPalette.Grid, ChartPalette.GridAlpha, ChartPalette.Label, ChartPalette.LabelAlpha), ("#ffffff", 0.16, "#e4e9ef", 0.8));
         Assert.Equal(ChartPalette.Moon, ChartPalette.ForSeries(-1));
     }
 
@@ -278,5 +300,23 @@ public sealed class SimulatorTests
         var files = Directory.GetFiles(dir, "*.json").Select(f => Path.GetFileName(f)).Order(StringComparer.Ordinal).ToList();
         Assert.Equal(files, SampleSequences.Files.Order(StringComparer.Ordinal).ToList());
         Assert.Equal("https://nina-pm.svenesis.org/downloads/nina-sequences/0.2.0/one-night.json", SampleSequences.Url("0.2.0", "one-night.json"));
+    }
+
+    [Fact]
+    public void Sonnenhoehe_aus_den_Daemmerungszeiten_und_Farben_wie_im_Web()
+    {
+        var d = Sim.Darkness;
+        Assert.Equal(-6, PlanChart.SunAltitude(d, d.CivilStartUtc!.Value), 6);
+        Assert.Equal(-18, PlanChart.SunAltitude(d, d.AstronomicalStartUtc!.Value + TimeSpan.FromHours(2)), 6);
+        Assert.Equal(-9, PlanChart.SunAltitude(d, d.CivilStartUtc.Value + (d.NauticalStartUtc!.Value - d.CivilStartUtc.Value) / 2), 6);
+        // Vor der bürgerlichen Dämmerung fortgesetzt, höchstens +6°.
+        Assert.Equal(6, PlanChart.SunAltitude(d, d.CivilStartUtc.Value - TimeSpan.FromHours(2)), 6);
+        Assert.Equal("#a68c45", ChartPalette.Sky(10));
+        Assert.Equal("#0e1824", ChartPalette.Sky(-30));
+        Assert.Equal("#5d80a8", ChartPalette.Sky(0));
+        // Text auf Filterfarben: dunkel auf hellem Cyan, weiß auf dunklem Rot.
+        Assert.Equal(ChartPalette.Frame, ChartPalette.TextOn("#00d0d0"));
+        Assert.Equal("#ffffff", ChartPalette.TextOn("#5a1010"));
+        Assert.Equal(0.18 + 0.4 * 0.31, ChartPalette.MoonAlpha(31), 6);
     }
 }
