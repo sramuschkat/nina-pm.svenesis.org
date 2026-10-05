@@ -30,6 +30,7 @@ import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../lo
 
 export type RealScenario =
   | 'night-flats'
+  | 'starfront-seq'
   | 'transit'
   | 'commands'
   | 'full-night'
@@ -291,7 +292,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   // Lange Nacht (Lücke E): 4½ h Dunkelheit, über Nacht in der VM.
   const dawnMs =
     nowMs +
-    (s === 'night-flats'
+    (s === 'night-flats' || s === 'starfront-seq'
       ? 25
       : s === 'commands' || s === 'flip'
         ? 35
@@ -350,6 +351,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       ditherEvery: s === 'full-night' || s === 'long-night' ? 3 : 5,
       flatsEnabled:
         s === 'night-flats' ||
+        s === 'starfront-seq' ||
         s === 'full-night' ||
         s === 'starfront' ||
         s === 'all-done' ||
@@ -466,7 +468,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   /** Stichprobe je Minute (echte Uhr): war eine Session je verwaist (`stale`)? Lange Nacht: darf nie vorkommen. */
   let staleSeenAt: string | null = null;
 
-  if (s === 'night-flats') {
+  if (s === 'night-flats' || s === 'starfront-seq') {
+    // starfront-seq: dieselben Ziele, gefahren mit Svens Starfront-Sequenz (Lauf real-starfront-seq).
     projects.push(
       await deepSky('Bench NGC A', 0, [
         ['L', 12],
@@ -1248,7 +1251,21 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           `stale gesehen: ${String(sawStale)}`,
         );
       }
-      if (s === 'night-flats') {
+      if (s === 'starfront-seq') {
+        // Svens Sequenz wartet in „Vor Flats“ auf die nautische Dämmerung (Starfront-Regel).
+        const firstFlat = captures
+          .filter((c) => c.frameType === 'flat')
+          .map((c) => new Date(c.capturedAt).getTime())
+          .sort((a, b) => a - b)[0];
+        const dawn =
+          typeof info.nauticalDawnUtc === 'string' ? Date.parse(info.nauticalDawnUtc) : NaN;
+        check(
+          'Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)',
+          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - 60_000,
+          `erste Flat ${firstFlat ? iso(firstFlat) : '–'}, nautische Dämmerung ${String(info.nauticalDawnUtc ?? '–')}`,
+        );
+      }
+      if (s === 'night-flats' || s === 'starfront-seq') {
         // Je belichtetem Filter eine erledigte Kombination, keine übersprungen. Nicht „mindestens 2“: wird nach einem
         // Neustart nur ein Filter belichtet, gibt es nur eine Kombination (Lauf 05.10.2026 nach VM-Absturz).
         const lit = [...new Set(lights.map((c) => c.filterShortName))].sort();

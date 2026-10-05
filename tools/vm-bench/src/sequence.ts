@@ -8,11 +8,16 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const SEQUENCE = 'nina-pm-bench';
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SAMPLES = fileURLToPath(
   new URL('../../../apps/nina-plugin/NinaPm.Nina/Samples/', import.meta.url),
 );
 
 export interface SequenceSpec {
+  /**
+   * Beispielsequenz (`apps/nina-plugin/NinaPm.Nina/Samples/<from>.json`) oder eine eigene Sequenzdatei (`….json`, Pfad
+   * relativ zum Repository, z. B. die Starfront-Sequenz in `.vm-bench/starfront/` – privat, nicht im Repository).
+   */
   readonly from: string;
   readonly removeFromStart?: readonly string[];
   /** Globaler Trigger *Dither after Exposures* (NINA) mit diesem `AfterExposures` – vm-smoke prüft die Unterdrückung (NT-23). */
@@ -365,7 +370,10 @@ function addFlatBoxes(
 
 /** Schreibt `<dir>/nina-pm-bench.json` und liefert den Pfad. */
 export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: string): string {
-  const raw = readFileSync(join(SAMPLES, `${r.sequence.from}.json`), 'utf8').replace(/^\uFEFF/, '');
+  const file = r.sequence.from.endsWith('.json')
+    ? join(ROOT, r.sequence.from)
+    : join(SAMPLES, `${r.sequence.from}.json`);
+  const raw = readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
   const seq = JSON.parse(raw) as SeqJson;
   const start = seq.Items.$values.find((c) => c.$type.includes('StartAreaContainer'));
   if (!start?.Items) throw new Error(`${r.sequence.from}: Start-Bereich fehlt`);
