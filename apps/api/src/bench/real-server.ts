@@ -1249,10 +1249,18 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         );
       }
       if (s === 'night-flats') {
+        // Je belichtetem Filter eine erledigte Kombination, keine übersprungen. Nicht „mindestens 2“: wird nach einem
+        // Neustart nur ein Filter belichtet, gibt es nur eine Kombination (Lauf 05.10.2026 nach VM-Absturz).
+        const lit = [...new Set(lights.map((c) => c.filterShortName))].sort();
+        const doneFilters = new Set(
+          flats.filter((f) => f.status === 'done').map((f) => f.filterShortName),
+        );
         check(
-          'Flat-Kombinationen done',
-          flats.length >= 2 && flats.every((f) => f.status === 'done'),
-          JSON.stringify(flats),
+          'Flat-Kombinationen done (je belichtetem Filter, keine übersprungen)',
+          flats.length > 0 &&
+            flats.every((f) => f.status === 'done') &&
+            lit.every((f) => doneFilters.has(f)),
+          `${JSON.stringify(flats)} für ${lit.join(',')}`,
         );
       }
       if (s === 'transit' && transit) {
