@@ -434,7 +434,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
             .executeTakeFirst();
           const pid = last?.projectId ?? projects[0]?.projectId;
           if (!pid) return 'kein Projekt';
-          await web(`/projects/${pid}/status`, 'PUT', { status: 'paused' });
+          await web(`/projects/${pid}/status`, 'PUT', { status: 'on_hold' });
           return `Projekt ${pid} pausiert`;
         }
         case 'refresh_targets':
