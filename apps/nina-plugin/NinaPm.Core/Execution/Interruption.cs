@@ -3,7 +3,10 @@ namespace NinaPm.Core.Execution;
 /// <summary>Woher ein abgebrochener Token kommt (execution.md §4.6, NT-15, NT-16).</summary>
 public enum CancelKind
 {
-    /// <summary>Eigener Abbruch (Transit, Neuplanung) über eine eigene <c>CancellationTokenSource</c> (§2).</summary>
+    /// <summary>
+    /// Eigener Abbruch über eine eigene <c>CancellationTokenSource</c> (§2). Derzeit ungenutzt: Transit, Neuplanung und
+    /// Zurücksetzen beenden den Block erst nach der laufenden Belichtung (Spec-Ergänzung 04.10.2026).
+    /// </summary>
     Own,
 
     /// <summary>NINA unterbricht: ein Vorfahr trägt <c>SafetyMonitorCondition</c> und der Monitor ist nicht verbunden und sicher.</summary>

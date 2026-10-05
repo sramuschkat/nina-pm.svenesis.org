@@ -62,6 +62,12 @@ public interface INightHost
     /// Profil fehlen (<c>filter_wheel_changed</c>).
     /// </summary>
     void PlanBuilt(NinaTargets? targets, NinaPlanResponse plan);
+
+    /// <summary>
+    /// Belichtete Lights, deren <c>ImageSaved</c> noch aussteht (§4.3) – NINA speichert asynchron, die Meldung entsteht erst
+    /// danach. Ohne Adapter (Simulator) 0.
+    /// </summary>
+    int PendingImageSaves => 0;
 }
 
 /// <summary>
@@ -555,9 +561,10 @@ public sealed class NightRunner(
             if (stored is not null && SessionId is null) await EnsureSessionAsync(stored.Plan, token).ConfigureAwait(false);
             return;
         }
+        var initial = reason == NinaPlanRequestReason.Initial;
+        if (!initial) await AwaitImageSavesAsync(token).ConfigureAwait(false);
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
-        var initial = reason == NinaPlanRequestReason.Initial;
         var input = new PlanRequestInput(reason, initial ? null : startAtUtc ?? clock.UtcNow, SessionId, etag,
             tonight.ToContract(nightHost.LastAutofocusUtc, initial), PlanService.PendingFromOutbox(store.OutboxPayloads(OutboxKinds.Capture)));
         var outcome = await planService.RequestAsync(b, input, token).ConfigureAwait(false);
@@ -587,6 +594,28 @@ public sealed class NightRunner(
         }
         if (outcome.Blocked == NinaHeartbeatBlockedReason.Plan_failed) Loop.PlanFailedAt(clock.UtcNow);
         else if (outcome.Blocked is { } reasonBlocked) Loop.Block(reasonBlocked, clock.UtcNow);
+    }
+
+    /// <summary>Höchste Wartezeit vor einer Neuplanung auf NINAs Speichern der letzten Belichtung (§3.2).</summary>
+    public static readonly TimeSpan ImageSaveWaitMax = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Vor einer Neuplanung warten, bis NINA die belichteten Lights gespeichert hat (höchstens
+    /// <see cref="ImageSaveWaitMax"/>, 1-s-Takt): erst dann stehen sie in der Outbox und zählen als <c>pendingCaptures</c>
+    /// bzw. in <c>tonight</c>. Sonst plante der Server für eine gerade fertig gewordene Zeile noch eine Aufnahme
+    /// (VM-Lauf real-night-flats 05.10.2026: Block für die 12. von 12 Aufnahmen, 309 s Warten, dann target_removed).
+    /// </summary>
+    private async Task AwaitImageSavesAsync(CancellationToken token)
+    {
+        if (nightHost.PendingImageSaves == 0) return;
+        var until = clock.UtcNow + ImageSaveWaitMax;
+        while (nightHost.PendingImageSaves > 0 && clock.UtcNow < until)
+        {
+            var next = clock.UtcNow + TimeSpan.FromSeconds(1);
+            await blockHost.DelayAsync(next < until ? next : until, token).ConfigureAwait(false);
+        }
+        if (nightHost.PendingImageSaves > 0)
+            log.Note($"Re-planning with {nightHost.PendingImageSaves} image(s) still being saved");
     }
 
     private static int SettingsVersion(NinaBootstrap b) => b.Rig.SettingsVersion;

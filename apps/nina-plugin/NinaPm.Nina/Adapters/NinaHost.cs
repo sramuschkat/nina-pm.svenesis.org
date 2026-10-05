@@ -37,6 +37,12 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private readonly IClock clock = SystemClock.Instance;
     /// <summary>Zuordnung <c>Image.Id → Aufnahme</c> (Kern, AP-16e).</summary>
     private readonly CaptureRegistry captures = new();
+
+    /// <summary>Registrierte Lights, deren Meldung (saved/failed) noch nicht geschrieben ist (<see cref="PendingImageSaves"/>).</summary>
+    private int unsettled;
+
+    /// <summary>Erst nach der Meldung herunterzählen – sonst sähe die Neuplanung 0, bevor die Aufnahme in der Outbox steht.</summary>
+    public int PendingImageSaves => Volatile.Read(ref unsettled);
     private int handlerAttached;
     private NINA.Core.Model.Equipment.FilterInfo? currentFilter;
     private ISequenceItem? previousItem;
@@ -511,12 +517,17 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     /// </summary>
     internal void RegisterPending(int imageId, CaptureFacts facts)
     {
+        Interlocked.Increment(ref unsettled);
         captures.Register(imageId, facts, clock.UtcNow);
         if (Interlocked.Exchange(ref handlerAttached, 1) == 0) m.ImageSave.ImageSaved += OnImageSaved;
         _ = Task.Run(async () =>
         {
             await Task.Delay(CaptureRegistry.SaveTimeout + TimeSpan.FromSeconds(1));
-            foreach (var f in captures.Expire(clock.UtcNow)) Rules.Failed(f);
+            foreach (var f in captures.Expire(clock.UtcNow))
+            {
+                try { Rules.Failed(f); }
+                finally { Interlocked.Decrement(ref unsettled); }
+            }
             ReleaseIfDrained();
         });
     }
@@ -540,7 +551,8 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             SensorTempC = e.MetaData?.Camera is { } cam && double.IsFinite(cam.Temperature) ? cam.Temperature : null,
             SetPointC = e.MetaData?.Camera is { } cam2 && double.IsFinite(cam2.SetPoint) ? cam2.SetPoint : null,
         };
-        Rules.Saved(facts, metrics, file);
+        try { Rules.Saved(facts, metrics, file); }
+        finally { Interlocked.Decrement(ref unsettled); }
         ReleaseIfDrained();
     }
 
