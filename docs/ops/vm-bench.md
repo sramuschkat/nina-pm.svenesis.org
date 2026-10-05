@@ -103,6 +103,10 @@ Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst bau
 
 Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands|full-night|network|flip|long-night>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (mit geplantem Flip) (dasselbe in `apps/api/test/bench-real-server.test.ts`).
 
+### Gegen prod (Stufe 2b): `prod-short`
+
+Kurzer Lauf gegen `nina-pm.svenesis.org` mit dem Test-Mandanten. Standort und Testziel rechnet `pnpm vm-bench prod-site --start <ISO>` aus; Sven stellt sie im Web ein, Claude Code greift nicht auf prod zu. Ablauf, Prüfliste und Rückbau stehen in `docs/ops/stage-2b-prod.md`.
+
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 
 Zwei kurze Läufe statt einzelner Protokolle (Sven 04.10.2026: Laufzeit optimieren):

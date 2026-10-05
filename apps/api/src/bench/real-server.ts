@@ -193,6 +193,38 @@ function starfrontNight(nowMs: number): {
   };
 }
 
+/**
+ * Standort für den kurzen prod-Lauf (Stufe 2b): Breite 50°, Länge so, dass die astronomische Dämmerung `dawnInMin`
+ * nach `startMs` endet (Raster 0,25°, glatte Werte für den Sky-Simulator), Zone `Etc/GMT±h`; dazu ein Ziel bei Dec +75°
+ * mit Stundenwinkel +2 h zum Start (aus jeder Länge hoch genug, kein Meridiandurchgang). Den Standort stellt Sven im
+ * Web ein; Claude Code greift nicht auf prod zu.
+ */
+export function prodBenchSite(startMs: number, dawnInMin: number) {
+  const latDeg = 50;
+  const where = solveLongitude(latDeg, startMs, startMs + dawnInMin * MIN, 'astronomical');
+  const t = nightTimes({
+    site: { latDeg, lonDeg: where.lonDeg },
+    night: where.night,
+    timeZoneTransitions: timeZoneTransitions(
+      where.timeZone,
+      startMs - 3 * 86_400_000,
+      startMs + 3 * 86_400_000,
+    ),
+  });
+  const raDeg =
+    Math.round(((((lstDeg(startMs, where.lonDeg) - 30) % 360) + 360) % 360) * 100) / 100;
+  return {
+    latDeg,
+    lonDeg: where.lonDeg,
+    timeZone: where.timeZone,
+    night: where.night,
+    darknessEndUtc: iso(where.dawnUtc * 1000),
+    nauticalDawnUtc:
+      t.twilight.nautical.endUtc === null ? null : iso(t.twilight.nautical.endUtc * 1000),
+    target: { raDeg, decDeg: 75 },
+  };
+}
+
 /** Ortssternzeit in Grad (GMST nach IAU 1982, für die Zielwahl genau genug). */
 function lstDeg(nowMs: number, lonDeg: number): number {
   const d = jdFromUnix(nowMs / 1000) - 2451545.0;

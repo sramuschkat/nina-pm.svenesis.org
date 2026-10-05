@@ -7,17 +7,23 @@
  *   install-plugin <ordner>       Plugin-Build in die VM bringen (NINA wird neu gestartet)
  *   run <lauf> [--plugin <ordner>] Lauf aus runs/<lauf>.json: NINA frisch, Geräte, Test-Server, Sequenz, Auswertung
  *   real-check <szenario>         Szenario gegen den echten Server ohne VM prüfen (Standort, Ziele, Plan)
+ *   prod-site [--start <ISO>] [--dawn-in <min>]  Standort und Ziel für den kurzen prod-Lauf (Stufe 2b) ausrechnen,
+ *                                 Laufdatei .vm-bench/prod-short.json schreiben (ops/stage-2b-prod.md)
  *   screenshot [reiter] [--out <datei>]
  * Läufe stehen in `.vm-bench/<zeit>-<lauf>/` (nicht im Repository).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRig, loadScenario } from '../../nina-test-server/src/scenario';
 import { NinaTestServer, type TestAction } from '../../nina-test-server/src/server';
-import { startRealServer, type RealScenario } from '../../../apps/api/src/bench/real-server';
+import {
+  prodBenchSite,
+  startRealServer,
+  type RealScenario,
+} from '../../../apps/api/src/bench/real-server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
@@ -372,7 +378,9 @@ async function preflight(cfg: BenchConfig, r: BenchRun): Promise<void> {
 }
 
 async function run(cfg: BenchConfig, name: string): Promise<boolean> {
-  const r = JSON.parse(readFileSync(join(RUNS, `${name}.json`), 'utf8')) as BenchRun;
+  // Lauf aus runs/<name>.json oder als Pfad (z. B. die von `prod-site` erzeugte .vm-bench/prod-short.json).
+  const file = name.endsWith('.json') && existsSync(name) ? name : join(RUNS, `${name}.json`);
+  const r = JSON.parse(readFileSync(file, 'utf8')) as BenchRun;
   await preflight(cfg, r);
   const dir = join(ROOT, '.vm-bench', `${stamp()}-${r.name}`);
   mkdirSync(dir, { recursive: true });
@@ -406,9 +414,10 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     await omnisimSafe(cfg, true);
     // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll. Den bisherigen Standort merken
     // und nach dem Lauf zurückschreiben – sonst prüften die folgenden Test-Server-Läufe gegen den gestauchten Standort.
-    const astro = r.real
-      ? ((await a.activeProfile()).AstrometrySettings as Record<string, number> | undefined)
-      : undefined;
+    const astro =
+      r.real || r.prod
+        ? ((await a.activeProfile()).AstrometrySettings as Record<string, number> | undefined)
+        : undefined;
     const restoreSite = astro
       ? {
           'AstrometrySettings-Latitude': astro.Latitude ?? 0,
@@ -575,7 +584,17 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         for (const c of rep.checks) log(`${c.ok ? '✓' : '✗'} ${c.name} – ${c.detail}`);
         realOk = rep.checks.every((c) => c.ok);
       } else {
-        await sleep(Math.max(0, startedMs + r.untilMin * 60_000 - Date.now()));
+        // prod: bis das Plugin die Nacht abschließt (`SESSION status=finished`), höchstens `untilMin`.
+        const deadline = startedMs + r.untilMin * 60_000;
+        while (Date.now() < deadline) {
+          await watchdog();
+          const lines = await a.logMessages(300).catch(() => [] as string[]);
+          if (lines.some((m) => m.includes('SESSION status=finished'))) {
+            log('Nacht abgeschlossen (SESSION status=finished)');
+            break;
+          }
+          await sleep(15_000);
+        }
         await a.stopSequence().catch(() => undefined);
         log('Sequenz gestoppt – 3 min für die Outbox (Heartbeat-Takt 60 s)');
         await sleep(180_000);
@@ -791,6 +810,46 @@ async function main(): Promise<number> {
         );
         return 0;
       });
+    }
+    case 'prod-site': {
+      // Stufe 2b: Standort und Ziel ausrechnen; Sven stellt sie im Web ein (Claude Code greift nicht auf prod zu).
+      const start = arg('start') ? Date.parse(arg('start') ?? '') : Date.now() + 15 * 60_000;
+      if (Number.isNaN(start)) throw new Error('--start als ISO-Zeit, z. B. 2026-10-06T08:30:00Z');
+      const dawnIn = Number(arg('dawn-in') ?? 30);
+      const site = prodBenchSite(start, dawnIn);
+      const template = JSON.parse(readFileSync(join(RUNS, 'prod-short.json'), 'utf8')) as BenchRun;
+      const out = join(ROOT, '.vm-bench', 'prod-short.json');
+      mkdirSync(join(out, '..'), { recursive: true });
+      writeFileSync(
+        out,
+        `${JSON.stringify(
+          {
+            ...template,
+            profile: {
+              ...template.profile,
+              'AstrometrySettings-Latitude': site.latDeg,
+              'AstrometrySettings-Longitude': site.lonDeg,
+              'AstrometrySettings-Elevation': 200,
+              'TelescopeSettings-TelescopeLocationSyncDirection': 'TOTELESCOPE',
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      console.log(`Start (geplant)      ${new Date(start).toISOString()}`);
+      console.log(
+        `Standort im Web      Breite ${String(site.latDeg)}, Länge ${String(site.lonDeg)}, Höhe 200 m, Zone ${site.timeZone}`,
+      );
+      console.log(
+        `Nacht                ${site.night}, Dunkelheit endet ${site.darknessEndUtc}, nautische Dämmerung ${String(site.nauticalDawnUtc)}`,
+      );
+      console.log(
+        `Testprojekt          RA ${String(site.target.raDeg)}°, Dec +${String(site.target.decDeg)}°`,
+      );
+      console.log(`Laufdatei            ${out}`);
+      console.log('Start des Laufs:     pnpm vm-bench run .vm-bench/prod-short.json');
+      return 0;
     }
     case 'real-check': {
       // Szenario gegen den echten Server ohne VM: Standort, Ziele, Plan wie ihn das Plugin abruft (Sekunden statt Lauf).
