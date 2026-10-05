@@ -18,7 +18,7 @@ public sealed class SiteClock
     public SiteClock(IEnumerable<ZoneTransition> transitions)
     {
         this.transitions = transitions.OrderBy(t => t.AtUtc).ToList();
-        if (this.transitions.Count == 0) throw new ArgumentException("Übergangsliste ist leer", nameof(transitions));
+        if (this.transitions.Count == 0) throw new ArgumentException("Transition list is empty", nameof(transitions));
     }
 
     public static SiteClock From(NinaBootstrap bootstrap) =>

@@ -42,7 +42,7 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
             // Schlüssel nach der Log-Grammatik (NIN5-15): atUtc = Beginn der Lücke, durationS = ihre Dauer.
             log()?.Warning("WARNING", ("code", "flip_in_transit"), ("block", b.Id),
                 ("atUtc", b.MeridianFlip!.GapStartUtc), ("durationS", b.MeridianFlip.GapDurationS));
-            if (autoFocusAfterFlip) log()?.Note("Flip im Transitfenster: AF nach Flip aktiv – die Lücke wird um die Autofokus-Dauer länger.");
+            if (autoFocusAfterFlip) log()?.Note("Flip in transit window: AF after flip is on – the gap grows by the autofocus duration.");
         }
     }
 
@@ -107,7 +107,7 @@ public sealed class HostRules(IClock clock, Func<NinaPmLog?> log, Func<NightRunn
         {
             var checks = string.Join(",", deviations.Select(d => d.Check));
             log()?.Warning("WARNING", ("code", "sequence_template_deviation"), ("checks", checks));
-            foreach (var d in deviations) log()?.Note($"Sequenzvorlage: {d.Hint}");
+            foreach (var d in deviations) log()?.Note($"Sequence template: {d.Hint}");
             r.ReportEvent(EventsKind.Warning, "sequence_template_deviation", message: checks,
                 data: new Dictionary<string, object> { ["checks"] = deviations.Select(d => d.Check).ToList() });
         }

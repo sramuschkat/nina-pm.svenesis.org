@@ -116,7 +116,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
             }
             catch (Exception ex)
             {
-                NINA.Core.Utility.Logger.Warning($"NINA-PM: Laufzeit nicht gestartet: {ex.Message}");
+                NINA.Core.Utility.Logger.Warning($"NINA-PM: runtime not started: {ex.Message}");
             }
         });
     }
@@ -232,7 +232,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         {
             var n = rt.Store.ReuploadSince(new DateTimeOffset(DateTime.SpecifyKind(ReuploadFrom.Date, DateTimeKind.Utc)));
             rt.Store.OutboxDueNow();
-            rt.Log.Note($"Erneut hochladen ab {ReuploadFrom:yyyy-MM-dd}: {n} Meldungen in der Outbox");
+            rt.Log.Note($"Re-upload from {ReuploadFrom:yyyy-MM-dd}: {n} reports in the outbox");
         }
         RaiseOperationChanged();
         return Task.CompletedTask;
@@ -244,7 +244,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         {
             var n = rt.Store.DeadLetterRequeue();
             rt.Store.OutboxDueNow();
-            rt.Log.Note($"Dead-Letter erneut senden: {n} Meldungen in der Outbox");
+            rt.Log.Note($"Resend dead letters: {n} reports in the outbox");
         }
         RaiseOperationChanged();
         return Task.CompletedTask;
@@ -409,7 +409,7 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         astro.Latitude = site.LatDeg;
         astro.Longitude = site.LonDeg;
         astro.Elevation = site.ElevationM;
-        log.Note($"Standort des NINA-Profils auf den Rig-Standort {site.Name} gesetzt ({site.LatDeg:0.0000}, {site.LonDeg:0.0000}, {site.ElevationM:0} m)");
+        log.Note($"NINA profile site set to the rig site {site.Name} ({site.LatDeg:0.0000}, {site.LonDeg:0.0000}, {site.ElevationM:0} m)");
         ShowRig(b);
     }
 

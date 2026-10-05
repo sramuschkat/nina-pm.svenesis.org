@@ -316,7 +316,7 @@ Ablauf: Am Nachtende **vor** dem Ende-Bereich (also bevor die Sequenz parkt) sto
   },
   checks: {
     intro:
-      'Beim Planen prüft das Plugin die Sequenz gegen die Vorlage. Abweichungen sind Hinweise, kein Abbruch: sie stehen im NINA-Log („Sequenzvorlage: …“, höchstens alle 12 h) und gehen als Ereignis an den Server.',
+      'Beim Planen prüft das Plugin die Sequenz gegen die Vorlage. Abweichungen sind Hinweise, kein Abbruch: sie stehen im NINA-Log (englisch: „Sequence template: …“, höchstens alle 12 h) und gehen als Ereignis an den Server.',
     rows: [
       { code: 'start_wait_missing', text: 'Start: Warten auf Sonnenhöhe fehlt.' },
       {
@@ -328,10 +328,13 @@ Ablauf: Am Nachtende **vor** dem Ende-Bereich (also bevor die Sequenz parkt) sto
       { code: 'start_order', text: 'Start: Kühlen bzw. Autofokus steht vor dem Entparken.' },
       { code: 'box_missing', text: 'Keine NINA-PM-Anweisungen in der Sequenz.' },
       {
-        code: 'bloecke_missing',
+        code: 'blocks_container_missing',
         text: 'Die NINA-PM-Anweisungen gehören in einen Container „Blöcke“ mit NINA-PM Nachtschleife innerhalb von „Ziel“.',
       },
-      { code: 'ziel_night_loop_missing', text: 'Zielcontainer ohne Bedingung NINA-PM Night Loop.' },
+      {
+        code: 'target_night_loop_missing',
+        text: 'Zielcontainer ohne Bedingung NINA-PM Night Loop.',
+      },
       { code: 'loop_while_safe_missing', text: 'Zielcontainer ohne Loop While Safe.' },
       {
         code: 'restore_missing',
@@ -351,16 +354,19 @@ Ablauf: Am Nachtende **vor** dem Ende-Bereich (also bevor die Sequenz parkt) sto
         code: 'wait_until_safe_used',
         text: 'Wait until Safe wartet ohne Frist – NINA-PM Wait until Safe or Night End verwenden.',
       },
-      { code: 'sicherung_missing', text: 'Sicherungscontainer mit Loop While Unsafe fehlt.' },
       {
-        code: 'sicherung_night_loop_missing',
+        code: 'secure_container_missing',
+        text: 'Sicherungscontainer mit Loop While Unsafe fehlt.',
+      },
+      {
+        code: 'secure_night_loop_missing',
         text: 'Sicherungscontainer ohne NINA-PM Night Loop.',
       },
       {
         code: 'safety_wait_not_last',
         text: 'NINA-PM Wait until Safe or Night End muss die letzte Anweisung der Sicherung sein.',
       },
-      { code: 'sicherung_secure_missing', text: 'Sicherung: Park Scope bzw. Find Home fehlt.' },
+      { code: 'secure_park_missing', text: 'Sicherung: Park Scope bzw. Find Home fehlt.' },
       { code: 'end_secure_missing', text: 'Ende: Park Scope bzw. Find Home fehlt.' },
       { code: 'end_warm_missing', text: 'Ende: Kamera aufwärmen fehlt.' },
     ],
@@ -658,10 +664,10 @@ Flow: at night end, **before** the end area (i.e. before the sequence parks), NI
       { code: 'start_order', text: 'Start: cooling or autofocus comes before unparking.' },
       { code: 'box_missing', text: 'No NINA-PM Instructions in the sequence.' },
       {
-        code: 'bloecke_missing',
+        code: 'blocks_container_missing',
         text: 'NINA-PM Instructions belong in a "Blöcke" container with NINA-PM Night Loop inside "Ziel".',
       },
-      { code: 'ziel_night_loop_missing', text: 'Target container without NINA-PM Night Loop.' },
+      { code: 'target_night_loop_missing', text: 'Target container without NINA-PM Night Loop.' },
       { code: 'loop_while_safe_missing', text: 'Target container without Loop While Safe.' },
       {
         code: 'restore_missing',
@@ -684,16 +690,19 @@ Flow: at night end, **before** the end area (i.e. before the sequence parks), NI
         code: 'wait_until_safe_used',
         text: 'Wait until Safe waits without a deadline – use NINA-PM Wait until Safe or Night End.',
       },
-      { code: 'sicherung_missing', text: 'Secure container with Loop While Unsafe is missing.' },
       {
-        code: 'sicherung_night_loop_missing',
+        code: 'secure_container_missing',
+        text: 'Secure container with Loop While Unsafe is missing.',
+      },
+      {
+        code: 'secure_night_loop_missing',
         text: 'Secure container without NINA-PM Night Loop.',
       },
       {
         code: 'safety_wait_not_last',
         text: 'NINA-PM Wait until Safe or Night End must be the last instruction of the secure container.',
       },
-      { code: 'sicherung_secure_missing', text: 'Secure: Park Scope or Find Home is missing.' },
+      { code: 'secure_park_missing', text: 'Secure: Park Scope or Find Home is missing.' },
       { code: 'end_secure_missing', text: 'End: Park Scope or Find Home is missing.' },
       { code: 'end_warm_missing', text: 'End: warming the camera is missing.' },
     ],

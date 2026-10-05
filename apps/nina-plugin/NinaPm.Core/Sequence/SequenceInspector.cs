@@ -100,17 +100,17 @@ public static class SequenceInspector
         int Index(string t) => startItems.IndexOf(t);
         var wait = startItems.FindIndex(t => WaitTypes.Contains(t));
         var unpark = Index("UnparkScope");
-        if (wait < 0) Add("start_wait_missing", "Start: Warten auf Sonnenhöhe fehlt.");
-        if (unpark >= 0 && wait > unpark) Add("start_unpark_before_wait", "Start: Entparken steht vor dem Warten – erst warten, dann entparken (H3).");
-        if (Index("CoolCamera") < 0) Add("start_cool_missing", "Start: Kamera kühlen fehlt.");
-        if (Index("RunAutofocus") < 0) Add("start_autofocus_missing", "Start: Autofokus vor dem ersten Ziel fehlt (NT-24).");
+        if (wait < 0) Add("start_wait_missing", "Start: Wait for Sun Altitude missing.");
+        if (unpark >= 0 && wait > unpark) Add("start_unpark_before_wait", "Start: Unpark comes before the wait – wait first, then unpark (H3).");
+        if (Index("CoolCamera") < 0) Add("start_cool_missing", "Start: Cool Camera missing.");
+        if (Index("RunAutofocus") < 0) Add("start_autofocus_missing", "Start: autofocus before the first target missing (NT-24).");
         foreach (var t in new[] { "CoolCamera", "RunAutofocus" })
-            if (unpark >= 0 && Index(t) >= 0 && Index(t) < unpark) Add("start_order", $"Start: {t} steht vor dem Entparken.");
+            if (unpark >= 0 && Index(t) >= 0 && Index(t) < unpark) Add("start_order", $"Start: {t} comes before unparking.");
 
         // ---- Zielcontainer und „Blöcke“ ----
         if (box is null)
         {
-            Add("box_missing", "Keine NINA-PM-Anweisungen in der Sequenz.");
+            Add("box_missing", "No NINA-PM Instructions in the sequence.");
             return d;
         }
         var safety = UsesSafety(root);
@@ -118,62 +118,62 @@ public static class SequenceInspector
         // Ziel-Bereich, nicht über die Bedingungen – äußere Schleife und „Ziel“ tragen beide die Nachtschleife.
         var areaIndex = day is not null ? dayIndex : path.FindIndex(n => n.Type == "TargetAreaContainer");
         var below = path.Skip(areaIndex + 1).ToList();
-        var ziel = below.Count >= 3 ? below[1] : null;
+        var target = below.Count >= 3 ? below[1] : null;
         var parent = path.Count >= 2 ? path[^2] : null;
-        var bloecke = below.Count >= 4 && parent is not null && !ReferenceEquals(parent, ziel) && parent.HasCondition("NightLoopCondition")
+        var blocks = below.Count >= 4 && parent is not null && !ReferenceEquals(parent, target) && parent.HasCondition("NightLoopCondition")
             ? parent
             : null;
-        if (bloecke is null)
-            Add("bloecke_missing", "Die NINA-PM-Anweisungen gehören in einen Container „Blöcke“ mit NINA-PM Nachtschleife innerhalb von „Ziel“.");
-        if (ziel is null || !ziel.HasCondition("NightLoopCondition"))
-            Add("ziel_night_loop_missing", "Zielcontainer ohne Bedingung NINA-PM Nachtschleife.");
-        if (safety && ziel is not null && !ziel.HasCondition("SafetyMonitorCondition"))
-            Add("loop_while_safe_missing", "Zielcontainer ohne Loop While Safe.");
-        if (ziel is not null && bloecke is not null)
+        if (blocks is null)
+            Add("blocks_container_missing", "NINA-PM Instructions belong in a container \"Blöcke\" (blocks) with NINA-PM Night Loop inside \"Ziel\" (target).");
+        if (target is null || !target.HasCondition("NightLoopCondition"))
+            Add("target_night_loop_missing", "Target container without condition NINA-PM Night Loop.");
+        if (safety && target is not null && !target.HasCondition("SafetyMonitorCondition"))
+            Add("loop_while_safe_missing", "Target container without Loop While Safe.");
+        if (target is not null && blocks is not null)
         {
-            var first = ziel.ItemList.FirstOrDefault(n => !n.Disabled);
+            var first = target.ItemList.FirstOrDefault(n => !n.Disabled);
             if (first is null || first.Type is not ("UnparkScope" or "SetTracking"))
-                Add("restore_missing", "„Ziel“ beginnt nicht mit der Wiederherstellung (Unpark Scope bzw. Set Tracking).");
+                Add("restore_missing", "Target container does not start with the restore step (Unpark Scope or Set Tracking).");
         }
 
         // ---- Trigger (M7, NT-23) ----
         var triggers = active.SelectMany(n => n.TriggerList).Where(t => !t.Disabled).ToList();
-        if (!triggers.Any(t => t.Type == "MeridianFlipTrigger")) Add("flip_trigger_missing", "Trigger Meridian Flip fehlt.");
+        if (!triggers.Any(t => t.Type == "MeridianFlipTrigger")) Add("flip_trigger_missing", "Trigger Meridian Flip missing.");
         var afTime = triggers.FirstOrDefault(t => t.Type == "AutofocusAfterTimeTrigger");
-        if (afTime is null) Add("af_time_trigger_missing", "Trigger Autofokus nach Zeit fehlt (der Server plant dann ohne Autofokus, M7).");
+        if (afTime is null) Add("af_time_trigger_missing", "Trigger Autofocus After Time missing (the server then plans without autofocus, M7).");
         else if (afEveryMin is { } every && double.TryParse(afTime.Prop("Amount"), NumberStyles.Float, CultureInfo.InvariantCulture, out var amount)
             && Math.Abs(amount - every) > 0.5)
-            Add("af_time_mismatch", $"Autofokus nach Zeit: {amount:0} min, das Rig plant mit {every:0} min.");
+            Add("af_time_mismatch", $"Autofocus After Time: {amount:0} min, the rig plans with {every:0} min.");
         if (triggers.Any(t => t.Type.Contains("Dither", StringComparison.OrdinalIgnoreCase)))
-            Add("dither_trigger_present", "Dither-Trigger in der Sequenz – das Dithern steuert der Plan (NT-23).");
+            Add("dither_trigger_present", "Dither trigger in the sequence – the plan controls dithering (NT-23).");
 
         // ---- Sicherung (H2) ----
         if (active.Any(n => n.Type == "WaitUntilSafe"))
-            Add("wait_until_safe_used", "Wait until Safe wartet ohne Frist – NINA-PM Warten bis sicher oder Nachtende verwenden (H2).");
+            Add("wait_until_safe_used", "Wait until Safe waits without a deadline – use NINA-PM Wait until Safe or Night End (H2).");
         if (safety)
         {
-            var sicherung = active.FirstOrDefault(n => n.HasCondition("LoopWhileUnsafe"));
-            if (sicherung is null)
+            var secure = active.FirstOrDefault(n => n.HasCondition("LoopWhileUnsafe"));
+            if (secure is null)
             {
-                Add("sicherung_missing", "Sicherungscontainer mit Loop While Unsafe fehlt.");
+                Add("secure_container_missing", "Secure container with Loop While Unsafe missing.");
             }
             else
             {
-                if (!sicherung.HasCondition("NightLoopCondition"))
-                    Add("sicherung_night_loop_missing", "Sicherungscontainer ohne NINA-PM Nachtschleife.");
-                var items = sicherung.ItemList.Where(n => !n.Disabled).ToList();
+                if (!secure.HasCondition("NightLoopCondition"))
+                    Add("secure_night_loop_missing", "Secure container without NINA-PM Night Loop.");
+                var items = secure.ItemList.Where(n => !n.Disabled).ToList();
                 if (items.Count == 0 || items[^1].Type != "SafetyWaitInstruction")
-                    Add("safety_wait_not_last", "NINA-PM Warten bis sicher oder Nachtende muss die letzte Anweisung der Sicherung sein.");
+                    Add("safety_wait_not_last", "NINA-PM Wait until Safe or Night End must be the last instruction of the secure container.");
                 if (!items.Any(n => n.Type is "ParkScope" or "FindHome"))
-                    Add("sicherung_secure_missing", "Sicherung: Park Scope bzw. Find Home fehlt.");
+                    Add("secure_park_missing", "Secure container: Park Scope or Find Home missing.");
             }
         }
 
         // ---- Ende ----
         var end = root.ItemList.FirstOrDefault(n => n.Type == "EndAreaContainer")?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
         if (day is not null && nightAt >= 0) end = [.. dayItems.Skip(nightAt + 1).Select(n => n.Type), .. end];
-        if (!end.Contains("ParkScope") && !end.Contains("FindHome")) Add("end_secure_missing", "Ende: Park Scope bzw. Find Home fehlt.");
-        if (!end.Contains("WarmCamera")) Add("end_warm_missing", "Ende: Kamera aufwärmen fehlt.");
+        if (!end.Contains("ParkScope") && !end.Contains("FindHome")) Add("end_secure_missing", "End: Park Scope or Find Home missing.");
+        if (!end.Contains("WarmCamera")) Add("end_warm_missing", "End: Warm Camera missing.");
         return d;
     }
 

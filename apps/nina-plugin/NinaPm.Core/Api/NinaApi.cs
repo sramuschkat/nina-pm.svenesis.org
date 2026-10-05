@@ -85,7 +85,7 @@ public sealed class NinaApi : IDisposable
         catch (HttpRequestException ex)
         {
             log.Warning("API", ("status", 0), ("code", "network"), ("call", "bootstrap"));
-            log.Note($"Verbindung fehlgeschlagen: {ex.Message}");
+            log.Note($"Connection failed: {ex.Message}");
             return ConnectionResult.Failed(0, "network");
         }
         catch (TaskCanceledException) when (!token.IsCancellationRequested)

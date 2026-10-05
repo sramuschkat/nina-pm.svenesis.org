@@ -152,7 +152,7 @@ public sealed class LocalStore : IDisposable
         var version = SchemaVersion;
         if (version > LatestVersion)
             throw new InvalidOperationException(
-                $"ninapm.db hat Schemaversion {version}, dieses Plugin kennt höchstens {LatestVersion} – neueres Plugin installiert gewesen?");
+                $"ninapm.db has schema version {version}, this plugin knows at most {LatestVersion} – was a newer plugin installed?");
         for (var v = version; v < LatestVersion; v++)
         {
             using var tx = connection.BeginTransaction();

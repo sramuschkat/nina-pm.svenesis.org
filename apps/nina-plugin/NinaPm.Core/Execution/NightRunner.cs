@@ -206,14 +206,14 @@ public sealed class NightRunner(
         Loop.UserAbortOrReset();
         store.SetState(StateKeys.DoneBlocks, null);
         forcedPlan = NinaPlanRequestReason.Reset;
-        log.Note("Zurücksetzen: neuer Plan mit reason=reset");
+        log.Note("Reset: new plan with reason=reset");
     }
 
     /// <summary>*Block überspringen*: der wartende Block wird <c>user_skip</c> übersprungen, ein laufender endet nach der Belichtung.</summary>
     public void SkipBlock()
     {
         skipRequested = true;
-        log.Note("Block überspringen angefordert");
+        log.Note("Skip block requested");
     }
 
     /// <summary>
@@ -433,7 +433,7 @@ public sealed class NightRunner(
             case NightAction.AbandonSession:
                 // lease_lost bis zum Nachtende (Lease freigegeben bzw. anderes Rig aktiv): keine Flats, Session als
                 // abgebrochen melden und vergessen; danach schließt die Nacht und der Ende-Bereich (Parken) läuft.
-                log.Note("Nachtende ohne Lease – Session wird abgebrochen gemeldet, Flats entfallen.");
+                log.Note("Night end without lease – session reported as aborted, flats skipped.");
                 if (flats is not null) flats.SkipOpen(row.Night, "lease_lost", carryOver: AutoFlats(b));
                 if (SessionId is not null) await PatchSessionAsync(NinaSessionPatchStatus.Aborted, token).ConfigureAwait(false);
                 store.SetState(StateKeys.SessionId, null);
@@ -482,7 +482,7 @@ public sealed class NightRunner(
         if (!flatsBoxHint)
         {
             flatsBoxHint = true;
-            log.Note("Flats sind im Rig eingeschaltet, aber die Box „Flats je Kombination“ ist leer – keine Flats");
+            log.Note("Flats are enabled for the rig, but the box \"Flats per combination\" is empty – no flats");
         }
         return false;
     }
@@ -617,7 +617,7 @@ public sealed class NightRunner(
         var decision = ReplanPolicy.BeforeBlock(stored.TargetsEtag, etag, stored.SettingsVersion, SettingsVersion(b),
             ReplanPolicy.PlannedStart(block), clock.UtcNow);
         if (!decision.Refresh) return false;
-        log.Note($"Neuplanung vor Block {block.Id}: {decision.Cause}");
+        log.Note($"Re-planning before block {block.Id}: {decision.Cause}");
         await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, decision.StartAtUtc).ConfigureAwait(false);
         return true;
     }
@@ -836,7 +836,7 @@ public sealed class NightRunner(
             AbortSession();
             return;
         }
-        log.Note($"Session {sessionId} wird nicht fortgesetzt ({code}); der nächste Plan legt eine neue an.");
+        log.Note($"Session {sessionId} is not resumed ({code}); the next plan creates a new one.");
         store.SetState(StateKeys.SessionId, null);
         forcedPlan = NinaPlanRequestReason.Initial;
     }
@@ -1018,7 +1018,7 @@ public sealed class NightRunner(
         if (skew.Duration() > ClockDriftWarn && skew.Duration() <= TimeSpan.FromSeconds(60) && clockHints.ShouldEmit("clock_drift", now))
         {
             log.Warning("WARNING", ("code", "clock_drift"), ("durationS", Math.Round(skew.TotalSeconds)));
-            ReportEvent(EventsKind.Warning, "clock_drift", message: $"PC-Uhr weicht {Math.Round(skew.TotalSeconds)} s von der Serverzeit ab");
+            ReportEvent(EventsKind.Warning, "clock_drift", message: $"PC clock differs from server time by {Math.Round(skew.TotalSeconds)} s");
         }
         // Lease nur für die Session, mit der der Heartbeat gesendet wurde: ist sie inzwischen abgeschlossen bzw. gewechselt,
         // gälte ein `leaseLost` der alten Session sonst für die neue (Analyse 04.10.2026). Ohne Lease-Angabe (Server kennt die
@@ -1057,7 +1057,7 @@ public sealed class NightRunner(
                 targetsChanged = true;
                 break;
         }
-        log.Note($"Heartbeat-Kommando {c.Command} ({c.Id}) ausgeführt");
+        log.Note($"Heartbeat command {c.Command} ({c.Id}) executed");
     }
 
     /// <summary>401, 403 tenant.locked oder 409 engine.incompatible von einem beliebigen Aufruf: gesperrt, Outbox angehalten (§2).</summary>

@@ -1136,7 +1136,7 @@ public sealed class NightRunnerTests : IDisposable
         api.OnCaptures = _ => Problem(409, "session.closed");
         await Outbox(runner).FlushAsync(default);
         Assert.Equal(3, store.DeadLetterCount());
-        Assert.Contains(store.DeadLetterReasons(1), r => r.StartsWith("Nacht seit 2026-09-17 abgeschlossen", StringComparison.Ordinal));
+        Assert.Contains(store.DeadLetterReasons(1), r => r.StartsWith("Night closed since 2026-09-17", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1426,7 +1426,7 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Contains(id, api.Heartbeats[^1].AckedCommandIds!);
         await hb.TickAsync(default);
         Assert.Empty(api.Heartbeats[^1].AckedCommandIds!);
-        Assert.Single(sink.Lines, l => l.Contains($"Heartbeat-Kommando Refresh_targets ({id}) ausgeführt"));
+        Assert.Single(sink.Lines, l => l.Contains($"Heartbeat command Refresh_targets ({id}) executed"));
     }
 
     [Fact]

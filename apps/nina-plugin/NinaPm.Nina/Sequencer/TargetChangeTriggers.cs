@@ -48,7 +48,7 @@ public sealed class BeforeTargetChangeTrigger : SequenceTrigger
     public override bool ShouldTriggerAfter(ISequenceItem previousItem, ISequenceItem nextItem) => false;
 
     internal Task FireAsync(IProgress<ApplicationStatus> progress, CancellationToken token) =>
-        TargetChangeBox.FireAsync(TriggerRunner, Parent, "vor dem Zielwechsel", progress, token);
+        TargetChangeBox.FireAsync(TriggerRunner, Parent, "before target change", progress, token);
 
     public override Task Execute(ISequenceContainer context, IProgress<ApplicationStatus> progress, CancellationToken token) => Task.CompletedTask;
 
@@ -89,7 +89,7 @@ public sealed class AfterTargetChangeTrigger : SequenceTrigger
     public override bool ShouldTriggerAfter(ISequenceItem previousItem, ISequenceItem nextItem) => false;
 
     internal Task FireAsync(IProgress<ApplicationStatus> progress, CancellationToken token) =>
-        TargetChangeBox.FireAsync(TriggerRunner, Parent, "nach dem Zielwechsel", progress, token);
+        TargetChangeBox.FireAsync(TriggerRunner, Parent, "after target change", progress, token);
 
     public override Task Execute(ISequenceContainer context, IProgress<ApplicationStatus> progress, CancellationToken token) => Task.CompletedTask;
 
@@ -108,7 +108,7 @@ internal static class TargetChangeBox
         IProgress<ApplicationStatus> progress, CancellationToken token)
     {
         if (runner.GetItemsSnapshot().Count == 0) return;
-        Logger.Info($"NINA-PM: Trigger-Set {what}");
+        Logger.Info($"NINA-PM: trigger set {what}");
         if (parent is not null) runner.AttachNewParent(parent);
         runner.ResetProgress();
         await runner.Run(progress, token);

@@ -46,13 +46,13 @@ public sealed class SequenceInspectorTests
         { "wait_until_safe_used", s => Find(s, "SafetyWaitInstruction")["$type"] = "NINA.Sequencer.SequenceItem.Utility.WaitUntilSafe, NINA.Sequencer" },
         { "af_time_trigger_missing", s => Find(s, "AutofocusAfterTimeTrigger").Remove() },
         { "af_time_mismatch", s => Find(s, "AutofocusAfterTimeTrigger")["Amount"] = 30.0 },
-        { "bloecke_missing", s =>
+        { "blocks_container_missing", s =>
             {
-                var ziel = Find(s, "SequentialContainer", "Ziel");
+                var target = Find(s, "SequentialContainer", "Ziel");
                 var box = Find(s, "NinaPmContainer");
                 box.Remove();
-                Values(ziel, "Items").Clear();
-                Values(ziel, "Items").Add(box);
+                Values(target, "Items").Clear();
+                Values(target, "Items").Add(box);
             } },
         { "safety_wait_not_last", s => Values(Find(s, "SequentialContainer", "Sicherung"), "Items").Add(JObject.Parse("""{"$type":"NINA.Sequencer.SequenceItem.Telescope.UnparkScope, NINA.Sequencer"}""")) },
         { "restore_missing", s => Find(s, "SequentialContainer", "Ziel")["Items"]!["$values"]![0]!.Remove() },

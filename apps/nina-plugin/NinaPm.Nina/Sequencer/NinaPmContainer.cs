@@ -94,7 +94,7 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
         }
         catch (Exception ex)
         {
-            Logger.Debug($"NINA-PM: Live-Status: {ex.Message}");
+            Logger.Debug($"NINA-PM: live status: {ex.Message}");
         }
     }
 
@@ -210,7 +210,7 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
         var runtime = NinaPmRuntime.Ensure(m.Profile, () => new NinaHost(m));
         if (runtime is null)
         {
-            Logger.Warning("NINA-PM: Server-URL oder Sync-Token fehlen (Optionen → Plugins → NINA-PM)");
+            Logger.Warning("NINA-PM: server URL or sync token missing (Options → Plugins → NINA-PM)");
             await Task.Delay(TimeSpan.FromSeconds(60), token);
             return;
         }

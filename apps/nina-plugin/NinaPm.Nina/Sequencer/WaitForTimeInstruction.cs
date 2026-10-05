@@ -188,7 +188,7 @@ public sealed class WaitForTimeInstruction : SequenceItem
         if (runtime is null)
         {
             StatusText = Ui.Texts.NotConfigured;
-            Logger.Warning("NINA-PM: Warten auf Zeit – Server-URL oder Sync-Token fehlen");
+            Logger.Warning("NINA-PM: Wait for Time – server URL or sync token missing");
             return;
         }
         try

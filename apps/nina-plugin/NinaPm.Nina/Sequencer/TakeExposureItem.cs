@@ -48,7 +48,7 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
         Gain = entry.Gain ?? -1;
         Offset = entry.Offset ?? -1;
         Binning = new BinningMode((short)(entry.Binning ?? 1), (short)(entry.Binning ?? 1));
-        Name = "NINA-PM Belichtung";
+        Name = "NINA-PM Exposure";
     }
 
     /// <summary>Aufnahme-ID (UUID v7), vergeben <b>vor</b> der Belichtung (§4.3).</summary>
@@ -114,7 +114,7 @@ internal sealed class TakeExposureItem : SequenceItem, IExposureItem
     /// <summary>NINA setzt die Belichtungszeiten in UTC (execution.md §4.3).</summary>
     private static DateTimeOffset Utc(DateTime t) => new(DateTime.SpecifyKind(t, DateTimeKind.Utc));
 
-    public override object Clone() => throw new NotSupportedException("internes Element, wird nicht geklont");
+    public override object Clone() => throw new NotSupportedException("internal item, not cloned");
 
-    public override string ToString() => $"NINA-PM Belichtung {entry.Filter} {ExposureTime} s";
+    public override string ToString() => $"NINA-PM Exposure {entry.Filter} {ExposureTime} s";
 }

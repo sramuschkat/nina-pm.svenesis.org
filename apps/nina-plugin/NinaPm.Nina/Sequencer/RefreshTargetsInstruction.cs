@@ -53,13 +53,13 @@ public sealed class RefreshTargetsInstruction : SequenceItem
         if (runtime is null)
         {
             StatusText = Ui.Texts.NotConfigured;
-            Logger.Warning("NINA-PM: Ziele aktualisieren – Server-URL oder Sync-Token fehlen");
+            Logger.Warning("NINA-PM: Refresh Targets – server URL or sync token missing");
             return;
         }
         progress?.Report(new ApplicationStatus { Source = "NINA-PM", Status = "Updating targets" });
         var r = await runtime.Runner.RefreshAsync(token);
         StatusText = Ui.Texts.TargetsRefreshed(r.Projects, r.Offline);
-        Logger.Info($"NINA-PM: Ziele aktualisiert ({r.Projects}, offline={r.Offline})");
+        Logger.Info($"NINA-PM: targets refreshed ({r.Projects}, offline={r.Offline})");
     }
 
     public override string ToString() => "NINA-PM Update Targets";

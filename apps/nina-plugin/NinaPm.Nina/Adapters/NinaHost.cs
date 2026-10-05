@@ -68,7 +68,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
 
     public IProgress<ApplicationStatus>? Progress { get; set; }
 
-    private NinaPmContainer Box => Container ?? throw new InvalidOperationException("kein NINA-PM-Container aktiv");
+    private NinaPmContainer Box => Container ?? throw new InvalidOperationException("no NINA-PM container active");
 
     // ---- INightHost ---------------------------------------------------------------------------------------
 
@@ -256,7 +256,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Zentrieren fehlgeschlagen: {ex.Message}");
+            Logger.Warning($"NINA-PM: centering failed: {ex.Message}");
             return new CenterResult(false, ex.Message);
         }
     }
@@ -286,7 +286,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Logger.Warning($"NINA-PM: Trigger-Set nach dem Zielwechsel fehlgeschlagen: {ex.Message}");
+                Logger.Warning($"NINA-PM: trigger set after target change failed: {ex.Message}");
             }
         }
     }
@@ -479,7 +479,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Plate-Solve für die Winkelprüfung fehlgeschlagen: {ex.Message}");
+            Logger.Warning($"NINA-PM: plate solve for the angle check failed: {ex.Message}");
             return new SolveReading(null);
         }
     }

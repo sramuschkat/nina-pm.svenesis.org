@@ -121,7 +121,7 @@ public sealed class TargetBrowserModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Framing-Assistent: {ex.Message}");
+            Logger.Warning($"NINA-PM: framing assistant: {ex.Message}");
             Status = Texts.FramingUnavailable;
         }
     }
