@@ -682,7 +682,7 @@ export function checkQueuePolicy(name: string, policy: string | undefined): Secu
 
 export function reportMarkdown(
   results: readonly SecurityResult[],
-  meta: { at: string; commit: string; account?: string },
+  meta: { at: string; commit: string },
 ): string {
   const bad = results.filter((r) => !r.ok);
   const order: Severity[] = ['hoch', 'mittel', 'niedrig', 'info'];
@@ -690,7 +690,7 @@ export function reportMarkdown(
   return [
     '# AWS-Sicherheitsprüfung (nur lesend)',
     '',
-    `Lauf ${meta.at}, Commit ${meta.commit}${meta.account ? `, Konto ${meta.account}` : ''}. Erzeugt von \`pnpm security:check\` – nur lesende AWS-Aufrufe, keine geheimen Werte im Protokoll.`,
+    `Lauf ${meta.at}, Commit ${meta.commit}. Erzeugt von \`pnpm security:check\` – nur lesende AWS-Aufrufe, keine geheimen Werte. **Nicht einchecken** (Repo öffentlich): nennt Benutzer, Rollen, Ressourcen und offene Befunde.`,
     '',
     `**${String(results.length - bad.length)} von ${String(results.length)} Punkten grün.**${bad.length ? ` Offen: ${String(bad.filter((b) => b.severity === 'hoch').length)} hoch, ${String(bad.filter((b) => b.severity === 'mittel').length)} mittel, ${String(bad.filter((b) => b.severity === 'niedrig').length)} niedrig.` : ''}`,
     '',

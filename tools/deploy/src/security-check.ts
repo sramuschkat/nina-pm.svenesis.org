@@ -1,7 +1,9 @@
 /**
  * `pnpm security:check` (Sicherheitsanalyse 05.10.2026): prüft das AWS-Konto und die NINA-PM-Ressourcen auf
  * unautorisierten Zugriff – **nur lesende** AWS-CLI-Aufrufe, keine geheimen Werte im Protokoll. Nur Sven, lokal mit
- * Admin-Profil (H-06); Claude Code führt es nie aus. Protokoll unter `docs/test-runs/<Datum>/security/aws-check.md`.
+ * Admin-Profil (H-06); Claude Code führt es nie aus. Das Protokoll nennt IAM-Benutzer, Rollen, Ressourcen und offene
+ * Befunde – das Repo ist öffentlich, deshalb liegt es nur lokal unter `.security/<Datum>-aws-check.md` (gitignored)
+ * und wird **nie** eingecheckt.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -298,17 +300,14 @@ async function main() {
   // ---- Protokoll ----
   const now = new Date();
   const d = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const dir = `${repoRoot}docs/test-runs/${d}/security`;
+  const dir = `${repoRoot}.security`;
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const path = `${dir}/aws-check.md`;
-  writeFileSync(
-    path,
-    reportMarkdown(results, { at: now.toISOString(), commit: commit(), account }),
-  );
+  const path = `${dir}/${d}-aws-check.md`;
+  writeFileSync(path, reportMarkdown(results, { at: now.toISOString(), commit: commit() }));
   const bad = results.filter((r) => !r.ok);
   for (const r of bad) console.log(`☐ [${r.severity}] ${r.area}: ${r.name} – ${r.detail}`);
   console.log(
-    `${String(results.length - bad.length)}/${String(results.length)} grün. Protokoll: ${path.replace(repoRoot, '')}`,
+    `${String(results.length - bad.length)}/${String(results.length)} grün. Protokoll (nicht einchecken): ${path.replace(repoRoot, '')}`,
   );
   process.exit(bad.some((r) => r.severity === 'hoch') ? 1 : 0);
 }
