@@ -26,7 +26,8 @@ public sealed class ReplanPolicyTests
         { "alles gleich, pünktlich", "\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:35:00Z", false, null, null },
         { "Verzug genau 10 min (Hysterese)", "\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:45:00Z", false, null, null },
         { "Verzug 10 min 1 s", "\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:45:01Z", true, RefreshCause.BehindPlan, "2026-09-18T07:45:01Z" },
-        { "neues ETag vor dem Blockstart", "\"t-1\"", "\"t-2\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:30:00Z", true, RefreshCause.TargetsChanged, "2026-09-18T07:35:00Z" },
+        // Ab jetzt, nicht ab dem geplanten Blockstart (Analyse 05.10.2026): die Lücke davor bleibt sonst leer.
+        { "neues ETag vor dem Blockstart", "\"t-1\"", "\"t-2\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:30:00Z", true, RefreshCause.TargetsChanged, "2026-09-18T07:30:00Z" },
         { "settingsVersion gestiegen", "\"t-1\"", "\"t-1\"", 7, 8, "2026-09-18T07:35:00Z", "2026-09-18T07:36:00Z", true, RefreshCause.SettingsChanged, "2026-09-18T07:36:00Z" },
         { "schwaches ETag (CloudFront komprimiert) = starkes", "W/\"t-1\"", "\"t-1\"", 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:35:00Z", false, null, null },
         { "kein ETag abrufbar (offline) → kein Anlass", "\"t-1\"", null, 7, 7, "2026-09-18T07:35:00Z", "2026-09-18T07:36:00Z", false, null, null },
@@ -42,6 +43,14 @@ public sealed class ReplanPolicyTests
         Assert.Equal(cause, d.Cause);
         Assert.Equal(startAt is null ? null : T(startAt), d.StartAtUtc);
     }
+
+    [Theory]
+    [InlineData("Lücke 5 min 1 s nach einem Block", "2026-09-18T07:40:01Z", true, false, true)]
+    [InlineData("Lücke genau 5 min", "2026-09-18T07:40:00Z", true, false, false)]
+    [InlineData("vor dem ersten Block der Nacht (Abend)", "2026-09-18T09:00:00Z", false, false, false)]
+    [InlineData("Plan stammt schon aus einer Lückenplanung", "2026-09-18T09:00:00Z", true, true, false)]
+    public void Luecke_vor_dem_naechsten_Block(string name, string plannedStart, bool blockRan, bool fromIdle, bool expected) =>
+        Assert.True(expected == ReplanPolicy.IdleAhead(T(plannedStart), T("2026-09-18T07:35:00Z"), blockRan, fromIdle), name);
 
     [Fact]
     public void Geplanter_Blockstart_eines_Transitblocks_ist_der_frueheste_Eintrag()

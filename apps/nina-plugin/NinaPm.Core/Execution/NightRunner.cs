@@ -450,6 +450,8 @@ public sealed class NightRunner(
                 if (!Loop.PlanLocked(clock.UtcNow) && (targetsChanged || context.Plan!.SettingsVersion != SettingsVersion(b))
                     && await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
                     return;
+                if (!Loop.PlanLocked(clock.UtcNow) && await RefreshForIdleAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
+                    return;
                 await WaitAsync(step.WaitUntilUtc!.Value, wakeOnTargets: true, token).ConfigureAwait(false);
                 return;
             case NightAction.Idle:
@@ -637,7 +639,7 @@ public sealed class NightRunner(
 
     /// <summary>
     /// Vor jedem Block: neue Ziele (ETag), gestiegene <c>settingsVersion</c> oder Verzug &gt; 10 min → <c>refresh</c> mit
-    /// <c>startAtUtc = max(now, geplanter Blockstart)</c>; der Block läuft dann aus dem neuen Plan. Nicht während der
+    /// <c>startAtUtc = now</c> (Spec-Ergänzung 05.10.2026); der Block läuft dann aus dem neuen Plan. Nicht während der
     /// 5-min-Sperre – sonst plante das Plugin bei einem Server, der den Verzug nicht auflösen kann oder nicht erreichbar
     /// ist, vor jedem Aufruf neu.
     /// </summary>
@@ -670,6 +672,26 @@ public sealed class NightRunner(
         if (!decision.Refresh) return false;
         log.Note($"Re-planning before block {block.Id}: {decision.Cause}");
         await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, decision.StartAtUtc).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// Lücke vor dem nächsten Block (§3.2, Analyse 05.10.2026): lief in dieser Nacht schon ein Block und beginnt der nächste
+    /// erst in mehr als 5 min, einmal je Plan ab jetzt neu planen – die Engine gibt die Restslots eines vorzeitig fertigen
+    /// Projekts frei, bietet sie im selben Plan aber nicht neu an (allocation.md §8.6 Nr. 7).
+    /// </summary>
+    private async Task<bool> RefreshForIdleAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
+    {
+        var block = stored.Plan.Blocks[index];
+        var fromIdle = store.GetState(StateKeys.IdleRefreshPlan) == stored.Plan.NightPlanId.ToString();
+        if (!ReplanPolicy.IdleAhead(ReplanPolicy.PlannedStart(block), clock.UtcNow, TonightLog.Load(store).HasPastBlocks, fromIdle))
+            return false;
+        log.Note($"Re-planning before block {block.Id}: {RefreshCause.IdleAhead}");
+        await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, clock.UtcNow).ConfigureAwait(false);
+        if (PlanStore.Load(store, night) is { } fresh && fresh.Plan.NightPlanId != stored.Plan.NightPlanId)
+            store.SetState(StateKeys.IdleRefreshPlan, fresh.Plan.NightPlanId.ToString());
+        else
+            store.SetState(StateKeys.IdleRefreshPlan, stored.Plan.NightPlanId.ToString());
         return true;
     }
 
