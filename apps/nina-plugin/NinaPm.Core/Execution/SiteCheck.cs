@@ -26,10 +26,10 @@ public static class SiteCheck
 
     /// <summary>Meldetext mit Folge und Empfehlung (L3), Standortzone aus dem Bootstrap.</summary>
     public static string TimezoneMessage(TimeSpan pcOffset, TimeSpan siteOffset, string siteZone) =>
-        $"Windows-Zeitzone des NINA-PCs (UTC{Format(pcOffset)}) weicht von der Standortzone {siteZone} (UTC{Format(siteOffset)}) ab: "
-        + "Datums-Platzhalter wie $$DATEMINUS12$$ und $$DATE$$ wechseln nach der PC-Zone – die Aufnahmen einer Nacht können in "
-        + "zwei Datumsordnern landen, die nicht zum Nacht-Schlüssel passen. Empfehlung: Windows-Zeitzone = Standortzone. "
-        + "Nacht, Blockzeiten und NINA-PM-Zeitangaben gelten unabhängig davon in Standortzeit.";
+        $"Windows time zone of the NINA PC (UTC{Format(pcOffset)}) differs from the site time zone {siteZone} (UTC{Format(siteOffset)}): "
+        + "date placeholders like $$DATEMINUS12$$ and $$DATE$$ follow the PC zone – the images of one night can end up in "
+        + "two date folders that do not match the night key. Recommendation: Windows time zone = site time zone. "
+        + "Night, block times and NINA-PM times are in site time regardless.";
 
     private static string Format(TimeSpan o) => $"{(o < TimeSpan.Zero ? "-" : "+")}{o.Duration():hh\\:mm}";
 
@@ -39,9 +39,9 @@ public static class SiteCheck
 
     /// <summary><c>profile_site_mismatch</c>: Hinweis mit Abstand und Abhilfe (Knopf auf der Optionsseite).</summary>
     public static string ProfileSiteMessage(double km, string siteName) =>
-        $"Standort im NINA-Profil liegt {km:0} km vom Rig-Standort {siteName} entfernt (Warnung ab {Geo.SiteWarnKm:0} km, FA-NIN-03): "
-        + "NINA rechnet Höhen, Meridian-Flip und Dämmerung mit dem Profil-Standort. Abhilfe: in den NINA-PM-Optionen "
-        + "„Standort aus NINA-PM übernehmen“.";
+        $"Site in the NINA profile is {km:0} km away from the rig site {siteName} (warning from {Geo.SiteWarnKm:0} km, FA-NIN-03): "
+        + "NINA computes altitudes, meridian flip and twilight from the profile site. Fix: in the NINA-PM options "
+        + "\"Use location from NINA-PM\".";
 
     /// <summary>
     /// <c>mount_site_mismatch</c>: Montierungsstandort mehr als <see cref="Geo.SiteWarnKm"/> vom Rig-Standort entfernt oder

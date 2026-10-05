@@ -9,7 +9,7 @@ using NinaPm.Sim;
 // Schreibt <ordner>/nina.log (Logzeilen mit virtueller Zeit) und <ordner>/ninapm.db.
 
 string Arg(string name) =>
-    args.SkipWhile(a => a != $"--{name}").Skip(1).FirstOrDefault() ?? throw new ArgumentException($"--{name} fehlt");
+    args.SkipWhile(a => a != $"--{name}").Skip(1).FirstOrDefault() ?? throw new ArgumentException($"--{name} missing");
 
 var apiBase = new Uri(Arg("server"));
 var run = JsonConvert.DeserializeObject<SimRun>(File.ReadAllText(Arg("run")),

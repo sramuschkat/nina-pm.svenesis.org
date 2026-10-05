@@ -61,7 +61,7 @@ public sealed class LocalStoreTests : IDisposable
             cmd.ExecuteNonQuery();
         }
         var ex = Assert.Throws<InvalidOperationException>(() => LocalStore.Open(DbPath, clock));
-        Assert.Contains("Schemaversion", ex.Message);
+        Assert.Contains("schema version", ex.Message);
     }
 
     [Fact]

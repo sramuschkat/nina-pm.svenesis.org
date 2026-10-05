@@ -49,7 +49,7 @@ public sealed class BeforeExposureTrigger : SequenceTrigger
 
     public override async Task Execute(ISequenceContainer context, IProgress<ApplicationStatus> progress, CancellationToken token)
     {
-        Logger.Info("NINA-PM: Trigger-Set vor der Belichtung");
+        Logger.Info("NINA-PM: trigger set before exposure");
         TriggerRunner.AttachNewParent(context);
         await TriggerRunner.Run(progress, token);
     }
@@ -92,7 +92,7 @@ public sealed class AfterExposureTrigger : SequenceTrigger
 
     public override async Task Execute(ISequenceContainer context, IProgress<ApplicationStatus> progress, CancellationToken token)
     {
-        Logger.Info("NINA-PM: Trigger-Set nach der Belichtung");
+        Logger.Info("NINA-PM: trigger set after exposure");
         TriggerRunner.AttachNewParent(context);
         await TriggerRunner.Run(progress, token);
     }

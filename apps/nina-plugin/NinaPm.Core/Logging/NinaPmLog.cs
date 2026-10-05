@@ -33,7 +33,7 @@ public sealed class NinaPmLog(ILogSink sink)
     public static string Line(string name, params (string Key, object? Value)[] fields)
     {
         if (name.Length == 0 || name.Any(c => !(char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c) || c == '_')))
-            throw new ArgumentException($"Ereignis nur in Großbuchstaben: {name}", nameof(name));
+            throw new ArgumentException($"Event name must be upper case: {name}", nameof(name));
         var sb = new StringBuilder(Prefix).Append(name);
         foreach (var (key, value) in fields)
         {

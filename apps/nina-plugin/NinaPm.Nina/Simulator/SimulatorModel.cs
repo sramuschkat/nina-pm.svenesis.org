@@ -353,7 +353,7 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         }
         catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException)
         {
-            Logger.Warning($"NINA-PM: Zwischenablage: {ex.Message}");
+            Logger.Warning($"NINA-PM: clipboard: {ex.Message}");
             CopyStatus = ex.Message;
         }
         Raise(nameof(CopyStatus));
@@ -432,7 +432,7 @@ public sealed class SampleLinkView
             }
             catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or PlatformNotSupportedException)
             {
-                Logger.Warning($"NINA-PM: Link nicht geöffnet: {ex.Message}");
+                Logger.Warning($"NINA-PM: link not opened: {ex.Message}");
             }
             return Task.CompletedTask;
         });

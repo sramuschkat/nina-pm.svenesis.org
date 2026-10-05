@@ -22,7 +22,7 @@ public static class UtcText
     public static DateTimeOffset Parse(string text)
     {
         if (!text.EndsWith('Z'))
-            throw new FormatException($"Zeitpunkt ohne Z: {text}");
+            throw new FormatException($"Instant without Z: {text}");
         return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
     }
 

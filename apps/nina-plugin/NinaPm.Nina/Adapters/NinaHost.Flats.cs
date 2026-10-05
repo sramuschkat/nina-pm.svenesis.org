@@ -62,7 +62,7 @@ internal sealed partial class NinaHost
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Guiding für die Flats nicht gestoppt: {ex.Message}");
+            Logger.Warning($"NINA-PM: guiding not stopped for flats: {ex.Message}");
         }
     }
 
@@ -226,7 +226,7 @@ internal sealed partial class NinaHost
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Flat-Datei nicht zugeordnet: {ex.Message}");
+            Logger.Warning($"NINA-PM: flat file not assigned: {ex.Message}");
         }
     }
 
@@ -243,7 +243,7 @@ internal sealed partial class NinaHost
         }
         catch (Exception ex)
         {
-            Logger.Warning($"NINA-PM: Flat-Kopie {source} → {destination} fehlgeschlagen: {ex.Message}");
+            Logger.Warning($"NINA-PM: flat copy {source} → {destination} failed: {ex.Message}");
             return false;
         }
     }

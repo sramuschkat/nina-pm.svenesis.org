@@ -44,7 +44,7 @@ public sealed class HeartbeatService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // NINA-Einstellungen nicht lesbar (z. B. Profilwechsel): Heartbeat ohne diese Gruppen.
-            log.Note($"Heartbeat ohne NINA-Einstellungen: {ex.Message}");
+            log.Note($"Heartbeat without NINA settings: {ex.Message}");
             body = new NinaHeartbeat();
         }
         var state = runner.HeartbeatState(offline: false);

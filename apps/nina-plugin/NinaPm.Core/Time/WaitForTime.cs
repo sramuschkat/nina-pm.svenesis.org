@@ -65,7 +65,7 @@ public static class WaitForTime
             && (tw.Astronomical.DawnUtc ?? tw.Nautical.DawnUtc ?? tw.Civil.DawnUtc) is { } dawn && now >= dawn;
         if ((finishedNight is null || row.Night != finishedNight) && !darknessOver) return row;
         var index = nights.ToList().FindIndex(n => n.Night == row.Night);
-        if (index < 0 || index + 1 >= nights.Count) throw new NightTableException("Folgenacht fehlt in der Nacht-Tabelle");
+        if (index < 0 || index + 1 >= nights.Count) throw new NightTableException("Next night missing from the night table");
         return nights[index + 1];
     }
 

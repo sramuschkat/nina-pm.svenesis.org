@@ -187,7 +187,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
         // Ohne Session gibt es keinen Empfänger: ins Dead-Letter, statt die FIFO zu blockieren.
         if (head.SessionId is not { } session)
         {
-            store.OutboxDeadLetter(run, null, null, "Meldung ohne Session");
+            store.OutboxDeadLetter(run, null, null, "Report without session");
             return Result.Continue;
         }
         NinaSessionPatch? patch = null;
@@ -204,7 +204,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                     // Einzelne Aufnahmen nicht zuordenbar (z. B. Projekt inzwischen an einem anderen Rig): sichtbar im
                     // Dead-Letter statt still quittiert – sonst gälten sie lokal als gesendet und fehlten auf dem Server.
                     var bad = run.Where(e => rejected.Contains(Read<Captures>(e.Payload).Id)).ToList();
-                    store.OutboxDeadLetter(bad, 200, "rejected_invalid", "Vom Server nicht angenommen (rejected_invalid)");
+                    store.OutboxDeadLetter(bad, 200, "rejected_invalid", "Not accepted by the server (rejected_invalid)");
                     store.OutboxAcknowledge([.. run.Except(bad)]);
                     log.Warning("OUTBOX", ("rejected_invalid", bad.Count), ("session", session));
                     return Result.Acked;
@@ -225,7 +225,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                     patch = Read<NinaSessionPatch>(head.Payload);
                     if (patch.Status == NinaSessionPatchStatus.Running && Listener?.ShouldResume(session) == false)
                     {
-                        log.Note($"Fortsetzen der Session {session} entfällt (inzwischen abgeschlossen oder gewechselt).");
+                        log.Note($"Resuming session {session} skipped (closed or replaced in the meantime).");
                         return Result.Sent;
                     }
                     // Abschluss meldet den Stand beim Senden (alles davor ist quittiert, NIN5-7).
@@ -295,7 +295,7 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                 // dreht sich die Outbox im Kreis (Anlage → Dead-Letter → session.unknown → Anlage …).
                 if (store.DeadLetterHasSession(session))
                 {
-                    store.OutboxDeadLetter(run, status, code, "Session dem Server unbekannt, Anlage abgelehnt");
+                    store.OutboxDeadLetter(run, status, code, "Session unknown to the server, creation rejected");
                     return Result.Continue;
                 }
                 if (Listener?.SessionCreateFor(session) is { } create)
@@ -304,15 +304,15 @@ public sealed class OutboxSender(LocalStore store, ISessionApi api, NinaPmLog lo
                     store.EnqueueOutboxFront(OutboxKinds.Session, JsonConvert.SerializeObject(create, NinaJson.Settings()), session, create.NightPlanId);
                     return Result.Continue;
                 }
-                store.OutboxDeadLetter(run, status, code, "Session dem Server unbekannt");
+                store.OutboxDeadLetter(run, status, code, "Session unknown to the server");
                 return Result.Continue;
             case 409 when code == "session.closed":
-                store.OutboxDeadLetter(run, status, code, $"Nacht seit {Night(run)} abgeschlossen – erneut hochladen");
+                store.OutboxDeadLetter(run, status, code, $"Night closed since {Night(run)} – upload again");
                 return Result.Continue;
             case 413:
                 if (run.Count == 1)
                 {
-                    store.OutboxDeadLetter(run, status, code, "Meldung zu groß");
+                    store.OutboxDeadLetter(run, status, code, "Report too large");
                     batchLimit = MaxBatch;
                     return Result.Continue;
                 }

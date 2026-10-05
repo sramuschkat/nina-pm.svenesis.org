@@ -40,7 +40,7 @@ public static class NightCalendar
 
     public static NightRow CurrentRow(IReadOnlyList<NightRow> nights, DateTimeOffset now)
     {
-        if (nights.Count == 0) throw new NightTableException("Nacht-Tabelle ist leer");
+        if (nights.Count == 0) throw new NightTableException("Night table is empty");
         var index = -1;
         for (var i = 0; i < nights.Count; i++)
             if (nights[i].NoonStartUtc <= now && now < nights[i].NoonEndUtc)
@@ -50,10 +50,10 @@ public static class NightCalendar
             }
         // Tabelle beginnt nach der Mittagsnacht (z. B. Web mit from = morgen): dann gilt nights[0] (H1).
         if (index < 0 && now < nights[0].NoonStartUtc) index = 0;
-        if (index < 0) throw new NightTableException("now liegt hinter dem Ende der Nacht-Tabelle");
+        if (index < 0) throw new NightTableException("now is past the end of the night table");
         if (nights[index].NightWindowEndUtc > now) return nights[index];
         // Morgen nach Nachtfensterende: die kommende Nacht ist „heute“.
-        if (index + 1 >= nights.Count) throw new NightTableException("Folgenacht fehlt in der Nacht-Tabelle");
+        if (index + 1 >= nights.Count) throw new NightTableException("Next night missing from the night table");
         return nights[index + 1];
     }
 

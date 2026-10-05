@@ -119,7 +119,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
                 if (!list.Any(x => x.Key == c.Key)) list.Add(c);
             }
             store.SetState(StateKeys.FlatCarryOver, JsonConvert.SerializeObject(new FlatCarryOver(night, list)));
-            log.Note($"Flats: {skipped.Count} Kombination(en) werden am nächsten Morgen nachgeholt (höchstens {CarryOverMaxNights} Nächte)");
+            log.Note($"Flats: {skipped.Count} combination(s) carried over to the next morning (at most {CarryOverMaxNights} nights)");
         }
         return skipped.Count;
     }
@@ -169,7 +169,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
                 CarriedFrom = origin,
                 Order = order++,
             });
-            log.Note($"Flats: {old.LogKey} @ {old.MechDg / 10.0:0.0}° aus der Nacht {origin} wird nachgeholt");
+            log.Note($"Flats: {old.LogKey} @ {old.MechDg / 10.0:0.0}° from night {origin} is caught up");
         }
     }
 
@@ -281,8 +281,8 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         {
             trainedS = host.TrainedFlatExposureS(filter.Index, combo.Binning, combo.Gain, combo.Offset);
             if (trainedS is null)
-                log.Note($"Flats: keine trainierte Flat-Belichtung für {combo.NinaFilter} Bin {combo.Binning} Gain {combo.Gain} Offset {combo.Offset} " +
-                    "– in NINA unter Ausrüstung → Flat-Panel trainieren (die Trained-Flat-Anweisung schlägt sonst fehl)");
+                log.Note($"Flats: no trained flat exposure for {combo.NinaFilter} Bin {combo.Binning} Gain {combo.Gain} Offset {combo.Offset} " +
+                    "– train it in NINA under Equipment → Flat Panel (the trained flat instruction fails otherwise)");
         }
 
         // Dark-Flats je (Belichtungszeit, Gain, Offset, Binning, Auslesemodus) einmal je Nacht (NIN-15).
@@ -444,13 +444,13 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         {
             if (running is null || settings is null)
             {
-                log.Note($"Flat-Datei ohne laufende Kombination nicht zugeordnet: {Path.GetFileName(image.Path)}");
+                log.Note($"Flat file without a running combination not assigned: {Path.GetFileName(image.Path)}");
                 return;
             }
             combo = running;
             if (image.Binning != combo.Binning || (image.FilterName is { } f && !string.Equals(f, combo.NinaFilter, StringComparison.Ordinal)))
             {
-                log.Note($"Flat-Datei passt nicht zur Kombination {combo.LogKey}: {Path.GetFileName(image.Path)}");
+                log.Note($"Flat file does not match combination {combo.LogKey}: {Path.GetFileName(image.Path)}");
                 return;
             }
             night = settings.Night;
@@ -569,7 +569,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         }
         catch (Exception ex)
         {
-            log.Note($"Flats: Box {box} fehlgeschlagen, weiter mit dem nächsten Schritt: {ex.Message}");
+            log.Note($"Flats: box {box} failed, continuing with the next step: {ex.Message}");
             return false;
         }
     }

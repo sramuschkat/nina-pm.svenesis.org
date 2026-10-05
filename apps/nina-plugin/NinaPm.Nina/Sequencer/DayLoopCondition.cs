@@ -123,7 +123,7 @@ public sealed class DayLoopCondition : SequenceCondition
         catch (Exception ex)
         {
             // Unerwarteter Fehler an der Rundengrenze: lieber eine weitere Runde (die Nacht prüft selbst) als ein Abbruch.
-            Logger.Error($"NINA-PM: Tagesschleife – {ex.Message}");
+            Logger.Error($"NINA-PM: Day Loop – {ex.Message}");
             return true;
         }
     }
