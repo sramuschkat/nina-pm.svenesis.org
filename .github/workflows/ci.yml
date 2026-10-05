@@ -109,10 +109,11 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           tree=$(git rev-parse 'HEAD^{tree}')
+          # Ein Aussetzer der GitHub-API (z. B. HTTP 502, 05.10.2026) heißt nur: keine Übernahme, volle CI – nie rot.
           ids=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=pull_request&status=success&per_page=15" \
-            --jq '.workflow_runs[] | select(.head_repository.full_name == env.REPO) | .id')
+            --jq '.workflow_runs[] | select(.head_repository.full_name == env.REPO) | .id') || ids=""
           for id in $ids; do
-            skipped=$(gh run view "$id" -R "$REPO" --json jobs --jq '[.jobs[] | select(.conclusion == "skipped")] | length')
+            skipped=$(gh run view "$id" -R "$REPO" --json jobs --jq '[.jobs[] | select(.conclusion == "skipped")] | length') || continue
             [ "$skipped" = "0" ] || continue
             rm -rf "t-$id"
             gh run download "$id" -R "$REPO" -n tested-tree -D "t-$id" 2>/dev/null || continue
