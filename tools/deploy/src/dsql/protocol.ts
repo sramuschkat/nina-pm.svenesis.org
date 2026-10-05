@@ -23,6 +23,17 @@ export interface DsqlTestProtocol {
   passed?: boolean;
 }
 
+/**
+ * Benutzer- und Sitzungsnamen in ARNs schwärzen (Sicherheitsanalyse 05.10.2026): Das Repo ist öffentlich, die
+ * Protokolle liegen unter `docs/test-runs/`. Rollen-ARNs bleiben (sie stehen ohnehin im CDK-Code), Benutzer und
+ * Sitzungen (oft E-Mail-Adressen) nicht.
+ */
+export function redactPrincipals(text: string): string {
+  return text
+    .replace(/(arn:aws[\w-]*:iam::\d{12}:user\/)[\w+=,.@/-]+/g, '$1<admin>')
+    .replace(/(arn:aws[\w-]*:sts::\d{12}:assumed-role\/[\w+=,.@-]+\/)[\w+=,.@-]+/g, '$1<sitzung>');
+}
+
 export function renderProtocol(p: DsqlTestProtocol): string {
   const lines = [
     '# pnpm test:dsql – Protokoll (AP-03)',
@@ -51,8 +62,8 @@ export function writeProtocol(dir: string, p: DsqlTestProtocol): string {
   mkdirSync(dir, { recursive: true });
   let name = 'protocol';
   for (let n = 2; existsSync(join(dir, `${name}.json`)); n += 1) name = `protocol-${n}`;
-  writeFileSync(join(dir, `${name}.json`), `${JSON.stringify(p, null, 2)}\n`);
-  writeFileSync(join(dir, `${name}.md`), renderProtocol(p));
+  writeFileSync(join(dir, `${name}.json`), redactPrincipals(`${JSON.stringify(p, null, 2)}\n`));
+  writeFileSync(join(dir, `${name}.md`), redactPrincipals(renderProtocol(p)));
   return join(dir, name);
 }
 

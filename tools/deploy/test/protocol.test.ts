@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   findGreenProtocol,
+  redactPrincipals,
   renderProtocol,
   writeProtocol,
   type DsqlTestProtocol,
@@ -48,5 +49,22 @@ describe('Protokoll von pnpm test:dsql', () => {
   it('Markdown enthält je Prüfung Ergebnis und Zusammenfassung', () => {
     expect(renderProtocol(base)).toContain('| D-01 | Migrationen | ✔ | ok | 5 |');
     expect(renderProtocol({ ...base, passed: false })).toContain('**rot**');
+  });
+
+  it('schwärzt Benutzer und Sitzungen in ARNs, Rollen bleiben', () => {
+    expect(
+      redactPrincipals(
+        "AWS IAM GRANT x TO 'arn:aws:iam::123456789012:user/jane-dev' · arn:aws:sts::123456789012:assumed-role/AdminRole/jane@example.org · arn:aws:iam::123456789012:role/NinaPmApi",
+      ),
+    ).toBe(
+      "AWS IAM GRANT x TO 'arn:aws:iam::123456789012:user/<admin>' · arn:aws:sts::123456789012:assumed-role/AdminRole/<sitzung> · arn:aws:iam::123456789012:role/NinaPmApi",
+    );
+  });
+
+  it('schreibt den Aufrufer geschwärzt ins Protokoll', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'runs-'));
+    const file = writeProtocol(dir, { ...base, caller: 'arn:aws:iam::123456789012:user/jane-dev' });
+    expect(readFileSync(`${file}.md`, 'utf8')).toContain('user/<admin>');
+    expect(readFileSync(`${file}.json`, 'utf8')).not.toContain('jane-dev');
   });
 });
