@@ -499,11 +499,17 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       // Uhr der VM (04.10.2026: nach einem Neustart 7 h falsch → Plugin sperrte mit clock_skew, Nacht sofort zu Ende).
       // Der erste Heartbeat kommt nach höchstens 60 s; die Schritte sind absolut terminiert, Warten verschiebt sie nicht.
       await sleep(75_000);
-      if ((await a.logMessages()).some((m) => m.includes('ERROR code=clock_skew')))
+      const watchdog = () => checkNina(a, bench, dir, restartMs);
+      // Antwortet NINA hier nicht, über den Absturz-Wächter gehen (Ereignisse holen, Lauf einmal wiederholen) – vorher
+      // brach der Lauf mit „fetch failed“ ohne Wiederholung ab (real-full-night, real-network am 05.10.2026).
+      const first = await a.logMessages().catch(async () => {
+        await watchdog();
+        return a.logMessages();
+      });
+      if (first.some((m) => m.includes('ERROR code=clock_skew')))
         throw new Error(
           'Uhr der VM weicht ab (clock_skew) – in der VM: w32tm /resync /force (Zeitdienst w32time gestartet, Zeitquelle gesetzt)',
         );
-      const watchdog = () => checkNina(a, bench, dir, restartMs);
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
         // Bis zum Schritt warten, dabei alle 30 s nach NINA sehen (ein Absturz endet sonst erst am Zeitlimit).
         while (Date.now() < startedMs + s.atMin * 60_000) {
@@ -746,9 +752,11 @@ async function main(): Promise<number> {
       try {
         return (await run(cfg, name)) ? 0 : 1;
       } catch (e) {
-        if (!(e instanceof NinaCrash)) throw e;
+        // „fetch failed“ außerhalb des Wächters: NINA bzw. die Advanced API war weg – wie ein Absturz behandeln.
+        const lost = e instanceof TypeError && e.message === 'fetch failed';
+        if (!(e instanceof NinaCrash) && !lost) throw e;
         // Bekannter, nicht reproduzierbarer Absturz der x64-Emulation: einmal von vorn, der Absturz bleibt im ersten Laufordner belegt.
-        log(`${e.message} – Lauf wird einmal wiederholt`);
+        log(`${(e as Error).message} – Lauf wird einmal wiederholt`);
         return (await run(cfg, name)) ? 0 : 1;
       }
     }
