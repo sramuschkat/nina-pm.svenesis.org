@@ -69,6 +69,9 @@ describe('Sequencer-Hilfe', () => {
       expect(within(toc).getByRole('link', { name: c.title })).toHaveAttribute('href', `#${c.id}`);
       expect(screen.getByRole('heading', { name: c.title, level: 2 })).toBeInTheDocument();
     }
+    expect(
+      screen.getByRole('table', { name: 'Welche Dämmerung das Nachtende bestimmt' }),
+    ).toHaveTextContent('nautische Dämmerung');
     expect(screen.getAllByRole('link', { name: 'Nachtende' })[0]).toHaveAttribute(
       'href',
       '#night-end',

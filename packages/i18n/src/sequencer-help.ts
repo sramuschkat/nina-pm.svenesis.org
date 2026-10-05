@@ -29,10 +29,20 @@ export interface SequencerHelpItem {
   readonly tips?: string;
 }
 
+/** Tabelle in einem Abschnitt (zwei Spalten, Zellen Markdown) – die Markdown-Anzeige kennt keine GFM-Tabellen. */
+export interface SequencerHelpTable {
+  readonly label: string;
+  readonly columns: readonly [string, string];
+  readonly rows: readonly (readonly [string, string])[];
+}
+
 export interface SequencerHelpSection {
   readonly id: string;
   readonly title: string;
   readonly body: string;
+  /** Tabelle nach `body`, danach `after` (Markdown). */
+  readonly table?: SequencerHelpTable;
+  readonly after?: string;
 }
 
 export interface SequencerHelp {
@@ -74,6 +84,25 @@ const de: SequencerHelp = {
 - Das Nachtende ist der **späteste** Morgendurchgang der Grenzen, die die Projekte **dieser Nacht** nutzen. Steht ein nautisches Exoplaneten-Projekt im Plan, endet die Nacht erst bei −12°, auch wenn die Deep-Sky-Projekte schon bei −18° aufhören. Jeder Block endet trotzdem an der Grenze **seines** Projekts.
 - Das **Sessionende** ist das Ende des Nachtfensters: bürgerliche Morgendämmerung (−6°) + 1 h, auf 5 min aufgerundet. Spätestens dann ist die Nacht vorbei. Beispiel Starfront, Nacht 17.09.2026: bürgerliche Morgendämmerung 06:59 CDT, Sessionende 08:00 CDT.
 - Alle Zeiten rechnet der Server für den Standort des Rigs; sie stehen im Plan und in der Live-Anzeige des Containers.
+
+**Welche Dämmerung gilt:** Die Sonne erreicht morgens zuerst −18°, dann −12°, dann −6°. Es gewinnt also die **flachste** Grenze unter den Projekten der Nacht:`,
+      table: {
+        label: 'Welche Dämmerung das Nachtende bestimmt',
+        columns: ['Projekte im Plan der Nacht', 'Nachtende'],
+        rows: [
+          ['nur Deep-Sky mit Vorgabe', '**astronomische** Dämmerung (−18°)'],
+          [
+            'mit Exoplanet (Vorgabe nautisch)',
+            '**nautische** Dämmerung (−12°), etwa eine halbe Stunde später (je nach Breite und Jahreszeit)',
+          ],
+          ['mindestens ein Projekt auf bürgerlich', '**bürgerliche** Dämmerung (−6°)'],
+          [
+            'keine genutzte Grenze wird erreicht (weiße Nacht)',
+            '**Sessionende** (bürgerliche Morgendämmerung + 1 h)',
+          ],
+        ],
+      },
+      after: `Für ein Rig mit reinem Deep-Sky endet die Nacht also an der astronomischen Morgendämmerung; ist ein festgelegter Exoplaneten-Transit dabei, an der nautischen.
 
 **Was am Nachtende passiert** (*NINA-PM Instructions*)
 1. **Letzte Belichtung:** Eine Belichtung beginnt nur, wenn sie samt Download vor dem Ende der Dunkelheit fertig wird. Der laufende Block endet (Grund \`night_end\`), das Guiding stoppt.
@@ -441,6 +470,25 @@ const en: SequencerHelp = {
 - Night end is the **latest** morning crossing of the limits used by the projects of **this night**. If a nautical exoplanet project is in the plan, the night ends only at −12°, even if the deep-sky projects stop at −18°. Each block still ends at the limit of **its own** project.
 - **Session end** is the end of the night window: civil dawn (−6°) + 1 h, rounded up to 5 min. The night is over at the latest then. Example Starfront, night 2026-09-17: civil dawn 06:59 CDT, session end 08:00 CDT.
 - The server computes all times for the rig's site; they are in the plan and in the container's live status.
+
+**Which twilight applies:** in the morning the sun reaches −18° first, then −12°, then −6°. So the **shallowest** limit among the night's projects wins:`,
+      table: {
+        label: 'Which twilight sets night end',
+        columns: ["Projects in the night's plan", 'Night end'],
+        rows: [
+          ['deep sky only, default limit', '**astronomical** dawn (−18°)'],
+          [
+            'with an exoplanet (default nautical)',
+            '**nautical** dawn (−12°), roughly half an hour later (depending on latitude and season)',
+          ],
+          ['at least one project set to civil', '**civil** dawn (−6°)'],
+          [
+            'none of the limits in use is reached (white night)',
+            '**Session end** (civil dawn + 1 h)',
+          ],
+        ],
+      },
+      after: `So for a rig with deep sky only the night ends at astronomical dawn; with a locked exoplanet transit, at nautical dawn.
 
 **What happens at night end** (*NINA-PM Instructions*)
 1. **Last exposure:** an exposure only starts if it finishes, including download, before darkness ends. The running block ends (reason \`night_end\`), guiding stops.
