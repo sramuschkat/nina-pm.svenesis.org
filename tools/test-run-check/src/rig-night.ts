@@ -190,6 +190,8 @@ export function checkRigNight(text: string, site: Site = STARFRONT): RigNightRep
       flatEnds.length > 0 && skipped.length === 0,
       `${String(flatEnds.length - skipped.length)} done${skipped.length ? `, übersprungen: ${skipped.map((e) => `${e.fields.combination ?? ''} (${e.fields.reason ?? '?'})`).join(', ')}` : ''}`,
     );
+    // 3 min Spielraum: NINAs *Wait for Time → Nautical Dawn* rechnet aus dem Profil und endete im VM-Lauf 05.10.2026
+    // 100 s vor der Dämmerung der Engine.
     const nd = twilight.nauticalDawn ? Date.parse(twilight.nauticalDawn) : NaN;
     const firstFlat = Math.min(
       ...captures
@@ -199,7 +201,7 @@ export function checkRigNight(text: string, site: Site = STARFRONT): RigNightRep
     );
     check(
       'Flats erst nach der nautischen Dämmerung',
-      Number.isFinite(firstFlat) && !Number.isNaN(nd) && firstFlat >= nd - MIN,
+      Number.isFinite(firstFlat) && !Number.isNaN(nd) && firstFlat >= nd - 3 * MIN,
       `erste Flat ${Number.isFinite(firstFlat) ? iso(firstFlat) : '–'}, nautische Dämmerung ${twilight.nauticalDawn ?? '–'}`,
     );
   } else {

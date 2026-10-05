@@ -377,6 +377,9 @@ async function preflight(cfg: BenchConfig, r: BenchRun): Promise<void> {
     );
 }
 
+/** Profilstandort vor dem ersten Versuch eines `run` (bleibt über die eine Wiederholung nach einem Absturz). */
+let siteBeforeRun: Record<string, number> | undefined;
+
 async function run(cfg: BenchConfig, name: string): Promise<boolean> {
   // Lauf aus runs/<name>.json oder als Pfad (z. B. die von `prod-site` erzeugte .vm-bench/prod-short.json).
   const file = name.endsWith('.json') && existsSync(name) ? name : join(RUNS, `${name}.json`);
@@ -418,12 +421,14 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       r.real || r.prod
         ? ((await a.activeProfile()).AstrometrySettings as Record<string, number> | undefined)
         : undefined;
+    // Bei der Wiederholung nach einem Absturz den Standort des **ersten** Versuchs nehmen: das Zurückschreiben nach dem
+    // Absturz scheitert (NINA ist weg), das Profil trüge sonst den gestauchten Standort weiter (Lauf 05.10.2026).
     const restoreSite = astro
-      ? {
+      ? (siteBeforeRun ??= {
           'AstrometrySettings-Latitude': astro.Latitude ?? 0,
           'AstrometrySettings-Longitude': astro.Longitude ?? 0,
           'AstrometrySettings-Elevation': astro.Elevation ?? 0,
-        }
+        })
       : undefined;
     const real = r.real
       ? await startRealServer({ scenario: r.real, port: cfg.testServerPort, latDeg: 50, log })
@@ -635,9 +640,14 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       http?.close();
       real?.close();
       if (restoreSite) {
+        let failed = 0;
         for (const [path, value] of Object.entries(restoreSite))
-          await a.setProfile(path, value).catch(() => undefined);
-        log(`Profil-Standort zurückgesetzt: ${JSON.stringify(restoreSite)}`);
+          await a.setProfile(path, value).catch(() => (failed += 1));
+        log(
+          failed
+            ? `Profil-Standort NICHT zurückgesetzt (NINA weg?) – Wiederholung bzw. nächster Lauf: ${JSON.stringify(restoreSite)}`
+            : `Profil-Standort zurückgesetzt: ${JSON.stringify(restoreSite)}`,
+        );
         // Montierung zurück auf den Profilstandort: einmal mit TOTELESCOPE neu verbinden (NINAs Rundungsmeldung des
         // Simulators ist hier harmlos), danach wieder NOSYNC für die Test-Server-Läufe.
         try {

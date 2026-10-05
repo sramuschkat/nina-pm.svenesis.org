@@ -200,6 +200,13 @@ function starfrontNight(nowMs: number): {
  * mit Stundenwinkel +2 h zum Start (aus jeder Länge hoch genug, kein Meridiandurchgang). Den Standort stellt Sven im
  * Web ein; Claude Code greift nicht auf prod zu.
  */
+/**
+ * NINA rechnet *Wait for Time → Nautical Dawn* selbst aus dem Profilstandort (Höhe, eigene Ephemeride); im Lauf
+ * real-full-night (05.10.2026, Breite 50°) endete das Warten 100 s vor der nautischen Dämmerung der Engine. Darum
+ * 3 min Spielraum statt 1 min – „Flats nicht mitten in der Nacht“ bleibt damit geprüft.
+ */
+export const DAWN_TOLERANCE_MS = 3 * 60_000;
+
 export function prodBenchSite(startMs: number, dawnInMin: number) {
   const latDeg = 50;
   const where = solveLongitude(latDeg, startMs, startMs + dawnInMin * MIN, 'astronomical');
@@ -1126,7 +1133,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           typeof info.nauticalDawnUtc === 'string' ? Date.parse(info.nauticalDawnUtc) : NaN;
         check(
           'Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)',
-          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - 60_000,
+          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - DAWN_TOLERANCE_MS,
           `erste Flat ${firstFlat ? iso(firstFlat) : '–'}, nautische Dämmerung ${String(info.nauticalDawnUtc ?? '–')}`,
         );
       }
@@ -1261,7 +1268,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           typeof info.nauticalDawnUtc === 'string' ? Date.parse(info.nauticalDawnUtc) : NaN;
         check(
           'Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)',
-          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - 60_000,
+          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - DAWN_TOLERANCE_MS,
           `erste Flat ${firstFlat ? iso(firstFlat) : '–'}, nautische Dämmerung ${String(info.nauticalDawnUtc ?? '–')}`,
         );
       }
