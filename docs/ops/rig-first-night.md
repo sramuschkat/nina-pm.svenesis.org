@@ -39,11 +39,11 @@ Ziel jeder betreuten Nacht: Am Morgen liegt das NINA-Log vor, Session und Zähle
 
 **NINA-Instanz** (*NINA › NINA-Instanzen & Tokens*): Instanz für den Rig-PC anlegen und das Token sofort notieren; es wird nur einmal angezeigt.
 
-**Projekte:** freigegeben, *Aktiv*, Rig Starfront. Unter *NINA › An NINA ausgeliefert* müssen die Ziele der Nacht stehen. Den **Nacht-Simulator** für die Nacht ansehen: Blöcke, Dunkelheit und Flip-Marken müssen plausibel sein. Für die erste Nacht reichen 1–2 bekannte Ziele. **Bis zum Fix des Nachtendes (05.10.2026):** so viele Belichtungen einplanen, dass bis zur Dämmerung nicht alle Projekte der Nacht fertig sind. Sonst endet die Nacht erst bei Sonnenaufgang, die Flats entfallen, und morgens beginnt eine neue Session (Lauf `real-all-done`).
+**Projekte:** freigegeben, *Aktiv*, Rig Starfront. Unter *NINA › An NINA ausgeliefert* müssen die Ziele der Nacht stehen. Den **Nacht-Simulator** für die Nacht ansehen: Blöcke, Dunkelheit und Flip-Marken müssen plausibel sein. Für die erste Nacht reichen 1–2 bekannte Ziele. Sind alle Projekte vor der Dämmerung fertig, endet die Nacht trotzdem zur Dämmerung mit Flats; das gilt ab Plugin 0.4.4 und Engine 0.16.0 (Lauf `real-all-done`, 05.10.2026).
 
 ## 2. Am Rig-PC
 
-- **Plugin** in der freigegebenen Version installieren (aktuell 0.4.2). Dazu NINA beenden, das Plugin-Paket nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm` entpacken und NINA starten. Das Astro-PM-Plugin darf installiert bleiben; seine Sequenz aber nicht laden.
+- **Plugin** in der freigegebenen Version installieren (aktuell 0.4.4). Dazu NINA beenden, das Plugin-Paket nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm` entpacken und NINA starten. Das Astro-PM-Plugin darf installiert bleiben; seine Sequenz aber nicht laden.
 - **Keine Advanced API** auf dem Rig. Sie hat keine Anmeldung und ist nur für die Test-VM gedacht.
 - *Optionen › Plugins › NINA-PM*:
   - Server-URL bleibt `https://nina-pm.svenesis.org/api`, Sync-Token eintragen;
@@ -87,7 +87,8 @@ Grundlage ist die Beispielsequenz **„Eine Nacht mit Safety“** (Links auf der
 | Sequenzstart | NINA-Log | `PLAN reason=initial`, `SESSION … status=running`, Live-Status im Container mit „Today's targets“ |
 | Erster Block | NINA, Web *Sessions* | Slew, Zentrieren, erste Aufnahmen; im Web steigen die Zähler |
 | Meridian-Flip | NINA-Log | `FLIP pierBefore=… pierAfter=… durationS=…`, danach Zentrieren und weiter |
-| Dach zu | NINA | Belichtung abgebrochen, Sicherung parkt, *Wait until Safe or Night End* wartet; Dach auf → Wiederaufnahme mit neuem Plan |
+| Dach zu | NINA | Belichtung abgebrochen, Sicherung parkt, *Wait until Safe or Night End* wartet; Dach auf → Wiederaufnahme mit neuem Plan. Bleibt das Dach bis zum Ende der Dunkelheit zu, laufen die **Panel-Flats trotzdem** (Log `Unsafe at night end – panel flats run anyway`), danach `SESSION status=finished reason=unsafe` |
+| Dach schließt während der Flats | NINA-Log | **prüfen:** Die laufende Kombination wird unterbrochen und in der Sicherung mit den fehlenden Aufnahmen fortgesetzt; alle Kombinationen `done` |
 | Morgen | NINA-Log, Discord | Ende der Dunkelheit → `FLATS_START` erst nach der nautischen Dämmerung → Flats → `SESSION status=completed pending=0` → Ende-Bereich (Parken, Aufwärmen) → Nachtbericht in Discord |
 
 **Bei Problemen:**

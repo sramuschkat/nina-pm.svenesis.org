@@ -1,6 +1,6 @@
 {
   "name": "real-all-done",
-  "description": "Alle Projekte vor der Dämmerung fertig (Starfront 20./21.10.2026, zwei kleine Projekte) gegen den echten Server: danach liefert der Server leere Pläne. Erwartet: Nachtende zur astronomischen Dämmerung, Flats, keine Session der nächsten Nacht am Morgen. Gefunden am 05.10.2026 mit real-dst-spring: ohne Projekte im Planungsinput ist darknessEndUtc null – die Nacht endete erst am Nachtfensterende, die Flats entfielen und eine neue Session begann um 08:25 Ortszeit.",
+  "description": "Alle Projekte vor der Dämmerung fertig (Starfront 20./21.10.2026, zwei kleine Projekte) gegen den echten Server: danach liefert der Server leere Pläne. Erwartet: Nachtende zur astronomischen Dämmerung, Flats, keine Session der nächsten Nacht am Morgen. Gefunden am 05.10.2026 mit real-dst-spring: ohne Projekte im Planungsinput war darknessEndUtc null – die Nacht endete erst am Nachtfensterende, die Flats entfielen und eine neue Session begann um 08:25 Ortszeit. Behoben mit Engine 0.16.0 und Plugin 0.4.3.",
   "real": "all-done",
   "startUtc": "2026-10-20T22:00:00Z",
   "untilMin": 1080,
