@@ -1,24 +1,37 @@
 {
   "name": "real-full-night",
-  "description": "Gegen den echten Server (≈ 90 min): typische Starfront-Nacht gestaucht – vier Ziele mit LRGB und SHO, Gain/Offset 125/50 je Zeile, Dither alle 3; Nachtende 40 min nach dem Start, Flats erst nach der nautischen Dämmerung (NINA Wait for Time → Nautical Dawn in „Vor Flats“), Dark-Flats, Abschluss, Nachtbericht und Discord.",
+  "description": "Gegen den echten Server (≈ 90 min): typische Starfront-Nacht gestaucht – vier Ziele mit LRGB und SHO, Gain/Offset 125/50 je Zeile, Dither alle 3; Nachtende 40 min nach dem Start, Flats erst nach der nautischen Dämmerung (NINA Wait for Time → Nautical Dawn in „Vor Flats“), Dark-Flats, Abschluss, Nachtbericht und Discord. Flat-Panel (OmniSim) verbunden wie in Starfront.",
   "real": "full-night",
   "untilMin": 100,
   "sequence": {
     "from": "one-night-safety",
     "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
     "flats": true,
-    "flatsBeforeWait": "nauticalDawn"
+    "flatsBeforeWait": "nauticalDawn",
+    "flatsPanel": true
   },
   "profile": {
     "MeridianFlipSettings-Recenter": false,
     "MeridianFlipSettings-AutoFocusAfterFlip": false,
-    "SequenceSettings-DisableSimpleSequencer": true
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "FlatDeviceSettings-Id": "ASCOM.OmniSim.CoverCalibrator"
   },
-  "trainedFlats": { "timeS": 1, "binnings": [1] },
-  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "trainedFlats": {
+    "timeS": 1,
+    "binnings": [1]
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor", "flatdevice"],
   "coolC": -10,
   "steps": [
-    { "atMin": 15, "screenshot": "live-status", "tab": "sequencer" },
-    { "atMin": 60, "screenshot": "vor-flats-warten", "tab": "sequencer" }
+    {
+      "atMin": 15,
+      "screenshot": "live-status",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 60,
+      "screenshot": "vor-flats-warten",
+      "tab": "sequencer"
+    }
   ]
 }

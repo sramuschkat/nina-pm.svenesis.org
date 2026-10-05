@@ -111,6 +111,8 @@ Zwei kurze Läufe statt einzelner Protokolle (Sven 04.10.2026: Laufzeit optimier
 | `vm-flats` | P-12 (Reihenfolge, Kombinationen, Dark-Flat-Gruppe, Neustart in der 2. Kombination mit Fortsetzen) und P-35 (Bin 1/Bin 2, Gain/Offset `null`) | ≈ 25 min |
 | `vm-flats-auto` | P-38 (Auto-Flats einmal je Projekt: vorhandene Flats aus dem Test-Server, alle Kombinationen `covered`, kein Flat-Lauf) | ≈ 20 min |
 
+**Flat-Panel (Lücke B, 05.10.2026):** `vm-flats` und `real-full-night` verbinden den OmniSim-*CoverCalibrator* (`FlatDeviceSettings-Id`, `connect: flatdevice`) und bauen *Vor Flats* und *Nach Flats* wie die Rig-Checkliste: Abdeckung zu und Licht an, danach Licht aus (`sequence.flatsPanel`). NINA loggt Abdeckung und Licht nicht. Deshalb fragt der Prüfstand das Panel alle 5 s über die Advanced API ab (`panel.json` im Laufordner). Der Lauf ist nur grün, wenn während der Flats die Abdeckung zu (oder keine vorhanden) und das Licht mit Helligkeit > 0 an war und das Licht am Ende aus ist.
+
 | Gerät | Simulator | Zustand |
 |---|---|---|
 | Kamera | Camera Sky Simulator for ALPACA | verbunden, −10 °C |

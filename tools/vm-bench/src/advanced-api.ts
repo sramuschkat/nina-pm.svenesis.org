@@ -23,6 +23,13 @@ export type Device =
   | 'weather'
   | 'switch';
 
+export interface FlatDeviceInfo {
+  readonly Connected: boolean;
+  readonly CoverState: string;
+  readonly LightOn: boolean;
+  readonly Brightness: number;
+}
+
 /** Abschnitt des NINA-Profils je Gerätetyp (Antwort von `/profile/show?active=true`). */
 const PROFILE_KEYS: Record<Device, string> = {
   camera: 'CameraSettings',
@@ -100,6 +107,11 @@ export class AdvancedApi {
       throw new Error(`${device}: ${id} nach dem Rescan nicht gefunden`);
     await this.get(`/equipment/${device}/connect`, { to: id });
     return id;
+  }
+
+  /** Zustand des Flat-Panels (Abdeckung, Licht, Helligkeit). */
+  async flatDeviceInfo(): Promise<FlatDeviceInfo> {
+    return (await this.get<FlatDeviceInfo>('/equipment/flatdevice/info')).Response;
   }
 
   async activeProfile(): Promise<Record<string, unknown>> {

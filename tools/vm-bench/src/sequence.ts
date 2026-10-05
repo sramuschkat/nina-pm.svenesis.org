@@ -29,6 +29,11 @@ export interface SequenceSpec {
    */
   readonly flatsBeforeWait?: 'nauticalDawn';
   /**
+   * Flat-Panel wie in der Rig-Checkliste: *Vor Flats* zuletzt *Close Cover* und *Toggle Light* an, *Nach Flats* *Toggle
+   * Light* aus. Braucht ein verbundenes Panel (`connect: flatdevice`, OmniSim CoverCalibrator).
+   */
+  readonly flatsPanel?: boolean;
+  /**
    * Sequenz „Mehrere Nächte“ (AP-52): Quelle und Versatz der Anweisung *NINA-PM Warten auf Zeit* (Quelle wie
    * `WaitSource`: `Time`, `CivilDusk`, `NauticalDusk`, `AstronomicalDusk`).
    */
@@ -296,7 +301,12 @@ function flatInstruction(
 }
 
 /** Flat-Boxen an den Baustein *NINA-PM Instructions* hängen (siehe `SequenceSpec.flats`). */
-function addFlatBoxes(seq: unknown, firstId: number, beforeWait?: 'nauticalDawn'): void {
+function addFlatBoxes(
+  seq: unknown,
+  firstId: number,
+  beforeWait?: 'nauticalDawn',
+  panel?: boolean,
+): void {
   const find = (o: unknown): Record<string, unknown> | undefined => {
     if (Array.isArray(o)) return o.map(find).find(Boolean);
     if (o && typeof o === 'object') {
@@ -308,8 +318,16 @@ function addFlatBoxes(seq: unknown, firstId: number, beforeWait?: 'nauticalDawn'
   };
   const container = find(seq);
   if (!container) throw new Error('Sequenz ohne NINA-PM Instructions');
-  const setup = box(firstId, (runner, next) =>
-    beforeWait === 'nauticalDawn'
+  const panelItem = (runner: string, id: number, type: string, extra = {}) => ({
+    $id: String(id),
+    $type: T(`SequenceItem.FlatDevice.${type}`),
+    ...extra,
+    Parent: { $ref: runner },
+    ErrorBehavior: 0,
+    Attempts: 1,
+  });
+  const setup = box(firstId, (runner, next) => [
+    ...(beforeWait === 'nauticalDawn'
       ? [
           {
             $id: String(next),
@@ -324,14 +342,22 @@ function addFlatBoxes(seq: unknown, firstId: number, beforeWait?: 'nauticalDawn'
             Attempts: 1,
           },
         ]
-      : [],
-  );
+      : []),
+    ...(panel
+      ? [
+          panelItem(runner, next + 1, 'CloseCover'),
+          panelItem(runner, next + 2, 'ToggleLight', { OnOff: true }),
+        ]
+      : []),
+  ]);
   const perCombination = box(setup.next, (runner, next) => {
     const flat = flatInstruction('flat', next, runner);
     const dark = flatInstruction('dark', flat.next, runner);
     return [flat.json, dark.json];
   });
-  const teardown = box(perCombination.next, () => []);
+  const teardown = box(perCombination.next, (runner, next) =>
+    panel ? [panelItem(runner, next, 'ToggleLight', { OnOff: false })] : [],
+  );
   container.FlatsSetupRunner = setup.json;
   container.FlatsRunner = perCombination.json;
   container.FlatsTeardownRunner = teardown.json;
@@ -368,7 +394,8 @@ export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: strin
   }
   if (r.sequence.globalDither !== undefined)
     seq.Triggers.$values.push(ditherTrigger(maxId(seq) + 1, seq.$id, r.sequence.globalDither));
-  if (r.sequence.flats) addFlatBoxes(seq, maxId(seq) + 1, r.sequence.flatsBeforeWait);
+  if (r.sequence.flats)
+    addFlatBoxes(seq, maxId(seq) + 1, r.sequence.flatsBeforeWait, r.sequence.flatsPanel);
   const path = join(dir, `${SEQUENCE}.json`);
   writeFileSync(path, JSON.stringify(seq, null, 2));
   return path;

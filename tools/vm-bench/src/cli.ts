@@ -115,6 +115,57 @@ function arg(name: string): string | undefined {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Beobachtung des Flat-Panels während eines Laufs (`watchPanel`). */
+interface PanelSeen {
+  samples: number;
+  errors: number;
+  /** Proben mit Abdeckung zu (oder keiner) und Licht an (Flats laufen). */
+  closedLit: number;
+  maxBrightness: number;
+  coverStates: string[];
+}
+
+/**
+ * Flat-Panel alle 5 s abfragen (Advanced API): Abdeckung, Licht, Helligkeit. *Close Cover*, *Toggle Light* und die
+ * Helligkeit aus *Trained Flat Exposure* sind nur so belegt – NINA loggt sie nicht (Lücke B, 05.10.2026).
+ */
+function watchPanel(a: AdvancedApi): { stop(): Promise<PanelSeen> } {
+  const seen: PanelSeen = {
+    samples: 0,
+    errors: 0,
+    closedLit: 0,
+    maxBrightness: 0,
+    coverStates: [],
+  };
+  let running = true;
+  const loop = (async () => {
+    while (running) {
+      try {
+        const i = await a.flatDeviceInfo();
+        seen.samples += 1;
+        if (i.Connected) {
+          if (!seen.coverStates.includes(i.CoverState)) seen.coverStates.push(i.CoverState);
+          // Ohne Abdeckung (`NotPresent`) genügt das Licht – manche Panels haben keine Klappe.
+          if (i.LightOn && (i.CoverState === 'Closed' || i.CoverState === 'NotPresent')) {
+            seen.closedLit += 1;
+            seen.maxBrightness = Math.max(seen.maxBrightness, i.Brightness);
+          }
+        }
+      } catch {
+        seen.errors += 1; // NINA-Neustart im Lauf
+      }
+      await sleep(5_000);
+    }
+  })();
+  return {
+    async stop() {
+      running = false;
+      await loop;
+      return seen;
+    },
+  };
+}
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
 const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${m}`);
 
@@ -419,6 +470,8 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
 
     const server = r.scenario ? new NinaTestServer(loadScenario(r.scenario), loadRig()) : undefined;
     let realOk = true;
+    let panelWatch: ReturnType<typeof watchPanel> | undefined;
+    let panelOk = true;
     const http = server ? await server.listen(cfg.testServerPort, '0.0.0.0') : undefined;
     const startedMs = Date.now();
     const startUtc = new Date(startedMs).toISOString();
@@ -432,6 +485,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
+      if (r.connect.includes('flatdevice')) panelWatch = watchPanel(a);
       // Uhr der VM (04.10.2026: nach einem Neustart 7 h falsch → Plugin sperrte mit clock_skew, Nacht sofort zu Ende).
       // Der erste Heartbeat kommt nach höchstens 60 s; die Schritte sind absolut terminiert, Warten verschiebt sie nicht.
       await sleep(75_000);
@@ -525,7 +579,33 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         log('Sequenz gestoppt – 3 min für die Outbox (Heartbeat-Takt 60 s)');
         await sleep(180_000);
       }
+      if (panelWatch) {
+        const seen = await panelWatch.stop();
+        panelWatch = undefined;
+        const end = await a.flatDeviceInfo().catch(() => undefined);
+        const checks = [
+          {
+            name: 'Flat-Panel: Abdeckung zu und Licht an während der Flats',
+            ok: seen.closedLit > 0 && seen.maxBrightness > 0,
+            detail: `${String(seen.closedLit)} von ${String(seen.samples)} Proben, Helligkeit bis ${String(seen.maxBrightness)}, Abdeckung ${seen.coverStates.join('/')}`,
+          },
+          {
+            name: 'Flat-Panel: Licht nach den Flats aus (Nach Flats)',
+            ok: end?.Connected === true && !end.LightOn,
+            detail: end
+              ? `Licht ${end.LightOn ? 'an' : 'aus'}, Abdeckung ${end.CoverState}`
+              : 'keine Antwort',
+          },
+        ];
+        for (const c of checks) log(`${c.ok ? '✓' : '✗'} ${c.name} – ${c.detail}`);
+        writeFileSync(
+          join(dir, 'panel.json'),
+          `${JSON.stringify({ seen, end, checks }, null, 2)}\n`,
+        );
+        panelOk = checks.every((c) => c.ok);
+      }
     } finally {
+      await panelWatch?.stop();
       http?.close();
       real?.close();
       if (restoreSite) {
@@ -558,6 +638,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       log(`Ergebnis in ${dir}`);
       return (
         realOk &&
+        panelOk &&
         summary.errors === 0 &&
         summary.rejectedApi === 0 &&
         summary.outboxPendingAtEnd === 0
@@ -568,7 +649,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       stdio: 'inherit',
     });
     log(`Ergebnis in ${dir}`);
-    return check.status === 0;
+    return check.status === 0 && panelOk;
   });
 }
 
