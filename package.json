@@ -37,6 +37,7 @@
     "plugin:sim": "tsx tools/nina-sim/src/cli.ts",
     "vm-bench": "tsx tools/vm-bench/src/cli.ts",
     "golive:check": "tsx tools/deploy/src/golive-check.ts",
+    "security:check": "tsx tools/deploy/src/security-check.ts",
     "loadtest:prod": "tsx tools/deploy/src/loadtest.ts",
     "alarm:probe": "tsx tools/deploy/src/alarm-probe.ts",
     "demo:export": "tsx tools/deploy/src/demo-export.ts",

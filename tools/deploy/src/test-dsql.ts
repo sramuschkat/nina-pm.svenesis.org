@@ -37,7 +37,11 @@ import {
   manualDeleteCommand,
   withEphemeralCluster,
 } from './dsql/ephemeral-cluster';
-import { writeProtocol as writeDbProtocol, type DsqlTestProtocol } from './dsql/protocol';
+import {
+  redactPrincipals,
+  writeProtocol as writeDbProtocol,
+  type DsqlTestProtocol,
+} from './dsql/protocol';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -58,8 +62,8 @@ function writeProtocol(protocol: Protocol): string {
   // Weitere Läufe am selben Tag überschreiben nichts: protocol-2, protocol-3, …
   let name = 'protocol';
   for (let n = 2; existsSync(`${dir}/${name}.json`); n += 1) name = `protocol-${n}`;
-  writeFileSync(`${dir}/${name}.json`, `${JSON.stringify(protocol, null, 2)}\n`);
-  writeFileSync(`${dir}/${name}.md`, renderMarkdown(protocol));
+  writeFileSync(`${dir}/${name}.json`, redactPrincipals(`${JSON.stringify(protocol, null, 2)}\n`));
+  writeFileSync(`${dir}/${name}.md`, redactPrincipals(renderMarkdown(protocol)));
   return `${dir}/${name}`;
 }
 

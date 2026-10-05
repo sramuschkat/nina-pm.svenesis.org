@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { config } from '@nina-pm/infra/config';
+import { redactPrincipals } from '../dsql/protocol';
 
 export const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 
@@ -27,7 +28,7 @@ export function protocolPath(name: string, now = new Date()): string {
 
 export function writeProtocol(name: string, content: string): string {
   const path = protocolPath(name);
-  writeFileSync(path, content);
+  writeFileSync(path, redactPrincipals(content));
   return path.replace(repoRoot, '');
 }
 
