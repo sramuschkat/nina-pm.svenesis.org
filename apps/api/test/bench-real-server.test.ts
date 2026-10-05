@@ -47,6 +47,10 @@ describe('Prüfstand gegen den echten Server', () => {
         expect(darknessEnd - Date.now()).toBeGreaterThan(20 * 60_000);
         expect(darknessEnd - Date.now()).toBeLessThan(45 * 60_000);
         for (const b of blocks) expect(Date.parse(b.endUtc)).toBeLessThanOrEqual(darknessEnd);
+        // Aktionen der Laufdatei müssen der echte Server annehmen (Lauf 05.10.2026: `paused` → 422).
+        if (scenario === 'commands')
+          for (const a of ['pause_running', 'refresh_targets', 'reset_plan'])
+            await expect(real.action(a)).resolves.toBeTruthy();
       } finally {
         real.close();
       }
