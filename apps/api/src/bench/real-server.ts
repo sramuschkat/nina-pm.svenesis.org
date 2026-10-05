@@ -21,7 +21,7 @@ import { clearExoCatalogCache } from '../exo/search';
 import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
 import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
 
-export type RealScenario = 'night-flats' | 'transit' | 'commands';
+export type RealScenario = 'night-flats' | 'transit' | 'commands' | 'full-night' | 'network';
 
 /** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
 export const BENCH_TOKEN = 'npm_test';
@@ -222,8 +222,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     rigId,
     {
       ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
-      ditherEvery: 5,
-      flatsEnabled: s === 'night-flats',
+      ditherEvery: s === 'full-night' ? 3 : 5,
+      flatsEnabled: s === 'night-flats' || s === 'full-night',
       flatsSource: 'panel',
       flatsAutoMode: 'off',
       flatCount: 3,
@@ -268,7 +268,12 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       .where('id', '=', pid)
       .execute();
   };
-  const deepSky = async (name: string, raOffsetDeg: number, lines: [string, number][]) => {
+  /** Zeilen: Filter, Anzahl, optional Gain und Offset (wie die Ares-M in Starfront: 125/50). */
+  const deepSky = async (
+    name: string,
+    raOffsetDeg: number,
+    lines: [string, number, number?, number?][],
+  ) => {
     const created = await web<{ id: string; panels: { id: string }[] }>('/projects', 'POST', {
       id: id(),
       name,
@@ -279,7 +284,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     });
     const panelId = created.panels[0]?.id ?? '';
     const lineIds: string[] = [];
-    for (const [short, count] of lines) {
+    for (const [short, count, gain, offset] of lines) {
       const lineId = id();
       await web(`/projects/${created.id}/lines`, 'POST', {
         id: lineId,
@@ -288,6 +293,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         exposureS: 30,
         plannedCount: count,
         moonMode: 'none',
+        ...(gain !== undefined ? { gain } : {}),
+        ...(offset !== undefined ? { offsetAdu: offset } : {}),
       });
       lineIds.push(lineId);
     }
@@ -302,10 +309,24 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     night: where.night,
     darknessEndUtc: iso(where.dawnUtc * 1000),
   };
+  // Nautische Morgendämmerung des Standorts (Flats in Starfront erst danach, Box *Vor Flats*).
+  const nautical = nightTimes({
+    site: { latDeg: opts.latDeg, lonDeg: where.lonDeg },
+    night: where.night,
+    timeZoneTransitions: timeZoneTransitions(
+      where.timeZone,
+      nowMs - 3 * 86_400_000,
+      nowMs + 3 * 86_400_000,
+    ),
+  }).twilight.nautical.endUtc;
+  if (nautical !== null) info.nauticalDawnUtc = iso(nautical * 1000);
   const projects: { projectId: string; lineIds: string[] }[] = [];
   let transit: { projectId: string; observationId: string; windowEndUtc: string } | null = null;
   /** Pausiertes Projekt und Zeitpunkt (Aktion `pause_running`) für die Prüfung „Neuplanung nach Pausieren“. */
   let paused: { projectId: string; atMs: number } | null = null;
+  /** Netzausfall (Aktionen `drop_network`/`restore_network`): Anfragen des Plugins laufen ins Leere. */
+  let dropping = false;
+  let sawStale: boolean | null = null;
 
   if (s === 'night-flats') {
     projects.push(
@@ -315,6 +336,40 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       ]),
     );
     projects.push(await deepSky('Bench NGC B', 20, [['L', 12]]));
+  } else if (s === 'full-night') {
+    // Typische Starfront-Nacht: vier Ziele, LRGB und SHO, Gain/Offset je Zeile, Dither alle 3, Flats mit Warten auf
+    // die nautische Dämmerung.
+    projects.push(
+      await deepSky('Bench LRGB', 0, [
+        ['L', 4, 125, 50],
+        ['R', 4, 125, 50],
+        ['G', 4, 125, 50],
+        ['B', 4, 125, 50],
+      ]),
+    );
+    projects.push(
+      await deepSky('Bench SHO', 15, [
+        ['Ha', 4, 125, 50],
+        ['OIII', 4, 125, 50],
+        ['SII', 4, 125, 50],
+      ]),
+    );
+    projects.push(
+      await deepSky('Bench L+Ha', 30, [
+        ['L', 4],
+        ['Ha', 4],
+      ]),
+    );
+    projects.push(
+      await deepSky('Bench RGB', 45, [
+        ['R', 3, 125, 50],
+        ['G', 3, 125, 50],
+        ['B', 3, 125, 50],
+      ]),
+    );
+  } else if (s === 'network') {
+    projects.push(await deepSky('Bench NGC A', 0, [['L', 20]]));
+    projects.push(await deepSky('Bench NGC B', 20, [['Ha', 20]]));
   } else if (s === 'commands') {
     // Je ≈ 12 min Arbeit: zwei Blöcke in 35 min Restnacht (Mindestzeit je Ziel, profiles.ts).
     projects.push(await deepSky('Bench NGC A', 0, [['L', 24]]));
@@ -400,6 +455,9 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
 
   // Token des Prüfstand-Profils auf die echte Instanz umschreiben.
   const fetchVm = (req: Request) => {
+    // Netzausfall: das Plugin bekommt keine Antwort (Zeitüberschreitung wie beim Test-Server `drop_responses`).
+    if (dropping && new URL(req.url).pathname.startsWith('/api/nina/'))
+      return new Promise<Response>(() => undefined);
     if (req.headers.get('authorization') !== `Bearer ${BENCH_TOKEN}`) return stack.fetch(req);
     const headers = new Headers(req.headers);
     headers.set('authorization', `Bearer ${instance.token}`);
@@ -439,6 +497,15 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           await web(`/projects/${pid}/status`, 'PUT', { status: 'on_hold' });
           paused = { projectId: pid, atMs: Date.now() };
           return `Projekt ${pid} pausiert`;
+        }
+        case 'drop_network':
+          dropping = true;
+          return 'Netz getrennt: Anfragen des Plugins bleiben ohne Antwort';
+        case 'restore_network': {
+          const before = (await sessions()).map((x) => x.status);
+          sawStale = before.includes('stale');
+          dropping = false;
+          return `Netz zurück; Session-Status vorher ${JSON.stringify(before)}`;
         }
         case 'refresh_targets':
         case 'reset_plan': {
@@ -495,6 +562,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           'exposureLineId',
           'projectId',
           'capturedAt',
+          'filterShortName',
           'frameType',
           'result',
           'transitObservationId',
@@ -578,6 +646,36 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         discord.calls.length > 0,
         `${String(discord.calls.length)} Aufrufe`,
       );
+      if (s === 'full-night') {
+        const filters = [...new Set(lights.map((c) => c.filterShortName))].sort();
+        check('Mehrere Filter belichtet', filters.length >= 4, filters.join(','));
+        const flatFilters = new Set(
+          flats.filter((f) => f.status === 'done').map((f) => f.filterShortName),
+        );
+        check(
+          'Je belichtetem Filter eine Flat-Kombination done',
+          filters.every((f) => flatFilters.has(f)),
+          `${[...flatFilters].sort().join(',')} für ${filters.join(',')}`,
+        );
+        const firstFlat = captures
+          .filter((c) => c.frameType === 'flat')
+          .map((c) => new Date(c.capturedAt).getTime())
+          .sort((a, b) => a - b)[0];
+        const dawn =
+          typeof info.nauticalDawnUtc === 'string' ? Date.parse(info.nauticalDawnUtc) : NaN;
+        check(
+          'Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)',
+          firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - 60_000,
+          `erste Flat ${firstFlat ? iso(firstFlat) : '–'}, nautische Dämmerung ${String(info.nauticalDawnUtc ?? '–')}`,
+        );
+      }
+      if (s === 'network') {
+        check(
+          'Session während des Ausfalls verwaist (stale)',
+          sawStale === true,
+          `stale gesehen: ${String(sawStale)}`,
+        );
+      }
       if (s === 'night-flats') {
         check(
           'Flat-Kombinationen done',

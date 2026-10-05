@@ -24,6 +24,11 @@ export interface SequenceSpec {
    */
   readonly flats?: boolean;
   /**
+   * In der Box *Vor Flats* NINAs *Wait for Time* mit Quelle *Nautical Dawn*: Flats erst nach der nautischen Dämmerung
+   * (Regel in Starfront, 05.10.2026). Ist sie schon vorbei, wartet NINA nicht (Wartezeit 0).
+   */
+  readonly flatsBeforeWait?: 'nauticalDawn';
+  /**
    * Sequenz „Mehrere Nächte“ (AP-52): Quelle und Versatz der Anweisung *NINA-PM Warten auf Zeit* (Quelle wie
    * `WaitSource`: `Time`, `CivilDusk`, `NauticalDusk`, `AstronomicalDusk`).
    */
@@ -291,7 +296,7 @@ function flatInstruction(
 }
 
 /** Flat-Boxen an den Baustein *NINA-PM Instructions* hängen (siehe `SequenceSpec.flats`). */
-function addFlatBoxes(seq: unknown, firstId: number): void {
+function addFlatBoxes(seq: unknown, firstId: number, beforeWait?: 'nauticalDawn'): void {
   const find = (o: unknown): Record<string, unknown> | undefined => {
     if (Array.isArray(o)) return o.map(find).find(Boolean);
     if (o && typeof o === 'object') {
@@ -303,7 +308,24 @@ function addFlatBoxes(seq: unknown, firstId: number): void {
   };
   const container = find(seq);
   if (!container) throw new Error('Sequenz ohne NINA-PM Instructions');
-  const setup = box(firstId, () => []);
+  const setup = box(firstId, (runner, next) =>
+    beforeWait === 'nauticalDawn'
+      ? [
+          {
+            $id: String(next),
+            $type: T('SequenceItem.Utility.WaitForTime'),
+            Hours: 0,
+            Minutes: 0,
+            MinutesOffset: 0,
+            Seconds: 0,
+            SelectedProvider: { $type: T('Utility.DateTimeProvider.NauticalDawnProvider') },
+            Parent: { $ref: runner },
+            ErrorBehavior: 0,
+            Attempts: 1,
+          },
+        ]
+      : [],
+  );
   const perCombination = box(setup.next, (runner, next) => {
     const flat = flatInstruction('flat', next, runner);
     const dark = flatInstruction('dark', flat.next, runner);
@@ -346,7 +368,7 @@ export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: strin
   }
   if (r.sequence.globalDither !== undefined)
     seq.Triggers.$values.push(ditherTrigger(maxId(seq) + 1, seq.$id, r.sequence.globalDither));
-  if (r.sequence.flats) addFlatBoxes(seq, maxId(seq) + 1);
+  if (r.sequence.flats) addFlatBoxes(seq, maxId(seq) + 1, r.sequence.flatsBeforeWait);
   const path = join(dir, `${SEQUENCE}.json`);
   writeFileSync(path, JSON.stringify(seq, null, 2));
   return path;

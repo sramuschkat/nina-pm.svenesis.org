@@ -387,6 +387,10 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
     const profile = await a.activeProfile();
+    // Testbilder des vorigen Laufs löschen: die Simulator-Kamera ignoriert die Belichtungszeit, Transitserien liefern
+    // Hunderte FITS je Lauf (05.10.2026: Speicher der VM voll). Die Auswertung braucht nur Log und Server-Daten.
+    const imageFolder = (profile.ImageFileSettings as { FilePath?: string } | undefined)?.FilePath;
+    if (imageFolder) await job(bench, 'clean-images', { folder: imageFolder }, dir, 300_000);
     if (r.trainedFlats) {
       const trained = (
         profile.FlatDeviceSettings as { TrainedFlatExposureSettings?: unknown[] } | undefined
