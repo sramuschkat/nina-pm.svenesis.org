@@ -39,7 +39,7 @@ Ziel jeder betreuten Nacht: Am Morgen liegt das NINA-Log vor, Session und Zähle
 
 **NINA-Instanz** (*NINA › NINA-Instanzen & Tokens*): Instanz für den Rig-PC anlegen und das Token sofort notieren; es wird nur einmal angezeigt.
 
-**Projekte:** freigegeben, *Aktiv*, Rig Starfront. Unter *NINA › An NINA ausgeliefert* müssen die Ziele der Nacht stehen. Den **Nacht-Simulator** für die Nacht ansehen: Blöcke, Dunkelheit und Flip-Marken müssen plausibel sein. Für die erste Nacht reichen 1–2 bekannte Ziele.
+**Projekte:** freigegeben, *Aktiv*, Rig Starfront. Unter *NINA › An NINA ausgeliefert* müssen die Ziele der Nacht stehen. Den **Nacht-Simulator** für die Nacht ansehen: Blöcke, Dunkelheit und Flip-Marken müssen plausibel sein. Für die erste Nacht reichen 1–2 bekannte Ziele. **Bis zum Fix des Nachtendes (05.10.2026):** so viele Belichtungen einplanen, dass bis zur Dämmerung nicht alle Projekte der Nacht fertig sind. Sonst endet die Nacht erst bei Sonnenaufgang, die Flats entfallen, und morgens beginnt eine neue Session (Lauf `real-all-done`).
 
 ## 2. Am Rig-PC
 

@@ -29,7 +29,15 @@ import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
 import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
 
 export type RealScenario =
-  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip' | 'dst' | 'long-night';
+  | 'night-flats'
+  | 'transit'
+  | 'commands'
+  | 'full-night'
+  | 'network'
+  | 'flip'
+  | 'starfront'
+  | 'all-done'
+  | 'long-night';
 
 /** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
 export const BENCH_TOKEN = 'npm_test';
@@ -152,6 +160,11 @@ function solveLongitude(
   return best;
 }
 
+/** Folgender Nacht-Schlüssel (`YYYY-MM-DD` + 1 Tag). */
+function nextNightKey(night: string): string {
+  return new Date(Date.parse(`${night}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Nacht am echten Standort Starfront (Szenario `dst`): Nacht-Schlüssel und astronomische Dämmerung wie der Server. */
 function starfrontNight(nowMs: number): {
   lonDeg: number;
@@ -240,7 +253,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   };
 
   const s = opts.scenario;
-  const latDeg = s === 'dst' ? STARFRONT.latDeg : opts.latDeg;
+  const latDeg = s === 'starfront' || s === 'all-done' ? STARFRONT.latDeg : opts.latDeg;
   // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle und Flip 35 min, Transit 40 min
   // (Fenster endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
   // Lange Nacht (Lücke E): 4½ h Dunkelheit, über Nacht in der VM.
@@ -255,7 +268,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           : 40) *
       MIN;
   const where =
-    s === 'dst'
+    s === 'starfront' || s === 'all-done'
       ? starfrontNight(nowMs)
       : solveLongitude(opts.latDeg, nowMs, dawnMs, 'astronomical');
   const site = await web<Body>(`/sites/${siteId}`);
@@ -269,7 +282,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     bortleClass: site.bortleClass ?? null,
     timeZone: where.timeZone,
     weatherSafetyUrl: null,
-    notes: s === 'dst' ? 'Kopfloser Lauf Zeitumstellung (Starfront)' : 'VM-Prüfstand (Stufe 2a)',
+    notes: s === 'starfront' ? 'Kopfloser Lauf Starfront' : 'VM-Prüfstand (Stufe 2a)',
   });
   await web(`/rigs/${rigId}/filter-wheel`, 'PUT', {
     slots: VM_WHEEL.filters.map((f) => ({
@@ -303,7 +316,12 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     {
       ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
       ditherEvery: s === 'full-night' || s === 'long-night' ? 3 : 5,
-      flatsEnabled: s === 'night-flats' || s === 'full-night' || s === 'dst' || s === 'long-night',
+      flatsEnabled:
+        s === 'night-flats' ||
+        s === 'full-night' ||
+        s === 'starfront' ||
+        s === 'all-done' ||
+        s === 'long-night',
       flatsSource: 'panel',
       flatsAutoMode: 'off',
       flatCount: 3,
@@ -546,49 +564,103 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           { exposureS: 120 },
         ),
       );
-  } else if (s === 'dst') {
-    // Nacht 31.10./01.11.2026 in Starfront (CDT → CST um 02:00 = 07:00Z): echte Ziele von abends bis morgens, 300 s je
-    // Aufnahme wie am Rig; M45 kulminiert ≈ 01:20 CDT, kurz vor der Umstellung (Flip in der doppelten Stunde).
-    const targets: [string, number, number, [string, number][]][] = [
-      [
-        'NGC 7000',
-        314.75,
-        44.3,
-        [
-          ['Ha', 30],
-          ['OIII', 30],
-        ],
-      ],
-      [
-        'M 31',
-        10.68,
-        41.27,
-        [
-          ['L', 30],
-          ['R', 15],
-          ['G', 15],
-          ['B', 15],
-        ],
-      ],
-      [
-        'M 45',
-        56.75,
-        24.12,
-        [
-          ['L', 30],
-          ['B', 15],
-        ],
-      ],
-      [
-        'M 42',
-        83.82,
-        -5.39,
-        [
-          ['Ha', 30],
-          ['L', 15],
-        ],
-      ],
-    ];
+  } else if (s === 'all-done') {
+    // Alle Projekte vor der Dämmerung fertig (Starfront, Herbst): danach liefert der Server leere Pläne. Prüft, dass die
+    // Nacht trotzdem zur Dämmerung endet, Flats laufen und am Morgen keine Session der nächsten Nacht beginnt.
+    for (const [name, raDeg, decDeg, short, n] of [
+      ['M 31', 10.68, 41.27, 'L', 12],
+      ['M 45', 56.75, 24.12, 'B', 12],
+    ] as const)
+      projects.push(
+        await deepSky(name, 0, [[short, n, 125, 50]], { raDeg, decDeg, exposureS: 300 }),
+      );
+  } else if (s === 'starfront') {
+    // Zwei Nächte in Starfront ab `startMs` (kopfloser Lauf, virtuelle Uhr): echte Ziele der Jahreszeit von abends bis
+    // morgens, 300 s je Aufnahme wie am Rig – so viele, dass bis zum Morgen der zweiten Nacht kein Projekt fertig ist. Herbst 31.10./01.11.2026: M 45 kulminiert ≈ 01:20 CDT, kurz vor der
+    // Umstellung; Frühjahr 13./14.03.2027: M 51 kulminiert ≈ 02:00 CST, kurz vor der Umstellung.
+    const month = new Date(nowMs).getUTCMonth() + 1;
+    const targets: [string, number, number, [string, number][]][] =
+      month >= 2 && month <= 5
+        ? [
+            [
+              'M 42',
+              83.82,
+              -5.39,
+              [
+                ['Ha', 40],
+                ['L', 20],
+              ],
+            ],
+            [
+              'M 81',
+              148.89,
+              69.07,
+              [
+                ['L', 60],
+                ['R', 30],
+                ['G', 30],
+                ['B', 30],
+              ],
+            ],
+            [
+              'M 51',
+              202.47,
+              47.2,
+              [
+                ['L', 60],
+                ['B', 30],
+              ],
+            ],
+            [
+              'M 13',
+              250.42,
+              36.46,
+              [
+                ['L', 60],
+                ['R', 30],
+              ],
+            ],
+          ]
+        : [
+            [
+              'NGC 7000',
+              314.75,
+              44.3,
+              [
+                ['Ha', 30],
+                ['OIII', 30],
+              ],
+            ],
+            [
+              'M 31',
+              10.68,
+              41.27,
+              [
+                ['L', 30],
+                ['R', 15],
+                ['G', 15],
+                ['B', 15],
+              ],
+            ],
+            [
+              'M 45',
+              56.75,
+              24.12,
+              [
+                ['L', 30],
+                ['B', 15],
+              ],
+            ],
+            [
+              'M 42',
+              83.82,
+              -5.39,
+              [
+                ['Ha', 30],
+                ['L', 15],
+              ],
+            ],
+          ];
     for (const [name, raDeg, decDeg, lines] of targets)
       projects.push(
         await deepSky(
@@ -598,19 +670,27 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           { raDeg, decDeg, exposureS: 300 },
         ),
       );
+    const tz = timeZoneTransitions(STARFRONT.timeZone, nowMs - 86_400_000, nowMs + 5 * 86_400_000);
+    const night2 = nextNightKey(where.night);
+    info.night2 = night2;
     const second = nightTimes({
       site: { latDeg, lonDeg: where.lonDeg },
-      night: '2026-11-01',
-      timeZoneTransitions: timeZoneTransitions(
-        STARFRONT.timeZone,
-        nowMs - 86_400_000,
-        nowMs + 5 * 86_400_000,
-      ),
+      night: night2,
+      timeZoneTransitions: tz,
     });
     if (second.twilight.nautical.startUtc !== null)
       info.nauticalDusk2Utc = iso(second.twilight.nautical.startUtc * 1000);
     if (second.twilight.astronomical.startUtc !== null)
       info.darknessStart2Utc = iso(second.twilight.astronomical.startUtc * 1000);
+    // Zeitumstellung zwischen Beginn und Ende der beiden Nächte (sonst keine Umstellungs-Prüfung).
+    const change = tz.find(
+      (t, i) =>
+        i > 0 &&
+        t.atUtc * 1000 > nowMs &&
+        second.twilight.astronomical.endUtc !== null &&
+        t.atUtc < second.twilight.astronomical.endUtc,
+    );
+    if (change) info.dstUtc = iso(change.atUtc * 1000);
   } else if (s === 'network') {
     projects.push(await deepSky('Bench NGC A', 0, [['L', 20]]));
     projects.push(await deepSky('Bench NGC B', 20, [['Ha', 20]]));
@@ -1047,33 +1127,56 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           `alle Codes: ${mismatchCodes.join(',') || '–'}`,
         );
       }
-      if (s === 'dst') {
-        // Zeitumstellung CDT → CST am 01.11.2026 um 02:00 (07:00Z): Nacht-Schlüssel, Nachtende, Aufnahmen über die
-        // doppelte Stunde, Beginn der zweiten Nacht in CST (Lücke D, 05.10.2026).
+      if (s === 'all-done') {
+        const end1 = where.dawnUtc * 1000;
+        const firstFlat = captures
+          .filter((c) => c.frameType === 'flat')
+          .map((c) => new Date(c.capturedAt).getTime())
+          .sort((a, b) => a - b)[0];
+        const last = list.find((x) => String(x.night) === where.night);
+        check(
+          'Nacht endet zur astronomischen Dämmerung, Flats laufen (Projekte vorher fertig)',
+          firstFlat !== undefined && firstFlat >= end1 - MIN && firstFlat <= end1 + 30 * MIN,
+          `Dämmerung ${iso(end1)}, erstes Flat ${firstFlat ? iso(firstFlat) : '–'}, Session endet ${last?.endedAt ? iso(new Date(last.endedAt).getTime()) : '–'}`,
+        );
+        check(
+          'Keine Session der nächsten Nacht am Morgen',
+          list.length === 1,
+          JSON.stringify(list.map((x) => [x.night, x.status])),
+        );
+      }
+      if (s === 'starfront') {
+        // Zwei Starfront-Nächte (kopflos): Nacht-Schlüssel, Nachtende, Beginn der zweiten Nacht; liegt eine Zeitumstellung
+        // dazwischen (31.10./01.11.2026, 13./14.03.2027), zusätzlich Aufnahmen über die Umstellung (Lücke D, 05.10.2026).
+        const night1 = where.night;
+        const night2 = String(info.night2);
+        const expected = `${night1},${night2}`;
         const nights = [...new Set(list.map((x) => String(x.night)))].sort();
         check(
           'Zwei Nächte, je ein Nacht-Schlüssel, beide abgeschlossen',
-          done.length === 2 && nights.join(',') === '2026-10-31,2026-11-01',
+          done.length === 2 && nights.join(',') === expected,
           `${JSON.stringify(list.map((x) => [x.night, x.status]))}`,
         );
         const planNights = [...new Set(plans.map((p) => String(p.night)))].sort();
         check(
           'Pläne nur für diese beiden Nächte',
-          planNights.join(',') === '2026-10-31,2026-11-01',
+          planNights.join(',') === expected,
           `${planNights.join(',')} (${String(plans.length)} Pläne)`,
         );
-        const dstMs = Date.parse('2026-11-01T07:00:00Z');
-        const times = lights
-          .map((c) => new Date(c.capturedAt).getTime())
-          .filter((t) => t >= dstMs - 90 * MIN && t <= dstMs + 90 * MIN)
-          .sort((a, b) => a - b);
-        const gaps = times.slice(1).map((t, i) => t - (times[i] ?? t));
-        const maxGap = Math.max(0, ...gaps);
-        check(
-          'Aufnahmen über die Umstellung (05:30–08:30Z) ohne Lücke über 25 min',
-          times.length >= 12 && maxGap <= 25 * MIN,
-          `${String(times.length)} Lights, größte Lücke ${String(Math.round(maxGap / MIN))} min`,
-        );
+        if (typeof info.dstUtc === 'string') {
+          const dstMs = Date.parse(info.dstUtc);
+          const times = lights
+            .map((c) => new Date(c.capturedAt).getTime())
+            .filter((t) => t >= dstMs - 90 * MIN && t <= dstMs + 90 * MIN)
+            .sort((a, b) => a - b);
+          const gaps = times.slice(1).map((t, i) => t - (times[i] ?? t));
+          const maxGap = Math.max(0, ...gaps);
+          check(
+            `Aufnahmen über die Umstellung (${info.dstUtc} ± 90 min) ohne Lücke über 25 min`,
+            times.length >= 12 && maxGap <= 25 * MIN,
+            `${String(times.length)} Lights, größte Lücke ${String(Math.round(maxGap / MIN))} min`,
+          );
+        }
         const byNight = (night: string) => {
           const ids = new Set(list.filter((x) => String(x.night) === night).map((x) => x.id));
           return captures.filter((c) => c.sessionId !== null && ids.has(c.sessionId));
@@ -1084,12 +1187,10 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
             .map((c) => new Date(c.capturedAt).getTime())
             .sort((a, b) => a - b);
         const end1 = where.dawnUtc * 1000;
-        const lights1 = first(byNight('2026-10-31'), 'light');
-        const flats1 = first(byNight('2026-10-31'), 'flat');
-        const lastLight1 = lights1.at(-1);
-        const firstFlat1 = flats1[0];
+        const lastLight1 = first(byNight(night1), 'light').at(-1);
+        const firstFlat1 = first(byNight(night1), 'flat')[0];
         check(
-          'Nacht 1 endet mit der astronomischen Dämmerung in CST, danach Flats',
+          'Nacht 1 endet mit der astronomischen Dämmerung, danach Flats',
           lastLight1 !== undefined &&
             firstFlat1 !== undefined &&
             lastLight1 <= end1 + 6 * MIN &&
@@ -1099,9 +1200,9 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         );
         const start2 =
           typeof info.darknessStart2Utc === 'string' ? Date.parse(info.darknessStart2Utc) : NaN;
-        const firstLight2 = first(byNight('2026-11-01'), 'light')[0];
+        const firstLight2 = first(byNight(night2), 'light')[0];
         check(
-          'Nacht 2 beginnt mit der Dunkelheit in CST',
+          'Nacht 2 beginnt mit der Dunkelheit',
           firstLight2 !== undefined &&
             firstLight2 >= start2 - MIN &&
             firstLight2 <= start2 + 30 * MIN,

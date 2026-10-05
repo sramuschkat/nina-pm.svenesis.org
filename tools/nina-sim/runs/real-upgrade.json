@@ -1,0 +1,53 @@
+{
+  "name": "real-upgrade",
+  "description": "Plugin-Update über eine bestehende ninapm.db gegen den echten Server mit virtueller Uhr: Nacht 1 (20./21.10.2026, Starfront) mit dem Simulator der freigegebenen Version 0.4.2 (fromRef), Netzausfall in der letzten Stunde bis zum Ende – Aufnahmen, Flats und Abschluss bleiben in der Outbox. Am nächsten Tag startet die aktuelle Version auf derselben ninapm.db (Migrationen), sendet die Outbox nach und fährt Nacht 2. Prüft: keine Aufnahme verloren oder doppelt (Zähler = gemeldete Lights), beide Sessions abgeschlossen mit leerer Outbox, Flats beider Nächte, keine Fehler. fromRef bei jeder Plugin-Freigabe auf deren Commit setzen.",
+  "real": "starfront",
+  "parts": [
+    {
+      "scenario": "",
+      "fromRef": "cb43ab6",
+      "startUtc": "2026-10-20T22:00:00Z",
+      "untilMin": 830,
+      "setup": {
+        "readoutModes": ["normal1", "normal2"],
+        "rotatorConnected": false,
+        "ditherSettleS": 18,
+        "centerS": 35
+      },
+      "steps": [{ "atMin": 740, "sim": "network_down" }]
+    },
+    {
+      "scenario": "",
+      "keepDb": true,
+      "startUtc": "2026-10-21T17:00:00Z",
+      "untilMin": 1140,
+      "setup": {
+        "readoutModes": ["normal1", "normal2"],
+        "rotatorConnected": false,
+        "ditherSettleS": 18,
+        "centerS": 35
+      },
+      "steps": [],
+      "dayLoop": { "maxNights": 1, "source": "NauticalDusk", "offsetMin": 0 }
+    }
+  ],
+  "checks": [
+    {
+      "name": "Neue Version: zweite Nacht mit eigener Session",
+      "asserts": [
+        {
+          "log": { "event": "SESSION", "where": { "status": "running", "night": "2026-10-21" } },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Keine Fehler, keine Sperre",
+      "asserts": [
+        { "log": { "event": "ERROR" }, "min": 0, "max": 0 },
+        { "log": { "event": "BLOCKED" }, "min": 0, "max": 0 }
+      ]
+    }
+  ]
+}

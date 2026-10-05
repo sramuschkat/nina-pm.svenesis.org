@@ -265,9 +265,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Kopfloser Nachtlauf (alle Läufe)
         run: pnpm plugin:sim --out sim-runs
-      # Zeitumstellung CDT → CST (31.10./01.11.2026) gegen den echten Server mit virtueller Uhr (≈ 1 min, Lücke D).
-      - name: Kopfloser Nachtlauf gegen den echten Server (real-dst)
-        run: pnpm plugin:sim real-dst --out sim-runs
+      # Gegen den echten Server mit virtueller Uhr (≈ 3 min): Zeitumstellung Herbst und Frühjahr (Lücke D), Plugin-Update
+      # über die ninapm.db der freigegebenen Version (baut deren Simulator aus fromRef). real-all-done kommt mit dem Fix.
+      - name: Kopfloser Nachtlauf gegen den echten Server (real-dst, real-dst-spring, real-upgrade)
+        run: pnpm plugin:sim real-dst real-dst-spring real-upgrade --out sim-runs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

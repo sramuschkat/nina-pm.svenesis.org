@@ -10,7 +10,15 @@
  * z. B. die Nacht der Zeitumstellung (`real-dst`). Nur auf Abruf (`pnpm plugin:sim real-dst`), nicht im Standardlauf.
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +44,13 @@ interface RunPart {
   readonly real?: string;
   /** Beginn der virtuellen Uhr (ISO, UTC); nur mit `real`, sonst „jetzt“. */
   readonly startUtc?: string;
+  /**
+   * Teil mit dem Simulator einer älteren Plugin-Version (Git-Ref, z. B. der Commit des freigegebenen Plugins):
+   * Plugin-Update über eine bestehende `ninapm.db` (`real-upgrade`).
+   */
+  readonly fromRef?: string;
+  /** `ninapm.db` des vorigen Teils weiterverwenden (`--keep-db`), statt frisch anzulegen. */
+  readonly keepDb?: boolean;
 }
 
 /** Benannte Prüfung (Läufe ohne Protokoll, z. B. der VM-Kurzlauf `vm-smoke`). */
@@ -79,13 +94,56 @@ export function evaluateChecks(
 /** Port des echten Servers für `real-*`-Läufe. */
 const REAL_PORT = 18_960;
 
-/** NinaPm.Sim gegen den Server auf `port` fahren (Uhr ab `startS`). */
-function runSim(port: number, runPath: string, dir: string, startS: number): Promise<void> {
+/**
+ * NinaPm.Sim aus einem älteren Stand bauen (einmal je Ref, unter `.sim-runs/_ref-<ref>`): nur die Plugin-Quellen und
+ * ihre Build-Eingaben (`docs/api/openapi.nina.json`, `packages/engine/src/version.ts`) per `git archive`, kein Worktree.
+ */
+function simAtRef(ref: string): string {
+  const dir = join(ROOT, '.sim-runs', `_ref-${ref}`);
+  const dll = join(dir, 'apps/nina-plugin/NinaPm.Sim/bin/Release/net8.0/NinaPm.Sim.dll');
+  if (existsSync(dll)) return dll;
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  try {
+    execFileSync('git', ['cat-file', '-e', `${ref}^{commit}`], { cwd: ROOT, stdio: 'ignore' });
+  } catch {
+    // CI checkt nur den letzten Commit aus: den Ref gezielt nachholen.
+    execFileSync('git', ['fetch', '--depth', '1', 'origin', ref], { cwd: ROOT, stdio: 'inherit' });
+  }
+  const tar = execFileSync(
+    'git',
+    [
+      'archive',
+      ref,
+      'apps/nina-plugin',
+      'docs/api/openapi.nina.json',
+      'packages/engine/src/version.ts',
+    ],
+    { cwd: ROOT, maxBuffer: 256 * 1024 * 1024 },
+  );
+  execFileSync('tar', ['-x', '-C', dir], { input: tar });
+  execFileSync(
+    'dotnet',
+    ['build', join(dir, 'apps/nina-plugin/NinaPm.Sim'), '-c', 'Release', '-v', 'q', '-nologo'],
+    { stdio: ['ignore', 'inherit', 'inherit'] },
+  );
+  return dll;
+}
+
+/** NinaPm.Sim (Standard: aktueller Stand) gegen den Server auf `port` fahren (Uhr ab `startS`). */
+function runSim(
+  port: number,
+  runPath: string,
+  dir: string,
+  startS: number,
+  dll = DLL,
+  keepDb = false,
+): Promise<void> {
   return new Promise<void>((done, fail) => {
     const child = spawn(
       'dotnet',
       [
-        DLL,
+        dll,
         '--server',
         `http://127.0.0.1:${String(port)}/api`,
         '--run',
@@ -94,6 +152,7 @@ function runSim(port: number, runPath: string, dir: string, startS: number): Pro
         dir,
         '--start',
         new Date(startS * 1000).toISOString(),
+        ...(keepDb ? ['--keep-db'] : []),
       ],
       { stdio: ['ignore', 'inherit', 'inherit'] },
     );
@@ -159,8 +218,72 @@ export interface RunOutcome {
   readonly lines: string[];
 }
 
+/**
+ * Mehrere Teile gegen **einen** echten Server (Uhr läuft durch): je Teil ein Simulator, wahlweise aus einem älteren
+ * Stand (`fromRef`) und mit der `ninapm.db` des vorigen Teils (`keepDb`) – Plugin-Update zwischen zwei Nächten.
+ */
+async function runRealParts(
+  name: string,
+  run: RunFile & { readonly real: string; readonly parts: readonly RunPart[] },
+  dir: string,
+): Promise<{
+  report: unknown;
+  log: string;
+  realChecks: { name: string; ok: boolean; detail: string }[];
+}> {
+  const startMs = Date.parse(run.parts[0]?.startUtc ?? '');
+  if (Number.isNaN(startMs)) throw new Error(`${name}: startUtc im ersten Teil fehlt`);
+  const { startRealServer } = await import('../../../apps/api/src/bench/real-server');
+  const real = await startRealServer({
+    scenario: run.real as Parameters<typeof startRealServer>[0]['scenario'],
+    port: REAL_PORT,
+    latDeg: 50,
+    log: (m) => console.log(m),
+    startMs,
+  });
+  const logs: string[] = [];
+  try {
+    let previous: string | undefined;
+    for (const [i, part] of run.parts.entries()) {
+      const partDir = join(dir, `part-${String(i + 1)}`);
+      mkdirSync(partDir, { recursive: true });
+      const runPath = join(partDir, 'run.json');
+      writeFileSync(runPath, JSON.stringify({ protocol: name, ...part }, null, 2));
+      if (part.keepDb && previous)
+        for (const f of ['ninapm.db', 'ninapm.db-wal', 'ninapm.db-shm'])
+          if (existsSync(join(previous, f))) copyFileSync(join(previous, f), join(partDir, f));
+      const dll = part.fromRef ? simAtRef(part.fromRef) : DLL;
+      const partStart = Date.parse(part.startUtc ?? '');
+      if (Number.isNaN(partStart))
+        throw new Error(`${name}: startUtc in Teil ${String(i + 1)} fehlt`);
+      await runSim(REAL_PORT, runPath, partDir, Math.floor(partStart / 1000), dll, part.keepDb);
+      logs.push(readFileSync(join(partDir, 'nina.log'), 'utf8'));
+      previous = partDir;
+    }
+    const rep = await real.report();
+    return { report: rep.data, log: logs.join(''), realChecks: rep.checks };
+  } finally {
+    real.close();
+  }
+}
+
 export async function runOne(file: string, outRoot: string): Promise<RunOutcome> {
   const run = JSON.parse(readFileSync(join(RUNS, file), 'utf8')) as RunFile;
+  if (run.checks && run.real && run.parts) {
+    const name = run.name ?? file.slice(0, -5);
+    const dir = join(outRoot, name);
+    rmSync(dir, { recursive: true, force: true });
+    const r = await runRealParts(name, { ...run, real: run.real, parts: run.parts }, dir);
+    writeFileSync(join(dir, 'report.json'), `${JSON.stringify(r.report, null, 2)}\n`);
+    writeFileSync(join(dir, 'nina.log'), r.log);
+    const c = evaluateChecks(run.checks, r.log, r.report, false);
+    const realLines = r.realChecks.map((x) => `  ${x.ok ? '✓' : '✗'} ${x.name} – ${x.detail}`);
+    return {
+      protocol: name,
+      passed: c.passed && r.realChecks.every((x) => x.ok),
+      lines: [...c.lines, ...realLines],
+    };
+  }
   if (run.checks) {
     const name = run.name ?? file.slice(0, -5);
     const dir = join(outRoot, name);

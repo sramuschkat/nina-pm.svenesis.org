@@ -55,6 +55,9 @@ Aus 21 NINA-Logs des Rigs in Starfront (23.08.–26.09.2026, Astro PM) und dem N
 | Lauf | Prüft |
 |---|---|
 | `real-dst` | zwei Nächte in Starfront über die Zeitumstellung CDT → CST (31.10./01.11.2026, 02:00 = 07:00Z), Sequenz „Mehrere Nächte“ mit Warten auf die nautische Dämmerung, vier echte Ziele à 300 s, Flats am Nachtende: je Nacht ein Nacht-Schlüssel und eine abgeschlossene Session, Pläne nur für diese Nächte, Aufnahmen ohne Lücke über die doppelte Stunde, Nachtende zur astronomischen Dämmerung in CST, Warten auf Zeit und Beginn der zweiten Nacht in CST (≈ 1 min) |
+| `real-dst-spring` | dasselbe für die Frühjahrs-Umstellung CST → CDT (13./14.03.2027, die Stunde 02:00–03:00 fällt aus) mit Frühjahrszielen |
+| `real-upgrade` | Plugin-Update über eine bestehende `ninapm.db`: Nacht 1 mit dem Simulator der freigegebenen Version (`fromRef`, aus Git gebaut), Netzausfall in der letzten Stunde, Outbox voll; die aktuelle Version startet am nächsten Tag auf derselben Datenbank (`--keep-db`), sendet nach und fährt Nacht 2. Keine Aufnahme verloren oder doppelt, beide Sessions abgeschlossen. `fromRef` bei jeder Plugin-Freigabe auf deren Commit setzen |
+| `real-all-done` | alle Projekte vor der Dämmerung fertig: Nachtende zur Dämmerung, Flats, keine Session der nächsten Nacht am Morgen. **Rot** seit 05.10.2026 (Fehler gefunden, Fix offen), darum noch nicht im CI |
 
 ## VM-Kurzlauf `vm-smoke` (≈ 25 min, ersetzt die Einzelläufe auf der VM)
 Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit NINAs Zeiten und Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.

@@ -1,7 +1,7 @@
 {
   "name": "real-dst",
   "description": "Lücke D: zwei Nächte über die Zeitumstellung in Starfront (31.10./01.11.2026, CDT → CST um 02:00 = 07:00Z) gegen den echten Server mit virtueller Uhr. Sequenz „Mehrere Nächte“ mit Warten auf die nautische Dämmerung; vier echte Ziele (NGC 7000, M 31, M 45, M 42) à 300 s, Gain/Offset 125/50, Flats am Nachtende. Prüft Nacht-Schlüssel, Warten auf Zeit in CST, Aufnahmen über die doppelte Stunde, Nachtende und Beginn der zweiten Nacht.",
-  "real": "dst",
+  "real": "starfront",
   "startUtc": "2026-10-31T17:00:00Z",
   "untilMin": 2700,
   "setup": {

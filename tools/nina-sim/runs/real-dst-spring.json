@@ -1,0 +1,49 @@
+{
+  "name": "real-dst-spring",
+  "description": "Zeitumstellung im Frühjahr: zwei Nächte in Starfront (13./14.03.2027, CST → CDT um 02:00 = 08:00Z, die Stunde 02:00–03:00 fällt aus) gegen den echten Server mit virtueller Uhr. Sequenz „Mehrere Nächte“ mit Warten auf die nautische Dämmerung; Frühjahrsziele (M 42, M 81, M 51, M 13) à 300 s, Flats am Nachtende. Prüft Nacht-Schlüssel, Warten auf Zeit in CDT, Aufnahmen über die ausgefallene Stunde, Nachtende und Beginn der zweiten Nacht.",
+  "real": "starfront",
+  "startUtc": "2027-03-13T18:00:00Z",
+  "untilMin": 2700,
+  "setup": {
+    "readoutModes": ["normal1", "normal2"],
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35
+  },
+  "steps": [],
+  "dayLoop": { "maxNights": 2, "source": "NauticalDusk", "offsetMin": 0 },
+  "checks": [
+    {
+      "name": "Warten auf Zeit je Nacht mit dem richtigen Nacht-Schlüssel, Ende nach zwei Nächten",
+      "asserts": [
+        { "log": { "event": "WAIT_TIME", "where": { "night": "2027-03-13" } }, "min": 1, "max": 1 },
+        { "log": { "event": "WAIT_TIME", "where": { "night": "2027-03-14" } }, "min": 1, "max": 1 },
+        {
+          "log": { "event": "DAYLOOP_END", "where": { "reason": "max_nights" } },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "name": "Zweite Nacht (CDT): Warten endet zur nautischen Dämmerung des Servers (±60 s)",
+      "asserts": [
+        {
+          "timeGap": [
+            { "report": "info.nauticalDusk2Utc" },
+            { "event": "WAIT_TIME", "field": "untilUtc", "nth": 2 }
+          ],
+          "minS": -60,
+          "maxS": 60
+        }
+      ]
+    },
+    {
+      "name": "Keine Fehler, keine Sperre",
+      "asserts": [
+        { "log": { "event": "ERROR" }, "min": 0, "max": 0 },
+        { "log": { "event": "BLOCKED" }, "min": 0, "max": 0 }
+      ]
+    }
+  ]
+}
