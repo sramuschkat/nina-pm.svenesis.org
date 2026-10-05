@@ -100,6 +100,10 @@ Grundlage ist die Beispielsequenz **„Eine Nacht mit Safety“** (Links auf der
 ## 5. Am Morgen danach
 
 - **NINA-Log** der Nacht (`%LOCALAPPDATA%\NINA\Logs\<Datum>.log`) nach `docs/test-runs/<Datum>/rig-night-<n>/` legen oder schicken. Claude Code wertet es aus: Ablauf, Warnungen, Zeiten gegen den Plan, Verzug, Flats.
+- **Schnelle Prüfung:** `pnpm rig-night:check docs/test-runs/<Datum>/rig-night-<n>/` liest alle NINA-Logs der Nacht und gibt ein Go/No-Go.
+  - Muss: Plan, Session gestartet und regulär beendet, Outbox leer, keine `ERROR`-Zeile, keine Sperre, keine abgelehnte Anfrage, Lights gespeichert, Flat-Kombinationen erledigt, Flats erst nach der nautischen Dämmerung von Starfront.
+  - Hinweise: Warnungen, Flips, `WAIT_PLAN`, übersprungene Blöcke, Safety-Unterbrechungen, Nutzung der Dunkelheit.
+  - Lights je Filter liest das Werkzeug aus dem Dateinamen.
 - **Im Web prüfen:**
   - Session abgeschlossen;
   - Zähler je Zeile = gespeicherte Dateien;

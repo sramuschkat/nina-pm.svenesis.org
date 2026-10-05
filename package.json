@@ -34,6 +34,7 @@
     "discord-mock": "tsx tools/discord-mock/src/cli.ts",
     "nina-test-server": "tsx tools/nina-test-server/src/cli.ts",
     "test-run:check": "tsx tools/test-run-check/src/cli.ts",
+    "rig-night:check": "tsx tools/test-run-check/src/rig-night.ts",
     "plugin:sim": "tsx tools/nina-sim/src/cli.ts",
     "vm-bench": "tsx tools/vm-bench/src/cli.ts",
     "golive:check": "tsx tools/deploy/src/golive-check.ts",
