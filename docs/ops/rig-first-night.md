@@ -43,7 +43,7 @@ Ziel jeder betreuten Nacht: Am Morgen liegt das NINA-Log vor, Session und Zähle
 
 ## 2. Am Rig-PC
 
-- **Plugin** in der freigegebenen Version installieren (aktuell 0.4.4). Dazu NINA beenden, das Plugin-Paket nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm` entpacken und NINA starten. Das Astro-PM-Plugin darf installiert bleiben; seine Sequenz aber nicht laden.
+- **Plugin** in der freigegebenen Version installieren (aktuell **0.4.7**, CI-Artefakt `nina-pm-plugin` des `plugin`-Laufs auf main a15b6f1). Dazu NINA beenden, das Plugin-Paket nach `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Svenesis.NinaPm` entpacken und NINA starten. Das Astro-PM-Plugin darf installiert bleiben; seine Sequenz aber nicht laden.
 - **Keine Advanced API** auf dem Rig. Sie hat keine Anmeldung und ist nur für die Test-VM gedacht.
 - *Optionen › Plugins › NINA-PM*:
   - Server-URL bleibt `https://nina-pm.svenesis.org/api`, Sync-Token eintragen;
