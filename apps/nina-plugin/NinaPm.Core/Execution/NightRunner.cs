@@ -1199,7 +1199,19 @@ public sealed class NightRunner(
     /// <summary>Anweisung <em>Warten bis sicher oder Nachtende</em> hat die Nacht abgeschlossen (H2).</summary>
     public async Task CloseNightUnsafeAsync(CancellationToken token)
     {
-        // Flats nur, falls sicher (H2): offene Kombinationen der Nacht übersprungen.
+        // Panel-Flats brauchen keinen Himmel: auch unsicher (Dach zu) vor sessionEndUtc ausführen – Starfront schließt das
+        // Dach je nach Lage schon zur Dämmerung (Entscheidung Sven 05.10.2026, H2 geändert). Nur Himmelsflats verlangen
+        // „sicher“. Ein Abbruch (Sequenz gestoppt, NINA beendet, wieder sicher) lässt die Kombination offen und die Session
+        // unberührt – sie wird später fortgesetzt.
+        if (flats is not null && store.GetState(StateKeys.Night) is { } flatNight && bootstrap is { } fb && FlatsOn(fb)
+            && fb.Rig.Scheduler.Flats.Source != FlatsSource.Sky
+            && PlanStore.Load(store, flatNight) is { } flatPlan && clock.UtcNow < flatPlan.Plan.SessionEndUtc
+            && flats.Pending(flatNight, FlatOptions(fb), includeCarryOver: SessionId is not null))
+        {
+            log.Note("Unsafe at night end – panel flats run anyway (no sky needed).");
+            await flats.RunAsync(FlatSettings(fb, flatNight, flatPlan), token).ConfigureAwait(false);
+        }
+        // Himmelsflats nur, falls sicher (H2): offene Kombinationen der Nacht übersprungen.
         if (flats is not null && store.GetState(StateKeys.Night) is { } night)
             flats.SkipOpen(night, "unsafe", carryOver: bootstrap is { } b && AutoFlats(b));
         await PatchSessionAsync(NinaSessionPatchStatus.Completed, token).ConfigureAwait(false);

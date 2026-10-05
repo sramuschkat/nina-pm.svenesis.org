@@ -83,7 +83,8 @@ Grundlage ist die Beispielsequenz **„Eine Nacht mit Safety“** (Links auf der
 | Sequenzstart | NINA-Log | `PLAN reason=initial`, `SESSION … status=running`, Live-Status im Container mit „Today's targets“ |
 | Erster Block | NINA, Web *Sessions* | Slew, Zentrieren, erste Aufnahmen; im Web steigen die Zähler |
 | Meridian-Flip | NINA-Log | `FLIP pierBefore=… pierAfter=… durationS=…`, danach Zentrieren und weiter |
-| Dach zu | NINA | Belichtung abgebrochen, Sicherung parkt, *Wait until Safe or Night End* wartet; Dach auf → Wiederaufnahme mit neuem Plan |
+| Dach zu | NINA | Belichtung abgebrochen, Sicherung parkt, *Wait until Safe or Night End* wartet; Dach auf → Wiederaufnahme mit neuem Plan. Bleibt das Dach bis zum Ende der Dunkelheit zu, laufen die **Panel-Flats trotzdem** (Log `Unsafe at night end – panel flats run anyway`), danach `SESSION status=finished reason=unsafe` |
+| Dach schließt während der Flats | NINA-Log | **prüfen:** Die laufende Kombination wird unterbrochen und in der Sicherung mit den fehlenden Aufnahmen fortgesetzt; alle Kombinationen `done` |
 | Morgen | NINA-Log, Discord | Ende der Dunkelheit → `FLATS_START` erst nach −12° → Flats → `SESSION status=completed pending=0` → Ende-Bereich (Parken, Aufwärmen) → Nachtbericht in Discord |
 
 **Bei Problemen:**

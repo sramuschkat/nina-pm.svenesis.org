@@ -1,0 +1,96 @@
+{
+  "name": "starfront-roof-flats",
+  "scenario": "starfront-roof-flats",
+  "description": "Dach schließt bei Minute 50 und bleibt zu (unsicher) bis nach dem Ende der Dunkelheit (Minute 65); Flats vom Panel. Die Anweisung „Warten bis sicher oder Nachtende“ führt am Nachtende die Panel-Flats trotzdem aus und schließt erst danach die Nacht ab (Entscheidung Sven 05.10.2026: Flats auch bei unsicher).",
+  "untilMin": 80,
+  "setup": {
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "safeAtStart": false
+  },
+  "steps": [
+    {
+      "atMin": 15,
+      "sim": "safe"
+    },
+    {
+      "atMin": 50,
+      "sim": "unsafe"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Dach zu bis nach dem Nachtende: keine Wiederaufnahme",
+      "asserts": [
+        {
+          "none": {
+            "event": "SAFETY_RESUME"
+          },
+          "after": {
+            "event": "SAFETY_PAUSE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Panel-Flats laufen trotz Dach zu, erst danach Abschluss der Nacht",
+      "asserts": [
+        {
+          "order": [
+            {
+              "event": "SAFETY_PAUSE"
+            },
+            {
+              "event": "FLATS_START"
+            },
+            {
+              "event": "FLATS_END",
+              "where": {
+                "status": "done"
+              }
+            },
+            {
+              "event": "SESSION",
+              "where": {
+                "status": "finished",
+                "reason": "unsafe"
+              }
+            }
+          ]
+        },
+        {
+          "report": "captures",
+          "where": {
+            "frameType": "flat"
+          },
+          "min": 5,
+          "max": 5
+        },
+        {
+          "log": {
+            "event": "FLATS_END",
+            "where": {
+              "status": "skipped"
+            }
+          },
+          "min": 0,
+          "max": 0
+        }
+      ]
+    },
+    {
+      "name": "Session abgeschlossen",
+      "asserts": [
+        {
+          "report": "sessions",
+          "where": {
+            "status": "completed"
+          },
+          "min": 1,
+          "max": 1
+        }
+      ]
+    }
+  ]
+}
