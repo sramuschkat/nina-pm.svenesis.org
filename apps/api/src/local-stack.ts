@@ -121,6 +121,11 @@ export interface LocalStackOptions {
   readonly liveWeather?: boolean;
   /** Takt wie `tick-5min` (Jobs nachholen, Sessions, Transits, Discord); ohne Angabe aus. */
   readonly tickMs?: number | undefined;
+  /**
+   * Uhr des Stacks statt der echten (kopfloser Nachtlauf gegen den echten Server: folgt der virtuellen Uhr des
+   * Plugin-Simulators, `x-npm-sim-now`). Die Testuhr je Anfrage (`npm_test_now`) geht weiter vor.
+   */
+  readonly clock?: () => Date;
 }
 
 export interface LocalStack {
@@ -154,7 +159,7 @@ export async function createLocalStack(opts: LocalStackOptions): Promise<LocalSt
   // ohne die Uhr anderer Anfragen zu verstellen.
   const testNow = new AsyncLocalStorage<Date>();
   const TEST_NOW_COOKIE = 'npm_test_now';
-  const now = () => testNow.getStore() ?? new Date();
+  const now = () => testNow.getStore() ?? opts.clock?.() ?? new Date();
   const queue = new JobQueue(db);
   const localSessionJobs: SessionJobDeps = {
     db: () => Promise.resolve(db),

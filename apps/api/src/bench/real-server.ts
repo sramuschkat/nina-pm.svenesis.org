@@ -29,7 +29,7 @@ import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
 import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
 
 export type RealScenario =
-  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip';
+  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip' | 'dst';
 
 /** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
 export const BENCH_TOKEN = 'npm_test';
@@ -57,6 +57,8 @@ const MIN_PER_DEG = 1440 / 360.98564736629;
  * `flip_timing_mismatch`. Flip-Dauer ohne Autofokus nach dem Flip (Slew + Zentrieren im Simulator).
  */
 const VM_FLIP = { afterMin: 1, maxAfterMin: 5, pauseBeforeMin: 0, durationS: 120 };
+/** Starfront wie das Rig und der Plugin-Simulator (`NinaPm.Sim`, `profileLocation`). */
+const STARFRONT = { latDeg: 31.5471, lonDeg: -99.3823, timeZone: 'America/Chicago' };
 /** Flip-relevante Codes der Einstellungsprüfung (`ninaSettingsMismatchCodes`): im Flip-Lauf darf keiner auftreten. */
 const FLIP_MISMATCH_CODES = [
   'flip_trigger_missing',
@@ -72,6 +74,11 @@ export interface RealServerOptions {
   /** Breite des Standorts = Breite im NINA-Profil der VM (der Simulator rechnet damit). */
   readonly latDeg: number;
   readonly log: (message: string) => void;
+  /**
+   * Virtuelle Uhr ab diesem Zeitpunkt (kopfloser Nachtlauf, `tools/nina-sim`): der Stack folgt dem Header
+   * `x-npm-sim-now` des Plugin-Simulators (nie rückwärts) und führt `tick-5min` je 5 virtuelle Minuten aus.
+   */
+  readonly startMs?: number;
 }
 
 export interface RealCheck {
@@ -140,6 +147,34 @@ function solveLongitude(
   return best;
 }
 
+/** Nacht am echten Standort Starfront (Szenario `dst`): Nacht-Schlüssel und astronomische Dämmerung wie der Server. */
+function starfrontNight(nowMs: number): {
+  lonDeg: number;
+  timeZone: string;
+  night: string;
+  dawnUtc: number;
+  duskUtc: number;
+} {
+  const night = noonNightKey(STARFRONT.timeZone, nowMs);
+  const t = nightTimes({
+    site: { latDeg: STARFRONT.latDeg, lonDeg: STARFRONT.lonDeg },
+    night,
+    timeZoneTransitions: timeZoneTransitions(
+      STARFRONT.timeZone,
+      nowMs - 3 * 86_400_000,
+      nowMs + 3 * 86_400_000,
+    ),
+  }).twilight.astronomical;
+  if (t.startUtc === null || t.endUtc === null) throw new Error('Starfront ohne Dunkelheit');
+  return {
+    lonDeg: STARFRONT.lonDeg,
+    timeZone: STARFRONT.timeZone,
+    night,
+    dawnUtc: t.endUtc,
+    duskUtc: t.startUtc,
+  };
+}
+
 /** Ortssternzeit in Grad (GMST nach IAU 1982, für die Zielwahl genau genug). */
 function lstDeg(nowMs: number, lonDeg: number): number {
   const d = jdFromUnix(nowMs / 1000) - 2451545.0;
@@ -148,14 +183,17 @@ function lstDeg(nowMs: number, lonDeg: number): number {
 
 export async function startRealServer(opts: RealServerOptions): Promise<RealServer> {
   const discord = await startDiscordMock({ port: 0 });
+  const virtual = opts.startMs !== undefined;
+  let simNowMs = opts.startMs ?? 0;
+  let lastTickMs = simNowMs;
   const stack: LocalStack = await createLocalStack({
     port: opts.port,
     authTestMode: true,
     discordMockUrl: discord.url,
-    tickMs: MIN,
+    ...(virtual ? { clock: () => new Date(simNowMs) } : { tickMs: MIN }),
   });
   const tenantId = localSeed.tenant.id;
-  const nowMs = Date.now();
+  const nowMs = opts.startMs ?? Date.now();
 
   // Anmeldung als Owner (Test-Login wie die E2E-Läufe) und Web-Aufrufe über denselben Stack.
   const login = await stack.fetch(
@@ -197,23 +235,27 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   };
 
   const s = opts.scenario;
+  const latDeg = s === 'dst' ? STARFRONT.latDeg : opts.latDeg;
   // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle und Flip 35 min, Transit 40 min
   // (Fenster endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
   const dawnMs =
     nowMs + (s === 'night-flats' ? 25 : s === 'commands' || s === 'flip' ? 35 : 40) * MIN;
-  const where = solveLongitude(opts.latDeg, nowMs, dawnMs, 'astronomical');
+  const where =
+    s === 'dst'
+      ? starfrontNight(nowMs)
+      : solveLongitude(opts.latDeg, nowMs, dawnMs, 'astronomical');
   const site = await web<Body>(`/sites/${siteId}`);
   await web(`/sites/${siteId}`, 'PUT', {
     name: site.name,
     pierName: site.pierName ?? null,
     observatoryType: site.observatoryType,
-    latitudeDeg: opts.latDeg,
+    latitudeDeg: latDeg,
     longitudeDeg: where.lonDeg,
     elevationM: 200,
     bortleClass: site.bortleClass ?? null,
     timeZone: where.timeZone,
     weatherSafetyUrl: null,
-    notes: 'VM-Prüfstand (Stufe 2a)',
+    notes: s === 'dst' ? 'Kopfloser Lauf Zeitumstellung (Starfront)' : 'VM-Prüfstand (Stufe 2a)',
   });
   await web(`/rigs/${rigId}/filter-wheel`, 'PUT', {
     slots: VM_WHEEL.filters.map((f) => ({
@@ -247,7 +289,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     {
       ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
       ditherEvery: s === 'full-night' ? 3 : 5,
-      flatsEnabled: s === 'night-flats' || s === 'full-night',
+      flatsEnabled: s === 'night-flats' || s === 'full-night' || s === 'dst',
       flatsSource: 'panel',
       flatsAutoMode: 'off',
       flatCount: 3,
@@ -302,14 +344,15 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     name: string,
     raOffsetDeg: number,
     lines: [string, number, number?, number?][],
+    fixed?: { raDeg: number; decDeg: number; exposureS: number },
   ) => {
     const created = await web<{ id: string; panels: { id: string }[] }>('/projects', 'POST', {
       id: id(),
       name,
       rigId,
       targetName: name,
-      raDeg: (((lst - 30 + raOffsetDeg) % 360) + 360) % 360,
-      decDeg: 75,
+      raDeg: fixed?.raDeg ?? (((lst - 30 + raOffsetDeg) % 360) + 360) % 360,
+      decDeg: fixed?.decDeg ?? 75,
     });
     const panelId = created.panels[0]?.id ?? '';
     const lineIds: string[] = [];
@@ -319,7 +362,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         id: lineId,
         panelId,
         filterId: filterId(short),
-        exposureS: 30,
+        exposureS: fixed?.exposureS ?? 30,
         plannedCount: count,
         moonMode: 'none',
         ...(gain !== undefined ? { gain } : {}),
@@ -340,7 +383,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   };
   // Nautische Morgendämmerung des Standorts (Flats in Starfront erst danach, Box *Vor Flats*).
   const nautical = nightTimes({
-    site: { latDeg: opts.latDeg, lonDeg: where.lonDeg },
+    site: { latDeg, lonDeg: where.lonDeg },
     night: where.night,
     timeZoneTransitions: timeZoneTransitions(
       where.timeZone,
@@ -413,12 +456,77 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     );
     const tM = meridianTransitUtc(
       { raJ2000Deg: (((lst - 30 + raOffsetDeg) % 360) + 360) % 360, decJ2000Deg: 75 },
-      { latDeg: opts.latDeg, lonDeg: where.lonDeg },
+      { latDeg, lonDeg: where.lonDeg },
       nowMs / 1000,
       nowMs / 1000 + 86_400,
     );
     if (tM === null) throw new Error('kein Meridiandurchgang für das Flip-Ziel');
     info.meridianUtc = iso(tM * 1000);
+  } else if (s === 'dst') {
+    // Nacht 31.10./01.11.2026 in Starfront (CDT → CST um 02:00 = 07:00Z): echte Ziele von abends bis morgens, 300 s je
+    // Aufnahme wie am Rig; M45 kulminiert ≈ 01:20 CDT, kurz vor der Umstellung (Flip in der doppelten Stunde).
+    const targets: [string, number, number, [string, number][]][] = [
+      [
+        'NGC 7000',
+        314.75,
+        44.3,
+        [
+          ['Ha', 30],
+          ['OIII', 30],
+        ],
+      ],
+      [
+        'M 31',
+        10.68,
+        41.27,
+        [
+          ['L', 30],
+          ['R', 15],
+          ['G', 15],
+          ['B', 15],
+        ],
+      ],
+      [
+        'M 45',
+        56.75,
+        24.12,
+        [
+          ['L', 30],
+          ['B', 15],
+        ],
+      ],
+      [
+        'M 42',
+        83.82,
+        -5.39,
+        [
+          ['Ha', 30],
+          ['L', 15],
+        ],
+      ],
+    ];
+    for (const [name, raDeg, decDeg, lines] of targets)
+      projects.push(
+        await deepSky(
+          name,
+          0,
+          lines.map(([f, n]): [string, number, number, number] => [f, n, 125, 50]),
+          { raDeg, decDeg, exposureS: 300 },
+        ),
+      );
+    const second = nightTimes({
+      site: { latDeg, lonDeg: where.lonDeg },
+      night: '2026-11-01',
+      timeZoneTransitions: timeZoneTransitions(
+        STARFRONT.timeZone,
+        nowMs - 86_400_000,
+        nowMs + 5 * 86_400_000,
+      ),
+    });
+    if (second.twilight.nautical.startUtc !== null)
+      info.nauticalDusk2Utc = iso(second.twilight.nautical.startUtc * 1000);
+    if (second.twilight.astronomical.startUtc !== null)
+      info.darknessStart2Utc = iso(second.twilight.astronomical.startUtc * 1000);
   } else if (s === 'network') {
     projects.push(await deepSky('Bench NGC A', 0, [['L', 20]]));
     projects.push(await deepSky('Bench NGC B', 20, [['Ha', 20]]));
@@ -506,14 +614,21 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   }
 
   // Token des Prüfstand-Profils auf die echte Instanz umschreiben.
-  const fetchVm = (req: Request) => {
+  const fetchVm = async (req: Request) => {
+    // Kopfloser Lauf: Uhr des Simulators übernehmen (nie rückwärts), Takt `tick-5min` je 5 virtuelle Minuten.
+    const sim = virtual ? Date.parse(req.headers.get('x-npm-sim-now') ?? '') : NaN;
+    if (!Number.isNaN(sim) && sim > simNowMs) simNowMs = sim;
+    if (virtual && simNowMs - lastTickMs >= 5 * MIN) {
+      lastTickMs = simNowMs;
+      await stack.tick();
+    }
     // Netzausfall: das Plugin bekommt keine Antwort (Zeitüberschreitung wie beim Test-Server `drop_responses`).
     if (dropping && new URL(req.url).pathname.startsWith('/api/nina/'))
-      return new Promise<Response>(() => undefined);
-    if (req.headers.get('authorization') !== `Bearer ${BENCH_TOKEN}`) return stack.fetch(req);
+      return await new Promise<Response>(() => undefined);
+    if (req.headers.get('authorization') !== `Bearer ${BENCH_TOKEN}`) return await stack.fetch(req);
     const headers = new Headers(req.headers);
     headers.set('authorization', `Bearer ${instance.token}`);
-    return stack.fetch(new Request(req, { headers }));
+    return await stack.fetch(new Request(req, { headers }));
   };
   const http = await listenLocal(fetchVm, opts.port, '0.0.0.0');
   opts.log(`Echter Server (${s}) auf Port ${String(opts.port)}: ${JSON.stringify(info)}`);
@@ -521,14 +636,14 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   const sessions = () =>
     stack.db
       .selectFrom('session')
-      .select(['id', 'status', 'endedAt', 'outboxPending'])
+      .select(['id', 'status', 'endedAt', 'outboxPending', 'night'])
       .where('tenantId', '=', tenantId)
       .where('rigId', '=', rigId)
       .execute();
 
   return {
     profile: {
-      'AstrometrySettings-Latitude': opts.latDeg,
+      'AstrometrySettings-Latitude': latDeg,
       'AstrometrySettings-Longitude': where.lonDeg,
       'AstrometrySettings-Elevation': 200,
       // Montierung übernimmt beim Verbinden den Standort des Profils: NINA flippt nach der Sternzeit der Montierung, der
@@ -596,7 +711,9 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         await stack.tick();
         const rows = await jobsDone();
         if (rows.length >= 2 && rows.every((r) => r.status === 'done')) break;
-        await new Promise((r) => setTimeout(r, 10_000));
+        // Virtuelle Uhr: eine Minute weiter statt zu warten.
+        if (virtual) simNowMs += MIN;
+        else await new Promise((r) => setTimeout(r, 10_000));
       }
       if (transit) {
         // Wertung nach Fensterende + 30 min (TRANSIT_SETTLE_GRACE_MS); im Lauf vorgezogen statt 30 min zu warten.
@@ -618,6 +735,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       const captures = await stack.db
         .selectFrom('capture')
         .select([
+          'sessionId',
           'exposureLineId',
           'projectId',
           'capturedAt',
@@ -646,7 +764,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         : [];
       const plans = await stack.db
         .selectFrom('nightPlan')
-        .select(['reason', 'createdAt'])
+        .select(['reason', 'createdAt', 'night'])
         .where('tenantId', '=', tenantId)
         .where('rigId', '=', rigId)
         .execute();
@@ -790,6 +908,67 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           'Keine Flip- oder Standortwarnung der Einstellungsprüfung',
           bad.length === 0,
           `alle Codes: ${mismatchCodes.join(',') || '–'}`,
+        );
+      }
+      if (s === 'dst') {
+        // Zeitumstellung CDT → CST am 01.11.2026 um 02:00 (07:00Z): Nacht-Schlüssel, Nachtende, Aufnahmen über die
+        // doppelte Stunde, Beginn der zweiten Nacht in CST (Lücke D, 05.10.2026).
+        const nights = [...new Set(list.map((x) => String(x.night)))].sort();
+        check(
+          'Zwei Nächte, je ein Nacht-Schlüssel, beide abgeschlossen',
+          done.length === 2 && nights.join(',') === '2026-10-31,2026-11-01',
+          `${JSON.stringify(list.map((x) => [x.night, x.status]))}`,
+        );
+        const planNights = [...new Set(plans.map((p) => String(p.night)))].sort();
+        check(
+          'Pläne nur für diese beiden Nächte',
+          planNights.join(',') === '2026-10-31,2026-11-01',
+          `${planNights.join(',')} (${String(plans.length)} Pläne)`,
+        );
+        const dstMs = Date.parse('2026-11-01T07:00:00Z');
+        const times = lights
+          .map((c) => new Date(c.capturedAt).getTime())
+          .filter((t) => t >= dstMs - 90 * MIN && t <= dstMs + 90 * MIN)
+          .sort((a, b) => a - b);
+        const gaps = times.slice(1).map((t, i) => t - (times[i] ?? t));
+        const maxGap = Math.max(0, ...gaps);
+        check(
+          'Aufnahmen über die Umstellung (05:30–08:30Z) ohne Lücke über 25 min',
+          times.length >= 12 && maxGap <= 25 * MIN,
+          `${String(times.length)} Lights, größte Lücke ${String(Math.round(maxGap / MIN))} min`,
+        );
+        const byNight = (night: string) => {
+          const ids = new Set(list.filter((x) => String(x.night) === night).map((x) => x.id));
+          return captures.filter((c) => c.sessionId !== null && ids.has(c.sessionId));
+        };
+        const first = (rows: typeof captures, type: string) =>
+          rows
+            .filter((c) => c.frameType === type)
+            .map((c) => new Date(c.capturedAt).getTime())
+            .sort((a, b) => a - b);
+        const end1 = where.dawnUtc * 1000;
+        const lights1 = first(byNight('2026-10-31'), 'light');
+        const flats1 = first(byNight('2026-10-31'), 'flat');
+        const lastLight1 = lights1.at(-1);
+        const firstFlat1 = flats1[0];
+        check(
+          'Nacht 1 endet mit der astronomischen Dämmerung in CST, danach Flats',
+          lastLight1 !== undefined &&
+            firstFlat1 !== undefined &&
+            lastLight1 <= end1 + 6 * MIN &&
+            firstFlat1 >= end1 - MIN &&
+            firstFlat1 <= end1 + 30 * MIN,
+          `Dämmerung ${iso(end1)}, letztes Light ${lastLight1 ? iso(lastLight1) : '–'}, erstes Flat ${firstFlat1 ? iso(firstFlat1) : '–'}`,
+        );
+        const start2 =
+          typeof info.darknessStart2Utc === 'string' ? Date.parse(info.darknessStart2Utc) : NaN;
+        const firstLight2 = first(byNight('2026-11-01'), 'light')[0];
+        check(
+          'Nacht 2 beginnt mit der Dunkelheit in CST',
+          firstLight2 !== undefined &&
+            firstLight2 >= start2 - MIN &&
+            firstLight2 <= start2 + 30 * MIN,
+          `Dunkelheit ${String(info.darknessStart2Utc ?? '–')}, erstes Light ${firstLight2 ? iso(firstLight2) : '–'}`,
         );
       }
       if (s === 'network') {

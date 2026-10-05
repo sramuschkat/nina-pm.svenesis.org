@@ -2,7 +2,12 @@
  * `pnpm plugin:sim [P-xx …] [--out <ordner>] [--keep]` – kopfloser Nachtlauf (ops/plugin-test-protocol.md
  * „Kopfloser Nachtlauf“): je Lauf aus `runs/P-xx.json` den Test-Server mit virtueller Uhr starten, den Plugin-Kern mit
  * simuliertem NINA (`apps/nina-plugin/NinaPm.Sim`) eine Nacht in Sekunden fahren lassen, danach die Protokollschritte
- * automatisch prüfen und `test-run:check` laufen lassen. Ohne Angabe alle Läufe. Exitcode 1, wenn einer scheitert.
+ * automatisch prüfen und `test-run:check` laufen lassen. Ohne Angabe alle Läufe außer `real-*`. Exitcode 1, wenn
+ * einer scheitert.
+ *
+ * `real-*`-Läufe (`"real": "<Szenario>"`, `"startUtc"`) fahren statt gegen den Test-Server gegen den **echten** Server
+ * (`apps/api/src/bench/real-server.ts`, lokaler Stack mit PGlite), dessen Uhr der virtuellen Uhr des Simulators folgt –
+ * z. B. die Nacht der Zeitumstellung (`real-dst`). Nur auf Abruf (`pnpm plugin:sim real-dst`), nicht im Standardlauf.
  */
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -27,6 +32,10 @@ interface RunPart {
   readonly steps?: unknown[];
   /** Sequenz „Mehrere Nächte“ (AP-52): Tagesschleife mit Warten auf Zeit (`NinaPm.Sim`, `SimDayLoop`). */
   readonly dayLoop?: unknown;
+  /** Gegen den echten Server mit diesem Szenario (`RealScenario`) statt gegen den Test-Server. */
+  readonly real?: string;
+  /** Beginn der virtuellen Uhr (ISO, UTC); nur mit `real`, sonst „jetzt“. */
+  readonly startUtc?: string;
 }
 
 /** Benannte Prüfung (Läufe ohne Protokoll, z. B. der VM-Kurzlauf `vm-smoke`). */
@@ -67,41 +76,77 @@ export function evaluateChecks(
   return { passed, lines };
 }
 
-/** Ein Teil: Test-Server mit virtueller Uhr, NinaPm.Sim dagegen; liefert Report und Logtext. */
+/** Port des echten Servers für `real-*`-Läufe. */
+const REAL_PORT = 18_960;
+
+/** NinaPm.Sim gegen den Server auf `port` fahren (Uhr ab `startS`). */
+function runSim(port: number, runPath: string, dir: string, startS: number): Promise<void> {
+  return new Promise<void>((done, fail) => {
+    const child = spawn(
+      'dotnet',
+      [
+        DLL,
+        '--server',
+        `http://127.0.0.1:${String(port)}/api`,
+        '--run',
+        runPath,
+        '--out',
+        dir,
+        '--start',
+        new Date(startS * 1000).toISOString(),
+      ],
+      { stdio: ['ignore', 'inherit', 'inherit'] },
+    );
+    child.on('error', fail);
+    child.on('exit', (code) =>
+      code === 0 ? done() : fail(new Error(`NinaPm.Sim endete mit ${String(code)}`)),
+    );
+  });
+}
+
+/** Ein Teil: Test-Server (bzw. echter Server) mit virtueller Uhr, NinaPm.Sim dagegen; liefert Report und Logtext. */
 async function runPart(
   protocol: string,
   part: RunPart,
   dir: string,
-): Promise<{ report: unknown; log: string }> {
+): Promise<{
+  report: unknown;
+  log: string;
+  realChecks?: { name: string; ok: boolean; detail: string }[];
+}> {
   mkdirSync(dir, { recursive: true });
   const runPath = join(dir, 'run.json');
   writeFileSync(runPath, JSON.stringify({ protocol, ...part }, null, 2));
+  if (part.real) {
+    const startMs = Date.parse(part.startUtc ?? '');
+    if (Number.isNaN(startMs)) throw new Error(`${protocol}: startUtc fehlt`);
+    // Erst hier laden: der echte Server zieht den ganzen API-Stack (PGlite, Katalog) – nur für `real-*`.
+    const { startRealServer } = await import('../../../apps/api/src/bench/real-server');
+    const real = await startRealServer({
+      scenario: part.real as Parameters<typeof startRealServer>[0]['scenario'],
+      port: REAL_PORT,
+      latDeg: 50,
+      log: (m) => console.log(m),
+      startMs,
+    });
+    try {
+      await runSim(REAL_PORT, runPath, dir, Math.floor(startMs / 1000));
+      const rep = await real.report();
+      return {
+        report: rep.data,
+        log: readFileSync(join(dir, 'nina.log'), 'utf8'),
+        realChecks: rep.checks,
+      };
+    } finally {
+      real.close();
+    }
+  }
   const startS = Math.floor(Date.now() / 1000);
   const server = createSimServer(part.scenario, startS);
   const http = await server.listen(0, '127.0.0.1');
   const port = (http.address() as AddressInfo).port;
   try {
-    await new Promise<void>((done, fail) => {
-      const child = spawn(
-        'dotnet',
-        [
-          DLL,
-          '--server',
-          `http://127.0.0.1:${String(port)}/api`,
-          '--run',
-          runPath,
-          '--out',
-          dir,
-          '--start',
-          new Date(startS * 1000).toISOString(),
-        ],
-        { stdio: ['ignore', 'inherit', 'inherit'] },
-      );
-      child.on('error', fail);
-      child.on('exit', (code) =>
-        code === 0 ? done() : fail(new Error(`NinaPm.Sim endete mit ${String(code)}`)),
-      );
-    });
+    await runSim(port, runPath, dir, startS);
   } finally {
     http.close();
   }
@@ -128,12 +173,18 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
         setup: run.setup,
         steps: run.steps,
         dayLoop: run.dayLoop,
+        ...(run.real ? { real: run.real, startUtc: run.startUtc } : {}),
       },
       dir,
     );
     writeFileSync(join(dir, 'report.json'), `${JSON.stringify(r.report, null, 2)}\n`);
     const c = evaluateChecks(run.checks, r.log, r.report, false);
-    return { protocol: name, passed: c.passed, lines: c.lines };
+    // Prüfungen des echten Servers (aus der Datenbank) zusätzlich zu den Log-Prüfungen der Laufdatei.
+    const realLines = (r.realChecks ?? []).map(
+      (x) => `  ${x.ok ? '✓' : '✗'} ${x.name} – ${x.detail}`,
+    );
+    const realOk = (r.realChecks ?? []).every((x) => x.ok);
+    return { protocol: name, passed: c.passed && realOk, lines: [...c.lines, ...realLines] };
   }
   if (!run.protocol || !run.asserts) throw new Error(`${file}: weder protocol/asserts noch checks`);
   const exp = EXPECTATIONS.protocols[run.protocol];
@@ -245,10 +296,11 @@ async function main(): Promise<void> {
     );
   const outIndex = args.indexOf('--out');
   const outRoot = resolve(outIndex >= 0 ? (args[outIndex + 1] ?? '') : join(ROOT, '.sim-runs'));
-  const wanted = args.filter((a, i) => /^(P-|vm-)/.test(a) && args[i - 1] !== '--out');
+  const wanted = args.filter((a, i) => /^(P-|vm-|real-)/.test(a) && args[i - 1] !== '--out');
   const files = readdirSync(RUNS)
     .filter((f) => f.endsWith('.json'))
-    .filter((f) => wanted.length === 0 || wanted.includes(f.slice(0, -5)))
+    // `real-*` nur auf Abruf: der echte Server braucht deutlich länger als der Test-Server.
+    .filter((f) => (wanted.length === 0 ? !f.startsWith('real-') : wanted.includes(f.slice(0, -5))))
     .sort();
   if (files.length === 0) {
     console.error(`Keine Läufe gefunden (${wanted.join(', ')})`);

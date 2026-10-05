@@ -265,6 +265,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Kopfloser Nachtlauf (alle Läufe)
         run: pnpm plugin:sim --out sim-runs
+      # Zeitumstellung CDT → CST (31.10./01.11.2026) gegen den echten Server mit virtueller Uhr (≈ 1 min, Lücke D).
+      - name: Kopfloser Nachtlauf gegen den echten Server (real-dst)
+        run: pnpm plugin:sim real-dst --out sim-runs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -49,6 +49,13 @@ Aus 21 NINA-Logs des Rigs in Starfront (23.08.–26.09.2026, Astro PM) und dem N
 | `starfront-roof` | Sequenz am Nachmittag bei geschlossenem Dach gestartet (Generic-File-Safety), Dach öffnet, schließt vor dem Ende der Dunkelheit wieder: keine abgelehnte Anfrage vor dem ersten Plan, keine Wiederaufnahme, Nacht abgeschlossen |
 | `starfront-center-fails` | Zentrieren scheitert für ein Ziel (falsche Koordinaten wie am 04.09.2026): Wiederholungsleiter bis vor das Blockende, Block übersprungen, nächstes Ziel belichtet |
 
+## Gegen den echten Server, kopflos: `real-dst` (Zeitumstellung, 05.10.2026)
+`real-*`-Läufe (`"real": "<Szenario>"`, `"startUtc"`) fahren den Plugin-Kern statt gegen den Test-Server gegen den **echten** Server (`apps/api/src/bench/real-server.ts`: lokaler Stack mit PGlite, echte Planung, Jobs, Nachtbericht). Dessen Uhr folgt der virtuellen Uhr des Simulators (`x-npm-sim-now`); `tick-5min` läuft je 5 virtuelle Minuten. Sie laufen nur auf Abruf (`pnpm plugin:sim real-dst`), nicht im Standardlauf; im CI als eigener Schritt im Auftrag `plugin-sim`.
+
+| Lauf | Prüft |
+|---|---|
+| `real-dst` | zwei Nächte in Starfront über die Zeitumstellung CDT → CST (31.10./01.11.2026, 02:00 = 07:00Z), Sequenz „Mehrere Nächte“ mit Warten auf die nautische Dämmerung, vier echte Ziele à 300 s, Flats am Nachtende: je Nacht ein Nacht-Schlüssel und eine abgeschlossene Session, Pläne nur für diese Nächte, Aufnahmen ohne Lücke über die doppelte Stunde, Nachtende zur astronomischen Dämmerung in CST, Warten auf Zeit und Beginn der zweiten Nacht in CST (≈ 1 min) |
+
 ## VM-Kurzlauf `vm-smoke` (≈ 25 min, ersetzt die Einzelläufe auf der VM)
 Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit NINAs Zeiten und Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.
 
