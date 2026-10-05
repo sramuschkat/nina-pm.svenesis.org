@@ -211,7 +211,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   // Ohne Rotator wie das Rig in Starfront: der Sky Simulator dreht sein Bild nicht mit (ops/vm-bench.md).
   await stack.db
     .updateTable('rig')
-    .set({ hasRotator: false })
+    // Nachtbericht nach Discord an: im Seed aus, der Bericht-Job meldete sonst `rig_switch_off` (Lauf 05.10.2026).
+    .set({ hasRotator: false, sessionReportDiscord: true })
     .where('tenantId', '=', tenantId)
     .where('id', '=', rigId)
     .execute();
