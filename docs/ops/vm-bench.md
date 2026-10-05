@@ -80,14 +80,14 @@ Safety-Monitor in Läufen (`steps`):
 
 **Absturz-Wächter (05.10.2026):** Während eines Laufs fragt der Prüfstand alle 30 s die Advanced API ab. Antwortet NINA zweimal im Abstand von 10 s nicht, holt er die Windows-Ereignisse (`app-events.txt` im Laufordner: .NET Runtime, Application Error), bricht den Lauf ab und wiederholt ihn **einmal** von vorn – der bekannte Absturz der x64-Emulation (`AccessViolationException` in `coreclr.dll`, 03.–05.10.2026) hält so keine Lauffolge mehr auf und bleibt belegt. Nach `real`-Läufen schreibt der Prüfstand den vorherigen Standort ins NINA-Profil zurück.
 
-Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
+Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands`, `real-full-night`, `real-network`, `real-flip` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
 
-### Gegen den echten Server (Stufe 2a): `real-night-flats`, `real-transit`, `real-commands`
+### Gegen den echten Server (Stufe 2a): `real-*`
 
 Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst baut. Planung, Transit-Auslieferung, Session-Jobs, Befehle und Nachtbericht des **echten** Servers prüfen sie nicht (Analyse 04.10.2026). Die `real-*`-Läufe starten statt des Test-Servers den echten API-Code (`apps/api/src/bench/real-server.ts` auf dem lokalen Stack `local-stack.ts`: PGlite mit Demo-Seed, echte Uhr, Takt wie `tick-5min` jede Minute, Discord-Nachbildung) auf demselben Port. Die Nacht wird über die **Daten** gestaucht, nicht über die Uhr:
 
-- **Standort:** Breite 50°, Länge so gelöst, dass die astronomische Dämmerung 25 / 40 / 35 min nach dem Start endet (`nightTimes`, Zone `Etc/GMT±h`); NINA bekommt denselben Standort ins Profil.
-- **Ziele:** Deep-Sky-Projekte bei Dec +75° (aus jeder Länge hoch genug) mit Stundenwinkel +2 h (kein Meridiandurchgang), freigegeben wie in den API-Tests; Filterrad wie die VM; Rig A ohne Rotator wie Starfront.
+- **Standort:** Breite 50°, Länge so gelöst, dass die astronomische Dämmerung 25 / 40 / 35 min nach dem Start endet (`nightTimes`, Zone `Etc/GMT±h`); NINA bekommt denselben Standort ins Profil. Die Montierung übernimmt ihn beim Verbinden (`TelescopeLocationSyncDirection = TOTELESCOPE`, in allen Läufen): NINA flippt nach der Sternzeit der Montierung, und der Simulator stünde sonst weiter in Starfront (`mount_site_mismatch`).
+- **Ziele:** Deep-Sky-Projekte bei Dec +75° (aus jeder Länge hoch genug) mit Stundenwinkel +2 h (kein Meridiandurchgang; in `real-flip` Meridian 10 min nach dem Start, RA J2000 um die Präzession verschoben), freigegeben wie in den API-Tests; Filterrad wie die VM; Rig A ohne Rotator wie Starfront; Flip-Werte von Rig und Profil gleich (1 / 5 / 0 min, Dauer 120 s, Recenter aus).
 - **Transit:** Katalogeintrag `BENCH-1b` mit T0 aus der gewünschten Transitmitte (22 min nach dem Start), ohne Grundlinie festgelegt; die Wertung `observed` zieht der Prüfstand am Ende vor (Frist `TRANSIT_SETTLE_GRACE_MS`).
 - **Token:** Das Profil der VM schickt weiter `npm_test`; der Prüfstand schreibt es auf das Token einer echt angelegten Instanz um. Der *Testbetrieb* schaltet gegen den echten Server keine Sicherheitsprüfung ab (keine Test-Server-Antwort).
 
@@ -96,8 +96,11 @@ Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst bau
 | `real-night-flats` | Plan durch den Server, Nachtende, Flats und Dark-Flats, Abschluss, Nachtbericht, Discord, Zähler = gemeldete Lights | ≈ 35 min |
 | `real-transit` | festgelegter Transit in `targets`, Transitblock in NINA, Aufnahmen mit Beobachtung, `observed`, Abschluss | ≈ 45 min |
 | `real-commands` | Projekt des laufenden Blocks pausiert → Neuplanung, Kommandos `refresh_targets`/`reset_plan` quittiert, NINA-Neustart → `resume` derselben Session | ≈ 40 min |
+| `real-full-night` | typische Starfront-Nacht: vier Ziele, LRGB und SHO, Gain/Offset je Zeile, Dither alle 3; Flats je belichtetem Filter, erst nach *Wait for Time → Nautical Dawn* in *Vor Flats* | ≈ 100 min |
+| `real-network` | Netzausfall 12 min (Anfragen des Plugins ohne Antwort): Session verwaist (`stale`), danach Outbox nachgereicht, Abschluss | ≈ 50 min |
+| `real-flip` | Meridian-Flip **ohne Rotator** wie Starfront: Ereignis `flip` im Flip-Fenster, keines `flip_undetected`, Aufnahmen vor und nach dem Flip, keine Flip- oder Standortwarnung der Einstellungsprüfung | ≈ 45 min |
 
-Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (dasselbe in `apps/api/test/bench-real-server.test.ts`).
+Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands|full-night|network|flip>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (mit geplantem Flip) (dasselbe in `apps/api/test/bench-real-server.test.ts`).
 
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 

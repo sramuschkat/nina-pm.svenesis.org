@@ -379,6 +379,9 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         }
       : {};
     for (const [path, value] of Object.entries({
+      // Montierung übernimmt beim Verbinden den Profilstandort: NINA flippt nach der Sternzeit der Montierung, der
+      // Simulator behielte sonst einen fremden Standort (`mount_site_mismatch`, Flip zur falschen Zeit; 05.10.2026).
+      'TelescopeSettings-TelescopeLocationSyncDirection': 'TOTELESCOPE',
       ...siteProfile,
       ...(r.profile ?? {}),
       ...(real?.profile ?? {}),
@@ -722,9 +725,14 @@ async function main(): Promise<number> {
           kind: string;
           startUtc: string;
           endUtc: string;
+          entries: { cmd: string; atUtc: string; durationS?: number }[];
         }[];
         log(`plan ${String(plan.status)}: darknessEnd ${String(plan.body.darknessEndUtc)}`);
-        for (const b of blocks) log(`  ${b.kind} ${b.startUtc} – ${b.endUtc}`);
+        for (const b of blocks) {
+          log(`  ${b.kind} ${b.startUtc} – ${b.endUtc}`);
+          for (const e of b.entries.filter((x) => x.cmd === 'meridian_flip'))
+            log(`    meridian_flip ${e.atUtc} (${String(e.durationS ?? 0)} s)`);
+        }
         return plan.status === 200 && blocks.length > 0 ? 0 : 1;
       } finally {
         real.close();

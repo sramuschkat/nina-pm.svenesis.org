@@ -11,6 +11,7 @@ const cases: [RealScenario, string][] = [
   ['commands', 'regular'],
   ['full-night', 'regular'],
   ['network', 'regular'],
+  ['flip', 'regular'],
 ];
 
 describe('Prüfstand gegen den echten Server', () => {
@@ -49,6 +50,9 @@ describe('Prüfstand gegen den echten Server', () => {
         expect(darknessEnd - Date.now()).toBeGreaterThan(20 * 60_000);
         expect(darknessEnd - Date.now()).toBeLessThan(45 * 60_000);
         for (const b of blocks) expect(Date.parse(b.endUtc)).toBeLessThanOrEqual(darknessEnd);
+        // Flip im Block: der Server plant ihn nach dem Meridian (Rig ohne Rotator wie Starfront).
+        if (scenario === 'flip')
+          expect(blocks.flatMap((b) => b.entries.map((e) => e.cmd))).toContain('meridian_flip');
         // Aktionen der Laufdatei müssen der echte Server annehmen (Lauf 05.10.2026: `paused` → 422).
         if (scenario === 'network')
           for (const a of ['drop_network', 'restore_network'])

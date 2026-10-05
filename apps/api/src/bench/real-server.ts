@@ -14,14 +14,22 @@ import {
   TRANSIT_SETTLE_GRACE_MS,
   type ExoCatalogRow,
 } from '@nina-pm/db';
-import { jdFromUnix, jdUtcToBjdTdb, nightTimes } from '@nina-pm/engine';
+import {
+  jdeFromUnix,
+  jdFromUnix,
+  jdUtcToBjdTdb,
+  meridianTransitUtc,
+  nightTimes,
+  targetApparent,
+} from '@nina-pm/engine';
 import { discordCategoryOf } from '@nina-pm/shared';
 import { startDiscordMock } from '../../../../tools/discord-mock/src/server';
 import { clearExoCatalogCache } from '../exo/search';
 import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
 import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
 
-export type RealScenario = 'night-flats' | 'transit' | 'commands' | 'full-night' | 'network';
+export type RealScenario =
+  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip';
 
 /** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
 export const BENCH_TOKEN = 'npm_test';
@@ -41,6 +49,21 @@ type Body = Record<string, unknown>;
 const id = () => crypto.randomUUID();
 const MIN = 60_000;
 const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+/** Sternzeit läuft 360,9856°/Tag: Minuten je Grad Stundenwinkel. */
+const MIN_PER_DEG = 1440 / 360.98564736629;
+
+/**
+ * Meridian-Flip wie im NINA-Profil der VM (Advanced API, 05.10.2026): Rig und Profil gleich, sonst meldet der Heartbeat
+ * `flip_timing_mismatch`. Flip-Dauer ohne Autofokus nach dem Flip (Slew + Zentrieren im Simulator).
+ */
+const VM_FLIP = { afterMin: 1, maxAfterMin: 5, pauseBeforeMin: 0, durationS: 120 };
+/** Flip-relevante Codes der Einstellungsprüfung (`ninaSettingsMismatchCodes`): im Flip-Lauf darf keiner auftreten. */
+const FLIP_MISMATCH_CODES = [
+  'flip_trigger_missing',
+  'flip_timing_mismatch',
+  'recenter_after_flip_on',
+  'mount_site_mismatch',
+];
 
 export interface RealServerOptions {
   readonly scenario: RealScenario;
@@ -58,8 +81,8 @@ export interface RealCheck {
 }
 
 export interface RealServer {
-  /** Profilwerte für NINA (Standort wie der gewählte Standort). */
-  readonly profile: Readonly<Record<string, number>>;
+  /** Profilwerte für NINA (Standort wie der gewählte Standort, Flip wie das Rig, Montierung übernimmt den Standort). */
+  readonly profile: Readonly<Record<string, string | number | boolean>>;
   readonly info: Readonly<Record<string, string | number>>;
   /** Aktion zur Laufzeit (Schritt `real` in der Laufdatei): `pause_running`, `refresh_targets`, `reset_plan`. */
   action(name: string): Promise<string>;
@@ -174,9 +197,10 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   };
 
   const s = opts.scenario;
-  // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle 35 min, Transit 40 min (Fenster
-  // endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
-  const dawnMs = nowMs + (s === 'night-flats' ? 25 : s === 'commands' ? 35 : 40) * MIN;
+  // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle und Flip 35 min, Transit 40 min
+  // (Fenster endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
+  const dawnMs =
+    nowMs + (s === 'night-flats' ? 25 : s === 'commands' || s === 'flip' ? 35 : 40) * MIN;
   const where = solveLongitude(opts.latDeg, nowMs, dawnMs, 'astronomical');
   const site = await web<Body>(`/sites/${siteId}`);
   await web(`/sites/${siteId}`, 'PUT', {
@@ -229,6 +253,11 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       flatCount: 3,
       darkFlatsEnabled: true,
       darkFlatCount: 2,
+      flipEnabled: true,
+      flipAfterMeridianMin: VM_FLIP.afterMin,
+      flipMaxAfterMeridianMin: VM_FLIP.maxAfterMin,
+      flipPauseBeforeMeridianMin: VM_FLIP.pauseBeforeMin,
+      flipDurationS: VM_FLIP.durationS,
     },
     new Date(),
   );
@@ -367,6 +396,29 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         ['B', 3, 125, 50],
       ]),
     );
+  } else if (s === 'flip') {
+    // Flip ohne Rotator wie Starfront: Meridian 10 min nach dem Start (Stundenwinkel −2,5°), ein Ziel bis zum Nachtende,
+    // zwei Filter – Belichtungen vor und nach dem Flip, Filterwechsel über den Flip hinweg. RA J2000 um die Präzession
+    // bis heute verschoben (bei Dec +75° ≈ 1°, sonst läge der Meridian ≈ 4 min später; Prüfung 05.10.2026).
+    const goalRa = lst + 10 / MIN_PER_DEG;
+    const shift =
+      targetApparent({ raJ2000Deg: goalRa, decJ2000Deg: 75 }, jdeFromUnix(nowMs / 1000)).raDeg -
+      goalRa;
+    const raOffsetDeg = 30 + 10 / MIN_PER_DEG - (((shift + 540) % 360) - 180);
+    projects.push(
+      await deepSky('Bench Flip', raOffsetDeg, [
+        ['L', 20, 125, 50],
+        ['R', 20, 125, 50],
+      ]),
+    );
+    const tM = meridianTransitUtc(
+      { raJ2000Deg: (((lst - 30 + raOffsetDeg) % 360) + 360) % 360, decJ2000Deg: 75 },
+      { latDeg: opts.latDeg, lonDeg: where.lonDeg },
+      nowMs / 1000,
+      nowMs / 1000 + 86_400,
+    );
+    if (tM === null) throw new Error('kein Meridiandurchgang für das Flip-Ziel');
+    info.meridianUtc = iso(tM * 1000);
   } else if (s === 'network') {
     projects.push(await deepSky('Bench NGC A', 0, [['L', 20]]));
     projects.push(await deepSky('Bench NGC B', 20, [['Ha', 20]]));
@@ -479,6 +531,13 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       'AstrometrySettings-Latitude': opts.latDeg,
       'AstrometrySettings-Longitude': where.lonDeg,
       'AstrometrySettings-Elevation': 200,
+      // Montierung übernimmt beim Verbinden den Standort des Profils: NINA flippt nach der Sternzeit der Montierung, der
+      // Simulator stünde sonst in Starfront (`mount_site_mismatch`, Flip zur falschen Zeit).
+      'TelescopeSettings-TelescopeLocationSyncDirection': 'TOTELESCOPE',
+      'MeridianFlipSettings-MinutesAfterMeridian': VM_FLIP.afterMin,
+      'MeridianFlipSettings-MaxMinutesAfterMeridian': VM_FLIP.maxAfterMin,
+      'MeridianFlipSettings-PauseTimeBeforeMeridian': VM_FLIP.pauseBeforeMin,
+      'MeridianFlipSettings-Recenter': false,
     },
     info,
     async action(name) {
@@ -604,6 +663,36 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
             .where('id', '=', transit.observationId)
             .executeTakeFirst()
         : undefined;
+      const events = list.length
+        ? await stack.db
+            .selectFrom('sessionEvent')
+            .select(['kind', 'occurredAt', 'durationS', 'message'])
+            .where('tenantId', '=', tenantId)
+            .where(
+              'sessionId',
+              'in',
+              list.map((x) => x.id),
+            )
+            .where('kind', 'in', ['flip', 'flip_settings_mismatch', 'flip_undetected'])
+            .execute()
+        : [];
+      // Einstellungsprüfung des Heartbeats (NT-22): Alarm `alert.nina_settings_mismatch` mit Code-Liste.
+      const mismatchCodes = [
+        ...new Set(
+          (
+            await stack.db
+              .selectFrom('notification')
+              .select('payload')
+              .where('tenantId', '=', tenantId)
+              .where('kind', '=', 'alert.nina_settings_mismatch')
+              .execute()
+          ).flatMap((n) =>
+            String((n.payload as { codes?: string } | null)?.codes ?? '')
+              .split(',')
+              .filter(Boolean),
+          ),
+        ),
+      ].sort();
       const lights = captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
       const data: Body = {
         info,
@@ -616,6 +705,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         jobs,
         commands,
         transit: observation ?? null,
+        flipEvents: events,
+        settingsMismatch: mismatchCodes,
         discord: discord.calls.map((c) => c.path),
       };
 
@@ -667,6 +758,38 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           'Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)',
           firstFlat !== undefined && !Number.isNaN(dawn) && firstFlat >= dawn - 60_000,
           `erste Flat ${firstFlat ? iso(firstFlat) : '–'}, nautische Dämmerung ${String(info.nauticalDawnUtc ?? '–')}`,
+        );
+      }
+      if (s === 'flip') {
+        const meridianMs = Date.parse(String(info.meridianUtc));
+        const flips = events.filter((e) => e.kind === 'flip');
+        const flipMs = flips[0] ? new Date(flips[0].occurredAt).getTime() : NaN;
+        check(
+          'Flip gemeldet, keiner unerkannt',
+          flips.length === 1 && !events.some((e) => e.kind !== 'flip'),
+          JSON.stringify(
+            events.map((e) => [e.kind, iso(new Date(e.occurredAt).getTime()), e.durationS]),
+          ),
+        );
+        // NINA flippt zwischen Meridian + „Minuten nach“ und + „maximal“; gemeldet wird nach Flip und Zentrieren.
+        check(
+          'Flip nach dem Meridian im Flip-Fenster',
+          flipMs >= meridianMs + (VM_FLIP.afterMin - 1) * MIN &&
+            flipMs <= meridianMs + (VM_FLIP.maxAfterMin + 10) * MIN,
+          `Meridian ${String(info.meridianUtc)}, Flip ${Number.isNaN(flipMs) ? '–' : iso(flipMs)}`,
+        );
+        const before = lights.filter((c) => new Date(c.capturedAt).getTime() < meridianMs);
+        const after = lights.filter((c) => new Date(c.capturedAt).getTime() > flipMs);
+        check(
+          'Aufnahmen vor und nach dem Flip',
+          before.length > 0 && after.length > 0,
+          `vor ${String(before.length)}, nach ${String(after.length)}`,
+        );
+        const bad = mismatchCodes.filter((c) => FLIP_MISMATCH_CODES.includes(c));
+        check(
+          'Keine Flip- oder Standortwarnung der Einstellungsprüfung',
+          bad.length === 0,
+          `alle Codes: ${mismatchCodes.join(',') || '–'}`,
         );
       }
       if (s === 'network') {
