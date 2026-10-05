@@ -1,0 +1,2 @@
+  ✓ Alle Kombinationen covered (FLATS_END reason=covered), kein Flat-Lauf
+  ✓ Session abgeschlossen, nichts abgelehnt

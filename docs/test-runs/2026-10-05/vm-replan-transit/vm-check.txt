@@ -1,0 +1,3 @@
+  ✓ Block endet transit_interrupt, laufende Belichtung zu Ende (kein Abbruch)
+  ✓ Neuer Plan, Transit am Fensterbeginn
+  ✓ Serie bis untilUtc, nichts abgelehnt

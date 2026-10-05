@@ -1,0 +1,84 @@
+{
+  "checks": [
+    {
+      "name": "Session abgeschlossen",
+      "ok": true,
+      "detail": "[\"completed\"]"
+    },
+    {
+      "name": "Outbox leer beim Abschluss",
+      "ok": true,
+      "detail": "[0]"
+    },
+    {
+      "name": "Aufnahmen gemeldet",
+      "ok": true,
+      "detail": "12 Lights"
+    },
+    {
+      "name": "Zähler = gemeldete Lights",
+      "ok": true,
+      "detail": "Zeilen 12, Lights 12"
+    },
+    {
+      "name": "Abschluss- und Bericht-Job erledigt",
+      "ok": true,
+      "detail": "[{\"kind\":\"session_close\",\"status\":\"done\"},{\"kind\":\"session_report\",\"status\":\"done\"}]"
+    },
+    {
+      "name": "Discord-Meldung angekommen",
+      "ok": true,
+      "detail": "3 Aufrufe"
+    },
+    {
+      "name": "Flat-Kombinationen done",
+      "ok": false,
+      "detail": "[{\"filterShortName\":\"L\",\"status\":\"done\",\"flatsTaken\":3,\"darkFlatsTaken\":2}]"
+    }
+  ],
+  "info": {
+    "scenario": "night-flats",
+    "lonDeg": -140.25,
+    "timeZone": "Etc/GMT+9",
+    "night": "2026-10-04",
+    "darknessEndUtc": "2026-10-05T13:39:51Z",
+    "nauticalDawnUtc": "2026-10-05T14:17:54Z"
+  },
+  "lines": [
+    {
+      "id": "cab44e5a-bd05-404d-8340-0b8fdbc99e8c",
+      "projectId": "216c193e-2aac-4cb5-b5df-e5694bd7552e",
+      "filterShortName": "L",
+      "acquiredCount": 12
+    },
+    {
+      "id": "db203ea7-728d-4070-86e5-88fe312d04a2",
+      "projectId": "f4e7e88a-d8ab-48b3-bc87-a813af6427f1",
+      "filterShortName": "L",
+      "acquiredCount": 0
+    },
+    {
+      "id": "b801cf84-d75a-4d54-9944-cc1cfec0dd75",
+      "projectId": "f4e7e88a-d8ab-48b3-bc87-a813af6427f1",
+      "filterShortName": "Ha",
+      "acquiredCount": 0
+    }
+  ],
+  "flats": [
+    {
+      "filterShortName": "L",
+      "status": "done",
+      "flatsTaken": 3,
+      "darkFlatsTaken": 2
+    }
+  ],
+  "sessions": [
+    {
+      "id": "01a10c34-2c51-7eeb-85c4-c77760ce3126",
+      "status": "completed",
+      "endedAt": "2026-10-05T13:40:03.718Z",
+      "outboxPending": 0,
+      "night": "2026-10-04"
+    }
+  ]
+}
