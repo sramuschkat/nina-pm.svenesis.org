@@ -39,6 +39,7 @@ const OPERATION_LINES = [
   'DAYLOOP_END',
   'WAIT_TIME',
   'WAIT_TIME_END',
+  'WAIT_PLAN',
 ] as const;
 
 /** Verbindliche Schlüsselnamen (Tabelle „Schlüsselnamen“). */
