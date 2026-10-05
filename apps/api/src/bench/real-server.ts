@@ -15,6 +15,7 @@ import {
   type ExoCatalogRow,
 } from '@nina-pm/db';
 import { jdFromUnix, jdUtcToBjdTdb, nightTimes } from '@nina-pm/engine';
+import { discordCategoryOf } from '@nina-pm/shared';
 import { startDiscordMock } from '../../../../tools/discord-mock/src/server';
 import { clearExoCatalogCache } from '../exo/search';
 import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
@@ -231,6 +232,22 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     },
     new Date(),
   );
+  // Discord-Kanal für den Nachtbericht: der lokale Seed legt keine Kanäle an – der Bericht-Job meldete `no_channel`
+  // (Lauf real-transit 05.10.2026). Die Webhook-Adresse lenkt der lokale Stack auf die Nachbildung um.
+  const now = new Date();
+  await stack.db
+    .insertInto('discordChannel')
+    .values({
+      tenantId,
+      name: '#nachtberichte (Prüfstand)',
+      webhookUrl: 'https://discord.com/api/webhooks/0/bench-local-only',
+      categories: JSON.stringify([discordCategoryOf('session.report')]),
+      eventFilter: JSON.stringify({}),
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .execute();
   const instance = await web<{ token: string }>('/nina-instances', 'POST', {
     id: id(),
     rigId,
