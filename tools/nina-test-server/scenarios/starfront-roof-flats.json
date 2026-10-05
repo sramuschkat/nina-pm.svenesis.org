@@ -1,0 +1,26 @@
+{
+  "name": "starfront-roof-flats",
+  "description": "Starfront-Dach mit Panel-Flats: Dach schließt vor dem Ende der Dunkelheit und bleibt zu; die Panel-Flats laufen trotzdem (Entscheidung Sven 05.10.2026, H2 geändert)",
+  "protocols": [],
+  "blocks": [
+    {
+      "startInMin": 5,
+      "durationMin": 55,
+      "filters": ["L"],
+      "exposureS": 60,
+      "project": "ngc6946",
+      "ditherEvery": 1,
+      "decDeg": 60
+    }
+  ],
+  "darknessEndInMin": 65,
+  "sessionEndInMin": 75,
+  "rig": {
+    "rotatorPresent": false
+  },
+  "flats": {
+    "enabled": true,
+    "source": "panel",
+    "count": 5
+  }
+}
