@@ -1,0 +1,580 @@
+/**
+ * VM-Prüfstand gegen den echten Server (Stufe 2a): der lokale Stack (`local-stack.ts`, PGlite, echte Uhr, Takt wie
+ * `tick-5min`) mit Szenarien, die eine Nacht über die **Daten** stauchen – Standort so gewählt, dass die Dunkelheit in
+ * wenigen Minuten endet, Exoplanet mit eigener Ephemeride, Transit in ein paar Minuten. Das Plugin in der VM spricht
+ * mit seinem Prüfstand-Token `npm_test`; der Prüfstand schreibt es auf das Token einer echt angelegten Instanz um.
+ * **Nur lokal**, nie im Lambda-Bundle (kein Einstieg unter `src/handlers/`).
+ */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import {
+  EquipmentRepository,
+  replaceExoCatalog,
+  settleTransits,
+  TRANSIT_SETTLE_GRACE_MS,
+  type ExoCatalogRow,
+} from '@nina-pm/db';
+import { jdFromUnix, jdUtcToBjdTdb, nightTimes } from '@nina-pm/engine';
+import { startDiscordMock } from '../../../../tools/discord-mock/src/server';
+import { clearExoCatalogCache } from '../exo/search';
+import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
+import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
+
+export type RealScenario = 'night-flats' | 'transit' | 'commands';
+
+/** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
+export const BENCH_TOKEN = 'npm_test';
+
+/** Filterrad der VM (Sky Simulator), wie `tools/nina-test-server/rig.json`. */
+const VM_WHEEL = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('../../../../tools/nina-test-server/rig.json', import.meta.url)),
+    'utf8',
+  ),
+) as { filters: { position: number; shortName: string; ninaFilterName: string }[] };
+
+type Body = Record<string, unknown>;
+const id = () => crypto.randomUUID();
+const MIN = 60_000;
+const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+export interface RealServerOptions {
+  readonly scenario: RealScenario;
+  /** Port für die VM (wie der Test-Server, `cfg.testServerPort`). */
+  readonly port: number;
+  /** Breite des Standorts = Breite im NINA-Profil der VM (der Simulator rechnet damit). */
+  readonly latDeg: number;
+  readonly log: (message: string) => void;
+}
+
+export interface RealCheck {
+  readonly name: string;
+  readonly ok: boolean;
+  readonly detail: string;
+}
+
+export interface RealServer {
+  /** Profilwerte für NINA (Standort wie der gewählte Standort). */
+  readonly profile: Readonly<Record<string, number>>;
+  readonly info: Readonly<Record<string, string | number>>;
+  /** Aktion zur Laufzeit (Schritt `real` in der Laufdatei): `pause_running`, `refresh_targets`, `reset_plan`. */
+  action(name: string): Promise<string>;
+  /** Abgeschlossene Sessions des Rigs (Lauf endet danach). */
+  completedSessions(): Promise<number>;
+  /** Abschluss abwarten (Jobs `session_close`/`session_report`), dann prüfen. */
+  report(): Promise<{ data: Body; checks: RealCheck[] }>;
+  close(): void;
+}
+
+/** Ortszeit-Zone `Etc/GMT±h` passend zur Länge (Vorzeichen der Etc-Zonen ist umgekehrt). */
+function etcZone(lonDeg: number): string {
+  const h = Math.round(lonDeg / 15);
+  if (h === 0) return 'Etc/GMT';
+  return h > 0 ? `Etc/GMT-${String(h)}` : `Etc/GMT+${String(-h)}`;
+}
+
+/**
+ * Länge, bei der die Dämmerung `twilight` (Aufwärtsdurchgang) ≈ `dawnMs` liegt und die Dunkelheit schon begonnen hat
+ * (Abenddurchgang mindestens 60 min vor jetzt). Raster 0,25° ≈ 1 min.
+ */
+function solveLongitude(
+  latDeg: number,
+  nowMs: number,
+  dawnMs: number,
+  twilight: 'astronomical' | 'nautical',
+): { lonDeg: number; timeZone: string; night: string; dawnUtc: number; duskUtc: number } {
+  let best: {
+    lonDeg: number;
+    timeZone: string;
+    night: string;
+    dawnUtc: number;
+    duskUtc: number;
+  } | null = null;
+  for (let lon = -179.75; lon < 180; lon += 0.25) {
+    const timeZone = etcZone(lon);
+    const night = noonNightKey(timeZone, nowMs);
+    const t = nightTimes({
+      site: { latDeg, lonDeg: lon },
+      night,
+      timeZoneTransitions: timeZoneTransitions(
+        timeZone,
+        nowMs - 3 * 86_400_000,
+        nowMs + 3 * 86_400_000,
+      ),
+    });
+    const c = t.twilight[twilight];
+    if (c.startUtc === null || c.endUtc === null) continue;
+    if (c.startUtc * 1000 > nowMs - 60 * MIN) continue;
+    const diff = Math.abs(c.endUtc * 1000 - dawnMs);
+    if (!best || diff < Math.abs(best.dawnUtc * 1000 - dawnMs))
+      best = { lonDeg: lon, timeZone, night, dawnUtc: c.endUtc, duskUtc: c.startUtc };
+  }
+  if (!best) throw new Error('kein Standort mit passender Dämmerung gefunden');
+  return best;
+}
+
+/** Ortssternzeit in Grad (GMST nach IAU 1982, für die Zielwahl genau genug). */
+function lstDeg(nowMs: number, lonDeg: number): number {
+  const d = jdFromUnix(nowMs / 1000) - 2451545.0;
+  return (((280.46061837 + 360.98564736629 * d + lonDeg) % 360) + 360) % 360;
+}
+
+export async function startRealServer(opts: RealServerOptions): Promise<RealServer> {
+  const discord = await startDiscordMock({ port: 0 });
+  const stack: LocalStack = await createLocalStack({
+    port: opts.port,
+    authTestMode: true,
+    discordMockUrl: discord.url,
+    tickMs: MIN,
+  });
+  const tenantId = localSeed.tenant.id;
+  const nowMs = Date.now();
+
+  // Anmeldung als Owner (Test-Login wie die E2E-Läufe) und Web-Aufrufe über denselben Stack.
+  const login = await stack.fetch(
+    new Request('http://local/api/auth/test-login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-npm-request': '1' },
+      body: JSON.stringify({ identityFixture: 'owner' }),
+    }),
+  );
+  const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  const web = async <T = Body>(path: string, method = 'GET', body?: unknown) => {
+    const res = await stack.fetch(
+      new Request(`http://local/api/web/v1${path}`, {
+        method,
+        headers: {
+          cookie,
+          ...(method !== 'GET' ? { 'x-npm-request': '1' } : {}),
+          ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      }),
+    );
+    const text = await res.text();
+    if (res.status >= 400) throw new Error(`${method} ${path} → ${String(res.status)} ${text}`);
+    return (text ? JSON.parse(text) : null) as T;
+  };
+
+  // Rig A aus dem Seed: Standort, Filterrad wie die VM, Scheduler je Szenario.
+  const rigs = (await web<{ items: Body[] }>('/rigs')).items;
+  const rig = rigs.find((r) => String(r.name).startsWith('Rig A'));
+  if (!rig) throw new Error('Rig A fehlt im Seed');
+  const rigId = rig.id as string;
+  const siteId = rig.siteId as string;
+  const filters = (await web<{ items: { id: string; shortName: string }[] }>('/filters')).items;
+  const filterId = (short: string) => {
+    const f = filters.find((x) => x.shortName === short);
+    if (!f) throw new Error(`Filter ${short} fehlt im Seed`);
+    return f.id;
+  };
+
+  const s = opts.scenario;
+  // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle 35 min, Transit 40 min (Fenster
+  // endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
+  const dawnMs = nowMs + (s === 'night-flats' ? 25 : s === 'commands' ? 35 : 40) * MIN;
+  const where = solveLongitude(opts.latDeg, nowMs, dawnMs, 'astronomical');
+  const site = await web<Body>(`/sites/${siteId}`);
+  await web(`/sites/${siteId}`, 'PUT', {
+    name: site.name,
+    pierName: site.pierName ?? null,
+    observatoryType: site.observatoryType,
+    latitudeDeg: opts.latDeg,
+    longitudeDeg: where.lonDeg,
+    elevationM: 200,
+    bortleClass: site.bortleClass ?? null,
+    timeZone: where.timeZone,
+    weatherSafetyUrl: null,
+    notes: 'VM-Prüfstand (Stufe 2a)',
+  });
+  await web(`/rigs/${rigId}/filter-wheel`, 'PUT', {
+    slots: VM_WHEEL.filters.map((f) => ({
+      position: f.position,
+      filterId: filterId(f.shortName),
+      ninaFilterName: f.ninaFilterName,
+    })),
+  });
+  // Ohne Rotator wie das Rig in Starfront: der Sky Simulator dreht sein Bild nicht mit (ops/vm-bench.md).
+  await stack.db
+    .updateTable('rig')
+    .set({ hasRotator: false })
+    .where('tenantId', '=', tenantId)
+    .where('id', '=', rigId)
+    .execute();
+  const eq = new EquipmentRepository(stack.db, { tenantId });
+  await eq.updateScheduler(
+    rigId,
+    {
+      ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
+      ditherEvery: 5,
+      flatsEnabled: s === 'night-flats',
+      flatsSource: 'panel',
+      flatsAutoMode: 'off',
+      flatCount: 3,
+      darkFlatsEnabled: true,
+      darkFlatCount: 2,
+    },
+    new Date(),
+  );
+  const instance = await web<{ token: string }>('/nina-instances', 'POST', {
+    id: id(),
+    rigId,
+    name: 'VM-Prüfstand',
+  });
+
+  // Ziele nahe dem Pol: aus jeder Länge hoch genug (min. Höhe 30°), Stundenwinkel +2 h (kein Meridiandurchgang).
+  const lst = lstDeg(nowMs, where.lonDeg);
+  // Freigabe wie in den API-Tests: der Seed-Owner darf eigene Projekte nicht selbst freigeben (adminSelfApproval aus).
+  const approve = (pid: string) =>
+    stack.db
+      .updateTable('project')
+      .set((eb) => ({
+        approvalStatus: 'approved',
+        status: 'active',
+        rigId: eb.ref('requestedRigId'),
+      }))
+      .where('id', '=', pid)
+      .execute();
+  const deepSky = async (name: string, raOffsetDeg: number, lines: [string, number][]) => {
+    const created = await web<{ id: string; panels: { id: string }[] }>('/projects', 'POST', {
+      id: id(),
+      name,
+      rigId,
+      targetName: name,
+      raDeg: (((lst - 30 + raOffsetDeg) % 360) + 360) % 360,
+      decDeg: 75,
+    });
+    const panelId = created.panels[0]?.id ?? '';
+    const lineIds: string[] = [];
+    for (const [short, count] of lines) {
+      const lineId = id();
+      await web(`/projects/${created.id}/lines`, 'POST', {
+        id: lineId,
+        panelId,
+        filterId: filterId(short),
+        exposureS: 30,
+        plannedCount: count,
+        moonMode: 'none',
+      });
+      lineIds.push(lineId);
+    }
+    await approve(created.id);
+    return { projectId: created.id, lineIds };
+  };
+
+  const info: Record<string, string | number> = {
+    scenario: s,
+    lonDeg: where.lonDeg,
+    timeZone: where.timeZone,
+    night: where.night,
+    darknessEndUtc: iso(where.dawnUtc * 1000),
+  };
+  const projects: { projectId: string; lineIds: string[] }[] = [];
+  let transit: { projectId: string; observationId: string; windowEndUtc: string } | null = null;
+
+  if (s === 'night-flats') {
+    projects.push(
+      await deepSky('Bench NGC A', 0, [
+        ['L', 12],
+        ['Ha', 12],
+      ]),
+    );
+    projects.push(await deepSky('Bench NGC B', 20, [['L', 12]]));
+  } else if (s === 'commands') {
+    // Je ≈ 12 min Arbeit: zwei Blöcke in 35 min Restnacht (Mindestzeit je Ziel, profiles.ts).
+    projects.push(await deepSky('Bench NGC A', 0, [['L', 24]]));
+    projects.push(await deepSky('Bench NGC B', 20, [['Ha', 24]]));
+  } else {
+    projects.push(await deepSky('Bench NGC A', 0, [['L', 16]]));
+    // Exoplanet: Transitmitte in 22 min, T14 = 12 min, ohne Grundlinie → Fenster ≈ jetzt + 11 … + 33 min.
+    const ra = (((lst - 30 + 10) % 360) + 360) % 360;
+    const tcMs = nowMs + 22 * MIN;
+    const row: ExoCatalogRow = {
+      planet: 'BENCH-1b',
+      star: 'BENCH-1',
+      disposition: null,
+      raDeg: ra,
+      decDeg: 75,
+      magVJohnson: 14,
+      magRCousins: null,
+      magSdssG: null,
+      magGaiaG: null,
+      magTess: null,
+      magBandUsed: 'V',
+      teffK: 5500,
+      distancePc: null,
+      t0BjdTdb: jdUtcToBjdTdb(jdFromUnix(tcMs / 1000), ra, 75),
+      t0SigmaD: 1e-5,
+      periodD: 3.1,
+      periodSigmaD: 1e-7,
+      durationH: 0.2,
+      durationEstimated: false,
+      depthMmag: 15,
+      depthRaw: 15,
+      depthUnit: 'mmag',
+      depthEstimated: false,
+      rpOverRs: 0.12,
+      aOverRs: 10,
+      inclinationDeg: 89,
+      planetRadiusRe: null,
+      eqTempK: null,
+      exoclockPriority: 'medium',
+      oMinusCMin: 0,
+    } as ExoCatalogRow;
+    // Messband: > 13 mag → Luminanz (FA-EXO-08); der Seed-Filter L trägt kein Band, darum hier `lum`.
+    await stack.db
+      .updateTable('filter')
+      .set({ photometricBand: 'lum' })
+      .where('tenantId', '=', tenantId)
+      .where('id', '=', filterId('L'))
+      .execute();
+    await replaceExoCatalog(stack.db, 'exoclock', [row], new Date());
+    clearExoCatalogCache();
+    const created = await web<{ projectId: string }>('/exo/projects', 'POST', {
+      id: id(),
+      rigId,
+      catalog: 'exoclock',
+      planet: 'BENCH-1b',
+      exposureS: 30,
+      twilight: 'astronomical',
+    });
+    await approve(created.projectId);
+    await web(`/projects/${created.projectId}/exo`, 'PATCH', {
+      baselineBeforeMin: 0,
+      baselineAfterMin: 0,
+    });
+    const detail = await web<{ upcoming: { item: { transit: { n: number } } }[] }>(
+      `/projects/${created.projectId}/exo`,
+    );
+    const epoch = detail.upcoming[0]?.item.transit.n;
+    if (epoch === undefined) throw new Error('Transit BENCH-1b nicht in der Vorhersage');
+    await web(`/projects/${created.projectId}/exo/lock`, 'POST', { epoch });
+    const obs = await stack.db
+      .selectFrom('transitObservation')
+      .select(['id', 'windowStartUtc', 'windowEndUtc'])
+      .where('projectId', '=', created.projectId)
+      .where('status', '=', 'locked')
+      .executeTakeFirstOrThrow();
+    transit = {
+      projectId: created.projectId,
+      observationId: obs.id,
+      windowEndUtc: new Date(obs.windowEndUtc).toISOString(),
+    };
+    info.transitWindow = `${new Date(obs.windowStartUtc).toISOString()} – ${transit.windowEndUtc}`;
+  }
+
+  // Token des Prüfstand-Profils auf die echte Instanz umschreiben.
+  const fetchVm = (req: Request) => {
+    if (req.headers.get('authorization') !== `Bearer ${BENCH_TOKEN}`) return stack.fetch(req);
+    const headers = new Headers(req.headers);
+    headers.set('authorization', `Bearer ${instance.token}`);
+    return stack.fetch(new Request(req, { headers }));
+  };
+  const http = await listenLocal(fetchVm, opts.port, '0.0.0.0');
+  opts.log(`Echter Server (${s}) auf Port ${String(opts.port)}: ${JSON.stringify(info)}`);
+
+  const sessions = () =>
+    stack.db
+      .selectFrom('session')
+      .select(['id', 'status', 'endedAt', 'outboxPending'])
+      .where('tenantId', '=', tenantId)
+      .where('rigId', '=', rigId)
+      .execute();
+
+  return {
+    profile: {
+      'AstrometrySettings-Latitude': opts.latDeg,
+      'AstrometrySettings-Longitude': where.lonDeg,
+      'AstrometrySettings-Elevation': 200,
+    },
+    info,
+    async action(name) {
+      switch (name) {
+        case 'pause_running': {
+          // Projekt der zuletzt gemeldeten Aufnahme = laufender Block (Fall a: Ziel entfällt, Neuplanung).
+          const last = await stack.db
+            .selectFrom('capture')
+            .select('projectId')
+            .where('tenantId', '=', tenantId)
+            .where('projectId', 'is not', null)
+            .orderBy('capturedAt', 'desc')
+            .executeTakeFirst();
+          const pid = last?.projectId ?? projects[0]?.projectId;
+          if (!pid) return 'kein Projekt';
+          await web(`/projects/${pid}/status`, 'PUT', { status: 'paused' });
+          return `Projekt ${pid} pausiert`;
+        }
+        case 'refresh_targets':
+        case 'reset_plan': {
+          const r = await web<{ commandIds: string[] }>(`/rigs/${rigId}/commands`, 'POST', {
+            command: name,
+          });
+          return `Kommando ${name}: ${r.commandIds.join(',')}`;
+        }
+        default:
+          throw new Error(`unbekannte Aktion ${name}`);
+      }
+    },
+    async completedSessions() {
+      return (await sessions()).filter((x) => x.status === 'completed' || x.status === 'aborted')
+        .length;
+    },
+    async report() {
+      // Abschluss und Bericht laufen über den Takt; einmal sofort anstoßen und bis 3 min warten.
+      const jobsDone = async () => {
+        const rows = await stack.db
+          .selectFrom('job')
+          .select(['kind', 'status'])
+          .where('tenantId', '=', tenantId)
+          .where('kind', 'in', ['session_close', 'session_report'])
+          .execute();
+        return rows;
+      };
+      for (let i = 0; i < 18; i += 1) {
+        await stack.tick();
+        const rows = await jobsDone();
+        if (rows.length >= 2 && rows.every((r) => r.status === 'done')) break;
+        await new Promise((r) => setTimeout(r, 10_000));
+      }
+      if (transit) {
+        // Wertung nach Fensterende + 30 min (TRANSIT_SETTLE_GRACE_MS); im Lauf vorgezogen statt 30 min zu warten.
+        await settleTransits(
+          stack.db,
+          new Date(Date.parse(transit.windowEndUtc) + TRANSIT_SETTLE_GRACE_MS + MIN),
+        );
+      }
+      const list = await sessions();
+      const lines = await stack.db
+        .selectFrom('exposureLine')
+        .select(['id', 'projectId', 'filterShortName', 'acquiredCount'])
+        .where('tenantId', '=', tenantId)
+        .where('projectId', 'in', [
+          ...projects.map((p) => p.projectId),
+          ...(transit ? [transit.projectId] : []),
+        ])
+        .execute();
+      const captures = await stack.db
+        .selectFrom('capture')
+        .select(['exposureLineId', 'frameType', 'result', 'transitObservationId'])
+        .where('tenantId', '=', tenantId)
+        .where(
+          'sessionId',
+          'in',
+          list.length ? list.map((x) => x.id) : ['00000000-0000-0000-0000-000000000000'],
+        )
+        .execute();
+      const flats = list.length
+        ? await stack.db
+            .selectFrom('flatCombination')
+            .select(['filterShortName', 'status', 'flatsTaken', 'darkFlatsTaken'])
+            .where(
+              'sessionId',
+              'in',
+              list.map((x) => x.id),
+            )
+            .execute()
+        : [];
+      const plans = await stack.db
+        .selectFrom('nightPlan')
+        .select(['reason'])
+        .where('tenantId', '=', tenantId)
+        .where('rigId', '=', rigId)
+        .execute();
+      const jobs = await jobsDone();
+      const commands = await stack.db
+        .selectFrom('command')
+        .select(['kind', 'acknowledgedAt'])
+        .where('tenantId', '=', tenantId)
+        .execute();
+      const observation = transit
+        ? await stack.db
+            .selectFrom('transitObservation')
+            .select(['status', 'acquiredCount'])
+            .where('id', '=', transit.observationId)
+            .executeTakeFirst()
+        : undefined;
+      const lights = captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
+      const data: Body = {
+        info,
+        sessions: list,
+        plans: plans.map((p) => p.reason),
+        lines,
+        lights: lights.length,
+        transitLights: lights.filter((c) => c.transitObservationId).length,
+        flats,
+        jobs,
+        commands,
+        transit: observation ?? null,
+        discord: discord.calls.map((c) => c.path),
+      };
+
+      const checks: RealCheck[] = [];
+      const check = (name: string, ok: boolean, detail: string) =>
+        checks.push({ name, ok, detail });
+      const done = list.filter((x) => x.status === 'completed');
+      check('Session abgeschlossen', done.length >= 1, JSON.stringify(list.map((x) => x.status)));
+      check(
+        'Outbox leer beim Abschluss',
+        done.every((x) => Number(x.outboxPending) === 0),
+        JSON.stringify(done.map((x) => x.outboxPending)),
+      );
+      check('Aufnahmen gemeldet', lights.length > 0, `${String(lights.length)} Lights`);
+      const counted = lines.reduce((n, l) => n + Number(l.acquiredCount), 0);
+      check(
+        'Zähler = gemeldete Lights',
+        counted === lights.length,
+        `Zeilen ${String(counted)}, Lights ${String(lights.length)}`,
+      );
+      check(
+        'Abschluss- und Bericht-Job erledigt',
+        jobs.length >= 2 && jobs.every((j) => j.status === 'done'),
+        JSON.stringify(jobs),
+      );
+      check(
+        'Discord-Meldung angekommen',
+        discord.calls.length > 0,
+        `${String(discord.calls.length)} Aufrufe`,
+      );
+      if (s === 'night-flats') {
+        check(
+          'Flat-Kombinationen done',
+          flats.length >= 2 && flats.every((f) => f.status === 'done'),
+          JSON.stringify(flats),
+        );
+      }
+      if (s === 'transit' && transit) {
+        check(
+          'Transit-Aufnahmen mit Beobachtung',
+          lights.some((c) => c.transitObservationId === transit?.observationId),
+          `${String(data.transitLights)} Transit-Lights`,
+        );
+        check(
+          'Transit beobachtet',
+          observation?.status === 'observed',
+          JSON.stringify(observation ?? null),
+        );
+      }
+      if (s === 'commands') {
+        const reasons = plans.map((p) => p.reason);
+        check('Neuplanung nach Pausieren', reasons.includes('refresh'), JSON.stringify(reasons));
+        check('Zurücksetzen per Kommando', reasons.includes('reset'), JSON.stringify(reasons));
+        check(
+          'Kommandos quittiert',
+          commands.length >= 2 && commands.every((c) => c.acknowledgedAt !== null),
+          JSON.stringify(commands),
+        );
+        check(
+          'Fortsetzen nach NINA-Neustart',
+          reasons.includes('resume') && list.length === 1,
+          `${JSON.stringify(reasons)}, Sessions ${String(list.length)}`,
+        );
+      }
+      return { data, checks };
+    },
+    close() {
+      http.close();
+      stack.close();
+      void discord.close();
+    },
+  };
+}

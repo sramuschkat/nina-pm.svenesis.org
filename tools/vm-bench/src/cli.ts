@@ -6,6 +6,7 @@
  *   update-agent                  Agenten in der VM aus dem Repository neu laden
  *   install-plugin <ordner>       Plugin-Build in die VM bringen (NINA wird neu gestartet)
  *   run <lauf> [--plugin <ordner>] Lauf aus runs/<lauf>.json: NINA frisch, Geräte, Test-Server, Sequenz, Auswertung
+ *   real-check <szenario>         Szenario gegen den echten Server ohne VM prüfen (Standort, Ziele, Plan)
  *   screenshot [reiter] [--out <datei>]
  * Läufe stehen in `.vm-bench/<zeit>-<lauf>/` (nicht im Repository).
  */
@@ -16,6 +17,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRig, loadScenario } from '../../nina-test-server/src/scenario';
 import { NinaTestServer, type TestAction } from '../../nina-test-server/src/server';
+import { startRealServer, type RealScenario } from '../../../apps/api/src/bench/real-server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
@@ -45,8 +47,13 @@ export interface BenchRun {
   readonly description: string;
   /** Kopfloser Lauf mit denselben Prüfungen (`tools/nina-sim/runs/<simRun>.json`, ausgewertet mit `--vm`). */
   readonly simRun?: string;
-  /** Test-Server-Szenario; ohne Angabe (`prod`) kein Test-Server. */
+  /** Test-Server-Szenario; ohne Angabe (`prod`, `real`) kein Test-Server. */
   readonly scenario?: string;
+  /**
+   * Gegen den **echten Server** (Stufe 2a, `apps/api/src/bench/real-server.ts`): lokaler Stack mit PGlite und echter
+   * Uhr, Nacht über die Daten gestaucht; Auswertung aus der Datenbank (`report.json`, `checks`).
+   */
+  readonly real?: RealScenario;
   /**
    * Gegen prod (Test-Mandant, P-05): Prod-Profil (`prodProfileId`, Token von Sven), kein Test-Server. Nach `untilMin`
    * stoppt der Prüfstand die Sequenz, wartet auf die Outbox und zählt aus dem Log; den Abgleich im Web macht Sven.
@@ -90,6 +97,10 @@ export interface BenchRun {
     monitor?: 'connect' | 'disconnect';
     /** Aktion des Test-Servers (`POST /test/actions`), z. B. `lock_transit` für P-15b. */
     server?: string;
+    /** Aktion des echten Servers (`real`): `pause_running`, `refresh_targets`, `reset_plan`. */
+    real?: string;
+    /** NINA neu starten (ohne `ninapm.db` zu löschen), Geräte verbinden, Sequenz wieder starten. */
+    restartNina?: boolean;
     /**
      * Ab `atMin` NINA neu starten (ohne `ninapm.db` zu löschen), sobald im Log die `nth`-te verschiedene Zeile mit
      * `contains` steht – z. B. die 2. Flat-Kombination (P-12); danach Geräte, Sequenz laden und starten.
@@ -313,7 +324,12 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const vmOffsetMs = await a.localOffsetMs();
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
-    for (const [path, value] of Object.entries(r.profile ?? {})) await a.setProfile(path, value);
+    // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll.
+    const real = r.real
+      ? await startRealServer({ scenario: r.real, port: cfg.testServerPort, latDeg: 50, log })
+      : undefined;
+    for (const [path, value] of Object.entries({ ...(r.profile ?? {}), ...(real?.profile ?? {}) }))
+      await a.setProfile(path, value);
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
     const profile = await a.activeProfile();
@@ -341,6 +357,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       throw new Error(`Sequenz „${SEQUENCE}“ nach dem Ablegen nicht in NINA`);
 
     const server = r.scenario ? new NinaTestServer(loadScenario(r.scenario), loadRig()) : undefined;
+    let realOk = true;
     const http = server ? await server.listen(cfg.testServerPort, '0.0.0.0') : undefined;
     const startedMs = Date.now();
     const startUtc = new Date(startedMs).toISOString();
@@ -348,7 +365,9 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       log(
         r.scenario
           ? `Test-Server „${r.scenario}“ läuft, Sequenz „${SEQUENCE}“ startet`
-          : `prod: Sequenz „${SEQUENCE}“ startet`,
+          : real
+            ? `echter Server „${r.real ?? ''}“ läuft, Sequenz „${SEQUENCE}“ startet`
+            : `prod: Sequenz „${SEQUENCE}“ startet`,
       );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
@@ -371,6 +390,16 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
           if (s.server && server) {
             server.apply(s.server as TestAction);
             log(`Test-Server: ${s.server}`);
+          }
+          if (s.real && real) log(`echter Server: ${await real.action(s.real)}`);
+          if (s.restartNina) {
+            log('NINA-Neustart (Schritt)');
+            await job(bench, 'restart-nina', { resetDb: false, profileId: profileId ?? '' }, dir);
+            log(`Advanced API ${await a.waitUntilUp(180_000)}`);
+            await connectAll();
+            await a.loadSequence(SEQUENCE);
+            await a.startSequence();
+            log('Sequenz nach dem Neustart gestartet');
           }
           if (s.screenshot) await screenshot(a, s.tab, join(dir, `${s.screenshot}.png`));
           if (s.restartAfterLog) {
@@ -405,6 +434,24 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         ).json();
         writeFileSync(join(dir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
         await a.stopSequence().catch(() => undefined);
+      } else if (real) {
+        const deadline = startedMs + r.untilMin * 60_000;
+        let doneAt: number | undefined;
+        while (Date.now() < deadline) {
+          if ((await real.completedSessions()) >= (r.sessions ?? 1)) {
+            doneAt ??= Date.now();
+            if (Date.now() - doneAt >= 60_000) {
+              log('Session abgeschlossen – Lauf endet vor dem Zeitlimit');
+              break;
+            }
+          }
+          await sleep(10_000);
+        }
+        await a.stopSequence().catch(() => undefined);
+        const rep = await real.report();
+        writeFileSync(join(dir, 'report.json'), `${JSON.stringify(rep, null, 2)}\n`);
+        for (const c of rep.checks) log(`${c.ok ? '✓' : '✗'} ${c.name} – ${c.detail}`);
+        realOk = rep.checks.every((c) => c.ok);
       } else {
         await sleep(Math.max(0, startedMs + r.untilMin * 60_000 - Date.now()));
         await a.stopSequence().catch(() => undefined);
@@ -413,6 +460,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       }
     } finally {
       http?.close();
+      real?.close();
     }
     const logs = await job(
       bench,
@@ -436,7 +484,12 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       writeFileSync(join(dir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`);
       log(`Zusammenfassung: ${JSON.stringify(summary)}`);
       log(`Ergebnis in ${dir}`);
-      return summary.errors === 0 && summary.rejectedApi === 0 && summary.outboxPendingAtEnd === 0;
+      return (
+        realOk &&
+        summary.errors === 0 &&
+        summary.rejectedApi === 0 &&
+        summary.outboxPendingAtEnd === 0
+      );
     }
     const check = spawnSync('pnpm', ['plugin:sim', '--vm', dir, r.simRun], {
       cwd: ROOT,
@@ -564,6 +617,43 @@ async function main(): Promise<number> {
         return 0;
       });
     }
+    case 'real-check': {
+      // Szenario gegen den echten Server ohne VM: Standort, Ziele, Plan wie ihn das Plugin abruft (Sekunden statt Lauf).
+      const scenario = (process.argv[3] ?? 'night-flats') as RealScenario;
+      const port = 18_877;
+      const real = await startRealServer({ scenario, port, latDeg: 50, log });
+      try {
+        const nina = async (path: string, method = 'GET', body?: unknown) => {
+          const res = await fetch(`http://127.0.0.1:${String(port)}/api/nina/v1${path}`, {
+            method,
+            headers: { authorization: 'Bearer npm_test', 'content-type': 'application/json' },
+            ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+          });
+          return {
+            status: res.status,
+            body: (await res.json().catch(() => null)) as Record<string, unknown>,
+          };
+        };
+        const targets = await nina('/targets');
+        const projects = (targets.body.projects ?? []) as { type: string }[];
+        log(`targets ${String(targets.status)}: ${projects.map((p) => p.type).join(', ')}`);
+        const plan = await nina('/plan', 'POST', {
+          night: real.info.night,
+          reason: 'initial',
+          pendingCaptures: [],
+        });
+        const blocks = (plan.body.blocks ?? []) as {
+          kind: string;
+          startUtc: string;
+          endUtc: string;
+        }[];
+        log(`plan ${String(plan.status)}: darknessEnd ${String(plan.body.darknessEndUtc)}`);
+        for (const b of blocks) log(`  ${b.kind} ${b.startUtc} – ${b.endUtc}`);
+        return plan.status === 200 && blocks.length > 0 ? 0 : 1;
+      } finally {
+        real.close();
+      }
+    }
     case 'screenshot': {
       const tab = process.argv[3]?.startsWith('--') ? undefined : process.argv[3];
       const out = arg('out') ?? join(ROOT, '.vm-bench', `${stamp()}-screenshot.png`);
@@ -579,7 +669,11 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main().catch((e: unknown) => {
-  console.error(`✗ ${e instanceof Error ? e.message : String(e)}`);
-  return 1;
-});
+// Ausdrücklich beenden: offene Handles (Prüfstand- und Test-Server, Keep-Alive des Agenten) hielten den Prozess sonst
+// nach dem Ergebnis am Leben – eine Folge von Läufen blieb nach dem ersten stehen (05.10.2026).
+process.exit(
+  await main().catch((e: unknown) => {
+    console.error(`✗ ${e instanceof Error ? e.message : String(e)}`);
+    return 1;
+  }),
+);

@@ -68,6 +68,7 @@ Meridian-Flip-Werte setzt der Lauf selbst über die Advanced API (`profile` in d
 | `pnpm vm-bench update-agent` | Agent in der VM aus dem Repository neu laden (ab dieser Version ohne Handgriff) |
 | `pnpm vm-bench install-plugin <ordner>` | Plugin-Build (CI-Artefakt `nina-pm-plugin`) in die VM, NINA neu gestartet |
 | `pnpm vm-bench run vm-flip [--plugin <ordner>]` | Lauf: NINA frisch ohne `ninapm.db`, Profilwerte, Geräte, Test-Server, Sequenz, Screenshots, Log und Report, Auswertung |
+| `pnpm vm-bench real-check <szenario>` | Szenario gegen den echten Server ohne VM prüfen (Standort, Ziele, Plan) |
 | `pnpm vm-bench screenshot [reiter]` | Screenshot des NINA-Fensters |
 
 Ergebnisse liegen in `.vm-bench/<zeit>-<lauf>/` (`report.json`, `nina.log`, `vm-check.txt`, Screenshots; nicht im Repository). Abgenommene Läufe kommen wie bisher nach `docs/test-runs/<datum>/`.
@@ -77,7 +78,24 @@ Safety-Monitor in Läufen (`steps`):
 - `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
 - Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
 
-Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`. Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
+Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
+
+### Gegen den echten Server (Stufe 2a): `real-night-flats`, `real-transit`, `real-commands`
+
+Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst baut. Planung, Transit-Auslieferung, Session-Jobs, Befehle und Nachtbericht des **echten** Servers prüfen sie nicht (Analyse 04.10.2026). Die `real-*`-Läufe starten statt des Test-Servers den echten API-Code (`apps/api/src/bench/real-server.ts` auf dem lokalen Stack `local-stack.ts`: PGlite mit Demo-Seed, echte Uhr, Takt wie `tick-5min` jede Minute, Discord-Nachbildung) auf demselben Port. Die Nacht wird über die **Daten** gestaucht, nicht über die Uhr:
+
+- **Standort:** Breite 50°, Länge so gelöst, dass die astronomische Dämmerung 25 / 40 / 35 min nach dem Start endet (`nightTimes`, Zone `Etc/GMT±h`); NINA bekommt denselben Standort ins Profil.
+- **Ziele:** Deep-Sky-Projekte bei Dec +75° (aus jeder Länge hoch genug) mit Stundenwinkel +2 h (kein Meridiandurchgang), freigegeben wie in den API-Tests; Filterrad wie die VM; Rig A ohne Rotator wie Starfront.
+- **Transit:** Katalogeintrag `BENCH-1b` mit T0 aus der gewünschten Transitmitte (22 min nach dem Start), ohne Grundlinie festgelegt; die Wertung `observed` zieht der Prüfstand am Ende vor (Frist `TRANSIT_SETTLE_GRACE_MS`).
+- **Token:** Das Profil der VM schickt weiter `npm_test`; der Prüfstand schreibt es auf das Token einer echt angelegten Instanz um. Der *Testbetrieb* schaltet gegen den echten Server keine Sicherheitsprüfung ab (keine Test-Server-Antwort).
+
+| Lauf | prüft | Dauer |
+|---|---|---|
+| `real-night-flats` | Plan durch den Server, Nachtende, Flats und Dark-Flats, Abschluss, Nachtbericht, Discord, Zähler = gemeldete Lights | ≈ 35 min |
+| `real-transit` | festgelegter Transit in `targets`, Transitblock in NINA, Aufnahmen mit Beobachtung, `observed`, Abschluss | ≈ 45 min |
+| `real-commands` | Projekt des laufenden Blocks pausiert → Neuplanung, Kommandos `refresh_targets`/`reset_plan` quittiert, NINA-Neustart → `resume` derselben Session | ≈ 40 min |
+
+Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (dasselbe in `apps/api/test/bench-real-server.test.ts`).
 
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 
