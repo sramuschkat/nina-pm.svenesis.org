@@ -33,7 +33,15 @@ describe('Prüfstand gegen den echten Server', () => {
           pendingCaptures: [],
         });
         expect(plan.status).toBe(200);
-        const blocks = plan.body.blocks as { kind: string; endUtc: string }[];
+        const blocks = plan.body.blocks as {
+          kind: string;
+          endUtc: string;
+          entries: { cmd: string; readoutMode?: string | null }[];
+        }[];
+        // Nur Auslesemodi, die die Simulator-Kamera kennt (sonst `readout_mode_not_found`, Lauf 05.10.2026).
+        for (const b of blocks)
+          for (const e of b.entries.filter((x) => x.cmd.startsWith('expose')))
+            expect(['normal1', 'normal2']).toContain(e.readoutMode);
         expect(blocks.map((b) => b.kind)).toContain(kind);
         const darknessEnd = Date.parse(plan.body.darknessEndUtc as string);
         expect(darknessEnd - Date.now()).toBeGreaterThan(20 * 60_000);

@@ -33,6 +33,9 @@ const VM_WHEEL = JSON.parse(
   ),
 ) as { filters: { position: number; shortName: string; ninaFilterName: string }[] };
 
+/** Auslesemodi der Kamera „Camera Sky Simulator for ALPACA“ in der VM (Advanced API, 05.10.2026). */
+const VM_READOUT_MODES = ['normal1', 'normal2'];
+
 type Body = Record<string, unknown>;
 const id = () => crypto.randomUUID();
 const MIN = 60_000;
@@ -194,6 +197,17 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       ninaFilterName: f.ninaFilterName,
     })),
   });
+  // Auslesemodi wie die Simulator-Kamera der VM (`normal1`, `normal2`): die Seed-Kamera kennt „High Gain“, das NINA in
+  // der VM nicht – jeder Block entfiele mit `readout_mode_not_found` (Lauf 05.10.2026). Neue Zeilen erben den Standard.
+  await stack.db
+    .updateTable('camera')
+    .set({
+      readoutModes: JSON.stringify(VM_READOUT_MODES),
+      defaultReadoutMode: VM_READOUT_MODES[0],
+    })
+    .where('tenantId', '=', tenantId)
+    .where('id', '=', rig.cameraId as string)
+    .execute();
   // Ohne Rotator wie das Rig in Starfront: der Sky Simulator dreht sein Bild nicht mit (ops/vm-bench.md).
   await stack.db
     .updateTable('rig')
@@ -225,8 +239,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   // Ziele nahe dem Pol: aus jeder Länge hoch genug (min. Höhe 30°), Stundenwinkel +2 h (kein Meridiandurchgang).
   const lst = lstDeg(nowMs, where.lonDeg);
   // Freigabe wie in den API-Tests: der Seed-Owner darf eigene Projekte nicht selbst freigeben (adminSelfApproval aus).
-  const approve = (pid: string) =>
-    stack.db
+  const approve = async (pid: string) => {
+    await stack.db
       .updateTable('project')
       .set((eb) => ({
         approvalStatus: 'approved',
@@ -235,6 +249,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       }))
       .where('id', '=', pid)
       .execute();
+  };
   const deepSky = async (name: string, raOffsetDeg: number, lines: [string, number][]) => {
     const created = await web<{ id: string; panels: { id: string }[] }>('/projects', 'POST', {
       id: id(),
