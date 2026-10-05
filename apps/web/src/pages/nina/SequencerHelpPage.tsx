@@ -20,12 +20,32 @@ import styles from './help.module.css';
 
 const lang = (l: string): Language => (l === 'en' ? 'en' : 'de');
 
+type TableRow = readonly [string, string];
+
 function Section({ section, level = 2 }: { section: SequencerHelpSection; level?: 2 | 3 }) {
   const H = level === 2 ? 'h2' : 'h3';
+  const table = section.table;
+  const columns: DataColumn<TableRow>[] = table
+    ? table.columns.map((header, i) => ({
+        id: `c${String(i)}`,
+        header,
+        cell: (r: TableRow) => <Markdown>{r[i] ?? ''}</Markdown>,
+      }))
+    : [];
   return (
     <section id={section.id} className={styles.section} aria-labelledby={`${section.id}-h`}>
       <H id={`${section.id}-h`}>{section.title}</H>
       <Markdown>{section.body}</Markdown>
+      {table && (
+        <DataTable
+          label={table.label}
+          columns={columns}
+          rows={[...table.rows]}
+          rowKey={(r) => r[0]}
+          rowLabel={(r) => r[0]}
+        />
+      )}
+      {section.after && <Markdown>{section.after}</Markdown>}
     </section>
   );
 }
@@ -89,6 +109,7 @@ export function SequencerHelpPage() {
   ];
   const toc: { id: string; label: string; children?: { id: string; label: string }[] }[] = [
     { id: help.basics.id, label: help.basics.title },
+    ...help.concepts.map((c) => ({ id: c.id, label: c.title })),
     {
       id: 'templates',
       label: t('nina.help.templates'),
@@ -131,6 +152,9 @@ export function SequencerHelpPage() {
             <Markdown>{help.intro}</Markdown>
           </div>
           <Section section={help.basics} />
+          {help.concepts.map((c) => (
+            <Section key={c.id} section={c} />
+          ))}
           <section id="templates" className={styles.section} aria-labelledby="templates-h">
             <h2 id="templates-h">{t('nina.help.templates')}</h2>
             {help.templates.map((s) => (

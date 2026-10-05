@@ -1,7 +1,7 @@
 /**
  * Hilfe zu den NINA-PM-Bausteinen im Advanced Sequencer (Web, NINA › Hilfe: Sequencer) je Sprache. Inhalt aus
  * dem Plugin-Code (`apps/nina-plugin/NinaPm.Nina/Sequencer`, `NinaPm.Core`), `docs/specs/nina/execution.md` und
- * `docs/ops/sample-sequences.md`, Stand Plugin 0.3.0. Fließtexte sind Markdown (Anzeige über `react-markdown`
+ * `docs/ops/sample-sequences.md`, Stand Plugin 0.4.0. Fließtexte sind Markdown (Anzeige über `react-markdown`
  * ohne HTML); die Namen der Bausteine stehen so, wie NINA sie zeigt (englisch, nicht lokalisiert).
  */
 import type { Language } from './index';
@@ -29,15 +29,27 @@ export interface SequencerHelpItem {
   readonly tips?: string;
 }
 
+/** Tabelle in einem Abschnitt (zwei Spalten, Zellen Markdown) – die Markdown-Anzeige kennt keine GFM-Tabellen. */
+export interface SequencerHelpTable {
+  readonly label: string;
+  readonly columns: readonly [string, string];
+  readonly rows: readonly (readonly [string, string])[];
+}
+
 export interface SequencerHelpSection {
   readonly id: string;
   readonly title: string;
   readonly body: string;
+  /** Tabelle nach `body`, danach `after` (Markdown). */
+  readonly table?: SequencerHelpTable;
+  readonly after?: string;
 }
 
 export interface SequencerHelp {
   readonly intro: string;
   readonly basics: SequencerHelpSection;
+  /** Begriffe, die mehrere Bausteine betreffen (Nachtende, Dithern), direkt nach den Grundregeln. */
+  readonly concepts: readonly SequencerHelpSection[];
   readonly templates: readonly SequencerHelpSection[];
   readonly items: readonly SequencerHelpItem[];
   readonly flats: SequencerHelpSection;
@@ -57,10 +69,66 @@ const de: SequencerHelp = {
 - **Genau ein Container *NINA-PM Instructions*** je Sequenz. Er führt je Aufruf genau einen Schritt aus (planen, warten, einen Block, Flats, Nachtabschluss); die Schleifen um ihn herum rufen ihn so lange auf, bis die Nacht vorbei ist.
 - **Bedingungen an die umgebenden Container**, nie an *NINA-PM Instructions* selbst – der Container wertet eigene Bedingungen nicht aus.
 - **Erst warten, dann entparken**: Warte-Anweisungen stehen vor *Unpark Scope*.
-- **Dithern steuert der Plan.** Dither-Trigger in der Sequenz werden immer unterdrückt. Autofokus und Meridian-Flip laufen über NINAs eigene Trigger (*Autofocus After Time*, *Meridian Flip*); NINA-*Recenter* nach dem Flip ausschalten, NINA-PM zentriert selbst nach jedem Flip.
+- **Dithern steuert der Plan.** Dither-Trigger in der Sequenz werden immer unterdrückt ([warum](#dither)). Autofokus und Meridian-Flip laufen über NINAs eigene Trigger (*Autofocus After Time*, *Meridian Flip*); NINA-*Recenter* nach dem Flip ausschalten, NINA-PM zentriert selbst nach jedem Flip.
 - **Zeiten** gelten immer in der Standortzeit des Rigs, nicht in der Zeitzone des Windows-PCs.
 - **„Deaktiviert“ speichert NINA 3.2 nicht** in der Sequenzdatei. Was nicht laufen soll, löschst du.`,
   },
+  concepts: [
+    {
+      id: 'night-end',
+      title: 'Nachtende – wann die Nacht vorbei ist',
+      body: `**Kurz:** Das Nachtende ist das **Ende der Dunkelheit laut Plan**, nicht der Sonnenaufgang und nicht das Ende des Nachtfensters. Hat die Nacht keine Dunkelheit (siehe unten), gilt das **Sessionende**.
+
+**Woraus es sich ergibt**
+- Jedes Projekt hat eine Dämmerungsgrenze: **astronomisch** (Sonne −18°, Vorgabe für Deep-Sky), **nautisch** (−12°, Vorgabe für Exoplaneten) oder **bürgerlich** (−6°).
+- Das Nachtende ist der **späteste** Morgendurchgang der Grenzen, die die Projekte **dieser Nacht** nutzen. Steht ein nautisches Exoplaneten-Projekt im Plan, endet die Nacht erst bei −12°, auch wenn die Deep-Sky-Projekte schon bei −18° aufhören. Jeder Block endet trotzdem an der Grenze **seines** Projekts.
+- Das **Sessionende** ist das Ende des Nachtfensters: bürgerliche Morgendämmerung (−6°) + 1 h, auf 5 min aufgerundet. Spätestens dann ist die Nacht vorbei. Beispiel Starfront, Nacht 17.09.2026: bürgerliche Morgendämmerung 06:59 CDT, Sessionende 08:00 CDT.
+- Alle Zeiten rechnet der Server für den Standort des Rigs; sie stehen im Plan und in der Live-Anzeige des Containers.
+
+**Welche Dämmerung gilt:** Die Sonne erreicht morgens zuerst −18°, dann −12°, dann −6°. Es gewinnt also die **flachste** Grenze unter den Projekten der Nacht:`,
+      table: {
+        label: 'Welche Dämmerung das Nachtende bestimmt',
+        columns: ['Projekte im Plan der Nacht', 'Nachtende'],
+        rows: [
+          ['nur Deep-Sky mit Vorgabe', '**astronomische** Dämmerung (−18°)'],
+          [
+            'mit Exoplanet (Vorgabe nautisch)',
+            '**nautische** Dämmerung (−12°), etwa eine halbe Stunde später (je nach Breite und Jahreszeit)',
+          ],
+          ['mindestens ein Projekt auf bürgerlich', '**bürgerliche** Dämmerung (−6°)'],
+          [
+            'keine genutzte Grenze wird erreicht (weiße Nacht)',
+            '**Sessionende** (bürgerliche Morgendämmerung + 1 h)',
+          ],
+        ],
+      },
+      after: `Für ein Rig mit reinem Deep-Sky endet die Nacht also an der astronomischen Morgendämmerung; ist ein festgelegter Exoplaneten-Transit dabei, an der nautischen.
+
+**Was am Nachtende passiert** (*NINA-PM Instructions*)
+1. **Letzte Belichtung:** Eine Belichtung beginnt nur, wenn sie samt Download vor dem Ende der Dunkelheit fertig wird. Der laufende Block endet (Grund \`night_end\`), das Guiding stoppt.
+2. **Flats**, falls im Rig eingeschaltet: frühestens am Nachtende (Panel) bzw. ab Sonne −8° (Himmelsflats, dann höchstens bis −2°). Ab dem Sessionende beginnt keine Kombination mehr.
+3. **Session abschließen**; danach folgt der Nachtbericht.
+4. *NINA-PM Night Loop* wird falsch, und NINA führt den **Ende-Bereich** aus (Parken, Kamera aufwärmen). Das geschieht direkt nach der Dunkelheit bzw. nach den Flats, nicht erst am Morgen.
+
+**Bei Unsicherheit:** *NINA-PM Wait until Safe or Night End* wartet höchstens bis zu diesem Nachtende; ohne gespeicherten Plan bis zum Ende des Nachtfensters. Wird es bis dahin nicht sicher, schließt die Anweisung die Nacht **ohne Wiederaufnahme** ab: Flats nur, wenn der Monitor sicher meldet, sonst entfallen die offenen Kombinationen; danach Session abschließen und Ende-Bereich.
+
+**Sonderfall weiße Nacht:** Erreicht die Sonne keine der genutzten Grenzen (hohe Breite im Sommer), gibt es keine Dunkelheit. Die Nacht endet dann am Sessionende, Panel-Flats beginnen frühestens 1 h davor. Die nächste Nacht beginnt im Plugin erst nach dem Ende des Nachtfensters.`,
+    },
+    {
+      id: 'dither',
+      title: 'Dithern – warum NINA-Dither-Trigger unterdrückt werden',
+      body: `Bei NINA-PM steuert **der Plan** das Dithern, nicht NINA. Ob und wie oft gedithert wird, stellst du im Web am Rig ein („Dithern alle n Belichtungen“). Ein Dither-Trigger in der Sequenz (*Dither after Exposures*) würde dem Plan ins Gehege kommen:
+
+1. **Die Zeit ist eingeplant.** Der Server rechnet die Settle-Zeit je Dither in die Blocklänge ein. Dithert NINA zusätzlich nach eigenem Zähler, fehlt diese Zeit im Plan: Im zeitgeführten Ablauf fehlen Belichtungen am Blockende, und das Plugin plant wegen Verzug neu.
+2. **Die richtigen Stellen.** Der Plan dithert nur zwischen Belichtungen desselben Ziels, nicht vor einem Zielwechsel, Flip oder Blockende. NINAs Trigger zählt nur Belichtungen und kennt keine Blockgrenzen.
+3. **Kein Dithern im Transit.** Für die Photometrie muss der Stern auf denselben Pixeln bleiben; ein Dither in der Transitserie verfälscht die Lichtkurve. Der Plan belichtet dort ohne Dither.
+4. **Eine Stelle für die Einstellung.** Die Vorgabe steht im Web am Rig; ein Trigger in der Sequenzdatei wäre eine zweite, die im Web niemand sieht.
+
+**Warum unterdrücken statt verbieten?** Damit es auch mit einer alten Sequenz richtig läuft, etwa einer aus Astro-PM-Zeiten. Das Plugin überspringt jeden Trigger mit „Dither“ im Typnamen – in normalen Blöcken und im Transit –, meldet beim Planen einmal die Warnung \`nina_dither_trigger_present\` und arbeitet nach dem Plan weiter.
+
+Der Rat „keinen Dither-Trigger einbauen“ ist also Ordnung, keine Pflicht: Ein Trigger schadet nicht, erzeugt aber eine Warnung und verwirrt beim Lesen der Sequenz. **Autofokus** läuft dagegen über NINAs Trigger *Autofocus After Time*; den plant der Server ein.`,
+    },
+  ],
   templates: [
     {
       id: 'template-safety',
@@ -148,7 +216,7 @@ Mit Tagesschleife gelten die Anweisungen vor bzw. nach „NINA-PM Nacht“ als S
       behavior: `1. Plan vom Server holen (beim ersten Aufruf und nach jeder Neuplanung). Gelingt das nicht, folgt der nächste Versuch nach 5 min; der Status zeigt den Grund.
 2. Bis zum Start des nächsten Blocks warten (Status *Warten*, „Nächster Block 21:40“).
 3. **Block**: vergangene oder nicht belichtbare Blöcke überspringen, Höhe und Dunkelheit prüfen, Ziel setzen, Slew und Zentrieren (mit Rotator *Center and Rotate*; Wiederholungen mit wachsenden Pausen), Box *Before Target Change*, Guiding starten, dann je Eintrag Filter → Dither laut Plan → Trigger → Belichtung → Nach-Trigger, zuletzt Box *After Target Change*.
-4. **Nachtende** (Ende der Dunkelheit laut Plan): Flats, falls eingeschaltet, dann Session abschließen. *NINA-PM Night Loop* wird falsch, NINA führt den Ende-Bereich aus.
+4. **[Nachtende](#night-end)** (Ende der Dunkelheit laut Plan): Flats, falls eingeschaltet, dann Session abschließen. *NINA-PM Night Loop* wird falsch, NINA führt den Ende-Bereich aus.
 
 **Safety**: Meldet *Loop While Safe* unsicher, wird die laufende Belichtung abgebrochen und der Block beendet; nach „wieder sicher“ plant NINA-PM neu und fährt immer neu an und zentriert.
 
@@ -157,7 +225,7 @@ Mit Tagesschleife gelten die Anweisungen vor bzw. nach „NINA-PM Nacht“ als S
 **Anzeige**: Live-Status (alle 2 s) mit Zustand (*Warten / Läuft / Flats / Pausiert – unsicher / Gesperrt / Beendet*), Ziel, RA/Dec, Rotation, aktueller Belichtung, Outbox und aufklappbar „Heutige Ziele“.`,
       tips: `- Bedingungen nie an diesen Container hängen – sie wirken nicht.
 - Steht der Container direkt in „Ziel“ statt in „Blöcke“, läuft die Wiederherstellung (*Unpark Scope*) vor jedem Block.
-- Keine Dither-Trigger einbauen (werden ohnehin unterdrückt). Fehlt *Autofocus After Time*, plant der Server ohne Autofokus.`,
+- Keine Dither-Trigger einbauen; sie werden ohnehin unterdrückt ([Dithern](#dither)). Fehlt *Autofocus After Time*, plant der Server ohne Autofokus.`,
     },
     {
       id: 'night-loop',
@@ -169,7 +237,7 @@ Mit Tagesschleife gelten die Anweisungen vor bzw. nach „NINA-PM Nacht“ als S
       settings: [],
       behavior: `- **Wahr** vor dem ersten Block, bei leerem Plan (dann wird alle 5 min neu geplant) und immer, solange ein Block oder Flats laufen.
 - **Falsch** erst nach dem Nachtabschluss: nach den Flats und dem Abschluss der Session, nach einem Abschluss durch *Wait until Safe or Night End* oder bei einem nicht behebbaren Fehler (Rig belegt, Token ungültig, Mandant gesperrt, Uhrzeit falsch).
-- **Nachtende** ist das Ende der Dunkelheit laut Plan (spätestens das Sessionende): der Ende-Bereich beginnt also direkt nach der Dunkelheit, nicht erst am Morgen.
+- **Nachtende** ist das Ende der Dunkelheit laut Plan (spätestens das Sessionende): der Ende-Bereich beginnt also direkt nach der Dunkelheit, nicht erst am Morgen. Details unter [Nachtende](#night-end).
 - Mit *NINA-PM Day Loop* wird sie zu Beginn jeder neuen Runde wieder wahr.`,
       tips: `- Ohne Server-URL und Token ist sie sofort falsch – die Sequenz springt direkt in den Ende-Bereich.`,
     },
@@ -183,7 +251,7 @@ Mit Tagesschleife gelten die Anweisungen vor bzw. nach „NINA-PM Nacht“ als S
       settings: [],
       behavior: `- Prüft alle 10 s: Monitor **verbunden und sicher** → Ende; NINA kehrt in „Ziel“ zurück und stellt wieder her (*Unpark Scope*).
 - **Monitor getrennt** zählt wie unsicher (einmal eine Warnung); die Montierung bleibt geparkt.
-- **Nachtende erreicht** → Nacht abschließen: offene Flat-Kombinationen entfallen (mit Auto-Flats holt sie der nächste Morgen nach), die Session wird beendet, *Night Loop* wird falsch und NINA führt den Ende-Bereich aus.`,
+- **[Nachtende](#night-end) erreicht** → Nacht abschließen: offene Flat-Kombinationen entfallen (mit Auto-Flats holt sie der nächste Morgen nach), die Session wird beendet, *Night Loop* wird falsch und NINA führt den Ende-Bereich aus.`,
       tips: `- **Nichts dahinter einfügen**: NINA prüft nach jeder Anweisung die Bedingungen und überspringt den Rest, sobald es sicher ist – eine Anweisung danach liefe nie.
 - Ohne Server-URL und Token wartet sie nicht.`,
     },
@@ -387,10 +455,66 @@ const en: SequencerHelp = {
 - **Exactly one *NINA-PM Instructions* container** per sequence. Each call runs exactly one step (plan, wait, one block, flats, night end); the loops around it keep calling it until the night is over.
 - **Conditions belong on the surrounding containers**, never on *NINA-PM Instructions* itself – the container does not evaluate its own conditions.
 - **Wait first, then unpark**: wait instructions come before *Unpark Scope*.
-- **The plan controls dithering.** Dither triggers in the sequence are always suppressed. Autofocus and meridian flip use NINA's own triggers (*Autofocus After Time*, *Meridian Flip*); turn NINA's *Recenter* after the flip off – NINA-PM re-centers after every flip itself.
+- **The plan controls dithering.** Dither triggers in the sequence are always suppressed ([why](#dither)). Autofocus and meridian flip use NINA's own triggers (*Autofocus After Time*, *Meridian Flip*); turn NINA's *Recenter* after the flip off – NINA-PM re-centers after every flip itself.
 - **Times** are always in the rig's site time, not in the Windows PC's time zone.
 - **NINA 3.2 does not save "disabled"** in the sequence file. Delete what should not run.`,
   },
+  concepts: [
+    {
+      id: 'night-end',
+      title: 'Night end – when the night is over',
+      body: `**In short:** night end is the **end of darkness according to the plan** – not sunrise and not the end of the night window. If the night has no darkness (see below), the **session end** applies.
+
+**Where it comes from**
+- Every project has a twilight limit: **astronomical** (sun −18°, default for deep sky), **nautical** (−12°, default for exoplanets) or **civil** (−6°).
+- Night end is the **latest** morning crossing of the limits used by the projects of **this night**. If a nautical exoplanet project is in the plan, the night ends only at −12°, even if the deep-sky projects stop at −18°. Each block still ends at the limit of **its own** project.
+- **Session end** is the end of the night window: civil dawn (−6°) + 1 h, rounded up to 5 min. The night is over at the latest then. Example Starfront, night 2026-09-17: civil dawn 06:59 CDT, session end 08:00 CDT.
+- The server computes all times for the rig's site; they are in the plan and in the container's live status.
+
+**Which twilight applies:** in the morning the sun reaches −18° first, then −12°, then −6°. So the **shallowest** limit among the night's projects wins:`,
+      table: {
+        label: 'Which twilight sets night end',
+        columns: ["Projects in the night's plan", 'Night end'],
+        rows: [
+          ['deep sky only, default limit', '**astronomical** dawn (−18°)'],
+          [
+            'with an exoplanet (default nautical)',
+            '**nautical** dawn (−12°), roughly half an hour later (depending on latitude and season)',
+          ],
+          ['at least one project set to civil', '**civil** dawn (−6°)'],
+          [
+            'none of the limits in use is reached (white night)',
+            '**Session end** (civil dawn + 1 h)',
+          ],
+        ],
+      },
+      after: `So for a rig with deep sky only the night ends at astronomical dawn; with a locked exoplanet transit, at nautical dawn.
+
+**What happens at night end** (*NINA-PM Instructions*)
+1. **Last exposure:** an exposure only starts if it finishes, including download, before darkness ends. The running block ends (reason \`night_end\`), guiding stops.
+2. **Flats**, if enabled for the rig: at night end at the earliest (panel), or from sun −8° (sky flats, then at most until −2°). No combination starts after session end.
+3. **Close the session**; the night report follows.
+4. *NINA-PM Night Loop* becomes false and NINA runs the **end area** (park, warm camera) – right after darkness or the flats, not in the morning.
+
+**When unsafe:** *NINA-PM Wait until Safe or Night End* waits at most until this night end; without a stored plan until the end of the night window. If it does not become safe by then, the instruction closes the night **without resuming**: flats only if the monitor reports safe, otherwise the open combinations are skipped; then the session is closed and the end area runs.
+
+**Special case white night:** if the sun reaches none of the limits in use (high latitude in summer), there is no darkness. The night then ends at session end; panel flats start 1 h before it at the earliest. The plugin starts the next night only after the night window has ended.`,
+    },
+    {
+      id: 'dither',
+      title: 'Dithering – why NINA dither triggers are suppressed',
+      body: `With NINA-PM **the plan** controls dithering, not NINA. Whether and how often to dither is set on the rig in the web app ("dither every n exposures"). A dither trigger in the sequence (*Dither after Exposures*) would interfere with the plan:
+
+1. **The time is planned.** The server includes the settle time per dither in the block length. If NINA dithers additionally on its own count, that time is missing from the plan: in time-aware playback exposures are lost at the end of the block, and the plugin re-plans because it is behind.
+2. **The right moments.** The plan dithers only between exposures of the same target – not before a target change, flip or block end. NINA's trigger only counts exposures and knows nothing about blocks.
+3. **No dithering during a transit.** For photometry the star must stay on the same pixels; a dither within the transit series distorts the light curve. The plan exposes without dithering there.
+4. **One place for the setting.** It lives on the rig in the web app; a trigger in the sequence file would be a second one nobody sees in the web app.
+
+**Why suppress instead of forbid?** So that an old sequence still works correctly, e.g. one from Astro PM times. The plugin skips every trigger with "dither" in its type name – in regular blocks and in transits –, reports the warning \`nina_dither_trigger_present\` once when planning and keeps following the plan.
+
+So "don't add a dither trigger" is housekeeping, not a requirement: a trigger does no harm, but it causes a warning and is confusing when reading the sequence. **Autofocus**, on the other hand, runs through NINA's *Autofocus After Time* trigger; the server plans for it.`,
+    },
+  ],
   templates: [
     {
       id: 'template-safety',
@@ -477,7 +601,7 @@ With a day loop the instructions before and after "NINA-PM Nacht" count as start
       behavior: `1. Fetch the plan from the server (on the first call and after every re-plan). If that fails, it retries after 5 min; the status shows the reason.
 2. Wait until the next block starts (status *Waiting*, "Next block 21:40").
 3. **Block**: skip past or non-imageable blocks, check altitude and darkness, set the target, slew and center (with rotator *Center and Rotate*; retries with growing pauses), box *Before Target Change*, start guiding, then per entry filter → dither per plan → triggers → exposure → after-triggers, finally box *After Target Change*.
-4. **Night end** (end of darkness per plan): flats if enabled, then close the session. *NINA-PM Night Loop* becomes false and NINA runs the end area.
+4. **[Night end](#night-end)** (end of darkness per plan): flats if enabled, then close the session. *NINA-PM Night Loop* becomes false and NINA runs the end area.
 
 **Safety**: when *Loop While Safe* reports unsafe, the running exposure is aborted and the block ends; once safe again NINA-PM re-plans and always slews and centers anew.
 
@@ -486,7 +610,7 @@ With a day loop the instructions before and after "NINA-PM Nacht" count as start
 **Display**: live status (every 2 s) with state (*Waiting / Running / Flats / Paused – unsafe / Blocked / Finished*), target, RA/Dec, rotation, current exposure, outbox and the expandable "Tonight's targets".`,
       tips: `- Never attach conditions to this container – they have no effect.
 - If the container sits directly in "Ziel" instead of "Blöcke", the restore (*Unpark Scope*) runs before every block.
-- Do not add dither triggers (they are suppressed anyway). Without *Autofocus After Time* the server plans without autofocus.`,
+- Do not add dither triggers; they are suppressed anyway ([dithering](#dither)). Without *Autofocus After Time* the server plans without autofocus.`,
     },
     {
       id: 'night-loop',
@@ -498,7 +622,7 @@ With a day loop the instructions before and after "NINA-PM Nacht" count as start
       settings: [],
       behavior: `- **True** before the first block, with an empty plan (re-planned every 5 min) and always while a block or flats are running.
 - **False** only after the night end: after flats and closing the session, after *Wait until Safe or Night End* closed the night, or on an unrecoverable error (rig busy, token invalid, tenant locked, clock wrong).
-- **Night end** is the end of darkness per plan (at the latest the session end): the end area starts right after darkness, not in the morning.
+- **Night end** is the end of darkness per plan (at the latest the session end): the end area starts right after darkness, not in the morning. Details under [night end](#night-end).
 - With *NINA-PM Day Loop* it becomes true again at the start of each new round.`,
       tips: `- Without server URL and token it is false immediately – the sequence jumps straight to the end area.`,
     },
@@ -512,7 +636,7 @@ With a day loop the instructions before and after "NINA-PM Nacht" count as start
       settings: [],
       behavior: `- Checks every 10 s: monitor **connected and safe** → done; NINA returns to "Ziel" and restores (*Unpark Scope*).
 - **Monitor disconnected** counts as unsafe (one warning); the mount stays parked.
-- **Night end reached** → close the night: open flat combinations are skipped (with auto flats the next morning catches up), the session ends, *Night Loop* becomes false and NINA runs the end area.`,
+- **[Night end](#night-end) reached** → close the night: open flat combinations are skipped (with auto flats the next morning catches up), the session ends, *Night Loop* becomes false and NINA runs the end area.`,
       tips: `- **Add nothing after it**: NINA checks the conditions after each instruction and skips the rest as soon as it is safe – an instruction after it would never run.
 - Without server URL and token it does not wait.`,
     },

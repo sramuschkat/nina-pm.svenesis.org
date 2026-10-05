@@ -64,6 +64,18 @@ describe('Sequencer-Hilfe', () => {
         .join(' / ')
         .split(' / '),
     ).toHaveLength(10);
+    // Begriffe direkt nach den Grundregeln; die Bausteine verlinken darauf.
+    for (const c of sequencerHelp.de.concepts) {
+      expect(within(toc).getByRole('link', { name: c.title })).toHaveAttribute('href', `#${c.id}`);
+      expect(screen.getByRole('heading', { name: c.title, level: 2 })).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole('table', { name: 'Welche Dämmerung das Nachtende bestimmt' }),
+    ).toHaveTextContent('nautische Dämmerung');
+    expect(screen.getAllByRole('link', { name: 'Nachtende' })[0]).toHaveAttribute(
+      'href',
+      '#night-end',
+    );
     expect(
       screen.getByRole('table', { name: 'Einstellungen: NINA-PM Day Loop' }),
     ).toHaveTextContent('Höchstens Nächte');
@@ -75,6 +87,7 @@ describe('Sequencer-Hilfe', () => {
 
   it('DE und EN haben dieselben Abschnitte', () => {
     const ids = (l: 'de' | 'en') => [
+      ...sequencerHelp[l].concepts.map((s) => s.id),
       ...sequencerHelp[l].templates.map((s) => s.id),
       ...sequencerHelp[l].items.map((i) => `${i.id}:${i.kind}:${i.settings.length}`),
       ...sequencerHelp[l].checks.rows.map((r) => r.code),
