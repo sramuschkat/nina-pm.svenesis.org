@@ -99,8 +99,9 @@ Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst bau
 | `real-full-night` | typische Starfront-Nacht: vier Ziele, LRGB und SHO, Gain/Offset je Zeile, Dither alle 3; Flats je belichtetem Filter, erst nach *Wait for Time → Nautical Dawn* in *Vor Flats* | ≈ 100 min |
 | `real-network` | Netzausfall 12 min (Anfragen des Plugins ohne Antwort): Session verwaist (`stale`), danach Outbox nachgereicht, Abschluss | ≈ 50 min |
 | `real-flip` | Meridian-Flip **ohne Rotator** wie Starfront: Ereignis `flip` im Flip-Fenster, keines `flip_undetected`, Aufnahmen vor und nach dem Flip, keine Flip- oder Standortwarnung der Einstellungsprüfung | ≈ 45 min |
+| `real-long-night` | lange Nacht über Nacht (Lücke E): 4½ h Dunkelheit, sechs Ziele mit LRGB und SHO à 120 s, Dither alle 3, Flip ohne Rotator im letzten Block, Flats mit Panel nach der nautischen Dämmerung; Session nie verwaist (Stichprobe je Minute), keine Fehler-Ereignisse, höchstens ein Plan je 5 min, mindestens fünf Ziele belichtet | ≈ 5½ h |
 
-Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands|full-night|network|flip>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (mit geplantem Flip) (dasselbe in `apps/api/test/bench-real-server.test.ts`).
+Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands|full-night|network|flip|long-night>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (mit geplantem Flip) (dasselbe in `apps/api/test/bench-real-server.test.ts`).
 
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 

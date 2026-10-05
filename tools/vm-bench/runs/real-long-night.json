@@ -1,0 +1,47 @@
+{
+  "name": "real-long-night",
+  "description": "Lücke E, über Nacht (≈ 5½ h): lange Starfront-Nacht gegen den echten Server – 4½ h Dunkelheit, sechs Ziele mit LRGB und SHO à 120 s, Gain/Offset 125/50, Dither alle 3, ein Meridian-Flip ohne Rotator nach ≈ 4 h im letzten Block, Flats mit Flat-Panel nach der nautischen Dämmerung. Prüft Dauerbetrieb: Session nie verwaist, keine Fehler-Ereignisse, Neuplanungen im Rahmen, Zähler, Flats je Filter, Abschluss, Bericht, leere Outbox.",
+  "real": "long-night",
+  "untilMin": 340,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
+    "flats": true,
+    "flatsBeforeWait": "nauticalDawn",
+    "flatsPanel": true
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "FlatDeviceSettings-Id": "ASCOM.OmniSim.CoverCalibrator"
+  },
+  "trainedFlats": {
+    "timeS": 1,
+    "binnings": [1]
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor", "flatdevice"],
+  "coolC": -10,
+  "steps": [
+    {
+      "atMin": 20,
+      "screenshot": "nach-20-min",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 225,
+      "screenshot": "vor-flip",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 250,
+      "screenshot": "nach-flip",
+      "tab": "sequencer"
+    },
+    {
+      "atMin": 300,
+      "screenshot": "vor-flats",
+      "tab": "sequencer"
+    }
+  ]
+}

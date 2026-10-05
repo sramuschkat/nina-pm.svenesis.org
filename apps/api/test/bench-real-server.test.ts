@@ -12,6 +12,7 @@ const cases: [RealScenario, string][] = [
   ['full-night', 'regular'],
   ['network', 'regular'],
   ['flip', 'regular'],
+  ['long-night', 'regular'],
 ];
 
 describe('Prüfstand gegen den echten Server', () => {
@@ -48,7 +49,9 @@ describe('Prüfstand gegen den echten Server', () => {
         expect(blocks.map((b) => b.kind)).toContain(kind);
         const darknessEnd = Date.parse(plan.body.darknessEndUtc as string);
         expect(darknessEnd - Date.now()).toBeGreaterThan(20 * 60_000);
-        expect(darknessEnd - Date.now()).toBeLessThan(45 * 60_000);
+        expect(darknessEnd - Date.now()).toBeLessThan(
+          (scenario === 'long-night' ? 280 : 45) * 60_000,
+        );
         for (const b of blocks) expect(Date.parse(b.endUtc)).toBeLessThanOrEqual(darknessEnd);
         // Flip im Block: der Server plant ihn nach dem Meridian (Rig ohne Rotator wie Starfront).
         if (scenario === 'flip')

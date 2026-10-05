@@ -795,7 +795,12 @@ async function main(): Promise<number> {
           };
         };
         const targets = await nina('/targets');
-        const projects = (targets.body.projects ?? []) as { type: string }[];
+        const projects = (targets.body.projects ?? []) as {
+          type: string;
+          id?: string;
+          name?: string;
+        }[];
+        const nameOf = (pid: string) => projects.find((p) => p.id === pid)?.name ?? pid;
         log(`targets ${String(targets.status)}: ${projects.map((p) => p.type).join(', ')}`);
         const plan = await nina('/plan', 'POST', {
           night: real.info.night,
@@ -804,13 +809,14 @@ async function main(): Promise<number> {
         });
         const blocks = (plan.body.blocks ?? []) as {
           kind: string;
+          projectId: string;
           startUtc: string;
           endUtc: string;
           entries: { cmd: string; atUtc: string; durationS?: number }[];
         }[];
         log(`plan ${String(plan.status)}: darknessEnd ${String(plan.body.darknessEndUtc)}`);
         for (const b of blocks) {
-          log(`  ${b.kind} ${b.startUtc} – ${b.endUtc}`);
+          log(`  ${b.kind} ${b.startUtc} – ${b.endUtc} ${nameOf(b.projectId)}`);
           for (const e of b.entries.filter((x) => x.cmd === 'meridian_flip'))
             log(`    meridian_flip ${e.atUtc} (${String(e.durationS ?? 0)} s)`);
         }

@@ -29,7 +29,7 @@ import { noonNightKey, timeZoneTransitions } from '../lib/night-table';
 import { createLocalStack, listenLocal, localSeed, type LocalStack } from '../local-stack';
 
 export type RealScenario =
-  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip' | 'dst';
+  'night-flats' | 'transit' | 'commands' | 'full-night' | 'network' | 'flip' | 'dst' | 'long-night';
 
 /** Plugin-Token im Prüfstand-Profil der VM (wie beim Test-Server). */
 export const BENCH_TOKEN = 'npm_test';
@@ -57,6 +57,11 @@ const MIN_PER_DEG = 1440 / 360.98564736629;
  * `flip_timing_mismatch`. Flip-Dauer ohne Autofokus nach dem Flip (Slew + Zentrieren im Simulator).
  */
 const VM_FLIP = { afterMin: 1, maxAfterMin: 5, pauseBeforeMin: 0, durationS: 120 };
+/**
+ * Lange Nacht: Meridian des Flip-Ziels so viele Minuten nach dem Start. Der Server legt den Block des Ziels ans Ende der
+ * Nacht (≈ +3:10 … +4:30 h); mit 230 min liegt der Flip mitten darin (`real-check long-night`, 05.10.2026).
+ */
+const LONG_NIGHT_MERIDIAN_MIN = 230;
 /** Starfront wie das Rig und der Plugin-Simulator (`NinaPm.Sim`, `profileLocation`). */
 const STARFRONT = { latDeg: 31.5471, lonDeg: -99.3823, timeZone: 'America/Chicago' };
 /** Flip-relevante Codes der Einstellungsprüfung (`ninaSettingsMismatchCodes`): im Flip-Lauf darf keiner auftreten. */
@@ -238,8 +243,17 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   const latDeg = s === 'dst' ? STARFRONT.latDeg : opts.latDeg;
   // Nachtende (astronomische Dämmerung, alle Projekte): Flats nach 25 min, Befehle und Flip 35 min, Transit 40 min
   // (Fenster endet nach 33 min). Danach schließt das Plugin die Session ab – der Lauf prüft Abschluss und Bericht.
+  // Lange Nacht (Lücke E): 4½ h Dunkelheit, über Nacht in der VM.
   const dawnMs =
-    nowMs + (s === 'night-flats' ? 25 : s === 'commands' || s === 'flip' ? 35 : 40) * MIN;
+    nowMs +
+    (s === 'night-flats'
+      ? 25
+      : s === 'commands' || s === 'flip'
+        ? 35
+        : s === 'long-night'
+          ? 270
+          : 40) *
+      MIN;
   const where =
     s === 'dst'
       ? starfrontNight(nowMs)
@@ -288,8 +302,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     rigId,
     {
       ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
-      ditherEvery: s === 'full-night' ? 3 : 5,
-      flatsEnabled: s === 'night-flats' || s === 'full-night' || s === 'dst',
+      ditherEvery: s === 'full-night' || s === 'long-night' ? 3 : 5,
+      flatsEnabled: s === 'night-flats' || s === 'full-night' || s === 'dst' || s === 'long-night',
       flatsSource: 'panel',
       flatsAutoMode: 'off',
       flatCount: 3,
@@ -344,7 +358,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     name: string,
     raOffsetDeg: number,
     lines: [string, number, number?, number?][],
-    fixed?: { raDeg: number; decDeg: number; exposureS: number },
+    fixed?: { raDeg?: number; decDeg?: number; exposureS?: number },
   ) => {
     const created = await web<{ id: string; panels: { id: string }[] }>('/projects', 'POST', {
       id: id(),
@@ -399,6 +413,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   /** Netzausfall (Aktionen `drop_network`/`restore_network`): Anfragen des Plugins laufen ins Leere. */
   let dropping = false;
   let sawStale: boolean | null = null;
+  /** Stichprobe je Minute (echte Uhr): war eine Session je verwaist (`stale`)? Lange Nacht: darf nie vorkommen. */
+  let staleSeenAt: string | null = null;
 
   if (s === 'night-flats') {
     projects.push(
@@ -462,6 +478,74 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     );
     if (tM === null) throw new Error('kein Meridiandurchgang für das Flip-Ziel');
     info.meridianUtc = iso(tM * 1000);
+  } else if (s === 'long-night') {
+    // Lange Starfront-Nacht (Lücke E): sechs Ziele mit LRGB und SHO, 120 s, Gain/Offset 125/50, Dither alle 3. Fünf Ziele
+    // stehen schon westlich des Meridians (Stundenwinkel +1 … +4 h, kein Flip); nur „Bench Flip“ kulminiert spät in
+    // der Nacht und ist am längsten zu belichten (Flip ohne Rotator mitten im Block). Flats mit Panel nach der nautischen
+    // Dämmerung.
+    const long: [string, number, [string, number][]][] = [
+      [
+        'Bench LRGB',
+        0,
+        [
+          ['L', 5],
+          ['R', 5],
+          ['G', 5],
+          ['B', 5],
+        ],
+      ],
+      [
+        'Bench SHO',
+        15,
+        [
+          ['Ha', 5],
+          ['OIII', 5],
+          ['SII', 5],
+        ],
+      ],
+      [
+        'Bench Flip',
+        30 + LONG_NIGHT_MERIDIAN_MIN / MIN_PER_DEG,
+        [
+          ['L', 20],
+          ['R', 20],
+        ],
+      ],
+      [
+        'Bench L+Ha',
+        -15,
+        [
+          ['L', 6],
+          ['Ha', 6],
+        ],
+      ],
+      [
+        'Bench RGB',
+        -30,
+        [
+          ['R', 5],
+          ['G', 5],
+          ['B', 5],
+        ],
+      ],
+      [
+        'Bench NB',
+        10,
+        [
+          ['Ha', 6],
+          ['OIII', 6],
+        ],
+      ],
+    ];
+    for (const [name, raOffsetDeg, lines] of long)
+      projects.push(
+        await deepSky(
+          name,
+          raOffsetDeg,
+          lines.map(([f, n]): [string, number, number, number] => [f, n, 125, 50]),
+          { exposureS: 120 },
+        ),
+      );
   } else if (s === 'dst') {
     // Nacht 31.10./01.11.2026 in Starfront (CDT → CST um 02:00 = 07:00Z): echte Ziele von abends bis morgens, 300 s je
     // Aufnahme wie am Rig; M45 kulminiert ≈ 01:20 CDT, kurz vor der Umstellung (Flip in der doppelten Stunde).
@@ -640,6 +724,16 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       .where('tenantId', '=', tenantId)
       .where('rigId', '=', rigId)
       .execute();
+  const staleProbe = virtual
+    ? undefined
+    : setInterval(() => {
+        void sessions()
+          .then((rows) => {
+            if (!staleSeenAt && rows.some((x) => x.status === 'stale'))
+              staleSeenAt = iso(Date.now());
+          })
+          .catch(() => undefined);
+      }, MIN).unref();
 
   return {
     profile: {
@@ -824,6 +918,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         commands,
         transit: observation ?? null,
         flipEvents: events,
+        staleSeenAt,
         settingsMismatch: mismatchCodes,
         discord: discord.calls.map((c) => c.path),
       };
@@ -855,7 +950,49 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         discord.calls.length > 0,
         `${String(discord.calls.length)} Aufrufe`,
       );
-      if (s === 'full-night') {
+      if (s === 'long-night') {
+        const lit = new Set(lights.map((c) => c.projectId));
+        check(
+          'Mindestens fünf Ziele belichtet',
+          lit.size >= 5,
+          `${String(lit.size)} von ${String(projects.length)} Projekten`,
+        );
+        const flips = events.filter((e) => e.kind === 'flip');
+        check(
+          'Flip in der Nacht gemeldet, keiner unerkannt',
+          flips.length >= 1 && !events.some((e) => e.kind === 'flip_undetected'),
+          JSON.stringify(events.map((e) => [e.kind, iso(new Date(e.occurredAt).getTime())])),
+        );
+        check(
+          'Session nie verwaist (Heartbeat die ganze Nacht)',
+          staleSeenAt === null,
+          staleSeenAt ? `stale um ${staleSeenAt}` : 'nie stale',
+        );
+        const errors = list.length
+          ? await stack.db
+              .selectFrom('sessionEvent')
+              .select(['kind', 'message', 'occurredAt'])
+              .where('tenantId', '=', tenantId)
+              .where(
+                'sessionId',
+                'in',
+                list.map((x) => x.id),
+              )
+              .where('kind', '=', 'error')
+              .execute()
+          : [];
+        check(
+          'Keine Fehler-Ereignisse des Plugins',
+          errors.length === 0,
+          JSON.stringify(errors.map((e) => e.message)),
+        );
+        check(
+          'Neuplanungen in vernünftigem Maß (≤ 1 je 5 min)',
+          plans.length <= 270 / 5 + 5,
+          `${String(plans.length)} Pläne`,
+        );
+      }
+      if (s === 'full-night' || s === 'long-night') {
         const filters = [...new Set(lights.map((c) => c.filterShortName))].sort();
         check('Mehrere Filter belichtet', filters.length >= 4, filters.join(','));
         const flatFilters = new Set(
@@ -1030,6 +1167,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       return { data, checks };
     },
     close() {
+      if (staleProbe) clearInterval(staleProbe);
       http.close();
       stack.close();
       void discord.close();
