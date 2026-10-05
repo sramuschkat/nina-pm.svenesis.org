@@ -54,6 +54,10 @@ Ziel jeder betreuten Nacht: Am Morgen liegt das NINA-Log vor, Session und Zähle
   - *Meridian Flip*: **Recenter aus** (NT-22, NINA-PM zentriert nach jedem Flip selbst; heute ist es an). Minuten nach Meridian, maximal und Pause genau wie im Web; *AF after flip* wie bisher.
   - *Plate Solving*: Rotationstoleranz ≤ Rotationstoleranz des Rigs.
   - *Flat-Panel*: trainierte Flat-Belichtungen für jede Kombination aus Filter, Binning, Gain und Offset der Projekte. Fehlt eine, meldet das Plugin es und der Filter bekommt keine Flats.
+- **Dateimuster** (*Options › Imaging*): bleibt NINAs Standard `$$DATEMINUS12$$\$$IMAGETYPE$$\$$DATETIME$$_$$FILTER$$_$$SENSORTEMP$$_$$EXPOSURETIME$$s_$$FRAMENR$$`. Mit diesem Muster liefen alle VM-Tests. Folgen:
+  - Die Lights aller Ziele einer Nacht liegen in **einem** Ordner `<Datum>\LIGHT`. Der Dateiname nennt kein Ziel; das Ziel steht im FITS-Kopf `OBJECT` (NINA-PM setzt je Block den Projektnamen, bei Mosaiken `Projekt – Panel`).
+  - Flats liegen in `<Datum>\FLAT`, Dark-Flats in `<Datum>\DARK`. NINA 3.2 speichert *Trained Dark Flat Exposure* als Bildtyp `DARK`.
+  - Kopien geteilter Flats in andere Zielordner gibt es nicht, weil das Muster keinen Zielordner hat. Im Log steht dafür je Datei `COPY … status=no_target_segment`; das ist bei diesem Muster normal.
 - **Windows:** Zeitzone = Standortzone (CDT/CST), sonst Warnung `pc_timezone_differs` und Datumsordner, die nicht zur Nacht passen. Uhr synchronisiert: Mehr als 60 s Abweichung sperrt das Plugin (`clock_skew`).
 
 ## 3. Sequenz
@@ -70,7 +74,7 @@ Grundlage ist die Beispielsequenz **„Eine Nacht mit Safety“** (Links auf der
   - Anweisungen *Stop Guiding* → Parken/Home → **NINA-PM Wait until Safe or Night End** als letzte Anweisung.
 - **Ende-Bereich:** *Stop Guiding* → Parken/Home → *Warm Camera*.
 - **Flats** (*NINA-PM Instructions* → *Flats am Nachtende*):
-  - *Vor Flats*: *Stop Guiding* → Parken/Home → **Wait for Sun Altitude, Comparator „<“, −12°**, damit die Flats erst nach der nautischen Dämmerung beginnen (Starfront-Regel) → Panel schließen, Licht an. *NINA-PM Wait for Time* passt hier **nicht**: Sie würde auf die nächste Nacht warten.
+  - *Vor Flats*: *Stop Guiding* → Parken/Home → NINAs eigenes **Wait for Time** mit Quelle **Nautical Dawn**, wie bisher bei Astro PM → Panel schließen, Licht an. So beginnen die Flats erst nach der nautischen Dämmerung (Starfront-Regel). Ist die Dämmerung schon vorbei, etwa nach einer Unterbrechung, geht es sofort weiter: NINA wartet dann 0 s (NINA 3.2, `WaitForTime`). Gleichwertig ist *Wait for Sun Altitude* mit Comparator „<“ und −12°. *NINA-PM Wait for Time* passt hier **nicht**: Sie würde auf die nächste Nacht warten.
   - *Je Kombination*: *Trained Flat Exposure* → *Trained Dark Flat Exposure*, beide mit *Keep Panel Closed* an. Filter, Gain, Offset, Binning und Anzahl nicht eintragen.
   - *Nach Flats*: Licht aus.
 - Nach dem Laden zeigt das NINA-Log beim ersten Plan die Vorlagenprüfung (`Sequence template: …`). Sie sollte **leer** sein; jede Meldung dort vor der Nacht klären.
@@ -84,7 +88,7 @@ Grundlage ist die Beispielsequenz **„Eine Nacht mit Safety“** (Links auf der
 | Erster Block | NINA, Web *Sessions* | Slew, Zentrieren, erste Aufnahmen; im Web steigen die Zähler |
 | Meridian-Flip | NINA-Log | `FLIP pierBefore=… pierAfter=… durationS=…`, danach Zentrieren und weiter |
 | Dach zu | NINA | Belichtung abgebrochen, Sicherung parkt, *Wait until Safe or Night End* wartet; Dach auf → Wiederaufnahme mit neuem Plan |
-| Morgen | NINA-Log, Discord | Ende der Dunkelheit → `FLATS_START` erst nach −12° → Flats → `SESSION status=completed pending=0` → Ende-Bereich (Parken, Aufwärmen) → Nachtbericht in Discord |
+| Morgen | NINA-Log, Discord | Ende der Dunkelheit → `FLATS_START` erst nach der nautischen Dämmerung → Flats → `SESSION status=completed pending=0` → Ende-Bereich (Parken, Aufwärmen) → Nachtbericht in Discord |
 
 **Bei Problemen:**
 - Plugin gesperrt (`BLOCKED`), Ziele falsch, Abbruch mitten in der Nacht: Sequenz stoppen, im Container *Reset* drücken. Bleibt es dabei, die gewohnte **Astro-PM-Sequenz** laden und die Nacht damit fortsetzen.

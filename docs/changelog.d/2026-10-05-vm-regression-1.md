@@ -5,3 +5,4 @@
 - **Protokolle** der VM-Regression mit Plugin 0.4.0: `vm-smoke` (Grundablauf, Safety, Kühlung, Dither) und `vm-flip` (Flip, Zentrieren, kein Nachrotieren). Beide **Go**.
 - **Neue Läufe gegen den echten Server:** `real-full-night` (Starfront-Nacht mit LRGB/SHO, Flats nach der nautischen Dämmerung), `real-network` (Netzausfall) und `real-flip` (Meridian-Flip ohne Rotator wie Starfront). Die Montierung übernimmt in allen Läufen beim Verbinden den Profilstandort, damit NINA zur geplanten Zeit flippt.
 - **Testbilder:** Vor jedem Lauf löscht der Agent die Datumsordner im Bildordner (`clean-images`); die Simulator-Kamera hatte mit Transitserien die VM gefüllt.
+- **Rig-Checkliste:** *Vor Flats* mit NINAs *Wait for Time → Nautical Dawn* wie bisher bei Astro PM. Das Dateimuster bleibt NINAs Standard: ein LIGHT-Ordner je Nacht, Ziel im FITS-Kopf `OBJECT`, Dark-Flats unter `DARK`, keine Flat-Kopien (`COPY status=no_target_segment`). Ein Kern-Test deckt das Starfront-Muster ab.
