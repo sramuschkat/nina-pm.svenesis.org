@@ -285,8 +285,11 @@ export function planNight(input: PlanInput): NightPlan {
     }
   }
 
-  // Nachtweite Zeitmarken (night.md §3, NT-12).
+  // Nachtweite Zeitmarken (night.md §3, NT-12). Ohne Projekte im Input (alle fertig, pausiert oder nicht ausgeliefert)
+  // gilt die astronomische Grenze – sonst wäre darknessEndUtc null und das Plugin beendete die Nacht erst am
+  // Nachtfensterende, ohne Flats (Lauf real-all-done, 05.10.2026).
   const used = new Set(projects.map((p) => p.twilight));
+  if (used.size === 0) used.add('astronomical');
   const ends = (['civil', 'nautical', 'astronomical'] as const)
     .filter((l) => used.has(l))
     .map((l) => twilightEnds[l])
