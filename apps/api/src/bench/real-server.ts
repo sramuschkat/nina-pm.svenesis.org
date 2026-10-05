@@ -304,6 +304,8 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
   };
   const projects: { projectId: string; lineIds: string[] }[] = [];
   let transit: { projectId: string; observationId: string; windowEndUtc: string } | null = null;
+  /** Pausiertes Projekt und Zeitpunkt (Aktion `pause_running`) für die Prüfung „Neuplanung nach Pausieren“. */
+  let paused: { projectId: string; atMs: number } | null = null;
 
   if (s === 'night-flats') {
     projects.push(
@@ -435,6 +437,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           const pid = last?.projectId ?? projects[0]?.projectId;
           if (!pid) return 'kein Projekt';
           await web(`/projects/${pid}/status`, 'PUT', { status: 'on_hold' });
+          paused = { projectId: pid, atMs: Date.now() };
           return `Projekt ${pid} pausiert`;
         }
         case 'refresh_targets':
@@ -488,7 +491,14 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         .execute();
       const captures = await stack.db
         .selectFrom('capture')
-        .select(['exposureLineId', 'frameType', 'result', 'transitObservationId'])
+        .select([
+          'exposureLineId',
+          'projectId',
+          'capturedAt',
+          'frameType',
+          'result',
+          'transitObservationId',
+        ])
         .where('tenantId', '=', tenantId)
         .where(
           'sessionId',
@@ -509,7 +519,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         : [];
       const plans = await stack.db
         .selectFrom('nightPlan')
-        .select(['reason'])
+        .select(['reason', 'createdAt'])
         .where('tenantId', '=', tenantId)
         .where('rigId', '=', rigId)
         .execute();
@@ -589,7 +599,22 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       }
       if (s === 'commands') {
         const reasons = plans.map((p) => p.reason);
-        check('Neuplanung nach Pausieren', reasons.includes('refresh'), JSON.stringify(reasons));
+        // Streng (Lauf 05.10.2026 zählte ein `refresh` aus anderem Grund): pausiert, danach neu geplant und das pausierte
+        // Projekt ab 60 s nach dem Pausieren ohne Aufnahme (laufende Belichtung darf zu Ende gehen).
+        const p = paused as { projectId: string; atMs: number } | null;
+        const replanned = p ? plans.some((x) => new Date(x.createdAt).getTime() > p.atMs) : false;
+        const lateLights = p
+          ? lights.filter(
+              (c) => c.projectId === p.projectId && new Date(c.capturedAt).getTime() > p.atMs + MIN,
+            ).length
+          : -1;
+        check(
+          'Neuplanung nach Pausieren',
+          p !== null && replanned && lateLights === 0,
+          p
+            ? `neu geplant ${String(replanned)}, Aufnahmen des pausierten Projekts danach ${String(lateLights)}`
+            : 'nicht pausiert',
+        );
         check('Zurücksetzen per Kommando', reasons.includes('reset'), JSON.stringify(reasons));
         check(
           'Kommandos quittiert',
