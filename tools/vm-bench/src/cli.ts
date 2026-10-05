@@ -669,7 +669,11 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main().catch((e: unknown) => {
-  console.error(`✗ ${e instanceof Error ? e.message : String(e)}`);
-  return 1;
-});
+// Ausdrücklich beenden: offene Handles (Prüfstand- und Test-Server, Keep-Alive des Agenten) hielten den Prozess sonst
+// nach dem Ergebnis am Leben – eine Folge von Läufen blieb nach dem ersten stehen (05.10.2026).
+process.exit(
+  await main().catch((e: unknown) => {
+    console.error(`✗ ${e instanceof Error ? e.message : String(e)}`);
+    return 1;
+  }),
+);
