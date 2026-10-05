@@ -430,9 +430,10 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         }
       : {};
     for (const [path, value] of Object.entries({
-      // Montierung übernimmt beim Verbinden den Profilstandort: NINA flippt nach der Sternzeit der Montierung, der
-      // Simulator behielte sonst einen fremden Standort (`mount_site_mismatch`, Flip zur falschen Zeit; 05.10.2026).
-      'TelescopeSettings-TelescopeLocationSyncDirection': 'TOTELESCOPE',
+      // Standort nur in `real`-Läufen auf die Montierung übertragen (`real.profile`: TOTELESCOPE). Der Sky-Simulator
+      // speichert ihn auf 0,01° gerundet – mit dem Starfront-Standort zeigte NINA bei jedem Verbinden „Unable to set
+      // mount latitude“ (05.10.2026); die gestauchten Standorte der `real`-Läufe sind glatte Werte.
+      'TelescopeSettings-TelescopeLocationSyncDirection': 'NOSYNC',
       ...siteProfile,
       ...(r.profile ?? {}),
       ...(real?.profile ?? {}),
@@ -612,6 +613,20 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         for (const [path, value] of Object.entries(restoreSite))
           await a.setProfile(path, value).catch(() => undefined);
         log(`Profil-Standort zurückgesetzt: ${JSON.stringify(restoreSite)}`);
+        // Montierung zurück auf den Profilstandort: einmal mit TOTELESCOPE neu verbinden (NINAs Rundungsmeldung des
+        // Simulators ist hier harmlos), danach wieder NOSYNC für die Test-Server-Läufe.
+        try {
+          await a.disconnect('mount');
+          await a.setProfile('TelescopeSettings-TelescopeLocationSyncDirection', 'TOTELESCOPE');
+          await a.connectFromProfile('mount', profile);
+          log('Montierung auf den Profilstandort zurückgesetzt');
+        } catch (e) {
+          log(`Montierung zurücksetzen: ${String(e)}`);
+        } finally {
+          await a
+            .setProfile('TelescopeSettings-TelescopeLocationSyncDirection', 'NOSYNC')
+            .catch(() => undefined);
+        }
       }
     }
     const logs = await job(
