@@ -580,6 +580,9 @@ public static class StateKeys
     public const string PlanBlockedUntil = "planBlockedUntil";
     public const string DoneBlocks = "doneBlocks";
 
+    /// <summary><c>nightPlanId</c> eines Plans aus einer Neuplanung wegen Lücke (<c>IdleAhead</c>): kein zweites Mal.</summary>
+    public const string IdleRefreshPlan = "idleRefreshPlan";
+
     /// <summary>Filterposition je NINA-Filtername beim letzten Flat-Lauf (Trained Flats, NT-39).</summary>
     public const string TrainedFlatPositions = "trainedFlatPositions";
     /// <summary>Je NINA-Filtername die Nacht, in der eine geänderte Trained-Flat-Position zuerst bemerkt wurde (NT-39).</summary>

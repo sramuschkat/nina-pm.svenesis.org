@@ -9,9 +9,15 @@ public enum RefreshCause
     TargetsChanged,
     SettingsChanged,
     BehindPlan,
+
+    /// <summary>
+    /// Lücke vor dem nächsten Block (&gt; 5 min) nach einem Block dieser Nacht – z. B. ein Projekt war vor dem Ende seines
+    /// Laufs fertig und die Engine gab den Rest frei (<c>idle_gap</c>, allocation.md A-29). Einmal je Plan.
+    /// </summary>
+    IdleAhead,
 }
 
-/// <summary>Entscheidung vor einem Block: Plan behalten oder <c>POST /plan {reason: refresh, startAtUtc}</c>.</summary>
+/// <summary>Entscheidung vor einem Block: Plan behalten oder <c>POST /plan {reason: refresh, startAtUtc = jetzt}</c>.</summary>
 public sealed record BeforeBlockDecision(bool Refresh, RefreshCause? Cause, DateTimeOffset? StartAtUtc)
 {
     public static readonly BeforeBlockDecision Keep = new(false, null, null);
@@ -72,8 +78,21 @@ public static class ReplanPolicy
             : now - plannedBlockStart > MaxDelay ? RefreshCause.BehindPlan
             : null;
         if (cause is null) return BeforeBlockDecision.Keep;
-        return new BeforeBlockDecision(true, cause, now > plannedBlockStart ? now : plannedBlockStart);
+        // Ab jetzt, nicht ab dem geplanten Blockstart (Analyse 05.10.2026): sonst bliebe eine Lücke davor leer, obwohl
+        // andere Projekte Arbeit hätten (VM-Lauf real-full-night: 10 von 40 min).
+        return new BeforeBlockDecision(true, cause, now);
     }
+
+    /// <summary>Mindestlücke vor dem nächsten Block für <see cref="RefreshCause.IdleAhead"/>.</summary>
+    public static readonly TimeSpan IdleRefreshMin = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// <see cref="RefreshCause.IdleAhead"/>: nach einem Block dieser Nacht liegt der nächste Block mehr als
+    /// <see cref="IdleRefreshMin"/> in der Zukunft, und der Plan stammt nicht schon aus einer solchen Neuplanung (sonst
+    /// plante das Plugin in einer echten Pause alle 5 min neu).
+    /// </summary>
+    public static bool IdleAhead(DateTimeOffset plannedBlockStart, DateTimeOffset now, bool blockRanTonight, bool planFromIdleRefresh) =>
+        blockRanTonight && !planFromIdleRefresh && plannedBlockStart - now > IdleRefreshMin;
 
     /// <summary>Im Block: <c>GET /targets</c> alle 15 min (erster Abruf 15 min nach Blockbeginn).</summary>
     public static bool InBlockCheckDue(DateTimeOffset lastCheckUtc, DateTimeOffset now) => now - lastCheckUtc >= InBlockInterval;

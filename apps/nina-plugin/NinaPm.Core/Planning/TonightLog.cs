@@ -27,6 +27,10 @@ public sealed class TonightLog
     public static string UnitId(Guid projectId, int panelIndex, int panelCount, bool mosaicPanelsIndependent) =>
         panelCount > 1 && mosaicPanelsIndependent ? $"{projectId}/p{panelIndex}" : projectId.ToString();
 
+    /// <summary>In dieser Nacht lief schon ein Block (<see cref="RefreshCause.IdleAhead"/>).</summary>
+    [JsonIgnore]
+    public bool HasPastBlocks => pastBlocks.Count > 0;
+
     /// <summary>Block hat begonnen: aktuelle Einheit setzen.</summary>
     public void BlockStarted(string unitId) => currentUnitId = unitId;
 
