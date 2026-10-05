@@ -368,7 +368,21 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const real = r.real
       ? await startRealServer({ scenario: r.real, port: cfg.testServerPort, latDeg: 50, log })
       : undefined;
-    for (const [path, value] of Object.entries({ ...(r.profile ?? {}), ...(real?.profile ?? {}) }))
+    // Test-Server-Läufe setzen den Standort ihres Rigs selbst (`rig.json`): unabhängig davon, was ein voriger – auch
+    // abgebrochener – `real`-Lauf im Profil hinterlassen hat (05.10.2026).
+    const rigSite = r.scenario ? loadRig().site : undefined;
+    const siteProfile = rigSite
+      ? {
+          'AstrometrySettings-Latitude': rigSite.latDeg,
+          'AstrometrySettings-Longitude': rigSite.lonDeg,
+          'AstrometrySettings-Elevation': rigSite.elevationM,
+        }
+      : {};
+    for (const [path, value] of Object.entries({
+      ...siteProfile,
+      ...(r.profile ?? {}),
+      ...(real?.profile ?? {}),
+    }))
       await a.setProfile(path, value);
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
