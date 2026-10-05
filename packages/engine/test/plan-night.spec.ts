@@ -159,6 +159,13 @@ describe('Zeitmarken (night.md §3–§4, NT-12)', () => {
     near(planNight(input([project()])).darknessEndUtc, '2026-09-18T11:01:56Z', 1);
   });
 
+  it('ohne Projekte (alle fertig) → astronomische Grenze 11:01:56Z, Flats ab dort (real-all-done)', () => {
+    const plan = planNight(input([]));
+    near(plan.darknessEndUtc, '2026-09-18T11:01:56Z', 1);
+    expect(plan.flatsNotBeforeUtc).toBe(plan.darknessEndUtc);
+    expect(plan.blocks).toEqual([]);
+  });
+
   it('Hannover 21.06. nur astronomisch → null, flatsNotBeforeUtc = Nachtfensterende − 1 h', () => {
     const plan = planNight(
       input([project({ raDeg: 250, decDeg: 36 })], {
