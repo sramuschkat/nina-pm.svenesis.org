@@ -199,6 +199,33 @@ async function omnisimSafe(cfg: BenchConfig, safe: boolean): Promise<void> {
     throw new Error(`OmniSim: ${body.ErrorMessage ?? String(res.status)}`);
 }
 
+/** NINA ist mitten im Lauf verschwunden (Absturz in der x64-Emulation der VM, 03.–05.10.2026). */
+export class NinaCrash extends Error {}
+
+/**
+ * Absturz-Wächter: Antwortet NINA zweimal im Abstand von 10 s nicht, holt der Prüfstand die Windows-Ereignisse
+ * (`app-events`, .NET Runtime/Application Error) in den Laufordner und bricht den Lauf mit {@link NinaCrash} ab.
+ */
+async function checkNina(
+  a: AdvancedApi,
+  bench: BenchServer,
+  dir: string,
+  sinceMs: number,
+): Promise<void> {
+  if (await a.alive()) return;
+  await sleep(10_000);
+  if (await a.alive()) return;
+  log('NINA antwortet nicht mehr – Windows-Ereignisse holen');
+  const ev = await job(
+    bench,
+    'app-events',
+    { sinceUtc: new Date(sinceMs - 5_000).toISOString() },
+    dir,
+    120_000,
+  ).catch((e: unknown) => ({ message: String(e) }));
+  throw new NinaCrash(`NINA abgestürzt (${ev.message}; Ereignisse in ${dir}/app-events.txt)`);
+}
+
 /**
  * Warten, bis die Nacht vorbei ist: alle Sessions des Test-Servers abgeschlossen (mindestens `minSessions`), danach 60 s Nachlauf für die
  * letzten Meldungen; höchstens bis `deadlineMs` (`untilMin` der Laufdatei).
@@ -207,9 +234,11 @@ async function waitForNightEnd(
   cfg: BenchConfig,
   deadlineMs: number,
   minSessions = 1,
+  watchdog: () => Promise<void> = () => Promise.resolve(),
 ): Promise<void> {
   let doneAt: number | undefined;
   while (Date.now() < deadlineMs) {
+    await watchdog();
     try {
       const rep = (await (
         await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
@@ -389,8 +418,13 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         throw new Error(
           'Uhr der VM weicht ab (clock_skew) – in der VM: w32tm /resync /force (Zeitdienst w32time gestartet, Zeitquelle gesetzt)',
         );
+      const watchdog = () => checkNina(a, bench, dir, restartMs);
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
-        await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
+        // Bis zum Schritt warten, dabei alle 30 s nach NINA sehen (ein Absturz endet sonst erst am Zeitlimit).
+        while (Date.now() < startedMs + s.atMin * 60_000) {
+          await watchdog();
+          await sleep(Math.min(30_000, Math.max(0, startedMs + s.atMin * 60_000 - Date.now())));
+        }
         try {
           if (s.coolC !== undefined) await a.cool(s.coolC);
           if (s.safe !== undefined) await omnisimSafe(cfg, s.safe);
@@ -439,7 +473,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         }
       }
       if (server) {
-        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000, r.sessions);
+        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000, r.sessions, watchdog);
         const report = await (
           await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
         ).json();
@@ -449,6 +483,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         const deadline = startedMs + r.untilMin * 60_000;
         let doneAt: number | undefined;
         while (Date.now() < deadline) {
+          await watchdog();
           if ((await real.completedSessions()) >= (r.sessions ?? 1)) {
             doneAt ??= Date.now();
             if (Date.now() - doneAt >= 60_000) {
@@ -572,7 +607,14 @@ async function main(): Promise<number> {
     case 'run': {
       const name = process.argv[3];
       if (!name) throw new Error('Lauf angeben, z. B. vm-flip');
-      return (await run(cfg, name)) ? 0 : 1;
+      try {
+        return (await run(cfg, name)) ? 0 : 1;
+      } catch (e) {
+        if (!(e instanceof NinaCrash)) throw e;
+        // Bekannter, nicht reproduzierbarer Absturz der x64-Emulation: einmal von vorn, der Absturz bleibt im ersten Laufordner belegt.
+        log(`${e.message} – Lauf wird einmal wiederholt`);
+        return (await run(cfg, name)) ? 0 : 1;
+      }
     }
     case 'update-agent':
       return withBench(cfg, async (bench) => {

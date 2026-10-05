@@ -78,6 +78,8 @@ Safety-Monitor in Läufen (`steps`):
 - `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
 - Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
 
+**Absturz-Wächter (05.10.2026):** Während eines Laufs fragt der Prüfstand alle 30 s die Advanced API ab. Antwortet NINA zweimal im Abstand von 10 s nicht, holt er die Windows-Ereignisse (`app-events.txt` im Laufordner: .NET Runtime, Application Error), bricht den Lauf ab und wiederholt ihn **einmal** von vorn – der bekannte Absturz der x64-Emulation (`AccessViolationException` in `coreclr.dll`, 03.–05.10.2026) hält so keine Lauffolge mehr auf und bleibt belegt. Nach `real`-Läufen schreibt der Prüfstand den vorherigen Standort ins NINA-Profil zurück.
+
 Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
 
 ### Gegen den echten Server (Stufe 2a): `real-night-flats`, `real-transit`, `real-commands`

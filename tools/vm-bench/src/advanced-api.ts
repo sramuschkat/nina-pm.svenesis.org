@@ -60,6 +60,16 @@ export class AdvancedApi {
   }
 
   /** Erreichbar und Version (wartet höchstens `timeoutMs`). */
+  /** Antwortet NINA (Advanced API) binnen 5 s? Für den Absturz-Wächter im Lauf. */
+  async alive(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.base}/version`, { signal: AbortSignal.timeout(5_000) });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   async waitUntilUp(timeoutMs: number): Promise<string> {
     const end = Date.now() + timeoutMs;
     let last = '';

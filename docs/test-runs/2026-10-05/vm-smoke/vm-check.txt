@@ -1,0 +1,7 @@
+  ✓ Heartbeat liest das NINA-Profil (Filterrad ab Platz 1, Kamera mit Temperatur)
+  ✓ Belichtungen gespeichert und gemeldet, Zeiten und Messwerte aus NINA
+  ✓ NINAs Dither-Trigger unterdrückt, gedithert nur laut Plan
+  ✓ Kühlung abweichend: weiter belichtet, je Block höchstens eine Warnung
+  ✓ Safety unsicher: Pause, Heartbeat paused, Wiederaufnahme mit neuem Plan
+  ✓ Nachtende: Session abgeschlossen, Outbox leer
+  ✓ Keine Fehler, keine vom Server abgelehnte Anfrage
