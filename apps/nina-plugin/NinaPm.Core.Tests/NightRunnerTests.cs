@@ -1426,6 +1426,47 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Neuplanung_wartet_bis_NINA_die_letzte_Belichtung_gespeichert_hat()
+    {
+        // VM-Lauf real-night-flats 05.10.2026: der Plan kam, bevor die 12. von 12 Aufnahmen gemeldet war → Block für eine
+        // schon fertige Zeile, 309 s Warten, dann target_removed.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        runner.Reset();
+        nina.PendingImageSaves = 1;
+        var plansBefore = api.Plans.Count;
+        var pendingAtPlan = -1;
+        nina.OnDelay = _ =>
+        {
+            if (clock.UtcNow >= UtcText.Parse("2026-09-18T07:35:02Z")) nina.PendingImageSaves = 0;
+        };
+        api.OnPlan = _ => pendingAtPlan = nina.PendingImageSaves;
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[plansBefore].Reason);
+        Assert.Equal(0, pendingAtPlan);
+    }
+
+    [Fact]
+    public async Task Neuplanung_wartet_hoechstens_15_s_auf_das_Speichern()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        runner.Reset();
+        nina.PendingImageSaves = 1;
+        api.Now = () => clock.UtcNow;
+        var plansBefore = api.Plans.Count;
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[plansBefore].Reason);
+        Assert.Equal(UtcText.Parse("2026-09-18T07:35:15Z"), api.PlanTimes[^1]);
+    }
+
+    [Fact]
     public async Task Heartbeat_Kommando_reset_plan_wird_ausgefuehrt_und_quittiert()
     {
         var runner = Runner();

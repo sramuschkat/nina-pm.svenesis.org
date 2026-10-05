@@ -25,6 +25,9 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     public SafetyState Safety { get; set; } = new(true, true, true);
     public DateTimeOffset? LastAutofocusUtc { get; set; }
 
+    /// <summary>Belichtete Lights, deren Speichern noch aussteht (INightHost).</summary>
+    public int PendingImageSaves { get; set; }
+
     private int centerAttempts;
     private int exposures;
 

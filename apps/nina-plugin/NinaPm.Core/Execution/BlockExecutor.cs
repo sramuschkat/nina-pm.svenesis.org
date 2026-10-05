@@ -109,6 +109,17 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// <summary>Wartezeit im Block bis zum geplanten Eintrag, ab der das Plugin <c>WAIT_PLAN</c> protokolliert.</summary>
     public const double WaitLogMinS = 30;
 
+    /// <summary>Mindestabstand zweier Ziel-Prüfungen während einer Wartezeit (falls der Abruf scheitert und das Signal bleibt).</summary>
+    public static readonly TimeSpan WaitRecheck = TimeSpan.FromMinutes(1);
+
+    /// <summary>
+    /// Transit-Vorlauf (§5): eine Einzelbelichtung ab <paramref name="startUtc"/> endete nicht mehr vor dem Vorlauf eines
+    /// festgelegten Transits → der Block endet für die Neuplanung (Fall b). Eine laufende Belichtung bricht das nie ab.
+    /// </summary>
+    private bool TransitBlocks(BlockRunOptions options, Entries e, DateTimeOffset startUtc) =>
+        !Playback.Repeats(e) && options.TransitDeadline?.Invoke() is { } deadline
+        && startUtc.AddSeconds((e.ExposureS ?? 0) + DownloadS) > deadline;
+
     private void Overrun(Run run, DateTimeOffset started, double plannedS)
     {
         var o = run.Offset + (clock.UtcNow - started) - TimeSpan.FromSeconds(plannedS);
@@ -339,10 +350,28 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             {
                 // Schneller als geplant (zeitgeführt, §4.2): bis zum geplanten Zeitpunkt warten. Ab 30 s eine Zeile im Log –
                 // sonst sähe ein Block z. B. mit nicht genutzter Autofokus-Zeit minutenlang untätig aus (VM-Lauf 05.10.2026).
-                var waitS = (step.WaitUntilUtc!.Value - clock.UtcNow).TotalSeconds;
+                var until = step.WaitUntilUtc!.Value;
+                var waitS = (until - clock.UtcNow).TotalSeconds;
                 if (waitS >= WaitLogMinS)
-                    log.Event("WAIT_PLAN", ("block", block.Id), ("untilUtc", step.WaitUntilUtc.Value), ("durationS", Math.Round(waitS)));
-                await host.DelayAsync(step.WaitUntilUtc!.Value, token).ConfigureAwait(false);
+                    log.Event("WAIT_PLAN", ("block", block.Id), ("untilUtc", until), ("durationS", Math.Round(waitS)));
+                // Im 10-s-Takt (Analyse 05.10.2026): Zurücksetzen/Überspringen, neue Ziele und ein festgelegter Transit wirken
+                // sofort, nicht erst nach der Wartezeit (bis zu Slew + Autofokus des Plans).
+                DateTimeOffset? lastWaitCheck = null;
+                while (clock.UtcNow < until)
+                {
+                    if (options.StopReason?.Invoke() is { } stopInWait) return (stopInWait, exposures, skippedTotal);
+                    if (TransitBlocks(options, entries[target], until)) return ("transit_interrupt", exposures, skippedTotal);
+                    if (inBlockCheck is not null && options.TargetsChanged?.Invoke() == true
+                        && (lastWaitCheck is null || clock.UtcNow - lastWaitCheck >= WaitRecheck))
+                    {
+                        lastWaitCheck = lastCheck = clock.UtcNow;
+                        var endInWait = await inBlockCheck(entries[target], token).ConfigureAwait(false);
+                        if (endInWait is not null) return (endInWait, exposures, skippedTotal);
+                        continue;
+                    }
+                    var tick = clock.UtcNow + FlipWaitTick;
+                    await host.DelayAsync(tick < until ? tick : until, token).ConfigureAwait(false);
+                }
                 cursor = target - 1;
                 continue;
             }
@@ -360,9 +389,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var series = Playback.Repeats(e);
             // Transit-Vorlauf (§5): eine Belichtung beginnt nur, wenn sie vor dem Vorlauf eines festgelegten Transits
             // endet; sonst endet der Block für die Neuplanung mit dem Transit (Fall b).
-            if (!series && options.TransitDeadline?.Invoke() is { } deadline
-                && clock.UtcNow.AddSeconds((e.ExposureS ?? 0) + DownloadS) > deadline)
-                return ("transit_interrupt", exposures, skippedTotal);
+            if (TransitBlocks(options, e, clock.UtcNow)) return ("transit_interrupt", exposures, skippedTotal);
             if (series && !run.SeriesStarted)
             {
                 run.SeriesStarted = true;
@@ -494,7 +521,12 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 if (flip is not null && flip.AtUtc < until) until = flip.AtUtc;
                 // Planuhr: der Plan ist um den Verzug verschoben (zeitgeführt, §4.2).
                 if ((run.Options.Mode ?? Mode) == PlaybackMode.TimeAware) until += run.Offset;
-                if (until > clock.UtcNow) await host.DelayAsync(until, token).ConfigureAwait(false);
+                // 10-s-Takt: Zurücksetzen/Überspringen beenden das Warten; den Block beendet danach der Ablauf vor der Belichtung.
+                while (clock.UtcNow < until && run.Options.StopReason?.Invoke() is null)
+                {
+                    var tick = clock.UtcNow + FlipWaitTick;
+                    await host.DelayAsync(tick < until ? tick : until, token).ConfigureAwait(false);
+                }
                 break;
             default:
                 // autofocus_hint ist Zeitmarke (NT-24); slew_center ohne vorangegangenen Flip ebenso (Panelwechsel = neuer Block).
