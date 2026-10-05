@@ -62,6 +62,12 @@ public interface INightHost
     /// Profil fehlen (<c>filter_wheel_changed</c>).
     /// </summary>
     void PlanBuilt(NinaTargets? targets, NinaPlanResponse plan);
+
+    /// <summary>
+    /// Belichtete Lights, deren <c>ImageSaved</c> noch aussteht (§4.3) – NINA speichert asynchron, die Meldung entsteht erst
+    /// danach. Ohne Adapter (Simulator) 0.
+    /// </summary>
+    int PendingImageSaves => 0;
 }
 
 /// <summary>
@@ -106,6 +112,12 @@ public sealed class NightRunner(
 
     /// <summary>Benutzeraktion *Block überspringen* (§4.1 Nr. 2, §4.2): wirkt auf den nächsten bzw. laufenden Block.</summary>
     private volatile bool skipRequested;
+
+    /// <summary>
+    /// *Zurücksetzen* während eines Blocks: der Block endet nach der laufenden Belichtung mit <c>replanned</c>, danach
+    /// sofort der Plan mit <c>reason: reset</c> – vorher wartete der Reset bis zum Blockende (Lauf real-commands, 05.10.2026).
+    /// </summary>
+    private volatile bool resetRequested;
 
     /// <summary>Heartbeat-Kommandos, die mit dem nächsten Heartbeat quittiert werden (<c>ackedCommandIds</c>).</summary>
     private readonly List<Guid> commandAcks = [];
@@ -206,6 +218,7 @@ public sealed class NightRunner(
         Loop.UserAbortOrReset();
         store.SetState(StateKeys.DoneBlocks, null);
         forcedPlan = NinaPlanRequestReason.Reset;
+        if (runningBlock is not null) resetRequested = true;
         log.Note("Reset: new plan with reason=reset");
     }
 
@@ -437,6 +450,8 @@ public sealed class NightRunner(
                 if (!Loop.PlanLocked(clock.UtcNow) && (targetsChanged || context.Plan!.SettingsVersion != SettingsVersion(b))
                     && await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
                     return;
+                if (!Loop.PlanLocked(clock.UtcNow) && await RefreshForIdleAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
+                    return;
                 await WaitAsync(step.WaitUntilUtc!.Value, wakeOnTargets: true, token).ConfigureAwait(false);
                 return;
             case NightAction.Idle:
@@ -548,9 +563,10 @@ public sealed class NightRunner(
             if (stored is not null && SessionId is null) await EnsureSessionAsync(stored.Plan, token).ConfigureAwait(false);
             return;
         }
+        var initial = reason == NinaPlanRequestReason.Initial;
+        if (!initial) await AwaitImageSavesAsync(token).ConfigureAwait(false);
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var tonight = TonightLog.Load(store);
-        var initial = reason == NinaPlanRequestReason.Initial;
         var input = new PlanRequestInput(reason, initial ? null : startAtUtc ?? clock.UtcNow, SessionId, etag,
             tonight.ToContract(nightHost.LastAutofocusUtc, initial), PlanService.PendingFromOutbox(store.OutboxPayloads(OutboxKinds.Capture)));
         var outcome = await planService.RequestAsync(b, input, token).ConfigureAwait(false);
@@ -582,6 +598,28 @@ public sealed class NightRunner(
         else if (outcome.Blocked is { } reasonBlocked) Loop.Block(reasonBlocked, clock.UtcNow);
     }
 
+    /// <summary>Höchste Wartezeit vor einer Neuplanung auf NINAs Speichern der letzten Belichtung (§3.2).</summary>
+    public static readonly TimeSpan ImageSaveWaitMax = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Vor einer Neuplanung warten, bis NINA die belichteten Lights gespeichert hat (höchstens
+    /// <see cref="ImageSaveWaitMax"/>, 1-s-Takt): erst dann stehen sie in der Outbox und zählen als <c>pendingCaptures</c>
+    /// bzw. in <c>tonight</c>. Sonst plante der Server für eine gerade fertig gewordene Zeile noch eine Aufnahme
+    /// (VM-Lauf real-night-flats 05.10.2026: Block für die 12. von 12 Aufnahmen, 309 s Warten, dann target_removed).
+    /// </summary>
+    private async Task AwaitImageSavesAsync(CancellationToken token)
+    {
+        if (nightHost.PendingImageSaves == 0) return;
+        var until = clock.UtcNow + ImageSaveWaitMax;
+        while (nightHost.PendingImageSaves > 0 && clock.UtcNow < until)
+        {
+            var next = clock.UtcNow + TimeSpan.FromSeconds(1);
+            await blockHost.DelayAsync(next < until ? next : until, token).ConfigureAwait(false);
+        }
+        if (nightHost.PendingImageSaves > 0)
+            log.Note($"Re-planning with {nightHost.PendingImageSaves} image(s) still being saved");
+    }
+
     private static int SettingsVersion(NinaBootstrap b) => b.Rig.SettingsVersion;
 
     /// <summary>Gespeicherter Server-Plan der Nacht (<c>PLAN source=cache</c>, P-16) oder <c>plan_failed</c> ohne ihn.</summary>
@@ -601,7 +639,7 @@ public sealed class NightRunner(
 
     /// <summary>
     /// Vor jedem Block: neue Ziele (ETag), gestiegene <c>settingsVersion</c> oder Verzug &gt; 10 min → <c>refresh</c> mit
-    /// <c>startAtUtc = max(now, geplanter Blockstart)</c>; der Block läuft dann aus dem neuen Plan. Nicht während der
+    /// <c>startAtUtc = now</c> (Spec-Ergänzung 05.10.2026); der Block läuft dann aus dem neuen Plan. Nicht während der
     /// 5-min-Sperre – sonst plante das Plugin bei einem Server, der den Verzug nicht auflösen kann oder nicht erreichbar
     /// ist, vor jedem Aufruf neu.
     /// </summary>
@@ -634,6 +672,26 @@ public sealed class NightRunner(
         if (!decision.Refresh) return false;
         log.Note($"Re-planning before block {block.Id}: {decision.Cause}");
         await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, decision.StartAtUtc).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
+    /// Lücke vor dem nächsten Block (§3.2, Analyse 05.10.2026): lief in dieser Nacht schon ein Block und beginnt der nächste
+    /// erst in mehr als 5 min, einmal je Plan ab jetzt neu planen – die Engine gibt die Restslots eines vorzeitig fertigen
+    /// Projekts frei, bietet sie im selben Plan aber nicht neu an (allocation.md §8.6 Nr. 7).
+    /// </summary>
+    private async Task<bool> RefreshForIdleAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
+    {
+        var block = stored.Plan.Blocks[index];
+        var fromIdle = store.GetState(StateKeys.IdleRefreshPlan) == stored.Plan.NightPlanId.ToString();
+        if (!ReplanPolicy.IdleAhead(ReplanPolicy.PlannedStart(block), clock.UtcNow, TonightLog.Load(store).HasPastBlocks, fromIdle))
+            return false;
+        log.Note($"Re-planning before block {block.Id}: {RefreshCause.IdleAhead}");
+        await FetchPlanAsync(b, night, NinaPlanRequestReason.Refresh, stored, token, clock.UtcNow).ConfigureAwait(false);
+        if (PlanStore.Load(store, night) is { } fresh && fresh.Plan.NightPlanId != stored.Plan.NightPlanId)
+            store.SetState(StateKeys.IdleRefreshPlan, fresh.Plan.NightPlanId.ToString());
+        else
+            store.SetState(StateKeys.IdleRefreshPlan, stored.Plan.NightPlanId.ToString());
         return true;
     }
 
@@ -888,6 +946,7 @@ public sealed class NightRunner(
                 b => ReportEvent(EventsKind.Warning, "camera_temperature", b.Id),
                 // Lease verloren bzw. Rig belegt (§6, P-10/P-17): laufende Belichtung zu Ende, dann block_end lease_lost.
                 () => skipRequested ? "user_skip"
+                    : resetRequested ? "replanned"
                     : Loop.Blocked is { } bl && HaltingReasons.Contains(bl) ? "error"
                     : Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
@@ -901,12 +960,13 @@ public sealed class NightRunner(
                     t.FlipDone(UnitId(b));
                     t.Save(store);
                 },
-                () => skipRequested,
+                () => skipRequested || resetRequested,
                 () => targetsChanged,
                 () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS),
                 () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow)))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
+            resetRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).

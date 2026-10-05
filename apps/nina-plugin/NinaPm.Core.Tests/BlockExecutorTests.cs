@@ -74,6 +74,96 @@ public sealed class BlockExecutorTests
         Assert.Matches(@"durationS=\d{3}", wait);
     }
 
+    [Fact]
+    public async Task WAIT_PLAN_Zuruecksetzen_waehrend_der_Wartezeit_beendet_den_Block_sofort()
+    {
+        // Analyse 05.10.2026: vorher wirkte Zurücksetzen erst nach der Wartezeit (bis zu Slew + Autofokus des Plans).
+        var (executor, nina, _, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            foreach (var e in b.Entries.Skip(1)) e.AtUtc = e.AtUtc.AddMinutes(4);
+        });
+        var firstExpose = block.Entries.First(e => e.Cmd == EntriesCmd.Expose).AtUtc;
+        var reset = false;
+        nina.OnDelay = _ => reset = true;
+
+        var outcome = await executor.RunAsync(block, T("2026-09-18T11:30:42Z"), default,
+            new BlockRunOptions(StopReason: () => reset ? "replanned" : null, Mode: PlaybackMode.TimeAware));
+
+        Assert.Equal(("replanned", 0), (outcome.Reason, outcome.Exposures));
+        Assert.True(clock.UtcNow < firstExpose, clock.UtcNow.ToString("O"));
+    }
+
+    [Fact]
+    public async Task WAIT_PLAN_neue_Ziele_werden_sofort_geprueft_ein_festgelegter_Transit_beendet_den_Block()
+    {
+        var (executor, nina, _, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            foreach (var e in b.Entries.Skip(1)) e.AtUtc = e.AtUtc.AddMinutes(4);
+        });
+        var firstExpose = block.Entries.First(e => e.Cmd == EntriesCmd.Expose).AtUtc;
+        var changed = false;
+        var checks = 0;
+        nina.OnDelay = _ => changed = true;
+
+        var outcome = await executor.RunAsync(block, T("2026-09-18T11:30:42Z"), default, new BlockRunOptions(
+            InBlockCheck: (_, _) =>
+            {
+                checks++;
+                changed = false;
+                return Task.FromResult<string?>("transit_interrupt");
+            },
+            TargetsChanged: () => changed,
+            Mode: PlaybackMode.TimeAware));
+
+        Assert.Equal(("transit_interrupt", 0, 1), (outcome.Reason, outcome.Exposures, checks));
+        Assert.True(clock.UtcNow < firstExpose, clock.UtcNow.ToString("O"));
+    }
+
+    [Fact]
+    public async Task WAIT_PLAN_bleibt_das_Signal_nach_gescheitertem_Abruf_wird_hoechstens_einmal_je_Minute_geprueft()
+    {
+        var (executor, _, _, clock) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            foreach (var e in b.Entries.Skip(1)) e.AtUtc = e.AtUtc.AddMinutes(4);
+        });
+        var firstExpose = block.Entries.First(e => e.Cmd == EntriesCmd.Expose).AtUtc;
+        var checks = new List<DateTimeOffset>();
+
+        var outcome = await executor.RunAsync(block, T("2026-09-18T11:30:42Z"), default, new BlockRunOptions(
+            InBlockCheck: (_, _) =>
+            {
+                if (clock.UtcNow < firstExpose) checks.Add(clock.UtcNow);
+                return Task.FromResult<string?>(null);
+            },
+            TargetsChanged: () => true,
+            Mode: PlaybackMode.TimeAware));
+
+        Assert.Equal("completed", outcome.Reason);
+        // Wartezeit vor der ersten Belichtung: sofort eine Prüfung, danach höchstens eine je Minute – kein Dauerabruf.
+        Assert.NotEmpty(checks);
+        Assert.All(checks.Zip(checks.Skip(1)), p => Assert.True(p.Second - p.First >= BlockExecutor.WaitRecheck));
+    }
+
+    [Fact]
+    public async Task Laufende_Belichtung_endet_auch_wenn_waehrend_ihr_ein_Transit_festgelegt_wird()
+    {
+        // Spec-Ergänzung 04.10.2026 (§5): kein Abbruch; die Belichtung wird gespeichert, danach endet der Block.
+        var (executor, nina, _, clock) = Setup("2026-09-18T07:35:00Z");
+        DateTimeOffset? deadline = null;
+        nina.OnExposure = n =>
+        {
+            if (n == 2) deadline = clock.UtcNow.AddSeconds(60);
+        };
+
+        var outcome = await executor.RunAsync(Regular(), null, default, new BlockRunOptions(TransitDeadline: () => deadline));
+
+        Assert.Equal(("transit_interrupt", 2), (outcome.Reason, outcome.Exposures));
+        Assert.False(nina.Sequence.IsCancellationRequested);
+    }
+
     private static Blocks Transit(Action<Blocks>? change = null)
     {
         var b = Plan().Blocks.Single(x => x.Kind == BlocksKind.Transit);

@@ -468,6 +468,62 @@ public sealed class NightRunnerTests : IDisposable
         Assert.Contains(sink.Lines, l => l.Contains("BLOCK_START"));
     }
 
+    /// <summary>
+    /// Plan mit Lücke wie im VM-Lauf real-full-night (05.10.2026): regulärer Block 07:35–08:00, der nächste erst 08:35.
+    /// </summary>
+    private static void WithGap(NinaPlanResponse p)
+    {
+        var regular = p.Blocks.Single(b => b.Kind == BlocksKind.Regular);
+        p.Blocks.RemoveAll(b => b.Kind == BlocksKind.Transit);
+        var later = JsonConvert.DeserializeObject<Blocks>(JsonConvert.SerializeObject(regular, NinaJson.Settings()), NinaJson.Settings())!;
+        later.Id = Guid.NewGuid();
+        later.StartUtc = later.StartUtc.AddMinutes(60);
+        later.EndUtc = later.EndUtc.AddMinutes(60);
+        foreach (var e in later.Entries) e.AtUtc = e.AtUtc.AddMinutes(60);
+        var cut = UtcText.Parse("2026-09-18T08:00:00Z");
+        regular.Entries.RemoveAll(e => e.AtUtc >= cut);
+        regular.EndUtc = cut;
+        p.Blocks.Add(later);
+    }
+
+    [Fact]
+    public async Task Luecke_vor_dem_naechsten_Block_einmal_ab_jetzt_neu_planen()
+    {
+        // Analyse 05.10.2026: ein Projekt war vor dem Ende seines Laufs fertig, die Engine gab den Rest frei (idle_gap);
+        // die Neuplanung ab dem geplanten Blockstart ließ 10 von 40 min leer.
+        api.OnPlan = WithGap;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.ExposureScale = 0.02;
+        await runner.RunOnceAsync(default); // Block 07:35–08:00
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END"));
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default); // Lücke bis 08:35 → refresh ab jetzt
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.True(api.Plans[^1].StartAtUtc < UtcText.Parse("2026-09-18T08:35:00Z"), api.Plans[^1].StartAtUtc?.ToString("O"));
+        Assert.Contains(sink.Lines, l => l.Contains("IdleAhead"));
+
+        // Der neue Plan hat wieder eine Lücke (nichts anderes zu tun): nicht noch einmal planen, sondern warten.
+        clock.UtcNow = clock.UtcNow.AddMinutes(6);
+        await runner.RunOnceAsync(default);
+        Assert.Equal(plans + 1, api.Plans.Count);
+    }
+
+    [Fact]
+    public async Task Vor_dem_ersten_Block_der_Nacht_keine_Lueckenplanung()
+    {
+        // Abends wartet das Plugin auf den ersten Block – das ist keine Lücke.
+        api.OnPlan = WithGap;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T06:00:00Z");
+        await runner.RunOnceAsync(default);
+        Assert.Single(api.Plans);
+    }
+
     [Fact]
     public async Task Verzug_ueber_10_min_refresh_ab_jetzt_ohne_Dauerschleife()
     {
@@ -1401,6 +1457,69 @@ public sealed class NightRunnerTests : IDisposable
         await runner.RunOnceAsync(default); // wartet auf den Blockstart
         await runner.RunOnceAsync(default); // der fällige Block wird übersprungen
         Assert.Contains(sink.Lines, l => l.Contains("BLOCK_SKIPPED") && l.Contains("reason=user_skip"));
+    }
+
+    [Fact]
+    public async Task Zuruecksetzen_im_laufenden_Block_beendet_ihn_nach_der_Belichtung_mit_replanned()
+    {
+        // Lauf real-commands (05.10.2026): reset_plan aus dem Web kam mitten in einem Block, der bis zum Nachtende lief –
+        // der Reset wäre in dieser Nacht nie wirksam geworden.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.OnExposure = n =>
+        {
+            if (n == 2) runner.Reset();
+        };
+
+        await runner.RunOnceAsync(default);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=replanned", StringComparison.Ordinal));
+        Assert.Equal(2, nina.Exposures);
+
+        nina.OnExposure = null;
+        await runner.RunOnceAsync(default);
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Neuplanung_wartet_bis_NINA_die_letzte_Belichtung_gespeichert_hat()
+    {
+        // VM-Lauf real-night-flats 05.10.2026: der Plan kam, bevor die 12. von 12 Aufnahmen gemeldet war → Block für eine
+        // schon fertige Zeile, 309 s Warten, dann target_removed.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        runner.Reset();
+        nina.PendingImageSaves = 1;
+        var plansBefore = api.Plans.Count;
+        var pendingAtPlan = -1;
+        nina.OnDelay = _ =>
+        {
+            if (clock.UtcNow >= UtcText.Parse("2026-09-18T07:35:02Z")) nina.PendingImageSaves = 0;
+        };
+        api.OnPlan = _ => pendingAtPlan = nina.PendingImageSaves;
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[plansBefore].Reason);
+        Assert.Equal(0, pendingAtPlan);
+    }
+
+    [Fact]
+    public async Task Neuplanung_wartet_hoechstens_15_s_auf_das_Speichern()
+    {
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        runner.Reset();
+        nina.PendingImageSaves = 1;
+        api.Now = () => clock.UtcNow;
+        var plansBefore = api.Plans.Count;
+
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[plansBefore].Reason);
+        Assert.Equal(UtcText.Parse("2026-09-18T07:35:15Z"), api.PlanTimes[^1]);
     }
 
     [Fact]
