@@ -89,6 +89,7 @@ export function SequencerHelpPage() {
   ];
   const toc: { id: string; label: string; children?: { id: string; label: string }[] }[] = [
     { id: help.basics.id, label: help.basics.title },
+    ...help.concepts.map((c) => ({ id: c.id, label: c.title })),
     {
       id: 'templates',
       label: t('nina.help.templates'),
@@ -131,6 +132,9 @@ export function SequencerHelpPage() {
             <Markdown>{help.intro}</Markdown>
           </div>
           <Section section={help.basics} />
+          {help.concepts.map((c) => (
+            <Section key={c.id} section={c} />
+          ))}
           <section id="templates" className={styles.section} aria-labelledby="templates-h">
             <h2 id="templates-h">{t('nina.help.templates')}</h2>
             {help.templates.map((s) => (
