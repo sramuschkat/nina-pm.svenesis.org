@@ -71,6 +71,18 @@ const VM_FLIP = { afterMin: 1, maxAfterMin: 5, pauseBeforeMin: 0, durationS: 120
  * Nacht (≈ +3:10 … +4:30 h); mit 230 min liegt der Flip mitten darin (`real-check long-night`, 05.10.2026).
  */
 const LONG_NIGHT_MERIDIAN_MIN = 230;
+/** Gemessene Starfront-Zeiten (wie `tools/nina-test-server/scenarios/starfront-night.json`, AF aus den Logs 2–5 min). */
+const RIG_TIMES = {
+  flip: { afterMin: 5, maxAfterMin: 10, pauseBeforeMin: 5, durationS: 250 },
+  overhead: {
+    slewCenterS: 40,
+    filterChangeS: 10,
+    ditherSettleS: 18,
+    afEveryMin: 60,
+    afDurationS: 210,
+    downloadS: 3,
+  },
+} as const;
 /** Starfront wie das Rig und der Plugin-Simulator (`NinaPm.Sim`, `profileLocation`). */
 const STARFRONT = { latDeg: 31.5471, lonDeg: -99.3823, timeZone: 'America/Chicago' };
 /** Flip-relevante Codes der Einstellungsprüfung (`ninaSettingsMismatchCodes`): im Flip-Lauf darf keiner auftreten. */
@@ -93,6 +105,12 @@ export interface RealServerOptions {
    * `x-npm-sim-now` des Plugin-Simulators (nie rückwärts) und führt `tick-5min` je 5 virtuelle Minuten aus.
    */
   readonly startMs?: number;
+  /**
+   * Rig-Zeiten wie in Starfront gemessen (Logs 23.08.–26.09.2026, `docs/test-runs/…/starfront-night`): Flip 5/10 min
+   * nach dem Meridian mit 5 min Pause davor und 250 s Dauer, Slew+Zentrieren 40 s, Filterwechsel 10 s, Dither je
+   * Aufnahme mit 18 s, Autofokus alle 60 min mit 210 s. Dazu Prüfungen „Plan = Ausführung“ und Lücken (05.10.2026).
+   */
+  readonly rigTimes?: boolean;
 }
 
 export interface RealCheck {
@@ -355,7 +373,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
     rigId,
     {
       ...(rig.scheduler as Parameters<EquipmentRepository['updateScheduler']>[1]),
-      ditherEvery: s === 'full-night' || s === 'long-night' ? 3 : 5,
+      ditherEvery: opts.rigTimes ? 1 : s === 'full-night' || s === 'long-night' ? 3 : 5,
       flatsEnabled:
         s === 'night-flats' ||
         s === 'starfront-seq' ||
@@ -369,10 +387,20 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
       darkFlatsEnabled: true,
       darkFlatCount: 2,
       flipEnabled: true,
-      flipAfterMeridianMin: VM_FLIP.afterMin,
-      flipMaxAfterMeridianMin: VM_FLIP.maxAfterMin,
-      flipPauseBeforeMeridianMin: VM_FLIP.pauseBeforeMin,
-      flipDurationS: VM_FLIP.durationS,
+      ...(opts.rigTimes
+        ? {
+            flipAfterMeridianMin: RIG_TIMES.flip.afterMin,
+            flipMaxAfterMeridianMin: RIG_TIMES.flip.maxAfterMin,
+            flipPauseBeforeMeridianMin: RIG_TIMES.flip.pauseBeforeMin,
+            flipDurationS: RIG_TIMES.flip.durationS,
+            overhead: RIG_TIMES.overhead,
+          }
+        : {
+            flipAfterMeridianMin: VM_FLIP.afterMin,
+            flipMaxAfterMeridianMin: VM_FLIP.maxAfterMin,
+            flipPauseBeforeMeridianMin: VM_FLIP.pauseBeforeMin,
+            flipDurationS: VM_FLIP.durationS,
+          }),
     },
     new Date(),
   );
@@ -980,7 +1008,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         : [];
       const plans = await stack.db
         .selectFrom('nightPlan')
-        .select(['reason', 'createdAt', 'night'])
+        .select(['reason', 'createdAt', 'night', 'summary'])
         .where('tenantId', '=', tenantId)
         .where('rigId', '=', rigId)
         .execute();
@@ -1327,6 +1355,55 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           'Fortsetzen nach NINA-Neustart',
           reasons.includes('resume') && list.length === 1,
           `${JSON.stringify(reasons)}, Sessions ${String(list.length)}`,
+        );
+      }
+      if (opts.rigTimes) {
+        // Rig-Zeiten (05.10.2026): je Nacht Plan gegen Ausführung und Lücken zwischen den Aufnahmen.
+        // `night_plan.summary` ist die Plan-Antwort ohne Blöcke; die Engine-Zusammenfassung steht darin unter `summary`.
+        const frames = (stored: unknown) =>
+          Object.values(
+            (
+              (stored ?? {}) as {
+                summary?: { plannedFrames?: Record<string, Record<string, number>> };
+              }
+            ).summary?.plannedFrames ?? {},
+          ).reduce((n, byFilter) => n + Object.values(byFilter).reduce((m, k) => m + k, 0), 0);
+        const nightsDone = [...new Set(list.map((x) => String(x.night)))].sort();
+        const rows: string[] = [];
+        let worstShare = 1;
+        let worstGapMin = 0;
+        for (const night of nightsDone) {
+          const ids = new Set(list.filter((x) => String(x.night) === night).map((x) => x.id));
+          const times = lights
+            .filter((c) => c.sessionId !== null && ids.has(c.sessionId))
+            .map((c) => new Date(c.capturedAt).getTime())
+            .sort((a, b) => a - b);
+          const initial = plans.find((p) => String(p.night) === night && p.reason === 'initial');
+          const planned = frames(initial?.summary);
+          const share = planned > 0 ? times.length / planned : 1;
+          worstShare = Math.min(worstShare, share);
+          const gaps = times
+            .slice(1)
+            .map((t, i) => ({ at: times[i] ?? t, min: (t - (times[i] ?? t)) / MIN }))
+            .filter((g) => g.min > 10);
+          worstGapMin = Math.max(worstGapMin, ...gaps.map((g) => g.min));
+          rows.push(
+            `${night}: ${String(times.length)} von ${String(planned)} geplant (${String(Math.round(share * 100))} %)` +
+              (gaps.length
+                ? `, Lücken > 10 min: ${gaps.map((g) => `${iso(g.at).slice(11, 16)}Z ${String(Math.round(g.min))} min`).join(', ')}`
+                : ''),
+          );
+        }
+        data.rigTimes = rows;
+        check(
+          'Plan = Ausführung: je Nacht mindestens 90 % der im Erstplan geplanten Aufnahmen',
+          worstShare >= 0.9,
+          rows.join(' · '),
+        );
+        check(
+          'Keine Lücke über 30 min zwischen Aufnahmen (Flip mit 5 min Pause davor und 5 min danach ≈ 15–20 min, fällt NINAs Autofokus dahinter: bis ≈ 28 min)',
+          worstGapMin <= 30,
+          `größte Lücke ${String(Math.round(worstGapMin))} min`,
         );
       }
       return { data, checks };

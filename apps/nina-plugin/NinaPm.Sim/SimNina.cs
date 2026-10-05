@@ -26,7 +26,7 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
     /// <summary>Abgestürzt: als Unterbrechung einordnen, damit der tote Prozess keine Session beendet.</summary>
     public SafetyState ReadSafety() => dead() ? new SafetyState(true, false, false) : new SafetyState(true, world.MonitorConnected, world.MonitorSafe);
 
-    public DateTimeOffset? LastAutofocusUtc => null;
+    public DateTimeOffset? LastAutofocusUtc => world.LastAutofocusUtc;
 
     public void OnInterrupted() => interrupted = true;
 
@@ -149,10 +149,19 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
         await NinaFlipTriggerAsync(token).ConfigureAwait(false);
         // Autofokus-Trigger: im Transit ohne Erlaubnis der Beobachtung unterdrückt (dieselbe Regel wie der Adapter).
         const string af = "AutofocusAfterTimeTrigger";
-        if (world.AfTrigger && TriggerPolicy.Suppressed(af, transitTriggers) && suppressedLogged.Add(af))
+        var afSuppressed = world.AfTrigger && TriggerPolicy.Suppressed(af, transitTriggers);
+        if (afSuppressed && suppressedLogged.Add(af))
         {
             log.Event("TRIGGER_SUPPRESSED", ("type", af));
             runner()?.ReportEvent(EventsKind.Trigger_suppressed, af, data: new Dictionary<string, object> { ["type"] = af });
+        }
+        else if (!afSuppressed && world.AfTrigger && world.AfEveryMin > 0
+            && (world.LastAutofocusUtc is not { } lastAf || clock.UtcNow - lastAf >= TimeSpan.FromMinutes(world.AfEveryMin)))
+        {
+            // NINAs Autofokus nach Zeit (Trigger vor der Belichtung) mit realer Dauer – unabhängig vom `autofocus_hint` des Plans.
+            FileLogSink.Sim(logWriterForSim, clock, "NINA autofocus");
+            await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.AfDurationS), token).ConfigureAwait(false);
+            world.LastAutofocusUtc = clock.UtcNow;
         }
         var exposureS = entry.ExposureS ?? 0;
         var id = Uuid7.New(clock);
@@ -208,7 +217,7 @@ public sealed class SimSettings(SimWorld world, double latDeg, double lonDeg) : 
             Recenter = world.Recenter,
             AutoFocusAfterFlip = world.AutoFocusAfterFlip,
             SettleTimeS = 0,
-            PauseBeforeMin = 0,
+            PauseBeforeMin = world.FlipPauseBeforeMin,
             AfterMin = 5,
             MaxAfterMin = 10,
         },

@@ -44,6 +44,8 @@ interface RunPart {
   readonly real?: string;
   /** Beginn der virtuellen Uhr (ISO, UTC); nur mit `real`, sonst „jetzt“. */
   readonly startUtc?: string;
+  /** Nur mit `real`: Rig-Zeiten wie in Starfront gemessen (`RealServerOptions.rigTimes`). */
+  readonly realRigTimes?: boolean;
   /**
    * Teil mit dem Simulator einer älteren Plugin-Version (Git-Ref, z. B. der Commit des freigegebenen Plugins):
    * Plugin-Update über eine bestehende `ninapm.db` (`real-upgrade`).
@@ -187,6 +189,7 @@ async function runPart(
       latDeg: 50,
       log: (m) => console.log(m),
       startMs,
+      ...(part.realRigTimes ? { rigTimes: true } : {}),
     });
     try {
       await runSim(REAL_PORT, runPath, dir, Math.floor(startMs / 1000));
@@ -240,6 +243,7 @@ async function runRealParts(
     latDeg: 50,
     log: (m) => console.log(m),
     startMs,
+    ...(run.realRigTimes ? { rigTimes: true } : {}),
   });
   const logs: string[] = [];
   try {
@@ -297,10 +301,14 @@ export async function runOne(file: string, outRoot: string): Promise<RunOutcome>
         steps: run.steps,
         dayLoop: run.dayLoop,
         ...(run.real ? { real: run.real, startUtc: run.startUtc } : {}),
+        ...(run.realRigTimes ? { realRigTimes: true } : {}),
       },
       dir,
     );
-    writeFileSync(join(dir, 'report.json'), `${JSON.stringify(r.report, null, 2)}\n`);
+    writeFileSync(
+      join(dir, 'report.json'),
+      `${JSON.stringify({ ...(r.report as object), realChecks: r.realChecks ?? [] }, null, 2)}\n`,
+    );
     const c = evaluateChecks(run.checks, r.log, r.report, false);
     // Prüfungen des echten Servers (aus der Datenbank) zusätzlich zu den Log-Prüfungen der Laufdatei.
     const realLines = (r.realChecks ?? []).map(
