@@ -54,6 +54,26 @@ public sealed class BlockExecutorTests
         Assert.True(clock.UtcNow <= block.EndUtc);
     }
 
+    [Fact]
+    public async Task Zeitgefuehrt_schneller_als_geplant_wartet_mit_WAIT_PLAN_im_Log()
+    {
+        // Wie im VM-Lauf 05.10.2026: der Plan reserviert vor der ersten Belichtung Zeit (z. B. Autofokus), NINA nutzt sie
+        // nicht – das Plugin wartet bis zum geplanten Zeitpunkt und schreibt das ins Log.
+        var (executor, _, sink, _) = Setup("2026-09-18T07:35:00Z", PlaybackMode.TimeAware);
+        var block = Regular(b =>
+        {
+            foreach (var e in b.Entries.Skip(1)) e.AtUtc = e.AtUtc.AddMinutes(4);
+        });
+        var firstExpose = block.Entries.First(e => e.Cmd == EntriesCmd.Expose).AtUtc;
+
+        var outcome = await executor.RunAsync(block, T("2026-09-18T11:30:42Z"), default);
+
+        Assert.Equal("completed", outcome.Reason);
+        var wait = Assert.Single(sink.Lines, l => l.Contains("WAIT_PLAN") && l.Contains($"untilUtc={firstExpose:yyyy-MM-ddTHH:mm:ss}Z"));
+        Assert.Contains($"block={block.Id}", wait);
+        Assert.Matches(@"durationS=\d{3}", wait);
+    }
+
     private static Blocks Transit(Action<Blocks>? change = null)
     {
         var b = Plan().Blocks.Single(x => x.Kind == BlocksKind.Transit);
