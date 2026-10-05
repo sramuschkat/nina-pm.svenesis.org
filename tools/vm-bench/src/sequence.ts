@@ -267,7 +267,8 @@ function flatInstruction(
         `SequenceItem.FlatDevice.${kind === 'flat' ? 'TrainedFlatExposure' : 'TrainedDarkFlatExposure'}`,
       ),
       Strategy: { $type: T('Container.ExecutionStrategy.SequentialStrategy') },
-      Name: null,
+      // Kein `Name`: Container speichern ihren Namen, `null` überschriebe den Anzeigenamen der Vorlage
+      // („Trained Flat Exposure“) – der Baustein stünde ohne Namen in der Flats-Box (05.10.2026).
       Conditions: {
         $id: conditionsId,
         $type: COLLECTION('Conditions.ISequenceCondition'),
