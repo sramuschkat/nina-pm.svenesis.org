@@ -107,6 +107,12 @@ public sealed class NightRunner(
     /// <summary>Benutzeraktion *Block überspringen* (§4.1 Nr. 2, §4.2): wirkt auf den nächsten bzw. laufenden Block.</summary>
     private volatile bool skipRequested;
 
+    /// <summary>
+    /// *Zurücksetzen* während eines Blocks: der Block endet nach der laufenden Belichtung mit <c>replanned</c>, danach
+    /// sofort der Plan mit <c>reason: reset</c> – vorher wartete der Reset bis zum Blockende (Lauf real-commands, 05.10.2026).
+    /// </summary>
+    private volatile bool resetRequested;
+
     /// <summary>Heartbeat-Kommandos, die mit dem nächsten Heartbeat quittiert werden (<c>ackedCommandIds</c>).</summary>
     private readonly List<Guid> commandAcks = [];
 
@@ -206,6 +212,7 @@ public sealed class NightRunner(
         Loop.UserAbortOrReset();
         store.SetState(StateKeys.DoneBlocks, null);
         forcedPlan = NinaPlanRequestReason.Reset;
+        if (runningBlock is not null) resetRequested = true;
         log.Note("Reset: new plan with reason=reset");
     }
 
@@ -888,6 +895,7 @@ public sealed class NightRunner(
                 b => ReportEvent(EventsKind.Warning, "camera_temperature", b.Id),
                 // Lease verloren bzw. Rig belegt (§6, P-10/P-17): laufende Belichtung zu Ende, dann block_end lease_lost.
                 () => skipRequested ? "user_skip"
+                    : resetRequested ? "replanned"
                     : Loop.Blocked is { } bl && HaltingReasons.Contains(bl) ? "error"
                     : Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
@@ -901,12 +909,13 @@ public sealed class NightRunner(
                     t.FlipDone(UnitId(b));
                     t.Save(store);
                 },
-                () => skipRequested,
+                () => skipRequested || resetRequested,
                 () => targetsChanged,
                 () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS),
                 () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow)))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
+            resetRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).

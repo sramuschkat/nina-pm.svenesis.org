@@ -110,7 +110,7 @@ Die Sequenz „Mehrere Nächte“ legt die äußere Schleife zusätzlich in *NIN
 | im Block alle 15 min | neues ETag | Fall a/b/c unten |
 | nach Neustart/Unterbrechung (§4.6) | immer | `reason: resume`; **Blockindex aus dem neuen Plan** (erster Block mit `endUtc > now`), nicht aus `ninapm.db` (NT-18); `sessionId` aus `ninapm.db` bleibt (NIN-8), `nightPlanId` = ID des **neuen** Plans (jede Aufnahme trägt die ID des Plans, nach dem sie belichtet wurde) |
 | Start ohne Session in `ninapm.db` (z. B. nach Benutzer-Stopp, NT-15) | immer, solange die Nacht läuft | `reason: initial` – **auch wenn** für die Nacht noch ein gespeicherter Plan liegt; der Plan legt eine **neue** Session an (`POST /sessions`). Ohne Verbindung gilt der gespeicherte Plan. |
-| *Zurücksetzen* | Benutzer | `reason: reset`, Blockindex 0 |
+| *Zurücksetzen* | Benutzer (Container-Knopf oder Befehl `reset_plan`) | `reason: reset`, Blockindex 0; ein laufender Block endet vorher nach der laufenden Belichtung (`block_end` `replanned`) |
 Sonst gilt der bestehende Plan unverändert (Hysterese).
 
 > **Spec-Ergänzung (AP-16c, 02.10.2026, Sven):** Zeile „Start ohne Session“. Lauf am Windows-Rechner: nach einem Benutzer-Stopp und Neustart von NINA lag der Plan der Nacht noch in `ninapm.db`; der erste Abruf trug `refresh`, und bei offenen Blöcken im gespeicherten Plan hätte das Plugin gar nicht geplant und damit keine neue Session angelegt. `resume` gilt nur mit Session.
@@ -158,7 +158,7 @@ Sonst gilt der bestehende Plan unverändert (Hysterese).
 | `user_skip` | Benutzeraktion *Block überspringen* oder Benutzer-Stopp der Sequenz (§4.6, NT-15) |
 | `lease_lost` | `blocked{lease_lost}` oder `blocked{rig_busy}` (§2) |
 | `interrupted` | NINA unterbricht den Container (*Loop While Safe* meldet unsicher, §4.6, NT-16) |
-| `replanned` | der laufende Block wird durch einen neuen Plan ersetzt, ohne dass Fall (a) oder (b) vorliegt: Neuplanung nach > 3 übersprungenen Belichtungen oder Flipzeit-Abweichung (§4.2, §4.5), wenn der neue Plan den laufenden Block nicht fortführt |
+| `replanned` | der laufende Block wird durch einen neuen Plan ersetzt, ohne dass Fall (a) oder (b) vorliegt: Neuplanung nach > 3 übersprungenen Belichtungen oder Flipzeit-Abweichung (§4.2, §4.5), wenn der neue Plan den laufenden Block nicht fortführt; ebenso *Zurücksetzen* (Container-Knopf oder Befehl `reset_plan` aus dem Web) während eines Blocks: der Block endet nach der laufenden Belichtung (Spec-Ergänzung 05.10.2026, Entscheidung Sven, Plugin 0.4.5) |
 | `error` | `blocked{token_invalid}`, `blocked{engine_incompatible}` oder unbehandelter Fehler (§2) |
 
   Den früheren Grund `flats` gibt es nicht mehr (NT-17): Flats beginnen erst nach dem Nachtende (§2), ein Block wird dafür nicht beendet. Gründe für `block_skipped` stehen in der Tabelle oben.

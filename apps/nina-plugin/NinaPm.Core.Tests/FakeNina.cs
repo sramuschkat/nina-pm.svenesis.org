@@ -92,6 +92,9 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     public CameraCooling ReadCooling() => Cooling;
 
+    /// <summary>Wird bei jeder Belichtung mit deren laufender Nummer (ab 1) aufgerufen.</summary>
+    public Action<int>? OnExposure { get; set; }
+
     /// <summary><c>temperatureDeviation</c> je Belichtung in Reihenfolge.</summary>
     public List<bool> Deviations { get; } = [];
 
@@ -99,6 +102,7 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
     {
         Deviations.Add(temperatureDeviation);
         exposures++;
+        OnExposure?.Invoke(exposures);
         if (exposures == FailAtExposure) throw new InvalidOperationException("Kamera meldet Fehler");
         Calls.Add($"expose:{entry.Seq}@{UtcText.Format(clock.UtcNow)}");
         if (exposures == FlipDuringExposure && Pier is not null) Pier = Pier == "west" ? "east" : "west";

@@ -1404,6 +1404,28 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Zuruecksetzen_im_laufenden_Block_beendet_ihn_nach_der_Belichtung_mit_replanned()
+    {
+        // Lauf real-commands (05.10.2026): reset_plan aus dem Web kam mitten in einem Block, der bis zum Nachtende lief –
+        // der Reset wäre in dieser Nacht nie wirksam geworden.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.OnExposure = n =>
+        {
+            if (n == 2) runner.Reset();
+        };
+
+        await runner.RunOnceAsync(default);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=replanned", StringComparison.Ordinal));
+        Assert.Equal(2, nina.Exposures);
+
+        nina.OnExposure = null;
+        await runner.RunOnceAsync(default);
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[^1].Reason);
+    }
+
+    [Fact]
     public async Task Heartbeat_Kommando_reset_plan_wird_ausgefuehrt_und_quittiert()
     {
         var runner = Runner();
