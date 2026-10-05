@@ -39,6 +39,10 @@ NINA-Log (`summary.json`): keine Fehler, nichts abgelehnt, Outbox am Ende leer.
 
 Die Prüfung „mindestens 2 Flat-Kombinationen“ war **rot**. Sie war zu streng: Nach dem Neustart wurde nur Filter L belichtet, also gibt es nur eine Kombination, und die ist erledigt. Die Prüfung ist korrigiert (je belichtetem Filter eine erledigte Kombination, keine übersprungen; 758becc).
 
-**Ergebnis: Go** (inhaltlich). Offener Prüfpunkt: das Warten von 309 s vor der letzten Aufnahme von B.
+**Ergebnis: Go** (inhaltlich).
+
+**Prüfpunkt 309 s geklärt (Analyse 05.10.2026):**
+1. Der Block endete, sobald NINA die 12. Aufnahme belichtet hatte. Gespeichert und gemeldet wurde sie 2 s später, der sofortige `POST /plan` kannte sie also nicht. Der Server plante deshalb einen Block für eine Zeile, die schon fertig war. Behoben in **Plugin 0.4.6 (#273)**: Vor einer Neuplanung wartet das Plugin höchstens 15 s auf das Speichern.
+2. Die 309 s sind genau die Zeit, die der Plan am Blockbeginn reserviert: Slew 120 s + Autofokus 180 s + Filterwechsel 10 s. In der VM gibt es keinen Fokussierer, und der Slew entfiel, weil das Ziel dasselbe war. Das Warten war seit #273 nicht unterbrechbar; jetzt läuft es im 10-s-Takt. Den Slew trotz gleichem Ziel plant die Engine weiter ein; das ist Folgearbeit an der Engine (`../rig-times/`).
 
 ![Flats](flats.jpg)

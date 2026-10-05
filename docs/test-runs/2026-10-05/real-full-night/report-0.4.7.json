@@ -1,0 +1,213 @@
+{
+  "data": {
+    "info": {
+      "scenario": "full-night",
+      "lonDeg": 130,
+      "timeZone": "Etc/GMT-9",
+      "night": "2026-10-05",
+      "darknessEndUtc": "2026-10-05T19:39:15Z",
+      "nauticalDawnUtc": "2026-10-05T20:17:17Z"
+    },
+    "sessions": [
+      {
+        "id": "01a10d6f-4965-791c-9a95-374216df2422",
+        "status": "completed",
+        "endedAt": "2026-10-05T20:19:09.520Z",
+        "outboxPending": 0,
+        "night": "2026-10-05"
+      }
+    ],
+    "plans": [
+      "initial",
+      "refresh",
+      "refresh"
+    ],
+    "lines": [
+      {
+        "id": "fda2a652-1540-4e25-acb5-1da5fcbef4ac",
+        "projectId": "223902a6-399e-44bf-9524-a65f03289cf7",
+        "filterShortName": "R",
+        "acquiredCount": 0
+      },
+      {
+        "id": "1c17d3c4-3f87-4abd-b79b-573c615a129c",
+        "projectId": "223902a6-399e-44bf-9524-a65f03289cf7",
+        "filterShortName": "G",
+        "acquiredCount": 0
+      },
+      {
+        "id": "9997bd63-bcf0-462a-b722-9c0c1e082d1d",
+        "projectId": "223902a6-399e-44bf-9524-a65f03289cf7",
+        "filterShortName": "B",
+        "acquiredCount": 0
+      },
+      {
+        "id": "8ff502bd-99ab-4812-b229-6aff031e1569",
+        "projectId": "812f7bc7-e44c-41e0-a903-e93f81c8512e",
+        "filterShortName": "L",
+        "acquiredCount": 0
+      },
+      {
+        "id": "d9017db9-82c2-40f7-936d-d6fa96d22d00",
+        "projectId": "812f7bc7-e44c-41e0-a903-e93f81c8512e",
+        "filterShortName": "Ha",
+        "acquiredCount": 0
+      },
+      {
+        "id": "4ec581cd-fc69-4eb4-a506-208317f54177",
+        "projectId": "adf99a99-f3b8-4373-a3ca-69dad6681a52",
+        "filterShortName": "Ha",
+        "acquiredCount": 4
+      },
+      {
+        "id": "0e00519b-4806-4533-ad6e-d7cc7d2036d3",
+        "projectId": "adf99a99-f3b8-4373-a3ca-69dad6681a52",
+        "filterShortName": "OIII",
+        "acquiredCount": 4
+      },
+      {
+        "id": "c77bc306-a1b9-4bc6-8538-49cef68a2dfd",
+        "projectId": "adf99a99-f3b8-4373-a3ca-69dad6681a52",
+        "filterShortName": "SII",
+        "acquiredCount": 4
+      },
+      {
+        "id": "63a50ceb-a4aa-4cb5-af31-282e1c7df758",
+        "projectId": "b3ee78be-24a1-42f2-a2f3-763a1783f994",
+        "filterShortName": "L",
+        "acquiredCount": 4
+      },
+      {
+        "id": "122f5cef-bb21-4058-b6a3-34cfe146f84f",
+        "projectId": "b3ee78be-24a1-42f2-a2f3-763a1783f994",
+        "filterShortName": "R",
+        "acquiredCount": 4
+      },
+      {
+        "id": "370d61e8-d74d-4b1e-9c07-907b45fda60d",
+        "projectId": "b3ee78be-24a1-42f2-a2f3-763a1783f994",
+        "filterShortName": "G",
+        "acquiredCount": 4
+      },
+      {
+        "id": "95eddf9e-f3c9-4637-914e-a322694f4b5c",
+        "projectId": "b3ee78be-24a1-42f2-a2f3-763a1783f994",
+        "filterShortName": "B",
+        "acquiredCount": 3
+      }
+    ],
+    "lights": 27,
+    "transitLights": 0,
+    "flats": [
+      {
+        "filterShortName": "L",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 2
+      },
+      {
+        "filterShortName": "R",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      },
+      {
+        "filterShortName": "G",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      },
+      {
+        "filterShortName": "B",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      },
+      {
+        "filterShortName": "Ha",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      },
+      {
+        "filterShortName": "OIII",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      },
+      {
+        "filterShortName": "SII",
+        "status": "done",
+        "flatsTaken": 3,
+        "darkFlatsTaken": 0
+      }
+    ],
+    "jobs": [
+      {
+        "kind": "session_close",
+        "status": "done"
+      },
+      {
+        "kind": "session_report",
+        "status": "done"
+      }
+    ],
+    "commands": [],
+    "transit": null,
+    "flipEvents": [],
+    "staleSeenAt": null,
+    "settingsMismatch": [],
+    "discord": [
+      "/api/webhooks/0/bench-local-only",
+      "/api/webhooks/0/bench-local-only",
+      "/api/webhooks/0/bench-local-only"
+    ]
+  },
+  "checks": [
+    {
+      "name": "Session abgeschlossen",
+      "ok": true,
+      "detail": "[\"completed\"]"
+    },
+    {
+      "name": "Outbox leer beim Abschluss",
+      "ok": true,
+      "detail": "[0]"
+    },
+    {
+      "name": "Aufnahmen gemeldet",
+      "ok": true,
+      "detail": "27 Lights"
+    },
+    {
+      "name": "Zähler = gemeldete Lights",
+      "ok": true,
+      "detail": "Zeilen 27, Lights 27"
+    },
+    {
+      "name": "Abschluss- und Bericht-Job erledigt",
+      "ok": true,
+      "detail": "[{\"kind\":\"session_close\",\"status\":\"done\"},{\"kind\":\"session_report\",\"status\":\"done\"}]"
+    },
+    {
+      "name": "Discord-Meldung angekommen",
+      "ok": true,
+      "detail": "3 Aufrufe"
+    },
+    {
+      "name": "Mehrere Filter belichtet",
+      "ok": true,
+      "detail": "B,G,Ha,L,OIII,R,SII"
+    },
+    {
+      "name": "Je belichtetem Filter eine Flat-Kombination done",
+      "ok": true,
+      "detail": "B,G,Ha,L,OIII,R,SII für B,G,Ha,L,OIII,R,SII"
+    },
+    {
+      "name": "Flats erst nach der nautischen Dämmerung (Wait for Time in Vor Flats)",
+      "ok": true,
+      "detail": "erste Flat 2026-10-05T20:17:35Z, nautische Dämmerung 2026-10-05T20:17:17Z"
+    }
+  ]
+}

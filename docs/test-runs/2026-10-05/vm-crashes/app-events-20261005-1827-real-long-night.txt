@@ -1,0 +1,31 @@
+2026-10-06T01:23:42.8290114Z [Windows Error Reporting] Fault bucket , type 0
+Event Name: BlueScreen
+Response: Not available
+Cab Id: 0
+
+Problem signature:
+P1: a
+P2: ffff9c8789386ab0
+P3: 2
+P4: 0
+P5: fffff8004796a4f0
+P6: 10_0_26200
+P7: 0_0
+P8: 256_1
+P9: 
+P10: 
+
+Attached files:
+\\?\C:\WINDOWS\Minidump\090726-5765-01.dmp
+\\?\C:\WINDOWS\SystemTemp\WER-5796-0.sysdata.xml
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.c7e2d803-5c12-4f93-92ca-fdefa700f0d9.tmp.xml
+
+These files may be available here:
+\\?\C:\ProgramData\Microsoft\Windows\WER\ReportQueue\Kernel_a_401e5d5269cd59a64d62fd9491366f8cb268588_00000000_cd5863d6-f47c-41b9-9adc-7503e142e0c8
+
+Analysis symbol: 
+Rechecking for solution: 0
+Report Id: c434e043-41e2-45c7-8dcc-a3565f62d9ad
+Report Status: 2051
+Hashed bucket: 
+Cab Guid: 0
