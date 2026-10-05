@@ -304,6 +304,9 @@ public sealed class NightRunner(
 
     private bool cancelHandled;
 
+    /// <summary>Nacht, deren Session nach ihrem Nachtfensterende noch regulär abgeschlossen wird (bis <c>nightFinished</c>).</summary>
+    private string? closingNight;
+
     /// <summary>Aufrufe in Folge, die ohne Warten oder Belichten zurückkehren, bevor der Schleifenschutz greift.</summary>
     public const int LoopGuardCalls = 25;
 
@@ -370,9 +373,21 @@ public sealed class NightRunner(
             return;
         }
 
-        var stored = PlanStore.Load(store, row.Night);
         var stateNight = store.GetState(StateKeys.Night);
-        var stale = stateNight is not null && NightCalendar.IsSessionStale(stateNight, nights, clock.UtcNow, null);
+        // Offene Session nach dem Nachtfensterende ihrer Nacht (Nachtende über sessionEndUtc, z. B. Plan ohne
+        // darknessEndUtc): bis zum Mittag gehört sie noch zu ihrer Nacht und wird dort regulär abgeschlossen – sonst
+        // galt sie im selben Augenblick als veraltet, und am Morgen begann eine Session der nächsten Nacht (real-all-done,
+        // 05.10.2026).
+        if (stateNight is not null && stateNight != row.Night && !Loop.NightFinished
+            && (SessionId is not null || closingNight == stateNight)
+            && nights.FirstOrDefault(n => n.Night == stateNight) is { } own && clock.UtcNow < own.NoonEndUtc)
+        {
+            closingNight = stateNight;
+            row = own;
+        }
+        var stored = PlanStore.Load(store, row.Night);
+        var stale = stateNight is not null && stateNight != row.Night
+            && NightCalendar.IsSessionStale(stateNight, nights, clock.UtcNow, null);
         var hasSession = SessionId is not null && !stale;
         // Ohne Session gibt es nichts wiederaufzunehmen: neue Session, erster Plan der Session (§3.2).
         if (forcedPlan == NinaPlanRequestReason.Resume && !hasSession) forcedPlan = NinaPlanRequestReason.Initial;

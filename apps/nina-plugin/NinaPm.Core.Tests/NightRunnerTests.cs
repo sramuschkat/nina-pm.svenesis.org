@@ -54,6 +54,8 @@ public sealed class NightRunnerTests : IDisposable
         public List<NinaSessionCreate> Created { get; } = [];
         public List<(Guid Id, NinaSessionPatch Patch)> Patches { get; } = [];
         public Func<NinaSessionCreate, NinaSessionCreated>? OnCreate { get; set; }
+        /// <summary>Plan-Antwort ändern (z. B. <c>darknessEndUtc = null</c>).</summary>
+        public Action<NinaPlanResponse>? OnPlan { get; set; }
         /// <summary>Eigene Antwort auf <c>GET /targets</c> (ETag des Aufrufers → Ziele oder 304, neues ETag).</summary>
         public Func<string?, (NinaTargets?, string?)>? OnTargets { get; set; }
 
@@ -68,6 +70,7 @@ public sealed class NightRunnerTests : IDisposable
             var p = Example<NinaPlanResponse>("plan.response");
             p.Night = request.Night;
             p.NightPlanId = Guid.NewGuid();
+            OnPlan?.Invoke(p);
             return Task.FromResult(p);
         }
 
@@ -321,6 +324,27 @@ public sealed class NightRunnerTests : IDisposable
 
         Assert.Equal((session, NinaSessionPatchStatus.Completed), (api.Patches[^1].Id, api.Patches[^1].Patch.Status));
         Assert.NotEqual(session, runner.SessionId);
+    }
+
+    [Fact]
+    public async Task Nachtende_ueber_sessionEndUtc_schliesst_die_Nacht_ab_ohne_Session_der_naechsten_Nacht()
+    {
+        // Plan ohne darknessEndUtc (Engine < 0.16.0: alle Projekte fertig): Nachtende erst bei sessionEndUtc = Nachtfensterende,
+        // im selben Augenblick wechselt currentNight. Die offene Session gehört bis zum Mittag noch zu ihrer Nacht – sie wird
+        // regulär abgeschlossen, statt als veraltet verworfen und durch eine Session der nächsten Nacht ersetzt zu werden
+        // (kopfloser Lauf real-all-done, 05.10.2026).
+        api.OnPlan = p => p.DarknessEndUtc = null;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var session = runner.SessionId!.Value;
+        clock.UtcNow = UtcText.Parse("2026-09-18T13:00:00Z");
+
+        for (var i = 0; i < 5 && runner.HasBlocksRemaining; i++) await runner.RunOnceAsync(default);
+
+        Assert.Equal((session, NinaSessionPatchStatus.Completed), (api.Patches[^1].Id, api.Patches[^1].Patch.Status));
+        Assert.False(runner.HasBlocksRemaining);
+        Assert.Single(api.Created);
+        Assert.DoesNotContain(api.Plans, p => p.Night == "2026-09-18");
     }
 
     [Fact]
