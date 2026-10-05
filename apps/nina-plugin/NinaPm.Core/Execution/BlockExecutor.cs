@@ -106,6 +106,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     }
 
     /// <summary>Verzug fortschreiben: tatsächliche minus geplante Dauer, nie negativ (§4.2, NIN-14).</summary>
+    /// <summary>Wartezeit im Block bis zum geplanten Eintrag, ab der das Plugin <c>WAIT_PLAN</c> protokolliert.</summary>
+    public const double WaitLogMinS = 30;
+
     private void Overrun(Run run, DateTimeOffset started, double plannedS)
     {
         var o = run.Offset + (clock.UtcNow - started) - TimeSpan.FromSeconds(plannedS);
@@ -334,6 +337,11 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             }
             if (step.Kind == PlaybackKind.Wait)
             {
+                // Schneller als geplant (zeitgeführt, §4.2): bis zum geplanten Zeitpunkt warten. Ab 30 s eine Zeile im Log –
+                // sonst sähe ein Block z. B. mit nicht genutzter Autofokus-Zeit minutenlang untätig aus (VM-Lauf 05.10.2026).
+                var waitS = (step.WaitUntilUtc!.Value - clock.UtcNow).TotalSeconds;
+                if (waitS >= WaitLogMinS)
+                    log.Event("WAIT_PLAN", ("block", block.Id), ("untilUtc", step.WaitUntilUtc.Value), ("durationS", Math.Round(waitS)));
                 await host.DelayAsync(step.WaitUntilUtc!.Value, token).ConfigureAwait(false);
                 cursor = target - 1;
                 continue;
