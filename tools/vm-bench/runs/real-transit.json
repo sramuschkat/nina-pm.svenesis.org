@@ -1,0 +1,18 @@
+{
+  "name": "real-transit",
+  "description": "Stufe 2a gegen den echten Server (≈ 45 min): Exoplanet BENCH-1b mit eigener Ephemeride, Transitmitte 22 min nach dem Start, ohne Grundlinie festgelegt (Fenster ≈ +11 … +33 min); Deep-Sky-Projekt davor und danach; Nachtende 40 min nach dem Start. Prüft Auslieferung des festgelegten Transits, Transitblock in NINA, Aufnahmen mit Beobachtung, Wertung `observed` (Frist vorgezogen), Abschluss und Bericht.",
+  "real": "transit",
+  "untilMin": 50,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [{ "atMin": 15, "screenshot": "transit", "tab": "sequencer" }]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "real-commands",
+  "description": "Stufe 2a gegen den echten Server (≈ 40 min): zwei Deep-Sky-Projekte, Nachtende 35 min nach dem Start. Minute 6: Projekt des laufenden Blocks im Web pausiert (neues ETag → Neuplanung); Minute 11: Kommando refresh_targets; Minute 15: Kommando reset_plan; Minute 20: NINA-Neustart mit Fortsetzen derselben Session; danach Nachtende, Abschluss und Bericht.",
+  "real": "commands",
+  "untilMin": 45,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 6, "real": "pause_running" },
+    { "atMin": 11, "real": "refresh_targets" },
+    { "atMin": 15, "real": "reset_plan" },
+    { "atMin": 20, "restartNina": true },
+    { "atMin": 24, "screenshot": "nach-neustart", "tab": "sequencer" }
+  ]
+}

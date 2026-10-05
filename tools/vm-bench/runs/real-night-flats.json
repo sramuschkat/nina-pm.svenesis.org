@@ -1,0 +1,26 @@
+{
+  "name": "real-night-flats",
+  "description": "Stufe 2a gegen den echten Server (≈ 35 min): Standort so gewählt, dass die astronomische Dämmerung 25 min nach dem Start endet; zwei Deep-Sky-Projekte (L, Ha) nahe dem Pol, Plan durch den Server, Nachtende, Flats und Dark-Flats (Trained Flat Exposure), Abschluss, Nachtbericht und Discord (Nachbildung). Auswertung aus der Datenbank.",
+  "real": "night-flats",
+  "untilMin": 45,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
+    "flats": true
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "trainedFlats": {
+    "timeS": 1,
+    "binnings": [1]
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 10, "screenshot": "live-status", "tab": "sequencer" },
+    { "atMin": 28, "screenshot": "flats", "tab": "sequencer" }
+  ]
+}
