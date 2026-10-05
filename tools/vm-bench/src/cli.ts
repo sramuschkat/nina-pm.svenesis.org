@@ -324,7 +324,18 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const vmOffsetMs = await a.localOffsetMs();
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
-    // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll.
+    // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll. Den bisherigen Standort merken
+    // und nach dem Lauf zurückschreiben – sonst prüften die folgenden Test-Server-Läufe gegen den gestauchten Standort.
+    const astro = r.real
+      ? ((await a.activeProfile()).AstrometrySettings as Record<string, number> | undefined)
+      : undefined;
+    const restoreSite = astro
+      ? {
+          'AstrometrySettings-Latitude': astro.Latitude ?? 0,
+          'AstrometrySettings-Longitude': astro.Longitude ?? 0,
+          'AstrometrySettings-Elevation': astro.Elevation ?? 0,
+        }
+      : undefined;
     const real = r.real
       ? await startRealServer({ scenario: r.real, port: cfg.testServerPort, latDeg: 50, log })
       : undefined;
@@ -461,6 +472,11 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     } finally {
       http?.close();
       real?.close();
+      if (restoreSite) {
+        for (const [path, value] of Object.entries(restoreSite))
+          await a.setProfile(path, value).catch(() => undefined);
+        log(`Profil-Standort zurückgesetzt: ${JSON.stringify(restoreSite)}`);
+      }
     }
     const logs = await job(
       bench,
