@@ -239,7 +239,9 @@ export function TonightTimeline({
       fromUtc: run.from,
       toUtc: run.to,
       color: 'var(--npm-body-moon)',
-      opacity: clamp(0.35 + rig.moon.illumPct / 150, 0.35, 1),
+      // Deckkraft 0,5–1 nach Beleuchtung: unter 0,5 fiel die Beschriftung auf der dunklen Spur unter 4,5:1
+      // (axe color-contrast bei 45 % Deckkraft, 06.10.2026).
+      opacity: clamp(0.5 + rig.moon.illumPct / 200, 0.5, 1),
       label: t('tonight.lane.moonMax', { alt: n(run.max), time: hm(run.maxT) }),
     });
     run = null;
