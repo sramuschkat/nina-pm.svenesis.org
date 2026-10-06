@@ -109,7 +109,8 @@ function simAtRef(ref: string): string {
   try {
     execFileSync('git', ['cat-file', '-e', `${ref}^{commit}`], { cwd: ROOT, stdio: 'ignore' });
   } catch {
-    // CI checkt nur den letzten Commit aus: den Ref gezielt nachholen.
+    // CI checkt nur den letzten Commit aus: den Ref gezielt nachholen. GitHub liefert dabei nur volle SHAs aus
+    // (`fromRef` in der Laufdatei deshalb immer mit 40 Zeichen; mit 7 Zeichen: „couldn't find remote ref“).
     execFileSync('git', ['fetch', '--depth', '1', 'origin', ref], { cwd: ROOT, stdio: 'inherit' });
   }
   const tar = execFileSync(

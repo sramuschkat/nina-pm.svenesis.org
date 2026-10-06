@@ -5,7 +5,7 @@
   "parts": [
     {
       "scenario": "",
-      "fromRef": "cb43ab6",
+      "fromRef": "cb43ab6cbf76c13fde917a467ed6f01ce05c8034",
       "startUtc": "2026-10-20T22:00:00Z",
       "untilMin": 830,
       "setup": {
