@@ -28,7 +28,7 @@ public static class Texts
     public static string FlatsHint => T(
         "Laufen nach der Nacht, wenn im Rig eingeschaltet. Filter, Rotator, Gain, Offset, Binning und Auslesemodus je Kombination setzt NINA-PM; Anzahlen kommen aus dem Rig.",
         "Run after the night when enabled in the rig. NINA-PM sets filter, rotator, gain, offset, binning and readout mode per combination; counts come from the rig.");
-    public static string FlatsBefore => T("Vor Flats (einmal, z. B. parken, Panel schließen, Licht an)", "Before flats (once, e.g. park, close panel, light on)");
+    public static string FlatsBefore => T("Vor Flats (einmal, z. B. Guiding stoppen, warten bis, parken, Panel schließen, Licht an)", "Before flats (once, e.g. stop guiding, wait for time, park, close panel, light on)");
     public static string FlatsPerCombination => T(
         "Je Kombination (z. B. Trained Flat Exposure, danach Trained Dark Flat Exposure)", "Per combination (e.g. Trained Flat Exposure, then Trained Dark Flat Exposure)");
     public static string FlatsAfter => T("Nach Flats (einmal, z. B. Licht aus, Panel öffnen)", "After flats (once, e.g. light off, open panel)");

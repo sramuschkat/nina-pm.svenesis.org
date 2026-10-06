@@ -25,8 +25,8 @@ public sealed class NightLoopTests
     }
 
     private static NightContext At(string now, StoredPlan? plan, bool session = true, bool flatsPending = false, bool flatsEnabled = true,
-        bool stale = false, bool resuming = false) =>
-        new(T(now), plan, T("2026-09-18T13:00:00Z"), stale, session, flatsEnabled, flatsPending, resuming);
+        bool stale = false, bool resuming = false, bool sky = false) =>
+        new(T(now), plan, T("2026-09-18T13:00:00Z"), stale, session, flatsEnabled, flatsPending, resuming, SkyFlats: sky);
 
     // ---- Planaufbau und Sperre ------------------------------------------------------------------------------
 
@@ -160,12 +160,22 @@ public sealed class NightLoopTests
     }
 
     [Fact]
-    public void Flats_warten_bis_flatsNotBeforeUtc_und_entfallen_ab_sessionEndUtc()
+    public void Himmelsflats_warten_bis_flatsNotBeforeUtc_und_entfallen_ab_sessionEndUtc()
     {
         var plan = Stored(p => p.FlatsNotBeforeUtc = T("2026-09-18T12:00:00Z"));
         var loop = new NightLoop();
-        var wait = loop.Decide(At("2026-09-18T11:40:00Z", plan, flatsPending: true));
+        var wait = loop.Decide(At("2026-09-18T11:40:00Z", plan, flatsPending: true, sky: true));
         Assert.Equal((NightAction.WaitForFlats, T("2026-09-18T12:00:00Z")), (wait.Action, wait.WaitUntilUtc));
+        Assert.Equal(NightAction.SkipFlats, loop.Decide(At("2026-09-18T13:00:00Z", plan, flatsPending: true, sky: true)).Action);
+    }
+
+    [Fact]
+    public void Panel_Flats_beginnen_mit_dem_Nachtende_ohne_eigene_Wartezeit()
+    {
+        // Sven 06.10.2026: den Start bestimmt eine Warte-Anweisung in „Vor Flats“, nicht das Plugin.
+        var plan = Stored(p => p.FlatsNotBeforeUtc = T("2026-09-18T12:00:00Z"));
+        var loop = new NightLoop();
+        Assert.Equal(NightAction.RunFlats, loop.Decide(At("2026-09-18T11:40:00Z", plan, flatsPending: true)).Action);
         Assert.Equal(NightAction.SkipFlats, loop.Decide(At("2026-09-18T13:00:00Z", plan, flatsPending: true)).Action);
     }
 

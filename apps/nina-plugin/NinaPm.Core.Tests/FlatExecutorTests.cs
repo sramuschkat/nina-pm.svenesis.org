@@ -229,7 +229,6 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
     private int frame;
 
     public FlatBoxes Boxes() => BoxesValue;
-    public Task StopGuidingAsync(CancellationToken token) => Task.CompletedTask;
     public bool RotatorConnected => true;
 
     public Task MoveMechanicalAsync(double degrees, CancellationToken token)

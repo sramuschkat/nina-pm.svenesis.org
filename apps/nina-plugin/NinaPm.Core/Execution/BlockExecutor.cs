@@ -37,7 +37,8 @@ public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch);
 /// <summary>
 /// Zusätze für einen Block: Prüfung im Block alle 15 min (§3.2), Kühlungs-Soll mit Warnung höchstens einmal je Block
 /// (NT-E2), ein Abbruchgrund vor jeder Belichtung (z. B. <c>lease_lost</c>, §6), Flip- und Rotationseinstellungen des
-/// Rigs (AP-16f), Playback-Modus des Rigs und Meldungen an den Server (Ereignis, Code).
+/// Rigs (AP-16f), Playback-Modus des Rigs und Meldungen an den Server (Ereignis, Code); Download-Zeit des Rigs
+/// (<c>overhead.downloadS</c>, wie die Engine) und weiches Blockende (<see cref="Playback.SoftEnd"/>, Plugin 0.4.8).
 /// </summary>
 public sealed record BlockRunOptions(
     Func<Entries, CancellationToken, Task<string?>>? InBlockCheck = null,
@@ -52,7 +53,9 @@ public sealed record BlockRunOptions(
     Func<bool>? SkipRequested = null,
     Func<bool>? TargetsChanged = null,
     Func<DateTimeOffset?>? TransitDeadline = null,
-    Func<TimeSpan>? InBlockInterval = null);
+    Func<TimeSpan>? InBlockInterval = null,
+    double? DownloadS = null,
+    DateTimeOffset? SoftEndUtc = null);
 
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
@@ -71,7 +74,10 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// <summary>Takt beim Warten auf NINAs früheste Flipzeit (§4.2).</summary>
     public static readonly TimeSpan FlipWaitTick = TimeSpan.FromSeconds(10);
 
-    /// <summary>Download-Zeit je Belichtung für den Blockschluss; Rig-Einstellung, Standard 3 s.</summary>
+    /// <summary>
+    /// Download-Zeit je Belichtung für den Blockschluss, wenn der Block keine aus dem Rig mitbringt
+    /// (<see cref="BlockRunOptions.DownloadS"/>); Standard 3 s.
+    /// </summary>
     public double DownloadS { get; init; } = 3;
 
     /// <summary>Playback-Modus, wenn der Block keinen aus dem Rig mitbringt (<see cref="BlockRunOptions.Mode"/>).</summary>
@@ -94,6 +100,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     {
         public Blocks Block { get; } = block;
         public BlockRunOptions Options { get; } = options;
+
+        /// <summary>Download-Zeit wie in der Engine (Rig <c>overhead.downloadS</c>), sonst der Standard des Executors.</summary>
+        public double DownloadS { get; init; }
         public TimeSpan Offset { get; set; } = TimeSpan.Zero;
         public bool RecenterPending { get; set; }
         public bool Flipped { get; set; }
@@ -116,9 +125,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// Transit-Vorlauf (§5): eine Einzelbelichtung ab <paramref name="startUtc"/> endete nicht mehr vor dem Vorlauf eines
     /// festgelegten Transits → der Block endet für die Neuplanung (Fall b). Eine laufende Belichtung bricht das nie ab.
     /// </summary>
-    private bool TransitBlocks(BlockRunOptions options, Entries e, DateTimeOffset startUtc) =>
-        !Playback.Repeats(e) && options.TransitDeadline?.Invoke() is { } deadline
-        && startUtc.AddSeconds((e.ExposureS ?? 0) + DownloadS) > deadline;
+    private static bool TransitBlocks(Run run, Entries e, DateTimeOffset startUtc) =>
+        !Playback.Repeats(e) && run.Options.TransitDeadline?.Invoke() is { } deadline
+        && startUtc.AddSeconds((e.ExposureS ?? 0) + run.DownloadS) > deadline;
 
     private void Overrun(Run run, DateTimeOffset started, double plannedS)
     {
@@ -135,7 +144,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         BlockRunOptions? options = null)
     {
         options ??= new BlockRunOptions();
-        var run = new Run(block, options);
+        var run = new Run(block, options) { DownloadS = options.DownloadS ?? DownloadS };
         var temperatureWarned = false;
         bool CheckCooling()
         {
@@ -160,7 +169,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             await host.DelayAsync(next < start ? next : start, token).ConfigureAwait(false);
         }
         if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
-        if (block.EndUtc <= clock.UtcNow || NothingFits(block)) return Skip(block, "elapsed");
+        if (block.EndUtc <= clock.UtcNow || NothingFits(run)) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
         // §4.1 Nr. 1: keine Zeile mit gefundenem Filter bzw. Auslesemodus → überspringen statt den Block leer abzusitzen
         // (P-05 prod 03.10.2026).
@@ -220,18 +229,21 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     }
 
     /// <summary>
-    /// Keine Belichtung passt mehr vor das Blockende (harter Blockschluss, §4.2; Serie: vor <c>untilUtc</c>) – der Block
+    /// Keine Belichtung passt mehr vor das (weiche) Blockende (Blockschluss, §4.2; Serie: vor <c>untilUtc</c>) – der Block
     /// ist praktisch vorbei, Slew und Zentrieren entfallen (z. B. der Rest eines Transitblocks nach der Neuplanung).
     /// Belichtungen mit <c>lastOfNight</c> dürfen bis zur Kulanzgrenze laufen und zählen immer als passend.
     /// </summary>
-    private bool NothingFits(Blocks block)
+    private bool NothingFits(Run run)
     {
+        var block = run.Block;
         var now = clock.UtcNow;
+        var blockEnd = run.Options.SoftEndUtc is { } soft && soft > block.EndUtc ? soft : block.EndUtc;
         foreach (var e in block.Entries.Where(x => x.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series))
         {
             if (e.LastOfNight == true) return false;
-            var end = e.Cmd == EntriesCmd.Expose_series && e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc;
-            if (now.AddSeconds((e.ExposureS ?? 0) + DownloadS) <= end) return false;
+            // Weiches Blockende nur für eine Belichtung, die vor endUtc beginnt (PreCheck: endUtc > now).
+            var end = e.Cmd == EntriesCmd.Expose_series ? (e.UntilUtc is { } u && u < block.EndUtc ? u : block.EndUtc) : blockEnd;
+            if (now.AddSeconds((e.ExposureS ?? 0) + run.DownloadS) <= end) return false;
         }
         return true;
     }
@@ -322,7 +334,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         {
             token.ThrowIfCancellationRequested();
             if (run.RecenterPending) await RecenterAfterFlipAsync(run, plannedS: 0, token).ConfigureAwait(false);
-            var step = Playback.Next(block, cursor, clock.UtcNow, run.Offset, mode, darknessEndUtc, DownloadS);
+            var step = Playback.Next(block, cursor, clock.UtcNow, run.Offset, mode, darknessEndUtc, run.DownloadS, options.SoftEndUtc);
             foreach (var i in step.Skipped)
             {
                 log.Event("SKIPPED_TIMEAWARE", ("id", block.Id), ("index", entries[i].Seq));
@@ -360,7 +372,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 while (clock.UtcNow < until)
                 {
                     if (options.StopReason?.Invoke() is { } stopInWait) return (stopInWait, exposures, skippedTotal);
-                    if (TransitBlocks(options, entries[target], until)) return ("transit_interrupt", exposures, skippedTotal);
+                    if (TransitBlocks(run, entries[target], until)) return ("transit_interrupt", exposures, skippedTotal);
                     if (inBlockCheck is not null && options.TargetsChanged?.Invoke() == true
                         && (lastWaitCheck is null || clock.UtcNow - lastWaitCheck >= WaitRecheck))
                     {
@@ -389,7 +401,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var series = Playback.Repeats(e);
             // Transit-Vorlauf (§5): eine Belichtung beginnt nur, wenn sie vor dem Vorlauf eines festgelegten Transits
             // endet; sonst endet der Block für die Neuplanung mit dem Transit (Fall b).
-            if (TransitBlocks(options, e, clock.UtcNow)) return ("transit_interrupt", exposures, skippedTotal);
+            if (TransitBlocks(run, e, clock.UtcNow)) return ("transit_interrupt", exposures, skippedTotal);
             if (series && !run.SeriesStarted)
             {
                 run.SeriesStarted = true;
@@ -402,7 +414,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             var started = clock.UtcNow;
             var result = await host.ExposeAsync(block, e, deviation, token).ConfigureAwait(false);
             if (result == ExposureResult.Saved) exposures++;
-            if (result != ExposureResult.Skipped) Overrun(run, started, (e.ExposureS ?? 0) + DownloadS);
+            if (result != ExposureResult.Skipped) Overrun(run, started, (e.ExposureS ?? 0) + run.DownloadS);
             if (series && result != ExposureResult.Saved && clock.UtcNow == started)
             {
                 // Ohne Belichtung vergeht keine Zeit: die Serie liefe auf der Stelle (Filter/Auslesemodus fehlt).

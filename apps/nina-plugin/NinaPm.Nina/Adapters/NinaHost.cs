@@ -46,7 +46,11 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     private int handlerAttached;
     private NINA.Core.Model.Equipment.FilterInfo? currentFilter;
     private ISequenceItem? previousItem;
-    private (Guid ProjectId, Guid? PanelId, DateTimeOffset EndUtc)? lastCentered;
+    /// <summary>
+    /// Zuletzt zentriertes Ziel, Ende seines Blocks und die Position der Montierung (J2000) direkt nach dem Zentrieren –
+    /// ohne Sync steht sie um ihren Zeigefehler neben der Zielkoordinate (Starfront-Rig ≈ 22′, Rig-Nacht 06.10.2026).
+    /// </summary>
+    private (Guid ProjectId, Guid? PanelId, DateTimeOffset EndUtc, Coordinates Mount)? lastCentered;
     private bool interruptedSinceCenter;
     /// <summary>Hinweise höchstens 1×/12 h je Schlüssel (filter_not_found je Filter, readout_mode_not_found je Modus, §4.3/§4.4).</summary>
     private HostRules? rules;
@@ -219,8 +223,9 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
     {
         if (lastCentered is not { } last || last.PanelId is not { } panel) return false;
         var info = m.Telescope.GetInfo();
-        var offset = ArcminBetween(m.Telescope.GetCurrentPosition().Transform(Epoch.J2000), Coordinates(block));
-        return ReplanPolicy.SkipSlew(last.ProjectId, panel, last.EndUtc, block, info.AtPark, interruptedSinceCenter, offset);
+        var offset = ArcminBetween(m.Telescope.GetCurrentPosition().Transform(Epoch.J2000), last.Mount);
+        return ReplanPolicy.SkipSlew(last.ProjectId, panel, last.EndUtc, block, clock.UtcNow, info.AtPark, info.TrackingEnabled,
+            interruptedSinceCenter, offset);
     }
 
     private static double ArcminBetween(Coordinates a, Coordinates b)
@@ -252,7 +257,7 @@ internal sealed partial class NinaHost(NinaMediators m) : IBlockHost, INightHost
         try
         {
             await item.Execute(Progress ?? new Progress<ApplicationStatus>(), token);
-            lastCentered = (block.ProjectId, block.PanelId, block.EndUtc);
+            lastCentered = (block.ProjectId, block.PanelId, block.EndUtc, m.Telescope.GetCurrentPosition().Transform(Epoch.J2000));
             interruptedSinceCenter = false;
             return new CenterResult(true);
         }

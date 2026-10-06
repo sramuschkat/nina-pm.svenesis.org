@@ -42,9 +42,6 @@ public interface IFlatHost
 {
     FlatBoxes Boxes();
 
-    /// <summary>Guiding stoppen (sonst führt PHD2 vom letzten Block in die Flats hinein).</summary>
-    Task StopGuidingAsync(CancellationToken token);
-
     bool RotatorConnected { get; }
 
     Task MoveMechanicalAsync(double degrees, CancellationToken token);
