@@ -1021,6 +1021,62 @@ describe('Filterrad aus dem Heartbeat (P1-4, NT-E1)', () => {
   });
 });
 
+describe('Auslesemodi aus dem Heartbeat (FA-KAM-07)', () => {
+  it('Meldung landet bei der Kamera des Rigs, Reihenfolge nach Index; leere Liste überschreibt nicht; höchstens stündlich', async () => {
+    const t = await setup();
+    const reported = async () =>
+      (await s.pg.admin.query('SELECT nina_reported, updated_at FROM camera')).rows[0] as {
+        nina_reported: { readoutModes: string[]; reportedAt: string } | null;
+        updated_at: Date;
+      };
+    const before = await reported();
+    await t.hb(t.tokens.a1, {
+      cameraReadoutModes: [
+        { index: 1, name: 'Low Noise' },
+        { index: 0, name: 'Normal' },
+      ],
+    });
+    const first = await reported();
+    expect(first.nina_reported).toEqual({
+      readoutModes: ['Normal', 'Low Noise'],
+      reportedAt: '2026-09-18T14:00:00Z',
+    });
+    // Reine Anzeige: Änderungszeit der Kamera bleibt.
+    expect(first.updated_at).toEqual(before.updated_at);
+    // Die Kameraseite bekommt die Meldung über die Web-API.
+    const cams = (await t.web('/cameras')).body.items as Body[];
+    expect((cams[0]?.ninaReported as { readoutModes: string[] } | null)?.readoutModes).toEqual([
+      'Normal',
+      'Low Noise',
+    ]);
+    // Kamera getrennt: leere Liste ändert nichts.
+    s.clock.advance(2 * 60 * 60_000);
+    await t.hb(t.tokens.a1, { cameraReadoutModes: [] });
+    expect((await reported()).nina_reported?.reportedAt).toBe('2026-09-18T14:00:00Z');
+    // Unveränderte Meldung innerhalb einer Stunde: kein Schreiben; geänderte sofort.
+    await t.hb(t.tokens.a1, {
+      cameraReadoutModes: [
+        { index: 0, name: 'Normal' },
+        { index: 1, name: 'Low Noise' },
+      ],
+    });
+    expect((await reported()).nina_reported?.reportedAt).toBe('2026-09-18T16:00:00Z');
+    s.clock.advance(10 * 60_000);
+    await t.hb(t.tokens.a1, {
+      cameraReadoutModes: [
+        { index: 0, name: 'Normal' },
+        { index: 1, name: 'Low Noise' },
+      ],
+    });
+    expect((await reported()).nina_reported?.reportedAt).toBe('2026-09-18T16:00:00Z');
+    await t.hb(t.tokens.a1, { cameraReadoutModes: [{ index: 0, name: 'Default' }] });
+    expect((await reported()).nina_reported).toEqual({
+      readoutModes: ['Default'],
+      reportedAt: '2026-09-18T16:10:00Z',
+    });
+  });
+});
+
 describe('session_close nach Rückkehr aus stale (P1-5, TK 13, NIN5-7)', () => {
   it('verwaist geschlossen, per Heartbeat zurück, später beendet → wird erneut geschlossen', async () => {
     const t = await setup();
