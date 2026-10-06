@@ -105,6 +105,9 @@ public sealed class NightRunner(
     /// der gespeicherte Plan.
     /// </summary>
     private NinaPlanRequestReason? forcedPlan = NinaPlanRequestReason.Resume;
+
+    /// <summary>Einheit, nach deren leerem Block zuletzt sofort neu geplant wurde (<see cref="RefreshCause.EmptyBlock"/>).</summary>
+    private string? emptyBlockUnit;
     private bool interrupted;
 
     /// <summary>Erster Aufruf nach dem Start geprüft (Neustart mit Session → <c>PATCH running</c>, §6).</summary>
@@ -963,7 +966,10 @@ public sealed class NightRunner(
                 () => skipRequested || resetRequested,
                 () => targetsChanged,
                 () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS),
-                () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow)))
+                () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow),
+                // Blockschluss mit der Download-Zeit der Engine und weichem Blockende (§4.2, Rig-Nacht 06.10.2026).
+                scheduler?.Overhead.DownloadS,
+                Playback.SoftEnd(block, NextBlockStart(stored.Plan.Blocks, index), stored.Plan.DarknessEndUtc)))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             resetRequested = false;
@@ -972,6 +978,14 @@ public sealed class NightRunner(
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).
             if (outcome.Reason is "target_removed" or "transit_interrupt"
                 || outcome.Started && block.Kind == BlocksKind.Transit) forcedPlan = NinaPlanRequestReason.Refresh;
+            // Leerer Block (Rig-Nacht 06.10.2026): ebenso sofort ab jetzt neu planen, einmal je Einheit.
+            if (ReplanPolicy.EmptyBlock(outcome.Started, outcome.Reason, outcome.Exposures, unit, emptyBlockUnit))
+            {
+                emptyBlockUnit = unit;
+                log.Note($"Re-planning after block {block.Id}: {RefreshCause.EmptyBlock}");
+                forcedPlan = NinaPlanRequestReason.Refresh;
+            }
+            else if (outcome.Exposures > 0) emptyBlockUnit = null;
             // Gelaufen oder übersprungen: in diesem Plan nicht noch einmal (Unterbrechung → neuer Plan, §4.6).
             MarkDone(stored, block.Id);
         }
@@ -1024,6 +1038,10 @@ public sealed class NightRunner(
     }
 
     private sealed record DoneBlocksState(Guid NightPlanId, List<Guid> Blocks);
+
+    /// <summary>Geplanter Beginn des folgenden Blocks im Plan (Slew-Beginn, NT-25) für das weiche Blockende; ohne <c>null</c>.</summary>
+    private static DateTimeOffset? NextBlockStart(IReadOnlyList<Blocks> blocks, int index) =>
+        index + 1 < blocks.Count ? ReplanPolicy.PlannedStart(blocks[index + 1]) : null;
 
     // ---- tonight (allocation.md §5.3) -----------------------------------------------------------------
 
