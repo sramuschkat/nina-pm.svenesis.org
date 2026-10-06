@@ -14,7 +14,8 @@ import { ProjectRepository } from './project';
 import { withTx } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
-import { LATE_REPORT_MS } from './nina-session';
+import { LATE_REPORT_MS, leaseReleasedAt, type SessionRow } from './nina-session';
+import { CLOSE_AFTER_END_MS } from './session-ops';
 
 type Tx = Transaction<Database>;
 
@@ -113,7 +114,17 @@ export class NinaIngestRepository extends TenantRepo {
   private async reportingSession(trx: Tx, sessionId: string, now: Date) {
     const s = await trx
       .selectFrom('session')
-      .select(['id', 'tenantId', 'rigId', 'status', 'endedAt', 'createdOffline', 'night'])
+      .select([
+        'id',
+        'tenantId',
+        'rigId',
+        'status',
+        'endedAt',
+        'createdOffline',
+        'night',
+        'outboxPending',
+        'kpis',
+      ])
       .where('id', '=', sessionId)
       .executeTakeFirst();
     if (!s) throw new ProblemError('session.unknown');
@@ -128,17 +139,35 @@ export class NinaIngestRepository extends TenantRepo {
     return s;
   }
 
-  /** Hält die Session gerade die Lease? Sonst werden Meldungen markiert (NT-14). */
-  private async holdsLease(trx: Tx, sessionId: string, now: Date): Promise<boolean> {
+  /**
+   * Hält die Session gerade die Lease? Sonst werden Meldungen markiert (NT-14). Ausnahme (Rig-Nacht 06.10.2026,
+   * `execution.md` §8 NIN5-7): Eine Session, die mit `outboxPending > 0` abgeschlossen wurde, meldet ihre Outbox
+   * innerhalb von 6 h nach – das ist kein Konflikt, solange keine andere Session die Lease des Rigs hält und die
+   * Session nicht per Admin-Freigabe ausgeschlossen wurde (M5).
+   */
+  private async holdsLease(
+    trx: Tx,
+    session: Pick<SessionRow, 'id' | 'status' | 'endedAt' | 'outboxPending' | 'kpis'>,
+    now: Date,
+  ): Promise<boolean> {
     const l = await trx
       .selectFrom('rigLease')
-      .select(['activeSessionId', 'leaseUntil', 'offlineUntil'])
+      .select(['activeSessionId', 'leaseUntil', 'offlineUntil', 'releasedSessionId'])
       .where('rigId', '=', this.rigId)
       .where('tenantId', '=', this.tenantId)
       .executeTakeFirst();
-    if (!l || l.activeSessionId !== sessionId) return false;
-    const frozen = l.offlineUntil !== null && new Date(l.offlineUntil) > now;
-    return frozen || (l.leaseUntil !== null && new Date(l.leaseUntil) > now);
+    const held = (x: NonNullable<typeof l>) =>
+      (x.offlineUntil !== null && new Date(x.offlineUntil) > now) ||
+      (x.leaseUntil !== null && new Date(x.leaseUntil) > now);
+    if (l && l.activeSessionId === session.id) return held(l);
+    const draining =
+      (session.status === 'completed' || session.status === 'aborted') &&
+      (session.outboxPending ?? 0) > 0 &&
+      session.endedAt !== null &&
+      now.getTime() - new Date(session.endedAt).getTime() <= CLOSE_AFTER_END_MS &&
+      leaseReleasedAt(session) === null &&
+      l?.releasedSessionId !== session.id;
+    return draining && !(l && l.activeSessionId !== null && held(l));
   }
 
   /** Zeilen der Meldungen mit der ganzen Kette gegen Mandant **und** Rig (DAT-3). */
@@ -434,7 +463,7 @@ export class NinaIngestRepository extends TenantRepo {
 
       await this.countFlats(trx, sessionId, added, now);
 
-      const withoutLease = added.length > 0 && !(await this.holdsLease(trx, sessionId, now));
+      const withoutLease = added.length > 0 && !(await this.holdsLease(trx, session, now));
       if (withoutLease)
         await trx
           .insertInto('sessionEvent')

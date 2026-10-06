@@ -467,6 +467,57 @@ describe('Aufnahmen (TK 6.6)', () => {
     });
     await t.captures(t.tokens.a1, sid, [t.light()]);
     expect((await t.lineCounts()).acquired_count).toBe(2);
+    // Per Admin-Freigabe ausgeschlossen (M5): auch die Nachmeldung nach dem Abschluss bleibt markiert.
+    expect(await conflicts(sid)).toBe(2);
+  });
+
+  const conflicts = async (sid: string) => {
+    const r = await s.pg.admin.query(
+      "SELECT count(*)::int AS n FROM session_event WHERE session_id = $1 AND kind = 'lease_conflict'",
+      [sid],
+    );
+    return (r.rows[0] as { n: number }).n;
+  };
+
+  it('Nachmeldung der Outbox nach completed (outboxPending > 0) → kein lease_conflict; danach wieder', async () => {
+    // Rig-Nacht 06.10.2026: Session um 06:51 mit 10 offenen Flat-Meldungen abgeschlossen (NIN5-7), 30 s später
+    // nachgemeldet → „Aufnahmen ohne gültige Lease“, obwohl genau das vorgesehen ist.
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    await t.captures(t.tokens.a1, sid, [t.light()]);
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z', outboxPending: 2 },
+    });
+    s.clock.set(new Date('2026-09-18T14:00:30Z'));
+    const r = await t.captures(t.tokens.a1, sid, [t.light(), t.light()]);
+    expect(r.body.results).toEqual([
+      expect.objectContaining({ status: 'accepted' }),
+      expect.objectContaining({ status: 'accepted' }),
+    ]);
+    expect((await t.lineCounts()).acquired_count).toBe(3);
+    expect(await conflicts(sid)).toBe(0);
+    // Outbox als leer gemeldet: eine spätere Meldung ist wieder auffällig.
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', outboxPending: 0 },
+    });
+    await t.captures(t.tokens.a1, sid, [t.light()]);
+    expect(await conflicts(sid)).toBe(1);
+  });
+
+  it('Nachmeldung nach completed, während eine andere Instanz die Lease hält → lease_conflict', async () => {
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z', outboxPending: 1 },
+    });
+    expect((await t.session(t.tokens.a2)).status).toBe(201);
+    await t.captures(t.tokens.a1, sid, [t.light()]);
+    expect(await conflicts(sid)).toBe(1);
   });
 
   it('Flats und Dark-Flats in flat_combination (Zehntelgrad-Schlüssel, erste Meldung gewinnt)', async () => {
