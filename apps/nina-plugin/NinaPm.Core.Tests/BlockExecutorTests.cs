@@ -497,6 +497,26 @@ public sealed class BlockExecutorTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false, false)] // Rig ohne Rotator (Starfront): keine Prüfung, kein Solve, kein Hinweis
+    [InlineData(false, true, true)] // ohne Rotator, aber „Bei Abweichung überspringen“: Prüfung bleibt
+    [InlineData(true, false, true)] // Rotator im Rig (auch wenn nicht verbunden): Prüfung bleibt
+    public async Task Winkelpruefung_ohne_Rotator_nur_mit_Ueberspringen(bool rotatorPresent, bool skipOnMismatch, bool checks)
+    {
+        // Rig-Nacht 06.10.2026: vor jedem Block ROTATION_MISMATCH (136° gemessen, 0° erwartet), obwohl kein Rotator da ist.
+        var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
+        nina.RotatorConnected = false;
+        var block = Regular();
+        nina.Solves.Add(new SolveReading(block.RotationDeg + 46));
+
+        var outcome = await executor.RunAsync(block, null, default,
+            new BlockRunOptions(Rotation: RotationSettings.For(rotatorPresent, 5, skipOnMismatch)));
+
+        Assert.Equal(checks, sink.Lines.Any(l => l.Contains("ROTATION_MISMATCH")));
+        Assert.Equal(checks, nina.Calls.TakeWhile(c => c != "before").Contains("solve"));
+        Assert.Equal(!(checks && skipOnMismatch), outcome.Started);
+    }
+
     [Fact]
     public async Task Winkelabweichung_bleibt_fuer_das_Ziel_gemerkt_wenn_das_Zentrieren_entfaellt()
     {

@@ -32,7 +32,16 @@ public static class CoolingCheck
 }
 
 /// <summary>Winkelprüfung (flip-rotation.md §3): Toleranz und Überspringen bei Abweichung ohne Rotator (Rig <c>rotator</c>).</summary>
-public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch);
+public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch)
+{
+    /// <summary>
+    /// Winkelprüfung nur mit Rotator im Rig oder mit <em>Bei Abweichung überspringen</em> (Entscheidung Sven 06.10.2026):
+    /// Ohne Rotator meldete das Plugin sonst vor jedem Block <c>ROTATION_MISMATCH</c>, obwohl sich nichts drehen lässt und
+    /// belichtet wird (Rig-Nacht Starfront: 136° gemessen, 0° erwartet). Ohne Prüfung entfällt auch das eigene Plate-Solve.
+    /// </summary>
+    public static RotationSettings? For(bool rotatorPresent, double toleranceDeg, bool skipOnMismatch) =>
+        rotatorPresent || skipOnMismatch ? new RotationSettings(toleranceDeg, skipOnMismatch) : null;
+}
 
 /// <summary>
 /// Zusätze für einen Block: Prüfung im Block alle 15 min (§3.2), Kühlungs-Soll mit Warnung höchstens einmal je Block

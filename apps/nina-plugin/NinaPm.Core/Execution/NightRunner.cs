@@ -953,7 +953,7 @@ public sealed class NightRunner(
                     : Loop.Blocked is { } bl && HaltingReasons.Contains(bl) ? "error"
                     : Lease.State == LeaseState.Lost || Loop.Blocked == NinaHeartbeatBlockedReason.Rig_busy ? "lease_lost" : null,
                 flip is { Enabled: true } ? new FlipSettings(flip.AfterMin, flip.MaxAfterMin, flip.PauseBeforeMin, flip.DurationS) : null,
-                rotator is null ? null : new RotationSettings(rotator.ToleranceDeg, rotator.SkipOnMismatch),
+                rotator is null ? null : RotationSettings.For(rotator.Present, rotator.ToleranceDeg, rotator.SkipOnMismatch),
                 scheduler is null ? null : scheduler.Playback == SchedulerPlayback.Sequential ? PlaybackMode.Sequential : PlaybackMode.TimeAware,
                 (kind, code, b, durationS) => ReportEvent(kind, code, b.Id, durationS: durationS),
                 b =>
