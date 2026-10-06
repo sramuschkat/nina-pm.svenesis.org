@@ -35,7 +35,7 @@ Ziel jeder betreuten Nacht: Am Morgen liegt das NINA-Log vor, Session und Zähle
 
 **Filterrad** (*Filterradbelegung – Zuordnung zu NINA*): Plätze genau mit den NINA-Namen bestätigen, auf Groß-/Kleinschreibung achten: `LUMINOS`, `RED`, `GREEN`, `BLUE`, `HA`, `OIII`, `SII`. Leere Plätze bleiben leer. Nach dem ersten Heartbeat zeigt die Seite die Meldung von NINA zum Vergleich.
 
-**Kamera:** Die Auslesemodi der Ares-M aus der NINA-Meldung übernehmen (Auslesemodus-Abgleich nach dem ersten Heartbeat). Die Zeilen nutzen *Gain 125, Offset 50, Auslesemodus 1* wie bisher, oder leer für NINAs Standard.
+**Kamera:** Die Auslesemodi der Ares-M **Zeichen für Zeichen** wie in NINA eintragen (*Equipment › Camera › Settings › Readout mode for sequences*; NINAs Player-One-Treiber: `Normal`, `Low Noise`), Standard `Low Noise`. Das Plugin findet den Modus über den Namen; ein falscher Name überspringt die Belichtungen (`readout_mode_not_found`). Einen automatischen Abgleich im Web gibt es noch nicht: Das Plugin meldet die Modi zwar, der Server speichert sie aber nicht (vorgemerkt, 06.10.2026). Die Zeilen nutzen *Gain 125, Offset 50, Auslesemodus `Low Noise`* wie bisher, oder leer für den Kamera-Standard. Rauschmodell bei Gain 125, LRN laut Handbuch: 1,017 e⁻/ADU, 1,38 e⁻, Full Well 16 666 e⁻, QE 91 %, Dunkelstrom bei 20 °C 0,0224 e⁻/s.
 
 **NINA-Instanz** (*NINA › NINA-Instanzen & Tokens*): Instanz für den Rig-PC anlegen und das Token sofort notieren; es wird nur einmal angezeigt.
 
