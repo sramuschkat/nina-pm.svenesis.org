@@ -408,8 +408,10 @@ public sealed class NightRunnerTests : IDisposable
 
         for (var i = 0; i < 40 && runner.HasBlocksRemaining; i++) await runner.RunOnceAsync(default);
 
-        for (var i = 1; i < api.PlanTimes.Count; i++)
-            Assert.True(api.PlanTimes[i] - api.PlanTimes[i - 1] >= NightLoop.PlanLock, $"Plan {i} nach {api.PlanTimes[i] - api.PlanTimes[i - 1]}");
+        // Einzige Ausnahme: nach dem leeren Block einmal sofort neu planen (EmptyBlock, Plugin 0.4.8).
+        var early = Enumerable.Range(1, api.PlanTimes.Count - 1).Count(i => api.PlanTimes[i] - api.PlanTimes[i - 1] < NightLoop.PlanLock);
+        Assert.True(early <= sink.Lines.Count(l => l.Contains("EmptyBlock")), $"{early} Pläne vor Ablauf der Sperre");
+        Assert.True(sink.Lines.Count(l => l.Contains("EmptyBlock")) <= 1);
         Assert.Contains(nina.Calls, c => c.StartsWith("delay:", StringComparison.Ordinal));
         Assert.DoesNotContain(sink.Lines, l => l.Contains("loop_guard"));
     }
@@ -508,6 +510,60 @@ public sealed class NightRunnerTests : IDisposable
 
         // Der neue Plan hat wieder eine Lücke (nichts anderes zu tun): nicht noch einmal planen, sondern warten.
         clock.UtcNow = clock.UtcNow.AddMinutes(6);
+        await runner.RunOnceAsync(default);
+        Assert.Equal(plans + 1, api.Plans.Count);
+    }
+
+    /// <summary>
+    /// Wie in der Rig-Nacht 06.10.2026: Block mit einer einzigen Belichtung, Plan rechnet 30 s Zentrieren (Attrappe 90 s),
+    /// Blockende = Ende der Belichtung; der nächste Block beginnt direkt danach (kein weiches Blockende möglich).
+    /// </summary>
+    private static void SingleTightExposure(NinaPlanResponse p)
+    {
+        var regular = p.Blocks.Single(b => b.Kind == BlocksKind.Regular);
+        p.Blocks.RemoveAll(b => b.Kind == BlocksKind.Transit);
+        var slew = regular.Entries.Single(e => e.Seq == 1);
+        var filter = regular.Entries.Single(e => e.Seq == 3);
+        var expose = regular.Entries.Single(e => e.Seq == 4);
+        var end = regular.Entries.Single(e => e.Cmd == EntriesCmd.End);
+        slew.DurationS = 30;
+        filter.AtUtc = UtcText.Parse("2026-09-18T07:35:30Z");
+        expose.AtUtc = UtcText.Parse("2026-09-18T07:35:40Z");
+        end.AtUtc = UtcText.Parse("2026-09-18T07:40:43Z");
+        regular.Entries = [slew, filter, expose, end];
+        regular.EndUtc = end.AtUtc;
+        regular.MeridianFlip = null;
+        var shift = end.AtUtc - regular.StartUtc;
+        var next = JsonConvert.DeserializeObject<Blocks>(JsonConvert.SerializeObject(regular, NinaJson.Settings()), NinaJson.Settings())!;
+        next.Id = Guid.NewGuid();
+        next.StartUtc += shift;
+        next.EndUtc += shift;
+        foreach (var e in next.Entries) e.AtUtc += shift;
+        p.Blocks.Add(next);
+    }
+
+    [Fact]
+    public async Task Leerer_Block_sofort_neu_planen_einmal_je_Einheit()
+    {
+        // Rig-Nacht 06.10.2026: nach Slew und Zentrieren passte die einzige Belichtung nicht mehr; das Plugin fuhr bis zum
+        // Morgen alle 5 min (Sperre) neu an, ohne zu belichten.
+        api.OnPlan = SingleTightExposure;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        await runner.RunOnceAsync(default);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.Contains("reason=completed"));
+        Assert.Equal(0, nina.Exposures);
+        Assert.Contains(sink.Lines, l => l.Contains("EmptyBlock"));
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default); // trotz Sperre sofort ab jetzt
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.Equal(clock.UtcNow, api.Plans[^1].StartAtUtc);
+
+        await runner.RunOnceAsync(default); // derselbe Block wieder leer – kein zweites Mal ohne Sperre
+        Assert.Single(sink.Lines, l => l.Contains("EmptyBlock"));
         await runner.RunOnceAsync(default);
         Assert.Equal(plans + 1, api.Plans.Count);
     }

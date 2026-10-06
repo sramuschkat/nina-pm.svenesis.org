@@ -97,6 +97,28 @@ public sealed class FlatExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task Dark_Flats_der_Gruppe_kommen_einmal_in_die_Ordner_der_Ziele_anderer_Kombinationen()
+    {
+        // Rig-Nacht 06.10.2026: L von M 31 nahm die Dark-Flats (alle Kombinationen 3 s), Ha/OIII/SII von NGC 7380 nicht –
+        // die Dark-Flats lagen nur im Ordner von M 31.
+        Light("L", 0, M31, "M 31");
+        Light("Ha", 0, Ngc7000, "NGC 7000");
+        Light("Ha", 45, Ngc7000, "NGC 7000");
+
+        await flats.RunAsync(Settings(), CancellationToken.None);
+
+        Assert.Equal([5, 0, 0], host.Runs.Select(r => r.DarkFlats).ToArray());
+        var copies = host.Copies.Where(c => c.Source.Contains("/DARK/")).ToList();
+        Assert.Equal(5, copies.Count); // einmal je Ziel, nicht je Kombination
+        Assert.All(copies, c =>
+        {
+            Assert.StartsWith("D:/Astro/M 31/DARK/", c.Source);
+            Assert.StartsWith("D:/Astro/NGC 7000/DARK/", c.Destination);
+        });
+        Assert.DoesNotContain(captures, c => c.FrameType == CapturesFrameType.Dark_flat && c.ProjectIds!.Contains(Ngc7000));
+    }
+
+    [Fact]
     public async Task Abbruch_waehrend_der_zweiten_Kombination_setzt_nur_mit_den_fehlenden_Aufnahmen_fort()
     {
         Light("L", 0, M31, "M 31");
@@ -229,7 +251,6 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
     private int frame;
 
     public FlatBoxes Boxes() => BoxesValue;
-    public Task StopGuidingAsync(CancellationToken token) => Task.CompletedTask;
     public bool RotatorConnected => true;
 
     public Task MoveMechanicalAsync(double degrees, CancellationToken token)

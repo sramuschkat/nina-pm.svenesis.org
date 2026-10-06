@@ -157,26 +157,30 @@ public sealed class ReplanPolicyTests
         Assert.Equal(-1, ReplanPolicy.NextBlockIndex(blocks, T("2026-09-18T09:20:01Z")));
     }
 
-    public static TheoryData<string, bool, bool, bool, double, int, bool> SlewCases() => new()
+    public static TheoryData<string, bool, bool, bool, bool, double, int, bool> SlewCases() => new()
     {
-        // Name, gleiches Panel, geparkt, unterbrochen, Abstand ′, Lücke s, Slew entfällt
-        { "gleiches Panel ohne Leerlauf", true, false, false, 0.4, 0, true },
-        { "anderes Panel", false, false, false, 0.4, 0, false },
-        { "Leerlauf dazwischen", true, false, false, 0.4, 60, false },
-        { "geparkt", true, true, false, 0.4, 0, false },
-        { "Safety-Unterbrechung", true, false, true, 0.4, 0, false },
-        { "Abstand genau 1′", true, false, false, 1.0, 0, false },
+        // Name, gleiches Panel, geparkt, führt nach, unterbrochen, Abstand zur Position nach dem Zentrieren ′, Pause s, Slew entfällt
+        { "gleiches Panel ohne Pause", true, false, true, false, 0.4, 0, true },
+        { "anderes Panel", false, false, true, false, 0.4, 0, false },
+        // Rig-Nacht 06.10.2026: Neuplanung 2 s nach dem Blockende, dann leerer Block und 4 min Warten auf die Sperre.
+        { "kurze Pause", true, false, true, false, 0.4, 240, true },
+        { "Pause über 5 min", true, false, true, false, 0.4, 301, false },
+        { "geparkt", true, true, true, false, 0.4, 0, false },
+        { "Nachführung aus", true, false, false, false, 0.4, 0, false },
+        { "Safety-Unterbrechung", true, false, true, true, 0.4, 0, false },
+        { "Abstand genau 1′", true, false, true, false, 1.0, 0, false },
     };
 
     [Theory]
     [MemberData(nameof(SlewCases))]
-    public void Slew_entfaellt_nur_ohne_Leerlauf_Park_Unterbrechung_und_Drift(
-        string name, bool samePanel, bool atPark, bool interrupted, double arcmin, int gapS, bool skip)
+    public void Slew_entfaellt_nur_ohne_lange_Pause_Park_Unterbrechung_und_Drift(
+        string name, bool samePanel, bool atPark, bool tracking, bool interrupted, double arcmin, int gapS, bool skip)
     {
         var next = Example<NinaPlanResponse>("plan.response").Blocks.Single(b => b.Kind == BlocksKind.Regular);
-        var finishedEnd = next.StartUtc.AddSeconds(-gapS);
+        var finishedEnd = next.StartUtc;
         var panel = samePanel ? next.PanelId!.Value : Guid.NewGuid();
-        Assert.True(skip == ReplanPolicy.SkipSlew(next.ProjectId, panel, finishedEnd, next, atPark, interrupted, arcmin), name);
+        Assert.True(skip == ReplanPolicy.SkipSlew(next.ProjectId, panel, finishedEnd, next, finishedEnd.AddSeconds(gapS), atPark,
+            tracking, interrupted, arcmin), name);
     }
 
     [Fact]

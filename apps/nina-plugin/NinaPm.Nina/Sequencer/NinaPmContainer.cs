@@ -118,7 +118,10 @@ public sealed class NinaPmContainer : SequenceContainer, IDeepSkyObjectContainer
     // Muster nach dem Astro-PM-Plugin (MIT), Instructions/TargetInstructionSet.cs (FlatsSetupRunner, FlatsRunner,
     // FlatsTeardownRunner, FlatsIsolationContainer), Commit 5dd621d.
 
-    /// <summary><em>Vor Flats</em> (einmal): z. B. parken, Flat-Panel schließen, Licht an (Himmelsflats: nicht parken).</summary>
+    /// <summary>
+    /// <em>Vor Flats</em> (einmal): z. B. Guiding stoppen, auf eine Uhrzeit warten, parken, Flat-Panel schließen, Licht an
+    /// (Himmelsflats: nicht parken). Das Plugin stoppt Guiding nicht selbst und wartet bei Panel-Flats nicht (06.10.2026).
+    /// </summary>
     [JsonProperty]
     public SequentialContainer FlatsSetupRunner { get; private set; }
 

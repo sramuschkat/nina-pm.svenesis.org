@@ -25,7 +25,7 @@ export interface AppFunctionProps {
 }
 
 /**
- * Lambda einer Anwendung (TK 4.2): arm64, Node 24, ESM-Bundle aus apps/api, X-Ray aktiv,
+ * Lambda einer Anwendung (TK 4.2): arm64, Node 24, ESM-Bundle aus apps/api, ohne X-Ray (TK 16.1),
  * eigene Log-Gruppe mit 90 Tagen, eigene Rolle mit festem Namen und nur
  * `AWSLambdaBasicExecutionRole` als Managed Policy (SV-13, iam.md §1). Weitere Rechte vergibt
  * der jeweilige Stack über Grants.
@@ -67,7 +67,10 @@ export class AppFunction extends Construct {
       timeout: props.timeout,
       role: this.role,
       logGroup: this.logGroup,
-      tracing: lambda.Tracing.ACTIVE,
+      // Kein X-Ray (Entscheidung Sven 06.10.2026): ohne Sampling-Regel lief es praktisch bei jedem Aufruf mit
+      // (Free Tier im Oktober nach 6 Tagen zu 90 % verbraucht); Diagnose über die strukturierten Logs mit
+      // `durationMs`. Damit entfällt auch `xray:Put*` auf `*` in den Lambda-Rollen (Sicherheitsanalyse B-08).
+      tracing: lambda.Tracing.DISABLED,
       ...(props.reservedConcurrentExecutions === undefined
         ? {}
         : { reservedConcurrentExecutions: props.reservedConcurrentExecutions }),

@@ -15,6 +15,12 @@ public enum RefreshCause
     /// Laufs fertig und die Engine gab den Rest frei (<c>idle_gap</c>, allocation.md A-29). Einmal je Plan.
     /// </summary>
     IdleAhead,
+
+    /// <summary>
+    /// Block ohne Belichtung beendet, weil nach Slew und Zentrieren keine mehr vor das Blockende passte (Rig-Nacht
+    /// 06.10.2026) – sofort ab jetzt neu planen statt nach der 5-min-Sperre erneut anzufahren. Einmal je Einheit.
+    /// </summary>
+    EmptyBlock,
 }
 
 /// <summary>Entscheidung vor einem Block: Plan behalten oder <c>POST /plan {reason: refresh, startAtUtc = jetzt}</c>.</summary>
@@ -93,6 +99,14 @@ public static class ReplanPolicy
     /// </summary>
     public static bool IdleAhead(DateTimeOffset plannedBlockStart, DateTimeOffset now, bool blockRanTonight, bool planFromIdleRefresh) =>
         blockRanTonight && !planFromIdleRefresh && plannedBlockStart - now > IdleRefreshMin;
+
+    /// <summary>
+    /// <see cref="RefreshCause.EmptyBlock"/>: Der Block lief an (Slew, Zentrieren), endete aber <c>completed</c> ohne
+    /// Belichtung. Nicht erneut für dieselbe Einheit, solange dazwischen keine Belichtung gelang
+    /// (<paramref name="lastEmptyUnit"/>) – sonst plante das Plugin ohne Sperre im Kreis.
+    /// </summary>
+    public static bool EmptyBlock(bool started, string reason, int exposures, string unit, string? lastEmptyUnit) =>
+        started && exposures == 0 && reason == "completed" && unit != lastEmptyUnit;
 
     /// <summary>Im Block: <c>GET /targets</c> alle 15 min (erster Abruf 15 min nach Blockbeginn).</summary>
     public static bool InBlockCheckDue(DateTimeOffset lastCheckUtc, DateTimeOffset now) => now - lastCheckUtc >= InBlockInterval;
@@ -189,22 +203,31 @@ public static class ReplanPolicy
         return -1;
     }
 
+    /// <summary>Höchste Pause seit dem Ende des zuletzt zentrierten Blocks, nach der der Slew noch entfallen darf.</summary>
+    public static readonly TimeSpan SlewSkipIdleMax = TimeSpan.FromMinutes(5);
+
     /// <summary>
-    /// Slew entfällt nach einem Planwechsel nur bei demselben Projekt/Panel ohne Leerlauf, wenn seit dem letzten
-    /// Zentrieren weder geparkt noch unterbrochen wurde und die Montierung &lt; 1′ vom Soll steht (NT-16).
+    /// Slew entfällt nach einem Planwechsel nur bei demselben Projekt/Panel, höchstens <see cref="SlewSkipIdleMax"/> nach
+    /// dem Ende des zuletzt zentrierten Blocks, wenn seit dem Zentrieren weder geparkt noch unterbrochen wurde, die
+    /// Montierung nachführt und &lt; 1′ von ihrer Position nach dem Zentrieren steht (NT-16; Spec-Ergänzung 06.10.2026:
+    /// vorher „ohne Leerlauf“ und Abstand zur Zielkoordinate – mit NINAs Zentrieren ohne Sync steht die Montierung um
+    /// ihren Zeigefehler daneben, am Starfront-Rig ≈ 22′, und fuhr bei jeder Neuplanung neu an).
     /// </summary>
     public static bool SkipSlew(
         Guid finishedProjectId,
         Guid finishedPanelId,
         DateTimeOffset finishedEndUtc,
         Blocks next,
+        DateTimeOffset now,
         bool atPark,
+        bool tracking,
         bool interruptedSinceCenter,
         double offsetArcmin) =>
         next.ProjectId == finishedProjectId
         && next.PanelId == finishedPanelId
-        && next.StartUtc <= finishedEndUtc
+        && now - finishedEndUtc <= SlewSkipIdleMax
         && !atPark
+        && tracking
         && !interruptedSinceCenter
         && offsetArcmin < SlewSkipArcmin;
 }

@@ -168,6 +168,30 @@ describe('Fake-Plugin-Nacht (TK 17)', () => {
     ]);
   });
 
+  it('Zeile wird mit den Aufnahmen der Nacht fertig: ETag-Schritt und Zähler übersprungen, Nacht grün', async () => {
+    const t = await setup();
+    // Erschöpfte Testdaten wie im Test-Mandanten (Deploy 06.10.2026): nur noch 2 Aufnahmen offen.
+    await s.pg.admin.query(
+      'UPDATE exposure_line SET planned_count = acquired_count + 2 WHERE id = $1',
+      [t.lineId],
+    );
+    const inst = await t.createInstance('Fake');
+    const report = await runFakeNight({
+      baseUrl: 'http://localhost',
+      token: inst.token,
+      fetch: fetchVia(),
+    });
+    expect(report.steps.filter((x) => x.status === 'failed')).toEqual([]);
+    expect(report.ok).toBe(true);
+    const skipped = report.steps.filter((x) => x.status === 'skipped');
+    expect(skipped.map((x) => x.name)).toEqual([
+      'ETag unverändert nach Aufnahmen (NT-19)',
+      'Lease verloren',
+      'Zähler',
+    ]);
+    expect(skipped[0]?.detail).toContain('Soll im Testprojekt erhöhen');
+  });
+
   it('hinter CloudFront: komprimierte Antwort mit schwachem ETag W/"…" → 304 und Nacht grün', async () => {
     const t = await setup();
     const inst = await t.createInstance('Fake');

@@ -58,7 +58,8 @@
     [
       {
         "report": "captures",
-        "sameValue": "nightPlanId"
+        "sameValue": "nightPlanId",
+        "loggedBefore": { "event": "PLAN", "where": { "reason": "resume" } }
       }
     ],
     [

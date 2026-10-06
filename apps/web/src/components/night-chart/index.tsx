@@ -600,10 +600,11 @@ export function NightChart(props: NightChartProps) {
     if (cursor !== null && cursor >= win.startUtc && cursor <= win.endUtc) {
       if (controlled) {
         vline(cursor, c('chart-now'), [], 2);
+        // Schieber des Simulators: gewählter Zeitpunkt, nicht die Uhrzeit (die zeigt eine eigene `now`-Marke).
         labelBox(
           cursor,
           0,
-          t('nightChart.nowAt', { time: both(cursor) }),
+          t('nightChart.cursorAt', { time: both(cursor) }),
           c('chart-now'),
           '#ffffff',
         );
@@ -839,7 +840,7 @@ export function NightChart(props: NightChartProps) {
   const legendAt = props.legend ?? 'top';
   const legendOnTop = legendAt === 'top';
   const hasMeridian = markers.some((m) => m.kind === 'transit' || m.kind === 'flip');
-  const hasNow = controlled || markers.some((m) => m.kind === 'now');
+  const hasNow = markers.some((m) => m.kind === 'now');
   const legendBox =
     legendAt === 'none' ? null : (
       <fieldset className={legendOnTop ? styles.legendTop : styles.legend}>
@@ -892,6 +893,12 @@ export function NightChart(props: NightChartProps) {
           <span className={styles.legendKey}>
             <span className={styles.keyNow} />
             {t('nightChart.key.now')}
+          </span>
+        ) : null}
+        {controlled ? (
+          <span className={styles.legendKey}>
+            <span className={styles.keyNow} />
+            {t('nightChart.key.cursor')}
           </span>
         ) : null}
         {transit ? (

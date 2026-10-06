@@ -75,7 +75,12 @@ public sealed record NightContext(
     /// einmal – auch wenn seine Einträge vor <c>endUtc</c> abgearbeitet sind (Lauf 02.10.2026: Block 1703-mal neu
     /// gestartet, kurz vor dem Ende in Dauerschleife).
     /// </summary>
-    IReadOnlySet<Guid>? DoneBlocks = null);
+    IReadOnlySet<Guid>? DoneBlocks = null,
+    /// <summary>
+    /// Himmelsflats (<c>flats.source = sky</c>): nur dann wartet der Container bis <c>flatsNotBeforeUtc</c>. Panel-Flats
+    /// beginnen mit dem Nachtende; einen späteren Start legt die Box <em>Vor Flats</em> fest (Entscheidung Sven 06.10.2026).
+    /// </summary>
+    bool SkyFlats = false);
 
 /// <summary>
 /// Nachtschleife als Zustandsmaschine (NT-11, NIN-6, NIN5-2, execution.md §2, TK 10.3 Nr. 3/10) – reine Logik ohne NINA:
@@ -213,6 +218,7 @@ public sealed class NightLoop
         {
             // Bei sessionEndUtc beginnt keine neue Kombination mehr (execution.md §2).
             if (c.Now >= sessionEnd) return new NightStep(NightAction.SkipFlats);
+            if (!c.SkyFlats) return new NightStep(NightAction.RunFlats);
             var notBefore = plan?.FlatsNotBeforeUtc ?? sessionEnd;
             return c.Now < notBefore
                 ? new NightStep(NightAction.WaitForFlats, WaitUntilUtc: notBefore)

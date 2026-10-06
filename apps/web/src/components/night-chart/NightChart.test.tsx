@@ -595,7 +595,8 @@ describe('Stil des Beobachtungsplaners (AP-26e)', () => {
     );
     expect(texts).toContain('R ×10');
     expect(texts).toContain('M 33');
-    expect(texts.some((x) => x.startsWith('Uhrzeit 22:00'))).toBe(true);
+    // Schieber = gewählter Zeitpunkt, nicht die Uhrzeit (06.10.2026).
+    expect(texts.some((x) => x.startsWith('Zeitpunkt 22:00'))).toBe(true);
     const legend = screen.getByRole('group', { name: 'Legende' });
     expect(within(legend).queryByRole('checkbox', { name: /Astronomisch dunkel/ })).toBeNull();
     expect(within(legend).getByRole('checkbox', { name: 'M 33' })).toBeChecked();

@@ -89,6 +89,42 @@ public sealed class PlaybackTests
     }
 
     [Fact]
+    public void Weiches_Blockende_laesst_eine_verspaetete_Belichtung_bis_zur_Grenze_zu()
+    {
+        // Rig-Nacht 06.10.2026: Ende 09:20:01, letzte Belichtung um 09:15:00 – 17 s nach Plan – endet 09:20:03.
+        var b = Regular();
+        var now = T("2026-09-18T09:15:00Z");
+        var soft = Playback.SoftEnd(b, nextBlockStartUtc: null, darknessEndUtc: T("2026-09-18T10:00:00Z"));
+        Assert.Equal(T("2026-09-18T09:25:01Z"), soft); // endUtc + 5 min
+        var s = Playback.Next(b, Index(b, 35), now, TimeSpan.Zero, PlaybackMode.Sequential, null, Download, soft);
+        Assert.Equal((PlaybackKind.Expose, Index(b, 37)), (s.Kind, s.EntryIndex));
+
+        // Folgeblock beginnt 09:20:02 → Grenze 09:20:02, die Belichtung passt nicht.
+        var next = Playback.SoftEnd(b, T("2026-09-18T09:20:02Z"), T("2026-09-18T10:00:00Z"));
+        Assert.Equal(T("2026-09-18T09:20:02Z"), next);
+        var end = Playback.Next(b, Index(b, 35), now, TimeSpan.Zero, PlaybackMode.Sequential, null, Download, next);
+        Assert.Equal(("completed", PlaybackKind.End), (end.EndReason, end.Kind));
+
+        // Höchstens eine Belichtung über das Blockende: ab endUtc beginnt keine mehr, auch wenn sie vor der Grenze endete.
+        b.Entries[Index(b, 39)].ExposureS = 10;
+        var after = Playback.Next(b, Index(b, 37), T("2026-09-18T09:20:01Z"), TimeSpan.Zero, PlaybackMode.Sequential, null, Download, soft);
+        Assert.Equal(("completed", PlaybackKind.End), (after.EndReason, after.Kind));
+    }
+
+    [Fact]
+    public void Weiches_Blockende_hoechstens_bis_Nachtende_und_nie_vor_endUtc()
+    {
+        var b = Regular();
+        b.TwilightEndUtc = T("2026-09-18T09:22:00Z");
+        Assert.Equal(T("2026-09-18T09:21:00Z"), Playback.SoftEnd(b, null, T("2026-09-18T09:21:00Z")));
+        Assert.Equal(T("2026-09-18T09:22:00Z"), Playback.SoftEnd(b, null, null));
+        // Grenze vor endUtc (Folgeblock überlappt) → endUtc, kein früherer Schluss.
+        Assert.Equal(b.EndUtc, Playback.SoftEnd(b, T("2026-09-18T09:10:00Z"), null));
+        b.Kind = BlocksKind.Transit;
+        Assert.Equal(b.EndUtc, Playback.SoftEnd(b, null, T("2026-09-18T10:00:00Z")));
+    }
+
+    [Fact]
     public void Ohne_weitere_Belichtung_endet_der_Block()
     {
         var b = Regular();

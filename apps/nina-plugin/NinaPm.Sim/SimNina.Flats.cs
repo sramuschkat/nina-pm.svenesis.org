@@ -19,7 +19,6 @@ public sealed partial class SimNina : IFlatHost
         _ => new FlatBoxes(true, true, true, HasDarkFlats: true, UsesTrainedTable: true, CountsKnown: true),
     };
 
-    public Task StopGuidingAsync(CancellationToken token) => Task.CompletedTask;
 
     public async Task MoveMechanicalAsync(double degrees, CancellationToken token)
     {

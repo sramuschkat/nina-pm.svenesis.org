@@ -347,6 +347,76 @@ public sealed class BlockExecutorTests
         Assert.Equal(planned.Take(done.Count), done); // Präfix des Plans in Planreihenfolge
     }
 
+    /// <summary>
+    /// Rig-Nacht 06.10.2026: Neuplanung ab jetzt (10:36:45) mit genau einer SII-Belichtung à 600 s. Der Plan rechnet
+    /// 35 s Slew/Zentrieren und 1 s Download, das Blockende ist das Ende dieser Belichtung (10:47:31).
+    /// </summary>
+    private static Blocks SingleExposure()
+    {
+        var b = Regular();
+        var slew = b.Entries.Single(e => e.Seq == 1);
+        var filter = b.Entries.Single(e => e.Seq == 3);
+        var expose = b.Entries.Single(e => e.Seq == 4);
+        var end = b.Entries.Single(e => e.Cmd == EntriesCmd.End);
+        slew.AtUtc = T("2026-10-06T10:36:45Z");
+        slew.DurationS = 35;
+        filter.AtUtc = T("2026-10-06T10:37:20Z");
+        expose.AtUtc = T("2026-10-06T10:37:30Z");
+        expose.ExposureS = 600;
+        end.AtUtc = T("2026-10-06T10:47:31Z");
+        b.Entries = [slew, filter, expose, end];
+        b.StartUtc = slew.AtUtc;
+        b.EndUtc = end.AtUtc;
+        b.MeridianFlip = null;
+        b.TwilightEndUtc = null;
+        return b;
+    }
+
+    [Fact]
+    public async Task Download_Zeit_des_Rigs_statt_fester_3_s_puenktlich_passt_die_Belichtung()
+    {
+        var block = SingleExposure();
+        var (executor, nina, _, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        nina.SkipSlew = true;
+        var fixedDownload = await executor.RunAsync(block, T("2026-10-06T11:15:00Z"), default);
+        Assert.Equal(("completed", 0), (fixedDownload.Reason, fixedDownload.Exposures)); // 10:37:30 + 603 s > 10:47:31
+
+        (executor, nina, _, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        nina.SkipSlew = true;
+        var rigDownload = await executor.RunAsync(SingleExposure(), T("2026-10-06T11:15:00Z"), default, new BlockRunOptions(DownloadS: 1));
+        Assert.Equal(("completed", 1), (rigDownload.Reason, rigDownload.Exposures));
+    }
+
+    [Fact]
+    public async Task Weiches_Blockende_verspaetete_einzige_Belichtung_laeuft_wenn_danach_frei_ist()
+    {
+        // Zentrieren dauert 90 s statt der geplanten 35 s: ohne weiches Blockende endete der Block leer (Log 05:37–05:52 CDT).
+        var (executor, _, sink, _) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        var hard = await executor.RunAsync(SingleExposure(), T("2026-10-06T11:15:00Z"), default, new BlockRunOptions(DownloadS: 1));
+        Assert.Equal(("completed", 0), (hard.Reason, hard.Exposures));
+
+        var block = SingleExposure();
+        (executor, _, sink, var clock) = Setup("2026-10-06T10:36:45Z", PlaybackMode.TimeAware);
+        var soft = Playback.SoftEnd(block, nextBlockStartUtc: null, darknessEndUtc: T("2026-10-06T11:15:00Z"));
+        var outcome = await executor.RunAsync(block, T("2026-10-06T11:15:00Z"), default, new BlockRunOptions(DownloadS: 1, SoftEndUtc: soft));
+        Assert.Equal(("completed", 1), (outcome.Reason, outcome.Exposures));
+        Assert.True(clock.UtcNow > block.EndUtc && clock.UtcNow <= soft);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.Contains("reason=completed"));
+    }
+
+    [Fact]
+    public async Task Weiches_Blockende_reicht_nicht_dann_kein_Slew()
+    {
+        // Folgeblock beginnt direkt nach dem Blockende: schon vor dem Slew passt nichts mehr → elapsed ohne Zentrieren.
+        var block = SingleExposure();
+        var (executor, nina, sink, _) = Setup("2026-10-06T10:38:00Z", PlaybackMode.TimeAware);
+        var soft = Playback.SoftEnd(block, T("2026-10-06T10:47:31Z"), T("2026-10-06T11:15:00Z"));
+        var outcome = await executor.RunAsync(block, null, default, new BlockRunOptions(DownloadS: 1, SoftEndUtc: soft));
+        Assert.Equal(("elapsed", false), (outcome.Reason, outcome.Started));
+        Assert.DoesNotContain(nina.Calls, c => c.StartsWith("center", StringComparison.Ordinal));
+        Assert.Contains($"I NINA-PM | BLOCK_SKIPPED id={block.Id} reason=elapsed", sink.Lines);
+    }
+
     // ---- Flip und Rotation (AP-16f, execution.md §4.2/§4.5, flip-rotation.md §3) ---------------------------------
 
     [Fact]

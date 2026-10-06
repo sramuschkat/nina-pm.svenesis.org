@@ -29,6 +29,7 @@ import { DataTable, type DataColumn, type SortValue } from '../../components/Dat
 import { FilterChip } from '../../components/FilterChip';
 import { ICON_SIZE, actionIcons, uiIcons } from '../../components/icons';
 import { NightChart } from '../../components/night-chart';
+import { clock } from '../../components/night-chart/model';
 import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { RigSelect, type RigOption } from '../../components/RigSelect';
@@ -200,6 +201,13 @@ export function SimulatorPage() {
   });
   const projects = details.map((d) => d.data).filter((p): p is ProjectView => p !== undefined);
 
+  // Uhrzeit im Minutentakt: Läuft die aktuelle Nacht schon, rechnet der Simulator ab jetzt wie das Plugin.
+  const [nowMin, setNowMin] = useState(() => Math.floor(Date.now() / 60_000));
+  useEffect(() => {
+    const timer = setInterval(() => setNowMin(Math.floor(Date.now() / 60_000)), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  const isCurrentNight = night !== null && night === current.data?.currentNight;
   const request = useMemo((): SimulationRequest | null => {
     if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
     if (details.some((d) => d.isPending) || approved.isPending) return null;
@@ -218,9 +226,21 @@ export function SimulatorPage() {
       selection: withDrafts ? 'given' : 'plannable',
       filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
       moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
+      nowUtc: isCurrentNight ? new Date(nowMin * 60_000).toISOString() : null,
     };
     // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
-  }, [rig, site, night, table.data, moonProfiles.data, filters.data, projects, withDrafts]);
+  }, [
+    rig,
+    site,
+    night,
+    table.data,
+    moonProfiles.data,
+    filters.data,
+    projects,
+    withDrafts,
+    isCurrentNight,
+    nowMin,
+  ]);
   const run = useSimulator();
   const key = request ? JSON.stringify(request) : '';
   const sim = useQuery({
@@ -544,6 +564,14 @@ export function SimulatorPage() {
                     {t('simulator.stats.frames', { n: result.header.frames })}
                     {' · '}
                     {t('simulator.stats.moon', { pct: result.header.moonIllumPct })}
+                    {result.fromNowUtc ? (
+                      <>
+                        {' · '}
+                        {t('simulator.fromNow', {
+                          time: clock(Date.parse(result.fromNowUtc) / 1000, tz),
+                        })}
+                      </>
+                    ) : null}
                   </>
                 ) : null}
               </span>

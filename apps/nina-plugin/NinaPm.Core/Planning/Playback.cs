@@ -37,15 +37,20 @@ public sealed record PlaybackStep(PlaybackKind Kind, int? EntryIndex, IReadOnlyL
 /// <summary>
 /// Auswahl der nächsten Belichtung im Block (execution.md §4.2, TK 10.3 Nr. 7) als reine Logik. Der Offset (kumulierter
 /// Verzug aus Nicht-Belichtungsaktionen und Startverzug, NT-21) wird vom Adapter gemessen und hier nur angewandt.
-/// Harter Blockschluss: eine Belichtung beginnt nur, wenn <c>now + exposureS + downloadS ≤ blockEnd</c>; einzige
-/// Ausnahme ist <c>lastOfNight</c> mit der Kulanzgrenze <c>min(darknessEndUtc, block.twilightEndUtc)</c> (NT-13, M4).
+/// Blockschluss: eine Belichtung beginnt nur, wenn <c>now + exposureS + downloadS ≤ blockEnd</c> – bzw. bis zum weichen
+/// Blockende <see cref="SoftEnd"/>, wenn die Zeit danach im Plan frei ist (Spec-Ergänzung 06.10.2026); Ausnahme
+/// <c>lastOfNight</c> mit der Kulanzgrenze <c>min(darknessEndUtc, block.twilightEndUtc)</c> (NT-13, M4).
 /// </summary>
 public static class Playback
 {
     /// <summary>Mehr übersprungene Belichtungen je Block → Neuplanung <c>refresh</c> bei der nächsten Gelegenheit.</summary>
     public const int MaxSkippedBeforeReplan = 3;
 
+    /// <summary>Höchstens so weit darf eine verspätete Belichtung über das Blockende laufen (ein Slot der Engine).</summary>
+    public static readonly TimeSpan SoftEndMax = TimeSpan.FromMinutes(5);
+
     /// <param name="after">Index des zuletzt abgearbeiteten Eintrags (-1 am Blockanfang).</param>
+    /// <param name="softEndUtc">Weiches Blockende (<see cref="SoftEnd"/>); <c>null</c> = harter Blockschluss bei <c>endUtc</c>.</param>
     public static PlaybackStep Next(
         Blocks block,
         int after,
@@ -53,7 +58,8 @@ public static class Playback
         TimeSpan offset,
         PlaybackMode mode,
         DateTimeOffset? darknessEndUtc,
-        double downloadS)
+        double downloadS,
+        DateTimeOffset? softEndUtc = null)
     {
         var entries = block.Entries;
         var all = Enumerable.Range(after + 1, Math.Max(0, entries.Count - after - 1))
@@ -86,7 +92,8 @@ public static class Playback
 
         var e = entries[chosen];
         var finish = now.AddSeconds((e.ExposureS ?? 0) + downloadS);
-        if (finish <= block.EndUtc) return new PlaybackStep(PlaybackKind.Expose, chosen, skipped, null, null);
+        if (finish <= block.EndUtc || now < block.EndUtc && finish <= EndFor(block, softEndUtc))
+            return new PlaybackStep(PlaybackKind.Expose, chosen, skipped, null, null);
 
         var limit = KulanzLimit(darknessEndUtc, block.TwilightEndUtc);
         if (e.LastOfNight == true && limit is { } l && finish <= l)
@@ -113,6 +120,27 @@ public static class Playback
 
     /// <summary>Eintrag gehört zu einer Transitserie, die der Executor wiederholt (Cursor bleibt davor).</summary>
     public static bool Repeats(Entries entry) => entry.Cmd == EntriesCmd.Expose_series;
+
+    /// <summary>
+    /// Weiches Blockende (execution.md §4.2, Spec-Ergänzung 06.10.2026): Ist die Zeit nach dem Block im Plan frei, darf
+    /// eine Belichtung, die wegen Verzug nicht mehr vor <c>endUtc</c> endet, noch <b>vor</b> <c>endUtc</c> beginnen
+    /// (also höchstens eine über das Blockende hinaus), wenn sie spätestens beim
+    /// nächsten geplanten Block (<paramref name="nextBlockStartUtc"/>, Slew-Beginn), beim Nachtende
+    /// (<see cref="KulanzLimit"/>) und <see cref="SoftEndMax"/> nach <c>endUtc</c> endet – die Engine hat Höhe und Mond
+    /// nur bis zum Blockende geprüft. Transitblöcke enden hart (Fensterende). Liegt die Grenze nicht hinter
+    /// <c>endUtc</c>, gilt <c>endUtc</c>.
+    /// </summary>
+    public static DateTimeOffset SoftEnd(Blocks block, DateTimeOffset? nextBlockStartUtc, DateTimeOffset? darknessEndUtc)
+    {
+        if (block.Kind == BlocksKind.Transit) return block.EndUtc;
+        var end = block.EndUtc + SoftEndMax;
+        if (nextBlockStartUtc is { } n && n < end) end = n;
+        if (KulanzLimit(darknessEndUtc, block.TwilightEndUtc) is { } k && k < end) end = k;
+        return end > block.EndUtc ? end : block.EndUtc;
+    }
+
+    private static DateTimeOffset EndFor(Blocks block, DateTimeOffset? softEndUtc) =>
+        softEndUtc is { } s && s > block.EndUtc ? s : block.EndUtc;
 
     /// <summary><c>min(darknessEndUtc, block.twilightEndUtc)</c>; <c>null</c>-Werte zählen nicht (NT-13).</summary>
     public static DateTimeOffset? KulanzLimit(DateTimeOffset? darknessEndUtc, DateTimeOffset? twilightEndUtc) =>

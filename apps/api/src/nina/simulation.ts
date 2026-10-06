@@ -1,7 +1,10 @@
 /**
  * `GET /nina/v1/simulation?night=` (AP-53, FA-NIN-18, FA-SIM-05): Simulator im Plugin. Gleiche Eingabe wie
  * `POST /plan` (`nightPlanInput` → `planNight`) für eine Nacht der Bootstrap-Tabelle, ganze Nacht ab Beginn des
- * Nachtfensters (wie S-40: ohne `startAtUtc`, `tonight` und offene Meldungen). **Ohne Nebenwirkung:** keine
+ * Nachtfensters (wie S-40: ohne `tonight` und offene Meldungen). **Läuft die angefragte Nacht schon** (aktuelle
+ * Nacht, jetzt im Nachtfenster), rechnet sie ab jetzt – wie `POST /plan` mitten in der Nacht; sonst zeigte die
+ * Vorschau Blöcke in der schon vergangenen Dämmerung, während die Rig dieselben Aufnahmen gerade macht
+ * (Rig-Test 06.10.2026). **Ohne Nebenwirkung:** keine
  * Planrevision, keine Session, kein Übernahmestatus – der gespeicherte Plan des Plugins bleibt unberührt. Auswertung
  * (Protokoll, Zielkarten, Blöcke, Filterleiste) über `simulationView` wie im Web-Simulator.
  */
@@ -41,11 +44,17 @@ export async function simulation(
     tonight: null,
     pendingByLine: {},
   });
-  const plan = runEngine(input);
+  const whole = runEngine(input);
+  const running =
+    night === current &&
+    now.getTime() > Date.parse(whole.nightWindow.startUtc) &&
+    now.getTime() < Date.parse(whole.nightWindow.endUtc);
+  const planInput = running ? { ...input, startAtUtc: isoUtc(now) } : input;
+  const plan = running ? runEngine(planInput) : whole;
   const site = { latitudeDeg: d.site.latitudeDeg, longitudeDeg: d.site.longitudeDeg };
   const engineSite = { latDeg: site.latitudeDeg, lonDeg: site.longitudeDeg };
   const names = new Map(projects.map((x) => [x.id, x.name]));
-  const view = simulationView(input, plan, {
+  const view = simulationView(planInput, plan, {
     site,
     names,
     moonProfileNames: Object.fromEntries(d.profiles.map((m) => [m.id, m.name])),

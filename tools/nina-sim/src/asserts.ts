@@ -53,6 +53,11 @@ export type Assert = Part &
         readonly exists?: boolean;
         /** Alle Einträge der Liste (gefiltert mit `where`) haben unter diesem Punktpfad denselben Wert. */
         readonly sameValue?: string;
+        /**
+         * Nur für `sameValue`: Einträge, deren `id` in einer `CAPTURE`-Zeile vor dem ersten Auftreten dieser Zeile steht
+         * (z. B. Aufnahmen vor der Neuplanung nach der Rückkehr online, P-30); ohne Treffer alle.
+         */
+        readonly loggedBefore?: Sel;
         /** Alle Einträge der Liste (gefiltert mit `where`) haben unter diesem Punktpfad verschiedene Werte. */
         readonly distinct?: string;
       }
@@ -219,8 +224,16 @@ export function evaluate(a: Assert, events: readonly LogEvent[], report: unknown
     };
   }
   if (a.sameValue !== undefined) {
+    const before = a.loggedBefore;
+    const stop = before ? events.find((e) => hit(e, before)) : undefined;
+    const ids = stop
+      ? new Set(
+          events.filter((e) => e.event === 'CAPTURE' && e.line < stop.line).map((e) => e.fields.id),
+        )
+      : null;
     const values = new Set(
       list
+        .filter((x) => ids === null || ids.has(String(at(x, 'id'))))
         .filter((x) =>
           Object.entries(a.where ?? {}).every(
             ([k, v]) => JSON.stringify(at(x, k)) === JSON.stringify(v),
