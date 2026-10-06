@@ -68,7 +68,7 @@ function jsonObject(value: unknown): Record<string, unknown> {
  * – `rig_lease.released_session_id` merkt nur die zuletzt freigegebene Session und wird beim nächsten
  * Lease-Erwerb zurückgesetzt. Eine so ausgeschlossene Session erhält die Lease auf keinem Weg zurück.
  */
-function leaseReleasedAt(s: Pick<SessionRow, 'kpis'>): string | null {
+export function leaseReleasedAt(s: Pick<SessionRow, 'kpis'>): string | null {
   const at = jsonObject(s.kpis).leaseReleasedAt;
   return typeof at === 'string' ? at : null;
 }
