@@ -108,6 +108,12 @@ public sealed class DarkFlatGroup
     /// <summary>Kombination, unter deren Schlüssel die Dark-Flats gemeldet werden.</summary>
     public string? CombinationKey { get; set; }
 
+    /// <summary>Gespeicherte Dark-Flat-Dateien der Gruppe (im Ordner des Primärziels ihrer Kombination).</summary>
+    public List<string> Files { get; set; } = [];
+
+    /// <summary>Ziele (sanitisierte Namen), in deren Ordner die Dark-Flats schon liegen – kein zweites Kopieren je Kombination.</summary>
+    public List<string> CopiedTo { get; set; } = [];
+
     public static string KeyFor(double exposureS, int gain, int offset, int binning, int readoutIndex) =>
         $"{Math.Round(exposureS, 3).ToString(System.Globalization.CultureInfo.InvariantCulture)}|{gain}|{offset}|{binning}|{readoutIndex}";
 }
