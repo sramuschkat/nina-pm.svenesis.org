@@ -336,7 +336,7 @@ describe('Lambdas und Logs (TK 4.2, 16.1, SV-15)', () => {
         Architectures: ['arm64'],
       });
       // Kein X-Ray (TK 16.1, 06.10.2026).
-      expect(f.Properties.TracingConfig?.Mode ?? 'PassThrough').not.toBe('Active');
+      expect(json(f.Properties.TracingConfig ?? {})).not.toContain('Active');
       expect(json(f.Properties.Environment)).toContain('--enable-source-maps');
     }
   });
