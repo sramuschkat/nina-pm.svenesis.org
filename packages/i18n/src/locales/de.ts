@@ -298,6 +298,7 @@ export const de = {
     nextNight: 'Nächste Nacht',
     tonight: 'Heute Nacht',
     night: 'Nacht {{night}}',
+    fromNow: 'Nacht läuft – Plan ab {{time}}, wie im Plugin',
     stats: {
       siteTime: 'Standortzeit {{time}}',
       dark: 'dunkel {{hours}} h',
@@ -973,6 +974,7 @@ export const de = {
       astronomical: 'Astro.',
     },
     nowAt: 'Uhrzeit {{time}}',
+    cursorAt: 'Zeitpunkt {{time}}',
     flipAt: 'Meridian-Flip {{time}}',
     transitAt: 'Meridian {{time}}',
     windowStart: 'Start {{time}}',
@@ -982,6 +984,7 @@ export const de = {
       meridian: 'Meridian',
       flip: 'Meridian-Flip',
       now: 'Uhrzeit',
+      cursor: 'Zeitpunkt',
       best: 'Beste Zeit',
       flux: 'Relative Helligkeit',
     },
