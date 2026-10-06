@@ -1,0 +1,164 @@
+2026-10-05T02:44:17.9474|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T02:44:18.0190|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=bootstrap
+2026-10-05T02:44:18.1407|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=targets
+2026-10-05T02:44:18.1603|INFO|NinaLogSink.cs|Info|11|NINA-PM | TARGETS etag="\"t-ff891973abd08c8f\""
+2026-10-05T02:44:32.7360|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=304 call=targets
+2026-10-05T02:44:32.8221|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=plan
+2026-10-05T02:44:32.8225|INFO|NinaLogSink.cs|Info|11|NINA-PM | PLAN reason=initial plan=01a108ae-40c0-7ced-8f20-74e95130d4ff source=server night=2026-10-04
+2026-10-05T02:44:32.8712|INFO|NinaLogSink.cs|Info|11|NINA-PM | SESSION session=01a10b05-824a-7b73-bbca-14043f867eda status=running night=2026-10-04
+2026-10-05T02:44:32.8713|INFO|NinaLogSink.cs|Info|11|NINA-PM | LEASE state=held
+2026-10-05T02:44:32.8880|WARNING|NinaLogSink.cs|Warning|13|NINA-PM | WARNING code=sequence_template_deviation checks=start_wait_missing,start_autofocus_missing
+2026-10-05T02:44:32.9019|WARNING|NinaLogSink.cs|Warning|13|NINA-PM | WARNING code=pc_timezone_differs
+2026-10-05T02:44:32.9036|WARNING|NinaLogSink.cs|Warning|13|NINA-PM | WARNING code=mount_site_mismatch
+2026-10-05T02:45:18.0227|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:45:18.0534|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=events
+2026-10-05T02:45:18.0585|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:45:18.2835|INFO|NinaLogSink.cs|Info|11|NINA-PM | BLOCK_START id=01a10b05-7f00-7831-9432-4591eb28359f atUtc=2026-10-05T07:45:18Z
+2026-10-05T02:46:18.1226|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:47:18.1675|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:48:18.2155|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:49:18.2481|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:49:42.0555|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:49:45.5521|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0a-3a21-7079-bf2e-33b2f258a0d8 result=saved file=2026-10-05_02-49-42_LUMINANCE_-10.00_30.00s_0000.fits atUtc=2026-10-05T07:49:45Z
+2026-10-05T02:50:17.0437|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:50:18.2968|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:50:18.3475|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:50:18.3533|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:50:20.5317|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0a-c2d1-75e0-ae46-47e160a8b6c1 result=saved file=2026-10-05_02-50-17_LUMINANCE_-10.00_30.00s_0001.fits atUtc=2026-10-05T07:50:20Z
+2026-10-05T02:50:52.1137|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:50:55.6432|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0b-4bd1-746f-9cdd-37c86384299a result=saved file=2026-10-05_02-50-52_LUMINANCE_-10.00_30.00s_0002.fits atUtc=2026-10-05T07:50:55Z
+2026-10-05T02:51:18.4105|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:51:18.4291|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:51:18.4338|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:51:27.0334|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:51:30.6535|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0b-d437-7521-8fa4-0cd206794c3e result=saved file=2026-10-05_02-51-27_LUMINANCE_-10.00_30.00s_0003.fits atUtc=2026-10-05T07:51:30Z
+2026-10-05T02:52:02.0451|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:52:05.6627|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0c-5cfc-723d-96ad-7ed0761efd60 result=saved file=2026-10-05_02-52-02_LUMINANCE_-10.00_30.00s_0004.fits atUtc=2026-10-05T07:52:05Z
+2026-10-05T02:52:18.4907|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:52:18.5068|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:52:18.5082|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:52:57.0275|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:53:00.6658|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0d-33c2-79d5-aeed-51ac0f732c5d result=saved file=2026-10-05_02-52-57_LUMINANCE_-10.00_30.00s_0005.fits atUtc=2026-10-05T07:53:00Z
+2026-10-05T02:53:18.5681|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:53:18.5837|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:53:18.5857|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:53:32.1196|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:53:35.8341|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0d-bcd7-7b3f-b2e4-76edcc541d61 result=saved file=2026-10-05_02-53-32_LUMINANCE_-10.00_30.00s_0006.fits atUtc=2026-10-05T07:53:35Z
+2026-10-05T02:54:07.0437|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:54:10.7004|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0e-4542-77af-9a12-2b525c755854 result=saved file=2026-10-05_02-54-07_LUMINANCE_-10.00_30.00s_0007.fits atUtc=2026-10-05T07:54:10Z
+2026-10-05T02:54:18.6468|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:54:18.6637|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:54:18.6677|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:54:42.0269|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:54:45.7781|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0e-cdea-7d11-9e1f-b5152e5d1802 result=saved file=2026-10-05_02-54-42_LUMINANCE_-10.00_30.00s_0008.fits atUtc=2026-10-05T07:54:45Z
+2026-10-05T02:55:17.0413|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:55:18.7088|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:55:18.7229|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:55:18.7260|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:55:20.9558|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b0f-56b0-70a0-a617-f4bb66352963 result=saved file=2026-10-05_02-55-17_LUMINANCE_-10.00_30.00s_0009.fits atUtc=2026-10-05T07:55:20Z
+2026-10-05T02:56:18.7813|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:56:18.7911|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:56:18.7934|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:56:19.5990|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:56:22.9839|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b10-4b0e-7e85-8baf-f8bd7c6acdf7 result=saved file=2026-10-05_02-56-20_LUMINANCE_-10.00_30.00s_0010.fits atUtc=2026-10-05T07:56:22Z
+2026-10-05T02:56:47.0374|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:56:51.2120|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b10-b63b-77ea-92f4-db277663f907 result=saved file=2026-10-05_02-56-47_LUMINANCE_-10.00_30.00s_0011.fits atUtc=2026-10-05T07:56:51Z
+2026-10-05T02:57:18.8272|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:57:18.8362|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:57:18.8381|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:57:32.0340|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:57:35.9314|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b11-6601-7882-a576-5a90c4549019 result=saved file=2026-10-05_02-57-32_HA_-10.00_30.00s_0000.fits atUtc=2026-10-05T07:57:35Z
+2026-10-05T02:58:07.0448|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:58:11.2035|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b11-eec3-761d-8255-9ba5e52ec728 result=saved file=2026-10-05_02-58-07_HA_-10.00_30.00s_0001.fits atUtc=2026-10-05T07:58:11Z
+2026-10-05T02:58:18.8689|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:58:18.8764|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:58:18.8783|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:58:42.0459|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:58:45.2155|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b12-777c-75cc-acae-4fa9448cc04f result=saved file=2026-10-05_02-58-42_HA_-10.00_30.00s_0002.fits atUtc=2026-10-05T07:58:45Z
+2026-10-05T02:59:17.2117|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:59:18.9254|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T02:59:18.9348|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T02:59:18.9366|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T02:59:21.1059|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b13-00da-76ab-8a18-afd283b99008 result=saved file=2026-10-05_02-59-17_HA_-10.00_30.00s_0003.fits atUtc=2026-10-05T07:59:21Z
+2026-10-05T02:59:52.0365|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T02:59:56.3061|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b13-88e3-7741-ae74-eb8993afc687 result=saved file=2026-10-05_02-59-52_HA_-10.00_30.00s_0004.fits atUtc=2026-10-05T07:59:56Z
+2026-10-05T03:00:18.9817|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T03:00:18.9976|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:00:18.9990|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:01:08.6495|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=304 call=targets
+2026-10-05T03:01:08.6850|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:01:12.6004|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b14-b44c-7ffe-916e-ca5460408478 result=saved file=2026-10-05_03-01-09_HA_-10.00_30.00s_0005.fits atUtc=2026-10-05T08:01:12Z
+2026-10-05T03:01:19.0448|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T03:01:19.0547|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:01:19.0591|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:01:22.0327|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:01:25.4837|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b14-e870-7d53-ab6a-0b413cc7c5b2 result=saved file=2026-10-05_03-01-22_HA_-10.00_30.00s_0006.fits atUtc=2026-10-05T08:01:25Z
+2026-10-05T03:01:57.0874|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:02:00.6382|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b15-715f-7f76-ad8f-e16694ff86c5 result=saved file=2026-10-05_03-01-57_HA_-10.00_30.00s_0007.fits atUtc=2026-10-05T08:02:00Z
+2026-10-05T03:02:19.0954|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T03:02:19.1071|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:02:19.1101|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:02:32.0389|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:02:35.4007|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b15-f9e6-7385-8d21-91336e32677d result=saved file=2026-10-05_03-02-32_HA_-10.00_30.00s_0008.fits atUtc=2026-10-05T08:02:35Z
+2026-10-05T03:03:07.0333|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:03:10.4172|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b16-8298-7bd0-85ec-b56cd72aae07 result=saved file=2026-10-05_03-03-07_HA_-10.00_30.00s_0009.fits atUtc=2026-10-05T08:03:10Z
+2026-10-05T03:03:19.1570|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T03:03:19.1692|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:03:19.1708|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:04:13.5900|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:04:17.5288|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b17-8695-7d3f-9fc8-5339371f5aad result=saved file=2026-10-05_03-04-14_HA_-10.00_30.00s_0010.fits atUtc=2026-10-05T08:04:17Z
+2026-10-05T03:04:19.2032|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=running status=200
+2026-10-05T03:04:19.2121|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:04:19.2135|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:04:37.0256|INFO|NinaLogSink.cs|Info|11|NINA-PM | TRIGGER type=RestoreGuiding
+2026-10-05T03:04:38.7208|INFO|NinaLogSink.cs|Info|11|NINA-PM | BLOCK_END id=01a10b05-7f00-7831-9432-4591eb28359f reason=completed
+2026-10-05T03:04:38.7784|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=304 call=targets
+2026-10-05T03:04:38.8234|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=plan
+2026-10-05T03:04:38.8237|INFO|NinaLogSink.cs|Info|11|NINA-PM | PLAN reason=refresh plan=01a108ae-40c0-7b49-af77-b2652e3d02ad source=server night=2026-10-04
+2026-10-05T03:04:38.8242|INFO|NinaLogSink.cs|Info|11|NINA-PM | PLAN_REBUILT id=01a108ae-40c0-7ced-8f20-74e95130d4ff plan=01a108ae-40c0-7b49-af77-b2652e3d02ad reason=refresh
+2026-10-05T03:04:40.7515|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b17-e221-74af-98d3-c1615ccfc002 result=saved file=2026-10-05_03-04-37_HA_-10.00_30.00s_0011.fits atUtc=2026-10-05T08:04:40Z
+2026-10-05T03:05:19.2461|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:05:19.2544|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:05:19.2562|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:06:19.2991|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:07:19.3529|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:08:19.4051|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:09:19.4389|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:09:29.1206|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_START atUtc=2026-10-05T08:09:29Z
+2026-10-05T03:09:30.8085|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_START combination=L_b1_g-1_o-1_r0 mechDg=0 filter=LUMINANCE
+2026-10-05T03:09:32.4218|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-6401-7ac8-8868-44c09879f046 result=saved file=2026-10-05_03-09-31_LUMINANCE_-10.00_1.00s_0000.fits type=flat
+2026-10-05T03:09:32.4224|WARNING|NinaLogSink.cs|Warning|13|NINA-PM | WARNING code=flat_exposure_off combination=L_b1_g-1_o-1_r0 mechDg=0
+2026-10-05T03:09:34.4552|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-6bf6-7cb8-ac8b-1464d7739b31 result=saved file=2026-10-05_03-09-32_LUMINANCE_-10.00_1.00s_0001.fits type=flat
+2026-10-05T03:09:36.3525|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-7360-706c-904d-724f1d089ce3 result=saved file=2026-10-05_03-09-34_LUMINANCE_-10.00_1.00s_0002.fits type=flat
+2026-10-05T03:09:38.3665|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-7b3e-79ea-adb9-f01ce0712b8c result=saved file=2026-10-05_03-09-36_LUMINANCE_-10.00_1.00s_0000.fits type=dark_flat
+2026-10-05T03:09:40.4002|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-832f-7a69-bd8f-57f19db49603 result=saved file=2026-10-05_03-09-38_LUMINANCE_-10.00_1.00s_0001.fits type=dark_flat
+2026-10-05T03:09:42.1793|INFO|NinaLogSink.cs|Info|11|NINA-PM | DARKFLAT_GROUP combination=L_b1_g-1_o-1_r0 mechDg=0 status=done
+2026-10-05T03:09:42.1798|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_END combination=L_b1_g-1_o-1_r0 mechDg=0 status=done
+2026-10-05T03:09:42.8081|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_START combination=Ha_b1_g-1_o-1_r0 mechDg=0 filter=HA
+2026-10-05T03:09:44.4499|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-9301-7ca5-95f6-81f2392a757b result=saved file=2026-10-05_03-09-43_HA_-10.00_1.00s_0003.fits type=flat
+2026-10-05T03:09:44.4502|WARNING|NinaLogSink.cs|Warning|13|NINA-PM | WARNING code=flat_exposure_off combination=Ha_b1_g-1_o-1_r0 mechDg=0
+2026-10-05T03:09:46.4311|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-9abf-7693-b4e6-3883289112bf result=saved file=2026-10-05_03-09-44_HA_-10.00_1.00s_0004.fits type=flat
+2026-10-05T03:09:48.4231|INFO|NinaLogSink.cs|Info|11|NINA-PM | CAPTURE id=01a10b1c-a286-7e1c-bdec-b2db7f0cf4d5 result=saved file=2026-10-05_03-09-46_HA_-10.00_1.00s_0005.fits type=flat
+2026-10-05T03:09:50.2154|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_END combination=Ha_b1_g-1_o-1_r0 mechDg=0 status=done
+2026-10-05T03:09:50.2205|INFO|NinaLogSink.cs|Info|11|NINA-PM | FLATS_END atUtc=2026-10-05T08:09:50Z
+2026-10-05T03:09:50.2833|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=sessions
+2026-10-05T03:09:50.2836|INFO|NinaLogSink.cs|Info|11|NINA-PM | SESSION session=01a10b05-824a-7b73-bbca-14043f867eda status=completed pending=12
+2026-10-05T03:09:50.3025|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=targets
+2026-10-05T03:09:50.3065|INFO|NinaLogSink.cs|Info|11|NINA-PM | TARGETS etag="\"t-2e774acd2ca5bee4\""
+2026-10-05T03:09:50.3069|INFO|NinaLogSink.cs|Info|11|NINA-PM | SESSION status=finished night=2026-10-04
+2026-10-05T03:10:19.4785|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:10:19.4880|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=events
+2026-10-05T03:10:19.4908|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=10 dead=0
+2026-10-05T03:10:19.5065|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:10:19.5102|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=5 dead=0
+2026-10-05T03:10:19.5167|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=events
+2026-10-05T03:10:19.5180|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=4 dead=0
+2026-10-05T03:10:19.5272|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=captures
+2026-10-05T03:10:19.5285|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=1 dead=0
+2026-10-05T03:10:19.5331|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=events
+2026-10-05T03:10:19.5338|INFO|NinaLogSink.cs|Info|11|NINA-PM | OUTBOX pending=0 dead=0
+2026-10-05T03:10:19.6401|INFO|NinaLogSink.cs|Info|11|NINA-PM | API status=200 call=sessions
+2026-10-05T03:10:19.6488|INFO|NinaLogSink.cs|Info|11|NINA-PM | SESSION session=01a10b05-824a-7b73-bbca-14043f867eda status=completed pending=0
+2026-10-05T03:11:19.7063|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:12:19.7589|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
+2026-10-05T03:13:19.7953|INFO|NinaLogSink.cs|Info|11|NINA-PM | HEARTBEAT state=idle status=200
