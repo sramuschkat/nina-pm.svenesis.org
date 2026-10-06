@@ -18,7 +18,7 @@ namespace NinaPm.Nina.Adapters;
 /// NINA-Seite des Flat-Ablaufs (execution.md §7, TK 10.3 Nr. 12): Boxen am Container, Werte in NINAs
 /// Flat-Anweisungen, ein globaler <c>ImageSaved</c>-Handler für den ganzen Lauf. Muster nach dem Astro-PM-Plugin
 /// (MIT), <c>Instructions/TargetInstructionSet.cs</c> (<c>RunFlatsCore</c>, <c>ApplyComboToTrainedFlats</c>,
-/// <c>ResetRunnerProgress</c>, <c>FlatsIsolationContainer</c>, <c>SetFlatsTarget</c>, <c>StopGuidingForFlats</c>),
+/// <c>ResetRunnerProgress</c>, <c>FlatsIsolationContainer</c>, <c>SetFlatsTarget</c>),
 /// Commit 5dd621d.
 /// </summary>
 internal sealed partial class NinaHost
@@ -47,22 +47,6 @@ internal sealed partial class NinaHost
             // Die Flat-Anweisungen sind selbst Container; ihre Kinder (Belichtung, Filter) zählen hier nicht.
             if (item is ISequenceContainer child && item is not (TrainedFlatExposure or TrainedDarkFlatExposure or AutoExposureFlat or AutoBrightnessFlat or SkyFlat))
                 foreach (var nested in Flatten(child)) yield return nested;
-        }
-    }
-
-    public async Task StopGuidingAsync(CancellationToken token)
-    {
-        try
-        {
-            if (m.Guider.GetInfo().Connected) await m.Guider.StopGuiding(token);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.Warning($"NINA-PM: guiding not stopped for flats: {ex.Message}");
         }
     }
 

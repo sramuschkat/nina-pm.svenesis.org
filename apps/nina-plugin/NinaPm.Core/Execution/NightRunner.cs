@@ -421,7 +421,7 @@ public sealed class NightRunner(
         var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b), includeCarryOver: hasSession);
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: flatsOn, FlatsPending: flatsPending, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
-            Night: row.Night, DoneBlocks: DoneBlocks(stored));
+            Night: row.Night, DoneBlocks: DoneBlocks(stored), SkyFlats: b.Rig.Scheduler.Flats.Source == FlatsSource.Sky);
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
         // neu planen, solange die Nacht läuft; offline gilt danach der gespeicherte Plan.

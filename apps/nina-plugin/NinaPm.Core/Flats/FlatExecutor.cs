@@ -14,7 +14,8 @@ namespace NinaPm.Core.Flats;
 public sealed record FlatRunSettings(string Night, Guid? NightPlanId, int FlatCount, int DarkFlatCount, DateTimeOffset? NotAfterUtc, FlatPlanOptions Options);
 
 /// <summary>
-/// Flat-Ablauf am Nachtende (FA-NIN-17, execution.md §7, TK 10.3 Nr. 12): Guiding stoppen → <em>Vor Flats</em> einmal →
+/// Flat-Ablauf am Nachtende (FA-NIN-17, execution.md §7, TK 10.3 Nr. 12): <em>Vor Flats</em> einmal (Guiding stoppen,
+/// Warten, Parken usw. stehen dort, Entscheidung Sven 06.10.2026 – das Plugin stoppt Guiding nicht selbst) →
 /// je Kombination **streng seriell** Rotator (mechanisch, eingefrorener Winkel), Filter über den bestätigten NINA-Namen,
 /// Auslesemodus, Werte in die Box <em>Je Kombination</em>, ausführen und auf die letzten Dateien warten → Kopie in die
 /// Ordner der übrigen Ziele → <em>Nach Flats</em> einmal. Jede Flat-/Dark-Flat-Datei wird einmal gemeldet
@@ -24,7 +25,7 @@ public sealed record FlatRunSettings(string Night, Guid? NightPlanId, int FlatCo
 /// </summary>
 /// <remarks>
 /// Muster nach dem Astro-PM-Plugin (MIT), <c>Instructions/TargetInstructionSet.cs</c> (<c>RunFlatsIfNeeded</c>,
-/// <c>RunFlatsCore</c>, <c>StopGuidingForFlats</c>), Commit 5dd621d; Zuordnung der Dateien, Fortsetzen, Dark-Flat-Gruppen
+/// <c>RunFlatsCore</c>), Commit 5dd621d; Zuordnung der Dateien, Fortsetzen, Dark-Flat-Gruppen
 /// und Meldungen sind eigene Ergänzungen (NIN-15/16, NIN5-8/9/11).
 /// </remarks>
 public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock, NinaPmLog log)
@@ -209,7 +210,6 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         ReportEvent?.Invoke(EventsKind.Flats_start, null, new Dictionary<string, object> { ["combinations"] = combos.Count });
         try
         {
-            await host.StopGuidingAsync(token).ConfigureAwait(false);
             host.BeginImages(OnImage);
             if (boxes.Setup) await Guarded("before_flats", () => host.RunSetupAsync(token)).ConfigureAwait(false);
             int? currentMech = null;
