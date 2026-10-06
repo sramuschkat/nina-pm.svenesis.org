@@ -40,6 +40,11 @@ export interface SimulationRequest {
   readonly filterColors: Readonly<Record<string, string>>;
   /** Namen der Mondprofile (Protokoll, Zielkarten); mitgelieferte als `moonProfile.<key>`. */
   readonly moonProfileNames: Readonly<Record<string, string>>;
+  /**
+   * Aktuelle Uhrzeit (ISO, UTC). Läuft die gewählte Nacht schon, plant der Simulator ab jetzt – wie das Plugin
+   * (`POST /plan` mitten in der Nacht) – und zeigt eine Uhrzeit-Marke (06.10.2026). Ohne Angabe: ganze Nacht.
+   */
+  readonly nowUtc?: string | null;
 }
 
 export type Check = SimCheck;
@@ -69,6 +74,8 @@ export interface SimulationResult {
     readonly frames: number;
     readonly moonIllumPct: number;
   };
+  /** Läuft die Nacht schon: Planbeginn „jetzt“ (UTC), sonst `null` (ganze Nacht). */
+  readonly fromNowUtc: string | null;
 }
 
 const colorOf = (i: number) => `var(--npm-chart-series-${String((i % CHART_SERIES_COUNT) + 1)})`;
@@ -122,14 +129,22 @@ export function simulate(req: SimulationRequest): SimulationResult {
     // AF-Intervall des Rigs wie der Server, solange er die Trigger der Sequenz nicht kennt (FA-SIM-05).
     autofocusAfterTimeMin: req.rig.scheduler.overhead.afEveryMin,
   }) as PlanInput;
-  const plan = planNight(input);
+  const whole = planNight(input);
+  const nowMs = req.nowUtc ? Date.parse(req.nowUtc) : Number.NaN;
+  const running =
+    Number.isFinite(nowMs) &&
+    nowMs > Date.parse(whole.nightWindow.startUtc) &&
+    nowMs < Date.parse(whole.nightWindow.endUtc);
+  const fromNowUtc = running ? new Date(nowMs).toISOString().replace(/\.\d{3}Z$/, 'Z') : null;
+  const planInput: PlanInput = fromNowUtc ? { ...input, startAtUtc: fromNowUtc } : input;
+  const plan = fromNowUtc ? planNight(planInput) : whole;
   const site = { latDeg: req.site.latitudeDeg, lonDeg: req.site.longitudeDeg };
   const projects = input.projects;
   const names = new Map(req.projects.map((p) => [p.id, p.name]));
   const creators = new Map(req.projects.map((p) => [p.id, p.createdBy]));
   const color = new Map(projects.map((p, i) => [p.id, colorOf(i)]));
   // Protokoll, Zielkarten, Blöcke und Filterleiste: dieselbe Rechnung wie der Plugin-Simulator (AP-53).
-  const view = simulationView(input, plan, {
+  const view = simulationView(planInput, plan, {
     site: req.site,
     names,
     moonProfileNames: req.moonProfileNames,
@@ -170,7 +185,10 @@ export function simulate(req: SimulationRequest): SimulationResult {
     label: f.filter,
     count: f.count,
   }));
-  const markers = view.flips.map((f) => ({ atUtc: f.atUtc, kind: 'flip' as const, label: 'Flip' }));
+  const markers = [
+    ...view.flips.map((f) => ({ atUtc: f.atUtc, kind: 'flip' as const, label: 'Flip' })),
+    ...(fromNowUtc ? [{ atUtc: nowMs / 1000, kind: 'now' as const, label: '' }] : []),
+  ];
   const chart = { ...base, series: base.series ?? [], markers, blocks, filterBars };
 
   const cards: TargetCard[] = view.cards.map(({ projectIndex, ...c }) => ({
@@ -187,5 +205,6 @@ export function simulate(req: SimulationRequest): SimulationResult {
     protocol: view.protocol,
     lineNames: view.lineNames,
     header: view.header,
+    fromNowUtc,
   };
 }

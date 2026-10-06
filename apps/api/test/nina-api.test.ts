@@ -499,6 +499,22 @@ describe('GET /simulation (AP-53, FA-NIN-18, FA-SIM-05)', () => {
     expect(JSON.stringify(sim)).not.toContain('M 31');
   });
 
+  it('laufende Nacht: rechnet ab jetzt wie POST /plan mitten in der Nacht (Rig-Test 06.10.2026)', async () => {
+    const t = await setup();
+    s.clock.set(new Date('2026-09-19T06:00:00Z')); // 01:00 CDT in der Nacht 2026-09-18
+    const r = await t.ninaCall('/simulation?night=2026-09-18');
+    expect(r.status).toBe(200);
+    const sim = nina.NinaSimulation.parse(r.body);
+    const starts = sim.protocol.map((x) => Date.parse(x.atUtc));
+    expect(starts.length).toBeGreaterThan(0);
+    expect(Math.min(...starts)).toBeGreaterThanOrEqual(Date.parse('2026-09-19T06:00:00Z'));
+    const planned = await t.ninaCall('/plan', {
+      method: 'POST',
+      body: { night: '2026-09-18', reason: 'initial' },
+    });
+    expect(r.body.outputHash).toBe(planned.body.outputHash);
+  });
+
   it('Nacht außerhalb der Bootstrap-Tabelle → 422 nina.night_invalid; spätere Nacht der Tabelle → 200', async () => {
     const t = await setup();
     for (const night of ['2026-09-16', '2026-11-20', '2025-09-18']) {

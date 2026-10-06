@@ -107,4 +107,22 @@ describe('simulate', () => {
       expect(cell({ ...row, moonProfile: 'Eigenes' }, 'profile', t, 'UTC')).toBe('Eigenes');
     }
   });
+
+  it('laufende Nacht: plant ab jetzt wie das Plugin und setzt eine Uhrzeit-Marke; sonst ganze Nacht', () => {
+    const whole = simulate(request());
+    expect(whole.fromNowUtc).toBeNull();
+    expect(simulate(request({ nowUtc: null })).plan.outputHash).toBe(whole.plan.outputHash);
+    const firstExpose = whole.protocol.find((x) => x.cmd === 'expose');
+    expect(firstExpose).toBeDefined();
+    const now = new Date(Date.parse(firstExpose?.atUtc ?? '') + 2 * 3_600_000).toISOString();
+    const r = simulate(request({ nowUtc: now }));
+    expect(r.fromNowUtc).toBe(now.replace(/\.\d{3}Z$/, 'Z'));
+    expect(Math.min(...r.protocol.map((x) => Date.parse(x.atUtc)))).toBeGreaterThanOrEqual(
+      Date.parse(now),
+    );
+    expect(r.chart.markers?.some((m) => m.kind === 'now')).toBe(true);
+    // Nach dem Nachtfenster (Mittag): ganze Nacht wie ohne Uhrzeit.
+    const noon = simulate(request({ nowUtc: '2026-09-18T18:00:00Z' }));
+    expect(noon.fromNowUtc).toBeNull();
+  });
 });

@@ -298,6 +298,7 @@ export const en: Messages = {
     nextNight: 'Next night',
     tonight: 'Tonight',
     night: 'Night {{night}}',
+    fromNow: 'Night in progress – plan from {{time}}, as in the plugin',
     stats: {
       siteTime: 'Site time {{time}}',
       dark: 'dark {{hours}} h',
@@ -968,6 +969,7 @@ export const en: Messages = {
       astronomical: 'Astro.',
     },
     nowAt: 'Time {{time}}',
+    cursorAt: 'Selected {{time}}',
     flipAt: 'Meridian flip {{time}}',
     transitAt: 'Meridian {{time}}',
     windowStart: 'Start {{time}}',
@@ -977,6 +979,7 @@ export const en: Messages = {
       meridian: 'Meridian',
       flip: 'Meridian flip',
       now: 'Time',
+      cursor: 'Selected time',
       best: 'Best time',
       flux: 'Relative flux',
     },
