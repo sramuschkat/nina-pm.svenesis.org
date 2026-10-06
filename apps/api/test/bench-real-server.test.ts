@@ -9,6 +9,10 @@ const cases: [RealScenario, string][] = [
   ['night-flats', 'regular'],
   ['transit', 'transit'],
   ['commands', 'regular'],
+  ['full-night', 'regular'],
+  ['network', 'regular'],
+  ['flip', 'regular'],
+  ['long-night', 'regular'],
 ];
 
 describe('Prüfstand gegen den echten Server', () => {
@@ -33,12 +37,32 @@ describe('Prüfstand gegen den echten Server', () => {
           pendingCaptures: [],
         });
         expect(plan.status).toBe(200);
-        const blocks = plan.body.blocks as { kind: string; endUtc: string }[];
+        const blocks = plan.body.blocks as {
+          kind: string;
+          endUtc: string;
+          entries: { cmd: string; readoutMode?: string | null }[];
+        }[];
+        // Nur Auslesemodi, die die Simulator-Kamera kennt (sonst `readout_mode_not_found`, Lauf 05.10.2026).
+        for (const b of blocks)
+          for (const e of b.entries.filter((x) => x.cmd.startsWith('expose')))
+            expect(['normal1', 'normal2']).toContain(e.readoutMode);
         expect(blocks.map((b) => b.kind)).toContain(kind);
         const darknessEnd = Date.parse(plan.body.darknessEndUtc as string);
         expect(darknessEnd - Date.now()).toBeGreaterThan(20 * 60_000);
-        expect(darknessEnd - Date.now()).toBeLessThan(45 * 60_000);
+        expect(darknessEnd - Date.now()).toBeLessThan(
+          (scenario === 'long-night' ? 280 : 45) * 60_000,
+        );
         for (const b of blocks) expect(Date.parse(b.endUtc)).toBeLessThanOrEqual(darknessEnd);
+        // Flip im Block: der Server plant ihn nach dem Meridian (Rig ohne Rotator wie Starfront).
+        if (scenario === 'flip')
+          expect(blocks.flatMap((b) => b.entries.map((e) => e.cmd))).toContain('meridian_flip');
+        // Aktionen der Laufdatei müssen der echte Server annehmen (Lauf 05.10.2026: `paused` → 422).
+        if (scenario === 'network')
+          for (const a of ['drop_network', 'restore_network'])
+            await expect(real.action(a)).resolves.toBeTruthy();
+        if (scenario === 'commands')
+          for (const a of ['pause_running', 'refresh_targets', 'reset_plan'])
+            await expect(real.action(a)).resolves.toBeTruthy();
       } finally {
         real.close();
       }

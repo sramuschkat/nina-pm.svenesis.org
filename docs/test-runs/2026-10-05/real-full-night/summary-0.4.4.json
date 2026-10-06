@@ -1,0 +1,26 @@
+{
+  "capturesSaved": 41,
+  "capturesOther": 0,
+  "blocksStarted": 2,
+  "plans": [
+    "initial",
+    "refresh",
+    "refresh",
+    "refresh"
+  ],
+  "sessions": [
+    "running",
+    "completed",
+    "finished",
+    "completed"
+  ],
+  "outboxPendingAtEnd": 0,
+  "rejectedApi": 0,
+  "errors": 0,
+  "warnings": {
+    "sequence_template_deviation": 1,
+    "pc_timezone_differs": 1,
+    "mount_site_mismatch": 1,
+    "flat_exposure_off": 6
+  }
+}

@@ -7,17 +7,23 @@
  *   install-plugin <ordner>       Plugin-Build in die VM bringen (NINA wird neu gestartet)
  *   run <lauf> [--plugin <ordner>] Lauf aus runs/<lauf>.json: NINA frisch, Geräte, Test-Server, Sequenz, Auswertung
  *   real-check <szenario>         Szenario gegen den echten Server ohne VM prüfen (Standort, Ziele, Plan)
+ *   prod-site [--start <ISO>] [--dawn-in <min>]  Standort und Ziel für den kurzen prod-Lauf (Stufe 2b) ausrechnen,
+ *                                 Laufdatei .vm-bench/prod-short.json schreiben (ops/stage-2b-prod.md)
  *   screenshot [reiter] [--out <datei>]
  * Läufe stehen in `.vm-bench/<zeit>-<lauf>/` (nicht im Repository).
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRig, loadScenario } from '../../nina-test-server/src/scenario';
 import { NinaTestServer, type TestAction } from '../../nina-test-server/src/server';
-import { startRealServer, type RealScenario } from '../../../apps/api/src/bench/real-server';
+import {
+  prodBenchSite,
+  startRealServer,
+  type RealScenario,
+} from '../../../apps/api/src/bench/real-server';
 import { AdvancedApi, type Device } from './advanced-api';
 import { BenchServer, type JobResult, type JobType } from './bench-server';
 import { CONFIG_PATH, loadConfig, macAddresses, saveConfig, type BenchConfig } from './config';
@@ -115,6 +121,57 @@ function arg(name: string): string | undefined {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Beobachtung des Flat-Panels während eines Laufs (`watchPanel`). */
+interface PanelSeen {
+  samples: number;
+  errors: number;
+  /** Proben mit Abdeckung zu (oder keiner) und Licht an (Flats laufen). */
+  closedLit: number;
+  maxBrightness: number;
+  coverStates: string[];
+}
+
+/**
+ * Flat-Panel alle 5 s abfragen (Advanced API): Abdeckung, Licht, Helligkeit. *Close Cover*, *Toggle Light* und die
+ * Helligkeit aus *Trained Flat Exposure* sind nur so belegt – NINA loggt sie nicht (Lücke B, 05.10.2026).
+ */
+function watchPanel(a: AdvancedApi): { stop(): Promise<PanelSeen> } {
+  const seen: PanelSeen = {
+    samples: 0,
+    errors: 0,
+    closedLit: 0,
+    maxBrightness: 0,
+    coverStates: [],
+  };
+  let running = true;
+  const loop = (async () => {
+    while (running) {
+      try {
+        const i = await a.flatDeviceInfo();
+        seen.samples += 1;
+        if (i.Connected) {
+          if (!seen.coverStates.includes(i.CoverState)) seen.coverStates.push(i.CoverState);
+          // Ohne Abdeckung (`NotPresent`) genügt das Licht – manche Panels haben keine Klappe.
+          if (i.LightOn && (i.CoverState === 'Closed' || i.CoverState === 'NotPresent')) {
+            seen.closedLit += 1;
+            seen.maxBrightness = Math.max(seen.maxBrightness, i.Brightness);
+          }
+        }
+      } catch {
+        seen.errors += 1; // NINA-Neustart im Lauf
+      }
+      await sleep(5_000);
+    }
+  })();
+  return {
+    async stop() {
+      running = false;
+      await loop;
+      return seen;
+    },
+  };
+}
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
 const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${m}`);
 
@@ -199,6 +256,33 @@ async function omnisimSafe(cfg: BenchConfig, safe: boolean): Promise<void> {
     throw new Error(`OmniSim: ${body.ErrorMessage ?? String(res.status)}`);
 }
 
+/** NINA ist mitten im Lauf verschwunden (Absturz in der x64-Emulation der VM, 03.–05.10.2026). */
+export class NinaCrash extends Error {}
+
+/**
+ * Absturz-Wächter: Antwortet NINA zweimal im Abstand von 10 s nicht, holt der Prüfstand die Windows-Ereignisse
+ * (`app-events`, .NET Runtime/Application Error) in den Laufordner und bricht den Lauf mit {@link NinaCrash} ab.
+ */
+async function checkNina(
+  a: AdvancedApi,
+  bench: BenchServer,
+  dir: string,
+  sinceMs: number,
+): Promise<void> {
+  if (await a.alive()) return;
+  await sleep(10_000);
+  if (await a.alive()) return;
+  log('NINA antwortet nicht mehr – Windows-Ereignisse holen');
+  const ev = await job(
+    bench,
+    'app-events',
+    { sinceUtc: new Date(sinceMs - 5_000).toISOString() },
+    dir,
+    120_000,
+  ).catch((e: unknown) => ({ message: String(e) }));
+  throw new NinaCrash(`NINA abgestürzt (${ev.message}; Ereignisse in ${dir}/app-events.txt)`);
+}
+
 /**
  * Warten, bis die Nacht vorbei ist: alle Sessions des Test-Servers abgeschlossen (mindestens `minSessions`), danach 60 s Nachlauf für die
  * letzten Meldungen; höchstens bis `deadlineMs` (`untilMin` der Laufdatei).
@@ -207,9 +291,11 @@ async function waitForNightEnd(
   cfg: BenchConfig,
   deadlineMs: number,
   minSessions = 1,
+  watchdog: () => Promise<void> = () => Promise.resolve(),
 ): Promise<void> {
   let doneAt: number | undefined;
   while (Date.now() < deadlineMs) {
+    await watchdog();
     try {
       const rep = (await (
         await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
@@ -291,8 +377,13 @@ async function preflight(cfg: BenchConfig, r: BenchRun): Promise<void> {
     );
 }
 
+/** Profilstandort vor dem ersten Versuch eines `run` (bleibt über die eine Wiederholung nach einem Absturz). */
+let siteBeforeRun: Record<string, number> | undefined;
+
 async function run(cfg: BenchConfig, name: string): Promise<boolean> {
-  const r = JSON.parse(readFileSync(join(RUNS, `${name}.json`), 'utf8')) as BenchRun;
+  // Lauf aus runs/<name>.json oder als Pfad (z. B. die von `prod-site` erzeugte .vm-bench/prod-short.json).
+  const file = name.endsWith('.json') && existsSync(name) ? name : join(RUNS, `${name}.json`);
+  const r = JSON.parse(readFileSync(file, 'utf8')) as BenchRun;
   await preflight(cfg, r);
   const dir = join(ROOT, '.vm-bench', `${stamp()}-${r.name}`);
   mkdirSync(dir, { recursive: true });
@@ -324,15 +415,51 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
     const vmOffsetMs = await a.localOffsetMs();
     // Safety-Monitor zuerst auf sicher – ein abgebrochener Lauf kann OmniSim unsicher hinterlassen haben.
     await omnisimSafe(cfg, true);
-    // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll.
+    // Echter Server vor den Profilwerten: er wählt den Standort, den NINA übernehmen soll. Den bisherigen Standort merken
+    // und nach dem Lauf zurückschreiben – sonst prüften die folgenden Test-Server-Läufe gegen den gestauchten Standort.
+    const astro =
+      r.real || r.prod
+        ? ((await a.activeProfile()).AstrometrySettings as Record<string, number> | undefined)
+        : undefined;
+    // Bei der Wiederholung nach einem Absturz den Standort des **ersten** Versuchs nehmen: das Zurückschreiben nach dem
+    // Absturz scheitert (NINA ist weg), das Profil trüge sonst den gestauchten Standort weiter (Lauf 05.10.2026).
+    const restoreSite = astro
+      ? (siteBeforeRun ??= {
+          'AstrometrySettings-Latitude': astro.Latitude ?? 0,
+          'AstrometrySettings-Longitude': astro.Longitude ?? 0,
+          'AstrometrySettings-Elevation': astro.Elevation ?? 0,
+        })
+      : undefined;
     const real = r.real
       ? await startRealServer({ scenario: r.real, port: cfg.testServerPort, latDeg: 50, log })
       : undefined;
-    for (const [path, value] of Object.entries({ ...(r.profile ?? {}), ...(real?.profile ?? {}) }))
+    // Test-Server-Läufe setzen den Standort ihres Rigs selbst (`rig.json`): unabhängig davon, was ein voriger – auch
+    // abgebrochener – `real`-Lauf im Profil hinterlassen hat (05.10.2026).
+    const rigSite = r.scenario ? loadRig().site : undefined;
+    const siteProfile = rigSite
+      ? {
+          'AstrometrySettings-Latitude': rigSite.latDeg,
+          'AstrometrySettings-Longitude': rigSite.lonDeg,
+          'AstrometrySettings-Elevation': rigSite.elevationM,
+        }
+      : {};
+    for (const [path, value] of Object.entries({
+      // Standort nur in `real`-Läufen auf die Montierung übertragen (`real.profile`: TOTELESCOPE). Der Sky-Simulator
+      // speichert ihn auf 0,01° gerundet – mit dem Starfront-Standort zeigte NINA bei jedem Verbinden „Unable to set
+      // mount latitude“ (05.10.2026); die gestauchten Standorte der `real`-Läufe sind glatte Werte.
+      'TelescopeSettings-TelescopeLocationSyncDirection': 'NOSYNC',
+      ...siteProfile,
+      ...(r.profile ?? {}),
+      ...(real?.profile ?? {}),
+    }))
       await a.setProfile(path, value);
     for (const d of ALL_DEVICES.filter((x) => !r.connect.includes(x)))
       await a.disconnect(d).catch(() => undefined);
     const profile = await a.activeProfile();
+    // Testbilder des vorigen Laufs löschen: die Simulator-Kamera ignoriert die Belichtungszeit, Transitserien liefern
+    // Hunderte FITS je Lauf (05.10.2026: Speicher der VM voll). Die Auswertung braucht nur Log und Server-Daten.
+    const imageFolder = (profile.ImageFileSettings as { FilePath?: string } | undefined)?.FilePath;
+    if (imageFolder) await job(bench, 'clean-images', { folder: imageFolder }, dir, 300_000);
     if (r.trainedFlats) {
       const trained = (
         profile.FlatDeviceSettings as { TrainedFlatExposureSettings?: unknown[] } | undefined
@@ -358,6 +485,8 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
 
     const server = r.scenario ? new NinaTestServer(loadScenario(r.scenario), loadRig()) : undefined;
     let realOk = true;
+    let panelWatch: ReturnType<typeof watchPanel> | undefined;
+    let panelOk = true;
     const http = server ? await server.listen(cfg.testServerPort, '0.0.0.0') : undefined;
     const startedMs = Date.now();
     const startUtc = new Date(startedMs).toISOString();
@@ -371,15 +500,27 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       );
       await a.loadSequence(SEQUENCE);
       await a.startSequence();
+      if (r.connect.includes('flatdevice')) panelWatch = watchPanel(a);
       // Uhr der VM (04.10.2026: nach einem Neustart 7 h falsch → Plugin sperrte mit clock_skew, Nacht sofort zu Ende).
       // Der erste Heartbeat kommt nach höchstens 60 s; die Schritte sind absolut terminiert, Warten verschiebt sie nicht.
       await sleep(75_000);
-      if ((await a.logMessages()).some((m) => m.includes('ERROR code=clock_skew')))
+      const watchdog = () => checkNina(a, bench, dir, restartMs);
+      // Antwortet NINA hier nicht, über den Absturz-Wächter gehen (Ereignisse holen, Lauf einmal wiederholen) – vorher
+      // brach der Lauf mit „fetch failed“ ohne Wiederholung ab (real-full-night, real-network am 05.10.2026).
+      const first = await a.logMessages().catch(async () => {
+        await watchdog();
+        return a.logMessages();
+      });
+      if (first.some((m) => m.includes('ERROR code=clock_skew')))
         throw new Error(
           'Uhr der VM weicht ab (clock_skew) – in der VM: w32tm /resync /force (Zeitdienst w32time gestartet, Zeitquelle gesetzt)',
         );
       for (const s of [...(r.steps ?? [])].sort((x, y) => x.atMin - y.atMin)) {
-        await sleep(Math.max(0, startedMs + s.atMin * 60_000 - Date.now()));
+        // Bis zum Schritt warten, dabei alle 30 s nach NINA sehen (ein Absturz endet sonst erst am Zeitlimit).
+        while (Date.now() < startedMs + s.atMin * 60_000) {
+          await watchdog();
+          await sleep(Math.min(30_000, Math.max(0, startedMs + s.atMin * 60_000 - Date.now())));
+        }
         try {
           if (s.coolC !== undefined) await a.cool(s.coolC);
           if (s.safe !== undefined) await omnisimSafe(cfg, s.safe);
@@ -428,7 +569,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         }
       }
       if (server) {
-        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000, r.sessions);
+        await waitForNightEnd(cfg, startedMs + r.untilMin * 60_000, r.sessions, watchdog);
         const report = await (
           await fetch(`http://127.0.0.1:${String(cfg.testServerPort)}/test/report`)
         ).json();
@@ -438,6 +579,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         const deadline = startedMs + r.untilMin * 60_000;
         let doneAt: number | undefined;
         while (Date.now() < deadline) {
+          await watchdog();
           if ((await real.completedSessions()) >= (r.sessions ?? 1)) {
             doneAt ??= Date.now();
             if (Date.now() - doneAt >= 60_000) {
@@ -453,14 +595,74 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
         for (const c of rep.checks) log(`${c.ok ? '✓' : '✗'} ${c.name} – ${c.detail}`);
         realOk = rep.checks.every((c) => c.ok);
       } else {
-        await sleep(Math.max(0, startedMs + r.untilMin * 60_000 - Date.now()));
+        // prod: bis das Plugin die Nacht abschließt (`SESSION status=finished`), höchstens `untilMin`.
+        const deadline = startedMs + r.untilMin * 60_000;
+        while (Date.now() < deadline) {
+          await watchdog();
+          const lines = await a.logMessages(300).catch(() => [] as string[]);
+          if (lines.some((m) => m.includes('SESSION status=finished'))) {
+            log('Nacht abgeschlossen (SESSION status=finished)');
+            break;
+          }
+          await sleep(15_000);
+        }
         await a.stopSequence().catch(() => undefined);
         log('Sequenz gestoppt – 3 min für die Outbox (Heartbeat-Takt 60 s)');
         await sleep(180_000);
       }
+      if (panelWatch) {
+        const seen = await panelWatch.stop();
+        panelWatch = undefined;
+        const end = await a.flatDeviceInfo().catch(() => undefined);
+        const checks = [
+          {
+            name: 'Flat-Panel: Abdeckung zu und Licht an während der Flats',
+            ok: seen.closedLit > 0 && seen.maxBrightness > 0,
+            detail: `${String(seen.closedLit)} von ${String(seen.samples)} Proben, Helligkeit bis ${String(seen.maxBrightness)}, Abdeckung ${seen.coverStates.join('/')}`,
+          },
+          {
+            name: 'Flat-Panel: Licht nach den Flats aus (Nach Flats)',
+            ok: end?.Connected === true && !end.LightOn,
+            detail: end
+              ? `Licht ${end.LightOn ? 'an' : 'aus'}, Abdeckung ${end.CoverState}`
+              : 'keine Antwort',
+          },
+        ];
+        for (const c of checks) log(`${c.ok ? '✓' : '✗'} ${c.name} – ${c.detail}`);
+        writeFileSync(
+          join(dir, 'panel.json'),
+          `${JSON.stringify({ seen, end, checks }, null, 2)}\n`,
+        );
+        panelOk = checks.every((c) => c.ok);
+      }
     } finally {
+      await panelWatch?.stop();
       http?.close();
       real?.close();
+      if (restoreSite) {
+        let failed = 0;
+        for (const [path, value] of Object.entries(restoreSite))
+          await a.setProfile(path, value).catch(() => (failed += 1));
+        log(
+          failed
+            ? `Profil-Standort NICHT zurückgesetzt (NINA weg?) – Wiederholung bzw. nächster Lauf: ${JSON.stringify(restoreSite)}`
+            : `Profil-Standort zurückgesetzt: ${JSON.stringify(restoreSite)}`,
+        );
+        // Montierung zurück auf den Profilstandort: einmal mit TOTELESCOPE neu verbinden (NINAs Rundungsmeldung des
+        // Simulators ist hier harmlos), danach wieder NOSYNC für die Test-Server-Läufe.
+        try {
+          await a.disconnect('mount');
+          await a.setProfile('TelescopeSettings-TelescopeLocationSyncDirection', 'TOTELESCOPE');
+          await a.connectFromProfile('mount', profile);
+          log('Montierung auf den Profilstandort zurückgesetzt');
+        } catch (e) {
+          log(`Montierung zurücksetzen: ${String(e)}`);
+        } finally {
+          await a
+            .setProfile('TelescopeSettings-TelescopeLocationSyncDirection', 'NOSYNC')
+            .catch(() => undefined);
+        }
+      }
     }
     const logs = await job(
       bench,
@@ -486,6 +688,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       log(`Ergebnis in ${dir}`);
       return (
         realOk &&
+        panelOk &&
         summary.errors === 0 &&
         summary.rejectedApi === 0 &&
         summary.outboxPendingAtEnd === 0
@@ -496,7 +699,7 @@ async function run(cfg: BenchConfig, name: string): Promise<boolean> {
       stdio: 'inherit',
     });
     log(`Ergebnis in ${dir}`);
-    return check.status === 0;
+    return check.status === 0 && panelOk;
   });
 }
 
@@ -556,7 +759,16 @@ async function main(): Promise<number> {
     case 'run': {
       const name = process.argv[3];
       if (!name) throw new Error('Lauf angeben, z. B. vm-flip');
-      return (await run(cfg, name)) ? 0 : 1;
+      try {
+        return (await run(cfg, name)) ? 0 : 1;
+      } catch (e) {
+        // „fetch failed“ außerhalb des Wächters: NINA bzw. die Advanced API war weg – wie ein Absturz behandeln.
+        const lost = e instanceof TypeError && e.message === 'fetch failed';
+        if (!(e instanceof NinaCrash) && !lost) throw e;
+        // Bekannter, nicht reproduzierbarer Absturz der x64-Emulation: einmal von vorn, der Absturz bleibt im ersten Laufordner belegt.
+        log(`${(e as Error).message} – Lauf wird einmal wiederholt`);
+        return (await run(cfg, name)) ? 0 : 1;
+      }
     }
     case 'update-agent':
       return withBench(cfg, async (bench) => {
@@ -617,6 +829,46 @@ async function main(): Promise<number> {
         return 0;
       });
     }
+    case 'prod-site': {
+      // Stufe 2b: Standort und Ziel ausrechnen; Sven stellt sie im Web ein (Claude Code greift nicht auf prod zu).
+      const start = arg('start') ? Date.parse(arg('start') ?? '') : Date.now() + 15 * 60_000;
+      if (Number.isNaN(start)) throw new Error('--start als ISO-Zeit, z. B. 2026-10-06T08:30:00Z');
+      const dawnIn = Number(arg('dawn-in') ?? 30);
+      const site = prodBenchSite(start, dawnIn);
+      const template = JSON.parse(readFileSync(join(RUNS, 'prod-short.json'), 'utf8')) as BenchRun;
+      const out = join(ROOT, '.vm-bench', 'prod-short.json');
+      mkdirSync(join(out, '..'), { recursive: true });
+      writeFileSync(
+        out,
+        `${JSON.stringify(
+          {
+            ...template,
+            profile: {
+              ...template.profile,
+              'AstrometrySettings-Latitude': site.latDeg,
+              'AstrometrySettings-Longitude': site.lonDeg,
+              'AstrometrySettings-Elevation': 200,
+              'TelescopeSettings-TelescopeLocationSyncDirection': 'TOTELESCOPE',
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      console.log(`Start (geplant)      ${new Date(start).toISOString()}`);
+      console.log(
+        `Standort im Web      Breite ${String(site.latDeg)}, Länge ${String(site.lonDeg)}, Höhe 200 m, Zone ${site.timeZone}`,
+      );
+      console.log(
+        `Nacht                ${site.night}, Dunkelheit endet ${site.darknessEndUtc}, nautische Dämmerung ${String(site.nauticalDawnUtc)}`,
+      );
+      console.log(
+        `Testprojekt          RA ${String(site.target.raDeg)}°, Dec +${String(site.target.decDeg)}°`,
+      );
+      console.log(`Laufdatei            ${out}`);
+      console.log('Start des Laufs:     pnpm vm-bench run .vm-bench/prod-short.json');
+      return 0;
+    }
     case 'real-check': {
       // Szenario gegen den echten Server ohne VM: Standort, Ziele, Plan wie ihn das Plugin abruft (Sekunden statt Lauf).
       const scenario = (process.argv[3] ?? 'night-flats') as RealScenario;
@@ -635,7 +887,12 @@ async function main(): Promise<number> {
           };
         };
         const targets = await nina('/targets');
-        const projects = (targets.body.projects ?? []) as { type: string }[];
+        const projects = (targets.body.projects ?? []) as {
+          type: string;
+          id?: string;
+          name?: string;
+        }[];
+        const nameOf = (pid: string) => projects.find((p) => p.id === pid)?.name ?? pid;
         log(`targets ${String(targets.status)}: ${projects.map((p) => p.type).join(', ')}`);
         const plan = await nina('/plan', 'POST', {
           night: real.info.night,
@@ -644,11 +901,17 @@ async function main(): Promise<number> {
         });
         const blocks = (plan.body.blocks ?? []) as {
           kind: string;
+          projectId: string;
           startUtc: string;
           endUtc: string;
+          entries: { cmd: string; atUtc: string; durationS?: number }[];
         }[];
         log(`plan ${String(plan.status)}: darknessEnd ${String(plan.body.darknessEndUtc)}`);
-        for (const b of blocks) log(`  ${b.kind} ${b.startUtc} – ${b.endUtc}`);
+        for (const b of blocks) {
+          log(`  ${b.kind} ${b.startUtc} – ${b.endUtc} ${nameOf(b.projectId)}`);
+          for (const e of b.entries.filter((x) => x.cmd === 'meridian_flip'))
+            log(`    meridian_flip ${e.atUtc} (${String(e.durationS ?? 0)} s)`);
+        }
         return plan.status === 200 && blocks.length > 0 ? 0 : 1;
       } finally {
         real.close();

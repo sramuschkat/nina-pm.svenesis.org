@@ -1,0 +1,26 @@
+{
+  "name": "real-rig-newmoon",
+  "description": "Rig-Zeiten (05.10.2026): zwei ganze Starfront-Nächte um Neumond 10.10.2026 gegen den echten Server mit virtueller Uhr – echte Ziele der Jahreszeit à 300 s, Zeiten wie in den Starfront-Logs gemessen (Slew+Zentrieren 35 s, Dither je Aufnahme 18 s, NINAs Autofokus alle 60 min mit 210 s, Flip mit 5 min Pause vor dem Meridian und 250 s). Prüft Plan = Ausführung (≥ 90 % je Nacht), keine Lücke über 20 min, Flats, Abschluss.",
+  "startUtc": "2026-10-09T22:00:00Z",
+  "real": "starfront",
+  "realRigTimes": true,
+  "untilMin": 2700,
+  "setup": {
+    "readoutModes": ["normal1", "normal2"],
+    "rotatorConnected": false,
+    "ditherSettleS": 18,
+    "centerS": 35,
+    "flipDurationS": 250,
+    "flipPauseBeforeMin": 5,
+    "afTrigger": true,
+    "afEveryMin": 60,
+    "afDurationS": 210
+  },
+  "steps": [],
+  "dayLoop": {
+    "maxNights": 2,
+    "source": "NauticalDusk",
+    "offsetMin": 0
+  },
+  "checks": []
+}

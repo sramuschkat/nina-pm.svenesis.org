@@ -1,0 +1,24 @@
+{
+  "name": "real-starfront-seq",
+  "description": "Svens Starfront-Sequenz (aus der Astro-PM-Vorlage umgebaut, .vm-bench/starfront/sr-nina-pm-single-night.json – privat, nicht im Repository) gegen den echten Server: gestauchte Nacht wie real-night-flats, Start ohne die beiden Wait for Time und ohne Autofokus (Simulator), sonst unverändert – Ground Station (Discord), Night Summary, Find Home, Panel auf/zu, Vor Flats mit Wait for Time → Nautical Dawn, Trained Flat/Dark Flat. Geräte ohne Simulator (Taukappe, Schalter) und das Kopierskript scheitern erwartungsgemäß und laufen weiter. Prüft Ablauf, Flats nach der nautischen Dämmerung, Abschluss, Bericht.",
+  "real": "starfront-seq",
+  "untilMin": 95,
+  "sequence": {
+    "from": ".vm-bench/starfront/sr-nina-pm-single-night.json",
+    "removeFromStart": ["WaitForTime", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "FlatDeviceSettings-Id": "ASCOM.OmniSim.CoverCalibrator"
+  },
+  "trainedFlats": { "timeS": 1, "binnings": [1] },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor", "flatdevice"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 10, "screenshot": "live-status", "tab": "sequencer" },
+    { "atMin": 40, "screenshot": "vor-flats-warten", "tab": "sequencer" },
+    { "atMin": 75, "screenshot": "flats", "tab": "sequencer" }
+  ]
+}

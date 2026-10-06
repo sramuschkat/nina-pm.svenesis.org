@@ -1,0 +1,13 @@
+  ✓ Blöcke → Nachtende → Flats → Session abgeschlossen, keine Blöcke während der Flats
+  ✗ Drei Kombinationen: L Bin 1, Ha Bin 1, L Bin 2 mit Gain/Offset null als -1; der Flip ergibt keine weitere
+      ✗ FLATS_END status=done: 1× (erwartet = 3)
+      ✗ FLATS_END combination=L_b2_g-1_o-1_r0 status=done: 0× (erwartet = 1)
+  ✗ Neustart in der 2. Kombination: Fortsetzen nur mit den fehlenden Aufnahmen, je Kombination genau 5 Flats
+      ✗ FLATS_RESUME combination=Ha_b1_g-1_o-1_r0: 0× (erwartet = 1)
+      ✗ Report captures [frameType="flat" filterShortName="Ha"]: 1 (erwartet = 5)
+      ✗ Report captures [frameType="flat"]: 6 (erwartet = 15)
+  ✗ Dark-Flats je Gruppe einmal (Bin 1, Bin 2), Meldungen mit dem Binning der Kombination
+      ✗ DARKFLAT_GROUP status=done: 1× (erwartet = 2)
+      ✗ Report captures [frameType="dark_flat" binning=2]: 0 (erwartet = 5)
+      ✗ Report captures [frameType="flat" binning=2 gain=null offset=null]: 0 (erwartet = 5)
+  ✓ Nichts abgelehnt

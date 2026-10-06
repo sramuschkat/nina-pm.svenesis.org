@@ -1,0 +1,53 @@
+2026-10-05T06:15:07.8511392Z [Windows Error Reporting] Fault bucket 2141074535782725484, type 4
+Event Name: APPCRASH
+Response: Not available
+Cab Id: 0
+
+Problem signature:
+P1: NINA.exe
+P2: 3.2.0.9001
+P3: 68d50000
+P4: coreclr.dll
+P5: 8.0.2125.47513
+P6: 68d59501
+P7: c0000005
+P8: 00000000001d4560
+P9: 
+P10: 
+
+Attached files:
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.12f92e1b-5317-4230-97b7-327f027a70e9.tmp.dmp
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.8795d518-ce0c-4be1-85ca-b5ccbbfb1890.tmp.WERInternalMetadata.xml
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.3639b17d-10a6-44de-b467-c4f8be9b4dd7.tmp.csv
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.0a3b356b-910d-4867-92e6-b798d0b192ca.tmp.txt
+\\?\C:\ProgramData\Microsoft\Windows\WER\Temp\WER.e9f63e08-515e-403e-8b1d-aab8d102092f.tmp.xml
+
+These files may be available here:
+\\?\C:\ProgramData\Microsoft\Windows\WER\ReportArchive\AppCrash_NINA.exe_214f25b984b78dab22fba9757e773801cd17363_8c2dc166_f17e6ec3-ece0-4493-8d82-f2443e91a250
+
+Analysis symbol: 
+Rechecking for solution: 0
+Report Id: de64f22e-0079-4506-a64a-f7b62cb0cc11
+Report Status: 268435456
+Hashed bucket: 1920a4a987f6a83e1db69ff246f6b76c
+Cab Guid: 0
+
+2026-10-05T06:15:03.1902144Z [Application Error] Faulting application name: NINA.exe, version: 3.2.0.9001, time stamp: 0x68d50000
+Faulting module name: coreclr.dll, version: 8.0.2125.47513, time stamp: 0x68d59501
+Exception code: 0xc0000005
+Fault offset: 0x00000000001d4560
+Faulting process id: 0x26DC
+Faulting application start time: 0x1DD5490BBCB9F19
+Faulting application path: C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.exe
+Faulting module path: C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\coreclr.dll
+Report Id: de64f22e-0079-4506-a64a-f7b62cb0cc11
+Faulting package full name: 
+Faulting package-relative application ID: 
+
+2026-10-05T06:15:02.8402612Z [.NET Runtime] Application: NINA.exe
+CoreCLR Version: 8.0.2125.47513
+.NET Version: 8.0.21
+Description: The process was terminated due to an unhandled exception.
+Exception Info: System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.
+Stack:
+   at System.Runtime.CompilerServices.CastHelpers.ChkCastClassSpecial(Void*, System.Object)

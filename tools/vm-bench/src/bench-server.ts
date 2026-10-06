@@ -22,6 +22,7 @@ export type JobType =
   | 'collect-log'
   | 'app-events'
   | 'update-agent'
+  | 'clean-images'
   | 'clone-profile';
 
 export interface Job {

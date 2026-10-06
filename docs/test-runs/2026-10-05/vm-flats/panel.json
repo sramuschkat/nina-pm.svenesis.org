@@ -1,0 +1,42 @@
+{
+  "seen": {
+    "samples": 251,
+    "errors": 0,
+    "closedLit": 88,
+    "maxBrightness": 100,
+    "coverStates": [
+      "Closed"
+    ]
+  },
+  "end": {
+    "CoverState": "Closed",
+    "LocalizedCoverState": "Closed",
+    "LocalizedLightOnState": "On",
+    "LightOn": true,
+    "Brightness": 50,
+    "SupportsOpenClose": true,
+    "MinBrightness": 0,
+    "MaxBrightness": 100,
+    "SupportsOnOff": true,
+    "SupportedActions": [],
+    "Connected": true,
+    "Name": "Alpaca Cover Calibrator Simulator",
+    "DisplayName": "Alpaca Cover Calibrator Simulator (ASCOM)",
+    "Description": "Alpaca CoverCalibrator Simulator",
+    "DriverInfo": "CoverCalibrator driver version: 0.5.0.0.",
+    "DriverVersion": "0.5",
+    "DeviceId": "ASCOM.OmniSim.CoverCalibrator"
+  },
+  "checks": [
+    {
+      "name": "Flat-Panel: Abdeckung zu und Licht an während der Flats",
+      "ok": true,
+      "detail": "88 von 251 Proben, Helligkeit bis 100, Abdeckung Closed"
+    },
+    {
+      "name": "Flat-Panel: Licht nach den Flats aus (Nach Flats)",
+      "ok": false,
+      "detail": "Licht an, Abdeckung Closed"
+    }
+  ]
+}

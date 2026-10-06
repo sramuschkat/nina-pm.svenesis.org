@@ -1,13 +1,14 @@
 {
   "name": "vm-flats",
-  "description": "P-12 + P-35 auf echtem NINA (≈ 25 min): Flats nach der Nacht (L/Ha Bin 1, L Bin 2 mit Gain/Offset null), 5 je Kombination, Trained Flat/Dark Flat Exposure; NINA-Neustart, sobald die 2. Kombination beginnt; Fortsetzen mit den fehlenden Aufnahmen.",
+  "description": "P-12 + P-35 auf echtem NINA (≈ 25 min): Flats nach der Nacht (L/Ha Bin 1, L Bin 2 mit Gain/Offset null), 5 je Kombination, Trained Flat/Dark Flat Exposure; NINA-Neustart, sobald die 2. Kombination beginnt; Fortsetzen mit den fehlenden Aufnahmen. Flat-Panel OmniSim CoverCalibrator verbunden: Vor Flats Abdeckung zu und Licht an, Nach Flats Licht aus; der Prüfstand beobachtet Abdeckung, Licht und Helligkeit (Lücke B).",
   "simRun": "vm-flats",
   "scenario": "vm-flats",
   "untilMin": 30,
   "sequence": {
     "from": "one-night-safety",
     "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
-    "flats": true
+    "flats": true,
+    "flatsPanel": true
   },
   "profile": {
     "MeridianFlipSettings-MinutesAfterMeridian": 1,
@@ -15,13 +16,14 @@
     "MeridianFlipSettings-PauseTimeBeforeMeridian": 0,
     "MeridianFlipSettings-Recenter": false,
     "MeridianFlipSettings-AutoFocusAfterFlip": false,
-    "SequenceSettings-DisableSimpleSequencer": true
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "FlatDeviceSettings-Id": "ASCOM.OmniSim.CoverCalibrator"
   },
   "trainedFlats": {
     "timeS": 1,
     "binnings": [1, 2]
   },
-  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor", "flatdevice"],
   "coolC": -10,
   "steps": [
     {

@@ -265,6 +265,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Kopfloser Nachtlauf (alle Läufe)
         run: pnpm plugin:sim --out sim-runs
+      # Gegen den echten Server mit virtueller Uhr (≈ 3 min): Zeitumstellung Herbst und Frühjahr (Lücke D), Plugin-Update
+      # über die ninapm.db der freigegebenen Version (baut deren Simulator aus fromRef), alle Projekte vor der Dämmerung fertig.
+      - name: Kopfloser Nachtlauf gegen den echten Server (real-dst, real-dst-spring, real-upgrade, real-all-done)
+        run: pnpm plugin:sim real-dst real-dst-spring real-upgrade real-all-done --out sim-runs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

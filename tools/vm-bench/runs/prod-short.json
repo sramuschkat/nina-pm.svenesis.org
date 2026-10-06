@@ -1,0 +1,25 @@
+{
+  "name": "prod-short",
+  "description": "Stufe 2b: kurzer Lauf gegen prod (Test-Mandant, Prod-Profil der VM). Standort vorübergehend gestaucht (pnpm vm-bench prod-site), Dunkelheit endet ≈ 30 min nach dem Start; ein Testprojekt bei Dec +75°, Flats vom Panel, Abschluss und Nachtbericht über die Zeitpläne in AWS, echtes Discord. Der Prüfstand endet, sobald das Plugin die Nacht abschließt, wartet 3 min auf die Outbox und wertet das NINA-Log aus; den Abgleich im Web macht Sven (ops/stage-2b-prod.md). Standortwerte schreibt prod-site in .vm-bench/prod-short.json.",
+  "prod": true,
+  "untilMin": 60,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"],
+    "flats": true,
+    "flatsPanel": true
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true,
+    "FlatDeviceSettings-Id": "ASCOM.OmniSim.CoverCalibrator"
+  },
+  "trainedFlats": { "timeS": 1, "binnings": [1] },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor", "flatdevice"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 10, "screenshot": "live-status", "tab": "sequencer" },
+    { "atMin": 30, "screenshot": "nachtende", "tab": "sequencer" }
+  ]
+}

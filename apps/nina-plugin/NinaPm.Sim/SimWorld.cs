@@ -39,6 +39,12 @@ public sealed class SimWorld(SimSetup setup)
     public bool Recenter { get; set; } = setup.Recenter;
     public bool AutoFocusAfterFlip { get; set; } = setup.AutoFocusAfterFlip;
     public bool AfTrigger { get; set; } = setup.AfTrigger;
+    public double AfEveryMin { get; set; } = setup.AfEveryMin;
+    public double AfDurationS { get; set; } = setup.AfDurationS;
+    public double FlipPauseBeforeMin { get; set; } = setup.FlipPauseBeforeMin;
+
+    /// <summary>Letzter Autofokus (AF-Historie), <c>null</c> ohne Autofokus in diesem Lauf.</summary>
+    public DateTimeOffset? LastAutofocusUtc { get; set; }
 
     /// <summary>Montierung: Pier-Seite (<c>west</c> vor, <c>east</c> nach dem Flip) und früheste Flipzeit des Ziels.</summary>
     public string Pier { get; set; } = "west";

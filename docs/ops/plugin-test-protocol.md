@@ -50,6 +50,16 @@ Aus 21 NINA-Logs des Rigs in Starfront (23.08.–26.09.2026, Astro PM) und dem N
 | `starfront-roof-flats` | wie `starfront-roof` mit Panel-Flats: Dach bleibt bis nach dem Ende der Dunkelheit zu, die Panel-Flats laufen trotzdem (H2, 05.10.2026), danach `finished reason=unsafe` |
 | `starfront-center-fails` | Zentrieren scheitert für ein Ziel (falsche Koordinaten wie am 04.09.2026): Wiederholungsleiter bis vor das Blockende, Block übersprungen, nächstes Ziel belichtet |
 
+## Gegen den echten Server, kopflos: `real-dst` (Zeitumstellung, 05.10.2026)
+`real-*`-Läufe (`"real": "<Szenario>"`, `"startUtc"`) fahren den Plugin-Kern statt gegen den Test-Server gegen den **echten** Server (`apps/api/src/bench/real-server.ts`: lokaler Stack mit PGlite, echte Planung, Jobs, Nachtbericht). Dessen Uhr folgt der virtuellen Uhr des Simulators (`x-npm-sim-now`); `tick-5min` läuft je 5 virtuelle Minuten. Sie laufen nur auf Abruf (`pnpm plugin:sim real-dst`), nicht im Standardlauf; im CI als eigener Schritt im Auftrag `plugin-sim`.
+
+| Lauf | Prüft |
+|---|---|
+| `real-dst` | zwei Nächte in Starfront über die Zeitumstellung CDT → CST (31.10./01.11.2026, 02:00 = 07:00Z), Sequenz „Mehrere Nächte“ mit Warten auf die nautische Dämmerung, vier echte Ziele à 300 s, Flats am Nachtende: je Nacht ein Nacht-Schlüssel und eine abgeschlossene Session, Pläne nur für diese Nächte, Aufnahmen ohne Lücke über die doppelte Stunde, Nachtende zur astronomischen Dämmerung in CST, Warten auf Zeit und Beginn der zweiten Nacht in CST (≈ 1 min) |
+| `real-dst-spring` | dasselbe für die Frühjahrs-Umstellung CST → CDT (13./14.03.2027, die Stunde 02:00–03:00 fällt aus) mit Frühjahrszielen |
+| `real-upgrade` | Plugin-Update über eine bestehende `ninapm.db`: Nacht 1 mit dem Simulator der freigegebenen Version (`fromRef`, aus Git gebaut), Netzausfall in der letzten Stunde, Outbox voll; die aktuelle Version startet am nächsten Tag auf derselben Datenbank (`--keep-db`), sendet nach und fährt Nacht 2. Keine Aufnahme verloren oder doppelt, beide Sessions abgeschlossen. `fromRef` bei jeder Plugin-Freigabe auf deren Commit setzen |
+| `real-all-done` | alle Projekte vor der Dämmerung fertig: Nachtende zur Dämmerung, Flats, keine Session der nächsten Nacht am Morgen. Fehler am 05.10.2026 gefunden, behoben mit Engine 0.16.0 und Plugin 0.4.3 (#268, #269) |
+
 ## VM-Kurzlauf `vm-smoke` (≈ 25 min, ersetzt die Einzelläufe auf der VM)
 Prüft in **einem** Lauf, was nur echtes NINA zeigt: Profil im Heartbeat, `ImageSaved` mit NINAs Zeiten und Messwerten, NINAs Dither-Trigger unterdrückt, Kühlungsabweichung, Safety mit Park und Wiederaufnahme, Nachtende mit leerer Outbox, keine vom Server abgelehnte Anfrage. Die Ablauflogik ist vorher kopflos geprüft (`pnpm plugin:sim`, auch `vm-smoke` selbst mit denselben Zeitpunkten); auf Windows prüft der Adapter-Test die Bildpipeline in einer echten NINA-Sequenz.
 

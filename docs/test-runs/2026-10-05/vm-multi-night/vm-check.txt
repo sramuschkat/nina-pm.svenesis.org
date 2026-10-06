@@ -1,0 +1,5 @@
+  ✓ Zwei Nächte ohne NINA-Neustart: zwei abgeschlossene Sessions mit verschiedenen Nacht-Schlüsseln
+  ✓ Warten auf Zeit vor der 2. Nacht: Ende zur nautischen Dämmerung + 2 min (±30 s), erst danach Plan und Blöcke
+  ✓ Trigger-Box vor jeder Belichtung (P-24, nur NINA)
+  ✓ Ende nach der Höchstzahl Nächte
+  ✓ Nichts abgelehnt

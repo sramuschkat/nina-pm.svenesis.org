@@ -1,0 +1,20 @@
+{
+  "name": "real-flip",
+  "description": "Stufe 2a gegen den echten Server (≈ 45 min): Meridian-Flip ohne Rotator wie das Rig in Starfront. Montierung übernimmt den gestauchten Standort, Meridian 10 min nach dem Start, ein Ziel mit L und R bis zum Nachtende (35 min), Flip-Werte von Rig und Profil gleich, Recenter aus. Prüft Flip-Ereignis im Flip-Fenster, Aufnahmen vor und nach dem Flip, keine Flip- oder Standortwarnung, Abschluss und Bericht.",
+  "real": "flip",
+  "untilMin": 45,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 8, "screenshot": "vor-flip", "tab": "sequencer" },
+    { "atMin": 16, "screenshot": "nach-flip", "tab": "sequencer" }
+  ]
+}

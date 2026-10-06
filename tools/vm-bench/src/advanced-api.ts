@@ -23,6 +23,13 @@ export type Device =
   | 'weather'
   | 'switch';
 
+export interface FlatDeviceInfo {
+  readonly Connected: boolean;
+  readonly CoverState: string;
+  readonly LightOn: boolean;
+  readonly Brightness: number;
+}
+
 /** Abschnitt des NINA-Profils je Gerätetyp (Antwort von `/profile/show?active=true`). */
 const PROFILE_KEYS: Record<Device, string> = {
   camera: 'CameraSettings',
@@ -60,6 +67,16 @@ export class AdvancedApi {
   }
 
   /** Erreichbar und Version (wartet höchstens `timeoutMs`). */
+  /** Antwortet NINA (Advanced API) binnen 5 s? Für den Absturz-Wächter im Lauf. */
+  async alive(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.base}/version`, { signal: AbortSignal.timeout(5_000) });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   async waitUntilUp(timeoutMs: number): Promise<string> {
     const end = Date.now() + timeoutMs;
     let last = '';
@@ -90,6 +107,11 @@ export class AdvancedApi {
       throw new Error(`${device}: ${id} nach dem Rescan nicht gefunden`);
     await this.get(`/equipment/${device}/connect`, { to: id });
     return id;
+  }
+
+  /** Zustand des Flat-Panels (Abdeckung, Licht, Helligkeit). */
+  async flatDeviceInfo(): Promise<FlatDeviceInfo> {
+    return (await this.get<FlatDeviceInfo>('/equipment/flatdevice/info')).Response;
   }
 
   async activeProfile(): Promise<Record<string, unknown>> {

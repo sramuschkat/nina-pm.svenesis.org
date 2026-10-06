@@ -114,6 +114,19 @@ function Invoke-Job($Job) {
             if ($hash -ne ([string]$Job.args.sha256).ToLowerInvariant()) { Remove-Item $target -Force; throw "SHA-256 stimmt nicht ($hash)" }
             return "Sequenz $target"
         }
+        'clean-images' {
+            # Testbilder der Prüfstand-Läufe (05.10.2026: Speicher voll nach Transitserien – die Simulator-Kamera ignoriert
+            # die Belichtungszeit). Nur Datumsordner (JJJJ-MM-TT) im Bildordner des Profils und Zwischenbilder des Plate-Solvers.
+            $folder = [string]$Job.args.folder
+            if (-not (Test-Path -PathType Container $folder)) { return "Bildordner '$folder' fehlt – nichts gelöscht" }
+            $before = (Get-PSDrive -Name C).Free
+            $dirs = @(Get-ChildItem -LiteralPath $folder -Directory | Where-Object { $_.Name -match '^\d{4}-\d{2}-\d{2}$' })
+            foreach ($d in $dirs) { Remove-Item -LiteralPath $d.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+            $ps = Join-Path $env:LOCALAPPDATA 'NINA\PlateSolver'
+            if (Test-Path -LiteralPath $ps) { Get-ChildItem -LiteralPath $ps -File | Remove-Item -Force -ErrorAction SilentlyContinue }
+            $free = (Get-PSDrive -Name C).Free
+            return "$($dirs.Count) Datumsordner gelöscht, $([math]::Round(($free - $before) / 1GB, 1)) GB frei geworden, frei $([math]::Round($free / 1GB, 1)) GB"
+        }
         'update-agent' {
             $new = Join-Path $env:TEMP 'NinaPmBenchAgent.new.ps1'
             Invoke-WebRequest -UseBasicParsing -Uri "$($Cfg.server)/setup/NinaPmBenchAgent.ps1" -OutFile $new

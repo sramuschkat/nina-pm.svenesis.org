@@ -8,11 +8,16 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const SEQUENCE = 'nina-pm-bench';
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SAMPLES = fileURLToPath(
   new URL('../../../apps/nina-plugin/NinaPm.Nina/Samples/', import.meta.url),
 );
 
 export interface SequenceSpec {
+  /**
+   * Beispielsequenz (`apps/nina-plugin/NinaPm.Nina/Samples/<from>.json`) oder eine eigene Sequenzdatei (`….json`, Pfad
+   * relativ zum Repository, z. B. die Starfront-Sequenz in `.vm-bench/starfront/` – privat, nicht im Repository).
+   */
   readonly from: string;
   readonly removeFromStart?: readonly string[];
   /** Globaler Trigger *Dither after Exposures* (NINA) mit diesem `AfterExposures` – vm-smoke prüft die Unterdrückung (NT-23). */
@@ -23,6 +28,16 @@ export interface SequenceSpec {
    * NINA legt sie über seine Fabrik mit den Standard-Unterelementen an und füllt nur die genannten Eigenschaften.
    */
   readonly flats?: boolean;
+  /**
+   * In der Box *Vor Flats* NINAs *Wait for Time* mit Quelle *Nautical Dawn*: Flats erst nach der nautischen Dämmerung
+   * (Regel in Starfront, 05.10.2026). Ist sie schon vorbei, wartet NINA nicht (Wartezeit 0).
+   */
+  readonly flatsBeforeWait?: 'nauticalDawn';
+  /**
+   * Flat-Panel wie in der Rig-Checkliste: *Vor Flats* zuletzt *Close Cover* und *Toggle Light* an, *Nach Flats* *Toggle
+   * Light* aus. Braucht ein verbundenes Panel (`connect: flatdevice`, OmniSim CoverCalibrator).
+   */
+  readonly flatsPanel?: boolean;
   /**
    * Sequenz „Mehrere Nächte“ (AP-52): Quelle und Versatz der Anweisung *NINA-PM Warten auf Zeit* (Quelle wie
    * `WaitSource`: `Time`, `CivilDusk`, `NauticalDusk`, `AstronomicalDusk`).
@@ -267,7 +282,8 @@ function flatInstruction(
         `SequenceItem.FlatDevice.${kind === 'flat' ? 'TrainedFlatExposure' : 'TrainedDarkFlatExposure'}`,
       ),
       Strategy: { $type: T('Container.ExecutionStrategy.SequentialStrategy') },
-      Name: null,
+      // Kein `Name`: Container speichern ihren Namen, `null` überschriebe den Anzeigenamen der Vorlage
+      // („Trained Flat Exposure“) – der Baustein stünde ohne Namen in der Flats-Box (05.10.2026).
       Conditions: {
         $id: conditionsId,
         $type: COLLECTION('Conditions.ISequenceCondition'),
@@ -290,7 +306,12 @@ function flatInstruction(
 }
 
 /** Flat-Boxen an den Baustein *NINA-PM Instructions* hängen (siehe `SequenceSpec.flats`). */
-function addFlatBoxes(seq: unknown, firstId: number): void {
+function addFlatBoxes(
+  seq: unknown,
+  firstId: number,
+  beforeWait?: 'nauticalDawn',
+  panel?: boolean,
+): void {
   const find = (o: unknown): Record<string, unknown> | undefined => {
     if (Array.isArray(o)) return o.map(find).find(Boolean);
     if (o && typeof o === 'object') {
@@ -302,13 +323,46 @@ function addFlatBoxes(seq: unknown, firstId: number): void {
   };
   const container = find(seq);
   if (!container) throw new Error('Sequenz ohne NINA-PM Instructions');
-  const setup = box(firstId, () => []);
+  const panelItem = (runner: string, id: number, type: string, extra = {}) => ({
+    $id: String(id),
+    $type: T(`SequenceItem.FlatDevice.${type}`),
+    ...extra,
+    Parent: { $ref: runner },
+    ErrorBehavior: 0,
+    Attempts: 1,
+  });
+  const setup = box(firstId, (runner, next) => [
+    ...(beforeWait === 'nauticalDawn'
+      ? [
+          {
+            $id: String(next),
+            $type: T('SequenceItem.Utility.WaitForTime'),
+            Hours: 0,
+            Minutes: 0,
+            MinutesOffset: 0,
+            Seconds: 0,
+            SelectedProvider: { $type: T('Utility.DateTimeProvider.NauticalDawnProvider') },
+            Parent: { $ref: runner },
+            ErrorBehavior: 0,
+            Attempts: 1,
+          },
+        ]
+      : []),
+    ...(panel
+      ? [
+          panelItem(runner, next + 1, 'CloseCover'),
+          panelItem(runner, next + 2, 'ToggleLight', { OnOff: true }),
+        ]
+      : []),
+  ]);
   const perCombination = box(setup.next, (runner, next) => {
     const flat = flatInstruction('flat', next, runner);
     const dark = flatInstruction('dark', flat.next, runner);
     return [flat.json, dark.json];
   });
-  const teardown = box(perCombination.next, () => []);
+  const teardown = box(perCombination.next, (runner, next) =>
+    panel ? [panelItem(runner, next, 'ToggleLight', { OnOff: false })] : [],
+  );
   container.FlatsSetupRunner = setup.json;
   container.FlatsRunner = perCombination.json;
   container.FlatsTeardownRunner = teardown.json;
@@ -316,7 +370,10 @@ function addFlatBoxes(seq: unknown, firstId: number): void {
 
 /** Schreibt `<dir>/nina-pm-bench.json` und liefert den Pfad. */
 export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: string): string {
-  const raw = readFileSync(join(SAMPLES, `${r.sequence.from}.json`), 'utf8').replace(/^\uFEFF/, '');
+  const file = r.sequence.from.endsWith('.json')
+    ? join(ROOT, r.sequence.from)
+    : join(SAMPLES, `${r.sequence.from}.json`);
+  const raw = readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
   const seq = JSON.parse(raw) as SeqJson;
   const start = seq.Items.$values.find((c) => c.$type.includes('StartAreaContainer'));
   if (!start?.Items) throw new Error(`${r.sequence.from}: Start-Bereich fehlt`);
@@ -345,7 +402,8 @@ export function benchSequence(r: { readonly sequence: SequenceSpec }, dir: strin
   }
   if (r.sequence.globalDither !== undefined)
     seq.Triggers.$values.push(ditherTrigger(maxId(seq) + 1, seq.$id, r.sequence.globalDither));
-  if (r.sequence.flats) addFlatBoxes(seq, maxId(seq) + 1);
+  if (r.sequence.flats)
+    addFlatBoxes(seq, maxId(seq) + 1, r.sequence.flatsBeforeWait, r.sequence.flatsPanel);
   const path = join(dir, `${SEQUENCE}.json`);
   writeFileSync(path, JSON.stringify(seq, null, 2));
   return path;

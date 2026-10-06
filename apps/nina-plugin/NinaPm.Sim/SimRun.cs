@@ -104,6 +104,18 @@ public sealed class SimSetup
     [JsonProperty("afTrigger")] public bool AfTrigger { get; set; }
 
     /// <summary>
+    /// Mit <see cref="AfTrigger"/>: NINAs <em>Autofokus nach Zeit</em> läuft vor einer Belichtung, wenn seit dem letzten
+    /// Autofokus so viele Minuten vergangen sind (0 = nie), und dauert <see cref="AfDurationS"/> (Rig-Zeiten-Lauf 05.10.2026).
+    /// </summary>
+    [JsonProperty("afEveryMin")] public double AfEveryMin { get; set; }
+
+    /// <summary>Dauer eines Autofokus (Starfront gemessen 2–5 min).</summary>
+    [JsonProperty("afDurationS")] public double AfDurationS { get; set; } = 180;
+
+    /// <summary>NINA-Profil: Pause vor dem Meridian in Minuten (Starfront 5), an den Server gemeldet.</summary>
+    [JsonProperty("flipPauseBeforeMin")] public double FlipPauseBeforeMin { get; set; }
+
+    /// <summary>
     /// Inhalt der Flat-Box <em>Je Kombination</em> (AP-50): <c>trained</c> (Trained Flat + Trained Dark Flat Exposure),
     /// <c>trained_no_darks</c>, <c>auto</c> (Auto Exposure Flat, Anzahl offen) oder <c>none</c> (leere Box, keine Flats).
     /// </summary>

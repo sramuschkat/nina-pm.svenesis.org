@@ -156,6 +156,8 @@ public sealed class FlatPlanningTests
     [InlineData(@"D:\Astro\M 310\FLAT\x.fits", "M 31", "NGC 7000", null)] // kein Teilstring-Ersatz
     [InlineData(@"D:\Astro\FLAT\M 31_x.fits", "M 31", "NGC 7000", null)] // Ziel nicht als ganzes Segment
     [InlineData(@"D:\Astro\Sh2_132\FLAT\x.fits", "Sh2:132", "M 31", @"D:\Astro\M 31\FLAT\x.fits")] // sanitisiert wie NINA
+    // NINA-Standardmuster wie in Starfront ($$DATEMINUS12$$\$$IMAGETYPE$$\…): kein Zielordner, keine Kopie (05.10.2026)
+    [InlineData(@"C:\Users\admin\Documents\N.I.N.A\2026-10-05\FLAT\2026-10-05_03-09-31_RED_-10.00_1.00s_0000.fits", "Bench LRGB", "Bench RGB", null)]
     public void Kopie_ersetzt_nur_ein_ganzes_Pfadsegment(string source, string primary, string other, string? expected) =>
         Assert.Equal(expected, FlatFiles.PathFor(source, primary, other));
 }

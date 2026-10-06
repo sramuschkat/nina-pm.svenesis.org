@@ -134,6 +134,49 @@ describe('Flat-Boxen (vm-flats, AP-50)', () => {
     const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it('Flat-Panel wie die Rig-Checkliste: Vor Flats nach dem Warten Abdeckung zu und Licht an, Nach Flats Licht aus', () => {
+    const path = benchSequence(
+      {
+        sequence: {
+          from: 'one-night-safety',
+          flats: true,
+          flatsBeforeWait: 'nauticalDawn',
+          flatsPanel: true,
+        },
+      },
+      mkdtempSync(join(tmpdir(), 'seq-')),
+    );
+    const text = readFileSync(path, 'utf8');
+    const find = (o: unknown): Record<string, unknown> | undefined => {
+      if (Array.isArray(o)) return o.map(find).find(Boolean);
+      if (o && typeof o === 'object') {
+        const r = o as Record<string, unknown>;
+        if (String(r.$type ?? '').startsWith('NinaPm.Nina.Sequencer.NinaPmContainer')) return r;
+        return Object.values(r).map(find).find(Boolean);
+      }
+      return undefined;
+    };
+    const box = find(JSON.parse(text)) as Record<
+      string,
+      {
+        $id: string;
+        Items: { $values: { $type: string; OnOff?: boolean; Parent: { $ref: string } }[] };
+      }
+    >;
+    const setup = box.FlatsSetupRunner?.Items.$values ?? [];
+    expect(setup.map((i) => [shortType(i.$type), i.OnOff])).toEqual([
+      ['WaitForTime', undefined],
+      ['CloseCover', undefined],
+      ['ToggleLight', true],
+    ]);
+    const teardown = box.FlatsTeardownRunner?.Items.$values ?? [];
+    expect(teardown.map((i) => [shortType(i.$type), i.OnOff])).toEqual([['ToggleLight', false]]);
+    for (const i of [...setup, ...teardown])
+      expect([box.FlatsSetupRunner?.$id, box.FlatsTeardownRunner?.$id]).toContain(i.Parent.$ref);
+    const ids = [...text.matchAll(/"\$id": "(\d+)"/g)].map((m) => m[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });
 
 describe('Mehrere Nächte (vm-multi-night, AP-52)', () => {

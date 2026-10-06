@@ -6,6 +6,7 @@ using NinaPm.Sim;
 
 // Kopfloser Nachtlauf (tools/nina-sim): dotnet run --project apps/nina-plugin/NinaPm.Sim -- \
 //   --server http://127.0.0.1:<port>/api --run tools/nina-sim/runs/P-17.json --out <ordner> --start <ISO-Zeit des Serverstarts>
+//   [--keep-db]
 // Schreibt <ordner>/nina.log (Logzeilen mit virtueller Zeit) und <ordner>/ninapm.db.
 
 string Arg(string name) =>
@@ -18,7 +19,8 @@ var outDir = Arg("out");
 Directory.CreateDirectory(outDir);
 var start = DateTimeOffset.Parse(Arg("start"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
 var dbPath = Path.Combine(outDir, "ninapm.db");
-if (File.Exists(dbPath)) File.Delete(dbPath);
+// --keep-db: vorhandene ninapm.db weiterverwenden (Plugin-Update über die Datenbank einer älteren Version, real-upgrade).
+if (!args.Contains("--keep-db") && File.Exists(dbPath)) File.Delete(dbPath);
 
 using var logWriter = new StreamWriter(Path.Combine(outDir, "nina.log"), false, new UTF8Encoding(false)) { AutoFlush = true };
 var clock = new VirtualClock(start);

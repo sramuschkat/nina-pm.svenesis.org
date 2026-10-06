@@ -11,7 +11,7 @@ Claude Code fährt die VM-Läufe ohne Handgriffe: Ein kleiner Agent in der VM ho
 | Agent `C:\NinaPmBench\NinaPmBenchAgent.ps1` | VM | Aufgabenplanung „NINA-PM Bench Agent“ bei Anmeldung, in der angemeldeten Sitzung (NINA erscheint normal auf dem Bildschirm); fragt alle 3 s den Mac nach Aufträgen |
 | Advanced API (NINA-Plugin, Port 1888) | VM | Geräte verbinden, Profilwerte, Sequenz laden und starten, Reiter, Screenshots |
 
-Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log`, `update-agent` (sich selbst vom Mac neu laden), `clone-profile` (Profil kopieren, Token der Kopie geleert) und `set-trained-flats` (trainierte Flat-Belichtungen ins Prüfstand-Profil, Sicherung `<Profil>.profile.bak`): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
+Der Agent kennt nur die Aufträge `ping`, `restart-nina`, `stop-nina`, `install-plugin` und `put-sequence` (je mit SHA-256-Prüfung), `collect-log`, `update-agent` (sich selbst vom Mac neu laden), `clone-profile` (Profil kopieren, Token der Kopie geleert) und `set-trained-flats` (trainierte Flat-Belichtungen ins Prüfstand-Profil, Sicherung `<Profil>.profile.bak`), `clean-images` (vor jedem Lauf: nur Datumsordner `JJJJ-MM-TT` im Bildordner des Profils und die Zwischenbilder des Plate-Solvers löschen – die Simulator-Kamera ignoriert die Belichtungszeit, Transitserien liefern Hunderte FITS je Lauf; 05.10.2026 lief der Speicher voll): keine beliebigen Befehle, keine Anmeldedaten. Der Prüfstand-Schlüssel liegt auf dem Mac in `~/.config/nina-pm/vm-bench.json` und in der VM in `C:\NinaPmBench\agent.json`, nicht im Repository. Er ist kein Zugang eines Menschen.
 
 Netz: VMware-NAT, Mac `172.16.245.1`, VM `172.16.245.130`.
 
@@ -78,14 +78,16 @@ Safety-Monitor in Läufen (`steps`):
 - `monitor: disconnect|connect` trennt und verbindet ihn über die Advanced API. Das ist der Fall „Monitor verloren“ (P-25: `safety_monitor_not_connected`, kein Park/Unpark im Takt).
 - Vor jedem Lauf setzt der Prüfstand OmniSim auf sicher.
 
-Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
+**Absturz-Wächter (05.10.2026):** Während eines Laufs fragt der Prüfstand alle 30 s die Advanced API ab. Antwortet NINA zweimal im Abstand von 10 s nicht, holt er die Windows-Ereignisse (`app-events.txt` im Laufordner: .NET Runtime, Application Error), bricht den Lauf ab und wiederholt ihn **einmal** von vorn – der bekannte Absturz der x64-Emulation (`AccessViolationException` in `coreclr.dll`, 03.–05.10.2026) hält so keine Lauffolge mehr auf und bleibt belegt. Nach `real`-Läufen schreibt der Prüfstand den vorherigen Standort ins NINA-Profil zurück.
 
-### Gegen den echten Server (Stufe 2a): `real-night-flats`, `real-transit`, `real-commands`
+Läufe: `vm-flip`, `vm-smoke`, `vm-transit`, `vm-replan-transit`, `vm-transit-flip`, `vm-flats`, `vm-flats-auto`, `vm-multi-night`; gegen den echten Server `real-night-flats`, `real-transit`, `real-commands`, `real-full-night`, `real-network`, `real-flip` (unten). Ein Lauf endet 60 s, nachdem die Session abgeschlossen ist (mit `sessions: n` erst nach n abgeschlossenen Sessions); `untilMin` ist die Obergrenze.
+
+### Gegen den echten Server (Stufe 2a): `real-*`
 
 Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst baut. Planung, Transit-Auslieferung, Session-Jobs, Befehle und Nachtbericht des **echten** Servers prüfen sie nicht (Analyse 04.10.2026). Die `real-*`-Läufe starten statt des Test-Servers den echten API-Code (`apps/api/src/bench/real-server.ts` auf dem lokalen Stack `local-stack.ts`: PGlite mit Demo-Seed, echte Uhr, Takt wie `tick-5min` jede Minute, Discord-Nachbildung) auf demselben Port. Die Nacht wird über die **Daten** gestaucht, nicht über die Uhr:
 
-- **Standort:** Breite 50°, Länge so gelöst, dass die astronomische Dämmerung 25 / 40 / 35 min nach dem Start endet (`nightTimes`, Zone `Etc/GMT±h`); NINA bekommt denselben Standort ins Profil.
-- **Ziele:** Deep-Sky-Projekte bei Dec +75° (aus jeder Länge hoch genug) mit Stundenwinkel +2 h (kein Meridiandurchgang), freigegeben wie in den API-Tests; Filterrad wie die VM; Rig A ohne Rotator wie Starfront.
+- **Standort:** Breite 50°, Länge so gelöst, dass die astronomische Dämmerung 25 / 40 / 35 min nach dem Start endet (`nightTimes`, Zone `Etc/GMT±h`); NINA bekommt denselben Standort ins Profil. Die Montierung übernimmt ihn beim Verbinden (`TelescopeLocationSyncDirection = TOTELESCOPE`, nur in `real`-Läufen): NINA flippt nach der Sternzeit der Montierung, und der Simulator stünde sonst weiter in Starfront (`mount_site_mismatch`). Nach dem Lauf verbindet der Prüfstand die Montierung einmal neu und setzt sie so auf Starfront zurück. Der Sky-Simulator speichert den Standort auf 0,01° gerundet; NINA meldet dabei „Unable to set mount latitude“, das ist harmlos. Test-Server-Läufe übertragen nichts (`NOSYNC`), damit die Meldung nicht bei jedem Lauf erscheint.
+- **Ziele:** Deep-Sky-Projekte bei Dec +75° (aus jeder Länge hoch genug) mit Stundenwinkel +2 h (kein Meridiandurchgang; in `real-flip` Meridian 10 min nach dem Start, RA J2000 um die Präzession verschoben), freigegeben wie in den API-Tests; Filterrad wie die VM; Rig A ohne Rotator wie Starfront; Flip-Werte von Rig und Profil gleich (1 / 5 / 0 min, Dauer 120 s, Recenter aus).
 - **Transit:** Katalogeintrag `BENCH-1b` mit T0 aus der gewünschten Transitmitte (22 min nach dem Start), ohne Grundlinie festgelegt; die Wertung `observed` zieht der Prüfstand am Ende vor (Frist `TRANSIT_SETTLE_GRACE_MS`).
 - **Token:** Das Profil der VM schickt weiter `npm_test`; der Prüfstand schreibt es auf das Token einer echt angelegten Instanz um. Der *Testbetrieb* schaltet gegen den echten Server keine Sicherheitsprüfung ab (keine Test-Server-Antwort).
 
@@ -94,8 +96,17 @@ Die Läufe oben sprechen mit dem `nina-test-server`, der seine Pläne selbst bau
 | `real-night-flats` | Plan durch den Server, Nachtende, Flats und Dark-Flats, Abschluss, Nachtbericht, Discord, Zähler = gemeldete Lights | ≈ 35 min |
 | `real-transit` | festgelegter Transit in `targets`, Transitblock in NINA, Aufnahmen mit Beobachtung, `observed`, Abschluss | ≈ 45 min |
 | `real-commands` | Projekt des laufenden Blocks pausiert → Neuplanung, Kommandos `refresh_targets`/`reset_plan` quittiert, NINA-Neustart → `resume` derselben Session | ≈ 40 min |
+| `real-full-night` | typische Starfront-Nacht: vier Ziele, LRGB und SHO, Gain/Offset je Zeile, Dither alle 3; Flats je belichtetem Filter, erst nach *Wait for Time → Nautical Dawn* in *Vor Flats* | ≈ 100 min |
+| `real-network` | Netzausfall 12 min (Anfragen des Plugins ohne Antwort): Session verwaist (`stale`), danach Outbox nachgereicht, Abschluss | ≈ 50 min |
+| `real-flip` | Meridian-Flip **ohne Rotator** wie Starfront: Ereignis `flip` im Flip-Fenster, keines `flip_undetected`, Aufnahmen vor und nach dem Flip, keine Flip- oder Standortwarnung der Einstellungsprüfung | ≈ 45 min |
+| `real-long-night` | lange Nacht über Nacht (Lücke E): 4½ h Dunkelheit, sechs Ziele mit LRGB und SHO à 120 s, Dither alle 3, Flip ohne Rotator im letzten Block, Flats mit Panel nach der nautischen Dämmerung; Session nie verwaist (Stichprobe je Minute), keine Fehler-Ereignisse, höchstens ein Plan je 5 min, mindestens fünf Ziele belichtet | ≈ 5½ h |
+| `real-starfront-seq` | **Svens Starfront-Sequenz** (private Datei `.vm-bench/starfront/sr-nina-pm-single-night.json`, aus der Astro-PM-Vorlage umgebaut) mit gestauchter Nacht: Ground Station (Discord), Night Summary, Find Home, Panel auf/zu, *Vor Flats* mit *Wait for Time → Nautical Dawn*. Start ohne die beiden *Wait for Time* und ohne Autofokus (Simulator). Geräte ohne Simulator (Taukappe, Schalter) und das Kopierskript scheitern erwartungsgemäß und laufen weiter | ≈ 75 min |
 
-Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (dasselbe in `apps/api/test/bench-real-server.test.ts`).
+Auswertung aus der Datenbank (`report.json` mit `checks`) und aus dem NINA-Log (`summary.json`); der Lauf ist grün, wenn alle Prüfungen stimmen und das Log keine `ERROR`, keine 4xx und eine leere Outbox zeigt. Ohne VM prüft `pnpm vm-bench real-check <night-flats|transit|commands|full-night|network|flip|long-night|starfront-seq>` in Sekunden, dass der Server zum Szenario einen passenden Plan liefert (mit geplantem Flip) (dasselbe in `apps/api/test/bench-real-server.test.ts`).
+
+### Gegen prod (Stufe 2b): `prod-short`
+
+Kurzer Lauf gegen `nina-pm.svenesis.org` mit dem Test-Mandanten. Standort und Testziel rechnet `pnpm vm-bench prod-site --start <ISO>` aus; Sven stellt sie im Web ein, Claude Code greift nicht auf prod zu. Ablauf, Prüfliste und Rückbau stehen in `docs/ops/stage-2b-prod.md`.
 
 ### Flats (AP-50/AP-50b): `vm-flats`, `vm-flats-auto`
 
@@ -105,6 +116,8 @@ Zwei kurze Läufe statt einzelner Protokolle (Sven 04.10.2026: Laufzeit optimier
 |---|---|---|
 | `vm-flats` | P-12 (Reihenfolge, Kombinationen, Dark-Flat-Gruppe, Neustart in der 2. Kombination mit Fortsetzen) und P-35 (Bin 1/Bin 2, Gain/Offset `null`) | ≈ 25 min |
 | `vm-flats-auto` | P-38 (Auto-Flats einmal je Projekt: vorhandene Flats aus dem Test-Server, alle Kombinationen `covered`, kein Flat-Lauf) | ≈ 20 min |
+
+**Flat-Panel (Lücke B, 05.10.2026):** `vm-flats` und `real-full-night` verbinden den OmniSim-*CoverCalibrator* (`FlatDeviceSettings-Id`, `connect: flatdevice`) und bauen *Vor Flats* und *Nach Flats* wie die Rig-Checkliste: Abdeckung zu und Licht an, danach Licht aus (`sequence.flatsPanel`). NINA loggt Abdeckung und Licht nicht. Deshalb fragt der Prüfstand das Panel alle 5 s über die Advanced API ab (`panel.json` im Laufordner). Der Lauf ist nur grün, wenn während der Flats die Abdeckung zu (oder keine vorhanden) und das Licht mit Helligkeit > 0 an war und das Licht am Ende aus ist.
 
 | Gerät | Simulator | Zustand |
 |---|---|---|

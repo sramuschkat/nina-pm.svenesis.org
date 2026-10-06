@@ -1,0 +1,23 @@
+{
+  "name": "real-network",
+  "description": "Gegen den echten Server (≈ 45 min): Netzausfall von Minute 5 bis 17 (Anfragen des Plugins bleiben ohne Antwort). Das Plugin belichtet nach dem gespeicherten Plan weiter und sammelt die Meldungen in der Outbox; der Server markiert die Session nach 10 min als verwaist. Danach: Session wieder laufend, Outbox nachgemeldet, Zähler = Aufnahmen, Nachtende, Abschluss, Bericht.",
+  "real": "network",
+  "untilMin": 50,
+  "sequence": {
+    "from": "one-night-safety",
+    "removeFromStart": ["WaitForSunAltitude", "RunAutofocus"]
+  },
+  "profile": {
+    "MeridianFlipSettings-Recenter": false,
+    "MeridianFlipSettings-AutoFocusAfterFlip": false,
+    "SequenceSettings-DisableSimpleSequencer": true
+  },
+  "connect": ["camera", "mount", "filterwheel", "guider", "safetymonitor"],
+  "coolC": -10,
+  "steps": [
+    { "atMin": 5, "real": "drop_network" },
+    { "atMin": 12, "screenshot": "netz-weg", "tab": "sequencer" },
+    { "atMin": 17, "real": "restore_network" },
+    { "atMin": 20, "screenshot": "netz-zurueck", "tab": "sequencer" }
+  ]
+}
