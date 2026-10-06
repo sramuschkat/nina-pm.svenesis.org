@@ -272,6 +272,7 @@ export const en: Messages = {
       flip_in_transit: 'meridian flip during the transit',
       filter_not_found: 'filter not confirmed in the filter wheel',
       rotation_mismatch: 'rotation mismatch',
+      no_locked_transit: 'no locked transit in this night',
     },
     filter: {
       all: 'all',

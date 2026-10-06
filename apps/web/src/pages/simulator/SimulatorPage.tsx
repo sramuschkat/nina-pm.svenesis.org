@@ -200,6 +200,12 @@ export function SimulatorPage() {
     })),
   });
   const projects = details.map((d) => d.data).filter((p): p is ProjectView => p !== undefined);
+  // Festgelegte Transits der Nacht: Exoplaneten plant der Simulator nur damit, wie `POST /plan` (06.10.2026).
+  const transits = useQuery({
+    queryKey: ['simulation-transits', rigId, night],
+    queryFn: () => simulationApi.transits(rigId ?? '', night ?? ''),
+    enabled: rigId !== null && night !== null,
+  });
 
   // Uhrzeit im Minutentakt: Läuft die aktuelle Nacht schon, rechnet der Simulator ab jetzt wie das Plugin.
   const [nowMin, setNowMin] = useState(() => Math.floor(Date.now() / 60_000));
@@ -210,7 +216,7 @@ export function SimulatorPage() {
   const isCurrentNight = night !== null && night === current.data?.currentNight;
   const request = useMemo((): SimulationRequest | null => {
     if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
-    if (details.some((d) => d.isPending) || approved.isPending) return null;
+    if (details.some((d) => d.isPending) || approved.isPending || transits.isPending) return null;
     return {
       rig: rig as SimulationRequest['rig'],
       projects: projects as unknown as SimulationRequest['projects'],
@@ -227,6 +233,7 @@ export function SimulatorPage() {
       filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
       moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
       nowUtc: isCurrentNight ? new Date(nowMin * 60_000).toISOString() : null,
+      transits: transits.data?.items ?? [],
     };
     // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
   }, [
@@ -240,6 +247,7 @@ export function SimulatorPage() {
     withDrafts,
     isCurrentNight,
     nowMin,
+    transits.data,
   ]);
   const run = useSimulator();
   const key = request ? JSON.stringify(request) : '';

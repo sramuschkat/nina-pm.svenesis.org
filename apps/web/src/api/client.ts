@@ -445,6 +445,7 @@ export const projectsApi = {
 
 export type SimulationCreate = Schemas['SimulationCreate'];
 export type SimulationSaved = Schemas['SimulationSaved'];
+export type SimulationTransits = Schemas['SimulationTransits'];
 
 export type MultiSimInput = Schemas['MultiSimInput'];
 export type MultiSimResult = Schemas['MultiSimResult'];
@@ -460,6 +461,11 @@ export const simulationApi = {
     apiFetch<SimulationSaved>(`${V1}/simulations`, json('POST', body)),
   multi: (body: MultiSimInput) =>
     apiFetch<{ jobId: string }>(`${V1}/simulations/multi`, json('POST', body)),
+  /** Festgelegte Transits der Nacht am Rig – wie `POST /plan` (06.10.2026). */
+  transits: (rigId: string, night: string) =>
+    apiFetch<SimulationTransits>(
+      `${V1}/simulations/transits?${new URLSearchParams({ rigId, night }).toString()}`,
+    ),
 };
 
 /** Jobs (TK 7.4): Status abfragen, Ergebnis von `multi_sim`/`impact` holen (AP-32a). */

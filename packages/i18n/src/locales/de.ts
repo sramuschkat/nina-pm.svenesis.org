@@ -272,6 +272,7 @@ export const de = {
       flip_in_transit: 'Meridian-Flip im Transit',
       filter_not_found: 'Filter nicht im Filterrad bestätigt',
       rotation_mismatch: 'Rotation passt nicht',
+      no_locked_transit: 'kein festgelegter Transit in dieser Nacht',
     },
     filter: {
       all: 'alle',

@@ -5,6 +5,8 @@
  * `POST /api/web/v1/simulations/multi` (AP-32a, FA-SIM-04): Mehrnacht-Simulation als Job `multi_sim`
  * (`202 {jobId}`; höchstens 14 Nächte, dedupliziert je Rig, Startnacht, Mitglied und Optionen, höchstens 3 offene Jobs je
  * Mitglied → `429 auth.rate_limited`).
+ * `GET /api/web/v1/simulations/transits` (06.10.2026): festgelegte Transits einer Nacht an einem Rig für den
+ * Web-Simulator – dieselbe Auswahl wie `POST /plan` (`lockedTransits`), sonst fehlten Exoplaneten im Web-Plan.
  */
 import { OpenAPIHono } from '@hono/zod-openapi';
 import {
@@ -14,6 +16,8 @@ import {
   ProblemError,
   SimulationCreate,
   SimulationSaved,
+  SimulationTransits,
+  SimulationTransitsQuery,
 } from '@nina-pm/shared';
 import { enqueueJob } from '../jobs/enqueue';
 import type { ApiEnv } from '../lib/env';
@@ -69,10 +73,58 @@ export const multiSimRoute = defineRoute(
   },
 );
 
-export const SIMULATION_ROUTES = [createSimulationRoute, multiSimRoute] as const;
+export const simulationTransitsRoute = defineRoute(
+  { action: 'simulation.run', requirements: ['FA-SIM-05', 'FA-EXO-20', 'TK 7.2'] },
+  {
+    method: 'get',
+    path: '/api/web/v1/simulations/transits',
+    summary: 'Festgelegte Transits einer Nacht an einem Rig (Web-Simulator)',
+    tags: ['simulation'],
+    request: { query: SimulationTransitsQuery },
+    responses: {
+      200: {
+        description: 'Transits der Nacht',
+        content: { 'application/json': { schema: SimulationTransits } },
+      },
+      401: problemContent('Nicht angemeldet'),
+      403: problemContent('Keine Berechtigung'),
+      404: problemContent('resource.not_found'),
+      422: problemContent('validation.failed'),
+    },
+  },
+);
+
+export const SIMULATION_ROUTES = [
+  createSimulationRoute,
+  multiSimRoute,
+  simulationTransitsRoute,
+] as const;
 
 export function webSimulationRoutes(services: () => Promise<ApiServices>) {
   const app = new OpenAPIHono<ApiEnv>();
+  app.openapi(simulationTransitsRoute, async (c) => {
+    const svc = await services();
+    const { tenant } = requireTenant(c);
+    const { rigId, night } = c.req.valid('query');
+    const repos = svc.repositories(tenant);
+    if (!(await repos.equipment().rig(rigId))) throw new ProblemError('resource.not_found');
+    // Je Projekt der früheste festgelegte Transit mit aktiver Zeile – wie `deliverableByNight` für `POST /plan`.
+    const seen = new Set<string>();
+    const items = [];
+    for (const t of await repos.ninaRig(rigId).lockedTransits([night], svc.now())) {
+      if (t.lineId === null || seen.has(t.projectId)) continue;
+      seen.add(t.projectId);
+      items.push({
+        projectId: t.projectId,
+        observationId: t.observationId,
+        lineId: t.lineId,
+        windowStartUtc: isoUtc(t.windowStartUtc),
+        windowEndUtc: isoUtc(t.windowEndUtc),
+        lockedAtUtc: isoUtc(t.lockedAt),
+      });
+    }
+    return c.json({ items }, 200);
+  });
   app.openapi(multiSimRoute, async (c) => {
     const svc = await services();
     const { tenant } = requireTenant(c);
