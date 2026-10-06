@@ -2,11 +2,13 @@
  * Nachtplan eines Rigs für eine Nacht im Browser (Heute Nacht, Zeitleiste; 28.09.2026): dieselben Daten wie
  * der Simulator – Rig, freigegebene und aktive Projekte, Mondprofile, Filterfarben, Nacht-Tabelle des Servers
  * (NT-02) – über `buildPlanInput` → `planNight` im Web Worker (`useSimulator`). Ergebnis identisch mit dem
- * Simulator bei `selection: 'plannable'` (FA-SIM-05). Nur Anzeige, nichts wird gespeichert.
+ * Simulator bei `selection: 'plannable'` (FA-SIM-05), einschließlich der festgelegten Transits der Nacht
+ * (`GET /simulations/transits`, 06.10.2026 – vorher fehlte der Transit in Plan- und Filterzeile). Nur Anzeige, nichts
+ * wird gespeichert.
  */
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { equipmentApi, projectsApi, type ProjectView } from '../../api/client';
+import { equipmentApi, projectsApi, simulationApi, type ProjectView } from '../../api/client';
 import { useEquipmentList } from '../equipment/shared';
 import type { SimulationRequest, SimulationResult } from './simulate';
 import { useSimulator } from './use-simulator';
@@ -44,9 +46,14 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     queries: ids.map((id) => ({ queryKey: ['projects', id], queryFn: () => projectsApi.get(id) })),
   });
   const projects = details.map((d) => d.data).filter((p): p is ProjectView => p !== undefined);
+  const transits = useQuery({
+    queryKey: ['simulation-transits', rigId, night],
+    queryFn: () => simulationApi.transits(rigId ?? '', night ?? ''),
+    enabled: rigId !== null && night !== null,
+  });
   const request = useMemo((): SimulationRequest | null => {
     if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
-    if (approved.isPending || details.some((d) => d.isPending)) return null;
+    if (approved.isPending || transits.isPending || details.some((d) => d.isPending)) return null;
     return {
       rig: rig as SimulationRequest['rig'],
       projects: projects as unknown as SimulationRequest['projects'],
@@ -62,9 +69,21 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
       selection: 'plannable',
       filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
       moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
+      transits: transits.data?.items ?? [],
     };
     // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
-  }, [rig, site, night, table.data, moonProfiles.data, filters.data, projects, approved.isPending]);
+  }, [
+    rig,
+    site,
+    night,
+    table.data,
+    moonProfiles.data,
+    filters.data,
+    projects,
+    approved.isPending,
+    transits.isPending,
+    transits.data,
+  ]);
   const run = useSimulator();
   const key = request ? JSON.stringify(request) : '';
   const sim = useQuery({
@@ -74,13 +93,19 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     staleTime: Infinity,
     retry: false,
   });
-  const failed = table.isError || approved.isError || details.some((d) => d.isError) || sim.isError;
+  const failed =
+    table.isError ||
+    approved.isError ||
+    transits.isError ||
+    details.some((d) => d.isError) ||
+    sim.isError;
   return {
     result: sim.data ?? null,
     isPending: !failed && (request === null || sim.isPending),
     isError: failed,
     refetch: () => {
       void approved.refetch();
+      void transits.refetch();
       void sim.refetch();
     },
   };
