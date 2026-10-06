@@ -51,5 +51,10 @@ describe('rig-night:check', () => {
   it('Filter aus dem Starfront-Dateimuster', () => {
     expect(filterFromFile('2026-10-05_06-34-10_RED_-10.00_30.00s_0541.fits')).toBe('RED');
     expect(filterFromFile('SIM_L_0208.fits')).toBe('?');
+    expect(
+      filterFromFile(
+        'NGC 7380 – Wizard Nebula_LIGHT_SII_600.00s_G125_O50_Low Noise_-10.00C_0000_2026-10-06_05-26-21.fits',
+      ),
+    ).toBe('SII');
   });
 });

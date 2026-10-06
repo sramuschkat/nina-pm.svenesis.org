@@ -51,10 +51,16 @@ export interface RigNightReport {
 const MIN = 60_000;
 const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
 
-/** Filter aus dem NINA-Dateinamen (Muster `…_$$FILTER$$_$$SENSORTEMP$$_…`, Starfront 05.10.2026); sonst `?`. */
+/**
+ * Filter aus dem NINA-Dateinamen; sonst `?`. Zwei Muster:
+ * - `…_$$FILTER$$_$$SENSORTEMP$$_$$EXPOSURETIME$$s_…` (NINA-Standard, VM-Läufe 05.10.2026);
+ * - `<Ziel>_LIGHT_$$FILTER$$_$$EXPOSURETIME$$s_G…` (Starfront-Rig, Rig-Nacht 06.10.2026).
+ */
 export function filterFromFile(file: string | undefined): string {
-  const m = /_([A-Za-z][A-Za-z0-9]*)_-?\d+(?:\.\d+)?_\d+(?:\.\d+)?s_\d+\.\w+$/.exec(file ?? '');
-  return m?.[1] ?? '?';
+  const name = file ?? '';
+  const standard = /_([A-Za-z][A-Za-z0-9]*)_-?\d+(?:\.\d+)?_\d+(?:\.\d+)?s_\d+\.\w+$/.exec(name);
+  const starfront = /_LIGHT_([A-Za-z][A-Za-z0-9]*)_\d+(?:\.\d+)?s_/.exec(name);
+  return standard?.[1] ?? starfront?.[1] ?? '?';
 }
 
 export function checkRigNight(text: string, site: Site = STARFRONT): RigNightReport {
@@ -270,6 +276,12 @@ export function checkRigNight(text: string, site: Site = STARFRONT): RigNightRep
       captures: lights.filter((c) => c.line > s.line && c.line < endLine).length,
     };
   });
+  // Rig-Nacht 06.10.2026: Blöcke liefen an (Slew, Zentrieren) und endeten `completed` ohne Aufnahme (Plugin ≤ 0.4.7).
+  const empty = blocks.filter((b) => b.end === 'completed' && b.captures === 0);
+  if (empty.length)
+    notes.push(
+      `Blöcke ohne Aufnahme trotz completed: ${String(empty.length)}× (${empty.map((b) => b.startUtc ?? '?').join(', ')}) – Slew/Zentrieren ohne Belichtung`,
+    );
   const interrupted = blocks.filter((b) => b.end && !['completed', 'interrupted'].includes(b.end));
   if (interrupted.length)
     notes.push(
