@@ -324,7 +324,7 @@ describe('Lambdas und Logs (TK 4.2, 16.1, SV-15)', () => {
     .filter(([, f]) => String(f.Properties.FunctionName ?? '').startsWith('nina-pm-'))
     .map(([, f]) => f);
 
-  it('vier Lambdas (api, worker, ops-cli, migrate): Node 24, arm64, X-Ray aktiv, Source Maps', () => {
+  it('vier Lambdas (api, worker, ops-cli, migrate): Node 24, arm64, ohne X-Ray, Source Maps', () => {
     expect(appFunctions.map((f) => f.Properties.FunctionName).sort()).toEqual(
       Object.values(config.lambdas)
         .map((l) => l.functionName)
@@ -334,10 +334,16 @@ describe('Lambdas und Logs (TK 4.2, 16.1, SV-15)', () => {
       expect(f.Properties).toMatchObject({
         Runtime: 'nodejs24.x',
         Architectures: ['arm64'],
-        TracingConfig: { Mode: 'Active' },
       });
+      // Kein X-Ray (TK 16.1, 06.10.2026).
+      expect(f.Properties.TracingConfig?.Mode ?? 'PassThrough').not.toBe('Active');
       expect(json(f.Properties.Environment)).toContain('--enable-source-maps');
     }
+  });
+
+  it('keine X-Ray-Rechte in den Rollen (B-08)', () => {
+    const policies = all.flatMap((tpl) => resources(tpl, 'AWS::IAM::Policy'));
+    expect(json(policies)).not.toMatch(/xray:/);
   });
 
   it('alle Log-Gruppen behalten 90 Tage', () => {
