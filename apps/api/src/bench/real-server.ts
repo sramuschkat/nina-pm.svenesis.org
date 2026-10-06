@@ -141,7 +141,9 @@ function etcZone(lonDeg: number): string {
 
 /**
  * Länge, bei der die Dämmerung `twilight` (Aufwärtsdurchgang) ≈ `dawnMs` liegt und die Dunkelheit schon begonnen hat
- * (Abenddurchgang mindestens 60 min vor jetzt). Raster 0,25° ≈ 1 min.
+ * (Abenddurchgang mindestens 60 min vor jetzt). Raster 0,25° ≈ 1 min. Die Dämmerung liegt **nicht vor** `dawnMs`
+ * (0–1 min danach): Eine Sekunde zu früh kostete einen 5-min-Slot, und das flip-Szenario bekam keinen Block
+ * (`outranked`, CI 06.10.2026 20:40 UTC: Nachtende nach 34:59 statt 35:00 min).
  */
 function solveLongitude(
   latDeg: number,
@@ -171,8 +173,12 @@ function solveLongitude(
     const c = t.twilight[twilight];
     if (c.startUtc === null || c.endUtc === null) continue;
     if (c.startUtc * 1000 > nowMs - 60 * MIN) continue;
-    const diff = Math.abs(c.endUtc * 1000 - dawnMs);
-    if (!best || diff < Math.abs(best.dawnUtc * 1000 - dawnMs))
+    // Nicht vor dem Ziel; erst wenn es keinen späteren Kandidaten gibt, der nächstgelegene (Rückfall).
+    const score = (endUtc: number) => {
+      const d = endUtc * 1000 - dawnMs;
+      return d >= 0 ? d : 86_400_000 - d;
+    };
+    if (!best || score(c.endUtc) < score(best.dawnUtc))
       best = { lonDeg: lon, timeZone, night, dawnUtc: c.endUtc, duskUtc: c.startUtc };
   }
   if (!best) throw new Error('kein Standort mit passender Dämmerung gefunden');
