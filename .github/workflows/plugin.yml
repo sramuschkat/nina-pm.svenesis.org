@@ -265,14 +265,40 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Kopfloser Nachtlauf (alle Läufe)
         run: pnpm plugin:sim --out sim-runs
-      # Gegen den echten Server mit virtueller Uhr (≈ 3 min): Zeitumstellung Herbst und Frühjahr (Lücke D), Plugin-Update
-      # über die ninapm.db der freigegebenen Version (baut deren Simulator aus fromRef), alle Projekte vor der Dämmerung fertig.
-      - name: Kopfloser Nachtlauf gegen den echten Server (real-dst, real-dst-spring, real-upgrade, real-all-done)
-        run: pnpm plugin:sim real-dst real-dst-spring real-upgrade real-all-done --out sim-runs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: plugin-sim
+          path: sim-runs
+          retention-days: 14
+
+  # Gegen den echten Server mit virtueller Uhr, je Lauf ein eigener Runner (parallel, je 1–1½ min statt ≈ 5 min
+  # nacheinander, 06.10.2026): Zeitumstellung Herbst und Frühjahr (Lücke D), Plugin-Update über die ninapm.db der
+  # freigegebenen Version (baut deren Simulator aus fromRef), alle Projekte vor der Dämmerung fertig.
+  plugin-sim-real:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [real-dst, real-dst-spring, real-upgrade, real-all-done]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: pnpm install --frozen-lockfile
+      - name: Kopfloser Nachtlauf gegen den echten Server (${{ matrix.run }})
+        run: pnpm plugin:sim ${{ matrix.run }} --out sim-runs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plugin-sim-${{ matrix.run }}
           path: sim-runs
           retention-days: 14
 
