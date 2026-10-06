@@ -248,6 +248,33 @@ describe('Transit an NINA ausliefern (AP-44, transit.md §9)', () => {
     });
   });
 
+  it('Web-Simulator: GET /simulations/transits liefert den festgelegten Transit nur für Rig und Nacht', async () => {
+    const r = await w.web<{ items: Body[] }>(
+      `/simulations/transits?rigId=${w.rigId}&night=${night}`,
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.items).toEqual([
+      {
+        projectId,
+        observationId,
+        lineId,
+        windowStartUtc,
+        windowEndUtc,
+        lockedAtUtc: expect.any(String),
+      },
+    ]);
+    const next = await w.web<{ items: Body[] }>(
+      `/simulations/transits?rigId=${w.rigId}&night=${nextNight}`,
+    );
+    expect(next.body.items).toEqual([]);
+    const rigB = await w.web<{ items: Body[] }>(
+      `/simulations/transits?rigId=${w.rigBId}&night=${night}`,
+    );
+    expect(rigB.body.items).toEqual([]);
+    const foreign = await other.web(`/simulations/transits?rigId=${w.rigId}&night=${night}`);
+    expect(foreign.status).toBe(404);
+  });
+
   it('POST /plan: Transitblock ab Fensterbeginn, expose_series bis Fensterende', async () => {
     const r = await ninaCall(w.token, '/plan', 'POST', { night, reason: 'initial' });
     expect(r.status).toBe(200);

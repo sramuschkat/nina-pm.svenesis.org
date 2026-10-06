@@ -11,6 +11,7 @@ import {
   buildPlanInput,
   isDeliverable,
   simulationView,
+  type PlanTransitSource,
   type SimCard,
   type SimCheck,
   type SimProtocolRow,
@@ -45,6 +46,11 @@ export interface SimulationRequest {
    * (`POST /plan` mitten in der Nacht) – und zeigt eine Uhrzeit-Marke (06.10.2026). Ohne Angabe: ganze Nacht.
    */
   readonly nowUtc?: string | null;
+  /**
+   * Festgelegte Transits der Nacht an diesem Rig (`GET /simulations/transits`): Exoplaneten-Projekte plant der
+   * Simulator nur mit ihnen – als Transitblock wie `POST /plan` (06.10.2026; vorher fehlten sie im Web-Plan).
+   */
+  readonly transits?: readonly PlanTransitSource[];
 }
 
 export type Check = SimCheck;
@@ -83,7 +89,7 @@ const colorOf = (i: number) => `var(--npm-chart-series-${String((i % CHART_SERIE
 /**
  * Auslieferungsregel wie `POST /plan` (FA-SIM-05, TK 6.3 `isDeliverable`): Startdatum erreicht und Arbeit vorhanden
  * (Planungsbedarf > 0 oder Bonus). Der Schalter *An NINA ausliefern* zählt nicht – der Simulator zeigt, was das Rig
- * eingeschaltet täte. Exoplaneten fehlen ohnehin (keine Transits in der Web-Simulation).
+ * eingeschaltet täte. Exoplaneten nur mit festgelegtem Transit dieser Nacht (`req.transits`).
  */
 function deliverable(req: SimulationRequest, p: SimulationRequest['projects'][number]): boolean {
   const s = req.rig.scheduler;
@@ -108,15 +114,30 @@ function deliverable(req: SimulationRequest, p: SimulationRequest['projects'][nu
         })),
       ),
       overshootPct: s.overshootPct,
+      hasLockedTransit: (req.transits ?? []).some((t) => t.projectId === p.id),
     },
     req.night,
   );
 }
 
+/** Exoplaneten-Projekt ohne festgelegten Transit dieser Nacht – fehlt im Plan, steht mit Grund unter „nicht zugeteilt“. */
+function withoutTransit(req: SimulationRequest, p: SimulationRequest['projects'][number]): boolean {
+  return (
+    p.projectType === 'exoplanet' &&
+    (req.selection === 'given' ||
+      (p.approvalStatus === 'approved' && p.status === 'active' && p.deletedAt === null)) &&
+    !(req.transits ?? []).some((t) => t.projectId === p.id)
+  );
+}
+
 export function simulate(req: SimulationRequest): SimulationResult {
   // Entwürfe ohne Panel kann die Engine nicht planen (engine.input_invalid) – sie fehlen im Plan.
+  // Exoplaneten nie wie Deep-Sky: ohne festgelegten Transit auch nicht mit eigenen Entwürfen (`given`).
   const candidates = req.projects.filter(
-    (p) => p.panels.length > 0 && (req.selection === 'given' || deliverable(req, p)),
+    (p) =>
+      p.panels.length > 0 &&
+      !withoutTransit(req, p) &&
+      (req.selection === 'given' || deliverable(req, p)),
   );
   const input = buildPlanInput(req.rig, candidates, req.moonProfiles, req.nights, {
     night: req.night,
@@ -128,6 +149,7 @@ export function simulate(req: SimulationRequest): SimulationResult {
     selection: req.selection,
     // AF-Intervall des Rigs wie der Server, solange er die Trigger der Sequenz nicht kennt (FA-SIM-05).
     autofocusAfterTimeMin: req.rig.scheduler.overhead.afEveryMin,
+    transits: (req.transits ?? []).filter((t) => candidates.some((p) => p.id === t.projectId)),
   }) as PlanInput;
   const whole = planNight(input);
   const nowMs = req.nowUtc ? Date.parse(req.nowUtc) : Number.NaN;
@@ -201,7 +223,16 @@ export function simulate(req: SimulationRequest): SimulationResult {
     plan,
     chart,
     cards,
-    unallocated: view.unallocated,
+    unallocated: [
+      ...view.unallocated,
+      ...req.projects
+        .filter((p) => withoutTransit(req, p))
+        .map((p) => ({
+          projectId: p.id,
+          name: p.name,
+          reasons: [{ reason: 'no_locked_transit' }],
+        })),
+    ],
     protocol: view.protocol,
     lineNames: view.lineNames,
     header: view.header,

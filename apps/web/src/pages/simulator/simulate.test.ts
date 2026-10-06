@@ -71,6 +71,44 @@ describe('simulate', () => {
     expect(r.header.targets).toBe(r.plan.summary.targets);
   });
 
+  it('Exoplanet nur mit festgelegtem Transit: Transitblock wie POST /plan, sonst „nicht zugeteilt“ mit Grund', () => {
+    // 06.10.2026: WASP-3b stand in „An NINA ausgeliefert“ und im Plugin-Simulator, fehlte aber im Web-Simulator.
+    const exo = projects.map((p) =>
+      p.id === NGC281 ? { ...p, projectType: 'exoplanet' as const } : p,
+    );
+    const line = exo.find((p) => p.id === NGC281)?.panels[0]?.lines[0];
+    if (!line) throw new Error('Fixture ohne Zeile');
+    const transit = {
+      projectId: NGC281,
+      observationId: '0190c3f4-0000-7000-8000-0000000000e1',
+      lineId: line.id,
+      windowStartUtc: '2026-09-18T04:00:00Z',
+      windowEndUtc: '2026-09-18T06:00:00Z',
+      lockedAtUtc: '2026-09-17T12:00:00Z',
+    };
+
+    const without = simulate(request({ projects: exo }));
+    expect(without.plan.blocks.some((b) => b.projectId === NGC281)).toBe(false);
+    expect(without.unallocated.find((u) => u.projectId === NGC281)?.reasons).toEqual([
+      { reason: 'no_locked_transit' },
+    ]);
+
+    const withTransit = simulate(request({ projects: exo, transits: [transit] }));
+    const block = withTransit.plan.blocks.find((b) => b.projectId === NGC281);
+    expect(block?.kind).toBe('transit');
+    expect(withTransit.unallocated.some((u) => u.projectId === NGC281)).toBe(false);
+    // Gleiche Eingabe wie der Server (`buildPlanInput` mit `transits`).
+    const node = planNight(
+      buildPlanInput(rig, exo, moonProfiles, nights, {
+        night: '2026-09-17',
+        site: STARFRONT,
+        autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+        transits: [transit],
+      }) as PlanInput,
+    );
+    expect(withTransit.plan.outputHash).toBe(node.outputHash);
+  });
+
   it('Zielkarten für zugeteilte Projekte, sonst „nicht zugeteilt“ mit Gründen; Entwürfe nur mit given', () => {
     const r = simulate(request());
     const ids = [...r.cards.map((c) => c.projectId), ...r.unallocated.map((u) => u.projectId)];

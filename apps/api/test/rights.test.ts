@@ -1188,6 +1188,11 @@ async function projectExamples(): Promise<Record<string, Example>> {
         method: 'POST',
         expect: { 'fremder Mandant (Admin)': 404 },
       },
+      'GET /api/web/v1/simulations/transits': {
+        url: `/api/web/v1/simulations/transits?rigId=${common.rigId}&night=2026-09-17`,
+        // Das Rig gehört zu Mandant A: für den fremden Mandanten existiert es nicht.
+        expect: { 'fremder Mandant (Admin)': 404 },
+      },
       'POST /api/web/v1/simulations': {
         url: '/api/web/v1/simulations',
         method: 'POST',

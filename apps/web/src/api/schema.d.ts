@@ -9670,6 +9670,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/web/v1/simulations/transits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Festgelegte Transits einer Nacht an einem Rig (Web-Simulator)
+         * @description Aktion: `simulation.run` · FA-SIM-05, FA-EXO-20, TK 7.2
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description UUID */
+                    rigId: string;
+                    night: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Transits der Nacht */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SimulationTransits"];
+                    };
+                };
+                /** @description Nicht angemeldet */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Keine Berechtigung */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description resource.not_found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description validation.failed */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/web/v1/simulations/multi": {
         parameters: {
             query?: never;
@@ -17628,6 +17707,40 @@ export interface components {
             /** @default null */
             comment: string | null;
             projectVersion: number;
+        };
+        SimulationTransits: {
+            items: {
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                projectId: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                observationId: string;
+                /**
+                 * Format: uuid
+                 * @description UUID
+                 */
+                lineId: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowStartUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                windowEndUtc: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-18T13:00:00Z
+                 */
+                lockedAtUtc: string;
+            }[];
         };
         MultiSimInput: {
             /**

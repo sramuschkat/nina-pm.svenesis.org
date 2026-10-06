@@ -7041,6 +7041,47 @@ components:
         - decision
         - projectVersion
       additionalProperties: false
+    SimulationTransits:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+                description: UUID
+              observationId:
+                type: string
+                format: uuid
+                description: UUID
+              lineId:
+                type: string
+                format: uuid
+                description: UUID
+              windowStartUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              windowEndUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+              lockedAtUtc:
+                type: string
+                format: date-time
+                example: 2026-09-18T13:00:00Z
+            required:
+              - projectId
+              - observationId
+              - lineId
+              - windowStartUtc
+              - windowEndUtc
+              - lockedAtUtc
+      required:
+        - items
     MultiSimInput:
       type: object
       properties:
@@ -23665,6 +23706,64 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
         "412":
           description: resource.version_conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: validation.failed
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/simulations/transits:
+    get:
+      summary: Festgelegte Transits einer Nacht an einem Rig (Web-Simulator)
+      tags:
+        - simulation
+      description: "Aktion: `simulation.run` · FA-SIM-05, FA-EXO-20, TK 7.2"
+      x-npm-action: simulation.run
+      x-npm-requirements:
+        - FA-SIM-05
+        - FA-EXO-20
+        - TK 7.2
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: true
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: true
+          name: night
+          in: query
+      responses:
+        "200":
+          description: Transits der Nacht
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationTransits"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: resource.not_found
           content:
             application/problem+json:
               schema:
