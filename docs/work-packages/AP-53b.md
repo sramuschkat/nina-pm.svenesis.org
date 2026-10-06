@@ -39,10 +39,10 @@ FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **FA-NIN-28** „Andockbare Fenster 
 - Eigene Astronomie im Plugin (CLAUDE.md Regel 14); Höhen kommen nur vom Server.
 - Bildvorschau, HFR-Verlauf und Guiding-Grafik (zeigt NINA selbst).
 
-## Offene Entscheidungen (vor Beginn mit Sven)
-1. Datenquelle der Grafik wie oben (Blöcke aus dem gespeicherten Plan, Hintergrund aus `/simulation`) oder alles aus `/simulation` wie im Simulator. Letzteres ist einfacher, kann aber vom ausgeführten Plan abweichen.
-2. Zwei Fenster wie Astro PM oder ein Fenster mit Reitern „Status“ / „Protokoll“.
-3. Spalte **Ist** und Zähler im Protokoll: ja oder nur der reine Plan wie bei Astro PM.
+## Entscheidungen (Sven, 06.10.2026)
+1. **Datenquelle der Grafik:** Blöcke und Filterleiste aus dem gespeicherten Plan, Dämmerung, Höhenkurven und Mond aus `GET /simulation`, wie unter „Liefern“ beschrieben.
+2. **Zwei Fenster** („NINA-PM“ und „NINA-PM Protokoll“) wie bei Astro PM, keine Reiter.
+3. **Spalte „Ist“ und Zähler** im Protokoll gehören dazu.
 
 ## Automatisierte Abnahme
 - [ ] Kern-Tests: Statusmodell aus `LiveStatus` und laufender Belichtung (Restzeit, Block x/y, „Danach“), Zuordnung **Ist** je Planeintrag aus einem Beispiel-Protokoll (gespeichert, übersprungen mit Grund, fehlgeschlagen, läuft), Zähler, Filter „Nur Belichtungen“, TSV-Kopie
