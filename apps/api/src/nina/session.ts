@@ -405,6 +405,15 @@ export async function heartbeat(svc: ApiServices, p: NinaPrincipal, hb: Heartbea
     await eq.reportNinaFilterWheel(p.rigId, hb.filterWheel, now, {
       refreshMs: REPORTED_WHEEL_REFRESH_MS,
     });
+  // Auslesemodi der Kamera (FA-KAM-07): Anzeige des Abgleichs auf der Kameraseite. Eine leere Liste (Kamera
+  // getrennt) überschreibt die letzte Meldung nicht.
+  if (hb.cameraReadoutModes && hb.cameraReadoutModes.length > 0)
+    await eq.reportNinaReadoutModes(
+      p.rigId,
+      [...hb.cameraReadoutModes].sort((a, b) => a.index - b.index).map((m) => m.name),
+      now,
+      { refreshMs: REPORTED_WHEEL_REFRESH_MS },
+    );
   if (mismatch.codes.length > 0) {
     logger.warn('alert_nina_settings_mismatch', { rigId: p.rigId, codes: mismatch.codes });
     // Mit Code-Liste; dieselbe Liste höchstens einmal je 24 h, eine geänderte sofort.

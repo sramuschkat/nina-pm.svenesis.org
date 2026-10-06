@@ -1451,6 +1451,59 @@ export class EquipmentRepository extends TenantRepo {
   }
 
   /**
+   * Vom Plugin gemeldete Auslesemodi der Kamera dieses Rigs speichern (FA-KAM-07; Heartbeat
+   * `cameraReadoutModes`). Die Kameraseite zeigt Abweichungen zu den gepflegten Modi (`readoutMismatch`).
+   * Reine Anzeige: weder `settings_version` noch `updated_at` der Kamera ändern sich. Geschrieben wird nur bei
+   * geänderter Liste oder wenn die Meldung älter als `refreshMs` ist (OCC, DAT-17); weitere Schlüssel in
+   * `nina_reported` bleiben erhalten.
+   */
+  async reportNinaReadoutModes(
+    rigId: string,
+    modes: readonly string[],
+    now: Date,
+    opts: { refreshMs?: number } = {},
+  ): Promise<boolean> {
+    const rig = await this.rig(rigId);
+    if (!rig) throw notFound();
+    const cameraId = rig.cameraId;
+    const unchanged = (stored: unknown) => {
+      const r = (stored ?? null) as { readoutModes?: unknown; reportedAt?: unknown } | null;
+      const same =
+        Array.isArray(r?.readoutModes) &&
+        r.readoutModes.length === modes.length &&
+        r.readoutModes.every((m, i) => m === modes[i]);
+      const fresh =
+        opts.refreshMs !== undefined &&
+        typeof r?.reportedAt === 'string' &&
+        now.getTime() - Date.parse(r.reportedAt) < opts.refreshMs;
+      return same && fresh;
+    };
+    const before = await this.camera(cameraId);
+    if (!before || unchanged(before.ninaReported)) return false;
+    return this.tx(
+      async (trx) => {
+        const camera = await this.camera(cameraId, trx);
+        if (!camera || unchanged(camera.ninaReported)) return false;
+        const reportedAt = now.toISOString().replace(/\.\d{3}Z$/, 'Z');
+        await trx
+          .updateTable('camera')
+          .set({
+            ninaReported: json({
+              ...((camera.ninaReported ?? {}) as Record<string, unknown>),
+              readoutModes: [...modes],
+              reportedAt,
+            }),
+          })
+          .where('tenantId', '=', this.tenantId)
+          .where('id', '=', cameraId)
+          .execute();
+        return true;
+      },
+      [{ table: 'camera', id: cameraId }],
+    );
+  }
+
+  /**
    * Rig löschen (FA-RIG-13): gesperrt durch Projekte (auch Wunsch-Rig und Papierkorb), NINA-Instanzen, Sessions,
    * Nachtpläne einer Session und eine aktive Lease. Nachtpläne **ohne** Session (Web-Simulation, Prognose-Job,
    * Server-Plan ohne angelegte Session) sind abgeleitete Daten und gehen mit dem Rig (Ergänzung, freigegeben
