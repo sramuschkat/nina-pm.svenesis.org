@@ -361,14 +361,23 @@ export async function runFakeNight(options: FakeNightOptions): Promise<FakeNight
       : 'keine ausgelieferten Ziele – nur unzugeordnet';
   });
 
-  await step('ETag unverändert nach Aufnahmen (NT-19)', async () => {
-    const r = await call('/targets', { headers: { 'if-none-match': etag } });
-    if (r.status !== 304)
-      throw new StepFailed(
-        `${describe(r)} statt 304 (ETag vorher ${etag}, jetzt ${r.etag ?? '–'})`,
-      );
-    return undefined;
-  });
+  // Machen die angenommenen Lights die Zeile fertig, wird sie nicht mehr ausgeliefert und das ETag ändert sich zu
+  // Recht (FA-PRJ-12): kein Fehler, sondern erschöpfte Testdaten – Hinweis wie beim Zähler (Deploy 06.10.2026).
+  if (line && line.planningNeed <= expected) {
+    skip(
+      'ETag unverändert nach Aufnahmen (NT-19)',
+      `Zeile ${line.lineId} wird mit diesen Aufnahmen fertig (offen ${String(line.planningNeed)}) – Soll im Testprojekt erhöhen`,
+    );
+  } else {
+    await step('ETag unverändert nach Aufnahmen (NT-19)', async () => {
+      const r = await call('/targets', { headers: { 'if-none-match': etag } });
+      if (r.status !== 304)
+        throw new StepFailed(
+          `${describe(r)} statt 304 (ETag vorher ${etag}, jetzt ${r.etag ?? '–'})`,
+        );
+      return undefined;
+    });
+  }
 
   // 6. Neuplanung mit dem Stand der Nacht (`tonight`, FA-SIM-05).
   await step('Neuplanung mit tonight', async () => {
