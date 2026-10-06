@@ -315,6 +315,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
         if (boxes.CountsKnown && flatsMissing == 0 && darkMissing == 0)
         {
             Finish(combo, group, s.Night, darkCount);
+            CopyGroupDarkFlats(combo, group, s.Night);
             return currentMech;
         }
 
@@ -377,6 +378,7 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
 
         Finish(combo, group, s.Night, darkCount);
         CopyToOtherTargets(combo);
+        CopyGroupDarkFlats(combo, group, s.Night);
         if (filter.Kind == FilterResolutionKind.Found)
         {
             positions[combo.NinaFilter] = filter.Index + 1;
@@ -457,7 +459,11 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
             if (image.Dark)
             {
                 combo.DarkFlatsSaved++;
-                if (runningGroup is { } g) g.Saved++;
+                if (runningGroup is { } g)
+                {
+                    g.Saved++;
+                    g.Files.Add(image.Path);
+                }
             }
             else
             {
@@ -537,6 +543,39 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
                 log.Event("COPY", ("file", Path.GetFileName(destination)), ("status", ok ? "copied" : "skipped"));
             }
         }
+    }
+
+    /// <summary>
+    /// Dark-Flats einer Gruppe, die eine andere Kombination aufgenommen hat (NIN-15: einmal je Nacht), in die Ordner der Ziele
+    /// dieser Kombination kopieren (Sven 06.10.2026) – sonst lägen sie nur beim Primärziel der ersten Kombination. Je Ziel
+    /// einmal; die Ziele der aufnehmenden Kombination haben sie schon (<see cref="CopyToOtherTargets"/>). Nicht gemeldet.
+    /// </summary>
+    private void CopyGroupDarkFlats(FlatCombination combo, DarkFlatGroup? group, string night)
+    {
+        if (group is not { Status: FlatStatus.Done } || group.CombinationKey == combo.Key || group.Files.Count == 0) return;
+        var owner = store.FlatCombinations(night).FirstOrDefault(c => c.Key == group.CombinationKey);
+        if (owner?.Targets.FirstOrDefault()?.Name is not { } primary) return;
+        if (group.CopiedTo.Count == 0) group.CopiedTo.AddRange(owner.Targets.Select(t => FlatFiles.Sanitize(t.Name)).Distinct());
+        var changed = false;
+        foreach (var target in combo.Targets)
+        {
+            var name = FlatFiles.Sanitize(target.Name);
+            if (group.CopiedTo.Contains(name)) continue;
+            foreach (var source in group.Files)
+            {
+                var destination = FlatFiles.PathFor(source, primary, target.Name);
+                if (destination is null)
+                {
+                    log.Event("COPY", ("file", Path.GetFileName(source)), ("status", "no_target_segment"));
+                    continue;
+                }
+                var ok = host.CopyFile(source, destination);
+                log.Event("COPY", ("file", Path.GetFileName(destination)), ("status", ok ? "copied" : "skipped"));
+            }
+            group.CopiedTo.Add(name);
+            changed = true;
+        }
+        if (changed) store.SaveDarkFlatGroup(night, group);
     }
 
     private Dictionary<string, string> PositionNoticed()
