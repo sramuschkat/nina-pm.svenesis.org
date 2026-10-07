@@ -53,6 +53,7 @@ import type {
   SimulationRequest,
   SimulationResult,
   TargetCard,
+  DoneCard,
 } from './simulate';
 import { moonProfileLabel } from '../../lib/moon-profile-label';
 import { useUniformWidth } from '../../lib/use-uniform-width';
@@ -535,7 +536,9 @@ export function SimulatorPage() {
             <h2 id={`${ids.settings}-targets`} className={styles.blockTitle}>
               {t('simulator.tab.targets')}
             </h2>
-            {result.cards.length === 0 && result.unallocated.length === 0 ? (
+            {result.cards.length === 0 &&
+            result.doneCards.length === 0 &&
+            result.unallocated.length === 0 ? (
               <p className={styles.note}>{t('simulator.empty')}</p>
             ) : (
               <div className={styles.cards} ref={cardsRef}>
@@ -560,6 +563,14 @@ export function SimulatorPage() {
                     onToggle={(lineId, enabled) =>
                       toggle.mutate({ projectId: c.projectId, lineId, enabled })
                     }
+                  />
+                ))}
+                {result.doneCards.map((c) => (
+                  <DoneCardView
+                    key={c.projectId}
+                    card={c}
+                    tz={tz}
+                    comments={comments(c.projectId)}
                   />
                 ))}
                 {result.unallocated.length > 0 ? (
@@ -779,6 +790,46 @@ function downloadCsv(text: string, night: string) {
 }
 
 const checkOk = (c: Check): boolean | null => (c === 'none' ? null : c === 'ok');
+
+/** Heute Nacht abgearbeitet (07.10.2026): Ist der Nacht statt Belichtungsplan und Prüfungen, ausgegraut. */
+function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comments: number }) {
+  const { t } = useTranslation();
+  return (
+    <article
+      className={`${styles.card} ${styles.cardDone}`}
+      aria-label={card.name}
+      title={t('simulator.card.doneTitle')}
+    >
+      <h3 className={styles.cardTitle}>
+        <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
+        <strong>{card.name}</strong>
+        <Link
+          className={styles.cardOpen}
+          to={`/projekte/${card.projectId}`}
+          aria-label={t('simulator.card.open', { name: card.name })}
+          title={t('simulator.card.open', { name: card.name })}
+        >
+          <actionIcons.external size={ICON_SIZE.table} aria-hidden />
+        </Link>
+        <CommentCount count={comments} />
+        {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
+        <span className={styles.tag}>{t('simulator.card.doneTonight')}</span>
+      </h3>
+      <dl className={styles.facts}>
+        <dt>{t('simulator.card.creator')}</dt>
+        <dd>
+          <Person id={card.createdBy} />
+        </dd>
+        <dt>{t('simulator.card.window')}</dt>
+        <dd>
+          {hm(card.fromUtc, tz)} – {card.toUtc ? hm(card.toUtc, tz) : '…'}
+        </dd>
+        <dt>{t('simulator.card.doneExposures')}</dt>
+        <dd>{card.exposures}</dd>
+      </dl>
+    </article>
+  );
+}
 
 function TargetCardView({
   card,
@@ -1040,6 +1091,7 @@ function Findings({ result, tz }: { result: SimulationResult; tz: string }) {
   const { t } = useTranslation();
   const names = new Map(result.cards.map((c) => [c.projectId, c.name]));
   for (const u of result.unallocated) names.set(u.projectId, u.name);
+  for (const c of result.doneCards) names.set(c.projectId, c.name);
   return (
     <div className={styles.findings}>
       <section aria-labelledby="sim-warnings">

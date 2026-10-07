@@ -185,6 +185,35 @@ describe('executedNight', () => {
     expect(n.segments).toHaveLength(2);
   });
 
+  it('Plugin vor 0.4.13: der zuletzt begonnene Block aus den Aufnahmen läuft bei laufender Session weiter', () => {
+    const opts = {
+      night: '2026-10-06',
+      sessions: 1,
+      events: [],
+      lights: [
+        light(at('01:11:30'), 'R', 30, B_TRANSIT, P_TRANSIT),
+        light(at('04:00:00'), 'R', 30, B_TRANSIT, P_TRANSIT),
+        light(at('06:10:00', 7), 'OIII', 600, B_IC, P_IC),
+        light(at('09:45:00'), 'OIII', 600, B_IC, P_IC),
+      ],
+      names,
+      blockKinds: new Map([[B_TRANSIT, 'transit' as const]]),
+    };
+    // 05:01 CDT: letzte Aufnahme endete 09:55 UTC, Session läuft – IC 1795 läuft noch (Rest des Plans bleibt sichtbar).
+    const n = executedNight({ ...opts, running: true, now: at('10:01:00') });
+    expect(n.blocks.map((b) => [b.title, b.running, b.endUtc])).toEqual([
+      ['WASP-3b', false, at('04:00:30')],
+      ['IC 1795', true, null],
+    ]);
+    // Ohne Aktivität seit 30 min bzw. ohne laufende Session: abgeschlossen.
+    expect(
+      executedNight({ ...opts, running: true, now: at('10:40:00') }).blocks.at(-1)?.running,
+    ).toBe(false);
+    expect(
+      executedNight({ ...opts, running: false, now: at('10:01:00') }).blocks.at(-1)?.running,
+    ).toBe(false);
+  });
+
   it('Safety-Pause und übersprungene Blöcke benennen die Lücke', () => {
     const B2 = '77777777-7777-4777-8777-777777777777';
     const n = executedNight({

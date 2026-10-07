@@ -14,7 +14,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { equipmentApi, projectsApi, simulationApi, type ProjectView } from '../../api/client';
 import { useEquipmentList } from '../equipment/shared';
 import { actualView, type ActualView } from './actual-view';
-import type { SimulationRequest, SimulationResult, SimulationSource } from './simulate';
+import {
+  doneTonight,
+  type DoneCard,
+  type SimulationRequest,
+  type SimulationResult,
+  type SimulationSource,
+} from './simulate';
 import { useSimulator } from './use-simulator';
 
 export interface NightPlanState {
@@ -26,6 +32,8 @@ export interface NightPlanState {
   readonly refetch: () => void;
   /** Ist + Plan der laufenden bzw. vergangenen Nacht mit Session (AP-53c), sonst `null`. */
   readonly actual?: ActualView | null;
+  /** Heute Nacht abgearbeitet, im Rest-Plan nicht mehr zugeteilt (07.10.2026); ohne Ist leer. */
+  readonly done?: readonly DoneCard[];
   /** Letzte gespeicherte Revision der Nacht mit Hinweis `stale` (AP-53c). */
   readonly stored?: SimulationSource['stored'];
 }
@@ -167,6 +175,18 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
       gapLabel: () => '',
     });
   }, [serverInput.data, result, nowMin, filterColors]);
+  const done = useMemo(() => {
+    const data = serverInput.data;
+    if (!actual || !data?.executed || !result) return [];
+    const colors = new Map(result.cards.map((c) => [c.projectId, c.color]));
+    return doneTonight(
+      data.executed.blocks,
+      new Set(result.cards.map((c) => c.projectId)),
+      new Map(Object.entries(data.projectNames)),
+      new Map(projects.map((p) => [p.id, p.createdBy])),
+      (id) => colors.get(id) ?? 'var(--npm-chart-marker)',
+    );
+  }, [actual, serverInput.data, result, projects]);
   const stored = serverInput.data?.storedPlan
     ? {
         nightPlanId: serverInput.data.storedPlan.nightPlanId,
@@ -186,6 +206,7 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
   return {
     result,
     actual,
+    done,
     stored,
     projects,
     isPending: !failed && (request === null || sim.isPending),

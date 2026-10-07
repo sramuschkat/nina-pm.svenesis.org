@@ -203,3 +203,15 @@
   align-items: center;
   gap: var(--npm-space-1);
 }
+
+/* Abgearbeiteter Transit der Nacht (07.10.2026): ausgegraut, NINA erhält ihn nicht mehr. */
+.cardDone {
+  opacity: 0.55;
+}
+.doneTag {
+  padding: 0 var(--npm-space-2);
+  border-radius: 999px;
+  font-size: var(--npm-font-label);
+  color: var(--npm-text-light);
+  background: var(--npm-neutral-bg);
+}

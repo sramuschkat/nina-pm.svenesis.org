@@ -93,16 +93,23 @@ describe('simulate', () => {
       { reason: 'no_locked_transit' },
     ]);
 
-    // Transit dieser Nacht schon belichtet (Fenster vorbei, Ist vom Server): eigener Grund mit Anzahl.
+    // Transit dieser Nacht schon belichtet (Fenster vorbei, Ist vom Server): ausgegraute Zielkarte mit Anzahl.
     const done = simulate(
       request({
         projects: exo,
         server: {
-          input: buildPlanInput(rig, exo, moonProfiles, nights, {
-            night: '2026-09-17',
-            site: STARFRONT,
-            autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
-          }),
+          // Der Server liefert Exoplaneten ohne festgelegten Transit nicht aus (nightPlanInput).
+          input: buildPlanInput(
+            rig,
+            exo.filter((p) => p.id !== NGC281),
+            moonProfiles,
+            nights,
+            {
+              night: '2026-09-17',
+              site: STARFRONT,
+              autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+            },
+          ),
           inputHash: 'sha256:abc',
           projectNames: {},
           executed: {
@@ -133,8 +140,16 @@ describe('simulate', () => {
         },
       }),
     );
-    expect(done.unallocated.find((u) => u.projectId === NGC281)?.reasons).toEqual([
-      { reason: 'transit_done', message: '558' },
+    // Heute Nacht abgearbeitet: ausgegraute Zielkarte statt „Nicht zugeteilt“ (07.10.2026).
+    expect(done.unallocated.some((u) => u.projectId === NGC281)).toBe(false);
+    expect(done.doneCards).toEqual([
+      expect.objectContaining({
+        projectId: NGC281,
+        transit: true,
+        exposures: 558,
+        fromUtc: '2026-09-18T04:00:00Z',
+        toUtc: '2026-09-18T06:00:00Z',
+      }),
     ]);
 
     const withTransit = simulate(request({ projects: exo, transits: [transit] }));
@@ -164,6 +179,58 @@ describe('simulate', () => {
     // Entwurf ohne Panel kann nicht geplant werden und fehlt auch mit `given`.
     const given = simulate(request({ selection: 'given' }));
     expect(given.cards.map((c) => c.projectId)).not.toContain(DRAFT);
+  });
+
+  it('Deep-Sky heute Nacht belichtet, im Rest-Plan nicht mehr: ausgegraute Zielkarte; bloß angefahren nicht', () => {
+    const PAUSED = '0190c3f4-0000-7000-8000-0000000000d1';
+    const SLEWED = '0190c3f4-0000-7000-8000-0000000000d2';
+    const block = (projectId: string, title: string, exposures: number) => ({
+      blockId: null,
+      nightPlanId: null,
+      projectId,
+      panelId: null,
+      title,
+      kind: 'regular' as const,
+      startUtc: '2026-09-18T02:00:00Z',
+      endUtc: '2026-09-18T03:00:00Z',
+      endReason: 'target_removed',
+      exposures,
+      running: false,
+    });
+    const base = simulate(request());
+    const r = simulate(
+      request({
+        server: {
+          input: buildPlanInput(rig, projects, moonProfiles, nights, {
+            night: '2026-09-17',
+            site: STARFRONT,
+            autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+          }),
+          inputHash: 'sha256:abc',
+          projectNames: { [PAUSED]: 'IC 1795' },
+          executed: {
+            night: '2026-09-17',
+            sessions: 1,
+            blocks: [
+              block(PAUSED, 'IC 1795', 6),
+              block(SLEWED, 'M 31', 0),
+              block(base.cards[0]?.projectId ?? '', 'geplant', 3),
+            ],
+            segments: [],
+            events: [],
+            gaps: [],
+            counters: { saved: 9, skipped: 0, failed: 0 },
+          },
+          storedPlan: null,
+          firstPlan: null,
+        },
+      }),
+    );
+    // Geplante Projekte bleiben normale Zielkarten; ohne Aufnahme (nur angefahren) keine Karte.
+    expect(r.doneCards.map((c) => [c.name, c.transit, c.exposures])).toEqual([
+      ['IC 1795', false, 6],
+    ]);
+    expect(r.cards.map((c) => c.projectId)).toEqual(base.cards.map((c) => c.projectId));
   });
 
   it('Zielkarte nennt das Mondprofil der Zeile (Name, Abstand, Breite) statt „LA“; Protokoll übersetzt Namen', () => {

@@ -273,7 +273,6 @@ export const de = {
       filter_not_found: 'Filter nicht im Filterrad bestätigt',
       rotation_mismatch: 'Rotation passt nicht',
       no_locked_transit: 'kein festgelegter Transit in dieser Nacht',
-      transit_done: 'Transit dieser Nacht schon belichtet ({{n}} Aufnahmen)',
     },
     filter: {
       all: 'alle',
@@ -331,6 +330,10 @@ export const de = {
       flipInWindow: 'Flip im Transitfenster {{time}}',
       transitBox: 'Transit-Lauf: Dither aus, Filterwechsel aus, Vorrang',
       transit: 'Transit',
+      doneTonight: 'Heute Nacht abgearbeitet',
+      doneExposures: 'Aufnahmen',
+      doneTitle:
+        'In dieser Nacht belichtet, im Rest-Plan nicht mehr zugeteilt (fertig, pausiert oder Transit vorbei)',
       check: {
         altitude: 'Höhe (Maximum ≥ Mindesthöhe)',
         time: 'Zeit (≥ Mindestzeit am Ziel)',
@@ -2144,7 +2147,8 @@ export const de = {
     delivery: {
       creator: 'Ersteller',
       title: 'An NINA ausgeliefert',
-      info: 'Diese Ziele erhält NINA beim nächsten Planaufbau: freigegeben, aktiv, mit Planungsbedarf und am Rig mit „An NINA ausliefern“. Die Liste ist dieselbe, die das Plugin abruft.',
+      info: 'Diese Ziele erhält NINA beim nächsten Planaufbau: freigegeben, aktiv, mit Planungsbedarf und am Rig mit „An NINA ausliefern“. Die Liste ist dieselbe, die das Plugin abruft. Exoplaneten erscheinen nur in der Nacht ihres festgelegten Transits. Projekte, die heute Nacht gearbeitet haben und nicht mehr ausgeliefert werden (fertig, pausiert, Transit vorbei), stehen ausgegraut als abgearbeitet dabei.',
+      doneTonight: 'Heute Nacht abgearbeitet · {{n}} Aufnahmen · letzte bis {{time}}',
       filterSite: 'Standort',
       filterTelescope: 'Teleskop',
       filterCamera: 'Kamera',
@@ -2939,6 +2943,7 @@ export const de = {
     compute: 'Prognose berechnen',
     computing: 'Prognose wird berechnet …',
     noProjects: 'Für diese Nacht sind keine Projekte geplant.',
+    doneTonight: 'Heute Nacht abgearbeitet · {{n}} Aufnahmen · {{from}} – {{to}}',
     idle: '{{n}} weitere aktive Projekte ohne Frames in dieser Nacht.',
     col: {
       project: 'Projekt',

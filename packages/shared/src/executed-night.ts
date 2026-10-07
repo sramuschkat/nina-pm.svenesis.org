@@ -170,11 +170,15 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
   }
   blocks.sort((a, b) => a.start - b.start);
   const lastStarted = blocks.at(-1);
+  const live = (b: Work) =>
+    o.running && b === lastStarted && now - b.lastActivity <= RUNNING_STALE_S * 1000;
   for (const b of open.values()) {
-    if (o.running && b === lastStarted && now - b.lastActivity <= RUNNING_STALE_S * 1000)
-      b.running = true;
+    if (live(b)) b.running = true;
     else b.end = Math.max(b.start, b.lastActivity);
   }
+  // Plugin vor 0.4.13: der zuletzt begonnene Block aus den Aufnahmen läuft ebenso noch – sonst gilt er im Web als
+  // erledigt, und der Rest des gespeicherten Plans (SII ×6 ab 05:00) fehlt (Rig-Nacht 06./07.10.2026, Plugin 0.4.10).
+  for (const b of derived.values()) if (live(b)) b.running = true;
 
   // ---- leere Blöcke → Lücken ----
   const closed = blocks.filter((b) => !b.running);

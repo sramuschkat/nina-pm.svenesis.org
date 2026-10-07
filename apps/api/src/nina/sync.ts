@@ -341,16 +341,41 @@ export async function targets(
 
 /**
  * „An NINA ausgeliefert“ (S-41, FA-NIN-22): dieselbe Liste wie `targets` für das Rig, je Ziel mit Stand und
- * Fortschritt je Filter – Exoplaneten-Projekte nur in der Nacht ihres festgelegten Transits (AP-44).
+ * Fortschritt je Filter – Exoplaneten-Projekte nur in der Nacht ihres festgelegten Transits (AP-44). Projekte, die heute
+ * Nacht gearbeitet haben und nicht mehr ausgeliefert werden, stehen mit `doneTonight` dabei (ausgegraut, 07.10.2026).
  */
 export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDelivery> {
   const d = await targetsData(svc, p);
   const confirmed = d.confirmed;
   // Kommentare je Projekt (FA-PRJ-17): nur für die Web-Ansicht, nicht Teil von `targets`.
-  const comments = await svc
-    .repositories({ tenantId: p.tenantId })
+  const repos = svc.repositories({ tenantId: p.tenantId });
+  // Heute Nacht abgearbeitet (07.10.2026): Projekte mit gespeicherten Lights dieser Nacht, die nicht mehr in `targets`
+  // stehen (fertig, pausiert, Transit vorbei) – alle Projektarten; die Web-Ansicht zeigt sie ausgegraut.
+  const shipped = new Set(d.details.map((x) => x.project.id));
+  const done = new Map<string, { acquired: number; untilMs: number }>();
+  for (const l of (await repos.ninaRig(p.rigId).nightActual(d.night)).lights) {
+    if (!l.projectId || l.result !== 'saved' || shipped.has(l.projectId)) continue;
+    const cur = done.get(l.projectId) ?? { acquired: 0, untilMs: 0 };
+    done.set(l.projectId, {
+      acquired: cur.acquired + 1,
+      untilMs: Math.max(cur.untilMs, l.capturedAt.getTime() + l.exposureS * 1000),
+    });
+  }
+  const doneDetails =
+    done.size === 0
+      ? []
+      : (
+          await repos.projects().list({
+            admin: true,
+            deleted: false,
+            rigId: p.rigId,
+            mine: false,
+            favorites: false,
+          })
+        ).filter((x) => done.has(x.project.id) && x.project.rigId === p.rigId);
+  const comments = await repos
     .projects()
-    .commentCounts(d.details.map((x) => x.project.id));
+    .commentCounts([...d.details, ...doneDetails].map((x) => x.project.id));
   return {
     rigId: p.rigId,
     rigName: d.rig.name,
@@ -359,8 +384,9 @@ export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDeli
     generatedAtUtc: d.body.generatedAtUtc,
     settingsVersion: d.rig.settingsVersion,
     targetsEtag: d.etag,
-    items: d.details.map((x) => {
+    items: [...d.details, ...doneDetails].map((x) => {
       const pv = projectView(x);
+      const doneTonight = done.get(pv.id);
       return {
         id: pv.id,
         name: pv.name,
@@ -383,6 +409,14 @@ export async function delivery(svc: ApiServices, p: RigRef): Promise<NinaRigDeli
           accepted: f.accepted,
         })),
         commentCount: comments.get(pv.id) ?? 0,
+        ...(doneTonight
+          ? {
+              doneTonight: {
+                acquired: doneTonight.acquired,
+                untilUtc: iso(new Date(doneTonight.untilMs)),
+              },
+            }
+          : {}),
       };
     }),
   };

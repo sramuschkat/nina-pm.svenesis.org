@@ -85,7 +85,9 @@ export function DeliveryPage() {
   const failed = deliveries.find((d) => d.isError);
   const cards: Card[] = loaded
     .flatMap((rig) => rig.items.map((item) => ({ item, rig })))
-    .sort(SORTERS[sort]);
+    .sort(SORTERS[sort])
+    // Heute Nacht abgearbeitet ans Ende (stabil sortiert), ausgeliefert zuerst (07.10.2026).
+    .sort((a, b) => Number(!!a.item.doneTonight) - Number(!!b.item.doneTonight));
   const groups: { key: string; title: string | null; cards: Card[] }[] =
     group === 'none'
       ? [{ key: 'all', title: null, cards }]
@@ -255,11 +257,23 @@ function DeliveryCard({ card }: { card: Card }) {
   });
   const headingId = `delivery-${item.id}`;
   return (
-    <article className={styles.card} aria-labelledby={headingId}>
+    <article
+      className={item.doneTonight ? `${styles.card} ${styles.cardDone}` : styles.card}
+      aria-labelledby={headingId}
+    >
       <div className={styles.cardHead}>
         <h3 id={headingId}>{item.name}</h3>
         <CommentCount count={item.commentCount} />
         <StatusBadge kind="project" value={item.status} />
+        {item.doneTonight ? (
+          // Heute Nacht abgearbeitet: NINA erhält das Projekt nicht mehr (07.10.2026).
+          <span className={styles.doneTag}>
+            {t('nina.delivery.doneTonight', {
+              time: formatDateTime(item.doneTonight.untilUtc, zone, i18n.language),
+              n: item.doneTonight.acquired,
+            })}
+          </span>
+        ) : null}
       </div>
       <p className={styles.facts}>
         <span>
@@ -304,7 +318,7 @@ function DeliveryCard({ card }: { card: Card }) {
           </div>
         ))}
       </dl>
-      {canRemove ? (
+      {canRemove && !item.doneTonight ? (
         <div className={styles.actions}>
           <button type="button" className={styles.button} onClick={remove.open}>
             {t('nina.delivery.remove')}
