@@ -2328,6 +2328,8 @@ export const en: Messages = {
         cloudy: 'cloudy',
         none: 'no data',
       },
+      cloudyForecast: 'cloudy per forecast',
+      legendCloudy: 'cloudy (recorded or per forecast)',
       hours: '{{h}} h usable',
       forecast: 'forecast {{rating}}',
       seeing: 'seeing {{v}}',

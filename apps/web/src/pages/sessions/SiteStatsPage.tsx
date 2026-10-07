@@ -30,7 +30,8 @@ const CLEAR_RATING = 3;
 /**
  * Klasse eines Kalendertags (Entscheidung Sven 07.10.2026): *klar, belichtet* = nutzbar (≥ 1 h belichtete Lights);
  * *klar, aber nicht genutzt* = Vorhersage gut oder besser, aber unter 1 h belichtet; *teilweise* = Session ohne
- * nutzbare Belichtung; *bewölkt* = als bewölkt/nicht genutzt erfasst; sonst *keine Angabe*. Die Vorhersage kommt aus
+ * nutzbare Belichtung; *bewölkt* = als bewölkt/nicht genutzt erfasst oder – ohne Session – Vorhersage unter „gut“
+ * (nur Anzeige, keine erfasste Nacht; Entscheidung Sven 07.10.2026); sonst *keine Angabe*. Die Vorhersage kommt aus
  * dem Schnappschuss zum Sessionbeginn, sonst aus der gespeicherten Vorhersage je Standort und Nacht (AP-64b) – so wird
  * auch eine vergangene Nacht **ohne Session** „klar, aber nicht genutzt“, wenn die Vorhersage gut oder besser war.
  */
@@ -40,6 +41,8 @@ export function dayKind(n: ClearNightNight | undefined): DayKind {
   if (n.usable === true) return 'clear';
   if (n.forecastRatingIndex !== null && n.forecastRatingIndex >= CLEAR_RATING) return 'clearUnused';
   if (n.source === 'session' || n.sessionIds.length > 0) return 'partial';
+  // Ohne Session und ohne Erfassung, Vorhersage unter „gut“: bewölkt laut Vorhersage (Entscheidung Sven 07.10.2026).
+  if (n.forecastRatingIndex !== null) return 'cloudy';
   return 'none';
 }
 
@@ -180,7 +183,9 @@ function Calendar({ view }: { view: ClearNightView }) {
   const tip = (night: string, x: ClearNightNight | undefined) =>
     [
       formatNightKey(night),
-      t(`evaluation.site.kind.${dayKind(x)}`),
+      dayKind(x) === 'cloudy' && x?.source !== 'manual'
+        ? t('evaluation.site.cloudyForecast')
+        : t(`evaluation.site.kind.${dayKind(x)}`),
       x?.usableHours !== null && x?.usableHours !== undefined
         ? t('evaluation.site.hours', { h: n(x.usableHours) })
         : null,
@@ -207,7 +212,7 @@ function Calendar({ view }: { view: ClearNightView }) {
           {(['clear', 'clearUnused', 'partial', 'cloudy', 'none'] as const).map((k) => (
             <li key={k}>
               <span className={styles.legendBox} data-kind={k} aria-hidden="true" />
-              {t(`evaluation.site.kind.${k}`)}
+              {k === 'cloudy' ? t('evaluation.site.legendCloudy') : t(`evaluation.site.kind.${k}`)}
             </li>
           ))}
         </ul>

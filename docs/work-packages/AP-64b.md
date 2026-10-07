@@ -32,6 +32,9 @@ FA-AUS-16, FA-AUS-17, S-64 (Ergänzung im Fachkonzept mit diesem Paket)
 - **Reader:** `GET /web/v1/sites/{id}/clear-nights` liefert `forecastRatingIndex`/`forecastNightMean` auch für
   Nächte ohne Session; der Schnappschuss einer Session hat Vorrang. Die laufende bzw. bevorstehende Nacht des
   Standorts (Mittag bis Mittag) bleibt ohne gespeicherte Vorhersage.
+- **Kalender (Web, `dayKind`):** Nacht ohne Session mit Vorhersage unter „gut“ → **„bewölkt“** (grau, Tooltip „bewölkt
+  laut Vorhersage“, Legende „bewölkt (erfasst oder laut Vorhersage)“); ein manueller Eintrag überschreibt das. Nur
+  Anzeige: Die Nacht zählt nicht als erfasst, „Nutzbare Nächte“ bleibt unverändert. Ohne Vorhersage „keine Angabe“.
 - **Löschen:** Standort löschen nimmt die Vorhersagen mit; Mandant löschen (`TENANT_DELETE_ORDER`) und Betriebsexport
   (`evaluationCounts`) kennen die Tabelle.
 - Fachkonzept FA-AUS-17 und S-64 (Ergänzung 07.10.2026), TK 6.2 und `tick-5min`, Schema und INDEX, Changelog.
@@ -41,13 +44,12 @@ FA-AUS-16, FA-AUS-17, S-64 (Ergänzung im Fachkonzept mit diesem Paket)
   „gemessen/beobachtet“; ohne Session ist nichts beobachtet. Eine Nacht ohne Session ist darum kein Fehltreffer,
   sondern „klar, aber nicht genutzt“. Neu ist nur: Fehlt einer Session der Schnappschuss, zählt die gespeicherte
   Vorhersage der Nacht.
-- Nächte ohne Session mit schlechter Vorhersage werden **nicht** automatisch „bewölkt“ – „bewölkt“ bleibt die manuelle
-  Erfassung (FA-AUS-17); sie zeigen im Tooltip die Vorhersage.
 - Nachträgliches Befüllen vergangener Nächte (der Wetter-Cache hält nur die kommenden Tage).
 
 ## Entscheidung (Sven, 07.10.2026)
 „Klar, aber nicht genutzt“ = Vorhersage gut oder besser, aber unter 1 h belichtet – auch für Nächte ohne Session. Dafür
-wird die Vorhersage je Standort und Nacht gespeichert.
+wird die Vorhersage je Standort und Nacht gespeichert. Nächte ohne Session mit Vorhersage unter „gut“ erscheinen
+automatisch als „bewölkt“ (nur Anzeige); ein manueller Eintrag überschreibt das.
 
 ## Automatisierte Abnahme
 - [x] DSQL-Lint (`pnpm db:lint`), Migrationsliste und `bundled.ts`, Rechte unter `app_job` (`job-role.test.ts`),
@@ -55,7 +57,8 @@ wird die Vorhersage je Standort und Nacht gespeichert.
 - [x] API (PGlite, `site-night-forecast.test.ts`): Writer mit derselben Bewertung wie `weatherView`, idempotent, nach
   Beginn der Dunkelheit unverändert, fremder Standort `no_site`, Standort löschen; Reader: Nacht ohne Session mit guter
   Vorhersage, Vorrang des Schnappschusses, laufende Nacht ohne, Treffsicherheit nur mit Session, Mandantenbindung.
-- [x] Vitest Web: `dayKind` für Nächte nur mit Vorhersage; Kalender und Kachel „davon klar, ungenutzt“.
+- [x] Vitest Web: `dayKind` für Nächte nur mit Vorhersage (gut → klar, nicht genutzt; darunter → bewölkt; ohne → keine
+  Angabe); Kalender mit Tooltip und Legende, Kachel „davon klar, ungenutzt“, „Nutzbare Nächte“ unverändert.
 - [ ] `pnpm test:dsql`-Protokoll für Migration 0014 (Sven, H-22), CI grün.
 
 ## Menschliche Aufgaben
