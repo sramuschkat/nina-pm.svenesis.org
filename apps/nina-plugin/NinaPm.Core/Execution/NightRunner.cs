@@ -421,7 +421,8 @@ public sealed class NightRunner(
         var flatsPending = flatsOn && !stale && !nightRunning && flats!.Pending(row.Night, FlatOptions(b), includeCarryOver: hasSession);
         var context = new NightContext(clock.UtcNow, stale ? null : stored, row.NightWindowEndUtc, stale, hasSession,
             FlatsEnabled: flatsOn, FlatsPending: flatsPending, Resuming: forcedPlan == NinaPlanRequestReason.Resume && hasSession,
-            Night: row.Night, DoneBlocks: DoneBlocks(stored), SkyFlats: b.Rig.Scheduler.Flats.Source == FlatsSource.Sky);
+            Night: row.Night, DoneBlocks: DoneBlocks(stored), SkyFlats: b.Rig.Scheduler.Flats.Source == FlatsSource.Sky,
+            TargetsChanged: targetsChanged);
 
         // Nach Neustart/Unterbrechung (resume, mit Session) bzw. Benutzer-Stopp oder Start ohne Session (initial) online
         // neu planen, solange die Nacht läuft; offline gilt danach der gespeicherte Plan.
@@ -450,7 +451,7 @@ public sealed class NightRunner(
             case NightAction.WaitForBlock:
                 // Vor einem späteren Block auf geänderte Ziele bzw. Einstellungen reagieren (Freigabe, Pause, Zeile aus),
                 // nicht erst bei dessen Start – sonst blieben bis zum Blockstart Stunden Dunkelzeit ungenutzt (Analyse 04.10.2026).
-                if (!Loop.PlanLocked(clock.UtcNow) && (targetsChanged || context.Plan!.SettingsVersion != SettingsVersion(b))
+                if (!Loop.PlanLocked(clock.UtcNow, targetsChanged) && (targetsChanged || context.Plan!.SettingsVersion != SettingsVersion(b))
                     && await RefreshBeforeBlockAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
                     return;
                 if (!Loop.PlanLocked(clock.UtcNow) && await RefreshForIdleAsync(b, row.Night, context.Plan!, step.BlockIndex!.Value, token).ConfigureAwait(false))
@@ -458,6 +459,9 @@ public sealed class NightRunner(
                 await WaitAsync(step.WaitUntilUtc!.Value, wakeOnTargets: true, token).ConfigureAwait(false);
                 return;
             case NightAction.Idle:
+                // Leerer Plan bzw. alle Blöcke vorbei: neue Ziele aus dem Web wecken nach höchstens 1 min (0.4.12).
+                await WaitAsync(step.WaitUntilUtc ?? clock.UtcNow + NightLoop.BlockedWait, wakeOnTargets: true, token).ConfigureAwait(false);
+                return;
             case NightAction.BlockedWait:
             case NightAction.WaitForFlats:
             case NightAction.WaitForNight:
@@ -659,7 +663,7 @@ public sealed class NightRunner(
         while (clock.UtcNow < untilUtc)
         {
             if (forcedPlan is not null) return;
-            if (wakeOnTargets && (targetsChanged || bootstrapReload) && !Loop.PlanLocked(clock.UtcNow)) return;
+            if (wakeOnTargets && (targetsChanged || bootstrapReload) && !Loop.PlanLocked(clock.UtcNow, targetsChanged)) return;
             var next = clock.UtcNow + WakeCheck;
             await blockHost.DelayAsync(next < untilUtc ? next : untilUtc, token).ConfigureAwait(false);
         }
@@ -667,7 +671,7 @@ public sealed class NightRunner(
 
     private async Task<bool> RefreshBeforeBlockAsync(NinaBootstrap b, string night, StoredPlan stored, int index, CancellationToken token)
     {
-        if (Loop.PlanLocked(clock.UtcNow)) return false;
+        if (Loop.PlanLocked(clock.UtcNow, targetsChanged)) return false;
         var etag = await RefreshTargetsAsync(token).ConfigureAwait(false);
         var block = stored.Plan.Blocks[index];
         var decision = ReplanPolicy.BeforeBlock(stored.TargetsEtag, etag, stored.SettingsVersion, SettingsVersion(b),
