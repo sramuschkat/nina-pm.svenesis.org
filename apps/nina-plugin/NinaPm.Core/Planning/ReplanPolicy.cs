@@ -21,6 +21,12 @@ public enum RefreshCause
     /// 06.10.2026) – sofort ab jetzt neu planen statt nach der 5-min-Sperre erneut anzufahren. Einmal je Einheit.
     /// </summary>
     EmptyBlock,
+
+    /// <summary>
+    /// Mehr als 3 zeitgeführt übersprungene Belichtungen in einem Block (execution.md §4.2): der Block endet mit
+    /// <c>replanned</c>, der Container plant sofort ab jetzt neu (Plugin 0.4.18).
+    /// </summary>
+    SkippedExposures,
 }
 
 /// <summary>Entscheidung vor einem Block: Plan behalten oder <c>POST /plan {reason: refresh, startAtUtc = jetzt}</c>.</summary>

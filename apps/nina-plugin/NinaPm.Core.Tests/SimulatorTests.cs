@@ -319,4 +319,48 @@ public sealed class SimulatorTests
         Assert.Equal("#ffffff", ChartPalette.TextOn("#5a1010"));
         Assert.Equal(0.18 + 0.4 * 0.31, ChartPalette.MoonAlpha(31), 6);
     }
+
+    // ---- Plugin 0.4.18 (Analyse 07.10.2026) -------------------------------------------------------------------------
+
+    [Fact]
+    public void Nicht_zugeteilt_mit_lokalem_Stand_laeuft_an_der_Rig_bzw_heute_Nacht_abgearbeitet()
+    {
+        // Befund 13: der Reiter zeigte die Liste des Servers ungefiltert – auch Projekte, an denen die Rig noch arbeitet bzw.
+        // die heute Nacht belichtet und nicht mehr geplant sind (wie Web PR #301).
+        var plan = Example<NinaPlanResponse>("plan.response");
+        var running = plan.Blocks[1];
+        var m31 = Sim.Unallocated.Single().ProjectId;
+        var done = Guid.NewGuid();
+        running.ProjectId = m31; // offener Block im gespeicherten Plan
+        var journal = new List<NinaPm.Core.Status.JournalEntry>
+        {
+            new(1, UtcText.Parse("2026-09-18T03:00:00Z"), NinaPm.Core.Status.JournalKinds.BlockStart,
+                new NinaPm.Core.Status.JournalData { BlockId = Guid.NewGuid(), ProjectId = done, Title = "IC 1795" }),
+            new(2, UtcText.Parse("2026-09-18T03:10:00Z"), NinaPm.Core.Status.JournalKinds.Capture,
+                new NinaPm.Core.Status.JournalData { ProjectId = done, Result = "saved", Filter = "SII" }),
+        };
+        var local = new NinaPm.Core.Status.NightViewInputs(Sim.Night, journal, plan, new HashSet<Guid>(), null, null, null, null, null, null,
+            Site, UtcText.Parse("2026-09-18T06:00:00Z"));
+
+        var list = SimulatorCards.Unallocated(Sim, local);
+
+        Assert.Equal([(m31, UnallocatedState.RunningAtRig), (done, UnallocatedState.DoneTonight)], list.Select(u => (u.ProjectId, u.State)));
+        Assert.Equal("IC 1795", list[1].Name);
+        // Ohne lokale Daten (andere Nacht) wie bisher.
+        Assert.Equal(UnallocatedState.None, Assert.Single(SimulatorCards.Unallocated(Sim, local with { Night = "2026-09-20" })).State);
+    }
+
+    [Fact]
+    public void Simulation_im_Fenster_alle_10_min_und_nach_neuem_Plan_neu_abrufen()
+    {
+        // Befund 14: je Nacht nur einmal – „Rig plant noch mit Rev. n“ fror ein.
+        var t = UtcText.Parse("2026-09-18T06:00:00Z");
+        var plan = Guid.NewGuid();
+        Assert.True(SimulationRefresh.Due(null, null, plan, t, offline: false, running: false));
+        Assert.False(SimulationRefresh.Due(t, plan, plan, t.AddMinutes(9), offline: false, running: false));
+        Assert.True(SimulationRefresh.Due(t, plan, plan, t.AddMinutes(10), offline: false, running: false));
+        Assert.True(SimulationRefresh.Due(t, plan, Guid.NewGuid(), t.AddMinutes(1), offline: false, running: false));
+        Assert.False(SimulationRefresh.Due(t, plan, plan, t.AddMinutes(30), offline: true, running: false));
+        Assert.False(SimulationRefresh.Due(t, plan, Guid.NewGuid(), t.AddMinutes(30), offline: false, running: true));
+    }
 }

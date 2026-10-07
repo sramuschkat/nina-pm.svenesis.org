@@ -41,6 +41,9 @@ public sealed record JournalData
     [JsonProperty("reason")] public string? Reason { get; init; }
     [JsonProperty("exposures")] public int? Exposures { get; init; }
     [JsonProperty("seq")] public int? Seq { get; init; }
+
+    /// <summary>Belichtungszeile der Aufnahme (Nummerierung im Protokoll, Plugin 0.4.18); ältere Einträge ohne.</summary>
+    [JsonProperty("lineId")] public Guid? LineId { get; init; }
     [JsonProperty("filter")] public string? Filter { get; init; }
     [JsonProperty("exposureS")] public double? ExposureS { get; init; }
     [JsonProperty("gain")] public int? Gain { get; init; }

@@ -313,14 +313,16 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         ComputedText = Texts.SimComputed(site.DateClockZone(s.GeneratedAtUtc), s.SettingsVersion);
         Cards.Clear();
         foreach (var c in SimulatorCards.Build(s, site)) Cards.Add(new SimulatorCardView(c));
-        Unallocated.Clear();
-        foreach (var u in SimulatorCards.Unallocated(s)) Unallocated.Add(new UnallocatedView(u));
         // Laufende Nacht mit gespeichertem Plan (AP-53c): Ist + Plan wie die Fenster im Imaging-Reiter – Erledigtes aus
         // lokalem Journal und Server-Ist (blass), der Rest aus dem gespeicherten Plan (kräftig), Protokoll mit Spalte „Ist“.
         var inside = now > s.NightWindow.StartUtc && now < s.NightWindow.EndUtc;
-        var actual = inside && context()?.NightInputs?.Invoke(s) is { Plan: not null } inputs && inputs.Night == s.Night
+        var local = inside ? context()?.NightInputs?.Invoke(s) : null;
+        var actual = local is { Plan: not null } inputs && inputs.Night == s.Night
             ? NightViewBuilder.Build(inputs with { Simulation = s, Site = site })
             : null;
+        // Plugin 0.4.18: nicht Zugeteiltes mit dem Stand an der Rig (gespeicherter Plan, Nachtjournal) wie im Web.
+        Unallocated.Clear();
+        foreach (var u in SimulatorCards.Unallocated(s, local)) Unallocated.Add(new UnallocatedView(u));
         Chart = new PlanChartView(actual?.Chart ?? PlanChart.Build(s, site, now));
         PlanHeader = Texts.PlanZone(Chart.Chart.Zone);
         PlanState = s.StoredPlan is { } sp

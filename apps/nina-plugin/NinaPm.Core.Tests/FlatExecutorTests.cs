@@ -219,6 +219,27 @@ public sealed class FlatExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task Gescheiterte_Box_nach_einigen_Flats_bleibt_offen_und_wird_fortgesetzt()
+    {
+        // Befund 15 (Analyse 07.10.2026): nach 2 von 5 Flats scheiterte die Box – die Kombination galt trotzdem als erledigt.
+        Light("L", 0, M31, "M 31");
+        host.FailAfterFlats = (0, 2);
+
+        await flats.RunAsync(Settings(darks: 0), CancellationToken.None);
+
+        var combo = Assert.Single(store.FlatCombinations(Night));
+        Assert.Equal((FlatStatus.Running, 2), (combo.Status, combo.FlatsSaved));
+        Assert.Contains(sink.Lines, l => l.Contains("FLATS_END combination=L_b1_g100_o10_r0 mechDg=0 status=incomplete reason=box_failed"));
+        Assert.True(flats.Pending(Night, Options));
+
+        // Nächster Lauf: nur die fehlenden 3 Flats, dann erledigt.
+        await flats.RunAsync(Settings(darks: 0), CancellationToken.None);
+        Assert.Equal(3, host.Runs[^1].Flats);
+        combo = Assert.Single(store.FlatCombinations(Night));
+        Assert.Equal((FlatStatus.Done, 5), (combo.Status, combo.FlatsSaved));
+    }
+
+    [Fact]
     public async Task Unbekannte_Anzahl_wartet_120_s_nach_dem_letzten_Bild()
     {
         Light("L", 0, M31, "M 31");
@@ -242,6 +263,9 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
     public List<(string Source, string Destination)> Copies { get; } = [];
     public double MeanAduShare { get; set; } = 0.5;
     public (int Run, int Flats)? CancelAfterFlats { get; set; }
+
+    /// <summary>Box scheitert in Lauf <c>Run</c> (ab 0) nach <c>Flats</c> gespeicherten Flats.</summary>
+    public (int Run, int Flats)? FailAfterFlats { get; set; }
 
     /// <summary>Läufe (ab 0), deren Box ohne eine gespeicherte Datei scheitert (VM-Lauf 04.10.2026: „Index was out of range“).</summary>
     public HashSet<int> FailRuns { get; } = [];
@@ -282,6 +306,7 @@ internal sealed class FakeFlatHost(FixedClock clock) : IFlatHost
                 Cancel!.Cancel();
                 token.ThrowIfCancellationRequested();
             }
+            if (FailAfterFlats is { } f && f.Run == Runs.Count - 1 && i == f.Flats) throw new InvalidOperationException("Panel antwortet nicht");
             Save(run, filter, dark: false);
         }
         for (var i = 0; i < run.DarkFlats; i++) Save(run, filter, dark: true);

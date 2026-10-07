@@ -247,6 +247,9 @@ public sealed class NightLoop
     /// Sperre aktiv (5 min ab dem letzten Abruf): auch die Neuplanung vor einem Block wartet (§3.2). Mit neuen Zielen
     /// (<paramref name="newTargets"/>) nur <see cref="TargetsLock"/> ab dem letzten Abruf.
     /// </summary>
+    /// <summary>Ende der 5-min-Sperre (ab dem letzten Abruf); ohne Sperre <c>null</c>.</summary>
+    public DateTimeOffset? PlanLockUntil => planLockUntil;
+
     public bool PlanLocked(DateTimeOffset now, bool newTargets = false) =>
         planLockUntil is { } until && now < until
         && !(newTargets && lastPlanAttempt is { } last && now - last >= TargetsLock);

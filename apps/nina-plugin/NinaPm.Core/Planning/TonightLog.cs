@@ -31,6 +31,13 @@ public sealed class TonightLog
     [JsonIgnore]
     public bool HasPastBlocks => pastBlocks.Count > 0;
 
+    /// <summary>Aktuelle Einheit (zuletzt begonnener Block), <c>null</c> ohne Block in dieser Nacht.</summary>
+    [JsonIgnore]
+    public string? CurrentUnitId => currentUnitId;
+
+    /// <summary>Für die Einheit ist ein Block erfasst, der nach <paramref name="sinceUtc"/> endet (kein doppeltes Nachtragen).</summary>
+    public bool HasBlockEndingAfter(string unitId, DateTimeOffset sinceUtc) => pastBlocks.Any(b => b.UnitId == unitId && b.ToUtc > sinceUtc);
+
     /// <summary>Block hat begonnen: aktuelle Einheit setzen.</summary>
     public void BlockStarted(string unitId) => currentUnitId = unitId;
 
@@ -59,6 +66,9 @@ public sealed class TonightLog
     }
 
     public void FlipDone(string unitId) => flipDoneByPanel[unitId] = true;
+
+    /// <summary>Für die Einheit ist in dieser Nacht schon ein Flip erledigt (<c>flipDoneByPanel</c>).</summary>
+    public bool IsFlipDone(string unitId) => flipDoneByPanel.TryGetValue(unitId, out var done) && done;
 
     /// <summary>
     /// <c>tonight</c> für <c>POST /plan</c>. Beim Erstplan (<c>reason: initial</c> ohne <c>startAtUtc</c>) nur

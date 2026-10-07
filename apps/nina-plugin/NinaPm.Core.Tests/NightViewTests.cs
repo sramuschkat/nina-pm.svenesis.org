@@ -370,4 +370,63 @@ public sealed class NightViewTests : IDisposable
         public Task<NinaHeartbeatResponse> HeartbeatAsync(NinaHeartbeat body, CancellationToken token) =>
             Task.FromResult(new NinaHeartbeatResponse { ServerTimeUtc = DateTimeOffset.UnixEpoch, Lease = new Lease { LeaseLost = false } });
     }
+
+    // ---- Plugin 0.4.18 (Analyse 07.10.2026) -------------------------------------------------------------------------
+
+    private NightView RegularRunning(string now, BlockActivity? activity, Entries? last, NinaPlanResponse? plan = null, NinaBootstrap? bootstrap = null) =>
+        NightViewBuilder.Build(new NightViewInputs(Night, journal.Read(Night), plan ?? Plan, new HashSet<Guid>(), (Regular, T("07:35:00")),
+            null, null, Targets, bootstrap ?? Bootstrap, null, SiteTime.Utc, T(now), Activity: activity, LastEntry: last));
+
+    [Fact]
+    public void Ohne_laufende_Belichtung_zeigt_die_Ansicht_Flip_bzw_Zentrieren_statt_100_Prozent()
+    {
+        // Befund 10: nach der Belichtung stand sie bis zum Blockende als „▶ läuft 100 %“ da (auch beim Warten, Flip, Zentrieren).
+        Add("07:35:00", JournalKinds.BlockStart, Start(Regular, "NGC 281 Pacman"));
+        Add("07:47:45", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:42:40", seq: 4));
+        var last = Regular.Entries.Single(e => e.Seq == 4);
+
+        var flip = RegularRunning("07:49:00", new BlockActivity(BlockActivityKind.Flip, T("07:48:00"), Seq: 6), last);
+        Assert.Null(flip.Progress);
+        Assert.Equal(BlockActivityKind.Flip, flip.Activity!.Kind);
+        var current = Assert.Single(flip.Rows, r => r.Current);
+        Assert.Equal(("meridian_flip", ActualState.Running, T("07:48:00")), (current.Cmd, current.State, current.AtUtc));
+        Assert.DoesNotContain(flip.Rows, r => r.State == ActualState.Running && r.IsExposure);
+        Assert.DoesNotContain(flip.Rows, r => !r.Past && r.Cmd == "dither" && r.AtUtc < T("07:48:00")); // Dither davor ist erledigt
+
+        // Zentrieren nach einem ungeplanten Flip hat keinen Plan-Eintrag: eigene laufende Zeile.
+        var centering = RegularRunning("07:49:00", new BlockActivity(BlockActivityKind.Centering, T("07:48:30")), last);
+        var row = Assert.Single(centering.Rows, r => r.Current);
+        Assert.Equal(("slew_center", ActualState.Running), (row.Cmd, row.State));
+    }
+
+    [Fact]
+    public void Nummern_je_Belichtungszeile_nur_gespeicherte_im_Plan_weitergezaehlt()
+    {
+        // Befund 15: Vergangenes war je Projekt|Filter mit fehlgeschlagenen gezählt, Geplantes je Zeile – die Nummern sprangen.
+        var line = Regular.Entries.First(e => e.Cmd == EntriesCmd.Expose).ExposureLineId;
+        Add("07:35:00", JournalKinds.BlockStart, Start(Regular, "NGC 281 Pacman"));
+        Add("07:47:45", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:42:40", seq: 4)); // ohne Zeile (Server-Ist): über die Ziele
+        Add("07:58:30", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:53:28", result: "failed", seq: 8) with { LineId = line });
+        Add("08:03:50", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:58:46", seq: 10) with { LineId = line });
+
+        var view = RegularRunning("08:04:00", null, Regular.Entries.Single(e => e.Seq == 10));
+
+        Assert.Equal([1, null, 2], view.Rows.Where(r => r.Past && r.IsExposure).Select(r => r.No));
+        var planned = view.Rows.Where(r => !r.Past && r.Cmd == "expose").ToList();
+        Assert.Equal([3, 4], planned.Take(2).Select(r => r.No));
+    }
+
+    [Fact]
+    public void Panel_Flats_beginnen_am_Nachtende_Himmelsflats_ab_flatsNotBeforeUtc()
+    {
+        // Befund 15: der Hinweis nannte immer flatsNotBeforeUtc, Panel-Flats laufen aber mit dem Nachtende (NightLoop).
+        var plan = JsonConvert.DeserializeObject<NinaPlanResponse>(JsonConvert.SerializeObject(Plan, NinaJson.Settings()), NinaJson.Settings())!;
+        plan.FlatsNotBeforeUtc = T("12:15:00");
+        var panel = RegularRunning("08:00:00", null, null, plan);
+        Assert.Equal(new NextUp("", plan.DarknessEndUtc!.Value, true), panel.Next);
+
+        var sky = JsonConvert.DeserializeObject<NinaBootstrap>(JsonConvert.SerializeObject(Bootstrap, NinaJson.Settings()), NinaJson.Settings())!;
+        sky.Rig.Scheduler.Flats.Source = FlatsSource.Sky;
+        Assert.Equal(new NextUp("", T("12:15:00"), true), RegularRunning("08:00:00", null, null, plan, sky).Next);
+    }
 }

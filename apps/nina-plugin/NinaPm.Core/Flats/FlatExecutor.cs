@@ -340,13 +340,14 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
             lastSaved = null;
         }
 
+        var savedBefore = combo.FlatsSaved + combo.DarkFlatsSaved;
         var primary = combo.Targets.FirstOrDefault()?.Name ?? "NINA-PM";
         var run = new FlatComboRun(filter.Kind == FilterResolutionKind.Found ? filter.Index : -1, combo.Gain, combo.Offset, combo.Binning,
             flatsMissing, darkMissing, primary);
         var boxOk = await Guarded("flats", () => host.RunCombinationAsync(run, token)).ConfigureAwait(false);
-        if (!boxOk && combo.FlatsSaved == 0 && combo.DarkFlatsSaved == 0)
+        if (!boxOk && combo.FlatsSaved + combo.DarkFlatsSaved == savedBefore)
         {
-            // Box gescheitert, nichts gespeichert: nicht als erledigt melden und nicht 120 s auf Dateien warten.
+            // Box gescheitert, in diesem Versuch nichts gespeichert: nicht als erledigt melden und nicht 120 s auf Dateien warten.
             lock (gate)
             {
                 running = null;
@@ -370,10 +371,30 @@ public sealed class FlatExecutor(IFlatHost host, LocalStore store, IClock clock,
             if (clock.UtcNow - since >= SaveGrace) break;
             await host.DelayAsync(clock.UtcNow + Poll, token).ConfigureAwait(false);
         }
+        bool incomplete;
         lock (gate)
         {
+            incomplete = boxes.CountsKnown && !Complete();
             running = null;
             runningGroup = null;
+        }
+        if (!boxOk && incomplete)
+        {
+            // Box nach einigen Dateien gescheitert (Plugin 0.4.18): nicht als erledigt markieren. Mit neuen Dateien in diesem
+            // Versuch bleibt die Kombination offen und wird mit den fehlenden Aufnahmen fortgesetzt; ohne Fortschritt entfällt
+            // sie (box_failed), sonst liefe die Box in Dauerschleife.
+            if (combo.FlatsSaved + combo.DarkFlatsSaved > savedBefore)
+            {
+                combo.Status = FlatStatus.Running;
+                store.SaveFlatCombination(s.Night, combo);
+                log.Event("FLATS_END", ("combination", combo.LogKey), ("mechDg", combo.MechDg), ("status", "incomplete"), ("reason", "box_failed"));
+            }
+            else
+            {
+                ReleaseGroup(group, s.Night);
+                Skip(combo, s.Night, "box_failed");
+            }
+            return currentMech;
         }
 
         Finish(combo, group, s.Night, darkCount);

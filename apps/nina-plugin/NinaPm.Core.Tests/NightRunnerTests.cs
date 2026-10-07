@@ -1677,4 +1677,213 @@ public sealed class NightRunnerTests : IDisposable
         await hb.TickAsync(default);
         Assert.Null(runner.Loop.Blocked);
     }
+
+    // ---- Plugin 0.4.18 (Analyse 07.10.2026) -------------------------------------------------------------------------
+
+    /// <summary>Plan um <paramref name="by"/> verschoben (gleicher Plan eine Nacht später).</summary>
+    private static void Shift(NinaPlanResponse p, TimeSpan by)
+    {
+        p.NightWindow.StartUtc += by;
+        p.NightWindow.EndUtc += by;
+        if (p.DarknessEndUtc is { } d) p.DarknessEndUtc = d + by;
+        p.FlatsNotBeforeUtc += by;
+        p.SessionEndUtc += by;
+        foreach (var b in p.Blocks)
+        {
+            b.StartUtc += by;
+            b.EndUtc += by;
+            if (b.TwilightEndUtc is { } t) b.TwilightEndUtc = t + by;
+            if (b.MeridianFlip is { } m) m.PlannedUtc += by;
+            foreach (var e in b.Entries)
+            {
+                e.AtUtc += by;
+                if (e.UntilUtc is { } u) e.UntilUtc = u + by;
+            }
+        }
+    }
+
+    /// <summary>Kurzer Block 07:35–07:40:43 mit einer Belichtung, der nächste erst eine Stunde später (08:40:43).</summary>
+    private static void ShortBlockThenGap(NinaPlanResponse p)
+    {
+        SingleTightExposure(p);
+        var later = p.Blocks[^1];
+        var by = TimeSpan.FromHours(1);
+        later.StartUtc += by;
+        later.EndUtc += by;
+        foreach (var e in later.Entries) e.AtUtc += by;
+    }
+
+    [Fact]
+    public async Task Luecke_waehrend_der_Planungssperre_aufwachen_wenn_die_Sperre_endet()
+    {
+        // Befund 4: in der 5-min-Sperre entfiel die Lückenplanung, und das Warten schlief bis zum nächsten Blockstart.
+        api.OnPlan = ShortBlockThenGap;
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:34:00Z");
+        nina.ExposureScale = 0.02;
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan 07:34, Sperre bis 07:39
+        await runner.RunOnceAsync(default); // bis 07:35 warten
+        await runner.RunOnceAsync(default); // kurzer Block
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END"));
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T07:39:00Z"), clock.UtcNow.ToString("O"));
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default); // Lücke bis 08:40:43: mit dem Ende der Sperre aufwachen
+        Assert.Equal(UtcText.Parse("2026-09-18T07:39:00Z"), clock.UtcNow);
+        await runner.RunOnceAsync(default);
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Contains(sink.Lines, l => l.Contains("IdleAhead"));
+        // Befund 12: das Warten auf den späteren Block steht im Log.
+        Assert.Contains(sink.Lines, l => l.Contains("WAIT_BLOCK") && l.Contains("untilUtc=2026-09-18T08:40:43Z"));
+    }
+
+    [Fact]
+    public async Task Uebersprungener_Block_Luecke_danach_einmal_ab_jetzt_neu_planen()
+    {
+        // Befund 4: nach einem übersprungenen Block (not_viable, filter_not_found, elapsed) galt die Lücke nicht als Lücke.
+        api.OnPlan = WithGap;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        nina.Viable = false;
+        await runner.RunOnceAsync(default);
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_SKIPPED") && l.EndsWith("reason=not_viable", StringComparison.Ordinal));
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default); // nächster Block erst 08:35
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.Contains(sink.Lines, l => l.Contains("IdleAhead"));
+    }
+
+    [Fact]
+    public async Task Mehr_als_3_verpasste_Belichtungen_sofort_ab_jetzt_neu_planen()
+    {
+        // Befund 8 (§4.2): Block endet mit replanned, der Container plant sofort neu.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        var jumped = false;
+        nina.OnDelay = _ =>
+        {
+            if (jumped) return;
+            jumped = true;
+            clock.Advance(TimeSpan.FromHours(1)); // PC im Ruhezustand während des Wartens
+        };
+        await runner.RunOnceAsync(default);
+        nina.OnDelay = null;
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=replanned", StringComparison.Ordinal));
+        Assert.Contains(sink.Lines, l => l.Contains("SkippedExposures"));
+        var plans = api.Plans.Count;
+
+        await runner.RunOnceAsync(default);
+        Assert.Equal(plans + 1, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Neue_Nacht_vergisst_den_ausgefuehrten_Plan_von_gestern()
+    {
+        // Befund 9: ExecutingPlan blieb über den Nachtwechsel stehen – das Fenster zeigte die alte Nacht, Ereignisse vor dem
+        // ersten Block trugen die nightPlanId von gestern.
+        nina.ExposureScale = 0.02;
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:35:00Z");
+        await runner.RunOnceAsync(default);
+        var yesterday = runner.ExecutingPlan!.Value;
+        Assert.Equal("2026-09-17", yesterday.Night);
+
+        clock.UtcNow = UtcText.Parse("2026-09-19T01:00:00Z");
+        await runner.RunOnceAsync(default); // veraltete Session abschließen
+        Assert.Null(runner.ExecutingPlan);
+        Assert.Null(runner.JournalNight);
+        Assert.True(runner.LiveStatus(testBanner: false).NoPlan);
+
+        await runner.RunOnceAsync(default); // Plan der neuen Nacht
+        Assert.Equal("2026-09-18", runner.JournalNight);
+        runner.ReportEvent(EventsKind.Warning, "camera_temperature");
+        var e = JObject.Parse(store.OutboxPayloads(OutboxKinds.Event).Last());
+        Assert.Equal(PlanStore.Load(store, "2026-09-18")!.Plan.NightPlanId.ToString(), (string?)e["nightPlanId"]);
+    }
+
+    [Fact]
+    public async Task Block_ueberspringen_ohne_Block_gilt_nicht_fuer_die_naechste_Nacht()
+    {
+        // Befund 15: ein Klick auf *Block überspringen* ohne laufenden bzw. wartenden Block übersprang den ersten Block der
+        // nächsten Nacht.
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Nacht 2026-09-17
+        runner.SkipBlock();
+        api.OnPlan = p =>
+        {
+            if (p.Night == "2026-09-18") Shift(p, TimeSpan.FromDays(1));
+        };
+        clock.UtcNow = UtcText.Parse("2026-09-19T01:00:00Z");
+        await runner.RunOnceAsync(default); // neue Nacht: veraltete Session verwerfen
+        await runner.RunOnceAsync(default); // Plan der Nacht 2026-09-18
+        clock.UtcNow = UtcText.Parse("2026-09-19T02:05:30Z"); // Vorlauf des Transits
+
+        await runner.RunOnceAsync(default);
+
+        Assert.DoesNotContain(sink.Lines, l => l.Contains("reason=user_skip"));
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_START"));
+    }
+
+    [Fact]
+    public async Task Zuruecksetzen_im_Transitblock_bleibt_reset()
+    {
+        // Befund 15: nach einem Transitblock überschrieb refresh das gedrückte Zurücksetzen.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = UtcText.Parse("2026-09-18T02:05:30Z");
+        nina.OnExposure = n =>
+        {
+            if (n == 2) runner.Reset();
+        };
+        await runner.RunOnceAsync(default);
+        nina.OnExposure = null;
+        Assert.Contains(sink.Lines, l => l.Contains("BLOCK_END") && l.EndsWith("reason=replanned", StringComparison.Ordinal));
+
+        await runner.RunOnceAsync(default);
+        Assert.Equal(NinaPlanRequestReason.Reset, api.Plans[^1].Reason);
+    }
+
+    [Fact]
+    public async Task Neustart_mitten_im_Block_traegt_den_abgebrochenen_Block_vor_dem_Resume_Plan_nach()
+    {
+        // Entscheidung Sven 07.10.2026 (Engine A-32): NINA stürzt im Block ab – ohne Blockende fehlte der Block in
+        // pastBlocks, die Engine wertete den Resume-Plan nicht als Fortsetzung derselben Einheit.
+        var runner = Runner();
+        await runner.RunOnceAsync(default);
+        var plan = PlanStore.Load(store, "2026-09-17")!.Plan;
+        var block = plan.Blocks.Single(b => b.Kind == BlocksKind.Regular);
+        var unit = runner.UnitId(block);
+        var tonight = TonightLog.Load(store);
+        tonight.BlockStarted(unit);
+        tonight.Save(store);
+        var start = UtcText.Parse("2026-09-18T07:35:00Z");
+        runner.Journal.Append("2026-09-17", start, JournalKinds.BlockStart, new JournalData { BlockId = block.Id, ProjectId = block.ProjectId, PanelId = block.PanelId });
+        foreach (var k in new[] { 0, 1 })
+        {
+            var from = UtcText.Parse("2026-09-18T07:42:40Z").AddSeconds(k * 303);
+            runner.Journal.Append("2026-09-17", from.AddSeconds(305), JournalKinds.Capture, new JournalData
+            {
+                BlockId = block.Id, ProjectId = block.ProjectId, StartUtc = from, ExposureS = 300, Result = "saved", Filter = "Ha",
+            });
+        }
+        // Absturz: kein Blockende. Neustart um 07:55.
+        clock.UtcNow = UtcText.Parse("2026-09-18T07:55:00Z");
+
+        await Runner().RunOnceAsync(default);
+
+        Assert.Equal(NinaPlanRequestReason.Resume, api.Plans[^1].Reason);
+        var past = Assert.Single(api.Plans[^1].Tonight!.PastBlocks!);
+        Assert.Equal((unit, start, UtcText.Parse("2026-09-18T07:52:43Z")), (past.UnitId, past.FromUtc, past.ToUtc));
+        Assert.Equal(unit, api.Plans[^1].Tonight!.CurrentUnitId);
+
+        // Ein zweiter Resume trägt nichts doppelt nach.
+        await Runner().RunOnceAsync(default);
+        Assert.Single(api.Plans[^1].Tonight!.PastBlocks!);
+    }
 }
