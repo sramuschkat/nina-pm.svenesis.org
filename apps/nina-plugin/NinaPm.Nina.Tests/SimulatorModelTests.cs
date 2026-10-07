@@ -117,7 +117,7 @@ public sealed class SimulatorModelTests
         Assert.Single(model.Unallocated);
         Assert.Equal(Sim.Protocol.Count, model.Log.Count);
         Assert.NotNull(model.Chart);
-        Assert.Equal(PlanChartView.Width, model.Chart!.ChartWidth);
+        Assert.Equal(PlanChartView.DefaultWidth, model.Chart!.ChartWidth);
         Assert.Equal(Sim.Protocol.Count + 1, model.ProtocolText.Split('\n').Length);
         Assert.Equal(Texts.TargetsFetched("17.09. 13:02 CDT"), model.FetchedText);
         Assert.Equal("17./18.09.2026", model.NightText);

@@ -343,6 +343,9 @@ public static class Texts
         "wait" => T("Warten", "Wait"),
         "meridian_flip" => T("Meridian-Flip", "Meridian flip"),
         "end" => T("Ende", "End"),
+        "block_skipped" => T("Block übersprungen", "Block skipped"),
+        "gap" => T("Lücke", "Gap"),
+        "flats" => T("Flats", "Flats"),
         _ => code,
     };
     public static string Until(string time) => T($"bis {time}", $"until {time}");
@@ -438,4 +441,94 @@ public static class Texts
     public static string WaitNoTwilight(string night) => T($"Nacht {night} ohne diese Dämmerung – kein Warten", $"Night {night} has no such twilight – no wait");
     public static string WaitingFor(TimeSpan left) =>
         T($"Warten noch {(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}", $"Waiting {(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}");
+
+    // ---- Fenster im Imaging-Reiter (AP-53b, FA-NIN-28) ----
+
+    public static string DockTitle => "NINA-PM";
+    public static string DockLogTitle => T("NINA-PM Protokoll", "NINA-PM log");
+    public static string DockNoRuntime => T(
+        "Erscheint, sobald eine Sequenz mit dem NINA-PM-Container läuft (Server-URL und Token in den Plugin-Optionen).",
+        "Shows up once a sequence with the NINA-PM container runs (server URL and token in the plugin options).");
+    public static string DockNoPlan => T("Noch kein Plan für diese Nacht.", "No plan for this night yet.");
+    public static string DockState => T("Status", "Status");
+    public static string DockTarget => T("Ziel", "Target");
+    public static string DockFilter => T("Filter", "Filter");
+    public static string DockExposure => T("Belichtung", "Exposure");
+    public static string DockCamera => T("Kamera", "Camera");
+    public static string DockNext => T("Danach", "Next");
+    public static string DockOutbox => T("Outbox", "Outbox");
+    public static string DockPlanHeader(string zone) => T($"Plan der Nacht · Zeiten {zone}", $"Tonight's plan · times {zone}");
+    public static string DockBlocksHeader => T("Heutige Ziele", "Tonight's targets");
+    public static string DockBlock(int index, int count) => T($"Block {index}/{count}", $"Block {index}/{count}");
+    public static string DockExposureOf(int index, int? count, string seconds) => count is { } c
+        ? T($"{index} von {c} · {seconds} s", $"{index} of {c} · {seconds} s")
+        : T($"Nr. {index} · {seconds} s", $"No. {index} · {seconds} s");
+    public static string DockRemaining(string time) => T($"noch {time}", $"{time} left");
+    public static string DockNextBlock(string title, string time) => $"{title} {time}";
+    public static string DockNextFlats(string time) => T($"Flats ab {time}", $"Flats from {time}");
+    public static string DockFlats => T("Flats", "Flats");
+    public static string DockOutboxCount(int pending) => T($"{pending} offen", $"{pending} pending");
+    public static string DockFooter(string plan, int? revision, string? reason, string? at, string? targets, string zone)
+    {
+        var parts = new List<string> { revision is { } r ? $"Plan {plan} · Rev. {r}" : $"Plan {plan}" };
+        if (at is not null) parts.Add(reason is null ? at : $"{at} {PlanReason(reason)}");
+        if (targets is not null) parts.Add(T($"Ziele {targets}", $"targets {targets}"));
+        parts.Add(T($"Zeiten {zone} (Standortzeit)", $"times {zone} (site time)"));
+        return string.Join(" · ", parts);
+    }
+    public static string PlanReason(string reason) => reason switch
+    {
+        "initial" => T("Erstplan", "initial plan"),
+        "refresh" => T("Neuplanung", "re-plan"),
+        "resume" => T("Fortsetzung", "resume"),
+        "reset" => T("Zurückgesetzt", "reset"),
+        _ => reason,
+    };
+    public static string DockLegendPast => T("erledigt (blass)", "done (faint)");
+    public static string DockLegendPlanned => T("geplant (kräftig)", "planned (strong)");
+    public static string DockLegendGap => T("Lücke mit Grund", "gap with reason");
+    public static string DockFollow => T("Mitlaufen", "Follow");
+    public static string DockOnlyExposures => T("Nur Belichtungen", "Exposures only");
+    public static string DockCounters(int saved, int skipped, int failed) => T(
+        $"Heute: {saved} gespeichert · {skipped} übersprungen · {failed} fehlgeschlagen",
+        $"Tonight: {saved} saved · {skipped} skipped · {failed} failed");
+    public static string LogActual => T("Ist", "Actual");
+    public static string DockLegendActual => T("✓ gespeichert · ↷ übersprungen · ✕ fehlgeschlagen · ▶ läuft · ○ geplant",
+        "✓ saved · ↷ skipped · ✕ failed · ▶ running · ○ planned");
+
+    /// <summary>Grund in der Spalte „Ist“ bzw. im Tooltip einer Lücke.</summary>
+    public static string ActualReason(string code) => code switch
+    {
+        "late" => T("Verzug", "late"),
+        "failed" => T("nicht gespeichert", "not saved"),
+        "aborted" => T("abgebrochen", "aborted"),
+        "safety" => T("Safety-Pause", "safety pause"),
+        "idle" => T("Leerlauf", "idle"),
+        "flip" => T("Meridian-Flip", "meridian flip"),
+        "elapsed" => T("Blockende", "block end"),
+        "not_viable" => T("nicht machbar", "not viable"),
+        "center_failed" => T("Zentrieren fehlgeschlagen", "centering failed"),
+        "filter_not_found" => T("Filter fehlt", "filter missing"),
+        "readout_mode_not_found" => T("Auslesemodus fehlt", "readout mode missing"),
+        "rotation_mismatch" => T("Rotation passt nicht", "rotation mismatch"),
+        "user_skip" => T("vom Benutzer übersprungen", "skipped by user"),
+        "transit_interrupt" => T("Transit-Vorlauf", "transit lead-in"),
+        "target_removed" => T("Ziel entfernt", "target removed"),
+        "replanned" => T("neu geplant", "re-planned"),
+        "no_exposures" => T("keine Belichtung", "no exposure"),
+        "interrupted" => T("unterbrochen", "interrupted"),
+        "lease_lost" => T("Lease verloren", "lease lost"),
+        "error" => T("Fehler", "error"),
+        _ => code,
+    };
+
+    public static string GapText(string kind, string? reason, int count) => kind switch
+    {
+        "Safety" => ActualReason("safety"),
+        "Flip" => ActualReason("flip"),
+        "EmptyBlocks" => T($"{count} leere Blöcke", $"{count} empty blocks") + (reason is null ? "" : $" ({ActualReason(reason)})"),
+        "Skipped" => (count > 1 ? T($"{count} Blöcke übersprungen", $"{count} blocks skipped") : T("Block übersprungen", "block skipped"))
+            + (reason is null ? "" : $" ({ActualReason(reason)})"),
+        _ => ActualReason("idle"),
+    };
 }
