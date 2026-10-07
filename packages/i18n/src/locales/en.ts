@@ -112,9 +112,10 @@ export const en: Messages = {
       more: 'Open weather forecast',
     },
     sessions: {
-      title: 'Recent sessions',
+      title: 'Recent nights',
       empty: 'No sessions yet.',
-      more: 'All sessions',
+      more: 'All nights',
+      eff: '{{h}} h · {{pct}} %',
     },
     kpi: {
       label: 'Key figures',

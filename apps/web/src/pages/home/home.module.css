@@ -256,3 +256,72 @@
   align-items: center;
   gap: var(--npm-space-1);
 }
+
+/* Letzte Nächte (AP-64): eine Zeile je Nacht und Rig wie die Nachtkarten der Auswertung, kompakt. */
+.nightRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-2);
+}
+.nightHead {
+  display: flex;
+  align-items: center;
+  gap: var(--npm-space-2);
+  min-width: 0;
+}
+.nightLink {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nightRig {
+  font-size: var(--npm-font-small);
+  color: var(--npm-text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nightWeather {
+  composes: weather from '../sessions/evaluation.module.css';
+}
+.nightDot {
+  composes: weatherDot from '../sessions/evaluation.module.css';
+}
+.nightBadges {
+  flex: none;
+  margin-left: auto;
+}
+.badgeOk {
+  composes: pillOk from '../admin/admin.module.css';
+}
+.badgeWarn {
+  composes: pillWarn from '../admin/admin.module.css';
+}
+.nightEff {
+  composes: effRow from '../sessions/evaluation.module.css';
+}
+.nightTrack {
+  composes: effTrack from '../sessions/evaluation.module.css';
+}
+.nightFill {
+  composes: effFill from '../sessions/evaluation.module.css';
+}
+.nightEffText {
+  composes: effText from '../sessions/evaluation.module.css';
+}
+.nightChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--npm-space-1);
+}
+/* Schmale Spalte: Projekte als schlichte Zeilen statt Pillen (Projekt, Ersteller, Frames je Filter). */
+.nightChip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--npm-space-2);
+  min-width: 0;
+  font-size: var(--npm-font-small);
+}

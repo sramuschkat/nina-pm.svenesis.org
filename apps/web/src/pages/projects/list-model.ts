@@ -133,7 +133,7 @@ export function groupByStatus(
   return order.map((key) => ({ key, items: sortInGroup(by.get(key) ?? []) }));
 }
 
-/** Zustand der Adresse: `status=draft,returned`, `meine=1`, `gruppe=status` (Links, Weiterleitungen). */
+/** Zustand der Adresse: `status=draft,returned`, `meine=1`, `gruppe=rig|keine` (Links, Weiterleitungen). */
 export function listStateFromParams(params: URLSearchParams): {
   statuses: string[];
   mine: boolean;
@@ -143,7 +143,8 @@ export function listStateFromParams(params: URLSearchParams): {
     .split(',')
     .filter((s) => (LIFECYCLE_STATUSES as readonly string[]).includes(s));
   const g = params.get('gruppe');
-  const groupBy: GroupBy = g === 'status' ? 'status' : g === 'keine' ? 'none' : 'rig';
+  // Standard: je Status gruppiert (Wunsch Sven 07.10.2026); `gruppe=rig` bzw. `gruppe=keine` wählt um.
+  const groupBy: GroupBy = g === 'rig' ? 'rig' : g === 'keine' ? 'none' : 'status';
   return { statuses, mine: params.get('meine') === '1', groupBy };
 }
 

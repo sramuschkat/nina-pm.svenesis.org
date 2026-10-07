@@ -2,7 +2,7 @@
  * Startseite (FK 14.3 S-02; AP-26c, Stilsystem AP-26d): im Mandanten eine Übersicht mit Seitenkopf
  * (*Übersicht*, Mandant und Datum in Mandantenzeit, Hauptaktion *Neues Projekt*), einer Zeile Kennzahlen
  * (aktive Projekte, Warteschlange, Integration im Monat, nächste gute Nacht) und zwei Spalten: links
- * *Aktive Projekte* je Rig als Tabelle, rechts *Warteschlange* (Stimme wie S-33) und *Letzte Sessions*.
+ * *Aktive Projekte* je Rig als Tabelle, rechts *Warteschlange* (Stimme wie S-33) und *Letzte Nächte* (AP-64: eine Zeile je Nacht wie die Nachtkarten der Auswertung).
  * Direkt unter den Kennzahlen über die volle Breite *Wetter (7 Tage)* je Standort als kompaktes Farbband wie in
  * Ausrüstung → Standorte (Wunsch Sven 02.10.2026).
  * Kennzahlen und Karten nutzen dieselben Abfragen (ein Cache), haben Lade-, Leer- und Fehlerzustand und
@@ -38,9 +38,10 @@ import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
-import { EVALUATION_PATHS, sessionPath } from '../sessions/evaluation';
+import { EVALUATION_PATHS, nightPath, nightWeekday } from '../sessions/evaluation';
+import { efficiencyBar, groupNights, projectChips, weatherTone } from '../sessions/night-model';
+import { ChipContent } from '../sessions/NightsPage';
 
-const sessionHours = (s: number) => (s / 3600).toFixed(1);
 import { WEATHER_PATH } from '../weather/model';
 import { SiteWeather } from '../weather/SiteWeather';
 import { useNow, weatherKey } from '../weather/WeatherPage';
@@ -620,69 +621,89 @@ function ProjectsCard() {
   );
 }
 
-// ---- Letzte Sessions -------------------------------------------------------------------------------
+// ---- Letzte Nächte --------------------------------------------------------------------------------
 
 function SessionsCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const list = useQuery({
     queryKey: SESSIONS_KEY,
     queryFn: async () => (await sessionsApi.list({ unreviewed: false })).items,
   });
+  // Eine Zeile je Nacht und Rig wie in der Auswertung (AP-64): Wetter, Effizienz, Projekt-Chips, Prüfstatus.
   const latest = useMemo(
     () =>
-      [...(list.data ?? [])]
+      groupNights(list.data ?? [])
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
         .slice(0, SESSION_ITEMS),
     [list.data],
   );
-  const columns: DataColumn<NightSession>[] = [
-    {
-      id: 'night',
-      header: t('sessions.col.night'),
-      nowrap: true,
-      cell: (s) => <Link to={sessionPath(s.id)}>{formatNightKey(s.night)}</Link>,
-    },
-    { id: 'rig', header: t('sessions.col.rig'), priority: 2, cell: (s) => s.rigName },
-    {
-      id: 'integration',
-      header: t('sessions.col.integration'),
-      priority: 2,
-      align: 'end',
-      nowrap: true,
-      cell: (s) => t('sessions.hours', { h: sessionHours(s.integrationS) }),
-    },
-    {
-      id: 'status',
-      header: t('sessions.col.status'),
-      cell: (s) => <StatusBadge kind="session" value={s.status} size="sm" />,
-    },
-  ];
+  const manyRigs = new Set(latest.map((g) => g.rigId)).size > 1;
+  const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
   return (
     <Card
       title={t('home.sessions.title')}
       to={EVALUATION_PATHS.nights}
       more={t('home.sessions.more')}
     >
-      {list.isError || list.isPending || latest.length === 0 ? (
-        <div className={styles.cardBody}>
-          {list.isError ? (
-            <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
-          ) : list.isPending ? (
-            <Skeleton />
-          ) : (
-            <p className={styles.muted}>{t('home.sessions.empty')}</p>
-          )}
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          rows={latest}
-          rowKey={(s) => s.id}
-          rowLabel={(s) => `${formatNightKey(s.night)} · ${s.rigName}`}
-          label={t('home.sessions.title')}
-          serverSorted
-        />
-      )}
+      <div className={styles.cardBody}>
+        {list.isError ? (
+          <ProblemMessage code={problemCode(list.error)} onRetry={() => void list.refetch()} />
+        ) : list.isPending ? (
+          <Skeleton />
+        ) : latest.length === 0 ? (
+          <p className={styles.muted}>{t('home.sessions.empty')}</p>
+        ) : (
+          <ul className={styles.list} aria-label={t('home.sessions.title')}>
+            {latest.map((g) => {
+              const bar = efficiencyBar(g.efficiency);
+              return (
+                <li key={g.key} className={styles.nightRow}>
+                  <div className={styles.nightHead}>
+                    <span className={styles.nightWeather} data-tone={weatherTone(g.weather)}>
+                      <span className={styles.nightDot} aria-hidden="true" />
+                    </span>
+                    <Link className={styles.nightLink} to={nightPath(g.rigId, g.night)}>
+                      {nightWeekday(g.night, i18n.language)} {formatNightKey(g.night)}
+                    </Link>
+                    <span className={styles.nightBadges}>
+                      {g.status === 'running' ? (
+                        <StatusBadge kind="session" value={g.status} size="sm" />
+                      ) : (
+                        <span className={g.reviewed ? styles.badgeOk : styles.badgeWarn}>
+                          {g.reviewed ? t('sessions.reviewedYes') : t('sessions.reviewedNo')}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {manyRigs ? <span className={styles.nightRig}>{g.rigName}</span> : null}
+                  <div className={styles.nightEff}>
+                    <span className={styles.nightTrack} aria-hidden="true">
+                      <span
+                        className={styles.nightFill}
+                        style={{ width: `${String(bar?.widthPct ?? 0)}%` }}
+                      />
+                    </span>
+                    <span className={styles.nightEffText}>
+                      {bar && bar.pct !== null
+                        ? t('home.sessions.eff', { h: n(bar.exposureH), pct: bar.pct })
+                        : t('sessions.hours', { h: n(g.integrationS / 3600) })}
+                    </span>
+                  </div>
+                  {g.projects.length > 0 ? (
+                    <ul className={styles.nightChips} aria-label={t('evaluation.nights.projects')}>
+                      {projectChips(g.projects).map((c) => (
+                        <li key={c.projectId} className={styles.nightChip}>
+                          <ChipContent chip={c} />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </Card>
   );
 }

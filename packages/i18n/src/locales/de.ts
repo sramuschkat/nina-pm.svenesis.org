@@ -110,9 +110,10 @@ export const de = {
       more: 'Zur Wettervorhersage',
     },
     sessions: {
-      title: 'Letzte Sessions',
+      title: 'Letzte Nächte',
       empty: 'Noch keine Sessions.',
-      more: 'Alle Sessions',
+      more: 'Alle Nächte',
+      eff: '{{h}} h · {{pct}} %',
     },
     kpi: {
       label: 'Kennzahlen',
