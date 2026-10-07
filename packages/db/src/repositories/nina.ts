@@ -8,7 +8,7 @@
  */
 import { ProblemError } from '@nina-pm/shared';
 import type { Kysely, Selectable } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database, NinaInstanceTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { latestSessionPlan } from './night-plan-binding';
@@ -253,12 +253,14 @@ export class NinaInstanceRepository extends TenantRepo {
 
   /** Widerruf wirkt sofort: die nächste Plugin-Anfrage findet `status = revoked` (401). */
   async revoke(id: string): Promise<NinaInstanceOverview> {
-    const done = await this.db
-      .updateTable('ninaInstance')
-      .set({ status: 'revoked' })
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const done = await retryOcc(() =>
+      this.db
+        .updateTable('ninaInstance')
+        .set({ status: 'revoked' })
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', id)
+        .executeTakeFirst(),
+    );
     if (Number(done.numUpdatedRows) === 0) throw new ProblemError('resource.not_found');
     return (await this.byId(id)) as NinaInstanceOverview;
   }
@@ -374,12 +376,14 @@ export class NinaRigRepository extends TenantRepo {
 
   /** Übernahmestatus (FA-SIM-09): abgerufene Einstellungsversion und Zeitpunkt. */
   async recordSettingsFetched(instanceId: string, settingsVersion: number, now: Date) {
-    await this.db
-      .updateTable('ninaInstance')
-      .set({ settingsVersionFetched: settingsVersion, settingsFetchedAt: now })
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('id', '=', instanceId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('ninaInstance')
+        .set({ settingsVersionFetched: settingsVersion, settingsFetchedAt: now })
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', instanceId)
+        .execute(),
+    );
   }
 
   /**

@@ -9,7 +9,7 @@
  * Auslöser rechnet neu.
  */
 import { sql, type Kysely } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database } from '../types';
 import { TenantRepo } from './base';
 
@@ -125,12 +125,14 @@ export class EffortRepository extends TenantRepo {
 
   /** Veraltet markieren (Abbruch nach > 5 s, effort.md „Leistung“). */
   async markStale(projectId: string): Promise<void> {
-    await this.db
-      .updateTable('project')
-      .set({ effortStale: true })
-      .where('tenantId', '=', this.ctx.tenantId)
-      .where('id', '=', projectId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('project')
+        .set({ effortStale: true })
+        .where('tenantId', '=', this.ctx.tenantId)
+        .where('id', '=', projectId)
+        .execute(),
+    );
   }
 }
 

@@ -11,7 +11,7 @@ import {
   type SystemSettingKey,
 } from '@nina-pm/shared';
 import { sql, type Kysely, type Transaction } from 'kysely';
-import { withTx, type WithTxOptions } from '../tx';
+import { withTx, type WithTxOptions, retryOcc } from '../tx';
 import type { Database } from '../types';
 import { insertInvitation, type CreatedInvitation } from './invitations';
 import { listSystemAudit, type AuditPage } from './audit';
@@ -96,13 +96,15 @@ export class TenantAdminRepository {
 
   /** Fehlende Built-in-Mondprofile ergänzen (idempotent; `ops-cli seed`). */
   async ensureBuiltInMoonProfiles(tenantId: string, now: Date): Promise<number> {
-    const res = await this.db
-      .insertInto('moonProfile')
-      .values(
-        BUILT_IN_MOON_PROFILES.map((p) => ({ ...p, tenantId, isBuiltIn: true, createdAt: now })),
-      )
-      .onConflict((oc) => oc.columns(['tenantId', 'name']).doNothing())
-      .executeTakeFirst();
+    const res = await retryOcc(() =>
+      this.db
+        .insertInto('moonProfile')
+        .values(
+          BUILT_IN_MOON_PROFILES.map((p) => ({ ...p, tenantId, isBuiltIn: true, createdAt: now })),
+        )
+        .onConflict((oc) => oc.columns(['tenantId', 'name']).doNothing())
+        .executeTakeFirst(),
+    );
     return Number(res.numInsertedOrUpdatedRows ?? 0);
   }
 
@@ -186,11 +188,13 @@ export class TenantAdminRepository {
         { path: 'confirmTenantKey', message: 'Mandanten-ID stimmt nicht überein' },
       ]);
     if (tenant.status !== 'locked')
-      await this.db
-        .updateTable('tenant')
-        .set({ status: 'locked', updatedAt: now })
-        .where('id', '=', tenantId)
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .updateTable('tenant')
+          .set({ status: 'locked', updatedAt: now })
+          .where('id', '=', tenantId)
+          .execute(),
+      );
     const rows = await deleteTenantData(this.db, tenant, this.txOptions);
     await withTx(
       this.db,

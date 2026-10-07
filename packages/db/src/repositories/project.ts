@@ -34,7 +34,7 @@ import {
   type ProjectStatus,
 } from '@nina-pm/shared';
 import { sql, type Selectable, type Transaction } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database, ExposureLineTable, ProjectPanelTable, ProjectTable } from '../types';
 import { TenantRepo } from './base';
 import { EquipmentRepository, type FilterWheelEntry } from './equipment';
@@ -1929,18 +1929,22 @@ export class ProjectRepository extends TenantRepo {
     if (!memberId) throw new ProblemError('permission.denied');
     if (!(await this.row(projectId))) throw notFound();
     if (on)
-      await this.db
-        .insertInto('favorite')
-        .values({ tenantId: this.tenantId, userId: memberId, projectId, createdAt: now })
-        .onConflict((oc) => oc.columns(['userId', 'projectId']).doNothing())
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .insertInto('favorite')
+          .values({ tenantId: this.tenantId, userId: memberId, projectId, createdAt: now })
+          .onConflict((oc) => oc.columns(['userId', 'projectId']).doNothing())
+          .execute(),
+      );
     else
-      await this.db
-        .deleteFrom('favorite')
-        .where('tenantId', '=', this.tenantId)
-        .where('userId', '=', memberId)
-        .where('projectId', '=', projectId)
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .deleteFrom('favorite')
+          .where('tenantId', '=', this.tenantId)
+          .where('userId', '=', memberId)
+          .where('projectId', '=', projectId)
+          .execute(),
+      );
   }
 
   /**
@@ -2075,12 +2079,14 @@ export class ProjectRepository extends TenantRepo {
     if (note.userId !== memberId) throw new ProblemError('permission.denied');
     if (now.getTime() - new Date(note.createdAt).getTime() > COMMENT_EDIT_WINDOW_MS)
       throw new ProblemError('comment.edit_window_closed');
-    await this.db
-      .updateTable('projectNote')
-      .set({ bodyMd, editedAt: now })
-      .where('tenantId', '=', this.tenantId)
-      .where('id', '=', noteId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('projectNote')
+        .set({ bodyMd, editedAt: now })
+        .where('tenantId', '=', this.tenantId)
+        .where('id', '=', noteId)
+        .execute(),
+    );
   }
 
   /** Kommentar weich löschen (Admin/Owner, Route `project.note.delete`); wiederholbar, Antworten bleiben. */
@@ -2089,12 +2095,14 @@ export class ProjectRepository extends TenantRepo {
     const note = await this.noteRow(this.db, projectId, noteId);
     if (!note) throw notFound();
     if (note.deletedAt !== null) return;
-    await this.db
-      .updateTable('projectNote')
-      .set({ deletedAt: now, deletedBy: this.ctx.memberId ?? null })
-      .where('tenantId', '=', this.tenantId)
-      .where('id', '=', noteId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('projectNote')
+        .set({ deletedAt: now, deletedBy: this.ctx.memberId ?? null })
+        .where('tenantId', '=', this.tenantId)
+        .where('id', '=', noteId)
+        .execute(),
+    );
   }
 
   /** Eigene Reaktion setzen bzw. entfernen (idempotent); nicht an gelöschten Kommentaren. */
@@ -2111,19 +2119,23 @@ export class ProjectRepository extends TenantRepo {
     const note = await this.noteRow(this.db, projectId, noteId);
     if (!note || note.deletedAt !== null) throw notFound();
     if (active)
-      await this.db
-        .insertInto('projectNoteReaction')
-        .values({ tenantId: this.tenantId, noteId, userId: memberId, emoji, createdAt: now })
-        .onConflict((oc) => oc.columns(['noteId', 'userId', 'emoji']).doNothing())
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .insertInto('projectNoteReaction')
+          .values({ tenantId: this.tenantId, noteId, userId: memberId, emoji, createdAt: now })
+          .onConflict((oc) => oc.columns(['noteId', 'userId', 'emoji']).doNothing())
+          .execute(),
+      );
     else
-      await this.db
-        .deleteFrom('projectNoteReaction')
-        .where('tenantId', '=', this.tenantId)
-        .where('noteId', '=', noteId)
-        .where('userId', '=', memberId)
-        .where('emoji', '=', emoji)
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .deleteFrom('projectNoteReaction')
+          .where('tenantId', '=', this.tenantId)
+          .where('noteId', '=', noteId)
+          .where('userId', '=', memberId)
+          .where('emoji', '=', emoji)
+          .execute(),
+      );
   }
 
   /**

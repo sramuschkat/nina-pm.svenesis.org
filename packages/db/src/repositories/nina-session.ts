@@ -8,7 +8,7 @@
  */
 import { dedupeKeys, ProblemError } from '@nina-pm/shared';
 import { sql, type Kysely, type Selectable, type Transaction } from 'kysely';
-import { withTx } from '../tx';
+import { withTx, retryOcc } from '../tx';
 import type { Database, RigLeaseTable, SessionTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 import { bindPlanAtSessionStart } from './night-plan-binding';
@@ -580,32 +580,36 @@ export class NinaSessionRepository extends TenantRepo {
     },
     now: Date,
   ): Promise<void> {
-    await this.db
-      .updateTable('ninaInstance')
-      .set({
-        pluginVersion: state.pluginVersion,
-        engineVersion: state.engineVersion,
-        profileLat: state.profileLat,
-        profileLon: state.profileLon,
-        lastState: JSON.stringify(state.lastState),
-        lastSeenAt: now,
-      })
-      .where('id', '=', this.instanceId)
-      .where('tenantId', '=', this.tenantId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('ninaInstance')
+        .set({
+          pluginVersion: state.pluginVersion,
+          engineVersion: state.engineVersion,
+          profileLat: state.profileLat,
+          profileLon: state.profileLon,
+          lastState: JSON.stringify(state.lastState),
+          lastSeenAt: now,
+        })
+        .where('id', '=', this.instanceId)
+        .where('tenantId', '=', this.tenantId)
+        .execute(),
+    );
   }
 
   /** Offene Kommandos der Instanz (≤ 10 min, TK 7.6) und Quittungen. */
   async commands(acked: readonly string[], now: Date): Promise<{ id: string; command: string }[]> {
     if (acked.length > 0)
-      await this.db
-        .updateTable('command')
-        .set({ acknowledgedAt: now })
-        .where('tenantId', '=', this.tenantId)
-        .where('ninaInstanceId', '=', this.instanceId)
-        .where('id', 'in', [...acked])
-        .where('acknowledgedAt', 'is', null)
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .updateTable('command')
+          .set({ acknowledgedAt: now })
+          .where('tenantId', '=', this.tenantId)
+          .where('ninaInstanceId', '=', this.instanceId)
+          .where('id', 'in', [...acked])
+          .where('acknowledgedAt', 'is', null)
+          .execute(),
+      );
     const rows = await this.db
       .selectFrom('command')
       .select(['id', 'kind'])

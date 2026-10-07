@@ -11,7 +11,7 @@ import {
   SESSION_TOUCH_INTERVAL_MS,
 } from '@nina-pm/shared';
 import { sql, type Kysely, type Selectable } from 'kysely';
-import { isOccConflict, withTx, type WithTxOptions } from '../tx';
+import { isOccConflict, withTx, type WithTxOptions, retryOcc } from '../tx';
 import type { AuthSessionTable, Database, IdentityTable } from '../types';
 
 const DAY_MS = 86_400_000;
@@ -131,12 +131,14 @@ export class AuthRepository {
     if (now.getTime() - new Date(row.lastSeenAt).getTime() < SESSION_TOUCH_INTERVAL_MS)
       return false;
     try {
-      await this.db
-        .updateTable('authSession')
-        .set({ lastSeenAt: now })
-        .where('id', '=', row.sessionId)
-        .where('lastSeenAt', '<', new Date(now.getTime() - SESSION_TOUCH_INTERVAL_MS))
-        .execute();
+      await retryOcc(() =>
+        this.db
+          .updateTable('authSession')
+          .set({ lastSeenAt: now })
+          .where('id', '=', row.sessionId)
+          .where('lastSeenAt', '<', new Date(now.getTime() - SESSION_TOUCH_INTERVAL_MS))
+          .execute(),
+      );
       return true;
     } catch (error) {
       if (isOccConflict(error)) return false;
@@ -146,30 +148,32 @@ export class AuthRepository {
 
   /** Identität anlegen bzw. aktualisieren (TK 5.2 Schritt 4): Profil, `mfa_enabled`, `last_login_at`. */
   async upsertIdentity(profile: DiscordProfile, now: Date): Promise<Identity> {
-    return this.db
-      .insertInto('identity')
-      .values({
-        discordUserId: profile.discordUserId,
-        discordUsername: profile.username,
-        discordGlobalName: profile.globalName,
-        avatarHash: profile.avatarHash,
-        mfaEnabled: profile.mfaEnabled,
-        lastLoginAt: now,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflict((oc) =>
-        oc.column('discordUserId').doUpdateSet({
+    return retryOcc(() =>
+      this.db
+        .insertInto('identity')
+        .values({
+          discordUserId: profile.discordUserId,
           discordUsername: profile.username,
           discordGlobalName: profile.globalName,
           avatarHash: profile.avatarHash,
           mfaEnabled: profile.mfaEnabled,
           lastLoginAt: now,
+          createdAt: now,
           updatedAt: now,
-        }),
-      )
-      .returningAll()
-      .executeTakeFirstOrThrow();
+        })
+        .onConflict((oc) =>
+          oc.column('discordUserId').doUpdateSet({
+            discordUsername: profile.username,
+            discordGlobalName: profile.globalName,
+            avatarHash: profile.avatarHash,
+            mfaEnabled: profile.mfaEnabled,
+            lastLoginAt: now,
+            updatedAt: now,
+          }),
+        )
+        .returningAll()
+        .executeTakeFirstOrThrow(),
+    );
   }
 
   identityById(identityId: string): Promise<Identity | undefined> {
@@ -247,18 +251,20 @@ export class AuthRepository {
   /** Bis zu 500 abgelaufene Sitzungen löschen (Höchstdauer oder Leerlauf; bei jeder Anmeldung, TK 5.3). */
   async cleanupExpired(now: Date, limit = 500): Promise<number> {
     const idleBefore = new Date(now.getTime() - SESSION_IDLE_DAYS * DAY_MS);
-    const res = await this.db
-      .deleteFrom('authSession')
-      .where(
-        'id',
-        'in',
-        this.db
-          .selectFrom('authSession')
-          .select('id')
-          .where((eb) => eb.or([eb('expiresAt', '<=', now), eb('lastSeenAt', '<=', idleBefore)]))
-          .limit(limit),
-      )
-      .executeTakeFirst();
+    const res = await retryOcc(() =>
+      this.db
+        .deleteFrom('authSession')
+        .where(
+          'id',
+          'in',
+          this.db
+            .selectFrom('authSession')
+            .select('id')
+            .where((eb) => eb.or([eb('expiresAt', '<=', now), eb('lastSeenAt', '<=', idleBefore)]))
+            .limit(limit),
+        )
+        .executeTakeFirst(),
+    );
     return Number(res.numDeletedRows);
   }
 
@@ -288,12 +294,14 @@ export class AuthRepository {
     tenantId: string | null,
   ): Promise<void> {
     // Kontextwechsel beendet die Rollenansicht („Als User ansehen“ gilt nur im gewählten Mandanten).
-    await this.db
-      .updateTable('authSession')
-      .set({ context, tenantId, actingRole: null })
-      .where('id', '=', sessionId)
-      .where('identityId', '=', identityId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('authSession')
+        .set({ context, tenantId, actingRole: null })
+        .where('id', '=', sessionId)
+        .where('identityId', '=', identityId)
+        .execute(),
+    );
   }
 
   /** Rollenansicht der eigenen Sitzung setzen (`'user'`) bzw. beenden (`null`). */
@@ -302,20 +310,20 @@ export class AuthRepository {
     identityId: string,
     actingRole: 'user' | null,
   ): Promise<void> {
-    await this.db
-      .updateTable('authSession')
-      .set({ actingRole })
-      .where('id', '=', sessionId)
-      .where('identityId', '=', identityId)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('authSession')
+        .set({ actingRole })
+        .where('id', '=', sessionId)
+        .where('identityId', '=', identityId)
+        .execute(),
+    );
   }
 
   async touchMemberLogin(memberId: string, now: Date): Promise<void> {
-    await this.db
-      .updateTable('appUser')
-      .set({ lastLoginAt: now })
-      .where('id', '=', memberId)
-      .execute();
+    await retryOcc(() =>
+      this.db.updateTable('appUser').set({ lastLoginAt: now }).where('id', '=', memberId).execute(),
+    );
   }
 
   async tenantByKey(tenantKey: string) {
@@ -354,25 +362,28 @@ export class AuthRepository {
   }
 
   async deleteSessionByHash(sessionHash: string): Promise<void> {
-    await this.db.deleteFrom('authSession').where('sessionHash', '=', sessionHash).execute();
+    await retryOcc(() =>
+      this.db.deleteFrom('authSession').where('sessionHash', '=', sessionHash).execute(),
+    );
   }
 
   /** Eigene Sitzung beenden; liefert `false`, wenn sie nicht zur Identität gehört. */
   async deleteSession(identityId: string, sessionId: string): Promise<boolean> {
-    const res = await this.db
-      .deleteFrom('authSession')
-      .where('id', '=', sessionId)
-      .where('identityId', '=', identityId)
-      .executeTakeFirst();
+    const res = await retryOcc(() =>
+      this.db
+        .deleteFrom('authSession')
+        .where('id', '=', sessionId)
+        .where('identityId', '=', identityId)
+        .executeTakeFirst(),
+    );
     return Number(res.numDeletedRows) > 0;
   }
 
   /** „Überall abmelden“ bzw. `revoke-sessions` (TK 5.3). */
   async deleteAllSessions(identityId: string): Promise<number> {
-    const res = await this.db
-      .deleteFrom('authSession')
-      .where('identityId', '=', identityId)
-      .executeTakeFirst();
+    const res = await retryOcc(() =>
+      this.db.deleteFrom('authSession').where('identityId', '=', identityId).executeTakeFirst(),
+    );
     return Number(res.numDeletedRows);
   }
 

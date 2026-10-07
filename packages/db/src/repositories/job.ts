@@ -15,7 +15,7 @@ import {
   type JobKind,
 } from '@nina-pm/shared';
 import { sql, type Kysely, type Selectable } from 'kysely';
-import { withTx, type WithTxOptions } from '../tx';
+import { withTx, type WithTxOptions, retryOcc } from '../tx';
 import type { Database, JobTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
 
@@ -201,22 +201,31 @@ export class JobQueue {
   }
 
   async finish(id: string, now: Date, resultS3Key: string | null = null): Promise<void> {
-    await this.db
-      .updateTable('job')
-      .set({ status: 'done', finishedAt: now, dedupeActive: null, resultS3Key, error: null })
-      .where('id', '=', id)
-      .where('status', '=', 'running')
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('job')
+        .set({ status: 'done', finishedAt: now, dedupeActive: null, resultS3Key, error: null })
+        .where('id', '=', id)
+        .where('status', '=', 'running')
+        .execute(),
+    );
   }
 
   /** Endgültig `failed`; `dedupe_active` wird frei, damit ein späterer Auslöser neu anläuft. */
   async fail(id: string, now: Date, error: JobError): Promise<void> {
-    await this.db
-      .updateTable('job')
-      .set({ status: 'failed', finishedAt: now, dedupeActive: null, error: JSON.stringify(error) })
-      .where('id', '=', id)
-      .where('status', 'in', OPEN)
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('job')
+        .set({
+          status: 'failed',
+          finishedAt: now,
+          dedupeActive: null,
+          error: JSON.stringify(error),
+        })
+        .where('id', '=', id)
+        .where('status', 'in', OPEN)
+        .execute(),
+    );
   }
 
   /**
@@ -224,12 +233,14 @@ export class JobQueue {
    * belegt, der Versuchszähler läuft weiter (Höchstzahl über `claim`).
    */
   async retry(id: string, runAfter: Date, error: JobError): Promise<void> {
-    await this.db
-      .updateTable('job')
-      .set({ status: 'pending', runAfter, startedAt: null, error: JSON.stringify(error) })
-      .where('id', '=', id)
-      .where('status', '=', 'running')
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .updateTable('job')
+        .set({ status: 'pending', runAfter, startedAt: null, error: JSON.stringify(error) })
+        .where('id', '=', id)
+        .where('status', '=', 'running')
+        .execute(),
+    );
   }
 
   /**

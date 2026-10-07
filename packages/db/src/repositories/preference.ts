@@ -2,6 +2,7 @@
 import type { Kysely } from 'kysely';
 import type { Database } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { retryOcc } from '../tx';
 
 export class PreferenceRepository extends TenantRepo {
   constructor(db: Kysely<Database>, ctx: TenantContext) {
@@ -23,18 +24,20 @@ export class PreferenceRepository extends TenantRepo {
 
   async set(key: string, value: unknown, now: Date): Promise<void> {
     const json = JSON.stringify(value);
-    await this.db
-      .insertInto('userPreference')
-      .values({
-        tenantId: this.ctx.tenantId,
-        userId: this.ctx.memberId ?? '',
-        prefKey: key,
-        value: json,
-        updatedAt: now,
-      })
-      .onConflict((oc) =>
-        oc.columns(['userId', 'prefKey']).doUpdateSet({ value: json, updatedAt: now }),
-      )
-      .execute();
+    await retryOcc(() =>
+      this.db
+        .insertInto('userPreference')
+        .values({
+          tenantId: this.ctx.tenantId,
+          userId: this.ctx.memberId ?? '',
+          prefKey: key,
+          value: json,
+          updatedAt: now,
+        })
+        .onConflict((oc) =>
+          oc.columns(['userId', 'prefKey']).doUpdateSet({ value: json, updatedAt: now }),
+        )
+        .execute(),
+    );
   }
 }
