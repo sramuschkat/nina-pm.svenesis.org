@@ -4,6 +4,7 @@
  * Lease-Rückholung (M5/M6) und NINA-Einstellungen (NT-22, NT-E1), Isolation je Session (SEC-53).
  */
 import {
+  LATE_LIGHT_AFTER_END_MS,
   markStaleSessions,
   sessionsDueForClose,
   STALE_REPORT_GRACE_MS,
@@ -498,13 +499,41 @@ describe('Aufnahmen (TK 6.6)', () => {
     ]);
     expect((await t.lineCounts()).acquired_count).toBe(3);
     expect(await conflicts(sid)).toBe(0);
-    // Outbox als leer gemeldet: eine spätere Meldung ist wieder auffällig.
+    // Outbox als leer gemeldet: eine spätere Meldung ist wieder auffällig – nach dem Nachlauf von 10 min.
     await t.call(t.tokens.a1, `/sessions/${sid}`, {
       method: 'PATCH',
       body: { status: 'completed', outboxPending: 0 },
     });
+    s.clock.set(new Date(Date.parse('2026-09-18T14:00:00Z') + LATE_LIGHT_AFTER_END_MS + 1000));
     await t.captures(t.tokens.a1, sid, [t.light()]);
     expect(await conflicts(sid)).toBe(1);
+  });
+
+  it('letztes Light Sekunden nach completed mit outboxPending = 0 → kein lease_conflict, gezählt; Bericht wartet den Nachlauf ab', async () => {
+    // Analyse 07.10.2026: das Plugin meldet `completed` mit leerer Outbox, die letzte Belichtung wird erst danach gespeichert
+    // und gesendet → bisher „Aufnahmen ohne gültige Lease“.
+    const t = await setup();
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid });
+    await t.captures(t.tokens.a1, sid, [t.light()]);
+    await t.call(t.tokens.a1, `/sessions/${sid}`, {
+      method: 'PATCH',
+      body: { status: 'completed', endedAtUtc: '2026-09-18T14:00:00Z', outboxPending: 0 },
+    });
+    const report = (
+      await s.pg.admin.query(
+        "SELECT run_after FROM job WHERE kind = 'session_report' AND dedupe_key = $1",
+        [`session_report:${sid}`],
+      )
+    ).rows[0] as { run_after: Date } | undefined;
+    expect(new Date(report?.run_after ?? 0).getTime()).toBeGreaterThanOrEqual(
+      Date.parse('2026-09-18T14:00:00Z') + LATE_LIGHT_AFTER_END_MS,
+    );
+    s.clock.set(new Date('2026-09-18T14:00:20Z'));
+    const r = await t.captures(t.tokens.a1, sid, [t.light()]);
+    expect(r.body.results).toEqual([expect.objectContaining({ status: 'accepted' })]);
+    expect((await t.lineCounts()).acquired_count).toBe(2);
+    expect(await conflicts(sid)).toBe(0);
   });
 
   it('Nachmeldung nach completed, während eine andere Instanz die Lease hält → lease_conflict', async () => {
@@ -1213,5 +1242,103 @@ describe('session_close nach Rückkehr aus stale (P1-5, TK 13, NIN5-7)', () => {
     await finishJobs();
     await t.call(t.tokens.a1, `/sessions/${direct}`, { method: 'PATCH', body: end });
     expect(await count()).toBe(4);
+  });
+});
+
+describe('Planrevisionen und Session-Bindung (Analyse 07.10.2026)', () => {
+  const plans = async (sessionId: string) =>
+    (
+      await s.pg.admin.query(
+        "SELECT id, revision, summary->>'sourceNightPlanId' AS source FROM night_plan WHERE session_id = $1 ORDER BY revision",
+        [sessionId],
+      )
+    ).rows as { id: string; revision: number; source: string | null }[];
+  const refresh = (t: Awaited<ReturnType<typeof setup>>, sessionId: string, startAtUtc: string) =>
+    t.call(t.tokens.a1, '/plan', {
+      method: 'POST',
+      body: { night: NIGHT, reason: 'refresh', sessionId, startAtUtc },
+    });
+
+  it('inhaltsgleicher Plan (nur startAtUtc anders) → keine neue Revision; Antwort = gespeicherte Revision', async () => {
+    const t = await setup();
+    const p1 = await t.plan(t.tokens.a1);
+    const sid = id();
+    await t.session(t.tokens.a1, { id: sid, nightPlanId: p1.nightPlanId });
+    // Vor dem Nachtfenster: dieselben Blöcke, aber eine andere Eingabe (startAtUtc) und damit eine andere nightPlanId.
+    const r1 = await refresh(t, sid, '2026-09-18T14:05:00Z');
+    const r2 = await refresh(t, sid, '2026-09-18T14:10:00Z');
+    for (const r of [r1, r2]) {
+      expect(r.status).toBe(200);
+      expect(nina.NinaPlanResponse.safeParse(r.body).error?.issues ?? []).toEqual([]);
+      expect(r.body).toMatchObject({ nightPlanId: p1.nightPlanId, revision: 1 });
+      expect((r.body.blocks as { id: string }[]).map((b) => b.id)).toEqual(
+        (p1.blocks as { id: string }[]).map((b) => b.id),
+      );
+    }
+    expect(await plans(sid)).toEqual([{ id: p1.nightPlanId, revision: 1, source: null }]);
+    // Geänderte Einstellungen → neue Revision wie bisher.
+    await t.eq.updateScheduler(t.rig.id, { ...SCHEDULER, ditherEvery: 2 }, s.clock.now());
+    const r3 = await refresh(t, sid, '2026-09-18T14:15:00Z');
+    expect(r3.body.revision).toBe(2);
+    expect((await plans(sid)).map((p) => p.revision)).toEqual([1, 2]);
+  });
+
+  it('Neustart vor der Dämmerung: neue Session mit gleicher nightPlanId erhält eine eigene Revision', async () => {
+    const t = await setup();
+    const p1 = await t.plan(t.tokens.a1);
+    const first = id();
+    await t.session(t.tokens.a1, { id: first, nightPlanId: p1.nightPlanId });
+    // Neustart derselben Instanz ohne lokalen Stand: gleiche Eingabe → gleiche nightPlanId, neue Session.
+    s.clock.advance(60_000);
+    const again = await t.plan(t.tokens.a1);
+    expect(again.nightPlanId).toBe(p1.nightPlanId);
+    const second = id();
+    expect((await t.session(t.tokens.a1, { id: second, nightPlanId: p1.nightPlanId })).status).toBe(
+      201,
+    );
+    expect(await plans(first)).toEqual([{ id: p1.nightPlanId, revision: 1, source: null }]);
+    const copy = await plans(second);
+    expect(copy).toEqual([{ id: expect.any(String), revision: 1, source: p1.nightPlanId }]);
+    expect(copy[0]?.id).not.toBe(p1.nightPlanId);
+    const row = (
+      await s.pg.admin.query('SELECT session_end_utc FROM session WHERE id = $1', [second])
+    ).rows[0] as { session_end_utc: Date | null };
+    expect(row.session_end_utc).not.toBeNull();
+    // Idempotent: Anlage wiederholt, derselbe Plan mit der neuen Session → keine weitere Revision.
+    expect((await t.session(t.tokens.a1, { id: second, nightPlanId: p1.nightPlanId })).status).toBe(
+      200,
+    );
+    const same = await t.plan(t.tokens.a1, second);
+    expect(same).toMatchObject({ nightPlanId: p1.nightPlanId, revision: 1 });
+    expect(await plans(second)).toHaveLength(1);
+  });
+
+  it('noch unbekannte (offline angelegte) Session: Revisionen zählen schon je Session, die Anlage bindet den Startplan davor', async () => {
+    const t = await setup();
+    const p0 = await t.plan(t.tokens.a1);
+    const sid = id();
+    s.clock.advance(60_000);
+    // Neue Eingabe (Einstellungen) mit der Session, deren Anlage noch im Postausgang liegt.
+    await t.eq.updateScheduler(t.rig.id, { ...SCHEDULER, ditherEvery: 2 }, s.clock.now());
+    const r = await refresh(t, sid, '2026-09-18T14:05:00Z');
+    expect(r.status).toBe(200);
+    expect(r.body.revision).toBe(1);
+    expect((await plans(sid)).map((p) => p.id)).toEqual([r.body.nightPlanId]);
+    // Anlage kommt nach: der Startplan wird gebunden und als Revision 1 vor die spätere gestellt.
+    s.clock.advance(60_000);
+    expect(
+      (
+        await t.session(t.tokens.a1, {
+          id: sid,
+          nightPlanId: p0.nightPlanId,
+          offline: true,
+          startedAtUtc: '2026-09-18T14:00:30Z',
+        })
+      ).status,
+    ).toBe(201);
+    expect(await plans(sid)).toEqual([
+      { id: p0.nightPlanId, revision: 1, source: null },
+      { id: r.body.nightPlanId, revision: 2, source: null },
+    ]);
   });
 });

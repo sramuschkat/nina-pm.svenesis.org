@@ -21,6 +21,12 @@ import { sql } from 'kysely';
 export const STALE_NO_HEARTBEAT_MS = 10 * 60_000;
 export const STALE_AFTER_SESSION_END_MS = 2 * 3_600_000;
 export const CLOSE_AFTER_END_MS = 6 * 3_600_000;
+/**
+ * Nachlauf nach dem Sessionende (Analyse 07.10.2026): Das Plugin meldet `completed` mit `outboxPending = 0`, während die
+ * letzte Light-Aufnahme noch gespeichert und Sekunden später gesendet wird. Aufnahmen derselben Session in diesem Fenster
+ * sind kein Lease-Konflikt; der Nachtbericht wartet ihn ab (`session_report` frühestens `ended_at` + Nachlauf).
+ */
+export const LATE_LIGHT_AFTER_END_MS = 10 * 60_000;
 /** Offline-Modus länger als die Höchstdauer (`OFFLINE_MAX_MS`, 14 Tage): dann doch verwaist. */
 export const OFFLINE_STALE_MS = 14 * 86_400_000;
 /**
@@ -173,7 +179,7 @@ export async function sessionsDueForClose(
     const mark = s?.darknessEndUtc ?? s?.sessionEndUtc ?? null;
     const reportAt = new Date(
       Math.max(
-        ended?.getTime() ?? now.getTime(),
+        ended ? ended.getTime() + LATE_LIGHT_AFTER_END_MS : now.getTime(),
         mark ? Date.parse(mark) : 0,
         r.status === 'stale' ? now.getTime() + STALE_REPORT_GRACE_MS : 0,
       ),

@@ -4,10 +4,17 @@
  * Festlegen und Aufheben ändern das ETag; andere Nächte, Rigs und Mandanten sehen ihn nicht; der Abschluss wartet die
  * Nachfrist ab und zählt Nachmeldungen ohne zweites Discord-Ereignis. HAT-P-17 b mit verkürzter Periode in Starfront.
  */
-import { replaceExoCatalog, settleTransits, TRANSIT_SETTLE_GRACE_MS } from '@nina-pm/db';
+import {
+  replaceExoCatalog,
+  settleTransits,
+  TRANSIT_SETTLE_GRACE_MS,
+  TRANSIT_SETTLE_MAX_MS,
+} from '@nina-pm/db';
 import { COOKIE_NAMES, nina, type ExoProjectCreated, type ExoProjectDetail } from '@nina-pm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { clearExoCatalogCache } from '../src/exo/search';
+import { nightActual } from '../src/nina/actual';
+import { rigData } from '../src/nina/sync';
 import { CAMERA, filterInput, rigInput, SCHEDULER, SITE, TELESCOPE } from './support/equipment';
 import { HAT } from './support/exo';
 import { createStack, type Stack } from './support/stack';
@@ -362,13 +369,28 @@ describe('Transit an NINA ausliefern (AP-44, transit.md §9)', () => {
 });
 
 describe('Abschluss nach Fensterende mit Nachfrist (transit.md §8)', () => {
-  const capture = async (sessionId: string) =>
+  const capture = async (
+    sessionId: string,
+    o: { result?: string; fileName?: string | null; rejected?: boolean; blockId?: string } = {},
+  ) =>
     s.pg.admin.query(
       `INSERT INTO capture (id, tenant_id, session_id, project_id, panel_id, exposure_line_id, transit_observation_id,
-         night, captured_at, filter_short_name, exposure_s, result, file_name)
-       SELECT $1, $2, $3, l.project_id, l.panel_id, l.id, $4, $5, $6, 'RED', 60, 'saved', 'x.fits'
+         night, captured_at, filter_short_name, exposure_s, result, file_name, rejected, block_id)
+       SELECT $1, $2, $3, l.project_id, l.panel_id, l.id, $4, $5, $6, 'RED', 60, $8, $9, $10, $11
        FROM exposure_line l WHERE l.id = $7`,
-      [id(), w.tenantId, sessionId, observationId, night, windowEndUtc, lineId],
+      [
+        id(),
+        w.tenantId,
+        sessionId,
+        observationId,
+        night,
+        windowEndUtc,
+        lineId,
+        o.result ?? 'saved',
+        o.fileName === undefined ? 'x.fits' : o.fileName,
+        o.rejected ?? false,
+        o.blockId ?? null,
+      ],
     );
   const status = async () =>
     (
@@ -420,5 +442,129 @@ describe('Abschluss nach Fensterende mit Nachfrist (transit.md §8)', () => {
       missed: 0,
     });
     expect(await deliveries()).toEqual(['transit.observed']);
+  });
+
+  /** Beobachtung wieder *festgelegt*, ohne Aufnahmen und Zustellungen (für die folgenden Fälle). */
+  const resetObservation = async () => {
+    await s.pg.admin.query('DELETE FROM capture WHERE transit_observation_id = $1', [
+      observationId,
+    ]);
+    await s.pg.admin.query('DELETE FROM discord_delivery WHERE object_id = $1', [observationId]);
+    await s.pg.admin.query(
+      "UPDATE transit_observation SET status = 'locked', acquired_count = 0, session_id = NULL WHERE id = $1",
+      [observationId],
+    );
+  };
+  const sessionOfNight = async (status: string, outboxPending: number | null) => {
+    const sessionId = id();
+    await s.pg.admin.query(
+      `INSERT INTO session (id, tenant_id, rig_id, night, started_at, status, ended_at, outbox_pending)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        sessionId,
+        w.tenantId,
+        w.rigId,
+        night,
+        new Date(Date.parse(windowStartUtc) + 1000),
+        status,
+        status === 'running' ? null : windowEndUtc,
+        outboxPending,
+      ],
+    );
+    return sessionId;
+  };
+
+  it('nur abgebrochene, fehlgeschlagene oder verworfene Aufnahmen → verpasst (Analyse 07.10.2026)', async () => {
+    await resetObservation();
+    await s.pg.admin.query('DELETE FROM session WHERE tenant_id = $1 AND night = $2', [
+      w.tenantId,
+      night,
+    ]);
+    const sessionId = await sessionOfNight('completed', 0);
+    await capture(sessionId, { result: 'aborted', fileName: null });
+    await capture(sessionId, { result: 'failed', fileName: null });
+    await capture(sessionId, { rejected: true });
+    const end = Date.parse(windowEndUtc);
+    const settled = await settleTransits(s.pg.db, new Date(end + TRANSIT_SETTLE_GRACE_MS));
+    expect(settled).toMatchObject({ observed: 0, missed: 1 });
+    expect(await status()).toEqual({ status: 'missed', acquired_count: 0 });
+    // Ein gespeichertes, nicht verworfenes Light zählt (Nachmeldung).
+    await capture(sessionId);
+    await settleTransits(s.pg.db, new Date(end + 2 * TRANSIT_SETTLE_GRACE_MS));
+    expect(await status()).toEqual({ status: 'observed', acquired_count: 1 });
+  });
+
+  it('Meldungen noch im Postausgang → verpasst wartet; ankommende Aufnahmen → nur „beobachtet“ (transit.md §8)', async () => {
+    await resetObservation();
+    await s.pg.admin.query('DELETE FROM session WHERE tenant_id = $1 AND night = $2', [
+      w.tenantId,
+      night,
+    ]);
+    const sessionId = await sessionOfNight('completed', 3);
+    const end = Date.parse(windowEndUtc);
+    // Nach der Nachfrist, Postausgang nicht leer: weder verpasst noch beobachtet.
+    expect(await settleTransits(s.pg.db, new Date(end + TRANSIT_SETTLE_GRACE_MS))).toMatchObject({
+      observed: 0,
+      missed: 0,
+    });
+    expect(await status()).toMatchObject({ status: 'locked' });
+    // Die Aufnahmen kommen an, der Postausgang ist leer.
+    await capture(sessionId);
+    await s.pg.admin.query('UPDATE session SET outbox_pending = 0 WHERE id = $1', [sessionId]);
+    expect(
+      await settleTransits(s.pg.db, new Date(end + 2 * TRANSIT_SETTLE_GRACE_MS)),
+    ).toMatchObject({ observed: 1, missed: 0 });
+    expect(await deliveries()).toEqual(['transit.observed']);
+
+    // Laufende Session, deren Instanz im Heartbeat offene Meldungen hat: ebenso warten – höchstens bis Fensterende + 6 h.
+    await resetObservation();
+    await s.pg.admin.query('DELETE FROM session WHERE tenant_id = $1 AND night = $2', [
+      w.tenantId,
+      night,
+    ]);
+    const running = await sessionOfNight('running', null);
+    const instance = (
+      await s.pg.admin.query('SELECT id FROM nina_instance WHERE rig_id = $1 LIMIT 1', [w.rigId])
+    ).rows[0] as { id: string };
+    await s.pg.admin.query(
+      `UPDATE nina_instance SET last_state = '{"outboxPending": 5}' WHERE id = $1`,
+      [instance.id],
+    );
+    await s.pg.admin.query('UPDATE session SET nina_instance_id = $1 WHERE id = $2', [
+      instance.id,
+      running,
+    ]);
+    expect(await settleTransits(s.pg.db, new Date(end + TRANSIT_SETTLE_GRACE_MS))).toMatchObject({
+      missed: 0,
+    });
+    expect(await settleTransits(s.pg.db, new Date(end + TRANSIT_SETTLE_MAX_MS))).toMatchObject({
+      missed: 1,
+    });
+    expect(await deliveries()).toEqual(['transit.missed']);
+    await s.pg.admin.query('UPDATE nina_instance SET last_state = NULL WHERE id = $1', [
+      instance.id,
+    ]);
+  });
+
+  it('Ist der Nacht: Block einer Transit-Aufnahme ist ein Transitblock, auch ohne gespeicherte Revision (Analyse 07.10.2026)', async () => {
+    await resetObservation();
+    await s.pg.admin.query('DELETE FROM session WHERE tenant_id = $1 AND night = $2', [
+      w.tenantId,
+      night,
+    ]);
+    const sessionId = await sessionOfNight('completed', 0);
+    const blockId = id();
+    await capture(sessionId, { blockId });
+    const ref = { tenantId: w.tenantId, rigId: w.rigId };
+    const d = await rigData(s.services, ref);
+    const actual = await nightActual(s.services, ref, d, {
+      night,
+      currentNight: night,
+      now: s.clock.now(),
+      names: new Map(),
+    });
+    expect(actual.executed?.blocks.find((b) => b.blockId === blockId)).toMatchObject({
+      kind: 'transit',
+    });
   });
 });
