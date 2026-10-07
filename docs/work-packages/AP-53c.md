@@ -44,8 +44,8 @@ FA-SIM-05, FA-SIM-07, FA-SIM-08, FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **F
 - **Plan ab jetzt aus der letzten gespeicherten Revision** (`night_plan`, `origin = server_plan`): Blöcke und Einträge ab `max(jetzt, Ende Ist)`. Das ist genau das, was das Plugin ausführt. Die Neurechnung ab jetzt (heutiges Verhalten seit #277) bleibt nur für eine Nacht ohne gespeicherten Plan.
 - **Plan zu Nachtbeginn** (Revision 1 der Session) wahlweise als dünner Umriss hinter Ist und Plan. Schalter *Ursprungsplan*, Standard aus.
 - **Darstellung (`PlanChart`, Web und Plugin gleich):**
-  - Ist kräftig gefüllt, mit Filterleiste aus den Segmenten.
-  - Plan blass mit gestricheltem Rand.
+  - Ist blass mit dünnem Rand und blasser Filterleiste aus den Segmenten (Sven, 07.10.2026: Vergangenheit schwach, Zukunft stark).
+  - Plan ab jetzt kräftig gefüllt, mit kräftiger Filterleiste.
   - Lücken im Ist (Leerlauf, Schleife, Safety) schraffiert mit Grund im Tooltip.
   - Jetzt-Linie. Höhenkurven über die ganze Nacht.
 - **Planprotokoll** mit Spalte **Ist** wie in AP-53b (✓ gespeichert, ↷ übersprungen mit Grund, ✕ fehlgeschlagen, ▶ läuft, ○ geplant). Vergangene Einträge kommen aus den Ist-Daten, künftige aus dem gespeicherten Plan. Kopfzeile mit Zählern.
@@ -74,7 +74,7 @@ FA-SIM-05, FA-SIM-07, FA-SIM-08, FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **F
 - [ ] Web: `planNight(applyOverrides(input, {}))` ergibt denselben Hash wie der Server. Jede Überlagerung ändert nur die betroffenen Felder. Die Simulator-Tests laufen ohne eigene `buildPlanInput`-Zusammensetzung.
 - [ ] Ist-Aggregation: Beispielnacht nach 06./07.10. (Transit 558 × RED, 12 min `transit_interrupt`-Schleife, IC 1795, Flip, Flats) → erwartete Blöcke, Segmente, Lücken und Zähler. Zwei Sessions in einer Nacht werden zusammengeführt.
 - [ ] Hash-Hinweis: drei Zustände (gleich, Was-wäre-wenn, Rig auf älterer Revision) in Komponenten-Tests
-- [ ] Plugin: `NinaSimulation.executed` deserialisiert, `PlanChart` zeichnet Ist kräftig und Plan blass, Grenze an der Jetzt-Linie. Ohne `executed` (älterer Server) bleibt die Anzeige wie heute.
+- [ ] Plugin: `NinaSimulation.executed` deserialisiert, `PlanChart` zeichnet Ist blass und Plan kräftig, Grenze an der Jetzt-Linie. Ohne `executed` (älterer Server) bleibt die Anzeige wie heute.
 - [ ] E2E (Playwright): Simulator „Heute Nacht“ mit laufender Session aus dem Seed zeigt erledigte Blöcke vor der Jetzt-Linie. Die Zeitleiste auf „Heute Nacht“ zeigt den Transit.
 - [ ] Rechte-Tests generiert, CI grün, Changelog-Fragment, AP- und Anforderungs-IDs im PR
 
