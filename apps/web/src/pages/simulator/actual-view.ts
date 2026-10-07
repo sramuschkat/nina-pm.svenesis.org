@@ -326,7 +326,10 @@ export function actualView(i: ActualViewInput): ActualView | null {
               untilUtc: e.untilUtc ?? null,
               durationS: e.durationS ?? null,
               projectName: name(b.projectId),
-              no: e.cmd === 'expose' ? next(e.exposureLineId ?? `${b.projectId}|${e.filter ?? ''}`) : null,
+              no:
+                e.cmd === 'expose'
+                  ? next(e.exposureLineId ?? `${b.projectId}|${e.filter ?? ''}`)
+                  : null,
               filter: e.filter ?? '',
               exposureS: e.exposureS ?? null,
               gain: e.gain ?? null,
