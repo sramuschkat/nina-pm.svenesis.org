@@ -8,6 +8,7 @@ using NINA.Core.Utility;
 using NinaPm.Core.Api.Generated;
 using NinaPm.Core.Logging;
 using NinaPm.Core.Simulator;
+using NinaPm.Core.Status;
 using NinaPm.Core.Time;
 using NinaPm.Nina.Sequencer;
 using NinaPm.Nina.Ui;
@@ -19,7 +20,7 @@ namespace NinaPm.Nina.Simulator;
 /// und Ziele, wenn noch keine Nacht-Tabelle da ist – ohne laufende Sequenz lädt sie sonst niemand.
 /// </summary>
 internal sealed record SimulatorContext(ISimulationApi Api, NinaBootstrap? Bootstrap, bool OfflineMode, DateTimeOffset? TargetsFetchedUtc,
-    NinaPmLog Log, Func<CancellationToken, Task>? LoadSettings = null);
+    NinaPmLog Log, Func<CancellationToken, Task>? LoadSettings = null, Func<NinaSimulation, NightViewInputs?>? NightInputs = null);
 
 /// <summary>
 /// Simulator auf der Optionsseite (FA-NIN-18, AP-53) mit der Gliederung von S-40: Infobox mit
@@ -43,6 +44,7 @@ public sealed class SimulatorModel : INotifyPropertyChanged
     private bool running;
     private NinaSimulation? simulation;
     private IReadOnlyList<PlanLogRow> logRows = [];
+    private IReadOnlyList<Dock.NightLogRowView>? actualRows;
 
     internal SimulatorModel(Func<SimulatorContext?>? context = null, IClock? clock = null)
     {
@@ -70,7 +72,7 @@ public sealed class SimulatorModel : INotifyPropertyChanged
     {
         if (NinaPmRuntime.Current is not { } rt) return null;
         return new SimulatorContext(rt.SimulationApi, rt.Runner.Bootstrap, rt.Runner.OfflineMode, rt.Runner.TargetsFetchedUtc, rt.Log,
-            t => rt.Runner.RefreshAsync(t));
+            t => rt.Runner.RefreshAsync(t), s => rt.Runner.NightViewInputs(s));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -313,11 +315,25 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         foreach (var c in SimulatorCards.Build(s, site)) Cards.Add(new SimulatorCardView(c));
         Unallocated.Clear();
         foreach (var u in SimulatorCards.Unallocated(s)) Unallocated.Add(new UnallocatedView(u));
-        Chart = new PlanChartView(PlanChart.Build(s, site, now));
+        // Laufende Nacht mit gespeichertem Plan (AP-53c): Ist + Plan wie die Fenster im Imaging-Reiter – Erledigtes aus
+        // lokalem Journal und Server-Ist (blass), der Rest aus dem gespeicherten Plan (kräftig), Protokoll mit Spalte „Ist“.
+        var inside = now > s.NightWindow.StartUtc && now < s.NightWindow.EndUtc;
+        var actual = inside && context()?.NightInputs?.Invoke(s) is { Plan: not null } inputs && inputs.Night == s.Night
+            ? NightViewBuilder.Build(inputs with { Simulation = s, Site = site })
+            : null;
+        Chart = new PlanChartView(actual?.Chart ?? PlanChart.Build(s, site, now));
         PlanHeader = Texts.PlanZone(Chart.Chart.Zone);
+        PlanState = s.StoredPlan is { } sp
+            ? Texts.SimPlanState(sp.NightPlanId.ToString("N")[..8], sp.Revision, site.ClockZone(sp.CreatedAtUtc),
+                sp.Stale, sp.StaleCause == StoredPlanInfoStaleCause.Settings)
+            : "";
         logRows = PlanLog.Build(s, site, LogTexts.Instance);
+        actualRows = actual is null ? null : [.. actual.Rows.Select(r => new Dock.NightLogRowView(r, site))];
         Log.Clear();
-        foreach (var r in logRows) Log.Add(new LogRowView(r));
+        if (actualRows is null)
+            foreach (var r in logRows) Log.Add(new LogRowView(r));
+        else
+            foreach (var r in actualRows) Log.Add(LogRowView.From(r));
         Warnings.Clear();
         foreach (var w in s.Warnings)
         {
@@ -336,13 +352,20 @@ public sealed class SimulatorModel : INotifyPropertyChanged
         Raise(nameof(HasUnallocated));
         Raise(nameof(Chart));
         Raise(nameof(PlanHeader));
+        Raise(nameof(PlanState));
+        Raise(nameof(HasPlanState));
         Raise(nameof(HasWarnings));
         Raise(nameof(CopyStatus));
         RaiseDate();
     }
 
     /// <summary>Text für die Zwischenablage (Tab-getrennt mit Kopfzeile).</summary>
-    internal string ProtocolText => PlanLog.Tsv(logRows, LogTexts.Instance);
+    internal string ProtocolText => actualRows is { } rows ? Dock.NightLogRowView.Tsv(rows) : PlanLog.Tsv(logRows, LogTexts.Instance);
+
+    /// <summary>„Plan 4c2e91d0 · Rev. 9 · 03:31 CDT“ und ggf. „Rig plant noch mit Rev. n …“ (AP-53c).</summary>
+    public string PlanState { get; private set; } = "";
+
+    public bool HasPlanState => PlanState.Length > 0;
 
     private Task Copy()
     {

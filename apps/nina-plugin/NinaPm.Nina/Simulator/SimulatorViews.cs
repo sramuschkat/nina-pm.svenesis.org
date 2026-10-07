@@ -131,9 +131,25 @@ public sealed class UnallocatedView(UnallocatedProject project)
         : $"{project.Name} – {string.Join(", ", project.Reasons.Select(Texts.DiagnosticReason))}";
 }
 
-/// <summary>Zeile des Planprotokolls (Zellen nach <see cref="PlanLog.Columns"/>).</summary>
-public sealed class LogRowView(PlanLogRow row)
+/// <summary>Zeile des Planprotokolls (Zellen nach <see cref="PlanLog.Columns"/>); mit Ist + Plan (AP-53c) zusätzlich „Ist“.</summary>
+public sealed class LogRowView(PlanLogRow row, string actual = "", double opacity = 1, bool current = false)
 {
+    /// <summary>Zeile des Ist + Plan (Spalten wie die Fenster im Imaging-Reiter, Mondspalten leer).</summary>
+    internal static LogRowView From(Dock.NightLogRowView r)
+    {
+        var cells = r.Cells.Skip(1).ToList();
+        while (cells.Count < PlanLog.Columns.Count) cells.Add("");
+        return new LogRowView(new PlanLogRow(r.Row.Cmd, cells), r.Actual, r.Opacity, r.IsCurrent);
+    }
+
+    /// <summary>Spalte „Ist“ (leer ohne Ist-Daten).</summary>
+    public string Actual => actual;
+
+    /// <summary>Erledigtes blass (0,5), Geplantes kräftig (1).</summary>
+    public double Opacity => opacity;
+
+    public bool IsCurrent => current;
+
     public string Time => row.Cells[0];
     public string Cmd => row.Cells[1];
     public string Target => row.Cells[2];

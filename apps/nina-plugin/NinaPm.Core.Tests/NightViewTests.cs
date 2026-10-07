@@ -268,6 +268,77 @@ public sealed class NightViewTests : IDisposable
         Assert.Contains(view.Chart!.Blocks, b => b.Tense == ChartTense.Past && b.Label == "NGC 281 Pacman");
     }
 
+    [Fact]
+    public void Server_Ist_wird_zu_Journaleintraegen_mit_Anzahl_und_ergaenzt_das_lokale_Journal_davor()
+    {
+        // AP-53c: Ist vom Server (z. B. Plugin erst mitten in der Nacht aktualisiert) – Transit 3 Aufnahmen, Schleife aus
+        // 212 leeren Blöcken, Flip; danach schreibt das Plugin lokal mit.
+        var executed = new ExecutedNight
+        {
+            Night = Night,
+            Sessions = 1,
+            Blocks =
+            [
+                new ExecutedBlock
+                {
+                    BlockId = Transit.Id, ProjectId = Transit.ProjectId, Title = "HAT-P-17 b", Kind = ExecutedBlockKind.Transit,
+                    StartUtc = T("02:05:30"), EndUtc = T("07:34:00"), EndReason = "completed", Exposures = 558,
+                },
+            ],
+            Segments =
+            [
+                new ExecutedSegment { BlockId = Transit.Id, ProjectId = Transit.ProjectId, Filter = "R", StartUtc = T("02:08:00"), EndUtc = T("07:33:00"), Saved = 558, Failed = 1, ExposureS = 30 },
+            ],
+            Events = [new ExecutedEvent { Kind = ExecutedEventKind.Flip, AtUtc = T("05:00:00"), BlockId = Transit.Id, DurationS = 600 }],
+            Gaps =
+            [
+                new ExecutedGap { Kind = ExecutedGapKind.Empty_blocks, FromUtc = T("07:35:00"), ToUtc = T("07:47:00"), Reason = "transit_interrupt", Count = 212 },
+            ],
+            Counters = new ExecutedCounters { Saved = 558, Skipped = 0, Failed = 1 },
+        };
+        var server = ExecutedJournal.From(executed);
+        Assert.Equal(server.OrderBy(e => e.AtUtc).Select(e => e.AtUtc), server.Select(e => e.AtUtc));
+
+        Add("07:48:00", JournalKinds.BlockStart, Start(Regular, "NGC 281 Pacman"));
+        Add("07:55:00", JournalKinds.Capture, Capture(Regular, "Ha", 300, "07:50:00", seq: 4));
+        Add("07:56:00", JournalKinds.BlockEnd, new JournalData { BlockId = Regular.Id, Reason = "completed", Exposures = 1 });
+        // Ein Server-Eintrag nach dem ersten lokalen zählt nicht doppelt.
+        var merged = ExecutedJournal.Merge(journal.Read(Night), [.. server, new JournalEntry(-99, T("07:57:00"), JournalKinds.Capture, new JournalData { Result = "saved" })]);
+        Assert.Equal(server.Count + 3, merged.Count);
+        Assert.Same(server, ExecutedJournal.Merge([], server));
+
+        var view = NightViewBuilder.Build(new NightViewInputs(Night, merged, Plan, Plan.Blocks.Select(b => b.Id).ToHashSet(), null, null, null,
+            Targets, Bootstrap, null, SiteTime.Utc, T("08:00:00")));
+        Assert.Equal((559, 0, 1), (view.Saved, view.Skipped, view.Failed));
+        var r = Assert.Single(view.Chart!.FilterBars, f => f.Label.StartsWith("R", StringComparison.Ordinal));
+        Assert.Equal("R ×558", r.Label);
+        var gap = Assert.Single(view.Chart.Gaps, g => g.Kind == ChartGapKind.EmptyBlocks);
+        Assert.Equal(("transit_interrupt", 212), (gap.Reason, gap.Count));
+        Assert.Contains(view.Chart.Gaps, g => g.Kind == ChartGapKind.Flip);
+        Assert.Contains(view.Rows, x => x is { State: ActualState.Saved, Filter: "R", Count: 558 });
+        Assert.Contains(view.Chart.Blocks, b => b.Transit && b.Tense == ChartTense.Past);
+    }
+
+    [Fact]
+    public async Task NightRunner_meldet_Plan_Blockstart_und_Blockende_an_den_Server()
+    {
+        // AP-53c: dieselben Ereignisse wie das lokale Journal gehen in die Outbox (block_start mit Beginn des Anfahrens).
+        var nina = new FakeNina(clock) { ExposureScale = 0.02, DownloadS = 1 };
+        var runner = new NightRunner(new JournalApi(), new JournalApi(), store, nina, nina, clock, new NinaPmLog(new ListSink()));
+        await runner.RunOnceAsync(default);
+        clock.UtcNow = T("07:35:00");
+        await runner.RunOnceAsync(default);
+        var events = store.OutboxPayloads(OutboxKinds.Event).Select(p => JsonConvert.DeserializeObject<Events>(p, NinaJson.Settings())!).ToList();
+        var kinds = events.Select(e => e.Kind).ToList();
+        Assert.Contains(EventsKind.Plan_built, kinds);
+        var start = Assert.Single(events, e => e.Kind == EventsKind.Block_start);
+        Assert.Equal((Regular.Id, Regular.ProjectId), (start.BlockId!.Value, start.ProjectId!.Value));
+        Assert.Equal("NGC 281 Pacman", start.Data!["title"]);
+        var end = Assert.Single(events, e => e.Kind == EventsKind.Block_end);
+        Assert.Equal("completed", end.Code);
+        Assert.True(start.OccurredAtUtc <= end.OccurredAtUtc);
+    }
+
     /// <summary>Server für den Journal-Test: Bootstrap, Ziele, Plan aus den Vertragsbeispielen, Session ohne Fehler.</summary>
     private sealed class JournalApi : IPlanApi, ISessionApi
     {

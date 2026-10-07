@@ -69,6 +69,13 @@ FA-SIM-05, FA-SIM-07, FA-SIM-08, FA-NIN-13, FA-NIN-18. Neu vorgeschlagen ist **F
 3. **Vergangene Nächte mit Session:** Der Web-Simulator zeigt Ist und letzte Revision. Künftige Nächte und Nächte ohne Session rechnet er wie bisher.
 4. **Hinweis „Rig plant noch mit Rev. n“** erscheint im Web- und Plugin-Simulator und auf der Rig-Karte von „Heute Nacht“.
 
+## Umsetzung (07.10.2026) – Abweichungen und Präzisierungen
+- **Reihenfolge:** Auf Wunsch von Sven vor der Abnahme von AP-53b umgesetzt („wir testen das dann alles zusammen“).
+- **Plugin meldet Blöcke:** Bis 0.4.13 meldete das Plugin weder Blockstart/-ende noch Übersprungenes oder Safety-Pausen. Ab 0.4.14 meldet es dieselben Einträge wie das Nachtjournal (execution.md §10.2). Für ältere Nächte ergibt das Server-Ist die Blöcke aus den Aufnahmen.
+- **Was-wäre-wenn:** Im Web-Simulator gibt es keine lokalen Schalter je Zeile oder Priorität (Zeilen schaltet er auf dem Server); Was-wäre-wenn ist *mit meinen Entwürfen*. Dafür baut der Browser die Eingabe weiter selbst (`buildPlanInput` bleibt im Browser nur dafür); `applyOverrides` entfällt.
+- **„Rig plant noch mit Rev. n“:** Der Hash der gespeicherten Revision ist nicht vergleichbar (Startzeit, Nachtzustand). Verglichen werden Ziele-ETag und Einstellungsversion, die `POST /plan` in `night_plan.summary` ablegt – ohne Migration.
+- **Ist in den Plugin-Fenstern:** Das lokale Journal ist frischer als das einmal je Nacht geholte Server-Ist; es gilt das lokale Journal, davor das Server-Ist.
+
 ## Automatisierte Abnahme
 - [ ] Vertragstest: `GET /simulations/input` liefert für dasselbe Rig, dieselbe Nacht und dieselbe Zeit **byte-gleich** dieselbe `canonicalInputJson` wie `POST /plan` ohne `tonight`. Das gilt mit Transit, ohne Transit und mit unbekanntem Autofokus-Trigger.
 - [ ] Web: `planNight(applyOverrides(input, {}))` ergibt denselben Hash wie der Server. Jede Überlagerung ändert nur die betroffenen Felder. Die Simulator-Tests laufen ohne eigene `buildPlanInput`-Zusammensetzung.

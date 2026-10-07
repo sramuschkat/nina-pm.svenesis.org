@@ -57,6 +57,12 @@ public sealed record JournalData
     /// <summary>Beginn der Belichtung (Aufnahme) – der Eintrag selbst steht beim Speichern.</summary>
     [JsonProperty("startUtc")] public DateTimeOffset? StartUtc { get; init; }
     [JsonProperty("durationS")] public double? DurationS { get; init; }
+
+    /// <summary>
+    /// Zusammengefasste Einträge (Server-Ist, AP-53c): Aufnahmen eines Filterabschnitts bzw. leere Blöcke einer Lücke;
+    /// ohne Angabe 1.
+    /// </summary>
+    [JsonProperty("count")] public int? Count { get; init; }
 }
 
 /// <summary>Eintrag des Nachtjournals; <see cref="Id"/> steigt je Eintrag.</summary>

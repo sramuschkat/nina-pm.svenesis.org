@@ -267,7 +267,8 @@ public sealed class NightRunner(
     /// </summary>
     /// <summary>
     /// Eingaben der Fenster im Imaging-Reiter (AP-53b): Journal und gespeicherter Plan der Journal-Nacht, laufender Block
-    /// und laufende Belichtung, Ziele, Bootstrap; ohne Nacht <c>null</c>. Die Simulation (Höhenkurven) bringt der Aufrufer.
+    /// und laufende Belichtung, Ziele, Bootstrap; ohne Nacht <c>null</c>. Die Simulation (Höhenkurven, Server-Ist für die
+    /// Zeit vor dem ersten lokalen Eintrag, AP-53c) bringt der Aufrufer.
     /// </summary>
     public NightViewInputs? NightViewInputs(NinaSimulation? simulation)
     {
@@ -275,7 +276,9 @@ public sealed class NightRunner(
         var stored = PlanStore.Load(store, night);
         var site = bootstrap is not null ? Simulator.SiteTime.From(bootstrap)
             : simulation is not null ? Simulator.SiteTime.From(simulation) : Simulator.SiteTime.Utc;
-        return new NightViewInputs(night, Journal.Read(night), stored?.Plan, DoneBlocks(stored), RunningBlock, Executor?.CurrentEntry,
+        // Lokales Journal, davor das Ist vom Server (AP-53c), falls das Plugin erst mitten in der Nacht mitschreibt.
+        var server = simulation?.Night == night ? ExecutedJournal.From(simulation.Executed) : [];
+        return new NightViewInputs(night, ExecutedJournal.Merge(Journal.Read(night), server), stored?.Plan, DoneBlocks(stored), RunningBlock, Executor?.CurrentEntry,
             Executor?.CurrentEntryStartedUtc, Targets, bootstrap, simulation, site, clock.UtcNow, FlatsRunning);
     }
 

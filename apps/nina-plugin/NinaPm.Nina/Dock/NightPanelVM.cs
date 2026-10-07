@@ -187,6 +187,9 @@ public sealed class NightPanelVM : DockableVM, IDockSizeSink
             ? Texts.DockFooter(id.ToString("N")[..8], view.Revision, view.PlanReason, view.PlanAtUtc is { } at ? site.Clock(at) : null,
                 s.TargetsFetchedUtc is { } tf ? site.Clock(tf) : null, site.Abbr(s.Now))
             : Texts.DockNoPlan;
+        // AP-53c: die Rig plant noch mit älterer Eingabe (Stand der letzten Simulation vom Server).
+        if (s.Stored is { Stale: true } stale && stale.NightPlanId == view.PlanId)
+            Footer += " · " + Texts.DockStale(stale.StaleCause == NinaPm.Core.Api.Generated.StoredPlanInfoStaleCause.Settings);
 
         if (force || s.Key != key)
         {

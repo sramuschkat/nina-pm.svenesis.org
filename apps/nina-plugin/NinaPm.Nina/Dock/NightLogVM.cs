@@ -110,14 +110,7 @@ public sealed class NightLogVM : DockableVM, NinaPm.Nina.Ui.Dock.IFollowRows
     }
 
     /// <summary>Tab-getrennt mit Kopfzeile (Ist, dann die Spalten des Planprotokolls bis Höhe).</summary>
-    internal string Tsv()
-    {
-        static string Clean(string v) => v.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ');
-        var header = new[] { Texts.LogActual }.Concat(NightLogRowView.Columns.Select(Texts.LogColumn));
-        var lines = new List<string> { string.Join('\t', header.Select(Clean)) };
-        lines.AddRange(Rows.Select(r => string.Join('\t', r.Cells.Select(Clean))));
-        return string.Join('\n', lines);
-    }
+    internal string Tsv() => NightLogRowView.Tsv(Rows);
 
     private Task Copy()
     {
@@ -203,4 +196,14 @@ public sealed class NightLogRowView(NightLogRow row, SiteTime site)
     public bool IsCurrent => Row.Current;
 
     public IReadOnlyList<string> Cells => [Actual, Time, Cmd, Target, Panel, No, Filter, Exposure, Gain, Offset, Binning, Readout, Rotation, Ra, Dec, Alt];
+
+    /// <summary>Tab-getrennt mit Kopfzeile (Ist, dann die Spalten des Planprotokolls bis Höhe).</summary>
+    internal static string Tsv(IEnumerable<NightLogRowView> rows)
+    {
+        static string Clean(string v) => v.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ');
+        var header = new[] { Texts.LogActual }.Concat(Columns.Select(Texts.LogColumn));
+        var lines = new List<string> { string.Join('\t', header.Select(Clean)) };
+        lines.AddRange(rows.Select(r => string.Join('\t', r.Cells.Select(Clean))));
+        return string.Join('\n', lines);
+    }
 }

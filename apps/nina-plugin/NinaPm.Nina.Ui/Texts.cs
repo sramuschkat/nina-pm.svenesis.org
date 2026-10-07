@@ -250,6 +250,17 @@ public static class Texts
         : T($"Ziele zuletzt abgerufen: {when}", $"Targets last fetched: {when}");
     public static string SimStats(string darkHours, int targets, int frames, string moonPct) =>
         T($"dunkel {darkHours} h · Ziele {targets} · Frames {frames} · Mond {moonPct} %", $"dark {darkHours} h · targets {targets} · frames {frames} · moon {moonPct} %");
+    /// <summary>Fußzeile des Simulators (AP-53c): gespeicherter Plan der Nacht, ggf. „Rig plant noch mit Rev. n“.</summary>
+    public static string SimPlanState(string plan, int revision, string at, bool stale, bool settings) =>
+        T($"Plan {plan} · Rev. {revision} · {at}", $"Plan {plan} · rev. {revision} · {at}")
+        + (stale
+            ? " · " + (settings
+                ? T("Rig plant noch mit dieser Revision – neue Einstellungen übernimmt das Plugin vor dem nächsten Block",
+                    "Rig still plans with this revision – the plugin picks up new settings before the next block")
+                : T("Rig plant noch mit dieser Revision – neue Ziele übernimmt das Plugin nach höchstens 1 min",
+                    "Rig still plans with this revision – the plugin picks up new targets within 1 min"))
+            : "");
+
     public static string SimComputed(string when, int settingsVersion) =>
         T($"Gerechnet vom Server {when} mit Einstellungsversion {settingsVersion}", $"Computed by the server {when} with settings version {settingsVersion}");
     public static string SimUnavailable(string reason) => T($"Simulator nicht verfügbar: {reason}", $"Simulator not available: {reason}");
@@ -484,6 +495,9 @@ public static class Texts
         "reset" => T("Zurückgesetzt", "reset"),
         _ => reason,
     };
+    public static string DockStale(bool settings) => settings
+        ? T("neue Einstellungen – Übernahme vor dem nächsten Block", "new settings – picked up before the next block")
+        : T("neue Ziele – Übernahme nach höchstens 1 min", "new targets – picked up within 1 min");
     public static string DockLegendPast => T("erledigt (blass)", "done (faint)");
     public static string DockLegendPlanned => T("geplant (kräftig)", "planned (strong)");
     public static string DockLegendGap => T("Lücke mit Grund", "gap with reason");
