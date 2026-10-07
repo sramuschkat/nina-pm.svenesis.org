@@ -2357,12 +2357,6 @@ export const de = {
   },
   sessions: {
     onlyUnreviewed: 'Nur ungeprüfte',
-    col: {
-      night: 'Nacht',
-      rig: 'Rig',
-      status: 'Status',
-      integration: 'Integration',
-    },
     reviewedYes: 'geprüft',
     reviewedNo: 'ungeprüft',
     hours: '{{h}} h',

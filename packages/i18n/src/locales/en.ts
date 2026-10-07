@@ -2348,12 +2348,6 @@ export const en: Messages = {
   },
   sessions: {
     onlyUnreviewed: 'Unreviewed only',
-    col: {
-      night: 'Night',
-      rig: 'Rig',
-      status: 'Status',
-      integration: 'Integration',
-    },
     reviewedYes: 'reviewed',
     reviewedNo: 'unreviewed',
     hours: '{{h}} h',
