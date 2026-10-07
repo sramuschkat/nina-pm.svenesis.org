@@ -152,7 +152,9 @@ public sealed class NightPanelVM : DockableVM, IDockSizeSink
         var blocks = view.Blocks.Where(b => !b.Flats).ToList();
         var current = blocks.FindIndex(b => b.State == ActualState.Running);
         TargetLabel = current >= 0 ? $"{Texts.DockTarget} · {Texts.DockBlock(current + 1, blocks.Count)}" : Texts.DockTarget;
-        TargetText = live.TargetText;
+        // Plan der Nacht vorhanden, aber ohne kommende Blöcke (z. B. nach dem Transit am Nachtende, VM-Lauf 07.10.2026):
+        // nicht „Plan wird beim Sequenzstart erstellt“.
+        TargetText = s.Live.NoPlan && view.PlanId is not null && s.Live.Target is null ? Texts.DockNoMoreBlocks : live.TargetText;
         FilterText = s.Live.Exposure?.Filter ?? "";
         var inv = CultureInfo.CurrentCulture;
         if (view.Progress is { } p)

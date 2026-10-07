@@ -71,6 +71,7 @@ interface StoredEntry {
   readonly binning?: number | null;
   readonly readoutMode?: string | null;
   readonly bonus?: boolean | null;
+  readonly exposureLineId?: string | null;
 }
 
 interface StoredBlock {
@@ -288,6 +289,13 @@ export function actualView(i: ActualViewInput): ActualView | null {
 
   // ---- Kommendes ----
   const fromStored = i.stored !== null;
+  // Nr. wie im Simulator (simulation-view.ts): laufende Belichtungsnummer je Zeile, Transit-Serien ohne Nummer.
+  const numbers = new Map<string, number>();
+  const next = (key: string) => {
+    const n = (numbers.get(key) ?? 0) + 1;
+    numbers.set(key, n);
+    return n;
+  };
   if (i.running) {
     if (i.stored) {
       const done = new Set(
@@ -318,7 +326,7 @@ export function actualView(i: ActualViewInput): ActualView | null {
               untilUtc: e.untilUtc ?? null,
               durationS: e.durationS ?? null,
               projectName: name(b.projectId),
-              no: isExpose(e.cmd) ? e.seq : null,
+              no: e.cmd === 'expose' ? next(e.exposureLineId ?? `${b.projectId}|${e.filter ?? ''}`) : null,
               filter: e.filter ?? '',
               exposureS: e.exposureS ?? null,
               gain: e.gain ?? null,
