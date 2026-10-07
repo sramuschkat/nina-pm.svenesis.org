@@ -165,7 +165,8 @@ function Where() {
   return <span data-testid="where">{`${loc.pathname}${loc.search}`}</span>;
 }
 
-function renderPage(path = '/projekte') {
+// Die Komponententests stammen aus der Zeit mit Rig-Gruppierung als Standard; seit 07.10.2026 ist Status Standard.
+function renderPage(path = '/projekte?gruppe=rig') {
   return render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
@@ -243,11 +244,14 @@ describe('Modell (FA-PRJ-13/14/19)', () => {
         new URLSearchParams('status=draft,returned,unsinn&meine=1&gruppe=status'),
       ),
     ).toEqual({ statuses: ['draft', 'returned'], mine: true, groupBy: 'status' });
+    // Standard je Status (Wunsch Sven 07.10.2026); Rig und ohne Gruppen über die Adresse.
     expect(listStateFromParams(new URLSearchParams(''))).toEqual({
       statuses: [],
       mine: false,
-      groupBy: 'rig',
+      groupBy: 'status',
     });
+    expect(listStateFromParams(new URLSearchParams('gruppe=rig')).groupBy).toBe('rig');
+    expect(listStateFromParams(new URLSearchParams('gruppe=keine')).groupBy).toBe('none');
   });
 
   it('Verschieben ergibt die Position unter den freigegebenen Projekten', () => {
@@ -554,6 +558,14 @@ describe('Status-Chips, Alle/Meine, Gruppierung (30.09.2026)', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('meine=1');
   });
 
+  it('ohne Angabe je Status gruppiert (Standard seit 07.10.2026)', async () => {
+    state.items = mix();
+    renderPage('/projekte');
+    await screen.findByRole('link', { name: 'Aktiv A' });
+    expect(screen.getByLabelText('Gruppieren')).toHaveValue('status');
+    expect(screen.getByRole('columnheader', { name: /Entwurf.*Anzahl: 1/ })).toBeInTheDocument();
+  });
+
   it('Gruppieren je Status: Kopf je Status mit Anzahl, keine Prioritätsspalte; ohne Gruppen', async () => {
     state.items = mix();
     renderPage();
@@ -564,7 +576,8 @@ describe('Status-Chips, Alle/Meine, Gruppierung (30.09.2026)', () => {
     expect(screen.getByRole('columnheader', { name: /Pausiert/ })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Priorität' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /nach oben/ })).not.toBeInTheDocument();
-    expect(screen.getByTestId('where')).toHaveTextContent('gruppe=status');
+    // Status ist Standard: keine `gruppe` in der Adresse.
+    expect(screen.getByTestId('where')).not.toHaveTextContent('gruppe=');
     fireEvent.change(screen.getByLabelText('Gruppieren'), { target: { value: 'none' } });
     expect(screen.queryByRole('columnheader', { name: /Rig A|Entwurf/ })).not.toBeInTheDocument();
     expect(links()).toEqual(['Aktiv A', 'Entwurf C', 'Pause B', 'Zurück D']);

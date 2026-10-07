@@ -110,9 +110,10 @@ export const de = {
       more: 'Zur Wettervorhersage',
     },
     sessions: {
-      title: 'Letzte Sessions',
+      title: 'Letzte Nächte',
       empty: 'Noch keine Sessions.',
-      more: 'Alle Sessions',
+      more: 'Alle Nächte',
+      eff: '{{h}} h · {{pct}} %',
     },
     kpi: {
       label: 'Kennzahlen',
@@ -2358,12 +2359,6 @@ export const de = {
   },
   sessions: {
     onlyUnreviewed: 'Nur ungeprüfte',
-    col: {
-      night: 'Nacht',
-      rig: 'Rig',
-      status: 'Status',
-      integration: 'Integration',
-    },
     reviewedYes: 'geprüft',
     reviewedNo: 'ungeprüft',
     hours: '{{h}} h',

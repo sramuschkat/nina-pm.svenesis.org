@@ -1,6 +1,6 @@
 /**
  * AP-26c/AP-26d: Startseite als Übersicht gegen den lokalen Stack – eigener Menüpunkt „Übersicht“ (27.09.2026),
- * Kopf mit Mandant, Kennzahlen, Karten Warteschlange, Aktive Projekte, Letzte Sessions mit ihren Links (keine
+ * Kopf mit Mandant, Kennzahlen, Karten Warteschlange, Aktive Projekte, Letzte Nächte mit ihren Links (keine
  * Karte „Wetter heute Nacht“ mehr); *Wetter (7 Tage)* direkt unter den Kennzahlen über die volle Breite
  * (Wunsch Sven 02.10.2026, gemessen); axe ohne serious/critical; 768 und 2400 px ohne horizontales Scrollen.
  */
@@ -8,7 +8,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { tableOverflow, testLogin } from './support';
 
-const CARDS = ['Warteschlange', 'Aktive Projekte', 'Letzte Sessions'];
+const CARDS = ['Warteschlange', 'Aktive Projekte', 'Letzte Nächte'];
 
 async function openHome(page: Page, fixture = 'owner') {
   await testLogin(page, fixture);
@@ -59,7 +59,7 @@ test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async
   await page.getByRole('link', { name: 'Zur Projektliste' }).click();
   await expect(page).toHaveURL('/projekte');
   await page.goto('/');
-  await page.getByRole('link', { name: 'Alle Sessions' }).click();
+  await page.getByRole('link', { name: 'Alle Nächte' }).click();
   await expect(page).toHaveURL('/auswertung/naechte');
   // Über den Menüpunkt zurück zur Übersicht.
   await page
@@ -80,7 +80,7 @@ for (const width of [768, 2400]) {
   test(`Übersicht bei ${String(width)} px ohne horizontales Scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openHome(page);
-    await expect(page.getByRole('region', { name: 'Letzte Sessions' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Letzte Nächte' })).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,

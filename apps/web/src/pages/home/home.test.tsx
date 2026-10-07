@@ -313,7 +313,26 @@ describe('Startseite (Mandant)', () => {
       project(2, { status: 'planning', name: 'In Planung' }),
       project(3, { rigId: ID(501), name: 'Projekt B' }),
     ];
-    state.sessions = [1, 2, 3, 4, 5, 6].map((n) => session(n));
+    state.sessions = [1, 2, 3, 4, 5, 6].map((n) =>
+      n === 6
+        ? session(n, {
+            efficiency: { exposureS: 19_800, usableDarkS: 25_000, pct: 79.2 },
+            projects: [
+              {
+                projectId: ID(201),
+                projectName: 'NGC 281',
+                createdBy: null,
+                transit: false,
+                frames: 20,
+                filters: [
+                  { filter: 'Ha', frames: 12 },
+                  { filter: 'OIII', frames: 8 },
+                ],
+              },
+            ],
+          })
+        : session(n),
+    );
     state.sites = [SITE];
     state.vote.mockResolvedValue({});
     renderPage();
@@ -392,15 +411,24 @@ describe('Startseite (Mandant)', () => {
       '/projekte',
     );
 
-    // Letzte Sessions: neueste zuerst, höchstens fünf
-    const sessions = await card('Letzte Sessions');
-    const table = await within(sessions).findByRole('table', { name: 'Letzte Sessions' });
-    const nights = within(table)
+    // Letzte Nächte (AP-64): eine Zeile je Nacht wie die Nachtkarten – neueste zuerst, höchstens fünf, Links auf
+    // die Nacht, Effizienz, Projekt-Chips mit Ersteller, Prüfstatus.
+    const nightsCard = await card('Letzte Nächte');
+    await within(nightsCard).findByRole('list', { name: 'Letzte Nächte' });
+    const nights = within(nightsCard)
       .getAllByRole('link')
-      .map((a) => a.textContent);
+      .filter((a) => /\d\d\.\/\d\d\.\d\d\./.test(a.textContent ?? ''))
+      .map((a) => a.textContent?.replace(/^\S+\s/, ''));
     expect(nights).toEqual(['16./17.09.', '15./16.09.', '14./15.09.', '13./14.09.', '12./13.09.']);
-    expect(within(table).getAllByText('2.0 h')).toHaveLength(5);
-    expect(within(sessions).getByRole('link', { name: 'Alle Sessions' })).toHaveAttribute(
+    expect(within(nightsCard).getByText('5,5 h · 79 %')).toBeInTheDocument();
+    expect(within(nightsCard).getByText('NGC 281')).toBeInTheDocument();
+    expect(within(nightsCard).getByText('· Ha 12 · OIII 8')).toBeInTheDocument();
+    expect(within(nightsCard).getAllByText('ungeprüft').length).toBeGreaterThan(0);
+    expect(within(nightsCard).getByRole('link', { name: /16\.\/17\.09\./ })).toHaveAttribute(
+      'href',
+      `/auswertung/naechte/${ID(500)}/2026-09-16`,
+    );
+    expect(within(nightsCard).getByRole('link', { name: 'Alle Nächte' })).toHaveAttribute(
       'href',
       '/auswertung/naechte',
     );
@@ -433,7 +461,7 @@ describe('Startseite (Mandant)', () => {
       await within(await card('Aktive Projekte')).findByText('Keine aktiven Projekte.'),
     ).toBeInTheDocument();
     expect(
-      await within(await card('Letzte Sessions')).findByText('Noch keine Sessions.'),
+      await within(await card('Letzte Nächte')).findByText('Noch keine Sessions.'),
     ).toBeInTheDocument();
     expect(
       await within(await card('Wetter (7 Tage)')).findByText('Noch kein Standort angelegt.'),
@@ -462,7 +490,7 @@ describe('Startseite (Mandant)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Übersicht' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Neues Projekt' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Warteschlange' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Letzte Sessions' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Letzte Nächte' })).toBeNull();
     expect(screen.getByRole('region', { name: 'Aktive Projekte' })).toBeInTheDocument();
     // Kennzahlen nur mit dem Recht der Zielseite.
     const kpis = screen.getByRole('list', { name: 'Kennzahlen' });

@@ -95,7 +95,7 @@ export function ProjectListPage() {
         if (patch.groupBy)
           put(
             'gruppe',
-            patch.groupBy === 'rig' ? null : patch.groupBy === 'none' ? 'keine' : 'status',
+            patch.groupBy === 'status' ? null : patch.groupBy === 'none' ? 'keine' : 'rig',
           );
         return next;
       },
