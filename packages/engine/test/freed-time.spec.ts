@@ -11,6 +11,7 @@ import {
   buildMatrix,
   paint,
   planGrid,
+  randomGrid,
   setupFromGrid,
   walk,
   type GridInput,
@@ -94,17 +95,21 @@ interface RunOptions {
   readonly old?: boolean;
   /** Erst `paint` (Transit-Sperren), dann `slots` nur in nicht gesperrten Slots setzen. */
   readonly paintFirst?: boolean;
+  /** Aufrücken (A-35); Vorgabe an, mit `old` immer aus. */
+  readonly moveUp?: boolean;
 }
 
 /** `walk` mit den Einstellungen des Grids (ohne Flip/Meridian), wie `planGrid` sie setzt. */
 function run(g: GridInput, opts: RunOptions = {}): WalkResult {
   const base = setupFromGrid(g);
-  const setup = opts.old
-    ? {
-        ...base,
-        switches: { ...base.switches, reofferFreedTime: false, continuationNoSlew: false },
-      }
-    : base;
+  const setup = {
+    ...base,
+    switches: {
+      ...base.switches,
+      ...(opts.old ? { reofferFreedTime: false, continuationNoSlew: false } : {}),
+      moveUpBlocks: !opts.old && opts.moveUp !== false,
+    },
+  };
   const m = buildMatrix(setup);
   if (opts.slots) {
     if (opts.paintFirst) paint(m);
@@ -162,8 +167,8 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
       8,
     );
     const slots = ['B', 'B', 'A', 'A', 'A', 'B', 'B', 'B'];
-    const now = run(g, { slots });
-    const old = run(g, { slots, old: true });
+    const now = run(g, { slots, moveUp: false });
+    const old = run(g, { slots, old: true, moveUp: false });
     expect(blocksOf(old, 'A')).toHaveLength(2);
     expect(slews(old, 'A')).toHaveLength(2);
     expect(exposures(old, 'A')).toBe(4);
@@ -181,8 +186,8 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
       8,
     );
     const slots = ['A', 'A', null, null, 'B', 'B', 'B', 'B'];
-    const now = run(g, { slots });
-    const old = run(g, { slots, old: true });
+    const now = run(g, { slots, moveUp: false });
+    const old = run(g, { slots, old: true, moveUp: false });
     expect(slews(old, 'B').map((e) => e.atS)).toEqual([1200]);
     expect(exposures(old, 'B')).toBe(3);
     expect(slews(now, 'B').map((e) => e.atS)).toEqual([600]);
@@ -194,7 +199,7 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
       [unit('A', [[0, 7]], [line('A-L', 300, 1)]), unit('B', [[3, 7]], [line('B-L', 300, 10)])],
       8,
     );
-    const now = run(g, { slots: ['A', 'A', null, null, 'B', 'B', 'B', 'B'] });
+    const now = run(g, { slots: ['A', 'A', null, null, 'B', 'B', 'B', 'B'], moveUp: false });
     expect(slews(now, 'B').map((e) => e.atS)).toEqual([900]);
   });
 
@@ -215,8 +220,8 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
         n,
       );
       const slots = ['A', 'A', ...new Array<null>(gapSlots).fill(null)];
-      const now = run(g, { slots });
-      const old = run(g, { slots, old: true });
+      const now = run(g, { slots, moveUp: false });
+      const old = run(g, { slots, old: true, moveUp: false });
       expect(exposures(old, 'C')).toBe(0);
       if (taken) {
         expect(slews(now, 'C').map((e) => e.atS)).toEqual([600]);
@@ -234,7 +239,7 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
       ],
       6,
     );
-    const now = run(g, { slots: ['A', 'A', null, null, null, null] });
+    const now = run(g, { slots: ['A', 'A', null, null, null, null], moveUp: false });
     expect(exposures(now, 'C')).toBe(2);
   });
 
@@ -250,7 +255,7 @@ describe('Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026)'
     const g = grid([a, transit, c], 24);
     // Slots 0–1 A, 2–10 frei; ab Slot 11 sperrt preClaimTransits Vorlauf und Fenster für T.
     const slots = ['A', 'A', ...new Array<null>(22).fill(null)];
-    const now = run(g, { slots, paintFirst: true });
+    const now = run(g, { slots, paintFirst: true, moveUp: false });
     const old = run(g, { slots, paintFirst: true, old: true });
     const tBlock = (r: WalkResult) => blocksOf(r, 'T')[0];
     expect(tBlock(old)?.entries.some((e) => e.cmd === 'expose_series')).toBe(true);
@@ -316,5 +321,81 @@ describe('Kein Anfahren bei Fortsetzung (A-34, Entscheidung Sven 07.10.2026)', (
     const r = run(g(tonight()), { old: true });
     expect(r.blocks[0]?.unitId).toBe('A');
     expect(r.blocks[0]?.entries[0]?.cmd).toBe('slew_center');
+  });
+});
+
+describe('Aufrücken (A-35, Entscheidung Sven 07.10.2026)', () => {
+  // A ist nach einer Aufnahme um 360 s fertig; B (Slots 2–5) beginnt direkt danach statt an der Slotgrenze 600 s.
+  const twoUnits = (bFrom: number) =>
+    grid(
+      [unit('A', [[0, 5]], [line('A-L', 300, 1)]), unit('B', [[bFrom, 5]], [line('B-L', 300, 10)])],
+      6,
+    );
+  const slots = ['A', 'A', 'B', 'B', 'B', 'B'];
+
+  it('nächster Block beginnt direkt nach der letzten Aktion des vorigen, ohne Überlappung', () => {
+    const now = run(twoUnits(0), { slots });
+    const old = run(twoUnits(0), { slots, old: true });
+    const a = blocksOf(now, 'A')[0];
+    const b = blocksOf(now, 'B')[0];
+    expect(a?.endS).toBe(360);
+    expect(b?.startS).toBe(360);
+    expect(slews(now, 'B').map((e) => e.atS)).toEqual([360]);
+    expect(slews(old, 'B').map((e) => e.atS)).toEqual([600]);
+    // A endet ohne `wait`, B überlappt nicht und belichtet nie über sein Laufende (1800 s).
+    expect(a?.entries.some((e) => e.cmd === 'wait')).toBe(false);
+    for (const e of b?.entries ?? [])
+      if (e.cmd === 'expose') expect(e.atS + e.exposureS).toBeLessThanOrEqual(1800);
+    // Die Zuteilung bleibt im 5-min-Raster.
+    expect(now.assignment).toEqual(old.assignment);
+  });
+
+  it('nicht vor die Slotgrenze, wenn die Einheit im Slot davor nicht nutzbar ist', () => {
+    const now = run(twoUnits(2), { slots });
+    expect(slews(now, 'B').map((e) => e.atS)).toEqual([600]);
+  });
+
+  it('Transitblock rückt nie vor sein Fenster bzw. seinen Vorlauf', () => {
+    // A endet früh (Slots 0–10, eine Aufnahme), T ist ab Slot 11 gesperrt (Vorlauf 3480 s, Fenster ab 3600 s).
+    const t0 = 12 * 300;
+    const transit = unit('T', [[0, 23]], [line('T-V', 60, 200)], {
+      transit: { windowS: [t0, t0 + 3600], lineId: 'T-V', lockedAtS: 0 },
+    });
+    const a = unit('A', [[0, 23]], [line('A-L', 300, 1)]);
+    const g = grid([a, transit], 24);
+    const s = [...new Array<string>(11).fill('A'), ...new Array<null>(13).fill(null)];
+    const now = run(g, { slots: s, paintFirst: true });
+    const old = run(g, { slots: s, paintFirst: true, old: true });
+    const tb = blocksOf(now, 'T')[0];
+    expect(tb?.entries).toEqual(blocksOf(old, 'T')[0]?.entries);
+    expect(Math.min(...(tb?.entries ?? []).map((e) => e.atS))).toBe(t0 - 60 - 60);
+  });
+
+  it('Zufallsgrids: Blöcke überlappen nie, Belichtungen nur in Slots, in denen die Einheit nutzbar ist', () => {
+    for (let i = 1; i <= 120; i++) {
+      const g0 = randomGrid(i, { mode: 'productive' });
+      const g = {
+        ...g0,
+        settings: {
+          ...g0.settings,
+          overhead: { ...g0.settings.overhead, slewCenterS: 90, filterChangeS: 10, downloadS: 3 },
+        },
+      };
+      const r = planGrid(g);
+      const usable = new Map(r.matrix.rows.map((x) => [x.profile.unitId, x.usable]));
+      for (let k = 1; k < r.blocks.length; k++) {
+        const prev = r.blocks[k - 1] as WalkBlock;
+        const cur = r.blocks[k] as WalkBlock;
+        const first = Math.min(...cur.entries.map((e) => e.atS));
+        expect(first, `${String(i)} ${cur.unitId}`).toBeGreaterThanOrEqual(prev.endS);
+      }
+      for (const b of r.blocks)
+        for (const e of b.entries)
+          if (e.cmd === 'expose' && !e.lastOfNight)
+            expect(
+              usable.get(b.unitId)?.[Math.floor(e.atS / 300)],
+              `${String(i)} ${b.unitId}`,
+            ).toBe(true);
+    }
   });
 });

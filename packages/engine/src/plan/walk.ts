@@ -5,8 +5,9 @@
  * Die Uhr läuft mit Overheads (Slew/Zentrieren, Filterwechsel, Download, Dither, Autofokus), `pick` ist
  * seiteneffektfrei, Blöcke enden hart (einzige Ausnahme: Nachtende-Kulanz) und leere Blockreste werden
  * freigegeben. Zeiten in Sekunden ab Slot 0. Meridian-Flip und Pierseiten folgen mit AP-13d.
- * Frei gewordene Zeit wird neu vergeben (A-33), und die fortgesetzte Einheit einer Neuplanung beginnt ohne
- * `slew_center` (A-34; beides Entscheidung Sven 07.10.2026, allocation.md §8.7).
+ * Frei gewordene Zeit wird neu vergeben (A-33), die fortgesetzte Einheit einer Neuplanung beginnt ohne
+ * `slew_center` (A-34), und Blöcke rücken an das Ende des vorigen Blocks auf (A-35; alles Entscheidung Sven
+ * 07.10.2026, allocation.md §8.7).
  */
 import { SLOT_S, type Matrix, type Row, type UnitLine } from './model';
 
@@ -234,6 +235,16 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     for (let k = cs + 1; k < n && k * SLOT_S < end; k++)
       if (mask[k] !== true && row.profile.canImage[k] === true) return false;
     return true;
+  };
+
+  /** Passt die gewählte Belichtung ab `at` noch (Panel über Mindesthöhe, LA-Zeile sicher über die ganze Dauer)? */
+  const coversAt = (row: Row, c: Picked, at: number): boolean => {
+    const cs = Math.min(n - 1, Math.floor(at / SLOT_S));
+    const cost = c.line.exposureS + dl;
+    const mask = unitPanels(row).find((p) => p.index === c.panelIndex)?.canImage ?? null;
+    if (mask !== null && !panelCovers(row, mask, cs, at, cost)) return false;
+    if (c.line.tier <= 0) return true;
+    return c.line.safe[cs] === true && headroomOf(c.line, cs) - (at - cs * SLOT_S) >= cost;
   };
 
   /** §9 `pick`, seiteneffektfrei. */
@@ -573,6 +584,14 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     const from = Math.ceil(t / SLOT_S);
     return sw.reofferFreedTime && from < runEnd && assignment[from] === -1 ? from - 1 : runEnd - 1;
   };
+  /** A-35: Darf ein neuer Block von `row` ab `at` (vor der Slotgrenze von `s`) beginnen? */
+  const canMoveUp = (row: Row, s: number, at: number) => {
+    const prev = lastClosed as WalkBlock | null;
+    if (prev === null || s <= 0 || prev.endS !== at || prev.row === row.index) return false;
+    if (at < (s - 1) * SLOT_S || assignment[s - 1] !== prev.row) return false;
+    if (row.profile.transit !== null || m.locked[s] === true) return false;
+    return row.usable[s - 1] === true && at < nightEnd;
+  };
   /** Rüstkosten eines neuen Blocks der Einheit ab `at`: Slew (mit Pierseitenwechsel) und ein erwarteter Flip. */
   const setupCost = (row: Row, at: number, end: number) => {
     let cost = slewDuration(row.profile.unitId, row.profile.panelIndex, at, precedingPier(at));
@@ -660,10 +679,15 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       r = assignment[s] ?? -1;
     if (block !== null && r !== block.row) close(t);
     if (s * SLOT_S + SLOT_S <= t) continue;
+    const tBefore = t;
     t = Math.max(t, s * SLOT_S);
     if (r < 0 && sw.reofferFreedTime && !offered.has(s)) r = offerGap(s);
     if (r < 0) continue;
     let row = m.rows[r] as Row;
+    // A-35 Aufrücken (Entscheidung Sven 07.10.2026): Der neue reguläre Block beginnt direkt nach der letzten Aktion des
+    // unmittelbar vorigen Blocks (im Slot davor) statt an der Slotgrenze – nur, wenn seine Einheit in diesem Slot
+    // nutzbar ist (Dunkelheit, Mindesthöhe, Mond). Die Zuteilung bleibt im 5-min-Raster; Transitblöcke rücken nie vor.
+    if (sw.moveUpBlocks && block === null && tBefore < t && canMoveUp(row, s, tBefore)) t = tBefore;
 
     // Transit-Einheit (A-21): Vorlauf, Serie bis Fensterende; Flip-Lücke folgt mit AP-13d.
     if (row.profile.transit !== null && m.locked[s]) {
@@ -1126,6 +1150,9 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         panelTime.set(r, new Map());
         const limit = lastOfNight ? Number.POSITIVE_INFINITY : blockEnd;
         if (t + chosen.line.exposureS + dl > limit) continue;
+        // Nach dem Panel-Slew beginnt die Belichtung später: Panelhöhe (A-19) und Mondsicherheit ab Belichtungsbeginn
+        // (A-26) neu prüfen, sonst neu wählen.
+        if (!coversAt(row, chosen, t)) continue;
       } else if (b.panelIndex === null && multiPanel(row)) {
         // Erster Block eines Mosaiks ohne Panel-Einheiten: Slew auf das Panel der ersten Belichtung (A-19).
         b.panelIndex = chosen.panelIndex;
@@ -1139,7 +1166,11 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       const target = block as WalkBlock;
       if (chosen.line.filter !== currentFilter) {
         const limit = lastOfNight ? Number.POSITIVE_INFINITY : blockEnd;
-        if (t + settings.filterChangeS + chosen.line.exposureS + dl > limit) {
+        // Mondsicherheit und Panelhöhe gelten ab Belichtungsbeginn nach dem Filterwechsel (A-26, A-19).
+        if (
+          t + settings.filterChangeS + chosen.line.exposureS + dl > limit ||
+          (!lastOfNight && !coversAt(row, chosen, t + settings.filterChangeS))
+        ) {
           release(Math.ceil(t / SLOT_S), runEnd);
           close(t);
           s = resumeAfterRelease(runEnd);

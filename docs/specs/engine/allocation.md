@@ -230,7 +230,7 @@ Uhr `t` in Sekunden ab Nachtfensterbeginn (bei Neuplanung ab `startAtUtc`). `nig
 
 ```
 für s = FirstUsableSlot … LastUsableSlot:
-    r = SlotAssignment[s]; t = max(t, s·300)
+    r = SlotAssignment[s]; t = max(t, s·300)   (produktiv: Aufrücken, §8.7 Nr. 8, A-35)
     r < 0 → produktiv: Lücke neu vergeben (§8.7, A-33), r = neue Belegung von s; sonst
     r < 0 → Leerlauf merken; weiter
     Leerlauf ≥ 5 min seit letztem Block → wait-Eintrag
@@ -314,7 +314,7 @@ für s = FirstUsableSlot … LastUsableSlot:
      - ~~Nach einem A-17-Ersatz freigegebene Slots werden im selben Lauf nicht erneut angeboten (G23: A könnte schon ab 900 s beginnen).~~ Erledigt mit A-33 (§8.7, Engine 0.18.0): G23 beginnt A ab 900 s.
      - `idle_gap` zählt Slots aus der Maske; eine Belichtung länger als ein Slot, die nicht mehr passt, erzeugt so eine Warnung, obwohl nichts Erreichbares frei war.
 
-- **8.7 Frei gewordene Zeit und Fortsetzung (A-33, A-34; Entscheidung Sven 07.10.2026, Engine 0.18.0):**
+- **8.7 Frei gewordene Zeit, Fortsetzung und Aufrücken (A-33, A-34, A-35; Entscheidung Sven 07.10.2026, Engine 0.18.0):**
   Anlass: kopflose Rig-Läufe vom 07.10.2026 – endete ein Ziel früher (Bedarf erfüllt, Höhe, Mond) oder wurde ein Block kürzer, blieb die Zeit als `idle_gap` leer; setzte die erste Einheit einer Neuplanung das Ziel auf der Montierung fort, stand trotzdem `slew_center` im Plan. Vorbild für die Reihenfolge ist die Idee aus Starfront 0.2.2 („What Auto-arrange does“): zuerst das Ziel auf der Montierung, dann das nächste Ziel, ein neues nur, wenn sich das Anfahren lohnt. Das 5-min-Raster bleibt; vergeben werden ganze Slots.
   1. **Lücke** = freier, nicht gesperrter Slot `s` im Ablauf (frei nach `paint`, freigegeben nach A-17/A-29 oder von einem Block ohne Belichtung), dessen Zeit noch nicht verstrichen ist (`t < (s+1)·300`), bis zum nächsten belegten oder gesperrten Slot (`gapEnd`). Jeder Slot wird höchstens einmal angeboten.
   2. **Stufe 1 – vorige Einheit verlängern:** Liegt unmittelbar vor `s` ein regulärer Block der Einheit `P` (offen oder gerade geschlossen, `SlotAssignment[s−1] = P`, ohne `wait` am Ende, nicht die Nachtende-Kulanz), hat `P` noch Bedarf (live: Zeile mit `effRemaining − ausgegeben > 0`) und `UsableSlot` ab `s`, und passt ab dem Ende ihrer letzten Aktion eine Belichtung bis zum Ende des verlängerten Laufs, übernimmt `P` die Slots `s …` (solange frei und `UsableSlot`). Kein Slew, kein neuer Block: ein geschlossener Block wird wieder geöffnet (sein `end` entfällt), Filter, Panel, Dither-Zähler und Flip-Zustand laufen weiter. Dasselbe gilt am Blockanfang ohne Arbeit (§8, `probe` leer) **vor** dem Ersatz nach A-17: die Slots der Einheit ohne Arbeit bis `reassignEnd` gehen an `P`.
@@ -322,7 +322,10 @@ für s = FirstUsableSlot … LastUsableSlot:
   4. **Stufe 3 – andere Einheit nur bei lohnendem Rest:** Bleibt ein Rest `s … gapEnd−1`, prüft der Ablauf die Einheiten in Prioritätsreihenfolge (`UserPriorityIndex`, §4) – ohne Transit- und vorgefilterte Einheiten, nur mit Bedarf. Je Einheit zählt der erste zusammenhängende `UsableSlot`-Lauf `[k, e)` in der Lücke, bei dem `e·300 − max(t, k·300) − Rüstkosten ≥ min(MinChunk, Restarbeit)` gilt (Rüstkosten = Slew samt Pierseitenwechsel, NT-27, plus Flip-Dauer, wenn ein noch nicht erledigter Meridiandurchgang im Lauf liegt; Restarbeit = Σ offene Belichtungen · (exposureS + downloadS); bei der fortgesetzten Einheit ist MinChunk schon auf ihren Lauf begrenzt, §5.5) und `pick` eine Belichtung findet. Die erste passende Einheit erhält `[k, e)`.
   5. **Unverändert:** Prioritäten und Nachtfairness (A-10) der Zuteilung – vergeben wird nur Zeit, die im Ablauf ohnehin leer bliebe; Mond-, Dunkelheits- und Höhenregeln (`UsableSlot`, `pick` mit A-26); Transitfenster und -sperren; Flip-Fixkosten nach A-16/A-32 (nur vor dem Meridian); harter Blockschluss (A-7) und Nachtende-Kulanz (A-24).
   6. **Fortsetzung ohne Slew (A-34):** Ist die Einheit des ersten Blocks die fortgesetzte Einheit (§5.5: `tonight.currentUnitId` mit einem vergangenen Block bis ≤ 300 s vor `startAtS`) und beginnt der Block ohne Leerlauf bei `startAtS` (`t = startAtS`, kein Block davor), entfällt `slew_center(_rotate)` am Blockbeginn; die Zeit wird Belichtung. Die Rotation des Blocks (`rotationDeg`) bleibt erhalten. Ausnahme: Mosaik ohne Panel-Einheiten (das Panel auf der Montierung ist unbekannt) – dort bleibt der Slew. `fix` (A-16) und MinChunk rechnen weiter mit `slewCenterS` (vorsichtig). Das Plugin braucht keine Änderung: `CanSkipSlew` (`execution.md` §3.2) entscheidet wie bisher, ob es trotzdem zentriert (z. B. nach Parken).
-  7. Kompatibilitätsmodus: beides aus (Schalter `reofferFreedTime`, `continuationNoSlew` in `compat.ts`).
+  7. **`paint` bei Fortsetzung (Entscheidung Sven 07.10.2026, sichere Variante):** `fix`, Bedarf und MinChunk der fortgesetzten Einheit rechnen weiter mit `slewCenterS`. Muss das Plugin doch zentrieren (`CanSkipSlew` falsch, z. B. nach Parken oder Drift), reicht das Budget; entfällt der Slew, wird die Zeit im Walk Belichtung, und was danach übrig bleibt, vergibt A-33 neu.
+  8. **Aufrücken (A-35, Entscheidung Sven 07.10.2026):** Endet die letzte Aktion des unmittelbar vorigen Blocks (`end`) im Slot `s−1` vor der Slotgrenze `s·300`, beginnt der neue **reguläre** Block bei diesem Zeitpunkt statt bei `s·300` – sofern `SlotAssignment[s−1]` die Einheit des vorigen Blocks ist, die neue Einheit eine andere ist und im Slot `s−1` `UsableSlot` hat (Dunkelheit, Mindesthöhe, Mond; `pick` prüft die Mondsicherheit ab Belichtungsbeginn wie sonst, A-26). Slew, Filter und Belichtungen rücken entsprechend vor; der vorige Block endet ohne `wait`, Blöcke überlappen nie. Die Zuteilung bleibt im 5-min-Raster (der angeschnittene Slot bleibt der Einheit des vorigen Blocks zugeordnet); Blockende und Lauf der neuen Einheit sind unverändert. Transitblöcke rücken nie vor (Vorlauf und Fenster wie §7.1); nach einem Transit darf ein regulärer Block direkt nach der Serie beginnen. Nach Leerlauf (freier Slot) oder einer Flip-Wartezeit bis Blockende gibt es nichts aufzurücken. Mit dem Aufrücken prüft der Walk die Mondsicherheit und Panelhöhe zusätzlich nach Panel-Slew und Filterwechsel ab dem tatsächlichen Belichtungsbeginn (vorher nur zum Zeitpunkt der Wahl).
+  9. **Nicht geändert (Entscheidung Sven 07.10.2026):** Flip-Wartezeiten werden nicht mit anderen Zielen gefüllt; der Pierseitenwechsel ist kein Reihenfolge-Kriterium.
+  10. Kompatibilitätsmodus: alles aus (Schalter `reofferFreedTime`, `continuationNoSlew`, `moveUpBlocks` in `compat.ts`).
 
 ## 9. Filter- und Panelwahl (`pick`)
 
@@ -407,18 +410,19 @@ Panel gewechselt → Panel-Zeiten der Einheit zurücksetzen
 | A-32 | Kein Neuplanen in der Nacht (A-11); Mindestzeit gilt immer | Fortgesetzte Einheit einer Neuplanung (`currentUnitId` mit Block bis ≤ 300 s vor `startAtS`) ohne Mindestzeit, solange im Slot von `startAtS` nutzbar: `MinChunk ≤ Lauf ab startAtS`, kein Vorfilter, kein Aussortieren (§5.5; Entscheidung Sven 07.10.2026, Engine 0.17.0) | Rest der Nacht wird genutzt statt leerem Plan (Rig-Nacht 06./07.10.2026, IC 1795) |
 | A-33 | Nach Freigaben (A-17/A-29) leere Slots bleiben leer (`idle_gap`) | Frei gewordene Zeit wird im Ablauf neu vergeben: vorige Einheit verlängern (ohne Slew), sonst nächste Einheit früher, sonst andere Einheit nur bei Rest nach Rüstkosten ≥ min(Mindestzeit, Restarbeit) (§8.7; Entscheidung Sven 07.10.2026, Engine 0.18.0) | weniger Leerlauf (kopflose Rig-Läufe 07.10.2026, G23) |
 | A-34 | Slew am Beginn jedes Blocks (A-18) | Kein `slew_center` am ersten Block einer Neuplanung, wenn er die fortgesetzte Einheit (A-32) ohne Leerlauf weiterführt; Rotation bleibt (§8.7 Nr. 6; Entscheidung Sven 07.10.2026, Engine 0.18.0) | geplante Zeit = Belichtung, das Plugin überspringt den Slew ohnehin (`CanSkipSlew`) |
+| A-35 | Block beginnt an der Slotgrenze | Aufrücken: ein regulärer Block beginnt direkt nach der letzten Aktion des unmittelbar vorigen Blocks, wenn seine Einheit im angeschnittenen Slot nutzbar ist; Zuteilung bleibt im 5-min-Raster, Transitblöcke rücken nie vor (§8.7 Nr. 8; Entscheidung Sven 07.10.2026, Engine 0.18.0) | kein Warten bis zur Slotgrenze (bis zu 5 min je Blockwechsel) |
 | A-30 | *(entfällt)* | — | harter Blockschluss (A-7), einzige Ausnahme Nachtende-Kulanz A-24 (NT-18) |
 
 ## 11. Tests
 
 ### 11.1 Kompatibilitätsmodus (Schalter)
-**Ein** Feld steuert den Modus: `PlanInput.mode = 'productive' | 'compat'` (kein zweites `compat`-Feld; TK 8.2, Soll-Plan-Format). `mode: 'compat'` setzt **alle** Abweichungen A-1…A-34 auf das Original-Verhalten:
+**Ein** Feld steuert den Modus: `PlanInput.mode = 'productive' | 'compat'` (kein zweites `compat`-Feld; TK 8.2, Soll-Plan-Format). `mode: 'compat'` setzt **alle** Abweichungen A-1…A-35 auf das Original-Verhalten:
 
 | Abweichung | im Kompatibilitätsmodus |
 |---|---|
 | A-1, A-2, A-3 | Astronomie wird nicht genutzt (Grid liefert Masken), `MoonDown` ≤ 0 |
 | A-4 | `ov = 0`, `fix = 0`; Overhead-**Einträge** (`Slew`, `Filter`, `Dither`) werden wie im Original protokolliert, verbrauchen aber **keine Zeit** (die Uhr läuft nur um `exposureS`, SE 2023) – genau das setzt der Log-Adapter §11.2 voraus |
-| A-5, A-6, A-7, A-13, A-14, A-15, A-16, A-17, A-18, A-20, A-21, A-22, A-26, A-27, A-28, A-29, A-31, A-32, A-33, A-34 | aus (Original) |
+| A-5, A-6, A-7, A-13, A-14, A-15, A-16, A-17, A-18, A-20, A-21, A-22, A-26, A-27, A-28, A-29, A-31, A-32, A-33, A-34, A-35 | aus (Original) |
 | A-8 | ohne Wirkung (toter Code im Original, kein Verhaltensunterschied) |
 | A-9 | Einheitenreihenfolge = Grid, Prioritäts-Gleichstand nach `projectName` **ordinal ohne Groß-/Kleinschreibung** (`StringComparer.OrdinalIgnoreCase`, `TargetInstructionSet.cs:1048–1053`), Tier-Gleichstand nach erstem Auftreten, Laufsortierung mit Start-Tie-Break wie im Patch |
 | A-10, A-11 | `tonight` wird ignoriert, `startAtUtc` nur als Uhrstart (kein `existing` aus `pastBlocks`) |
