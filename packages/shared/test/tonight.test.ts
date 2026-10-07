@@ -49,4 +49,34 @@ describe('tonightProjects', () => {
       next && tonightLines(next, '2026-09-18', undefined).every((l) => !l.disabledTonight),
     ).toBe(true);
   });
+
+  it('Zeilen mit Planungsbedarf nur aus der Überbelichtung bleiben schaltbar (Analyse 07.10.2026)', () => {
+    // Soll erreicht (Verbleibend 0), Planungsbedarf durch overshootPct > 0: die Engine plant die Zeile weiter.
+    const over = projects.map((p) =>
+      p.id === NGC7000
+        ? {
+            ...p,
+            panels: p.panels.map((panel) => ({
+              ...panel,
+              lines: panel.lines.map((l) =>
+                l.id === l1?.id
+                  ? { ...l, counters: { ...l.counters, remaining: 0, planningNeed: 2 } }
+                  : l.id === l2?.id
+                    ? { ...l, counters: { ...l.counters, remaining: 0, planningNeed: 0 } }
+                    : l,
+              ),
+            })),
+          }
+        : p,
+    );
+    const p = over.find((x) => x.id === NGC7000);
+    const lines = p ? tonightLines(p, '2026-09-17', undefined) : [];
+    expect(lines.map((l) => l.lineId)).toEqual([l1?.id]);
+    // Frames in der Prognose (z. B. Bonus) halten die Zeile ebenfalls in der Liste.
+    const withFrames = p ? tonightLines(p, '2026-09-17', { [l2?.id ?? '']: 2 }) : [];
+    expect(withFrames.map((l) => [l.lineId, l.frames])).toEqual([
+      [l1?.id, 0],
+      [l2?.id, 2],
+    ]);
+  });
 });

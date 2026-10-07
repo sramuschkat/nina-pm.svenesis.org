@@ -78,6 +78,14 @@ export function buildMatrix(setup: NightSetup): Matrix {
       }
       return false;
     });
+    // Fortsetzung (A-32, Entscheidung Sven 07.10.2026): Die Einheit, an der das Rig bei der Neuplanung arbeitet,
+    // nutzt den Rest ihres Laufs ab `startAtS` auch unter der Mindestzeit – MinChunk höchstens dieser Lauf.
+    const continued = setup.continuedUnitId === prof.unitId && usable[startSlot] === true;
+    if (continued) {
+      let run = 0;
+      while (startSlot + run < n && usable[startSlot + run] === true) run++;
+      if (run * SLOT_S < minChunkSec) minChunkSec = run * SLOT_S;
+    }
     let mdUsable = 0;
     let muUsable = 0;
     for (let s = 0; s < n; s++) {
@@ -103,6 +111,7 @@ export function buildMatrix(setup: NightSetup): Matrix {
       userPriorityIndex: userPriorityIndex < 0 ? r : userPriorityIndex,
       nBlocks: 1 + (mdUsable > 0 && muUsable > 0 ? 1 : 0),
       pastSlots: 0,
+      continued,
       preFiltered: false,
       hasLockedWindow: false,
       transitConflict: false,
