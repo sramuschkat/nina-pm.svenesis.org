@@ -17,9 +17,9 @@ import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
 import type { EffortTickDeps } from './effort';
 import { runJob, type JobHandler, type JobRunnerDeps } from './jobs';
-import type { MultiSimDeps } from './multi-sim';
+import { nightKeys, type MultiSimDeps } from './multi-sim';
 
-export interface ForecastDeps extends Pick<MultiSimDeps, 'loadRig' | 'nights'> {
+export interface ForecastDeps extends Pick<MultiSimDeps, 'loadRig' | 'nights' | 'transits'> {
   rigIdsOfSite(tenantId: string, siteId: string): Promise<string[]>;
   replace(
     tenantId: string,
@@ -50,6 +50,13 @@ export function forecastJobHandler(deps: ForecastDeps): JobHandler {
         site: ctx.site,
         nightFrom: table.currentNight,
         count: FORECAST_NIGHTS,
+        transits:
+          (await deps.transits?.(
+            job.tenantId,
+            rigId,
+            nightKeys(table.currentNight, FORECAST_NIGHTS),
+            at,
+          )) ?? [],
       });
       await deps.replace(job.tenantId, rigId, sim.detail, at);
       rigs += 1;

@@ -47,6 +47,35 @@ describe('weatherWeight', () => {
 });
 
 describe('simulateNights', () => {
+  it('Exoplanet nur in der Nacht seines festgelegten Transits, als Transitblock (07.10.2026)', () => {
+    // Vorher plante die Prognose ein Exoplaneten-Projekt wie Deep-Sky über alle Nächte – oder gar nicht.
+    const exo = planned.map((p) =>
+      p.id === NGC281 ? { ...p, projectType: 'exoplanet' as const } : p,
+    );
+    const line = exo.find((p) => p.id === NGC281)?.panels[0]?.lines[0];
+    if (!line) throw new Error('Fixture ohne Zeile');
+    const without = simulateNights({ ...base, projects: exo });
+    expect(without.detail.every((d) => (d.lineFrames[line.id] ?? 0) === 0)).toBe(true);
+
+    const transit = {
+      night: '2026-09-19',
+      projectId: NGC281,
+      observationId: '0190c3f4-0000-7000-8000-0000000000e2',
+      lineId: line.id,
+      windowStartUtc: '2026-09-20T04:00:00Z',
+      windowEndUtc: '2026-09-20T05:00:00Z',
+      lockedAtUtc: '2026-09-17T12:00:00Z',
+    };
+    const withTransit = simulateNights({ ...base, projects: exo, transits: [transit] });
+    const frames = withTransit.detail.map((d) => d.lineFrames[line.id] ?? 0);
+    expect(frames[2]).toBeGreaterThan(0); // Nacht 19./20.09.
+    expect(frames.filter((_, i) => i !== 2).every((n) => n === 0)).toBe(true);
+    // Deep-Sky-Projekt plant wie bisher weiter.
+    expect(withTransit.detail.some((d) => Object.keys(d.projectHours).includes(NGC7000))).toBe(
+      true,
+    );
+  });
+
   it('schreibt den Restbedarf fort: NGC 281 (17 Ha offen) nie mehr als der Bedarf', () => {
     const r = simulateNights(base);
     expect(r.nights.map((n) => n.night)).toEqual([

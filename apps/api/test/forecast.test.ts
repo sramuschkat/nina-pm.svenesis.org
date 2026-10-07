@@ -93,6 +93,29 @@ async function setup() {
 }
 
 describe('Job forecast und S-62 (AP-33)', () => {
+  it('Statuswechsel eines freigegebenen Projekts stößt die Folgeplanung des Standorts an (07.10.2026)', async () => {
+    // Vorher rechnete der Server nur einmal je Standortnacht nach dem Mittag: später freigegebene bzw. aktivierte
+    // Projekte standen in „Plan für diese Nacht“ mit 0 Frames.
+    const t = await setup();
+    const open = async () =>
+      (
+        await s.pg.admin.query(
+          "SELECT count(*)::int AS n FROM job WHERE kind = 'forecast' AND tenant_id = $1",
+          [t.tenantId],
+        )
+      ).rows[0] as { n: number };
+    expect((await open()).n).toBe(0);
+    const r = await t.web(`/projects/${t.paused}/status`, {
+      method: 'PUT',
+      body: { status: 'active' },
+    });
+    expect(r.status).toBe(200);
+    expect((await open()).n).toBe(1);
+    // Ein zweiter Wechsel bei offenem Lauf legt keinen weiteren an (dedupliziert je Standort).
+    await t.web(`/projects/${t.active}/status`, { method: 'PUT', body: { status: 'on_hold' } });
+    expect((await open()).n).toBe(1);
+  });
+
   it('schreibt 14 Nächte je Rig idempotent; Ansicht mit Restbedarf, Spanne, Kandidaten, Quote', async () => {
     const t = await setup();
     const before = await t.web(`/forecast?rigId=${t.rig.id}`);

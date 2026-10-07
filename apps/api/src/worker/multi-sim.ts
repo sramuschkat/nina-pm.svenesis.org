@@ -13,6 +13,7 @@ import {
   simulateNights,
   type ImpactResult,
   type JobResult,
+  type NightTransit,
   type MultiSimResult,
   type NightWeather,
   type PlanMoonProfileSource,
@@ -21,6 +22,7 @@ import {
   type SiteNightsView,
   type StoredChangeRequestProposal,
 } from '@nina-pm/shared';
+import { daysFromKey, keyFromDays } from '@nina-pm/engine';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
 import { logger } from '../lib/logger';
@@ -58,7 +60,21 @@ export interface MultiSimDeps {
   /** Nachtbewertung aus dem Wetter-Cache des Standorts (leer ohne Vorhersage). */
   weather(site: SimSite & { readonly id: string }, now: Date): Promise<Map<string, NightWeather>>;
   putResult(tenantId: string, jobId: string, result: JobResult): Promise<string>;
+  /**
+   * Festgelegte Transits des Rigs in diesen Nächten (wie `POST /plan`, 07.10.2026); ohne Angabe keine – dann fehlen
+   * Exoplaneten-Projekte in der Rechnung.
+   */
+  transits?(
+    tenantId: string,
+    rigId: string,
+    nights: readonly string[],
+    now: Date,
+  ): Promise<NightTransit[]>;
 }
+
+/** Nacht-Schlüssel `from` … `from + count − 1`. */
+export const nightKeys = (from: string, count: number): string[] =>
+  Array.from({ length: count }, (_, i) => keyFromDays(daysFromKey(from) + i));
 
 const plannable = (rigId: string, p: Project) =>
   p.rigId === rigId && p.approvalStatus === 'approved' && p.status === 'active';
@@ -81,6 +97,13 @@ export function multiSimJobHandler(deps: MultiSimDeps): JobHandler {
     );
     const table = deps.nights(ctx.site, at, input.nightFrom, input.nights + 1);
     const weather = input.weather ? await deps.weather(ctx.site, at) : null;
+    const transits =
+      (await deps.transits?.(
+        job.tenantId,
+        ctx.rig.id,
+        nightKeys(input.nightFrom, input.nights),
+        at,
+      )) ?? [];
     const sim = simulateNights({
       rig: ctx.rig,
       projects,
@@ -90,6 +113,7 @@ export function multiSimJobHandler(deps: MultiSimDeps): JobHandler {
       nightFrom: input.nightFrom,
       count: input.nights,
       weather,
+      transits,
     });
     const result: MultiSimResult = {
       kind: 'multi_sim',
@@ -135,6 +159,13 @@ export function impactJobHandler(deps: MultiSimDeps): JobHandler {
       site: ctx.site,
       nightFrom: table.currentNight,
       count: MAX_MULTI_SIM_NIGHTS,
+      transits:
+        (await deps.transits?.(
+          job.tenantId,
+          ctx.rig.id,
+          nightKeys(table.currentNight, MAX_MULTI_SIM_NIGHTS),
+          at,
+        )) ?? [],
     };
     // Das Objekt wie nach der Freigabe: auf dem Wunsch-Rig, am Ende der Priorität (FA-FRG-06).
     const lowest = Math.max(0, ...others.map((p) => p.priority)) + 1;
