@@ -139,7 +139,7 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await expect(row.getByRole('cell').nth(6)).toHaveText('3');
 });
 
-test('AF-08: Projekt abschließen – verschwindet aus „An NINA ausgeliefert“, bleibt in der Projektliste', async ({
+test('AF-08: Projekt abschließen – NINA erhält es nicht mehr, „An NINA ausgeliefert“ zeigt es ausgegraut als heute abgearbeitet', async ({
   browser,
   baseURL,
 }) => {
@@ -164,8 +164,15 @@ test('AF-08: Projekt abschließen – verschwindet aus „An NINA ausgeliefert�
       ).status(),
     ).toBe(200);
   await admin.getByRole('button', { name: 'Aktualisieren' }).click();
-  await expect(admin.getByRole('article', { name: projectName })).toHaveCount(0);
+  // In dieser Nacht belichtet: bleibt ausgegraut als „Heute Nacht abgearbeitet“ stehen (07.10.2026), NINA erhält es nicht.
+  const card = admin.getByRole('article', { name: projectName });
+  await expect(card.getByText(/Heute Nacht abgearbeitet · \d+ Aufnahmen/)).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Aus Auslieferung nehmen' })).toHaveCount(0);
   await expect(admin.getByText('NINA erhält derzeit keine Ziele.')).toBeVisible();
+  const delivery = await admin.request.get(`/api/web/v1/rigs/${rigId}/delivery`);
+  const shipped = ((await delivery.json()) as { items: { id: string; doneTonight?: unknown }[] })
+    .items;
+  expect(shipped.filter((i) => !i.doneTonight)).toEqual([]);
 
   const listed = await admin.request.get(`/api/web/v1/projects?rigId=${rigId}`);
   const items = ((await listed.json()) as { items: { id: string; status: string }[] }).items;

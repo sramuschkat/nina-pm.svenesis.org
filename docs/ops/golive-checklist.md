@@ -54,7 +54,7 @@ Jeder Punkt mit Nachweis (Link auf CI-Lauf, Ausgabe von `pnpm deploy:prod`, Scre
 | AF-03 Nacht simulieren | `simulator.spec.ts` |
 | AF-04 Nacht ausführen | `sessions.spec.ts` (Fake-Plugin-Nacht) |
 | AF-06 Session auswerten | `sessions.spec.ts` (Soll/Ist, Kennzeichen, Korrektur) |
-| AF-08 Projekt abschließen | `sessions.spec.ts` (verschwindet aus der Auslieferung) |
+| AF-08 Projekt abschließen | `sessions.spec.ts` (nicht mehr an NINA; in der Auslieferung heute Nacht ausgegraut als abgearbeitet) |
 | AF-11 Objekt einreichen | `my-objects.spec.ts` |
 | AF-12 Warteschlange bearbeiten | `queue.spec.ts` |
 | AF-13 Mandant und Benutzer verwalten | `system-admin.spec.ts`, `members.spec.ts`, `tenant-settings.spec.ts` |

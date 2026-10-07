@@ -214,26 +214,26 @@ export function DeliveryPage() {
                 {t('nina.delivery.deliveryOff', { rig: r.rigName })}
               </p>
             ))}
-          {cards.length === 0 ? (
+          {/* Nur abgearbeitete Karten: NINA erhält trotzdem keine Ziele (07.10.2026). */}
+          {cards.every((c) => c.item.doneTonight) ? (
             <p className={styles.muted}>{t('nina.delivery.empty')}</p>
-          ) : (
-            groups
-              .filter((g) => g.cards.length > 0)
-              .map((g) => (
-                <section
-                  key={g.key}
-                  className={styles.group}
-                  aria-label={g.title ?? t('nina.delivery.title')}
-                >
-                  {g.title ? <h2>{g.title}</h2> : null}
-                  <div className={styles.cards}>
-                    {g.cards.map((c) => (
-                      <DeliveryCard key={c.item.id} card={c} />
-                    ))}
-                  </div>
-                </section>
-              ))
-          )}
+          ) : null}
+          {groups
+            .filter((g) => g.cards.length > 0)
+            .map((g) => (
+              <section
+                key={g.key}
+                className={styles.group}
+                aria-label={g.title ?? t('nina.delivery.title')}
+              >
+                {g.title ? <h2>{g.title}</h2> : null}
+                <div className={styles.cards}>
+                  {g.cards.map((c) => (
+                    <DeliveryCard key={c.item.id} card={c} />
+                  ))}
+                </div>
+              </section>
+            ))}
         </>
       )}
     </div>
