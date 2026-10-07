@@ -357,6 +357,15 @@ public static class NightViewBuilder
         var skipped = 0;
         var failed = 0;
         var transitBlocks = past.Where(p => p.Transit).Select(p => p.BlockId).ToHashSet();
+        // Nr. wie im Simulator (simulation-view.ts): laufende Belichtungsnummer je Zeile bzw. – im Journal ohne Zeile – je
+        // Ziel und Filter; Transit-Serien ohne Nummer.
+        var numbers = new Dictionary<string, int>(StringComparer.Ordinal);
+        int? Next(string key, bool series)
+        {
+            if (series) return null;
+            numbers[key] = (numbers.TryGetValue(key, out var n) ? n : 0) + 1;
+            return numbers[key];
+        }
         foreach (var e in journal)
         {
             var d = e.Data;
@@ -373,13 +382,14 @@ public static class NightViewBuilder
                     else failed += d.Count ?? 1;
                     var at = d.StartUtc ?? e.AtUtc;
                     rows.Add(new NightLogRow(at, state, d.Result == "saved" ? null : d.Result, true, false,
-                        d.BlockId is { } bid && transitBlocks.Contains(bid) ? "expose_series" : "expose", Title(d), PanelName(project, d.PanelId), d.Seq,
+                        d.BlockId is { } bid && transitBlocks.Contains(bid) ? "expose_series" : "expose", Title(d), PanelName(project, d.PanelId),
+                        d.Count is > 1 ? null : Next($"{project}|{d.Filter}", d.BlockId is { } sb && transitBlocks.Contains(sb)),
                         d.Filter ?? "", d.ExposureS, d.Gain, d.Offset, d.Binning, d.Readout, d.RotationDeg, d.RaDeg, d.DecDeg, Alt(project, at))
                     { Count = d.Count ?? 1 });
                     break;
                 case JournalKinds.Skipped:
                     skipped++;
-                    rows.Add(new NightLogRow(e.AtUtc, ActualState.Skipped, d.Reason, true, false, "expose", Title(d), "", d.Seq, d.Filter ?? "",
+                    rows.Add(new NightLogRow(e.AtUtc, ActualState.Skipped, d.Reason, true, false, "expose", Title(d), "", null, d.Filter ?? "",
                         d.ExposureS, null, null, null, null, null, null, null, Alt(project, e.AtUtc)));
                     break;
                 case JournalKinds.BlockSkipped:
@@ -432,7 +442,7 @@ public static class NightViewBuilder
 
         NightLogRow EntryRow(Blocks b, Entries e, DateTimeOffset at, ActualState state, bool current) =>
             new(at, state, null, false, current, LockedSettings.Code(e.Cmd), TitleOf(b), PanelName(b.ProjectId, b.PanelId),
-                e.Cmd is EntriesCmd.Expose or EntriesCmd.Expose_series ? e.Seq : null, e.Filter ?? "", e.ExposureS, e.Gain, e.Offset, e.Binning,
+                e.Cmd == EntriesCmd.Expose ? Next(e.ExposureLineId?.ToString() ?? $"{b.ProjectId}|{e.Filter}", false) : null, e.Filter ?? "", e.ExposureS, e.Gain, e.Offset, e.Binning,
                 e.ReadoutMode, b.RotationDeg, b.RaDeg, b.DecDeg, Alt(b.ProjectId, at)) { DurationS = e.DurationS };
 
         // Flats ab Nachtende (wenn im Rig eingeschaltet).

@@ -1170,7 +1170,8 @@ public sealed class NightRunner(
         Journal.Append(facts.Night, clock.UtcNow, JournalKinds.Capture, new JournalData
         {
             PlanId = facts.NightPlanId, BlockId = facts.Block.Id, ProjectId = facts.Block.ProjectId, PanelId = facts.Block.PanelId,
-            Seq = facts.Entry.Seq, Filter = facts.FilterActual, ExposureS = facts.ExposureS, Gain = facts.Gain, Offset = facts.Offset,
+            // Kurzname wie im Plan („L“), nicht NINAs Filtername („LUMINANCE“), sonst trennt die Filterleiste Plan und Ist.
+            Seq = facts.Entry.Seq, Filter = facts.Entry.Filter ?? facts.FilterActual, ExposureS = facts.ExposureS, Gain = facts.Gain, Offset = facts.Offset,
             Binning = facts.Binning, Readout = facts.ReadoutMode, RotationDeg = facts.RotationDeg ?? facts.Block.RotationDeg,
             RaDeg = facts.Block.RaDeg, DecDeg = facts.Block.DecDeg, StartUtc = facts.CapturedAtUtc,
             Result = result.ToString().ToLowerInvariant(),

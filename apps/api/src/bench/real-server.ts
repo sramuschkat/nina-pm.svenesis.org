@@ -1062,6 +1062,19 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         ),
       ].sort();
       const lights = captures.filter((c) => c.frameType === 'light' && c.result === 'saved');
+      // Ist der Nacht (AP-53c): Plugin ab 0.4.14 meldet Blöcke und Planwechsel als Ereignisse.
+      const eventKinds: Record<string, number> = {};
+      if (list.length > 0)
+        for (const e of await stack.db
+          .selectFrom('sessionEvent')
+          .select('kind')
+          .where(
+            'sessionId',
+            'in',
+            list.map((x) => x.id),
+          )
+          .execute())
+          eventKinds[e.kind] = (eventKinds[e.kind] ?? 0) + 1;
       const data: Body = {
         info,
         sessions: list,
@@ -1077,6 +1090,7 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         staleSeenAt,
         settingsMismatch: mismatchCodes,
         discord: discord.calls.map((c) => c.path),
+        eventKinds,
       };
 
       const checks: RealCheck[] = [];
@@ -1105,6 +1119,13 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
         'Discord-Meldung angekommen',
         discord.calls.length > 0,
         `${String(discord.calls.length)} Aufrufe`,
+      );
+      check(
+        'Ist-Ereignisse gemeldet (Blockstart, Blockende, Planwechsel)',
+        (eventKinds.block_start ?? 0) >= 1 &&
+          (eventKinds.block_end ?? 0) >= 1 &&
+          (eventKinds.plan_built ?? 0) + (eventKinds.plan_rebuilt ?? 0) >= 1,
+        JSON.stringify(eventKinds),
       );
       if (s === 'long-night') {
         const lit = new Set(lights.map((c) => c.projectId));

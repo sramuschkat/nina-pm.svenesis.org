@@ -149,7 +149,9 @@ public sealed class NightViewTests : IDisposable
         Assert.Equal(2, view.Rows.Count(r => r.Cmd == "slew_center" && r.Past));
 
         var running = Assert.Single(view.Rows, r => r.Current);
-        Assert.Equal((ActualState.Running, "expose", "Ha", 4), (running.State, running.Cmd, running.Filter, running.No!.Value));
+        // Nr. wie im Simulator: laufende Belichtungsnummer je Zeile (nicht die Eintragsnummer 4).
+        Assert.Equal((ActualState.Running, "expose", "Ha", 1), (running.State, running.Cmd, running.Filter, running.No!.Value));
+        Assert.Equal(2, view.Rows.SkipWhile(r => !r.Current).Skip(1).First(r => r.Cmd == "expose").No);
         Assert.Equal(0.4, running.Progress!.Value, 6);
         Assert.Equal(new ExposureProgress(1, Regular.Entries.Count(e => e.Cmd == EntriesCmd.Expose), 300, TimeSpan.FromMinutes(3), 0.4), view.Progress);
 
@@ -199,7 +201,7 @@ public sealed class NightViewTests : IDisposable
         Assert.Equal(("center_failed", 1), (skipped.Reason, skipped.Count));
 
         Assert.Equal((3, 1, 1), (view.Saved, view.Skipped, view.Failed));
-        Assert.Contains(view.Rows, r => r is { State: ActualState.Skipped, Reason: "late", No: 10 });
+        Assert.Contains(view.Rows, r => r is { State: ActualState.Skipped, Reason: "late", Filter: "Ha", No: null });
         Assert.Contains(view.Rows, r => r is { State: ActualState.Skipped, Cmd: "block_skipped", Reason: "center_failed" });
         Assert.Contains(view.Rows, r => r is { State: ActualState.Failed, Reason: "failed" });
         Assert.Contains(view.Rows, r => r is { Cmd: "meridian_flip", State: ActualState.Done, DurationS: 780 });

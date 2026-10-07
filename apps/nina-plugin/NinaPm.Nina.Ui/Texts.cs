@@ -461,6 +461,7 @@ public static class Texts
         "Erscheint, sobald eine Sequenz mit dem NINA-PM-Container läuft (Server-URL und Token in den Plugin-Optionen).",
         "Shows up once a sequence with the NINA-PM container runs (server URL and token in the plugin options).");
     public static string DockNoPlan => T("Noch kein Plan für diese Nacht.", "No plan for this night yet.");
+    public static string DockNoMoreBlocks => T("Keine Blöcke mehr in dieser Nacht", "No more blocks tonight");
     public static string DockState => T("Status", "Status");
     public static string DockTarget => T("Ziel", "Target");
     public static string DockFilter => T("Filter", "Filter");
