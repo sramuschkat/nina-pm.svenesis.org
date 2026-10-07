@@ -1943,6 +1943,22 @@ export class ProjectRepository extends TenantRepo {
         .execute();
   }
 
+  /**
+   * Namen je Projekt (auch gelöschte, abgeschlossene, pausierte) – eine Abfrage für ganze Listen. Für das Ist einer Nacht
+   * (AP-53c): belichtete Projekte, die nicht mehr im Plan stehen, brauchen trotzdem ihren Namen (07.10.2026).
+   */
+  async names(projectIds: readonly string[]): Promise<Map<string, string>> {
+    const ids = [...new Set(projectIds)];
+    if (ids.length === 0) return new Map();
+    const rows = await this.db
+      .selectFrom('project')
+      .select(['id', 'name'])
+      .where('tenantId', '=', this.tenantId)
+      .where('id', 'in', ids)
+      .execute();
+    return new Map(rows.map((r) => [r.id, r.name]));
+  }
+
   // ---- Kommentare (FA-PRJ-17, Ausbau der Notizen 04.10.2026) --------------------------------------
 
   /** Nicht gelöschte Kommentare je Projekt – eine gruppierte Abfrage für ganze Listen (kein N+1). */

@@ -273,5 +273,11 @@ describe('GET /simulations/input', () => {
     });
     expect((sim.body.executed as Body).counters).toEqual({ saved: 2, skipped: 0, failed: 0 });
     expect((sim.body.storedPlan as Body).blocks).toBeUndefined();
+
+    // Pausiert (nicht mehr in der Eingabe), aber heute belichtet: Name bleibt für „Heute Nacht abgearbeitet“ (07.10.2026).
+    await s.pg.admin.query("UPDATE project SET status = 'on_hold' WHERE id = $1", [w.pid]);
+    const paused = await w.web(`/simulations/input?rigId=${w.rigId}&night=${NIGHT}`);
+    expect((paused.body.input as { projects: unknown[] }).projects).toEqual([]);
+    expect(paused.body.projectNames).toEqual({ [w.pid]: 'NGC 281' });
   });
 });

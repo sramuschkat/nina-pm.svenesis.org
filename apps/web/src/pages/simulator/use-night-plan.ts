@@ -16,6 +16,7 @@ import { useEquipmentList } from '../equipment/shared';
 import { actualView, type ActualView } from './actual-view';
 import {
   doneTonight,
+  stillRunning,
   type DoneCard,
   type SimulationRequest,
   type SimulationResult,
@@ -181,12 +182,15 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     const colors = new Map(result.cards.map((c) => [c.projectId, c.color]));
     return doneTonight(
       data.executed.blocks,
-      new Set(result.cards.map((c) => c.projectId)),
+      new Set([
+        ...result.cards.map((c) => c.projectId),
+        ...stillRunning(data.executed, data.storedPlan, nowMin * 60_000),
+      ]),
       new Map(Object.entries(data.projectNames)),
       new Map(projects.map((p) => [p.id, p.createdBy])),
       (id) => colors.get(id) ?? 'var(--npm-chart-marker)',
     );
-  }, [actual, serverInput.data, result, projects]);
+  }, [actual, serverInput.data, result, projects, nowMin]);
   const stored = serverInput.data?.storedPlan
     ? {
         nightPlanId: serverInput.data.storedPlan.nightPlanId,

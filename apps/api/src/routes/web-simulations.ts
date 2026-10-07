@@ -164,7 +164,12 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
       ignoreDeliverySwitch: true,
     });
     const names = new Map(projects.map((x) => [x.id, x.name] as const));
-    const actual = await nightActual(svc, ref, d, { night, currentNight, now, names });
+    const { names: known, ...actual } = await nightActual(svc, ref, d, {
+      night,
+      currentNight,
+      now,
+      names,
+    });
     return c.json(
       {
         night,
@@ -172,7 +177,7 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
         inputHash: `sha256:${sha256hex(canonicalInputJson(input))}`,
         // Engine-Typen sind `readonly`, der Vertrag nicht – gleiche Form.
         input: input as unknown as SimulationInput['input'],
-        projectNames: Object.fromEntries(names),
+        projectNames: Object.fromEntries(known),
         moonProfileNames: Object.fromEntries(d.profiles.map((m) => [m.id, m.name])),
         filterColors: Object.fromEntries(d.filters.map((f) => [f.shortName, f.colorHex])),
         ...actual,

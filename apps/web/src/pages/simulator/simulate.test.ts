@@ -17,7 +17,7 @@ import {
   STRICT,
 } from '../../../../../packages/shared/test/fixtures/plan';
 import { cell } from './protocol';
-import { simulate, type SimulationRequest } from './simulate';
+import { simulate, stillRunning, type SimulationRequest } from './simulate';
 
 const request = (over: Partial<SimulationRequest> = {}): SimulationRequest => ({
   rig,
@@ -231,6 +231,23 @@ describe('simulate', () => {
       ['IC 1795', false, 6],
     ]);
     expect(r.cards.map((c) => c.projectId)).toEqual(base.cards.map((c) => c.projectId));
+    // Läuft an der Rig noch (gespeicherter Plan hat einen Block bis 10:00, Rechnung ab jetzt teilt nichts mehr zu):
+    // keine „abgearbeitet“-Karte (07.10.2026, IC 1795 um 05:33 CDT).
+    const stored = { blocks: [{ projectId: PAUSED, endUtc: '2026-09-18T10:00:00Z' }] };
+    expect(stillRunning(null, stored, Date.parse('2026-09-18T09:00:00Z'))).toEqual(
+      new Set([PAUSED]),
+    );
+    expect(stillRunning(null, stored, Date.parse('2026-09-18T10:00:00Z'))).toEqual(new Set());
+    const running = {
+      night: '2026-09-17',
+      sessions: 1,
+      blocks: [{ ...block(PAUSED, 'IC 1795', 6), endUtc: null, running: true }],
+      segments: [],
+      events: [],
+      gaps: [],
+      counters: { saved: 6, skipped: 0, failed: 0 },
+    };
+    expect(stillRunning(running, null, Number.NaN)).toEqual(new Set([PAUSED]));
   });
 
   it('Zielkarte nennt das Mondprofil der Zeile (Name, Abstand, Breite) statt „LA“; Protokoll übersetzt Namen', () => {

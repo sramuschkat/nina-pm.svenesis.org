@@ -15,6 +15,8 @@ import { targets, type RigDataResult, type RigRef } from './sync';
 
 export interface NightActual {
   executed: ExecutedNight | null;
+  /** `names` des Aufrufers plus die Namen belichteter Projekte, die nicht mehr im Plan stehen (07.10.2026). */
+  names: ReadonlyMap<string, string>;
   storedPlan: StoredPlan | null;
   firstPlan: StoredPlan | null;
 }
@@ -27,6 +29,13 @@ export async function nightActual(
 ): Promise<NightActual> {
   const repo = d.repos.ninaRig(ref.rigId);
   const [actual, plans] = await Promise.all([repo.nightActual(o.night), repo.serverPlans(o.night)]);
+
+  // Belichtete Projekte außerhalb der Eingabe (fertig, pausiert, Transit vorbei): Namen nachladen, sonst stehen Ist-Blöcke
+  // und „Heute Nacht abgearbeitet“ ohne Namen da (07.10.2026).
+  const missing = [...actual.lights, ...actual.events]
+    .map((x) => x.projectId)
+    .filter((id): id is string => id !== null && !o.names.has(id));
+  const names = new Map([...o.names, ...(await d.repos.projects().names(missing))]);
 
   const blockKinds = new Map<string, 'regular' | 'transit'>();
   for (const p of [plans.first, plans.latest])
@@ -54,7 +63,7 @@ export async function nightActual(
           lights: actual.lights.map((l) => ({ ...l, capturedAt: isoUtc(l.capturedAt) })),
           running: actual.sessions.some((s) => s.status === 'running'),
           now: isoUtc(o.now),
-          names: o.names,
+          names,
           blockKinds,
         });
 
@@ -83,5 +92,10 @@ export async function nightActual(
           blocks: p.blocks as StoredPlan['blocks'],
         }
       : null;
-  return { executed, storedPlan: view(plans.latest, true), firstPlan: view(plans.first, false) };
+  return {
+    executed,
+    names,
+    storedPlan: view(plans.latest, true),
+    firstPlan: view(plans.first, false),
+  };
 }
