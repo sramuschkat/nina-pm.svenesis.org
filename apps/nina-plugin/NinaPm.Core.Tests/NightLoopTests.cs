@@ -117,6 +117,29 @@ public sealed class NightLoopTests
     }
 
     [Fact]
+    public void Neue_Ziele_verkuerzen_die_Sperre_auf_1_Minute()
+    {
+        // Rig-Nacht 06.10.2026: gesenkte Mindesthöhe kam erst mit dem nächsten 5-min-Abruf an (0.4.12).
+        var loop = new NightLoop();
+        var plan = Stored();
+        loop.PlanAttempt(T("2026-09-18T10:00:00Z"));
+        loop.PlanReceived();
+        // Ohne neue Ziele: 5 min Sperre.
+        Assert.Equal(NightAction.Idle, loop.Decide(At("2026-09-18T10:02:00Z", plan)).Action);
+        Assert.True(loop.PlanLocked(T("2026-09-18T10:02:00Z")));
+        // Neues Targets-ETag: vor Ablauf einer Minute weiter gesperrt …
+        Assert.Equal(NightAction.Idle, loop.Decide(At("2026-09-18T10:00:30Z", plan) with { TargetsChanged = true }).Action);
+        Assert.True(loop.PlanLocked(T("2026-09-18T10:00:30Z"), newTargets: true));
+        // … danach sofort neu planen.
+        var step = loop.Decide(At("2026-09-18T10:01:00Z", plan) with { TargetsChanged = true });
+        Assert.Equal((NightAction.FetchPlan, NinaPlanRequestReason.Refresh), (step.Action, step.Reason));
+        Assert.False(loop.PlanLocked(T("2026-09-18T10:01:00Z"), newTargets: true));
+        // Nach dem nächsten Abruf gilt wieder die Minute ab diesem Abruf.
+        loop.PlanAttempt(T("2026-09-18T10:01:00Z"));
+        Assert.True(loop.PlanLocked(T("2026-09-18T10:01:30Z"), newTargets: true));
+    }
+
+    [Fact]
     public void Alle_Bloecke_vorbei_vor_Dunkelheitsende_alle_5_Minuten_neu_planen_danach_Nachtende()
     {
         var loop = new NightLoop();

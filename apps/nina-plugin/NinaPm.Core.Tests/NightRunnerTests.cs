@@ -268,6 +268,26 @@ public sealed class NightRunnerTests : IDisposable
     }
 
     [Fact]
+    public async Task Leerer_Plan_neue_Ziele_im_Web_wirken_nach_einer_Minute_statt_fuenf()
+    {
+        // Rig-Nacht 06.10.2026: SII war wegen der Mindesthöhe ausgeschlossen, der Plan leer; die gesenkte Mindesthöhe kam
+        // erst mit dem nächsten 5-min-Abruf an (Plugin 0.4.12: höchstens 1 min).
+        api.OnPlan = p => p.Blocks.Clear();
+        var runner = Runner();
+        await runner.RunOnceAsync(default); // Plan 01:00 ohne Blöcke, Sperre bis 01:05
+        var changed = Example<NinaTargets>("targets.response");
+        api.OnTargets = e => Serve(e, changed, "\"t-2\"");
+        runner.HeartbeatAnswered(new NinaHeartbeatResponse { ServerTimeUtc = clock.UtcNow, TargetsEtag = "\"t-2\"" }, clock.UtcNow);
+
+        await runner.RunOnceAsync(default); // wartet höchstens bis 1 min nach dem letzten Abruf
+        await runner.RunOnceAsync(default);
+
+        Assert.Equal(2, api.Plans.Count);
+        Assert.Equal(NinaPlanRequestReason.Refresh, api.Plans[^1].Reason);
+        Assert.True(clock.UtcNow < UtcText.Parse("2026-09-18T01:02:00Z"), clock.UtcNow.ToString("O"));
+    }
+
+    [Fact]
     public async Task Zuruecksetzen_beendet_das_Warten_auf_einen_spaeten_Block()
     {
         var runner = Runner();

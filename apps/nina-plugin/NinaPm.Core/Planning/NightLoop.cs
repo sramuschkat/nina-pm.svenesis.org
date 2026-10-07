@@ -80,7 +80,12 @@ public sealed record NightContext(
     /// Himmelsflats (<c>flats.source = sky</c>): nur dann wartet der Container bis <c>flatsNotBeforeUtc</c>. Panel-Flats
     /// beginnen mit dem Nachtende; einen späteren Start legt die Box <em>Vor Flats</em> fest (Entscheidung Sven 06.10.2026).
     /// </summary>
-    bool SkyFlats = false);
+    bool SkyFlats = false,
+    /// <summary>
+    /// Neues Targets-ETag aus dem Heartbeat (z. B. Projekt im Web freigegeben): die 5-min-Sperre gilt dann nur noch
+    /// <see cref="NightLoop.TargetsLock"/> lang (Plugin 0.4.12, 07.10.2026).
+    /// </summary>
+    bool TargetsChanged = false);
 
 /// <summary>
 /// Nachtschleife als Zustandsmaschine (NT-11, NIN-6, NIN5-2, execution.md §2, TK 10.3 Nr. 3/10) – reine Logik ohne NINA:
@@ -100,10 +105,18 @@ public sealed record NightContext(
 public sealed class NightLoop
 {
     public static readonly TimeSpan PlanLock = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Sperre bei neuem Targets-ETag (Plugin 0.4.12): Änderungen im Web wirken nach höchstens 1 min statt 5 min –
+    /// in der ersten Rig-Nacht kam die gesenkte Mindesthöhe erst mit dem nächsten 5-min-Abruf an. Ein Abruf je Minute
+    /// schützt weiter vor Planschleifen (Lauf 02.10.2026: 834 Pläne in 61 s).
+    /// </summary>
+    public static readonly TimeSpan TargetsLock = TimeSpan.FromMinutes(1);
     public static readonly TimeSpan BlockedWait = TimeSpan.FromSeconds(60);
     public const int MaxClockSkewAttempts = 10;
 
     private DateTimeOffset? planLockUntil;
+    private DateTimeOffset? lastPlanAttempt;
     private bool sessionCompleted;
     private bool nightFinished;
     private string? finishedNight;
@@ -207,7 +220,7 @@ public sealed class NightLoop
 
     private NightStep FetchOrIdle(NightContext c, NinaPlanRequestReason reason, DateTimeOffset? notAfter = null)
     {
-        if (planLockUntil is { } until && c.Now < until)
+        if (PlanLocked(c.Now, c.TargetsChanged) && planLockUntil is { } until)
             return new NightStep(NightAction.Idle, WaitUntilUtc: notAfter is { } n && n < until ? n : until);
         return new NightStep(NightAction.FetchPlan, Reason: reason);
     }
@@ -230,11 +243,20 @@ public sealed class NightLoop
 
     // ---- Ereignisse ---------------------------------------------------------------------------------------
 
-    /// <summary>Sperre aktiv (5 min ab dem letzten Abruf): auch die Neuplanung vor einem Block wartet (§3.2).</summary>
-    public bool PlanLocked(DateTimeOffset now) => planLockUntil is { } until && now < until;
+    /// <summary>
+    /// Sperre aktiv (5 min ab dem letzten Abruf): auch die Neuplanung vor einem Block wartet (§3.2). Mit neuen Zielen
+    /// (<paramref name="newTargets"/>) nur <see cref="TargetsLock"/> ab dem letzten Abruf.
+    /// </summary>
+    public bool PlanLocked(DateTimeOffset now, bool newTargets = false) =>
+        planLockUntil is { } until && now < until
+        && !(newTargets && lastPlanAttempt is { } last && now - last >= TargetsLock);
 
     /// <summary>Vor jedem Planabruf: Sperre setzen (Zeitstempel **vor** dem Versuch, execution.md §2).</summary>
-    public void PlanAttempt(DateTimeOffset now) => planLockUntil = now + PlanLock;
+    public void PlanAttempt(DateTimeOffset now)
+    {
+        planLockUntil = now + PlanLock;
+        lastPlanAttempt = now;
+    }
 
     /// <summary>
     /// Plan erhalten (online oder gespeichert): <c>plan_failed</c> aufheben. Die Sperre aus <see cref="PlanAttempt"/>
