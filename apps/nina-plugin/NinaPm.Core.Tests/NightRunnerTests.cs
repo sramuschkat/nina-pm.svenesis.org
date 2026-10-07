@@ -152,6 +152,10 @@ public sealed class NightRunnerTests : IDisposable
 
     private NightRunner Runner() => new(api, api, store, nina, nina, clock, new NinaPmLog(sink));
 
+    /// <summary>Planereignisse (<c>plan_built</c>/<c>plan_rebuilt</c>, AP-53c) aus der Outbox nehmen, wo ein Test nur Aufnahmen und Abschluss zählt.</summary>
+    private void AckPlanEvents() =>
+        store.OutboxAcknowledge([.. store.OutboxPeek(1000).Where(e => e.Kind == OutboxKinds.Event && e.Payload.Contains("\"plan_", StringComparison.Ordinal))]);
+
     private static SeqNode SampleSequence(string file, Action<JObject>? change = null)
     {
         var json = JObject.Parse(File.ReadAllText(Path.Combine(ContractExamples.RepoRoot(), "apps", "nina-plugin", "NinaPm.Nina", "Samples", file)));
@@ -776,7 +780,7 @@ public sealed class NightRunnerTests : IDisposable
         await hb.TickAsync(default);
         Assert.Equal(LeaseState.Held, runner.Lease.State);
         var kinds = api.EventBatches.SelectMany(b => b.Batch.Events).Select(e => e.Kind).ToList();
-        Assert.Equal([EventsKind.Offline_start, EventsKind.Offline_end], kinds);
+        Assert.Equal([EventsKind.Plan_built, EventsKind.Offline_start, EventsKind.Offline_end], kinds);
     }
 
     [Fact]
@@ -785,6 +789,7 @@ public sealed class NightRunnerTests : IDisposable
         var runner = Runner();
         var hb = Heartbeat(runner);
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         var first = Facts(runner, 0);
         var second = Facts(runner, 1);
         runner.ReportCapture(first, CapturesResult.Saved, "a.fits");
@@ -886,6 +891,7 @@ public sealed class NightRunnerTests : IDisposable
     {
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         // Rest einer früheren Session (z. B. nach langem Offline-Betrieb) hält den Abschluss nicht auf.
         store.EnqueueOutbox(OutboxKinds.Event, "{}", Guid.NewGuid(), null);
         clock.UtcNow = UtcText.Parse("2026-09-18T11:31:00Z");
@@ -902,6 +908,7 @@ public sealed class NightRunnerTests : IDisposable
     {
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         clock.UtcNow = UtcText.Parse("2026-09-18T11:31:00Z");
 
         await runner.RunOnceAsync(default);
@@ -1165,6 +1172,7 @@ public sealed class NightRunnerTests : IDisposable
     {
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         var session = runner.SessionId!.Value;
         runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
         api.ReportsFail = true; // Netz weg: auch der PATCH scheitert
@@ -1186,6 +1194,7 @@ public sealed class NightRunnerTests : IDisposable
     {
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
         api.ReportsFail = true;
         await Outbox(runner).FlushAsync(default); // scheitert, Aufnahme bleibt
@@ -1208,6 +1217,7 @@ public sealed class NightRunnerTests : IDisposable
         // Analyse 04.10.2026: vorher nur für completed – nach einem Benutzer-Stopp liefen Abschluss und Bericht erst nach 6 h.
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         var session = runner.SessionId!.Value;
         runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");
         api.ReportsFail = true;
@@ -1367,6 +1377,7 @@ public sealed class NightRunnerTests : IDisposable
         api.OnCreate = _ => throw Problem(status, "internal.error");
         var runner = Runner();
         await runner.RunOnceAsync(default);
+        AckPlanEvents(); // plan_built (AP-53c) zählt hier nicht mit
         var session = runner.SessionId;
         Assert.NotNull(session);
         runner.ReportCapture(Facts(runner, 0), CapturesResult.Saved, "a.fits");

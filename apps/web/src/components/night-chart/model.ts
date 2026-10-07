@@ -55,6 +55,11 @@ export interface TimelineBlock {
   /** Farbe des Ziels (CSS-Farbe oder `var(--npm-…)`). */
   readonly color?: string;
   readonly actual?: boolean;
+  /**
+   * Zeitbezug in der Plangrafik (AP-53c): erledigt (`past`, blass, aus dem Ist der Nacht) bzw. geplant ab jetzt
+   * (`planned`, kräftig, aus der gespeicherten Planrevision); ohne Angabe wie bisher.
+   */
+  readonly tense?: 'past' | 'planned';
 }
 
 /** Filterbalken über den Blöcken (FA-SIM-07): Belichtungszeit je Filter in Filterfarbe. */
@@ -65,6 +70,26 @@ export interface FilterBar {
   readonly label: string;
   /** Anzahl der Belichtungen im Balken (Plangrafik „R ×10“, AP-26e). */
   readonly count?: number;
+  /** Erledigt (blass) bzw. geplant (kräftig), AP-53c. */
+  readonly tense?: 'past' | 'planned';
+}
+
+/** Lücke im Erledigten (AP-53c): schraffiert, der Grund steht als Beschriftung bzw. in der Tabelle. */
+export interface ChartGap {
+  readonly fromUtc: number;
+  readonly toUtc: number;
+  readonly kind: 'idle' | 'safety' | 'flip' | 'empty_blocks' | 'skipped';
+  readonly label: string;
+  /** Grund (Code) und Anzahl – die Seite übersetzt daraus `label`. */
+  readonly reason?: string | null;
+  readonly count?: number;
+}
+
+/** Umriss eines Blocks des Ursprungsplans (Revision 1, AP-53c) über der Plangrafik. */
+export interface OutlineBlock {
+  readonly fromUtc: number;
+  readonly toUtc: number;
+  readonly color: string;
 }
 
 /** Beschriftung eines Filterbalkens in der Plangrafik: „R ×10“, ohne Anzahl nur der Filter. */

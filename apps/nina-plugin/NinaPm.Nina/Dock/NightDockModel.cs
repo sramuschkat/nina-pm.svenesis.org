@@ -9,7 +9,11 @@ namespace NinaPm.Nina.Dock;
 
 /// <summary>Momentaufnahme für beide Fenster: Live-Status, Ansicht der Nacht, Zeitzone, Kamera, Änderungsschlüssel.</summary>
 internal sealed record DockSnapshot(LiveStatus Live, NightView View, SiteTime Site, double? CameraTemperatureC, DateTimeOffset? TargetsFetchedUtc,
-    DateTimeOffset Now, string Key);
+    DateTimeOffset Now, string Key)
+{
+    /// <summary>Planstand vom Server (AP-53c): „Rig plant noch mit Rev. n“, wenn sich die Eingabe geändert hat.</summary>
+    public StoredPlanInfo? Stored { get; init; }
+}
 
 /// <summary>
 /// Gemeinsame Quelle der Fenster im Imaging-Reiter (AP-53b, execution.md §10): ein 2-s-Takt für beide Fenster liest die
@@ -85,7 +89,7 @@ internal sealed class NightDockModel
         }
         var key = string.Join("|", inputs.Night, runner.Journal.Head(inputs.Night), view.PlanId, view.Revision, inputs.Running?.Block.Id,
             inputs.CurrentEntry?.Seq, simulation?.GeneratedAtUtc.ToUnixTimeSeconds(), inputs.Now.ToUnixTimeSeconds() / 60, inputs.Done.Count);
-        return new DockSnapshot(live, view, inputs.Site, temperature, runner.TargetsFetchedUtc, inputs.Now, key);
+        return new DockSnapshot(live, view, inputs.Site, temperature, runner.TargetsFetchedUtc, inputs.Now, key) { Stored = simulation?.StoredPlan };
     }
 
     /// <summary>Simulation der Nacht aus dem Cache; fehlt sie oder kam ein neues Ziel hinzu, im Hintergrund abrufen.</summary>

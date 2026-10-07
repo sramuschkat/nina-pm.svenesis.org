@@ -57,7 +57,7 @@ const isFilterType = (t: string): t is FilterType => FILTER_TYPES.has(t);
 
 const iso = (d: Date) => isoUtc(d);
 
-type RigRef = Pick<NinaPrincipal, 'tenantId' | 'rigId'>;
+export type RigRef = Pick<NinaPrincipal, 'tenantId' | 'rigId'>;
 
 export async function rigData(svc: ApiServices, p: RigRef) {
   const repos = svc.repositories({ tenantId: p.tenantId });
@@ -606,7 +606,7 @@ async function targetsData(svc: ApiServices, p: RigRef) {
   };
 }
 
-type RigDataResult = Awaited<ReturnType<typeof rigData>>;
+export type RigDataResult = Awaited<ReturnType<typeof rigData>>;
 
 /**
  * Engine-Eingabe einer Nacht für das Rig des Tokens (FA-SIM-05): auslieferbare Deep-Sky-Projekte, Exoplaneten-Projekte
@@ -616,7 +616,7 @@ type RigDataResult = Awaited<ReturnType<typeof rigData>>;
  */
 export async function nightPlanInput(
   svc: ApiServices,
-  p: NinaPrincipal,
+  p: RigRef & { readonly lastState?: unknown },
   d: RigDataResult,
   o: {
     night: string;
@@ -625,13 +625,19 @@ export async function nightPlanInput(
     startAtUtc: string | null;
     tonight: Parameters<typeof buildPlanInput>[4]['tonight'];
     pendingByLine: Record<string, number>;
+    /** Web (AP-53c): auch ohne eingeschaltete NINA-Auslieferung rechnen – wie bisher der Web-Simulator. */
+    ignoreDeliverySwitch?: boolean;
   },
 ) {
   const view = rigView(d.rig, d.telescope, d.camera);
   const delivered = await deliverable(
     svc,
     p,
-    { ...view, bonusEnabled: view.scheduler.bonusEnabled },
+    {
+      ...view,
+      ...(o.ignoreDeliverySwitch ? { ninaDeliveryEnabled: true } : {}),
+      bonusEnabled: view.scheduler.bonusEnabled,
+    },
     o.night,
     o.now,
   );
@@ -772,7 +778,12 @@ export async function plan(
     reason: req.reason,
     engineVersion: result.engineVersion,
     inputHash: result.inputHash,
-    plan: result,
+    // Stand der Eingabe für „Rig plant noch mit Rev. n“ (AP-53c): Ziele-ETag des Plugins und Einstellungsversion.
+    plan: {
+      ...result,
+      targetsEtag: req.targetsEtag ?? null,
+      settingsVersion: d.rig.settingsVersion,
+    },
     now,
   });
   return {

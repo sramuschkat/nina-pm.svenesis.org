@@ -382,6 +382,9 @@
                     <!--  Schritt 3: Plangrafik (FA-SIM-07) und Planprotokoll (FA-SIM-08).  -->
                     <TextBlock Margin="0,4,0,2" FontWeight="SemiBold" Text="{x:Static ui:Texts.Step3}" />
                     <TextBlock Margin="0,0,0,4" Opacity="0.75" Text="{Binding PlanHeader}" />
+                    <!--  AP-53c: gespeicherter Plan der Nacht, ggf. „Rig plant noch mit Rev. n“.  -->
+                    <TextBlock Margin="0,0,0,4" Opacity="0.75" Text="{Binding PlanState}" TextWrapping="Wrap"
+                               Visibility="{Binding HasPlanState, Converter={StaticResource NinaPm.BoolToVisibility}}" />
                     <!--  Plangrafik wie im Web-Simulator: dunkler Rahmen, Himmel im Verlauf, Mondfläche, Blöcke als Flächen in Zielfarbe.  -->
                     <Border Margin="0,0,0,8" HorizontalAlignment="Left" Background="{Binding FrameBrush}" CornerRadius="6"
                             DataContext="{Binding Chart}">
@@ -479,6 +482,13 @@
                         <DataGrid.RowStyle>
                             <Style BasedOn="{StaticResource {x:Type DataGridRow}}" TargetType="DataGridRow">
                                 <Setter Property="MinHeight" Value="22" />
+                                <!--  AP-53c: Erledigtes blass, laufende Zeile hervorgehoben.  -->
+                                <Setter Property="Opacity" Value="{Binding Opacity}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.CellStyle>
@@ -497,6 +507,7 @@
                             </Style>
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Actual}" Header="{x:Static ui:Texts.LogActual}" />
                             <DataGridTextColumn Binding="{Binding Time}" Header="{x:Static ui:Texts.LogTime}" />
                             <DataGridTextColumn Binding="{Binding Cmd}" Header="{x:Static ui:Texts.LogCmd}" />
                             <DataGridTextColumn Binding="{Binding Target}" Header="{x:Static ui:Texts.LogTarget}" />

@@ -163,6 +163,7 @@ export {
   type NinaCallRecord,
   type NinaInstanceOverview,
   type NinaInstanceRow,
+  type StoredServerPlan,
   type NinaPrincipal,
 } from './repositories/nina';
 export {

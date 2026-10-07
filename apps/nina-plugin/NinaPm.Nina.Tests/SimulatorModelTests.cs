@@ -148,4 +148,37 @@ public sealed class SimulatorModelTests
         model.SimulateAsync(CancellationToken.None).GetAwaiter().GetResult();
         Assert.Equal(1, loads);
     });
+
+    [Fact]
+    public void Laufende_Nacht_mit_gespeichertem_Plan_zeigt_Ist_und_Plan_mit_Spalte_Ist_und_Planstand() => Sta.Run(() =>
+    {
+        // AP-53c: Erledigtes aus dem Journal (blass), Rest aus dem gespeicherten Plan, Fußzeile mit Revision und Hinweis.
+        var plan = Example<NinaPlanResponse>("plan.response");
+        var transit = plan.Blocks[0];
+        var at = (string hhmmss) => UtcText.Parse($"2026-09-18T{hhmmss}Z");
+        IReadOnlyList<NinaPm.Core.Status.JournalEntry> journal =
+        [
+            new(1, at("02:05:30"), NinaPm.Core.Status.JournalKinds.BlockStart,
+                new NinaPm.Core.Status.JournalData { BlockId = transit.Id, ProjectId = transit.ProjectId, Title = "HAT-P-17 b", Transit = true }),
+            new(2, at("02:09:00"), NinaPm.Core.Status.JournalKinds.Capture,
+                new NinaPm.Core.Status.JournalData { BlockId = transit.Id, ProjectId = transit.ProjectId, Filter = "R", ExposureS = 60, StartUtc = at("02:08:00"), Result = "saved" }),
+        ];
+        var now = at("03:00:00");
+        var sim = JsonConvert.DeserializeObject<NinaSimulation>(JsonConvert.SerializeObject(Sim, NinaJson.Settings()), NinaJson.Settings())!;
+        sim.StoredPlan = new StoredPlanInfo
+        {
+            NightPlanId = plan.NightPlanId, Revision = 2, Reason = "refresh", CreatedAtUtc = at("02:00:00"), Stale = true,
+            StaleCause = StoredPlanInfoStaleCause.Targets,
+        };
+        var model = new SimulatorModel(() => new SimulatorContext(new FakeApi(), Bootstrap, false, null, new NinaPmLog(new NullSink()), null,
+            s => new NinaPm.Core.Status.NightViewInputs(s.Night, journal, plan, new HashSet<Guid>(), (transit, at("02:05:30")), null, null, null,
+                Bootstrap, s, SiteTime.From(s), now)), Clock);
+        model.Apply(sim, now);
+        Assert.Contains(model.Log, r => r.Actual.StartsWith("✓", StringComparison.Ordinal) && r.Opacity < 1);
+        Assert.Contains(model.Log, r => r.Actual.StartsWith("○", StringComparison.Ordinal) && r.Opacity == 1);
+        Assert.Contains(model.Chart!.Chart.Blocks, b => b.Tense == ChartTense.Past);
+        Assert.Contains("Rev. 2", model.PlanState, StringComparison.OrdinalIgnoreCase);
+        Assert.True(model.HasPlanState);
+        Assert.StartsWith(Texts.LogActual, model.ProtocolText, StringComparison.Ordinal);
+    });
 }

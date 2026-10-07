@@ -3,7 +3,7 @@
  * Zielkarten, nicht zugeteilte Projekte, Entwürfe nur mit `selection: 'given'`.
  */
 import { planNight, type PlanInput } from '@nina-pm/engine';
-import { buildPlanInput } from '@nina-pm/shared';
+import { buildPlanInput, type ExecutedNight, type StoredPlan } from '@nina-pm/shared';
 import { describe, expect, it } from 'vitest';
 import {
   DRAFT,
@@ -162,5 +162,116 @@ describe('simulate', () => {
     // Nach dem Nachtfenster (Mittag): ganze Nacht wie ohne Uhrzeit.
     const noon = simulate(request({ nowUtc: '2026-09-18T18:00:00Z' }));
     expect(noon.fromNowUtc).toBeNull();
+  });
+
+  it('Server-Eingabe (AP-53c): gleicher Hash, Hinweis „gleiche Eingabe“; mit Entwürfen Was-wäre-wenn', () => {
+    const input = buildPlanInput(rig, projects, moonProfiles, nights, {
+      night: '2026-09-17',
+      site: STARFRONT,
+      autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+    }) as PlanInput;
+    const server = {
+      input,
+      inputHash: 'sha256:abc',
+      projectNames: {},
+      executed: null,
+      storedPlan: null,
+      firstPlan: null,
+    };
+    const r = simulate(request({ server }));
+    expect(r.plan.inputHash).toBe(simulate(request()).plan.inputHash);
+    expect(r.source).toEqual({ serverHash: 'sha256:abc', whatIf: false, stored: null });
+    expect(r.actual).toBeNull();
+    expect(simulate(request({ server, selection: 'given' })).source.whatIf).toBe(true);
+  });
+
+  it('laufende Nacht mit Ist und gespeichertem Plan: Erledigtes blass, Rest aus der Revision kräftig, Spalte Ist', () => {
+    const whole = simulate(request());
+    const exposes = whole.protocol.filter((x) => x.cmd === 'expose');
+    const first = exposes[0];
+    if (!first) throw new Error('keine Belichtung im Plan');
+    const nowMs = Date.parse(first.atUtc) + 2 * 3_600_000;
+    const stored: StoredPlan = {
+      nightPlanId: '0192a7c0-0000-7000-8000-000000000b01',
+      revision: 3,
+      reason: 'refresh',
+      createdAtUtc: first.atUtc,
+      stale: true,
+      staleCause: 'targets',
+      blocks: whole.plan.blocks as unknown as StoredPlan['blocks'],
+    };
+    const executed: ExecutedNight = {
+      night: '2026-09-17',
+      sessions: 1,
+      blocks: [
+        {
+          blockId: first.blockId,
+          nightPlanId: stored.nightPlanId,
+          projectId: first.projectId,
+          panelId: null,
+          title: 'NGC 281',
+          kind: 'regular',
+          startUtc: first.atUtc,
+          endUtc: null,
+          endReason: null,
+          exposures: 2,
+          running: true,
+        },
+      ],
+      segments: [
+        {
+          blockId: first.blockId,
+          projectId: first.projectId,
+          filter: 'Ha',
+          startUtc: first.atUtc,
+          endUtc: new Date(Date.parse(first.atUtc) + 600_000).toISOString().replace('.000Z', 'Z'),
+          saved: 2,
+          failed: 0,
+          exposureS: 300,
+        },
+      ],
+      events: [],
+      gaps: [],
+      counters: { saved: 2, skipped: 0, failed: 0 },
+    };
+    const r = simulate(
+      request({
+        nowUtc: new Date(nowMs).toISOString(),
+        server: {
+          input: buildPlanInput(rig, projects, moonProfiles, nights, {
+            night: '2026-09-17',
+            site: STARFRONT,
+            autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+          }),
+          inputHash: 'sha256:abc',
+          projectNames: {},
+          executed,
+          storedPlan: stored,
+          firstPlan: stored,
+        },
+      }),
+    );
+    expect(r.actual).not.toBeNull();
+    expect(r.actual?.fromStored).toBe(true);
+    const past = r.chart.blocks?.filter((b) => b.tense === 'past') ?? [];
+    const planned = r.chart.blocks?.filter((b) => b.tense === 'planned') ?? [];
+    expect(past).toHaveLength(1);
+    expect(past[0]?.toUtc).toBe(nowMs / 1000);
+    expect(planned.length).toBeGreaterThan(0);
+    expect(Math.min(...planned.map((b) => b.fromUtc))).toBeGreaterThanOrEqual(nowMs / 1000);
+    expect(r.chart.filterBars?.[0]).toMatchObject({ tense: 'past', label: 'Ha', count: 2 });
+    expect(r.protocol[0]?.actual).toEqual({
+      state: 'running',
+      reason: null,
+      count: null,
+      past: true,
+    });
+    expect(r.protocol.some((x) => x.actual?.state === 'saved' && x.actual.count === 2)).toBe(true);
+    const future = r.protocol.filter((x) => x.actual?.state === 'planned');
+    expect(future.length).toBeGreaterThan(0);
+    expect(future.every((x) => Date.parse(x.atUtc) >= nowMs)).toBe(true);
+    expect(r.actual?.outline.length).toBe(whole.plan.blocks.length);
+    expect(r.source.stored).toMatchObject({ revision: 3, stale: true, staleCause: 'targets' });
+    expect(r.actual?.counters).toEqual({ saved: 2, skipped: 0, failed: 0 });
   });
 });

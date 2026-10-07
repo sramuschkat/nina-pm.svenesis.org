@@ -4,7 +4,8 @@
  */
 import { z } from 'zod';
 import { NightKey, UtcInstant, Uuid } from './common';
-import { NightPlanSchema } from './plan';
+import { ExecutedNight, StoredPlan } from './executed';
+import { NightPlanSchema, PlanInputSchema } from './plan';
 
 export const SimulationCreate = z
   .object({ rigId: Uuid, night: NightKey, plan: NightPlanSchema })
@@ -43,3 +44,33 @@ export const SimulationTransits = z
   })
   .meta({ id: 'SimulationTransits' });
 export type SimulationTransits = z.infer<typeof SimulationTransits>;
+
+/** `GET /api/web/v1/simulations/input`: Rig und Nacht des Web-Simulators bzw. von „Heute Nacht“ (AP-53c). */
+export const SimulationInputQuery = z
+  .object({ rigId: Uuid, night: NightKey })
+  .meta({ id: 'SimulationInputQuery' });
+export type SimulationInputQuery = z.infer<typeof SimulationInputQuery>;
+
+/**
+ * Engine-Eingabe einer Nacht vom Server (AP-53c, FA-SIM-05): dieselbe Funktion wie `POST /plan` und
+ * `GET /nina/v1/simulation` (`nightPlanInput`), ganze Nacht ohne `startAtUtc` und ohne `tonight`. Der Browser rechnet
+ * damit weiter selbst (Was-wäre-wenn als Überlagerung). Dazu Namen, Filterfarben, das Ist der Nacht und die letzte
+ * gespeicherte Planrevision mit dem Hinweis, ob die Rig noch mit einer älteren Eingabe plant, sowie Revision 1 der ersten
+ * Session (Ursprungsplan).
+ */
+export const SimulationInput = z
+  .object({
+    night: NightKey,
+    currentNight: NightKey,
+    /** `sha256:` über `canonicalInputJson(input)`. */
+    inputHash: z.string().max(80),
+    input: PlanInputSchema,
+    projectNames: z.record(z.string(), z.string().max(300)),
+    moonProfileNames: z.record(z.string(), z.string().max(300)),
+    filterColors: z.record(z.string(), z.string().max(16)),
+    executed: ExecutedNight.nullable(),
+    storedPlan: StoredPlan.nullable(),
+    firstPlan: StoredPlan.nullable(),
+  })
+  .meta({ id: 'SimulationInput' });
+export type SimulationInput = z.infer<typeof SimulationInput>;

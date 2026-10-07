@@ -446,6 +446,7 @@ export const projectsApi = {
 export type SimulationCreate = Schemas['SimulationCreate'];
 export type SimulationSaved = Schemas['SimulationSaved'];
 export type SimulationTransits = Schemas['SimulationTransits'];
+export type SimulationInput = Schemas['SimulationInput'];
 
 export type MultiSimInput = Schemas['MultiSimInput'];
 export type MultiSimResult = Schemas['MultiSimResult'];
@@ -465,6 +466,11 @@ export const simulationApi = {
   transits: (rigId: string, night: string) =>
     apiFetch<SimulationTransits>(
       `${V1}/simulations/transits?${new URLSearchParams({ rigId, night }).toString()}`,
+    ),
+  /** Engine-Eingabe, Ist und gespeicherter Plan der Nacht (AP-53c) – eine Eingabe-Quelle mit `POST /plan`. */
+  input: (rigId: string, night: string) =>
+    apiFetch<SimulationInput>(
+      `${V1}/simulations/input?${new URLSearchParams({ rigId, night }).toString()}`,
     ),
 };
 

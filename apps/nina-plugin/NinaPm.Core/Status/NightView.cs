@@ -126,6 +126,9 @@ public static class NightViewBuilder
         public DateTimeOffset? End;
         public string? Reason;
         public int Exposures;
+
+        /// <summary>Anzahl zusammengefasster leerer Blöcke (Server-Ist, AP-53c), sonst 1.</summary>
+        public int Count = 1;
         public bool Running;
     }
 
@@ -158,9 +161,10 @@ public static class NightViewBuilder
                     ended.End = e.AtUtc;
                     ended.Reason = d.Reason;
                     ended.Exposures = d.Exposures ?? ended.Exposures;
+                    ended.Count = d.Count ?? 1;
                     break;
                 case JournalKinds.Capture when d.BlockId is { } id && d.Result == "saved" && open.TryGetValue(id, out var withCapture):
-                    withCapture.Exposures++;
+                    withCapture.Exposures += d.Count ?? 1;
                     break;
             }
         }
@@ -247,8 +251,8 @@ public static class NightViewBuilder
             }
             var to = p.End ?? p.Start;
             if (gapRuns.Count > 0 && p.Start - gapRuns[^1].To <= EmptyMergeMax && gapRuns[^1].Reason == p.Reason)
-                gapRuns[^1] = (gapRuns[^1].From, to, p.Reason, gapRuns[^1].Count + 1);
-            else gapRuns.Add((p.Start, to, p.Reason, 1));
+                gapRuns[^1] = (gapRuns[^1].From, to, p.Reason, gapRuns[^1].Count + p.Count);
+            else gapRuns.Add((p.Start, to, p.Reason, p.Count));
         }
         var emptyGaps = gapRuns.Where(g => g.Count > 1 || g.To - g.From >= GapMin).ToList();
 
@@ -309,11 +313,11 @@ public static class NightViewBuilder
             {
                 var from = c.Data.StartUtc ?? c.AtUtc.AddSeconds(-(c.Data.ExposureS ?? 0));
                 if (bar is { } x && x.Block == c.Data.BlockId && x.Filter == c.Data.Filter && from - x.To <= BarSplit)
-                    bar = (x.Block, x.Filter, x.From, c.AtUtc, x.Count + 1);
+                    bar = (x.Block, x.Filter, x.From, c.AtUtc, x.Count + (c.Data.Count ?? 1));
                 else
                 {
                     Flush();
-                    bar = (c.Data.BlockId, c.Data.Filter, from, c.AtUtc, 1);
+                    bar = (c.Data.BlockId, c.Data.Filter, from, c.AtUtc, c.Data.Count ?? 1);
                 }
             }
             Flush();
@@ -365,12 +369,13 @@ public static class NightViewBuilder
                     break;
                 case JournalKinds.Capture:
                     var state = d.Result == "saved" ? ActualState.Saved : ActualState.Failed;
-                    if (state == ActualState.Saved) saved++;
-                    else failed++;
+                    if (state == ActualState.Saved) saved += d.Count ?? 1;
+                    else failed += d.Count ?? 1;
                     var at = d.StartUtc ?? e.AtUtc;
                     rows.Add(new NightLogRow(at, state, d.Result == "saved" ? null : d.Result, true, false,
                         d.BlockId is { } bid && transitBlocks.Contains(bid) ? "expose_series" : "expose", Title(d), PanelName(project, d.PanelId), d.Seq,
-                        d.Filter ?? "", d.ExposureS, d.Gain, d.Offset, d.Binning, d.Readout, d.RotationDeg, d.RaDeg, d.DecDeg, Alt(project, at)));
+                        d.Filter ?? "", d.ExposureS, d.Gain, d.Offset, d.Binning, d.Readout, d.RotationDeg, d.RaDeg, d.DecDeg, Alt(project, at))
+                    { Count = d.Count ?? 1 });
                     break;
                 case JournalKinds.Skipped:
                     skipped++;

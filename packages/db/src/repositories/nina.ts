@@ -593,7 +593,11 @@ export class NinaRigRepository extends TenantRepo {
     reason: string;
     engineVersion: string;
     inputHash: string;
-    plan: { readonly blocks: readonly unknown[]; readonly sessionEndUtc: string };
+    plan: {
+      readonly blocks: readonly unknown[];
+      readonly sessionEndUtc: string;
+      readonly [key: string]: unknown;
+    };
     now: Date;
   }): Promise<number> {
     const tenantId = this.ctx.tenantId;
@@ -667,7 +671,135 @@ export class NinaRigRepository extends TenantRepo {
     });
   }
 
+  /**
+   * Ist einer Nacht (AP-53c, FA-SIM-10): Sessions des Rigs in der Nacht, ihre Ereignisse und Light-Aufnahmen, nach Zeit
+   * geordnet. Mandantengebunden; höchstens 20 000 Ereignisse bzw. Aufnahmen (eine Transitnacht hat rund 600).
+   */
+  async nightActual(night: string): Promise<{
+    sessions: { id: string; status: string; nightPlanId: string | null; startedAt: Date }[];
+    events: {
+      occurredAt: Date;
+      kind: string;
+      blockId: string | null;
+      projectId: string | null;
+      nightPlanId: string | null;
+      durationS: number | null;
+      data: unknown;
+    }[];
+    lights: {
+      capturedAt: Date;
+      exposureS: number;
+      result: string;
+      filter: string;
+      blockId: string | null;
+      projectId: string | null;
+      panelId: string | null;
+      nightPlanId: string | null;
+    }[];
+  }> {
+    const tenantId = this.ctx.tenantId;
+    const sessions = await this.db
+      .selectFrom('session')
+      .select(['id', 'status', 'nightPlanId', 'startedAt'])
+      .where('tenantId', '=', tenantId)
+      .where('rigId', '=', this.rigId)
+      .where('night', '=', night)
+      .orderBy('startedAt')
+      .execute();
+    if (sessions.length === 0) return { sessions: [], events: [], lights: [] };
+    const ids = sessions.map((x) => x.id);
+    const events = await this.db
+      .selectFrom('sessionEvent')
+      .select(['occurredAt', 'kind', 'blockId', 'projectId', 'nightPlanId', 'durationS', 'data'])
+      .where('tenantId', '=', tenantId)
+      .where('sessionId', 'in', ids)
+      .orderBy('occurredAt')
+      .limit(20_000)
+      .execute();
+    const lights = await this.db
+      .selectFrom('capture')
+      .select([
+        'capturedAt',
+        'exposureS',
+        'result',
+        'filterShortName',
+        'blockId',
+        'projectId',
+        'panelId',
+        'nightPlanId',
+      ])
+      .where('tenantId', '=', tenantId)
+      .where('sessionId', 'in', ids)
+      .where('frameType', '=', 'light')
+      .orderBy('capturedAt')
+      .limit(20_000)
+      .execute();
+    return {
+      sessions: sessions.map((x) => ({ ...x, startedAt: new Date(x.startedAt) })),
+      events: events.map((e) => ({
+        ...e,
+        occurredAt: new Date(e.occurredAt),
+        durationS: e.durationS === null ? null : Number(e.durationS),
+      })),
+      lights: lights.map((l) => ({
+        capturedAt: new Date(l.capturedAt),
+        exposureS: Number(l.exposureS),
+        result: l.result,
+        filter: l.filterShortName ?? '',
+        blockId: l.blockId,
+        projectId: l.projectId,
+        panelId: l.panelId,
+        nightPlanId: l.nightPlanId,
+      })),
+    };
+  }
+
+  /**
+   * Gespeicherte Serverpläne der Nacht (`origin = server_plan`, AP-53c): die letzte Revision (das, was das Plugin
+   * ausführt) und die erste (Ursprungsplan = Plan der ersten Session bzw. der früheste).
+   */
+  async serverPlans(night: string): Promise<{
+    latest: StoredServerPlan | null;
+    first: StoredServerPlan | null;
+  }> {
+    const tenantId = this.ctx.tenantId;
+    const rows = await this.db
+      .selectFrom('nightPlan')
+      .select(['id', 'revision', 'reason', 'createdAt', 'summary', 'blocks', 'sessionId'])
+      .where('tenantId', '=', tenantId)
+      .where('rigId', '=', this.rigId)
+      .where('night', '=', night)
+      .where('origin', '=', 'server_plan')
+      .orderBy('createdAt')
+      .execute();
+    const map = (r: (typeof rows)[number] | undefined): StoredServerPlan | null =>
+      r
+        ? {
+            id: r.id,
+            revision: r.revision,
+            reason: r.reason,
+            createdAt: new Date(r.createdAt),
+            summary: (typeof r.summary === 'string' ? JSON.parse(r.summary) : r.summary) as Record<
+              string,
+              unknown
+            >,
+            blocks: (typeof r.blocks === 'string' ? JSON.parse(r.blocks) : r.blocks) as unknown[],
+          }
+        : null;
+    return { latest: map(rows.at(-1)), first: map(rows[0]) };
+  }
+
   get rig(): string {
     return this.rigId;
   }
+}
+
+/** Gespeicherter Serverplan einer Nacht (AP-53c). */
+export interface StoredServerPlan {
+  id: string;
+  revision: number;
+  reason: string;
+  createdAt: Date;
+  summary: Record<string, unknown>;
+  blocks: unknown[];
 }

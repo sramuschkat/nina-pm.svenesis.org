@@ -40,6 +40,33 @@ export function siteClock(atUtc: string, timeZone: string): string {
 
 const num = (x: number | null, digits = 1) => (x === null ? '' : x.toFixed(digits));
 
+const ACTUAL_SYMBOL = {
+  done: '✓',
+  saved: '✓',
+  skipped: '↷',
+  failed: '✕',
+  running: '▶',
+  planned: '○',
+  gap: '⚠',
+} as const;
+
+/** Spalte „Ist“ (AP-53c): Zeichen, Anzahl und Grund – leer ohne Ist-Daten. */
+export function actualCell(row: ProtocolRow, t: TFunction): string {
+  const a = row.actual;
+  if (!a) return '';
+  const count = a.count !== null && a.count > 1 ? ` ×${String(a.count)}` : '';
+  const reason =
+    a.state === 'gap' && a.reason !== null
+      ? t(`simulator.gap.${a.reason}`, {
+          count: a.count ?? 1,
+          defaultValue: t(`simulator.reason.${a.reason}`, { defaultValue: a.reason }),
+        })
+      : a.reason !== null
+        ? t(`simulator.reason.${a.reason}`, { defaultValue: a.reason })
+        : '';
+  return `${ACTUAL_SYMBOL[a.state]}${count}${reason ? ` ${reason}` : ''}`;
+}
+
 export function cell(
   row: ProtocolRow,
   col: ProtocolColumn,
@@ -102,9 +129,17 @@ export function cell(
 }
 
 function table(rows: readonly ProtocolRow[], t: TFunction, timeZone: string): string[][] {
+  // Mit Ist-Daten (AP-53c) steht „Ist“ vorn.
+  const withActual = rows.some((r) => r.actual !== undefined);
   return [
-    PROTOCOL_COLUMNS.map((c) => t(`simulator.col.${c}`)),
-    ...rows.map((r) => PROTOCOL_COLUMNS.map((c) => cell(r, c, t, timeZone))),
+    [
+      ...(withActual ? [t('simulator.col.actual')] : []),
+      ...PROTOCOL_COLUMNS.map((c) => t(`simulator.col.${c}`)),
+    ],
+    ...rows.map((r) => [
+      ...(withActual ? [actualCell(r, t)] : []),
+      ...PROTOCOL_COLUMNS.map((c) => cell(r, c, t, timeZone)),
+    ]),
   ];
 }
 

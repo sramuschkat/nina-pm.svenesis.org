@@ -260,15 +260,28 @@ export function TonightTimeline({
   flush();
   // Plan aus der Simulation: Projektblöcke, Flips, Flats.
   const result = plan.result;
+  // Ist + Plan (AP-53c): Erledigtes blass, Geplantes kräftig, Lücken schwach rot mit Grund.
+  const actual = plan.actual ?? null;
+  const planBlocks = actual ? actual.blocks : (result?.chart.blocks ?? []);
   const planLane: TimelineSegment[] = result
     ? [
-        ...(result.chart.blocks ?? []).map((b) => ({
+        ...planBlocks.map((b) => ({
           fromUtc: b.fromUtc,
           toUtc: b.toUtc,
           color: b.color ?? 'var(--npm-chart-series-1)',
           label: b.label,
           title: `${b.label} (${hm(b.fromUtc)}–${hm(b.toUtc)})`,
+          ...(b.tense === 'past' ? { opacity: 0.4 } : {}),
         })),
+        ...(actual?.gaps ?? [])
+          .filter((g) => g.kind !== 'flip')
+          .map((g) => ({
+            fromUtc: g.fromUtc,
+            toUtc: g.toUtc,
+            color: 'var(--npm-chart-now)',
+            opacity: 0.35,
+            title: `${t(`simulator.gap.${g.kind}`, { count: g.count ?? 1 })} (${hm(g.fromUtc)}–${hm(g.toUtc)})`,
+          })),
         ...(result.plan.flatsNotAfterUtc
           ? [
               {
@@ -281,16 +294,22 @@ export function TonightTimeline({
           : []),
       ]
     : [];
-  const flips = (result?.chart.markers ?? []).map((m) => ({
-    atUtc: m.atUtc,
-    color: 'var(--npm-chart-meridian)',
-    title: t('tonight.lane.flip', { time: hm(m.atUtc) }),
-  }));
-  const filterLane: TimelineSegment[] = (result?.chart.filterBars ?? []).map((f) => ({
+  // Nur Flips (keine Jetzt-Marke); mit Ist nur die kommenden.
+  const flips = (result?.chart.markers ?? [])
+    .filter((m) => m.kind === 'flip' && (!actual || m.atUtc > nowUtc))
+    .map((m) => ({
+      atUtc: m.atUtc,
+      color: 'var(--npm-chart-meridian)',
+      title: t('tonight.lane.flip', { time: hm(m.atUtc) }),
+    }));
+  const filterLane: TimelineSegment[] = (
+    actual ? actual.filterBars : (result?.chart.filterBars ?? [])
+  ).map((f) => ({
     fromUtc: f.fromUtc,
     toUtc: f.toUtc,
     color: f.color,
     label: t('tonight.lane.filter', { filter: f.label, n: f.count }),
+    ...(f.tense === 'past' ? { opacity: 0.4 } : {}),
   }));
   // Ereignisse: Milchstraßenzentrum als Fenster, Überflüge als Marken.
   const gc = sky.galactic?.tonight ?? null;

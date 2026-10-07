@@ -855,6 +855,313 @@
   },
   "components": {
     "schemas": {
+      "ExecutedBlock": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "nightPlanId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "panelId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "transit"
+            ]
+          },
+          "startUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "endUtc": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "endReason": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "exposures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "running": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "blockId",
+          "nightPlanId",
+          "projectId",
+          "panelId",
+          "title",
+          "kind",
+          "startUtc",
+          "endUtc",
+          "endReason",
+          "exposures",
+          "running"
+        ]
+      },
+      "ExecutedCounters": {
+        "type": "object",
+        "properties": {
+          "saved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "saved",
+          "skipped",
+          "failed"
+        ]
+      },
+      "ExecutedEvent": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "plan_built",
+              "plan_rebuilt",
+              "block_skipped",
+              "skipped_timeaware",
+              "safety_pause",
+              "safety_resume",
+              "af",
+              "flip",
+              "flats_start",
+              "flats_end"
+            ]
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "blockId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "projectId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "durationS": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "revision": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "kind",
+          "atUtc",
+          "blockId",
+          "projectId",
+          "code",
+          "durationS",
+          "revision"
+        ]
+      },
+      "ExecutedGap": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "safety",
+              "flip",
+              "empty_blocks",
+              "skipped"
+            ]
+          },
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "kind",
+          "fromUtc",
+          "toUtc",
+          "reason",
+          "count"
+        ]
+      },
+      "ExecutedNight": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "night": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-18"
+          },
+          "sessions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutedBlock"
+            },
+            "maxItems": 5000
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutedSegment"
+            },
+            "maxItems": 5000
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutedEvent"
+            },
+            "maxItems": 5000
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutedGap"
+            },
+            "maxItems": 5000
+          },
+          "counters": {
+            "$ref": "#/components/schemas/ExecutedCounters"
+          }
+        },
+        "required": [
+          "night",
+          "sessions",
+          "blocks",
+          "segments",
+          "events",
+          "gaps",
+          "counters"
+        ]
+      },
+      "ExecutedSegment": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "projectId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "filter": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "startUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "endUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "saved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "exposureS": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "blockId",
+          "projectId",
+          "filter",
+          "startUtc",
+          "endUtc",
+          "saved",
+          "failed",
+          "exposureS"
+        ]
+      },
       "NinaBootstrap": {
         "type": "object",
         "properties": {
@@ -3863,6 +4170,12 @@
               "$ref": "#/components/schemas/NinaSimulationWarning"
             },
             "maxItems": 1000
+          },
+          "executed": {
+            "$ref": "#/components/schemas/ExecutedNight"
+          },
+          "storedPlan": {
+            "$ref": "#/components/schemas/StoredPlanInfo"
           }
         },
         "required": [
@@ -5419,6 +5732,50 @@
           "title",
           "status",
           "code"
+        ]
+      },
+      "StoredPlanInfo": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "nightPlanId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-18T13:00:00Z"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "staleCause": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "targets",
+              "settings",
+              null
+            ]
+          }
+        },
+        "required": [
+          "nightPlanId",
+          "revision",
+          "reason",
+          "createdAtUtc",
+          "stale",
+          "staleCause"
         ]
       }
     },

@@ -21,6 +21,7 @@ export * from './approval';
 export * from './grid';
 export * from './plan';
 export * from './effort';
+export * from './executed';
 export * from './simulation';
 export * from './sessions';
 export * from './session-log';

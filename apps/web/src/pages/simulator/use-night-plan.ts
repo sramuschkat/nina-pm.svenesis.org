@@ -5,12 +5,16 @@
  * Simulator bei `selection: 'plannable'` (FA-SIM-05), einschließlich der festgelegten Transits der Nacht
  * (`GET /simulations/transits`, 06.10.2026 – vorher fehlte der Transit in Plan- und Filterzeile). Nur Anzeige, nichts
  * wird gespeichert.
+ * AP-53c: Eingabe vom Server (`GET /simulations/input`, dieselbe wie `POST /plan`); läuft die Nacht bzw. ist sie mit
+ * Session vorbei, liefert der Hook zusätzlich Ist + Plan (`actual`, Erledigtes blass, Rest aus der gespeicherten
+ * Revision kräftig) und den Planstand (`stored`, „Rig plant noch mit Rev. n“).
  */
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { equipmentApi, projectsApi, simulationApi, type ProjectView } from '../../api/client';
 import { useEquipmentList } from '../equipment/shared';
-import type { SimulationRequest, SimulationResult } from './simulate';
+import { actualView, type ActualView } from './actual-view';
+import type { SimulationRequest, SimulationResult, SimulationSource } from './simulate';
 import { useSimulator } from './use-simulator';
 
 export interface NightPlanState {
@@ -20,6 +24,10 @@ export interface NightPlanState {
   readonly isPending: boolean;
   readonly isError: boolean;
   readonly refetch: () => void;
+  /** Ist + Plan der laufenden bzw. vergangenen Nacht mit Session (AP-53c), sonst `null`. */
+  readonly actual?: ActualView | null;
+  /** Letzte gespeicherte Revision der Nacht mit Hinweis `stale` (AP-53c). */
+  readonly stored?: SimulationSource['stored'];
 }
 
 export function useNightPlan(rigId: string | null, night: string | null): NightPlanState {
@@ -53,9 +61,23 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     queryFn: () => simulationApi.transits(rigId ?? '', night ?? ''),
     enabled: rigId !== null && night !== null,
   });
+  // Eine Eingabe-Quelle (AP-53c): Eingabe, Ist und gespeicherter Plan vom Server, alle 2 min neu.
+  const serverInput = useQuery({
+    queryKey: ['simulation-input', rigId, night],
+    queryFn: () => simulationApi.input(rigId ?? '', night ?? ''),
+    enabled: rigId !== null && night !== null,
+    refetchInterval: 120_000,
+    retry: false,
+  });
+  const [nowMin, setNowMin] = useState(() => Math.floor(Date.now() / 60_000));
+  useEffect(() => {
+    const timer = setInterval(() => setNowMin(Math.floor(Date.now() / 60_000)), 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const request = useMemo((): SimulationRequest | null => {
     if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
     if (approved.isPending || transits.isPending || details.some((d) => d.isPending)) return null;
+    if (serverInput.isPending && rigId !== null) return null;
     return {
       rig: rig as SimulationRequest['rig'],
       projects: projects as unknown as SimulationRequest['projects'],
@@ -72,6 +94,17 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
       filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
       moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
       transits: transits.data?.items ?? [],
+      // Ohne Ist (`executed`/`storedPlan`): die rechnet der Hook unten minütlich, ohne neue Simulation.
+      server: serverInput.data
+        ? {
+            input: serverInput.data.input,
+            inputHash: serverInput.data.inputHash,
+            projectNames: serverInput.data.projectNames,
+            executed: null,
+            storedPlan: null,
+            firstPlan: null,
+          }
+        : null,
     };
     // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
   }, [
@@ -85,6 +118,7 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     approved.isPending,
     transits.isPending,
     transits.data,
+    serverInput.data,
   ]);
   const run = useSimulator();
   const key = request ? JSON.stringify(request) : '';
@@ -95,6 +129,54 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     staleTime: Infinity,
     retry: false,
   });
+  const result = sim.data ?? null;
+  const filterColors = useMemo(
+    () => Object.fromEntries((filters.data ?? []).map((f) => [f.shortName, f.colorHex])),
+    [filters.data],
+  );
+  const actual = useMemo((): ActualView | null => {
+    const data = serverInput.data;
+    if (!data || !result) return null;
+    const nowMs = nowMin * 60_000;
+    const start = Date.parse(result.plan.nightWindow.startUtc);
+    const end = Date.parse(result.plan.nightWindow.endUtc);
+    const running = nowMs > start && nowMs < end;
+    if (!running && nowMs < end) return null;
+    const colors = new Map(result.cards.map((c) => [c.projectId, c.color]));
+    let extra = colors.size;
+    return actualView({
+      executed: data.executed as never,
+      stored: data.storedPlan as never,
+      first: data.firstPlan as never,
+      nowMs,
+      running,
+      computed: {
+        blocks: result.chart.blocks ?? [],
+        filterBars: result.chart.filterBars ?? [],
+        protocol: result.protocol,
+      },
+      colorOfProject: (id) => {
+        const known = colors.get(id);
+        if (known) return known;
+        const next = `var(--npm-chart-series-${String((extra++ % 6) + 1)})`;
+        colors.set(id, next);
+        return next;
+      },
+      filterColor: (f) => filterColors[f] ?? 'var(--npm-chart-marker)',
+      names: new Map(Object.entries(data.projectNames)),
+      gapLabel: () => '',
+    });
+  }, [serverInput.data, result, nowMin, filterColors]);
+  const stored = serverInput.data?.storedPlan
+    ? {
+        nightPlanId: serverInput.data.storedPlan.nightPlanId,
+        revision: serverInput.data.storedPlan.revision,
+        reason: serverInput.data.storedPlan.reason,
+        createdAtUtc: serverInput.data.storedPlan.createdAtUtc,
+        stale: serverInput.data.storedPlan.stale,
+        staleCause: serverInput.data.storedPlan.staleCause,
+      }
+    : null;
   const failed =
     table.isError ||
     approved.isError ||
@@ -102,13 +184,16 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     details.some((d) => d.isError) ||
     sim.isError;
   return {
-    result: sim.data ?? null,
+    result,
+    actual,
+    stored,
     projects,
     isPending: !failed && (request === null || sim.isPending),
     isError: failed,
     refetch: () => {
       void approved.refetch();
       void transits.refetch();
+      void serverInput.refetch();
       void sim.refetch();
     },
   };

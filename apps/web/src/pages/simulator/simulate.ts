@@ -5,21 +5,26 @@
  * Protokoll, Karten, Blöcke und Filterleiste über `simulationView` aus `@nina-pm/shared` (wie der Plugin-Simulator,
  * AP-53); hier kommen Farben und Höhenkurven dazu.
  * Keine Uhr: „jetzt“ ergänzt die Seite.
+ * Eine Eingabe-Quelle (AP-53c, FA-SIM-05): Mit `server` rechnet der Simulator mit der Engine-Eingabe des Servers
+ * (`GET /simulations/input`, dieselbe Funktion wie `POST /plan`); nur mit eigenen Entwürfen (Was-wäre-wenn) baut er sie
+ * selbst. Läuft die Nacht bzw. ist sie mit Session vorbei, zeigt er Ist + Plan (`actual-view.ts`, FA-SIM-10).
  */
 import { planNight, unixFromIso, type NightPlan, type PlanInput } from '@nina-pm/engine';
 import {
   buildPlanInput,
   isDeliverable,
+  type ExecutedNight,
+  type StoredPlan,
   simulationView,
   type PlanTransitSource,
   type SimCard,
   type SimCheck,
-  type SimProtocolRow,
   type SimUnallocated,
 } from '@nina-pm/shared';
 import { CHART_SERIES_COUNT } from '@nina-pm/ui-tokens';
 import type { NightChartProps } from '../../components/night-chart';
 import { nightChartFromEngine } from '../../lib/night-chart-data';
+import { actualView, type ActualProtocolRow, type ActualView } from './actual-view';
 
 type BuildArgs = Parameters<typeof buildPlanInput>;
 
@@ -51,6 +56,15 @@ export interface SimulationRequest {
    * Simulator nur mit ihnen – als Transitblock wie `POST /plan` (06.10.2026; vorher fehlten sie im Web-Plan).
    */
   readonly transits?: readonly PlanTransitSource[];
+  /** Eingabe, Ist und gespeicherter Plan vom Server (`GET /simulations/input`, AP-53c). */
+  readonly server?: {
+    readonly input: unknown;
+    readonly inputHash: string;
+    readonly projectNames: Readonly<Record<string, string>>;
+    readonly executed: ExecutedNight | null;
+    readonly storedPlan: StoredPlan | null;
+    readonly firstPlan: StoredPlan | null;
+  } | null;
 }
 
 export type Check = SimCheck;
@@ -64,7 +78,16 @@ export interface TargetCard extends Omit<SimCard, 'projectIndex' | 'lines'> {
 
 export type UnallocatedProject = SimUnallocated;
 
-export type ProtocolRow = SimProtocolRow;
+export type ProtocolRow = ActualProtocolRow;
+
+/** Herkunft der Eingabe für den Hash-Hinweis (AP-53c). */
+export interface SimulationSource {
+  /** `inputHash` des Servers; `null` ohne Server-Eingabe. */
+  readonly serverHash: string | null;
+  /** Eigene Eingabe (Entwürfe): weicht vom Server ab. */
+  readonly whatIf: boolean;
+  readonly stored: Omit<StoredPlan, 'blocks'> | null;
+}
 
 export interface SimulationResult {
   readonly plan: NightPlan;
@@ -82,6 +105,9 @@ export interface SimulationResult {
   };
   /** Läuft die Nacht schon: Planbeginn „jetzt“ (UTC), sonst `null` (ganze Nacht). */
   readonly fromNowUtc: string | null;
+  /** Ist + Plan (laufende bzw. vergangene Nacht mit Session), sonst `null`. */
+  readonly actual: ActualView | null;
+  readonly source: SimulationSource;
 }
 
 const colorOf = (i: number) => `var(--npm-chart-series-${String((i % CHART_SERIES_COUNT) + 1)})`;
@@ -130,6 +156,18 @@ function withoutTransit(req: SimulationRequest, p: SimulationRequest['projects']
   );
 }
 
+/** Planstand ohne Blöcke (Hash-Hinweis). */
+function storedInfo(p: StoredPlan): Omit<StoredPlan, 'blocks'> {
+  return {
+    nightPlanId: p.nightPlanId,
+    revision: p.revision,
+    reason: p.reason,
+    createdAtUtc: p.createdAtUtc,
+    stale: p.stale,
+    staleCause: p.staleCause,
+  };
+}
+
 export function simulate(req: SimulationRequest): SimulationResult {
   // Entwürfe ohne Panel kann die Engine nicht planen (engine.input_invalid) – sie fehlen im Plan.
   // Exoplaneten nie wie Deep-Sky: ohne festgelegten Transit auch nicht mit eigenen Entwürfen (`given`).
@@ -139,18 +177,21 @@ export function simulate(req: SimulationRequest): SimulationResult {
       !withoutTransit(req, p) &&
       (req.selection === 'given' || deliverable(req, p)),
   );
-  const input = buildPlanInput(req.rig, candidates, req.moonProfiles, req.nights, {
-    night: req.night,
-    site: {
-      latitudeDeg: req.site.latitudeDeg,
-      longitudeDeg: req.site.longitudeDeg,
-      elevationM: req.site.elevationM,
-    },
-    selection: req.selection,
-    // AF-Intervall des Rigs wie der Server, solange er die Trigger der Sequenz nicht kennt (FA-SIM-05).
-    autofocusAfterTimeMin: req.rig.scheduler.overhead.afEveryMin,
-    transits: (req.transits ?? []).filter((t) => candidates.some((p) => p.id === t.projectId)),
-  }) as PlanInput;
+  const server = req.server && req.selection === 'plannable' ? req.server : null;
+  const input = server
+    ? (server.input as PlanInput)
+    : (buildPlanInput(req.rig, candidates, req.moonProfiles, req.nights, {
+        night: req.night,
+        site: {
+          latitudeDeg: req.site.latitudeDeg,
+          longitudeDeg: req.site.longitudeDeg,
+          elevationM: req.site.elevationM,
+        },
+        selection: req.selection,
+        // AF-Intervall des Rigs wie der Server, solange er die Trigger der Sequenz nicht kennt (FA-SIM-05).
+        autofocusAfterTimeMin: req.rig.scheduler.overhead.afEveryMin,
+        transits: (req.transits ?? []).filter((t) => candidates.some((p) => p.id === t.projectId)),
+      }) as PlanInput);
   const whole = planNight(input);
   const nowMs = req.nowUtc ? Date.parse(req.nowUtc) : Number.NaN;
   const running =
@@ -162,7 +203,10 @@ export function simulate(req: SimulationRequest): SimulationResult {
   const plan = fromNowUtc ? planNight(planInput) : whole;
   const site = { latDeg: req.site.latitudeDeg, lonDeg: req.site.longitudeDeg };
   const projects = input.projects;
-  const names = new Map(req.projects.map((p) => [p.id, p.name]));
+  const names = new Map([
+    ...Object.entries(req.server?.projectNames ?? {}),
+    ...req.projects.map((p) => [p.id, p.name] as const),
+  ]);
   const creators = new Map(req.projects.map((p) => [p.id, p.createdBy]));
   const color = new Map(projects.map((p, i) => [p.id, colorOf(i)]));
   // Protokoll, Zielkarten, Blöcke und Filterleiste: dieselbe Rechnung wie der Plugin-Simulator (AP-53).
@@ -211,7 +255,42 @@ export function simulate(req: SimulationRequest): SimulationResult {
     ...view.flips.map((f) => ({ atUtc: f.atUtc, kind: 'flip' as const, label: 'Flip' })),
     ...(fromNowUtc ? [{ atUtc: nowMs / 1000, kind: 'now' as const, label: '' }] : []),
   ];
-  const chart = { ...base, series: base.series ?? [], markers, blocks, filterBars };
+  // Ist + Plan (AP-53c): laufende Nacht bzw. vergangene mit Session – Erledigtes blass, Kommendes kräftig.
+  const extra = new Map<string, string>();
+  const colorOfProject = (id: string) => {
+    const known = color.get(id) ?? extra.get(id);
+    if (known) return known;
+    const next = colorOf(projects.length + extra.size);
+    extra.set(id, next);
+    return next;
+  };
+  const nightOver = Number.isFinite(nowMs) && nowMs >= Date.parse(whole.nightWindow.endUtc);
+  const actual =
+    req.server && (running || nightOver)
+      ? actualView({
+          executed: req.server.executed,
+          stored: server ? req.server.storedPlan : null,
+          first: req.server.firstPlan,
+          nowMs,
+          running,
+          computed: { blocks, filterBars, protocol: view.protocol },
+          colorOfProject,
+          filterColor,
+          names,
+          gapLabel: () => '',
+        })
+      : null;
+  const chart = actual
+    ? {
+        ...base,
+        series: base.series ?? [],
+        // Flips der Rechnung nur noch ab jetzt; erledigte stehen als Lücke im Ist.
+        markers: markers.filter((m) => m.kind !== 'flip' || m.atUtc > nowMs / 1000),
+        blocks: actual.blocks,
+        filterBars: actual.filterBars,
+        gaps: actual.gaps,
+      }
+    : { ...base, series: base.series ?? [], markers, blocks, filterBars };
 
   const cards: TargetCard[] = view.cards.map(({ projectIndex, ...c }) => ({
     ...c,
@@ -233,9 +312,15 @@ export function simulate(req: SimulationRequest): SimulationResult {
           reasons: [{ reason: 'no_locked_transit' }],
         })),
     ],
-    protocol: view.protocol,
+    protocol: actual ? actual.protocol : view.protocol,
     lineNames: view.lineNames,
     header: view.header,
     fromNowUtc,
+    actual,
+    source: {
+      serverHash: req.server?.inputHash ?? null,
+      whatIf: req.server !== undefined && req.server !== null && server === null,
+      stored: req.server?.storedPlan ? storedInfo(req.server.storedPlan) : null,
+    },
   };
 }

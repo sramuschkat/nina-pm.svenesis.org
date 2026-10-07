@@ -40,6 +40,7 @@ import { UptakeStatus } from '../nina/UptakeStatus';
 import { problemCode, useEquipmentList } from '../equipment/shared';
 import {
   PROTOCOL_COLUMNS,
+  actualCell,
   cell,
   protocolCsv,
   protocolTsv,
@@ -98,6 +99,16 @@ const PROTOCOL_SPEC: Record<
   profile: { priority: 5, sort: (r) => r.moonProfile },
 };
 
+/** Spalte „Ist“ (AP-53c): vorn, nur mit Ist-Daten. */
+const actualColumn = (t: Parameters<typeof cell>[2]): DataColumn<ProtocolRow> => ({
+  id: 'actual',
+  header: t('simulator.col.actual'),
+  sortValue: (r) => r.actual?.state ?? '',
+  priority: 1,
+  nowrap: true,
+  cell: (r: ProtocolRow) => actualCell(r, t),
+});
+
 const protocolColumns = (t: Parameters<typeof cell>[2], tz: string): DataColumn<ProtocolRow>[] =>
   PROTOCOL_COLUMNS.map((c) => ({
     id: c,
@@ -125,6 +136,7 @@ export function SimulatorPage() {
   const [withDrafts, setWithDrafts] = useState(false);
   const [cursor, setCursor] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showOutline, setShowOutline] = useState(false);
   /** `null` = Voreinstellung: aufgeklappt, solange Rig oder Nacht fehlen (AP-26b). */
   // `einstellungen=1` (Link aus Ausrüstung → Rigs → Scheduler, AP-26i) öffnet die Einstellungen.
   const [settingsOpen, setSettingsOpen] = useState<boolean | null>(() =>
@@ -214,9 +226,20 @@ export function SimulatorPage() {
     return () => clearInterval(timer);
   }, []);
   const isCurrentNight = night !== null && night === current.data?.currentNight;
+  const isPastNight =
+    night !== null && current.data !== undefined && night < current.data.currentNight;
+  // Eine Eingabe-Quelle (AP-53c): Eingabe, Ist und gespeicherter Plan vom Server; laufende Nacht jede Minute neu.
+  const serverInput = useQuery({
+    queryKey: ['simulation-input', rigId, night],
+    queryFn: () => simulationApi.input(rigId ?? '', night ?? ''),
+    enabled: rigId !== null && night !== null,
+    refetchInterval: isCurrentNight ? 60_000 : false,
+    retry: false,
+  });
   const request = useMemo((): SimulationRequest | null => {
     if (!rig || !site || !night || !table.data || !moonProfiles.data || !filters.data) return null;
     if (details.some((d) => d.isPending) || approved.isPending || transits.isPending) return null;
+    if (serverInput.isPending && rigId !== null) return null;
     return {
       rig: rig as SimulationRequest['rig'],
       projects: projects as unknown as SimulationRequest['projects'],
@@ -232,8 +255,24 @@ export function SimulatorPage() {
       selection: withDrafts ? 'given' : 'plannable',
       filterColors: Object.fromEntries(filters.data.map((f) => [f.shortName, f.colorHex])),
       moonProfileNames: Object.fromEntries(moonProfiles.data.map((p) => [p.id, p.name])),
-      nowUtc: isCurrentNight ? new Date(nowMin * 60_000).toISOString() : null,
+      // Vergangene Nacht: „jetzt“ stündlich – für Ist ohne Rechnung im Minutentakt.
+      nowUtc: isCurrentNight
+        ? new Date(nowMin * 60_000).toISOString()
+        : isPastNight
+          ? new Date(Math.floor(nowMin / 60) * 3_600_000).toISOString()
+          : null,
       transits: transits.data?.items ?? [],
+      server: serverInput.data
+        ? {
+            input: serverInput.data.input,
+            inputHash: serverInput.data.inputHash,
+            projectNames: serverInput.data.projectNames,
+            // Vertragstypen aus OpenAPI und `@nina-pm/shared` haben dieselbe Form.
+            executed: serverInput.data.executed as never,
+            storedPlan: serverInput.data.storedPlan as never,
+            firstPlan: serverInput.data.firstPlan as never,
+          }
+        : null,
     };
     // `details` wechselt je Abfrage die Identität; `projects` trägt die Daten.
   }, [
@@ -246,8 +285,10 @@ export function SimulatorPage() {
     projects,
     withDrafts,
     isCurrentNight,
+    isPastNight,
     nowMin,
     transits.data,
+    serverInput.data,
   ]);
   const run = useSimulator();
   const key = request ? JSON.stringify(request) : '';
@@ -584,8 +625,49 @@ export function SimulatorPage() {
                 ) : null}
               </span>
             </div>
+            <SourceHint
+              result={result}
+              tz={tz}
+              local={serverInput.isError}
+              onReset={() => setWithDrafts(false)}
+            />
+            {result.actual ? (
+              <div className={styles.actualBar}>
+                <span className={styles.stats}>
+                  {t('simulator.actual.counters', result.actual.counters)}
+                  {' · '}
+                  {t('simulator.actual.legend', {
+                    source:
+                      result.actual.fromStored && result.source.stored
+                        ? t('simulator.actual.sourceStored', {
+                            revision: result.source.stored.revision,
+                          })
+                        : t('simulator.actual.sourceComputed'),
+                  })}
+                </span>
+                {result.actual.outline.length > 0 ? (
+                  <label className={styles.check}>
+                    <input
+                      type="checkbox"
+                      checked={showOutline}
+                      onChange={(e) => setShowOutline(e.target.checked)}
+                    />
+                    {t('simulator.actual.outline')}
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
             <NightChart
               {...result.chart}
+              {...(result.chart.gaps
+                ? {
+                    gaps: result.chart.gaps.map((g) => ({
+                      ...g,
+                      label: t(`simulator.gap.${g.kind}`, { count: g.count ?? 1 }),
+                    })),
+                  }
+                : {})}
+              {...(showOutline && result.actual ? { outline: result.actual.outline } : {})}
               variant="plan"
               cursorUtc={cursor}
               onCursorChange={setCursor}
@@ -638,11 +720,17 @@ export function SimulatorPage() {
             <div className={styles.logBox} ref={logBox}>
               <DataTable
                 className={styles.log}
-                columns={protocolColumns(t, tz)}
+                columns={
+                  result.actual
+                    ? [actualColumn(t), ...protocolColumns(t, tz)]
+                    : protocolColumns(t, tz)
+                }
                 rows={result.protocol}
                 rowKey={(r) => r.key}
                 rowProps={(r) => ({
                   'data-row': r.key,
+                  // Erledigtes blass, Geplantes kräftig (AP-53c).
+                  ...(r.actual?.past ? { 'data-past': 'true' } : {}),
                   ...(r.key === activeRow
                     ? { 'data-selected': 'true', 'aria-current': 'true' as const }
                     : {}),
@@ -890,6 +978,60 @@ function TimeSlider({
       />
       <output htmlFor={id}>{doing}</output>
     </div>
+  );
+}
+
+/**
+ * Hinweis zur Eingabe (AP-53c): gleiche Eingabe wie der Server (mit Hash), Was-wäre-wenn mit eigenen Entwürfen
+ * (mit *Zurücksetzen*) bzw. Eingabe im Browser gebaut; dazu „Rig plant noch mit Rev. n“, wenn sich die Eingabe seit
+ * dem gespeicherten Plan geändert hat.
+ */
+function SourceHint({
+  result,
+  tz,
+  local,
+  onReset,
+}: {
+  result: SimulationResult;
+  tz: string;
+  local: boolean;
+  onReset: () => void;
+}) {
+  const { t } = useTranslation();
+  const { source } = result;
+  return (
+    <p className={styles.sourceHint} role="status">
+      {source.whatIf ? (
+        <span className={styles.sourceWhatIf}>
+          {t('simulator.source.whatIf')}
+          <button type="button" className={styles.sourceReset} onClick={onReset}>
+            {t('simulator.source.reset')}
+          </button>
+        </span>
+      ) : source.serverHash ? (
+        <span className={styles.sourceOk} title={t('simulator.source.sameTitle')}>
+          {t('simulator.source.same', {
+            hash: source.serverHash.replace('sha256:', '').slice(0, 8),
+          })}
+        </span>
+      ) : local ? (
+        <span className={styles.sourceWhatIf}>{t('simulator.source.local')}</span>
+      ) : null}
+      {source.stored?.stale ? (
+        <span className={styles.sourceStale}>
+          {t('simulator.source.stale', {
+            revision: source.stored.revision,
+            time: hm(source.stored.createdAtUtc, tz),
+          })}
+          {' · '}
+          {t(
+            source.stored.staleCause === 'settings'
+              ? 'simulator.source.staleSettings'
+              : 'simulator.source.staleTargets',
+          )}
+        </span>
+      ) : null}
+    </p>
   );
 }
 
