@@ -24,6 +24,7 @@ namespace NinaPm.Nina.Dock;
 public sealed class NightPanelVM : DockableVM, IDockSizeSink
 {
     private string key = "";
+    private DockSnapshot? last;
     private double width = PlanChartView.DefaultWidth;
     private double chartWidth;
 
@@ -121,7 +122,8 @@ public sealed class NightPanelVM : DockableVM, IDockSizeSink
             RaisePropertyChanged(nameof(IsNarrow));
             RaisePropertyChanged(nameof(IsWide));
         }
-        if (Math.Abs(ChartWidthFor(width) - chartWidth) >= 20) Apply(NightDockModel.Instance.Current, force: true);
+        // Mit der zuletzt angezeigten Momentaufnahme neu zeichnen (nicht mit einer leeren, wenn die Laufzeit gerade fehlt).
+        if (last is not null && Math.Abs(ChartWidthFor(width) - chartWidth) >= 20) Apply(last, force: true);
     }
 
     /// <summary>Breite der Grafik: Fensterbreite abzüglich Rand, nicht schmaler als 300 px.</summary>
@@ -132,6 +134,7 @@ public sealed class NightPanelVM : DockableVM, IDockSizeSink
     /// <summary>Momentaufnahme anzeigen; Grafik und Liste nur bei geändertem Schlüssel oder neuer Breite (Tests rufen direkt auf).</summary>
     internal void Apply(DockSnapshot? s, bool force)
     {
+        last = s;
         HasRuntime = s is not null;
         if (s is null)
         {
