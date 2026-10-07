@@ -158,7 +158,7 @@ public sealed class LogRowView(PlanLogRow row)
 }
 
 /// <summary>Rechteck der Plangrafik (Himmel, Block, Filterabschnitt) in Pixeln, optional mit Rahmen und Beschriftung oben links.</summary>
-public sealed record ChartRectView(double Left, double Top, double Width, double Height, SolidColorBrush Fill, string Label,
+public sealed record ChartRectView(double Left, double Top, double Width, double Height, System.Windows.Media.Brush Fill, string Label,
     SolidColorBrush LabelBrush, string ToolTip, SolidColorBrush? Stroke = null, double StrokeThickness = 0, bool LabelTop = false)
 {
     public Thickness Border => new(StrokeThickness);
@@ -195,26 +195,57 @@ public sealed record ChartTextView(double Left, double Top, string Text, SolidCo
 /// </summary>
 public sealed class PlanChartView
 {
-    public const double Width = 960;
+    public const double DefaultWidth = 960;
     public const double PadLeft = 36;
     public const double PadRight = 10;
-    public const double PlotWidth = Width - PadLeft - PadRight;
     public const double FilterTop = 8;
     public const double FilterHeight = 18;
     public const double PlotTop = 32;
-    public const double PlotHeight = 230;
-    public const double AxisTop = PlotTop + PlotHeight + 5;
-    public const double Height = AxisTop + 20;
+    public const double DefaultPlotHeight = 230;
 
-    private static double Px(double x) => PadLeft + x * PlotWidth;
+    private readonly double Width;
+    private readonly double PlotWidth;
+    private readonly double PlotHeight;
+    private readonly double AxisTop;
+    private readonly double Height;
 
-    private static double Py(double y) => PlotTop + y * PlotHeight;
+    private double Px(double x) => PadLeft + x * PlotWidth;
+
+    private double Py(double y) => PlotTop + y * PlotHeight;
 
     /// <summary>Grobe Textbreite für die Lage von Beschriftungen (11 px Schrift).</summary>
     private static double TextWidth(string text, double size = 11) => text.Length * size * 0.56;
 
-    public PlanChartView(PlanChart chart)
+    /// <summary>Schraffur für Lücken (AP-53b): Streifen 45° in <paramref name="hex"/>, dazwischen durchsichtig.</summary>
+    internal static LinearGradientBrush Hatch(string hex)
     {
+        var c = Brush.Of(hex, hex, 0x8C).Color;
+        var brush = new LinearGradientBrush
+        {
+            MappingMode = BrushMappingMode.Absolute,
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(5, 5),
+            SpreadMethod = GradientSpreadMethod.Repeat,
+        };
+        brush.GradientStops.Add(new GradientStop(c, 0));
+        brush.GradientStops.Add(new GradientStop(c, 0.4));
+        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 0.4));
+        brush.GradientStops.Add(new GradientStop(Colors.Transparent, 1));
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>
+    /// Plangrafik in <paramref name="width"/> Pixeln Breite (Simulator 960; die Fenster im Imaging-Reiter passen sie an die
+    /// Fensterbreite an, die Zeichenhöhe wächst mit, 120…230 px).
+    /// </summary>
+    public PlanChartView(PlanChart chart, double width = DefaultWidth)
+    {
+        Width = Math.Max(240, width);
+        PlotWidth = Width - PadLeft - PadRight;
+        PlotHeight = width >= DefaultWidth ? DefaultPlotHeight : Math.Clamp(Width * 0.24, 120, DefaultPlotHeight);
+        AxisTop = PlotTop + PlotHeight + 5;
+        Height = AxisTop + 20;
         Chart = chart;
         var label = Brush.Of(ChartPalette.Label, ChartPalette.Label, (byte)Math.Round(ChartPalette.LabelAlpha * 255));
         var curve = Brush.Of(ChartPalette.Curve, ChartPalette.Curve);
@@ -232,22 +263,40 @@ public sealed class PlanChartView
         sky.Freeze();
         SkyBrush = sky;
         var rects = new List<ChartRectView>();
-        // Blöcke als Flächen in Zielfarbe (20 % Fläche, 60 % Rahmen), Name oben links.
+        // Blöcke als Flächen in Zielfarbe (20 % Fläche, 60 % Rahmen), Name oben links. In den Fenstern im Imaging-Reiter
+        // (AP-53b) ist Erledigtes blass und Geplantes kräftig (Sven 07.10.2026).
+        var dimLabel = Brush.Of(ChartPalette.Curve, ChartPalette.Curve, 0x80);
         foreach (var b in chart.Blocks)
         {
             var name = b.Transit ? $"{b.Label} ({Texts.Transit})" : b.Label;
             var color = ChartPalette.ForSeries(b.SeriesIndex);
             var w = Math.Max(1, b.Width * PlotWidth);
-            rects.Add(new ChartRectView(Px(b.X), PlotTop, w, PlotHeight, Brush.Of(color, ChartPalette.Marker, 0x33),
-                w > 40 ? name : "", curve, $"{name} · {b.Window}", Brush.Of(color, ChartPalette.Marker, 0x99), 1, LabelTop: true));
+            var (fill, stroke) = b.Tense switch
+            {
+                ChartTense.Past => ((byte)0x14, (byte)0x40),
+                ChartTense.Planned => ((byte)0x59, (byte)0xE6),
+                _ => ((byte)0x33, (byte)0x99),
+            };
+            rects.Add(new ChartRectView(Px(b.X), PlotTop, w, PlotHeight, Brush.Of(color, ChartPalette.Marker, fill),
+                w > 40 ? name : "", b.Tense == ChartTense.Past ? dimLabel : curve, $"{name} · {b.Window}", Brush.Of(color, ChartPalette.Marker, stroke),
+                b.Tense == ChartTense.Planned ? 1.5 : 1, LabelTop: true));
+        }
+        // Lücken im Erledigten schraffiert mit Grund im Tooltip (Flip grau, sonst rot).
+        foreach (var g in chart.Gaps)
+        {
+            var w = Math.Max(2, g.Width * PlotWidth);
+            var text = Texts.GapText(g.Kind.ToString(), g.Reason, g.Count);
+            rects.Add(new ChartRectView(Px(g.X), PlotTop, w, PlotHeight, Hatch(g.Kind == ChartGapKind.Flip ? ChartPalette.Axis : ChartPalette.MinAltitude),
+                "", curve, $"{text} · {g.Window}"));
         }
         // Filterleiste in Filterfarben, Text dunkel auf hellen Farben, sonst weiß; 1 px Fuge zwischen den Abschnitten.
         foreach (var f in chart.FilterBars)
         {
             var color = f.Color ?? ChartPalette.Marker;
             var w = Math.Max(1, f.Width * PlotWidth - 1);
-            rects.Add(new ChartRectView(Px(f.X), FilterTop, w, FilterHeight, Brush.Of(color, ChartPalette.Marker),
-                w > 26 ? f.Label : "", Brush.Of(ChartPalette.TextOn(color), "#ffffff"), f.Label));
+            var past = f.Tense == ChartTense.Past;
+            rects.Add(new ChartRectView(Px(f.X), FilterTop, w, FilterHeight, Brush.Of(color, ChartPalette.Marker, past ? (byte)0x4D : (byte)0xFF),
+                w > 26 ? f.Label : "", past ? dimLabel : Brush.Of(ChartPalette.TextOn(color), "#ffffff"), f.Label));
         }
         Rects = rects;
 
@@ -296,6 +345,13 @@ public sealed class PlanChartView
             labels.Add(new ChartTextView(4, Py(1 - alt / PlanChart.MaxAltitudeDeg) - 8, $"{alt}°", label, Size: 10.5));
         foreach (var t in chart.Ticks)
             labels.Add(new ChartTextView(Math.Clamp(Px(t.X) - 14, 0, Width - 30), AxisTop, t.Label, label, Size: 10.5));
+        // Schmal: nur jede zweite bzw. dritte Stunde, sonst überlappen die Zahlen.
+        if (Width < 700 && chart.Ticks.Count > 0)
+        {
+            var step = Width < 450 ? 3 : 2;
+            var keep = chart.Ticks.Where((_, k) => k % step == 0).Select(t => t.Label).ToHashSet();
+            labels.RemoveAll(l => l.Top == AxisTop && !keep.Contains(l.Text));
+        }
         // Dämmerungsnamen am Fuß: abends rechts der Linie, morgens links davon; liegen Grenzen dicht beieinander,
         // rückt der Name eine Zeile höher statt zu überlappen.
         var placed = new List<(double Left, double Right, int Row)>();

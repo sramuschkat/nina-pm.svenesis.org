@@ -88,6 +88,18 @@ public sealed class LocalStore : IDisposable
           PRIMARY KEY (night, key)
         );
         """,
+        // 3 – AP-53b: Nachtjournal (Blöcke, Aufnahmen, Übersprungenes, Flip, Safety, Planwechsel) für die Fenster im
+        // Imaging-Reiter; der gespeicherte Plan hält nur den letzten Plan und beginnt nach einer Neuplanung bei „jetzt“.
+        """
+        CREATE TABLE journal_local (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          night TEXT NOT NULL,
+          at_utc TEXT NOT NULL,
+          kind TEXT NOT NULL,
+          payload TEXT NOT NULL
+        );
+        CREATE INDEX journal_local_night ON journal_local (night, id);
+        """,
     ];
 
     public static int LatestVersion => Migrations.Length;
@@ -177,6 +189,42 @@ public sealed class LocalStore : IDisposable
                 "ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_utc = excluded.updated_utc",
                 null, ("$key", key), ("$value", value), ("$now", UtcText.Format(clock.UtcNow)));
     }
+
+    // ---- Nachtjournal (AP-53b, execution.md §10) ----------------------------------------------------------
+
+    /// <summary>Eintrag anhängen; gibt die laufende Nummer zurück (steigt je Eintrag, Änderungsschlüssel der Fenster).</summary>
+    public long AppendJournal(string night, DateTimeOffset atUtc, string kind, string payload)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("INSERT INTO journal_local (night, at_utc, kind, payload) VALUES ($night, $at, $kind, $payload); SELECT last_insert_rowid();",
+                null, ("$night", night), ("$at", UtcText.Format(atUtc)), ("$kind", kind), ("$payload", payload));
+            return Convert.ToInt64(cmd.ExecuteScalar());
+        }
+    }
+
+    /// <summary>Einträge der Nacht in Reihenfolge des Anhängens.</summary>
+    public IReadOnlyList<(long Id, DateTimeOffset AtUtc, string Kind, string Payload)> Journal(string night)
+    {
+        lock (gate)
+        {
+            using var cmd = Command("SELECT id, at_utc, kind, payload FROM journal_local WHERE night = $night ORDER BY id", null, ("$night", night));
+            using var r = cmd.ExecuteReader();
+            var list = new List<(long, DateTimeOffset, string, string)>();
+            while (r.Read())
+                list.Add((r.GetInt64(0), UtcText.Parse(r.GetString(1)), r.GetString(2), r.GetString(3)));
+            return list;
+        }
+    }
+
+    /// <summary>Höchste Nummer im Journal der Nacht (0 ohne Einträge).</summary>
+    public long JournalHead(string night) =>
+        Convert.ToInt64(Scalar("SELECT COALESCE(MAX(id), 0) FROM journal_local WHERE night = $night", ("$night", night)));
+
+    /// <summary>Journal älterer Nächte löschen: nur die jüngsten <paramref name="keepNights"/> Nächte bleiben.</summary>
+    public void PruneJournal(int keepNights) =>
+        Execute("DELETE FROM journal_local WHERE night NOT IN (SELECT DISTINCT night FROM journal_local ORDER BY night DESC LIMIT $keep)",
+            null, ("$keep", keepNights));
 
     // ---- Flats (AP-50, execution.md §7) ----------------------------------------------------------------
 

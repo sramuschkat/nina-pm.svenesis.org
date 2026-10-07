@@ -5,11 +5,50 @@ namespace NinaPm.Core.Simulator;
 /// <summary>Dämmerungsstufe als Band: 1 = Sonne unter −6°, 2 = unter −12°, 3 = unter −18° (astronomisch dunkel).</summary>
 public sealed record ChartBand(double X, double Width, int Level);
 
+/// <summary>
+/// Zeitbezug eines Blocks bzw. Filterabschnitts: <see cref="Normal"/> im Simulator; in den Fenstern im Imaging-Reiter
+/// (AP-53b) ist Erledigtes blass (<see cref="Past"/>) und Geplantes kräftig (<see cref="Planned"/>), Sven 07.10.2026.
+/// </summary>
+public enum ChartTense
+{
+    Normal,
+    Past,
+    Planned,
+}
+
 /// <summary>Block der Plangrafik, farbig je Ziel (<see cref="SeriesIndex"/>).</summary>
-public sealed record ChartBlock(double X, double Width, string Label, int SeriesIndex, bool Transit, string Window);
+public sealed record ChartBlock(double X, double Width, string Label, int SeriesIndex, bool Transit, string Window)
+{
+    public ChartTense Tense { get; init; } = ChartTense.Normal;
+}
 
 /// <summary>Abschnitt der Filterleiste („Ha ×17“), Farbe aus den Filter-Stammdaten.</summary>
-public sealed record ChartFilterBar(double X, double Width, string Label, string? Color);
+public sealed record ChartFilterBar(double X, double Width, string Label, string? Color)
+{
+    public ChartTense Tense { get; init; } = ChartTense.Normal;
+}
+
+/// <summary>Art einer Lücke im Erledigten (schraffiert, AP-53b).</summary>
+public enum ChartGapKind
+{
+    /// <summary>Leerlauf zwischen zwei Blöcken.</summary>
+    Idle,
+
+    /// <summary>Safety-Pause (unsicher).</summary>
+    Safety,
+
+    /// <summary>Meridian-Flip.</summary>
+    Flip,
+
+    /// <summary>Wiederholte Blöcke ohne Belichtung (z. B. <c>transit_interrupt</c>-Schleife, Rig-Nacht 06./07.10.2026).</summary>
+    EmptyBlocks,
+
+    /// <summary>Übersprungene Blöcke (Zentrieren fehlgeschlagen, Filter fehlt …).</summary>
+    Skipped,
+}
+
+/// <summary>Lücke im Erledigten mit Grund (<see cref="Reason"/>: Code, bei leeren Blöcken der Blockgrund) und Anzahl.</summary>
+public sealed record ChartGap(double X, double Width, ChartGapKind Kind, string? Reason, int Count, string Window);
 
 /// <summary>Senkrechte Marke (Meridian-Flip) mit Uhrzeit in Standortzeit.</summary>
 public sealed record ChartMarker(double X, string Label);
@@ -56,6 +95,15 @@ public sealed record PlanChart(
     /// <summary>Mondbeleuchtung in % – Deckkraft der Mondfläche (<see cref="ChartPalette.MoonAlpha"/>).</summary>
     public double MoonIlluminationPct { get; init; }
 
+    /// <summary>Lücken im Erledigten (nur in den Fenstern im Imaging-Reiter).</summary>
+    public IReadOnlyList<ChartGap> Gaps { get; init; } = [];
+
+    /// <summary>Anteil 0…1 der Zeitachse für einen Zeitpunkt (begrenzt).</summary>
+    public double At(DateTimeOffset t) => Math.Clamp((t - StartUtc).TotalSeconds / Math.Max(1, (EndUtc - StartUtc).TotalSeconds), 0, 1);
+
+    /// <summary>Breite zwischen zwei Zeitpunkten als Anteil (nicht negativ).</summary>
+    public double Span(DateTimeOffset from, DateTimeOffset to) => Math.Max(0, At(to) - At(from));
+
     public static readonly TimeSpan SkyStep = TimeSpan.FromMinutes(5);
 
     /// <summary>
@@ -95,27 +143,15 @@ public sealed record PlanChart(
         return Math.Clamp(alt, -18, 6);
     }
 
+    /// <summary>Höhe in Grad → Anteil von oben (90° = 0, Horizont = 1).</summary>
+    public static double AltitudeY(double altDeg) => 1 - Math.Clamp(altDeg, 0, MaxAltitudeDeg) / MaxAltitudeDeg;
+
     public static PlanChart Build(NinaSimulation s, SiteTime site, DateTimeOffset now)
     {
-        var start = s.NightWindow.StartUtc;
-        var end = s.NightWindow.EndUtc;
-        var span = Math.Max(1, (end - start).TotalSeconds);
-        double X(DateTimeOffset t) => Math.Clamp((t - start).TotalSeconds / span, 0, 1);
-        double W(DateTimeOffset from, DateTimeOffset to) => Math.Max(0, X(to) - X(from));
-        double Y(double altDeg) => 1 - Math.Clamp(altDeg, 0, MaxAltitudeDeg) / MaxAltitudeDeg;
-
-        var d = s.Darkness;
-        var bands = new List<ChartBand>();
-        void Band(DateTimeOffset? from, DateTimeOffset? to, int level)
-        {
-            if (from is null && to is null) return;
-            var a = from ?? start;
-            var b = to ?? end;
-            if (b > a) bands.Add(new ChartBand(X(a), W(a, b), level));
-        }
-        Band(d.CivilStartUtc, d.CivilEndUtc, 1);
-        Band(d.NauticalStartUtc, d.NauticalEndUtc, 2);
-        Band(d.AstronomicalStartUtc, d.AstronomicalEndUtc, 3);
+        var frame = Frame(s.NightWindow.StartUtc, s.NightWindow.EndUtc, s.Darkness, site, now);
+        double X(DateTimeOffset t) => frame.At(t);
+        double W(DateTimeOffset from, DateTimeOffset to) => frame.Span(from, to);
+        double Y(double altDeg) => AltitudeY(altDeg);
 
         var curves = s.Targets
             .Select(t => new ChartCurve(t.Name, t.SeriesIndex, t.Altitude.Select(p => (X(p.AtUtc), Y(p.AltDeg))).ToList()))
@@ -132,6 +168,40 @@ public sealed record PlanChart(
             .Select(f => new ChartFilterBar(X(f.FromUtc), W(f.FromUtc, f.ToUtc), $"{f.Filter} ×{f.Count}", f.Color))
             .ToList();
         var flips = s.Flips.Select(f => new ChartMarker(X(f.AtUtc), $"Flip {site.Clock(f.AtUtc)}")).ToList();
+        var minAlt = s.Targets.Count > 0 ? s.Targets.Min(t => t.MinAltitudeDeg) : 30;
+        return frame with
+        {
+            Curves = curves,
+            Moon = moon,
+            Blocks = blocks,
+            FilterBars = bars,
+            Flips = flips,
+            MinAltitudeY = Y(minAlt),
+            MoonIlluminationPct = s.Moon.IlluminationPct,
+        };
+    }
+
+    /// <summary>
+    /// Rahmen ohne Plan: Dämmerungsbänder, Himmel, Dämmerungsgrenzen, Stundenmarken und Jetzt-Linie für ein Nachtfenster
+    /// (Fenster im Imaging-Reiter ohne Simulation: aus dem gespeicherten Plan, AP-53b). Mindesthöhe 30°.
+    /// </summary>
+    public static PlanChart Frame(DateTimeOffset start, DateTimeOffset end, NinaSimulationDarkness d, SiteTime site, DateTimeOffset now)
+    {
+        var span = Math.Max(1, (end - start).TotalSeconds);
+        double X(DateTimeOffset t) => Math.Clamp((t - start).TotalSeconds / span, 0, 1);
+        double W(DateTimeOffset from, DateTimeOffset to) => Math.Max(0, X(to) - X(from));
+
+        var bands = new List<ChartBand>();
+        void Band(DateTimeOffset? from, DateTimeOffset? to, int level)
+        {
+            if (from is null && to is null) return;
+            var a = from ?? start;
+            var b = to ?? end;
+            if (b > a) bands.Add(new ChartBand(X(a), W(a, b), level));
+        }
+        Band(d.CivilStartUtc, d.CivilEndUtc, 1);
+        Band(d.NauticalStartUtc, d.NauticalEndUtc, 2);
+        Band(d.AstronomicalStartUtc, d.AstronomicalEndUtc, 3);
 
         // Volle Stunden in Standortzeit (bei Zeitumstellung zählt die jeweilige Ortszeit).
         var ticks = new List<ChartTick>();
@@ -160,13 +230,11 @@ public sealed record PlanChart(
         Cross(d.NauticalEndUtc, "nautical");
         Cross(d.CivilEndUtc, "civil");
 
-        var minAlt = s.Targets.Count > 0 ? s.Targets.Min(t => t.MinAltitudeDeg) : 30;
-        return new PlanChart(start, end, bands, curves, moon, blocks, bars, flips, ticks,
-            now >= start && now <= end ? X(now) : null, Y(minAlt), site.Abbr(start))
+        return new PlanChart(start, end, bands, [], null, [], [], [], ticks,
+            now >= start && now <= end ? X(now) : null, AltitudeY(30), site.Abbr(start))
         {
             Sky = sky,
             Twilight = [.. twilight.OrderBy(c => c.X)],
-            MoonIlluminationPct = s.Moon.IlluminationPct,
         };
     }
 }

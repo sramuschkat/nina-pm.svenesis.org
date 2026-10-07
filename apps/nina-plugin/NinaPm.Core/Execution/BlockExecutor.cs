@@ -47,7 +47,9 @@ public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch)
 /// Zusätze für einen Block: Prüfung im Block alle 15 min (§3.2), Kühlungs-Soll mit Warnung höchstens einmal je Block
 /// (NT-E2), ein Abbruchgrund vor jeder Belichtung (z. B. <c>lease_lost</c>, §6), Flip- und Rotationseinstellungen des
 /// Rigs (AP-16f), Playback-Modus des Rigs und Meldungen an den Server (Ereignis, Code); Download-Zeit des Rigs
-/// (<c>overhead.downloadS</c>, wie die Engine) und weiches Blockende (<see cref="Playback.SoftEnd"/>, Plugin 0.4.8).
+/// (<c>overhead.downloadS</c>, wie die Engine) und weiches Blockende (<see cref="Playback.SoftEnd"/>, Plugin 0.4.8);
+/// Blockstart nach dem Zentrieren mit Beginn des Anfahrens und zeitgeführt übersprungene Belichtungen für das Nachtjournal
+/// (AP-53b).
 /// </summary>
 public sealed record BlockRunOptions(
     Func<Entries, CancellationToken, Task<string?>>? InBlockCheck = null,
@@ -64,7 +66,9 @@ public sealed record BlockRunOptions(
     Func<DateTimeOffset?>? TransitDeadline = null,
     Func<TimeSpan>? InBlockInterval = null,
     double? DownloadS = null,
-    DateTimeOffset? SoftEndUtc = null);
+    DateTimeOffset? SoftEndUtc = null,
+    Action<Blocks, DateTimeOffset>? Started = null,
+    Action<Blocks, Entries>? EntrySkipped = null);
 
 /// <summary>
 /// Ein Block je Aufruf nach dem Astro-PM-Muster (execution.md §4.1/§4.2, TK 10.3 Nr. 4/7), als Kernlogik über
@@ -94,6 +98,9 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
 
     /// <summary>Zuletzt gestartete Belichtung des laufenden Blocks (Live-Status, FA-NIN-13); außerhalb eines Blocks <c>null</c>.</summary>
     public Entries? CurrentEntry { get; private set; }
+
+    /// <summary>Beginn der laufenden Belichtung (<see cref="CurrentEntry"/>) für Fortschritt und Restzeit (AP-53b).</summary>
+    public DateTimeOffset? CurrentEntryStartedUtc { get; private set; }
 
     /// <summary>Gespiegelte Optik nur einmal melden (NT-33: einmal je Nacht; der Executor lebt eine Laufzeit lang).</summary>
     private bool opticsMirroredWarned;
@@ -178,6 +185,8 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             await host.DelayAsync(next < start ? next : start, token).ConfigureAwait(false);
         }
         if (options.SkipRequested?.Invoke() == true) return Skip(block, "user_skip");
+        // Ab hier ist die Rig für den Block tätig (Anfahren, Zentrieren): Beginn im Nachtjournal.
+        var activeFrom = clock.UtcNow;
         if (block.EndUtc <= clock.UtcNow || NothingFits(run)) return Skip(block, "elapsed");
         if (!host.IsViableNow(block)) return Skip(block, "not_viable");
         // §4.1 Nr. 1: keine Zeile mit gefundenem Filter bzw. Auslesemodus → überspringen statt den Block leer abzusitzen
@@ -201,6 +210,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         }
 
         log.Event("BLOCK_START", ("id", block.Id), ("atUtc", clock.UtcNow));
+        options.Started?.Invoke(block, activeFrom);
         // Startverzug: tatsächlicher minus geplanter Beginn der Einträge nach dem Zentrieren (§4.2, NT-21).
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         if (plannedEntries is { } p && clock.UtcNow > p) run.Offset = clock.UtcNow - p;
@@ -216,6 +226,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         finally
         {
             CurrentEntry = null;
+            CurrentEntryStartedUtc = null;
         }
         var (reason, exposures, skipped) = result;
         if (run.SeriesStarted)
@@ -347,6 +358,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             foreach (var i in step.Skipped)
             {
                 log.Event("SKIPPED_TIMEAWARE", ("id", block.Id), ("index", entries[i].Seq));
+                options.EntrySkipped?.Invoke(block, entries[i]);
                 skippedTotal++;
             }
             if (step.Kind == PlaybackKind.End)
@@ -421,6 +433,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
             CurrentEntry = e;
             var pierBefore = host.PierSide();
             var started = clock.UtcNow;
+            CurrentEntryStartedUtc = started;
             var result = await host.ExposeAsync(block, e, deviation, token).ConfigureAwait(false);
             if (result == ExposureResult.Saved) exposures++;
             if (result != ExposureResult.Skipped) Overrun(run, started, (e.ExposureS ?? 0) + run.DownloadS);

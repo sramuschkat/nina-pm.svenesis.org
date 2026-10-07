@@ -8,6 +8,7 @@ using NinaPm.Core.Reporting;
 using NinaPm.Core.Session;
 using NinaPm.Core.Status;
 using NinaPm.Core.Storage;
+using NinaPm.Core.Targets;
 using NinaPm.Core.Time;
 
 namespace NinaPm.Core.Execution;
@@ -144,6 +145,20 @@ public sealed class NightRunner(
 
     public NightLoop Loop { get; } = new();
 
+    /// <summary>Nachtjournal für die Fenster im Imaging-Reiter (AP-53b, execution.md §10).</summary>
+    public NightJournal Journal { get; } = new(store);
+
+    /// <summary>Nacht, in die Journaleinträge außerhalb eines Blocks gehören (laufender Plan, sonst die gemerkte Nacht).</summary>
+    public string? JournalNight => ExecutingPlan?.Night ?? store.GetState(StateKeys.Night);
+
+    /// <summary>Gespeicherter Plan der Journal-Nacht (für die Fenster im Imaging-Reiter).</summary>
+    public StoredPlan? CurrentStoredPlan => JournalNight is { } n ? PlanStore.Load(store, n) : null;
+
+    /// <summary>Laufender Block mit Beginn des Anfahrens (Fenster im Imaging-Reiter); außerhalb eines Blocks <c>null</c>.</summary>
+    public (Blocks Block, DateTimeOffset StartedUtc)? RunningBlock => runningBlock is { } b && runningSince is { } t ? (b, t) : null;
+
+    private DateTimeOffset? runningSince;
+
     /// <summary>Lease aus Sicht des Plugins (execution.md §6).</summary>
     public LeaseStateMachine Lease { get; } = new();
 
@@ -250,6 +265,20 @@ public sealed class NightRunner(
     /// Quittierte Heartbeat-Kommandos für den nächsten Heartbeat. Vergessen erst nach einer Antwort (<see cref="CommandAcksSent"/>):
     /// scheitert der Heartbeat, gingen die Quittungen sonst verloren und der Server lieferte das Kommando erneut (Analyse 04.10.2026).
     /// </summary>
+    /// <summary>
+    /// Eingaben der Fenster im Imaging-Reiter (AP-53b): Journal und gespeicherter Plan der Journal-Nacht, laufender Block
+    /// und laufende Belichtung, Ziele, Bootstrap; ohne Nacht <c>null</c>. Die Simulation (Höhenkurven) bringt der Aufrufer.
+    /// </summary>
+    public NightViewInputs? NightViewInputs(NinaSimulation? simulation)
+    {
+        if (JournalNight is not { } night) return null;
+        var stored = PlanStore.Load(store, night);
+        var site = bootstrap is not null ? Simulator.SiteTime.From(bootstrap)
+            : simulation is not null ? Simulator.SiteTime.From(simulation) : Simulator.SiteTime.Utc;
+        return new NightViewInputs(night, Journal.Read(night), stored?.Plan, DoneBlocks(stored), RunningBlock, Executor?.CurrentEntry,
+            Executor?.CurrentEntryStartedUtc, Targets, bootstrap, simulation, site, clock.UtcNow, FlatsRunning);
+    }
+
     public List<Guid> TakeCommandAcks()
     {
         lock (commandAcks) return commandAcks.ToList();
@@ -307,6 +336,7 @@ public sealed class NightRunner(
             if (Interruption.Classify(ownCancel: false, nightHost.ReadSafety()) == CancelKind.Interrupt)
             {
                 log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
+                Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyPause, new JournalData());
                 interrupted = true;
                 nightHost.OnInterrupted();
             }
@@ -360,6 +390,7 @@ public sealed class NightRunner(
         {
             interrupted = false;
             log.Event("SAFETY_RESUME", ("atUtc", clock.UtcNow));
+            Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyResume, new JournalData());
             forcedPlan = NinaPlanRequestReason.Resume;
         }
 
@@ -588,6 +619,8 @@ public sealed class NightRunner(
                     ("reason", reason.ToString().ToLowerInvariant()));
             PlanStore.Save(store, new StoredPlan(plan.Night, etag, SettingsVersion(outcome.Bootstrap), plan));
             store.SetState(StateKeys.DoneBlocks, null);
+            Journal.Append(plan.Night, clock.UtcNow, JournalKinds.Plan,
+                new JournalData { PlanId = plan.NightPlanId, Revision = plan.Revision, Reason = reason.ToString().ToLowerInvariant() });
             Loop.PlanReceived();
             await EnsureSessionAsync(plan, token).ConfigureAwait(false);
             // Nach der Session: Hinweise des Planaufbaus (SiteCheck, Sequenz) erreichen dann auch den Server.
@@ -935,6 +968,7 @@ public sealed class NightRunner(
         var block = stored.Plan.Blocks[index];
         store.SetState(StateKeys.BlockIndex, index.ToString(System.Globalization.CultureInfo.InvariantCulture));
         runningBlock = block;
+        runningSince = null;
         ExecutingPlan = (stored.Plan.Night, stored.Plan.NightPlanId);
         var unit = UnitId(block);
         var startedAt = clock.UtcNow;
@@ -973,11 +1007,31 @@ public sealed class NightRunner(
                 () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow),
                 // Blockschluss mit der Download-Zeit der Engine und weichem Blockende (§4.2, Rig-Nacht 06.10.2026).
                 scheduler?.Overhead.DownloadS,
-                Playback.SoftEnd(block, NextBlockStart(stored.Plan.Blocks, index), stored.Plan.DarknessEndUtc)))
+                Playback.SoftEnd(block, NextBlockStart(stored.Plan.Blocks, index), stored.Plan.DarknessEndUtc),
+                (b, from) =>
+                {
+                    runningSince = from;
+                    Journal.Append(stored.Plan.Night, from, JournalKinds.BlockStart, new JournalData
+                    {
+                        PlanId = stored.Plan.NightPlanId, BlockId = b.Id, ProjectId = b.ProjectId, PanelId = b.PanelId,
+                        Title = TargetTitle.For(b, Targets), Transit = b.Kind == BlocksKind.Transit,
+                        RaDeg = b.RaDeg, DecDeg = b.DecDeg, RotationDeg = b.RotationDeg,
+                    });
+                },
+                (b, e) => Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.Skipped, new JournalData
+                {
+                    BlockId = b.Id, ProjectId = b.ProjectId, Seq = e.Seq, Filter = e.Filter, ExposureS = e.ExposureS, Reason = "late",
+                })))
                 .ConfigureAwait(false);
             if (skipRequested) skipRequested = false;
             resetRequested = false;
             if (outcome.Started) RecordBlockEnd(unit, startedAt);
+            if (outcome.Started) JournalBlockEnd(block, outcome.Reason, outcome.Exposures);
+            else Journal.Append(stored.Plan.Night, clock.UtcNow, JournalKinds.BlockSkipped, new JournalData
+            {
+                PlanId = stored.Plan.NightPlanId, BlockId = block.Id, ProjectId = block.ProjectId, PanelId = block.PanelId,
+                Title = TargetTitle.For(block, Targets), Transit = block.Kind == BlocksKind.Transit, Reason = outcome.Reason,
+            });
             // Fall a/b im Block: sofort neu planen ab jetzt (§3.2), unabhängig von der 5-min-Sperre.
             // Nach dem Transit (untilUtc) ebenso: zurück zu den regulären Zielen mit neuem Plan (§5).
             if (outcome.Reason is "target_removed" or "transit_interrupt"
@@ -1005,6 +1059,7 @@ public sealed class NightRunner(
             // Unbehandelter Fehler im Block (§4.1, Grund error): Block beenden und als erledigt markieren, damit NINA
             // den Container nicht in eine Fehlerschleife über denselben Block schickt; die Nacht läuft weiter.
             log.Event("BLOCK_END", ("id", block.Id), ("reason", "error"));
+            JournalBlockEnd(block, "error", null);
             log.Warning("ERROR", ("code", "block_failed"), ("block", block.Id));
             log.Note($"Block {block.Id}: {ex.GetType().Name}: {ex.Message}");
             RecordBlockEnd(unit, startedAt);
@@ -1016,6 +1071,7 @@ public sealed class NightRunner(
             lock (sessionGate)
             {
                 runningBlock = null;
+                runningSince = null;
                 abort = abortSessionAfterBlock;
                 abortSessionAfterBlock = false;
             }
@@ -1059,6 +1115,14 @@ public sealed class NightRunner(
 
     // ---- tonight (allocation.md §5.3) -----------------------------------------------------------------
 
+    /// <summary>Blockende im Nachtjournal (nur nach einem Blockstart, sonst <c>block_skipped</c>).</summary>
+    private void JournalBlockEnd(Blocks block, string reason, int? exposures)
+    {
+        if (runningSince is null) return;
+        Journal.Append(ExecutingPlan?.Night ?? JournalNight, clock.UtcNow, JournalKinds.BlockEnd,
+            new JournalData { BlockId = block.Id, ProjectId = block.ProjectId, Reason = reason, Exposures = exposures });
+    }
+
     private void RecordBlockEnd(string unit, DateTimeOffset startedAt)
     {
         var tonight = TonightLog.Load(store);
@@ -1075,6 +1139,14 @@ public sealed class NightRunner(
     /// </summary>
     public void ReportCapture(CaptureFacts facts, CapturesResult result, string? fileName)
     {
+        Journal.Append(facts.Night, clock.UtcNow, JournalKinds.Capture, new JournalData
+        {
+            PlanId = facts.NightPlanId, BlockId = facts.Block.Id, ProjectId = facts.Block.ProjectId, PanelId = facts.Block.PanelId,
+            Seq = facts.Entry.Seq, Filter = facts.FilterActual, ExposureS = facts.ExposureS, Gain = facts.Gain, Offset = facts.Offset,
+            Binning = facts.Binning, Readout = facts.ReadoutMode, RotationDeg = facts.RotationDeg ?? facts.Block.RotationDeg,
+            RaDeg = facts.Block.RaDeg, DecDeg = facts.Block.DecDeg, StartUtc = facts.CapturedAtUtc,
+            Result = result.ToString().ToLowerInvariant(),
+        });
         if (result == CapturesResult.Saved)
         {
             ExposureSaved(facts.Block, facts.Entry);
@@ -1091,6 +1163,15 @@ public sealed class NightRunner(
     public void ReportEvent(EventsKind kind, string? code, Guid? blockId = null, string? message = null, IDictionary<string, object>? data = null,
         double? durationS = null)
     {
+        var journalKind = kind switch
+        {
+            EventsKind.Flip => JournalKinds.Flip,
+            EventsKind.Flats_start => JournalKinds.FlatsStart,
+            EventsKind.Flats_end => JournalKinds.FlatsEnd,
+            _ => null,
+        };
+        if (journalKind is not null)
+            Journal.Append(JournalNight, clock.UtcNow, journalKind, new JournalData { BlockId = blockId, DurationS = durationS });
         if (SessionId is not { } session) return;
         var planId = ExecutingPlan?.NightPlanId ?? (Guid.TryParse(store.GetState(StateKeys.NightPlanId), out var p) ? p : null);
         var e = new Events { Id = Uuid7.New(clock), OccurredAtUtc = clock.UtcNow, Kind = kind, Code = code, Message = message, NightPlanId = planId, BlockId = blockId, Data = data, DurationS = durationS };
@@ -1267,12 +1348,15 @@ public sealed class NightRunner(
         if (kind == CancelKind.Interrupt)
         {
             log.Event("BLOCK_END", ("id", block.Id), ("reason", "interrupted"));
+            JournalBlockEnd(block, "interrupted", null);
             log.Event("SAFETY_PAUSE", ("atUtc", clock.UtcNow));
+            Journal.Append(JournalNight, clock.UtcNow, JournalKinds.SafetyPause, new JournalData());
             interrupted = true;
             nightHost.OnInterrupted();
             return;
         }
         log.Event("BLOCK_END", ("id", block.Id), ("reason", "user_skip"));
+        JournalBlockEnd(block, "user_skip", null);
         UserStopped();
     }
 
