@@ -1,6 +1,8 @@
 /**
  * Sessions im Web (AP-15; S-60, S-61; FA-AUS-01…03, FA-AUS-06, FA-AUS-07; TK 7.2):
- * - `GET /web/v1/sessions` und `GET /web/v1/sessions/{id}` (`session.read`).
+ * - `GET /web/v1/sessions` und `GET /web/v1/sessions/{id}` (`session.read`); die Liste seit AP-64 seitenweise
+ *   (`cursor`/`nextCursor`) mit Effizienz, Wetterbewertung und Projekt-Chips je Session.
+ * - `GET /web/v1/sessions/summary` (`session.read`, AP-64): Kennzahlen der Nächte für Rig und Zeitraum.
  * - `POST /web/v1/sessions/{id}/corrections` (`session.correct`, Objekt = Projekt der Zeile: Admins,
  *   User nur für eigene Projekte bei Mandanteneinstellung `userCorrections`): Verworfen je Zeile und
  *   Nacht = max(Korrektur, einzeln verworfene) – darunter `409 correction.conflict`; Verbleibend steigt,
@@ -25,6 +27,8 @@ import {
   NightSessionList,
   NightSessionQuery,
   NightSessionReviewed,
+  NightSessionSummary,
+  NightSessionSummaryQuery,
   ProblemError,
   ReportResendResult,
   Uuid,
@@ -44,14 +48,34 @@ const denied = {
 };
 
 export const listSessionsRoute = defineRoute(
-  { action: 'session.read', requirements: ['FA-AUS-01', 'FA-AUS-07', 'S-60'] },
+  {
+    action: 'session.read',
+    requirements: ['FA-AUS-01', 'FA-AUS-05', 'FA-AUS-07', 'S-60', 'AP-64'],
+  },
   {
     method: 'get',
     path: BASE,
-    summary: 'Sessions je Rig und Nacht (neueste zuerst)',
+    summary:
+      'Sessions je Rig und Nacht (neueste zuerst, seitenweise) mit Effizienz, Wetterbewertung und Projekt-Chips',
     tags: ['sessions'],
     request: { query: NightSessionQuery },
     responses: { 200: { description: 'Sessions', ...json(NightSessionList) }, ...denied },
+  },
+);
+
+export const sessionSummaryRoute = defineRoute(
+  {
+    action: 'session.read',
+    requirements: ['FA-AUS-05', 'FA-AUS-07', 'FA-AUS-17', 'S-60', 'AP-64'],
+  },
+  {
+    method: 'get',
+    path: `${BASE}/summary`,
+    summary:
+      'Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)',
+    tags: ['sessions'],
+    request: { query: NightSessionSummaryQuery },
+    responses: { 200: { description: 'Kennzahlen', ...json(NightSessionSummary) }, ...denied },
   },
 );
 
@@ -158,6 +182,7 @@ export const reportResendRoute = defineRoute(
 
 export const SESSION_ROUTES = [
   listSessionsRoute,
+  sessionSummaryRoute,
   sessionDetailRoute,
   sessionCorrectionRoute,
   sessionReviewRoute,
@@ -171,18 +196,31 @@ export function webSessionRoutes(services: () => Promise<ApiServices>) {
   app.openapi(listSessionsRoute, async (c) => {
     const svc = await services();
     const q = c.req.valid('query');
-    const items = await svc
+    const page = await svc
       .repositories(requireTenant(c).tenant)
       .sessionReview()
-      .list({
+      .page({
         rigId: q.rigId,
         unreviewed: q.unreviewed === 'true',
         from: q.from,
         to: q.to,
         limit: q.limit,
+        cursor: q.cursor,
       });
     c.header('cache-control', 'no-store');
-    return c.json({ items }, 200);
+    return c.json(page, 200);
+  });
+
+  // Vor `/{id}` registriert: sonst fängt die Detailroute „summary“ als ID ab.
+  app.openapi(sessionSummaryRoute, async (c) => {
+    const svc = await services();
+    const q = c.req.valid('query');
+    const summary = await svc
+      .repositories(requireTenant(c).tenant)
+      .sessionReview()
+      .summary({ rigId: q.rigId, from: q.from, to: q.to });
+    c.header('cache-control', 'no-store');
+    return c.json(summary, 200);
   });
 
   app.openapi(sessionDetailRoute, async (c) => {

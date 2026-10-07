@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
 /**
- * AP-30: S-61 Reiter *Protokoll* (Vorbelegung mit Quellen, NINA Ø/min/max, *übernehmen* mit
- * Kennzeichen-Vorschau, Speichern mit Version, nur Admin bearbeitet) und S-64 Klarnacht-Statistik
- * (Kennzahlen, Monatsbalken, Nächte, „bewölkt/nicht genutzt“ erfassen nur Admin); axe.
+ * AP-30: S-61 *Protokoll* (Vorbelegung mit Quellen, NINA Ø/min/max, *übernehmen* mit Kennzeichen-Vorschau, Speichern
+ * mit Version, nur Admin bearbeitet) und – seit AP-64 – Standort-Statistik (Kalender mit Klassen und Tooltip, Klick
+ * öffnet die Nacht bzw. „bewölkt erfassen“ nur Admin, Kacheln, SQM/Seeing-Balken, Tabelle auf Wunsch); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
 import type { ClearNightView, Me, SessionLogView } from '../../api/client';
 import { AuthProvider } from '../../auth';
-import { ClearNightsPage, periodRange } from './ClearNightsPage';
+import { calendarMonths, dayKind, SiteStatsPage } from './SiteStatsPage';
 import { SessionLogPanel } from './SessionLogPanel';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -28,7 +28,15 @@ const state = vi.hoisted(() => ({
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
   equipmentApi: {
-    list: () => Promise.resolve({ items: [{ id: ID(600), name: 'Starfront' }] }),
+    list: (kind: string) =>
+      Promise.resolve({
+        items:
+          kind === 'sites'
+            ? [{ id: ID(600), name: 'Starfront' }]
+            : kind === 'rigs'
+              ? [{ id: ID(500), name: 'Rig A', siteId: ID(600) }]
+              : [],
+      }),
   },
   sessionLogApi: {
     get: () => Promise.resolve(state.log),
@@ -156,6 +164,11 @@ const clearView = (): ClearNightView => ({
   accuracy: { compared: 1, hits: 1, hitPct: 100 },
 });
 
+function Where() {
+  const l = useLocation();
+  return <output data-testid="where">{l.pathname}</output>;
+}
+
 const wrap = (ui: React.ReactNode, path = '/') =>
   render(
     <QueryClientProvider
@@ -166,6 +179,7 @@ const wrap = (ui: React.ReactNode, path = '/') =>
           <Routes>
             <Route path="*" element={ui} />
           </Routes>
+          <Where />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -224,50 +238,110 @@ describe('S-61 Protokoll', () => {
   });
 });
 
-describe('S-64 Klarnacht-Statistik', () => {
-  it('Kennzahlen, Monatsbalken, Nächte; Erfassen und Zurücknehmen (Admin); axe', async () => {
-    state.mark.mockResolvedValue(undefined);
-    wrap(<ClearNightsPage />, '/auswertung/klarnacht');
-    expect(await screen.findByText('1 von 2 (50 %)')).toBeTruthy();
-    expect(screen.getByText('100 %')).toBeTruthy();
-    expect(
-      screen.getByRole('listitem', { name: /1 von 2 Nächten nutzbar, im Mittel 5,2 h/ }),
-    ).toBeTruthy();
-    expect(state.clearCalls[0]?.[0]).toBe(ID(600));
-    const table = screen.getByRole('table', { name: 'Nächte' });
-    const first = within(table).getByRole('row', { name: /18\.\/19\.09\./ });
-    expect(within(first).getByText('nutzbar')).toBeTruthy();
-    expect(within(first).getByRole('link').getAttribute('href')).toBe(
-      `/auswertung/sessions/${ID(1)}`,
-    );
-    expect(within(first).queryByRole('button', { name: /bewölkt/ })).toBeNull();
-    const manual = within(table).getByRole('row', { name: /17\.\/18\.09\./ });
-    expect(within(manual).getByText('manuell erfasst')).toBeTruthy();
-    const open = within(table).getByRole('row', { name: /16\.\/17\.09\./ });
-    expect(within(open).getByText('40 % (Vorhersage)')).toBeTruthy();
-    await expectNoSeriousA11y();
-    fireEvent.click(within(open).getByRole('button', { name: 'bewölkt erfassen' }));
-    await waitFor(() => expect(state.mark).toHaveBeenCalledWith(ID(600), '2026-09-16', true));
-    fireEvent.click(within(manual).getByRole('button', { name: 'zurücknehmen' }));
-    await waitFor(() => expect(state.mark).toHaveBeenCalledWith(ID(600), '2026-09-17', false));
-  });
+describe('Auswertung – Standort-Statistik (AP-64)', () => {
+  const path = '/auswertung/standort?zeitraum=frei&von=2026-09-01&bis=2026-09-25';
 
-  it('User erfasst keine Nächte; Filter „nur ohne Angabe“', async () => {
-    state.me = me('user');
-    wrap(<ClearNightsPage />, '/auswertung/klarnacht');
-    await screen.findByText('1 von 2 (50 %)');
-    expect(screen.queryByRole('button', { name: /bewölkt/ })).toBeNull();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Nächte' }), {
-      target: { value: 'open' },
-    });
-    const table = screen.getByRole('table', { name: 'Nächte' });
-    expect(within(table).getAllByRole('row').length).toBe(2);
-  });
-
-  it('Zeitraum bis gestern, Monate zurück', () => {
-    expect(periodRange(12, new Date(Date.UTC(2026, 8, 26, 10)))).toEqual({
-      from: '2025-09-26',
+  it('Kalender mit Klassen und Tooltip, Kacheln, SQM/Seeing; Klick öffnet die Nacht; axe', async () => {
+    state.clear = {
+      ...clearView(),
+      from: '2026-09-01',
       to: '2026-09-25',
+      nights: [
+        ...clearView().nights,
+        nightRow('2026-09-15', {
+          source: 'session',
+          usable: false,
+          usableHours: 0.3,
+          sessionIds: [ID(2)],
+          forecastRatingIndex: 4,
+        }),
+      ],
+    };
+    wrap(<SiteStatsPage />, path);
+    const clear = await screen.findByRole('button', {
+      name: /^18\.\/19\.09\. · klar, belichtet · 5,2 h nutzbar · Vorhersage Gut · Seeing 2,4″ · SQM 21,3$/,
     });
+    expect(clear).toHaveAttribute('data-kind', 'clear');
+    expect(screen.getByRole('button', { name: /^17\.\/18\.09\. · bewölkt/ })).toHaveAttribute(
+      'data-kind',
+      'cloudy',
+    );
+    expect(state.clearCalls[0]).toEqual([ID(600), '2026-09-01', '2026-09-25']);
+    const tiles = screen.getByRole('region', { name: 'Kennzahlen des Standorts' });
+    expect(within(tiles).getByText('50 %')).toBeTruthy();
+    // Klar, aber nicht genutzt: eigene Klasse im Kalender und Zahl in der Kachel.
+    expect(
+      screen.getByRole('button', { name: /^15\.\/16\.09\. · klar, nicht genutzt/ }),
+    ).toHaveAttribute('data-kind', 'clearUnused');
+    expect(within(tiles).getByText(/davon klar, ungenutzt: 1/)).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Legende' }).textContent).toContain(
+      'klar, nicht genutzt',
+    );
+    expect(within(tiles).getByText('100 %')).toBeTruthy();
+    expect(
+      screen.getByRole('img', { name: 'SQM in 1 Nächten, 21,3 mag/″² bis 21,3 mag/″²' }),
+    ).toBeTruthy();
+    await expectNoSeriousA11y();
+    fireEvent.click(clear);
+    expect(screen.getByTestId('where').textContent).toBe(`/auswertung/naechte/${ID(1)}`);
+  });
+
+  it('Nacht ohne Session: „bewölkt erfassen“ bzw. zurücknehmen (Admin); Tabelle auf Wunsch', async () => {
+    state.mark.mockResolvedValue(undefined);
+    state.clear = { ...clearView(), from: '2026-09-01', to: '2026-09-25' };
+    wrap(<SiteStatsPage />, path);
+    fireEvent.click(await screen.findByRole('button', { name: /^16\.\/17\.09\. · keine Angabe/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Als bewölkt erfassen' }));
+    await waitFor(() => expect(state.mark).toHaveBeenCalledWith(ID(600), '2026-09-16', true));
+    fireEvent.click(screen.getByRole('button', { name: /^17\.\/18\.09\. · bewölkt/ }));
+    expect(screen.getByText('Nacht 17./18.09. ist als bewölkt erfasst.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'zurücknehmen' }));
+    await waitFor(() => expect(state.mark).toHaveBeenCalledWith(ID(600), '2026-09-17', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Nächte als Tabelle' }));
+    const table = screen.getByRole('table', { name: 'Nächte' });
+    expect(within(table).getByRole('row', { name: /18\.\/19\.09\./ })).toBeTruthy();
+  });
+
+  it('User: Nächte ohne Session sind nicht anklickbar', async () => {
+    state.me = me('user');
+    state.clear = { ...clearView(), from: '2026-09-01', to: '2026-09-25' };
+    wrap(<SiteStatsPage />, path);
+    await screen.findByRole('button', { name: /^18\.\/19\.09\./ });
+    expect(screen.queryByRole('button', { name: /^16\.\/17\.09\./ })).toBeNull();
+  });
+
+  it('Klassen und Kalendermonate', () => {
+    expect(dayKind(undefined)).toBe('none');
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'session', usable: true, sessionIds: [ID(1)] })),
+    ).toBe('clear');
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'session', usable: false, sessionIds: [ID(1)] })),
+    ).toBe('partial');
+    expect(dayKind(nightRow('2026-09-01', { source: 'manual', usable: false }))).toBe('cloudy');
+    // Klar, aber nicht genutzt (Entscheidung Sven 07.10.2026): Vorhersage gut oder besser, unter 1 h belichtet.
+    expect(
+      dayKind(
+        nightRow('2026-09-01', {
+          source: 'session',
+          usable: false,
+          usableHours: 0.4,
+          sessionIds: [ID(1)],
+          forecastRatingIndex: 3,
+        }),
+      ),
+    ).toBe('clearUnused');
+    expect(dayKind(nightRow('2026-09-01', { sessionIds: [ID(1)], forecastRatingIndex: 4 }))).toBe(
+      'clearUnused',
+    );
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'manual', usable: false, forecastRatingIndex: 4 })),
+    ).toBe('cloudy');
+    expect(
+      dayKind(nightRow('2026-09-01', { source: 'session', usable: false, forecastRatingIndex: 2 })),
+    ).toBe('partial');
+    expect(calendarMonths('2026-07-15', '2026-10-07')).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(calendarMonths('2026-09-08', '2026-10-07')).toEqual(['2026-09', '2026-10']);
+    expect(calendarMonths('2025-11-01', '2026-01-05')).toEqual(['2025-11', '2025-12', '2026-01']);
   });
 });

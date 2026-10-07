@@ -4,7 +4,7 @@
  * Filterwechsel, Plan-Treue gegen den ersten Plan, Gründe mit Anzahl und Dauer.
  */
 import { describe, expect, it } from 'vitest';
-import { sessionKpis, type KpiInput, type KpiLight } from '../src/session-kpis';
+import { sessionEfficiency, sessionKpis, type KpiInput, type KpiLight } from '../src/session-kpis';
 
 const light = (t: string, o: Partial<KpiLight> = {}): KpiLight => ({
   capturedAt: `2026-09-18T${t}:00Z`,
@@ -165,5 +165,31 @@ describe('sessionKpis', () => {
       { reason: 'device_error', count: 1, durationS: null },
       { reason: 'lease_lost', count: 1, durationS: null },
     ]);
+  });
+});
+
+describe('sessionEfficiency (AP-64, Liste der Nächte)', () => {
+  const darkness = { fromUtc: '2026-09-18T02:00:00Z', toUtc: '2026-09-18T10:00:00Z' };
+  it('wie die Kennzahlen: Laufzeit ∩ Dunkelheit, Belichtung / nutzbare Dunkelzeit', () => {
+    expect(
+      sessionEfficiency({
+        startedAt: '2026-09-18T01:00:00Z',
+        endedAt: '2026-09-18T06:00:00Z',
+        darkness,
+        exposureS: 7200,
+      }),
+    ).toEqual({ exposureS: 7200, usableDarkS: 14_400, pct: 50 });
+  });
+  it('läuft noch bzw. ohne Dunkelheit → null; ohne Überschneidung → pct null', () => {
+    const base = { startedAt: '2026-09-18T01:00:00Z', exposureS: 600 };
+    expect(sessionEfficiency({ ...base, endedAt: null, darkness })).toBeNull();
+    expect(
+      sessionEfficiency({ ...base, endedAt: '2026-09-18T06:00:00Z', darkness: null }),
+    ).toBeNull();
+    expect(sessionEfficiency({ ...base, endedAt: '2026-09-18T01:30:00Z', darkness })).toEqual({
+      exposureS: 600,
+      usableDarkS: 0,
+      pct: null,
+    });
   });
 });

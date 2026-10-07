@@ -52,6 +52,26 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
 const pct = (part: number, whole: number) => (whole > 0 ? round1((part / whole) * 100) : null);
 
 /**
+ * Effizienz einer Session ohne Ereignisse und Aufnahmenliste (AP-64, Liste der Nächte): dieselbe Rechnung wie
+ * `sessionKpis` – nutzbare Dunkelzeit = Laufzeit ∩ astronomische Dunkelheit des ersten Plans, Belichtung gespeicherter
+ * Lights. `null`, solange die Session läuft oder ohne Dunkelheit im Plan.
+ */
+export function sessionEfficiency(input: {
+  readonly startedAt: string;
+  readonly endedAt: string | null;
+  readonly darkness: { readonly fromUtc: string | null; readonly toUtc: string | null } | null;
+  readonly exposureS: number;
+}): { exposureS: number; usableDarkS: number; pct: number | null } | null {
+  const from = input.darkness?.fromUtc ?? null;
+  const to = input.darkness?.toUtc ?? null;
+  if (input.endedAt === null || from === null || to === null) return null;
+  const usableDarkS =
+    Math.max(0, Math.min(ms(input.endedAt), ms(to)) - Math.max(ms(input.startedAt), ms(from))) /
+    1000;
+  return { exposureS: input.exposureS, usableDarkS, pct: pct(input.exposureS, usableDarkS) };
+}
+
+/**
  * Dauer gepaarter Ereignisse (Beginn → Ende), in zeitlicher Reihenfolge; ein offenes Paar endet am
  * Sessionende, ohne Sessionende zählt es nicht.
  */

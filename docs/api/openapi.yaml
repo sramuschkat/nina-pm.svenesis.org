@@ -10462,10 +10462,15 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/NightSession"
+            $ref: "#/components/schemas/NightSessionListItem"
+        nextCursor:
+          type:
+            - string
+            - "null"
       required:
         - items
-    NightSession:
+        - nextCursor
+    NightSessionListItem:
       type: object
       properties:
         id:
@@ -10527,6 +10532,32 @@ components:
         unassigned:
           type: integer
           minimum: 0
+        efficiency:
+          $ref: "#/components/schemas/NightSessionEfficiency"
+        weather:
+          type:
+            - object
+            - "null"
+          properties:
+            ratingIndex:
+              type:
+                - integer
+                - "null"
+              minimum: 0
+              maximum: 4
+            nightMean:
+              type:
+                - number
+                - "null"
+              minimum: 0
+              maximum: 1
+          required:
+            - ratingIndex
+            - nightMean
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/NightSessionProject"
       required:
         - id
         - rigId
@@ -10544,6 +10575,120 @@ components:
         - bonusFrames
         - integrationS
         - unassigned
+        - efficiency
+        - weather
+        - projects
+    NightSessionEfficiency:
+      type:
+        - object
+        - "null"
+      properties:
+        exposureS:
+          type: number
+          minimum: 0
+        usableDarkS:
+          type: number
+          minimum: 0
+        pct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+      required:
+        - exposureS
+        - usableDarkS
+        - pct
+    NightSessionProject:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          description: UUID
+        projectName:
+          type: string
+        createdBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: UUID
+        transit:
+          type: boolean
+        frames:
+          type: integer
+          minimum: 0
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              filter:
+                type: string
+              frames:
+                type: integer
+                minimum: 0
+            required:
+              - filter
+              - frames
+      required:
+        - projectId
+        - projectName
+        - createdBy
+        - transit
+        - frames
+        - filters
+    NightSessionSummary:
+      type: object
+      properties:
+        nights:
+          type: integer
+          minimum: 0
+        usableNights:
+          type: integer
+          minimum: 0
+        integrationS:
+          type: number
+          minimum: 0
+        lights:
+          type: integer
+          minimum: 0
+        projects:
+          type: integer
+          minimum: 0
+        efficiencyPct:
+          type:
+            - number
+            - "null"
+          minimum: 0
+        unreviewed:
+          type: integer
+          minimum: 0
+        firstUnreviewed:
+          type:
+            - object
+            - "null"
+          properties:
+            rigId:
+              type: string
+              format: uuid
+              description: UUID
+            night:
+              type: string
+              format: date
+              example: 2026-09-18
+          required:
+            - rigId
+            - night
+      required:
+        - nights
+        - usableNights
+        - integrationS
+        - lights
+        - projects
+        - efficiencyPct
+        - unreviewed
+        - firstUnreviewed
     NightSessionDetail:
       type: object
       properties:
@@ -25982,15 +26127,17 @@ paths:
                 $ref: "#/components/schemas/ProblemDetails"
   /api/web/v1/sessions:
     get:
-      summary: Sessions je Rig und Nacht (neueste zuerst)
+      summary: Sessions je Rig und Nacht (neueste zuerst, seitenweise) mit Effizienz, Wetterbewertung und Projekt-Chips
       tags:
         - sessions
-      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-07, S-60"
+      description: "Aktion: `session.read` · FA-AUS-01, FA-AUS-05, FA-AUS-07, S-60, AP-64"
       x-npm-action: session.read
       x-npm-requirements:
         - FA-AUS-01
+        - FA-AUS-05
         - FA-AUS-07
         - S-60
+        - AP-64
       parameters:
         - schema:
             type: string
@@ -26030,6 +26177,12 @@ paths:
           required: false
           name: limit
           in: query
+        - schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,200}$
+          required: false
+          name: cursor
+          in: query
       responses:
         "200":
           description: Sessions
@@ -26037,6 +26190,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NightSessionList"
+        "401":
+          description: Nicht angemeldet
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: Keine Berechtigung
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+  /api/web/v1/sessions/summary:
+    get:
+      summary: Kennzahlen der Nächte für Rig und Zeitraum (Nächte, nutzbar, Integration, Effizienz, ungeprüft)
+      tags:
+        - sessions
+      description: "Aktion: `session.read` · FA-AUS-05, FA-AUS-07, FA-AUS-17, S-60, AP-64"
+      x-npm-action: session.read
+      x-npm-requirements:
+        - FA-AUS-05
+        - FA-AUS-07
+        - FA-AUS-17
+        - S-60
+        - AP-64
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: UUID
+          required: false
+          description: UUID
+          name: rigId
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date
+            example: 2026-09-18
+          required: false
+          name: to
+          in: query
+      responses:
+        "200":
+          description: Kennzahlen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NightSessionSummary"
         "401":
           description: Nicht angemeldet
           content:

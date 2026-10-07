@@ -671,7 +671,10 @@ export const ninaApi = {
     apiFetch<{ commandIds: string[] }>(`${V1}/rigs/${rigId}/commands`, json('POST', { command })),
 };
 
-export type NightSession = Schemas['NightSession'];
+export type NightSession = Schemas['NightSessionListItem'];
+export type NightSessionListItem = Schemas['NightSessionListItem'];
+export type NightSessionProject = Schemas['NightSessionProject'];
+export type NightSessionSummary = Schemas['NightSessionSummary'];
 export type NightSessionDetail = Schemas['NightSessionDetail'];
 export type NightSessionLineRow = Schemas['NightSessionLineRow'];
 export type NightSessionCapture = Schemas['NightSessionCapture'];
@@ -681,12 +684,37 @@ export type CaptureRejectResult = Schemas['CaptureRejectResult'];
 
 /** Sessions und Auswertung R1 (AP-15, S-60/S-61): Liste, Detail, Korrektur, geprüft, Zuordnung. */
 export const sessionsApi = {
-  list: (query: { rigId?: string; unreviewed?: boolean } = {}) => {
+  /** Nächte seitenweise (AP-64): Zeitraum als Nacht-Schlüssel, Fortsetzung über `cursor`. */
+  list: (
+    query: {
+      rigId?: string;
+      unreviewed?: boolean;
+      from?: string;
+      to?: string;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) => {
     const q = new URLSearchParams();
     if (query.rigId) q.set('rigId', query.rigId);
     if (query.unreviewed) q.set('unreviewed', 'true');
+    if (query.from) q.set('from', query.from);
+    if (query.to) q.set('to', query.to);
+    if (query.limit) q.set('limit', String(query.limit));
+    if (query.cursor) q.set('cursor', query.cursor);
     const s = q.toString();
-    return apiFetch<{ items: NightSession[] }>(`${V1}/sessions${s ? `?${s}` : ''}`);
+    return apiFetch<{ items: NightSessionListItem[]; nextCursor: string | null }>(
+      `${V1}/sessions${s ? `?${s}` : ''}`,
+    );
+  },
+  /** Kennzahlen der Nächte für Rig und Zeitraum (AP-64). */
+  summary: (query: { rigId?: string; from?: string; to?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (query.rigId) q.set('rigId', query.rigId);
+    if (query.from) q.set('from', query.from);
+    if (query.to) q.set('to', query.to);
+    const s = q.toString();
+    return apiFetch<NightSessionSummary>(`${V1}/sessions/summary${s ? `?${s}` : ''}`);
   },
   get: (id: string) => apiFetch<NightSessionDetail>(`${V1}/sessions/${id}`),
   correct: (

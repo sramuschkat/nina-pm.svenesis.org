@@ -1,16 +1,16 @@
 /**
- * S-62 Folgeplanung (FK 14.3; FA-FOL-01…05, FA-FOL-07; FK 8.5; AP-33): je Rig aus der gespeicherten
- * Mehrnacht-Prognose (Job `forecast`, 14 Nächte) – Restbedarf je Filter (Frames, Stunden inkl. Overhead),
- * Prognose als Spanne (optimistisch ohne Wetter, realistisch mit Wetter bzw. Klarnacht-Quote) mit
- * Fertigstellung, Kandidatennächte-Matrix der nächsten 7 Nächte (Nächte × Projekte, Ampel, Wetter mit
- * `coverage`, bestem Fenster, Kennzeichen und Regen), Saisonwarnungen mit Handlungsvorschlägen (Admin:
- * Priorität anheben, pausieren – danach neue Prognose) und Wiederaufnahme unfertiger/pausierter Projekte.
+ * „Nächste Nächte“ auf „Heute Nacht“ (AP-64, Entscheidung 5 vom 07.10.2026; FA-FOL-03…05, FA-FOL-07; FK 8.5): die
+ * vorausschauenden Teile der bisherigen Folgeplanung (S-62) für das gewählte Rig aus der gespeicherten Mehrnacht-Prognose –
+ * Kandidatennächte-Matrix der nächsten 7 Nächte (Nächte × Projekte, Ampel, Wetter mit `coverage`, bestem Fenster,
+ * Kennzeichen und Regen), Saisonwarnungen mit Handlungsvorschlägen (Admin: Priorität anheben, pausieren – danach neue
+ * Prognose) und Wiederaufnahme unfertiger bzw. pausierter Projekte. „Nur für die kommende Nacht“ steht bereits im Plan der
+ * Nacht (`TonightLines`) und wird hier nicht wiederholt. Restbedarf und Prognose zeigt die Auswertung unter „Projekte“.
  */
 import { formatNightKey } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import {
   forecastApi,
   projectsApi,
@@ -19,34 +19,25 @@ import {
   type QueueItem,
 } from '../../api/client';
 import { useAuth, useCan } from '../../auth';
-import { DataTable, type DataColumn } from '../../components/DataTable';
-import { PageHeader } from '../../components/PageHeader';
 import { ProblemMessage } from '../../components/ProblemMessage';
 import { SiteTime } from '../../components/SiteTime';
+import { Person } from '../../lib/member';
 import { useJob } from '../../lib/use-job';
 import { formatDateTime } from '../../lib/time';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
 import { useQueueVisibility, VisibilityBars } from '../projects/VisibilityWeeks';
-import { Person } from '../../lib/member';
-import { TonightLines } from '../tonight/TonightLines';
-import styles from './sessions.module.css';
-import { EvaluationTabs } from './SessionsPage';
+import styles from '../sessions/sessions.module.css';
+import tonight from './tonight.module.css';
 
-export const FORECAST_PATH = '/auswertung/folgeplanung';
-
-export function ForecastPage() {
+export function NextNights({ rigId }: { rigId: string }) {
   const { t } = useTranslation();
-  const rigs = useEquipmentList('rigs');
-  const [choice, setChoice] = useState('');
-  const rigId =
-    choice || (rigs.data ?? []).find((r) => r.showInPlanning)?.id || (rigs.data ?? [])[0]?.id || '';
-  const ids = { rig: useId() };
+  const headingId = useId();
   const client = useQueryClient();
+  const canRun = useCan('simulation.run');
   const forecast = useQuery({
     queryKey: ['forecast', rigId],
     queryFn: () => forecastApi.get(rigId),
-    enabled: rigId !== '',
   });
   const [jobId, setJobId] = useState<string | null>(null);
   const run = useMutation({
@@ -59,43 +50,33 @@ export function ForecastPage() {
     if (done) void client.invalidateQueries({ queryKey: ['forecast', rigId] });
   }, [done, client, rigId]);
   const v = forecast.data;
+  const warned = (v?.projects ?? []).filter((p) => p.suggestions.length > 0);
+  // Umleitung von der alten Folgeplanung (`#naechste-naechte`): nach dem Laden zum Abschnitt springen.
+  const { hash } = useLocation();
+  const loaded = v !== undefined;
+  useEffect(() => {
+    if (loaded && hash === '#naechste-naechte')
+      document.getElementById('naechste-naechte')?.scrollIntoView?.({ block: 'start' });
+  }, [loaded, hash]);
   return (
-    <div className={styles.page}>
-      <PageHeader
-        title={t('forecast.title')}
-        nav={<EvaluationTabs />}
-        actions={
-          rigId ? (
-            <button
-              type="button"
-              className={styles.button}
-              disabled={run.isPending || job.running}
-              onClick={() => run.mutate()}
-            >
-              {job.running ? t('forecast.running') : t('forecast.rerun')}
-            </button>
-          ) : null
-        }
-      />
-      <section className={styles.listCard} aria-label={t('forecast.title')}>
-        <div className={`${styles.toolbar} ${styles.listBar}`}>
-          <div className={styles.field}>
-            <label htmlFor={ids.rig}>{t('forecast.rig')}</label>
-            <select
-              id={ids.rig}
-              className={`${styles.input} ${styles.rigSelect}`}
-              value={rigId}
-              onChange={(e) => setChoice(e.target.value)}
-            >
-              {(rigs.data ?? []).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {v ? <ForecastMeta view={v} /> : null}
-        </div>
+    <section id="naechste-naechte" className={tonight.card} aria-labelledby={headingId}>
+      <div className={tonight.cardHead}>
+        <h2 id={headingId} className={tonight.cardTitle}>
+          {t('tonight.next.title')}
+        </h2>
+        {canRun ? (
+          <button
+            type="button"
+            className={tonight.button}
+            disabled={run.isPending || job.running}
+            onClick={() => run.mutate()}
+          >
+            {job.running ? t('forecast.running') : t('forecast.rerun')}
+          </button>
+        ) : null}
+      </div>
+      <div className={`${tonight.cardBody} ${styles.forecastBody}`}>
+        {v ? <ForecastMeta view={v} /> : null}
         {run.error ? <ProblemMessage code={problemCode(run.error)} /> : null}
         {job.failed ? <ProblemMessage code={job.errorCode ?? 'internal.error'} /> : null}
         {forecast.isError ? (
@@ -104,16 +85,28 @@ export function ForecastPage() {
             onRetry={() => void forecast.refetch()}
           />
         ) : !v ? (
-          <p className={styles.listNote} role="status">
-            {rigId ? t('common.loading') : t('forecast.noRig')}
+          <p className={styles.muted} role="status">
+            {t('common.loading')}
           </p>
         ) : v.computedAt === null ? (
-          <p className={styles.listNote}>{t('forecast.notComputed')}</p>
+          <p className={styles.muted}>{t('forecast.notComputed')}</p>
         ) : (
-          <ForecastBody view={v} rigId={rigId} onChanged={() => run.mutate()} />
+          <>
+            {v.projects.length > 0 ? (
+              <CandidateMatrix view={v} />
+            ) : (
+              <p className={styles.muted}>{t('forecast.noProjects')}</p>
+            )}
+            {warned.length > 0 ? (
+              <Suggestions projects={warned} onChanged={() => run.mutate()} />
+            ) : null}
+            {v.resume.length > 0 ? (
+              <Resume view={v} rigId={rigId} onChanged={() => run.mutate()} />
+            ) : null}
+          </>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -134,107 +127,6 @@ function ForecastMeta({ view }: { view: ForecastView }) {
   );
 }
 
-function ForecastBody({
-  view,
-  rigId,
-  onChanged,
-}: {
-  view: ForecastView;
-  rigId: string;
-  onChanged: () => void;
-}) {
-  const { t, i18n } = useTranslation();
-  const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
-  const estimate = (e: ForecastProject['optimistic']) =>
-    e.nights === null
-      ? t('forecast.estimateNone')
-      : e.completesNight === null
-        ? t('forecast.estimateDone')
-        : t(e.extrapolated ? 'forecast.estimateExtrapolated' : 'forecast.estimate', {
-            nights: e.nights,
-            night: formatNightKey(e.completesNight),
-          });
-  const columns: DataColumn<ForecastProject>[] = [
-    {
-      id: 'name',
-      header: t('forecast.col.project'),
-      sortValue: (p) => p.name,
-      cell: (p) => <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>,
-    },
-    {
-      // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
-      id: 'creator',
-      header: t('sessions.col.creator'),
-      priority: 3,
-      cell: (p) => <Person id={p.createdBy} />,
-    },
-    {
-      id: 'need',
-      header: t('forecast.col.need'),
-      sortValue: (p) => p.needHours,
-      cell: (p) =>
-        p.needFrames === 0 ? (
-          t('forecast.estimateDone')
-        ) : (
-          <span className={styles.flags}>
-            {p.need.map((f) => (
-              <span key={f.filter} className={styles.pill}>
-                {t('forecast.needChip', { filter: f.filter, frames: f.frames, hours: n(f.hours) })}
-              </span>
-            ))}
-          </span>
-        ),
-    },
-    {
-      id: 'optimistic',
-      header: t('forecast.col.optimistic'),
-      sortValue: (p) => p.optimistic.completesNight,
-      priority: 2,
-      cell: (p) => estimate(p.optimistic),
-    },
-    {
-      id: 'realistic',
-      header: t('forecast.col.realistic'),
-      sortValue: (p) => p.realistic.completesNight,
-      cell: (p) => estimate(p.realistic),
-    },
-    {
-      id: 'season',
-      header: t('forecast.col.season'),
-      sortValue: (p) => (p.seasonWarning ? 1 : 0),
-      priority: 2,
-      cell: (p) =>
-        p.seasonWarning ? (
-          <span className={styles.pillWarn}>
-            {p.seasonWarning.achievablePct !== null
-              ? t('forecast.seasonPct', { pct: p.seasonWarning.achievablePct })
-              : t('forecast.seasonShort')}
-          </span>
-        ) : (
-          '–'
-        ),
-    },
-  ];
-  const warned = view.projects.filter((p) => p.suggestions.length > 0);
-  return (
-    <div className={styles.forecastBody}>
-      <h2 className={styles.forecastTitle}>{t('forecast.projects')}</h2>
-      <DataTable
-        columns={columns}
-        rows={view.projects}
-        rowKey={(p) => p.projectId}
-        rowLabel={(p) => p.name}
-        label={t('forecast.projects')}
-        empty={t('forecast.noProjects')}
-      />
-      <CandidateMatrix view={view} />
-      {warned.length > 0 ? <Suggestions projects={warned} onChanged={onChanged} /> : null}
-      <TonightSection view={view} onChanged={onChanged} />
-      {view.resume.length > 0 ? <Resume view={view} rigId={rigId} onChanged={onChanged} /> : null}
-    </div>
-  );
-}
-
 /** Kandidatennächte (FA-FOL-03): Nächte × Projekte mit Ampel, Nutzen und Wetter der Nacht. */
 function CandidateMatrix({ view }: { view: ForecastView }) {
   const { t, i18n } = useTranslation();
@@ -242,7 +134,7 @@ function CandidateMatrix({ view }: { view: ForecastView }) {
   const nights = view.nights.slice(0, 7);
   return (
     <>
-      <h2 className={styles.forecastTitle}>{t('forecast.candidates')}</h2>
+      <h3 className={styles.forecastTitle}>{t('forecast.candidates')}</h3>
       <p className={styles.muted}>{t('forecast.candidatesHint')}</p>
       <div className={styles.matrixWrap}>
         <table className={styles.matrix}>
@@ -264,7 +156,7 @@ function CandidateMatrix({ view }: { view: ForecastView }) {
                 <th scope="row">
                   <span className={styles.projectWithCreator}>
                     {p.name}
-                    <Person id={p.createdBy} />
+                    <Person id={p.createdBy} compact />
                   </span>
                 </th>
                 {nights.map((x) => {
@@ -338,44 +230,6 @@ function NightWeatherCell({ night, tz }: { night: ForecastView['nights'][number]
   );
 }
 
-/**
- * Zeilen nur für die kommende Nacht ab- bzw. wieder einschalten (FA-FOL-05, Admin) – Nacht ist die aktuelle
- * Nacht des Standorts; danach neue Prognose.
- */
-function TonightSection({ view, onChanged }: { view: ForecastView; onChanged: () => void }) {
-  const { t } = useTranslation();
-  const canAct = useCan('project.status');
-  const filters = useEquipmentList('filters');
-  const colorOf = (short: string) =>
-    (filters.data ?? []).find((f) => f.shortName === short)?.colorHex ?? '#888888';
-  const projects = view.projects.filter((p) => p.lines.length > 0);
-  if (!canAct || projects.length === 0) return null;
-  return (
-    <>
-      <h2 className={styles.forecastTitle}>{t('forecast.tonightLines')}</h2>
-      <p className={styles.muted}>
-        {t('forecast.tonightLinesHint', { night: formatNightKey(view.currentNight) })}
-      </p>
-      <ul className={styles.plainList}>
-        {projects.map((p) => (
-          <li key={p.projectId} className={styles.suggestion}>
-            <span className={styles.projectWithCreator}>
-              <strong>{p.name}</strong>
-              <Person id={p.createdBy} />
-            </span>
-            <TonightLines
-              projectId={p.projectId}
-              lines={p.lines}
-              colorOf={colorOf}
-              onChanged={onChanged}
-            />
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
 /** Saisonwarnungen und Handlungsvorschläge (FA-FOL-04/05); Ein-Klick nur für Admins. */
 function Suggestions({
   projects,
@@ -401,13 +255,13 @@ function Suggestions({
   });
   return (
     <>
-      <h2 className={styles.forecastTitle}>{t('forecast.suggestions')}</h2>
+      <h3 className={styles.forecastTitle}>{t('forecast.suggestions')}</h3>
       <ul className={styles.plainList}>
         {projects.map((p) => (
           <li key={p.projectId} className={styles.suggestion}>
             <span className={styles.projectWithCreator}>
               <strong>{p.name}</strong>
-              <Person id={p.createdBy} />
+              <Person id={p.createdBy} compact />
             </span>{' '}
             <span className={styles.muted}>
               {p.seasonWarning
@@ -485,7 +339,7 @@ function Resume({
   });
   return (
     <>
-      <h2 className={styles.forecastTitle}>{t('forecast.resume')}</h2>
+      <h3 className={styles.forecastTitle}>{t('forecast.resume')}</h3>
       <p className={styles.muted}>{t('forecast.resumeHint')}</p>
       <ul className={styles.plainList}>
         {view.resume.map((r, i) => {
@@ -494,7 +348,7 @@ function Resume({
             <li key={r.projectId} className={styles.suggestion}>
               <span className={styles.projectWithCreator}>
                 <Link to={`/projekte/${r.projectId}`}>{r.name}</Link>
-                <Person id={r.createdBy} />
+                <Person id={r.createdBy} compact />
               </span>{' '}
               <span className={styles.muted}>
                 {t('forecast.resumeLine', {

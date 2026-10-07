@@ -11,7 +11,8 @@
  * 4. direkt darunter eingeklappt: „Nachtwetter im Detail“ (Stundentabelle Astro-Wetter) und die Sichtbarkeit
  *    von Mond & Planeten (28.09.2026),
  * 5. zwei Spalten: links der Plan (geplante Projekte aus der Prognose, „nur heute aus“, Safety-Link),
- *    rechts „Ereignisse der Nacht“.
+ *    rechts „Ereignisse der Nacht“,
+ * 6. „Nächste Nächte“ (AP-64, aus der Folgeplanung S-62): Kandidatennächte, Saisonwarnungen, Wiederaufnahme.
  * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
 import {
@@ -45,6 +46,7 @@ import { CommentCount } from '../../components/CommentCount';
 import { useCommentCounts } from '../../lib/use-comment-counts';
 import styles from './tonight.module.css';
 import { MoonCalendar } from './MoonCalendar';
+import { NextNights } from './NextNights';
 import { TonightLines } from './TonightLines';
 import { KpiTiles, TonightTimeline, Verdict } from './TonightOverview';
 import { Person } from '../../lib/member';
@@ -215,6 +217,8 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
         <RigCard rig={rig} colorOf={colorOf} plan={plan} timeZone={site.timeZone} />
         <SkyEvents site={site} sky={sky} />
       </div>
+      {/* Nächste Nächte (AP-64, Entscheidung 5): Kandidatennächte, Saisonwarnungen, Wiederaufnahme. */}
+      <NextNights rigId={rig.rigId} />
     </>
   );
 }
@@ -417,7 +421,7 @@ function RigCard({
       id: 'creator',
       header: t('tonight.col.creator'),
       priority: 3,
-      cell: (p) => <Person id={p.createdBy || null} />,
+      cell: (p) => <Person id={p.createdBy || null} compact />,
     },
     {
       id: 'frames',

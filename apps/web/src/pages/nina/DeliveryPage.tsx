@@ -304,7 +304,7 @@ function DeliveryCard({ card }: { card: Card }) {
         ) : null}
         <span>{t('nina.delivery.rigName', { name: rig.rigName })}</span>
         <span className={styles.creator}>
-          {t('nina.delivery.creator')} <Person id={item.createdBy} />
+          {t('nina.delivery.creator')} <Person id={item.createdBy} compact />
         </span>
         <span>
           {t('nina.delivery.updated', { at: formatDateTime(item.updatedAt, zone, i18n.language) })}

@@ -38,7 +38,9 @@ import { problemCode, useEquipmentList, useNumber } from '../equipment/shared';
 import { NO_RIG, groupByRig } from '../projects/list-model';
 import { PROJECT_AREA } from '../projects/ProjectsLayout';
 import { nightKeyIn } from '../projects/queue-model';
-import { SESSIONS_PATH, hours as sessionHours } from '../sessions/SessionsPage';
+import { EVALUATION_PATHS, sessionPath } from '../sessions/evaluation';
+
+const sessionHours = (s: number) => (s / 3600).toFixed(1);
 import { WEATHER_PATH } from '../weather/model';
 import { SiteWeather } from '../weather/SiteWeather';
 import { useNow, weatherKey } from '../weather/WeatherPage';
@@ -546,7 +548,7 @@ function ProjectsCard() {
       id: 'creator',
       header: t('projectList.col.creator'),
       priority: 3,
-      cell: (p) => <Person id={p.createdBy} name={p.createdByName} />,
+      cell: (p) => <Person id={p.createdBy} name={p.createdByName} compact />,
     },
     {
       id: 'progress',
@@ -638,7 +640,7 @@ function SessionsCard() {
       id: 'night',
       header: t('sessions.col.night'),
       nowrap: true,
-      cell: (s) => <Link to={`${SESSIONS_PATH}/${s.id}`}>{formatNightKey(s.night)}</Link>,
+      cell: (s) => <Link to={sessionPath(s.id)}>{formatNightKey(s.night)}</Link>,
     },
     { id: 'rig', header: t('sessions.col.rig'), priority: 2, cell: (s) => s.rigName },
     {
@@ -656,7 +658,11 @@ function SessionsCard() {
     },
   ];
   return (
-    <Card title={t('home.sessions.title')} to={SESSIONS_PATH} more={t('home.sessions.more')}>
+    <Card
+      title={t('home.sessions.title')}
+      to={EVALUATION_PATHS.nights}
+      more={t('home.sessions.more')}
+    >
       {list.isError || list.isPending || latest.length === 0 ? (
         <div className={styles.cardBody}>
           {list.isError ? (

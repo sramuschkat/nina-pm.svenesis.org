@@ -11,7 +11,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { Me } from '../../api/client';
 import { AuthProvider } from '../../auth';
 import { Person } from '../../lib/member';
-import { MemberName } from '.';
+import { compactName, MemberName } from '.';
 
 const state = vi.hoisted(() => ({ me: null as unknown, directory: vi.fn() }));
 vi.mock('../../api/client', () => ({
@@ -58,6 +58,38 @@ describe('MemberName (Baustein)', () => {
     rerender(<MemberName name="Max" />);
     expect(screen.getByText('Max')).toBeInTheDocument();
     expect(container.querySelector('img')).toBeNull();
+  });
+});
+
+describe('MemberName compact (AP-64): Kürzung ab mehr als 10 Zeichen', () => {
+  it('10 Zeichen bleiben, 11 Zeichen werden auf 10 + „…“ gekürzt', () => {
+    expect(compactName('Maximilian')).toBe('Maximilian');
+    expect(compactName('Maximiliane')).toBe('Maximilian…');
+    expect(compactName('Maximilian Mustermann')).toBe('Maximilian…');
+    expect(compactName('SvenR')).toBe('SvenR');
+  });
+
+  it('Umlaute zählen als ein Zeichen – auch zerlegt geschrieben', () => {
+    expect(compactName('Jürgen Müll')).toBe('Jürgen Mül…');
+    expect(compactName('Jürgen Mül')).toBe('Jürgen Mül');
+    const decomposed = 'Ju\u0308rgen Mu\u0308l';
+    expect(compactName(decomposed)).toBe(decomposed);
+    expect(compactName(`${decomposed}x`)).toBe(`${decomposed}…`);
+  });
+
+  it('gekürzt: voller Name als Tooltip und aria-label; ungekürzt ohne; axe', async () => {
+    const { container } = render(
+      <>
+        <MemberName name="Maximilian Mustermann" compact />
+        <MemberName name="SvenR" compact />
+      </>,
+    );
+    const cut = screen.getByRole('img', { name: 'Maximilian Mustermann' });
+    expect(cut).toHaveAttribute('title', 'Maximilian Mustermann');
+    expect(cut.textContent).toBe('Maximilian…');
+    expect(screen.getByText('SvenR').closest('[title]')).toBeNull();
+    expect(container.querySelectorAll('[aria-label]')).toHaveLength(1);
+    await expectNoSeriousA11y();
   });
 });
 

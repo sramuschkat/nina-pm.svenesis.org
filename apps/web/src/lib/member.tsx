@@ -34,10 +34,13 @@ export function Person({
   id,
   name,
   size,
+  compact,
 }: {
   id?: string | null;
   name?: string | null;
   size?: 'sm' | 'md';
+  /** Kurzform neben Projektnamen (AP-64): mehr als 10 Zeichen → 10 Zeichen + „…“, voller Name im Tooltip. */
+  compact?: boolean;
 }) {
   const directory = useMemberDirectory();
   const entry = id ? directory.get(id) : undefined;
@@ -46,6 +49,7 @@ export function Person({
       name={name || entry?.displayName || '–'}
       avatarUrl={entry?.avatarUrl ?? null}
       {...(size ? { size } : {})}
+      {...(compact ? { compact } : {})}
     />
   );
 }

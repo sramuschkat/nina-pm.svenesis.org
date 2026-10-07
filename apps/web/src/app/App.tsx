@@ -14,7 +14,7 @@ import { Shell } from '../layout/Shell';
 import { InvitationPage, LoginPage, NoAccessPage, SelectTenantPage } from '../pages/auth';
 import { CATALOG_PATH } from '../pages/catalog/model';
 import { HomePage } from '../pages/home/HomePage';
-import { TonightPage } from '../pages/tonight/TonightPage';
+import { TONIGHT_PATH, TonightPage } from '../pages/tonight/TonightPage';
 import { NotFoundPage, PrivacyPage, SourcesPage } from '../pages/other';
 import { ADMIN_PATHS } from '../pages/admin/AdminLayout';
 import { ChangeLogPage } from '../pages/admin/ChangeLogPage';
@@ -40,11 +40,12 @@ import { DeliveryPage } from '../pages/nina/DeliveryPage';
 import { SequencerHelpPage } from '../pages/nina/SequencerHelpPage';
 import { InstancesPage } from '../pages/nina/InstancesPage';
 import { NINA_PATHS, NinaLayout } from '../pages/nina/NinaLayout';
-import { ClearNightsPage } from '../pages/sessions/ClearNightsPage';
-import { ForecastPage } from '../pages/sessions/ForecastPage';
-import { ProjectReportPage } from '../pages/sessions/ProjectReportPage';
-import { SessionDetailPage } from '../pages/sessions/SessionDetailPage';
-import { SESSIONS_PATH, SessionsPage } from '../pages/sessions/SessionsPage';
+import { EVALUATION_PATHS } from '../pages/sessions/evaluation';
+import { NightPage } from '../pages/sessions/NightPage';
+import { NightsPage } from '../pages/sessions/NightsPage';
+import { ProjectsPage as EvaluationProjectsPage } from '../pages/sessions/ProjectsPage';
+import { LegacyRedirect, SessionRedirect } from '../pages/sessions/redirects';
+import { SiteStatsPage } from '../pages/sessions/SiteStatsPage';
 import { SimulatorPage } from '../pages/simulator/SimulatorPage';
 import { ObjectBrowserPage } from '../pages/catalog/ObjectBrowserPage';
 import { SkyMapPage } from '../pages/planning/SkyMapPage';
@@ -211,12 +212,27 @@ export function createRouter() {
               path: 'auswertung',
               element: <RequireAction action="session.read" />,
               children: [
-                { index: true, element: <Navigate to={SESSIONS_PATH} replace /> },
-                { path: 'sessions', element: <SessionsPage /> },
-                { path: 'sessions/:id', element: <SessionDetailPage /> },
-                { path: 'folgeplanung', element: <ForecastPage /> },
-                { path: 'projektbericht', element: <ProjectReportPage /> },
-                { path: 'klarnacht', element: <ClearNightsPage /> },
+                { index: true, element: <Navigate to={EVALUATION_PATHS.nights} replace /> },
+                // AP-64: Nächte | Projekte | Standort-Statistik; alte Pfade leiten um (Suche bleibt erhalten).
+                { path: 'naechte', element: <NightsPage /> },
+                { path: 'naechte/:id', element: <SessionRedirect /> },
+                { path: 'naechte/:rigId/:night', element: <NightPage /> },
+                { path: 'projekte', element: <EvaluationProjectsPage /> },
+                { path: 'standort', element: <SiteStatsPage /> },
+                { path: 'sessions', element: <LegacyRedirect to={EVALUATION_PATHS.nights} /> },
+                {
+                  path: 'sessions/:id',
+                  element: <LegacyRedirect to={EVALUATION_PATHS.nights} withId />,
+                },
+                {
+                  path: 'projektbericht',
+                  element: <LegacyRedirect to={EVALUATION_PATHS.projects} />,
+                },
+                { path: 'klarnacht', element: <LegacyRedirect to={EVALUATION_PATHS.site} /> },
+                {
+                  path: 'folgeplanung',
+                  element: <LegacyRedirect to={`${TONIGHT_PATH}#naechste-naechte`} />,
+                },
               ],
             },
             { path: 'einstellungen', element: <PersonalSettingsPage /> },

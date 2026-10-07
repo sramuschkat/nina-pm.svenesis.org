@@ -1,68 +1,133 @@
 // @vitest-environment jsdom
 /**
- * AP-15: S-60 Sessions (Liste, Filter, Standortzeit mit Kürzel) und S-61 Detail (Soll/Ist, Korrektur mit
- * Untergrenze und Rückkehr nach *Aktiv*, Aufnahmen mit beiden Kennzeichen und Filter, Zuordnen, Ereignisse,
- * Flats, *Als geprüft* nur Admin); axe.
+ * AP-64 (vorher AP-15/AP-31): Auswertung – Nächte (S-60: Kennzahlen, Karten mit Effizienz, Projekt-Chips mit Ersteller,
+ * Filter in der Adresse, „Nur ungeprüfte“, seitenweise) und Nacht (S-61: drei Reiter, Prüf-Banner mit Prüfliste und
+ * „Als geprüft markieren“, Kennzahlen, Ergebnis je Projekt mit Details/Korrektur, Aufnahmen mit Typ-Chips, ⋯-Menü
+ * zum Verwerfen und Zuordnen, CSV, Verlauf & Notizen; Rechte Admin/User); axe.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { expectNoSeriousA11y } from '../../../test/setup';
-import type { Me, NightSession, NightSessionDetail } from '../../api/client';
+import type { Me, NightSessionDetail, NightSessionListItem } from '../../api/client';
 import { AuthProvider } from '../../auth';
-import { SessionDetailPage } from './SessionDetailPage';
-import { SessionsPage } from './SessionsPage';
+import { NightPage } from './NightPage';
+import { NightsPage } from './NightsPage';
 
 const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const state = vi.hoisted(() => ({
   me: null as unknown,
-  list: [] as unknown[],
+  pages: [] as { items: unknown[]; nextCursor: string | null }[],
   detail: null as unknown,
-  listCalls: [] as unknown[],
+  details: [] as unknown[],
+  night: [] as unknown[],
+  listCalls: [] as Record<string, unknown>[],
+  summaryCalls: [] as unknown[],
+  gaps: null as unknown,
   correct: vi.fn(),
   review: vi.fn(),
   assign: vi.fn(),
   reject: vi.fn(),
 }));
 
+vi.mock('./night-actual', () => ({
+  useNightActual: () => ({
+    chart: null,
+    gaps: state.gaps,
+    isPending: false,
+    isError: false,
+  }),
+}));
+
 vi.mock('../../api/client', () => ({
   api: { me: () => Promise.resolve(state.me) },
-  // Mitgliederverzeichnis: Ersteller neben dem Projektnamen (01.10.2026).
   memberApi: {
     directory: () =>
       Promise.resolve({
         items: [
-          {
-            id: '00000000-0000-4000-8000-000000000003',
-            displayName: 'Uta',
-            avatarUrl: null,
-            status: 'active',
-          },
-          {
-            id: '00000000-0000-4000-8000-000000000092',
-            displayName: 'Uta',
-            avatarUrl: null,
-            status: 'active',
-          },
+          { id: ID(3), displayName: 'Maximilian Mustermann', avatarUrl: null, status: 'active' },
+          { id: ID(92), displayName: 'Uta', avatarUrl: null, status: 'active' },
         ],
       }),
   },
   equipmentApi: {
-    list: () => Promise.resolve({ items: [{ id: ID(500), name: 'Rig A' }] }),
+    list: (kind: string) =>
+      Promise.resolve({
+        items:
+          kind === 'rigs'
+            ? [{ id: ID(500), name: 'Rig A', siteId: ID(600) }]
+            : kind === 'filters'
+              ? [{ id: ID(700), shortName: 'Ha', colorHex: '#b71c1c' }]
+              : kind === 'sites'
+                ? [{ id: ID(600), name: 'Starfront', timeZone: 'America/Chicago' }]
+                : [],
+      }),
   },
   sessionsApi: {
-    list: (q: unknown) => {
+    list: (q: Record<string, unknown>) => {
+      // Nacht-Seite: Sessions einer Nacht (rigId, from = to = Nacht).
+      if (q.from && q.from === q.to && q.limit === 50)
+        return Promise.resolve({ items: state.night, nextCursor: null });
       state.listCalls.push(q);
-      return Promise.resolve({ items: state.list });
+      const page = q.cursor ? state.pages[1] : state.pages[0];
+      return Promise.resolve(page ?? { items: [], nextCursor: null });
     },
-    get: () => Promise.resolve(state.detail),
+    summary: (q: unknown) => {
+      state.summaryCalls.push(q);
+      return Promise.resolve({
+        nights: 12,
+        usableNights: 9,
+        integrationS: 148_680,
+        lights: 1284,
+        projects: 4,
+        efficiencyPct: 81,
+        unreviewed: 3,
+        firstUnreviewed: { rigId: ID(500), night: '2026-09-17' },
+      });
+    },
+    get: (id: string) =>
+      Promise.resolve(
+        (state.details as { session: { id: string } }[]).find((d) => d.session.id === id) ??
+          state.detail,
+      ),
     correct: (...a: unknown[]) => state.correct(...a) as Promise<unknown>,
     review: (...a: unknown[]) => state.review(...a) as Promise<unknown>,
     assign: (...a: unknown[]) => state.assign(...a) as Promise<unknown>,
     reject: (...a: unknown[]) => state.reject(...a) as Promise<unknown>,
   },
+  sessionLogApi: {
+    clearNights: () =>
+      Promise.resolve({
+        siteId: ID(600),
+        siteName: 'Starfront',
+        timeZone: 'America/Chicago',
+        from: '2026-08-19',
+        to: '2026-09-17',
+        months: [],
+        nights: [
+          {
+            night: '2026-09-15',
+            source: 'manual',
+            usable: false,
+            usableHours: 0,
+            sessionIds: [],
+            forecastRatingIndex: null,
+            forecastNightMean: null,
+            seeingArcsec: null,
+            sqm: null,
+            transparencyPct: null,
+            forecastTransparencyPct: null,
+            rejectedPct: null,
+          },
+        ],
+        accuracy: { hits: 0, compared: 0, hitPct: null },
+      }),
+    // Protokoll lädt im Test nicht (der Reiter zeigt nur die Ereignisse).
+    get: () => new Promise(() => undefined),
+  },
+  discordApi: { resendReport: vi.fn() },
 }));
 
 const me = (role: 'owner' | 'user'): Me => ({
@@ -87,7 +152,7 @@ const me = (role: 'owner' | 'user'): Me => ({
   memberships: [{ tenantKey: 'demo', tenantName: 'Demo', role }],
 });
 
-const session = (over: Partial<NightSession> = {}): NightSession => ({
+const session = (over: Partial<NightSessionListItem> = {}): NightSessionListItem => ({
   id: ID(1),
   rigId: ID(500),
   rigName: 'Rig A',
@@ -104,6 +169,26 @@ const session = (over: Partial<NightSession> = {}): NightSession => ({
   bonusFrames: 0,
   integrationS: 4800,
   unassigned: 1,
+  efficiency: { exposureS: 29_520, usableDarkS: 34_560, pct: 85.4 },
+  weather: { ratingIndex: 3, nightMean: 0.89 },
+  projects: [
+    {
+      projectId: ID(10),
+      projectName: 'NGC 281',
+      createdBy: ID(3),
+      transit: false,
+      frames: 16,
+      filters: [{ filter: 'Ha', frames: 16 }],
+    },
+    {
+      projectId: ID(11),
+      projectName: 'WASP-3b',
+      createdBy: ID(92),
+      transit: true,
+      frames: 558,
+      filters: [{ filter: 'RED', frames: 558 }],
+    },
+  ],
   ...over,
 });
 
@@ -186,10 +271,42 @@ const detail = (): NightSessionDetail => ({
       hfr: null,
       stars: null,
     },
+    {
+      id: ID(32),
+      capturedAt: '2026-09-18T10:40:00Z',
+      frameType: 'flat',
+      projectId: null,
+      projectName: null,
+      projectCreatedBy: null,
+      exposureLineId: null,
+      assignment: 'assigned',
+      filterShortName: 'Ha',
+      filterActual: null,
+      exposureS: 2.4,
+      gain: null,
+      offset: null,
+      binning: 1,
+      result: 'saved',
+      isBonus: false,
+      temperatureDeviation: false,
+      settingsDeviation: false,
+      rejected: false,
+      rejectReason: null,
+      fileName: null,
+      hfr: null,
+      stars: null,
+    },
   ],
   capturesTruncated: false,
   events: [
     { id: ID(40), occurredAt: '2026-09-18T04:33:00Z', kind: 'flip', message: null, durationS: 180 },
+    {
+      id: ID(41),
+      occurredAt: '2026-09-18T05:00:00Z',
+      kind: 'af',
+      message: 'HFR 2,1',
+      durationS: 90,
+    },
   ],
   flats: [
     {
@@ -230,6 +347,11 @@ const detail = (): NightSessionDetail => ({
   ],
 });
 
+function Where() {
+  const l = useLocation();
+  return <output data-testid="where">{`${l.pathname}${l.search}`}</output>;
+}
+
 const renderAt = (path: string) =>
   render(
     <QueryClientProvider
@@ -238,9 +360,10 @@ const renderAt = (path: string) =>
       <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
           <Routes>
-            <Route path="/auswertung/sessions" element={<SessionsPage />} />
-            <Route path="/auswertung/sessions/:id" element={<SessionDetailPage />} />
+            <Route path="/auswertung/naechte" element={<NightsPage />} />
+            <Route path="/auswertung/naechte/:rigId/:night" element={<NightPage />} />
           </Routes>
+          <Where />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -248,73 +371,172 @@ const renderAt = (path: string) =>
 
 beforeEach(() => {
   state.me = me('owner');
-  state.list = [
-    session(),
-    session({ id: ID(2), night: '2026-09-16', reviewed: true, unassigned: 0 }),
+  state.pages = [
+    {
+      items: [
+        session(),
+        session({ id: ID(2), night: '2026-09-16', reviewed: true, unassigned: 0, projects: [] }),
+      ],
+      nextCursor: 'bmV4dA',
+    },
+    { items: [session({ id: ID(3), night: '2026-09-14', reviewed: true })], nextCursor: null },
   ];
   state.detail = detail();
+  state.details = [];
+  state.night = [session()];
+  state.gaps = [
+    {
+      fromUtc: Date.parse('2026-09-18T08:22:00Z') / 1000,
+      toUtc: Date.parse('2026-09-18T08:43:00Z') / 1000,
+      kind: 'idle',
+    },
+  ];
   state.listCalls = [];
+  state.summaryCalls = [];
   for (const fn of [state.correct, state.review, state.assign, state.reject]) fn.mockReset();
 });
 
-describe('S-60 Sessions', () => {
-  it('Liste mit Doppeldatum, Status, Standortzeit mit Kürzel, Frames, Integration; Filter; axe', async () => {
-    renderAt('/auswertung/sessions');
-    const link = await screen.findByRole('link', { name: '17./18.09.' });
-    expect(link.getAttribute('href')).toBe(`/auswertung/sessions/${ID(1)}`);
-    expect(screen.getAllByText('21:09 CDT').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('1.3 h').length).toBeGreaterThan(0);
-    expect(screen.getByText('ungeprüft')).toBeTruthy();
-    fireEvent.click(screen.getByLabelText('Nur ungeprüfte'));
-    await waitFor(() => expect(state.listCalls.at(-1)).toMatchObject({ unreviewed: true }));
+describe('S-60 Nächte (AP-64)', () => {
+  it('Kennzahlen, Karten mit Effizienz, Wetter und Projekt-Chips (Ersteller gekürzt, Transit als Serie); axe', async () => {
+    // Eine Seite: graue Nächte auch älter als die letzte Session-Nacht.
+    state.pages = [{ ...(state.pages[0] as (typeof state.pages)[number]), nextCursor: null }];
+    renderAt('/auswertung/naechte');
+    const card = await screen.findByRole('article', { name: 'Nacht 17./18.09. · Rig A' });
+    expect(within(card).getByText('Do 17./18.09.')).toBeTruthy();
+    expect(within(card).getByText('8,2 von 9,6 h · 85 %')).toBeTruthy();
+    expect(within(card).getByText('Gut · 89 %')).toBeTruthy();
+    // Ersteller mit mehr als 10 Zeichen gekürzt, voller Name als zugänglicher Name.
+    expect(await within(card).findByRole('img', { name: 'Maximilian Mustermann' })).toBeTruthy();
+    expect(within(card).getByText('Maximilian…')).toBeTruthy();
+    expect(within(card).getByText('· Ha 16')).toBeTruthy();
+    expect(within(card).getByText('· Transit · RED 558')).toBeTruthy();
+    expect(within(card).getByText('ungeprüft')).toBeTruthy();
+    expect(
+      within(card).getByRole('link', { name: 'Nacht 17./18.09. · Rig A öffnen' }),
+    ).toHaveAttribute('href', `/auswertung/naechte/${ID(500)}/2026-09-17`);
+    const kpis = screen.getByRole('region', { name: 'Kennzahlen' });
+    expect(within(kpis).getByText('12')).toBeTruthy();
+    expect(within(kpis).getByText('davon 9 nutzbar (≥ 1 h belichtet)')).toBeTruthy();
+    expect(within(kpis).getByText('41,3 h')).toBeTruthy();
+    expect(within(kpis).getByRole('link', { name: /Ungeprüft/ })).toHaveAttribute(
+      'href',
+      `/auswertung/naechte/${ID(500)}/2026-09-17`,
+    );
+    // Graue Nacht ohne Session (bewölkt erfasst, Standort des einzigen Standorts).
+    expect(
+      await screen.findByRole('article', { name: 'Nacht 15./16.09. – bewölkt erfasst' }),
+    ).toBeTruthy();
     await expectNoSeriousA11y();
   });
 
-  it('Sortierung per Spaltenkopf (AP-26a): Klick auf „Nacht“ sortiert auf- und absteigend', async () => {
-    state.list = [
-      session({ id: ID(1), night: '2026-09-17' }),
-      session({ id: ID(2), night: '2026-09-15' }),
-      session({ id: ID(3), night: '2026-09-16' }),
-    ];
-    renderAt('/auswertung/sessions');
-    await screen.findByRole('link', { name: '17./18.09.' });
-    const head = screen.getByRole('columnheader', { name: /Nacht/ });
-    const order = () =>
-      within(screen.getByRole('table'))
-        .getAllByRole('link')
-        .map((l) => l.textContent);
-    expect(order()).toEqual(['17./18.09.', '15./16.09.', '16./17.09.']);
-    fireEvent.click(within(head).getByRole('button'));
-    expect(order()).toEqual(['15./16.09.', '16./17.09.', '17./18.09.']);
-    fireEvent.click(within(head).getByRole('button'));
-    expect(order()).toEqual(['17./18.09.', '16./17.09.', '15./16.09.']);
-    expect(head).toHaveAttribute('aria-sort', 'descending');
+  it('Filter in der Adresse: Rig und Zeitraum gehen in Liste und Kennzahlen; „Nur ungeprüfte“; weitere Seite', async () => {
+    renderAt(`/auswertung/naechte?rig=${ID(500)}&zeitraum=frei&von=2026-09-01&bis=2026-09-20`);
+    await screen.findByRole('article', { name: 'Nacht 17./18.09. · Rig A' });
+    expect(state.listCalls[0]).toMatchObject({
+      rigId: ID(500),
+      from: '2026-09-01',
+      to: '2026-09-20',
+      unreviewed: false,
+      limit: 30,
+    });
+    expect(state.summaryCalls[0]).toEqual({ rigId: ID(500), from: '2026-09-01', to: '2026-09-20' });
+    // Link ins Detail trägt den Filter mit (Zurück führt dorthin).
+    expect(
+      screen.getByRole('link', { name: 'Nacht 17./18.09. · Rig A öffnen' }).getAttribute('href'),
+    ).toBe(
+      `/auswertung/naechte/${ID(500)}/2026-09-17?rig=${ID(500)}&zeitraum=frei&von=2026-09-01&bis=2026-09-20`,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Nächte laden' }));
+    expect(await screen.findByRole('article', { name: 'Nacht 14./15.09. · Rig A' })).toBeTruthy();
+    expect(state.listCalls.at(-1)).toMatchObject({ cursor: 'bmV4dA' });
+    fireEvent.click(screen.getByRole('button', { name: 'Nur ungeprüfte' }));
+    await waitFor(() => expect(state.listCalls.at(-1)).toMatchObject({ unreviewed: true }));
+    expect(screen.getByTestId('where').textContent).toContain('ungeprueft=1');
+    // Zeitraum wechseln: Rig bleibt, Zeitraum in der Adresse.
+    fireEvent.change(screen.getByLabelText('Zeitraum'), { target: { value: '90' } });
+    expect(screen.getByTestId('where').textContent).toContain(`rig=${ID(500)}&zeitraum=90`);
   });
 
   it('leere Liste zeigt den Hinweis', async () => {
-    state.list = [];
-    renderAt('/auswertung/sessions');
-    expect(await screen.findByText('Noch keine Sessions.')).toBeTruthy();
+    state.pages = [{ items: [], nextCursor: null }];
+    renderAt(`/auswertung/naechte?rig=${ID(999)}`);
+    expect(await screen.findByText('Keine Nächte mit Session im Zeitraum.')).toBeTruthy();
   });
 });
 
-describe('S-61 Session-Detail', () => {
-  it('Soll/Ist je Zeile; Korrektur mit Untergrenze; Rückkehr nach Aktiv; axe', async () => {
-    state.correct.mockResolvedValue({ rejectedCount: 2, projectStatus: 'active' });
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    expect(await screen.findByRole('heading', { name: '17./18.09. · Rig A' })).toBeTruthy();
-    const table = screen.getByRole('table', { name: 'Soll/Ist' });
-    const row = within(table).getByRole('row', { name: /NGC 281/ });
-    await within(row).findByText('Uta');
+describe('S-61 Nacht (AP-64)', () => {
+  it('Übersicht: Prüf-Banner mit Prüfliste, Kennzahlen, Ergebnis je Projekt; als geprüft markieren; axe', async () => {
+    state.review.mockResolvedValue(undefined);
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17?rig=${ID(500)}`);
     expect(
-      within(row)
-        .getAllByRole('cell')
-        .map((c) => c.textContent),
-    ).toEqual(['NGC 281', 'Uta', 'Ha', '17', '16', '1', '15', '1.3 h', '0', '0', 'Korrektur']);
-    fireEvent.click(within(row).getByRole('button', { name: 'Korrektur' }));
+      await screen.findByRole('heading', { level: 1, name: 'Do 17./18.09. · Rig A' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: '← Nächte' })).toHaveAttribute(
+      'href',
+      `/auswertung/naechte?rig=${ID(500)}`,
+    );
+    expect(screen.getAllByRole('tab').map((x) => x.textContent)).toEqual([
+      'Übersicht',
+      'Aufnahmen3',
+      'Verlauf & Notizen',
+    ]);
+    const banner = screen.getByRole('region', { name: 'Nacht prüfen · offen: 3' });
+    expect(within(banner).getByText('Aufnahmen ohne Zuordnung: 1')).toBeTruthy();
+    expect(within(banner).getByText('NGC 281 · Ha 16 von 17 geplant')).toBeTruthy();
+    expect(within(banner).getByText('21 min Leerlauf (03:22–03:43)')).toBeTruthy();
+    const facts = screen.getByRole('region', { name: 'Kennzahlen der Nacht' });
+    expect(within(facts).getByText('8 h')).toBeTruthy();
+    expect(within(facts).getByText('1,3 h · 19 %')).toBeTruthy();
+    expect(within(facts).getByText('1 · 0')).toBeTruthy();
+    expect(within(facts).getByText('21 min')).toBeTruthy();
+    expect(within(facts).getByText('1 · 1')).toBeTruthy();
+    const results = screen.getByRole('region', { name: 'Ergebnis je Projekt' });
+    expect(within(results).getByText('16/17')).toBeTruthy();
+    expect(within(results).getByText('1,3 h')).toBeTruthy();
+    // „Korrektur erfassen“ und „Als geprüft“ stehen nicht mehr im Kopf.
+    expect(screen.queryByRole('button', { name: 'Korrektur erfassen' })).toBeNull();
+    await expectNoSeriousA11y();
+    fireEvent.click(within(banner).getByRole('button', { name: 'Als geprüft markieren' }));
+    await waitFor(() => expect(state.review).toHaveBeenCalledWith(ID(1), true));
+  });
+
+  it('Banner: „zuordnen“ führt zu den Aufnahmen ohne Zuordnung, Zuordnen über ⋯', async () => {
+    state.assign.mockResolvedValue(undefined);
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
+    const banner = await screen.findByRole('region', { name: /Nacht prüfen/ });
+    fireEvent.click(within(banner).getByRole('button', { name: 'zuordnen' }));
+    expect(screen.getByTestId('where').textContent).toContain('ansicht=aufnahmen');
+    expect(screen.getByRole('button', { name: 'Ohne Zuordnung 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const table = screen.getByRole('table', { name: 'Aufnahmen' });
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+    fireEvent.pointerDown(
+      within(table).getByRole('button', { name: 'Aktionen zur Aufnahme 21:40 Ha' }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Zuordnen' }));
+    const form = screen.getByRole('form', { name: 'Nicht zugeordnete Aufnahmen' });
+    fireEvent.change(within(form).getByLabelText(/Zeile für 21:40/), { target: { value: ID(20) } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Zuordnen' }));
+    await waitFor(() => expect(state.assign).toHaveBeenCalledWith(ID(31), ID(20)));
+  });
+
+  it('Details je Projekt: Soll/Ist ohne leere Spalten, Korrektur mit Untergrenze und Rückkehr nach Aktiv', async () => {
+    state.correct.mockResolvedValue({ rejectedCount: 2, projectStatus: 'active' });
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
+    const banner = await screen.findByRole('region', { name: /Nacht prüfen/ });
+    fireEvent.click(within(banner).getByRole('button', { name: 'Grund erfassen' }));
+    const table = screen.getByRole('table', { name: 'Soll/Ist NGC 281' });
+    // Bonus und Bonus verworfen sind 0 → keine Spalten; Verworfen 1 → Spalte.
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['Filter', 'Soll', 'Ist', 'Verworfen', 'Akzeptiert', 'Integration', 'Aktion']);
     const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
     expect(input.min).toBe('1');
-    expect(screen.getByText('mindestens 1 (einzeln verworfen)')).toBeTruthy();
     fireEvent.change(input, { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Grund'), { target: { value: 'clouds' } });
     fireEvent.click(screen.getByRole('button', { name: 'Korrektur speichern' }));
@@ -332,40 +554,7 @@ describe('S-61 Session-Detail', () => {
     await expectNoSeriousA11y();
   });
 
-  it('Aufnahmen mit beiden Kennzeichen, Filter Abweichungen, Zuordnen; Ereignisse und Flats; axe', async () => {
-    state.assign.mockResolvedValue(undefined);
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
-    const captures = screen.getByRole('table', { name: 'Aufnahmen' });
-    const flagged = within(captures).getByRole('row', { name: /330 s/ });
-    expect(within(flagged).getByText('Temperaturabweichung')).toBeTruthy();
-    expect(within(flagged).getByText('Einstellungen abweichend')).toBeTruthy();
-    expect(within(flagged).getByText('21:34 CDT')).toBeTruthy();
-    // Optionale NINA-Metriken (AP-62): HFR und Sterne je Aufnahme, Median über die Lights mit Messwerten.
-    expect(within(flagged).getByText('2,13 px')).toBeTruthy();
-    expect(within(flagged).getByText('412')).toBeTruthy();
-    expect(screen.getByTestId('capture-metrics').textContent).toBe(
-      'Median HFR 2,13 px · Median Sterne 412 · 1 Aufnahmen mit Messwerten',
-    );
-    fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'deviations' } });
-    expect(
-      within(screen.getByRole('table', { name: 'Aufnahmen' })).getAllByRole('row'),
-    ).toHaveLength(2);
-    fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'unassigned' } });
-    fireEvent.change(screen.getByLabelText(/Zeile für 21:40/), { target: { value: ID(20) } });
-    fireEvent.click(screen.getByRole('button', { name: 'Zuordnen' }));
-    await waitFor(() => expect(state.assign).toHaveBeenCalledWith(ID(31), ID(20)));
-    await expectNoSeriousA11y();
-    fireEvent.click(screen.getByRole('tab', { name: 'Ereignisse' }));
-    expect(screen.getByText('Meridian-Flip')).toBeTruthy();
-    expect(screen.getByText('23:33 CDT')).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: 'Flats' }));
-    expect(screen.getByText('9/10')).toBeTruthy();
-    expect(screen.getByText('270.4°')).toBeTruthy();
-  });
-
-  it('Aufnahme verwerfen mit Grund und zurücknehmen; nur verworfene; CSV (AP-31, FA-AUS-20); axe', async () => {
+  it('Aufnahmen: Typ-Chips mit Anzahl, Kennzeichen als Symbol, HFR-Grafik, Flats-Kopfzeile, Verwerfen, CSV; axe', async () => {
     state.reject.mockResolvedValue({
       captureId: ID(30),
       rejected: true,
@@ -381,197 +570,161 @@ describe('S-61 Session-Detail', () => {
     ) {
       created.push(this.download);
     });
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17?ansicht=aufnahmen`);
+    const chips = await screen.findByRole('group', { name: 'Anzeigen' });
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Alle 3', 'Lights 2', 'Flats 1', 'Abweichung 1', 'Ohne Zuordnung 1', 'Verworfen 0']);
     const table = screen.getByRole('table', { name: 'Aufnahmen' });
-    // Nicht zugeordnete Aufnahme: kein Verwerfen.
-    const row = within(table).getByRole('row', { name: /330 s/ });
-    fireEvent.click(within(row).getByRole('button', { name: 'Verwerfen' }));
-    expect(within(table).getAllByRole('button', { name: 'Verwerfen' })).toHaveLength(1);
-    fireEvent.change(screen.getByLabelText('Grund'), { target: { value: 'clouds' } });
+    const flagged = within(table).getByRole('row', { name: /330 s/ });
+    expect(
+      within(flagged).getByRole('img', { name: 'Temperaturabweichung · Einstellungen abweichend' }),
+    ).toBeTruthy();
+    expect(within(flagged).getByText('2,13 px')).toBeTruthy();
+    expect(screen.getByTestId('capture-metrics').textContent).toBe(
+      'Median HFR 2,13 px · Median Sterne 412 · 1 Aufnahmen mit Messwerten',
+    );
+    expect(screen.getByRole('img', { name: /HFR- und Sterne-Verlauf: 1 Aufnahmen/ })).toBeTruthy();
     await expectNoSeriousA11y();
-    // Stand nach dem Neuladen: verworfen mit Grund, Zurücknehmen direkt.
-    const d = detail();
-    d.captures[0] = {
-      ...d.captures[0],
-      rejected: true,
-      rejectReason: 'clouds',
-    } as (typeof d.captures)[number];
-    state.detail = d;
+    fireEvent.click(within(chips).getByRole('button', { name: 'Flats 1' }));
+    expect(screen.getByRole('list', { name: 'Flats je Kombination' }).textContent).toContain(
+      'Flats 20/20 · Dark-Flats 9/10',
+    );
+    fireEvent.click(within(chips).getByRole('button', { name: 'Alle 3' }));
+    fireEvent.pointerDown(
+      within(screen.getByRole('table', { name: 'Aufnahmen' })).getByRole('button', {
+        name: 'Aktionen zur Aufnahme 21:34 Ha',
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Verwerfen' }));
     const form = screen.getByRole('form', { name: 'Aufnahme verwerfen' });
+    fireEvent.change(within(form).getByLabelText('Grund'), { target: { value: 'clouds' } });
     fireEvent.click(within(form).getByRole('button', { name: 'Verwerfen' }));
     await waitFor(() => expect(state.reject).toHaveBeenCalledWith(ID(30), true, 'clouds'));
-    fireEvent.change(screen.getByLabelText('Anzeigen'), { target: { value: 'rejected' } });
-    await screen.findByText('verworfen · Wolken');
-    const only = screen.getByRole('table', { name: 'Aufnahmen' });
-    expect(within(only).getAllByRole('row')).toHaveLength(2);
-    fireEvent.click(within(only).getByRole('button', { name: 'Zurücknehmen' }));
-    await waitFor(() => expect(state.reject).toHaveBeenCalledWith(ID(30), false, null));
     fireEvent.click(screen.getByRole('button', { name: 'CSV exportieren' }));
     expect(created).toEqual(['session-2026-09-17-Rig_A.csv']);
     click.mockRestore();
   });
 
-  it('Reiter Kennzahlen: Effizienz, Overhead, Plan-Treue, Gründe (AP-31); axe', async () => {
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    expect(screen.getAllByRole('tab').map((x) => x.textContent)).toEqual([
-      'Soll/Ist',
-      'Ereignisse',
-      'Aufnahmen',
-      'Protokoll',
-      'Kennzahlen',
-      'Flats',
-    ]);
-    fireEvent.click(screen.getByRole('tab', { name: 'Kennzahlen' }));
-    expect(screen.getByText('19,1 %')).toBeTruthy();
-    expect(screen.getByText('1 h 20 min Belichtung / 6 h 59 min nutzbare Dunkelzeit')).toBeTruthy();
-    expect(screen.getByText('Autofokus 4 min · Flip 3 min · sonstiger 5 h 38 min')).toBeTruthy();
-    expect(screen.getByText('94,1 %')).toBeTruthy();
-    expect(
-      screen.getByText(
-        '16 von 17 geplanten Frames (erster Plan ohne Bonus, Transit-Serien nur in der Zeit)',
-      ),
-    ).toBeTruthy();
-    const reasons = screen.getByRole('table', { name: 'Abweichungsgründe' });
-    expect(within(reasons).getByRole('row', { name: /Meridian-Flip/ }).textContent).toContain(
-      '3 min',
-    );
-    expect(
-      within(reasons).getByRole('row', { name: /Zentrieren fehlgeschlagen/ }).textContent,
-    ).toContain('2');
-    await expectNoSeriousA11y();
+  it('Verlauf & Notizen: Ereignisse als Zeitachse in Standortzeit', async () => {
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17?ansicht=verlauf`);
+    const events = await screen.findByRole('region', { name: 'Ereignisse' });
+    expect(within(events).getByText('Meridian-Flip')).toBeTruthy();
+    expect(within(events).getByText('23:33 CDT')).toBeTruthy();
+    expect(within(events).getByText('HFR 2,1')).toBeTruthy();
   });
 
-  it('Admin markiert als geprüft; User sieht weder Prüfen noch Zuordnen, Korrektur nur fürs eigene Projekt', async () => {
-    state.review.mockResolvedValue(undefined);
-    const { unmount } = renderAt(`/auswertung/sessions/${ID(1)}`);
-    fireEvent.click(await screen.findByRole('button', { name: 'Als geprüft markieren' }));
-    await waitFor(() => expect(state.review).toHaveBeenCalledWith(ID(1), true));
-    unmount();
-    state.me = me('user');
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    expect(screen.queryByRole('button', { name: 'Als geprüft markieren' })).toBeNull();
-    // Eigenes Projekt (createdBy = eigenes Mitglied): Korrektur sichtbar – die API prüft den Mandanten.
-    expect(screen.getByRole('button', { name: 'Korrektur' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('tab', { name: 'Aufnahmen' }));
-    expect(screen.queryByRole('button', { name: 'Zuordnen' })).toBeNull();
-  });
-
-  it('Korrektur: Zeilenwechsel übernimmt die Zahl der neuen Zeile (P1-12)', async () => {
-    state.correct.mockResolvedValue({ rejectedCount: 0, projectStatus: null });
-    const d = detail();
-    const first = d.rows[0] as NightSessionDetail['rows'][number];
-    d.rows = [
-      {
-        ...first,
-        rejected: 5,
-        night: { acquired: 16, rejected: 5, rejectedIndividual: 0, rejectedCorrection: 5 },
-      },
-      {
-        ...first,
-        exposureLineId: ID(21),
-        filterShortName: 'OIII',
-        rejected: 0,
-        night: { acquired: 16, rejected: 0, rejectedIndividual: 0, rejectedCorrection: 0 },
-      },
-    ];
-    state.detail = d;
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    fireEvent.click(await screen.findByRole('button', { name: 'Korrektur erfassen' }));
-    const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
-    expect(input.value).toBe('5');
-    fireEvent.change(screen.getByLabelText('Zeile'), { target: { value: ID(21) } });
-    expect(input.value).toBe('0');
-    fireEvent.click(screen.getByRole('button', { name: 'Korrektur speichern' }));
-    await waitFor(() =>
-      expect(state.correct).toHaveBeenCalledWith(ID(1), {
-        exposureLineId: ID(21),
-        rejected: 0,
-        reason: null,
-        comment: null,
-      }),
-    );
-  });
-
-  it('Soll/Ist-Begriffe (07.10.2026): Erklärung, Transit-Serie als Zeitfenster, „später eingeplant“, Korrektur mit Nachtwerten', async () => {
-    const d = detail();
-    const first = d.rows[0] as NightSessionDetail['rows'][number];
-    d.rows = [
-      // Ist dieser Session 4, die Nacht hat über zwei Sessions 10 mit 3 einzeln verworfenen.
-      {
-        ...first,
-        acquired: 4,
-        rejected: 0,
-        accepted: 4,
-        night: { acquired: 10, rejected: 3, rejectedIndividual: 3, rejectedCorrection: 0 },
-      },
-      {
-        ...first,
-        projectName: 'HAT-P-32 b',
-        exposureLineId: ID(21),
-        filterShortName: 'V',
-        planned: 0,
-        plannedSeries: { fromUtc: '2026-09-18T04:10:00Z', untilUtc: '2026-09-18T06:40:00Z' },
-        acquired: 70,
-        accepted: 70,
-        rejected: 0,
-      },
-      {
-        ...first,
-        projectName: 'M 31',
-        exposureLineId: ID(22),
-        filterShortName: 'L',
-        planned: 0,
-        plannedLater: true,
-        acquired: 6,
-        accepted: 6,
-        rejected: 0,
-      },
-    ];
-    state.detail = d;
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    expect(
-      screen.getAllByText(
-        'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
-      ),
-    ).toHaveLength(1);
-    const table = screen.getByRole('table', { name: 'Soll/Ist' });
-    const soll = (name: RegExp) =>
-      within(within(table).getByRole('row', { name })).getAllByRole('cell')[3]?.textContent;
-    expect(soll(/HAT-P-32 b/)).toBe('Serie 23:10 CDT – 01:40 CDT');
-    expect(soll(/M 31/)).toBe('später eingeplant 0');
-    expect(soll(/NGC 281/)).toBe('17');
-    // Korrektur gilt je Zeile und Nacht: Untergrenze aus den Nachtwerten, nicht aus der Session.
-    fireEvent.click(
-      within(within(table).getByRole('row', { name: /NGC 281/ })).getByRole('button', {
-        name: 'Korrektur',
-      }),
-    );
-    const input = screen.getByLabelText('Verworfen') as HTMLInputElement;
-    expect([input.min, input.max, input.value]).toEqual(['3', '10', '3']);
-    // Kennzahlen zeigen dieselbe Erklärung.
-    fireEvent.click(screen.getByRole('tab', { name: 'Kennzahlen' }));
-    expect(
-      screen.getByText(
-        'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
-      ),
-    ).toBeTruthy();
-  });
-
-  it('ohne Recht auf eine Zeile (API: canCorrect = false) kein „Korrektur erfassen“, kein Verwerfen', async () => {
+  it('User: kein „Als geprüft markieren“, kein Zuordnen; Korrektur nur mit canCorrect', async () => {
     state.me = me('user');
     const d = detail();
-    // Auch das eigene Projekt, wenn der Mandant `userCorrections` abgeschaltet hat – die API liefert false.
     d.rows = d.rows.map((r) => ({ ...r, canCorrect: false }));
     state.detail = d;
-    renderAt(`/auswertung/sessions/${ID(1)}`);
-    await screen.findByRole('heading', { name: '17./18.09. · Rig A' });
-    expect(screen.queryByRole('button', { name: 'Korrektur erfassen' })).toBeNull();
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
+    const banner = await screen.findByRole('region', { name: /Nacht prüfen/ });
+    expect(within(banner).queryByRole('button', { name: 'Als geprüft markieren' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
     expect(screen.queryByRole('button', { name: 'Korrektur' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Verwerfen' })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: /Aufnahmen/ }));
+    // Ohne Recht keine Einträge → kein ⋯-Knopf.
+    expect(screen.queryByRole('button', { name: /Aktionen zur Aufnahme/ })).toBeNull();
+  });
+
+  it('geprüfte Nacht: kein Banner, „Prüfung zurücknehmen“ im ⋯-Menü', async () => {
+    state.review.mockResolvedValue(undefined);
+    const d = detail();
+    d.session = { ...d.session, reviewed: true };
+    state.detail = d;
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
+    await screen.findByRole('heading', { level: 1, name: 'Do 17./18.09. · Rig A' });
+    expect(screen.queryByRole('region', { name: /Nacht prüfen/ })).toBeNull();
+    fireEvent.pointerDown(
+      screen.getByRole('button', { name: 'Weitere Aktionen zu Session · 21:09–04:14' }),
+      {
+        button: 0,
+        ctrlKey: false,
+      },
+    );
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Prüfung zurücknehmen' }));
+    await waitFor(() => expect(state.review).toHaveBeenCalledWith(ID(1), false));
+  });
+});
+
+describe('Zwei Sessions in einer Nacht (Entscheidung Sven 07.10.2026)', () => {
+  const second = () =>
+    session({
+      id: ID(2),
+      startedAt: '2026-09-18T09:20:00Z',
+      endedAt: '2026-09-18T11:00:00Z',
+      reviewed: true,
+      ninaInstanceName: 'Zweit-PC',
+      efficiency: { exposureS: 3600, usableDarkS: 3600, pct: 100 },
+      projects: [
+        {
+          projectId: ID(10),
+          projectName: 'NGC 281',
+          createdBy: ID(3),
+          transit: false,
+          frames: 4,
+          filters: [{ filter: 'Ha', frames: 4 }],
+        },
+      ],
+    });
+
+  it('Nächte: eine Karte mit Summen und Hinweis „2 Sessions“, ungeprüft wegen einer Session', async () => {
+    state.pages = [{ items: [session(), second()], nextCursor: null }];
+    renderAt('/auswertung/naechte');
+    const cards = await screen.findAllByRole('article', { name: 'Nacht 17./18.09. · Rig A' });
+    expect(cards).toHaveLength(1);
+    const card = cards[0] as HTMLElement;
+    expect(within(card).getByText('2 Sessions')).toBeTruthy();
+    expect(within(card).getByText('· Ha 20')).toBeTruthy();
+    expect(within(card).getByText('9,2 von 10,6 h · 87 %')).toBeTruthy();
+    expect(within(card).getByText('ungeprüft')).toBeTruthy();
+    expect(within(card).getByText(/21:09 CDT – 06:00 CDT/)).toBeTruthy();
+  });
+
+  it('Nacht: Auswahl Ganze Nacht | Session 1 | Session 2; Soll/Ist und Prüfen je Session', async () => {
+    const two = detail();
+    two.session = {
+      ...two.session,
+      ...second(),
+      reviewedBy: null,
+      planRevision: 1,
+      darknessEndUtc: null,
+    };
+    two.captures = [
+      {
+        ...(two.captures[0] as (typeof two.captures)[number]),
+        id: ID(35),
+        capturedAt: '2026-09-18T09:30:00Z',
+      },
+    ];
+    state.details = [detail(), two];
+    state.night = [second(), session()];
+    renderAt(`/auswertung/naechte/${ID(500)}/2026-09-17`);
+    const choose = await screen.findByRole('group', { name: 'Session wählen' });
+    expect(
+      within(choose)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Ganze Nacht', 'Session 1 · 21:09–04:14', 'Session 2 · 04:20–06:00']);
+    expect(within(choose).getByRole('button', { name: 'Ganze Nacht' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // Ganze Nacht: Aufnahmen beider Sessions, Prüfen je Session (nur Session 1 ungeprüft).
+    expect(screen.getByRole('tab', { name: /Aufnahmen/ }).textContent).toBe('Aufnahmen4');
+    expect(screen.getAllByRole('region', { name: /Nacht prüfen/ })).toHaveLength(1);
+    expect(screen.getByText('Session 1 · 21:09–04:14', { selector: 'strong' })).toBeTruthy();
+    expect(screen.getByText('Session 2 · 04:20–06:00', { selector: 'strong' })).toBeTruthy();
+    expect(screen.getAllByRole('region', { name: 'Ergebnis je Projekt' })).toHaveLength(2);
+    fireEvent.click(within(choose).getByRole('button', { name: 'Session 2 · 04:20–06:00' }));
+    expect(screen.getByTestId('where').textContent).toContain(`session=${ID(2)}`);
+    expect(screen.getByRole('tab', { name: /Aufnahmen/ }).textContent).toBe('Aufnahmen1');
+    expect(screen.queryByRole('region', { name: /Nacht prüfen/ })).toBeNull();
+    await expectNoSeriousA11y();
   });
 });
