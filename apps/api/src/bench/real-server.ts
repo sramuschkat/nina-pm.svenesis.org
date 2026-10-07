@@ -957,6 +957,16 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           .execute();
         return rows;
       };
+      // Der Nachtbericht läuft frühestens 10 min nach dem Abschluss (`LATE_LIGHT_AFTER_END_MS`, #304); im Lauf
+      // vorgezogen wie die Transit-Wertung, statt 10 min zu warten (VM-Lauf real-flip 07.10.2026).
+      if (!virtual)
+        await stack.db
+          .updateTable('job')
+          .set({ runAfter: new Date() })
+          .where('tenantId', '=', tenantId)
+          .where('kind', '=', 'session_report')
+          .where('status', '=', 'pending')
+          .execute();
       for (let i = 0; i < 18; i += 1) {
         await stack.tick();
         const rows = await jobsDone();
