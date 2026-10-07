@@ -965,7 +965,7 @@ public sealed class NightRunner(
                 },
                 () => skipRequested || resetRequested,
                 () => targetsChanged,
-                () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS),
+                () => ReplanPolicy.TransitDeadline(Targets, block, TransitLeadS, clock.UtcNow, PendingTransits(stored)),
                 () => ReplanPolicy.InBlockIntervalFor(Targets, clock.UtcNow),
                 // Blockschluss mit der Download-Zeit der Engine und weichem Blockende (§4.2, Rig-Nacht 06.10.2026).
                 scheduler?.Overhead.DownloadS,
@@ -1038,6 +1038,16 @@ public sealed class NightRunner(
     }
 
     private sealed record DoneBlocksState(Guid NightPlanId, List<Guid> Blocks);
+
+    /// <summary>Transit-Beobachtungen mit noch offenem Transitblock im gespeicherten Plan (nicht erledigt, Ende nach jetzt).</summary>
+    private HashSet<Guid> PendingTransits(StoredPlan stored)
+    {
+        var done = DoneBlocks(stored);
+        var now = clock.UtcNow;
+        return [.. stored.Plan.Blocks
+            .Where(b => b.Kind == BlocksKind.Transit && b.TransitObservationId is not null && !done.Contains(b.Id) && b.EndUtc > now)
+            .Select(b => b.TransitObservationId!.Value)];
+    }
 
     /// <summary>Geplanter Beginn des folgenden Blocks im Plan (Slew-Beginn, NT-25) für das weiche Blockende; ohne <c>null</c>.</summary>
     private static DateTimeOffset? NextBlockStart(IReadOnlyList<Blocks> blocks, int index) =>

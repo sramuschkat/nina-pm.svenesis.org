@@ -164,8 +164,14 @@ public static class ReplanPolicy
     /// Frist für Belichtungen eines regulären Blocks (execution.md §5): Beginn des Vorlaufs
     /// (<c>windowStart − leadS</c>) des frühesten festgelegten Transits, dessen Fenster noch nicht vorbei ist – außer dem
     /// eigenen. Im Transitblock selbst keine Frist. Ohne festgelegten Transit <c>null</c>.
+    /// <para>Mit <paramref name="now"/> (Plugin 0.4.11, Rig-Nacht 06./07.10.2026): Ein Transit, dessen Frist schon vorbei
+    /// ist, zählt nur noch, wenn er im aktuellen Plan als offener Transitblock steht (<paramref name="pendingTransits"/>).
+    /// Ist er gelaufen oder vom Server gestrichen – WASP-3b endete wegen der Mindesthöhe um 00:55, das Fenster erst
+    /// 01:07 –, passte sonst keine Belichtung mehr davor: <c>transit_interrupt</c>, Neuplanung, wieder Abbruch, 212-mal.
+    /// Einen <b>neu</b> festgelegten Transit meldet weiterhin die Prüfung im Block (Fall b).</para>
     /// </summary>
-    public static DateTimeOffset? TransitDeadline(NinaTargets? targets, Blocks block, double leadS)
+    public static DateTimeOffset? TransitDeadline(NinaTargets? targets, Blocks block, double leadS,
+        DateTimeOffset? now = null, IReadOnlySet<Guid>? pendingTransits = null)
     {
         if (targets is null || block.Kind == BlocksKind.Transit) return null;
         DateTimeOffset? deadline = null;
@@ -175,6 +181,7 @@ public static class ReplanPolicy
             if (obs is null || obs.Status != ObservationStatus.Locked || obs.Id == block.TransitObservationId) continue;
             if (obs.WindowEndUtc <= block.StartUtc) continue;
             var start = obs.WindowStartUtc.AddSeconds(-leadS);
+            if (now is { } n && start <= n && pendingTransits?.Contains(obs.Id) != true) continue;
             if (deadline is null || start < deadline) deadline = start;
         }
         return deadline;

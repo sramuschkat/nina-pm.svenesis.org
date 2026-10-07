@@ -89,6 +89,37 @@ public sealed class SequenceInspectorTests
         Assert.Contains("end_secure_missing", Checks(s));
     }
 
+    /// <summary>Alle Anweisungen eines Bereichs in einen Unter-Container verschieben (wie Svens Starfront-Sequenz).</summary>
+    private static void Nest(JObject area)
+    {
+        var items = Values(area, "Items");
+        var inner = new JArray(items.ToList());
+        items.Clear();
+        items.Add(new JObject
+        {
+            ["$type"] = "NINA.Sequencer.Container.SequentialContainer, NINA.Sequencer",
+            ["Name"] = "Gruppe",
+            ["Items"] = new JObject { ["$values"] = inner },
+            ["Conditions"] = new JObject { ["$values"] = new JArray() },
+            ["Triggers"] = new JObject { ["$values"] = new JArray() },
+        });
+    }
+
+    [Fact]
+    public void Anweisungen_in_Unter_Containern_von_Start_und_Ende_zaehlen()
+    {
+        // Rig-Nacht 06./07.10.2026: Ende-Bereich als ein Unter-Container → end_secure_missing, end_warm_missing und
+        // start_autofocus_missing, obwohl Find Home, Warm Camera und Run Autofocus in der Sequenz standen.
+        var s = Sample("one-night-safety.json");
+        Nest(Find(s, "StartAreaContainer"));
+        Nest(Find(s, "EndAreaContainer"));
+        Assert.Empty(Checks(s));
+
+        // Abgeschalteter Unter-Container zählt samt Inhalt nicht.
+        Find(s, "EndAreaContainer")["Items"]!["$values"]![0]!["Status"] = 4;
+        Assert.Equal(["end_secure_missing", "end_warm_missing"], Checks(s));
+    }
+
     [Fact]
     public void Safety_Bedingungen_werden_erkannt_ohne_Safety_nicht()
     {

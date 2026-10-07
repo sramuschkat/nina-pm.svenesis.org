@@ -34,6 +34,21 @@ public sealed record SeqNode(
 
     public bool HasCondition(string type) => ConditionList.Any(c => c.Type == type && !c.Disabled);
 
+    /// <summary>
+    /// Aktive Anweisungen in Ausführungsreihenfolge (Tiefensuche), auch in Unter-Containern; abgeschaltete samt Inhalt
+    /// zählen nicht. Für Start- und Ende-Bereich (Rig-Nacht 06./07.10.2026: Svens Ende-Bereich ist ein einziger
+    /// Unter-Container, die Prüfung der obersten Ebene meldete <c>end_secure_missing</c> trotz <em>Find Home</em>).
+    /// </summary>
+    public static IEnumerable<SeqNode> Flatten(IEnumerable<SeqNode> items)
+    {
+        foreach (var i in items)
+        {
+            if (i.Disabled) continue;
+            yield return i;
+            foreach (var d in Flatten(i.ItemList)) yield return d;
+        }
+    }
+
     public string? Prop(string key) => Props is not null && Props.TryGetValue(key, out var v) ? v : null;
 }
 
@@ -95,8 +110,8 @@ public static class SequenceInspector
         // ---- Start-Bereich (H3, NT-24) ----
         var start = root.ItemList.FirstOrDefault(n => n.Type == "StartAreaContainer");
         var startItems = day is not null && nightAt >= 0
-            ? dayItems.Take(nightAt).Select(n => n.Type).ToList()
-            : start?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
+            ? SeqNode.Flatten(dayItems.Take(nightAt)).Select(n => n.Type).ToList()
+            : SeqNode.Flatten(start?.ItemList ?? []).Select(n => n.Type).ToList();
         int Index(string t) => startItems.IndexOf(t);
         var wait = startItems.FindIndex(t => WaitTypes.Contains(t));
         var unpark = Index("UnparkScope");
@@ -170,8 +185,8 @@ public static class SequenceInspector
         }
 
         // ---- Ende ----
-        var end = root.ItemList.FirstOrDefault(n => n.Type == "EndAreaContainer")?.ItemList.Where(n => !n.Disabled).Select(n => n.Type).ToList() ?? [];
-        if (day is not null && nightAt >= 0) end = [.. dayItems.Skip(nightAt + 1).Select(n => n.Type), .. end];
+        var end = SeqNode.Flatten(root.ItemList.FirstOrDefault(n => n.Type == "EndAreaContainer")?.ItemList ?? []).Select(n => n.Type).ToList();
+        if (day is not null && nightAt >= 0) end = [.. SeqNode.Flatten(dayItems.Skip(nightAt + 1)).Select(n => n.Type), .. end];
         if (!end.Contains("ParkScope") && !end.Contains("FindHome")) Add("end_secure_missing", "End: Park Scope or Find Home missing.");
         if (!end.Contains("WarmCamera")) Add("end_warm_missing", "End: Warm Camera missing.");
         return d;
