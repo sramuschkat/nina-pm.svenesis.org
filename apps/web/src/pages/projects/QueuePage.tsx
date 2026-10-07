@@ -433,7 +433,7 @@ function QueueTable({
       sortValue: sortBy('creator'),
       priority: 3,
       nowrap: true,
-      cell: (q) => <Person id={q.createdBy} name={q.createdByName} />,
+      cell: (q) => <Person id={q.createdBy} name={q.createdByName} compact />,
     },
     {
       id: 'rig',

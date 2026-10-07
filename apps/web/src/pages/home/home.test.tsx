@@ -149,6 +149,9 @@ const session = (n: number, over: Partial<NightSession> = {}): NightSession => (
   bonusFrames: 0,
   integrationS: 7_200,
   unassigned: 0,
+  efficiency: null,
+  weather: null,
+  projects: [],
   ...over,
 });
 
@@ -399,7 +402,7 @@ describe('Startseite (Mandant)', () => {
     expect(within(table).getAllByText('2.0 h')).toHaveLength(5);
     expect(within(sessions).getByRole('link', { name: 'Alle Sessions' })).toHaveAttribute(
       'href',
-      '/auswertung/sessions',
+      '/auswertung/naechte',
     );
 
     // Wetter (7 Tage) je Standort in Kurzform wie in Ausrüstung → Standorte (Wunsch Sven 02.10.2026);

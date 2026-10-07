@@ -433,7 +433,7 @@ function SideNav({
       areas: [
         { key: 'nina', visible: !system, to: '/nina/simulator' },
         { key: 'weather', visible: !system, to: WEATHER_PATH },
-        { key: 'evaluation', visible: !system, to: '/auswertung/sessions' },
+        { key: 'evaluation', visible: !system, to: '/auswertung/naechte' },
       ],
     },
     {

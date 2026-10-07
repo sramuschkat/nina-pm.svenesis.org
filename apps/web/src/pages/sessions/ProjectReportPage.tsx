@@ -1,290 +1,20 @@
 /**
- * S-63 Projektbericht (FK 14.3; FA-AUS-18, FA-AUS-10, FA-AUS-11, FA-AUS-13; AP-34): Zeitraum (vordefiniert
- * oder von/bis als Nacht-Schlüssel), Filter nach Status, Rig und Objekttyp; aufklappbare Abschnitte –
- * Übersicht und je Projekt Frames/Integration je Filter, Verlauf je Nacht (Balken je Nacht, kumulierte
- * Integration), Sessions mit Verworfen-Quote und Wetterbewertung, Bedingungen, Kanalbalance-Hinweis.
- * *CSV exportieren* und *Drucken* (Druckansicht des Browsers, alle Abschnitte aufgeklappt; kein PDF-Server).
+ * Bausteine des Projektberichts (FA-AUS-10, FA-AUS-11, FA-AUS-13, FA-AUS-18; AP-34): Projektabschnitt (Reiter
+ * *Sessions & Protokoll* im Projekt-Editor), Verlaufsgrafik (Balken je Nacht und Filter, kumulierte Integration) und CSV.
+ * Seit AP-64 zeigt die Auswertung den Bericht im Reiter „Projekte“ (`ProjectsPage`).
  */
-import { formatNightKey, projectStatuses } from '@nina-pm/shared';
-import { daysFromKey, keyFromDays } from '@nina-pm/engine';
-import { useQuery } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { formatNightKey } from '@nina-pm/shared';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { reportsApi, type ProjectReport, type ReportProject } from '../../api/client';
-import { useAuth } from '../../auth';
+import type { ProjectReport, ReportProject } from '../../api/client';
 import { CommentCount } from '../../components/CommentCount';
-import { DataTable, type DataColumn } from '../../components/DataTable';
 import { FilterChip } from '../../components/FilterChip';
-import { PageHeader } from '../../components/PageHeader';
-import { ProblemMessage } from '../../components/ProblemMessage';
-import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
-import { nightKeyIn } from '../projects/queue-model';
 import styles from './sessions.module.css';
-import { EvaluationTabs, SESSIONS_PATH } from './SessionsPage';
-import { Person, useMemberNames } from '../../lib/member';
-
-export const PROJECT_REPORT_PATH = '/auswertung/projektbericht';
-
-const PERIODS = ['30', '90', '365', 'all', 'custom'] as const;
-type Period = (typeof PERIODS)[number];
+import { nightPath } from './evaluation';
+import { Person } from '../../lib/member';
 
 const hours = (s: number) => s / 3600;
-
-export function ProjectReportPage() {
-  const { t } = useTranslation();
-  const nameOf = useMemberNames();
-  const { me } = useAuth();
-  const zone = me?.tenant?.timeZone ?? 'UTC';
-  const today = nightKeyIn(Date.now(), zone);
-  const rigs = useEquipmentList('rigs');
-  const ids = {
-    period: useId(),
-    from: useId(),
-    to: useId(),
-    status: useId(),
-    rig: useId(),
-    type: useId(),
-  };
-  const [period, setPeriod] = useState<Period>('90');
-  const [custom, setCustom] = useState({ from: keyFromDays(daysFromKey(today) - 30), to: today });
-  const [status, setStatus] = useState('');
-  const [rigId, setRigId] = useState('');
-  const [type, setType] = useState('');
-  const range =
-    period === 'all'
-      ? {}
-      : period === 'custom'
-        ? { from: custom.from, to: custom.to }
-        : { from: keyFromDays(daysFromKey(today) - Number(period)), to: today };
-  const query = { ...range, status, rigId, type };
-  // Erst mit geladenem Mandanten abfragen: sonst gilt „heute“ zuerst in UTC und nach dem Laden in der Zeitzone des
-  // Mandanten – zwischen Mitternacht dort und in UTC ändert sich die Abfrage mitten im Laden (CI rot am 03.10.2026).
-  const report = useQuery({
-    queryKey: ['project-report', query],
-    queryFn: () => reportsApi.projects(query),
-    enabled: me?.tenant != null,
-  });
-  const print = () => {
-    for (const d of document.querySelectorAll('details')) d.open = true;
-    window.print();
-  };
-  return (
-    <div className={styles.page}>
-      <PageHeader
-        title={t('report.title')}
-        nav={<EvaluationTabs />}
-        actions={
-          <span className={`${styles.flags} ${styles.noPrint}`}>
-            <button
-              type="button"
-              className={styles.button}
-              disabled={!report.data}
-              onClick={() => report.data && downloadReportCsv(report.data, nameOf)}
-            >
-              {t('report.csv')}
-            </button>
-            <button type="button" className={styles.button} onClick={print}>
-              {t('report.print')}
-            </button>
-          </span>
-        }
-      />
-      <section className={styles.listCard} aria-label={t('report.title')}>
-        <div className={`${styles.toolbar} ${styles.listBar} ${styles.noPrint}`}>
-          <div className={styles.field}>
-            <label htmlFor={ids.period}>{t('report.period')}</label>
-            <select
-              id={ids.period}
-              className={styles.input}
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as Period)}
-            >
-              {PERIODS.map((p) => (
-                <option key={p} value={p}>
-                  {t(`report.periods.${p}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {period === 'custom' ? (
-            <>
-              <div className={styles.field}>
-                <label htmlFor={ids.from}>{t('report.from')}</label>
-                <input
-                  id={ids.from}
-                  type="date"
-                  className={styles.input}
-                  value={custom.from}
-                  onChange={(e) => setCustom({ ...custom, from: e.target.value })}
-                />
-              </div>
-              <div className={styles.field}>
-                <label htmlFor={ids.to}>{t('report.to')}</label>
-                <input
-                  id={ids.to}
-                  type="date"
-                  className={styles.input}
-                  value={custom.to}
-                  onChange={(e) => setCustom({ ...custom, to: e.target.value })}
-                />
-              </div>
-            </>
-          ) : null}
-          <div className={styles.field}>
-            <label htmlFor={ids.status}>{t('report.status')}</label>
-            <select
-              id={ids.status}
-              className={styles.input}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="">{t('report.all')}</option>
-              {projectStatuses.map((s) => (
-                <option key={s} value={s}>
-                  {t(`status.project.${s}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.field}>
-            <label htmlFor={ids.rig}>{t('report.rig')}</label>
-            <select
-              id={ids.rig}
-              className={styles.input}
-              value={rigId}
-              onChange={(e) => setRigId(e.target.value)}
-            >
-              <option value="">{t('report.all')}</option>
-              {(rigs.data ?? []).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.field}>
-            <label htmlFor={ids.type}>{t('report.type')}</label>
-            <select
-              id={ids.type}
-              className={styles.input}
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            >
-              <option value="">{t('report.all')}</option>
-              <option value="deep_sky">{t('report.types.deep_sky')}</option>
-              <option value="exoplanet">{t('report.types.exoplanet')}</option>
-            </select>
-          </div>
-        </div>
-        {report.isError ? (
-          <ProblemMessage code={problemCode(report.error)} onRetry={() => void report.refetch()} />
-        ) : !report.data ? (
-          <p className={styles.listNote} role="status">
-            {t('common.loading')}
-          </p>
-        ) : (
-          <ReportBody report={report.data} />
-        )}
-      </section>
-    </div>
-  );
-}
-
-function ReportBody({ report }: { report: ProjectReport }) {
-  const { t, i18n } = useTranslation();
-  const n = (x: number, d = 1) => x.toLocaleString(i18n.language, { maximumFractionDigits: d });
-  const columns: DataColumn<ReportProject>[] = [
-    {
-      id: 'name',
-      header: t('report.col.project'),
-      sortValue: (p) => p.name,
-      cell: (p) => (
-        <>
-          <Link to={`/projekte/${p.projectId}`}>{p.name}</Link>{' '}
-          <CommentCount count={p.commentCount} />
-        </>
-      ),
-    },
-    {
-      // Ersteller mit Bild neben dem Projekt (Wunsch Sven 01.10.2026).
-      id: 'creator',
-      header: t('sessions.col.creator'),
-      priority: 3,
-      cell: (p) => <Person id={p.createdBy} />,
-    },
-    {
-      id: 'rig',
-      header: t('report.col.rig'),
-      sortValue: (p) => p.rigName,
-      priority: 3,
-      cell: (p) => p.rigName ?? '–',
-    },
-    {
-      id: 'status',
-      header: t('report.col.status'),
-      sortValue: (p) => p.status,
-      priority: 2,
-      cell: (p) => (p.status ? t(`status.project.${p.status}`) : '–'),
-    },
-    {
-      id: 'done',
-      header: t('report.col.done'),
-      sortValue: (p) => p.percentDone,
-      align: 'end',
-      cell: (p) => `${n(p.percentDone)} %`,
-    },
-    {
-      id: 'frames',
-      header: t('report.col.periodFrames'),
-      sortValue: (p) => p.periodAccepted,
-      align: 'end',
-      priority: 2,
-      cell: (p) => p.periodAccepted,
-    },
-    {
-      id: 'hours',
-      header: t('report.col.periodHours'),
-      sortValue: (p) => p.periodIntegrationS,
-      align: 'end',
-      nowrap: true,
-      cell: (p) => t('report.hours', { h: n(hours(p.periodIntegrationS)) }),
-    },
-  ];
-  const range =
-    report.from && report.to
-      ? t('report.range', { from: formatNightKey(report.from), to: formatNightKey(report.to) })
-      : t('report.rangeAll');
-  return (
-    <div className={styles.forecastBody}>
-      <details open className={styles.reportSection}>
-        <summary>
-          <h2 className={styles.reportHeading}>{t('report.overview')}</h2>
-        </summary>
-        <p className={styles.muted}>
-          {range} ·{' '}
-          {t('report.totals', {
-            projects: report.totals.projects,
-            frames: report.totals.periodAccepted,
-            h: n(hours(report.totals.periodIntegrationS)),
-          })}
-        </p>
-        <DataTable
-          columns={columns}
-          rows={report.projects}
-          rowKey={(p) => p.projectId}
-          rowLabel={(p) => p.name}
-          label={t('report.overview')}
-          empty={t('report.empty')}
-        />
-      </details>
-      {report.projects.map((p) => (
-        <ProjectSection key={p.projectId} project={p} />
-      ))}
-    </div>
-  );
-}
 
 /** Abschnitt eines Projekts (Bericht S-63; aufgeklappt im Reiter *Sessions & Protokoll* des Projekt-Editors). */
 export function ProjectSection({
@@ -306,7 +36,7 @@ export function ProjectSection({
         <h2 className={styles.reportHeading}>
           {p.name}{' '}
           <span className={styles.reportCreator}>
-            <Person id={p.createdBy} />
+            <Person id={p.createdBy} compact />
           </span>{' '}
           <CommentCount count={p.commentCount} />
           <span className={styles.muted}>
@@ -397,7 +127,7 @@ export function ProjectSection({
               {p.sessions.map((s) => (
                 <tr key={s.sessionId}>
                   <th scope="row">
-                    <Link to={`${SESSIONS_PATH}/${s.sessionId}`}>{formatNightKey(s.night)}</Link>
+                    <Link to={nightPath(s.sessionId)}>{formatNightKey(s.night)}</Link>
                   </th>
                   <td>{s.rigName}</td>
                   <td>
@@ -447,7 +177,7 @@ export function ProjectSection({
  * Verlauf (FA-AUS-10): Balken je Nacht (akzeptierte Integration je Filter gestapelt) und die kumulierte
  * Integration aller Filter als Linie.
  */
-function ProgressChart({
+export function ProgressChart({
   project: p,
   colorOf,
 }: {
@@ -535,7 +265,7 @@ function ProgressChart({
 }
 
 /** CSV des Berichts: Summen je Projekt und Filter sowie Verlauf je Nacht. */
-function downloadReportCsv(report: ProjectReport, nameOf: (id: string) => string) {
+export function downloadReportCsv(report: ProjectReport, nameOf: (id: string) => string) {
   const cell = (v: string | number | null) => {
     const text = v === null ? '' : String(v);
     return /[";\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;

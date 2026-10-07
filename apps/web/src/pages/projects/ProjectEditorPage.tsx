@@ -932,7 +932,7 @@ function Editor({
                 // Ersteller mit Bild (Wunsch Sven 30.09.2026).
                 <span className={styles.headCreator}>
                   <span className={styles.muted}>{t('projectEditor.creator')}</span>
-                  <Person id={saved.createdBy} />
+                  <Person id={saved.createdBy} compact />
                 </span>
               ) : null}
             </span>

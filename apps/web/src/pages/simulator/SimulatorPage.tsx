@@ -836,7 +836,7 @@ function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comm
       <dl className={styles.facts}>
         <dt>{t('simulator.card.creator')}</dt>
         <dd>
-          <Person id={card.createdBy} />
+          <Person id={card.createdBy} compact />
         </dd>
         <dt>{t('simulator.card.window')}</dt>
         <dd>
@@ -936,7 +936,7 @@ function TargetCardView({
       <dl className={styles.facts}>
         <dt>{t('simulator.card.creator')}</dt>
         <dd>
-          <Person id={card.createdBy} />
+          <Person id={card.createdBy} compact />
         </dd>
         <dt>{t('simulator.card.window')}</dt>
         <dd>
