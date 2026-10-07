@@ -1,7 +1,7 @@
 /**
  * Kennzahlen und Abweichungsgründe einer Session (AP-31; FA-AUS-04, FA-AUS-05, FA-AUS-09). Rein: Eingabe
- * sind Session-Zeiten, der erste Plan der Session (Dunkelheit, Belichtungseinträge), alle Lights und die
- * Ereignisse – ohne Datenbank und ohne Uhr.
+ * sind Session-Zeiten, der erste Plan der Session (Dunkelheit, Belichtungseinträge), alle Lights **dieser**
+ * Session und ihre Ereignisse – ohne Datenbank und ohne Uhr.
  */
 import type { NightSessionKpis, NightSessionReason } from './contracts/sessions';
 import type { DeviationReason } from './generated/enums';
@@ -14,6 +14,8 @@ export interface KpiLight {
   readonly assigned: boolean;
   readonly filter: string;
   readonly blockId: string | null;
+  /** Aufnahme einer Zeile, die im ersten Plan als Transit-Serie steht: zählt in der Zeit, nicht in den Frames. */
+  readonly series?: boolean | undefined;
 }
 
 export interface KpiEvent {
@@ -22,12 +24,16 @@ export interface KpiEvent {
   readonly durationS: number | null;
 }
 
-/** Belichtungseintrag des ersten Plans: `expose` (ein Frame) oder `expose_series` (Transit, Zeitraum). */
+/**
+ * Belichtungseintrag des ersten Plans: `expose` (ein Frame, `bonus` = Bonus-Frame) oder `expose_series`
+ * (Transit, Zeitraum).
+ */
 export interface KpiPlanEntry {
   readonly cmd: 'expose' | 'expose_series';
   readonly atUtc: string;
   readonly untilUtc?: string | undefined;
   readonly exposureS: number;
+  readonly bonus?: boolean | undefined;
 }
 
 export interface KpiInput {
@@ -136,29 +142,31 @@ export function sessionKpis(input: KpiInput): {
   const blockChanges =
     blockStarts > 0 ? Math.max(0, blockStarts - 1) : changes(lights.map((l) => l.blockId));
 
+  // Plan-Treue mit denselben Begriffen wie Soll/Ist (Entscheidung Sven 07.10.2026): Soll ohne Bonus-Frames;
+  // eine Transit-Serie hat kein Frame-Soll, nur ein Zeitfenster – sie und ihre Aufnahmen zählen nur in der Zeit.
   let plan: NightSessionKpis['plan'] = null;
   if (input.planEntries !== null) {
     let plannedFrames = 0;
     let plannedExposureS = 0;
     for (const e of input.planEntries) {
       if (e.cmd === 'expose') {
+        if (e.bonus === true) continue;
         plannedFrames += 1;
         plannedExposureS += e.exposureS;
       } else if (e.untilUtc) {
         const span = Math.max(0, ms(e.untilUtc) - ms(e.atUtc)) / 1000;
-        const frames = Math.floor(span / e.exposureS);
-        plannedFrames += frames;
-        plannedExposureS += frames * e.exposureS;
+        plannedExposureS += Math.floor(span / e.exposureS) * e.exposureS;
       }
     }
     const done = saved.filter((l) => l.assigned && !l.isBonus);
+    const doneFrames = done.filter((l) => l.series !== true).length;
     const acquiredExposureS = done.reduce((s, l) => s + l.exposureS, 0);
     plan = {
       plannedFrames,
       plannedExposureS,
-      acquiredFrames: done.length,
+      acquiredFrames: doneFrames,
       acquiredExposureS,
-      framesPct: pct(done.length, plannedFrames),
+      framesPct: pct(doneFrames, plannedFrames),
       timePct: pct(acquiredExposureS, plannedExposureS),
     };
   }

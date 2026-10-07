@@ -133,10 +133,22 @@ test('S-60/S-61: Fake-Plugin-Nacht vollständig, Aufnahme mit beiden Kennzeichen
   await admin.getByLabel('Grund').selectOption('clouds');
   await admin.getByRole('button', { name: 'Korrektur speichern' }).click();
   await expect(admin.getByText('Korrektur gespeichert.')).toBeVisible();
+  await expect(
+    admin.getByText(
+      'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
+    ),
+  ).toBeVisible();
   const row = admin.getByRole('table', { name: 'Soll/Ist' }).getByRole('row').nth(1);
   // Spalten: Projekt, Ersteller (seit 01.10.2026), Filter, Soll, Ist, Verworfen, Akzeptiert, …
-  await expect(row.getByRole('cell').nth(5)).toHaveText('1');
+  // Ist = Aufnahmen dieser Session (07.10.2026). Die Korrektur gilt je Zeile und Nacht; ihren Überhang
+  // trägt die früher begonnene (offline angelegte) Session der Nacht – hier bleibt Verworfen 0.
+  await expect(row.getByRole('cell').nth(4)).toHaveText('3');
+  await expect(row.getByRole('cell').nth(5)).toHaveText('0');
   await expect(row.getByRole('cell').nth(6)).toHaveText('3');
+  // Geschlossen und erneut geöffnet: die Korrektur zeigt den Nachtwert, nicht den der Session.
+  await admin.getByRole('button', { name: 'Abbrechen' }).click();
+  await admin.getByRole('button', { name: 'Korrektur', exact: true }).click();
+  await expect(admin.getByLabel('Verworfen')).toHaveValue('1');
 });
 
 test('AF-08: Projekt abschließen – NINA erhält es nicht mehr, „An NINA ausgeliefert“ zeigt es ausgegraut als heute abgearbeitet', async ({

@@ -10704,16 +10704,28 @@ components:
             - integer
             - "null"
           minimum: 0
+        plannedSeries:
+          type:
+            - object
+            - "null"
+          properties:
+            fromUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+            untilUtc:
+              type: string
+              format: date-time
+              example: 2026-09-18T13:00:00Z
+          required:
+            - fromUtc
+            - untilUtc
+        plannedLater:
+          type: boolean
         acquired:
           type: integer
           minimum: 0
         rejected:
-          type: integer
-          minimum: 0
-        rejectedIndividual:
-          type: integer
-          minimum: 0
-        rejectedCorrection:
           type: integer
           minimum: 0
         accepted:
@@ -10727,6 +10739,26 @@ components:
           minimum: 0
         integrationS:
           type: number
+        night:
+          type: object
+          properties:
+            acquired:
+              type: integer
+              minimum: 0
+            rejected:
+              type: integer
+              minimum: 0
+            rejectedIndividual:
+              type: integer
+              minimum: 0
+            rejectedCorrection:
+              type: integer
+              minimum: 0
+          required:
+            - acquired
+            - rejected
+            - rejectedIndividual
+            - rejectedCorrection
       required:
         - projectId
         - projectName
@@ -10736,14 +10768,15 @@ components:
         - filterShortName
         - exposureS
         - planned
+        - plannedSeries
+        - plannedLater
         - acquired
         - rejected
-        - rejectedIndividual
-        - rejectedCorrection
         - accepted
         - bonus
         - bonusRejected
         - integrationS
+        - night
     NightSessionCapture:
       type: object
       properties:
