@@ -116,6 +116,11 @@ export interface NightSetup {
   readonly profiles: readonly UnitProfile[];
   readonly excluded: readonly ExcludedUnit[];
   readonly past: PastSlots | null;
+  /**
+   * Fortgesetzte Einheit bei Neuplanung (A-32, Entscheidung Sven 07.10.2026): `tonight.currentUnitId` mit einem
+   * vergangenen Block bis kurz vor `startAtS`; sonst `null` (auch im Kompatibilitätsmodus).
+   */
+  readonly continuedUnitId: string | null;
   /** Projekte in Reihenfolge des ersten Auftretens (Walk, Filterwahl). */
   readonly projects: readonly ProjectLines[];
 }
@@ -140,6 +145,11 @@ export interface Row {
   readonly nBlocks: number;
   /** Vergangene Slots (A-10), nur produktiv bei Neuplanung. */
   readonly pastSlots: number;
+  /**
+   * Fortsetzung (A-32): Einheit der Neuplanung, im Slot von `startAtS` nutzbar. MinChunk ist dann auf den
+   * nutzbaren Lauf ab `startAtS` begrenzt, und der Vorfilter lässt sie stehen, solange Arbeit erreichbar ist.
+   */
+  readonly continued: boolean;
   preFiltered: boolean;
   hasLockedWindow: boolean;
   transitConflict: boolean;

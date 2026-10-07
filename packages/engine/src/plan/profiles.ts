@@ -161,11 +161,62 @@ function pastSlots(grid: GridInput, sw: CompatSwitches): PastSlots | null {
   return { byUnit, startSlot };
 }
 
+/**
+ * Höchstens so lange darf die Einheit vor `startAtS` geendet haben, damit die Neuplanung als **Fortsetzung**
+ * gilt – dieselbe Grenze wie „kein Leerlauf“ beim Wegfall des Slews (`execution.md` §3.2).
+ */
+export const CONTINUATION_GAP_S = 300;
+
+/**
+ * Fortgesetzte Einheit bei Neuplanung (A-32, Entscheidung Sven 07.10.2026): `tonight.currentUnitId`, sofern ein
+ * vergangener Block dieser Einheit höchstens `CONTINUATION_GAP_S` vor `startAtS` endet. Das Plugin setzt
+ * `currentUnitId` bei jedem Blockbeginn und löscht es nie; ohne die Prüfung der Blockzeiten gälte auch eine
+ * Einheit als fortgesetzt, deren letzter Block Stunden zurückliegt.
+ */
+function continuedUnit(grid: GridInput, sw: CompatSwitches): string | null {
+  if (!sw.continuation || !sw.replanTonight || grid.startAtS === null) return null;
+  const id = grid.tonight?.currentUnitId ?? null;
+  if (id === null) return null;
+  const startAt = grid.startAtS;
+  const recent = (grid.tonight?.pastBlocks ?? []).some(
+    (b) => b.unitId === id && b.toS > b.fromS && b.toS >= startAt - CONTINUATION_GAP_S,
+  );
+  return recent ? id : null;
+}
+
+/**
+ * Erwarteter Meridian-Flip der Einheit für `fix` (A-16; Entscheidung Sven 07.10.2026): nur, wenn der Durchgang
+ * ab dem Planstart (`startAtS`, sonst Nachtbeginn) und innerhalb der nutzbaren Zeit der Einheit liegt
+ * (erster bis letzter `CanImage`-Slot ab dem Planstart) und der Flip laut `tonight.flipDoneByPanel` nicht schon
+ * erledigt ist. Vorher zählte jeder Durchgang im Nachtfenster, auch vor dem Planstart oder am Tag.
+ */
+function flipExpected(
+  grid: GridInput,
+  unitId: string,
+  meridianAtS: number | null,
+  canImage: readonly boolean[],
+): boolean {
+  if (!grid.settings.flip.enabled || meridianAtS === null) return false;
+  if (grid.tonight?.flipDoneByPanel[unitId] === true) return false;
+  const startS = grid.startAtS ?? 0;
+  if (meridianAtS < startS) return false;
+  let first = -1;
+  let last = -1;
+  for (let s = 0; s < canImage.length; s++) {
+    if (canImage[s] !== true || (s + 1) * SLOT_S <= startS) continue;
+    if (first < 0) first = s;
+    last = s;
+  }
+  return first >= 0 && meridianAtS >= first * SLOT_S && meridianAtS < (last + 1) * SLOT_S;
+}
+
 /** Grid → Profile, Ausschlüsse und Einstellungen für `paint`. */
 export function setupFromGrid(grid: GridInput): NightSetup {
   const sw = compatSwitches(grid.mode);
   const n = grid.slots;
   const masks = gridMasks(grid);
+  const continuedUnitId = continuedUnit(grid, sw);
+  const startSlot = grid.startAtS === null ? 0 : Math.floor(grid.startAtS / SLOT_S);
   const profiles = new Map(grid.moonProfiles.map((p) => [p.id, p]));
   const projects = new Map<string, ProjectInfo>();
   for (const u of grid.units) {
@@ -262,14 +313,18 @@ export function setupFromGrid(grid: GridInput): NightSetup {
       u.meridianAtS;
     const fixSec = sw.blockFixCost
       ? grid.settings.overhead.slewCenterS +
-        (grid.settings.flip.enabled && meridianAtS !== null ? grid.settings.flip.durationS : 0)
+        (flipExpected(grid, u.unitId, meridianAtS, canImage) ? grid.settings.flip.durationS : 0)
       : 0;
 
-    // Aussortieren (§3.2, SS 296–304; produktiv mit Restposten und fix, A-16).
+    // Aussortieren (§3.2, SS 296–304; produktiv mit Restposten und fix, A-16). Die fortgesetzte Einheit
+    // (A-32) entfällt nicht, solange sie im Slot von `startAtS` noch nutzbar ist.
     const longest = longestRun(canImage);
-    const tooShort = sw.blockFixCost
-      ? longest * SLOT_S < Math.min(minTimeSec, unitWork + fixSec)
-      : (longest > 0 ? (longest * 5.0) / 60.0 : 0) < u.minTimeOnTargetH;
+    const continuing = u.unitId === continuedUnitId && canImage[startSlot] === true;
+    const tooShort = continuing
+      ? false
+      : sw.blockFixCost
+        ? longest * SLOT_S < Math.min(minTimeSec, unitWork + fixSec)
+        : (longest > 0 ? (longest * 5.0) / 60.0 : 0) < u.minTimeOnTargetH;
     if (tooShort) {
       excluded.push({
         unitId: u.unitId,
@@ -314,6 +369,18 @@ export function setupFromGrid(grid: GridInput): NightSetup {
         excluded.push({
           unitId: u.unitId,
           reason: 'no_transit_window',
+          usableSlots: countTrue(canImage),
+          lines,
+        });
+        continue;
+      }
+      // Transit-Zeile nur für diese Nacht abgeschaltet („Nur heute aus“, FA-FOL-05) oder nicht in der Einheit
+      // (z. B. Filter nicht zugeordnet): keine Serie (A-21 belichtet sonst unabhängig vom Bedarf bis Fensterende).
+      const transitLine = lines.find((l) => l.id === u.transit?.lineId);
+      if (sw.transitUntilWindowEnd && transitLine?.enabled !== true) {
+        excluded.push({
+          unitId: u.unitId,
+          reason: 'no_need',
           usableSlots: countTrue(canImage),
           lines,
         });
@@ -374,6 +441,7 @@ export function setupFromGrid(grid: GridInput): NightSetup {
     profiles: out,
     excluded,
     past: pastSlots(grid, sw),
+    continuedUnitId,
     projects: [...projects.keys()].flatMap((id) => {
       const p = projectLines.get(id);
       return p ? [p] : [];

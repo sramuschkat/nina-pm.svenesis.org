@@ -169,7 +169,14 @@ export function isDeliverable(p: DeliverableInput, night: string): boolean {
     return false;
   if (!p.ninaDeliveryEnabled) return false;
   if (p.startDate !== null && p.startDate > night) return false;
-  if (p.projectType === 'exoplanet') return p.hasLockedTransit === true;
+  // Exoplaneten: Transit dieser Nacht und eine aktive Zeile, die nicht nur für diese Nacht abgeschaltet ist – die
+  // Transit-Zeile ist die einzige aktive Zeile (FA-EXO-20); „nur heute aus“ nimmt das Projekt aus der Nacht
+  // (FA-FOL-05, Analyse 07.10.2026).
+  if (p.projectType === 'exoplanet')
+    return (
+      p.hasLockedTransit === true &&
+      p.lines.some((l) => l.enabled && !l.deleted && l.disabledForNight !== night)
+    );
   return p.lines.some(
     (l) =>
       l.enabled &&
