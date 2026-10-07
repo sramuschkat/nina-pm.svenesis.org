@@ -450,10 +450,12 @@ public sealed class BlockExecutorTests
         var (executor, nina, sink, _) = Setup("2026-09-18T07:35:00Z");
         nina.Pier = "west";
         nina.FlipDuringExposure = 1; // NINAs Trigger flippt schon vor der ersten Belichtung (±1 Belichtung)
+        nina.FlipDurationS = 1300; // Rig-Nacht 06./07.10.2026: ≈ 22 min Flip, danach 600 s Belichtung
 
         await executor.RunAsync(Regular(), null, default, new BlockRunOptions(Flip: new FlipSettings(5, 15, 0, 240)));
 
-        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east"));
+        // Die Belichtung nach dem Flip zählt nicht zur Flipdauer.
+        Assert.Contains(sink.Lines, l => l.Contains("FLIP id=") && l.Contains("pierBefore=west pierAfter=east") && l.Contains("durationS=1300"));
         Assert.Contains("center-no-rotate", nina.Calls);
         Assert.DoesNotContain("flip", nina.Calls); // Plan-Flip erledigt, kein zweiter Trigger-Aufruf
     }

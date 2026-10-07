@@ -12,7 +12,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RootNamespace>NinaPm.Nina</RootNamespace>
     <AssemblyName>NinaPm.Nina</AssemblyName>
-    <Version>0.4.15</Version>
+    <Version>0.4.16</Version>
     <!-- Plugin-Manifest: PluginBase liest Name, Autor und Kurzbeschreibung aus diesen Attributen (ADR-S2b). -->
     <AssemblyTitle>NINA-PM</AssemblyTitle>
     <Product>NINA-PM</Product>
