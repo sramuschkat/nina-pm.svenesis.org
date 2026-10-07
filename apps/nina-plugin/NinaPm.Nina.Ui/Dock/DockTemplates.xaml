@@ -268,8 +268,15 @@
                     <DockPanel>
                         <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" DockPanel.Dock="Right" Opacity="0.8" Text="{Binding Counters}" />
                         <WrapPanel>
-                            <CheckBox Margin="0,2,14,2" VerticalAlignment="Center" Content="{Binding FollowLabel}" IsChecked="{Binding Follow}" />
-                            <CheckBox Margin="0,2,14,2" VerticalAlignment="Center" Content="{Binding OnlyExposuresLabel}" IsChecked="{Binding OnlyExposures}" />
+                            <!--  NINAs Theme zeichnet Checkboxen als ON/OFF-Schalter ohne Inhalt: Beschriftung daneben (VM-Lauf 07.10.2026).  -->
+                            <StackPanel Margin="0,2,16,2" Orientation="Horizontal">
+                                <CheckBox VerticalAlignment="Center" AutomationProperties.Name="{Binding FollowLabel}" IsChecked="{Binding Follow}" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding FollowLabel}" />
+                            </StackPanel>
+                            <StackPanel Margin="0,2,16,2" Orientation="Horizontal">
+                                <CheckBox VerticalAlignment="Center" AutomationProperties.Name="{Binding OnlyExposuresLabel}" IsChecked="{Binding OnlyExposures}" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="{Binding OnlyExposuresLabel}" />
+                            </StackPanel>
                             <Button Style="{DynamicResource NinaPm.ButtonSmall}" Margin="0,2,8,2" Command="{Binding CopyCommand}" Content="{Binding CopyLabel}" />
                             <TextBlock Margin="0,2,0,2" VerticalAlignment="Center" Opacity="0.7" Text="{Binding CopyStatus}" />
                         </WrapPanel>

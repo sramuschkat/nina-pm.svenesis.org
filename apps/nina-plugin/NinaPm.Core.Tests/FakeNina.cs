@@ -108,7 +108,11 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
         OnExposure?.Invoke(exposures);
         if (exposures == FailAtExposure) throw new InvalidOperationException("Kamera meldet Fehler");
         Calls.Add($"expose:{entry.Seq}@{UtcText.Format(clock.UtcNow)}");
-        if (exposures == FlipDuringExposure && Pier is not null) Pier = Pier == "west" ? "east" : "west";
+        if (exposures == FlipDuringExposure && Pier is not null)
+        {
+            Pier = Pier == "west" ? "east" : "west";
+            clock.Advance(TimeSpan.FromSeconds(FlipDurationS));
+        }
         if (exposures == CancelAtExposure)
         {
             Sequence.Cancel();
@@ -169,6 +173,9 @@ public sealed class FakeNina(FixedClock clock) : IBlockHost, INightHost
 
     /// <summary>Wechselt die Pier-Seite während der n-ten Belichtung (1-basiert): ungeplanter Flip über NINAs Trigger.</summary>
     public int FlipDuringExposure { get; set; }
+
+    /// <summary>Dauer des ungeplanten Flips in s (Warten auf den Meridian, Slew, Autofokus, Guiding), vor der Belichtung.</summary>
+    public double FlipDurationS { get; set; }
 
     /// <summary>Wird bei jedem Warteschritt aufgerufen (z. B. Bedienung während des Wartens).</summary>
     public Action<DateTimeOffset>? OnDelay { get; set; }

@@ -443,7 +443,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
                 log.Warning("WARNING", ("code", "transit_series_stalled"), ("block", block.Id));
                 return ("error", exposures, skippedTotal);
             }
-            DetectUnplannedFlip(run, pierBefore, host.PierSide(), started);
+            DetectUnplannedFlip(run, pierBefore, host.PierSide(), started, (e.ExposureS ?? 0) + run.DownloadS);
             // Die Serie wiederholt denselben Eintrag bis untilUtc (Playback entscheidet über das Ende).
             cursor = series ? target - 1 : target;
         }
@@ -453,10 +453,12 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
     /// Ungeplanter Flip (NINAs Trigger vor einer Belichtung, auch die geplante ±1 Belichtung früher): Pier-Seite
     /// gewechselt → <c>FLIP</c>, Zentrieren vor der nächsten Belichtung, ein späterer <c>meridian_flip</c> ist erledigt.
     /// </summary>
-    private void DetectUnplannedFlip(Run run, string? before, string? after, DateTimeOffset started)
+    private void DetectUnplannedFlip(Run run, string? before, string? after, DateTimeOffset started, double exposureS)
     {
         if (FlipRules.Detect(before, after, null, null, 0, 0) != FlipDetection.Flipped) return;
-        var durationS = Math.Max(0, Math.Round((clock.UtcNow - started).TotalSeconds));
+        // NINAs Trigger flippt vor der Belichtung, erkannt wird es danach: die Belichtung gehört nicht zur Flipdauer
+        // (Rig-Nacht 06./07.10.2026: gemeldet 1903 s, davon 605 s Belichtung und Download).
+        var durationS = Math.Max(0, Math.Round((clock.UtcNow - started).TotalSeconds - exposureS));
         Flipped(run, before!, after!, durationS);
     }
 
