@@ -5,6 +5,9 @@
  * Die Uhr läuft mit Overheads (Slew/Zentrieren, Filterwechsel, Download, Dither, Autofokus), `pick` ist
  * seiteneffektfrei, Blöcke enden hart (einzige Ausnahme: Nachtende-Kulanz) und leere Blockreste werden
  * freigegeben. Zeiten in Sekunden ab Slot 0. Meridian-Flip und Pierseiten folgen mit AP-13d.
+ * Frei gewordene Zeit wird neu vergeben (A-33), die fortgesetzte Einheit einer Neuplanung beginnt ohne
+ * `slew_center` (A-34), und Blöcke rücken an das Ende des vorigen Blocks auf (A-35; alles Entscheidung Sven
+ * 07.10.2026, allocation.md §8.7).
  */
 import { SLOT_S, type Matrix, type Row, type UnitLine } from './model';
 
@@ -234,6 +237,16 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     return true;
   };
 
+  /** Passt die gewählte Belichtung ab `at` noch (Panel über Mindesthöhe, LA-Zeile sicher über die ganze Dauer)? */
+  const coversAt = (row: Row, c: Picked, at: number): boolean => {
+    const cs = Math.min(n - 1, Math.floor(at / SLOT_S));
+    const cost = c.line.exposureS + dl;
+    const mask = unitPanels(row).find((p) => p.index === c.panelIndex)?.canImage ?? null;
+    if (mask !== null && !panelCovers(row, mask, cs, at, cost)) return false;
+    if (c.line.tier <= 0) return true;
+    return c.line.safe[cs] === true && headroomOf(c.line, cs) - (at - cs * SLOT_S) >= cost;
+  };
+
   /** §9 `pick`, seiteneffektfrei. */
   function pick(row: Row, cs: number, opts: PickOptions): Picked | null {
     const moonDown = (moonAlt[cs] ?? 0) <= 0;
@@ -389,6 +402,8 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
   let currentPanel: number | null = null;
   let ditherCount = 0;
   let ditherDue = false;
+  /** `ditherDue` beim letzten Blockschluss – für die Verlängerung des vorigen Blocks (A-33). */
+  let closedDitherDue = false;
   let flipped = false;
   let pierEndLast: 'west' | 'east' | null = null;
   const flipDone = new Set(settings.flipDone);
@@ -423,6 +438,7 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         if (assignment[fs] === block.row && !m.locked[fs]) assignment[fs] = -1;
     }
     block = null;
+    closedDitherDue = ditherDue;
     ditherDue = false;
   };
   /** Leerlauf ≥ 5 min seit dem letzten Block → `wait` am Ende dieses Blocks (§8). */
@@ -488,13 +504,190 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
     return longest + dl;
   };
 
+  // ─── Frei gewordene Zeit neu vergeben (A-33, Entscheidung Sven 07.10.2026; allocation.md §8.7) ─────────────
+  const sw = m.setup.switches;
+  /** Belichtbare Zeilen der Einheit mit Restbedarf (live, nach den im Ablauf schon ausgegebenen Belichtungen). */
+  const needLines = (row: Row) =>
+    unitPanels(row).flatMap((p) =>
+      p.lines.filter((l) => l.enabled && l.tier >= 0 && l.exposureS > 0 && restOf(l) > 0),
+    );
+  /** Restarbeit in Sekunden (Belichtung + Download), live. */
+  const liveWork = (row: Row) => {
+    let sec = 0;
+    for (const l of needLines(row)) sec += restOf(l) * (l.exposureS + dl);
+    return sec;
+  };
+  /** Freie Slots, die im Ablauf schon angeboten wurden (je Slot höchstens einmal, sichert das Ende des Ablaufs). */
+  const offered = new Set<number>();
+  /** Versuche, den vorigen Block zu verlängern (je Einheit und Slot einmal). */
+  const extendTried = new Set<string>();
+  /**
+   * Stufe 1: Die Einheit des vorigen Blocks übernimmt die Lücke ab `s` (bis `limit`, nur freie Slots oder Slots von
+   * `owner`), wenn ihr Block unmittelbar davor liegt, sie noch Bedarf hat, in den Slots nutzbar ist und eine Belichtung
+   * passt. Kein Slew: der Block wird verlängert; ein schon geschlossener Block wird wieder geöffnet.
+   */
+  const extendPrevious = (s: number, limit: number, owner: number): boolean => {
+    if (!sw.reofferFreedTime || s <= 0) return false;
+    const open = block as WalkBlock | null;
+    const prev = open ?? (lastClosed as WalkBlock | null);
+    if (prev === null || prev.kind !== 'regular') return false;
+    if (assignment[s - 1] !== prev.row) return false;
+    if (open === null) {
+      // Wieder öffnen nur, wenn der Block der zuletzt geschlossene ist und ohne Warten endete.
+      if (blocks[blocks.length - 1] !== prev) return false;
+      const last = prev.entries[prev.entries.length - 1];
+      const before = prev.entries[prev.entries.length - 2];
+      if (last?.cmd !== 'end' || before?.cmd === 'wait') return false;
+      if (prev.entries.some((e) => e.cmd === 'expose' && e.lastOfNight)) return false;
+    }
+    const key = `${String(prev.row)}|${String(s)}`;
+    if (extendTried.has(key)) return false;
+    extendTried.add(key);
+    const row = m.rows[prev.row] as Row;
+    if (row.profile.transit !== null || needLines(row).length === 0) return false;
+    let e = s;
+    while (
+      e < limit &&
+      e <= m.lastUsableSlot &&
+      !m.locked[e] &&
+      (assignment[e] === -1 || assignment[e] === owner) &&
+      row.usable[e] === true
+    )
+      e++;
+    if (e === s) return false;
+    const at = open === null ? prev.endS : t;
+    const probe = pick(row, Math.min(n - 1, Math.floor(at / SLOT_S)), {
+      targetRemainingSec: e * SLOT_S - at,
+      includeCompleted: false,
+      allowedPanel: row.profile.panelIndex,
+      atS: at,
+    });
+    if (probe === null) return false;
+    for (let k = s; k < e; k++) assignment[k] = prev.row;
+    if (open === null) {
+      // Block wieder öffnen: `end` entfernen, Zustand (Filter, Panel, Dither-Zähler, Flip) ist unverändert.
+      blocks.pop();
+      prev.entries.pop();
+      prev.pierEnd = null;
+      block = prev;
+      lastClosed = blocks[blocks.length - 1] ?? null;
+      ditherDue = closedDitherDue;
+      t = at;
+    }
+    return true;
+  };
+  /**
+   * Nach einer Freigabe (A-29) weiter: ohne A-33 hinter dem Lauf, mit A-33 beim ersten freigegebenen Slot, damit die
+   * frei gewordene Zeit neu angeboten wird. Rückgabe ist der Slot vor dem nächsten (die Slot-Schleife zählt hoch).
+   */
+  const resumeAfterRelease = (runEnd: number) => {
+    const from = Math.ceil(t / SLOT_S);
+    return sw.reofferFreedTime && from < runEnd && assignment[from] === -1 ? from - 1 : runEnd - 1;
+  };
+  /** A-35: Darf ein neuer Block von `row` ab `at` (vor der Slotgrenze von `s`) beginnen? */
+  const canMoveUp = (row: Row, s: number, at: number) => {
+    const prev = lastClosed as WalkBlock | null;
+    if (prev === null || s <= 0 || prev.endS !== at || prev.row === row.index) return false;
+    if (at < (s - 1) * SLOT_S || assignment[s - 1] !== prev.row) return false;
+    if (row.profile.transit !== null || m.locked[s] === true) return false;
+    return row.usable[s - 1] === true && at < nightEnd;
+  };
+  /** Rüstkosten eines neuen Blocks der Einheit ab `at`: Slew (mit Pierseitenwechsel) und ein erwarteter Flip. */
+  const setupCost = (row: Row, at: number, end: number) => {
+    let cost = slewDuration(row.profile.unitId, row.profile.panelIndex, at, precedingPier(at));
+    if (settings.flip.enabled) {
+      const tm = settings
+        .meridian(row.profile.unitId, row.profile.panelIndex)
+        .find(
+          (x) =>
+            x >= at &&
+            x < end &&
+            !flipDone.has(flipKey(row.profile.unitId, row.profile.panelIndex, x)) &&
+            !(
+              settings.flipDone.has(row.profile.unitId) &&
+              x === settings.upperMeridian(row.profile.unitId, row.profile.panelIndex)
+            ),
+        );
+      if (tm !== undefined) cost += settings.flip.durationS;
+    }
+    return cost;
+  };
+  const viableAt = (row: Row, k: number, end: number) => {
+    const at = Math.max(t, k * SLOT_S);
+    return (
+      pick(row, k, {
+        targetRemainingSec: end * SLOT_S - (at + settings.slewCenterS),
+        includeCompleted: false,
+        allowedPanel: row.profile.panelIndex,
+      }) !== null
+    );
+  };
+  /**
+   * Freier Slot `s` im Ablauf (A-33): die Lücke bis zum nächsten belegten Slot geht (1) an die Einheit des vorigen
+   * Blocks, (2) an die Einheit des folgenden Blocks (früher beginnen) und (3) an eine andere Einheit in
+   * Prioritätsreihenfolge, wenn der Rest nach den Rüstkosten ihre Mindestzeit (bzw. ihre Restarbeit) erreicht.
+   * Liefert die Einheit, die jetzt in `s` steht, sonst −1.
+   */
+  const offerGap = (s: number): number => {
+    offered.add(s);
+    let gapEnd = s;
+    while (gapEnd <= m.lastUsableSlot && assignment[gapEnd] === -1 && !m.locked[gapEnd]) gapEnd++;
+    if (extendPrevious(s, gapEnd, -1)) return assignment[s] ?? -1;
+    // (2) Einheit des folgenden Blocks beginnt früher (normale Rüstkosten, Transitfenster bleiben unverändert).
+    const next = gapEnd <= m.lastUsableSlot && !m.locked[gapEnd] ? (assignment[gapEnd] ?? -1) : -1;
+    const nextRow = next >= 0 ? (m.rows[next] as Row) : null;
+    if (nextRow && nextRow.profile.transit === null && !nextRow.preFiltered) {
+      let k = gapEnd;
+      while (k > s && nextRow.usable[k - 1] === true) k--;
+      const runEnd = runEndOf(next, gapEnd);
+      for (; k < gapEnd; k++) {
+        if (!viableAt(nextRow, k, runEnd)) continue;
+        for (let fs = k; fs < gapEnd; fs++) assignment[fs] = next;
+        gapEnd = k;
+        break;
+      }
+    }
+    // (3) Andere Einheit nur bei lohnendem Rest.
+    if (gapEnd > s)
+      for (const idx of m.priorityOrder) {
+        const row = m.rows[idx] as Row;
+        if (row.profile.transit !== null || row.preFiltered) continue;
+        const work = liveWork(row);
+        if (work <= 0) continue;
+        const required = Math.min(row.minChunkSec, work);
+        let found = false;
+        for (let k = s; k < gapEnd && !found; k++) {
+          if (row.usable[k] !== true) continue;
+          let e = k;
+          while (e < gapEnd && row.usable[e] === true) e++;
+          const at = Math.max(t, k * SLOT_S);
+          if (e * SLOT_S - at - setupCost(row, at, e * SLOT_S) >= required && viableAt(row, k, e)) {
+            for (let fs = k; fs < e; fs++) assignment[fs] = idx;
+            found = true;
+          }
+          k = e;
+        }
+        if (found) break;
+      }
+    return assignment[s] ?? -1;
+  };
+
   for (let s = m.firstUsableSlot; s <= m.lastUsableSlot; s++) {
     let r = assignment[s] ?? -1;
+    // A-33: freier Slot direkt hinter dem offenen Block → Block verlängern, sofern die Einheit noch Bedarf hat.
+    if (r < 0 && block !== null && s * SLOT_S + SLOT_S > t && extendPrevious(s, n, -1))
+      r = assignment[s] ?? -1;
     if (block !== null && r !== block.row) close(t);
     if (s * SLOT_S + SLOT_S <= t) continue;
+    const tBefore = t;
     t = Math.max(t, s * SLOT_S);
+    if (r < 0 && sw.reofferFreedTime && !offered.has(s)) r = offerGap(s);
     if (r < 0) continue;
     let row = m.rows[r] as Row;
+    // A-35 Aufrücken (Entscheidung Sven 07.10.2026): Der neue reguläre Block beginnt direkt nach der letzten Aktion des
+    // unmittelbar vorigen Blocks (im Slot davor) statt an der Slotgrenze – nur, wenn seine Einheit in diesem Slot
+    // nutzbar ist (Dunkelheit, Mindesthöhe, Mond). Die Zuteilung bleibt im 5-min-Raster; Transitblöcke rücken nie vor.
+    if (sw.moveUpBlocks && block === null && tBefore < t && canMoveUp(row, s, tBefore)) t = tBefore;
 
     // Transit-Einheit (A-21): Vorlauf, Serie bis Fensterende; Flip-Lücke folgt mit AP-13d.
     if (row.profile.transit !== null && m.locked[s]) {
@@ -640,10 +833,22 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
 
     const newVisit = block === null || block.row !== r;
     if (newVisit) {
+      // A-34 (Entscheidung Sven 07.10.2026): Der erste Block einer Neuplanung setzt die Einheit auf der Montierung fort
+      // (A-32: `currentUnitId`, Block bis ≤ 300 s vor `startAtS`) und beginnt ohne Leerlauf bei `startAtS` → kein
+      // `slew_center`, die Zeit wird Belichtung. Mosaik ohne Panel-Einheiten: das Panel ist unbekannt, Slew bleibt.
+      const continuing =
+        sw.continuationNoSlew &&
+        settings.startAtS !== null &&
+        t === settings.startAtS &&
+        blocks.length === 0 &&
+        lastClosed === null &&
+        m.setup.continuedUnitId === row.profile.unitId &&
+        !multiPanel(row);
+      const startCost = continuing ? 0 : settings.slewCenterS;
       // Blockanfang ohne Arbeit (§8, FA-SCH-19, A-17): Ersatz oder Freigabe.
       const runEnd = runEndOf(r, s);
       const probe = pick(row, s, {
-        targetRemainingSec: runEnd * SLOT_S - (t + settings.slewCenterS),
+        targetRemainingSec: runEnd * SLOT_S - (t + startCost),
         includeCompleted: false,
         allowedPanel: row.profile.panelIndex,
       });
@@ -664,31 +869,35 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         }
         const reassignEnd = firstViable >= 0 ? firstViable : runEnd;
         let fallback = -1;
-        for (const other of m.rows) {
-          if (other.index === r || other.profile.transit !== null || other.preFiltered) continue;
-          let all = true;
-          for (let fs = s; fs < reassignEnd; fs++)
-            if (other.profile.canImage[fs] !== true) {
-              all = false;
+        // A-33 Stufe 1: der unmittelbar vorige Block übernimmt die Slots ohne Slew, wenn er noch Bedarf hat.
+        if (extendPrevious(s, reassignEnd, r)) fallback = assignment[s] ?? -1;
+        else
+          for (const other of m.rows) {
+            if (other.index === r || other.profile.transit !== null || other.preFiltered) continue;
+            let all = true;
+            for (let fs = s; fs < reassignEnd; fs++)
+              if (other.profile.canImage[fs] !== true) {
+                all = false;
+                break;
+              }
+            if (!all) continue;
+            if (
+              pick(other, s, {
+                targetRemainingSec: reassignEnd * SLOT_S - (t + settings.slewCenterS),
+                includeCompleted: false,
+                allowedPanel: other.profile.panelIndex,
+              })
+            ) {
+              fallback = other.index;
               break;
             }
-          if (!all) continue;
-          if (
-            pick(other, s, {
-              targetRemainingSec: reassignEnd * SLOT_S - (t + settings.slewCenterS),
-              includeCompleted: false,
-              allowedPanel: other.profile.panelIndex,
-            })
-          ) {
-            fallback = other.index;
-            break;
           }
-        }
         if (fallback >= 0) {
-          for (let fs = s; fs < reassignEnd; fs++) {
-            if (m.locked[fs]) break;
-            assignment[fs] = fallback;
-          }
+          if (block === null)
+            for (let fs = s; fs < reassignEnd; fs++) {
+              if (m.locked[fs]) break;
+              assignment[fs] = fallback;
+            }
           r = fallback;
           row = m.rows[r] as Row;
         } else {
@@ -710,27 +919,32 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
           if (releaseEnd > s) {
             release(s, releaseEnd);
             if (assignment[s] === -1) {
-              s = releaseEnd - 1;
+              // A-33: die freigegebenen Slots im Ablauf neu anbieten (Stufen 2 und 3), sonst überspringen.
+              s = sw.reofferFreedTime ? s - 1 : releaseEnd - 1;
               continue;
             }
           }
         }
       }
-      // Blockbeginn: Slew/Zentrieren (A-18 auch nach Leerlauf auf derselben Einheit), mit
-      // Pierseitenwechsel gegenüber dem unmittelbar vorigen Block um die Flip-Dauer länger (NT-27).
-      const prevPier = precedingPier(t);
-      const b = open(row, row.profile.panelIndex, 'regular', t);
-      waitUntil(t);
-      const slewS = slewDuration(row.profile.unitId, row.profile.panelIndex, t, prevPier);
-      b.entries.push({
-        cmd: slewCmd,
-        atS: t,
-        durationS: slewS,
-        panelIndex: row.profile.panelIndex,
-      });
-      t += slewS;
-      currentPanel = row.profile.panelIndex;
-      if (multiPanel(row)) panelTime.set(r, new Map());
+      if (block === null) {
+        // Blockbeginn: Slew/Zentrieren (A-18 auch nach Leerlauf auf derselben Einheit), mit
+        // Pierseitenwechsel gegenüber dem unmittelbar vorigen Block um die Flip-Dauer länger (NT-27).
+        const prevPier = precedingPier(t);
+        const b = open(row, row.profile.panelIndex, 'regular', t);
+        waitUntil(t);
+        if (!continuing) {
+          const slewS = slewDuration(row.profile.unitId, row.profile.panelIndex, t, prevPier);
+          b.entries.push({
+            cmd: slewCmd,
+            atS: t,
+            durationS: slewS,
+            panelIndex: row.profile.panelIndex,
+          });
+          t += slewS;
+        }
+        currentPanel = row.profile.panelIndex;
+        if (multiPanel(row)) panelTime.set(r, new Map());
+      }
     }
 
     const runEnd = runEndOf(r, s);
@@ -915,7 +1129,7 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         // A-29: Rest des Laufs freigeben, Block schließen.
         release(Math.ceil(t / SLOT_S), runEnd);
         close(t);
-        s = runEnd - 1;
+        s = resumeAfterRelease(runEnd);
         break;
       }
       const b = block as WalkBlock;
@@ -936,6 +1150,9 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
         panelTime.set(r, new Map());
         const limit = lastOfNight ? Number.POSITIVE_INFINITY : blockEnd;
         if (t + chosen.line.exposureS + dl > limit) continue;
+        // Nach dem Panel-Slew beginnt die Belichtung später: Panelhöhe (A-19) und Mondsicherheit ab Belichtungsbeginn
+        // (A-26) neu prüfen, sonst neu wählen.
+        if (!coversAt(row, chosen, t)) continue;
       } else if (b.panelIndex === null && multiPanel(row)) {
         // Erster Block eines Mosaiks ohne Panel-Einheiten: Slew auf das Panel der ersten Belichtung (A-19).
         b.panelIndex = chosen.panelIndex;
@@ -949,10 +1166,14 @@ export function walk(m: Matrix, settings: WalkSettings): WalkResult {
       const target = block as WalkBlock;
       if (chosen.line.filter !== currentFilter) {
         const limit = lastOfNight ? Number.POSITIVE_INFINITY : blockEnd;
-        if (t + settings.filterChangeS + chosen.line.exposureS + dl > limit) {
+        // Mondsicherheit und Panelhöhe gelten ab Belichtungsbeginn nach dem Filterwechsel (A-26, A-19).
+        if (
+          t + settings.filterChangeS + chosen.line.exposureS + dl > limit ||
+          (!lastOfNight && !coversAt(row, chosen, t + settings.filterChangeS))
+        ) {
           release(Math.ceil(t / SLOT_S), runEnd);
           close(t);
-          s = runEnd - 1;
+          s = resumeAfterRelease(runEnd);
           break;
         }
         target.entries.push({

@@ -325,7 +325,11 @@ describe('Eigenschaften über Zufallsgrids mit Masken je Panel', () => {
           if (e.cmd !== 'expose') continue;
           const end = e.atS + e.exposureS + dl;
           const s0 = Math.floor(e.atS / 300);
-          let runEnd = s0;
+          // Aufrücken (A-35): der Block darf im letzten Slot des unmittelbar vorigen Blocks beginnen.
+          let runEnd =
+            r.walkSlotAssignment[s0] !== b.unitId && r.walkSlotAssignment[s0 + 1] === b.unitId
+              ? s0 + 1
+              : s0;
           while (runEnd < r.walkSlotAssignment.length && r.walkSlotAssignment[runEnd] === b.unitId)
             runEnd++;
           if (!e.lastOfNight)

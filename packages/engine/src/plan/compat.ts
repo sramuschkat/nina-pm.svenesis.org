@@ -66,6 +66,18 @@ export interface CompatSwitches {
   readonly releaseIdleRun: boolean;
   /** A-32: fortgesetzte Einheit einer Neuplanung ohne Mindestzeit, solange nutzbar (Entscheidung Sven 07.10.2026). */
   readonly continuation: boolean;
+  /**
+   * A-33: im Ablauf frei gewordene Zeit neu vergeben – vorige Einheit verlängern, nächste früher beginnen, andere
+   * Einheit nur bei lohnendem Rest (Entscheidung Sven 07.10.2026).
+   */
+  readonly reofferFreedTime: boolean;
+  /** A-34: kein `slew_center` am Beginn des ersten Blocks, wenn er die fortgesetzte Einheit weiterführt (A-32). */
+  readonly continuationNoSlew: boolean;
+  /**
+   * A-35: Aufrücken – ein regulärer Block beginnt direkt nach der letzten Aktion des unmittelbar vorigen Blocks statt an
+   * der nächsten Slotgrenze, wenn seine Einheit im angeschnittenen Slot nutzbar ist (Zuteilung bleibt im 5-min-Raster).
+   */
+  readonly moveUpBlocks: boolean;
   /** A-31: Restriktivität `A · W · arctan(14,77/W)` (sonst `A × (1 + 100/(maxIllum+1))`). */
   readonly restrictivenessWidth: boolean;
 }
@@ -102,6 +114,9 @@ export const DEVIATION_IDS: Readonly<Record<keyof CompatSwitches, string>> = {
   releaseIdleRun: 'A-29',
   restrictivenessWidth: 'A-31',
   continuation: 'A-32',
+  reofferFreedTime: 'A-33',
+  continuationNoSlew: 'A-34',
+  moveUpBlocks: 'A-35',
 };
 
 const SWITCH_KEYS = Object.keys(DEVIATION_IDS).sort() as (keyof CompatSwitches)[];

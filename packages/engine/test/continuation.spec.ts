@@ -127,8 +127,9 @@ describe('Fortsetzung ohne Mindestzeit (A-32, Entscheidung Sven 07.10.2026)', ()
       expect(r.prefiltered).not.toContain('IC1795');
       const ex = exposes(r, 'IC1795');
       expect(ex.length).toBeGreaterThanOrEqual(1);
-      // Slew ab startAtS (60 s), dann SII 600 s + 5 s Download bis vor das Ende der Dunkelheit.
-      expect(ex[0]?.atS).toBe(startAtS + 60);
+      // Kein Slew bei Fortsetzung (A-34, Engine 0.18.0): SII 600 s + 5 s Download ab startAtS bis vor das Ende der
+      // Dunkelheit (vorher Slew 60 s ab startAtS).
+      expect(ex[0]?.atS).toBe(startAtS);
       for (const e of ex) expect(e.atS + 605).toBeLessThanOrEqual(darkEnd);
       expect(r.diagnostics.filter((d) => d.unitId === 'IC1795' && !('lineId' in d))).toEqual([]);
     },
