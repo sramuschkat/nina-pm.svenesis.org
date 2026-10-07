@@ -1603,6 +1603,36 @@ export const de = {
       afDurationS: 'Autofokus-Dauer',
       downloadS: 'Download je Belichtung',
     },
+    measured: {
+      title: 'Gemessene Overheads',
+      basis:
+        'Aus dem Ist von {{nights}} Nächten (Stand {{at}}). Ab {{min}} Messungen plant die Engine mit dem Median, sonst mit dem getippten Wert.',
+      noData:
+        'Noch keine Messung – sie entsteht nach jedem Sessionabschluss. Ab {{min}} Messungen plant die Engine mit dem Median.',
+      hint: '„Fest“ = immer der getippte Wert. Ändert sich nur die Messung, geht keine neue Einstellungsversion an NINA; neue Werte wirken ab dem nächsten Plan.',
+      seconds: '{{s}} s',
+      secondsMin: '{{s}} s ({{min}} min)',
+      spread: 'n = {{n}} · {{p25}}–{{p75}} s',
+      deviates: 'weicht stark ab',
+      none: 'keine Messung',
+      fixedAt: '{{value}} fest (immer getippt)',
+      col: {
+        value: 'Wert',
+        typed: 'Getippt',
+        measured: 'Gemessen (Median)',
+        effective: 'Wirkt',
+        fixed: 'Fest',
+      },
+      source: { measured: 'gemessen', typed: 'getippt' },
+      key: {
+        slewCenterS: 'Anfahren + Zentrieren',
+        filterChangeS: 'Filterwechsel',
+        ditherSettleS: 'Dither-Settle',
+        afDurationS: 'Autofokus-Dauer',
+        downloadS: 'Download je Belichtung',
+        flipDurationS: 'Meridian-Flip',
+      },
+    },
     scheduler: {
       on: 'an',
       off: 'aus',

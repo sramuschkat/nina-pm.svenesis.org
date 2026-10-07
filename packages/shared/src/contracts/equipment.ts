@@ -13,6 +13,8 @@ import {
   moonModes,
   observatoryTypes,
   opticalDesigns,
+  overheadSources,
+  overheadValueKeys,
   photometricBands,
   playbackModes,
   strategies,
@@ -398,6 +400,72 @@ export const Overhead = z
   .strict();
 
 /**
+ * Gemessener Overhead-Wert (AP-65, FA-RIG-04b): Median, Anzahl und Streuung (p25–p75) der letzten 40 Messungen aus dem
+ * Ist der Nächte des Rigs, in Sekunden. `measuredOverheads` in `packages/shared` rechnet ihn.
+ */
+export const MeasuredOverheadStat = z
+  .object({
+    medianS: z.number().min(0),
+    n: z.number().int().min(0),
+    p25S: z.number().min(0),
+    p75S: z.number().min(0),
+  })
+  .meta({ id: 'MeasuredOverheadStat' });
+export type MeasuredOverheadStat = z.infer<typeof MeasuredOverheadStat>;
+
+/**
+ * Messung je Rig (AP-65): nach jedem Sessionabschluss (`session_close`) über die letzten 30 Nächte gerechnet und an der
+ * abgeschlossenen Session gespeichert (`session.kpis.measuredOverhead`). `null` je Wert = keine Messung.
+ */
+export const MeasuredOverheads = z
+  .object({
+    computedAtUtc: UtcInstant,
+    fromNight: z.iso.date(),
+    toNight: z.iso.date(),
+    /** Nächte mit Sessions ab Plugin 0.4.13 (`block_start` vorhanden), die in die Messung eingingen. */
+    nights: z.number().int().min(0),
+    values: z.object({
+      slewCenterS: MeasuredOverheadStat.nullable(),
+      filterChangeS: MeasuredOverheadStat.nullable(),
+      ditherSettleS: MeasuredOverheadStat.nullable(),
+      afDurationS: MeasuredOverheadStat.nullable(),
+      downloadS: MeasuredOverheadStat.nullable(),
+      flipDurationS: MeasuredOverheadStat.nullable(),
+    }),
+  })
+  .meta({ id: 'MeasuredOverheads' });
+export type MeasuredOverheads = z.infer<typeof MeasuredOverheads>;
+
+/** Ein Overhead-Wert in S-10 (AP-65): getippt, gemessen, wirksam, Schalter „fest“, Hinweis bei großer Abweichung. */
+export const RigOverheadValue = z
+  .object({
+    key: z.enum(overheadValueKeys),
+    typedS: z.number(),
+    measured: MeasuredOverheadStat.nullable(),
+    /** Wert in der Engine-Eingabe (ganze Sekunden bei `measured`). */
+    effectiveS: z.number(),
+    source: z.enum(overheadSources),
+    fixed: z.boolean(),
+    /** Gemessen (ab `minSamples`) mehr als doppelt bzw. weniger als halb so groß wie getippt. */
+    deviates: z.boolean(),
+  })
+  .meta({ id: 'RigOverheadValue' });
+export type RigOverheadValue = z.infer<typeof RigOverheadValue>;
+
+export const RigOverheadsView = z
+  .object({
+    /** Ab so vielen Messungen wirkt der gemessene Wert (10). */
+    minSamples: z.number().int(),
+    computedAtUtc: UtcInstant.nullable(),
+    fromNight: z.iso.date().nullable(),
+    toNight: z.iso.date().nullable(),
+    nights: z.number().int(),
+    values: z.array(RigOverheadValue),
+  })
+  .meta({ id: 'RigOverheadsView' });
+export type RigOverheadsView = z.infer<typeof RigOverheadsView>;
+
+/**
  * Scheduler-Einstellungen je Rig (FA-RIG-04, FA-SCH, flip-rotation.md §1). Die Sortierkette ist hier
  * bewusst eine Liste freier Zeichenketten: unbekannte oder doppelte Schlüssel ergeben
  * `422 rig.sort_chain_invalid` (sort-chain.md), `maxAfter < after` ergibt `422 rig.flip_settings_invalid`.
@@ -434,6 +502,15 @@ export const SchedulerSettings = z
     flipPauseBeforeMeridianMin: z.number().min(0).max(120),
     flipDurationS: z.number().min(0).max(3600),
     overhead: Overhead,
+    /**
+     * Overhead-Werte, für die immer der getippte Wert gilt (AP-65, Schalter „fest“ in S-10); sonst wirkt ab 10 Messungen
+     * der gemessene Median. Fehlt das Feld beim Speichern, bleibt die gespeicherte Auswahl.
+     */
+    overheadFixed: z
+      .array(z.enum(overheadValueKeys))
+      .max(overheadValueKeys.length)
+      .refine((a) => new Set(a).size === a.length, { message: 'doppelt' })
+      .optional(),
   })
   .strict()
   .meta({ id: 'SchedulerSettings' });
@@ -456,6 +533,11 @@ export const RigView = RigInput.extend({
   filterWheel: z.array(FilterWheelSlot),
   /** Erhöht bei jeder Änderung (Sync an NINA); auch als `ETag`. */
   settingsVersion: z.number().int(),
+  /**
+   * Overheads getippt/gemessen/wirksam (AP-65, FA-RIG-04b, S-10). Ändert sich nur die Messung, ändern sich weder
+   * `settingsVersion` noch das Ziele-ETag; fehlt das Feld, gelten die getippten Werte.
+   */
+  overheads: RigOverheadsView.optional(),
   derived: z.object({
     effFocalMm: z.number(),
     scaleArcsecPx: z.number(),

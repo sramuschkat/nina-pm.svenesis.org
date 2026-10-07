@@ -159,9 +159,12 @@ public sealed partial class SimNina(VirtualClock clock, SimWorld world, Func<Nig
             && (world.LastAutofocusUtc is not { } lastAf || clock.UtcNow - lastAf >= TimeSpan.FromMinutes(world.AfEveryMin)))
         {
             // NINAs Autofokus nach Zeit (Trigger vor der Belichtung) mit realer Dauer – unabhängig vom `autofocus_hint` des Plans.
+            // Gemeldet wie im Adapter über NINAs Fokussierer-Mediator (AP-65): Beginn, Erfolg → `af` mit Dauer.
             FileLogSink.Sim(logWriterForSim, clock, "NINA autofocus");
+            runner()?.Autofocus.Starting(currentFilter);
             await clock.AdvanceToAsync(clock.UtcNow.AddSeconds(world.AfDurationS), token).ConfigureAwait(false);
             world.LastAutofocusUtc = clock.UtcNow;
+            runner()?.Autofocus.Completed(currentFilter);
         }
         var exposureS = entry.ExposureS ?? 0;
         var id = Uuid7.New(clock);

@@ -20,8 +20,11 @@ import {
   type FieldError,
   type FilterInput,
   type FilterWheelPut,
+  type MeasuredOverheads,
   type MoonProfileInput,
+  overheadValueKeys,
   type Overhead,
+  type OverheadValueKey,
   type RigInput,
   type SchedulerSettings,
   type SiteInput,
@@ -30,6 +33,7 @@ import {
 } from '@nina-pm/shared';
 import { sql, type Selectable, type Transaction } from 'kysely';
 import { withTx } from '../tx';
+import { latestMeasuredOverheads } from './measured-overhead';
 import type {
   CameraTable,
   Database,
@@ -92,6 +96,8 @@ export type RigRow = Omit<
   filterWheel: FilterWheelEntry[];
   ninaFilterWheel: ReportedWheel | null;
   overhead: Overhead;
+  /** Werte mit Schalter „fest“ (AP-65); gespeichert in `rig.overhead.fixed` (keine eigene Spalte). */
+  overheadFixed: OverheadValueKey[];
   sortChain: string[];
 };
 
@@ -131,8 +137,15 @@ const isUniqueViolation = (error: unknown) =>
 const json = (value: unknown) => JSON.stringify(value);
 
 function parseOverhead(value: unknown): Overhead {
-  const o = (value ?? {}) as Partial<Overhead>;
-  return { ...DEFAULT_OVERHEAD, ...o };
+  const o: Record<string, unknown> = { ...((value ?? {}) as Record<string, unknown>) };
+  delete o.fixed;
+  return { ...DEFAULT_OVERHEAD, ...(o as Partial<Overhead>) };
+}
+
+/** Schalter „fest“ je Overhead-Wert (AP-65) aus `rig.overhead.fixed`; Unbekanntes entfällt. */
+function parseOverheadFixed(value: unknown): OverheadValueKey[] {
+  const fixed = (value as { fixed?: unknown } | null)?.fixed;
+  return Array.isArray(fixed) ? overheadValueKeys.filter((k) => fixed.includes(k)) : [];
 }
 
 /**
@@ -184,6 +197,7 @@ function toRig(row: Selectable<RigTable>): RigRow {
     filterWheel: (Array.isArray(row.filterWheel) ? row.filterWheel : []) as FilterWheelEntry[],
     ninaFilterWheel: parseReported(row.ninaFilterWheel),
     overhead: parseOverhead(row.overhead),
+    overheadFixed: parseOverheadFixed(row.overhead),
     sortChain: (Array.isArray(row.sortChain) ? row.sortChain : []) as string[],
   };
 }
@@ -1193,6 +1207,11 @@ export class EquipmentRepository extends TenantRepo {
     return this.rigRows();
   }
 
+  /** Jüngste Messung der Overheads je Rig (AP-65, `session.kpis.measuredOverhead`); Rigs ohne Messung fehlen. */
+  measuredOverheads(rigIds: readonly string[]): Promise<Map<string, MeasuredOverheads>> {
+    return latestMeasuredOverheads(this.db, this.tenantId, rigIds);
+  }
+
   async rig(id: string, trx: Tx | undefined = undefined): Promise<RigRow | undefined> {
     const row = await (trx ?? this.db)
       .selectFrom('rig')
@@ -1303,13 +1322,15 @@ export class EquipmentRepository extends TenantRepo {
         const before = await this.rig(id, trx);
         if (!before) throw notFound();
         this.checkVersion(before, expectedVersion);
-        const { sortChain, overhead, ...rest } = input;
+        const { sortChain, overhead, overheadFixed, ...rest } = input;
+        const fixed = overheadFixed ?? before.overheadFixed;
         await trx
           .updateTable('rig')
           .set({
             ...rest,
             sortChain: json(sortChain),
-            overhead: json(overhead),
+            // Schalter „fest“ (AP-65) im selben jsonb wie die getippten Werte – keine Migration.
+            overhead: json(fixed.length > 0 ? { ...overhead, fixed } : overhead),
             settingsVersion: before.settingsVersion + 1,
             updatedAt: now,
           })

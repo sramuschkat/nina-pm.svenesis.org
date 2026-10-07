@@ -180,6 +180,15 @@ public sealed class NightRunner(
 
     public Guid? RunningBlockId => runningBlock?.Id;
 
+    private AutofocusTracker? autofocus;
+
+    /// <summary>
+    /// Autofokus-Läufe (AP-65, execution.md §10.2): der NINA-Adapter meldet Beginn, Messpunkte und Erfolg, der Walk, die
+    /// eigene Belichtung und das Blockende schließen einen offenen Lauf als gescheitert. Jeder Lauf wird <c>af</c> mit Dauer.
+    /// </summary>
+    public AutofocusTracker Autofocus => LazyInitializer.EnsureInitialized(ref autofocus,
+        () => new AutofocusTracker(clock, () => runningBlock is { } b ? (b.Id, b.ProjectId) : null, ReportAutofocus));
+
     public int OutboxPending => store.OutboxCount();
 
     /// <summary>Dead-Letter-Einträge (Heartbeat <c>deadLetters</c>, Optionsseite).</summary>
@@ -1068,7 +1077,7 @@ public sealed class NightRunner(
                 // Blockschluss mit der Download-Zeit der Engine und weichem Blockende (§4.2, Rig-Nacht 06.10.2026).
                 scheduler?.Overhead.DownloadS,
                 Playback.SoftEnd(block, NextBlockStart(stored.Plan.Blocks, index), stored.Plan.DarknessEndUtc),
-                (b, from) =>
+                (b, from, slewSkipped) =>
                 {
                     runningSince = from;
                     var title = TargetTitle.For(b, Targets);
@@ -1078,13 +1087,17 @@ public sealed class NightRunner(
                         Title = title, Transit = b.Kind == BlocksKind.Transit,
                         RaDeg = b.RaDeg, DecDeg = b.DecDeg, RotationDeg = b.RotationDeg,
                     });
-                    // Für das Ist auf dem Server (AP-53c): Beginn des Anfahrens als Zeitpunkt, Art und Titel in data.
+                    // Für das Ist auf dem Server (AP-53c): Beginn des Anfahrens als Zeitpunkt, Art und Titel in data. Seit 0.4.19
+                    // auch die Dauer von Anfahren + Zentrieren (bis jetzt, vor jedem Warten auf den Plan) für die gemessenen
+                    // Overheads (AP-65); entfällt der Slew (gleiches Ziel), fehlt sie.
+                    var data = new Dictionary<string, object>
+                    {
+                        ["kind"] = b.Kind == BlocksKind.Transit ? "transit" : "regular", ["title"] = title,
+                        ["panelId"] = b.PanelId?.ToString() ?? "",
+                    };
+                    if (!slewSkipped) data["slewCenterS"] = Math.Max(0, Math.Round((clock.UtcNow - from).TotalSeconds));
                     ReportEvent(EventsKind.Block_start, null, b.Id, projectId: b.ProjectId, occurredAtUtc: from, nightPlanId: stored.Plan.NightPlanId,
-                        data: new Dictionary<string, object>
-                        {
-                            ["kind"] = b.Kind == BlocksKind.Transit ? "transit" : "regular", ["title"] = title,
-                            ["panelId"] = b.PanelId?.ToString() ?? "",
-                        });
+                        data: data);
                 },
                 (b, e) =>
                 {
@@ -1154,6 +1167,8 @@ public sealed class NightRunner(
         }
         finally
         {
+            // Ein am Blockende noch offener Autofokus ist vorbei (gescheitert, NINA meldet nur Erfolge, AP-65).
+            Autofocus.Settle(exact: false);
             bool abort;
             lock (sessionGate)
             {
@@ -1297,6 +1312,21 @@ public sealed class NightRunner(
             BlockId = blockId, ProjectId = projectId, Data = data, DurationS = durationS,
         };
         store.EnqueueOutbox(OutboxKinds.Event, JsonConvert.SerializeObject(e, NinaJson.Settings()), session, planId);
+    }
+
+    /// <summary>
+    /// Autofokus-Lauf melden (AP-65, execution.md §10.2): <c>af</c> mit Dauer in ganzen Sekunden, Zeitpunkt = Ende, Block
+    /// und Projekt beim Beginn, <c>data.result</c> <c>ok</c>/<c>failed</c> und <c>data.filter</c> (falls bekannt);
+    /// <c>code</c> <c>failed</c> bei einem gescheiterten Lauf.
+    /// </summary>
+    private void ReportAutofocus(AutofocusRun run)
+    {
+        var result = run.Ok ? "ok" : "failed";
+        log.Event("AF", ("block", run.BlockId), ("result", result), ("filter", run.Filter), ("durationS", run.DurationS), ("atUtc", run.EndUtc));
+        var data = new Dictionary<string, object> { ["result"] = result };
+        if (run.Filter is { } filter) data["filter"] = filter;
+        ReportEvent(EventsKind.Af, run.Ok ? null : "failed", run.BlockId, data: data, durationS: run.DurationS, projectId: run.ProjectId,
+            occurredAtUtc: run.EndUtc);
     }
 
     // ---- Heartbeat und Lease (AP-16e, execution.md §6) -------------------------------------------------

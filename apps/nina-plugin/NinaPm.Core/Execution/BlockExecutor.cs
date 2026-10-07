@@ -49,7 +49,7 @@ public sealed record RotationSettings(double ToleranceDeg, bool SkipOnMismatch)
 /// Rigs (AP-16f), Playback-Modus des Rigs und Meldungen an den Server (Ereignis, Code); Download-Zeit des Rigs
 /// (<c>overhead.downloadS</c>, wie die Engine) und weiches Blockende (<see cref="Playback.SoftEnd"/>, Plugin 0.4.8);
 /// Blockstart nach dem Zentrieren mit Beginn des Anfahrens und zeitgeführt übersprungene Belichtungen für das Nachtjournal
-/// (AP-53b). <see cref="Report"/> trägt beim Flip dessen Ende als Zeitpunkt (Plugin 0.4.18); <see cref="FlipDoneTonight"/>
+/// (AP-53b; <see cref="Started"/> mit Beginn und ob der Slew entfiel, Plugin 0.4.19). <see cref="Report"/> trägt beim Flip dessen Ende als Zeitpunkt (Plugin 0.4.18); <see cref="FlipDoneTonight"/>
 /// meldet, ob für die Einheit des Blocks in dieser Nacht schon ein Flip erledigt ist (<c>flipDoneByPanel</c>).
 /// </summary>
 public sealed record BlockRunOptions(
@@ -68,7 +68,7 @@ public sealed record BlockRunOptions(
     Func<TimeSpan>? InBlockInterval = null,
     double? DownloadS = null,
     DateTimeOffset? SoftEndUtc = null,
-    Action<Blocks, DateTimeOffset>? Started = null,
+    Action<Blocks, DateTimeOffset, bool>? Started = null,
     Action<Blocks, Entries>? EntrySkipped = null,
     Func<Blocks, bool>? FlipDoneTonight = null);
 
@@ -311,7 +311,7 @@ public sealed class BlockExecutor(IBlockHost host, IClock clock, NinaPmLog log)
         }
 
         log.Event("BLOCK_START", ("id", block.Id), ("atUtc", clock.UtcNow));
-        options.Started?.Invoke(block, activeFrom);
+        options.Started?.Invoke(block, activeFrom, slewSkipped);
         // Startverzug: tatsächlicher minus geplanter Beginn der Einträge nach dem Zentrieren (§4.2, NT-21).
         var plannedEntries = block.Entries.FirstOrDefault(e => e.Cmd is not (EntriesCmd.Slew_center or EntriesCmd.Slew_center_rotate))?.AtUtc;
         if (plannedEntries is { } p && clock.UtcNow > p) run.Offset = clock.UtcNow - p;

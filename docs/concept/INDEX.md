@@ -20,71 +20,71 @@ Erzeugt per Skript aus den Dateien in diesem Ordner (Stand FK 1.21, TK 1.22, Sch
 | 4. Rollen und Nutzungskontext | 179–199 |
 | 5. Fachlicher Gesamtablauf | 200–241 |
 | &nbsp;&nbsp;5.1 Kern-Anwendungsfälle | 221–241 |
-| 6. Fachliche Anforderungen | 242–861 |
-| &nbsp;&nbsp;6.1 Ausrüstung und Standorte | 246–310 |
-| &nbsp;&nbsp;6.2 Filter, Belichtungspläne und Mondprofile | 311–334 |
-| &nbsp;&nbsp;6.3 Zielsuche und Framing | 335–354 |
-| &nbsp;&nbsp;6.4 Projekte und Ziele | 355–391 |
-| &nbsp;&nbsp;6.5 Sichtbarkeit und Diagramme | 392–400 |
-| &nbsp;&nbsp;6.6 Astro-Wetter | 401–425 |
-| &nbsp;&nbsp;6.7 Scheduler und Nacht-Simulator | 426–475 |
-| &nbsp;&nbsp;6.8 Synchronisation Web ↔ NINA | 476–489 |
-| &nbsp;&nbsp;6.9 NINA-Plugin | 490–554 |
-| &nbsp;&nbsp;6.10 Exoplaneten-Transitplanung | 555–631 |
-| &nbsp;&nbsp;6.11 Auswertung und Folgeplanung | 632–683 |
-| &nbsp;&nbsp;6.12 Administration, Export und Einstellungen | 684–695 |
-| &nbsp;&nbsp;6.13 Mandanten, Super User, Anmeldung und Benutzer | 696–782 |
-| &nbsp;&nbsp;6.14 Rollen, Berechtigungen und Freigabe-Warteschlange | 783–861 |
-| 7. Fachliches Datenmodell | 862–945 |
-| &nbsp;&nbsp;7.1 Übersicht | 864–903 |
-| &nbsp;&nbsp;7.2 Wesentliche Entitäten | 904–945 |
-| 8. Fachliche Regeln und Berechnungen | 946–1083 |
-| &nbsp;&nbsp;8.1 Grundlagen | 948–974 |
-| &nbsp;&nbsp;8.2 Mondvermeidung | 975–1000 |
-| &nbsp;&nbsp;8.3 Strategien | 1001–1009 |
-| &nbsp;&nbsp;8.4 Zähler | 1010–1026 |
-| &nbsp;&nbsp;8.5 Prognose und Kandidatennächte | 1027–1033 |
-| &nbsp;&nbsp;8.6 Filterzuordnung in NINA | 1034–1037 |
-| &nbsp;&nbsp;8.7 Transitvorhersage | 1038–1048 |
-| &nbsp;&nbsp;8.8 Meridian-Flip und Rotation | 1049–1069 |
-| &nbsp;&nbsp;8.9 Aufwand-Kennzeichen | 1070–1083 |
-| 9. Wiederverwendung der Svenesis-Astro-Tools (Kopiervorlage) | 1084–1115 |
-| &nbsp;&nbsp;9.1 Bestandsaufnahme | 1088–1101 |
-| &nbsp;&nbsp;9.2 Nötige Anpassungen | 1102–1115 |
-| 10. Nicht-funktionale Anforderungen | 1116–1143 |
-| 11. Ausbaustufen (Release-Plan) | 1144–1159 |
-| 12. Offene Punkte und Entscheidungen | 1160–1195 |
-| 13. Glossar | 1196–1261 |
-| 14. Bildschirmkonzept | 1262–1519 |
-| &nbsp;&nbsp;14.1 Rahmen (Shell) | 1266–1290 |
-| &nbsp;&nbsp;14.2 Navigationsstruktur | 1291–1306 |
-| &nbsp;&nbsp;14.3 Bildschirme im Detail | 1307–1500 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-01 Anmeldung | 1311–1313 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-02 Heute Nacht *(Startseite ab R3; bis dahin „Meine Objekte“ bzw. Projektliste)* | 1314–1316 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-10 Rigs *(Imaging Systems)* | 1317–1325 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-11 Standorte | 1326–1328 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-12 Teleskope | 1329–1331 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-13 Kameras | 1332–1334 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-14 Filter & Belichtungsplan-Vorlagen | 1335–1337 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-15 Mondprofile | 1338–1340 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-20 Sternkarte *(SkyView)* | 1341–1347 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-21 Objektbrowser & Zielvorschläge *(neu)* | 1348–1350 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-22 Exoplaneten | 1351–1357 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-30 Projektliste *(je Status)* | 1358–1360 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-31 Projekt-Editor | 1361–1400 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(entfällt)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(entfällt)* | 1401–1405 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-40 Nacht-Simulator | 1406–1451 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-41 An NINA ausgeliefert *(Cloud Targets)* | 1452–1454 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-42 NINA-Instanzen & Tokens *(Admin)* | 1455–1457 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-50 Wettervorhersage | 1458–1460 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-60 Nächte · S-61 Nacht | 1461–1491 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-62 Folgeplanung · S-63 Projekte · S-64 Standort-Statistik | 1492–1496 |
-| &nbsp;&nbsp;&nbsp;&nbsp;S-70 … S-73 Administration · S-80 … S-82 System | 1497–1500 |
-| &nbsp;&nbsp;14.4 Wiederverwendbare Bausteine (UI-Komponenten) | 1501–1519 |
-| 15. Anhang A – Abgleich mit Astro PM 1.6.0 | 1520–1565 |
-| &nbsp;&nbsp;15.1 Erkenntnisse aus den Screenshots | 1522–1538 |
-| &nbsp;&nbsp;15.2 Erkenntnisse aus `logbook.db.sql` | 1539–1558 |
-| &nbsp;&nbsp;15.3 Migration (optional, OP-20) | 1559–1565 |
+| 6. Fachliche Anforderungen | 242–862 |
+| &nbsp;&nbsp;6.1 Ausrüstung und Standorte | 246–311 |
+| &nbsp;&nbsp;6.2 Filter, Belichtungspläne und Mondprofile | 312–335 |
+| &nbsp;&nbsp;6.3 Zielsuche und Framing | 336–355 |
+| &nbsp;&nbsp;6.4 Projekte und Ziele | 356–392 |
+| &nbsp;&nbsp;6.5 Sichtbarkeit und Diagramme | 393–401 |
+| &nbsp;&nbsp;6.6 Astro-Wetter | 402–426 |
+| &nbsp;&nbsp;6.7 Scheduler und Nacht-Simulator | 427–476 |
+| &nbsp;&nbsp;6.8 Synchronisation Web ↔ NINA | 477–490 |
+| &nbsp;&nbsp;6.9 NINA-Plugin | 491–555 |
+| &nbsp;&nbsp;6.10 Exoplaneten-Transitplanung | 556–632 |
+| &nbsp;&nbsp;6.11 Auswertung und Folgeplanung | 633–684 |
+| &nbsp;&nbsp;6.12 Administration, Export und Einstellungen | 685–696 |
+| &nbsp;&nbsp;6.13 Mandanten, Super User, Anmeldung und Benutzer | 697–783 |
+| &nbsp;&nbsp;6.14 Rollen, Berechtigungen und Freigabe-Warteschlange | 784–862 |
+| 7. Fachliches Datenmodell | 863–946 |
+| &nbsp;&nbsp;7.1 Übersicht | 865–904 |
+| &nbsp;&nbsp;7.2 Wesentliche Entitäten | 905–946 |
+| 8. Fachliche Regeln und Berechnungen | 947–1084 |
+| &nbsp;&nbsp;8.1 Grundlagen | 949–975 |
+| &nbsp;&nbsp;8.2 Mondvermeidung | 976–1001 |
+| &nbsp;&nbsp;8.3 Strategien | 1002–1010 |
+| &nbsp;&nbsp;8.4 Zähler | 1011–1027 |
+| &nbsp;&nbsp;8.5 Prognose und Kandidatennächte | 1028–1034 |
+| &nbsp;&nbsp;8.6 Filterzuordnung in NINA | 1035–1038 |
+| &nbsp;&nbsp;8.7 Transitvorhersage | 1039–1049 |
+| &nbsp;&nbsp;8.8 Meridian-Flip und Rotation | 1050–1070 |
+| &nbsp;&nbsp;8.9 Aufwand-Kennzeichen | 1071–1084 |
+| 9. Wiederverwendung der Svenesis-Astro-Tools (Kopiervorlage) | 1085–1116 |
+| &nbsp;&nbsp;9.1 Bestandsaufnahme | 1089–1102 |
+| &nbsp;&nbsp;9.2 Nötige Anpassungen | 1103–1116 |
+| 10. Nicht-funktionale Anforderungen | 1117–1144 |
+| 11. Ausbaustufen (Release-Plan) | 1145–1160 |
+| 12. Offene Punkte und Entscheidungen | 1161–1196 |
+| 13. Glossar | 1197–1262 |
+| 14. Bildschirmkonzept | 1263–1522 |
+| &nbsp;&nbsp;14.1 Rahmen (Shell) | 1267–1291 |
+| &nbsp;&nbsp;14.2 Navigationsstruktur | 1292–1307 |
+| &nbsp;&nbsp;14.3 Bildschirme im Detail | 1308–1503 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-01 Anmeldung | 1312–1314 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-02 Heute Nacht *(Startseite ab R3; bis dahin „Meine Objekte“ bzw. Projektliste)* | 1315–1317 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-10 Rigs *(Imaging Systems)* | 1318–1328 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-11 Standorte | 1329–1331 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-12 Teleskope | 1332–1334 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-13 Kameras | 1335–1337 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-14 Filter & Belichtungsplan-Vorlagen | 1338–1340 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-15 Mondprofile | 1341–1343 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-20 Sternkarte *(SkyView)* | 1344–1350 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-21 Objektbrowser & Zielvorschläge *(neu)* | 1351–1353 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-22 Exoplaneten | 1354–1360 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-30 Projektliste *(je Status)* | 1361–1363 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-31 Projekt-Editor | 1364–1403 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-32 Meine Objekte *(entfällt)* · S-33 Warteschlange *(alle; Aktionen Admin)* · S-34 Entwürfe *(entfällt)* | 1404–1408 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-40 Nacht-Simulator | 1409–1454 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-41 An NINA ausgeliefert *(Cloud Targets)* | 1455–1457 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-42 NINA-Instanzen & Tokens *(Admin)* | 1458–1460 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-50 Wettervorhersage | 1461–1463 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-60 Nächte · S-61 Nacht | 1464–1494 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-62 Folgeplanung · S-63 Projekte · S-64 Standort-Statistik | 1495–1499 |
+| &nbsp;&nbsp;&nbsp;&nbsp;S-70 … S-73 Administration · S-80 … S-82 System | 1500–1503 |
+| &nbsp;&nbsp;14.4 Wiederverwendbare Bausteine (UI-Komponenten) | 1504–1522 |
+| 15. Anhang A – Abgleich mit Astro PM 1.6.0 | 1523–1568 |
+| &nbsp;&nbsp;15.1 Erkenntnisse aus den Screenshots | 1525–1541 |
+| &nbsp;&nbsp;15.2 Erkenntnisse aus `logbook.db.sql` | 1542–1561 |
+| &nbsp;&nbsp;15.3 Migration (optional, OP-20) | 1562–1568 |
 
 ## Technisches_Konzept_Svenesis-NINA-PM.md
 

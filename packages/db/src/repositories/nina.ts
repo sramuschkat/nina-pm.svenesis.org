@@ -6,11 +6,12 @@
  * - `NinaRigRepository`: Plugin-Sicht auf genau ein Rig (Übernahmestatus, ETag-Bausteine, offene Meldungen,
  *   festgelegte Transits für `targets` und `POST /plan`).
  */
-import { ProblemError } from '@nina-pm/shared';
+import { ProblemError, type MeasuredOverheads } from '@nina-pm/shared';
 import type { Kysely, Selectable } from 'kysely';
 import { withTx, retryOcc } from '../tx';
 import type { Database, NinaInstanceTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { latestMeasuredOverheads } from './measured-overhead';
 import { latestSessionPlan } from './night-plan-binding';
 import { transitLine } from './transit';
 
@@ -372,6 +373,14 @@ export class NinaRigRepository extends TenantRepo {
     private readonly rigId: string,
   ) {
     super(db, ctx);
+  }
+
+  /** Jüngste gespeicherte Messung der Overheads des Rigs (AP-65), sonst `null`. */
+  async measuredOverhead(): Promise<MeasuredOverheads | null> {
+    return (
+      (await latestMeasuredOverheads(this.db, this.ctx.tenantId, [this.rigId])).get(this.rigId) ??
+      null
+    );
   }
 
   /** Übernahmestatus (FA-SIM-09): abgerufene Einstellungsversion und Zeitpunkt. */

@@ -67,9 +67,19 @@ internal static class TriggerWalker
                     runtime?.Log.Warning("WARNING", ("code", "trigger_failed"), ("type", type));
                     Logger.Warning($"NINA-PM: Trigger {type}: {ex.Message}");
                 }
+                finally
+                {
+                    // Nach dem Trigger ist ein darin begonnener Autofokus vorbei; ohne Erfolgsmeldung gescheitert (AP-65). Nach
+                    // einem Autofokus-Trigger endet er jetzt, nach anderen (Meridian-Flip mit AF und Zentrieren danach) mit
+                    // dem letzten Messpunkt.
+                    runtime?.Runner.Autofocus.Settle(exact: IsAutofocusTrigger(type));
+                }
             }
         }
     }
+
+    /// <summary>NINAs Autofokus-Trigger (<c>AutofocusAfterTimeTrigger</c>, <c>…HFRIncreaseTrigger</c>, <c>…FilterChange…</c> …).</summary>
+    internal static bool IsAutofocusTrigger(string type) => type.Contains("Autofocus", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Typnamen aller Anweisungen eines Trigger-Sets, auch in verschachtelten Containern.</summary>
     private static IEnumerable<string> ItemTypes(ISequenceContainer? container)

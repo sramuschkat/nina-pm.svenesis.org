@@ -45,9 +45,10 @@ public sealed class NinaPmPlugin : PluginBase, INotifyPropertyChanged
         NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator imageSave, NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM imageHistory,
         NINA.Equipment.Interfaces.Mediator.ISafetyMonitorMediator safetyMonitor,
         NINA.WPF.Base.Interfaces.ViewModel.IFramingAssistantVM framingAssistant,
-        NINA.WPF.Base.Interfaces.Mediator.IApplicationMediator applicationMediator)
+        NINA.WPF.Base.Interfaces.Mediator.IApplicationMediator applicationMediator,
+        NINA.Equipment.Interfaces.Mediator.IFocuserMediator focuser)
         : this(profileService, new DpapiTokenProtector(), new NinaMediators(profileService, telescope, imaging, camera, filterWheel,
-            rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor),
+            rotator, guider, dome, domeFollower, plateSolverFactory, windowServiceFactory, imageSave, imageHistory, safetyMonitor, focuser),
             new FramingLoader(framingAssistant, applicationMediator, profileService))
     {
     }

@@ -22,6 +22,7 @@ import { expectNoSeriousA11y } from '../../../test/setup';
 import type { FilterWheelView, Me, RigView } from '../../api/client';
 import { ApiError, AuthProvider } from '../../auth';
 import { confirmPayload, draftRows, slotStatus } from './FilterWheelSection';
+import { MeasuredOverheads } from './MeasuredOverheads';
 import { RigsPage, rigTabOf, SchedulerForm } from './RigsPage';
 import { moveItem, SortChainEditor } from './SortChainEditor';
 
@@ -589,5 +590,91 @@ describe('Rig-Seite: Reiter (AP-26b)', () => {
       'equipment',
       'equipment',
     ]);
+  });
+});
+
+describe('Gemessene Overheads (AP-65, FA-RIG-04b)', () => {
+  const value = (
+    key: string,
+    typedS: number,
+    measured: { medianS: number; n: number; p25S: number; p75S: number } | null,
+    o: { effectiveS: number; source: 'measured' | 'typed'; fixed?: boolean; deviates?: boolean },
+  ) => ({ key, typedS, measured, fixed: false, deviates: false, ...o });
+  const measuredRig = {
+    ...rig,
+    scheduler: { ...scheduler, overheadFixed: [] },
+    overheads: {
+      minSamples: 10,
+      computedAtUtc: '2026-10-07T12:00:00Z',
+      fromNight: '2026-09-08',
+      toNight: '2026-10-06',
+      nights: 4,
+      values: [
+        value(
+          'slewCenterS',
+          120,
+          { medianS: 35, n: 22, p25S: 30, p75S: 41 },
+          {
+            effectiveS: 35,
+            source: 'measured',
+            deviates: true,
+          },
+        ),
+        value(
+          'filterChangeS',
+          10,
+          { medianS: 9, n: 3, p25S: 8, p75S: 10 },
+          {
+            effectiveS: 10,
+            source: 'typed',
+          },
+        ),
+        value(
+          'ditherSettleS',
+          20,
+          { medianS: 18, n: 40, p25S: 17, p75S: 19 },
+          {
+            effectiveS: 18,
+            source: 'measured',
+          },
+        ),
+        value('afDurationS', 180, null, { effectiveS: 180, source: 'typed' }),
+        value('downloadS', 5, null, { effectiveS: 5, source: 'typed' }),
+        value(
+          'flipDurationS',
+          240,
+          { medianS: 1080, n: 12, p25S: 900, p75S: 1300 },
+          {
+            effectiveS: 1080,
+            source: 'measured',
+            deviates: true,
+          },
+        ),
+      ],
+    },
+  } as RigView;
+
+  it('zeigt getippt, gemessen mit Streuung, Wirkung und Hinweis; „fest“ speichert die Auswahl', async () => {
+    state.scheduler.mockResolvedValue({ ...measuredRig, settingsVersion: 5 });
+    const { container } = wrap(<MeasuredOverheads rig={measuredRig} canWrite />);
+    await screen.findByRole('heading', { name: 'Gemessene Overheads' });
+    const row = (name: string) => screen.getByRole('row', { name: new RegExp(name) });
+    expect(row('Meridian-Flip').textContent).toContain('1.080 s (18 min)');
+    expect(row('Meridian-Flip').textContent).toContain('n = 12 · 900–1.300 s');
+    expect(row('Meridian-Flip').textContent).toContain('weicht stark ab');
+    expect(within(row('Filterwechsel')).getByText('getippt')).toBeTruthy();
+    expect(within(row('Autofokus-Dauer')).getByText('keine Messung')).toBeTruthy();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Meridian-Flip fest (immer getippt)' }));
+    await waitFor(() => expect(state.scheduler).toHaveBeenCalled());
+    expect(state.scheduler.mock.calls[0]?.[1]).toMatchObject({ overheadFixed: ['flipDurationS'] });
+    expect(state.scheduler.mock.calls[0]?.[2]).toBe(4);
+    await expectNoSeriousA11y(container);
+  });
+
+  it('ohne Schreibrecht nur lesend', async () => {
+    wrap(<MeasuredOverheads rig={measuredRig} canWrite={false} />);
+    await screen.findByRole('heading', { name: 'Gemessene Overheads' });
+    for (const box of screen.getAllByRole('checkbox'))
+      expect((box as HTMLInputElement).disabled).toBe(true);
   });
 });

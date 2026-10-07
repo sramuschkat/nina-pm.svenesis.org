@@ -184,6 +184,9 @@ for (const width of [768, 2400]) {
     ).toBeVisible();
     for (const tab of ['Allgemein', 'Ausrüstung', 'Scheduler', 'Filterrad', 'NINA']) {
       await showTab(page, tab);
+      // AP-65: gemessene Overheads im Reiter „Scheduler“ (getippt/gemessen/wirkt/fest).
+      if (tab === 'Scheduler')
+        await expect(page.getByRole('region', { name: 'Gemessene Overheads' })).toBeVisible();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );

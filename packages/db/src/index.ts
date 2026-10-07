@@ -299,3 +299,10 @@ export {
   DemoEvaluationRepository,
   type DemoClearProgress,
 } from './repositories/demo-evaluation';
+export {
+  latestMeasuredOverheads,
+  overheadIstForSession,
+  overheadWindowStart,
+  saveMeasuredOverhead,
+  type OverheadIst,
+} from './repositories/measured-overhead';

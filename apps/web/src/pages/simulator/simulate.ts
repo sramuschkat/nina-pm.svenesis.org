@@ -15,6 +15,7 @@
 import { planNight, unixFromIso, type NightPlan, type PlanInput } from '@nina-pm/engine';
 import {
   buildPlanInput,
+  effectiveRig,
   isDeliverable,
   type ExecutedNight,
   type StoredPlan,
@@ -305,7 +306,8 @@ export function simulate(req: SimulationRequest): SimulationResult {
   const server = req.server && req.selection === 'plannable' ? req.server : null;
   const input = server
     ? (server.input as PlanInput)
-    : (buildPlanInput(req.rig, candidates, req.moonProfiles, req.nights, {
+    : // Wirksame Overheads wie der Server (AP-65): gemessen ab 10 Messungen, sonst bzw. mit „fest“ getippt.
+      (buildPlanInput(effectiveRig(req.rig), candidates, req.moonProfiles, req.nights, {
         night: req.night,
         site: {
           latitudeDeg: req.site.latitudeDeg,

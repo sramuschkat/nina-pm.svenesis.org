@@ -3556,6 +3556,8 @@ components:
             $ref: "#/components/schemas/FilterWheelSlot"
         settingsVersion:
           type: integer
+        overheads:
+          $ref: "#/components/schemas/RigOverheadsView"
         derived:
           type: object
           properties:
@@ -3721,6 +3723,18 @@ components:
               maximum: 600
               default: 5
           additionalProperties: false
+        overheadFixed:
+          type: array
+          items:
+            type: string
+            enum:
+              - slewCenterS
+              - filterChangeS
+              - ditherSettleS
+              - afDurationS
+              - downloadS
+              - flipDurationS
+          maxItems: 6
       required:
         - strategy
         - playback
@@ -3782,6 +3796,97 @@ components:
         - ninaFilterName
         - ninaConfirmedAt
         - ninaConfirmedBy
+    RigOverheadsView:
+      type: object
+      properties:
+        minSamples:
+          type: integer
+        computedAtUtc:
+          type:
+            - string
+            - "null"
+          format: date-time
+          example: 2026-09-18T13:00:00Z
+        fromNight:
+          type:
+            - string
+            - "null"
+          format: date
+        toNight:
+          type:
+            - string
+            - "null"
+          format: date
+        nights:
+          type: integer
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/RigOverheadValue"
+      required:
+        - minSamples
+        - computedAtUtc
+        - fromNight
+        - toNight
+        - nights
+        - values
+    RigOverheadValue:
+      type: object
+      properties:
+        key:
+          type: string
+          enum:
+            - slewCenterS
+            - filterChangeS
+            - ditherSettleS
+            - afDurationS
+            - downloadS
+            - flipDurationS
+        typedS:
+          type: number
+        measured:
+          $ref: "#/components/schemas/MeasuredOverheadStat"
+        effectiveS:
+          type: number
+        source:
+          type: string
+          enum:
+            - measured
+            - typed
+        fixed:
+          type: boolean
+        deviates:
+          type: boolean
+      required:
+        - key
+        - typedS
+        - measured
+        - effectiveS
+        - source
+        - fixed
+        - deviates
+    MeasuredOverheadStat:
+      type:
+        - object
+        - "null"
+      properties:
+        medianS:
+          type: number
+          minimum: 0
+        n:
+          type: integer
+          minimum: 0
+        p25S:
+          type: number
+          minimum: 0
+        p75S:
+          type: number
+          minimum: 0
+      required:
+        - medianS
+        - n
+        - p25S
+        - p75S
     RigCreate:
       type: object
       properties:

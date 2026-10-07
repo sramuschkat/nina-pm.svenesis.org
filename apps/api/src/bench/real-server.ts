@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   EquipmentRepository,
+  latestMeasuredOverheads,
   replaceExoCatalog,
   settleTransits,
   TRANSIT_SETTLE_GRACE_MS,
@@ -1432,6 +1433,18 @@ export async function startRealServer(opts: RealServerOptions): Promise<RealServ
           );
         }
         data.rigTimes = rows;
+        // Gemessene Overheads nach dem letzten Sessionabschluss (AP-65): Median und n je Wert.
+        const measured = (await latestMeasuredOverheads(stack.db, tenantId, [rigId])).get(rigId);
+        data.measuredOverheads = measured
+          ? Object.fromEntries(
+              Object.entries(measured.values).map(([k, v]) => [
+                k,
+                v
+                  ? `${String(v.medianS)} s (n ${String(v.n)}, ${String(v.p25S)}–${String(v.p75S)})`
+                  : null,
+              ]),
+            )
+          : null;
         check(
           'Plan = Ausführung: je Nacht mindestens 90 % der im Erstplan geplanten Aufnahmen',
           worstShare >= 0.9,

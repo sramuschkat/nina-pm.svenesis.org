@@ -113,7 +113,7 @@ public sealed class SequencerTests
         Mock.Of<IRotatorMediator>(), Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
         Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
         Mock.Of<NINA.WPF.Base.Interfaces.Mediator.IImageSaveMediator>(), Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(),
-        Mock.Of<ISafetyMonitorMediator>(), Mock.Of<NINA.Astrometry.Interfaces.INighttimeCalculator>());
+        Mock.Of<ISafetyMonitorMediator>(), Mock.Of<NINA.Astrometry.Interfaces.INighttimeCalculator>(), Mock.Of<IFocuserMediator>());
 
     [Fact]
     public async Task Dither_Trigger_der_Vorfahren_laufen_nie_andere_schon()
@@ -372,7 +372,7 @@ public sealed class SequencerTests
             rotator.Object, Mock.Of<IGuiderMediator>(), Mock.Of<IDomeMediator>(), Mock.Of<NINA.Equipment.Interfaces.IDomeFollower>(),
             Mock.Of<NINA.PlateSolving.Interfaces.IPlateSolverFactory>(), Mock.Of<NINA.Core.Utility.WindowService.IWindowServiceFactory>(),
             imageSave.Object, Mock.Of<NINA.WPF.Base.Interfaces.ViewModel.IImageHistoryVM>(), Mock.Of<ISafetyMonitorMediator>(),
-            Mock.Of<NINA.Astrometry.Interfaces.INighttimeCalculator>());
+            Mock.Of<NINA.Astrometry.Interfaces.INighttimeCalculator>(), Mock.Of<IFocuserMediator>());
         target.Add(blocks);
         blocks.Add(box);
         var dither = new FakeDitherAfterExposures();
