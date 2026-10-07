@@ -2337,6 +2337,8 @@ export const de = {
         cloudy: 'bewölkt',
         none: 'keine Angabe',
       },
+      cloudyForecast: 'bewölkt laut Vorhersage',
+      legendCloudy: 'bewölkt (erfasst oder laut Vorhersage)',
       hours: '{{h}} h nutzbar',
       forecast: 'Vorhersage {{rating}}',
       seeing: 'Seeing {{v}}',

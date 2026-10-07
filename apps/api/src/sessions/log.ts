@@ -3,11 +3,14 @@
  * - `captureForecastSnapshot`: Wetter-Schnappschuss zum Sessionbeginn (Mittel der astronomisch dunklen
  *   Stunden der Nacht aus dem aktuellen Wetter-Cache des Standorts) – best effort, nie ein Fehler für NINA.
  * - `sessionLogView`: gespeichertes Protokoll bzw. Vorbelegung mit Quellen, NINA-Werten und Vorhersage.
- * - `clearNightView`: Monatszeilen, Nächte und Treffsicherheit je Standort und Zeitraum.
+ * - `clearNightView`: Monatszeilen, Nächte und Treffsicherheit je Standort und Zeitraum. Die Vorhersage einer
+ *   Nacht kommt aus dem Schnappschuss der ersten Session mit Schnappschuss, sonst aus `site_night_forecast`
+ *   (AP-64b: letzte Vorhersage vor Beginn der Dunkelheit, auch für Nächte ohne Session; erst nach Ende der Nacht).
  */
 import {
   latestWeather,
   saveForecastSnapshot,
+  type ClearNightForecast,
   type ClearNightRawSession,
   type SessionLogContext,
 } from '@nina-pm/db';
@@ -168,14 +171,36 @@ export function clearNightView(input: {
     source: 'session' | 'manual';
   }[];
   readonly sessions: readonly ClearNightRawSession[];
+  /** Gespeicherte Vorhersage je Nacht (AP-64b); fehlt sie, bleibt nur der Schnappschuss. */
+  readonly forecasts?: readonly ClearNightForecast[];
+  /**
+   * Laufende Nacht des Standorts (Mittag bis Mittag, `noonNightKey`): Ab ihr gilt die gespeicherte Vorhersage noch
+   * nicht – eine Nacht, die läuft oder bevorsteht, ist nicht „klar, aber nicht genutzt“.
+   */
+  readonly currentNight: string;
 }): ClearNightView {
   const statOf = new Map(input.stats.map((s) => [s.night, s]));
+  const forecastOf = new Map(
+    (input.forecasts ?? []).filter((f) => f.night < input.currentNight).map((f) => [f.night, f]),
+  );
   const sessionsOf = new Map<string, ClearNightRawSession[]>();
   for (const s of input.sessions) sessionsOf.set(s.night, [...(sessionsOf.get(s.night) ?? []), s]);
   const nights: ClearNightNight[] = nightKeys(input.from, input.to).map((night) => {
     const stat = statOf.get(night);
     const sessions = sessionsOf.get(night) ?? [];
     const snap = sessions.map((s) => parseSnapshot(s.forecastSnapshot)).find((x) => x !== null);
+    // Schnappschuss der Session vor der gespeicherten Vorhersage der Nacht (AP-64b).
+    // `real` in der Datenbank: Mittel auf drei Stellen wie im Schnappschuss (WS-08).
+    const stored = forecastOf.get(night);
+    const fromSnap = snap !== undefined && snap.ratingIndex !== null;
+    const ratingIndex = fromSnap ? snap.ratingIndex : (stored?.ratingIndex ?? null);
+    const nightMean = fromSnap
+      ? snap.nightMean
+      : stored
+        ? stored.overallScore === null
+          ? null
+          : Math.round(stored.overallScore * 1000) / 1000
+        : (snap?.nightMean ?? null);
     const logged = sessions.find(
       (s) => s.seeingArcsec !== null || s.sqm !== null || s.transparencyPct !== null,
     );
@@ -187,8 +212,8 @@ export function clearNightView(input: {
       usable: stat ? stat.usable : null,
       usableHours: stat?.usableHours ?? null,
       sessionIds: sessions.map((s) => s.id),
-      forecastRatingIndex: snap?.ratingIndex ?? null,
-      forecastNightMean: snap?.nightMean ?? null,
+      forecastRatingIndex: ratingIndex,
+      forecastNightMean: nightMean,
       seeingArcsec: logged?.seeingArcsec ?? null,
       sqm: logged?.sqm ?? null,
       transparencyPct: logged?.transparencyPct ?? null,

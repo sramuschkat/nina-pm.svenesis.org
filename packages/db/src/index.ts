@@ -190,10 +190,14 @@ export {
 } from './repositories/session-review';
 export {
   SessionLogRepository,
+  recordSiteNightForecast,
   saveForecastSnapshot,
   sessionLogVersion,
   upsertSiteNightStatForSession,
+  type ClearNightForecast,
   type ClearNightRawSession,
+  type SiteNightForecastInput,
+  type SiteNightForecastOutcome,
   type SessionLogContext,
 } from './repositories/session-log';
 export {

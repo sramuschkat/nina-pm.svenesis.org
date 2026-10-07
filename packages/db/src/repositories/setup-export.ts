@@ -15,6 +15,7 @@ const EVALUATION_TABLES = [
   'session_event',
   'session_log',
   'site_night_stat',
+  'site_night_forecast',
 ] as const;
 
 export interface EvaluationCounts {

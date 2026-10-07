@@ -5,7 +5,8 @@
  * - Klarnacht-Daten je Standort und Zeitraum: `site_night_stat`, Sessions der Rigs des Standorts mit
  *   Schnappschuss, Protokoll und Verworfen-Quote; Nächte ohne Session manuell als „nicht genutzt“ erfassen.
  * - Außerhalb des Mandanten-Repos: Schnappschuss zum Sessionbeginn speichern, Statistik am Sessionende
- *   schreiben (Jobs bzw. NINA-API).
+ *   schreiben (Jobs bzw. NINA-API), Vorhersage je Standort und Nacht aus dem Wetter-Cache festhalten
+ *   (`site_night_forecast`, AP-64b, worker im `tick-5min`).
  */
 import { ProblemError, isUsableNight, type SessionLogView } from '@nina-pm/shared';
 import { sql, type Kysely } from 'kysely';
@@ -52,6 +53,13 @@ export interface ClearNightRawSession {
   readonly transparencyPct: number | null;
   readonly lights: number;
   readonly rejected: number;
+}
+
+/** Gespeicherte Vorhersage einer Nacht (`site_night_forecast`, AP-64b). */
+export interface ClearNightForecast {
+  readonly night: string;
+  readonly ratingIndex: number;
+  readonly overallScore: number | null;
 }
 
 export class SessionLogRepository extends TenantRepo {
@@ -267,6 +275,15 @@ export class SessionLogRepository extends TenantRepo {
       .where('s.night', '<=', to)
       .orderBy('s.startedAt')
       .execute();
+    // Vorhersage je Nacht auch ohne Session (AP-64b); der Schnappschuss einer Session hat Vorrang (clearNightView).
+    const forecasts = await this.db
+      .selectFrom('siteNightForecast')
+      .select(['night', 'ratingIndex', 'overallScore'])
+      .where('tenantId', '=', this.ctx.tenantId)
+      .where('siteId', '=', siteId)
+      .where('night', '>=', from)
+      .where('night', '<=', to)
+      .execute();
     return {
       stats: stats.map((s) => ({
         night: String(s.night).slice(0, 10),
@@ -284,6 +301,11 @@ export class SessionLogRepository extends TenantRepo {
         transparencyPct: numOrNull(s.transparencyPct),
         lights: Number(s.lights ?? 0),
         rejected: Number(s.rejected ?? 0),
+      })),
+      forecasts: forecasts.map((f): ClearNightForecast => ({
+        night: String(f.night).slice(0, 10),
+        ratingIndex: Number(f.ratingIndex),
+        overallScore: numOrNull(f.overallScore),
       })),
     };
   }
@@ -420,5 +442,88 @@ export async function upsertSiteNightStatForSession(
         .values({ tenantId, siteId: s.siteId, night, usable, usableHours, source: 'session' })
         .execute();
     return { siteId: s.siteId, night, usable, usableHours };
+  });
+}
+
+export interface SiteNightForecastInput {
+  readonly tenantId: string;
+  readonly siteId: string;
+  /** Nacht-Schlüssel (lokales Datum des Abends). */
+  readonly night: string;
+  /** Bewertung 0…4 (FA-WET-03), dieselbe wie `ratingIndex` im Schnappschuss zum Sessionbeginn. */
+  readonly ratingIndex: number;
+  /** Mittel der Nacht 0…1 (`nightMean`). */
+  readonly overallScore: number | null;
+  readonly modelSet: string | null;
+  /** Abrufzeit der `weather_cache`-Zeile. */
+  readonly recordedAt: Date;
+  /** Beginn der astronomischen Dunkelheit der Nacht: ab dann bleibt die Zeile unverändert. */
+  readonly nightStartsAt: Date;
+}
+
+export type SiteNightForecastOutcome = 'written' | 'unchanged' | 'started' | 'no_site';
+
+/**
+ * Vorhersage der kommenden Nacht eines Standorts festhalten (AP-64b, FA-AUS-16/17; worker im `tick-5min`).
+ * Idempotent: Die jüngere Vorhersage ersetzt die ältere (`recorded_at`), eine gleich alte oder ältere schreibt nichts
+ * (`unchanged`). Ab Beginn der Nacht (`nightStartsAt`) wird nichts mehr geschrieben (`started`) – es gilt die letzte
+ * Vorhersage davor. Der Standort muss zum Mandanten gehören (`no_site`).
+ */
+export async function recordSiteNightForecast(
+  db: Kysely<Database>,
+  input: SiteNightForecastInput,
+  now: Date,
+): Promise<SiteNightForecastOutcome> {
+  const startsAt = input.nightStartsAt.getTime();
+  if (now.getTime() >= startsAt || input.recordedAt.getTime() >= startsAt) return 'started';
+  if (!Number.isInteger(input.ratingIndex) || input.ratingIndex < 0 || input.ratingIndex > 4)
+    throw new Error(`ratingIndex außerhalb 0…4: ${String(input.ratingIndex)}`);
+  const { tenantId, siteId, night } = input;
+  return withTx(db, async (trx) => {
+    const site = await trx
+      .selectFrom('site')
+      .select('id')
+      .where('tenantId', '=', tenantId)
+      .where('id', '=', siteId)
+      .executeTakeFirst();
+    if (!site) return 'no_site';
+    const existing = await trx
+      .selectFrom('siteNightForecast')
+      .select('recordedAt')
+      .where('tenantId', '=', tenantId)
+      .where('siteId', '=', siteId)
+      .where('night', '=', night)
+      .executeTakeFirst();
+    if (existing && new Date(existing.recordedAt).getTime() >= input.recordedAt.getTime())
+      return 'unchanged';
+    const values = {
+      ratingIndex: input.ratingIndex,
+      overallScore: input.overallScore,
+      modelSet: input.modelSet,
+      recordedAt: input.recordedAt,
+    };
+    if (existing)
+      await trx
+        .updateTable('siteNightForecast')
+        .set(values)
+        .where('tenantId', '=', tenantId)
+        .where('siteId', '=', siteId)
+        .where('night', '=', night)
+        .execute();
+    else
+      await trx
+        .insertInto('siteNightForecast')
+        .values({ tenantId, siteId, night, ...values })
+        // Zwei Läufe gleichzeitig: beide schreiben dieselbe Vorhersage, der zweite überschreibt nur.
+        .onConflict((oc) =>
+          oc.columns(['siteId', 'night']).doUpdateSet((eb) => ({
+            ratingIndex: eb.ref('excluded.ratingIndex'),
+            overallScore: eb.ref('excluded.overallScore'),
+            modelSet: eb.ref('excluded.modelSet'),
+            recordedAt: eb.ref('excluded.recordedAt'),
+          })),
+        )
+        .execute();
+    return 'written';
   });
 }

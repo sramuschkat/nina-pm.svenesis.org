@@ -665,6 +665,17 @@ export interface SiteNightStatTable {
   source: 'session' | 'manual';
 }
 
+/** Vorhersage je Standort und Nacht (FA-AUS-16/17, AP-64b, Migration 0014): letzte vor Beginn der Dunkelheit. */
+export interface SiteNightForecastTable {
+  tenantId: string;
+  siteId: string;
+  night: DateKey;
+  ratingIndex: number;
+  overallScore: number | null;
+  modelSet: string | null;
+  recordedAt: Timestamp;
+}
+
 export interface SessionTable {
   id: string;
   tenantId: string;
@@ -1023,6 +1034,7 @@ export interface Database {
   session: SessionTable;
   sessionLog: SessionLogTable;
   siteNightStat: SiteNightStatTable;
+  siteNightForecast: SiteNightForecastTable;
   sessionEvent: SessionEventTable;
   capture: CaptureTable;
   correction: CorrectionTable;

@@ -291,8 +291,10 @@ export function clearNightMonths(nights: readonly ClearNightNight[]) {
 export const GOOD_RATING_INDEX = 3;
 
 /**
- * Treffsicherheit der Vorhersage (FA-AUS-16): Nächte mit Session und Schnappschuss; Treffer, wenn
- * „klar vorhergesagt“ und nutzbar bzw. nicht klar vorhergesagt und nicht nutzbar.
+ * Treffsicherheit der Vorhersage (FA-AUS-16): Nächte mit Session und Vorhersage (Schnappschuss, sonst gespeicherte
+ * Vorhersage der Nacht); Treffer, wenn „klar vorhergesagt“ und nutzbar bzw. nicht klar vorhergesagt und nicht
+ * nutzbar. Nächte ohne Session zählen nicht: Ohne Session ist nichts beobachtet (AP-64b, FA-AUS-16 „Vorhersage vs.
+ * gemessen/beobachtet“); sie erscheinen im Kalender als „klar, aber nicht genutzt“.
  */
 export function forecastAccuracy(nights: readonly ClearNightNight[]) {
   let compared = 0;

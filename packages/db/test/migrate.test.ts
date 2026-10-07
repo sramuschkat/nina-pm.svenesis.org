@@ -182,6 +182,7 @@ describe('Migrationsdateien', () => {
       '0011_rollenansicht',
       '0012_kommentare',
       '0013_auto_flats',
+      '0014_site_night_forecast',
     ]);
     const bundled = readFileSync(
       fileURLToPath(new URL('../src/migrate/bundled.ts', import.meta.url)),

@@ -36,6 +36,7 @@ import {
   TenantRepository,
   DiscordRepository,
   latestWeather,
+  recordSiteNightForecast,
   saveWeather,
   siteNightRunDone,
   setProjectThumbnail,
@@ -77,6 +78,7 @@ import { tickTasks } from './worker/tasks';
 import { createNotificationService } from './notifications/service';
 import { httpClient } from './lib/http-client';
 import { weatherJobHandler, weatherTick } from './weather/job';
+import { recordNightForecasts } from './weather/night-forecast';
 import { sampleOpenMeteo } from './weather/sample';
 import { thumbnailLoader } from './worker/thumbnail-db';
 import { thumbnailJobHandler } from './worker/thumbnail';
@@ -223,7 +225,8 @@ export async function createLocalStack(opts: LocalStackOptions): Promise<LocalSt
       }),
     },
   };
-  // Wie `tick-5min`: beim Start und dann alle 5 min; je Ort höchstens ein Abruf je Viertelstunde.
+  // Wie `tick-5min`: beim Start und dann alle 5 min; je Ort höchstens ein Abruf je Viertelstunde, danach die
+  // Vorhersage der kommenden Nacht je Standort (AP-64b).
   const localWeatherTick = () =>
     weatherTick(
       {
@@ -233,11 +236,23 @@ export async function createLocalStack(opts: LocalStackOptions): Promise<LocalSt
       },
       jobs,
       now(),
-    ).catch((error: unknown) =>
-      logger.warn('local_weather_failed', {
-        error: error instanceof Error ? error.message : 'unbekannt',
-      }),
-    );
+    )
+      // Danach wie `tick-5min`: Vorhersage der kommenden Nacht je Standort (AP-64b).
+      .then(() =>
+        recordNightForecasts(
+          {
+            sites: () => weatherSites(db),
+            latest: (lat, lon) => latestWeather(db, lat, lon),
+            record: (input, at) => recordSiteNightForecast(db, input, at),
+          },
+          now(),
+        ),
+      )
+      .catch((error: unknown) =>
+        logger.warn('local_weather_failed', {
+          error: error instanceof Error ? error.message : 'unbekannt',
+        }),
+      );
   void localWeatherTick();
   timers.push(setInterval(() => void localWeatherTick(), 5 * 60_000).unref());
   // Discord-Zustellungen lokal alle 30 s statt 5 min.

@@ -255,6 +255,10 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
           sessionIds: [ID(2)],
           forecastRatingIndex: 4,
         }),
+        // Ohne Session, nur gespeicherte Vorhersage der Nacht (AP-64b).
+        nightRow('2026-09-14', { forecastRatingIndex: 3, forecastNightMean: 0.7 }),
+        // Ohne Session, schlechte Vorhersage → bewölkt laut Vorhersage (nicht erfasst).
+        nightRow('2026-09-13', { forecastRatingIndex: 1, forecastNightMean: 0.2 }),
       ],
     };
     wrap(<SiteStatsPage />, path);
@@ -273,9 +277,23 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
     expect(
       screen.getByRole('button', { name: /^15\.\/16\.09\. · klar, nicht genutzt/ }),
     ).toHaveAttribute('data-kind', 'clearUnused');
-    expect(within(tiles).getByText(/davon klar, ungenutzt: 1/)).toBeTruthy();
+    expect(
+      screen.getByRole('button', {
+        name: /^14\.\/15\.09\. · klar, nicht genutzt · Vorhersage Gut$/,
+      }),
+    ).toHaveAttribute('data-kind', 'clearUnused');
+    expect(
+      screen.getByRole('button', {
+        name: /^13\.\/14\.09\. · bewölkt laut Vorhersage · Vorhersage Schlecht$/,
+      }),
+    ).toHaveAttribute('data-kind', 'cloudy');
+    // Nur Anzeige: Kachel „Nutzbare Nächte“ unverändert (erfasst bleiben Session und manuell).
+    expect(within(tiles).getByText(/davon klar, ungenutzt: 2/)).toBeTruthy();
     expect(screen.getByRole('list', { name: 'Legende' }).textContent).toContain(
       'klar, nicht genutzt',
+    );
+    expect(screen.getByRole('list', { name: 'Legende' }).textContent).toContain(
+      'bewölkt (erfasst oder laut Vorhersage)',
     );
     expect(within(tiles).getByText('100 %')).toBeTruthy();
     expect(
@@ -340,6 +358,13 @@ describe('Auswertung – Standort-Statistik (AP-64)', () => {
     expect(
       dayKind(nightRow('2026-09-01', { source: 'session', usable: false, forecastRatingIndex: 2 })),
     ).toBe('partial');
+    // Nacht ohne Session mit gespeicherter Vorhersage (AP-64b): gut oder besser → klar, nicht genutzt; sonst keine Angabe.
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 3 }))).toBe('clearUnused');
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 4 }))).toBe('clearUnused');
+    // Schlechte Vorhersage ohne Session → bewölkt (Entscheidung Sven 07.10.2026); ohne Vorhersage keine Angabe.
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 2 }))).toBe('cloudy');
+    expect(dayKind(nightRow('2026-09-01', { forecastRatingIndex: 0 }))).toBe('cloudy');
+    expect(dayKind(nightRow('2026-09-01'))).toBe('none');
     expect(calendarMonths('2026-07-15', '2026-10-07')).toEqual(['2026-08', '2026-09', '2026-10']);
     expect(calendarMonths('2026-09-08', '2026-10-07')).toEqual(['2026-09', '2026-10']);
     expect(calendarMonths('2025-11-01', '2026-01-05')).toEqual(['2025-11', '2025-12', '2026-01']);
