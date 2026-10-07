@@ -3039,7 +3039,7 @@ export const en: Messages = {
   clearNights: {
     noSites: 'No sites yet.',
     noNights: 'No nights for this selection.',
-    usableNights: 'Usable nights (1 h of lights or more)',
+    usableNights: 'Usable nights',
     accuracyHint: '{{hits}} of {{compared}} session nights right (good or better ↔ usable)',
     nights: 'Nights',
     forecastValue: '{{value}} (forecast)',

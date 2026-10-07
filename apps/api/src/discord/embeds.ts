@@ -42,7 +42,7 @@ export const LIMITS = {
 export const LINKS = {
   queue: '/projekte/warteschlange',
   project: (id: string) => `/projekte/${id}`,
-  session: (id: string) => `/auswertung/sessions/${id}`,
+  session: (id: string) => `/auswertung/naechte/${id}`,
   instances: '/nina/instanzen',
   rigs: '/ausruestung/rigs',
   discord: '/verwaltung/discord',

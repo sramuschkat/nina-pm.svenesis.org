@@ -3050,7 +3050,7 @@ export const de = {
   clearNights: {
     noSites: 'Noch keine Standorte angelegt.',
     noNights: 'Keine Nächte für diese Auswahl.',
-    usableNights: 'Nutzbare Nächte (ab 1 h Lights)',
+    usableNights: 'Nutzbare Nächte',
     accuracyHint: '{{hits}} von {{compared}} Session-Nächten richtig (Gut oder besser ↔ nutzbar)',
     nights: 'Nächte',
     forecastValue: '{{value}} (Vorhersage)',

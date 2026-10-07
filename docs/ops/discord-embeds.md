@@ -29,12 +29,12 @@ Links relativ zu `https://nina-pm.svenesis.org` auf die Pfade der Web-App (Stand
 | `approval.expired` | Einreichung verfallen: {projekt} | Frist | `/projekte/{id}` |
 | `deadline.near` | Frist in 24 h: {projekt} | Frist (Mandantenzeit) | `/projekte/warteschlange` |
 | `change_request.new` / `.decided` | Änderungsantrag (entschieden): {projekt} | Entscheidung, Kommentar | `/projekte/{id}` |
-| `session.started` | Session gestartet: {rig} | Nacht (Doppeldatum), Start (Standortzeit + `<t:…:t>`) | `/auswertung/sessions/{id}` |
-| `session.completed` | Session beendet: {rig} | Beginn–Ende (Standortzeit + `<t:…:t>`), Dauer, Status, Lights, Integration | `/auswertung/sessions/{id}` |
-| `session.stale` | Session ohne Abschluss: {rig} | Nacht, letzter Heartbeat (Standortzeit + `<t:…:t>` + `<t:…:R>`) | `/auswertung/sessions/{id}` |
+| `session.started` | Session gestartet: {rig} | Nacht (Doppeldatum), Start (Standortzeit + `<t:…:t>`) | `/auswertung/naechte/{id}` |
+| `session.completed` | Session beendet: {rig} | Beginn–Ende (Standortzeit + `<t:…:t>`), Dauer, Status, Lights, Integration | `/auswertung/naechte/{id}` |
+| `session.stale` | Session ohne Abschluss: {rig} | Nacht, letzter Heartbeat (Standortzeit + `<t:…:t>` + `<t:…:R>`) | `/auswertung/naechte/{id}` |
 | `transit.observed` / `transit.missed` | Transit {planet}: beobachtet / verpasst | Abdeckung % (Ist/Soll der Aufnahmen), Ein- bis Austritt | `/projekte/{id}` |
-| `session.report` | Nachtbericht {nacht} – {rig} | Status, Nacht, Beginn–Ende, Wetterbewertung, belichtete Stunden und Effizienz, Lights (+ Bonus), fertig gewordene Projekte, Transitabdeckung, „vorläufig“ bei offenem Outbox; je Projekt (höchstens 10, Rest „+ n weitere“) Filter Soll/Ist mit Integrationszeit; Flats/Dark-Flats je Filter (Ist/Soll); Abweichungsgründe mit Anzahl und Dauer (u. a. Flips, Safety-Pausen) | `/auswertung/sessions/{id}` |
-| `session.no_heartbeat` | Kein Heartbeat seit {min} min: {rig} | Session | `/auswertung/sessions/{id}` |
+| `session.report` | Nachtbericht {nacht} – {rig} | Status, Nacht, Beginn–Ende, Wetterbewertung, belichtete Stunden und Effizienz, Lights (+ Bonus), fertig gewordene Projekte, Transitabdeckung, „vorläufig“ bei offenem Outbox; je Projekt (höchstens 10, Rest „+ n weitere“) Filter Soll/Ist mit Integrationszeit; Flats/Dark-Flats je Filter (Ist/Soll); Abweichungsgründe mit Anzahl und Dauer (u. a. Flips, Safety-Pausen) | `/auswertung/naechte/{id}` |
+| `session.no_heartbeat` | Kein Heartbeat seit {min} min: {rig} | Session | `/auswertung/naechte/{id}` |
 | `plugin.dead_letters` | Plugin: Meldungen nicht zustellbar | Rig, Instanz, Anzahl | `/nina/instanzen` |
 | `rig.busy` | Rig belegt: zweite Instanz abgewiesen | Rig, Nacht, Instanz | `/nina/instanzen` |
 | `nina.settings_mismatch` | NINA-Einstellungen weichen ab | Rig/Instanz und Gründe als Code-Liste aus `enums.json` `ninaSettingsMismatchCodes` (u. a. `filter_wheel_changed` NT-E1, `mount_site_mismatch` NT-22, `rotator_range_quarter`, `af_time_trigger_missing`) | `/ausruestung/rigs` |

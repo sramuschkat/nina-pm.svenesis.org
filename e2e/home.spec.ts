@@ -60,7 +60,7 @@ test('Übersicht: Karten mit Links zu den Zielseiten; Neues Projekt; axe', async
   await expect(page).toHaveURL('/projekte');
   await page.goto('/');
   await page.getByRole('link', { name: 'Alle Sessions' }).click();
-  await expect(page).toHaveURL('/auswertung/sessions');
+  await expect(page).toHaveURL('/auswertung/naechte');
   // Über den Menüpunkt zurück zur Übersicht.
   await page
     .getByRole('navigation', { name: 'Hauptnavigation' })

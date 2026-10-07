@@ -212,7 +212,9 @@ export function NightPage() {
         tabs={TABS.map((k) => ({
           key: k,
           label: t(`evaluation.night.tab.${k}`),
-          ...(k === 'captures' ? { badge: String(counts.all) } : {}),
+          ...(k === 'captures'
+            ? { badge: <span className={styles.tabCount}>{counts.all}</span> }
+            : {}),
         }))}
         value={tab}
         onChange={setTab}

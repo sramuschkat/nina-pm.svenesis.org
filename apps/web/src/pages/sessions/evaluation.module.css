@@ -353,6 +353,12 @@
 }
 
 /* ---- Nacht (S-61) ---- */
+.tabCount {
+  margin-left: var(--npm-space-1);
+  font-weight: 400;
+  color: var(--npm-text-light);
+  font-variant-numeric: tabular-nums;
+}
 .back {
   align-self: flex-start;
   font-size: var(--npm-font-small);
@@ -1077,6 +1083,9 @@ button.day {
 }
 .legendBox[data-kind='none'] {
   border: 1px dashed var(--npm-text-light);
+}
+.day[data-outside] {
+  border-color: transparent;
 }
 .day[data-picked] {
   outline: 2px solid var(--npm-accent);
