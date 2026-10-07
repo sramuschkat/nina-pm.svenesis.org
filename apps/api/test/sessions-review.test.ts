@@ -162,15 +162,19 @@ describe('S-60/S-61 nach einer Fake-Plugin-Nacht', () => {
     expect(captures.filter((c) => c.assignment === 'unassigned')).toHaveLength(1);
     // Optionale NINA-Metriken (AP-62) aus `capture.metrics`.
     expect(captures.find((c) => c.frameType === 'light')).toMatchObject({ hfr: 2.1, stars: 380 });
-    // Soll/Ist je Zeile: Ist über alle Sessions der Nacht (3 + 1 nach Lease-Verlust + 1 offline).
+    // Soll/Ist je Zeile (Entscheidung Sven 07.10.2026): Ist nur dieser Session (3 + 1 nach Lease-Verlust),
+    // die Nacht hat zusätzlich 1 offline.
     expect(d.rows).toEqual([
       expect.objectContaining({
         exposureLineId: t.lineId,
         filterShortName: 'Ha',
-        acquired: 5,
+        acquired: 4,
         rejected: 0,
-        accepted: 5,
+        accepted: 4,
         planned: expect.any(Number),
+        plannedSeries: null,
+        plannedLater: false,
+        night: { acquired: 5, rejected: 0, rejectedIndividual: 0, rejectedCorrection: 0 },
       }),
     ]);
     expect((d.events as Body[]).map((e) => e.kind)).toEqual(
@@ -245,12 +249,27 @@ describe('Korrektur (FA-AUS-06, DAT-1)', () => {
       [t.lineId, NIGHT],
     );
     expect(nights).toEqual([{ rejected_count: 1 }]);
-    const detail = await t.web(`/sessions/${sessionId}`);
-    expect((detail.body.rows as Body[])[0]).toMatchObject({
-      rejected: 1,
-      accepted: 4,
-      rejectedCorrection: 1,
-    });
+    // Je Session: die Korrektur gilt für die Nacht; ihr Überhang liegt bei genau einer Session der Nacht.
+    const rowsOf = async (sid: string) =>
+      (await t.web(`/sessions/${sid}`)).body.rows as {
+        rejected: number;
+        accepted: number;
+        night: Body;
+      }[];
+    const all = (
+      await Promise.all(
+        ((await t.web('/sessions')).body.items as Body[]).map((x) => rowsOf(x.id as string)),
+      )
+    ).flat();
+    expect(all.reduce((n, r) => n + r.rejected, 0)).toBe(1);
+    expect(all.reduce((n, r) => n + r.accepted, 0)).toBe(4);
+    for (const r of all)
+      expect(r.night).toEqual({
+        acquired: 5,
+        rejected: 1,
+        rejectedIndividual: 0,
+        rejectedCorrection: 1,
+      });
   });
 
   it('User nur für eigene Projekte mit Mandanteneinstellung; fremde Zeile → 422', async () => {
@@ -446,6 +465,181 @@ describe('Aufnahmen verwerfen (AP-31, FA-AUS-20)', () => {
       body: { settings: { userCorrections: true } },
     });
     expect((await asUser()).status).toBe(200);
+  });
+});
+
+describe('Soll/Ist je Session (Entscheidung Sven 07.10.2026)', () => {
+  it('zwei Sessions einer Nacht: Soll = erster Plan ohne Bonus, Ist = diese Session, Serie, später eingeplant, Kennzahlen gleich', async () => {
+    const t = await setup();
+    const [{ filter_id: filterId } = { filter_id: '' }] = await t.q<{ filter_id: string }>(
+      'SELECT filter_id FROM exposure_line WHERE id = $1',
+      [t.lineId],
+    );
+    const project = async (name: string) => {
+      const created = await t.web('/projects', {
+        method: 'POST',
+        body: { id: id(), name, rigId: t.rig.id, targetName: name, raDeg: 10.7, decDeg: 41.3 },
+      });
+      const pid = created.body.id as string;
+      const panelId = (created.body.panels as { id: string }[])[0]?.id as string;
+      const lineId = id();
+      await t.web(`/projects/${pid}/lines`, {
+        method: 'POST',
+        body: { id: lineId, panelId, filterId, exposureS: 300, plannedCount: 40, moonMode: 'none' },
+      });
+      await t.q(
+        "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
+        [pid],
+      );
+      return lineId;
+    };
+    const later = await project('M 31');
+    const transit = await project('HAT-P-32 b');
+    const [a, b] = [id(), id()];
+    for (const [sid, start, end] of [
+      [a, '2026-09-19T01:00:00Z', '2026-09-19T04:30:00Z'],
+      [b, '2026-09-19T05:00:00Z', '2026-09-19T08:00:00Z'],
+    ] as const)
+      await t.q(
+        "INSERT INTO session (id, tenant_id, rig_id, night, started_at, ended_at, status) VALUES ($1, $2, $3, $4, $5, $6, 'completed')",
+        [sid, t.tenantId, t.rig.id, NIGHT, start, end],
+      );
+    const expose = (lineId: string, at: string, bonus = false) => ({
+      cmd: 'expose',
+      atUtc: `2026-09-19T${at}:00Z`,
+      exposureLineId: lineId,
+      filter: 'Ha',
+      exposureS: 300,
+      bonus,
+    });
+    const plan = (sid: string, revision: number, entries: unknown[]) =>
+      t.q(
+        `INSERT INTO night_plan (tenant_id, rig_id, night, origin, session_id, revision, reason, engine_version, input_hash, summary, blocks)
+         VALUES ($1, $2, $3, 'server_plan', $4, $5, 'initial', '1.0.0', 'h', '{}'::jsonb, $6::jsonb)`,
+        [t.tenantId, t.rig.id, NIGHT, sid, revision, JSON.stringify([{ entries }])],
+      );
+    // Session A: erster Plan 3 Frames + 2 Bonus für NGC 281 und eine Transit-Serie; M 31 erst in Revision 2.
+    await plan(a, 1, [
+      expose(t.lineId, '01:05'),
+      expose(t.lineId, '01:10'),
+      expose(t.lineId, '01:15'),
+      expose(t.lineId, '01:20', true),
+      expose(t.lineId, '01:25', true),
+      {
+        cmd: 'expose_series',
+        atUtc: '2026-09-19T03:00:00Z',
+        untilUtc: '2026-09-19T04:00:00Z',
+        exposureLineId: transit,
+        filter: 'Ha',
+        exposureS: 60,
+      },
+    ]);
+    await plan(a, 2, [expose(later, '02:00'), expose(later, '02:05')]);
+    // Session B: eigener erster Plan mit 2 Frames.
+    await plan(b, 1, [expose(t.lineId, '05:05'), expose(t.lineId, '05:10')]);
+    let minute = 0;
+    const capture = async (
+      sid: string,
+      lineId: string,
+      o: { bonus?: boolean; rejected?: boolean; exposureS?: number } = {},
+    ) => {
+      minute += 1;
+      await t.q(
+        `INSERT INTO capture (id, tenant_id, session_id, project_id, panel_id, exposure_line_id, night, captured_at,
+           filter_short_name, exposure_s, result, file_name, is_bonus, rejected)
+         SELECT $1, $2, $3, l.project_id, l.panel_id, l.id, $4, $5, 'Ha', $6, 'saved', 'x.fits', $7, $8
+         FROM exposure_line l WHERE l.id = $9`,
+        [
+          id(),
+          t.tenantId,
+          sid,
+          NIGHT,
+          new Date(Date.parse('2026-09-19T01:00:00Z') + minute * 60_000).toISOString(),
+          o.exposureS ?? 300,
+          o.bonus ?? false,
+          o.rejected ?? false,
+          lineId,
+        ],
+      );
+    };
+    await capture(a, t.lineId);
+    await capture(a, t.lineId);
+    await capture(a, t.lineId, { rejected: true });
+    await capture(a, t.lineId, { bonus: true });
+    await capture(a, t.lineId, { bonus: true, rejected: true });
+    for (let i = 0; i < 5; i += 1) await capture(a, transit, { exposureS: 60 });
+    await capture(a, later);
+    await capture(a, later);
+    await capture(b, t.lineId);
+    await capture(b, t.lineId);
+    await capture(b, t.lineId, { bonus: true });
+    await reconcileSite(s.pg.db, t.tenantId, t.site.id, new Date());
+
+    type Row = Body & { projectName: string; night: Body };
+    const detail = async (sid: string) => {
+      const res = await t.web(`/sessions/${sid}`);
+      expect(res.status).toBe(200);
+      return res.body as Body & { rows: Row[]; kpis: { plan: Body } };
+    };
+    let da = await detail(a);
+    expect(da.rows.map((r) => r.projectName)).toEqual(['HAT-P-32 b', 'M 31', 'NGC 281']);
+    const [series, laterRow, ngc] = da.rows as [Row, Row, Row];
+    expect(series).toMatchObject({
+      planned: 0,
+      plannedSeries: { fromUtc: '2026-09-19T03:00:00Z', untilUtc: '2026-09-19T04:00:00Z' },
+      plannedLater: false,
+      acquired: 5,
+      accepted: 5,
+    });
+    expect(laterRow).toMatchObject({
+      planned: 0,
+      plannedSeries: null,
+      plannedLater: true,
+      acquired: 2,
+    });
+    // Soll 3 (ohne die 2 Bonus-Einträge); Ist 3 nur dieser Session, Bonus getrennt.
+    expect(ngc).toMatchObject({
+      planned: 3,
+      plannedLater: false,
+      acquired: 3,
+      rejected: 1,
+      accepted: 2,
+      bonus: 2,
+      bonusRejected: 1,
+      integrationS: 900,
+      night: { acquired: 5, rejected: 1, rejectedIndividual: 1, rejectedCorrection: 0 },
+    });
+    // Kennzahlen mit denselben Begriffen: Soll = Summe der Soll-Spalte, Ist = Summe Ist ohne Serie.
+    expect(da.kpis.plan).toMatchObject({ plannedFrames: 3, acquiredFrames: 5 });
+
+    const db = await detail(b);
+    expect(db.rows).toEqual([
+      expect.objectContaining({
+        projectName: 'NGC 281',
+        planned: 2,
+        acquired: 2,
+        rejected: 0,
+        accepted: 2,
+        bonus: 1,
+        bonusRejected: 0,
+      }),
+    ]);
+    expect(db.kpis.plan).toMatchObject({ plannedFrames: 2, acquiredFrames: 2, framesPct: 100 });
+
+    // Korrektur der Nacht 4 (einzeln verworfen 1): Überhang 3 – Session A trägt 2, Session B 1.
+    const corr = await t.web(`/sessions/${a}/corrections`, {
+      method: 'POST',
+      body: { exposureLineId: t.lineId, rejected: 4 },
+    });
+    expect(corr.status).toBe(200);
+    da = await detail(a);
+    expect(da.rows[2]).toMatchObject({ rejected: 3, accepted: 0, integrationS: 300 });
+    expect(da.rows[2]?.night).toMatchObject({ rejected: 4, rejectedCorrection: 4 });
+    expect((await detail(b)).rows[0]).toMatchObject({
+      rejected: 1,
+      accepted: 1,
+      integrationS: 600,
+    });
   });
 });
 

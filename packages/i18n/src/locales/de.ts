@@ -2285,7 +2285,8 @@ export const de = {
       blockChanges: 'Blockwechsel',
       filterChanges: 'Filterwechsel',
       planFrames: 'Plan-Treue Frames',
-      planFramesHint: '{{acquired}} von {{planned}} geplanten Frames (erster Plan)',
+      planFramesHint:
+        '{{acquired}} von {{planned}} geplanten Frames (erster Plan ohne Bonus, Transit-Serien nur in der Zeit)',
       planTime: 'Plan-Treue Zeit',
       planTimeHint: '{{acquired}} von {{planned}} geplanter Belichtung',
       noPlan: 'ohne Plan',
@@ -2320,8 +2321,14 @@ export const de = {
         bonusRejected: 'Bonus verworfen',
         action: 'Aktion',
       },
-      empty: 'In dieser Nacht keine Zeilen mit Soll oder Aufnahmen.',
+      empty: 'In dieser Session keine Zeilen mit Soll oder Aufnahmen.',
       correctRow: 'Korrektur',
+      definition: 'Soll = erster Plan dieser Session (ohne Bonus), Ist = Aufnahmen dieser Session.',
+      series: 'Serie',
+      seriesHint: 'Transit-Serie: Soll ist das geplante Zeitfenster, keine Anzahl.',
+      plannedLater: 'später eingeplant',
+      plannedLaterHint:
+        'Nicht im ersten Plan dieser Session, erst in einer späteren Planrevision eingeplant.',
     },
     correction: {
       title: 'Korrektur erfassen',

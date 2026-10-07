@@ -51,6 +51,10 @@ export async function nightActual(
         blockKinds.set(b.id, b.kind === 'transit' ? 'transit' : 'regular');
         if (typeof b.startUtc === 'string') blockStarts.set(b.id, b.startUtc);
       }
+  // Blöcke aus Zwischenrevisionen (Analyse 07.10.2026): eine Transit-Aufnahme macht ihren Block zum Transitblock – sonst
+  // erschiene er bei Plugins vor 0.4.13 (ohne `block_start.data.kind`) als regulär.
+  for (const l of actual.lights)
+    if (l.blockId && l.transitObservationId) blockKinds.set(l.blockId, 'transit');
   const endedBlockIds = [
     ...new Set(
       actual.events
@@ -77,7 +81,16 @@ export async function nightActual(
               unknown
             > | null,
           })),
-          lights: actual.lights.map((l) => ({ ...l, capturedAt: isoUtc(l.capturedAt) })),
+          lights: actual.lights.map((l) => ({
+            capturedAt: isoUtc(l.capturedAt),
+            exposureS: l.exposureS,
+            result: l.result,
+            filter: l.filter,
+            blockId: l.blockId,
+            projectId: l.projectId,
+            panelId: l.panelId,
+            nightPlanId: l.nightPlanId,
+          })),
           running: actual.sessions.some((s) => s.status === 'running'),
           now: isoUtc(o.now),
           names,

@@ -33,10 +33,18 @@ import {
 } from '@nina-pm/shared';
 import type { z } from 'zod';
 import { isoUtc } from '../lib/format';
+import { logger } from '../lib/logger';
 import { graceNight, siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
 import { filterPlanSummary, projectView } from '../routes/web-projects';
 import type { ApiServices } from '../routes/services';
+import {
+  omit,
+  PLAN_STORM_WINDOW_MS,
+  planContentKey,
+  PlanRequestRate,
+  reusablePlan,
+} from './plan-revisions';
 
 type ProjectViewLine = ReturnType<typeof projectView>['panels'][number]['lines'][number];
 
@@ -289,6 +297,21 @@ function transitsOfNight(
   );
 }
 
+/**
+ * Anteil der Tagesschleife am Targets-ETag (AP-52; Analyse 07.10.2026): die aktuelle Nacht und nur, **ob** eine der
+ * folgenden Nächte etwas ausliefert – nicht die Zahl je Nacht. Die Tagesschleife des Plugins fragt nur „irgendeine Nacht ab
+ * der nächsten auszuführenden nicht leer“ (`DayLoop.HasDelivery`); die Projekte der aktuellen Nacht stehen ohnehin im
+ * ETag. Änderungen nur für morgen (Startdatum, Transit-Festlegung) lösen so keine Neuplanung der laufenden Nacht und kein
+ * falsches „Rig plant noch mit Rev. n (Ziele geändert)“ mehr aus. Ein 304 mit älteren Zählern je Nacht ergibt dieselbe
+ * Entscheidung der Tagesschleife.
+ */
+export function deliveryEtagPart(deliveryNights: readonly { night: string; projects: number }[]) {
+  return {
+    night: deliveryNights[0]?.night ?? null,
+    laterDelivery: deliveryNights.slice(1).some((n) => n.projects > 0),
+  };
+}
+
 /** ETag über Projekt-Versionen, Einstellungsversion, Verwerfungen und Filterzuordnung (NT-19). */
 function targetsEtag(
   settingsVersion: number,
@@ -308,8 +331,8 @@ function targetsEtag(
     rejected: Object.entries(rejected).sort(([a], [b]) => (a < b ? -1 : 1)),
     // Neue Flats ändern die Auswahl am nächsten Morgen (AP-50b).
     flats: [...flats.entries()].sort(([a], [b]) => (a < b ? -1 : 1)),
-    // Auslieferung der nächsten Nächte (Tagesschleife, AP-52).
-    deliveryNights,
+    // Tagesschleife (AP-52): aktuelle Nacht und „folgende Nächte liefern aus“, nicht die Zahl je Nacht.
+    delivery: deliveryEtagPart(deliveryNights),
     // Transit-Festlegungen (TK 7.6): Festlegen, Aufheben und Erlaubnisse ändern die Auslieferung, ohne dass die
     // Projektversion steigt. Ohne Zähler aus Meldungen (NT-19).
     transits: [...transits.values()]
@@ -805,25 +828,51 @@ export async function plan(
     const i = mode === null ? -1 : modes.indexOf(mode);
     return i < 0 ? null : i;
   };
-  const revision = await rigRepo.savePlan({
+  // Abrufsturm (Analyse 07.10.2026): nur Warnung, keine Ablehnung.
+  if (req.sessionId) {
+    const burst = planRequests.record(req.sessionId, now);
+    if (burst !== null)
+      logger.warn('nina_plan_request_storm', {
+        rigId: p.rigId,
+        sessionId: req.sessionId,
+        requests: burst,
+        windowS: PLAN_STORM_WINDOW_MS / 1000,
+      });
+  }
+  // Stand der Eingabe für „Rig plant noch mit Rev. n“ (AP-53c): Ziele-ETag des Plugins und Einstellungsversion.
+  const stamp = { targetsEtag: req.targetsEtag ?? null, settingsVersion: d.rig.settingsVersion };
+  const saved = await rigRepo.savePlan({
     nightPlanId: result.nightPlanId,
     night: req.night,
     sessionId: req.sessionId ?? null,
     reason: req.reason,
     engineVersion: result.engineVersion,
     inputHash: result.inputHash,
-    // Stand der Eingabe für „Rig plant noch mit Rev. n“ (AP-53c): Ziele-ETag des Plugins und Einstellungsversion.
-    plan: {
-      ...result,
-      targetsEtag: req.targetsEtag ?? null,
-      settingsVersion: d.rig.settingsVersion,
-    },
+    // Inhaltsgleiche Revision (nur `startAtUtc` und daraus abgeleitete IDs anders, z. B. leerer Plan alle 5 min) nicht
+    // neu speichern, sondern wiederverwenden (Analyse 07.10.2026, execution.md §3.2).
+    contentKey: planContentKey(result, stamp),
+    reusable: reusablePlan(result, now),
+    plan: { ...result, ...stamp },
     now,
   });
+  // Wiederverwendet: so antworten, wie die Revision gespeichert ist (gleicher Inhalt, ihre IDs).
+  const base = saved.reused
+    ? ({
+        ...withoutStamp(saved.reused.summary),
+        blocks: saved.reused.blocks,
+      } as unknown as typeof result)
+    : result;
+  if (saved.reused)
+    logger.info('nina_plan_reused', {
+      rigId: p.rigId,
+      sessionId: req.sessionId ?? null,
+      revision: saved.revision,
+    });
   return {
-    ...result,
-    revision,
-    blocks: result.blocks.map((b) => ({
+    ...base,
+    nightPlanId: saved.nightPlanId,
+    revision: saved.revision,
+    blocks: base.blocks.map((b) => ({
       ...b,
       entries: b.entries.map((e) =>
         e.cmd === 'expose' || e.cmd === 'expose_series'
@@ -831,7 +880,15 @@ export async function plan(
           : e,
       ),
     })),
-    diagnostics: result.diagnostics as PlanResponse['diagnostics'],
-    warnings: result.warnings as PlanResponse['warnings'],
+    diagnostics: base.diagnostics as PlanResponse['diagnostics'],
+    warnings: base.warnings as PlanResponse['warnings'],
   } as PlanResponse;
+}
+
+/** Planabrufe je Session in diesem Lambda-Container (Abrufsturm, nur Warnung). */
+const planRequests = new PlanRequestRate();
+
+/** Gespeicherte Zusatzfelder einer Revision, die nicht zur Plan-Antwort gehören. */
+function withoutStamp(summary: Record<string, unknown>): Record<string, unknown> {
+  return omit(summary, ['targetsEtag', 'settingsVersion', 'contentKey', 'sourceNightPlanId']);
 }

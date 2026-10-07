@@ -2275,7 +2275,8 @@ export const en: Messages = {
       blockChanges: 'Block changes',
       filterChanges: 'Filter changes',
       planFrames: 'Plan fidelity frames',
-      planFramesHint: '{{acquired}} of {{planned}} planned frames (first plan)',
+      planFramesHint:
+        '{{acquired}} of {{planned}} planned frames (first plan without bonus, transit series only in time)',
       planTime: 'Plan fidelity time',
       planTimeHint: '{{acquired}} of {{planned}} planned exposure',
       noPlan: 'no plan',
@@ -2310,8 +2311,14 @@ export const en: Messages = {
         bonusRejected: 'Bonus rejected',
         action: 'Action',
       },
-      empty: 'No lines with plan or captures in this night.',
+      empty: 'No lines with plan or captures in this session.',
       correctRow: 'Correction',
+      definition:
+        'Planned = first plan of this session (without bonus), actual = captures of this session.',
+      series: 'Series',
+      seriesHint: 'Transit series: the plan is the time window, not a count.',
+      plannedLater: 'planned later',
+      plannedLaterHint: 'Not in the first plan of this session, planned by a later plan revision.',
     },
     correction: {
       title: 'Record correction',

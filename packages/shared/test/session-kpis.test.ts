@@ -26,7 +26,9 @@ const base: KpiInput = {
     { cmd: 'expose', atUtc: '2026-09-18T21:05:00Z', exposureS: 300 },
     { cmd: 'expose', atUtc: '2026-09-18T21:10:00Z', exposureS: 300 },
     { cmd: 'expose', atUtc: '2026-09-18T21:15:00Z', exposureS: 300 },
-    // Transit-Serie 30 min à 120 s → 15 Frames.
+    // Bonus-Frame: kein Soll (Entscheidung Sven 07.10.2026).
+    { cmd: 'expose', atUtc: '2026-09-18T21:20:00Z', exposureS: 300, bonus: true },
+    // Transit-Serie 30 min à 120 s → 1800 s Zeit-Soll, kein Frame-Soll.
     {
       cmd: 'expose_series',
       atUtc: '2026-09-18T23:00:00Z',
@@ -68,14 +70,37 @@ describe('sessionKpis', () => {
     // Ohne `block_start`: Wechsel aus den Aufnahmen (b1 → b2); Filter Ha → OIII → Ha.
     expect(kpis.blockChanges).toBe(1);
     expect(kpis.filterChanges).toBe(2);
-    // Plan: 4 + 15 Frames, 1200 + 1800 s; Ist: zugeordnet, gespeichert, ohne Bonus → 3 Frames, 930 s.
+    // Plan: 4 Frames ohne Bonus (Serie ohne Frame-Soll), 1200 + 1800 s; Ist: zugeordnet, gespeichert,
+    // ohne Bonus → 3 Frames, 930 s.
     expect(kpis.plan).toEqual({
-      plannedFrames: 19,
+      plannedFrames: 4,
       plannedExposureS: 3000,
       acquiredFrames: 3,
       acquiredExposureS: 930,
-      framesPct: 15.8,
+      framesPct: 75,
       timePct: 31,
+    });
+  });
+
+  it('Plan-Treue wie Soll/Ist: Bonus ohne Soll, Transit-Serie nur in der Zeit (07.10.2026)', () => {
+    const { kpis } = sessionKpis({
+      ...base,
+      lights: [
+        light('21:00'),
+        light('21:05'),
+        light('21:20', { isBonus: true }),
+        light('23:00', { exposureS: 120, series: true }),
+        light('23:02', { exposureS: 120, series: true }),
+      ],
+    });
+    // Frames: 2 von 4 (Bonus und Serie zählen nicht); Zeit: 600 + 240 s von 3000 s.
+    expect(kpis.plan).toEqual({
+      plannedFrames: 4,
+      plannedExposureS: 3000,
+      acquiredFrames: 2,
+      acquiredExposureS: 840,
+      framesPct: 50,
+      timePct: 28,
     });
   });
 

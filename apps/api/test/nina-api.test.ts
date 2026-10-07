@@ -281,6 +281,39 @@ describe('GET /targets: Auslieferung der nächsten Nächte (AP-52, FA-NIN-07)', 
     expect(later.body.projects).toEqual([]);
     expect(later.etag).not.toBe(first.etag);
   });
+
+  it('Änderung nur für die folgenden Nächte ändert das ETag nicht; „folgende Nächte liefern aus“ schon (Analyse 07.10.2026)', async () => {
+    const t = await setup();
+    const first = await t.ninaCall('/targets');
+    // Projekt B ans Rig A, Startdatum morgen: heute unverändert, morgen und übermorgen ein Projekt mehr.
+    await s.pg.admin.query(
+      "UPDATE project SET rig_id = $1, start_date = '2026-09-19' WHERE id = $2",
+      [t.rig.id, t.b.pid],
+    );
+    const tomorrow = await t.ninaCall('/targets');
+    expect(tomorrow.body.deliveryNights).toEqual([
+      { night: '2026-09-18', projects: 1 },
+      { night: '2026-09-19', projects: 2 },
+      { night: '2026-09-20', projects: 2 },
+    ]);
+    // Keine Neuplanung der laufenden Nacht, kein „Rig plant noch mit Rev. n (Ziele geändert)“.
+    expect(tomorrow.etag).toBe(first.etag);
+    // Heute leer, die folgenden Nächte auch → ETag A; dann liefert morgen etwas aus → ETag ändert sich (Tagesschleife).
+    await s.pg.admin.query("UPDATE project SET start_date = '2026-09-25' WHERE id IN ($1, $2)", [
+      t.a.pid,
+      t.b.pid,
+    ]);
+    const empty = await t.ninaCall('/targets');
+    expect(empty.body.deliveryNights).toEqual([
+      { night: '2026-09-18', projects: 0 },
+      { night: '2026-09-19', projects: 0 },
+      { night: '2026-09-20', projects: 0 },
+    ]);
+    await s.pg.admin.query("UPDATE project SET start_date = '2026-09-20' WHERE id = $1", [t.b.pid]);
+    const later = await t.ninaCall('/targets');
+    expect(later.body.projects).toEqual([]);
+    expect(later.etag).not.toBe(empty.etag);
+  });
 });
 
 describe('GET /targets (NT-19, NT-E1)', () => {

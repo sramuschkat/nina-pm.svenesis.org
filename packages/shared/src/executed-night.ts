@@ -289,8 +289,18 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
 
   // ---- Ereignisse und Zähler ----
   const kinds = new Set<string>(executedEventKinds);
+  // Wiederholter Planabruf mit unveränderter Revision (der Server verwendet eine inhaltsgleiche wieder, Analyse
+  // 07.10.2026): keine neue Markierung, nur die erste Meldung je `nightPlanId` und Revision in Folge.
+  let lastPlan: string | null = null;
+  const repeatedPlan = (e: ActualEventRow) => {
+    if (e.kind !== 'plan_built' && e.kind !== 'plan_rebuilt') return false;
+    const key = `${e.nightPlanId ?? ''}|${String(e.data?.revision ?? '')}`;
+    const repeated = e.nightPlanId !== null && key === lastPlan;
+    lastPlan = key;
+    return repeated;
+  };
   const outEvents: ExecutedEvent[] = events
-    .filter((e) => kinds.has(e.kind))
+    .filter((e) => kinds.has(e.kind) && !repeatedPlan(e))
     .map((e) => ({
       kind: e.kind as ExecutedEvent['kind'],
       atUtc: iso(ms(e.occurredAt)),

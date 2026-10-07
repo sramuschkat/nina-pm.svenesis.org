@@ -219,6 +219,8 @@ function prefilterProportional(m: Matrix): void {
     const nonLaInSafe = Math.min(rowNonLaWork(row), safeRemaining);
     const nonLaLeft = rowNonLaWork(row) - nonLaInSafe;
     const accessible = laInSafe + nonLaInSafe + Math.min(nonLaLeft, unsafeSlots * 300.0);
+    // Fortsetzung (A-32): bleibt, solange Arbeit erreichbar ist.
+    if (row.continued && accessible > 0) continue;
     if (accessible + prefilterFix(m, row, accessible) < row.minChunkSec) {
       zeroWork(row);
       row.preFiltered = true;
@@ -238,6 +240,8 @@ function prefilterGreedy(m: Matrix): void {
       }
       accessible += Math.min(row.tierWorkSec[t] ?? 0, safe * 300.0);
     }
+    // Fortsetzung (A-32): bleibt, solange Arbeit erreichbar ist.
+    if (row.continued && accessible > 0) continue;
     if (accessible + prefilterFix(m, row, accessible) < row.minChunkSec) {
       zeroWork(row);
       row.preFiltered = true;

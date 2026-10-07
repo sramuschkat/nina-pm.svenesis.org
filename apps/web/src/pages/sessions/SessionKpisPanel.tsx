@@ -1,7 +1,8 @@
 /**
  * S-61 Reiter *Kennzahlen* (FK 14.3; FA-AUS-04, FA-AUS-05, FA-AUS-09; AP-31): Effizienz (Belichtung /
  * nutzbare Dunkelzeit), Overhead mit Autofokus, Flip und sonstigem Overhead, Safety-Pausen, Block- und
- * Filterwechsel, Plan-Treue gegen den ersten Plan der Session und Abweichungsgründe mit Anzahl und Dauer.
+ * Filterwechsel, Plan-Treue gegen den ersten Plan der Session (dieselben Begriffe wie Soll/Ist: ohne Bonus,
+ * nur Aufnahmen dieser Session, 07.10.2026) und Abweichungsgründe mit Anzahl und Dauer.
  * Die Werte rechnet der Server (`sessionKpis`); die Seite zeigt sie nur an.
  */
 import { useTranslation } from 'react-i18next';
@@ -115,6 +116,7 @@ export function SessionKpisPanel({ detail }: { detail: NightSessionDetail }) {
             : undefined,
         )}
       </div>
+      <p className={styles.muted}>{t('sessions.plan.definition')}</p>
       <p className={styles.muted}>{t('sessions.kpis.overheadNote')}</p>
       <h3 className={styles.subTitle}>{t('sessions.kpis.reasons')}</h3>
       <DataTable

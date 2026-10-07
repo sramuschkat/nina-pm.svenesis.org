@@ -64,6 +64,8 @@ export interface CompatSwitches {
   readonly tierSafeAnyLine: boolean;
   /** A-29: leeres `pick` mitten im Block gibt den Rest des Laufs frei (`idle_gap`). */
   readonly releaseIdleRun: boolean;
+  /** A-32: fortgesetzte Einheit einer Neuplanung ohne Mindestzeit, solange nutzbar (Entscheidung Sven 07.10.2026). */
+  readonly continuation: boolean;
   /** A-31: Restriktivität `A · W · arctan(14,77/W)` (sonst `A × (1 + 100/(maxIllum+1))`). */
   readonly restrictivenessWidth: boolean;
 }
@@ -99,6 +101,7 @@ export const DEVIATION_IDS: Readonly<Record<keyof CompatSwitches, string>> = {
   tierSafeAnyLine: 'A-28',
   releaseIdleRun: 'A-29',
   restrictivenessWidth: 'A-31',
+  continuation: 'A-32',
 };
 
 const SWITCH_KEYS = Object.keys(DEVIATION_IDS).sort() as (keyof CompatSwitches)[];

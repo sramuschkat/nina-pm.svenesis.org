@@ -163,11 +163,13 @@ export {
   type NinaCallRecord,
   type NinaInstanceOverview,
   type NinaInstanceRow,
+  type SavedPlan,
   type StoredServerPlan,
   type NinaPrincipal,
 } from './repositories/nina';
 export {
   CLOSE_AFTER_END_MS,
+  LATE_LIGHT_AFTER_END_MS,
   STALE_AFTER_SESSION_END_MS,
   STALE_NO_HEARTBEAT_MS,
   STALE_REPORT_GRACE_MS,
@@ -258,6 +260,7 @@ export {
 export {
   settleTransits,
   TRANSIT_SETTLE_GRACE_MS,
+  TRANSIT_SETTLE_MAX_MS,
   TransitRepository,
   transitLine,
   type LockInput,

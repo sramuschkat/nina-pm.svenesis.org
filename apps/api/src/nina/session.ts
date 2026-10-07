@@ -8,6 +8,7 @@ import {
   alertSentSince,
   changedWheelPositions,
   enqueueDiscordEvent,
+  LATE_LIGHT_AFTER_END_MS,
   LATE_REPORT_MS,
   OFFLINE_MAX_MS,
   type NinaPrincipal,
@@ -218,7 +219,9 @@ async function enqueueSessionJobs(
   const marks = [plan?.darknessEndUtc, plan?.sessionEndUtc]
     .filter((x): x is string => !!x)
     .map((x) => new Date(x));
-  const reportAt = new Date(Math.max(endedAt.getTime(), marks[0]?.getTime() ?? endedAt.getTime()));
+  // Nachlauf (Analyse 07.10.2026): die letzte Light-Aufnahme kommt oft Sekunden nach dem Abschluss-PATCH.
+  const settled = endedAt.getTime() + LATE_LIGHT_AFTER_END_MS;
+  const reportAt = new Date(Math.max(settled, marks[0]?.getTime() ?? settled));
   await repos.job.enqueue({
     kind: 'session_close',
     input: { sessionId },

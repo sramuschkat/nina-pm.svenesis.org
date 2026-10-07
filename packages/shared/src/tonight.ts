@@ -19,8 +19,11 @@ export interface TonightStoredNight {
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
 /**
- * Aktive Zeilen (Panel und Zeile aktiv) mit Restbedarf oder mit „nur heute aus“ – nur diese lassen sich für
- * die Nacht umschalten; `frames` = erwartete Frames der Nacht laut Prognose.
+ * Aktive Zeilen (Panel und Zeile aktiv), die der Plan dieser Nacht belichten kann, oder mit „nur heute aus“ – nur
+ * diese lassen sich für die Nacht umschalten; `frames` = erwartete Frames der Nacht laut Prognose.
+ * „Belichten kann“ = **Planungsbedarf** > 0 (inkl. Überbelichtung `overshootPct`, wie Engine und `isDeliverable`)
+ * oder Frames in der Prognose (z. B. Bonus). Vorher zählte nur *Verbleibend* > 0; Zeilen, die nur noch die
+ * Überbelichtung abarbeiten, wurden geplant, ließen sich aber nicht abschalten (Analyse 07.10.2026).
  */
 export function tonightLines(
   p: Project,
@@ -31,11 +34,14 @@ export function tonightLines(
     .filter((panel) => panel.enabled)
     .flatMap((panel) => panel.lines)
     .filter((l) => l.enabled)
-    .filter((l) => l.counters.remaining > 0 || l.disabledForNight === night)
-    .map((l) => ({
+    .map((l) => ({ l, frames: Math.max(0, Math.round(lineFrames?.[l.id] ?? 0)) }))
+    .filter(
+      ({ l, frames }) => l.counters.planningNeed > 0 || frames > 0 || l.disabledForNight === night,
+    )
+    .map(({ l, frames }) => ({
       lineId: l.id,
       filter: l.filterShortName,
-      frames: Math.max(0, Math.round(lineFrames?.[l.id] ?? 0)),
+      frames,
       disabledTonight: l.disabledForNight === night,
     }));
 }
