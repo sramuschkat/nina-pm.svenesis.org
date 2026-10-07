@@ -261,4 +261,33 @@ describe('executedNight', () => {
     ]);
     expect(n.sessions).toBe(2);
   });
+
+  it('wiederholter Planabruf mit derselben Revision (Server verwendet sie wieder) → nur eine Markierung (Analyse 07.10.2026)', () => {
+    const OTHER = '77777777-7777-4777-8777-777777777777';
+    const n = executedNight({
+      night: '2026-10-06',
+      sessions: 1,
+      events: [
+        ev(at('00:30:00'), 'plan_built', { data: { revision: 1, reason: 'initial' } }),
+        ev(at('00:35:00'), 'plan_built', { data: { revision: 1, reason: 'refresh' } }),
+        ev(at('00:40:00'), 'plan_built', { data: { revision: 1, reason: 'refresh' } }),
+        ev(at('00:45:00'), 'plan_rebuilt', {
+          nightPlanId: OTHER,
+          data: { revision: 2, reason: 'refresh' },
+        }),
+        ev(at('00:50:00'), 'plan_built', {
+          nightPlanId: OTHER,
+          data: { revision: 2, reason: 'refresh' },
+        }),
+      ],
+      lights: [],
+      running: true,
+      now: at('01:00:00'),
+      names,
+    });
+    expect(n.events.map((e) => [e.kind, e.atUtc, e.revision])).toEqual([
+      ['plan_built', at('00:30:00'), 1],
+      ['plan_rebuilt', at('00:45:00'), 2],
+    ]);
+  });
 });

@@ -11,6 +11,7 @@ import type { Kysely, Selectable } from 'kysely';
 import { withTx } from '../tx';
 import type { Database, NinaInstanceTable } from '../types';
 import { TenantRepo, type TenantContext } from './base';
+import { latestSessionPlan } from './night-plan-binding';
 import { transitLine } from './transit';
 
 export type NinaInstanceRow = Selectable<NinaInstanceTable>;
@@ -585,6 +586,13 @@ export class NinaRigRepository extends TenantRepo {
    * Session + 1 (ohne Session 1). Gleiche Eingabe ergibt dieselbe `nightPlanId` (UUID aus dem Hash) –
    * dann bleibt die gespeicherte Revision. Eine Session eines anderen Rigs → 404 (SEC-53); die Session
    * erhält `session_end_utc` der letzten Revision (NT-09).
+   * Analyse 07.10.2026:
+   * - Eine noch unbekannte Session (offline angelegt, Anlage noch im Postausgang) wird trotzdem eingetragen
+   *   (`session_id` hat keinen Fremdschlüssel); die Revisionen zählen dann schon je Session.
+   * - Gehört die `nightPlanId` einer **anderen** Session (bzw. noch keiner), erhält diese Session eine Kopie als neue
+   *   Revision (`summary.sourceNightPlanId`), statt ohne Plan zu bleiben.
+   * - Ist die letzte Revision der Session inhaltsgleich (`contentKey`, nur wenn `reusable`), entsteht keine neue: der
+   *   Aufrufer antwortet mit der gespeicherten (`reused`), Sessionende und Berichtsfrist bleiben.
    */
   savePlan(input: {
     nightPlanId: string;
@@ -593,13 +601,17 @@ export class NinaRigRepository extends TenantRepo {
     reason: string;
     engineVersion: string;
     inputHash: string;
+    /** Inhaltsschlüssel ohne die aus `startAtUtc` folgenden Werte (`planContentKey`); `null` = nie wiederverwenden. */
+    contentKey: string | null;
+    /** Inhaltsgleiche Revision darf wiederverwendet werden (kein Block vor jetzt, `reusablePlan`). */
+    reusable: boolean;
     plan: {
       readonly blocks: readonly unknown[];
       readonly sessionEndUtc: string;
       readonly [key: string]: unknown;
     };
     now: Date;
-  }): Promise<number> {
+  }): Promise<SavedPlan> {
     const tenantId = this.ctx.tenantId;
     return withTx(this.db, async (trx) => {
       let sessionId: string | null = null;
@@ -611,17 +623,46 @@ export class NinaRigRepository extends TenantRepo {
           .executeTakeFirst();
         if (session && (session.tenantId !== tenantId || session.rigId !== this.rigId))
           throw new ProblemError('resource.not_found');
-        sessionId = session ? session.id : null;
+        sessionId = input.sessionId;
       }
       const existing = await trx
         .selectFrom('nightPlan')
-        .select(['revision', 'tenantId', 'rigId'])
+        .select(['revision', 'tenantId', 'rigId', 'sessionId'])
         .where('id', '=', input.nightPlanId)
         .executeTakeFirst();
       if (existing) {
         if (existing.tenantId !== tenantId || existing.rigId !== this.rigId)
           throw new ProblemError('resource.not_found');
-        return existing.revision;
+        if (!sessionId || existing.sessionId === sessionId)
+          return { revision: existing.revision, nightPlanId: input.nightPlanId, reused: null };
+      }
+      if (sessionId) {
+        const latest = await latestSessionPlan(trx, tenantId, sessionId);
+        // Dieselbe Eingabe schon als letzte Revision dieser Session (auch als Kopie): idempotent.
+        if (latest && latest.inputHash === input.inputHash)
+          return { revision: latest.revision, nightPlanId: latest.deliveredId, reused: null };
+        if (
+          latest &&
+          input.reusable &&
+          input.contentKey !== null &&
+          latest.contentKey === input.contentKey
+        ) {
+          const row = await trx
+            .selectFrom('nightPlan')
+            .select(['summary', 'blocks'])
+            .where('tenantId', '=', tenantId)
+            .where('id', '=', latest.id)
+            .executeTakeFirstOrThrow();
+          const json = (v: unknown): unknown => (typeof v === 'string' ? JSON.parse(v) : v);
+          return {
+            revision: latest.revision,
+            nightPlanId: latest.deliveredId,
+            reused: {
+              summary: json(row.summary) as Record<string, unknown>,
+              blocks: json(row.blocks) as unknown[],
+            },
+          };
+        }
       }
       let revision = 1;
       if (sessionId) {
@@ -640,7 +681,8 @@ export class NinaRigRepository extends TenantRepo {
       await trx
         .insertInto('nightPlan')
         .values({
-          id: input.nightPlanId,
+          // Kopie für diese Session: eigene Zeilen-ID, ausgeliefert bleibt die `nightPlanId` der Quelle.
+          id: existing ? crypto.randomUUID() : input.nightPlanId,
           tenantId,
           rigId: this.rigId,
           night: input.night,
@@ -650,7 +692,11 @@ export class NinaRigRepository extends TenantRepo {
           reason: input.reason,
           engineVersion: input.engineVersion,
           inputHash: input.inputHash,
-          summary: JSON.stringify(summary),
+          summary: JSON.stringify({
+            ...summary,
+            ...(input.contentKey !== null ? { contentKey: input.contentKey } : {}),
+            ...(existing ? { sourceNightPlanId: input.nightPlanId } : {}),
+          }),
           blocks: JSON.stringify(blocks),
           createdAt: input.now,
         })
@@ -667,7 +713,7 @@ export class NinaRigRepository extends TenantRepo {
           .where('id', '=', sessionId)
           .execute();
       }
-      return revision;
+      return { revision, nightPlanId: input.nightPlanId, reused: null };
     });
   }
 
@@ -695,6 +741,8 @@ export class NinaRigRepository extends TenantRepo {
       projectId: string | null;
       panelId: string | null;
       nightPlanId: string | null;
+      /** Transit-Aufnahme (FA-EXO-20): ihr Block ist ein Transitblock, auch ohne gespeicherte Revision (Analyse 07.10.2026). */
+      transitObservationId: string | null;
     }[];
   }> {
     const tenantId = this.ctx.tenantId;
@@ -727,6 +775,7 @@ export class NinaRigRepository extends TenantRepo {
         'projectId',
         'panelId',
         'nightPlanId',
+        'transitObservationId',
       ])
       .where('tenantId', '=', tenantId)
       .where('sessionId', 'in', ids)
@@ -750,28 +799,43 @@ export class NinaRigRepository extends TenantRepo {
         projectId: l.projectId,
         panelId: l.panelId,
         nightPlanId: l.nightPlanId,
+        transitObservationId: l.transitObservationId,
       })),
     };
   }
 
   /**
    * Gespeicherte Serverpläne der Nacht (`origin = server_plan`, AP-53c): die letzte Revision (das, was das Plugin
-   * ausführt) und die erste (Ursprungsplan = Plan der ersten Session bzw. der früheste).
+   * ausführt) und die erste (Ursprungsplan = Plan der ersten Session bzw. der früheste). Inhalt (`summary`, `blocks`)
+   * nur dieser beiden Zeilen laden – eine Nacht hat viele Revisionen (Analyse 07.10.2026).
    */
   async serverPlans(night: string): Promise<{
     latest: StoredServerPlan | null;
     first: StoredServerPlan | null;
   }> {
     const tenantId = this.ctx.tenantId;
-    const rows = await this.db
+    const ids = await this.db
       .selectFrom('nightPlan')
-      .select(['id', 'revision', 'reason', 'createdAt', 'summary', 'blocks', 'sessionId'])
+      .select(['id'])
       .where('tenantId', '=', tenantId)
       .where('rigId', '=', this.rigId)
       .where('night', '=', night)
       .where('origin', '=', 'server_plan')
       .orderBy('createdAt')
+      .orderBy('id')
       .execute();
+    const pick = [...new Set([ids[0]?.id, ids.at(-1)?.id].filter((x): x is string => !!x))];
+    const rows =
+      pick.length === 0
+        ? []
+        : await this.db
+            .selectFrom('nightPlan')
+            .select(['id', 'revision', 'reason', 'createdAt', 'summary', 'blocks', 'sessionId'])
+            .where('tenantId', '=', tenantId)
+            .where('rigId', '=', this.rigId)
+            .where('id', 'in', pick)
+            .execute();
+    const byId = new Map(rows.map((r) => [r.id, r] as const));
     const map = (r: (typeof rows)[number] | undefined): StoredServerPlan | null =>
       r
         ? {
@@ -786,12 +850,23 @@ export class NinaRigRepository extends TenantRepo {
             blocks: (typeof r.blocks === 'string' ? JSON.parse(r.blocks) : r.blocks) as unknown[],
           }
         : null;
-    return { latest: map(rows.at(-1)), first: map(rows[0]) };
+    return {
+      latest: map(byId.get(ids.at(-1)?.id ?? '')),
+      first: map(byId.get(ids[0]?.id ?? '')),
+    };
   }
 
   get rig(): string {
     return this.rigId;
   }
+}
+
+/** Ergebnis von `savePlan`: Revision, ausgelieferte `nightPlanId` und – bei Wiederverwendung – die gespeicherte Revision. */
+export interface SavedPlan {
+  revision: number;
+  nightPlanId: string;
+  /** Inhaltsgleiche letzte Revision (keine neue gespeichert): so antworten, wie sie gespeichert ist. */
+  reused: { summary: Record<string, unknown>; blocks: unknown[] } | null;
 }
 
 /** Gespeicherter Serverplan einer Nacht (AP-53c). */
