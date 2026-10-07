@@ -203,7 +203,7 @@ export function doneTonight(
     const toUtc = b.endUtc === null || cur?.toUtc === null ? null : maxIso(cur?.toUtc, b.endUtc);
     by.set(b.projectId, {
       projectId: b.projectId,
-      name: names.get(b.projectId) ?? b.title,
+      name: names.get(b.projectId) || b.title || b.projectId,
       createdBy: creators.get(b.projectId) ?? null,
       color: colorOfProject(b.projectId),
       transit: (cur?.transit ?? false) || b.kind === 'transit',
@@ -219,6 +219,22 @@ export function doneTonight(
 }
 
 const maxIso = (a: string | undefined, b: string) => (a !== undefined && a > b ? a : b);
+
+/**
+ * Projekte, an denen die Rig noch arbeitet, auch wenn die Rechnung ab jetzt sie nicht mehr zuteilt: laufender Ist-Block
+ * oder ein noch nicht beendeter Block des gespeicherten Plans (den führt das Plugin aus). Sonst stand IC 1795 um
+ * 05:33 CDT als „Heute Nacht abgearbeitet“ da, während die Rig noch SII belichtete (07.10.2026).
+ */
+export function stillRunning(
+  executed: ExecutedNight | null | undefined,
+  stored: { readonly blocks: readonly { projectId: string; endUtc: string }[] } | null | undefined,
+  nowMs: number,
+): Set<string> {
+  const ids = new Set((executed?.blocks ?? []).filter((b) => b.running).map((b) => b.projectId));
+  if (Number.isFinite(nowMs))
+    for (const b of stored?.blocks ?? []) if (Date.parse(b.endUtc) > nowMs) ids.add(b.projectId);
+  return ids;
+}
 
 export function simulate(req: SimulationRequest): SimulationResult {
   // Entwürfe ohne Panel kann die Engine nicht planen (engine.input_invalid) – sie fehlen im Plan.
@@ -352,7 +368,10 @@ export function simulate(req: SimulationRequest): SimulationResult {
   }));
   const doneCards = doneTonight(
     req.server?.executed?.blocks ?? [],
-    new Set(cards.map((c) => c.projectId)),
+    new Set([
+      ...cards.map((c) => c.projectId),
+      ...stillRunning(req.server?.executed, req.server?.storedPlan, nowMs),
+    ]),
     names,
     creators,
     colorOfProject,
