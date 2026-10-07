@@ -2,12 +2,14 @@
 import {
   ChangeRequestRepository,
   EquipmentRepository,
+  NinaRigRepository,
   replaceForecast,
   latestWeather,
   ProjectRepository,
   type OpenDatabase,
 } from '@nina-pm/db';
-import type { JobResult, NightWeather } from '@nina-pm/shared';
+import type { JobResult, NightTransit, NightWeather } from '@nina-pm/shared';
+import { isoUtc } from '../lib/format';
 import { siteNights } from '../lib/night-table';
 import { moonProfileView, rigView } from '../routes/web-equipment';
 import { projectView } from '../routes/web-projects';
@@ -64,6 +66,30 @@ export function multiSimDbDeps(
       return d ? { project: projectView(d), proposal: r.proposal } : null;
     },
     nights: (site, now, from, count) => siteNights(site, now, from, count),
+    // Dieselbe Auswahl wie `POST /plan` (`deliverableByNight`): je Nacht und Projekt der früheste mit aktiver Zeile.
+    async transits(tenantId, rigId, nights, now) {
+      const seen = new Set<string>();
+      const out: NightTransit[] = [];
+      for (const t of await new NinaRigRepository(
+        await database(),
+        { tenantId },
+        rigId,
+      ).lockedTransits(nights, now)) {
+        const key = `${t.night}:${t.projectId}`;
+        if (t.lineId === null || seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          night: t.night,
+          projectId: t.projectId,
+          observationId: t.observationId,
+          lineId: t.lineId,
+          windowStartUtc: isoUtc(t.windowStartUtc),
+          windowEndUtc: isoUtc(t.windowEndUtc),
+          lockedAtUtc: isoUtc(t.lockedAt),
+        });
+      }
+      return out;
+    },
     async weather(site, now) {
       const entry = await latestWeather(await database(), site.latitudeDeg, site.longitudeDeg);
       const out = new Map<string, NightWeather>();
@@ -82,6 +108,7 @@ export function forecastDbDeps(database: () => Promise<Db>): ForecastDeps {
   return {
     loadRig: base.loadRig,
     nights: base.nights,
+    ...(base.transits ? { transits: base.transits } : {}),
     async rigIdsOfSite(tenantId, siteId) {
       const rows = await (
         await database()

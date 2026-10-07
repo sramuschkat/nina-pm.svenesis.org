@@ -14,7 +14,7 @@
  *    rechts „Ereignisse der Nacht“.
  * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
-import { formatNightKey } from '@nina-pm/shared';
+import { formatNightKey, nightUsage, tonightProjects } from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +31,7 @@ import { WeatherChart } from '../../components/WeatherChart';
 import { useJob } from '../../lib/use-job';
 import { problemCode } from '../admin/shared';
 import { useEquipmentList } from '../equipment/shared';
-import { useNightPlan } from '../simulator/use-night-plan';
+import { useNightPlan, type NightPlanState } from '../simulator/use-night-plan';
 import { chartProps, useNow, useSiteWeather } from '../weather/WeatherPage';
 import { LIMITING_MAG, useNightSky, type NightSky } from './night-sky';
 import { CommentCount } from '../../components/CommentCount';
@@ -191,7 +191,7 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
         <MoonAndPlanets site={site} sky={sky} now={now} />
       </Fold>
       <div className={styles.split}>
-        <RigCard rig={rig} colorOf={colorOf} />
+        <RigCard rig={rig} colorOf={colorOf} plan={plan} />
         <SkyEvents site={site} sky={sky} />
       </div>
     </>
@@ -297,8 +297,31 @@ function MoonAndPlanets({ site, sky, now }: { site: SiteView; sky: NightSky; now
 }
 
 /** Plan der Nacht: geplante Projekte aus der Prognose (AP-33) mit „nur heute aus“, Safety-Link, Prognose rechnen. */
-function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) => string }) {
+function RigCard({
+  rig,
+  colorOf,
+  plan,
+}: {
+  rig: TonightRig;
+  colorOf: (filter: string) => string;
+  plan: NightPlanState;
+}) {
   const { t, i18n } = useTranslation();
+  // Laufende Nacht: Frames aus dem live gerechneten Plan (wie Zeitleiste, Simulator und NINA, mit Transits); die
+  // gespeicherte Prognose wird nur einmal je Standortnacht gerechnet und kennt spätere Freigaben nicht (07.10.2026).
+  // Künftige Nächte (Nachtwahl) bleiben bei der Prognose.
+  const live =
+    rig.night === rig.currentNight && plan.result
+      ? tonightProjects(
+          plan.projects as unknown as Parameters<typeof tonightProjects>[0],
+          rig.rigId,
+          rig.night,
+          nightUsage(plan.result.plan),
+        )
+      : null;
+  const rows = live?.projects ?? rig.projects;
+  const idle = live?.idle ?? rig.idleProjects;
+  const covered = live !== null || rig.forecast.covered;
   const headingId = useId();
   const canRun = useCan('simulation.run');
   const client = useQueryClient();
@@ -387,7 +410,7 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
             {t('tonight.computing')}
           </p>
         ) : null}
-        {!rig.forecast.covered ? (
+        {!covered ? (
           <p className={styles.note}>
             {t('tonight.notCovered')}{' '}
             {canRun ? (
@@ -404,15 +427,15 @@ function RigCard({ rig, colorOf }: { rig: TonightRig; colorOf: (filter: string) 
         ) : (
           <DataTable
             columns={columns}
-            rows={rig.projects}
+            rows={rows}
             rowKey={(p) => p.projectId}
             rowLabel={(p) => p.name}
             label={t('tonight.plannedLabel', { rig: rig.rigName })}
             empty={t('tonight.noProjects')}
           />
         )}
-        {rig.forecast.covered && rig.idleProjects > 0 ? (
-          <p className={styles.muted}>{t('tonight.idle', { n: rig.idleProjects })}</p>
+        {covered && idle > 0 ? (
+          <p className={styles.muted}>{t('tonight.idle', { n: idle })}</p>
         ) : null}
       </div>
     </section>

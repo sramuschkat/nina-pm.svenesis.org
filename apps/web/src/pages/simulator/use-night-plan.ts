@@ -15,6 +15,8 @@ import { useSimulator } from './use-simulator';
 
 export interface NightPlanState {
   readonly result: SimulationResult | null;
+  /** Freigegebene, aktive Projekte des Rigs, mit denen gerechnet wurde (Tabelle „Plan für diese Nacht“). */
+  readonly projects: readonly ProjectView[];
   readonly isPending: boolean;
   readonly isError: boolean;
   readonly refetch: () => void;
@@ -101,6 +103,7 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     sim.isError;
   return {
     result: sim.data ?? null,
+    projects,
     isPending: !failed && (request === null || sim.isPending),
     isError: failed,
     refetch: () => {

@@ -16,7 +16,7 @@ import {
 import type { z } from 'zod';
 import type { ProjectView, RigView, SiteNightsView } from './contracts';
 import type { ImpactResult, MultiSimResult } from './contracts/multi-sim';
-import { buildPlanInput, type PlanMoonProfileSource } from './plan-input';
+import { buildPlanInput, type PlanMoonProfileSource, type PlanTransitSource } from './plan-input';
 
 type Project = z.infer<typeof ProjectView>;
 type Rig = z.infer<typeof RigView>;
@@ -59,6 +59,16 @@ export interface SimulateNightsInput {
   readonly weather?: ReadonlyMap<string, NightWeather> | null;
   /** Nur für Tests: Engine austauschen. */
   readonly planNight?: (input: PlanInput) => NightPlan;
+  /**
+   * Festgelegte Transits je Nacht (wie `POST /plan`, 07.10.2026): Exoplaneten-Projekte plant die Rechnung nur in der
+   * Nacht ihres Transits als Transitblock; ohne Transit gar nicht (vorher wie Deep-Sky-Ziele über die ganze Nacht).
+   */
+  readonly transits?: readonly NightTransit[];
+}
+
+/** Festgelegter Transit einer Nacht (`lockedTransits`, transit.md §9). */
+export interface NightTransit extends PlanTransitSource {
+  readonly night: string;
 }
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
@@ -93,6 +103,22 @@ function planUsage(plan: NightPlan) {
     }
   }
   return { frames, hours, exposureS };
+}
+
+/**
+ * Erwartete Frames je Zeile und belegte Stunden je Projekt aus einem Nachtplan – dieselbe Zählung wie die Prognose
+ * (Transitserien als Anzahl ganzer Belichtungen im Fenster). „Heute Nacht“ nutzt sie für die laufende Nacht mit dem
+ * live gerechneten Plan (07.10.2026).
+ */
+export function nightUsage(plan: NightPlan): {
+  lineFrames: Record<string, number>;
+  projectHours: Record<string, number>;
+} {
+  const u = planUsage(plan);
+  return {
+    lineFrames: Object.fromEntries(u.frames),
+    projectHours: Object.fromEntries([...u.hours].map(([id, h]) => [id, round2(h)])),
+  };
 }
 
 /** Frames je Zeile und belegte Stunden je Projekt einer simulierten Nacht (ungewichtet, Job `forecast`). */
@@ -131,16 +157,28 @@ export function simulateNights(input: SimulateNightsInput): {
     const night = keyFromDays(start + i);
     const pendingByLine: Record<string, number> = {};
     for (const [id, l] of lines) pendingByLine[id] = Math.floor(l.done + EPS);
-    const planInput = buildPlanInput(input.rig, candidates, input.moonProfiles, input.nightsTable, {
-      night,
-      site: input.site,
-      selection: 'given',
-      pendingByLine,
-    }) as PlanInput;
-    if (i === 0)
-      for (const p of planInput.projects)
-        for (const panel of p.panels)
-          for (const l of panel.lines)
+    const ofNight = (input.transits ?? []).filter((t) => t.night === night);
+    const nightCandidates = candidates.filter(
+      (p) => p.projectType !== 'exoplanet' || ofNight.some((t) => t.projectId === p.id),
+    );
+    const planInput = buildPlanInput(
+      input.rig,
+      nightCandidates,
+      input.moonProfiles,
+      input.nightsTable,
+      {
+        night,
+        site: input.site,
+        selection: 'given',
+        pendingByLine,
+        transits: ofNight,
+      },
+    ) as PlanInput;
+    // Zeilen beim ersten Auftreten erfassen – Exoplaneten erst in der Nacht ihres Transits.
+    for (const p of planInput.projects)
+      for (const panel of p.panels)
+        for (const l of panel.lines)
+          if (!lines.has(l.id))
             lines.set(l.id, {
               projectId: p.id,
               filter: l.filter,

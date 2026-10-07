@@ -52,7 +52,7 @@ import { imageScale } from '@nina-pm/shared';
 import { isoUtc, isoUtcOrNull } from '../lib/format';
 import { defineRoute, problemContent } from './define';
 import type { ApiServices } from './services';
-import { scheduleProjectJobs } from './effort-trigger';
+import { scheduleForecast, scheduleProjectJobs } from './effort-trigger';
 import { requireTenant } from './tenant';
 import { schedulerView } from './web-equipment';
 
@@ -723,7 +723,9 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
     const repos = svc.repositories(tenant);
     /** Aufwand-Kennzeichen (AP-13e) und Vorschaubild (AP-25) neu rechnen. */
     const effort = (projectId: string) => scheduleProjectJobs(svc, repos, projectId);
-    return { svc, auth, repo: repos.projects(), effort };
+    /** Nur Folgeplanung (Status, Priorität): Aufwand und Vorschaubild ändern sich dadurch nicht. */
+    const forecast = (projectId: string) => scheduleForecast(svc, repos, projectId);
+    return { svc, auth, repo: repos.projects(), effort, forecast };
   };
 
   /**
@@ -996,20 +998,21 @@ export function webProjectRoutes(services: () => Promise<ApiServices>) {
   });
 
   app.openapi(statusRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, forecast } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.status');
-    return c.json(
-      projectView(await repo.setStatus(id, c.req.valid('json').status, svc.now())),
-      200,
-    );
+    const updated = await repo.setStatus(id, c.req.valid('json').status, svc.now());
+    await forecast(id);
+    return c.json(projectView(updated), 200);
   });
 
   app.openapi(priorityRoute, async (c) => {
-    const { repo, auth, svc } = await ctx(c);
+    const { repo, auth, svc, forecast } = await ctx(c);
     const { id } = c.req.valid('param');
     await authorized(repo, auth, id, 'project.status');
-    return c.json(await repo.setPriority(id, c.req.valid('json').position, svc.now()), 200);
+    const result = await repo.setPriority(id, c.req.valid('json').position, svc.now());
+    await forecast(id);
+    return c.json(result, 200);
   });
 
   app.openapi(addFavoriteRoute, async (c) => {
