@@ -779,7 +779,11 @@ export async function plan(
     engineVersion: result.engineVersion,
     inputHash: result.inputHash,
     // Stand der Eingabe für „Rig plant noch mit Rev. n“ (AP-53c): Ziele-ETag des Plugins und Einstellungsversion.
-    plan: { ...result, targetsEtag: req.targetsEtag ?? null, settingsVersion: d.rig.settingsVersion },
+    plan: {
+      ...result,
+      targetsEtag: req.targetsEtag ?? null,
+      settingsVersion: d.rig.settingsVersion,
+    },
     now,
   });
   return {

@@ -46,7 +46,10 @@ export async function nightActual(
             projectId: e.projectId,
             nightPlanId: e.nightPlanId,
             durationS: e.durationS,
-            data: (typeof e.data === 'string' ? JSON.parse(e.data) : e.data) as Record<string, unknown> | null,
+            data: (typeof e.data === 'string' ? JSON.parse(e.data) : e.data) as Record<
+              string,
+              unknown
+            > | null,
           })),
           lights: actual.lights.map((l) => ({ ...l, capturedAt: isoUtc(l.capturedAt) })),
           running: actual.sessions.some((s) => s.status === 'running'),
@@ -56,13 +59,18 @@ export async function nightActual(
         });
 
   // „Rig plant noch mit Rev. n“ nur für Nächte, die noch laufen bzw. kommen.
-  let stale: { stale: boolean; staleCause: 'targets' | 'settings' | null } = { stale: false, staleCause: null };
+  let stale: { stale: boolean; staleCause: 'targets' | 'settings' | null } = {
+    stale: false,
+    staleCause: null,
+  };
   if (plans.latest && o.night >= o.currentNight) {
     const summary = plans.latest.summary;
     const settings = typeof summary.settingsVersion === 'number' ? summary.settingsVersion : null;
     const etag = typeof summary.targetsEtag === 'string' ? summary.targetsEtag : null;
-    if (settings !== null && settings < d.rig.settingsVersion) stale = { stale: true, staleCause: 'settings' };
-    else if (etag !== null && (await targets(svc, ref)).etag !== etag) stale = { stale: true, staleCause: 'targets' };
+    if (settings !== null && settings < d.rig.settingsVersion)
+      stale = { stale: true, staleCause: 'settings' };
+    else if (etag !== null && (await targets(svc, ref)).etag !== etag)
+      stale = { stale: true, staleCause: 'targets' };
   }
   const view = (p: StoredServerPlan | null, withStale: boolean): StoredPlan | null =>
     p

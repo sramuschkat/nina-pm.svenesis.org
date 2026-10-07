@@ -100,7 +100,10 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
         projectId: e.projectId,
         panelId: panel && UUID.test(panel) ? panel : null,
         title: str(d.title) ?? o.names.get(e.projectId) ?? '',
-        kind: d.kind === 'transit' || o.blockKinds?.get(e.blockId) === 'transit' ? 'transit' : 'regular',
+        kind:
+          d.kind === 'transit' || o.blockKinds?.get(e.blockId) === 'transit'
+            ? 'transit'
+            : 'regular',
         start: ms(e.occurredAt),
         end: null,
         endReason: null,
@@ -126,8 +129,10 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
     if (!l.blockId) continue;
     const work = reported.has(l.blockId) ? blocks.filter((b) => b.blockId === l.blockId) : [];
     const target =
-      work.find((b) => ms(l.capturedAt) >= b.start - 60_000 && (b.end === null || ms(l.capturedAt) <= b.end)) ??
-      work.at(-1);
+      work.find(
+        (b) =>
+          ms(l.capturedAt) >= b.start - 60_000 && (b.end === null || ms(l.capturedAt) <= b.end),
+      ) ?? work.at(-1);
     if (target) {
       if (l.result === 'saved') target.exposures++;
       target.lastActivity = Math.max(target.lastActivity, lightEnd(l));
@@ -160,12 +165,14 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
   // Ereignisse im Block (Flip, übersprungene Belichtung, Autofokus) zählen als Aktivität.
   for (const e of events) {
     const b = e.blockId ? open.get(e.blockId) : undefined;
-    if (b && ms(e.occurredAt) >= b.start) b.lastActivity = Math.max(b.lastActivity, ms(e.occurredAt));
+    if (b && ms(e.occurredAt) >= b.start)
+      b.lastActivity = Math.max(b.lastActivity, ms(e.occurredAt));
   }
   blocks.sort((a, b) => a.start - b.start);
   const lastStarted = blocks.at(-1);
   for (const b of open.values()) {
-    if (o.running && b === lastStarted && now - b.lastActivity <= RUNNING_STALE_S * 1000) b.running = true;
+    if (o.running && b === lastStarted && now - b.lastActivity <= RUNNING_STALE_S * 1000)
+      b.running = true;
     else b.end = Math.max(b.start, b.lastActivity);
   }
 
@@ -197,9 +204,11 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
     ...empty.map((g) => ({ from: g.from, to: g.to })),
     ...blocks.filter((b) => b.running).map((b) => ({ from: b.start, to: now })),
   ].sort((a, b) => a.from - b.from);
-  for (let k = 1; k < spans.length; k++) {
-    const from = spans[k - 1]!.to;
-    const to = spans[k]!.from;
+  for (const [k, span] of spans.entries()) {
+    const prev = spans[k - 1];
+    if (!prev) continue;
+    const from = prev.to;
+    const to = span.from;
     if (to - from < GAP_MIN_S * 1000) continue;
     const inGap = (t: number) => t >= from && t <= to;
     const skips = skippedBlocks.filter((e) => inGap(ms(e.occurredAt)));
@@ -265,7 +274,10 @@ export function executedNight(o: ExecutedNightOptions): ExecutedNight {
       projectId: e.projectId,
       code: str(e.data?.code) ?? str(e.data?.reason),
       durationS: e.durationS,
-      revision: typeof e.data?.revision === 'number' && e.data.revision >= 1 ? Math.trunc(e.data.revision) : null,
+      revision:
+        typeof e.data?.revision === 'number' && e.data.revision >= 1
+          ? Math.trunc(e.data.revision)
+          : null,
     }));
 
   const outBlocks: ExecutedBlock[] = blocks

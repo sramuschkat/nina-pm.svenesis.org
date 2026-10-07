@@ -14,7 +14,13 @@
  *    rechts „Ereignisse der Nacht“.
  * Alle Zeiten in Standortzeit mit Kürzel (NT-03).
  */
-import { formatNightKey, nightUsage, tonightProjects } from '@nina-pm/shared';
+import {
+  formatNightKey,
+  formatTzAbbr,
+  formatZonedTime,
+  nightUsage,
+  tonightProjects,
+} from '@nina-pm/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -191,7 +197,7 @@ function Night({ rig, site, now }: { rig: TonightRig; site: SiteView; now: numbe
         <MoonAndPlanets site={site} sky={sky} now={now} />
       </Fold>
       <div className={styles.split}>
-        <RigCard rig={rig} colorOf={colorOf} plan={plan} />
+        <RigCard rig={rig} colorOf={colorOf} plan={plan} timeZone={site.timeZone} />
         <SkyEvents site={site} sky={sky} />
       </div>
     </>
@@ -301,10 +307,12 @@ function RigCard({
   rig,
   colorOf,
   plan,
+  timeZone,
 }: {
   rig: TonightRig;
   colorOf: (filter: string) => string;
   plan: NightPlanState;
+  timeZone: string;
 }) {
   const { t, i18n } = useTranslation();
   // Laufende Nacht: Frames aus dem live gerechneten Plan (wie Zeitleiste, Simulator und NINA, mit Transits); die
@@ -391,6 +399,21 @@ function RigCard({
         <h2 id={headingId} className={styles.cardTitle}>
           {t('tonight.planTitle')}
         </h2>
+        {plan.stored?.stale ? (
+          // AP-53c (Entscheidung 4): die Rig plant noch mit einer älteren Eingabe.
+          <span className={styles.staleBadge} role="status">
+            {t('simulator.source.stale', {
+              revision: plan.stored.revision,
+              time: `${formatZonedTime(plan.stored.createdAtUtc, timeZone)} ${formatTzAbbr(plan.stored.createdAtUtc, timeZone)}`,
+            })}
+            {' · '}
+            {t(
+              plan.stored.staleCause === 'settings'
+                ? 'simulator.source.staleSettings'
+                : 'simulator.source.staleTargets',
+            )}
+          </span>
+        ) : null}
         {rig.weatherSafetyUrl ? (
           <a
             className={styles.more}

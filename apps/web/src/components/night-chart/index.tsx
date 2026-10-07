@@ -44,6 +44,8 @@ import {
   type TimelineBlock,
   type Interval,
   type NightMarker,
+  type ChartGap,
+  type OutlineBlock,
   type TransitOverlay,
   type TwilightSpan,
 } from './model';
@@ -52,6 +54,8 @@ import styles from './NightChart.module.css';
 export type {
   AltitudeSeries,
   AltPoint,
+  ChartGap,
+  OutlineBlock,
   FilterBar,
   Interval,
   NightMarker,
@@ -83,6 +87,10 @@ export interface NightChartProps {
   blocks?: readonly TimelineBlock[];
   /** Filterbalken in Filterfarben (FA-SIM-07); in der Plangrafik als beschriftete Leiste über dem Diagramm. */
   filterBars?: readonly FilterBar[];
+  /** Lücken im Erledigten (nur Plangrafik, AP-53c). */
+  gaps?: readonly ChartGap[];
+  /** Ursprungsplan als dünner Umriss über dem Diagramm (nur Plangrafik, AP-53c). */
+  outline?: readonly OutlineBlock[];
   /** Gestrichelte Linie der Mindesthöhe (ohne sie 30°). */
   minAltDeg?: number;
   /** IANA-Zone des Standorts (Beschriftung, NT-03). */
@@ -149,6 +157,26 @@ function token(el: Element, name: string): string {
 }
 
 /** Farbe einer Reihe: CSS-Farbe oder `var(--npm-…)`, für das Canvas aufgelöst. */
+/** Schraffur 45° in `color` für Lücken (AP-53c); ohne Canvas-Kontext (Tests) `null`. */
+function hatch(ctx: CanvasRenderingContext2D, color: string): CanvasPattern | null {
+  const tile = document.createElement('canvas');
+  tile.width = 6;
+  tile.height = 6;
+  const t = tile.getContext('2d');
+  if (!t) return null;
+  t.strokeStyle = color;
+  t.lineWidth = 2;
+  t.beginPath();
+  t.moveTo(0, 6);
+  t.lineTo(6, 0);
+  t.moveTo(-1, 1);
+  t.lineTo(1, -1);
+  t.moveTo(5, 7);
+  t.lineTo(7, 5);
+  t.stroke();
+  return ctx.createPattern(tile, 'repeat');
+}
+
 function resolveColor(el: Element, color: string): string {
   const m = /^var\(--npm-([\w-]+)\)$/.exec(color);
   return m?.[1] ? token(el, m[1]) : color;
@@ -184,6 +212,8 @@ export function NightChart(props: NightChartProps) {
     markers = [],
     blocks = [],
     filterBars = [],
+    gaps = [],
+    outline = [],
     minAltDeg,
     timeZone,
     twilight,
@@ -383,13 +413,15 @@ export function NightChart(props: NightChartProps) {
           ? props.highlightBlockIds.includes(b.id)
           : cursor !== null && cursor >= b.fromUtc && cursor < b.toUtc;
         // Mit gewähltem Ziel (Simulator-Zielkarte) treten die übrigen Blöcke deutlich zurück (01.10.2026).
-        const dim = props.highlightBlockIds !== undefined && !on;
+        // Erledigtes blass, Geplantes kräftig (AP-53c, Sven 07.10.2026).
+        const dim = (props.highlightBlockIds !== undefined && !on) || (!on && b.tense === 'past');
+        const strong = b.tense === 'planned';
         ctx.fillStyle = b.color ? resolveColor(canvas, b.color) : c('chart-marker');
         ctx.strokeStyle = ctx.fillStyle;
-        ctx.globalAlpha = on ? 0.5 : dim ? 0.06 : 0.2;
+        ctx.globalAlpha = on ? 0.5 : dim ? (b.tense === 'past' ? 0.08 : 0.06) : strong ? 0.42 : 0.2;
         ctx.fillRect(x0, plotT, w, plotH);
-        ctx.globalAlpha = on ? 1 : dim ? 0.2 : 0.6;
-        ctx.lineWidth = on ? 2 : 1;
+        ctx.globalAlpha = on ? 1 : dim ? (b.tense === 'past' ? 0.3 : 0.2) : strong ? 0.95 : 0.6;
+        ctx.lineWidth = on ? 2 : strong ? 1.5 : 1;
         ctx.strokeRect(x0 + 0.5, plotT + 0.5, w - 1, plotH - 1);
         ctx.globalAlpha = 1;
         ctx.lineWidth = 1;
@@ -407,6 +439,32 @@ export function NightChart(props: NightChartProps) {
           ctx.restore();
         }
       }
+      // Lücken im Erledigten schraffiert (Flip grau, sonst rot), Grund oben, wenn Platz ist.
+      for (const g of gaps) {
+        const x0 = x(g.fromUtc);
+        const w = Math.max(2, x(g.toUtc) - x0);
+        const pattern = hatch(ctx, g.kind === 'flip' ? c('chart-axis') : c('chart-now'));
+        if (pattern) ctx.fillStyle = pattern;
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(x0, plotT, w, plotH);
+        ctx.globalAlpha = 1;
+        ctx.font = font(10);
+        if (ctx.measureText(g.label).width + 6 <= w) {
+          ctx.fillStyle = c('chart-curve');
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(g.label, x0 + 3, plotT + 22);
+        }
+      }
+      // Ursprungsplan als dünner Umriss am oberen Rand.
+      for (const o of outline) {
+        const x0 = x(o.fromUtc);
+        const w = Math.max(2, x(o.toUtc) - x0);
+        ctx.strokeStyle = resolveColor(canvas, o.color);
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(x0 + 0.5, plotT + 3.5, w - 1, 7);
+      }
+      ctx.lineWidth = 1;
     }
     ctx.restore();
     // Raster: 60° und alle n Stunden fein, Mindesthöhe (sonst 30°) gestrichelt
@@ -618,7 +676,10 @@ export function NightChart(props: NightChartProps) {
         const w = Math.max(1, x(f.toUtc) - x0);
         const color = resolveColor(canvas, f.color);
         ctx.fillStyle = color;
+        // Erledigte Filterabschnitte blass (AP-53c).
+        ctx.globalAlpha = f.tense === 'past' ? 0.32 : 1;
         ctx.fillRect(x0, top, w, PLAN_FILTER);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = c('chart-frame');
         ctx.fillRect(x0 + w - 1, top, 1, PLAN_FILTER);
         const text = filterBarLabel(f);
@@ -740,6 +801,8 @@ export function NightChart(props: NightChartProps) {
     topH,
     blocks,
     filterBars,
+    gaps,
+    outline,
     off,
     secondaryTimeZone,
     best,

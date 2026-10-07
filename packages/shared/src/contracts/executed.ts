@@ -95,7 +95,11 @@ export const ExecutedNight = z
     events: z.array(ExecutedEvent).max(5000),
     gaps: z.array(ExecutedGap).max(5000),
     counters: z
-      .object({ saved: z.number().int().min(0), skipped: z.number().int().min(0), failed: z.number().int().min(0) })
+      .object({
+        saved: z.number().int().min(0),
+        skipped: z.number().int().min(0),
+        failed: z.number().int().min(0),
+      })
       .meta({ id: 'ExecutedCounters' }),
   })
   .meta({ id: 'ExecutedNight' });
@@ -119,5 +123,7 @@ export const StoredPlanInfo = z
 export type StoredPlanInfo = z.infer<typeof StoredPlanInfo>;
 
 /** Revision mit Blöcken (Web: Rest-Plan ab jetzt bzw. Ursprungsplan als Umriss). */
-export const StoredPlan = StoredPlanInfo.extend({ blocks: z.array(PlanBlockSchema).max(2000) }).meta({ id: 'StoredPlan' });
+export const StoredPlan = StoredPlanInfo.extend({
+  blocks: z.array(PlanBlockSchema).max(2000),
+}).meta({ id: 'StoredPlan' });
 export type StoredPlan = z.infer<typeof StoredPlan>;

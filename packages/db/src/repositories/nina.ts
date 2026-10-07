@@ -593,7 +593,11 @@ export class NinaRigRepository extends TenantRepo {
     reason: string;
     engineVersion: string;
     inputHash: string;
-    plan: { readonly blocks: readonly unknown[]; readonly sessionEndUtc: string; readonly [key: string]: unknown };
+    plan: {
+      readonly blocks: readonly unknown[];
+      readonly sessionEndUtc: string;
+      readonly [key: string]: unknown;
+    };
     now: Date;
   }): Promise<number> {
     const tenantId = this.ctx.tenantId;
@@ -732,7 +736,11 @@ export class NinaRigRepository extends TenantRepo {
       .execute();
     return {
       sessions: sessions.map((x) => ({ ...x, startedAt: new Date(x.startedAt) })),
-      events: events.map((e) => ({ ...e, occurredAt: new Date(e.occurredAt), durationS: e.durationS === null ? null : Number(e.durationS) })),
+      events: events.map((e) => ({
+        ...e,
+        occurredAt: new Date(e.occurredAt),
+        durationS: e.durationS === null ? null : Number(e.durationS),
+      })),
       lights: lights.map((l) => ({
         capturedAt: new Date(l.capturedAt),
         exposureS: Number(l.exposureS),
@@ -771,7 +779,10 @@ export class NinaRigRepository extends TenantRepo {
             revision: r.revision,
             reason: r.reason,
             createdAt: new Date(r.createdAt),
-            summary: (typeof r.summary === 'string' ? JSON.parse(r.summary) : r.summary) as Record<string, unknown>,
+            summary: (typeof r.summary === 'string' ? JSON.parse(r.summary) : r.summary) as Record<
+              string,
+              unknown
+            >,
             blocks: (typeof r.blocks === 'string' ? JSON.parse(r.blocks) : r.blocks) as unknown[],
           }
         : null;

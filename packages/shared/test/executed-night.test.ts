@@ -12,7 +12,11 @@ const B_TRANSIT = '33333333-3333-4333-8333-333333333333';
 const B_IC = '44444444-4444-4444-8444-444444444444';
 const PLAN = '55555555-5555-4555-8555-555555555555';
 const at = (hhmm: string, day = 7) => `2026-10-0${day}T${hhmm}Z`;
-const ev = (occurredAt: string, kind: string, extra: Partial<ActualEventRow> = {}): ActualEventRow => ({
+const ev = (
+  occurredAt: string,
+  kind: string,
+  extra: Partial<ActualEventRow> = {},
+): ActualEventRow => ({
   occurredAt,
   kind,
   blockId: null,
@@ -22,7 +26,14 @@ const ev = (occurredAt: string, kind: string, extra: Partial<ActualEventRow> = {
   data: null,
   ...extra,
 });
-const light = (capturedAt: string, filter: string, exposureS: number, blockId: string | null, projectId: string, result = 'saved'): ActualLightRow => ({
+const light = (
+  capturedAt: string,
+  filter: string,
+  exposureS: number,
+  blockId: string | null,
+  projectId: string,
+  result = 'saved',
+): ActualLightRow => ({
   capturedAt,
   exposureS,
   result,
@@ -40,20 +51,48 @@ const names = new Map([
 function night(now = at('08:40:00'), running = true) {
   const events: ActualEventRow[] = [
     ev(at('00:30:00'), 'plan_built', { data: { revision: 1, reason: 'initial' } }),
-    ev(at('01:05:00'), 'block_start', { blockId: B_TRANSIT, projectId: P_TRANSIT, data: { kind: 'transit', title: 'WASP-3b' } }),
-    ev(at('05:54:39'), 'block_end', { blockId: B_TRANSIT, projectId: P_TRANSIT, data: { code: 'completed', exposures: 3 } }),
+    ev(at('01:05:00'), 'block_start', {
+      blockId: B_TRANSIT,
+      projectId: P_TRANSIT,
+      data: { kind: 'transit', title: 'WASP-3b' },
+    }),
+    ev(at('05:54:39'), 'block_end', {
+      blockId: B_TRANSIT,
+      projectId: P_TRANSIT,
+      data: { code: 'completed', exposures: 3 },
+    }),
   ];
   // transit_interrupt-Schleife: drei leere Blöcke in Folge.
   for (let k = 0; k < 3; k++) {
     const id = `66666666-6666-4666-8666-66666666666${k}`;
-    events.push(ev(at(`05:55:${10 + k * 20}`), 'block_start', { blockId: id, projectId: P_TRANSIT, data: { kind: 'transit' } }));
-    events.push(ev(at(`05:55:${15 + k * 20}`), 'block_end', { blockId: id, projectId: P_TRANSIT, data: { code: 'transit_interrupt' } }));
+    events.push(
+      ev(at(`05:55:${10 + k * 20}`), 'block_start', {
+        blockId: id,
+        projectId: P_TRANSIT,
+        data: { kind: 'transit' },
+      }),
+    );
+    events.push(
+      ev(at(`05:55:${15 + k * 20}`), 'block_end', {
+        blockId: id,
+        projectId: P_TRANSIT,
+        data: { code: 'transit_interrupt' },
+      }),
+    );
   }
   events.push(
     ev(at('06:07:00'), 'plan_rebuilt', { data: { revision: 2, reason: 'refresh' } }),
-    ev(at('06:07:00'), 'block_start', { blockId: B_IC, projectId: P_IC, data: { kind: 'regular', title: 'IC 1795' } }),
+    ev(at('06:07:00'), 'block_start', {
+      blockId: B_IC,
+      projectId: P_IC,
+      data: { kind: 'regular', title: 'IC 1795' },
+    }),
     ev(at('08:20:00'), 'flip', { blockId: B_IC, projectId: P_IC, durationS: 780 }),
-    ev(at('08:30:00'), 'skipped_timeaware', { blockId: B_IC, projectId: P_IC, data: { code: 'late', seq: 9 } }),
+    ev(at('08:30:00'), 'skipped_timeaware', {
+      blockId: B_IC,
+      projectId: P_IC,
+      data: { code: 'late', seq: 9 },
+    }),
   );
   const lights = [
     light(at('01:11:30'), 'R', 30, B_TRANSIT, P_TRANSIT),
@@ -74,13 +113,29 @@ describe('executedNight', () => {
       ['WASP-3b', 'transit', 3, false],
       ['IC 1795', 'regular', 2, true],
     ]);
-    expect(n.blocks[0]).toMatchObject({ startUtc: at('01:05:00'), endUtc: at('05:54:39'), endReason: 'completed' });
-    expect(n.blocks[1]!.endUtc).toBeNull();
+    expect(n.blocks[0]).toMatchObject({
+      startUtc: at('01:05:00'),
+      endUtc: at('05:54:39'),
+      endReason: 'completed',
+    });
+    expect(n.blocks[1]?.endUtc).toBeNull();
     const empty = n.gaps.find((g) => g.kind === 'empty_blocks');
-    expect(empty).toEqual({ kind: 'empty_blocks', fromUtc: at('05:55:10'), toUtc: at('05:55:55'), reason: 'transit_interrupt', count: 3 });
-    expect(n.gaps.find((g) => g.kind === 'flip')).toMatchObject({ fromUtc: at('08:07:00'), toUtc: at('08:20:00') });
+    expect(empty).toEqual({
+      kind: 'empty_blocks',
+      fromUtc: at('05:55:10'),
+      toUtc: at('05:55:55'),
+      reason: 'transit_interrupt',
+      count: 3,
+    });
+    expect(n.gaps.find((g) => g.kind === 'flip')).toMatchObject({
+      fromUtc: at('08:07:00'),
+      toUtc: at('08:20:00'),
+    });
     // Zwischen Lücke und IC 1795 liegen 11 min ohne Block: Leerlauf.
-    expect(n.gaps.find((g) => g.kind === 'idle')).toMatchObject({ fromUtc: at('05:55:55'), toUtc: at('06:07:00') });
+    expect(n.gaps.find((g) => g.kind === 'idle')).toMatchObject({
+      fromUtc: at('05:55:55'),
+      toUtc: at('06:07:00'),
+    });
     expect(n.segments.map((s) => [s.filter, s.saved, s.failed])).toEqual([
       ['R', 3, 0],
       ['Ha', 1, 1],
@@ -100,7 +155,7 @@ describe('executedNight', () => {
     const done = night(at('09:00:00'), false);
     expect(done.blocks[1]).toMatchObject({ running: false, endUtc: at('08:30:00') }); // übersprungene Belichtung
     const stale = night(at('08:30:00', 8), true);
-    expect(stale.blocks[1]!.running).toBe(false);
+    expect(stale.blocks[1]?.running).toBe(false);
   });
 
   it('Plugin vor 0.4.13 ohne Block-Ereignisse: Blöcke aus den Aufnahmen, Art aus dem Plan', () => {
@@ -108,14 +163,23 @@ describe('executedNight', () => {
       night: '2026-10-06',
       sessions: 1,
       events: [],
-      lights: [light(at('01:11:30'), 'R', 30, B_TRANSIT, P_TRANSIT), light(at('04:00:00'), 'R', 30, B_TRANSIT, P_TRANSIT)],
+      lights: [
+        light(at('01:11:30'), 'R', 30, B_TRANSIT, P_TRANSIT),
+        light(at('04:00:00'), 'R', 30, B_TRANSIT, P_TRANSIT),
+      ],
       running: false,
       now: at('09:00:00'),
       names,
       blockKinds: new Map([[B_TRANSIT, 'transit']]),
     });
     expect(n.blocks).toEqual([
-      expect.objectContaining({ title: 'WASP-3b', kind: 'transit', startUtc: at('01:11:30'), endUtc: at('04:00:30'), exposures: 2 }),
+      expect.objectContaining({
+        title: 'WASP-3b',
+        kind: 'transit',
+        startUtc: at('01:11:30'),
+        endUtc: at('04:00:30'),
+        exposures: 2,
+      }),
     ]);
     // Pause > 15 min: zwei Filterabschnitte.
     expect(n.segments).toHaveLength(2);
@@ -128,14 +192,30 @@ describe('executedNight', () => {
       sessions: 2,
       events: [
         ev(at('01:00:00'), 'block_start', { blockId: B_IC, projectId: P_IC }),
-        ev(at('02:00:00'), 'block_end', { blockId: B_IC, projectId: P_IC, data: { code: 'interrupted' } }),
+        ev(at('02:00:00'), 'block_end', {
+          blockId: B_IC,
+          projectId: P_IC,
+          data: { code: 'interrupted' },
+        }),
         ev(at('02:00:00'), 'safety_pause'),
         ev(at('02:40:00'), 'safety_resume'),
         ev(at('02:41:00'), 'block_start', { blockId: B2, projectId: P_IC }),
-        ev(at('03:00:00'), 'block_end', { blockId: B2, projectId: P_IC, data: { code: 'completed' } }),
-        ev(at('03:10:00'), 'block_skipped', { blockId: B_TRANSIT, projectId: P_TRANSIT, data: { code: 'center_failed' } }),
+        ev(at('03:00:00'), 'block_end', {
+          blockId: B2,
+          projectId: P_IC,
+          data: { code: 'completed' },
+        }),
+        ev(at('03:10:00'), 'block_skipped', {
+          blockId: B_TRANSIT,
+          projectId: P_TRANSIT,
+          data: { code: 'center_failed' },
+        }),
         ev(at('03:30:00'), 'block_start', { blockId: B_TRANSIT, projectId: P_TRANSIT }),
-        ev(at('04:00:00'), 'block_end', { blockId: B_TRANSIT, projectId: P_TRANSIT, data: { code: 'completed' } }),
+        ev(at('04:00:00'), 'block_end', {
+          blockId: B_TRANSIT,
+          projectId: P_TRANSIT,
+          data: { code: 'completed' },
+        }),
       ],
       lights: [
         light(at('01:10:00'), 'Ha', 300, B_IC, P_IC),

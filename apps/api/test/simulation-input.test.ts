@@ -42,24 +42,43 @@ async function setup() {
   const ha = await eq.createFilter(id(), filterInput('Ha'), now);
   const rig = await eq.createRig(id(), rigInput(site.id, telescope.id, camera.id), now);
   await eq.updateScheduler(rig.id, SCHEDULER, now);
-  await eq.putFilterWheel(rig.id, { slots: [{ position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] }, now);
+  await eq.putFilterWheel(
+    rig.id,
+    { slots: [{ position: 1, filterId: ha.id, ninaFilterName: 'Ha 3nm' }] },
+    now,
+  );
   const created = await web('/projects', {
     method: 'POST',
-    body: { id: id(), name: 'NGC 281', rigId: rig.id, targetName: 'NGC 281', raDeg: 13.2, decDeg: 56.6 },
+    body: {
+      id: id(),
+      name: 'NGC 281',
+      rigId: rig.id,
+      targetName: 'NGC 281',
+      raDeg: 13.2,
+      decDeg: 56.6,
+    },
   });
   const pid = created.body.id as string;
-  const panelId = (created.body.panels as { id: string }[])[0]!.id;
+  const panelId = (created.body.panels as { id: string }[])[0]?.id as string;
   const lineId = id();
   await web(`/projects/${pid}/lines`, {
     method: 'POST',
-    body: { id: lineId, panelId, filterId: ha.id, exposureS: 300, plannedCount: 40, moonMode: 'none' },
+    body: {
+      id: lineId,
+      panelId,
+      filterId: ha.id,
+      exposureS: 300,
+      plannedCount: 40,
+      moonMode: 'none',
+    },
   });
   await s.pg.admin.query(
     "UPDATE project SET approval_status = 'approved', status = 'active', rig_id = requested_rig_id WHERE id = $1",
     [pid],
   );
-  const token = (await web('/nina-instances', { method: 'POST', body: { id: id(), rigId: rig.id, name: 'A' } })).body
-    .token as string;
+  const token = (
+    await web('/nina-instances', { method: 'POST', body: { id: id(), rigId: rig.id, name: 'A' } })
+  ).body.token as string;
   const call = async (path: string, o: { method?: string; body?: unknown } = {}) => {
     const res = await s.request(`/api/nina/v1${path}`, {
       method: o.method ?? 'GET',
@@ -67,7 +86,11 @@ async function setup() {
       ...(o.body !== undefined ? { body: o.body } : {}),
     });
     const text = await res.text();
-    return { status: res.status, body: (text ? JSON.parse(text) : null) as Body, etag: res.headers.get('etag') };
+    return {
+      status: res.status,
+      body: (text ? JSON.parse(text) : null) as Body,
+      etag: res.headers.get('etag'),
+    };
   };
   return { rigId: rig.id, pid, panelId, lineId, web, call };
 }
@@ -86,8 +109,13 @@ describe('GET /simulations/input', () => {
       storedPlan: null,
       firstPlan: null,
     });
-    expect((r.body.input as { projects: { id: string }[] }).projects.map((p) => p.id)).toEqual([w.pid]);
-    const plan = await w.call('/plan', { method: 'POST', body: { night: NIGHT, reason: 'initial' } });
+    expect((r.body.input as { projects: { id: string }[] }).projects.map((p) => p.id)).toEqual([
+      w.pid,
+    ]);
+    const plan = await w.call('/plan', {
+      method: 'POST',
+      body: { night: NIGHT, reason: 'initial' },
+    });
     expect(plan.status).toBe(200);
     expect(plan.body.startAtUtc ?? null).toBeNull();
     expect(r.body.inputHash).toBe(plan.body.inputHash);
@@ -104,7 +132,13 @@ describe('GET /simulations/input', () => {
       (
         await w.call('/sessions', {
           method: 'POST',
-          body: { id: sessionId, night: NIGHT, nightPlanId: null, startedAtUtc: '2026-09-19T00:30:00Z', offline: false },
+          body: {
+            id: sessionId,
+            night: NIGHT,
+            nightPlanId: null,
+            startedAtUtc: '2026-09-19T00:30:00Z',
+            offline: false,
+          },
         })
       ).status,
     ).toBe(201);
@@ -128,8 +162,14 @@ describe('GET /simulations/input', () => {
       method: 'POST',
       body: {
         events: [
-          ev('plan_built', '2026-09-19T00:31:00Z', { blockId: null, projectId: null, data: { revision: 1, reason: 'initial' } }),
-          ev('block_start', '2026-09-19T01:00:00Z', { data: { kind: 'regular', title: 'NGC 281' } }),
+          ev('plan_built', '2026-09-19T00:31:00Z', {
+            blockId: null,
+            projectId: null,
+            data: { revision: 1, reason: 'initial' },
+          }),
+          ev('block_start', '2026-09-19T01:00:00Z', {
+            data: { kind: 'regular', title: 'NGC 281' },
+          }),
           ev('block_end', '2026-09-19T01:20:00Z', { code: 'completed', data: { exposures: 2 } }),
         ],
       },
@@ -176,22 +216,61 @@ describe('GET /simulations/input', () => {
     expect(r.body.currentNight).toBe(NIGHT);
     expect(r.body.executed).toMatchObject({
       sessions: 1,
-      blocks: [{ blockId, title: 'NGC 281', kind: 'regular', exposures: 2, endReason: 'completed', running: false }],
-      segments: [{ filter: 'Ha', saved: 2, failed: 0, startUtc: '2026-09-19T01:02:00Z', endUtc: '2026-09-19T01:13:00Z' }],
+      blocks: [
+        {
+          blockId,
+          title: 'NGC 281',
+          kind: 'regular',
+          exposures: 2,
+          endReason: 'completed',
+          running: false,
+        },
+      ],
+      segments: [
+        {
+          filter: 'Ha',
+          saved: 2,
+          failed: 0,
+          startUtc: '2026-09-19T01:02:00Z',
+          endUtc: '2026-09-19T01:13:00Z',
+        },
+      ],
       counters: { saved: 2, skipped: 0, failed: 0 },
     });
-    expect(r.body.storedPlan).toMatchObject({ nightPlanId, revision: 1, reason: 'initial', stale: false, staleCause: null });
+    expect(r.body.storedPlan).toMatchObject({
+      nightPlanId,
+      revision: 1,
+      reason: 'initial',
+      stale: false,
+      staleCause: null,
+    });
     expect((r.body.firstPlan as Body).nightPlanId).toBe(nightPlanId);
     expect(((r.body.storedPlan as Body).blocks as unknown[]).length).toBeGreaterThan(0);
 
     // Zeile abgeschaltet → neues Ziele-ETag: die Rig plant noch mit Revision 1.
-    expect((await w.web(`/projects/${w.pid}/lines/${w.lineId}`, { method: 'PATCH', body: { enabled: false } })).status).toBe(200);
+    expect(
+      (
+        await w.web(`/projects/${w.pid}/lines/${w.lineId}`, {
+          method: 'PATCH',
+          body: { enabled: false },
+        })
+      ).status,
+    ).toBe(200);
     const stale = await w.web(`/simulations/input?rigId=${w.rigId}&night=${NIGHT}`);
-    expect(stale.body.storedPlan).toMatchObject({ revision: 1, stale: true, staleCause: 'targets' });
+    expect(stale.body.storedPlan).toMatchObject({
+      revision: 1,
+      stale: true,
+      staleCause: 'targets',
+    });
 
     const sim = await w.call(`/simulation?night=${NIGHT}`);
     expect(sim.status).toBe(200);
-    expect(sim.body.storedPlan).toMatchObject({ nightPlanId, revision: 1, stale: true, staleCause: 'targets' });
+    expect(sim.body.storedPlan).toMatchObject({
+      nightPlanId,
+      revision: 1,
+      stale: true,
+      staleCause: 'targets',
+    });
     expect((sim.body.executed as Body).counters).toEqual({ saved: 2, skipped: 0, failed: 0 });
     expect((sim.body.storedPlan as Body).blocks).toBeUndefined();
   });

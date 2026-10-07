@@ -113,7 +113,10 @@ export const simulationInputRoute = defineRoute(
     tags: ['simulation'],
     request: { query: SimulationInputQuery },
     responses: {
-      200: { description: 'Eingabe der Nacht', content: { 'application/json': { schema: SimulationInput } } },
+      200: {
+        description: 'Eingabe der Nacht',
+        content: { 'application/json': { schema: SimulationInput } },
+      },
       401: problemContent('Nicht angemeldet'),
       403: problemContent('Keine Berechtigung'),
       404: problemContent('resource.not_found'),
@@ -143,8 +146,13 @@ export function webSimulationRoutes(services: () => Promise<ApiServices>) {
     // Autofokus-Trigger wie beim Planaufbau: zuletzt gemeldeter Zustand der NINA-Instanz des Rigs (M7).
     const instance = (await repos.ninaInstances().list(rigId))
       .filter((x) => x.lastSeenAt !== null)
-      .sort((a, b) => new Date(b.lastSeenAt!).getTime() - new Date(a.lastSeenAt!).getTime())[0];
-    const lastState = typeof instance?.lastState === 'string' ? JSON.parse(instance.lastState) : (instance?.lastState ?? null);
+      .sort(
+        (a, b) => new Date(b.lastSeenAt ?? 0).getTime() - new Date(a.lastSeenAt ?? 0).getTime(),
+      )[0];
+    const lastState =
+      typeof instance?.lastState === 'string'
+        ? JSON.parse(instance.lastState)
+        : (instance?.lastState ?? null);
     const currentNight = currentNightRow(siteNights(d.site, now, undefined, 3), isoUtc(now)).night;
     const { input, projects } = await nightPlanInput(svc, { ...ref, lastState }, d, {
       night,
