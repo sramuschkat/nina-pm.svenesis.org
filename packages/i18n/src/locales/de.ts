@@ -331,6 +331,9 @@ export const de = {
       transitBox: 'Transit-Lauf: Dither aus, Filterwechsel aus, Vorrang',
       transit: 'Transit',
       doneTonight: 'Heute Nacht abgearbeitet',
+      runningTonight: 'Läuft an der Rig',
+      runningTitle:
+        'Die Rig arbeitet das Projekt nach dem gespeicherten Plan ab; die Rechnung ab jetzt teilt es nicht mehr zu (z. B. zu wenig Dunkelzeit übrig)',
       doneExposures: 'Aufnahmen',
       doneTitle:
         'In dieser Nacht belichtet, im Rest-Plan nicht mehr zugeteilt (fertig, pausiert oder Transit vorbei)',
@@ -2944,6 +2947,8 @@ export const de = {
     computing: 'Prognose wird berechnet …',
     noProjects: 'Für diese Nacht sind keine Projekte geplant.',
     doneTonight: 'Heute Nacht abgearbeitet · {{n}} Aufnahmen · {{from}} – {{to}}',
+    runningTonight:
+      'Läuft an der Rig (gespeicherter Plan) · {{n}} Aufnahmen bisher · {{from}} – {{to}}',
     idle: '{{n}} weitere aktive Projekte ohne Frames in dieser Nacht.',
     col: {
       project: 'Projekt',

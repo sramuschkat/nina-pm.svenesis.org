@@ -791,14 +791,17 @@ function downloadCsv(text: string, night: string) {
 
 const checkOk = (c: Check): boolean | null => (c === 'none' ? null : c === 'ok');
 
-/** Heute Nacht abgearbeitet (07.10.2026): Ist der Nacht statt Belichtungsplan und Prüfungen, ausgegraut. */
+/**
+ * Läuft an der Rig bzw. heute Nacht abgearbeitet (07.10.2026): Ist der Nacht statt Belichtungsplan und Prüfungen;
+ * abgearbeitet ausgegraut, laufend mit geplantem Ende aus dem gespeicherten Plan.
+ */
 function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comments: number }) {
   const { t } = useTranslation();
   return (
     <article
-      className={`${styles.card} ${styles.cardDone}`}
+      className={card.running ? styles.card : `${styles.card} ${styles.cardDone}`}
       aria-label={card.name}
-      title={t('simulator.card.doneTitle')}
+      title={t(card.running ? 'simulator.card.runningTitle' : 'simulator.card.doneTitle')}
     >
       <h3 className={styles.cardTitle}>
         <span className={styles.swatch} style={{ background: card.color }} aria-hidden />
@@ -813,7 +816,9 @@ function DoneCardView({ card, tz, comments }: { card: DoneCard; tz: string; comm
         </Link>
         <CommentCount count={comments} />
         {card.transit ? <span className={styles.tag}>{t('simulator.card.transit')}</span> : null}
-        <span className={styles.tag}>{t('simulator.card.doneTonight')}</span>
+        <span className={styles.tag}>
+          {t(card.running ? 'simulator.card.runningTonight' : 'simulator.card.doneTonight')}
+        </span>
       </h3>
       <dl className={styles.facts}>
         <dt>{t('simulator.card.creator')}</dt>

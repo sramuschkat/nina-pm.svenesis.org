@@ -328,7 +328,8 @@ function RigCard({
           nightUsage(plan.result.plan),
         )
       : null;
-  // Heute Nacht abgearbeitet (07.10.2026): belichtet, aber im Rest-Plan nicht mehr – ausgegraut unter den geplanten.
+  // Ohne Zeile in der Rechnung ab jetzt (07.10.2026): läuft an der Rig (gespeicherter Plan) bzw. heute Nacht abgearbeitet
+  // (ausgegraut) – unter den geplanten.
   type Row = TonightRig['projects'][number] & { readonly done?: DoneCard };
   const planned = live?.projects ?? rig.projects;
   const rows: Row[] = [
@@ -405,7 +406,7 @@ function RigCard({
       cell: (p) =>
         p.done ? (
           <span className={styles.muted}>
-            {t('tonight.doneTonight', {
+            {t(p.done.running ? 'tonight.runningTonight' : 'tonight.doneTonight', {
               n: p.done.exposures,
               from: hm(p.done.fromUtc),
               to: p.done.toUtc ? hm(p.done.toUtc) : '…',
@@ -482,7 +483,9 @@ function RigCard({
             rows={rows}
             rowKey={(p) => p.projectId}
             rowLabel={(p) => p.name}
-            rowProps={(p) => (p.done ? { className: styles.rowDone, 'data-done': 'true' } : {})}
+            rowProps={(p) =>
+              p.done && !p.done.running ? { className: styles.rowDone, 'data-done': 'true' } : {}
+            }
             label={t('tonight.plannedLabel', { rig: rig.rigName })}
             empty={t('tonight.noProjects')}
           />

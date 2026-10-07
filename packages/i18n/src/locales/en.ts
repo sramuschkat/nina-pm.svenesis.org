@@ -331,6 +331,9 @@ export const en: Messages = {
       transitBox: 'Transit run: dither off, filter changes off, priority',
       transit: 'Transit',
       doneTonight: 'Done tonight',
+      runningTonight: 'Running on the rig',
+      runningTitle:
+        'The rig works on this project from the stored plan; the plan from now no longer allocates it (e.g. too little darkness left)',
       doneExposures: 'Frames',
       doneTitle:
         'Exposed this night, no longer allocated in the remaining plan (finished, paused or transit over)',
@@ -2934,6 +2937,7 @@ export const en: Messages = {
     computing: 'Calculating forecast …',
     noProjects: 'No projects are planned for this night.',
     doneTonight: 'Done tonight · {{n}} frames · {{from}} – {{to}}',
+    runningTonight: 'Running on the rig (stored plan) · {{n}} frames so far · {{from}} – {{to}}',
     idle: '{{n}} more active projects without frames this night.',
     col: {
       project: 'Project',

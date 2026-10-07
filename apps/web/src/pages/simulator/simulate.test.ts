@@ -231,13 +231,12 @@ describe('simulate', () => {
       ['IC 1795', false, 6],
     ]);
     expect(r.cards.map((c) => c.projectId)).toEqual(base.cards.map((c) => c.projectId));
-    // Läuft an der Rig noch (gespeicherter Plan hat einen Block bis 10:00, Rechnung ab jetzt teilt nichts mehr zu):
-    // keine „abgearbeitet“-Karte (07.10.2026, IC 1795 um 05:33 CDT).
+    // stillRunning: offener Block im gespeicherten Plan (mit dessen Ende) bzw. laufender Ist-Block (ohne Ende).
     const stored = { blocks: [{ projectId: PAUSED, endUtc: '2026-09-18T10:00:00Z' }] };
     expect(stillRunning(null, stored, Date.parse('2026-09-18T09:00:00Z'))).toEqual(
-      new Set([PAUSED]),
+      new Map([[PAUSED, '2026-09-18T10:00:00Z']]),
     );
-    expect(stillRunning(null, stored, Date.parse('2026-09-18T10:00:00Z'))).toEqual(new Set());
+    expect(stillRunning(null, stored, Date.parse('2026-09-18T10:00:00Z'))).toEqual(new Map());
     const running = {
       night: '2026-09-17',
       sessions: 1,
@@ -247,7 +246,78 @@ describe('simulate', () => {
       gaps: [],
       counters: { saved: 6, skipped: 0, failed: 0 },
     };
-    expect(stillRunning(running, null, Number.NaN)).toEqual(new Set([PAUSED]));
+    expect(stillRunning(running, null, Number.NaN)).toEqual(new Map([[PAUSED, null]]));
+  });
+
+  it('kurz vor Nachtende: Projekt, das die Rig noch belichtet, ist „läuft an der Rig“, nicht „nicht zugeteilt“', () => {
+    // Prod 07.10.2026, 06:04 CDT: 10 min dunkel übrig, die Rechnung ab jetzt teilt IC 1795 nicht mehr zu („unter der
+    // Mindestzeit“), die Rig belichtete aber noch SII aus dem gespeicherten Plan.
+    const end = Date.parse(simulate(request()).plan.nightWindow.endUtc);
+    const now = new Date(end - 10 * 60_000).toISOString();
+    const late = simulate(request({ nowUtc: now }));
+    const id = late.unallocated[0]?.projectId ?? '';
+    expect(id).not.toBe('');
+    const blockEnd = new Date(end - 2 * 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const r = simulate(
+      request({
+        nowUtc: now,
+        server: {
+          input: buildPlanInput(rig, projects, moonProfiles, nights, {
+            night: '2026-09-17',
+            site: STARFRONT,
+            autofocusAfterTimeMin: rig.scheduler.overhead.afEveryMin,
+          }),
+          inputHash: 'sha256:abc',
+          projectNames: {},
+          executed: {
+            night: '2026-09-17',
+            sessions: 1,
+            blocks: [
+              {
+                blockId: null,
+                nightPlanId: null,
+                projectId: id,
+                panelId: null,
+                title: 'IC 1795',
+                kind: 'regular',
+                startUtc: new Date(end - 3 * 3600_000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+                endUtc: null,
+                endReason: null,
+                exposures: 18,
+                running: true,
+              },
+            ],
+            segments: [],
+            events: [],
+            gaps: [],
+            counters: { saved: 18, skipped: 0, failed: 0 },
+          },
+          storedPlan: {
+            nightPlanId: '0190c3f4-0000-7000-8000-0000000000f1',
+            revision: 214,
+            reason: 'refresh',
+            createdAtUtc: now,
+            stale: false,
+            staleCause: null,
+            blocks: [
+              {
+                id: '0190c3f4-0000-7000-8000-0000000000f2',
+                projectId: id,
+                kind: 'regular',
+                startUtc: now,
+                endUtc: blockEnd,
+                entries: [],
+              },
+            ],
+          } as never,
+          firstPlan: null,
+        },
+      }),
+    );
+    expect(r.unallocated.some((u) => u.projectId === id)).toBe(false);
+    expect(r.doneCards).toEqual([
+      expect.objectContaining({ projectId: id, running: true, exposures: 18, toUtc: blockEnd }),
+    ]);
   });
 
   it('Zielkarte nennt das Mondprofil der Zeile (Name, Abstand, Breite) statt „LA“; Protokoll übersetzt Namen', () => {

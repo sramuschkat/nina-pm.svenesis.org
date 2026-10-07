@@ -182,10 +182,8 @@ export function useNightPlan(rigId: string | null, night: string | null): NightP
     const colors = new Map(result.cards.map((c) => [c.projectId, c.color]));
     return doneTonight(
       data.executed.blocks,
-      new Set([
-        ...result.cards.map((c) => c.projectId),
-        ...stillRunning(data.executed, data.storedPlan, nowMin * 60_000),
-      ]),
+      new Set(result.cards.map((c) => c.projectId)),
+      stillRunning(data.executed, data.storedPlan, nowMin * 60_000),
       new Map(Object.entries(data.projectNames)),
       new Map(projects.map((p) => [p.id, p.createdBy])),
       (id) => colors.get(id) ?? 'var(--npm-chart-marker)',
